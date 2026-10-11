@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { DiagramFile } from "../../model/types";
-import { examples } from "../../examples";
+import { examples, loadExample } from "../../examples";
 import { decodeShare, sharePayloadFromHash } from "../share";
 import { Glyph } from "../ui/glyphs";
+import { notify } from "../ui/toast";
 
 // ?embed=1 — a clean, read-only viewer for <iframe> embeds: no top bar, fitted to the frame, pan and
 // zoom only, plus a subtle "Open in Diagrams" link. The diagram comes from `example=<slug>` or a
@@ -34,12 +35,19 @@ function resolve(): Promise<State> {
   const slug = params.get("example");
   const ex = slug ? examples.find((e) => e.slug === slug) : undefined;
   if (ex)
-    return Promise.resolve({
-      status: "ready",
-      diagram: ex.diagram,
-      key: `ex:${ex.slug}`,
-      openHref: `${base}?view=canvas&example=${encodeURIComponent(ex.slug)}`,
-    });
+    return loadExample(ex.slug).then(
+      (diagram): State => ({
+        status: "ready",
+        diagram,
+        key: `ex:${ex.slug}`,
+        openHref: `${base}?view=canvas&example=${encodeURIComponent(ex.slug)}`,
+      }),
+      () => {
+        const message = "Couldn't load that example. Check your connection and reload.";
+        notify(message, { kind: "error" });
+        return { status: "error", message };
+      },
+    );
   return Promise.resolve({
     status: "error",
     message: slug

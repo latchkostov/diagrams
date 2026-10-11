@@ -1,6 +1,7 @@
 import { safeStorage } from "../lib/storage";
 import {
   Component,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -296,13 +297,21 @@ export function LabView({ onOpen }: Props) {
           data-kind={preset.kind}
         >
           <PresetBoundary resetKey={stageKey}>
-            <PresetStage
-              key={stageKey}
-              preset={preset}
-              values={stageValues}
-              speed={Number(values.speed) || 1}
-              onRendered={onRendered}
-            />
+            <Suspense
+              fallback={
+                <div role="status" data-testid="lab-example-loading">
+                  Loading example…
+                </div>
+              }
+            >
+              <PresetStage
+                key={stageKey}
+                preset={preset}
+                values={stageValues}
+                speed={Number(values.speed) || 1}
+                onRendered={onRendered}
+              />
+            </Suspense>
           </PresetBoundary>
         </div>
 

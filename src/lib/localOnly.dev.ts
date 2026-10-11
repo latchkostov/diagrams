@@ -30,7 +30,7 @@ function localFingerprints(): Set<string> {
   ]);
   fingerprints = new Set(
     examples
-      .filter((example) => example.localOnly)
+      .filter((example) => example.localOnly === true)
       .flatMap(({ diagram }) => [
         ...diagram.nodes.flatMap(nodeStrings),
         ...diagram.edges.map((edge) => edge.label ?? ""),

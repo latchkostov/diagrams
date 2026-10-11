@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { exampleMetadataPlugin } from "./scripts/example-metadata";
 
 /**
  * `VITE_E2E=1` builds the app for the e2e suite: a production build that keeps the dev-only test hooks
@@ -45,7 +46,7 @@ function noTestHooks(): Plugin {
 export default defineConfig({
   // Relative base so the build can be served from any sub-path (e.g. latchkostov.com/tools/diagrams/).
   base: "./",
-  plugins: [react(), noPrivateExamples(), noTestHooks()],
+  plugins: [exampleMetadataPlugin(), react(), noPrivateExamples(), noTestHooks()],
   // Always defined, so `import.meta.env.VITE_E2E === "1"` folds to a constant and the hooks drop out.
   define: { "import.meta.env.VITE_E2E": JSON.stringify(E2E_BUILD ? "1" : "") },
   build: {

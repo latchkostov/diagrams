@@ -54,9 +54,3 @@ Review findings and ideas not yet scheduled. Remove items when they land.
   the latency check above.
 - **Startup**: about 300 ms of long frames at 4x on a cold canvas load (React Flow's first measure and
   routing). Worth a look once the canvas chunk is profiled with source maps.
-- **Load full example diagrams on demand.** `src/examples/index.ts` imports every example JSON
-  statically, so all diagrams and their simulations are in the initial JavaScript, even for someone
-  reopening their own diagram or visiting only the gallery: about 18 kB gzip of the entry bundle, which
-  sits at about 93% of the 130 kB budget (`pnpm size`). Keep only the picker and start-card metadata
-  (slug, title, theme, summary, featured, a precomputed thumbnail) eager, and `import()` each full
-  diagram when it is opened.

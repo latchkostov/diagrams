@@ -8,14 +8,17 @@ import { SLUG, installFakeModelContext, toolNames, openAskAi } from "./ai-helper
 
 async function installSyntheticRegistry(page: Page) {
   await installFakeModelContext(page);
-  await page.route("**/src/examples/index.ts", (route) =>
+  await page.route(/\/src\/examples\/index\.ts(?:\?.*)?$/, (route) =>
     route.fulfill({
       contentType: "text/javascript",
       body: `import publicDiagram from "/src/examples/kafka-order-pipeline.json?import";
+    import { exampleMetadata } from "/src/examples/metadata.ts";
       export const examples = [
-        { slug: "${SLUG}", diagram: publicDiagram },
+        { ...exampleMetadata["kafka-order-pipeline"], slug: "${SLUG}", diagram: publicDiagram },
         { slug: "synthetic-local", localOnly: true, diagram: ${JSON.stringify(localOnlyFixture)} }
-      ];`,
+      ];
+      export const getLoadedExample = (slug) => examples.find((e) => e.slug === slug)?.diagram;
+      export const loadExample = async (slug) => getLoadedExample(slug);`,
     }),
   );
 }
