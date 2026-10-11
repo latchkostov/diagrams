@@ -7,6 +7,7 @@ import { resolveProps } from "../sim/defaults";
 import type { DiagramFlowNode, FlowNode } from "../canvas/types";
 import type { LiveState } from "./controller";
 import { useLive } from "./context";
+import { useDiagram } from "../canvas/DiagramContext";
 import { formatCount, formatRate, heatOf } from "./format";
 import { LiveIcon } from "./icons";
 import type { CapacityView, NodeHeat } from "./capacityModel";
@@ -48,7 +49,11 @@ export function NodeBadges({
   const ui = useLive();
   const nodes = useNodes<FlowNode>();
   const diagram = ui.controller.currentDiagram;
-  const hovered = useHoveredNode();
+  // No breakdown while a card is edited inline: the editor hangs where the breakdown would show, and
+  // focus in the editor would otherwise count as hovering its node.
+  const { editing } = useDiagram();
+  const pointed = useHoveredNode();
+  const hovered = editing ? null : pointed;
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
   const zoom = useStore((s) => s.transform[2]);
   const inputs = [state, nodes, ui, hovered, zoom, presenting];
