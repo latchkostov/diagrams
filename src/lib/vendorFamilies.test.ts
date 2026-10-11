@@ -26,6 +26,12 @@ describe("vendor families", () => {
     expect(familyOfVendor("PostgreSQL")).toBe("oss");
     expect(familyOfVendor("Kubernetes")).toBe("oss");
     expect(familyOfVendor("Snowflake")).toBe("saas");
+    expect(familyOfVendor("Confluent")).toBe("streaming");
+    expect(familyOfVendor("Apache Flink")).toBe("streaming");
+    expect(familyOfVendor("Istio")).toBe("oss");
+    expect(familyOfVendor("Temporal")).toBe("oss");
+    expect(familyOfVendor("Stripe")).toBe("saas");
+    expect(familyOfVendor("Anthropic")).toBe("saas");
     expect(familyOfVendor("Generic")).toBe("generic");
     expect(familyOfVendor("Client")).toBe("generic");
   });
