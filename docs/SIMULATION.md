@@ -9,6 +9,10 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
 - The engine is **pull-based at brokers**: a topic/queue/stream only hands a message to a consumer
   edge when the consumer has spare capacity (`inFlight + incoming < concurrency`, status `up`).
   This is what makes lag/backlog visibly build when a consumer is slow, paused or down.
+- Capacity is reserved while a delivery is travelling (like a consumer prefetch), so throughput per
+  consumer group is about `partitions ÷ travelMs` and per processor about
+  `concurrency ÷ (travelMs + latencyMs)`. Raise `partitions` / `concurrency` for high-rate scenarios.
+- A processor with no outgoing edges is a terminal consumer (counts `processed`).
 - Everything else is **push**: when a node finishes a message it sends it on immediately.
 - Fixed internal step (e.g. 10 ms) and a seeded PRNG ⇒ identical runs for identical inputs.
 
