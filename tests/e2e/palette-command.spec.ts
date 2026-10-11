@@ -18,11 +18,12 @@ async function openPalette(page: Page) {
   await expect(input(page)).toBeFocused();
 }
 
+/** Nodes and edges on the canvas (not their labels, tooltips or inline editors). */
 async function counts(page: Page): Promise<{ nodes: number; edges: number }> {
-  const text = (await page.getByTestId("diagram-card").textContent()) ?? "";
-  const m = /(\d+) nodes?, (\d+) edges?/.exec(text);
-  if (!m) throw new Error(`No counts in "${text}"`);
-  return { nodes: Number(m[1]), edges: Number(m[2]) };
+  return {
+    nodes: await page.getByTestId(/^node-(?!tooltip$|editor-)/).count(),
+    edges: await page.getByTestId(/^edge-(?!label-)/).count(),
+  };
 }
 
 async function firstItemId(page: Page): Promise<string> {

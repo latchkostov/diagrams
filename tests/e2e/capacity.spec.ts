@@ -206,6 +206,8 @@ test.describe("inputs & capacity", () => {
     await expect(rate).toBeFocused();
     await rate.fill("5k");
     await rate.press("Enter");
+    // Committed as 5,000 msg/s: that's what reaches the API.
+    await expect(page.getByTestId("capacity-label-api")).toContainText("5k/s of");
     // The answer: a named bottleneck with a fix.
     await expect(page.getByTestId("bottleneck-callout")).toHaveAttribute("data-tone", "over");
     await expect(page.getByTestId("bottleneck-apply")).toBeVisible();
@@ -244,6 +246,145 @@ test.describe("inputs & capacity", () => {
     // A broker's competing route takes no share: it delivers to one consumer rather than copying.
     await page.getByTestId("edge-label-order-events-to-payments").click();
     await expect(page.getByTestId("inspector-section-edge-simulation")).toHaveCount(0);
+  });
+});
+
+/** Order API → orders → three services, with no source: traffic has nowhere to enter yet. */
+const ORDERS = {
+  format: "diagrams/v1",
+  title: "Orders",
+  nodes: [
+    { id: "api", stencil: "service.go", label: "Order API", x: 0, y: 120 },
+    { id: "orders", stencil: "kafka.topic", label: "orders", x: 320, y: 120, props: { partitions: 6 } },
+    ...["Billing", "Shipping", "Email"].map((label, i) => ({
+      id: label.toLowerCase(),
+      stencil: "service.java",
+      label,
+      x: 640,
+      y: i * 120,
+    })),
+  ],
+  edges: [
+    { id: "e0", from: "api", to: "orders" },
+    ...["billing", "shipping", "email"].map((to) => ({ id: `e-${to}`, from: "orders", to })),
+  ],
+};
+
+/** Opens a diagram in the editor (it joins Your diagrams), through the Lab's JSON preset. */
+async function openInEditor(page: Page, diagram: object) {
+  await page.goto("./?view=lab&preset=custom-json");
+  await page.getByTestId("lab-json-toggle").click();
+  await page.getByTestId("lab-json-input").fill(JSON.stringify(diagram));
+  await page.getByTestId("lab-json-apply").click();
+  await page.getByTestId("lab-open-editor").click();
+  await expect(page.getByTestId("canvas-view")).toBeVisible();
+}
+
+const testIds = (page: Page, pattern: RegExp) =>
+  page.getByTestId(pattern).evaluateAll((els) => els.map((el) => el.getAttribute("data-testid") ?? "").sort());
+/** Edit-mode nodes and edges (not their labels, tooltips or inline editors). */
+const topology = async (page: Page) => ({
+  nodes: await testIds(page, /^node-(?!tooltip$|editor-)/),
+  edges: await testIds(page, /^edge-(?!label-)/),
+});
+
+/** "Traffic into Order API" from the Inputs panel; returns the new entry point's node id. */
+async function addEntryIntoApi(page: Page): Promise<string> {
+  await page.getByTestId("live-toggle").click();
+  await page.getByTestId("live-capacity").click();
+  await page.getByTestId("capacity-add-entry-api").click();
+  const rate = page.getByTestId(/^capacity-rate-(?!.*slider)/).first();
+  await expect(rate).toBeFocused();
+  return ((await rate.getAttribute("data-testid")) ?? "").slice("capacity-rate-".length);
+}
+
+test.describe("entry points (sixth review)", () => {
+  test("adding an entry point is one undoable topology edit", async ({ page }) => {
+    await openInEditor(page, ORDERS);
+    const before = await topology(page);
+    expect(before.nodes).toHaveLength(5);
+    const id = await addEntryIntoApi(page);
+    await page.getByTestId("capacity-close").click();
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId(`node-${id}`)).toBeVisible();
+    const added = await topology(page);
+    expect(added.nodes).toEqual([...before.nodes, `node-${id}`].sort());
+    const newEdges = added.edges.filter((e) => !before.edges.includes(e));
+    expect(newEdges).toHaveLength(1);
+
+    // One undo takes the node and its edge away together, leaving the original topology.
+    await page.getByTestId("undo-button").click();
+    await expect(page.getByTestId(`node-${id}`)).toHaveCount(0);
+    await expect(page.getByTestId(newEdges[0])).toHaveCount(0);
+    expect(await topology(page)).toEqual(before);
+    // One redo brings both back.
+    await page.getByTestId("redo-button").click();
+    await expect(page.getByTestId(`node-${id}`)).toBeVisible();
+    await expect(page.getByTestId(newEdges[0])).toBeAttached();
+    expect(await topology(page)).toEqual(added);
+  });
+
+  test("a new entry point commits 5k as 5,000 msg/s, and Save keeps it across a reload", async ({ page }) => {
+    await openInEditor(page, ORDERS);
+    const id = await addEntryIntoApi(page);
+    const rate = page.getByTestId(`capacity-rate-${id}`);
+    await rate.fill("5k");
+    await rate.press("Enter");
+    await expect(page.getByTestId("capacity-label-api")).toContainText("5k/s of");
+    await page.getByTestId("capacity-save").click();
+    await page.reload();
+    await expect(page.getByTestId(`node-${id}`)).toBeVisible();
+    const saved = await page.evaluate((nodeId) => {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i) ?? "";
+        if (!key.startsWith("diagrams.doc.v1:") && !key.startsWith("diagrams.autosave.v1:")) continue;
+        type Doc = { nodes?: { id: string; props?: Record<string, unknown> }[] };
+        const stored = JSON.parse(localStorage.getItem(key) ?? "{}") as Doc & { diagram?: Doc };
+        const node = (stored.diagram ?? stored).nodes?.find((n) => n.id === nodeId);
+        if (node) return node.props?.ratePerSec;
+      }
+      return null;
+    }, id);
+    expect(saved).toBe(5000);
+  });
+
+  test("a diagram that's all one cycle still offers where traffic could enter", async ({ page }) => {
+    await openInEditor(page, {
+      format: "diagrams/v1",
+      title: "Loop",
+      nodes: [
+        { id: "a", stencil: "service.go", label: "Retry worker", x: 0, y: 0 },
+        { id: "b", stencil: "service.java", label: "Scheduler", x: 320, y: 0 },
+      ],
+      edges: [
+        { id: "ab", from: "a", to: "b" },
+        { id: "ba", from: "b", to: "a" },
+      ],
+    });
+    await page.getByTestId("live-toggle").click();
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-no-entries")).toBeVisible();
+    await expect(page.getByTestId("capacity-add-entry-a")).toBeVisible();
+    await expect(page.getByTestId("capacity-add-entry-b")).toBeVisible();
+  });
+});
+
+test.describe("outages in the run (UX gate 3)", () => {
+  test("the callout says Payments is down during the outage, and healthy again after", async ({ page }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await page.keyboard.press("c");
+    const headline = page.getByTestId("bottleneck-headline");
+    await expect(headline).toHaveText("Healthy: every service has headroom");
+    // Jump to the outage (the note stacked on the status change at 4.0s).
+    await page.getByTestId("live-marker-2").click();
+    await expect(headline).toHaveText("Payments service is down");
+    await expect(page.getByTestId("bottleneck-callout")).toHaveAttribute("data-tone", "over");
+    await expect(page.getByTestId("bottleneck-callout")).toHaveAttribute("data-node", "payments");
+    await expect(page.getByTestId("capacity-label-payments")).toContainText("Down ·");
+    // Payments comes back at 12.0s.
+    await page.getByTestId("live-marker-4").click();
+    await expect(headline).toHaveText("Healthy: every service has headroom");
   });
 });
 
@@ -414,6 +555,19 @@ test.describe("fourth review capacity regressions", () => {
     await openBlackFridayInputs(page);
     const count = () =>
       page.evaluate(() => (window as unknown as { capacityRenderCount(): number }).capacityRenderCount());
+    // Let opening the panel settle (under load its first renders can land late), then measure.
+    let previous = -1;
+    await expect
+      .poll(
+        async () => {
+          const now = await count();
+          const settled = now === previous;
+          previous = now;
+          return settled;
+        },
+        { intervals: [400] },
+      )
+      .toBe(true);
     const before = await count();
     expect(before).toBeGreaterThan(0);
     const clock = Number(await page.getByTestId("live-clock").getAttribute("data-ms"));

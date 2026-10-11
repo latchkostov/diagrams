@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import { DIAGRAM_FORMAT, type DiagramFile, type Simulation } from "../model/types";
 import { formatClock, formatCount, formatRate, formatSpeed, heatOf } from "./format";
 import { PathCache, pointOnSamples, sampleIndex, samplePath, type PathLike } from "./pathSampler";
-import { fractionToTime, placeMarkers, timeToFraction, trackLength, trafficBands } from "./timelineMath";
+import {
+  fractionToTime,
+  markerSeekTime,
+  placeMarkers,
+  timeToFraction,
+  trackLength,
+  trafficBands,
+} from "./timelineMath";
 import {
   blankSimulation,
   createStormSimulation,
@@ -152,6 +159,13 @@ describe("timeline mapping", () => {
       ["c", 0],
     ]);
     expect(placed[2].at).toBe(0.5);
+  });
+
+  it("a marker click seeks one engine step past the marker", () => {
+    expect(markerSeekTime(4000)).toBe(4010);
+    expect(markerSeekTime(0)).toBe(10);
+    expect(markerSeekTime(1234)).toBe(1240);
+    expect(markerSeekTime(Number.NaN)).toBe(10);
   });
 
   it("turns traffic profiles into bands", () => {

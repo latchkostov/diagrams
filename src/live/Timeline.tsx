@@ -2,7 +2,14 @@ import { useMemo, useRef, useState, type CSSProperties } from "react";
 import type { Simulation } from "../model/types";
 import type { SimulationRunState } from "../sim/types";
 import { formatClock } from "./format";
-import { fractionToTime, placeMarkers, timeToFraction, trackLength, trafficBands } from "./timelineMath";
+import {
+  fractionToTime,
+  markerSeekTime,
+  placeMarkers,
+  timeToFraction,
+  trackLength,
+  trafficBands,
+} from "./timelineMath";
 
 /**
  * Scrubber for a saved simulation: traffic windows as bands, notes / chaos actions as markers,
@@ -46,12 +53,23 @@ export function Timeline({
         <span className="lv-fill" />
       </div>
       {markers.map((m, i) => (
-        <span
+        // A click jumps there (just past the marker, so its note shows or its chaos has happened).
+        // Keyboard users scrub with the slider; the markers stay out of the Tab order.
+        <button
+          type="button"
+          tabIndex={-1}
           key={`${m.atMs}-${i}`}
           className={`lv-marker is-${m.kind}`}
           style={{ left: pct(m.at), "--row": m.row } as CSSProperties}
-          title={`${formatClock(m.atMs)} · ${m.label}`}
+          title={`${formatClock(m.atMs)} · ${m.label} (click to jump here)`}
+          aria-label={`Jump to ${formatClock(m.atMs)}: ${m.label}`}
           data-testid={`live-marker-${i}`}
+          data-at={m.atMs}
+          onClick={() => {
+            pending.current = null;
+            setDrag(null);
+            onSeek(markerSeekTime(m.atMs));
+          }}
         />
       ))}
       <span className="lv-playhead" aria-hidden />

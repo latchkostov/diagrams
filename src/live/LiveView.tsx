@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   ViewportPortal,
   useNodesInitialized,
@@ -10,6 +10,7 @@ import {
 import "../styles/live.css";
 import "../styles/capacity.css";
 import type { DiagramFile, Simulation } from "../model/types";
+import type { NodeStatus } from "../sim/types";
 import type { EditorApi } from "../editor/types";
 import { actionRegistry, builtinSections } from "../editor/actions";
 import { isEditableTarget } from "../editor/shortcuts";
@@ -48,6 +49,10 @@ import { capacitySaveCandidate, capacitySaveError } from "./capacityPersistence"
 import { notify } from "../interop/ui/toast";
 import { stencilRole } from "../stencils/roles";
 import { motionMs } from "../lib/motion";
+import { placeNextTo } from "../canvas/placement";
+import { Recorder } from "./record/Recorder";
+import { initialRecordState, isCapturing, recordReducer } from "./record/recordModel";
+import { isRecordingActive } from "./record/framing";
 
 export interface LiveViewProps {
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
@@ -83,8 +88,6 @@ export interface LiveViewProps {
 const UI_MS = 125;
 /** "Traffic into X": the first of these that starts traffic in the simulation (a source). */
 const ENTRY_STENCILS = ["client.user", "client.browser", "generic.webhook"];
-/** Space between the new entry point and the node it feeds. */
-const ENTRY_GAP = 120;
 /** Things that own Esc before live view does (checked before they react, in the capture phase). */
 const ESC_OWNERS = [
   '[role="menu"]',
@@ -131,6 +134,8 @@ export function LiveView(props: LiveViewProps) {
     if (props.alwaysOn || !enabled) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== "l" || e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.defaultPrevented) return;
+      // A recording in progress keeps live view (Esc or Stop ends the recording first).
+      if (isRecordingActive()) return;
       // Buttons (including the live bar's) don't take text, so L still works when they have focus.
       if (isEditableTarget(e.target)) return;
       e.preventDefault();
@@ -564,6 +569,23 @@ function LiveSession({
 
   const showEvents = useCallback((nodeId: string | null, open = true) => setEvents({ open, nodeId }), []);
 
+  // ---------------------------------------------------------------- record video
+
+  const [rec, dispatchRec] = useReducer(recordReducer, initialRecordState);
+  const capturing = isCapturing(rec.phase);
+  /** Opens "Record video" (the panels and the event log close: they'd be in the video). */
+  const openRecord = useCallback(() => {
+    setPanel((p) => (p.open ? { ...p, open: false } : p));
+    setEvents((e) => (e.open ? { ...e, open: false } : e));
+    dispatchRec({ type: "open" });
+  }, []);
+  /** The video is framed to the canvas area: the diagram, its title card and the live overlays. */
+  const recordTarget = useCallback(() => {
+    const root = store.getState().domNode;
+    return root?.closest(".canvas-wrap") ?? root ?? null;
+  }, [store]);
+  const recordTitle = useCallback(() => getDiagram().title, [getDiagram]);
+
   // ---------------------------------------------------------------- inputs & capacity
 
   const [forcedOverlay] = useState(params.capacity);
@@ -572,10 +594,22 @@ function LiveSession({
   const planDiagram = controller.currentDiagram;
   const freePlan = useMemo(() => freePlaySimulation(planDiagram, state.inputs), [planDiagram, state.inputs]);
   const plan = state.running ?? freePlan;
-  // Recomputed only when the plan changes (sliders, saves, diagram edits), never per frame.
+  // The run's outages (timeline chaos, Kill, Pause) as a stable key: the callout says "down", not "Healthy".
+  const outageKey = JSON.stringify(
+    Object.entries(state.snapshot.nodes)
+      .filter(([, n]) => n.status !== "up")
+      .map(([id, n]) => [id, n.status])
+      .sort(),
+  );
+  const runStatus = useMemo(() => {
+    const status: Record<string, NodeStatus> = Object.fromEntries(planDiagram.nodes.map((n) => [n.id, "up"]));
+    for (const [id, st] of JSON.parse(outageKey) as [string, NodeStatus][]) status[id] = st;
+    return status;
+  }, [outageKey, planDiagram]);
+  // Recomputed only when the plan or an outage changes (sliders, saves, edits, chaos), never per frame.
   const capacity = useMemo(
-    () => (showCapacity || capacityOpen ? capacityView(planDiagram, plan) : null),
-    [showCapacity, capacityOpen, planDiagram, plan],
+    () => (showCapacity || capacityOpen ? capacityView(planDiagram, plan, runStatus) : null),
+    [showCapacity, capacityOpen, planDiagram, plan, runStatus],
   );
 
   // The panel shows the heat map for this session only; leaving live view restores the preference.
@@ -663,13 +697,19 @@ function LiveSession({
       if (!editor) return;
       const target = editor.getNode(targetId);
       if (!target) return;
-      const measured = store.getState().nodeLookup.get(targetId)?.measured;
-      const w = measured?.width ?? 220;
-      const h = measured?.height ?? 72;
-      const at =
-        editor.getDiagram().direction === "TB"
-          ? { x: target.x + w / 2, y: target.y - h / 2 - ENTRY_GAP }
-          : { x: target.x - w / 2 - ENTRY_GAP, y: target.y + h / 2 };
+      // The palette's collision-aware placement, upstream: never on top of a node already there.
+      const boxes = [...store.getState().nodeLookup.values()]
+        .filter((n) => n.type === "diagram" && !n.hidden)
+        .map((n) => ({
+          id: n.id,
+          x: n.internals.positionAbsolute.x,
+          y: n.internals.positionAbsolute.y,
+          width: n.measured.width ?? 220,
+          height: n.measured.height ?? 72,
+        }));
+      const from = boxes.find((b) => b.id === targetId) ?? { x: target.x, y: target.y, width: 220, height: 72 };
+      const direction = editor.getDiagram().direction === "TB" ? "TB" : "LR";
+      const at = placeNextTo(from, { width: from.width, height: from.height }, boxes, direction, "upstream");
       // Same tick: the history debounce records the node, its label and its edge as one undo step.
       const stencil = ENTRY_STENCILS.find((x) => stencilRole(x) === "source") ?? ENTRY_STENCILS[0];
       const id = editor.addNode(stencil, at);
@@ -739,9 +779,10 @@ function LiveSession({
           flash("Saved the live changes to the diagram (undo with Ctrl+Z).");
         },
         messageType: (nodeId) => suggestedMessageType(getDiagram(), nodeId),
+        openRecord,
       }),
     );
-  }, [editor, controller, store, startStorm, showEvents, getDiagram, flash]);
+  }, [editor, controller, store, startStorm, showEvents, getDiagram, flash, openRecord]);
 
   // Keyboard: Space plays / pauses (or continues a pausing note), Enter continues, Esc backs out
   // one level: a trace first, then live view itself. Presentation handles its own Esc (App), and
@@ -751,6 +792,8 @@ function LiveSession({
       if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
       const t = e.target;
       if (e.key === "Escape") {
+        // A recording owns Esc (it stops the recording, see Recorder).
+        if (isRecordingActive()) return;
         if (presenting || isEditableTarget(t) || document.querySelector(ESC_OWNERS)) return;
         if (traceRef.current) setTrace(null);
         else if (!alwaysOn) onExit();
@@ -791,6 +834,7 @@ function LiveSession({
       showEvents,
       notice,
       exit: alwaysOn ? null : onExit,
+      openRecord,
     }),
     [
       controller,
@@ -807,6 +851,7 @@ function LiveSession({
       showEvents,
       notice,
       onExit,
+      openRecord,
       alwaysOn,
     ],
   );
@@ -838,8 +883,9 @@ function LiveSession({
           />
         )}
         <NoteCallout state={state} />
-        {events.open && <EventLog state={state} />}
-        <ControlBar state={state} />
+        {events.open && !capturing && <EventLog state={state} />}
+        {/* While recording, the indicator (Stop, Esc) stands in for the bar. */}
+        {!capturing && <ControlBar state={state} />}
       </div>
       {capacityOpen && capacity && (
         <CapacityPanel
@@ -872,6 +918,16 @@ function LiveSession({
         />
       )}
       {inject && <InjectDialog request={inject} onClose={() => setInject(null)} />}
+      <Recorder
+        rec={rec}
+        dispatch={dispatchRec}
+        controller={controller}
+        state={state}
+        target={recordTarget}
+        title={recordTitle}
+        presenting={presenting}
+        canPresent={!!editor && !alwaysOn}
+      />
     </LiveContext.Provider>
   );
 }

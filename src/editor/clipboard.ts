@@ -1,11 +1,13 @@
 import {
   DIAGRAM_FORMAT,
+  type DiagramAnnotation,
   type DiagramEdge,
   type DiagramFile,
   type DiagramGroup,
   type DiagramNode,
 } from "../model/types";
 import { uniqueId } from "./ids";
+import { ANNOTATION_KINDS } from "../canvas/annotations";
 
 // Copy / paste on the saved-file level, so it is pure and the system clipboard carries plain
 // JSON that also pastes into another tab (or a text editor).
@@ -18,6 +20,8 @@ export interface ClipboardPayload {
   nodes: DiagramNode[];
   /** Only edges whose both ends were copied. */
   edges: DiagramEdge[];
+  /** Texts, notes, zones and shapes (absent in payloads from before annotations). */
+  annotations?: DiagramAnnotation[];
 }
 
 export interface TakenIds {
@@ -26,7 +30,10 @@ export interface TakenIds {
   groups: ReadonlySet<string>;
 }
 
-/** Builds a payload from a selection. Copying a group copies the nodes inside it too. */
+/**
+ * Builds a payload from a selection. Copying a group copies the nodes inside it too. `nodeIds` may
+ * name annotations as well (they share the node namespace).
+ */
 export function makePayload(
   d: DiagramFile,
   nodeIds: Iterable<string>,
@@ -37,9 +44,16 @@ export function makePayload(
   const ns = new Set(nodeIds);
   for (const n of d.nodes) if (n.group && gs.has(n.group)) ns.add(n.id);
   const nodes = d.nodes.filter((n) => ns.has(n.id));
-  if (!nodes.length && !groups.length) return null;
+  const annotations = (d.annotations ?? []).filter((a) => ns.has(a.id));
+  if (!nodes.length && !groups.length && !annotations.length) return null;
   const edges = d.edges.filter((e) => ns.has(e.from) && ns.has(e.to));
-  return structuredClone({ format: CLIP_FORMAT, groups, nodes, edges });
+  return structuredClone({
+    format: CLIP_FORMAT,
+    groups,
+    nodes,
+    edges,
+    ...(annotations.length ? { annotations } : {}),
+  });
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -54,6 +68,13 @@ export function parsePayload(text: string): ClipboardPayload | null {
   }
   if (!isObj(data) || (data.format !== CLIP_FORMAT && data.format !== DIAGRAM_FORMAT)) return null;
   if (!Array.isArray(data.nodes)) return null;
+  const annotations = (Array.isArray(data.annotations) ? data.annotations : []).filter(
+    (a): a is DiagramAnnotation =>
+      isObj(a) &&
+      typeof a.id === "string" &&
+      ANNOTATION_KINDS.includes(a.kind as DiagramAnnotation["kind"]) &&
+      ["x", "y", "width", "height"].every((k) => typeof a[k] === "number"),
+  );
   const nodes = data.nodes.filter(
     (n): n is DiagramNode =>
       isObj(n) &&
@@ -62,7 +83,7 @@ export function parsePayload(text: string): ClipboardPayload | null {
       typeof n.x === "number" &&
       typeof n.y === "number",
   );
-  const ids = new Set(nodes.map((n) => n.id));
+  const ids = new Set([...nodes.map((n) => n.id), ...annotations.filter((a) => a.kind === "shape").map((a) => a.id)]);
   const edges = (Array.isArray(data.edges) ? data.edges : []).filter(
     (e): e is DiagramEdge =>
       isObj(e) && typeof e.id === "string" && ids.has(e.from as string) && ids.has(e.to as string),
@@ -71,14 +92,23 @@ export function parsePayload(text: string): ClipboardPayload | null {
     (g): g is DiagramGroup =>
       isObj(g) && typeof g.id === "string" && ["x", "y", "width", "height"].every((k) => typeof g[k] === "number"),
   );
-  if (!nodes.length && !groups.length) return null;
-  return { format: CLIP_FORMAT, groups, nodes: nodes.map((n) => ({ ...n, label: n.label ?? "" })), edges };
+  if (!nodes.length && !groups.length && !annotations.length) return null;
+  return {
+    format: CLIP_FORMAT,
+    groups,
+    nodes: nodes.map((n) => ({ ...n, label: n.label ?? "" })),
+    edges,
+    ...(annotations.length
+      ? { annotations: annotations.map((a) => ({ ...a, text: typeof a.text === "string" ? a.text : "" })) }
+      : {}),
+  };
 }
 
 /** Top-left of everything in the payload. */
 export function payloadOrigin(p: ClipboardPayload): { x: number; y: number } {
-  const xs = [...p.nodes.map((n) => n.x), ...p.groups.map((g) => g.x)];
-  const ys = [...p.nodes.map((n) => n.y), ...p.groups.map((g) => g.y)];
+  const as = p.annotations ?? [];
+  const xs = [...p.nodes.map((n) => n.x), ...p.groups.map((g) => g.x), ...as.map((a) => a.x)];
+  const ys = [...p.nodes.map((n) => n.y), ...p.groups.map((g) => g.y), ...as.map((a) => a.y)];
   return { x: Math.min(...xs), y: Math.min(...ys) };
 }
 
@@ -105,10 +135,16 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
     const group = n.group ? (gmap.get(n.group) ?? n.group) : undefined;
     return { ...structuredClone(n), id, group, x: n.x + offset.x, y: n.y + offset.y };
   });
+  const annotations = (p.annotations ?? []).map((a) => {
+    const id = uniqueId(a.id, nodeIds);
+    nodeIds.add(id);
+    nmap.set(a.id, id);
+    return { ...structuredClone(a), id, x: a.x + offset.x, y: a.y + offset.y };
+  });
   const edges = p.edges.map((e) => {
     const id = uniqueId(e.id, edgeIds);
     edgeIds.add(id);
     return { ...structuredClone(e), id, from: nmap.get(e.from) ?? e.from, to: nmap.get(e.to) ?? e.to };
   });
-  return { format: CLIP_FORMAT, groups, nodes, edges };
+  return { format: CLIP_FORMAT, groups, nodes, edges, ...(annotations.length ? { annotations } : {}) };
 }

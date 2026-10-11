@@ -1,4 +1,5 @@
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
+import { ANNOTATION_COLORS, ANNOTATION_KINDS, ANNOTATION_SHAPES, ANNOTATION_TEXT_SIZES } from "../canvas/annotations";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -20,6 +21,11 @@ export const LIMITS = {
   maxNodes: 5_000,
   maxEdges: 20_000,
   maxGroups: 1_000,
+  maxAnnotations: 2_000,
+  /** Characters of text in one annotation (longer text is cut, with a warning). */
+  maxAnnotationText: 10_000,
+  /** Largest width or height of one annotation, in canvas pixels. */
+  maxAnnotationSize: 20_000,
   maxSimulations: 200,
   maxTimelineSteps: 10_000,
   maxTrafficProfiles: 2_000,
@@ -103,6 +109,7 @@ export function validateDiagram(data: unknown): NativeResult {
     [raw.nodes, LIMITS.maxNodes, "nodes"],
     [raw.edges, LIMITS.maxEdges, "edges"],
     [raw.groups, LIMITS.maxGroups, "groups"],
+    [raw.annotations, LIMITS.maxAnnotations, "annotations"],
     [raw.simulations, LIMITS.maxSimulations, "simulations"],
   ];
   for (const [list, max, what] of counts) {
@@ -190,6 +197,62 @@ export function validateDiagram(data: unknown): NativeResult {
   }
   d.nodes = nodes;
 
+  // Annotations: documentation only, so a malformed one is skipped (with a warning), never fatal.
+  // Ids share the node namespace; only shapes may be edge ends.
+  const annotations: Record<string, unknown>[] = [];
+  const shapeIds = new Set<string>();
+  const annotationIds = new Set<string>();
+  if (d.annotations !== undefined) {
+    if (!Array.isArray(d.annotations)) {
+      warnings.push("The annotations field wasn't a list and was ignored.");
+    } else {
+      d.annotations.forEach((a, i) => {
+        const what = describe("Annotation", i, isObj(a) ? a.id : undefined);
+        if (
+          !isObj(a) ||
+          typeof a.id !== "string" ||
+          !a.id ||
+          !ANNOTATION_KINDS.includes(a.kind as never) ||
+          ![a.x, a.y, a.width, a.height].every(isNum)
+        ) {
+          warnings.push(
+            `${what} was skipped: it needs an id, a kind (text, note, zone or shape), x, y, width and height.`,
+          );
+          return;
+        }
+        const [x, y, w, h] = [a.x, a.y, a.width, a.height] as number[];
+        if (Math.abs(x) > LIMITS.maxCoordinate || Math.abs(y) > LIMITS.maxCoordinate) {
+          warnings.push(`${what} was skipped: it's outside the coordinate budget.`);
+          return;
+        }
+        if (w <= 0 || h <= 0 || w > LIMITS.maxAnnotationSize || h > LIMITS.maxAnnotationSize) {
+          warnings.push(`${what} was skipped: its size must be between 1 and ${LIMITS.maxAnnotationSize} pixels.`);
+          return;
+        }
+        if (ids.has(a.id) || annotationIds.has(a.id)) {
+          warnings.push(`${what} was skipped: its id is already used by a node or another annotation.`);
+          return;
+        }
+        annotationIds.add(a.id);
+        const out = { ...a };
+        if (typeof out.text !== "string") out.text = typeof out.text === "number" ? String(out.text) : "";
+        if ((out.text as string).length > LIMITS.maxAnnotationText) {
+          out.text = (out.text as string).slice(0, LIMITS.maxAnnotationText);
+          warnings.push(`${what} had more than ${LIMITS.maxAnnotationText} characters; the rest was cut.`);
+        }
+        if (out.kind === "shape") {
+          if (out.shape !== undefined && !ANNOTATION_SHAPES.includes(out.shape as never)) delete out.shape;
+          shapeIds.add(a.id);
+        } else delete out.shape;
+        if (out.color !== undefined && !Object.hasOwn(ANNOTATION_COLORS, out.color as string)) delete out.color;
+        if (out.textSize !== undefined && !ANNOTATION_TEXT_SIZES.includes(out.textSize as never)) delete out.textSize;
+        annotations.push(out);
+      });
+    }
+  }
+  if (annotations.length) d.annotations = annotations;
+  else delete d.annotations;
+
   const edges: Record<string, unknown>[] = [];
   const edgeIds = new Set<string>();
   const rawEdges = raw.edges === undefined ? [] : raw.edges;
@@ -202,8 +265,14 @@ export function validateDiagram(data: unknown): NativeResult {
         error: `Every edge needs an id, a from and a to. ${describe("Edge", i, isObj(e) ? e.id : undefined)} doesn't.`,
       };
     }
-    if (!ids.has(e.from) || !ids.has(e.to)) {
-      const missing = !ids.has(e.from) ? e.from : e.to;
+    const end = (id: string) => ids.has(id) || shapeIds.has(id);
+    if (!end(e.from) || !end(e.to)) {
+      const missing = !end(e.from) ? e.from : e.to;
+      if (annotationIds.has(missing)) {
+        // Texts, notes and zones take no edges: drop the edge, keep the file.
+        warnings.push(`Edge "${e.id}" ended on a text, note or zone and was skipped; only shapes can be connected.`);
+        continue;
+      }
       return { ok: false, error: `Edge "${e.id}" points at a node that isn't in the file ("${missing}").` };
     }
     const out = { ...e };
@@ -496,10 +565,21 @@ export const serializeNative = (d: DiagramFile) => JSON.stringify(d, null, 2) + 
 
 // ---------------------------------------------------------------- unknown-field preservation
 
-const KNOWN_TOP = new Set(["format", "title", "description", "direction", "groups", "nodes", "edges", "simulations"]);
+const KNOWN_TOP = new Set([
+  "format",
+  "title",
+  "description",
+  "direction",
+  "groups",
+  "nodes",
+  "edges",
+  "simulations",
+  "annotations",
+]);
 const KNOWN_NODE = new Set(["id", "stencil", "label", "sublabel", "x", "y", "group", "props"]);
 const KNOWN_EDGE = new Set(["id", "from", "to", "label", "kind", "sourceSide", "targetSide", "props"]);
 const KNOWN_GROUP = new Set(["id", "label", "tone", "x", "y", "width", "height"]);
+const KNOWN_ANNOTATION = new Set(["id", "kind", "text", "x", "y", "width", "height", "shape", "color", "textSize"]);
 
 function extras(obj: object, known: Set<string>): [string, unknown][] {
   return Object.entries(obj).filter(([k]) => !known.has(k));
@@ -532,6 +612,9 @@ export function preserveUnknown(current: DiagramFile, original: DiagramFile | un
     nodes: mergeById(current.nodes, original.nodes, KNOWN_NODE)!,
     edges: mergeById(current.edges, original.edges, KNOWN_EDGE)!,
     ...(current.groups ? { groups: mergeById(current.groups, original.groups, KNOWN_GROUP) } : {}),
+    ...(current.annotations
+      ? { annotations: mergeById(current.annotations, original.annotations, KNOWN_ANNOTATION) }
+      : {}),
   };
   return top.length ? ({ ...out, ...Object.fromEntries(top) } as DiagramFile) : out;
 }

@@ -530,7 +530,8 @@ test.describe("live view", () => {
     }
   });
 
-  test("Lab presets render the live view", async ({ page, consoleErrors }) => {
+  // One preset per test: under full parallel load, three Lab pages in one test could run past the timeout.
+  test("Lab preset: badge states (down, paused, failing)", async ({ page, consoleErrors }) => {
     await gotoLab(page, "live-badge-states");
     await expect(page.getByTestId("live-lab-stage")).toBeVisible();
     await expect(page.getByTestId("node-badge-down-svc")).toHaveAttribute("data-status", "down");
@@ -539,17 +540,67 @@ test.describe("live view", () => {
       .poll(async () => Number(await page.getByTestId("node-badge-worker").getAttribute("data-failed")))
       .toBeGreaterThan(0);
     await expect(page.getByTestId("live-toggle")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
 
+  test("Lab preset: particle stress draws hundreds of particles", async ({ page, consoleErrors }) => {
     await gotoLab(page, "live-particles-stress", { particles: 500 });
     await expect
       .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-particles")), {
-        timeout: 10_000,
+        timeout: 15_000,
       })
       .toBeGreaterThan(100);
+    expectNoErrors(consoleErrors);
+  });
 
+  test("Lab preset: a pausing note waits for Continue", async ({ page, consoleErrors }) => {
     await gotoLab(page, "live-note-states", { note: "pause" });
     await expect(page.getByTestId("live-note-continue")).toBeVisible();
     expectNoErrors(consoleErrors);
+  });
+
+  test("timeline markers jump to their moment: the outage note, then back to the start", async ({ page }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
+    await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "0");
+    // The status change and its note share 4.0s: the note sits stacked on top; either one jumps there.
+    const down = page.getByTestId("live-marker-2");
+    await expect(down).toHaveAttribute("data-at", "4000");
+    await down.click();
+    await expect
+      .poll(async () => Number(await page.getByTestId("live-clock").getAttribute("data-ms")))
+      .toBeGreaterThanOrEqual(4000);
+    await expect(page.getByTestId("live-note")).toContainText("Payments is offline");
+    await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "down");
+    // Back to the first note: the run replays from its checkpoint, Payments is up again.
+    await page.getByTestId("live-marker-0").click();
+    await expect
+      .poll(async () => Number(await page.getByTestId("live-clock").getAttribute("data-ms")))
+      .toBeLessThan(1000);
+    await expect(page.getByTestId("live-note")).toContainText("independent consumer groups");
+    await expect(page.getByTestId("node-badge-payments")).not.toHaveAttribute("data-status", "down");
+  });
+
+  test("a narrow bar folds the expectation dots into a summary that lists each result", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-panel")).toBeVisible();
+    await expect(page.getByTestId("live-expectations")).toBeHidden();
+    const summary = page.getByTestId("live-expectations-summary");
+    await expect(summary).toBeVisible();
+    await expect(summary).toHaveAttribute("aria-label", /Expectations: \d+ of \d+ hold/);
+    // Keyboard: it takes focus and opens with Enter.
+    await summary.focus();
+    await page.keyboard.press("Enter");
+    const list = page.getByTestId("live-expectations-list");
+    await expect(list).toBeVisible();
+    const rows = list.getByTestId(/^expectation-row-/);
+    expect(await rows.count()).toBeGreaterThan(0);
+    await expect(rows.first()).toContainText(/(pending|holds|failed) · now \d/);
+    await page.keyboard.press("Escape");
+    await expect(list).toHaveCount(0);
+    await expect(summary).toBeFocused();
+    await expect(page.getByTestId("live-controls")).toBeVisible();
   });
 });
 

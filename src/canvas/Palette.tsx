@@ -1,15 +1,16 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { getStencil, stencils } from "../stencils/registry";
-import type { Stencil, StencilCategory } from "../model/types";
+import type { AnnotationKind, AnnotationShape, Stencil, StencilCategory } from "../model/types";
 import { StencilIcon } from "../components/StencilIcon";
 import { CATEGORY_ORDER, categoryLabel } from "../lib/categories";
 import { familyCounts, familyOf, getFamily, isFamilyId, type FamilyId } from "../lib/vendorFamilies";
 import { searchStencils } from "../lib/stencilSearch";
 import { pushRecentStencil, useRecentStencils } from "../lib/recentStencils";
 import { rememberCanvas, STENCIL_DND_MIME, takePendingStencils } from "../lib/canvasBridge";
-import { Icon } from "../components/Icon";
+import { Icon, type IconName } from "../components/Icon";
 import { safeStorage } from "../lib/storage";
 import { formatCombo, shortcutKeys } from "../editor/shortcuts";
+import { ANNOTATION_DND_MIME, annotationDragValue, shapeLabel } from "./annotations";
 
 export { STENCIL_DND_MIME };
 
@@ -43,10 +44,13 @@ export function Palette({
   collapsed,
   onToggle,
   onAdd,
+  onAnnotate,
 }: {
   collapsed: boolean;
   onToggle: () => void;
   onAdd: (stencilId: string) => void;
+  /** Adds a text, note, zone or shape (the Annotate group). */
+  onAnnotate?: (kind: AnnotationKind, shape?: AnnotationShape) => void;
 }) {
   const [q, setQ] = useState("");
   const [family, setFamily] = useState<FamilyId | "all">(readFamily);
@@ -87,6 +91,7 @@ export function Palette({
     [family],
   );
   const results = useMemo(() => (q.trim() ? searchStencils(inFamily, q) : null), [inFamily, q]);
+  const annotateHits = useMemo(() => (q.trim() ? matchAnnotate(q) : ANNOTATE), [q]);
   const groups = useMemo(() => {
     const map = new Map<StencilCategory, Stencil[]>();
     for (const s of inFamily) {
@@ -206,7 +211,8 @@ export function Palette({
                 <PaletteItem key={s.id} stencil={s} onAdd={add} />
               ))}
             </div>
-            {results.length === 0 && (
+            {onAnnotate && annotateHits.length > 0 && <AnnotateGroup items={annotateHits} onAdd={onAnnotate} />}
+            {results.length === 0 && annotateHits.length === 0 && (
               <div className="palette-empty" data-testid="palette-empty">
                 <p>
                   Nothing matches “{q.trim()}”{familyLabel ? ` in ${familyLabel}` : ""}.
@@ -257,6 +263,7 @@ export function Palette({
                 </section>
               );
             })}
+            {onAnnotate && <AnnotateGroup items={ANNOTATE} onAdd={onAnnotate} />}
           </>
         )}
       </div>
@@ -265,6 +272,91 @@ export function Palette({
         <kbd>?</kbd> lists shortcuts.
       </div>
     </aside>
+  );
+}
+
+// ---------------------------------------------------------------- Annotate
+
+interface AnnotateItem {
+  kind: AnnotationKind;
+  shape?: AnnotationShape;
+  label: string;
+  icon: IconName;
+  hint: string;
+  keywords: string;
+}
+
+const ANNOTATE: readonly AnnotateItem[] = [
+  {
+    kind: "text",
+    label: "Text",
+    icon: "type",
+    hint: "Plain text: titles and captions (T)",
+    keywords: "title caption label words",
+  },
+  { kind: "note", label: "Note", icon: "note", hint: "A sticky note", keywords: "sticky comment post-it" },
+  {
+    kind: "zone",
+    label: "Zone",
+    icon: "zone",
+    hint: "A labelled region behind nodes. Unlike a boundary, nodes don't move with it",
+    keywords: "region area lane band highlight",
+  },
+  ...(["rect", "rounded", "ellipse", "diamond", "cylinder"] as const).map((shape) => ({
+    kind: "shape" as const,
+    shape,
+    label: shape === "rect" ? "Box" : shape === "rounded" ? "Rounded" : shapeLabel[shape],
+    icon: `shape-${shape}` as IconName,
+    hint: `${shapeLabel[shape]}: a plain shape for when no stencil fits`,
+    keywords: `shape outline ${shapeLabel[shape]}`,
+  })),
+];
+
+function matchAnnotate(q: string): AnnotateItem[] {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  return ANNOTATE.filter((a) => {
+    const hay = `${a.label} ${a.kind} ${a.keywords} annotate annotation`.toLowerCase();
+    return words.every((w) => hay.includes(w));
+  });
+}
+
+/** The rail's last group: documentation that never takes part in the simulation. */
+function AnnotateGroup({
+  items,
+  onAdd,
+}: {
+  items: readonly AnnotateItem[];
+  onAdd: (kind: AnnotationKind, shape?: AnnotationShape) => void;
+}) {
+  return (
+    <section className="palette-annotate" data-testid="palette-annotate">
+      <h3 className="palette-sec-static" title="Text, notes, zones and shapes. They don't take part in the simulation">
+        Annotate
+      </h3>
+      <div className="palette-annotate-grid">
+        {items.map((a) => {
+          const id = a.shape ? `shape-${a.shape}` : a.kind;
+          return (
+            <button
+              key={id}
+              className="palette-annotate-item"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData(ANNOTATION_DND_MIME, annotationDragValue(a.kind, a.shape));
+                e.dataTransfer.effectAllowed = "copy";
+              }}
+              onClick={() => onAdd(a.kind, a.shape)}
+              title={a.hint}
+              aria-label={`Add ${a.shape ? shapeLabel[a.shape].toLowerCase() : a.label.toLowerCase()}`}
+              data-testid={`palette-annotate-${id}`}
+            >
+              <Icon name={a.icon} size={18} />
+              <span>{a.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

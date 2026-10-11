@@ -2,7 +2,15 @@ import { stencils, getStencil } from "../stencils/registry";
 import { CATEGORY_ORDER, categoryLabel } from "../lib/categories";
 import { toneColor, toneLabel } from "../canvas/groupTones";
 import type { GroupTone } from "../canvas/types";
-import type { Side, Stencil } from "../model/types";
+import type { AnnotationKind, AnnotationShape, Side, Stencil } from "../model/types";
+import {
+  ANNOTATION_COLORS,
+  ANNOTATION_COLOR_IDS,
+  ANNOTATION_SHAPES,
+  annotationColor,
+  kindLabel,
+  shapeLabel,
+} from "../canvas/annotations";
 import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";
 import type { AlignMode } from "./arrange";
 import { shortcutKeys } from "./shortcuts";
@@ -87,6 +95,55 @@ function toneMenu(prefix: string, current: GroupTone | undefined, pick: (t: Grou
   }));
 }
 
+const SHAPE_ICON: Record<AnnotationShape, MenuItem["icon"]> = {
+  rect: "shape-rect",
+  rounded: "shape-rounded",
+  ellipse: "shape-ellipse",
+  diamond: "shape-diamond",
+  cylinder: "shape-cylinder",
+};
+const KIND_ICON: Record<AnnotationKind, MenuItem["icon"]> = {
+  text: "type",
+  note: "note",
+  zone: "zone",
+  shape: "shape-rect",
+};
+const KIND_KEYWORDS: Record<AnnotationKind, string> = {
+  text: "annotation label caption title words free text",
+  note: "annotation sticky note comment post-it",
+  zone: "annotation region area highlight band lane",
+  shape: "annotation outline box",
+};
+
+/** Text, Note, Zone, Shape ▸: what "Add" offers on the canvas (and the palette as "Add › …"). */
+export function annotateMenu(add: (kind: AnnotationKind, shape?: AnnotationShape) => void): MenuNode[] {
+  return [
+    ...(["text", "note", "zone"] as const).map((k): MenuItem => ({
+      type: "item",
+      id: `annotate:${k}`,
+      label: kindLabel[k],
+      icon: KIND_ICON[k],
+      shortcut: k === "text" ? shortcutKeys("add-text") : undefined,
+      keywords: KIND_KEYWORDS[k],
+      run: () => add(k),
+    })),
+    {
+      type: "item",
+      id: "annotate:shape",
+      label: "Shape",
+      icon: "shape-rect",
+      children: ANNOTATION_SHAPES.map((sh): MenuItem => ({
+        type: "item",
+        id: `annotate:shape:${sh}`,
+        label: shapeLabel[sh],
+        icon: SHAPE_ICON[sh],
+        keywords: `${KIND_KEYWORDS.shape} ${sh}`,
+        run: () => add("shape", sh),
+      })),
+    },
+  ];
+}
+
 export function builtinActions(): Action[] {
   return [
     // ---------------- canvas ----------------
@@ -98,6 +155,14 @@ export function builtinActions(): Action[] {
       icon: "plus",
       searchable: "Search stencils",
       children: (ctx) => stencilMenu("add-node", (s) => ({ run: () => void ctx.editor.addNode(s.id, ctx.point) })),
+    },
+    {
+      id: "canvas.annotate",
+      section: "insert",
+      targets: ["canvas"],
+      label: "Add",
+      icon: "note",
+      children: (ctx) => annotateMenu((kind, shape) => void ctx.editor.addAnnotation(kind, { at: ctx.point, shape })),
     },
     {
       id: "canvas.paste",
@@ -292,7 +357,7 @@ export function builtinActions(): Action[] {
       id: "node.properties",
       modes: ["edit", "live"],
       section: "edit",
-      targets: ["node", "edge", "group"],
+      targets: ["node", "edge", "group", "annotation"],
       label: "Properties",
       icon: "sliders",
       order: 200,
@@ -301,7 +366,7 @@ export function builtinActions(): Action[] {
     {
       id: "item.duplicate",
       section: "clipboard",
-      targets: ["node", "selection", "group"],
+      targets: ["node", "selection", "group", "annotation"],
       label: "Duplicate",
       icon: "duplicate",
       shortcut: shortcutKeys("duplicate"),
@@ -311,7 +376,7 @@ export function builtinActions(): Action[] {
     {
       id: "item.copy",
       section: "clipboard",
-      targets: ["node", "selection", "group"],
+      targets: ["node", "selection", "group", "annotation"],
       label: "Copy",
       icon: "copy",
       shortcut: shortcutKeys("copy"),
@@ -321,7 +386,7 @@ export function builtinActions(): Action[] {
     {
       id: "item.cut",
       section: "clipboard",
-      targets: ["node", "selection"],
+      targets: ["node", "selection", "annotation"],
       label: "Cut",
       icon: "cut",
       shortcut: shortcutKeys("cut"),
@@ -350,7 +415,7 @@ export function builtinActions(): Action[] {
     {
       id: "item.delete",
       section: "danger",
-      targets: ["node", "edge", "selection"],
+      targets: ["node", "edge", "selection", "annotation"],
       label: (ctx) => (ctx.target === "selection" ? `Delete ${total(ctx)} items` : "Delete"),
       icon: "trash",
       danger: true,
@@ -480,8 +545,76 @@ export function builtinActions(): Action[] {
       icon: "boundary",
       shortcut: shortcutKeys("group"),
       order: 30,
-      when: (ctx) => nodeCount(ctx) > 0,
+      // Boundaries hold nodes; a selection of annotations only has nothing to put in one.
+      when: (ctx) => ctx.selection.nodeIds.some((id) => !!ctx.editor.getNode(id)),
       children: (ctx) => toneMenu("group-tone", undefined, (t) => void ctx.editor.groupNodes(ctx.selection.nodeIds, t)),
+    },
+
+    // ---------------- annotation ----------------
+    {
+      id: "annotation.edit",
+      section: "edit",
+      targets: ["annotation"],
+      label: (ctx) => (ctx.editor.getAnnotation(ctx.nodeId!)?.kind === "zone" ? "Rename" : "Edit text"),
+      icon: "edit",
+      shortcut: shortcutKeys("rename"),
+      run: (ctx) => ctx.editor.startEditing({ kind: "annotation", id: ctx.nodeId! }),
+    },
+    {
+      id: "annotation.color",
+      section: "edit",
+      targets: ["annotation"],
+      label: "Colour",
+      icon: "tone",
+      children: (ctx) => {
+        const a = ctx.editor.getAnnotation(ctx.nodeId!);
+        const current = a ? annotationColor(a) : undefined;
+        return ANNOTATION_COLOR_IDS.map((c) => ({
+          type: "item" as const,
+          id: `annotation-color:${c}`,
+          label: ANNOTATION_COLORS[c].label,
+          swatch: ANNOTATION_COLORS[c].hex,
+          checked: current === c,
+          run: () => ctx.editor.updateAnnotation(ctx.nodeId!, { color: c }),
+        }));
+      },
+    },
+    {
+      id: "annotation.shape",
+      section: "edit",
+      targets: ["annotation"],
+      label: "Shape",
+      icon: "shapes",
+      when: (ctx) => ctx.editor.getAnnotation(ctx.nodeId!)?.kind === "shape",
+      children: (ctx) => {
+        const current = ctx.editor.getAnnotation(ctx.nodeId!)?.shape ?? "rect";
+        return ANNOTATION_SHAPES.map((sh) => ({
+          type: "item" as const,
+          id: `annotation-shape:${sh}`,
+          label: shapeLabel[sh],
+          icon: SHAPE_ICON[sh],
+          checked: current === sh,
+          run: () => ctx.editor.updateAnnotation(ctx.nodeId!, { shape: sh }),
+        }));
+      },
+    },
+    {
+      id: "annotation.front",
+      section: "arrange",
+      targets: ["annotation"],
+      label: "Bring to front",
+      icon: "front",
+      when: (ctx) => ctx.editor.getAnnotation(ctx.nodeId!)?.kind !== "zone",
+      run: (ctx) => ctx.editor.bringToFront([ctx.nodeId!]),
+    },
+    {
+      id: "annotation.back",
+      section: "arrange",
+      targets: ["annotation"],
+      label: "Send to back",
+      icon: "back",
+      when: (ctx) => ctx.editor.getAnnotation(ctx.nodeId!)?.kind !== "zone",
+      run: (ctx) => ctx.editor.sendToBack([ctx.nodeId!]),
     },
 
     // ---------------- group ----------------

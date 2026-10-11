@@ -1,5 +1,12 @@
 import type { Edge, Node } from "@xyflow/react";
-import type { DiagramGroup, Side } from "../model/types";
+import type {
+  AnnotationColor,
+  AnnotationKind,
+  AnnotationShape,
+  AnnotationTextSize,
+  DiagramGroup,
+  Side,
+} from "../model/types";
 
 export type GroupTone = NonNullable<DiagramGroup["tone"]>;
 
@@ -19,9 +26,19 @@ export type GroupNodeData = {
   tone: GroupTone;
 };
 
+/** Text, note, zone or shape. The React Flow id is the annotation's id (edges may end on shapes). */
+export type AnnotationNodeData = {
+  kind: AnnotationKind;
+  text: string;
+  shape?: AnnotationShape;
+  color?: AnnotationColor;
+  textSize?: AnnotationTextSize;
+};
+
 export type DiagramFlowNode = Node<DiagramNodeData, "diagram">;
 export type GroupFlowNode = Node<GroupNodeData, "boundary">;
-export type FlowNode = DiagramFlowNode | GroupFlowNode;
+export type AnnotationFlowNode = Node<AnnotationNodeData, "annotation">;
+export type FlowNode = DiagramFlowNode | GroupFlowNode | AnnotationFlowNode;
 
 export type FlowEdgeData = {
   kind: "async" | "sync";

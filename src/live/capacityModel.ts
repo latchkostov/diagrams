@@ -7,6 +7,7 @@ import type { DiagramFile, DiagramNode, SimRole, Simulation, TrafficShape } from
 import { LIMITS } from "../interop/native";
 import { stencilRole } from "../stencils/roles";
 import { analyzeCapacity, type NodeCapacity } from "../sim/capacity";
+import type { NodeStatus } from "../sim/types";
 import { resolveProps } from "../sim/defaults";
 import { autoScale, peakRate } from "../sim/scale";
 import { trafficWindow } from "../sim/simulation";
@@ -197,13 +198,21 @@ export function entryRates(d: DiagramFile, sim: Simulation | null, inputs: LiveI
   return new Map(d.nodes.filter((n) => out.has(n.id)).map((n) => [n.id, out.get(n.id)!]));
 }
 
-/** Where traffic would enter: nodes nothing points at that feed something (diagram order, at most three). */
+/**
+ * Where traffic would enter (diagram order, at most three): nodes nothing points at that feed
+ * something. In a cycle every node is fed, so then any node that feeds something; with no edges at
+ * all, any node.
+ */
 export function entryCandidates(d: DiagramFile): DiagramNode[] {
-  const fed = new Set(d.edges.map((e) => e.to));
-  const feeds = new Set(d.edges.map((e) => e.from));
+  const ids = new Set(d.nodes.map((n) => n.id));
+  const edges = d.edges.filter((e) => e.from !== e.to && ids.has(e.from) && ids.has(e.to));
+  const fed = new Set(edges.map((e) => e.to));
+  const feeds = new Set(edges.map((e) => e.from));
   const roots = d.nodes.filter((n) => !fed.has(n.id));
   const feeding = roots.filter((n) => feeds.has(n.id));
-  return (feeding.length ? feeding : roots).slice(0, 3);
+  if (feeding.length) return feeding.slice(0, 3);
+  const inCycle = d.nodes.filter((n) => feeds.has(n.id));
+  return (inCycle.length ? inCycle : roots.length ? roots : d.nodes).slice(0, 3);
 }
 
 // ---------------------------------------------------------------- analysis
@@ -227,6 +236,8 @@ export function formatUtilization(u: number): string {
 
 export interface NodeHeat extends NodeCapacity {
   modeled: boolean;
+  /** Down or paused (in the run, the simulation's setup or the diagram); undefined when up. */
+  status?: Exclude<NodeStatus, "up">;
   level: HeatLevel;
   /** Compact label for the badge slot, e.g. "82% · 4.1k/s of 5k/s". */
   text: string;
@@ -257,8 +268,13 @@ export interface CapacityView {
   converged: boolean;
 }
 
-function nodeText(n: NodeCapacity): string {
+/** A run's node statuses right now (only the ones that aren't up need to be listed). */
+export type RunStatus = Readonly<Record<string, NodeStatus | undefined>>;
+
+function nodeText(n: NodeCapacity, status?: NodeHeat["status"]): string {
   if (!(n.offered > 0)) return "";
+  if (status === "down") return `Down · ${formatRate(n.offered)} failing`;
+  if (status === "paused") return `Paused · ${formatRate(n.offered)} waiting`;
   if (n.capacity === Infinity) return `${formatRate(n.offered)} · no limit`;
   if (!Number.isFinite(n.utilization)) return `No capacity · ${formatRate(n.offered)} waiting`;
   return `${formatUtilization(n.utilization)} · ${formatRate(n.offered)} of ${formatRate(n.capacity)}`;
@@ -296,7 +312,13 @@ export function rankedNodes(d: DiagramFile, nodes: Record<string, NodeHeat>): No
  * topic's partitions when its consumer group needs more of them (including idle replicas on the
  * top bottleneck). Values are base props (before Capacity ×), ready to save.
  */
-export function computeFix(d: DiagramFile, sim: Simulation, nodes: Record<string, NodeHeat>, top?: NodeHeat) {
+export function computeFix(
+  d: DiagramFile,
+  sim: Simulation,
+  nodes: Record<string, NodeHeat>,
+  top?: NodeHeat,
+  status?: RunStatus,
+) {
   const m = resolveMultiplier(sim.multipliers?.capacity);
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const effective = new Map<string, number>();
@@ -349,7 +371,7 @@ export function computeFix(d: DiagramFile, sim: Simulation, nodes: Record<string
   }
   if (!changes.length) return null;
   const prospective = withFix(sim, { changes, label: "" });
-  const verified = analyzeCapacity(d, planningSimulation(d, prospective));
+  const verified = analyzeCapacity(d, planningSimulation(d, prospective), { status });
   if ([...effective.keys()].some((id) => verified.nodes[id].utilization > FIX_TARGET + 1e-9)) return null;
   const phrase = (c: FixChange) => `${c.label} ${c.from} → ${c.to} ${c.key}`;
   const label =
@@ -359,22 +381,64 @@ export function computeFix(d: DiagramFile, sim: Simulation, nodes: Record<string
   return { changes, label };
 }
 
-/** Planning analysis for the heat map, the bottleneck callout and the panel rows. Cheap and pure. */
-export function capacityView(d: DiagramFile, sim: Simulation): CapacityView {
-  const analysis = analyzeCapacity(d, planningSimulation(d, sim));
+/** Down or paused, as the run (then the simulation's setup, then the diagram) has it. */
+function nodeStatus(n: DiagramNode, sim: Simulation, status?: RunStatus): NodeHeat["status"] {
+  const s = status?.[n.id] ?? sim.setup?.status?.[n.id] ?? n.props?.status;
+  return s === "down" || s === "paused" ? s : undefined;
+}
+
+const states = (out: readonly NodeHeat[]) => new Set(out.map((n) => n.status));
+
+/** "Payments is down", "Payments and 1 more are down", "… are down or paused". */
+function outageHeadline(out: NodeHeat[]): string {
+  const word = states(out).size > 1 ? "down or paused" : out[0].status!;
+  return out.length > 1 ? `${out[0].label} and ${out.length - 1} more are ${word}` : `${out[0].label} is ${word}`;
+}
+
+/**
+ * Planning analysis for the heat map, the bottleneck callout and the panel rows. Cheap and pure.
+ * `status` is the run's node statuses right now (chaos on the timeline, Kill / Pause), so the callout
+ * reports an outage instead of a plan that assumes everything is up.
+ */
+export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus): CapacityView {
+  const analysis = analyzeCapacity(d, planningSimulation(d, sim), { status });
+  const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const nodes: Record<string, NodeHeat> = {};
   for (const [id, n] of Object.entries(analysis.nodes)) {
     const modeled = isModeled(n.role);
-    // Unlimited brokers (only unthrottled consumers) never limit anything: no colour.
-    const limited = modeled && n.capacity !== Infinity;
-    nodes[id] = { ...n, modeled, level: limited ? heatLevel(n.utilization, n.offered) : "idle", text: nodeText(n) };
+    const st = byId.has(id) ? nodeStatus(byId.get(id)!, sim, status) : undefined;
+    // Unlimited brokers (only unthrottled consumers) never limit anything: no colour. A node that's
+    // down or paused is out of capacity whatever its role.
+    const limited = (modeled && n.capacity !== Infinity) || (!!st && n.role !== "none");
+    nodes[id] = {
+      ...n,
+      modeled,
+      ...(st ? { status: st } : {}),
+      level: limited ? heatLevel(n.utilization, n.offered) : "idle",
+      text: nodeText(n, st),
+    };
   }
   const ranked = rankedNodes(d, nodes);
   const top = ranked[0];
-  const fix = computeFix(d, sim, nodes, top);
+  const fix = computeFix(d, sim, nodes, top, status);
   const over = ranked.filter((n) => n.level === "over" || n.level === "hot");
+  // Outages lead: a down service isn't a sizing problem, and "Healthy" would be wrong.
+  const out = d.nodes
+    .map((n) => nodes[n.id])
+    .filter((n): n is NodeHeat => !!n?.status && n.role !== "none" && n.role !== "source");
   let headline: string, detail: string;
-  if (!top) {
+  if (out.length) {
+    headline = outageHeadline(out);
+    const first = out[0];
+    detail =
+      first.status === "down"
+        ? `Messages sent to ${out.length > 1 ? "them" : "it"} fail until ${out.length > 1 ? "they're" : "it's"} back.`
+        : `Messages wait in ${out.length > 1 ? "their queues" : "its queue"} until ${out.length > 1 ? "they resume" : "it resumes"}.`;
+    if (states(out).size > 1) detail = "Messages to them fail or wait until they're back.";
+    const busiest = ranked.find((n) => !n.status && Number.isFinite(n.utilization));
+    if (busiest && (busiest.level === "over" || busiest.level === "hot"))
+      detail += ` ${busiest.label} is ${busiest.level === "over" ? "over" : "near"} capacity too: ${busiest.text}.`;
+  } else if (!top) {
     headline = "No traffic to analyze";
     detail = "Set a rate on an entry point to see where it backs up.";
   } else if (!Number.isFinite(top.utilization)) {
@@ -395,7 +459,9 @@ export function capacityView(d: DiagramFile, sim: Simulation): CapacityView {
     detail = `Busiest: ${top.label} at ${top.text}`;
   }
   if (!analysis.converged) detail += " A feedback loop didn't settle, so these are estimates.";
-  return { nodes, top, tone: top?.level ?? "idle", headline, detail, fix, converged: analysis.converged };
+  const tone: HeatLevel = out.length ? "over" : (top?.level ?? "idle");
+  const lead = out.length ? out[0] : top;
+  return { nodes, top: lead, tone, headline, detail, fix, converged: analysis.converged };
 }
 
 /** Applies a fix to saved setup props (simulation) — returns a new simulation. */

@@ -1,12 +1,21 @@
 import {
   DIAGRAM_FORMAT,
+  type DiagramAnnotation,
   type DiagramEdge,
   type DiagramFile,
   type DiagramGroup,
   type DiagramNode,
 } from "../model/types";
 import { getStencil } from "../stencils/registry";
-import { GROUP_PREFIX, type DiagramFlowEdge, type DiagramFlowNode, type FlowNode, type GroupFlowNode } from "./types";
+import { annotationAriaLabel, annotationTitle, isConnectable } from "./annotations";
+import {
+  GROUP_PREFIX,
+  type AnnotationFlowNode,
+  type DiagramFlowEdge,
+  type DiagramFlowNode,
+  type FlowNode,
+  type GroupFlowNode,
+} from "./types";
 
 /**
  * Everything in the file that isn't a node, edge or group, carried alongside the canvas state so
@@ -39,7 +48,12 @@ const nodeAriaCopies = new WeakMap<object, FlowNode>();
 export function withNodeAria(nodes: FlowNode[]): FlowNode[] {
   let changed = false;
   const out = nodes.map((n) => {
-    const want = n.type === "boundary" ? groupAriaLabel(n.data.label) : nodeAriaLabel(n.data);
+    const want =
+      n.type === "boundary"
+        ? groupAriaLabel(n.data.label)
+        : n.type === "annotation"
+          ? annotationAriaLabel(n.data)
+          : nodeAriaLabel(n.data);
     if (n.ariaLabel === want) return n;
     changed = true;
     const cached = nodeAriaCopies.get(n);
@@ -89,6 +103,22 @@ export const nodeToFlow = (n: DiagramNode): DiagramFlowNode => ({
   data: { stencil: n.stencil, label: n.label, sublabel: n.sublabel, group: n.group, props: n.props },
 });
 
+/**
+ * Zones sit behind boundaries (zIndex -2) and drag by their label, like boundaries, so the pane
+ * inside them stays clickable. Only shapes take edges.
+ */
+export const annotationToFlow = (a: DiagramAnnotation): AnnotationFlowNode => ({
+  id: a.id,
+  type: "annotation",
+  ariaLabel: annotationAriaLabel(a),
+  position: { x: a.x, y: a.y },
+  width: a.width,
+  height: a.height,
+  connectable: isConnectable(a.kind),
+  ...(a.kind === "zone" ? { zIndex: -2, dragHandle: ".ann-zone-label" } : {}),
+  data: { kind: a.kind, text: a.text, shape: a.shape, color: a.color, textSize: a.textSize },
+});
+
 export const edgeToFlow = (e: DiagramEdge): DiagramFlowEdge => ({
   id: e.id,
   source: e.from,
@@ -102,10 +132,20 @@ export const edgeToFlow = (e: DiagramEdge): DiagramFlowEdge => ({
  * parents, so every node keeps the absolute coordinates stored in the file.
  */
 export function toFlow(d: DiagramFile): { meta: DiagramMeta; nodes: FlowNode[]; edges: DiagramFlowEdge[] } {
-  const labels = new Map(d.nodes.map((n) => [n.id, n.label || n.id]));
+  const annotations = d.annotations ?? [];
+  const labels = new Map<string, string>([
+    ...annotations.map((a): [string, string] => [a.id, annotationTitle(a)]),
+    ...d.nodes.map((n): [string, string] => [n.id, n.label || n.id]),
+  ]);
   return {
     meta: { title: d.title, description: d.description, direction: d.direction, simulations: d.simulations },
-    nodes: [...(d.groups ?? []).map(groupToFlow), ...d.nodes.map(nodeToFlow)],
+    // Zones first (they draw behind everything), then boundaries, nodes, and the other annotations.
+    nodes: [
+      ...annotations.filter((a) => a.kind === "zone").map(annotationToFlow),
+      ...(d.groups ?? []).map(groupToFlow),
+      ...d.nodes.map(nodeToFlow),
+      ...annotations.filter((a) => a.kind !== "zone").map(annotationToFlow),
+    ],
     edges: withEdgeAria(d.edges.map(edgeToFlow), (id) => labels.get(id) ?? id),
   };
 }
@@ -116,8 +156,22 @@ const r = (v: number) => Math.round(v);
 export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlowEdge[]): DiagramFile {
   const groups: DiagramGroup[] = [];
   const out: DiagramNode[] = [];
+  const annotations: DiagramAnnotation[] = [];
   for (const n of nodes) {
-    if (n.type === "boundary") {
+    if (n.type === "annotation") {
+      annotations.push({
+        id: n.id,
+        kind: n.data.kind,
+        text: n.data.text,
+        x: r(n.position.x),
+        y: r(n.position.y),
+        width: r(n.width ?? n.measured?.width ?? 0),
+        height: r(n.height ?? n.measured?.height ?? 0),
+        shape: n.data.kind === "shape" ? n.data.shape : undefined,
+        color: n.data.color,
+        textSize: n.data.textSize,
+      });
+    } else if (n.type === "boundary") {
       groups.push({
         id: n.data.groupId,
         label: n.data.label,
@@ -162,6 +216,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
     nodes: out,
     edges: outEdges,
     ...(meta.simulations ? { simulations: meta.simulations } : {}),
+    ...(annotations.length ? { annotations } : {}),
   };
 }
 
