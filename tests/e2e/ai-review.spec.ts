@@ -92,7 +92,7 @@ test("applied feedback and confidence warnings meet light-theme contrast", async
   expect(violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) }))).toEqual([]);
 });
 
-test("synthetic local example is excluded from tools and copied prompts, including after a switch", async ({
+test("synthetic local example is excluded from tools and copied prompts, including after a switch @dev", async ({
   page,
   context,
   consoleErrors,
