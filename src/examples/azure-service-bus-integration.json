@@ -44,7 +44,13 @@
       "x": 760,
       "y": 280,
       "group": "azure",
-      "props": {}
+      "props": {
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": {
+          "InvoiceSubmitted": "InvoiceAccepted"
+        }
+      }
     },
     {
       "id": "invoices",
@@ -55,7 +61,8 @@
       "y": 280,
       "group": "azure",
       "props": {
-        "sessionEnabled": true
+        "sessionEnabled": true,
+        "partitions": 64
       }
     },
     {
@@ -91,7 +98,11 @@
       "x": 1840,
       "y": 160,
       "group": "azure",
-      "props": {}
+      "props": {
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": "PostInvoice"
+      }
     },
     {
       "id": "worker",
@@ -103,7 +114,9 @@
       "group": "azure",
       "props": {
         "group": "ledger-posting",
-        "concurrency": 8
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": "InvoicePosted"
       }
     },
     {
@@ -180,7 +193,9 @@
       "to": "apim",
       "label": "HTTPS",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "apim-to-ingest",
@@ -188,7 +203,9 @@
       "to": "ingest",
       "label": "POST /v1/invoices",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "ingest-to-invoices",
@@ -196,7 +213,9 @@
       "to": "invoices",
       "label": "InvoiceAccepted",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "invoices-to-approval-sub",
@@ -204,7 +223,13 @@
       "to": "approval-sub",
       "label": "amount > 10000",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "InvoiceHighValue"
+        ],
+        "group": "finance-approval"
+      }
     },
     {
       "id": "invoices-to-posting-sub",
@@ -212,7 +237,13 @@
       "to": "posting-sub",
       "label": "All invoices",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "InvoiceAccepted"
+        ],
+        "group": "ledger-posting"
+      }
     },
     {
       "id": "approval-sub-to-workflow",
@@ -220,7 +251,9 @@
       "to": "workflow",
       "label": "Peek-lock delivery",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "posting-sub-to-worker",
@@ -228,7 +261,12 @@
       "to": "worker",
       "label": "Peek-lock delivery",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "InvoiceAccepted"
+        ]
+      }
     },
     {
       "id": "workflow-to-commands",
@@ -236,7 +274,9 @@
       "to": "commands",
       "label": "PostInvoice",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "commands-to-worker",
@@ -244,7 +284,12 @@
       "to": "worker",
       "label": "Execute command",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "PostInvoice"
+        ]
+      }
     },
     {
       "id": "commands-to-dlq",
@@ -252,7 +297,9 @@
       "to": "dlq",
       "label": "After 5 failed deliveries",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "worker-to-cosmos",
@@ -260,7 +307,9 @@
       "to": "cosmos",
       "label": "Upsert ledger",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "ingest-to-blob",
@@ -268,7 +317,9 @@
       "to": "blob",
       "label": "Archive original PDF",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "ingest-to-vault",
@@ -276,7 +327,9 @@
       "to": "vault",
       "label": "Get secret",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "ingest-to-insights",
@@ -284,7 +337,197 @@
       "to": "insights",
       "label": "Traces / exceptions",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "month-end",
+      "title": "Month-end invoice batch",
+      "seed": 7,
+      "traffic": [
+        {
+          "id": "batch",
+          "node": "partner",
+          "messageType": "InvoiceHighValue",
+          "label": "300 high-value month-end invoices",
+          "shape": {
+            "kind": "burst",
+            "count": 300,
+            "spreadMs": 3000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "The ERP submits 300 high-value invoices. Only the approval subscription accepts them.",
+            "focus": [
+              "partner",
+              "invoices",
+              "approval-sub"
+            ]
+          }
+        },
+        {
+          "atMs": 5000,
+          "action": {
+            "do": "note",
+            "text": "Approved invoices become PostInvoice commands; originals remain archived.",
+            "focus": [
+              "workflow",
+              "commands",
+              "cosmos"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "ledger",
+          "label": "Ledger",
+          "metric": {
+            "node": "cosmos",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 300,
+          "when": "end"
+        },
+        {
+          "id": "archive",
+          "label": "Archive",
+          "metric": {
+            "node": "blob",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 300,
+          "when": "end"
+        },
+        {
+          "id": "approval",
+          "label": "Approval",
+          "metric": {
+            "node": "workflow",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 300,
+          "when": "end"
+        },
+        {
+          "id": "no-dlq",
+          "label": "No dlq",
+          "metric": {
+            "node": "commands",
+            "field": "deadLettered"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    },
+    {
+      "id": "poison",
+      "title": "Poison invoices",
+      "seed": 7,
+      "traffic": [
+        {
+          "id": "poison-batch",
+          "node": "partner",
+          "messageType": "InvoiceHighValue",
+          "label": "30 malformed posting requests",
+          "shape": {
+            "kind": "burst",
+            "count": 30,
+            "spreadMs": 1000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "A schema mismatch makes every ledger attempt fail. Commands are retried five times.",
+            "focus": [
+              "worker",
+              "commands"
+            ]
+          }
+        },
+        {
+          "atMs": 10000,
+          "action": {
+            "do": "note",
+            "text": "Poison commands are quarantined in the DLQ for operator replay.",
+            "focus": [
+              "commands",
+              "dlq"
+            ],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 12000,
+          "action": {
+            "do": "props",
+            "node": "worker",
+            "props": {
+              "failureRate": 0
+            }
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "quarantined",
+          "label": "Poison invoices reach the DLQ",
+          "metric": {
+            "node": "commands",
+            "field": "deadLettered"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "dlq-retains",
+          "label": "All 30 poison invoices are retained",
+          "metric": {
+            "node": "dlq",
+            "field": "backlog"
+          },
+          "op": "==",
+          "value": 30,
+          "when": "end"
+        },
+        {
+          "id": "no-ledger-write",
+          "label": "No ledger write",
+          "metric": {
+            "node": "cosmos",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        }
+      ],
+      "setup": {
+        "props": {
+          "worker": {
+            "failureRate": 1
+          }
+        }
+      },
+      "durationMs": 20000
     }
   ]
 }

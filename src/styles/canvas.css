@@ -130,6 +130,25 @@
   top: 32px;
 }
 
+/* Larger invisible hit area so connecting doesn't need pixel precision. */
+.dn-handle.react-flow__handle::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+}
+
+.react-flow.connecting .dn-handle.react-flow__handle {
+  opacity: 0.7;
+}
+
+.react-flow__handle.connectingto,
+.react-flow__handle.valid {
+  background: var(--accent);
+  /* `scale`, not `transform`: React Flow positions handles with a translate transform. */
+  scale: 1.35;
+}
+
 .dn-unknown {
   position: absolute;
   left: 10px;
@@ -258,9 +277,24 @@
 
 /* ---------- edges ---------- */
 
+/* The path also carries .react-flow__edge-path (the live view reads it), so colour goes through
+   a variable on the group and a selector that outranks React Flow's focus / selected rules. */
+.fe {
+  --fe-stroke: var(--edge);
+}
+
+.fe-sync {
+  --fe-stroke: var(--edge-strong);
+}
+
+.fe.is-selected {
+  --fe-stroke: var(--accent);
+}
+
+.react-flow__edge .fe-path.react-flow__edge-path,
 .fe-path {
   fill: none;
-  stroke: var(--edge);
+  stroke: var(--fe-stroke);
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -268,10 +302,6 @@
 
 .fe-async .fe-path {
   stroke-dasharray: 5 5;
-}
-
-.fe-sync .fe-path {
-  stroke: var(--edge-strong);
 }
 
 .fe-halo {
@@ -284,8 +314,7 @@
   stroke: color-mix(in oklab, var(--accent) 14%, transparent);
 }
 
-.fe.is-selected .fe-path {
-  stroke: var(--accent);
+.react-flow__edge .fe.is-selected .fe-path.react-flow__edge-path {
   stroke-width: 2;
 }
 
@@ -336,6 +365,36 @@
 .fe-label.is-selected {
   color: var(--accent);
   border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
+}
+
+.fe-label.is-editing {
+  padding: 0;
+  max-width: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.inline-input {
+  min-width: 0;
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 7px;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.grp-label .inline-input {
+  height: 20px;
+  margin: 0 -4px 0 -2px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1.5px var(--tone);
+  font-weight: 600;
+  cursor: text;
 }
 
 /* ---------- palette ---------- */
@@ -557,6 +616,658 @@
 }
 
 /* Presentation: slightly heavier strokes so edges survive a projector. */
-.is-presenting .fe-path {
+.is-presenting .react-flow__edge .fe-path.react-flow__edge-path {
   stroke-width: 2;
+}
+
+/* ---------- selection box / controls ---------- */
+
+.react-flow__selection {
+  border-radius: 6px;
+}
+
+.react-flow__nodesselection-rect {
+  border-radius: 10px;
+  border: 1px dashed color-mix(in oklab, var(--accent) 55%, transparent);
+  background: color-mix(in oklab, var(--accent) 5%, transparent);
+}
+
+.react-flow__controls-button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+/* Our stroke icons inside React Flow's (fill-based) control buttons. */
+.react-flow__controls-button svg[stroke] {
+  fill: none;
+  max-width: 14px;
+  max-height: 14px;
+}
+
+/* ---------- context menu ---------- */
+
+.cm-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.cm {
+  position: fixed;
+  min-width: 224px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  border-radius: 11px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.06), 0 18px 40px -14px rgb(16 24 40 / 0.32);
+  font-size: 13px;
+  pointer-events: auto;
+  outline: none;
+  animation: cm-in 0.11s ease-out;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .cm {
+  background: var(--surface-2);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 20px 48px -12px rgb(0 0 0 / 0.75);
+}
+
+.cm-searchable {
+  width: 280px;
+}
+
+@keyframes cm-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.cm-items {
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+.cm-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  height: 32px;
+  margin: 0 0 5px;
+  padding: 0 9px;
+  border-radius: 7px;
+  background: var(--surface-3);
+  color: var(--text-3);
+}
+
+.cm-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+}
+
+.cm-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 30px;
+  padding: 0 8px 0 7px;
+  border-radius: 7px;
+  cursor: default;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.cm-item.is-active,
+.cm-item.is-open {
+  background: var(--accent-soft);
+}
+
+.cm-item.is-disabled {
+  opacity: 0.42;
+}
+
+.cm-item.is-danger .cm-label,
+.cm-item.is-danger .cm-lead {
+  color: var(--danger);
+}
+
+.cm-item.is-danger.is-active {
+  background: color-mix(in oklab, var(--danger) 12%, transparent);
+}
+
+.cm-lead {
+  width: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+}
+
+.cm-item.is-active .cm-lead {
+  color: var(--accent);
+}
+
+.cm-tile {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: color-mix(in oklab, var(--accent) var(--tile-mix), var(--tile-base));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 24%, transparent);
+}
+
+.cm-tile .stencil-icon {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+}
+
+.cm-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 3.5px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.cm-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.cm-hint {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.cm-kbd {
+  padding-left: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.01em;
+}
+
+.cm-check {
+  display: grid;
+  color: var(--accent);
+}
+
+.cm-chevron {
+  display: grid;
+  margin-right: -3px;
+  color: var(--text-3);
+}
+
+.cm-sep {
+  height: 1px;
+  margin: 5px 2px;
+  background: var(--line);
+}
+
+.cm-header {
+  padding: 6px 8px 3px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.cm-empty {
+  padding: 10px 8px;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+/* ---------- inspector ---------- */
+
+.inspector {
+  width: 296px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  z-index: 5;
+}
+
+.inspector.is-collapsed {
+  width: 52px;
+  align-items: center;
+  padding-top: 10px;
+}
+
+.insp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 53px;
+  flex: none;
+  padding: 0 10px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.insp-title {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+
+.insp-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+
+.insp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.insp-section:last-child {
+  border-bottom: 0;
+}
+
+.insp-section h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.insp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.insp-label {
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--text-2);
+}
+
+.insp-input {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  outline: 0;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+textarea.insp-input {
+  height: auto;
+  padding: 7px 9px;
+  resize: vertical;
+  line-height: 1.45;
+  font-family: inherit;
+}
+
+select.insp-input {
+  padding-right: 4px;
+}
+
+.insp-input.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.insp-input:hover {
+  border-color: var(--line-strong);
+}
+
+.insp-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: var(--surface);
+}
+
+.insp-input::placeholder {
+  color: var(--text-3);
+}
+
+.insp-unit-wrap {
+  position: relative;
+  display: flex;
+}
+
+.insp-unit-wrap .insp-input {
+  padding-right: 58px;
+}
+
+.insp-unit {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  pointer-events: none;
+}
+
+.insp-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.insp-stencil {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+  text-align: left;
+  color: var(--text-3);
+}
+
+.insp-stencil:hover {
+  border-color: var(--line-strong);
+}
+
+.insp-stencil-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 560;
+  line-height: 1.25;
+}
+
+.insp-stencil-name small {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 450;
+}
+
+.insp-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.insp-role {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--role) 75%, var(--text));
+  background: color-mix(in oklab, var(--role) 13%, transparent);
+}
+
+.insp-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+.insp-seg {
+  display: flex;
+}
+
+.insp-seg button {
+  flex: 1;
+  justify-content: center;
+  height: 26px;
+  font-size: 12.5px;
+}
+
+.insp-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.insp-check input {
+  margin: 3px 0 0;
+  accent-color: var(--accent);
+}
+
+.insp-check span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.insp-check small {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.insp-route {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 560;
+  color: var(--text-2);
+}
+
+.insp-route span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.insp-route .insp-mini {
+  margin-left: auto;
+}
+
+.icon-btn.insp-mini {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 6px;
+}
+
+.icon-btn.insp-mini:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.insp-tones {
+  display: flex;
+  gap: 8px;
+}
+
+.insp-tone {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--tone) 45%, transparent);
+  background: color-mix(in oklab, var(--tone) 18%, var(--surface));
+}
+
+.insp-tone.is-on {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--tone);
+}
+
+.insp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.insp-actions .btn {
+  height: 30px;
+  font-size: 12.5px;
+}
+
+.btn.btn-danger,
+.btn.btn-danger svg {
+  color: var(--danger);
+}
+
+.insp-toolbar {
+  display: flex;
+  gap: 4px;
+}
+
+.insp-toolbar .icon-btn {
+  width: 32px;
+  height: 30px;
+}
+
+.insp-props {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.insp-prop {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) 26px;
+  align-items: center;
+  gap: 6px;
+}
+
+.insp-prop-new {
+  grid-template-columns: minmax(0, 1fr) 26px;
+}
+
+.insp-prop-key {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+.insp-prop .insp-input {
+  height: 28px;
+}
+
+/* ---------- dialog ---------- */
+
+.dlg-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(10 14 22 / 0.42);
+  backdrop-filter: blur(2px);
+  animation: cm-in 0.14s ease-out;
+}
+
+.dlg {
+  width: min(760px, 100%);
+  max-height: min(640px, 100%);
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.45);
+  outline: none;
+}
+
+.dlg-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 18px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-2);
+}
+
+.dlg-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.dlg-body {
+  overflow-y: auto;
+  padding: 6px 18px 18px;
+}
+
+.sc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  column-gap: 28px;
+}
+
+.sc-grid h3 {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.sc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 30px;
+  font-size: 13px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.sc-keys {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.sc-keys kbd {
+  font-size: 11px;
+  padding: 3px 6px;
+  color: var(--text-2);
+}
+
+.palette-foot kbd {
+  padding: 1px 4px;
+  font-size: 10px;
 }

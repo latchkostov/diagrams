@@ -1,0 +1,349 @@
+import { stencils, getStencil } from "../stencils/registry";
+import { CATEGORY_ORDER, categoryLabel } from "../lib/categories";
+import { toneColor, toneLabel } from "../canvas/nodes/GroupNode";
+import type { GroupTone } from "../canvas/types";
+import type { Side, Stencil } from "../model/types";
+import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";
+import type { AlignMode } from "./arrange";
+import { shortcutKeys } from "./shortcuts";
+
+// Built-in context-menu actions. Each reads the target from ctx and mutates through ctx.editor.
+
+const TONES = Object.keys(toneColor) as GroupTone[];
+const SIDE_LABEL: Record<Side, string> = { top: "Top", right: "Right", bottom: "Bottom", left: "Left" };
+
+/** Category ▸ stencil submenus. `pick` builds the leaf for one stencil. */
+export function stencilMenu(idPrefix: string, pick: (s: Stencil) => Pick<MenuItem, "run" | "checked">, first?: string): MenuNode[] {
+  const cats = [...CATEGORY_ORDER];
+  if (first) cats.sort((a, b) => (a === first ? -1 : b === first ? 1 : 0));
+  return cats.map((c) => ({
+    type: "item" as const,
+    id: `${idPrefix}:cat:${c}`,
+    label: categoryLabel[c],
+    children: stencils
+      .filter((s) => s.category === c)
+      .map((s) => ({
+        type: "item" as const,
+        id: `${idPrefix}:${s.id}`,
+        label: s.label,
+        stencil: s.id,
+        hint: s.vendor,
+        keywords: `${s.vendor} ${s.id} ${s.category}`,
+        ...pick(s),
+      })),
+  }));
+}
+
+const nodeCount = (ctx: ActionContext) => ctx.selection.nodeIds.length;
+const total = (ctx: ActionContext) => ctx.selection.nodeIds.length + ctx.selection.groupIds.length + ctx.selection.edgeIds.length;
+
+const ALIGN: { mode: AlignMode; label: string; icon: MenuItem["icon"] }[] = [
+  { mode: "left", label: "Left edges", icon: "align-left" },
+  { mode: "center", label: "Horizontal centres", icon: "align-center" },
+  { mode: "right", label: "Right edges", icon: "align-right" },
+  { mode: "top", label: "Top edges", icon: "align-top" },
+  { mode: "middle", label: "Vertical middles", icon: "align-middle" },
+  { mode: "bottom", label: "Bottom edges", icon: "align-bottom" },
+];
+
+function sideMenu(ctx: ActionContext, end: "sourceSide" | "targetSide"): MenuNode[] {
+  const id = ctx.edgeId!;
+  const current = ctx.editor.getEdge(id)?.[end];
+  const prefix = end === "sourceSide" ? "edge.from-side" : "edge.to-side";
+  return [
+    { type: "item", id: `${prefix}:auto`, label: "Auto", hint: "follows layout", checked: !current, run: () => ctx.editor.updateEdge(id, { [end]: undefined }) },
+    { type: "separator" },
+    ...(["top", "right", "bottom", "left"] as Side[]).map(
+      (side): MenuItem => ({
+        type: "item",
+        id: `${prefix}:${side}`,
+        label: SIDE_LABEL[side],
+        checked: current === side,
+        run: () => ctx.editor.updateEdge(id, { [end]: side }),
+      }),
+    ),
+  ];
+}
+
+function toneMenu(prefix: string, current: GroupTone | undefined, pick: (t: GroupTone) => void): MenuNode[] {
+  return TONES.map((t) => ({
+    type: "item" as const,
+    id: `${prefix}:${t}`,
+    label: toneLabel[t],
+    swatch: toneColor[t],
+    checked: current === t,
+    run: () => pick(t),
+  }));
+}
+
+export function builtinActions(): Action[] {
+  return [
+    // ---------------- canvas ----------------
+    {
+      id: "canvas.add-node",
+      section: "insert",
+      targets: ["canvas"],
+      label: "Add node here",
+      icon: "plus",
+      searchable: "Search stencils",
+      children: (ctx) => stencilMenu("add-node", (s) => ({ run: () => void ctx.editor.addNode(s.id, ctx.point) })),
+    },
+    {
+      id: "canvas.paste",
+      section: "clipboard",
+      targets: ["canvas"],
+      label: "Paste here",
+      icon: "paste",
+      shortcut: shortcutKeys("paste"),
+      enabled: (ctx) => ctx.editor.hasClipboard(),
+      run: (ctx) => void ctx.editor.paste(ctx.point),
+    },
+    {
+      id: "canvas.select-all",
+      section: "clipboard",
+      targets: ["canvas"],
+      label: "Select all",
+      icon: "select-all",
+      shortcut: shortcutKeys("select-all"),
+      run: (ctx) => ctx.editor.selectAll(),
+    },
+    {
+      id: "canvas.auto-layout",
+      section: "arrange",
+      targets: ["canvas"],
+      label: "Auto-layout",
+      icon: "layout",
+      enabled: (ctx) => ctx.editor.getDiagram().nodes.length > 1,
+      run: (ctx) => ctx.editor.autoLayout(),
+    },
+    { id: "canvas.fit", section: "view", targets: ["canvas"], label: "Fit view", icon: "fit", shortcut: shortcutKeys("fit-view"), run: (ctx) => ctx.editor.fitView() },
+    { id: "canvas.zoom-100", section: "view", targets: ["canvas"], label: "Zoom to 100%", icon: "zoom", shortcut: shortcutKeys("zoom-100"), run: (ctx) => ctx.editor.zoomTo100() },
+    {
+      id: "canvas.view-options",
+      section: "view",
+      targets: ["canvas"],
+      label: "Show",
+      icon: "grid",
+      children: (ctx) => {
+        const p = ctx.editor.prefs;
+        const toggle = (id: string, label: string, key: keyof typeof p, icon: MenuItem["icon"]): MenuItem => ({
+          type: "item",
+          id: `view:${id}`,
+          label,
+          icon,
+          checked: p[key],
+          run: () => ctx.editor.setPref(key, !p[key]),
+        });
+        return [
+          toggle("grid", "Grid", "grid", "grid"),
+          toggle("snap", "Snap to grid", "snap", "magnet"),
+          toggle("minimap", "Minimap", "minimap", "minimap"),
+          toggle("inspector", "Inspector", "inspector", "panel-right"),
+        ];
+      },
+    },
+    { id: "canvas.undo", section: "history", targets: ["canvas"], label: "Undo", icon: "undo", shortcut: shortcutKeys("undo"), enabled: (ctx) => ctx.editor.canUndo(), run: (ctx) => ctx.editor.undo() },
+    { id: "canvas.redo", section: "history", targets: ["canvas"], label: "Redo", icon: "redo", shortcut: shortcutKeys("redo"), enabled: (ctx) => ctx.editor.canRedo(), run: (ctx) => ctx.editor.redo() },
+    {
+      id: "canvas.export",
+      section: "file",
+      targets: ["canvas"],
+      label: "Export",
+      icon: "download",
+      children: (ctx) => [{ type: "item", id: "export:json", label: "JSON", hint: "diagrams/v1", run: () => ctx.editor.exportJson() }],
+    },
+    { id: "canvas.shortcuts", section: "file", targets: ["canvas"], label: "Keyboard shortcuts", icon: "keyboard", shortcut: "?", run: (ctx) => ctx.editor.showShortcuts() },
+
+    // ---------------- node ----------------
+    {
+      id: "node.rename",
+      section: "edit",
+      targets: ["node"],
+      label: "Rename",
+      icon: "edit",
+      shortcut: shortcutKeys("rename"),
+      run: (ctx) => ctx.editor.startEditing({ kind: "node", id: ctx.nodeId!, field: "label" }),
+    },
+    {
+      id: "node.edit-sublabel",
+      section: "edit",
+      targets: ["node"],
+      label: "Edit sublabel",
+      icon: "text",
+      run: (ctx) => ctx.editor.startEditing({ kind: "node", id: ctx.nodeId!, field: "sublabel" }),
+    },
+    {
+      id: "node.change-stencil",
+      section: "edit",
+      targets: ["node"],
+      label: "Change stencil",
+      icon: "shapes",
+      searchable: "Search stencils",
+      children: (ctx) => {
+        const node = ctx.editor.getNode(ctx.nodeId!);
+        const current = node ? getStencil(node.stencil) : undefined;
+        return stencilMenu(
+          "change-stencil",
+          (s) => ({ checked: s.id === node?.stencil, run: () => ctx.editor.updateNode(ctx.nodeId!, { stencil: s.id }) }),
+          current?.category,
+        );
+      },
+    },
+    {
+      id: "node.connect",
+      section: "edit",
+      targets: ["node"],
+      label: "Connect to",
+      icon: "link",
+      searchable: "Search nodes",
+      children: (ctx) =>
+        ctx.editor
+          .getDiagram()
+          .nodes.filter((n) => n.id !== ctx.nodeId)
+          .map((n) => ({
+            type: "item" as const,
+            id: `connect:${n.id}`,
+            label: n.label || n.id,
+            stencil: n.stencil,
+            hint: n.sublabel,
+            keywords: n.id,
+            run: () => void ctx.editor.connect(ctx.nodeId!, n.id),
+          })),
+    },
+    { id: "node.properties", section: "edit", targets: ["node", "edge", "group"], label: "Properties", icon: "sliders", order: 200, run: (ctx) => ctx.editor.openInspector() },
+    {
+      id: "node.copy-id",
+      section: "edit",
+      targets: ["node"],
+      label: "Copy id",
+      icon: "hash",
+      order: 210,
+      run: (ctx) => void navigator.clipboard?.writeText(ctx.nodeId!).catch(() => {}),
+    },
+    {
+      id: "item.duplicate",
+      section: "clipboard",
+      targets: ["node", "selection", "group"],
+      label: "Duplicate",
+      icon: "duplicate",
+      shortcut: shortcutKeys("duplicate"),
+      when: (ctx) => nodeCount(ctx) + ctx.selection.groupIds.length > 0,
+      run: (ctx) => ctx.editor.duplicate(ctx.selection),
+    },
+    {
+      id: "item.copy",
+      section: "clipboard",
+      targets: ["node", "selection", "group"],
+      label: "Copy",
+      icon: "copy",
+      shortcut: shortcutKeys("copy"),
+      when: (ctx) => nodeCount(ctx) + ctx.selection.groupIds.length > 0,
+      run: (ctx) => ctx.editor.copy(ctx.selection),
+    },
+    {
+      id: "item.cut",
+      section: "clipboard",
+      targets: ["node", "selection"],
+      label: "Cut",
+      icon: "cut",
+      shortcut: shortcutKeys("cut"),
+      when: (ctx) => nodeCount(ctx) + ctx.selection.groupIds.length > 0,
+      run: (ctx) => ctx.editor.cut(ctx.selection),
+    },
+    { id: "node.front", section: "arrange", targets: ["node", "selection"], label: "Bring to front", icon: "front", when: (ctx) => nodeCount(ctx) > 0, run: (ctx) => ctx.editor.bringToFront(ctx.selection.nodeIds) },
+    { id: "node.back", section: "arrange", targets: ["node", "selection"], label: "Send to back", icon: "back", when: (ctx) => nodeCount(ctx) > 0, run: (ctx) => ctx.editor.sendToBack(ctx.selection.nodeIds) },
+    {
+      id: "item.delete",
+      section: "danger",
+      targets: ["node", "edge", "selection"],
+      label: (ctx) => (ctx.target === "selection" ? `Delete ${total(ctx)} items` : "Delete"),
+      icon: "trash",
+      danger: true,
+      shortcut: shortcutKeys("delete"),
+      run: (ctx) => ctx.editor.deleteElements(ctx.selection),
+    },
+
+    // ---------------- edge ----------------
+    { id: "edge.edit-label", section: "edit", targets: ["edge"], label: "Edit label", icon: "tag", run: (ctx) => ctx.editor.startEditing({ kind: "edge", id: ctx.edgeId! }) },
+    {
+      id: "edge.toggle-kind",
+      section: "edge",
+      targets: ["edge"],
+      label: (ctx) => (ctx.editor.getEdge(ctx.edgeId!)?.kind === "sync" ? "Make async (message)" : "Make sync (request)"),
+      icon: "bolt",
+      run: (ctx) => {
+        const e = ctx.editor.getEdge(ctx.edgeId!);
+        if (e) ctx.editor.updateEdge(e.id, { kind: e.kind === "sync" ? "async" : "sync" });
+      },
+    },
+    { id: "edge.reverse", section: "edge", targets: ["edge"], label: "Reverse direction", icon: "swap", run: (ctx) => ctx.editor.reverseEdge(ctx.edgeId!) },
+    {
+      id: "edge.toggle-dlq",
+      section: "edge",
+      targets: ["edge"],
+      label: "Dead-letter path",
+      icon: "inbox",
+      checked: (ctx) => ctx.editor.getEdge(ctx.edgeId!)?.props?.dlq === true,
+      run: (ctx) => {
+        const on = ctx.editor.getEdge(ctx.edgeId!)?.props?.dlq === true;
+        ctx.editor.setEdgeProps(ctx.edgeId!, { dlq: on ? undefined : true });
+      },
+    },
+    { id: "edge.consumer-group", section: "edge", targets: ["edge"], label: "Set consumer group…", icon: "users", run: (ctx) => ctx.editor.openInspector("group") },
+    { id: "edge.from-side", section: "edge", targets: ["edge"], label: "Route from side", icon: "route", children: (ctx) => sideMenu(ctx, "sourceSide") },
+    { id: "edge.to-side", section: "edge", targets: ["edge"], label: "Route to side", icon: "route", children: (ctx) => sideMenu(ctx, "targetSide") },
+
+    // ---------------- selection ----------------
+    {
+      id: "selection.align",
+      section: "arrange",
+      targets: ["selection"],
+      label: "Align",
+      icon: "align-left",
+      order: 10,
+      enabled: (ctx) => nodeCount(ctx) > 1,
+      children: (ctx) =>
+        ALIGN.flatMap((a, i): MenuNode[] => [
+          ...(i === 3 ? [{ type: "separator" } as const] : []),
+          { type: "item", id: `align:${a.mode}`, label: a.label, icon: a.icon, run: () => ctx.editor.align(ctx.selection.nodeIds, a.mode) },
+        ]),
+    },
+    {
+      id: "selection.distribute",
+      section: "arrange",
+      targets: ["selection"],
+      label: "Distribute",
+      icon: "distribute-h",
+      order: 20,
+      children: (ctx) => [
+        { type: "item", id: "distribute:h", label: "Horizontally", icon: "distribute-h", disabled: nodeCount(ctx) < 3, run: () => ctx.editor.distribute(ctx.selection.nodeIds, "h") },
+        { type: "item", id: "distribute:v", label: "Vertically", icon: "distribute-v", disabled: nodeCount(ctx) < 3, run: () => ctx.editor.distribute(ctx.selection.nodeIds, "v") },
+      ],
+    },
+    {
+      id: "selection.group",
+      section: "arrange",
+      targets: ["selection", "node"],
+      label: "Group into boundary",
+      icon: "boundary",
+      shortcut: shortcutKeys("group"),
+      order: 30,
+      when: (ctx) => nodeCount(ctx) > 0,
+      children: (ctx) => toneMenu("group-tone", undefined, (t) => void ctx.editor.groupNodes(ctx.selection.nodeIds, t)),
+    },
+
+    // ---------------- group ----------------
+    { id: "group.rename", section: "edit", targets: ["group"], label: "Rename", icon: "edit", shortcut: shortcutKeys("rename"), run: (ctx) => ctx.editor.startEditing({ kind: "group", id: ctx.groupId! }) },
+    {
+      id: "group.tone",
+      section: "edit",
+      targets: ["group"],
+      label: "Tone",
+      icon: "tone",
+      children: (ctx) => toneMenu("tone", ctx.editor.getGroup(ctx.groupId!)?.tone ?? "neutral", (t) => ctx.editor.updateGroup(ctx.groupId!, { tone: t })),
+    },
+    { id: "group.fit", section: "arrange", targets: ["group"], label: "Fit to contents", icon: "fit", run: (ctx) => ctx.editor.fitGroupToContents(ctx.groupId!) },
+    { id: "group.ungroup", section: "danger", targets: ["group"], label: "Ungroup", icon: "ungroup", run: (ctx) => ctx.editor.ungroup(ctx.groupId!) },
+    { id: "group.delete", section: "danger", targets: ["group"], label: "Delete with contents", icon: "trash", danger: true, run: (ctx) => ctx.editor.deleteGroupWithContents(ctx.groupId!) },
+  ];
+}

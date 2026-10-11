@@ -1,0 +1,727 @@
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { getStencil } from "../stencils/registry";
+import { simRoleMeta } from "../lib/simRoles";
+import type { NodeSimProps } from "../sim/types";
+import type { Side, SimRole } from "../model/types";
+import { Icon, type IconName } from "../components/Icon";
+import { StencilIcon } from "../components/StencilIcon";
+import { ContextMenu } from "../components/ContextMenu";
+import { stencilMenu } from "../editor/builtinActions";
+import type { EditorApi } from "../editor/types";
+import type { AlignMode } from "../editor/arrange";
+import { parseEmits } from "../editor/emits";
+import type { DiagramMeta } from "./convert";
+import { toneColor, toneLabel } from "./nodes/GroupNode";
+import type { DiagramFlowEdge, DiagramFlowNode, GroupFlowNode, GroupTone } from "./types";
+
+// Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
+// is coalesced per field via the `merge` option.
+
+type SimKey = keyof NodeSimProps;
+
+interface SimField {
+  label: string;
+  unit?: string;
+  /** "map": one type, or `In → Out, In2 → Out2` (or JSON) for a map. "list": comma-separated strings. */
+  kind: "number" | "text" | "map" | "list";
+  min?: number;
+  max?: number;
+  step?: number;
+  placeholder: string;
+  hint: string;
+}
+
+const SIM_FIELDS: Record<SimKey, SimField> = {
+  ratePerSec: { label: "Rate", unit: "msg/s", kind: "number", min: 0, step: 0.5, placeholder: "2", hint: "Messages per second while traffic is on" },
+  messageType: { label: "Message type", kind: "text", placeholder: "derived from label", hint: "Type emitted by this source" },
+  latencyMs: { label: "Latency", unit: "ms", kind: "number", min: 0, step: 10, placeholder: "default", hint: "Processing time per message" },
+  concurrency: { label: "Concurrency", kind: "number", min: 1, step: 1, placeholder: "4", hint: "Messages processed in parallel" },
+  failureRate: { label: "Failure rate", unit: "0–1", kind: "number", min: 0, max: 1, step: 0.05, placeholder: "0", hint: "Probability a message fails processing" },
+  maxDeliveryCount: { label: "Max deliveries", kind: "number", min: 1, step: 1, placeholder: "3", hint: "Attempts before dead-lettering" },
+  partitions: { label: "Partitions", kind: "number", min: 1, step: 1, placeholder: "3", hint: "Max in-flight deliveries per consumer group" },
+  emits: {
+    label: "Emits",
+    kind: "map",
+    placeholder: "unchanged, or In → Out, * → Other",
+    hint: "Message type sent downstream. One name renames everything; `OrderPlaced → PaymentRequested, * → Other` maps by incoming type (* = fallback).",
+  },
+};
+
+/** Which simulation tunables apply to each role. */
+export const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
+  source: ["ratePerSec", "messageType"],
+  processor: ["latencyMs", "concurrency", "failureRate", "emits"],
+  gateway: ["latencyMs", "concurrency"],
+  store: ["latencyMs"],
+  sink: ["latencyMs"],
+  topic: ["partitions", "maxDeliveryCount"],
+  stream: ["partitions", "maxDeliveryCount"],
+  queue: ["maxDeliveryCount"],
+  none: [],
+};
+
+const SIM_KEYS = new Set<string>(Object.keys(SIM_FIELDS));
+const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits"]);
+const SIDES: Side[] = ["top", "right", "bottom", "left"];
+
+export interface InspectorProps {
+  editor: EditorApi;
+  meta: DiagramMeta;
+  selectedNodes: DiagramFlowNode[];
+  selectedGroups: GroupFlowNode[];
+  selectedEdges: DiagramFlowEdge[];
+  groups: GroupFlowNode[];
+  nodeLabel: (id: string) => string;
+  counts: { nodes: number; edges: number; groups: number };
+  collapsed: boolean;
+  onToggle: () => void;
+  /** Focus request: `inspector-field-<name>`; `seq` re-triggers for the same name. */
+  focus?: { name: string; seq: number };
+}
+
+export function Inspector(p: InspectorProps) {
+  const body = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!p.focus || p.collapsed) return;
+    const id = requestAnimationFrame(() => {
+      const el = body.current?.querySelector<HTMLElement>(`[data-testid="inspector-field-${p.focus!.name}"]`);
+      el?.focus();
+      if (el instanceof HTMLInputElement) el.select();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [p.focus, p.collapsed]);
+
+  if (p.collapsed) {
+    return (
+      <aside className="inspector is-collapsed" data-testid="inspector" aria-label="Inspector">
+        <button className="icon-btn" onClick={p.onToggle} title="Show inspector" aria-label="Show inspector" data-testid="inspector-toggle">
+          <Icon name="panel-right" />
+        </button>
+      </aside>
+    );
+  }
+
+  const n = p.selectedNodes.length + p.selectedGroups.length + p.selectedEdges.length;
+  let title = "Diagram";
+  let content: ReactNode;
+  if (n === 0) content = <DiagramPanel {...p} />;
+  else if (n === 1 && p.selectedNodes[0]) {
+    title = "Node";
+    content = <NodePanel key={p.selectedNodes[0].id} node={p.selectedNodes[0]} {...p} />;
+  } else if (n === 1 && p.selectedEdges[0]) {
+    title = "Edge";
+    content = <EdgePanel key={p.selectedEdges[0].id} edge={p.selectedEdges[0]} {...p} />;
+  } else if (n === 1 && p.selectedGroups[0]) {
+    title = "Boundary";
+    content = <GroupPanel key={p.selectedGroups[0].id} group={p.selectedGroups[0]} {...p} />;
+  } else {
+    title = `${n} selected`;
+    content = <MultiPanel {...p} />;
+  }
+
+  return (
+    <aside className="inspector" data-testid="inspector" aria-label="Inspector" data-inspector-mode={title.toLowerCase()}>
+      <div className="insp-head">
+        <span className="insp-title" data-testid="inspector-title">
+          {title}
+        </span>
+        <button className="icon-btn" onClick={p.onToggle} title="Hide inspector" aria-label="Hide inspector" data-testid="inspector-toggle">
+          <Icon name="panel-right" />
+        </button>
+      </div>
+      <div className="insp-body" ref={body}>
+        {content}
+      </div>
+    </aside>
+  );
+}
+
+// ---------------------------------------------------------------- panels
+
+function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlowNode }) {
+  const stencil = getStencil(node.data.stencil);
+  const role = stencil.simRole;
+  const props = node.data.props ?? {};
+  const merge = (f: string) => ({ merge: `inspector:node:${node.id}:${f}` });
+  const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
+  const simFields = SIM_FIELDS_BY_ROLE[role];
+
+  return (
+    <>
+      <Section>
+        <Field label="Stencil" group>
+          <button
+            className="insp-stencil"
+            data-testid="inspector-field-stencil"
+            style={{ "--accent": stencil.accent } as CSSProperties}
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setPicker({ x: r.left, y: r.bottom + 4 });
+            }}
+          >
+            <span className="palette-tile">
+              <StencilIcon stencil={stencil} size={18} />
+            </span>
+            <span className="insp-stencil-name">
+              {stencil.label}
+              <small>{stencil.vendor}</small>
+            </span>
+            <Icon name="chevron-down" size={14} />
+          </button>
+        </Field>
+        <Field label="Label">
+          <input
+            className="insp-input"
+            value={node.data.label}
+            onChange={(e) => editor.updateNode(node.id, { label: e.target.value }, merge("label"))}
+            name="label"
+            data-testid="inspector-field-label"
+          />
+        </Field>
+        <Field label="Sublabel">
+          <input
+            className="insp-input mono"
+            value={node.data.sublabel ?? ""}
+            placeholder={stencil.label}
+            onChange={(e) => editor.updateNode(node.id, { sublabel: e.target.value }, merge("sublabel"))}
+            name="sublabel"
+            data-testid="inspector-field-sublabel"
+          />
+        </Field>
+        <Field label="Boundary">
+          <select
+            className="insp-input"
+            value={node.data.group ?? ""}
+            onChange={(e) => editor.updateNode(node.id, { group: e.target.value || undefined })}
+            name="group"
+            data-testid="inspector-field-group"
+          >
+            <option value="">None</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.data.groupId}>
+                {g.data.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div className="insp-meta mono" title="Node id">
+          <Icon name="hash" size={12} /> {node.id}
+        </div>
+      </Section>
+
+      <Section
+        title="Simulation"
+        aside={
+          <span className="insp-role" style={{ "--role": simRoleMeta[role].hue } as CSSProperties} title={simRoleMeta[role].hint}>
+            {simRoleMeta[role].label}
+          </span>
+        }
+      >
+        {simFields.length ? (
+          simFields.map((k) => (
+            <SimInput key={k} name={k} field={SIM_FIELDS[k]} value={props[k]} onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))} />
+          ))
+        ) : (
+          <p className="insp-note">This stencil is decorative and doesn't take part in the simulation.</p>
+        )}
+      </Section>
+
+      <Section title="Properties">
+        <PropsEditor
+          props={props}
+          hidden={SIM_KEYS}
+          onSet={(patch) => editor.setNodeProps(node.id, patch)}
+          onSetMerged={(patch, key) => editor.setNodeProps(node.id, patch, merge(`prop:${key}`))}
+        />
+      </Section>
+
+      {picker && (
+        <ContextMenu
+          x={picker.x}
+          y={picker.y}
+          label="Change stencil"
+          testId="stencil-picker"
+          searchable="Search stencils"
+          items={stencilMenu("pick-stencil", (s) => ({ checked: s.id === node.data.stencil, run: () => editor.updateNode(node.id, { stencil: s.id }) }), stencil.category)}
+          onClose={() => setPicker(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: DiagramFlowEdge }) {
+  const data = edge.data ?? { kind: "async" as const };
+  const props = data.props ?? {};
+  const merge = (f: string) => ({ merge: `inspector:edge:${edge.id}:${f}` });
+  return (
+    <>
+      <Section>
+        <div className="insp-route">
+          <span>{nodeLabel(edge.source)}</span>
+          <Icon name="chevron-right" size={12} />
+          <span>{nodeLabel(edge.target)}</span>
+          <button className="icon-btn insp-mini" onClick={() => editor.reverseEdge(edge.id)} title="Reverse direction" aria-label="Reverse direction" data-testid="inspector-reverse">
+            <Icon name="swap" size={14} />
+          </button>
+        </div>
+        <Field label="Label">
+          <input
+            className="insp-input"
+            value={data.label ?? ""}
+            placeholder="e.g. OrderPlaced"
+            onChange={(e) => editor.updateEdge(edge.id, { label: e.target.value }, merge("label"))}
+            name="edge-label"
+            data-testid="inspector-field-label"
+          />
+        </Field>
+        <Field label="Kind" group>
+          <Segmented
+            testId="inspector-field-kind"
+            value={data.kind}
+            options={[
+              { value: "async", label: "Async", hint: "Message (dashed)" },
+              { value: "sync", label: "Sync", hint: "Request / response (solid)" },
+            ]}
+            onChange={(kind) => editor.updateEdge(edge.id, { kind })}
+          />
+        </Field>
+        <div className="insp-row2">
+          <Field label="From side">
+            <SideSelect testId="inspector-field-sourceSide" value={data.sourceSide} onChange={(v) => editor.updateEdge(edge.id, { sourceSide: v })} />
+          </Field>
+          <Field label="To side">
+            <SideSelect testId="inspector-field-targetSide" value={data.targetSide} onChange={(v) => editor.updateEdge(edge.id, { targetSide: v })} />
+          </Field>
+        </div>
+      </Section>
+      <Section title="Simulation">
+        <Field label="Consumer group" hint="Edges from a topic sharing a group compete for messages">
+          <input
+            className="insp-input mono"
+            value={typeof props.group === "string" ? props.group : ""}
+            placeholder={edge.id}
+            onChange={(e) => editor.setEdgeProps(edge.id, { group: e.target.value || undefined }, merge("group"))}
+            name="consumer-group"
+            data-testid="inspector-field-group"
+          />
+        </Field>
+        <label className="insp-check">
+          <input
+            type="checkbox"
+            checked={props.dlq === true}
+            onChange={(e) => editor.setEdgeProps(edge.id, { dlq: e.target.checked || undefined })}
+            name="dlq"
+            data-testid="inspector-field-dlq"
+          />
+          <span>
+            Dead-letter path
+            <small>Failed messages from the source broker go here</small>
+          </span>
+        </label>
+        <SimInput
+          name="travelMs"
+          field={{ label: "Travel time", unit: "ms", kind: "number", min: 0, step: 50, placeholder: data.kind === "sync" ? "450" : "900", hint: "Time a message spends on this edge at 1x" }}
+          value={props.travelMs}
+          onChange={(v) => editor.setEdgeProps(edge.id, { travelMs: v }, merge("travelMs"))}
+        />
+        <SimInput
+          name="filter"
+          field={{ label: "Filter", kind: "list", placeholder: "all message types", hint: 'Only these message types travel this edge; trailing * wildcard, e.g. "Order*"' }}
+          value={props.filter}
+          onChange={(v) => editor.setEdgeProps(edge.id, { filter: v }, merge("filter"))}
+        />
+        <SimInput
+          name="emits"
+          field={{ label: "Rename to", kind: "text", placeholder: "unchanged", hint: "Rename messages as they leave along this edge" }}
+          value={props.emits}
+          onChange={(v) => editor.setEdgeProps(edge.id, { emits: v }, merge("emits"))}
+        />
+      </Section>
+      <Section title="Properties">
+        <PropsEditor
+          props={props}
+          hidden={EDGE_KEYS}
+          onSet={(patch) => editor.setEdgeProps(edge.id, patch)}
+          onSetMerged={(patch, key) => editor.setEdgeProps(edge.id, patch, merge(`prop:${key}`))}
+        />
+      </Section>
+    </>
+  );
+}
+
+function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }) {
+  const id = group.data.groupId;
+  return (
+    <Section>
+      <Field label="Label">
+        <input
+          className="insp-input"
+          value={group.data.label}
+          onChange={(e) => editor.updateGroup(id, { label: e.target.value }, { merge: `inspector:group:${id}:label` })}
+          name="group-label"
+          data-testid="inspector-field-label"
+        />
+      </Field>
+      <Field label="Tone" group>
+        <div className="insp-tones" data-testid="inspector-field-tone" role="radiogroup" aria-label="Tone">
+          {(Object.keys(toneColor) as GroupTone[]).map((t) => (
+            <button
+              key={t}
+              role="radio"
+              aria-checked={group.data.tone === t}
+              className={`insp-tone${group.data.tone === t ? " is-on" : ""}`}
+              style={{ "--tone": toneColor[t] } as CSSProperties}
+              title={toneLabel[t]}
+              aria-label={toneLabel[t]}
+              onClick={() => editor.updateGroup(id, { tone: t })}
+              data-testid={`inspector-tone-${t}`}
+            />
+          ))}
+        </div>
+      </Field>
+      <div className="insp-actions">
+        <button className="btn" onClick={() => editor.fitGroupToContents(id)} data-testid="inspector-group-fit">
+          <Icon name="fit" size={14} /> Fit to contents
+        </button>
+        <button className="btn" onClick={() => editor.ungroup(id)} data-testid="inspector-group-ungroup">
+          <Icon name="ungroup" size={14} /> Ungroup
+        </button>
+      </div>
+    </Section>
+  );
+}
+
+const ALIGN_BUTTONS: { mode: AlignMode; icon: IconName; label: string }[] = [
+  { mode: "left", icon: "align-left", label: "Align left" },
+  { mode: "center", icon: "align-center", label: "Align centres" },
+  { mode: "right", icon: "align-right", label: "Align right" },
+  { mode: "top", icon: "align-top", label: "Align top" },
+  { mode: "middle", icon: "align-middle", label: "Align middles" },
+  { mode: "bottom", icon: "align-bottom", label: "Align bottom" },
+];
+
+function MultiPanel({ editor, selectedNodes, selectedEdges, selectedGroups }: InspectorProps) {
+  const ids = selectedNodes.map((n) => n.id);
+  return (
+    <Section>
+      <p className="insp-note">
+        {selectedNodes.length} nodes, {selectedEdges.length} edges, {selectedGroups.length} boundaries
+      </p>
+      {ids.length > 1 && (
+        <Field label="Align" group>
+          <div className="insp-toolbar">
+            {ALIGN_BUTTONS.map((a) => (
+              <button key={a.mode} className="icon-btn" title={a.label} aria-label={a.label} onClick={() => editor.align(ids, a.mode)} data-testid={`inspector-align-${a.mode}`}>
+                <Icon name={a.icon} />
+              </button>
+            ))}
+          </div>
+        </Field>
+      )}
+      {ids.length > 2 && (
+        <Field label="Distribute" group>
+          <div className="insp-toolbar">
+            <button className="icon-btn" title="Distribute horizontally" aria-label="Distribute horizontally" onClick={() => editor.distribute(ids, "h")} data-testid="inspector-distribute-h">
+              <Icon name="distribute-h" />
+            </button>
+            <button className="icon-btn" title="Distribute vertically" aria-label="Distribute vertically" onClick={() => editor.distribute(ids, "v")} data-testid="inspector-distribute-v">
+              <Icon name="distribute-v" />
+            </button>
+          </div>
+        </Field>
+      )}
+      <div className="insp-actions">
+        {ids.length > 0 && (
+          <button className="btn" onClick={() => editor.groupNodes(ids)} data-testid="inspector-group-selection">
+            <Icon name="boundary" size={14} /> Group
+          </button>
+        )}
+        <button
+          className="btn btn-danger"
+          onClick={() => editor.deleteElements({ nodeIds: ids, edgeIds: selectedEdges.map((e) => e.id), groupIds: selectedGroups.map((g) => g.data.groupId) })}
+          data-testid="inspector-delete-selection"
+        >
+          <Icon name="trash" size={14} /> Delete
+        </button>
+      </div>
+    </Section>
+  );
+}
+
+function DiagramPanel({ editor, meta, counts }: InspectorProps) {
+  return (
+    <>
+      <Section>
+        <Field label="Title">
+          <input
+            className="insp-input"
+            value={meta.title}
+            onChange={(e) => editor.updateMeta({ title: e.target.value }, { merge: "inspector:meta:title" })}
+            name="title"
+            data-testid="inspector-field-title"
+          />
+        </Field>
+        <Field label="Description">
+          <textarea
+            className="insp-input"
+            rows={3}
+            value={meta.description ?? ""}
+            placeholder="What does this diagram show?"
+            onChange={(e) => editor.updateMeta({ description: e.target.value || undefined }, { merge: "inspector:meta:description" })}
+            name="description"
+            data-testid="inspector-field-description"
+          />
+        </Field>
+        <Field label="Flow direction" hint="Edges prefer this axis when picking sides; auto-layout follows it" group>
+          <Segmented
+            testId="inspector-field-direction"
+            value={meta.direction ?? "LR"}
+            options={[
+              { value: "LR", label: "Left → right" },
+              { value: "TB", label: "Top → bottom" },
+            ]}
+            onChange={(direction) => editor.updateMeta({ direction })}
+          />
+        </Field>
+      </Section>
+      <Section>
+        <p className="insp-note">
+          {counts.nodes} nodes · {counts.edges} edges · {counts.groups} boundaries
+        </p>
+        <p className="insp-note">Select a node, edge or boundary to edit it. Right-click anything for more actions.</p>
+        <button className="link-btn" onClick={() => editor.showShortcuts()} data-testid="inspector-shortcuts">
+          <Icon name="keyboard" size={13} /> Keyboard shortcuts
+        </button>
+      </Section>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- controls
+
+function Section({ title, aside, children }: { title?: string; aside?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="insp-section">
+      {title && (
+        <h3>
+          {title}
+          {aside}
+        </h3>
+      )}
+      {children}
+    </section>
+  );
+}
+
+/** Labelled row. `group` renders a div (for button groups — a <label> would forward clicks). */
+function Field({ label, hint, group, children }: { label: string; hint?: string; group?: boolean; children: ReactNode }) {
+  const Tag = group ? "div" : "label";
+  return (
+    <Tag className="insp-field" title={hint}>
+      <span className="insp-label">{label}</span>
+      {children}
+    </Tag>
+  );
+}
+
+function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  testId,
+}: {
+  value: T;
+  options: { value: T; label: string; hint?: string }[];
+  onChange: (v: T) => void;
+  testId: string;
+}) {
+  return (
+    <div className="segmented insp-seg" role="radiogroup" data-testid={testId}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          className={value === o.value ? "is-on" : ""}
+          title={o.hint}
+          onClick={() => onChange(o.value)}
+          data-testid={`${testId}-${o.value}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SideSelect({ value, onChange, testId }: { value?: Side; onChange: (v: Side | undefined) => void; testId: string }) {
+  return (
+    <select className="insp-input" value={value ?? ""} onChange={(e) => onChange((e.target.value || undefined) as Side | undefined)} data-testid={testId} name={testId}>
+      <option value="">Auto</option>
+      {SIDES.map((s) => (
+        <option key={s} value={s}>
+          {s[0].toUpperCase() + s.slice(1)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** Number / text input that keeps a local draft so partially typed numbers ("0.") survive. */
+function showSim(kind: SimField["kind"], value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (kind === "list" && Array.isArray(value)) return value.join(", ");
+  if (kind === "map" && typeof value === "object" && !Array.isArray(value))
+    return Object.entries(value as Record<string, unknown>)
+      .map(([k, v]) => `${k} → ${String(v)}`)
+      .join(", ");
+  return typeof value === "object" ? JSON.stringify(value) : String(value);
+}
+
+type SimValue = number | string | string[] | Record<string, string> | undefined;
+
+function SimInput({ name, field, value, onChange }: { name: string; field: SimField; value: unknown; onChange: (v: SimValue) => void }) {
+  const external = showSim(field.kind, value);
+  const [draft, setDraft] = useState(external);
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setDraft(external);
+  }, [external]);
+  return (
+    <Field label={field.label} hint={field.hint}>
+      <span className="insp-unit-wrap">
+        <input
+          className={`insp-input${field.kind === "number" ? " mono" : ""}`}
+          type={field.kind === "number" ? "number" : "text"}
+          inputMode={field.kind === "number" ? "decimal" : undefined}
+          min={field.min}
+          max={field.max}
+          step={field.step}
+          value={draft}
+          placeholder={field.placeholder}
+          onFocus={() => (focused.current = true)}
+          onBlur={() => {
+            focused.current = false;
+            setDraft(external);
+          }}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setDraft(raw);
+            if (field.kind === "text") return onChange(raw || undefined);
+            if (field.kind === "list") {
+              const items = raw.split(",").map((x) => x.trim()).filter(Boolean);
+              return onChange(items.length ? items : undefined);
+            }
+            if (field.kind === "map") {
+              const parsed = parseEmits(raw);
+              if (parsed !== null) onChange(parsed);
+              return;
+            }
+            if (raw.trim() === "") return onChange(undefined);
+            const v = Number(raw);
+            if (Number.isFinite(v)) onChange(field.max !== undefined ? Math.min(field.max, Math.max(field.min ?? -Infinity, v)) : v);
+          }}
+          name={name}
+          data-testid={`inspector-field-${name}`}
+        />
+        {field.unit && <span className="insp-unit">{field.unit}</span>}
+      </span>
+    </Field>
+  );
+}
+
+const showValue = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v));
+function parseValue(raw: string): unknown {
+  const t = raw.trim();
+  if (t === "") return "";
+  if (/^(true|false|null|-?\d+(\.\d+)?|\[.*\]|\{.*\})$/s.test(t)) {
+    try {
+      return JSON.parse(t);
+    } catch {
+      return raw;
+    }
+  }
+  return raw;
+}
+
+function PropValue({ name, value, onChange }: { name: string; value: unknown; onChange: (raw: string) => void }) {
+  const external = showValue(value);
+  const [draft, setDraft] = useState(external);
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setDraft(external);
+  }, [external]);
+  return (
+    <input
+      className="insp-input mono"
+      value={draft}
+      onFocus={() => (focused.current = true)}
+      onBlur={() => {
+        focused.current = false;
+        setDraft(external);
+      }}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        onChange(e.target.value);
+      }}
+      aria-label={`Value of ${name}`}
+      name={`prop-${name}`}
+      data-testid={`inspector-prop-${name}`}
+    />
+  );
+}
+
+/** Free-form key / value props (anything that isn't a known field). */
+function PropsEditor({
+  props,
+  hidden,
+  onSet,
+  onSetMerged,
+}: {
+  props: Record<string, unknown>;
+  hidden: Set<string>;
+  onSet: (patch: Record<string, unknown>) => void;
+  onSetMerged: (patch: Record<string, unknown>, key: string) => void;
+}) {
+  const entries = Object.entries(props).filter(([k]) => !hidden.has(k));
+  const [newKey, setNewKey] = useState("");
+  const add = () => {
+    const k = newKey.trim();
+    if (!k || k in props) return;
+    onSet({ [k]: "" });
+    setNewKey("");
+  };
+  return (
+    <div className="insp-props" data-testid="inspector-props">
+      {entries.map(([k, v]) => (
+        <div key={k} className="insp-prop">
+          <span className="insp-prop-key mono" title={k}>
+            {k}
+          </span>
+          <PropValue name={k} value={v} onChange={(raw) => onSetMerged({ [k]: parseValue(raw) }, k)} />
+          <button className="icon-btn insp-mini" onClick={() => onSet({ [k]: undefined })} title={`Remove ${k}`} aria-label={`Remove ${k}`} data-testid={`inspector-prop-remove-${k}`}>
+            <Icon name="close" size={12} />
+          </button>
+        </div>
+      ))}
+      <div className="insp-prop insp-prop-new">
+        <input
+          className="insp-input mono"
+          value={newKey}
+          placeholder="Add property…"
+          onChange={(e) => setNewKey(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          aria-label="New property name"
+          name="new-prop"
+          data-testid="inspector-prop-new"
+        />
+        <button className="icon-btn insp-mini" onClick={add} disabled={!newKey.trim()} title="Add property" aria-label="Add property" data-testid="inspector-prop-add">
+          <Icon name="plus" size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}

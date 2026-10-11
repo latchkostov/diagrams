@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { stencils } from "../stencils/registry";
 import type { StencilCategory } from "../model/types";
 import { StencilIcon } from "../components/StencilIcon";
@@ -75,7 +75,7 @@ export function Palette({
                   onClick={() => onAdd(s.id)}
                   title={`${s.label} (${s.vendor})\n${s.description}`}
                   data-testid={`palette-item-${s.id}`}
-                  style={{ "--accent": s.accent } as React.CSSProperties}
+                  style={{ "--accent": s.accent } as CSSProperties}
                 >
                   <span className="palette-tile">
                     <StencilIcon stencil={s} size={20} />
@@ -89,7 +89,7 @@ export function Palette({
         {groups.length === 0 && <p className="palette-empty">Nothing matches “{q}”.</p>}
       </div>
       <div className="palette-foot">
-        Drag onto the canvas. Double-click a node to rename it, double-click an edge to switch async and sync.
+        Drag onto the canvas, or double-click the canvas to search. Right-click anything for actions; press <kbd>?</kbd> for shortcuts.
       </div>
     </aside>
   );
