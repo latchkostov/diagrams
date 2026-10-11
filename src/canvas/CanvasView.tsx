@@ -1,9 +1,20 @@
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type DragEvent, type Ref } from "react";
 import {
-  addEdge,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent as ReactMouseEvent,
+  type Ref,
+} from "react";
+import {
   Background,
   BackgroundVariant,
   ConnectionLineType,
+  ConnectionMode,
+  ControlButton,
   Controls,
   MiniMap,
   ReactFlow,
@@ -13,24 +24,37 @@ import {
   useReactFlow,
   type Connection,
   type EdgeMouseHandler,
+  type NodeMouseHandler,
   type NodeTypes,
   type EdgeTypes,
   type OnNodeDrag,
   type FitViewOptions,
+  type IsValidConnection,
 } from "@xyflow/react";
 import { getStencil } from "../stencils/registry";
 import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
 import { emptyDiagram, getAutosave, getOriginal, writeAutosave } from "../lib/diagramIO";
 import type { DiagramFile } from "../model/types";
-import { fromFlow, groupAt, toFlow } from "./convert";
-import { DiagramContext } from "./DiagramContext";
+import { fromFlow, groupAt, toFlow, type DiagramMeta } from "./convert";
+import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
 import { DiagramNode } from "./nodes/DiagramNode";
 import { GroupNode, toneColor } from "./nodes/GroupNode";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
 import { Palette, STENCIL_DND_MIME } from "./Palette";
+import { Inspector } from "./Inspector";
 import { Icon } from "../components/Icon";
-import type { DiagramFlowEdge, DiagramFlowNode, FlowNode } from "./types";
+import { ContextMenu } from "../components/ContextMenu";
+import { ShortcutsDialog } from "../components/ShortcutsDialog";
+import { actionRegistry, type ActionContext, type MenuNode } from "../editor/actions";
+import { builtinActions, stencilMenu } from "../editor/builtinActions";
+import { useEditorPrefs } from "../editor/prefs";
+import { useHistory, type CanvasSnapshot } from "../editor/useHistory";
+import { useEditor } from "../editor/useEditor";
+import { useCanvasShortcuts } from "../editor/useCanvasShortcuts";
+import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
+import type { Selection } from "../editor/types";
+import type { DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 
 const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -65,11 +89,14 @@ const normalize = (d: DiagramFile) => {
   return JSON.stringify(fromFlow(f.meta, f.nodes, f.edges));
 };
 
-function uniqueId(base: string, taken: Set<string>) {
-  let i = 1;
-  while (taken.has(`${base}-${i}`)) i++;
-  return `${base}-${i}`;
-}
+const isDiagramNode = (n: FlowNode): n is DiagramFlowNode => n.type === "diagram";
+const isGroupNode = (n: FlowNode): n is GroupFlowNode => n.type === "boundary";
+const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
+
+type MenuState = { x: number; y: number; items: MenuNode[]; label: string; searchable?: string; testId?: string };
+
+// Built-in actions live for the app's lifetime; HMR re-registers them by id.
+actionRegistry.register(builtinActions());
 
 function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
   const { theme, nodeVariant, edgeStyle } = useSettings();
@@ -80,7 +107,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
     const original = getOriginal(slug) ?? emptyDiagram();
     return { original, flow: toFlow(getAutosave(slug) ?? original), originalJson: normalize(original) };
   });
-  const meta = flow.meta;
+  const [meta, setMeta] = useState<DiagramMeta>(flow.meta);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const [modified, setModified] = useState(false);
@@ -89,6 +116,45 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
     return saved ? saved === "1" : window.innerWidth < 1400;
   });
   useEffect(() => localStorage.setItem(PALETTE_KEY, paletteCollapsed ? "1" : "0"), [paletteCollapsed]);
+  const [prefs, setPref] = useEditorPrefs();
+  const [editing, setEditing] = useState<EditTarget | null>(null);
+  const [menu, setMenu] = useState<MenuState | null>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [inspectorFocus, setInspectorFocus] = useState<{ name: string; seq: number } | undefined>();
+
+  const snapshot = useMemo<CanvasSnapshot>(() => ({ meta, nodes, edges }), [meta, nodes, edges]);
+  const history = useHistory(snapshot, (s) => {
+    setEditing(null);
+    setMeta(s.meta);
+    setNodes(s.nodes);
+    setEdges(s.edges);
+  });
+
+  const fit = useCallback(() => void fitView({ ...FIT, duration: 300 }), [fitView]);
+  const editor = useEditor({
+    slug,
+    meta,
+    setMeta,
+    setNodes,
+    setEdges,
+    history,
+    prefs,
+    setPref,
+    setEditing,
+    openInspector: (field) => {
+      setPref("inspector", true);
+      if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1 }));
+    },
+    showShortcuts: () => setShortcutsOpen(true),
+    viewCenter: () => {
+      const r = wrapper.current?.getBoundingClientRect();
+      return r ? screenToFlowPosition({ x: r.left + r.width / 2, y: r.top + r.height / 2 }) : { x: 0, y: 0 };
+    },
+    fit,
+    nodeSize: getNodeVariant(nodeVariant).size,
+  });
+
+  useCanvasShortcuts(editor, { enabled: !shortcutsOpen, onEscape: () => setMenu(null) });
 
   useImperativeHandle(ref, () => ({ getDiagram: () => fromFlow(meta, nodes, edges) }), [meta, nodes, edges]);
 
@@ -110,40 +176,26 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
     return () => clearTimeout(id);
   }, [presenting, fitView]);
 
+  /** Reset is a normal (undoable) edit. */
   const reset = () => {
     const f = toFlow(original);
+    setMeta(f.meta);
     setNodes(f.nodes);
     setEdges(f.edges);
     setTimeout(() => fitView({ ...FIT, duration: 350 }), 50);
   };
 
-  const onConnect = useCallback(
-    (c: Connection) =>
-      setEdges((es) =>
-        addEdge<DiagramFlowEdge>(
-          { ...c, id: uniqueId("e", new Set(es.map((e) => e.id))), type: "flow", data: { kind: "async" } },
-          es,
-        ),
-      ),
-    [setEdges],
-  );
+  // New edges float (sides picked from geometry); pin a side from the menu or inspector.
+  const onConnect = useCallback((c: Connection) => void editor.connect(c.source, c.target), [editor]);
+  const isValidConnection: IsValidConnection<DiagramFlowEdge> = useCallback((c) => c.source !== c.target, []);
 
-  const onEdgeDoubleClick: EdgeMouseHandler<DiagramFlowEdge> = useCallback(
-    (_e, edge) =>
-      setEdges((es) =>
-        es.map((e) =>
-          e.id === edge.id
-            ? { ...e, data: { ...e.data, kind: e.data?.kind === "sync" ? "async" : "sync" } as DiagramFlowEdge["data"] }
-            : e,
-        ),
-      ),
-    [setEdges],
-  );
+  const onEdgeDoubleClick: EdgeMouseHandler<DiagramFlowEdge> = useCallback((_e, edge) => setEditing({ kind: "edge", id: edge.id }), []);
 
   // Groups aren't React Flow parents, so carry their member nodes along manually.
   const dragOrigin = useRef<{ x: number; y: number; members: Map<string, { x: number; y: number }> } | null>(null);
   const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
     (_e, node) => {
+      setMenu(null);
       if (node.type !== "boundary") return;
       const members = new Map<string, { x: number; y: number }>();
       for (const n of nodes) if (n.type === "diagram" && n.data.group === node.data.groupId) members.set(n.id, { ...n.position });
@@ -184,60 +236,114 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
     [setNodes],
   );
 
-  const addStencilAt = useCallback(
-    (stencilId: string, screen: { x: number; y: number }) => {
-      const s = getStencil(stencilId);
-      const { width, height } = getNodeVariant(nodeVariant).size;
-      const p = screenToFlowPosition(screen);
-      const position = { x: Math.round((p.x - width / 2) / 10) * 10, y: Math.round((p.y - height / 2) / 10) * 10 };
-      setNodes((ns) => {
-        const base = s.id.split(".").slice(-1)[0].replace(/[^a-z0-9-]/gi, "") || "node";
-        const node: DiagramFlowNode = {
-          id: uniqueId(base, new Set(ns.map((n) => n.id))),
-          type: "diagram",
-          position,
-          selected: true,
-          data: {
-            stencil: stencilId,
-            label: s.label,
-            sublabel: s.defaultSublabel,
-            group: groupAt(ns, p.x, p.y),
-          },
-        };
-        return [...ns.map((n) => (n.selected ? { ...n, selected: false } : n)), node];
-      });
+  // ---------------------------------------------------------------- context menus
+
+  const openMenu = useCallback(
+    (e: ReactMouseEvent | MouseEvent, ctx: Omit<ActionContext, "editor" | "point">) => {
+      e.preventDefault();
+      const full: ActionContext = { ...ctx, editor, point: screenToFlowPosition({ x: e.clientX, y: e.clientY }) };
+      const items = actionRegistry.build(full);
+      setEditing(null);
+      setMenu(items.length ? { x: e.clientX, y: e.clientY, items, label: `${ctx.target} menu` } : null);
     },
-    [nodeVariant, screenToFlowPosition, setNodes],
+    [editor, screenToFlowPosition],
   );
+
+  const onPaneContextMenu = useCallback(
+    (e: ReactMouseEvent | MouseEvent) => openMenu(e, { target: "canvas", selection: editor.getSelection() }),
+    [openMenu, editor],
+  );
+
+  const onNodeContextMenu: NodeMouseHandler<FlowNode> = useCallback(
+    (e, node) => {
+      const sel = editor.getSelection();
+      const count = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length;
+      if (node.selected && count > 1) return openMenu(e, { target: "selection", selection: sel });
+      if (isGroupNode(node)) {
+        const groupIds = [node.data.groupId];
+        editor.select({ groupIds });
+        return openMenu(e, { target: "group", groupId: node.data.groupId, selection: { ...EMPTY, groupIds } });
+      }
+      editor.select({ nodeIds: [node.id] });
+      openMenu(e, { target: "node", nodeId: node.id, selection: { ...EMPTY, nodeIds: [node.id] } });
+    },
+    [editor, openMenu],
+  );
+
+  const openEdgeMenu = useCallback(
+    (e: ReactMouseEvent | MouseEvent, edgeId: string) => {
+      editor.select({ edgeIds: [edgeId] });
+      openMenu(e, { target: "edge", edgeId, selection: { ...EMPTY, edgeIds: [edgeId] } });
+    },
+    [editor, openMenu],
+  );
+  const onEdgeContextMenu: EdgeMouseHandler<DiagramFlowEdge> = useCallback((e, edge) => openEdgeMenu(e, edge.id), [openEdgeMenu]);
+
+  const onSelectionContextMenu = useCallback(
+    (e: ReactMouseEvent) => openMenu(e, { target: "selection", selection: editor.getSelection() }),
+    [openMenu, editor],
+  );
+
+  /** Double-click on empty canvas: stencil search at the cursor. */
+  const onPaneDoubleClick = (e: ReactMouseEvent) => {
+    if (!(e.target instanceof Element) || !e.target.classList.contains("react-flow__pane")) return;
+    const point = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    setMenu({
+      x: e.clientX,
+      y: e.clientY,
+      label: "Add a node",
+      testId: "quick-add",
+      searchable: "Add a node…",
+      items: stencilMenu("quick-add", (s) => ({ run: () => void editor.addNode(s.id, point) })),
+    });
+  };
 
   const onDrop = (e: DragEvent) => {
     const id = e.dataTransfer.getData(STENCIL_DND_MIME);
     if (!id) return;
     e.preventDefault();
-    addStencilAt(id, { x: e.clientX, y: e.clientY });
+    editor.addNode(id, screenToFlowPosition({ x: e.clientX, y: e.clientY }));
   };
 
-  const addAtCenter = (id: string) => {
-    const r = wrapper.current?.getBoundingClientRect();
-    if (r) addStencilAt(id, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
-  };
+  // ---------------------------------------------------------------- derived
 
   const direction = meta.direction ?? "LR";
-  const ctx = useMemo(() => ({ direction }), [direction]);
-  const nodeCount = nodes.filter((n) => n.type === "diagram").length;
+  const ui = useMemo<DiagramUi>(() => ({ direction, editing, setEditing, openEdgeMenu }), [direction, editing, openEdgeMenu]);
+  const diagramNodes = useMemo(() => nodes.filter(isDiagramNode), [nodes]);
+  const groupNodes = useMemo(() => nodes.filter(isGroupNode), [nodes]);
+  const selectedNodes = useMemo(() => diagramNodes.filter((n) => n.selected), [diagramNodes]);
+  const selectedGroups = useMemo(() => groupNodes.filter((n) => n.selected), [groupNodes]);
+  const selectedEdges = useMemo(() => edges.filter((e) => e.selected), [edges]);
+  const labels = useMemo(() => new Map(diagramNodes.map((n) => [n.id, n.data.label || n.id])), [diagramNodes]);
+  const nodeCount = diagramNodes.length;
+  const undoTitle = `Undo (${formatCombo(shortcutKeys("undo"))})`;
+  const redoTitle = `Redo (${formatCombo(shortcutKeys("redo"))})`;
 
   return (
-    <DiagramContext.Provider value={ctx}>
-      <div className={`canvas-view${presenting ? " is-presenting" : ""}`} data-testid="canvas-view">
+    <DiagramContext.Provider value={ui}>
+      <div
+        className={`canvas-view${presenting ? " is-presenting" : ""}`}
+        data-testid="canvas-view"
+        onContextMenu={(e) => {
+          // The app owns right-click; text fields keep the native menu (spellcheck, paste).
+          if (!isEditableTarget(e.target)) e.preventDefault();
+        }}
+      >
         {!presenting && (
-          <Palette collapsed={paletteCollapsed} onToggle={() => setPaletteCollapsed((c) => !c)} onAdd={addAtCenter} />
+          <Palette collapsed={paletteCollapsed} onToggle={() => setPaletteCollapsed((c) => !c)} onAdd={(id) => void editor.addNode(id)} />
         )}
-        <div className="canvas-wrap" ref={wrapper} onDragOver={(e) => {
-          if (e.dataTransfer.types.includes(STENCIL_DND_MIME)) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "copy";
-          }
-        }} onDrop={onDrop}>
+        <div
+          className="canvas-wrap"
+          data-testid="canvas-wrap"
+          ref={wrapper}
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes(STENCIL_DND_MIME)) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+            }
+          }}
+          onDrop={onDrop}
+        >
           <EdgeMarkers />
           <ReactFlow<FlowNode, DiagramFlowEdge>
             nodes={nodes}
@@ -245,10 +351,19 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            isValidConnection={isValidConnection}
+            connectionMode={ConnectionMode.Loose}
+            connectionRadius={28}
             onEdgeDoubleClick={onEdgeDoubleClick}
             onNodeDragStart={onNodeDragStart}
             onNodeDrag={onNodeDrag}
             onNodeDragStop={onNodeDragStop}
+            onPaneContextMenu={onPaneContextMenu}
+            onNodeContextMenu={onNodeContextMenu}
+            onEdgeContextMenu={onEdgeContextMenu}
+            onSelectionContextMenu={onSelectionContextMenu}
+            onDoubleClick={onPaneDoubleClick}
+            onMoveStart={() => setMenu(null)}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             colorMode={theme}
@@ -257,16 +372,28 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
             fitViewOptions={FIT}
             minZoom={0.15}
             maxZoom={2.5}
-            snapToGrid
+            snapToGrid={prefs.snap}
             snapGrid={[10, 10]}
             elevateNodesOnSelect={false}
             zoomOnDoubleClick={false}
-            deleteKeyCode={["Backspace", "Delete"]}
+            deleteKeyCode={null}
             connectionLineType={edgeStyle === "bezier" ? ConnectionLineType.Bezier : edgeStyle === "straight" ? ConnectionLineType.Straight : ConnectionLineType.SmoothStep}
           >
-            <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />
-            {!presenting && <Controls showInteractive={false} position="bottom-left" />}
+            {prefs.grid && <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />}
             {!presenting && (
+              <Controls showInteractive={false} position="bottom-left">
+                <ControlButton onClick={editor.undo} disabled={!history.canUndo} title={undoTitle} aria-label="Undo" data-testid="undo-button">
+                  <Icon name="undo" size={14} />
+                </ControlButton>
+                <ControlButton onClick={editor.redo} disabled={!history.canRedo} title={redoTitle} aria-label="Redo" data-testid="redo-button">
+                  <Icon name="redo" size={14} />
+                </ControlButton>
+                <ControlButton onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" data-testid="shortcuts-button">
+                  <Icon name="keyboard" size={14} />
+                </ControlButton>
+              </Controls>
+            )}
+            {!presenting && prefs.minimap && (
               <MiniMap
                 position="bottom-right"
                 pannable
@@ -274,7 +401,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
                 nodeBorderRadius={6}
                 nodeStrokeWidth={2}
                 nodeColor={(n) => (n.type === "boundary" ? "transparent" : getStencil((n as DiagramFlowNode).data.stencil).accent)}
-                nodeStrokeColor={(n) => (n.type === "boundary" ? toneColor[(n as FlowNode & { type: "boundary" }).data.tone] : "transparent")}
+                nodeStrokeColor={(n) => (n.type === "boundary" ? toneColor[(n as GroupFlowNode).data.tone] : "transparent")}
               />
             )}
           </ReactFlow>
@@ -288,7 +415,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
                   {nodeCount} nodes, {edges.length} edges
                 </span>
                 {modified && (
-                  <button className="link-btn" onClick={reset} data-testid="reset-diagram" title="Discard your edits to this diagram">
+                  <button className="link-btn" onClick={reset} data-testid="reset-diagram" title="Discard your edits to this diagram (undoable)">
                     <Icon name="reset" size={13} /> Edited, reset
                   </button>
                 )}
@@ -305,11 +432,38 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
           {nodeCount === 0 && !presenting && (
             <div className="canvas-empty">
               <strong>This diagram is empty</strong>
-              <span>Drag a stencil from the left to add the first node.</span>
+              <span>Drag a stencil from the left, or double-click the canvas to add one.</span>
             </div>
           )}
         </div>
+        {!presenting && (
+          <Inspector
+            editor={editor}
+            meta={meta}
+            selectedNodes={selectedNodes}
+            selectedGroups={selectedGroups}
+            selectedEdges={selectedEdges}
+            groups={groupNodes}
+            nodeLabel={(id) => labels.get(id) ?? id}
+            counts={{ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }}
+            collapsed={!prefs.inspector}
+            onToggle={() => setPref("inspector", !prefs.inspector)}
+            focus={inspectorFocus}
+          />
+        )}
       </div>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={menu.items}
+          label={menu.label}
+          searchable={menu.searchable}
+          testId={menu.testId}
+          onClose={() => setMenu(null)}
+        />
+      )}
+      {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
     </DiagramContext.Provider>
   );
 }

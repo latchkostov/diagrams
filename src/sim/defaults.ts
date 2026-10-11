@@ -1,7 +1,7 @@
 import type { SimRole } from "../model/types";
 import type { NodeSimProps } from "./types";
 
-export type ResolvedProps = Required<NodeSimProps>;
+export type ResolvedProps = Required<Omit<NodeSimProps, "emits">> & Pick<NodeSimProps, "emits">;
 
 /** Ignore malformed free-form diagram props rather than poisoning the clock. */
 export function resolveProps(
@@ -19,6 +19,10 @@ export function resolveProps(
     failureRate: number("failureRate", 0, 0, 1),
     maxDeliveryCount: Math.floor(number("maxDeliveryCount", 3, 1)),
     partitions: Math.floor(number("partitions", 3, 1)),
+    emits: typeof props.emits === "string" ? props.emits
+      : props.emits && typeof props.emits === "object" && !Array.isArray(props.emits)
+        ? Object.fromEntries(Object.entries(props.emits).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+        : undefined,
     messageType: typeof props.messageType === "string" ? props.messageType : label || "Message",
   };
 }

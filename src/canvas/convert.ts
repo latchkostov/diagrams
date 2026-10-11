@@ -7,41 +7,47 @@ import {
   type GroupFlowNode,
 } from "./types";
 
-/** Metadata carried alongside the canvas state so export round-trips the whole file. */
-export type DiagramMeta = Pick<DiagramFile, "title" | "description" | "direction">;
+/**
+ * Everything in the file that isn't a node, edge or group, carried alongside the canvas state so
+ * export / autosave / undo round-trip the whole file (saved simulations included, untouched).
+ */
+export type DiagramMeta = Pick<DiagramFile, "title" | "description" | "direction" | "simulations">;
+
+export const groupToFlow = (g: DiagramGroup): GroupFlowNode => ({
+  id: GROUP_PREFIX + g.id,
+  type: "boundary",
+  position: { x: g.x, y: g.y },
+  width: g.width,
+  height: g.height,
+  zIndex: -1,
+  dragHandle: ".grp-drag",
+  data: { groupId: g.id, label: g.label, tone: g.tone ?? "neutral" },
+});
+
+export const nodeToFlow = (n: DiagramNode): DiagramFlowNode => ({
+  id: n.id,
+  type: "diagram",
+  position: { x: n.x, y: n.y },
+  data: { stencil: n.stencil, label: n.label, sublabel: n.sublabel, group: n.group, props: n.props },
+});
+
+export const edgeToFlow = (e: DiagramEdge): DiagramFlowEdge => ({
+  id: e.id,
+  source: e.from,
+  target: e.to,
+  type: "flow",
+  data: { kind: e.kind ?? "async", label: e.label, sourceSide: e.sourceSide, targetSide: e.targetSide, props: e.props },
+});
 
 /**
  * DiagramFile -> React Flow. Groups become background nodes (zIndex -1), NOT React Flow
  * parents, so every node keeps the absolute coordinates stored in the file.
  */
 export function toFlow(d: DiagramFile): { meta: DiagramMeta; nodes: FlowNode[]; edges: DiagramFlowEdge[] } {
-  const groups: GroupFlowNode[] = (d.groups ?? []).map((g) => ({
-    id: GROUP_PREFIX + g.id,
-    type: "boundary",
-    position: { x: g.x, y: g.y },
-    width: g.width,
-    height: g.height,
-    zIndex: -1,
-    dragHandle: ".grp-drag",
-    data: { groupId: g.id, label: g.label, tone: g.tone ?? "neutral" },
-  }));
-  const nodes: DiagramFlowNode[] = d.nodes.map((n) => ({
-    id: n.id,
-    type: "diagram",
-    position: { x: n.x, y: n.y },
-    data: { stencil: n.stencil, label: n.label, sublabel: n.sublabel, group: n.group, props: n.props },
-  }));
-  const edges: DiagramFlowEdge[] = d.edges.map((e) => ({
-    id: e.id,
-    source: e.from,
-    target: e.to,
-    type: "flow",
-    data: { kind: e.kind ?? "async", label: e.label, props: e.props },
-  }));
   return {
-    meta: { title: d.title, description: d.description, direction: d.direction },
-    nodes: [...groups, ...nodes],
-    edges,
+    meta: { title: d.title, description: d.description, direction: d.direction, simulations: d.simulations },
+    nodes: [...(d.groups ?? []).map(groupToFlow), ...d.nodes.map(nodeToFlow)],
+    edges: d.edges.map(edgeToFlow),
   };
 }
 
@@ -84,6 +90,8 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
     to: e.target,
     label: e.data?.label,
     kind: e.data?.kind ?? "async",
+    sourceSide: e.data?.sourceSide,
+    targetSide: e.data?.targetSide,
     props: e.data?.props,
   }));
   return {
@@ -94,6 +102,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
     ...(groups.length ? { groups } : {}),
     nodes: out,
     edges: outEdges,
+    ...(meta.simulations ? { simulations: meta.simulations } : {}),
   };
 }
 

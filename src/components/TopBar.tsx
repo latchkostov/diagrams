@@ -3,6 +3,7 @@ import { useSettings } from "../harness/settings";
 import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
 import { edgeStyles, type EdgeStyle } from "../harness/edgeStyles";
 import { Icon } from "./Icon";
+import type { View } from "../lib/urlState";
 
 export interface ExampleOption {
   slug: string;
@@ -10,8 +11,8 @@ export interface ExampleOption {
 }
 
 interface Props {
-  view: "gallery" | "canvas";
-  onView: (v: "gallery" | "canvas") => void;
+  view: View;
+  onView: (v: View) => void;
   exampleOptions: ExampleOption[];
   example?: string;
   onExample: (slug: string) => void;
@@ -24,21 +25,30 @@ export function TopBar(p: Props) {
   const s = useSettings();
   const file = useRef<HTMLInputElement>(null);
   const canvas = p.view === "canvas";
+  const lab = p.view === "lab";
+  // The Lab is a dev harness: linked from the top bar in dev builds only. Production keeps it
+  // reachable by URL (?view=lab) and shows the tab only while you're on it.
+  const showLab = import.meta.env.DEV || lab;
 
   return (
     <header className="topbar" data-testid="topbar">
-      <div className="brand">
+      <div className="brand" data-testid="brand">
         <Logo />
         <span>Diagrams</span>
       </div>
 
       <div className="segmented" role="tablist" aria-label="View">
-        <button role="tab" aria-selected={!canvas} className={!canvas ? "is-on" : ""} onClick={() => p.onView("gallery")} data-testid="view-gallery">
+        <button role="tab" aria-selected={p.view === "gallery"} className={p.view === "gallery" ? "is-on" : ""} onClick={() => p.onView("gallery")} data-testid="view-gallery">
           <Icon name="grid" size={14} /> Gallery
         </button>
         <button role="tab" aria-selected={canvas} className={canvas ? "is-on" : ""} onClick={() => p.onView("canvas")} data-testid="view-canvas">
           <Icon name="canvas" size={14} /> Canvas
         </button>
+        {showLab && (
+          <button role="tab" aria-selected={lab} className={lab ? "is-on" : ""} onClick={() => p.onView("lab")} data-testid="view-lab" title="Component lab: presets of the current code">
+            <LabGlyph /> Lab
+          </button>
+        )}
       </div>
 
       {canvas && (
@@ -56,7 +66,7 @@ export function TopBar(p: Props) {
 
       <div className="topbar-spacer" />
 
-      <div className="topbar-group" aria-label="Look">
+      <div className="topbar-group" aria-label="Look" data-testid="topbar-look">
         <label className="select select-quiet" title="Node renderer">
           <span className="select-prefix">Node</span>
           <select value={s.nodeVariant} onChange={(e) => s.set("nodeVariant", e.target.value as NodeVariantId)} name="node-variant" data-testid="variant-picker">
@@ -67,7 +77,7 @@ export function TopBar(p: Props) {
             ))}
           </select>
         </label>
-        {canvas && (
+        {(canvas || lab) && (
           <label className="select select-quiet" title="Edge path style">
             <span className="select-prefix">Edge</span>
             <select value={s.edgeStyle} onChange={(e) => s.set("edgeStyle", e.target.value as EdgeStyle)} name="edge-style" data-testid="edge-style-picker">
@@ -81,7 +91,7 @@ export function TopBar(p: Props) {
         )}
       </div>
 
-      <div className="topbar-group">
+      <div className="topbar-group" data-testid="topbar-actions">
         <input
           ref={file}
           type="file"
@@ -119,6 +129,14 @@ export function TopBar(p: Props) {
         </button>
       </div>
     </header>
+  );
+}
+
+function LabGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 2h4M6.75 2v4.25L3 12.75A1 1 0 0 0 3.9 14.25h8.2a1 1 0 0 0 .9-1.5L9.25 6.25V2M4.75 10h6.5" />
+    </svg>
   );
 }
 

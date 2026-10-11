@@ -1,0 +1,10 @@
+{
+  // Type-checks the e2e specs and playwright.config.ts (the root tsconfig only covers src/).
+  // Run: pnpm exec tsc --noEmit -p tests   (needs the @types/node dev dependency)
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["./**/*.ts", "../playwright.config.ts"]
+}

@@ -1,22 +1,25 @@
 import { memo, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
-import { Handle, Position, useReactFlow, type NodeProps } from "@xyflow/react";
+import { Handle, useReactFlow, type NodeProps } from "@xyflow/react";
 import { FALLBACK_STENCIL, getStencil } from "../../stencils/registry";
 import { getNodeVariant } from "../../harness/nodeVariants";
 import { useSettings } from "../../harness/settings";
 import { useDiagram } from "../DiagramContext";
+import { SIDES, sidePosition } from "../edges/routing";
 import type { DiagramFlowNode } from "../types";
 
-/** React Flow wrapper: handles + inline editing around whichever body variant is selected. */
+/**
+ * React Flow wrapper: handles + inline editing around whichever body variant is selected.
+ * One handle per side, all `source` type: the canvas runs in loose connection mode, so a drag
+ * can start or end on any side. Edges pick their sides from geometry (see edges/routing.ts).
+ */
 function DiagramNodeImpl({ id, data, selected }: NodeProps<DiagramFlowNode>) {
   const { nodeVariant } = useSettings();
-  const { direction } = useDiagram();
+  const { editing, setEditing } = useDiagram();
   const { updateNodeData } = useReactFlow();
-  const [editing, setEditing] = useState(false);
   const stencil = getStencil(data.stencil);
   const unknown = stencil === FALLBACK_STENCIL;
   const { Component } = getNodeVariant(nodeVariant);
-  const [targetPos, sourcePos] =
-    direction === "TB" ? [Position.Top, Position.Bottom] : [Position.Left, Position.Right];
+  const edit = editing?.kind === "node" && editing.id === id ? editing : null;
 
   return (
     <div
@@ -24,24 +27,33 @@ function DiagramNodeImpl({ id, data, selected }: NodeProps<DiagramFlowNode>) {
       data-testid={`node-${id}`}
       onDoubleClick={(e) => {
         e.stopPropagation();
-        setEditing(true);
+        setEditing({ kind: "node", id, field: "label" });
       }}
       style={{ "--accent": stencil.accent } as CSSProperties}
     >
-      <Handle type="target" position={targetPos} className="dn-handle" />
       <Component stencil={stencil} label={data.label} sublabel={data.sublabel} selected={selected} unknown={unknown} />
-      <Handle type="source" position={sourcePos} className="dn-handle" />
+      {SIDES.map((side) => (
+        <Handle
+          key={side}
+          id={side}
+          type="source"
+          position={sidePosition[side]}
+          className="dn-handle"
+          data-testid={`handle-${id}-${side}`}
+        />
+      ))}
       {unknown && (
         <div className="dn-unknown" title={`Unknown stencil "${data.stencil}"`}>
           ? {data.stencil}
         </div>
       )}
-      {editing && (
+      {edit && (
         <NodeEditor
           label={data.label}
           sublabel={data.sublabel ?? ""}
+          focus={edit.field}
           onDone={(next) => {
-            setEditing(false);
+            setEditing(null);
             if (next)
               updateNodeData(id, {
                 label: next.label.trim() || data.label,
@@ -57,15 +69,18 @@ function DiagramNodeImpl({ id, data, selected }: NodeProps<DiagramFlowNode>) {
 function NodeEditor({
   label,
   sublabel,
+  focus,
   onDone,
 }: {
   label: string;
   sublabel: string;
+  focus: "label" | "sublabel";
   onDone: (next: { label: string; sublabel: string } | null) => void;
 }) {
   const [l, setL] = useState(label);
   const [s, setS] = useState(sublabel);
   const first = useRef<HTMLInputElement>(null);
+  const second = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const done = useRef(false);
   const finish = (next: { label: string; sublabel: string } | null) => {
@@ -74,9 +89,12 @@ function NodeEditor({
     onDone(next);
   };
   useEffect(() => {
-    first.current?.select();
-  }, []);
+    // A frame later: the context menu that opened the editor may still be releasing focus.
+    const id = requestAnimationFrame(() => (focus === "sublabel" ? second : first).current?.select());
+    return () => cancelAnimationFrame(id);
+  }, [focus]);
   const onKey = (e: KeyboardEvent) => {
+    e.stopPropagation();
     if (e.key === "Enter") finish({ label: l, sublabel: s });
     if (e.key === "Escape") finish(null);
   };
@@ -100,6 +118,7 @@ function NodeEditor({
         data-testid="node-editor-label"
       />
       <input
+        ref={second}
         value={s}
         onChange={(e) => setS(e.target.value)}
         onKeyDown={onKey}

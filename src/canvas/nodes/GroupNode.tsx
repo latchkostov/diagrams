@@ -1,5 +1,7 @@
 import { memo, type CSSProperties } from "react";
-import { NodeResizer, type NodeProps } from "@xyflow/react";
+import { NodeResizer, useReactFlow, type NodeProps } from "@xyflow/react";
+import { InlineInput } from "../../components/InlineInput";
+import { useDiagram } from "../DiagramContext";
 import type { GroupFlowNode, GroupTone } from "../types";
 
 export const toneColor: Record<GroupTone, string> = {
@@ -11,8 +13,20 @@ export const toneColor: Record<GroupTone, string> = {
   neutral: "#8a94a6",
 };
 
+export const toneLabel: Record<GroupTone, string> = {
+  azure: "Azure",
+  aws: "AWS",
+  gcp: "Google Cloud",
+  k8s: "Kubernetes",
+  onprem: "On-premises",
+  neutral: "Neutral",
+};
+
 /** Boundary box (cloud, cluster, network) drawn behind nodes. Dragged by its label. */
-function GroupNodeImpl({ data, selected }: NodeProps<GroupFlowNode>) {
+function GroupNodeImpl({ id, data, selected }: NodeProps<GroupFlowNode>) {
+  const { editing, setEditing } = useDiagram();
+  const { updateNodeData } = useReactFlow();
+  const isEditing = editing?.kind === "group" && editing.id === data.groupId;
   return (
     <div
       className={`grp${selected ? " is-selected" : ""}`}
@@ -26,9 +40,28 @@ function GroupNodeImpl({ data, selected }: NodeProps<GroupFlowNode>) {
         lineClassName="grp-resize-line"
         handleClassName="grp-resize-handle"
       />
-      <div className="grp-label grp-drag">
+      <div
+        className="grp-label grp-drag"
+        data-testid={`group-label-${data.groupId}`}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          setEditing({ kind: "group", id: data.groupId });
+        }}
+      >
         <span className="grp-swatch" />
-        {data.label}
+        {isEditing ? (
+          <InlineInput
+            value={data.label}
+            placeholder="Boundary name"
+            testId="group-label-input"
+            onDone={(next) => {
+              setEditing(null);
+              if (next !== null && next.trim()) updateNodeData(id, { label: next.trim() });
+            }}
+          />
+        ) : (
+          data.label
+        )}
       </div>
     </div>
   );

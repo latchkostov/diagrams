@@ -1,5 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
-import type { DiagramGroup } from "../model/types";
+import type { DiagramGroup, Side } from "../model/types";
 
 export type GroupTone = NonNullable<DiagramGroup["tone"]>;
 
@@ -26,6 +26,9 @@ export type FlowNode = DiagramFlowNode | GroupFlowNode;
 export type FlowEdgeData = {
   kind: "async" | "sync";
   label?: string;
+  /** Pinned attachment sides. Omitted = chosen from node positions on every render (floating). */
+  sourceSide?: Side;
+  targetSide?: Side;
   props?: Record<string, unknown>;
 };
 export type DiagramFlowEdge = Edge<FlowEdgeData, "flow">;

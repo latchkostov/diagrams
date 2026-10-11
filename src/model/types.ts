@@ -54,6 +54,79 @@ export interface DiagramFile {
   groups?: DiagramGroup[];
   nodes: DiagramNode[];
   edges: DiagramEdge[];
+  /** Saved live-view simulations: who sends what, when things break, and what should hold true. */
+  simulations?: Simulation[];
+}
+
+// ---------- Simulations (docs/SIMULATIONS.md) ----------
+// Traffic shapes follow load-testing tools (k6 / Gatling); timeline + expectations follow chaos
+// experiments (actions + steady-state hypothesis). Times are simulation ms from the start.
+
+export interface Simulation {
+  id: string;
+  title: string;
+  description?: string;
+  /** PRNG seed so a simulation replays identically. */
+  seed?: number;
+  /** Auto-stop after this many ms. Default: when traffic and timeline are done and the system drains. */
+  durationMs?: number;
+  /** Node status / prop overrides applied before t=0 (e.g. a consumer already slow). */
+  setup?: {
+    status?: Record<string, "up" | "paused" | "down">;
+    props?: Record<string, Record<string, unknown>>;
+  };
+  traffic: TrafficProfile[];
+  timeline?: TimelineStep[];
+  expectations?: Expectation[];
+}
+
+export interface TrafficProfile {
+  id: string;
+  /** Node where messages start (any node; usually a source, a producer or a topic). */
+  node: string;
+  /** Message type, e.g. "MemberJoined". Default: the node's messageType. */
+  messageType?: string;
+  /** Optional display name, e.g. "New member storm". */
+  label?: string;
+  shape: TrafficShape;
+}
+
+export type TrafficShape =
+  /** `count` messages at `atMs`, spread evenly over `spreadMs` (a storm / batch). */
+  | { kind: "burst"; count: number; atMs?: number; spreadMs?: number }
+  /** Steady `ratePerSec` from `fromMs` for `durationMs`. */
+  | { kind: "constant"; ratePerSec: number; fromMs?: number; durationMs: number }
+  /** k6-style stages: linear change from the previous rate to `targetRate` over each stage. */
+  | { kind: "ramp"; fromMs?: number; startRate?: number; stages: { durationMs: number; targetRate: number }[] }
+  /** `baseRate` throughout, jumping to `peakRate` for `peakMs` starting at `atMs`. */
+  | { kind: "spike"; baseRate: number; peakRate: number; atMs: number; peakMs: number; durationMs: number };
+
+export interface TimelineStep {
+  atMs: number;
+  action: TimelineAction;
+}
+
+export type TimelineAction =
+  | { do: "status"; node: string; status: "up" | "paused" | "down" }
+  | { do: "props"; node: string; props: Record<string, unknown> }
+  | { do: "inject"; node: string; count: number; messageType?: string; spreadMs?: number }
+  /** Narration for presenting: a callout, optionally highlighting nodes and pausing playback. */
+  | { do: "note"; text: string; focus?: string[]; pause?: boolean };
+
+export type MetricField = "processed" | "backlog" | "inFlight" | "failed" | "deadLettered" | "dropped" | "throughput" | "lag";
+
+export interface Expectation {
+  id: string;
+  /** Human wording, e.g. "Nothing is dead-lettered". */
+  label: string;
+  /** What to measure: a node field (lag may name a consumer group), or messages in the whole system. */
+  metric: { node: string; field: MetricField; group?: string } | { system: "inSystem" };
+  op: "<" | "<=" | "==" | ">=" | ">";
+  value: number;
+  /** "always": must hold the whole run; "eventually": must hold at some point; "end": checked when the run ends;
+   *  "at": checked at `atMs`. Default "end". */
+  when?: "always" | "eventually" | "end" | "at";
+  atMs?: number;
 }
 
 export interface DiagramNode {

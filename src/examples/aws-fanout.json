@@ -44,7 +44,11 @@
       "x": 760,
       "y": 280,
       "group": "aws",
-      "props": {}
+      "props": {
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": "OrderPlaced"
+      }
     },
     {
       "id": "sns",
@@ -54,7 +58,9 @@
       "x": 1120,
       "y": 280,
       "group": "aws",
-      "props": {}
+      "props": {
+        "partitions": 64
+      }
     },
     {
       "id": "fulfillment-q",
@@ -104,7 +110,10 @@
       "y": 160,
       "group": "aws",
       "props": {
-        "batchSize": 10
+        "batchSize": 10,
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": "FulfillmentReserved"
       }
     },
     {
@@ -116,7 +125,10 @@
       "y": 280,
       "group": "aws",
       "props": {
-        "batchSize": 100
+        "batchSize": 100,
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": "OrderArchived"
       }
     },
     {
@@ -128,7 +140,10 @@
       "y": 400,
       "group": "aws",
       "props": {
-        "batchSize": 10
+        "batchSize": 10,
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": "ReceiptPrepared"
       }
     },
     {
@@ -181,7 +196,10 @@
       "x": 1840,
       "y": 40,
       "group": "aws",
-      "props": {}
+      "props": {
+        "concurrency": 64,
+        "latencyMs": 150
+      }
     },
     {
       "id": "dlq",
@@ -204,7 +222,9 @@
       "to": "api",
       "label": "HTTPS",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "api-to-intake",
@@ -212,7 +232,9 @@
       "to": "intake",
       "label": "POST /orders",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "intake-to-sns",
@@ -220,7 +242,9 @@
       "to": "sns",
       "label": "OrderPlaced",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "sns-to-fulfillment-q",
@@ -228,7 +252,13 @@
       "to": "fulfillment-q",
       "label": "Fulfillment subscription",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "OrderPlaced"
+        ],
+        "group": "fulfillment-q"
+      }
     },
     {
       "id": "sns-to-archive-q",
@@ -236,7 +266,13 @@
       "to": "archive-q",
       "label": "Archive subscription",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "OrderPlaced"
+        ],
+        "group": "archive-q"
+      }
     },
     {
       "id": "sns-to-receipt-q",
@@ -244,7 +280,13 @@
       "to": "receipt-q",
       "label": "Receipt subscription",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "OrderPlaced"
+        ],
+        "group": "receipt-q"
+      }
     },
     {
       "id": "fulfillment-q-to-fulfill",
@@ -252,7 +294,9 @@
       "to": "fulfill",
       "label": "Event source · batch 10",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "archive-q-to-archive",
@@ -260,7 +304,9 @@
       "to": "archive",
       "label": "Event source · batch 100",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "receipt-q-to-receipt",
@@ -268,7 +314,9 @@
       "to": "receipt",
       "label": "Event source · batch 10",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "fulfill-to-ddb",
@@ -276,7 +324,9 @@
       "to": "ddb",
       "label": "Conditional update",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "archive-to-s3",
@@ -284,7 +334,9 @@
       "to": "s3",
       "label": "PutObject",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "receipt-to-receipt-db",
@@ -292,7 +344,9 @@
       "to": "receipt-db",
       "label": "Put receipt status",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "schedule-to-reconcile",
@@ -300,7 +354,9 @@
       "to": "reconcile",
       "label": "Scheduled event",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "reconcile-to-ddb",
@@ -308,7 +364,9 @@
       "to": "ddb",
       "label": "Query pending orders",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "fulfillment-q-to-dlq",
@@ -316,7 +374,224 @@
       "to": "dlq",
       "label": "After 5 failed receives",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "steady-spike",
+      "title": "Steady traffic then spike",
+      "seed": 7,
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "client",
+          "messageType": "OrderRequest",
+          "label": "290 orders: steady demand and a flash sale",
+          "shape": {
+            "kind": "spike",
+            "baseRate": 15,
+            "peakRate": 100,
+            "atMs": 3000,
+            "peakMs": 2000,
+            "durationMs": 8000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "SNS fans each order into isolated fulfillment, archive and receipt queues.",
+            "focus": [
+              "sns"
+            ]
+          }
+        },
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "note",
+            "text": "The flash sale peaks at 100 orders per second.",
+            "focus": [
+              "client",
+              "fulfillment-q",
+              "archive-q",
+              "receipt-q"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "fulfillment",
+          "label": "Fulfillment",
+          "metric": {
+            "node": "ddb",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 290,
+          "when": "end"
+        },
+        {
+          "id": "archive",
+          "label": "Archive",
+          "metric": {
+            "node": "s3",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 290,
+          "when": "end"
+        },
+        {
+          "id": "receipts",
+          "label": "Receipts",
+          "metric": {
+            "node": "receipt-db",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 290,
+          "when": "end"
+        },
+        {
+          "id": "no-dlq",
+          "label": "No dlq",
+          "metric": {
+            "node": "fulfillment-q",
+            "field": "deadLettered"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    },
+    {
+      "id": "throttle",
+      "title": "Lambda throttling",
+      "seed": 7,
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "client",
+          "messageType": "OrderRequest",
+          "label": "300 orders under reserved-concurrency pressure",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 50,
+            "durationMs": 6000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 2000,
+          "action": {
+            "do": "props",
+            "node": "fulfill",
+            "props": {
+              "concurrency": 1
+            }
+          }
+        },
+        {
+          "atMs": 2000,
+          "action": {
+            "do": "note",
+            "text": "Fulfillment is throttled to one Lambda worker. The other queues remain independent.",
+            "focus": [
+              "fulfill",
+              "fulfillment-q"
+            ],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 10000,
+          "action": {
+            "do": "props",
+            "node": "fulfill",
+            "props": {
+              "concurrency": 64
+            }
+          }
+        },
+        {
+          "atMs": 10000,
+          "action": {
+            "do": "note",
+            "text": "Reserved concurrency is restored; fulfillment catches up.",
+            "focus": [
+              "fulfill",
+              "ddb"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "lag-grows",
+          "label": "Lag grows",
+          "metric": {
+            "node": "fulfillment-q",
+            "field": "lag"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 8000
+        },
+        {
+          "id": "drained",
+          "label": "Drained",
+          "metric": {
+            "node": "fulfillment-q",
+            "field": "lag"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "fulfillment",
+          "label": "Fulfillment",
+          "metric": {
+            "node": "ddb",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 300,
+          "when": "end"
+        },
+        {
+          "id": "archive",
+          "label": "Archive",
+          "metric": {
+            "node": "s3",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 300,
+          "when": "end"
+        },
+        {
+          "id": "receipts",
+          "label": "Receipts",
+          "metric": {
+            "node": "receipt-db",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 300,
+          "when": "end"
+        }
+      ]
     }
   ]
 }
