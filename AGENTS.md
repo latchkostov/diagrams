@@ -17,6 +17,10 @@ owner's working reference and stay on this machine.
 ## Commands
 - `pnpm dev`, `pnpm build`, `pnpm test` (Vitest), `pnpm test:e2e` (Playwright), `pnpm check` (all)
 
+## UX
+Follow `docs/UX-PRINCIPLES.md`: simple by default, customizable on demand. Before adding a control,
+check the chrome budget and prefer context menus and the inspector. Every feature batch ends with a UX review.
+
 ## Conventions
 - UI tests select only by `data-testid`; give every interactive element one.
 - The browser context menu is never shown; use the action registry in `src/editor/actions.ts`.
