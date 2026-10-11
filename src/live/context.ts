@@ -23,6 +23,8 @@ export interface LiveUi {
   notice: string | null;
   /** Leave live mode; null where live is always on (Lab stages). */
   exit: (() => void) | null;
+  /** "Record video…": the setup dialog, then the share prompt, countdown and recording. */
+  openRecord(): void;
 }
 
 export const LiveContext = createContext<LiveUi | null>(null);

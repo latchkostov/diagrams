@@ -33,7 +33,8 @@ import type { EditorApi, Selection, XY } from "./types";
 /** Which canvas mode a menu is built for. */
 export type EditorMode = "edit" | "live";
 
-export type MenuTarget = "canvas" | "node" | "edge" | "selection" | "group";
+/** "annotation" is a text, note, zone or shape (its id is in `nodeId`). */
+export type MenuTarget = "canvas" | "node" | "edge" | "selection" | "group" | "annotation";
 
 export interface ActionContext {
   target: MenuTarget;

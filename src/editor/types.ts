@@ -1,4 +1,12 @@
-import type { DiagramEdge, DiagramFile, DiagramGroup, DiagramNode } from "../model/types";
+import type {
+  AnnotationKind,
+  AnnotationShape,
+  DiagramAnnotation,
+  DiagramEdge,
+  DiagramFile,
+  DiagramGroup,
+  DiagramNode,
+} from "../model/types";
 import type { EditTarget } from "../canvas/DiagramContext";
 import type { AlignMode, Axis } from "./arrange";
 import type { GroupTone } from "../canvas/types";
@@ -6,7 +14,11 @@ import type { ClipboardPayload } from "./clipboard";
 
 export type XY = { x: number; y: number };
 
-/** Ids use the saved-file namespace: group ids are DiagramGroup ids (not React Flow ids). */
+/**
+ * Ids use the saved-file namespace: group ids are DiagramGroup ids (not React Flow ids).
+ * `nodeIds` also holds annotation ids (they share the node namespace), so copy, delete, align and
+ * nudge treat annotations like nodes; node-only actions check `getNode`.
+ */
 export interface Selection {
   nodeIds: string[];
   edgeIds: string[];
@@ -41,6 +53,7 @@ export interface EditorApi {
   getNode(id: string): DiagramNode | undefined;
   getEdge(id: string): DiagramEdge | undefined;
   getGroup(id: string): DiagramGroup | undefined;
+  getAnnotation(id: string): DiagramAnnotation | undefined;
   getSelection(): Selection;
 
   // ---- selection ----
@@ -57,6 +70,12 @@ export interface EditorApi {
   updateEdge(id: string, patch: Partial<Omit<DiagramEdge, "id">>, opts?: EditOptions): void;
   setEdgeProps(id: string, patch: Record<string, unknown>, opts?: EditOptions): void;
   updateGroup(id: string, patch: Partial<Omit<DiagramGroup, "id">>, opts?: EditOptions): void;
+  /**
+   * Adds a text, note, zone or shape centred on `at` (flow coords; default = the pointer for "T",
+   * else the view centre), selects it and, except for shapes, starts editing its text. Returns its id.
+   */
+  addAnnotation(kind: AnnotationKind, opts?: { at?: XY; shape?: AnnotationShape; atPointer?: boolean }): string;
+  updateAnnotation(id: string, patch: Partial<Omit<DiagramAnnotation, "id">>, opts?: EditOptions): void;
   updateMeta(patch: DiagramMetaPatch, opts?: EditOptions): void;
   connect(from: string, to: string): string | null;
   reverseEdge(id: string): void;

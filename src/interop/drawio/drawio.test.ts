@@ -35,9 +35,11 @@ describe("draw.io import: uncompressed fixture", () => {
     expect(byId.get("kafka")?.stencil).toBe("kafka.topic");
     expect(byId.get("kafka")?.sublabel).toBe("orders.v1");
     expect(byId.get("pg")?.stencil).toBe("postgres");
-    // The text annotation is skipped.
+    // The free-standing text becomes a text annotation, not a node.
     expect(byId.has("note")).toBe(false);
-    expect(warnings.some((w) => /text label/.test(w))).toBe(true);
+    expect(diagram.annotations).toEqual([
+      expect.objectContaining({ id: "note", kind: "text", text: "Draft: owners to confirm" }),
+    ]);
 
     // Swimlane -> group, children are members, tone from the colour/label.
     expect(diagram.groups).toHaveLength(1);

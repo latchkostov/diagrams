@@ -34,6 +34,18 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - **Live** is the mode where messages flow (toggle, L). A **simulation** is a saved, scripted run you
   replay in it. "Free play" is live without one.
 - **Boundary** (never "group") for the box around nodes: Add boundary, Remove boundary, Colour.
+- **Annotations** document a diagram and never take part in the simulation. Four kinds, one word each:
+  - **Text**: plain words on the canvas (titles, captions), no chrome. `T` adds text at the pointer.
+  - **Note**: a tinted sticky note.
+  - **Zone**: a labelled, dashed region drawn behind nodes. **Zone vs boundary:** a boundary groups nodes
+    (they belong to it and move with it, and it can be fitted to them); a zone is a visual region only.
+    Nodes don't belong to a zone, and moving a zone moves nothing else.
+  - **Shape**: a plain outline (rectangle, rounded rectangle, ellipse, diamond, cylinder) for when no stencil
+    fits. The only annotation an edge may end on, for documentation; no traffic flows to or from it.
+
+  They're added from **Add ▸** on the canvas right-click, the stencil rail's **Annotate** group, or the palette
+  ("Add › Note"). Their menu says **Edit text** (a zone: **Rename**), **Colour** and **Shape**.
+
 - **Subtitle** for a node's second line. **Properties** opens the inspector for the thing.
 - **Your diagrams** is the user's own library in this browser (File > Your diagrams…, the picker's
   first group, the start card's first list). Open, Import, Paste and **Save a copy** each add a diagram

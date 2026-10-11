@@ -33,7 +33,10 @@ const SELECTION_SHORTCUTS = new Set([
  * Global canvas shortcuts (window, capture phase — so arrow keys beat React Flow's own node
  * nudging and group contents move along). Ignored while typing or inside menus / dialogs.
  */
-export function useCanvasShortcuts(editor: EditorApi, opts: { enabled: boolean; onEscape: () => void }) {
+export function useCanvasShortcuts(
+  editor: EditorApi,
+  opts: { enabled: boolean; onEscape: () => void; /** Live view: no new annotations mid-run. */ live?: boolean },
+) {
   const optsRef = useRef(opts);
   useLayoutEffect(() => {
     optsRef.current = opts;
@@ -104,11 +107,18 @@ export function useCanvasShortcuts(editor: EditorApi, opts: { enabled: boolean; 
           editor.moveSelection(d[0] * step, d[1] * step);
           break;
         }
+        case "add-text":
+          if (optsRef.current.live || e.repeat) return;
+          handled();
+          editor.addAnnotation("text", { atPointer: true });
+          break;
         case "rename": {
           const total = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length;
           if (total !== 1) return;
           handled();
-          if (sel.nodeIds[0]) editor.startEditing({ kind: "node", id: sel.nodeIds[0], field: "label" });
+          if (sel.nodeIds[0] && editor.getAnnotation(sel.nodeIds[0]))
+            editor.startEditing({ kind: "annotation", id: sel.nodeIds[0] });
+          else if (sel.nodeIds[0]) editor.startEditing({ kind: "node", id: sel.nodeIds[0], field: "label" });
           else if (sel.edgeIds[0]) editor.startEditing({ kind: "edge", id: sel.edgeIds[0] });
           else editor.startEditing({ kind: "group", id: sel.groupIds[0] });
           break;

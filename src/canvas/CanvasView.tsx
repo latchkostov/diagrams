@@ -43,14 +43,21 @@ import {
   getDiagramIdentity,
   getOriginal,
   isLibrarySlug,
+  UNTITLED,
   writeAutosave,
 } from "../lib/diagramIO";
 import type { DiagramFile } from "../model/types";
 import { fromFlow, groupAt, toFlow, withEdgeAria, withNodeAria, type DiagramMeta } from "./convert";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
 import { useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
-import { DiagramNode } from "./nodes/DiagramNode";
-import { GroupNode } from "./nodes/GroupNode";
+import { canvasNodeTypes } from "./nodes/nodeTypes";
+import {
+  ANNOTATION_COLORS,
+  ANNOTATION_DND_MIME,
+  annotationColor,
+  annotationTitle,
+  parseAnnotationDrag,
+} from "./annotations";
 import { toneColor } from "./groupTones";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
 import { Palette, STENCIL_DND_MIME } from "./Palette";
@@ -66,7 +73,7 @@ import { useEditor } from "../editor/useEditor";
 import { useCanvasShortcuts } from "../editor/useCanvasShortcuts";
 import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
 import type { Selection } from "../editor/types";
-import type { DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
+import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { LiveView } from "../live/LiveView";
 import { LIVE_BAR_SPACE } from "../live/layout";
 import { safeStorage } from "../lib/storage";
@@ -76,9 +83,11 @@ import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { FirstRunHint } from "./FirstRunHint";
 import { useCanvasHost } from "../palette/canvasHost";
 
-const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
+const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
 // Pixel padding keeps the title card (top-left) from covering the diagram.
+/** A fit's viewport transition starts within this long (a frame, or a few under load). */
+const FIT_MOVE_MS = 250;
 const FIT: FitViewOptions = { padding: { top: "110px", right: "48px", bottom: "48px", left: "48px" }, maxZoom: 1.25 };
 const FIT_PRESENT: FitViewOptions = {
   padding: { top: "190px", right: "64px", bottom: "64px", left: "64px" },
@@ -114,6 +123,11 @@ interface Props {
   onTitleChange?: (title: string) => void;
 }
 
+/** Minimap: notes show their tint; zones, text and shapes are outlines. */
+function annotationMinimapFill(n: AnnotationFlowNode): string {
+  return n.data.kind === "note" ? ANNOTATION_COLORS[annotationColor(n.data)].hex : "transparent";
+}
+
 export function CanvasView(props: Props) {
   return (
     <ReactFlowProvider>
@@ -129,6 +143,7 @@ const normalize = (d: DiagramFile) => {
 
 const isDiagramNode = (n: FlowNode): n is DiagramFlowNode => n.type === "diagram";
 const isGroupNode = (n: FlowNode): n is GroupFlowNode => n.type === "boundary";
+const isAnnotationNode = (n: FlowNode): n is AnnotationFlowNode => n.type === "annotation";
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
 
 type MenuState = { x: number; y: number; items: MenuNode[]; label: string; searchable?: string; testId?: string };
@@ -140,6 +155,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const { theme, nodeVariant, edgeStyle } = useSettings();
   const { screenToFlowPosition, fitView } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
+  /** The pointer over the canvas (client coords), for "T adds text here". */
+  const pointer = useRef<{ x: number; y: number } | null>(null);
 
   const [{ original, flow, originalJson, loadedJson, identity }] = useState(() => {
     const original = initial ?? getOriginal(slug) ?? emptyDiagram();
@@ -219,9 +236,12 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const fitView_ = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
   /** True while the view is a fit (the whole diagram in view), false once the user pans or zooms. */
   const showingAll = useRef(true);
+  /** When the last whole-diagram fit started: its viewport move isn't the user's. */
+  const fitAt = useRef(0);
   const overlayFit = useCallback(
     (o?: Parameters<typeof fitView_>[0]) => {
       showingAll.current = true;
+      fitAt.current = performance.now();
       fitView_(o);
     },
     [fitView_],
@@ -247,11 +267,12 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       const r = wrapper.current?.getBoundingClientRect();
       return r ? screenToFlowPosition({ x: r.left + r.width / 2, y: r.top + r.height / 2 }) : { x: 0, y: 0 };
     },
+    pointer: () => (pointer.current ? screenToFlowPosition(pointer.current) : undefined),
     fit,
     nodeSize: getNodeVariant(nodeVariant).size,
   });
 
-  useCanvasShortcuts(editor, { enabled: !shortcutsOpen && !readOnly, onEscape: () => setMenu(null) });
+  useCanvasShortcuts(editor, { enabled: !shortcutsOpen && !readOnly, onEscape: () => setMenu(null), live });
   // The command palette (Ctrl/Cmd+K) acts on this canvas while it's mounted and editable.
   useCanvasHost(editor, { live, enabled: !readOnly });
 
@@ -442,6 +463,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       const sel = editor.getSelection();
       const count = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length;
       if (node.selected && count > 1) return openMenu(e, { target: "selection", selection: sel });
+      if (isAnnotationNode(node)) {
+        editor.select({ nodeIds: [node.id] });
+        return openMenu(e, { target: "annotation", nodeId: node.id, selection: { ...EMPTY, nodeIds: [node.id] } });
+      }
       if (isGroupNode(node)) {
         const groupIds = [node.data.groupId];
         editor.select({ groupIds });
@@ -486,6 +511,12 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   };
 
   const onDrop = (e: DragEvent) => {
+    const note = parseAnnotationDrag(e.dataTransfer.getData(ANNOTATION_DND_MIME));
+    if (note) {
+      e.preventDefault();
+      editor.addAnnotation(note.kind, { shape: note.shape, at: screenToFlowPosition({ x: e.clientX, y: e.clientY }) });
+      return;
+    }
     const id = e.dataTransfer.getData(STENCIL_DND_MIME);
     if (!id) return;
     e.preventDefault();
@@ -503,10 +534,13 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const hideChrome = presenting || readOnly;
   const diagramNodes = useMemo(() => nodes.filter(isDiagramNode), [nodes]);
   const groupNodes = useMemo(() => nodes.filter(isGroupNode), [nodes]);
+  const annotationNodes = useMemo(() => nodes.filter(isAnnotationNode), [nodes]);
   const selectedNodes = useMemo(() => diagramNodes.filter((n) => n.selected), [diagramNodes]);
+  const selectedAnnotations = useMemo(() => annotationNodes.filter((n) => n.selected), [annotationNodes]);
   const selectedGroups = useMemo(() => groupNodes.filter((n) => n.selected), [groupNodes]);
   const selectedEdges = useMemo(() => edges.filter((e) => e.selected), [edges]);
-  const nothingSelected = !selectedNodes.length && !selectedGroups.length && !selectedEdges.length;
+  const nothingSelected =
+    !selectedNodes.length && !selectedGroups.length && !selectedEdges.length && !selectedAnnotations.length;
   const paletteHidden = paletteCollapsed || (live && !openedByHand.palette);
   const inspectorHidden =
     livePanelOpen || !prefs.inspector || ((live || (narrow && nothingSelected)) && !openedByHand.inspector);
@@ -543,18 +577,27 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when a side panel opens or closes
   }, [panelsKey]);
-  const labels = useMemo(() => new Map(diagramNodes.map((n) => [n.id, n.data.label || n.id])), [diagramNodes]);
+  const labels = useMemo(
+    () =>
+      new Map([
+        ...annotationNodes.map((n): [string, string] => [n.id, annotationTitle(n.data)]),
+        ...diagramNodes.map((n): [string, string] => [n.id, n.data.label || n.id]),
+      ]),
+    [diagramNodes, annotationNodes],
+  );
   // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel).
   const ariaNodes = useMemo(() => withNodeAria(nodes), [nodes]);
   const ariaEdges = useMemo(() => withEdgeAria(edges, (id) => labels.get(id) ?? id), [edges, labels]);
   const nodeCount = diagramNodes.length;
+  /** Anything drawn: an annotations-only canvas isn't "empty", though there's nothing to simulate. */
+  const contentCount = nodeCount + annotationNodes.length;
   const undoTitle = `Undo (${formatCombo(shortcutKeys("undo"))})`;
   const redoTitle = `Redo (${formatCombo(shortcutKeys("redo"))})`;
 
   return (
     <DiagramContext.Provider value={ui}>
       <div
-        className={`canvas-view${presenting ? " is-presenting" : ""}`}
+        className={`canvas-view${presenting ? " is-presenting" : ""}${live ? " is-live" : ""}`}
         data-testid="canvas-view"
         onContextMenu={(e) => {
           // The app owns right-click; text fields keep the native menu (spellcheck, paste).
@@ -569,14 +612,17 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
               setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
             }}
             onAdd={(id) => void editor.addNode(id)}
+            onAnnotate={(kind, shape) => void editor.addAnnotation(kind, { shape })}
           />
         )}
         <div
           className="canvas-wrap"
           data-testid="canvas-wrap"
           ref={wrapper}
+          onPointerMove={(e) => (pointer.current = { x: e.clientX, y: e.clientY })}
+          onPointerLeave={() => (pointer.current = null)}
           onDragOver={(e) => {
-            if (e.dataTransfer.types.includes(STENCIL_DND_MIME)) {
+            if (e.dataTransfer.types.includes(STENCIL_DND_MIME) || e.dataTransfer.types.includes(ANNOTATION_DND_MIME)) {
               e.preventDefault();
               e.dataTransfer.dropEffect = "copy";
             }
@@ -605,8 +651,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             onMoveStart={(e) => {
               setMenu(null);
               hideTip();
-              // A pan or zoom by hand (an event) means the view is the user's now, not a fit.
-              if (e) showingAll.current = false;
+              // A pan or zoom by hand (an event), or by a command such as Shift+0 (no event, and not
+              // our own fit starting), means the view is the user's now, not a fit.
+              if (e || performance.now() - fitAt.current > FIT_MOVE_MS) showingAll.current = false;
             }}
             onNodeMouseEnter={(e, node) => {
               if (node.type === "diagram" && !editing)
@@ -692,7 +739,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                 </ControlButton>
               </Controls>
             )}
-            {!hideChrome && prefs.minimap && nodeCount > 0 && (
+            {!hideChrome && prefs.minimap && contentCount > 0 && (
               <MiniMap
                 position="bottom-right"
                 style={{ width: 168, height: 112 }}
@@ -701,10 +748,18 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                 nodeBorderRadius={6}
                 nodeStrokeWidth={2}
                 nodeColor={(n) =>
-                  n.type === "boundary" ? "transparent" : getStencil((n as DiagramFlowNode).data.stencil).accent
+                  n.type === "boundary"
+                    ? "transparent"
+                    : n.type === "annotation"
+                      ? annotationMinimapFill(n as AnnotationFlowNode)
+                      : getStencil((n as DiagramFlowNode).data.stencil).accent
                 }
                 nodeStrokeColor={(n) =>
-                  n.type === "boundary" ? toneColor[(n as GroupFlowNode).data.tone] : "transparent"
+                  n.type === "boundary"
+                    ? toneColor[(n as GroupFlowNode).data.tone]
+                    : n.type === "annotation" && (n as AnnotationFlowNode).data.kind !== "note"
+                      ? ANNOTATION_COLORS[annotationColor((n as AnnotationFlowNode).data)].hex
+                      : "transparent"
                 }
               />
             )}
@@ -737,25 +792,22 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             data-testid="diagram-card"
             data-canvas-overlay
             data-collapsed={cardCovers ? "1" : undefined}
+            // A blank, untitled diagram is already named in the picker: the card waits for the first node.
+            hidden={nodeCount === 0 && !presenting && (meta.title || UNTITLED) === UNTITLED && !meta.description}
           >
             <h1 data-testid="diagram-title">{meta.title}</h1>
             {meta.description && <p>{meta.description}</p>}
-            {!hideChrome && (nodeCount > 0 || modified) && (
+            {/* Node and edge counts live in the inspector's diagram panel, not here too. */}
+            {!hideChrome && modified && !ownDiagram && (
               <div className="diagram-card-meta">
-                <span>
-                  {nodeCount} {nodeCount === 1 ? "node" : "nodes"}, {edges.length}{" "}
-                  {edges.length === 1 ? "edge" : "edges"}
-                </span>
-                {modified && !ownDiagram && (
-                  <button
-                    className="link-btn"
-                    onClick={reset}
-                    data-testid="reset-diagram"
-                    title="Discard your edits to this diagram (undoable)"
-                  >
-                    <Icon name="reset" size={13} /> Edited, reset
-                  </button>
-                )}
+                <button
+                  className="link-btn"
+                  onClick={reset}
+                  data-testid="reset-diagram"
+                  title="Discard your edits to this diagram (undoable)"
+                >
+                  <Icon name="reset" size={13} /> Edited, reset
+                </button>
               </div>
             )}
           </div>
@@ -766,7 +818,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             </button>
           )}
 
-          {nodeCount === 0 && !hideChrome && !live && start && !startDismissed ? (
+          {contentCount === 0 && !hideChrome && !live && start && !startDismissed ? (
             <StartCard
               start={start}
               onBlank={() => {
@@ -782,7 +834,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
               }}
             />
           ) : (
-            nodeCount === 0 &&
+            contentCount === 0 &&
             !hideChrome && (
               <div className="canvas-empty" data-testid="canvas-empty">
                 <strong>This diagram is empty</strong>
@@ -806,6 +858,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             selectedNodes={selectedNodes}
             selectedGroups={selectedGroups}
             selectedEdges={selectedEdges}
+            selectedAnnotations={selectedAnnotations}
             groups={groupNodes}
             nodeLabel={(id) => labels.get(id) ?? id}
             counts={{ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }}

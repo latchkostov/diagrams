@@ -1,5 +1,9 @@
 import {
   DIAGRAM_FORMAT,
+  type AnnotationKind,
+  type AnnotationShape,
+  type AnnotationTextSize,
+  type DiagramAnnotation,
   type DiagramEdge,
   type DiagramFile,
   type DiagramGroup,
@@ -13,6 +17,14 @@ import { FALLBACK_STENCIL_ID, inferStencil } from "../infer";
 import { childrenNamed, decodeEntities, findFirst, parseXml, XmlError, type XmlElement } from "../xml";
 import { parseStyle, stencilFromStyle, toneFromStyle } from "./mapping";
 import { CARD } from "./write";
+import {
+  ANNOTATION_COLORS,
+  ANNOTATION_KINDS,
+  ANNOTATION_SHAPES,
+  ANNOTATION_TEXT_SIZES,
+  minSize,
+  textSizePx,
+} from "../../canvas/annotations";
 
 // .drawio / mxGraph XML -> diagrams/v1. Handles compressed and plain pages, multiple pages,
 // <object>/<UserObject> wrappers, containers (relative child geometry), edge label children and
@@ -212,6 +224,30 @@ const sideFor = (x: string | undefined, y: string | undefined): Side | undefined
   return ({ "0.5,0": "top", "1,0.5": "right", "0.5,1": "bottom", "0,0.5": "left" } as Record<string, Side>)[key];
 };
 
+/** Plain geometry draw.io draws with built-in styles: the shapes an annotation can be. */
+export function geometricShape(style: Record<string, string>): AnnotationShape | undefined {
+  if (style.image) return undefined;
+  const shape = (style.shape ?? "").toLowerCase();
+  const base = style._base;
+  if (base === "rhombus" || shape === "rhombus") return "diamond";
+  if (base === "ellipse" || shape === "ellipse") return "ellipse";
+  if (/^cylinder\d?$/.test(shape) || base === "cylinder") return "cylinder";
+  if (!shape && (base === undefined || base === "rounded" || base === "rect"))
+    return style.rounded === "1" ? "rounded" : "rect";
+  return undefined;
+}
+
+const isNote = (c: Cell) => c.style._base === "note" || c.style.shape === "note";
+
+/** The nearest text size to a font size in px. */
+function textSizeFor(fontSize: string | undefined): AnnotationTextSize | undefined {
+  const px = parseFloat(fontSize ?? "");
+  if (!Number.isFinite(px)) return undefined;
+  let best: AnnotationTextSize = "m";
+  for (const t of ANNOTATION_TEXT_SIZES) if (Math.abs(textSizePx[t] - px) < Math.abs(textSizePx[best] - px)) best = t;
+  return best === "m" ? undefined : best;
+}
+
 export interface DrawioImportResult {
   diagram: DiagramFile;
   warnings: string[];
@@ -231,7 +267,11 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
   const rootCell = cells.find((c) => c.parent === undefined);
   const layers = new Set(cells.filter((c) => c.parent !== undefined && c.parent === rootCell?.id).map((c) => c.id));
   const ours = cells.some(
-    (c) => c.data.dg_stencil !== undefined || c.data.dg_tone !== undefined || c.data.dg_kind !== undefined,
+    (c) =>
+      c.data.dg_stencil !== undefined ||
+      c.data.dg_tone !== undefined ||
+      c.data.dg_kind !== undefined ||
+      c.data.dg_annotation !== undefined,
   );
 
   // Which vertices have vertex children (excluding edge labels): those are containers.
@@ -255,25 +295,47 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
 
   const groupCells: Cell[] = [];
   const nodeCells: Cell[] = [];
-  let skippedText = 0;
+  /** Cells that become annotations, with what they become. */
+  const annotationCells: { cell: Cell; kind: AnnotationKind; shape?: AnnotationShape }[] = [];
   const edgeRefs = new Set<string>();
   for (const c of cells) if (c.edge) [c.source, c.target].forEach((t) => t && edgeRefs.add(t));
   for (const c of cells) {
     if (!c.vertex || !c.geo || isEdgeLabel(c)) continue;
     if (c.parent && byId.get(c.parent)?.edge) continue;
+    // Ours: an annotation says so.
+    const dgKind = c.data.dg_annotation as AnnotationKind | undefined;
+    if (dgKind && ANNOTATION_KINDS.includes(dgKind)) {
+      const sh = c.data.dg_shape as AnnotationShape | undefined;
+      annotationCells.push({ cell: c, kind: dgKind, shape: sh && ANNOTATION_SHAPES.includes(sh) ? sh : undefined });
+      continue;
+    }
     if (isInvisibleGroup(c)) continue;
     if (isContainerStyle(c) || hasChildren.has(c.id)) {
       groupCells.push(c);
       continue;
     }
-    if (isText(c) && !edgeRefs.has(c.id) && !c.data.dg_stencil) {
-      skippedText++;
-      continue;
+    if (!ours && !c.data.dg_stencil) {
+      // Foreign files: free text and sticky notes are annotations; decision diamonds are shapes. A plain
+      // box, ellipse or cylinder that nothing connects to, and whose label names no product, is a shape;
+      // connected or named ones stay nodes, so the simulation keeps them.
+      const connected = edgeRefs.has(c.id);
+      if (isText(c) && !connected) {
+        annotationCells.push({ cell: c, kind: "text" });
+        continue;
+      }
+      if (isNote(c) && !connected) {
+        annotationCells.push({ cell: c, kind: "note" });
+        continue;
+      }
+      const geo = geometricShape(c.style);
+      const words = htmlToLines(c.value, c.style.html === "1").join(" ");
+      if (geo === "diamond" || (geo && !connected && !inferStencil(words) && !stencilFromStyle(c.style)?.specific)) {
+        annotationCells.push({ cell: c, kind: "shape", shape: geo });
+        continue;
+      }
     }
     nodeCells.push(c);
   }
-  if (skippedText)
-    warnings.push(`${skippedText} free-standing text label${skippedText === 1 ? " was" : "s were"} skipped.`);
 
   // ---- nodes
   const used = new Set<string>();
@@ -423,10 +485,41 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     }
   }
 
+  // ---- annotations (after nodes, so node ids keep their names)
+  const annotations: DiagramAnnotation[] = [];
+  const shapeIdByCell = new Map<string, string>();
+  for (const { cell: c, kind, shape } of annotationCells) {
+    const o = absOrigin(c.id);
+    const lines = htmlToLines(c.value, c.style.html === "1");
+    const m = minSize[kind];
+    const width = Math.max(m.width, snap(c.geo!.width));
+    const height = Math.max(m.height, snap(c.geo!.height));
+    // Foreign geometry is spread like the nodes': keep each annotation's centre where its neighbours are.
+    const x = ours ? snap(o.x) : snap((o.x + c.geo!.width / 2) * sx - width / 2);
+    const y = ours ? snap(o.y) : snap((o.y + c.geo!.height / 2) * sy - height / 2);
+    const id = uniqueId(c.data.dg_id ?? c.id);
+    if (kind === "shape") shapeIdByCell.set(c.id, id);
+    const color = c.data.dg_color;
+    const size =
+      (c.data.dg_text_size as AnnotationTextSize | undefined) ?? (ours ? undefined : textSizeFor(c.style.fontSize));
+    annotations.push({
+      id,
+      kind,
+      text: lines.join("\n"),
+      x,
+      y,
+      width,
+      height,
+      ...(kind === "shape" ? { shape: shape ?? "rect" } : {}),
+      ...(color && Object.hasOwn(ANNOTATION_COLORS, color) ? { color: color as DiagramAnnotation["color"] } : {}),
+      ...(size && ANNOTATION_TEXT_SIZES.includes(size) ? { textSize: size } : {}),
+    });
+  }
+
   // ---- edges
   const nodeFor = (id: string | undefined): string | undefined => {
     for (let cur = id, depth = 0; cur && depth < 50; depth++) {
-      const hit = nodeIdByCell.get(cur);
+      const hit = nodeIdByCell.get(cur) ?? shapeIdByCell.get(cur);
       if (hit) return hit;
       cur = byId.get(cur)?.parent;
     }
@@ -504,8 +597,9 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     nodes: placed.map((p) => p.node),
     edges,
     ...(simulations ? { simulations } : {}),
+    ...(annotations.length ? { annotations } : {}),
   };
-  if (!diagram.nodes.length) warnings.push("No shapes were found on this page.");
+  if (!diagram.nodes.length && !annotations.length) warnings.push("No shapes were found on this page.");
   return { diagram, warnings };
 }
 

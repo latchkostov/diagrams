@@ -1,9 +1,10 @@
-import type { DiagramFile, DiagramGroup } from "../../model/types";
+import type { AnnotationShape, DiagramFile, DiagramGroup } from "../../model/types";
 import { catalog } from "../../stencils/catalog";
 
 // diagrams/v1 -> Mermaid flowchart. Async edges are dotted (-.->), sync edges solid (-->), boundaries
 // become subgraphs. A trailing `%% diagrams:` comment keeps our ids, stencils and tones so importing
-// the text back restores them (Mermaid itself ignores comments).
+// the text back restores them (Mermaid itself ignores comments). Shape annotations become plain
+// Mermaid nodes of the same shape; text, notes and zones have no Mermaid equivalent and are left out.
 
 export const META_PREFIX = "%% diagrams:";
 
@@ -49,9 +50,21 @@ function idMaker() {
   };
 }
 
+/** Mermaid brackets per shape: rect, rounded, circle, rhombus, cylinder. */
+const SHAPE_BRACKETS: Record<AnnotationShape, [string, string]> = {
+  rect: ["[", "]"],
+  rounded: ["(", ")"],
+  ellipse: ["((", "))"],
+  diamond: ["{", "}"],
+  cylinder: ["[(", ")]"],
+};
+
 export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = {}): string {
   const makeId = idMaker();
   const nodeIds = new Map(d.nodes.map((n) => [n.id, makeId(n.id, "n")]));
+  const shapes = (d.annotations ?? []).filter((a) => a.kind === "shape");
+  for (const a of shapes) nodeIds.set(a.id, makeId(a.id, "s"));
+  const edges = d.edges.filter((e) => nodeIds.has(e.from) && nodeIds.has(e.to));
   const groupIds = new Map((d.groups ?? []).map((g) => [g.id, makeId(`g_${g.id}`, "g")]));
   const lines: string[] = [];
   if (d.title) lines.push("---", `title: ${d.title.replace(/\r?\n/g, " ")}`, "---");
@@ -72,15 +85,19 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
   }
   const grouped = new Set((d.groups ?? []).map((g) => g.id));
   for (const n of d.nodes) if (!n.group || !grouped.has(n.group)) lines.push(nodeLine(n, "  "));
+  for (const a of shapes) {
+    const [open, close] = SHAPE_BRACKETS[a.shape ?? "rect"];
+    lines.push(`  ${nodeIds.get(a.id)}${open}"${mermaidText(a.text.trim() || " ")}"${close}`);
+  }
 
-  for (const e of d.edges) {
+  for (const e of edges) {
     const arrow = (e.kind ?? "async") === "async" ? "-.->" : "-->";
     const label = e.label ? `|"${mermaidText(e.label)}"|` : "";
     lines.push(`  ${nodeIds.get(e.from)} ${arrow}${label} ${nodeIds.get(e.to)}`);
   }
 
   // Dashed async edges also get a softer colour when rendered.
-  const asyncIdx = d.edges.flatMap((e, i) => ((e.kind ?? "async") === "async" ? [i] : []));
+  const asyncIdx = edges.flatMap((e, i) => ((e.kind ?? "async") === "async" ? [i] : []));
   if (asyncIdx.length) lines.push(`  linkStyle ${asyncIdx.join(",")} stroke-dasharray: 6 4`);
 
   if (opts.metadata !== false) {
@@ -91,7 +108,7 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
       ...(d.groups?.length
         ? { groups: Object.fromEntries(d.groups.map((g) => [groupIds.get(g.id)!, [g.id, g.tone ?? "neutral"]])) }
         : {}),
-      edges: d.edges.map((e) => e.id),
+      edges: edges.map((e) => e.id),
     };
     lines.push(`${META_PREFIX}${JSON.stringify(meta)}`);
   }

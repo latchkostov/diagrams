@@ -523,6 +523,8 @@
   box-shadow: var(--shadow-2);
   font-size: 12.5px;
   animation: lv-rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Above the narration card: the bar's popovers (⋯, expectations) open over it, never under. */
+  z-index: 3;
 }
 
 .lv-hud.has-panel .lv-bar {
@@ -555,9 +557,20 @@
 }
 
 @container live-bar (max-width: 560px) {
-  /* Specific enough to beat the base rules further down the file. */
-  .lv-bar .lv-checks {
+  /* Specific enough to beat the base rules further down the file. The dots fold into "2/3", which
+     lists each result (name, state, value) on demand; it also stands in for the Done badge. */
+  .lv-bar .lv-checks,
+  .lv-bar .lv-checks-more ~ .lv-done {
     display: none;
+  }
+
+  .lv-bar .lv-checks-more {
+    display: block;
+  }
+
+  /* Room for "2/3" without pushing ⋯ out of the bar. */
+  .lv-bar .lv-timeline {
+    min-width: 72px;
   }
 }
 
@@ -884,11 +897,30 @@
   width: 9px;
   height: 9px;
   margin-left: -4.5px;
+  padding: 0;
   border-radius: 50%;
   background: var(--surface);
   border: 2px solid var(--text-2);
-  z-index: 1;
+  /* Above the scrubber's input: a click on a marker jumps to it. */
+  z-index: 4;
   pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+/* A bigger target than the dot. */
+.lv-marker::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+}
+
+.lv-marker:hover {
+  transform: scale(1.35);
+}
+
+.lv-marker.is-status:hover {
+  transform: rotate(45deg) scale(1.35);
 }
 
 .lv-marker.is-note {
@@ -1992,5 +2024,253 @@ details[open] > summary .lv-disclosure-chevron {
 @media (prefers-reduced-motion: reduce) {
   .lv-depth i {
     transition: none;
+  }
+}
+
+/* ---------- Expectations folded into "2/3" (narrow bars) ---------- */
+
+.lv-checks-more {
+  display: none;
+  position: relative;
+  flex: none;
+}
+
+.lv-checks-sum {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.lv-checks-sum.is-pass {
+  background: color-mix(in oklab, var(--status-up) 15%, transparent);
+  color: var(--success);
+}
+
+.lv-checks-sum.is-fail {
+  background: color-mix(in oklab, var(--status-down) 14%, transparent);
+  color: var(--status-down);
+}
+
+/* Opens up and to the left: the summary sits at the bar's right end, beside any side panel. */
+.lv-checks-pop {
+  position: absolute;
+  right: -8px;
+  bottom: calc(100% + 14px);
+  width: max-content;
+  max-width: 300px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  animation: lv-note-in 0.16s ease-out;
+}
+
+.lv-checks-pop ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+}
+
+.lv-checks-pop li {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  column-gap: 8px;
+  align-items: center;
+  padding: 5px 6px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.lv-checks-pop li b {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.lv-checks-pop li > span:last-child {
+  grid-column: 2;
+}
+
+/* ---------- Record video ---------- */
+
+/* The canvas area being recorded: Element Capture needs its own stacking context, and the toggle
+   and "Exit presentation" stay out of the take (the indicator stands in for them). */
+[data-lv-recording] {
+  isolation: isolate;
+}
+
+[data-lv-recording] .lv-toggle,
+[data-lv-recording] .present-exit {
+  visibility: hidden;
+}
+
+.lv-rec-setup {
+  display: grid;
+  gap: 12px;
+}
+
+.lv-rec-setup .ix-check {
+  align-items: flex-start;
+}
+
+.lv-rec-setup .ix-check input {
+  margin-top: 3px;
+}
+
+.lv-rec-setup .ix-check small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.lv-rec-setup p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Outside the recorded area (a portal on <body>): Element Capture leaves it out of the video. */
+.lv-rec {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 4px 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--live-glass);
+  backdrop-filter: blur(16px) saturate(1.3);
+  box-shadow: var(--shadow-2);
+  font-size: 12.5px;
+  color: var(--text);
+  animation: lv-note-in 0.2s ease-out;
+}
+
+.lv-rec-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--status-down);
+  animation: lv-rec-pulse 1.4s ease-in-out infinite;
+}
+
+.lv-rec.is-stopping .lv-rec-dot {
+  animation: none;
+  opacity: 0.4;
+}
+
+.lv-rec-time {
+  min-width: 38px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lv-rec-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lv-rec-stop:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--status-down) 16%, var(--surface-3));
+}
+
+.lv-rec-stop:disabled {
+  opacity: 0.5;
+}
+
+.lv-rec-count {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  pointer-events: none;
+}
+
+.lv-rec-count-n {
+  display: grid;
+  place-items: center;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  background: var(--live-glass);
+  backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-2);
+  font-size: 64px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  animation: lv-rec-count 1s ease-out both;
+}
+
+.lv-rec-count-hint {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--live-glass);
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+.lv-rec-preview {
+  display: block;
+  width: 100%;
+  max-height: min(56vh, 420px);
+  border-radius: 10px;
+  background: #000;
+}
+
+.lv-rec-file {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes lv-rec-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes lv-rec-count {
+  from {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lv-rec-dot,
+  .lv-rec-count-n {
+    animation: none;
   }
 }

@@ -12,7 +12,18 @@ import type { AlignMode } from "../editor/arrange";
 import { parseEmits } from "../editor/emits";
 import type { DiagramMeta } from "./convert";
 import { toneColor, toneLabel } from "./groupTones";
-import type { DiagramFlowEdge, DiagramFlowNode, GroupFlowNode, GroupTone } from "./types";
+import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, GroupFlowNode, GroupTone } from "./types";
+import {
+  ANNOTATION_COLORS,
+  ANNOTATION_COLOR_IDS,
+  ANNOTATION_SHAPES,
+  ANNOTATION_TEXT_SIZES,
+  annotationColor,
+  kindLabel,
+  minSize,
+  shapeLabel,
+  textSizeLabel,
+} from "./annotations";
 import { safeStorage } from "../lib/storage";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
@@ -141,6 +152,8 @@ export interface InspectorProps {
   selectedNodes: DiagramFlowNode[];
   selectedGroups: GroupFlowNode[];
   selectedEdges: DiagramFlowEdge[];
+  /** Selected texts, notes, zones and shapes. */
+  selectedAnnotations?: AnnotationFlowNode[];
   groups: GroupFlowNode[];
   nodeLabel: (id: string) => string;
   counts: { nodes: number; edges: number; groups: number };
@@ -179,7 +192,8 @@ export function Inspector(p: InspectorProps) {
     );
   }
 
-  const n = p.selectedNodes.length + p.selectedGroups.length + p.selectedEdges.length;
+  const annotations = p.selectedAnnotations ?? [];
+  const n = p.selectedNodes.length + p.selectedGroups.length + p.selectedEdges.length + annotations.length;
   let title = "Diagram";
   let content: ReactNode;
   if (n === 0) content = <DiagramPanel {...p} />;
@@ -189,6 +203,9 @@ export function Inspector(p: InspectorProps) {
   } else if (n === 1 && p.selectedEdges[0]) {
     title = "Edge";
     content = <EdgePanel key={p.selectedEdges[0].id} edge={p.selectedEdges[0]} {...p} />;
+  } else if (n === 1 && annotations[0]) {
+    title = kindLabel[annotations[0].data.kind];
+    content = <AnnotationPanel key={annotations[0].id} note={annotations[0]} {...p} />;
   } else if (n === 1 && p.selectedGroups[0]) {
     title = "Boundary";
     content = <GroupPanel key={p.selectedGroups[0].id} group={p.selectedGroups[0]} {...p} />;
@@ -556,6 +573,143 @@ function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }
   );
 }
 
+function AnnotationPanel({ note, editor }: InspectorProps & { note: AnnotationFlowNode }) {
+  const id = note.id;
+  const { kind } = note.data;
+  const merge = (f: string) => ({ merge: `inspector:annotation:${id}:${f}` });
+  const color = annotationColor(note.data);
+  const min = minSize[kind];
+  return (
+    <Section>
+      <Field label={kind === "zone" ? "Label" : "Text"}>
+        <textarea
+          className="insp-input"
+          rows={kind === "zone" ? 1 : 3}
+          value={note.data.text}
+          placeholder={kind === "zone" ? "Zone name" : "Write something"}
+          onChange={(e) => editor.updateAnnotation(id, { text: e.target.value }, merge("text"))}
+          name="annotation-text"
+          data-testid="inspector-field-text"
+        />
+      </Field>
+      {kind === "shape" && (
+        <Field label="Shape" group>
+          <div className="insp-toolbar" role="radiogroup" aria-label="Shape" data-testid="inspector-field-shape">
+            {ANNOTATION_SHAPES.map((sh) => (
+              <button
+                key={sh}
+                type="button"
+                role="radio"
+                aria-checked={(note.data.shape ?? "rect") === sh}
+                className={`icon-btn${(note.data.shape ?? "rect") === sh ? " is-on" : ""}`}
+                title={shapeLabel[sh]}
+                aria-label={shapeLabel[sh]}
+                onClick={() => editor.updateAnnotation(id, { shape: sh })}
+                data-testid={`inspector-shape-${sh}`}
+              >
+                <Icon name={`shape-${sh}`} />
+              </button>
+            ))}
+          </div>
+        </Field>
+      )}
+      <Field label="Colour" group>
+        <div className="insp-tones" data-testid="inspector-field-color" role="radiogroup" aria-label="Colour">
+          {ANNOTATION_COLOR_IDS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={color === c}
+              className={`insp-tone${color === c ? " is-on" : ""}`}
+              style={{ "--tone": ANNOTATION_COLORS[c].hex } as CSSProperties}
+              title={ANNOTATION_COLORS[c].label}
+              aria-label={ANNOTATION_COLORS[c].label}
+              onClick={() => editor.updateAnnotation(id, { color: c })}
+              data-testid={`inspector-color-${c}`}
+            />
+          ))}
+        </div>
+      </Field>
+      <Field label="Text size" group>
+        <Segmented
+          testId="inspector-field-text-size"
+          value={note.data.textSize ?? "m"}
+          options={ANNOTATION_TEXT_SIZES.map((t) => ({ value: t, label: textSizeLabel[t] }))}
+          onChange={(textSize) => editor.updateAnnotation(id, { textSize })}
+        />
+      </Field>
+      <Field label="Size" group>
+        <div className="insp-size">
+          <SizeInput
+            label="Width"
+            value={note.width ?? note.measured?.width ?? 0}
+            min={min.width}
+            testId="inspector-field-width"
+            onCommit={(width) => editor.updateAnnotation(id, { width })}
+          />
+          <span aria-hidden>{"×"}</span>
+          <SizeInput
+            label="Height"
+            value={note.height ?? note.measured?.height ?? 0}
+            min={min.height}
+            testId="inspector-field-height"
+            onCommit={(height) => editor.updateAnnotation(id, { height })}
+          />
+        </div>
+      </Field>
+      {kind === "zone" && (
+        <p className="insp-note">
+          A zone only marks an area. To keep nodes together so they move as one, use a boundary instead.
+        </p>
+      )}
+      <p className="insp-note">Annotations don't take part in the simulation.</p>
+      <CopyId id={id} />
+    </Section>
+  );
+}
+
+/** A pixel size: free typing, applied on Enter or blur (never below `min`). */
+function SizeInput({
+  label,
+  value,
+  min,
+  testId,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  testId: string;
+  onCommit: (v: number) => void;
+}) {
+  const shown = String(Math.round(value));
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    const v = Math.round(Number(draft));
+    setDraft(null);
+    if (Number.isFinite(v) && v !== Math.round(value)) onCommit(Math.max(min, Math.min(20_000, v)));
+  };
+  return (
+    <input
+      className="insp-input mono"
+      inputMode="numeric"
+      value={draft ?? shown}
+      aria-label={label}
+      title={label}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+        if (e.key === "Escape") setDraft(null);
+      }}
+      name={testId}
+      data-testid={testId}
+    />
+  );
+}
+
 const ALIGN_BUTTONS: { mode: AlignMode; icon: IconName; label: string }[] = [
   { mode: "left", icon: "align-left", label: "Align left" },
   { mode: "center", icon: "align-center", label: "Align centres" },
@@ -565,11 +719,21 @@ const ALIGN_BUTTONS: { mode: AlignMode; icon: IconName; label: string }[] = [
   { mode: "bottom", icon: "align-bottom", label: "Align bottom" },
 ];
 
-function MultiPanel({ editor, selectedNodes, selectedEdges, selectedGroups }: InspectorProps) {
-  const ids = selectedNodes.map((n) => n.id);
+function MultiPanel({
+  editor,
+  selectedNodes,
+  selectedEdges,
+  selectedGroups,
+  selectedAnnotations = [],
+}: InspectorProps) {
+  const nodeIds = selectedNodes.map((n) => n.id);
+  // Align and distribute arrange nodes and annotations alike.
+  const ids = [...nodeIds, ...selectedAnnotations.map((n) => n.id)];
   return (
     <Section>
-      <p className="insp-note">{countText(selectedNodes.length, selectedEdges.length, selectedGroups.length)}</p>
+      <p className="insp-note">
+        {countText(selectedNodes.length, selectedEdges.length, selectedGroups.length, selectedAnnotations.length)}
+      </p>
       {ids.length > 1 && (
         <Field label="Align" group>
           <div className="insp-toolbar">
@@ -613,8 +777,8 @@ function MultiPanel({ editor, selectedNodes, selectedEdges, selectedGroups }: In
         </Field>
       )}
       <div className="insp-actions">
-        {ids.length > 0 && (
-          <button className="btn" onClick={() => editor.groupNodes(ids)} data-testid="inspector-group-selection">
+        {nodeIds.length > 0 && (
+          <button className="btn" onClick={() => editor.groupNodes(nodeIds)} data-testid="inspector-group-selection">
             <Icon name="boundary" size={14} /> Add boundary
           </button>
         )}
@@ -689,10 +853,11 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/** "15 nodes, 15 edges, 1 boundary" (zero boundaries are left out). */
-function countText(nodes: number, edges: number, boundaries: number): string {
+/** "15 nodes, 15 edges, 1 boundary" (zero boundaries and annotations are left out). */
+function countText(nodes: number, edges: number, boundaries: number, annotations = 0): string {
   return [plural(nodes, "node", "nodes"), plural(edges, "edge", "edges")]
     .concat(boundaries ? [plural(boundaries, "boundary", "boundaries")] : [])
+    .concat(annotations ? [plural(annotations, "annotation", "annotations")] : [])
     .join(", ");
 }
 

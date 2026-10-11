@@ -29,7 +29,7 @@ import type { ControlDef, Preset } from "./types";
 import { LiveLabStage } from "../live/LiveLabStage";
 import { badgeStatesDiagram, noteStatesDiagram, particleStressDiagram, type NoteState } from "../live/labDiagrams";
 import { OverlapAudit } from "./OverlapAudit";
-import { obstacleCourseDiagram } from "./routingDiagrams";
+import { annotationCourseDiagram, obstacleCourseDiagram } from "./routingDiagrams";
 
 const variantOptions = Object.entries(nodeVariants).map(([value, v]) => ({ value, label: v.label }));
 const variantsOf = (v: unknown): NodeVariantId[] =>
@@ -567,6 +567,7 @@ const capacityPresets: Preset[] = [
 const auditSources: Record<string, { label: string; diagram: () => DiagramFile }> = {
   ...Object.fromEntries(examples.map((e) => [e.slug, { label: e.diagram.title, diagram: () => e.diagram }])),
   obstacles: { label: "Routing obstacle course", diagram: () => obstacleCourseDiagram() },
+  annotations: { label: "Annotations among routes", diagram: () => annotationCourseDiagram() },
   "stress-150": {
     label: "Stress: 150 nodes",
     diagram: () => stressDiagram({ nodes: 150, seed: 1, density: 0.25, groups: false, direction: "LR" }),

@@ -118,6 +118,9 @@ export function ControlBar({ state }: { state: LiveState }) {
               ))}
             </div>
           )}
+          {expectations.length > 0 && (
+            <ExpectationSummary expectations={expectations} passed={passed} failed={failed} done={done} />
+          )}
           {done && (
             <span
               className={`lv-done${failed ? " is-fail" : " is-pass"}`}
@@ -221,6 +224,10 @@ function MoreMenu({ state }: { state: LiveState }) {
             <LiveIcon name="events" size={14} />
             <span>Event log</span>
           </button>
+          <button role="menuitem" onClick={pick(() => ui.openRecord())} data-testid="live-record">
+            <LiveIcon name="record" size={14} />
+            <span>Record video…</span>
+          </button>
           {ui.canEdit && !ui.presenting && (
             <button
               role="menuitem"
@@ -232,6 +239,86 @@ function MoreMenu({ state }: { state: LiveState }) {
             </button>
           )}
           <div className="lv-more-hint">Right-click any node to inject messages, start a storm or break things.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A narrow bar has no room for the dots: "2/3" opens the same results as a list (each with its
+ * name, state and value), so nothing is lost to keyboard and screen-reader users.
+ */
+function ExpectationSummary({
+  expectations,
+  passed,
+  failed,
+  done,
+}: {
+  expectations: readonly ExpectationState[];
+  passed: number;
+  failed: boolean;
+  done: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: PointerEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      setOpen(false);
+      button.current?.focus();
+    };
+    window.addEventListener("pointerdown", outside, true);
+    window.addEventListener("keydown", esc, true);
+    return () => {
+      window.removeEventListener("pointerdown", outside, true);
+      window.removeEventListener("keydown", esc, true);
+    };
+  }, [open]);
+  const tone = failed ? " is-fail" : done ? " is-pass" : "";
+  return (
+    <div className="lv-checks-more" ref={root}>
+      <button
+        ref={button}
+        className={`lv-checks-sum${tone}`}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={`Expectations: ${passed} of ${expectations.length} hold${failed ? ", some failed" : ""}. Show each`}
+        data-testid="live-expectations-summary"
+      >
+        <LiveIcon name={failed ? "x" : "check"} size={11} />
+        <span className="mono">
+          {passed}/{expectations.length}
+        </span>
+      </button>
+      {open && (
+        <div className="lv-checks-pop" role="dialog" aria-label="Expectations" data-testid="live-expectations-list">
+          <ul>
+            {expectations.map((e) => {
+              const value = Number.isInteger(e.value) ? formatCount(e.value) : e.value.toFixed(1);
+              const word = e.status === "pass" ? "holds" : e.status === "fail" ? "failed" : "pending";
+              return (
+                <li key={e.id} className={`is-${e.status}`} data-testid={`expectation-row-${e.id}`}>
+                  <span className={`lv-exp is-${e.status}`} aria-hidden>
+                    {e.status === "pass" ? (
+                      <LiveIcon name="check" size={10} />
+                    ) : e.status === "fail" ? (
+                      <LiveIcon name="x" size={10} />
+                    ) : null}
+                  </span>
+                  <b>{e.label}</b>
+                  <span>
+                    {word} · now <span className="mono">{value}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </div>

@@ -177,12 +177,18 @@ export function useCovered(
       };
       let hit = false;
       for (const n of s.nodeLookup.values()) {
-        if (n.type !== "diagram" || n.hidden) continue;
+        // Cards, and the annotations that are content (not zones, which are backdrops).
+        if (
+          n.type === "boundary" ||
+          n.hidden ||
+          (n.type === "annotation" && (n.data as { kind?: string }).kind === "zone")
+        )
+          continue;
         const nr = {
           x: n.internals.positionAbsolute.x,
           y: n.internals.positionAbsolute.y,
-          width: n.measured?.width ?? 0,
-          height: n.measured?.height ?? 0,
+          width: n.measured?.width ?? n.width ?? 0,
+          height: n.measured?.height ?? n.height ?? 0,
         };
         if (intersects(box, nr)) {
           hit = true;

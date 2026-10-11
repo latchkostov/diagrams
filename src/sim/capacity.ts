@@ -10,6 +10,7 @@ import {
   emittedType,
   type CompiledEdge,
 } from "./topology";
+import type { NodeStatus } from "./types";
 import { resolveMultiplier } from "./units";
 
 export interface NodeCapacity {
@@ -132,9 +133,19 @@ function compatibleScale(demand: { rate: number; consumers: string[] }[], capaci
   return multiplier;
 }
 
-/** Nominal peak-demand planning: setup and multipliers apply; timeline chaos/retries/travel are excluded.
+export interface CapacityOptions {
+  /** Node statuses right now (a live run's chaos), overriding the setup's and the diagram's. */
+  status?: Readonly<Record<string, NodeStatus | undefined>>;
+}
+
+/** Nominal peak-demand planning: setup and multipliers apply; timeline chaos/retries/travel are excluded
+ * unless `options.status` passes the run's current statuses in.
  * Demand is not clipped at upstream capacity, so downstream overloads remain visible. */
-export function analyzeCapacity(diagram: DiagramFile, simulation?: Simulation): CapacityAnalysis {
+export function analyzeCapacity(
+  diagram: DiagramFile,
+  simulation?: Simulation,
+  options: CapacityOptions = {},
+): CapacityAnalysis {
   const trafficMultiplier = resolveMultiplier(simulation?.multipliers?.traffic);
   const capacityMultiplier = resolveMultiplier(simulation?.multipliers?.capacity);
   const entries = new Map<string, Entry>();
@@ -143,7 +154,7 @@ export function analyzeCapacity(diagram: DiagramFile, simulation?: Simulation): 
     const raw = { ...input.props, ...simulation?.setup?.props?.[input.id] };
     const props = resolveProps(role, input.label, raw);
     const replicas = Math.max(1, Math.round(props.replicas * capacityMultiplier));
-    const status = simulation?.setup?.status?.[input.id] ?? raw.status;
+    const status = options.status?.[input.id] ?? simulation?.setup?.status?.[input.id] ?? raw.status;
     entries.set(input.id, {
       input,
       role,

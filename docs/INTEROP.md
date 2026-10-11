@@ -68,8 +68,11 @@ reload is needed.
   and kind enums; and simulation shape (traffic, timeline, expectations). Malformed simulations are skipped with
   a reason.
 - **Budgets for untrusted input** (`LIMITS`): 8 MB of text (files are checked by `File.size` before reading),
-  48 levels of nesting (iterative walk), 5,000 nodes / 20,000 edges / 1,000 groups / 200 simulations, and
-  compressed payloads (share links, draw.io pages) that stop inflating at the cap (zip-bomb guard).
+  48 levels of nesting (iterative walk), 5,000 nodes / 20,000 edges / 1,000 groups / 200 simulations /
+  2,000 annotations, and compressed payloads (share links, draw.io pages) that stop inflating at the cap
+  (zip-bomb guard). An annotation's text is cut at 10,000 characters and its width or height must be
+  1–20,000 px. A malformed annotation is skipped with a reason, as is an edge that ends on a text, note or
+  zone (only shapes take edges).
 - Storage failures never crash anything: autosave writes return `false`, and the user gets one toast that says to
   export. Imports report "storage is full or blocked" and keep the previous copy.
 
@@ -80,9 +83,14 @@ reload is needed.
   yield to label keywords ("Postgres", "Kafka", "Service Bus": `src/interop/infer.ts`), and the fallback is
   `generic.service`. Swimlanes, `container=1`, AWS groups and any vertex with children become boundaries,
   with the tone taken from style or label. Edges keep their labels (including edge-label children):
-  dashed means async, solid means sync. Text-only cells and dangling connectors are skipped, with a
-  warning. Geometry is preserved; foreign files are spread out to fit our 220×72 cards, and boundaries
-  grow to contain them.
+  dashed means async, solid means sync. Dangling connectors are skipped, with a warning. Geometry is
+  preserved; foreign files are spread out to fit our 220×72 cards, and boundaries grow to contain them.
+- **Annotations.** Free-standing text cells become **text** and `shape=note` becomes a **note**. A rhombus
+  is always a **shape** (diamond). A plain rectangle, rounded rectangle, ellipse or cylinder becomes a
+  shape when nothing connects to it and its label names no product; connected or named ones stay nodes,
+  so the simulation keeps them. Our own export writes each annotation with `dg_annotation`, `dg_shape`,
+  `dg_color` and `dg_text_size`, so it reads back exactly. On export, zones are dashed rounded rectangles
+  written first (behind everything), and edges may end on shapes.
 - **Export.** Uncompressed `.drawio`. Uses built-in Azure / AWS / Kubernetes shapes where mapped, and
   otherwise our icon as a data-URI image. Boundaries are containers (members are children). Edges are
   orthogonal, dashed for async, with labels and pinned sides. Our ids, stencils, props, description,
@@ -93,7 +101,9 @@ reload is needed.
 
 - **Export.** `flowchart LR|TB` with front-matter title, subgraphs, `-.->` for async and `-->` for sync,
   quoted labels (`label<br/>sublabel`), cylinders for data stores and stadiums for clients. A trailing
-  `%% diagrams:{…}` comment keeps ids, stencils and tones; Mermaid ignores it.
+  `%% diagrams:{…}` comment keeps ids, stencils and tones; Mermaid ignores it. Shape annotations become
+  Mermaid nodes of the same shape (`[]` `()` `(())` `{}` `[()]`) and keep their edges; text, notes and
+  zones have no Mermaid equivalent and are left out.
 - **Import.** The syntax above. Positions come from the editor's layered auto-layout (`src/editor/layout.ts`),
   with subgraph members kept adjacent in each layer and boundaries fitted around them. Stencils come from
   the metadata comment, then label keywords, then shape (a cylinder means a store).

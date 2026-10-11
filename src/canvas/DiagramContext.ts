@@ -4,7 +4,8 @@ import { createContext, useContext, type MouseEvent as ReactMouseEvent } from "r
 export type EditTarget =
   | { kind: "node"; id: string; field: "label" | "sublabel" }
   | { kind: "edge"; id: string }
-  | { kind: "group"; id: string };
+  | { kind: "group"; id: string }
+  | { kind: "annotation"; id: string };
 
 /** Diagram-level settings + canvas UI state shared with node / edge renderers. */
 export interface DiagramUi {

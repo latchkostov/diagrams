@@ -14,6 +14,7 @@ export type ShortcutId =
   | "nudge"
   | "nudge-far"
   | "rename"
+  | "add-text"
   | "escape"
   | "fit-view"
   | "zoom-100"
@@ -31,10 +32,11 @@ export interface Shortcut {
 export const SHORTCUTS: readonly Shortcut[] = [
   { id: "undo", keys: ["Mod+Z"], label: "Undo", group: "Edit" },
   { id: "redo", keys: ["Mod+Shift+Z", "Mod+Y"], label: "Redo", group: "Edit" },
-  { id: "rename", keys: ["F2"], label: "Rename selected node, edge or boundary", group: "Edit" },
+  { id: "rename", keys: ["F2"], label: "Rename the selection, or edit its text", group: "Edit" },
   { id: "delete", keys: ["Delete", "Backspace"], label: "Delete selection", group: "Edit" },
   { id: "duplicate", keys: ["Mod+D"], label: "Duplicate selection", group: "Edit" },
   { id: "group", keys: ["Mod+G"], label: "Add a boundary around the selection", group: "Edit" },
+  { id: "add-text", keys: ["T"], label: "Add text at the pointer", group: "Edit" },
   { id: "copy", keys: ["Mod+C"], label: "Copy", group: "Clipboard" },
   { id: "cut", keys: ["Mod+X"], label: "Cut", group: "Clipboard" },
   { id: "paste", keys: ["Mod+V"], label: "Paste", group: "Clipboard" },

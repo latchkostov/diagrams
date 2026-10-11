@@ -1925,3 +1925,424 @@ select.insp-input {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---------- annotations: text, notes, zones, shapes (canvas/nodes/AnnotationNode.tsx) ---------- */
+
+.react-flow__node-annotation {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Zones are backdrops: only their label and resize handles take the pointer, so the pane inside a
+   zone still pans, box-selects and takes double-click / right-click, as it does in a boundary. */
+.react-flow__node-annotation:has(> .ann-zone) {
+  pointer-events: none !important;
+}
+
+/* The fold is cut with clip-path, which would clip a box-shadow: the wrapper casts it instead. */
+.react-flow__node-annotation:has(> .ann-note) {
+  filter: drop-shadow(0 1px 1px rgb(16 24 40 / 0.07)) drop-shadow(0 8px 14px rgb(16 24 40 / 0.1));
+}
+
+[data-theme="dark"] .react-flow__node-annotation:has(> .ann-note) {
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.35)) drop-shadow(0 10px 18px rgb(0 0 0 / 0.45));
+}
+
+.ann {
+  --ann-fs: 14px;
+  --ann-ink: color-mix(in oklab, var(--ann) 58%, var(--text));
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--ann-fs);
+  line-height: 1.38;
+}
+
+[data-theme="dark"] .ann {
+  --ann-ink: color-mix(in oklab, var(--ann) 52%, var(--text));
+}
+
+.ann-s-s {
+  --ann-fs: 12px;
+}
+.ann-s-l {
+  --ann-fs: 18px;
+}
+.ann-s-xl {
+  --ann-fs: 26px;
+}
+
+.ann-body {
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.ann-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ann-placeholder {
+  color: color-mix(in oklab, var(--ann-ink) 55%, transparent);
+  font-style: italic;
+}
+
+.ann.is-selected,
+.ann.is-editing {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---- text: no chrome at all; a faint outline on hover says it can be grabbed */
+.ann-text {
+  border-radius: 6px;
+  cursor: move;
+}
+
+.ann-text .ann-body {
+  padding: 3px 6px;
+  overflow: visible;
+}
+
+.ann-text .ann-content {
+  color: var(--ann-ink);
+  font-weight: 520;
+}
+
+.ann-text[data-color="neutral"] .ann-content {
+  color: var(--text);
+}
+
+.ann-text.ann-s-l .ann-content {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.ann-text.ann-s-xl .ann-content {
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.ann-text:not(.is-selected):not(.is-editing):hover {
+  outline: 1px dashed var(--line-strong);
+  outline-offset: 3px;
+}
+
+/* ---- note: a soft-tinted card with a folded corner */
+.ann-note {
+  --fold: 16px;
+  cursor: move;
+}
+
+/* The paper carries the fill and the cut corner, so the clip never hides the resize handles. */
+.ann-paper {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--ann) 26%, #fffdf6);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--fold)), calc(100% - var(--fold)) 100%, 0 100%);
+}
+
+/* Dark: a quiet tinted card with a band of the colour on top (a full tint turns muddy on dark). */
+[data-theme="dark"] .ann-paper {
+  background: linear-gradient(
+    color-mix(in oklab, var(--ann) 85%, #fff) 0 3px,
+    color-mix(in oklab, var(--ann) 13%, #222a3b) 3px
+  );
+}
+
+[data-theme="dark"] .ann-note .ann-content,
+[data-theme="dark"] .ann-note .ann-editor {
+  color: color-mix(in oklab, var(--ann) 12%, #eef1f7);
+}
+
+.ann-note .ann-body {
+  position: relative;
+  padding: 12px 14px 14px;
+}
+
+.ann-note .ann-content {
+  color: color-mix(in oklab, var(--ann) 30%, var(--text));
+}
+
+/* The flap: the top-left half of the cut-off corner, a shade darker than the paper. */
+.ann-fold {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--fold);
+  height: var(--fold);
+  background: linear-gradient(to bottom right, color-mix(in oklab, var(--ann) 46%, #fffdf6) 50%, transparent 50%);
+  border-top-left-radius: 3px;
+}
+
+[data-theme="dark"] .ann-fold {
+  background: linear-gradient(to bottom right, color-mix(in oklab, var(--ann) 30%, #2c3547) 50%, transparent 50%);
+}
+
+/* ---- zone: a dashed, rounded region with a quiet label (a boundary has a solid edge and a chip) */
+.ann-zone {
+  border-radius: 18px;
+  border: 1.5px dashed color-mix(in oklab, var(--ann) 50%, transparent);
+  background: color-mix(in oklab, var(--ann) 5%, transparent);
+}
+
+[data-theme="dark"] .ann-zone {
+  border-color: color-mix(in oklab, var(--ann) 55%, transparent);
+  background: color-mix(in oklab, var(--ann) 7%, transparent);
+}
+
+.ann-zone.is-selected,
+.ann-zone.is-editing {
+  outline: 0;
+  border-color: color-mix(in oklab, var(--ann) 85%, transparent);
+  border-style: solid;
+}
+
+.ann-zone-label {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  max-width: calc(100% - 28px);
+  padding: 2px 4px;
+  border-radius: 5px;
+  font-size: calc(var(--ann-fs) * 0.82);
+  font-weight: 680;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--ann-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: all;
+  cursor: move;
+}
+
+.ann-zone-label:hover {
+  background: color-mix(in oklab, var(--ann) 10%, transparent);
+}
+
+.ann-zone.is-editing .ann-zone-label {
+  overflow: visible;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ---- shape: a crisp outline drawn at real pixel size, text centred inside */
+.ann-shape {
+  cursor: move;
+}
+
+.ann-shape-svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.ann-shape-svg > * {
+  fill: color-mix(in oklab, var(--ann) 7%, var(--node-bg));
+  stroke: color-mix(in oklab, var(--ann) 72%, var(--text));
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.ann-shape-svg > .ann-shape-top {
+  fill: color-mix(in oklab, var(--ann) 15%, var(--node-bg));
+}
+
+.ann-shape .ann-body {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.ann-body-ellipse {
+  padding: 12% 16%;
+}
+
+.ann-body-diamond {
+  padding: 20% 24%;
+}
+
+.ann-shape .ann-body-cylinder {
+  padding-top: 30px;
+}
+
+.ann-shape .ann-content {
+  font-weight: 550;
+}
+
+.ann-shape:hover .dn-handle {
+  opacity: 1;
+}
+
+/* ---- inline editor: the text, editable, in the same place and type */
+.ann-editor {
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  cursor: text;
+}
+
+.ann-text .ann-editor {
+  color: var(--ann-ink);
+}
+
+.ann-text[data-color="neutral"] .ann-editor {
+  color: var(--text);
+}
+
+.ann-note .ann-editor {
+  color: color-mix(in oklab, var(--ann) 30%, var(--text));
+}
+
+.ann-zone .ann-editor {
+  width: 240px;
+  height: auto;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1.5px var(--accent);
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.ann-editor::placeholder {
+  color: var(--text-4);
+}
+
+/* ---- resize handles on the selection */
+.ann .react-flow__resize-control {
+  pointer-events: all;
+}
+
+.ann .react-flow__resize-control.line {
+  border-color: transparent;
+}
+
+.ann .react-flow__resize-control.handle.ann-resize-handle {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+}
+
+.ann-resize-hit {
+  position: absolute;
+  inset: -6px;
+}
+
+/* ---- presentation reads at a distance; live keeps annotations visible but quiet */
+.is-presenting .ann-zone-label {
+  color: color-mix(in oklab, var(--ann) 70%, var(--text));
+}
+
+.is-presenting .ann-text .ann-content {
+  font-weight: 600;
+}
+
+.canvas-view .react-flow__node-annotation {
+  transition: opacity var(--dur-3) var(--ease-out);
+}
+
+.canvas-view.is-live .react-flow__node-annotation {
+  opacity: 0.6;
+}
+
+/* ---- the stencil rail's Annotate group */
+.palette-annotate {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.palette-annotate-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px 2px 6px;
+}
+
+.palette-annotate-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 2px 5px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 520;
+  cursor: grab;
+  transition:
+    background var(--dur-1),
+    color var(--dur-1);
+}
+
+.palette-annotate-item span {
+  font-size: 10.5px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-annotate-item:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.palette-annotate-item:active {
+  cursor: grabbing;
+  background: var(--press);
+}
+
+/* ---- inspector: shape picker and size fields */
+.insp-toolbar .icon-btn.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.insp-size {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+}
+
+.insp-size .insp-input {
+  width: 0;
+  flex: 1;
+}

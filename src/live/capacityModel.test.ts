@@ -191,6 +191,33 @@ describe("inputs → simulation", () => {
 });
 
 describe("capacity view", () => {
+  it("reports a run's outage instead of claiming every service is healthy", () => {
+    const outage = KAFKA.simulations!.find((s) => s.id === "payments-outage")!;
+    const planned = capacityView(KAFKA, outage);
+    expect(planned.headline).toBe("Healthy: every service has headroom");
+    const down = capacityView(KAFKA, outage, { payments: "down" });
+    expect(down.headline).toBe("Payments service is down");
+    expect(down.detail).toMatch(/fail until it's back/);
+    expect(down.tone).toBe("over");
+    expect(down.top?.id).toBe("payments");
+    expect(down.nodes.payments).toMatchObject({ status: "down", level: "over" });
+    expect(down.nodes.payments.text).toMatch(/^Down · /);
+    const paused = capacityView(KAFKA, outage, { payments: "paused", inventory: "down" });
+    expect(paused.headline).toBe("Inventory service and 1 more are down or paused");
+    expect(paused.nodes.payments.text).toMatch(/^Paused · .* waiting$/);
+    // Revived in the run: back to the plan.
+    expect(capacityView(KAFKA, outage, { payments: "up" }).headline).toBe(planned.headline);
+  });
+
+  it("a diagram's own down node is an outage in edit mode too, and a run can revive it", () => {
+    const d: DiagramFile = {
+      ...KAFKA,
+      nodes: KAFKA.nodes.map((n) => (n.id === "payments" ? { ...n, props: { ...n.props, status: "down" } } : n)),
+    };
+    expect(capacityView(d, blackFriday).headline).toBe("Payments service is down");
+    expect(capacityView(d, blackFriday, { payments: "up" }).headline).not.toMatch(/down/);
+  });
+
   it("Kafka Black Friday makes sense with zero input: busy but healthy, databases stay neutral", () => {
     const view = capacityView(KAFKA, blackFriday);
     expect(view.nodes.payments).toMatchObject({ level: "warn", text: "78% · 2k/s of 2.6k/s" });
@@ -386,6 +413,27 @@ describe("entryCandidates", () => {
       ),
     ).map((n) => n.id);
     expect(ids).toEqual(["api"]);
+  });
+
+  it("offers nodes in a cycle when every node has an incoming edge", () => {
+    const loop = d(
+      ["a", "b", "c"],
+      [
+        ["a", "b"],
+        ["b", "a"],
+        ["b", "c"],
+      ],
+    );
+    expect(entryCandidates(loop).map((n) => n.id)).toEqual(["a", "b"]);
+    // An isolated node doesn't hide the cycle: it feeds nothing.
+    const withLog = d(
+      ["log", "a", "b"],
+      [
+        ["a", "b"],
+        ["b", "a"],
+      ],
+    );
+    expect(entryCandidates(withLog).map((n) => n.id)).toEqual(["a", "b"]);
   });
 
   it("falls back to any unfed node, and offers at most three", () => {
