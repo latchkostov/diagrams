@@ -51,6 +51,10 @@ audits, simulation scenarios and capacity states. Use it to preview changes quic
 | `docs/DESIGN-REVIEW.md` | UX review rounds and scorecards                                                  |
 | `docs/BACKLOG.md`       | Known follow-ups                                                                 |
 
+## License
+
+MIT. See `LICENSE`. Icons keep their own licences (below).
+
 ## Icons and trademarks
 
 Product logos and service icons are trademarks of their owners and are used to identify those products in
