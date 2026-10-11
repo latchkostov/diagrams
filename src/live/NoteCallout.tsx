@@ -22,6 +22,7 @@ export function NoteCallout({ state }: { state: LiveState }) {
   const paneWidth = useStore((s) => s.width);
   const height = useStore((s) => s.height);
   const lookup = useStore((s) => s.nodeLookup);
+  const pane = useStore((s) => s.domNode);
   const ref = useRef<HTMLDivElement>(null);
   const continueRef = useRef<HTMLButtonElement>(null);
   const [size, setSize] = useState({ w: 420, h: 110 });
@@ -80,7 +81,10 @@ export function NoteCallout({ state }: { state: LiveState }) {
   let style: CSSProperties;
   let placement: "below" | "above" | "right" | "left" | "free" = "free";
   // Beside the focus, in the free space around it (covering as little of the diagram as it can).
-  const spot = box && placeNote(box, size, { width, height: height - BOTTOM_RESERVE }, others, focused);
+  // The title card and the bottleneck callout float over the canvas too: keep clear of them like
+  // the focused nodes (in presentation the title card is large).
+  const keepClear = [...focused, ...overlayBoxes(pane)];
+  const spot = box && placeNote(box, size, { width, height: height - BOTTOM_RESERVE }, others, keepClear);
   if (spot) {
     placement = spot.placement;
     const vertical = placement === "below" || placement === "above";
@@ -137,4 +141,19 @@ export function NoteCallout({ state }: { state: LiveState }) {
       )}
     </div>
   );
+}
+
+/** Canvas overlays (title card, bottleneck callout, corner buttons) in pane coordinates. */
+function overlayBoxes(pane: HTMLElement | null): Box[] {
+  const wrap = pane?.parentElement;
+  if (!pane || !wrap) return [];
+  const origin = pane.getBoundingClientRect();
+  const out: Box[] = [];
+  // Plus the Live toggle and "Exit presentation" in the top-right corner.
+  for (const el of wrap.querySelectorAll<HTMLElement>("[data-canvas-overlay], .lv-toggle, .present-exit")) {
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    out.push({ l: r.left - origin.left, t: r.top - origin.top, r: r.right - origin.left, b: r.bottom - origin.top });
+  }
+  return out;
 }

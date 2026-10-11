@@ -72,6 +72,11 @@ export function placeMarkers(markers: readonly TimelineMarker[], totalMs: number
   return out;
 }
 
+/** Where a click on a marker seeks: one engine step past it, so the note is up or the chaos has happened. */
+export function markerSeekTime(atMs: number): number {
+  return Math.max(0, Math.round((Number.isFinite(atMs) ? atMs : 0) / 10) * 10 + 10);
+}
+
 /** "note" → the glyph used on the track. */
 export const markerGlyph: Record<TimelineMarker["kind"], string> = {
   note: "note",

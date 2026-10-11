@@ -21,6 +21,8 @@ export interface LiveActionsHost {
   /** Writes a node's live tweaks into the diagram (undoable). */
   saveTweaks(nodeId: string): void;
   messageType(nodeId: string): string;
+  /** "Record video…". */
+  openRecord(): void;
 }
 
 const FAILURE_RATES = [0, 0.1, 0.25, 0.5, 1];
@@ -209,6 +211,15 @@ export function liveActions(host: LiveActionsHost): Action[] {
       order: 30,
       when: () => host.tracing() !== null,
       run: () => host.trace(null),
+    },
+    {
+      id: "sim.record",
+      section: "simulation",
+      targets: ["canvas"],
+      label: "Record video…",
+      icon: "present",
+      order: 50,
+      run: () => host.openRecord(),
     },
     {
       id: "sim.reset",

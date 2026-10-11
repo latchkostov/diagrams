@@ -49,6 +49,45 @@ export interface DiagramFile {
   edges: DiagramEdge[];
   /** Saved live-view simulations: who sends what, when things break, and what should hold true. */
   simulations?: Simulation[];
+  /**
+   * Free text, sticky notes, zones and plain shapes. Documentation only: the simulation, capacity
+   * analysis and auto-layout never see them. Ids share the node namespace, because an edge may end
+   * on a shape (for documentation; it carries no traffic).
+   */
+  annotations?: DiagramAnnotation[];
+}
+
+// ---------- Annotations ----------
+
+/**
+ * - text: plain words on the canvas (titles, captions), no chrome.
+ * - note: a tinted sticky-note card.
+ * - zone: a labelled, dashed region drawn behind nodes. Unlike a boundary it groups nothing: nodes
+ *   don't belong to it and don't move with it.
+ * - shape: a plain outline (see AnnotationShape) for when no stencil fits. The only connectable kind.
+ */
+export type AnnotationKind = "text" | "note" | "zone" | "shape";
+export type AnnotationShape = "rect" | "rounded" | "ellipse" | "diamond" | "cylinder";
+/** A small curated palette that reads well in both themes. */
+export type AnnotationColor = "neutral" | "yellow" | "green" | "blue" | "purple" | "red";
+export type AnnotationTextSize = "s" | "m" | "l" | "xl";
+
+export interface DiagramAnnotation {
+  id: string;
+  kind: AnnotationKind;
+  /** Multi-line text ("\n" separates lines). A zone's text is its label. */
+  text: string;
+  /** Top-left position and size in canvas pixels. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Kind "shape" only. Default "rect". */
+  shape?: AnnotationShape;
+  /** Default per kind: note yellow, zone blue, text and shape neutral. */
+  color?: AnnotationColor;
+  /** Default "m"; text uses "xl" for titles. */
+  textSize?: AnnotationTextSize;
 }
 
 // ---------- Simulations (docs/SIMULATIONS.md) ----------
@@ -146,7 +185,7 @@ export interface DiagramNode {
 
 export interface DiagramEdge {
   id: string;
-  /** Message / request flows from `from` to `to`. */
+  /** Message / request flows from `from` to `to`. Either end may also be a shape annotation's id. */
   from: string;
   to: string;
   label?: string;

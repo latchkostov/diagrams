@@ -61,6 +61,15 @@ const paths = {
   shapes: "M2.5 2.5h5v5h-5zM11 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM5 9.5l2.5 4h-5zM9 9.5h4.5v4H9z",
   sparkle: "M8 2v3M8 11v3M2 8h3M11 8h3M4 4l2 2M10 10l2 2M12 4l-2 2M6 10l-2 2",
   info: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM8 7.5V11M8 5h.01",
+  // Annotations: text, note, zone and the five shapes.
+  type: "M3 4V2.75h10V4M8 2.75v10.5M6 13.25h4",
+  note: "M2.75 2.75h10.5v6.5l-4 4h-6.5zM13.25 9.25h-4v4M5 5.5h6M5 8h3.5",
+  zone: "M2.5 5V4a1.5 1.5 0 0 1 1.5-1.5h1M7 2.5h2M11 2.5h1a1.5 1.5 0 0 1 1.5 1.5v1M13.5 7v2M13.5 11v1a1.5 1.5 0 0 1-1.5 1.5h-1M9 13.5H7M5 13.5H4A1.5 1.5 0 0 1 2.5 12v-1M2.5 9V7M5 5.5h3.5",
+  "shape-rect": "M2.5 4h11v8h-11z",
+  "shape-rounded": "M5 4h6a2.5 2.5 0 0 1 2.5 2.5v3A2.5 2.5 0 0 1 11 12H5a2.5 2.5 0 0 1-2.5-2.5v-3A2.5 2.5 0 0 1 5 4Z",
+  "shape-ellipse": "M8 12.5c3 0 5.5-2 5.5-4.5S11 3.5 8 3.5 2.5 5.5 2.5 8s2.5 4.5 5.5 4.5Z",
+  "shape-diamond": "M8 2 14 8 8 14 2 8z",
+  "shape-cylinder": "M3 4.5c0-1.1 2.24-2 5-2s5 .9 5 2-2.24 2-5 2-5-.9-5-2ZM3 4.5v7c0 1.1 2.24 2 5 2s5-.9 5-2v-7",
 } as const;
 
 export type IconName = keyof typeof paths;

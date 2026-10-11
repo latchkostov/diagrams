@@ -292,6 +292,20 @@ describe("capacity analysis by hand", () => {
     const idle = analyzeCapacity(d, traffic({}));
     expect(idle.nodes.p.utilization).toBe(0);
   });
+  it("takes a run's current statuses over the setup's and the diagram's", () => {
+    const d = diagram([node("api"), node("pay", undefined, { status: "down" })], [edge("api", "pay")]);
+    const sim = traffic({ api: 10 }, { setup: { status: { api: "paused" } } });
+    const planned = analyzeCapacity(d, sim);
+    expect(planned.nodes.api.capacity).toBe(0);
+    expect(planned.nodes.pay.capacity).toBe(0);
+    const live = analyzeCapacity(d, sim, { status: { api: "up", pay: "down" } });
+    expect(live.nodes.api.capacity).toBeGreaterThan(0);
+    expect(live.nodes.pay).toMatchObject({ capacity: 0, utilization: Infinity, offered: 10 });
+    const revived = analyzeCapacity(d, sim, { status: { api: "up", pay: "up" } });
+    expect(revived.nodes.pay.utilization).toBeLessThan(1);
+    // Nodes the run doesn't mention keep their planned status.
+    expect(analyzeCapacity(d, sim, { status: {} }).nodes.pay.capacity).toBe(0);
+  });
   it("has no bottleneck without traffic and treats zero-latency processors as unlimited", () => {
     const d = diagram([node("p", undefined, { latencyMs: 0 })]);
     expect(analyzeCapacity(d, traffic({})).bottleneck).toBeUndefined();

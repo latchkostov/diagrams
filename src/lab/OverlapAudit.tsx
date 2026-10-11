@@ -18,14 +18,13 @@ import type { DiagramFile } from "../model/types";
 import { useSettings } from "../harness/settings";
 import { toFlow } from "../canvas/convert";
 import { DiagramContext } from "../canvas/DiagramContext";
-import { DiagramNode } from "../canvas/nodes/DiagramNode";
-import { GroupNode } from "../canvas/nodes/GroupNode";
+import { canvasNodeTypes } from "../canvas/nodes/nodeTypes";
 import { EdgeMarkers, FlowEdge } from "../canvas/edges/FlowEdge";
 import { lastRoutingMs, routeInputFromStore, useAllRoutes } from "../canvas/edges/useEdgeRoute";
 import { auditLayout, countViolations, type Violation, type ViolationKind } from "../canvas/geometry/audit";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 
-const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
+const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
 
 const KIND_LABEL: Record<ViolationKind, string> = {

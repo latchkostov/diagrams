@@ -23,6 +23,7 @@ function fakeEditor(selection: Partial<Selection> = {}): EditorApi {
     getDiagram: () => diagram,
     getSelection: () => sel,
     getNode: (id: string) => diagram.nodes.find((n) => n.id === id),
+    getAnnotation: (id: string) => diagram.annotations?.find((a) => a.id === id),
   } as unknown as EditorApi;
 }
 

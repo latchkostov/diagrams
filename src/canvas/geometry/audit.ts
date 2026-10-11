@@ -1,6 +1,10 @@
 // Overlap audit: given what's on the canvas (node boxes, label boxes, edge polylines, group
 // headers), list everything that overlaps when it shouldn't. Pure, so it runs in unit tests,
 // the Lab's "Overlap audit" preset and anywhere else a layout needs checking.
+//
+// `nodes` are the solid things: cards, plus the notes and shapes among the annotations. Zones and
+// free text are left out on purpose (see canvas/annotations.ts isObstacle): labels and edges may sit
+// over a zone or a caption, but never over a note or a shape.
 
 import { intersects, segmentHitsRect, type Point, type Rect } from "./rect";
 import { SpatialGrid } from "./spatial";

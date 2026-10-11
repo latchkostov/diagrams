@@ -7,6 +7,9 @@ import { DiagramThumbnail } from "./DiagramThumbnail";
 import { NEARLY_FULL, storageUsage, type LibraryEntry } from "../lib/diagramIO";
 import { formatAgo } from "../lib/time";
 
+/** Show the storage meter from this share of the budget (it always shows once nearly full). */
+const SHOW_USAGE_FROM = 0.5;
+
 /** Storage in bytes (UTF-16: two per character), as KB below a tenth of a megabyte. */
 const size = (chars: number) =>
   chars * 2 < 100_000
@@ -78,6 +81,8 @@ export function LibraryDialog({
     return storageUsage();
   }, [listKey]);
   const nearlyFull = usage.ratio >= NEARLY_FULL;
+  // The meter waits until storage is half full: below that it's noise.
+  const showUsage = usage.ratio >= SHOW_USAGE_FROM;
 
   return (
     <Dialog
@@ -89,21 +94,23 @@ export function LibraryDialog({
       width={600}
       footer={
         <>
-          <div
-            className={`lib-usage${nearlyFull ? " is-full" : ""}`}
-            data-testid="library-usage"
-            data-ratio={usage.ratio.toFixed(3)}
-            title="Browsers give each site about 10 MB for everything it keeps."
-          >
-            <span className="lib-meter" aria-hidden>
-              <span style={{ width: `${Math.min(100, Math.max(2, usage.ratio * 100))}%` }} />
-            </span>
-            <span>
-              {nearlyFull
-                ? `Storage almost full (${Math.round(usage.ratio * 100)}%). Delete or export diagrams you don't need.`
-                : `${size(usage.used)} of about ${size(usage.budget)} used`}
-            </span>
-          </div>
+          {showUsage && (
+            <div
+              className={`lib-usage${nearlyFull ? " is-full" : ""}`}
+              data-testid="library-usage"
+              data-ratio={usage.ratio.toFixed(3)}
+              title="Browsers give each site about 10 MB for everything it keeps."
+            >
+              <span className="lib-meter" aria-hidden>
+                <span style={{ width: `${Math.min(100, Math.max(2, usage.ratio * 100))}%` }} />
+              </span>
+              <span>
+                {nearlyFull
+                  ? `Storage almost full (${Math.round(usage.ratio * 100)}%). Delete or export diagrams you don't need.`
+                  : `${size(usage.used)} of about ${size(usage.budget)} used`}
+              </span>
+            </div>
+          )}
           <span className="ix-grow" />
           <button
             className="btn btn-primary"

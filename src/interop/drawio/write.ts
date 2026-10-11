@@ -1,4 +1,5 @@
-import type { DiagramFile, DiagramNode, Side } from "../../model/types";
+import type { DiagramAnnotation, DiagramFile, DiagramNode, Side } from "../../model/types";
+import { ANNOTATION_COLORS, annotationColor, textSizePx } from "../../canvas/annotations";
 import { catalog } from "../../stencils/catalog";
 import { escapeXml } from "../xml";
 import { boxShape, groupStyle, imageShape, nativeShape, type DrawioShape } from "./mapping";
@@ -20,7 +21,41 @@ export interface DrawioWriteOptions {
 const stencilById = new Map(catalog.map((s) => [s.id, s]));
 
 /** Cell ids are namespaced so they can never collide with draw.io's root ("0") and layer ("1"). */
-export const cellId = (kind: "n" | "e" | "g", id: string) => `dg-${kind}-${id}`;
+export const cellId = (kind: "n" | "e" | "g" | "a", id: string) => `dg-${kind}-${id}`;
+
+/**
+ * draw.io's own shape for an annotation: text, note, a dashed rounded zone, and rectangle / rounded /
+ * ellipse / rhombus / cylinder3. Colours come from the curated palette, so they look the same there.
+ */
+export function annotationStyle(a: DiagramAnnotation): string {
+  const c = ANNOTATION_COLORS[annotationColor(a)];
+  const font = `fontSize=${textSizePx[a.textSize ?? "m"]};`;
+  switch (a.kind) {
+    case "text":
+      return `text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=top;${font}fontColor=${a.color && a.color !== "neutral" ? c.hex : "#1F2937"};${a.textSize === "xl" || a.textSize === "l" ? "fontStyle=1;" : ""}`;
+    case "note":
+      return `shape=note;html=1;whiteSpace=wrap;backgroundOutline=1;size=14;align=left;verticalAlign=top;spacing=10;${font}fillColor=${c.fill};strokeColor=${c.hex};fontColor=#1F2937;`;
+    case "zone":
+      return `rounded=1;arcSize=6;absoluteArcSize=1;html=1;whiteSpace=wrap;dashed=1;dashPattern=8 6;align=left;verticalAlign=top;spacingLeft=14;spacingTop=6;fontStyle=1;${font}fillColor=${c.fill};fillOpacity=55;strokeColor=${c.hex};fontColor=${c.hex};`;
+    default: {
+      const base: Record<NonNullable<DiagramAnnotation["shape"]>, string> = {
+        rect: "rounded=0;",
+        rounded: "rounded=1;",
+        ellipse: "ellipse;",
+        diamond: "rhombus;",
+        cylinder: "shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=12;",
+      };
+      return `${base[a.shape ?? "rect"]}html=1;whiteSpace=wrap;${font}fillColor=${c.fill};strokeColor=${c.hex};fontColor=#1F2937;`;
+    }
+  }
+}
+
+/** Multi-line text as a draw.io HTML label. */
+const textHtml = (text: string) =>
+  text
+    .split("\n")
+    .map((l) => escapeXml(l, false))
+    .join("<br>");
 
 const SIDE_POINT: Record<Side, [number, number]> = { top: [0.5, 0], right: [1, 0.5], bottom: [0.5, 1], left: [0, 0.5] };
 
@@ -55,6 +90,17 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
     `        <mxCell id="1" parent="0" />`,
   );
 
+  const annotations = d.annotations ?? [];
+  const annotationCell = (a: DiagramAnnotation) => [
+    `        <object id="${escapeXml(cellId("a", a.id))}" label="${escapeXml(textHtml(a.text))}" dg_id="${escapeXml(a.id)}" dg_annotation="${a.kind}"${attr("dg_shape", a.kind === "shape" ? (a.shape ?? "rect") : undefined)}${attr("dg_color", a.color)}${attr("dg_text_size", a.textSize)}>`,
+    `          <mxCell style="${escapeXml(annotationStyle(a))}" vertex="1" parent="1">`,
+    `            <mxGeometry x="${r(a.x)}" y="${r(a.y)}" width="${r(a.width)}" height="${r(a.height)}" as="geometry" />`,
+    `          </mxCell>`,
+    `        </object>`,
+  ];
+  // Zones first: draw.io paints in document order, and a zone is a backdrop.
+  for (const a of annotations) if (a.kind === "zone") lines.push(...annotationCell(a));
+
   for (const g of d.groups ?? []) {
     const tone = g.tone ?? "neutral";
     lines.push(
@@ -81,6 +127,10 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
     );
   }
 
+  for (const a of annotations) if (a.kind !== "zone") lines.push(...annotationCell(a));
+
+  const shapes = new Set(annotations.filter((a) => a.kind === "shape").map((a) => a.id));
+  const end = (id: string) => cellId(shapes.has(id) ? "a" : "n", id);
   for (const e of d.edges) {
     const kind = e.kind ?? "async";
     let style = `edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=${kind === "async" ? "#7C8597" : "#475569"};${kind === "async" ? "dashed=1;dashPattern=6 4;" : ""}`;
@@ -90,7 +140,7 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
       style += `entryX=${SIDE_POINT[e.targetSide][0]};entryY=${SIDE_POINT[e.targetSide][1]};entryDx=0;entryDy=0;`;
     lines.push(
       `        <object id="${escapeXml(cellId("e", e.id))}" label="${escapeXml(escapeXml(e.label ?? "", false))}" dg_id="${escapeXml(e.id)}" dg_kind="${kind}"${attr("dg_props", json(e.props))}>`,
-      `          <mxCell style="${escapeXml(style)}" edge="1" parent="1" source="${escapeXml(cellId("n", e.from))}" target="${escapeXml(cellId("n", e.to))}">`,
+      `          <mxCell style="${escapeXml(style)}" edge="1" parent="1" source="${escapeXml(end(e.from))}" target="${escapeXml(end(e.to))}">`,
       `            <mxGeometry relative="1" as="geometry" />`,
       `          </mxCell>`,
       `        </object>`,

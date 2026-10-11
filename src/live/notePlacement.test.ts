@@ -34,6 +34,22 @@ describe("narration card placement", () => {
     expect(covers(pos, focused[0])).toBe(false);
   });
 
+  it("steps out into free space rather than cover a dimmed node beside the focus", () => {
+    // Every spot right beside the focus covers a neighbour; there's free space further down.
+    const ring = [box(250, 190, 700, 110), box(250, -100, 700, 150), box(160, 60, 300, 120), box(740, 60, 300, 120)];
+    const pos = placeNote(box(500, 100), card, pane, ring)!;
+    expect(pos).not.toBeNull();
+    for (const n of ring) expect(covers(pos, n)).toBe(false);
+    expect(pos.placement).toBe("below");
+    expect(pos.left + pos.arrow).toBeCloseTo(600, 0); // still points at the focus
+  });
+
+  it("keeps the nearest spot when nothing is free anywhere", () => {
+    const wall = [box(0, 0, 1200, 700)];
+    const pos = placeNote(box(500, 100), card, pane, wall)!;
+    expect(pos).toMatchObject({ placement: "below", top: 100 + 70 + 48 });
+  });
+
   it("keeps inside the pane, and gives up when the card can't fit", () => {
     const pos = placeNote(box(1000, 600), card, pane, [])!;
     expect(pos.left + card.w).toBeLessThanOrEqual(pane.width - 16);

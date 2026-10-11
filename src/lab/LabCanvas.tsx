@@ -18,8 +18,7 @@ import { useSettings } from "../harness/settings";
 import { getStencil } from "../stencils/registry";
 import { toFlow } from "../canvas/convert";
 import { DiagramContext } from "../canvas/DiagramContext";
-import { DiagramNode } from "../canvas/nodes/DiagramNode";
-import { GroupNode } from "../canvas/nodes/GroupNode";
+import { canvasNodeTypes } from "../canvas/nodes/nodeTypes";
 import { EdgeMarkers, FlowEdge } from "../canvas/edges/FlowEdge";
 import type { DiagramFlowEdge, DiagramFlowNode, FlowNode } from "../canvas/types";
 
@@ -28,7 +27,7 @@ import type { DiagramFlowEdge, DiagramFlowNode, FlowNode } from "../canvas/types
  * (imported, not forked) so the Lab always shows the current renderers. No autosave, no palette.
  * For the full editor, the Lab's "Open in editor" button hands the diagram to the Canvas view.
  */
-const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
+const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
 
 interface Props {
@@ -106,7 +105,7 @@ function Stage({ diagram, minimap = true, onRendered }: Props) {
               zoomable
               nodeBorderRadius={6}
               nodeColor={(n) =>
-                n.type === "boundary" ? "transparent" : getStencil((n as DiagramFlowNode).data.stencil).accent
+                n.type === "diagram" ? getStencil((n as DiagramFlowNode).data.stencil).accent : "transparent"
               }
             />
           )}

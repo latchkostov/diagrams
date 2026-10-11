@@ -11,7 +11,8 @@ import {
 } from "../geometry/router";
 import type { Rect } from "../geometry/rect";
 import { estimateCardSize } from "../nodes/size";
-import type { DiagramFlowEdge, DiagramNodeData, FlowNode, GroupNodeData } from "../types";
+import { isObstacle } from "../annotations";
+import type { AnnotationNodeData, DiagramFlowEdge, DiagramNodeData, FlowNode, GroupNodeData } from "../types";
 
 type State = ReactFlowState<FlowNode, DiagramFlowEdge>;
 
@@ -59,6 +60,9 @@ export function routeInputFromStore(
   const groups: RouteGroup[] = [];
   for (const n of nodes) {
     if (n.hidden) continue;
+    // Zones and text aren't obstacles (edges may pass over them) and take no edges: leave them out.
+    // Notes and shapes are solid, like nodes; shapes may also be edge ends.
+    if (n.type === "annotation" && !isObstacle((n.data as AnnotationNodeData).kind)) continue;
     const rect = rectOf(n);
     if (n.type === "boundary") {
       const g = n.data as GroupNodeData;
@@ -67,9 +71,10 @@ export function routeInputFromStore(
       routeNodes.push({
         id: n.id,
         rect,
-        extra: opts.captions
-          ? { x: rect.x + rect.width / 2 - 90, y: rect.y + rect.height + 6, width: 180, height: 34 }
-          : undefined,
+        extra:
+          opts.captions && n.type === "diagram"
+            ? { x: rect.x + rect.width / 2 - 90, y: rect.y + rect.height + 6, width: 180, height: 34 }
+            : undefined,
       });
   }
   return {

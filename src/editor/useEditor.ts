@@ -1,8 +1,23 @@
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
-import { edgeToFlow, fromFlow, groupAt, groupToFlow, nodeToFlow, type DiagramMeta } from "../canvas/convert";
+import {
+  annotationToFlow,
+  edgeToFlow,
+  fromFlow,
+  groupAt,
+  groupToFlow,
+  nodeToFlow,
+  type DiagramMeta,
+} from "../canvas/convert";
+import { annotationIdBase, defaultSize, defaultText, isConnectable } from "../canvas/annotations";
 import type { EditTarget } from "../canvas/DiagramContext";
-import { type DiagramFlowEdge, type DiagramFlowNode, type FlowNode, type GroupFlowNode } from "../canvas/types";
+import {
+  type AnnotationFlowNode,
+  type DiagramFlowEdge,
+  type DiagramFlowNode,
+  type FlowNode,
+  type GroupFlowNode,
+} from "../canvas/types";
 import { toneLabel } from "../canvas/groupTones";
 import { getStencil } from "../stencils/registry";
 import { downloadDiagram, isOwnSlug } from "../lib/diagramIO";
@@ -37,6 +52,8 @@ export interface EditorDeps {
   showShortcuts: () => void;
   /** Centre of the visible canvas, in flow coordinates. */
   viewCenter: () => XY;
+  /** The pointer over the canvas, in flow coordinates (undefined when it's elsewhere). */
+  pointer?: () => XY | undefined;
   fit: () => void;
   /** Nominal node size for the current renderer (before React Flow has measured). */
   nodeSize: { width: number; height: number };
@@ -53,6 +70,9 @@ export function useEditor(deps: EditorDeps): EditorApi {
 
 const isDiagram = (n: FlowNode): n is DiagramFlowNode => n.type === "diagram";
 const isGroup = (n: FlowNode): n is GroupFlowNode => n.type === "boundary";
+const isAnnotation = (n: FlowNode): n is AnnotationFlowNode => n.type === "annotation";
+/** Things that sit at a place and can be arranged: nodes and annotations (not boundaries). */
+const isPlaced = (n: FlowNode): n is DiagramFlowNode | AnnotationFlowNode => n.type !== "boundary";
 const snap10 = (v: number) => Math.round(v / 10) * 10;
 
 function withoutUndefined<T extends Record<string, unknown>>(o: T): T | undefined {
@@ -103,7 +123,7 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
   const insert = (p: ClipboardPayload, offset: XY) => {
     const ns = rf.getNodes();
     const taken = {
-      nodes: new Set(ns.filter(isDiagram).map((n) => n.id)),
+      nodes: new Set(ns.filter(isPlaced).map((n) => n.id)),
       groups: new Set(ns.filter(isGroup).map((n) => n.data.groupId)),
       edges: new Set(rf.getEdges().map((e) => e.id)),
     };
@@ -117,10 +137,13 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
       const group = n.group && newGroups.has(n.group) ? n.group : groupAt(all, n.x + width / 2, n.y + height / 2);
       return { ...f, data: { ...f.data, group }, selected: true };
     });
+    const notes = (r.annotations ?? []).map((a) => ({ ...annotationToFlow(a), selected: true }));
     deps().setNodes((cur) => [
+      ...notes.filter((n) => n.data.kind === "zone"),
       ...cur.map((n) => (n.selected ? { ...n, selected: false } : n)),
       ...groupNodes,
       ...nodes,
+      ...notes.filter((n) => n.data.kind !== "zone"),
     ]);
     deps().setEdges((cur) => [
       ...cur.map((e) => (e.selected ? { ...e, selected: false } : e)),
@@ -142,10 +165,11 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
     getNode: (id) => diagram().nodes.find((n) => n.id === id),
     getEdge: (id) => diagram().edges.find((e) => e.id === id),
     getGroup: (id) => diagram().groups?.find((g) => g.id === id),
+    getAnnotation: (id) => diagram().annotations?.find((a) => a.id === id),
     getSelection: () => {
       const ns = rf.getNodes();
       return {
-        nodeIds: ns.filter((n) => isDiagram(n) && n.selected).map((n) => n.id),
+        nodeIds: ns.filter((n) => isPlaced(n) && n.selected).map((n) => n.id),
         groupIds: ns
           .filter(isGroup)
           .filter((n) => n.selected)
@@ -161,7 +185,7 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
     selectAll: () => {
       const ns = rf.getNodes();
       setSelected({
-        nodeIds: ns.filter(isDiagram).map((n) => n.id),
+        nodeIds: ns.filter(isPlaced).map((n) => n.id),
         groupIds: ns.filter(isGroup).map((n) => n.data.groupId),
         edgeIds: rf.getEdges().map((e) => e.id),
       });
@@ -184,6 +208,63 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
       deps().setNodes((cur) => [...cur.map((n) => (n.selected ? { ...n, selected: false } : n)), node]);
       deps().setEdges((cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)));
       return id;
+    },
+
+    addAnnotation: (kind, opts = {}) => {
+      const size = defaultSize[kind];
+      const c = opts.at ?? (opts.atPointer ? deps().pointer?.() : undefined) ?? deps().viewCenter();
+      const ns = rf.getNodes();
+      const id = uniqueId(annotationIdBase(kind), new Set(ns.map((n) => n.id)));
+      // Text starts where you pointed (its first line under the cursor); the rest centre on it.
+      const x = kind === "text" && opts.atPointer ? c.x - 8 : c.x - size.width / 2;
+      const y = c.y - size.height / 2;
+      const node: AnnotationFlowNode = {
+        ...annotationToFlow({
+          id,
+          kind,
+          text: defaultText[kind],
+          x: snap10(x),
+          y: snap10(y),
+          ...size,
+          ...(kind === "shape" ? { shape: opts.shape ?? "rect" } : {}),
+        }),
+        selected: true,
+      };
+      deps().setNodes((cur) => {
+        const rest = cur.map((n) => (n.selected ? { ...n, selected: false } : n));
+        // Zones go to the back (they're backgrounds); everything else on top.
+        return kind === "zone" ? [node, ...rest] : [...rest, node];
+      });
+      deps().setEdges((cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)));
+      if (kind !== "shape") deps().setEditing({ kind: "annotation", id });
+      return id;
+    },
+    updateAnnotation: (id, patch, opts) => {
+      hint(opts?.merge);
+      deps().setNodes((ns) =>
+        ns.map((n) => {
+          if (n.id !== id || !isAnnotation(n)) return n;
+          const data = { ...n.data };
+          if ("text" in patch) data.text = patch.text ?? "";
+          if ("color" in patch) data.color = patch.color;
+          if ("textSize" in patch) data.textSize = patch.textSize;
+          if ("shape" in patch && data.kind === "shape") data.shape = patch.shape;
+          const kind = patch.kind ?? data.kind;
+          data.kind = kind;
+          if (kind !== "shape") data.shape = undefined;
+          return {
+            ...n,
+            data,
+            connectable: isConnectable(kind),
+            position: { x: patch.x ?? n.position.x, y: patch.y ?? n.position.y },
+            width: patch.width ?? n.width,
+            height: patch.height ?? n.height,
+          };
+        }),
+      );
+      // A shape that stops being a shape can't keep its edges.
+      if (patch.kind && !isConnectable(patch.kind))
+        deps().setEdges((es) => es.filter((e) => e.source !== id && e.target !== id));
     },
 
     updateNode: (id, patch, opts) => {
@@ -315,7 +396,7 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
         align(
           rf
             .getNodes()
-            .filter((n) => set.has(n.id) && isDiagram(n))
+            .filter((n) => set.has(n.id) && isPlaced(n))
             .map(box),
           mode,
         ),
@@ -327,7 +408,7 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
         distribute(
           rf
             .getNodes()
-            .filter((n) => set.has(n.id) && isDiagram(n))
+            .filter((n) => set.has(n.id) && isPlaced(n))
             .map(box),
           axis,
         ),
@@ -370,10 +451,13 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
     },
     sendToBack: (ids) => {
       const set = new Set(ids);
+      // Behind the other nodes and annotations, never behind zones and boundaries (the backdrops).
+      const backdrop = (n: FlowNode) => isGroup(n) || (isAnnotation(n) && n.data.kind === "zone");
       deps().setNodes((ns) => [
-        ...ns.filter(isGroup),
-        ...ns.filter((n) => set.has(n.id) && isDiagram(n)),
-        ...ns.filter((n) => isDiagram(n) && !set.has(n.id)),
+        ...ns.filter((n) => backdrop(n) && set.has(n.id)),
+        ...ns.filter((n) => backdrop(n) && !set.has(n.id)),
+        ...ns.filter((n) => !backdrop(n) && set.has(n.id)),
+        ...ns.filter((n) => !backdrop(n) && !set.has(n.id)),
       ]);
     },
     moveSelection: (dx, dy) => {

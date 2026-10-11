@@ -99,10 +99,14 @@ test.describe("editor", () => {
       (await menuItem(page, "canvas.add-node").getAttribute("id")) ?? "",
     );
     await page.keyboard.press("ArrowDown");
+    await expect(menuItem(page, "canvas.annotate")).toHaveAttribute("data-active", "true");
+    await page.keyboard.press("ArrowDown");
     // "Paste here" is disabled with an empty clipboard, so it is skipped.
     await expect(menuItem(page, "canvas.paste")).toHaveAttribute("aria-disabled", "true");
     await expect(menuItem(page, "canvas.select-all")).toHaveAttribute("data-active", "true");
     await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("ArrowUp");
+    await expect(menuItem(page, "canvas.add-node")).toHaveAttribute("data-active", "true");
     await page.keyboard.press("ArrowRight");
     await expect(page.getByTestId("context-menu-sub")).toBeVisible();
     await expect(page.getByTestId("context-menu-sub-search")).toBeFocused();
@@ -177,7 +181,7 @@ test.describe("editor", () => {
     await expect(page.getByTestId("edge-orders-to-order-events-1")).toBeAttached();
     // Only the edge between the two copied nodes came along.
     await expect(page.getByTestId("edge-gateway-to-orders-1")).toHaveCount(0);
-    await expect(page.getByTestId("diagram-card")).toContainText("17 nodes, 16 edges");
+    await expect(page.getByTestId(/^node-(?!tooltip$|editor-)/)).toHaveCount(17);
     // The pasted copy is the new selection; Ctrl+D duplicates it again.
     await page.keyboard.press(`${MOD}+d`);
     await expect(page.getByTestId("node-orders-2")).toBeVisible();

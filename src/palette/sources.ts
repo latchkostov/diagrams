@@ -51,7 +51,16 @@ export function contextsFor(editor: EditorApi, mode: EditorMode): ActionContext[
   if (!total) return [canvas];
   if (total > 1) return [{ ...base, target: "selection", selection: sel }, canvas];
   if (n)
-    return [{ ...base, target: "node", nodeId: sel.nodeIds[0], selection: { ...EMPTY, nodeIds: sel.nodeIds } }, canvas];
+    return [
+      {
+        ...base,
+        // Texts, notes, zones and shapes share the node id space but have their own menu.
+        target: editor.getAnnotation(sel.nodeIds[0]) ? "annotation" : "node",
+        nodeId: sel.nodeIds[0],
+        selection: { ...EMPTY, nodeIds: sel.nodeIds },
+      },
+      canvas,
+    ];
   if (e)
     return [{ ...base, target: "edge", edgeId: sel.edgeIds[0], selection: { ...EMPTY, edgeIds: sel.edgeIds } }, canvas];
   return [
@@ -69,6 +78,7 @@ const NOUN: Record<MenuTarget, string> = {
   edge: "edge",
   group: "boundary",
   selection: "selection",
+  annotation: "annotation",
 };
 
 /** Menu labels are read next to the thing; out of context "Rename" needs its noun. */
