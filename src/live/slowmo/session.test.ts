@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import type { DiagramFile } from "../../model/types";
+import type { DiagramFile, Simulation } from "../../model/types";
 import type { SimEngine } from "../../sim/types";
 import { stencilRole } from "../../stencils/roles";
 import { LiveController } from "../controller";
@@ -194,6 +194,101 @@ describe("slow motion session", () => {
     void slow;
   });
 
+  it("holds live while it records and replays: play, step, continue and seek do nothing", () => {
+    const { c, engine } = setup({ traffic: false, sim: "payments-outage" });
+    const frames: (() => void)[] = [];
+    const slow = new SlowMotion(c, {
+      build: (trace) => buildScript({ trace, diagram: kafka, roleOf }),
+      schedule: (work) => {
+        frames.push(work);
+        return () => frames.splice(frames.indexOf(work), 1);
+      },
+    });
+    const time = engine.metrics().time;
+    slow.start({ kind: "next", node: "payment-db" });
+    expect(slow.getState().status).toBe("capturing");
+    expect(c.isHeld).toBe(true);
+    // Between look-ahead slices: every live control is ignored.
+    const poke = () => {
+      c.togglePlaying();
+      c.setPlaying(true);
+      c.step();
+      c.resume();
+      c.seek(time + 2000);
+    };
+    poke();
+    expect(c.isPlaying).toBe(false);
+    for (let i = 0; i < 200 && frames.length; i++) frames.shift()!();
+    expect(slow.getState().status).toBe("on");
+    expect(c.isPlaying).toBe(false);
+    // Replaying: still held, live stays exactly where it was.
+    poke();
+    c.advance(500);
+    expect(c.isPlaying).toBe(false);
+    expect(engine.metrics().time).toBe(time);
+    slow.end();
+    expect(c.isHeld).toBe(false);
+    expect(c.isPlaying).toBe(true);
+  });
+
+  it("keeps its message when the timeline's trace actions would pick another", () => {
+    const sim: Simulation = {
+      id: "retrace",
+      title: "Retrace",
+      scale: 1,
+      traffic: [
+        { id: "first", node: "shopper", shape: { kind: "burst", count: 1, atMs: 100 } },
+        { id: "second", node: "shopper", shape: { kind: "burst", count: 1, atMs: 300 } },
+      ],
+      timeline: [{ atMs: 200, action: { do: "trace", node: "shopper" } }],
+    };
+    const c = new LiveController(kafka, { replayDelayMs: 0 });
+    c.selectSimulation(sim);
+    const slow = new SlowMotion(c, {
+      build: (trace) => buildScript({ trace, diagram: kafka, roleOf }),
+      schedule: now,
+    });
+    slow.start({ kind: "next", node: "shopper" });
+    const s = slow.getState();
+    expect(s.status).toBe("on");
+    // The first order (emitted at 100 ms), told to its end, not the one the trace action asked for.
+    expect(s.trace?.startedAt).toBe(100);
+    expect(s.trace?.done).toBe(true);
+    // Back live, the timeline's trace actions run again.
+    slow.end();
+    c.setPlaying(true);
+    for (let i = 0; i < 40; i++) c.advance(16);
+    c.publish();
+    expect(c.getState().trace?.current?.startedAt).toBe(300);
+  });
+
+  it("passes every pausing note at one moment before looking further ahead", () => {
+    const sim: Simulation = {
+      id: "notes",
+      title: "Notes",
+      scale: 1,
+      traffic: [{ id: "later", node: "shopper", shape: { kind: "burst", count: 1, atMs: 100 } }],
+      timeline: [
+        { atMs: 0, action: { do: "note", text: "One", pause: true } },
+        { atMs: 0, action: { do: "note", text: "Two", pause: true } },
+      ],
+    };
+    const c = new LiveController(kafka, { replayDelayMs: 0 });
+    c.selectSimulation(sim);
+    expect(c.getState().run?.waiting).toBe(true);
+    const slow = new SlowMotion(c, {
+      build: (trace) => buildScript({ trace, diagram: kafka, roleOf }),
+      schedule: now,
+    });
+    slow.start({ kind: "next" });
+    expect(slow.getState().status).toBe("on");
+    expect(slow.getState().trace?.origin).toBe("shopper");
+    // Live comes back at its first note.
+    slow.end();
+    expect(c.getState().run?.waiting).toBe(true);
+    expect(c.getState().run?.time).toBe(0);
+  });
+
   it("drop() forgets slow motion after the engine was rebuilt", () => {
     const { c, slow } = setup({ traffic: true, play: 30 });
     slow.start({ kind: "next" });
@@ -201,5 +296,6 @@ describe("slow motion session", () => {
     slow.drop();
     expect(slow.getState().status).toBe("off");
     expect(c.isPlaying).toBe(false);
+    expect(c.isHeld).toBe(false);
   });
 });

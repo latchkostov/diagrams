@@ -422,7 +422,6 @@ function Hop({
       <span className="tr-lat mono">{row.latencyMs !== undefined ? formatDuration(row.latencyMs) : ""}</span>
     </>
   );
-  const where = row.kind === "origin" || !row.from ? name(row.node) : `${name(row.from)} → ${name(row.node)}`;
   return (
     <li
       className={`tr-hop is-${tone}${row.copy ? " is-copy" : ""}${current ? " is-current" : ""}${active && !current ? " is-active" : ""}${onSeek ? " is-seekable" : ""}`}
@@ -434,14 +433,15 @@ function Hop({
       title={breakdown ? `From ${name(row.from)}: ${breakdown}` : undefined}
     >
       {onSeek ? (
-        // Slow motion: a hop is a place in the replay.
+        // Slow motion: a hop is a place in the replay. Its name is the row's own words (failures,
+        // attempts, reasons, latency), after what a click does.
         <button
           type="button"
           className="tr-hop-seek"
           onClick={() => onSeek(row.key)}
           data-testid={`trace-hop-seek-${row.key}`}
-          aria-label={`Play from ${where} (${formatOffset(row.t)})`}
         >
+          <span className="sr-only">Play from here: </span>
           {content}
         </button>
       ) : (

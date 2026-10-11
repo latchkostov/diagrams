@@ -323,14 +323,17 @@ frozen. Code: `src/live/slowmo/` (pure: `script.ts`, `session.ts`, `sampler.ts`,
   checkpoint in a saved simulation, the engine's in free play), the session asks the tracer for the
   message (`request` next at a node, `followRoot`, or what's followed now) and steps simulated time in
   slices (at most 2 s simulated or ~6 ms of work, then a browser frame) until the journey is done, at
-  most **30 s** of simulated time ahead. Pausing notes pass as in `seek`. Then the checkpoint is
+  most **30 s** of simulated time ahead. Pausing notes pass as in `seek`, and the timeline's trace
+  actions wait, so the tracer keeps the chosen message. Then the checkpoint is
   restored exactly and the tracer keeps following the same root, so after slow motion live shows the
   very journey that was replayed (runs are deterministic; a unit test compares the steps).
 - **Nothing can arrive** (free play with no traffic and an empty system, a finished run): the session
   is _armed_. The live trace waits (the card offers **Send one now**) and slow motion starts once the
   message is on its way. A journey still under way at the cap plays what was recorded and ends on
   "Still waiting at Payments service · lag 1,240".
-- **Live is frozen**, not just dimmed: the engine is paused, background dots are drawn at 12% with no
+- **Live is frozen**, not just dimmed: the controller is held (`LiveController.hold`) from the look-ahead
+  until slow motion ends, so play, step, continue and seek do nothing whichever control asks (live's own
+  are disabled while it records ahead). The engine is paused, background dots are drawn at 12% with no
   trails, pulses or failure flashes, edges stop marching, off-path nodes, edges and badges step back.
   Leaving (Esc, the card's close) restores the play state from before and the view; the engine time is
   unchanged.

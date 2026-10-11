@@ -19,10 +19,12 @@ export function Timeline({
   sim,
   run,
   onSeek,
+  disabled = false,
 }: {
   sim: Simulation;
   run: SimulationRunState;
   onSeek: (ms: number) => void;
+  disabled?: boolean;
 }) {
   const total = trackLength(run.totalMs, run.time);
   const bands = useMemo(() => trafficBands(sim, total), [sim, total]);
@@ -63,6 +65,7 @@ export function Timeline({
           aria-label={`Jump to ${formatClock(m.atMs)}: ${m.label}`}
           data-testid={`live-marker-${i}`}
           data-at={m.atMs}
+          disabled={disabled}
           onClick={() => {
             pending.current = null;
             setDrag(null);
@@ -81,6 +84,7 @@ export function Timeline({
         aria-valuetext={formatClock(fractionToTime(progress, total))}
         data-testid="live-timeline-input"
         name="live-timeline"
+        disabled={disabled}
         onChange={(e) => {
           const f = Number(e.target.value) / 1000;
           pending.current = f;

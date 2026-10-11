@@ -7,7 +7,7 @@
 import type { SimRole } from "../../model/types";
 import { messageColor } from "../../sim/colors";
 import type { MessageTrace, TraceStep } from "../../sim/types";
-import { formatDuration, type DiagramLike } from "../../trace/journey";
+import { buildJourney, formatDuration, type DiagramLike } from "../../trace/journey";
 
 /** Every pacing constant in one place (wall milliseconds at 1×; the speed select scales the clock). */
 export const PACING = {
@@ -220,6 +220,8 @@ export function buildScript(input: ScriptInput): SlowScript {
   const name = (id: string | undefined) => (id ? nodes.get(id)?.label || id : "");
   const t0 = trace.startedAt;
   const steps = trace.steps;
+  // The trace card's rows (back-to-back failures fold into one): a beat names the row it tells.
+  const rowOf = buildJourney(trace, diagram).rowOf;
   const beats: Beat[] = [];
   const tracks = new Map<number, Track>();
   const consumed = new Set<number>();
@@ -485,7 +487,7 @@ export function buildScript(input: ScriptInput): SlowScript {
       case "emit": {
         atNode(tr, "establish", PACING.establish, r, r, {
           caption: `${name(tr.node)} sends ${s.type}`,
-          rowKey: String(i),
+          rowKey: rowOf.get(i),
         });
         break;
       }
@@ -499,10 +501,11 @@ export function buildScript(input: ScriptInput): SlowScript {
         reach(tr.node);
         if (s.edge) tr.anchor = { edge: s.edge, end: tr.lastTravel?.reverse ? 0 : 1 };
         if (tr.collapse) {
-          tr.collapse.rows.push(String(i));
+          const row = rowOf.get(i);
+          if (row) tr.collapse.rows.push(row);
           break;
         }
-        if (tr.lastTravel && tr.lastTravel.rowKey === undefined) tr.lastTravel.rowKey = String(i);
+        if (tr.lastTravel && tr.lastTravel.rowKey === undefined) tr.lastTravel.rowKey = rowOf.get(i);
         break;
       }
       case "start": {
@@ -559,13 +562,21 @@ export function buildScript(input: ScriptInput): SlowScript {
         }
         const from = tr.startReal ?? tr.arrivedReal;
         if (tr.fails > PACING.retriesShown) {
-          tr.collapse = { node: tr.node, anchor: tr.anchor, fromReal: from, toReal: r, count: 1, rows: [String(i)] };
+          const row = rowOf.get(i);
+          tr.collapse = {
+            node: tr.node,
+            anchor: tr.anchor,
+            fromReal: from,
+            toReal: r,
+            count: 1,
+            rows: row ? [row] : [],
+          };
           break;
         }
         atNode(tr, "fail", processDwell(r - from), from, r, {
           caption: nodeCaption(tr, `attempt ${s.attempt ?? tr.fails} failed`, r - from),
           tone: "warn",
-          rowKey: String(i),
+          rowKey: rowOf.get(i),
         });
         // In-place retries start again at once.
         tr.startReal = r;
@@ -664,7 +675,7 @@ export function buildScript(input: ScriptInput): SlowScript {
         atNode(tr, "drop", PACING.drop, r, r, {
           caption: `Dropped · ${s.reason ?? "lost"}`,
           tone: "danger",
-          rowKey: String(i),
+          rowKey: rowOf.get(i),
         });
         flushReplies(tr, tr.ready, tr.real);
         tr.ended = true;
@@ -693,9 +704,10 @@ export function buildScript(input: ScriptInput): SlowScript {
   for (const b of beats) if (b.rowKey !== undefined && !rowStart.has(b.rowKey)) rowStart.set(b.rowKey, b.start);
   for (const [key, at] of rowAlias) if (!rowStart.has(key)) rowStart.set(key, at);
   steps.forEach((s, i) => {
-    if (s.kind !== "deadletter" || rowStart.has(String(i))) return;
+    const row = rowOf.get(i);
+    if (s.kind !== "deadletter" || !row || rowStart.has(row)) return;
     const next = beats.find((b) => b.kind === "dlq" && b.msg === s.id && b.realFrom >= s.t - t0);
-    if (next) rowStart.set(String(i), next.start);
+    if (next) rowStart.set(row, next.start);
   });
 
   const lastEnd = beats.reduce((m, b) => Math.max(m, b.kind === "reply" ? 0 : b.start + b.duration), 0);
@@ -1046,7 +1058,7 @@ export function frameAt(script: SlowScript, t: number, diagram?: DiagramLike): S
         // The dot sits at the node while it works, waits, appends, splits or fails.
         const sinkFrom = b.sink ? b.duration - b.sink : Infinity;
         const sinking = local >= sinkFrom ? clamp((local - sinkFrom) / (b.sink ?? 1), 0, 1) : 0;
-        const fading = b.kind === "drop" ? f : sinking;
+        const fading = b.kind === "drop" ? (reduced ? clamp(local / PACING.reducedFade, 0, 1) : f) : sinking;
         if (b.anchor)
           frame.dots.push({
             key: `${b.i}`,
@@ -1054,7 +1066,8 @@ export function frameAt(script: SlowScript, t: number, diagram?: DiagramLike): S
             kind: b.tone === "warn" ? "retry" : b.tone === "danger" ? "dlq" : "message",
             color: b.color,
             anchor: b.anchor,
-            scale: b.kind === "establish" && !reduced ? 0.4 + 0.6 * clamp(local / 300, 0, 1) : 1 - 0.7 * sinking,
+            // Reduced motion: a still dot that only fades (no growing in, no shrinking into a store).
+            scale: reduced ? 1 : b.kind === "establish" ? 0.4 + 0.6 * clamp(local / 300, 0, 1) : 1 - 0.7 * sinking,
             alpha: 1 - fading,
             trail: false,
           });
@@ -1063,18 +1076,20 @@ export function frameAt(script: SlowScript, t: number, diagram?: DiagramLike): S
             b.kind === "establish"
               ? 1
               : clamp(local / Math.max(1, sinkFrom === Infinity ? b.duration : sinkFrom), 0, 1);
+          // Reduced motion: a whole, steady ring (it doesn't fill or pulse).
           frame.rings.push({
             node: b.node,
-            progress: work,
+            progress: reduced ? 1 : work,
             color: b.color,
             tone: b.tone,
-            alpha: b.kind === "establish" ? 0.6 + 0.4 * Math.sin(Math.PI * f) : 1 - sinking * 0.6,
+            alpha: b.kind === "establish" ? (reduced ? 1 : 0.6 + 0.4 * Math.sin(Math.PI * f)) : 1 - sinking * 0.6,
           });
         }
         if (b.kind === "wait" && b.anchor) frame.queues.push({ anchor: b.anchor, color: b.color, alpha: 1 });
         if (b.kind === "write" && b.node && sinking > 0)
           frame.flashes.push({ node: b.node, color: b.color, age: sinking, kind: "write" });
-        if (b.kind === "drop" && b.node) frame.flashes.push({ node: b.node, color: b.color, age: f, kind: "drop" });
+        if (b.kind === "drop" && b.node)
+          frame.flashes.push({ node: b.node, color: b.color, age: reduced ? 0 : f, kind: "drop" });
         if (b.caption)
           frame.captions.push({
             key: `b${b.i}`,

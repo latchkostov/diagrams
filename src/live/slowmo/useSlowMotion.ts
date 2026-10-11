@@ -98,7 +98,8 @@ export function useSlowMotion(opts: {
       build: (trace, waiting) => {
         const diagram = controller.currentDiagram;
         const nodes = buildJourney(trace, diagram).nodes;
-        plan.current = planCamera(boxes(nodes), boxes([trace.origin]), pane(), insets(), overlays());
+        const still = live.current.reducedMotion;
+        plan.current = planCamera(boxes(nodes), boxes([trace.origin]), pane(), insets(), overlays(), still);
         const zoom = plan.current?.zoom ?? store.getState().transform[2];
         const root = store.getState().domNode;
         const stencils = new Map(diagram.nodes.map((n) => [n.id, n.stencil]));
@@ -126,6 +127,15 @@ export function useSlowMotion(opts: {
       session.dispose();
     };
   }, [session]);
+  // Leaving live mid-replay: React Flow's root stays (the canvas doesn't), so take the marks off it.
+  useEffect(
+    () => () => {
+      const root = store.getState().domNode;
+      root?.removeAttribute("data-live-slowmo");
+      for (const el of root?.querySelectorAll("[data-slowmo-off]") ?? []) el.removeAttribute("data-slowmo-off");
+    },
+    [store],
+  );
   const state = useSyncExternalStore(session.subscribe, session.getState, session.getState);
 
   const start = useCallback(
@@ -171,7 +181,8 @@ export function useSlowMotion(opts: {
       const s = session.getState();
       if (!s.script) return;
       const nodes = buildJourney(s.trace!, controller.currentDiagram).nodes;
-      plan.current = planCamera(boxes(nodes), boxes([s.trace!.origin]), pane(), insets(), overlays());
+      const still = live.current.reducedMotion;
+      plan.current = planCamera(boxes(nodes), boxes([s.trace!.origin]), pane(), insets(), overlays(), still);
       if (plan.current) void setViewport(plan.current.view, { duration: live.current.reducedMotion ? 0 : FIT_MS });
       panUntil.current = performance.now() + FIT_MS;
     }, 180);
@@ -199,7 +210,9 @@ export function useSlowMotion(opts: {
       const status = session.getState().status;
       if (status === "off" || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
       const t = e.target;
-      if (isEditableTarget(t) || document.querySelector(KEY_OWNERS)) return;
+      // Text fields keep their keys; a slider (the replay's timeline) doesn't, so Esc still leaves.
+      const slider = t instanceof HTMLInputElement && t.type === "range";
+      if ((isEditableTarget(t) && !(slider && e.key === "Escape")) || document.querySelector(KEY_OWNERS)) return;
       if (e.key === "Escape") {
         if (isRecordingActive() || document.querySelector(SELECTED)) return;
         e.preventDefault();
@@ -273,6 +286,9 @@ export function useSlowMotion(opts: {
         if (s.playing) session.publish();
         const f = session.frame();
         canvas.dataset.slowmo = s.playing ? "playing" : "paused";
+        canvas.dataset.slowmoProgress = String(
+          s.script ? Math.round((s.t / Math.max(1, s.script.duration)) * 1000) : 0,
+        );
         canvas.dataset.slowmoBeat = String(f?.beat ?? -1);
         canvas.dataset.slowmoDots = String(f?.moving ?? 0);
         canvas.dataset.slowmoCaptions = JSON.stringify(painter.labels);
@@ -284,7 +300,13 @@ export function useSlowMotion(opts: {
           if (off !== el.hasAttribute("data-slowmo-off")) el.toggleAttribute("data-slowmo-off", off);
         }
       } else if (canvas.dataset.slowmo) {
-        for (const a of ["data-slowmo", "data-slowmo-beat", "data-slowmo-dots", "data-slowmo-captions"])
+        for (const a of [
+          "data-slowmo",
+          "data-slowmo-progress",
+          "data-slowmo-beat",
+          "data-slowmo-dots",
+          "data-slowmo-captions",
+        ])
           canvas.removeAttribute(a);
         root?.removeAttribute("data-live-slowmo");
         for (const el of root?.querySelectorAll("[data-slowmo-off]") ?? []) el.removeAttribute("data-slowmo-off");

@@ -3,7 +3,8 @@
 //   start → capturing (checkpoint, run ahead in slices until the journey is done, at most 30 s of
 //   simulated time) → restore the checkpoint exactly → on (play the script on its own clock).
 //
-// Live stays paused the whole time and comes back exactly where it was (and playing if it was).
+// Live stays paused the whole time and comes back exactly where it was (and playing if it was): the
+// controller is held (`LiveController.hold`), so no control can play, step or seek it meanwhile.
 // The trace keeps following the same message, so live at real speed then shows the very journey
 // that was replayed (runs are deterministic). If no message can arrive (free play with no traffic),
 // the session is "armed": the live trace waits ("Send one now") and slow motion starts once it comes.
@@ -142,6 +143,7 @@ export class SlowMotion {
     // Capturing before pausing: pausing publishes, and an armed session must not start twice.
     this.set({ ...OFF, status: "capturing", take: this.take });
     this.controller.setPlaying(false);
+    this.controller.hold(true);
     const sandbox = this.controller.lookAhead();
     this.sandbox = sandbox;
     const tracer = sandbox.tracer;
@@ -186,6 +188,7 @@ export class SlowMotion {
       else if (source.kind === "root") tracer.followRoot(source.rootId);
       this.set({ ...OFF, status: "armed", take: this.take, armedAt: source.kind === "next" ? source.node : undefined });
       this.restoreSpeed();
+      this.controller.hold(false);
       this.controller.setPlaying(this.wasPlaying);
       return;
     }
@@ -213,6 +216,7 @@ export class SlowMotion {
     if (status === "capturing") this.abortCapture();
     this.set(OFF);
     this.restoreSpeed();
+    this.controller.hold(false);
     this.controller.setPlaying(this.wasPlaying);
   }
 
@@ -226,6 +230,7 @@ export class SlowMotion {
     }
     this.set(OFF);
     this.restoreSpeed();
+    this.controller.hold(false);
   }
 
   private restoreSpeed(): void {

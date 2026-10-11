@@ -113,6 +113,8 @@ export interface OverlayView {
 /** Drawn over a frozen frame: background dots stay put, faint, with no trails, pulses or flashes. */
 export interface RenderOverlay {
   backgroundAlpha: number;
+  /** Changes whenever the next paint would differ; while it holds (a paused replay), frames are skipped. */
+  readonly revision: number;
   paint(view: OverlayView): void;
 }
 
@@ -211,8 +213,9 @@ export class ParticleRenderer {
   private lastKey = "";
   private lastSnap: SimSnapshot | null = null;
   private lastFocus: number | undefined;
-  /** The last frame drew slow motion (its drawings must be cleared even if live didn't move). */
-  private wasSlow = false;
+  /** The overlay the last frame drew, and its revision (slow motion's drawings change on their own). */
+  private lastOverlay: RenderOverlay | undefined;
+  private lastRevision = -1;
   private wasEmpty = true;
   /** Particles drawn in the last frame (for the stats readout and tests). */
   drawn = 0;
@@ -323,10 +326,12 @@ export class ParticleRenderer {
     const moved = key !== this.lastKey;
     // Paused (the controller hands back the same snapshot), nothing fading out, the view and the
     // edges where they were: the canvas already shows this frame, and the hit targets still hold.
-    // Slow motion animates over a frozen snapshot: never skip its frames, nor the one after it.
+    // Slow motion animates over a frozen snapshot: skip only while its overlay is unchanged too (a
+    // paused or finished replay), and always draw the frame after it ends.
+    const revision = slow?.revision ?? -1;
     if (
-      !slow &&
-      !this.wasSlow &&
+      slow === this.lastOverlay &&
+      revision === this.lastRevision &&
       !moved &&
       snap === this.lastSnap &&
       focus === this.lastFocus &&
@@ -336,7 +341,8 @@ export class ParticleRenderer {
       return;
     this.lastSnap = snap;
     this.lastFocus = focus;
-    this.wasSlow = !!slow;
+    this.lastOverlay = slow;
+    this.lastRevision = revision;
     this.frame++;
     this.lastKey = key;
     if (slow) {

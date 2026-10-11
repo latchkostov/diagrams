@@ -67,6 +67,8 @@ export interface Journey {
   partial: boolean;
   truncated: boolean;
   rows: JourneyRow[];
+  /** Each trace step's row, by step index (back-to-back failures share their folded row). */
+  rowOf: ReadonlyMap<number, string>;
   visits: Visit[];
   /** Message ids in the family (the root and its copies). */
   ids: number[];
@@ -90,6 +92,7 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
   const t0 = trace.startedAt;
   const rel = (t: number) => t - t0;
   const rows: JourneyRow[] = [];
+  const rowOf = new Map<number, string>();
   const visits: Visit[] = [];
   const at = new Map<number, Visit>();
   const sent = new Map<number, TraceStep>();
@@ -215,6 +218,7 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
         const prev = rows.at(-1);
         if (prev?.kind === "fail" && prev.id === step.id && prev.node === step.node) {
           prev.lastAttempt = step.attempt;
+          rowOf.set(i, prev.key);
           break;
         }
         rows.push({
@@ -254,6 +258,7 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
       case "end":
         break;
     }
+    if (rows.at(-1)?.key === key) rowOf.set(i, key);
     types.set(step.id, step.type);
     if (step.kind === "emit" || step.kind === "copy" || step.kind === "arrive") hopType.set(step.id, step.type);
   });
@@ -269,6 +274,7 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
     partial: trace.partial,
     truncated: trace.truncated,
     rows,
+    rowOf,
     visits,
     ids,
     copies: Math.max(0, ids.length - 1),

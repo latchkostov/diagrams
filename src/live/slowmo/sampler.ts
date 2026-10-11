@@ -97,9 +97,13 @@ export class CalmSampler {
       for (const root of this.decided.keys()) if (!seen.has(root)) this.decided.delete(root);
   }
 
-  /** Whether to draw this particle. `focus` (a traced family) is always drawn. */
+  /**
+   * Whether to draw this particle. `focus` (a traced family) is always drawn. A family's decision is
+   * kept at every stride, 1 included: a family drawn while traffic was light stays drawn when it
+   * grows, and one left out stays out when it drains.
+   */
   keep(p: Particle, focus?: number): boolean {
-    if (!this.active || this.k <= 1 || p.rootId === focus || p.kind === "retry" || p.kind === "dlq") return true;
+    if (!this.active || p.rootId === focus || p.kind === "retry" || p.kind === "dlq") return true;
     let on = this.decided.get(p.rootId);
     if (on === undefined) {
       on = familyHash(p.rootId) % this.k === 0;

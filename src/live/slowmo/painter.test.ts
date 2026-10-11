@@ -1,18 +1,31 @@
 import { describe, expect, it, vi } from "vitest";
+import { perfBudget } from "../../test/perfBudget";
 import { DEFAULT_TOKENS, type OverlayView, type Rect } from "../particleRenderer";
 import { SlowPainter } from "./painter";
 import type { SlowFrame } from "./script";
 
+const emptyFrame: SlowFrame = {
+  t: 500,
+  real: 450,
+  dots: [],
+  rings: [],
+  flashes: [],
+  queues: [],
+  lit: [],
+  landings: [],
+  captions: [],
+  visited: [],
+  activeRows: [],
+  moving: 0,
+  travelling: false,
+  frontier: [],
+  beat: 2,
+  done: false,
+};
+
 function paint(theme: "light" | "dark", crowded = false, coveredByLabels = false) {
   const frame: SlowFrame = {
-    t: 500,
-    real: 450,
-    dots: [],
-    rings: [],
-    flashes: [],
-    queues: [],
-    lit: [],
-    landings: [],
+    ...emptyFrame,
     captions: [
       {
         key: "work",
@@ -28,18 +41,32 @@ function paint(theme: "light" | "dark", crowded = false, coveredByLabels = false
       { node: "source", real: 0 },
       { node: "worker", real: 450 },
     ],
-    activeRows: [],
-    moving: 0,
-    travelling: false,
     frontier: ["worker"],
-    beat: 2,
-    done: false,
   };
   const nodes: Record<string, Rect> = {
     source: { x: 100, y: 200, width: 160, height: 60 },
     worker: { x: 440, y: 200, width: 160, height: 60 },
   };
   const hard = crowded ? [{ x: 0, y: 0, width: 1000, height: 600 }] : Object.values(nodes);
+  const soft = coveredByLabels ? [{ x: 0, y: 0, width: 1000, height: 600 }] : [];
+  const { painter, calls } = paintFrame(frame, nodes, hard, soft, { theme });
+  return { painter, calls, hard };
+}
+
+function paintFrame(
+  frame: SlowFrame,
+  nodes: Record<string, Rect>,
+  hard: Rect[],
+  soft: Rect[],
+  {
+    theme = "light",
+    width = 1000,
+    height = 600,
+    times = 1,
+  }: Partial<Pick<OverlayView, "theme" | "width" | "height">> & {
+    times?: number;
+  } = {},
+) {
   const calls: { text: string; alpha: number; color: string | CanvasGradient | CanvasPattern; font: string }[] = [];
   const ctx = new Proxy(
     {
@@ -57,7 +84,7 @@ function paint(theme: "light" | "dark", crowded = false, coveredByLabels = false
   ) as unknown as CanvasRenderingContext2D;
   const painter = new SlowPainter();
   painter.show(frame);
-  painter.paint({
+  const view = {
     ctx,
     over: ctx,
     dpr: 1,
@@ -65,17 +92,18 @@ function paint(theme: "light" | "dark", crowded = false, coveredByLabels = false
     ox: 0,
     oy: 0,
     size: 3,
-    width: 1000,
-    height: 600,
+    width,
+    height,
     theme,
     tokens: DEFAULT_TOKENS,
     reduced: false,
     samples: () => null,
     sprite: vi.fn(),
     nodeRect: (id) => nodes[id],
-    obstacles: () => ({ hard, soft: coveredByLabels ? [{ x: 0, y: 0, width: 1000, height: 600 }] : [] }),
-  } satisfies OverlayView);
-  return { painter, calls, hard };
+    obstacles: () => ({ hard, soft }),
+  } satisfies OverlayView;
+  for (let i = 0; i < times; i++) painter.paint(view);
+  return { painter, calls };
 }
 
 describe("slow motion labels", () => {
@@ -99,6 +127,24 @@ describe("slow motion labels", () => {
           expect(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h).toBe(false);
     },
   );
+
+  it("places the offsets of a long journey on a large diagram within a frame's budget", () => {
+    // 1,000 node cards on a 1440×900 pane, 100 of them visited: one index of the obstacles per frame,
+    // not one per offset.
+    const nodes: Record<string, Rect> = {};
+    for (let i = 0; i < 1000; i++)
+      nodes[`n${i}`] = { x: (i % 40) * 36, y: Math.floor(i / 40) * 36, width: 24, height: 16 };
+    const frame: SlowFrame = {
+      ...emptyFrame,
+      visited: Array.from({ length: 100 }, (_, i) => ({ node: `n${i * 10}`, real: i * 10 })),
+    };
+    const hard = Object.values(nodes);
+    paintFrame(frame, nodes, hard, [], { width: 1440, height: 900 });
+    const times = 10;
+    const started = performance.now();
+    paintFrame(frame, nodes, hard, [], { width: 1440, height: 900, times });
+    expect((performance.now() - started) / times).toBeLessThan(perfBudget(8));
+  });
 
   it("leaves offsets and retry chips out when there is no safe spot", () => {
     expect(paint("light", true).painter.labels).toEqual([]);

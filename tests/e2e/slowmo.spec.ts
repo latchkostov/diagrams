@@ -204,6 +204,10 @@ test.describe("slow motion", () => {
     // The card highlights the hop being told; clicking another hop tells the story from there.
     await expect(page.getByTestId("trace-row-current")).toHaveAttribute("aria-current", "step");
     const seekers = page.getByTestId(/^trace-hop-seek-/);
+    // A hop's name is what a click does, then everything the row says (its node, where from, latency).
+    await expect(seekers.nth(1)).toHaveAccessibleName(
+      /^Play from here: \+\d+\.\d+ s.*Commerce gateway.*from Storefront/,
+    );
     const last = seekers.last();
     const key = ((await last.getAttribute("data-testid")) ?? "").replace("trace-hop-seek-", "");
     await last.click();
@@ -291,6 +295,57 @@ test.describe("slow motion", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("Esc leaves slow motion from its timeline, before presentation", async ({ page, consoleErrors }) => {
+    await watchFromStorefront(page, "&present=1");
+    const timeline = page.getByTestId("slowmo-timeline-input");
+    await timeline.focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Escape");
+    await expect(play(page)).toHaveAttribute("data-state", "playing");
+    await expect(canvas(page)).not.toHaveAttribute("data-slowmo", /.*/);
+    await expect(page).toHaveURL(/present=1/);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("leaving live mid-replay takes slow motion's marks off the canvas", async ({ page, consoleErrors }) => {
+    await watchFromStorefront(page);
+    const marks = page.getByTestId("canvas-wrap").locator("[data-live-slowmo], [data-slowmo-off]");
+    await expect.poll(() => marks.count()).toBeGreaterThan(0);
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    await expect(marks).toHaveCount(0);
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await expect(marks).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("reduced motion keeps the camera fixed across distant hops", async ({ page, consoleErrors }) => {
+    // At this size the whole path is too small to read, so slow motion would follow it otherwise.
+    await page.setViewportSize({ width: 1024, height: 700 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await watchFromStorefront(page);
+    await page.keyboard.press("Space");
+    await expect(play(page)).toHaveAttribute("data-playing", "0");
+    const where = async () =>
+      Promise.all(
+        ["shopper", "payment-db"].map(async (id) => {
+          const b = await page.getByTestId(`node-${id}`).boundingBox();
+          return b && [Math.round(b.x), Math.round(b.y), Math.round(b.width)];
+        }),
+      );
+    // After the one fit (a jump under reduced motion), the view never changes.
+    await page.waitForTimeout(600);
+    const fitted = await where();
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press("ArrowRight");
+      await page.waitForTimeout(150);
+      expect(await where()).toEqual(fitted);
+    }
+    expect(Number(await page.getByTestId("slowmo-timeline-input").inputValue())).toBeGreaterThan(300);
+    expectNoErrors(consoleErrors);
+  });
+
   test("reduced motion: still beats, no camera moves, same story", async ({ page, consoleErrors }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await watchFromStorefront(page);
@@ -328,15 +383,22 @@ async function stubCapture(page: Page) {
       return stream;
     };
     (window as unknown as Record<string, unknown>).RestrictionTarget = { fromElement: async (el: Element) => ({ el }) };
+    // Where slow motion's replay was (0–1000) when the recorder started and stopped.
+    const progress = () =>
+      document.querySelector('[data-testid="live-canvas"]')?.getAttribute("data-slowmo-progress") ?? null;
+    const marks: Record<string, string | null> = {};
+    (window as unknown as Record<string, unknown>).recordedAt = marks;
     class FakeRecorder extends EventTarget {
       state: RecordingState = "inactive";
       mimeType = "video/webm";
       static isTypeSupported = (mime: string) => mime.startsWith("video/webm");
       start() {
         this.state = "recording";
+        marks.start = progress();
       }
       stop() {
         if (this.state === "inactive") return;
+        marks.stop = progress();
         this.state = "inactive";
         const data = new Blob([new Uint8Array(4_000)], { type: this.mimeType });
         setTimeout(() => {
@@ -354,6 +416,10 @@ test("Record this slow motion plays it from the start and stops at its end", asy
   await stubCapture(page);
   await watchFromStorefront(page, "&speed=8");
   await page.getByTestId("live-speed").selectOption("8");
+  // Paused on a hop in the middle: the take still starts from the first beat.
+  await page.keyboard.press("Space");
+  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowRight");
+  await expect.poll(async () => Number(await data(page, "slowmo-progress"))).toBeGreaterThan(0);
   await page.getByTestId("live-more").click();
   await page.getByTestId("live-record").click();
   await expect(page.getByTestId("record-opt-slowmo")).toBeChecked();
@@ -363,6 +429,8 @@ test("Record this slow motion plays it from the start and stops at its end", asy
   await expect(page.getByTestId("record-review")).toContainText("orderrequest-slow-motion.webm");
   // The take ends on the replay's last beat; slow motion is still on, at its end.
   await expect(page.getByTestId("live-clock")).toHaveAttribute("data-mode", "slowmo");
+  const at = await page.evaluate(() => (window as unknown as { recordedAt: Record<string, string | null> }).recordedAt);
+  expect(at).toEqual({ start: "0", stop: "1000" });
   expectNoErrors(consoleErrors);
 });
 

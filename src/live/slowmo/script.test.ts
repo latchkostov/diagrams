@@ -221,6 +221,14 @@ describe("edge cases", () => {
     const rows = buildJourney(trace, azure).rows;
     const dl = rows.find((r) => r.kind === "deadletter")!;
     expect(script.rowStart.get(dl.key)).toBe(dlq.start);
+    // Every failure beat and the folded retries name a row the card shows (it folds them into one).
+    const keys = new Set(rows.map((r) => r.key));
+    const failRow = rows.find((r) => r.kind === "fail")!;
+    for (const b of [...fails, ...folded]) expect(b.rowKey).toBe(failRow.key);
+    for (const b of script.beats) if (b.rowKey !== undefined) expect(keys).toContain(b.rowKey);
+    for (const key of script.rowStart.keys()) expect(keys).toContain(key);
+    expect(frameAt(script, fails[1].start + 1, azure).currentRow).toBe(failRow.key);
+    expect(frameAt(script, foldedBeat.start + 1, azure).currentRow).toBe(failRow.key);
   });
 
   it("a fan-out wider than 4 shows 4 copies and counts the rest", () => {
@@ -301,6 +309,16 @@ describe("edge cases", () => {
     const held = frameAt(script, hop.start + 800, kafka).dots.filter((d) => d.edge === hop.edge);
     expect(held).toEqual([expect.objectContaining({ progress: 1, alpha: 1 })]);
     expect(frameAt(script, hop.start + 800, kafka).landings).toEqual([]);
+    // Every beat is a still state: rings whole and steady, dots full size (opacity alone changes).
+    expect(script.beats.some((b) => b.kind === "write")).toBe(true);
+    for (const f of sample(script, 40)) {
+      for (const r of f.rings) expect(r).toMatchObject({ progress: 1 });
+      for (const d of f.dots) expect(d.scale).toBe(1);
+      for (const fl of f.flashes) if (fl.kind !== "write") expect(fl.age).toBe(0);
+    }
+    const establish = script.beats.find((b) => b.kind === "establish")!;
+    const ring = (t: number) => frameAt(script, t, kafka).rings.find((r) => r.node === establish.node);
+    expect(ring(establish.start + 300)).toEqual(ring(establish.start + 1200));
   });
 
   it("an empty trace still has an end beat", () => {

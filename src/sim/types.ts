@@ -379,6 +379,11 @@ export interface SimulationRun {
   resume(): void;
   /** Start over from t=0 with the same seed. */
   restart(): void;
+  /**
+   * Timeline trace actions retarget the engine's tracer (on by default). Slow motion's look-ahead
+   * turns them off while it follows its own message.
+   */
+  setTraceActions(on: boolean): void;
 }
 
 export interface SimulationRunOptions extends EngineOptions {

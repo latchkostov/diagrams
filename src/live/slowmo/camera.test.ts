@@ -34,6 +34,16 @@ describe("slow motion camera", () => {
     expect(x).toBeLessThan(pane.width);
   });
 
+  it("never follows under reduced motion: the whole path is fitted once", () => {
+    const path = Array.from({ length: 12 }, (_, i) => node(i * 320, (i % 3) * 140));
+    const plan = planCamera(path, [path[0]], pane, insets, [card], true)!;
+    expect(plan.mode).toBe("fit");
+    expect(plan.zoom).toBeLessThan(FOLLOW_BELOW);
+    const b = union(path)!;
+    expect(b.x * plan.zoom + plan.view.x).toBeGreaterThanOrEqual(insets.left - 1);
+    expect((b.x + b.width) * plan.zoom + plan.view.x).toBeLessThanOrEqual(pane.width - insets.right + 1);
+  });
+
   it("pans only when the frontier leaves the view, never zooming", () => {
     const view = frame(node(0, 0), pane, insets, FOLLOW_ZOOM);
     expect(followPan([node(0, 0)], view, pane, insets, [card])).toBeNull();

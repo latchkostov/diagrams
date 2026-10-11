@@ -70,7 +70,7 @@ export interface CameraPlan {
 /**
  * Fit the path, keeping clear of `overlays` (the trace card's first rows: a wide path moves down
  * rather than shrinking, as in a trace). If that's too small to read, follow from the first node
- * at a readable zoom.
+ * at a readable zoom; `still` (reduced motion) always fits, so the camera never moves after it.
  */
 export function planCamera(
   path: readonly FlowBox[],
@@ -78,12 +78,13 @@ export function planCamera(
   pane: { width: number; height: number },
   insets: Insets,
   overlays: readonly FlowBox[] = [],
+  still = false,
 ): CameraPlan | null {
   const all = union(path);
   if (!all) return null;
   const fit =
     fitAvoiding(path, pane, overlays, { margin: 0, gap: 16, maxZoom: MAX_ZOOM, insets }) ?? frame(all, pane, insets);
-  if (fit.zoom >= FOLLOW_BELOW) return { mode: "fit", view: fit, zoom: fit.zoom };
+  if (fit.zoom >= FOLLOW_BELOW || still) return { mode: "fit", view: fit, zoom: fit.zoom };
   const start = union(first) ?? all;
   const view =
     fitAvoiding(first.length ? first : path, pane, overlays, {

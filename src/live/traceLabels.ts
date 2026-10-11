@@ -46,9 +46,11 @@ export interface LabelEnv {
   /** The drawable area. */
   bounds: Box;
   /** Never covered: node cards, their badges, floating chrome. */
-  hard: readonly Box[];
+  hard?: readonly Box[];
   /** Avoided when there's a choice: edge labels, other traced particles. */
   soft?: readonly Box[];
+  /** `hard` and `soft` already indexed, shared by many placements in one frame (instead of them). */
+  obstacles?: LabelObstacles;
   /** Last frame's spot per label id (see `PlacedLabel.spot`): kept while it's still free. */
   previous?: ReadonlyMap<number, number>;
 }
@@ -118,6 +120,22 @@ class BoxIndex {
   }
 }
 
+/**
+ * A frame's obstacles, indexed once for many placements (slow motion places its captions and each
+ * visited node's offset one by one). `add` what's been placed so later labels keep clear of it.
+ */
+export class LabelObstacles {
+  readonly hard: BoxIndex;
+  readonly soft: BoxIndex;
+  constructor(hard: readonly Box[], soft: readonly Box[] = [], cell = 64) {
+    this.hard = new BoxIndex(cell, hard);
+    this.soft = new BoxIndex(cell, soft);
+  }
+  add(box: Box): void {
+    this.hard.add(box);
+  }
+}
+
 const hit = (a: Box, b: Box, pad = PAD) =>
   a.x < b.x + b.w + pad && b.x < a.x + a.w + pad && a.y < b.y + b.h + pad && b.y < a.y + a.h + pad;
 const inside = (a: Box, b: Box) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
@@ -163,16 +181,15 @@ export function mergeLabels(
 }
 
 export function placeTraceLabels(reqs: readonly LabelRequest[], env: LabelEnv): PlacedLabel[] {
-  const { offset, bounds, hard, soft = [], previous } = env;
+  const { offset, bounds, previous } = env;
   const probe = env.measure("M");
   const merged = mergeLabels(reqs, probe.h * 2.5, MAX_TRACE_LABELS);
   const placed: PlacedLabel[] = [];
   const cell = Math.max(32, probe.h * 4);
-  const placedIndex = new BoxIndex(cell),
-    hardIndex = new BoxIndex(cell, hard),
-    softIndex = new BoxIndex(cell, soft);
+  const placedIndex = new BoxIndex(cell);
+  const { hard, soft } = env.obstacles ?? new LabelObstacles(env.hard ?? [], env.soft, cell);
   const free = (b: Box, strict: boolean) =>
-    inside(b, bounds) && !placedIndex.hits(b, PAD) && !hardIndex.hits(b, 0) && (!strict || !softIndex.hits(b, 0));
+    inside(b, bounds) && !placedIndex.hits(b, PAD) && !hard.hits(b, 0) && (!strict || !soft.hits(b, 0));
 
   for (const r of merged) {
     const text = r.count > 1 ? `${r.text} ×${r.count}` : r.text;

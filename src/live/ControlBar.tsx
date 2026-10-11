@@ -28,9 +28,11 @@ export function ControlBar({ state }: { state: LiveState }) {
   const expectations = run?.expectations ?? [];
   const passed = expectations.filter((e) => e.status === "pass").length;
   const failed = expectations.some((e) => e.status === "fail");
-  // Slow motion: play, restart and the timeline drive the replay; live is paused meanwhile.
+  // Slow motion: play, restart and the timeline drive the replay; live is paused meanwhile. While it
+  // records the journey ahead (a few frames), live's own controls wait (the controller is held).
   const slow = useSyncExternalStore(ui.slowmo.subscribe, ui.slowmo.getState, ui.slowmo.getState);
   const slowOn = slow.status === "on";
+  const lookingAhead = slow.status === "capturing";
 
   return (
     <div
@@ -55,6 +57,7 @@ export function ControlBar({ state }: { state: LiveState }) {
         <button
           className="lv-btn lv-play"
           onClick={() => (waiting ? c.resume() : c.togglePlaying())}
+          disabled={lookingAhead}
           title={waiting ? "Continue (Space)" : state.playing ? "Pause (Space)" : done ? "Play again" : "Play (Space)"}
           aria-label={state.playing && !waiting ? "Pause" : "Play"}
           data-testid="live-play"
@@ -66,6 +69,7 @@ export function ControlBar({ state }: { state: LiveState }) {
       <button
         className="lv-btn"
         onClick={() => (slowOn ? ui.slowmo.restart() : c.restart())}
+        disabled={lookingAhead}
         title={slowOn ? "Replay the slow motion from the start" : "Restart (same seed)"}
         aria-label={slowOn ? "Replay" : "Restart"}
         data-testid="live-restart"
@@ -134,7 +138,7 @@ export function ControlBar({ state }: { state: LiveState }) {
               >
                 {formatClock(run.time)}
               </span>
-              <Timeline sim={state.simulation} run={run} onSeek={(ms) => c.seek(ms)} />
+              <Timeline sim={state.simulation} run={run} onSeek={(ms) => c.seek(ms)} disabled={lookingAhead} />
               {expectations.length > 0 && (
                 <div
                   className={`lv-checks${done ? (failed ? " is-fail" : " is-pass") : ""}`}
@@ -204,7 +208,8 @@ function MoreMenu({ state }: { state: LiveState }) {
   const [traceOpen, setTraceOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const waiting = !!state.run?.waiting;
-  const slowOn = useSyncExternalStore(ui.slowmo.subscribe, ui.slowmo.getState, ui.slowmo.getState).status === "on";
+  const slowStatus = useSyncExternalStore(ui.slowmo.subscribe, ui.slowmo.getState, ui.slowmo.getState).status;
+  const slowOn = slowStatus === "on";
   const mutations = liveMutationGuard(() => ui.slowmo.active);
   const traffic = ui.action("sim.traffic");
   useEffect(() => {
@@ -266,7 +271,7 @@ function MoreMenu({ state }: { state: LiveState }) {
             <button
               role="menuitem"
               onClick={pick(() => c.step(), true)}
-              disabled={waiting || !!state.run?.done}
+              disabled={waiting || !!state.run?.done || slowStatus === "capturing"}
               data-testid="live-step"
             >
               <LiveIcon name="step" size={14} />

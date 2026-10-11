@@ -4,7 +4,14 @@
 
 import { pointOnSamples, type PathSamples } from "../pathSampler";
 import type { OverlayView, Rect, RenderOverlay } from "../particleRenderer";
-import { nearestOnBox, placeTraceLabels, traceLabelInk, type Box } from "../traceLabels";
+import {
+  LabelObstacles,
+  nearestOnBox,
+  placeTraceLabels,
+  traceLabelInk,
+  type Box,
+  type PlacedLabel,
+} from "../traceLabels";
 import { formatOffset } from "../../trace/journey";
 import { LIVE_BAR_SPACE } from "../layout";
 import type { Anchor, SlowCaption, SlowFrame, Tone } from "./script";
@@ -41,6 +48,8 @@ export class SlowPainter implements RenderOverlay {
   frame: SlowFrame | null = null;
   /** Presentation draws the words larger. */
   textScale = 1;
+  /** Bumps with every new frame or text size (the renderer skips repaints while it holds). */
+  revision = 0;
   /** Captions drawn in the last frame, in pane CSS px (tests read them off the canvas). */
   labels: readonly PaintedLabel[] = [];
   private spots = new Map<number, number>();
@@ -59,6 +68,7 @@ export class SlowPainter implements RenderOverlay {
 
   /** The frame to draw next (null: nothing), and how large its words are (presentation: larger). */
   show(frame: SlowFrame | null, textScale = 1): void {
+    if (frame !== this.frame || textScale !== this.textScale) this.revision++;
     this.frame = frame;
     this.textScale = textScale;
   }
@@ -67,6 +77,7 @@ export class SlowPainter implements RenderOverlay {
     this.spots.clear();
     this.ids.clear();
     this.labels = [];
+    this.revision++;
   }
 
   paint(v: OverlayView): void {
@@ -338,25 +349,37 @@ export class SlowPainter implements RenderOverlay {
     const found = v.obstacles();
     const ring = v.size * 2.6;
     const hard = found?.hard.map(scaled) ?? [];
+    const edgeLabels = found?.soft.map(scaled) ?? [];
+    const soft = [
+      ...edgeLabels,
+      ...[...dotAt.values()].map((p) => ({ x: p.x - ring, y: p.y - ring, w: ring * 2, h: ring * 2 })),
+    ];
     const env = {
       offset: v.size * 2.8,
       bounds: { x: 4 * dpr, y: 4 * dpr, w: v.width - 8 * dpr, h: v.height - 8 * dpr },
-      soft: [
-        ...(found?.soft.map(scaled) ?? []),
-        ...[...dotAt.values()].map((p) => ({ x: p.x - ring, y: p.y - ring, w: ring * 2, h: ring * 2 })),
-      ],
       previous: this.spots,
+    };
+    // Every placement below shares two indexes of this frame's obstacles (built once, not per label),
+    // and each label placed joins both: captions avoid node cards and badges; visited offsets avoid
+    // edge labels too.
+    const cell = Math.max(32, font * 8);
+    const obstacles = new LabelObstacles(hard, soft, cell);
+    const quiet = new LabelObstacles([...hard, ...edgeLabels], soft, cell);
+    const placed: PlacedLabel[] = [];
+    const keep = (l: PlacedLabel) => {
+      placed.push(l);
+      obstacles.add(l);
+      quiet.add(l);
     };
     // Hops' types first (copies close together merge: "OrderPlaced ×3"), then each node's caption
     // beside its node; one with no room there tries its short form (without the node's name).
     const pills = reqs.filter((r) => isPill(r.c));
-    const placed = placeTraceLabels(pills, { ...env, hard, measure: (text) => measure(text, lookup(text)) });
+    placeTraceLabels(pills, { ...env, obstacles, measure: (text) => measure(text, lookup(text)) }).forEach(keep);
     const nodeReqs = reqs.filter((r) => !isPill(r.c)).sort((a, b) => b.priority - a.priority);
     /** Captions with no room beside their node (parallel work in a dense column): the dock. */
     const overflow: Req[] = [];
     for (const req of nodeReqs) {
-      const place = (r: Req) =>
-        placeTraceLabels([r], { ...env, hard: [...hard, ...placed], measure: (text) => measure(text, r) })[0];
+      const place = (r: Req) => placeTraceLabels([r], { ...env, obstacles, measure: (text) => measure(text, r) })[0];
       // Beside the node or not at all: the full caption, then without the node's name, then
       // just the real time ("150 ms"). The trace card and screen readers always get the full words.
       const tries = [req.text, req.c?.short, lastDuration(req.text)];
@@ -370,7 +393,7 @@ export class SlowPainter implements RenderOverlay {
           break;
         }
       }
-      if (got) placed.push(got);
+      if (got) keep(got);
       else if (!req.c?.chip) overflow.push(req);
     }
     // The dock: those captions in full, stacked just above the live bar, centred, where they cover
@@ -382,7 +405,7 @@ export class SlowPainter implements RenderOverlay {
       for (let y = floor - h; y > floor - h - lineH * 4; y -= lineH / 2) {
         const b = { x: (v.width - w) / 2, y, w, h };
         if ([...hard, ...placed].some((o) => overlaps(b, o))) continue;
-        placed.push({ ...b, id: req.id, text: req.text, count: 1, ax: b.x, ay: b.y, leader: false, spot: -1 });
+        keep({ ...b, id: req.id, text: req.text, count: 1, ax: b.x, ay: b.y, leader: false, spot: -1 });
         floor = y - 6 * dpr;
         break;
       }
@@ -405,11 +428,11 @@ export class SlowPainter implements RenderOverlay {
       const one = placeTraceLabels([req], {
         ...env,
         offset: 4 * dpr,
-        hard: [...hard, ...(found?.soft.map(scaled) ?? []), ...placed],
+        obstacles: quiet,
         measure: (text) => measure(text, req),
       });
       // Offsets sit right by their node, or not at all.
-      if (one[0] && !one[0].leader) placed.push(one[0]);
+      if (one[0] && !one[0].leader) keep(one[0]);
     }
     this.spots.clear();
     ctx.textBaseline = "middle";

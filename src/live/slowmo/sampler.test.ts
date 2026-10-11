@@ -98,6 +98,43 @@ describe("calmer slow speeds", () => {
     }
   });
 
+  it("preserves excluded families when traffic drains", () => {
+    const s = new CalmSampler();
+    s.setSpeed(0.25);
+    const busy = traffic(160);
+    s.begin(busy, 0);
+    expect(s.k).toBeGreaterThan(1);
+    const out = busy.find((p) => !s.keep(p))!;
+    const kept = busy.find((p) => s.keep(p))!;
+    // The rest finish; these two are still on their way while the stride halves down to 1.
+    let t = 0;
+    for (let i = 0; i < 5; i++) {
+      t += CALM_INTERVAL;
+      const few = [out, kept, ...traffic(6, 1, 5000)];
+      s.begin(few, t);
+      expect(s.keep({ ...out, progress: 0.9 })).toBe(false);
+      expect(s.keep({ ...kept, progress: 0.9 })).toBe(true);
+    }
+    expect(s.k).toBe(1);
+  });
+
+  it("preserves visible families when traffic increases", () => {
+    const s = new CalmSampler();
+    s.setSpeed(0.25);
+    const few = traffic(12);
+    s.begin(few, 0);
+    expect(s.k).toBe(1);
+    expect(drawn(s, few)).toBe(12);
+    // A burst arrives while those are still on their way: the stride climbs, they stay drawn.
+    let t = 0;
+    for (let i = 0; i < 5; i++) {
+      t += CALM_INTERVAL;
+      s.begin([...few, ...traffic(1500, 1, 5000)], t);
+      for (const p of few) expect(s.keep({ ...p, progress: 0.9 })).toBe(true);
+    }
+    expect(s.k).toBeGreaterThan(1);
+  });
+
   it("changes the stride one step a second, with hysteresis", () => {
     const s = new CalmSampler();
     s.setSpeed(0.25);
