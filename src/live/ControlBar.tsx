@@ -5,6 +5,7 @@ import { useLive } from "./context";
 import { formatClock, formatCount, formatSpeed } from "./format";
 import { LiveIcon } from "./icons";
 import { Timeline } from "./Timeline";
+import { PANEL_OPENER_ATTR } from "./usePanelEscape";
 import type { ExpectationState } from "../sim/types";
 
 /**
@@ -83,6 +84,17 @@ export function ControlBar({ state }: { state: LiveState }) {
         <LiveIcon name="chevron" size={11} />
       </label>
 
+      <button
+        className={`lv-btn lv-inputs${ui.capacityOpen ? " is-on" : ""}`}
+        onClick={() => ui.openCapacity(!ui.capacityOpen)}
+        aria-pressed={ui.capacityOpen}
+        title="Inputs & capacity: traffic, replicas, partitions and bottlenecks"
+        data-testid="live-capacity"
+      >
+        <LiveIcon name="gauge" size={15} />
+        <span>Inputs</span>
+      </button>
+
       {state.simulation && run ? (
         <>
           <span
@@ -122,7 +134,7 @@ export function ControlBar({ state }: { state: LiveState }) {
 
       <span
         className="lv-stat mono"
-        title="Messages travelling, queued or being processed"
+        title={`Messages travelling, queued or being processed${state.scale > 1 ? ` (real messages; 1 dot ≈ ${formatCount(state.scale)})` : ""}`}
         data-testid="live-in-system"
         data-count={state.snapshot.inSystem}
       >
@@ -174,6 +186,7 @@ function MoreMenu({ state }: { state: LiveState }) {
         title="More"
         aria-label="More live controls"
         data-testid="live-more"
+        {...{ [PANEL_OPENER_ATTR]: "" }}
       >
         <LiveIcon name="more" size={15} />
       </button>

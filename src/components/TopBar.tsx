@@ -7,6 +7,7 @@ import type { Interop } from "../interop/useInterop";
 import { FileMenu, SharedChip } from "../interop/ui/menus";
 import { Menu } from "../interop/ui/Menu";
 import { Glyph } from "../interop/ui/glyphs";
+import { capacityOverlay } from "../live/capacityOverlay";
 
 export interface ExampleOption {
   slug: string;
@@ -106,7 +107,7 @@ export function TopBar(p: Props) {
       <div className="topbar-spacer" />
 
       <div className="topbar-group" data-testid="topbar-actions">
-        <ViewMenu edges={canvas || lab} />
+        <ViewMenu edges={canvas || lab} overlays={canvas} />
         <FileMenu api={p.interop} canvas={canvas} onNewDiagram={p.onNewDiagram} />
         {canvas && (
           <button
@@ -133,7 +134,7 @@ export function TopBar(p: Props) {
 }
 
 /** Look options (node renderer, edge style): one menu button instead of two selects in the bar. */
-function ViewMenu({ edges }: { edges: boolean }) {
+function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
   const s = useSettings();
   return (
     <Menu
@@ -159,6 +160,20 @@ function ViewMenu({ edges }: { edges: boolean }) {
                 checked: s.edgeStyle === e.id,
                 onSelect: () => s.set("edgeStyle", e.id as EdgeStyle),
               })),
+            ]
+          : []),
+        ...(overlays
+          ? [
+              { type: "section" as const, label: "Overlays" },
+              {
+                type: "item" as const,
+                testId: "capacity-overlay-toggle",
+                title: "Show capacity",
+                desc: "Colour services by how busy they are",
+                shortcut: "C",
+                checked: capacityOverlay.get(),
+                onSelect: () => capacityOverlay.toggle(),
+              },
             ]
           : []),
       ]}

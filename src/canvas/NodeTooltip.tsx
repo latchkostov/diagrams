@@ -1,8 +1,11 @@
 import { getStencil } from "../stencils/registry";
+import { NODE_TIP_ID } from "./useNodeTooltip";
 
 /** Screen-space tooltip for a canvas node: the full label (cards truncate) and what the stencil is. */
 export interface NodeTip {
   rect: DOMRect;
+  /** The node it describes (aria-describedby). */
+  nodeId?: string;
   label: string;
   sublabel?: string;
   stencil: string;
@@ -19,6 +22,7 @@ export function NodeTooltip({ tip }: { tip: NodeTip }) {
     <div
       className={`node-tip${above ? " is-above" : " is-below"}`}
       style={style}
+      id={NODE_TIP_ID}
       role="tooltip"
       data-testid="node-tooltip"
     >

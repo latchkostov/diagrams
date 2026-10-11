@@ -553,6 +553,7 @@ function canvasActions(get: () => InteropApi): Action[] {
     {
       // Replaces the editor's built-in JSON-only Export submenu.
       id: "canvas.export",
+      modes: ["edit", "live"],
       section: "file",
       targets: ["canvas"],
       order: 20,

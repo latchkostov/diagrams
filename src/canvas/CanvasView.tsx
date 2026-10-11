@@ -59,12 +59,11 @@ import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts
 import type { Selection } from "../editor/types";
 import type { DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { LiveView } from "../live/LiveView";
-import { compactLiveMenu } from "../live/liveActions";
 import { LIVE_BAR_SPACE } from "../live/layout";
 import { safeStorage } from "../lib/storage";
 import { StartCard, type StartOptions } from "./StartCard";
 import { NodeTooltip } from "./NodeTooltip";
-import { useNodeTooltip } from "./useNodeTooltip";
+import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { FirstRunHint } from "./FirstRunHint";
 
 const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
@@ -174,7 +173,19 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     },
     [dismissHint],
   );
-  const nodeTip = useNodeTooltip(!live && !readOnly && !presenting);
+  const { tip: nodeTip, show: showTip, hide: hideTip } = useNodeTooltip(!live && !readOnly && !presenting);
+  useNodeTipKeyboard(
+    wrapper,
+    (id) => {
+      const n = nodes.find((x) => x.id === id);
+      return n?.type === "diagram"
+        ? { nodeId: n.id, label: n.data.label || n.id, sublabel: n.data.sublabel, stencil: n.data.stencil }
+        : null;
+    },
+    nodeTip,
+    showTip,
+    hideTip,
+  );
 
   const snapshot = useMemo<CanvasSnapshot>(() => ({ meta, nodes, edges }), [meta, nodes, edges]);
   const history = useHistory(snapshot, (s) => {
@@ -279,14 +290,14 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
     (_e, node) => {
       setMenu(null);
-      nodeTip.hide();
+      hideTip();
       if (node.type !== "boundary") return;
       const members = new Map<string, { x: number; y: number }>();
       for (const n of nodes)
         if (n.type === "diagram" && n.data.group === node.data.groupId) members.set(n.id, { ...n.position });
       dragOrigin.current = { x: node.position.x, y: node.position.y, members };
     },
-    [nodes, nodeTip],
+    [nodes, hideTip],
   );
   const onNodeDrag: OnNodeDrag<FlowNode> = useCallback(
     (_e, node) => {
@@ -327,15 +338,19 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     (e: ReactMouseEvent | MouseEvent, ctx: Omit<ActionContext, "editor" | "point">) => {
       e.preventDefault();
       if (readOnly) return;
-      const full: ActionContext = { ...ctx, editor, point: screenToFlowPosition({ x: e.clientX, y: e.clientY }) };
-      const built = actionRegistry.build(full);
-      const items = live ? compactLiveMenu(built, ctx.target) : built;
+      const full: ActionContext = {
+        ...ctx,
+        editor,
+        mode: live ? "live" : "edit",
+        point: screenToFlowPosition({ x: e.clientX, y: e.clientY }),
+      };
+      const items = actionRegistry.build(full);
       setEditing(null);
-      nodeTip.hide();
+      hideTip();
       if (!hintSeen) dismissHint();
       setMenu(items.length ? { x: e.clientX, y: e.clientY, items, label: `${ctx.target} menu` } : null);
     },
-    [editor, screenToFlowPosition, readOnly, live, nodeTip, hintSeen, dismissHint],
+    [editor, screenToFlowPosition, readOnly, live, hideTip, hintSeen, dismissHint],
   );
 
   const onPaneContextMenu = useCallback(
@@ -477,17 +492,18 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             onDoubleClick={onPaneDoubleClick}
             onMoveStart={() => {
               setMenu(null);
-              nodeTip.hide();
+              hideTip();
             }}
             onNodeMouseEnter={(e, node) => {
               if (node.type === "diagram" && !editing)
-                nodeTip.show(e.currentTarget as Element, {
+                showTip(e.currentTarget as Element, {
+                  nodeId: node.id,
                   label: node.data.label || node.id,
                   sublabel: node.data.sublabel,
                   stencil: node.data.stencil,
                 });
             }}
-            onNodeMouseLeave={nodeTip.hide}
+            onNodeMouseLeave={hideTip}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             colorMode={theme}
@@ -693,7 +709,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         />
       )}
       {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
-      {nodeTip.tip && !menu && <NodeTooltip tip={nodeTip.tip} />}
+      {nodeTip && !menu && <NodeTooltip tip={nodeTip} />}
     </DiagramContext.Provider>
   );
 }
