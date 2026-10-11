@@ -536,6 +536,17 @@ describe("API, clocks, and snapshots", () => {
   });
 });
 
+describe("terminal consumers", () => {
+  it("a processor with no outgoing edges counts messages as processed, not dropped", () => {
+    const sim = engine([node("q", "queue"), node("worker", "processor", { latencyMs: 10 })], [edge("q", "worker")]);
+    sim.inject("q", 5); run(sim, 3000);
+    const w = sim.snapshot().nodes.worker;
+    expect(w.processed).toBe(5);
+    expect(w.dropped).toBe(0);
+    expect(sim.snapshot().inSystem).toBe(0);
+  });
+});
+
 describe("change feeds", () => {
   it("a store forwards copies along its async edges and stays terminal for sync ones", () => {
     const sim = engine(
