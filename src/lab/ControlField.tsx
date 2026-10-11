@@ -76,7 +76,11 @@ function DraftInput({
 }) {
   const [draft, setDraft] = useState(String(value));
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => setDraft(String(value)), [value]);
+  const [previousValue, setPreviousValue] = useState(value);
+  if (previousValue !== value) {
+    setPreviousValue(value);
+    setDraft(String(value));
+  }
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const commit = (raw: string) => {

@@ -23,7 +23,8 @@ import {
   stressDiagram,
 } from "./generators";
 import { scenarioDefs } from "./scenarios";
-import { AllStencils, NODE_STATES, NodeMatrix, NodePlayground } from "./NodeShowcase";
+import { AllStencils, NodeMatrix, NodePlayground } from "./NodeShowcase";
+import { NODE_STATES } from "./nodeStates";
 import type { ControlDef, Preset } from "./types";
 import { LiveLabStage } from "../live/LiveLabStage";
 import { badgeStatesDiagram, noteStatesDiagram, particleStressDiagram, type NoteState } from "../live/labDiagrams";

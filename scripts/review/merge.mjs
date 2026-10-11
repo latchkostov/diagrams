@@ -1,5 +1,7 @@
 // Merges per-angle JSON findings into one REPORT.md, sorted by severity then confidence.
 import fs from "node:fs";
+import process from "node:process";
+import console from "node:console";
 import path from "node:path";
 
 const dir = process.argv[2];
@@ -13,7 +15,7 @@ for (const f of fs.readdirSync(dir).filter((f) => f.endsWith(".json"))) {
     const r = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
     summaries.push(`- **${angle}**: ${r.summary}`);
     for (const x of r.findings) all.push({ angle, ...x });
-  } catch (e) {
+  } catch {
     summaries.push(`- **${angle}**: (no valid report — see ${angle}.log)`);
   }
 }

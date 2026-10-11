@@ -34,7 +34,7 @@ export function StencilDrawer({
   onCopy,
   onCopyJson,
 }: Props) {
-  const root = useRef<HTMLElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const [confirmReplace, setConfirmReplace] = useState<string | null>(null);
   const role = simRoleMeta[s.simRole] ?? simRoleMeta.none;
   const family = getFamily(familyOf(s));
@@ -42,7 +42,26 @@ export function StencilDrawer({
 
   // Focus the sheet itself so Esc and the arrow keys work straight away, without a focus ring on a button.
   useEffect(() => root.current?.focus({ preventScroll: true }), []);
-  useEffect(() => setConfirmReplace(null), [s.id]);
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      } else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !(e.target instanceof HTMLInputElement)) {
+        e.preventDefault();
+        onStep(e.key === "ArrowRight" ? 1 : -1);
+      }
+    };
+    el.addEventListener("keydown", onKey);
+    return () => el.removeEventListener("keydown", onKey);
+  }, [onClose, onStep]);
+  const [stencilId, setStencilId] = useState(s.id);
+  if (stencilId !== s.id) {
+    setStencilId(s.id);
+    setConfirmReplace(null);
+  }
 
   const startNew = () => {
     const replaced = replacedByNewDiagram();
@@ -51,7 +70,7 @@ export function StencilDrawer({
   };
 
   return (
-    <aside
+    <div
       ref={root}
       tabIndex={-1}
       className="drawer"
@@ -61,15 +80,6 @@ export function StencilDrawer({
       data-testid="stencil-drawer"
       data-stencil={s.id}
       style={{ "--accent": s.accent } as CSSProperties}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          e.stopPropagation();
-          onClose();
-        } else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !(e.target instanceof HTMLInputElement)) {
-          e.preventDefault();
-          onStep(e.key === "ArrowRight" ? 1 : -1);
-        }
-      }}
     >
       <header className="drawer-head">
         <span className="drawer-icon">
@@ -223,6 +233,6 @@ export function StencilDrawer({
           </>
         )}
       </footer>
-    </aside>
+    </div>
   );
 }

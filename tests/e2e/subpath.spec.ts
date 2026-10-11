@@ -33,7 +33,7 @@ test.describe("production build under a sub-path", () => {
               img.addEventListener("load", r, { once: true });
               img.addEventListener("error", r, { once: true });
             });
-          if (!(img.naturalWidth > 0)) bad.push(el.getAttribute("data-testid")!);
+          if (!(img.naturalWidth > 0)) bad.push(el.getAttribute("data-testid") ?? "missing test id");
         }
       return bad;
     });
@@ -61,9 +61,13 @@ test.describe("production build under a sub-path", () => {
     await expect(page.getByTestId("lab-render-time")).toHaveAttribute("data-ms", /^\d+$/);
     await expect(page.getByTestId(/^node-n\d+$/)).toHaveCount(10);
     // No private example presets in production.
-    const links = await page
-      .getByTestId(/^lab-preset-link-example-/)
-      .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")!.slice("lab-preset-link-example-".length)));
+    const links = await page.getByTestId(/^lab-preset-link-example-/).evaluateAll((els) =>
+      els.map((e) => {
+        const id = e.getAttribute("data-testid");
+        if (!id) throw new Error("Example link has no test id");
+        return id.slice("lab-preset-link-example-".length);
+      }),
+    );
     expect(links.sort()).toEqual(publicExamples.map((e) => e.slug).sort());
     expectNoErrors(consoleErrors);
   });

@@ -50,7 +50,12 @@ export function knownMessageTypes(diagram: DiagramFile): string[] {
     add(n.props?.messageType);
     const emits = n.props?.emits;
     if (typeof emits === "string") add(emits);
-    else if (emits && typeof emits === "object") for (const [k, v] of Object.entries(emits)) (add(k), add(v));
+    else if (emits && typeof emits === "object") {
+      for (const [k, v] of Object.entries(emits)) {
+        add(k);
+        add(v);
+      }
+    }
   }
   for (const e of diagram.edges) {
     add(e.props?.emits);

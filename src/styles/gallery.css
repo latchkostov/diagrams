@@ -656,6 +656,8 @@
 /* ---------- details drawer ---------- */
 
 .drawer-scrim {
+  border: 0;
+  padding: 0;
   position: fixed;
   inset: var(--topbar-h) 0 0 0;
   z-index: 55;

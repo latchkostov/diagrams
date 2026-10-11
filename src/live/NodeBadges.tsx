@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
+import { memo, useEffect, useState, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
 import type { DiagramFile, SimRole } from "../model/types";
 import type { NodeSimState } from "../sim/types";
@@ -35,11 +35,25 @@ const backlogLabel = (role: SimRole) =>
 export function NodeBadges({ state, presenting }: { state: LiveState; presenting: boolean }) {
   const ui = useLive();
   const nodes = useNodes<FlowNode>();
-  const peaks = useRef(new Map<string, number>());
   const diagram = ui.controller.currentDiagram;
   const hovered = useHoveredNode();
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
   const zoom = useStore((s) => s.transform[2]);
+  const inputs = [state, nodes, ui, hovered, zoom, presenting];
+  const [peaks, setPeaks] = useState(() => ({
+    inputs,
+    values: new Map(Object.entries(state.snapshot.nodes).map(([id, s]) => [id, Math.max(20, s.backlog)])),
+  }));
+  if (inputs.some((input, i) => input !== peaks.inputs[i])) {
+    const values = new Map(peaks.values);
+    for (const n of nodes) {
+      if (n.type !== "diagram") continue;
+      const s = state.snapshot.nodes[n.id];
+      if (!s || s.role === "none") continue;
+      values.set(n.id, Math.max(20, s.backlog, (values.get(n.id) ?? 0) * 0.995));
+    }
+    setPeaks({ inputs, values });
+  }
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
   return (
     <div
@@ -50,8 +64,7 @@ export function NodeBadges({ state, presenting }: { state: LiveState; presenting
         if (n.type !== "diagram") return null;
         const s = state.snapshot.nodes[n.id];
         if (!s || s.role === "none") return null;
-        const peak = Math.max(20, s.backlog, (peaks.current.get(n.id) ?? 0) * 0.995);
-        peaks.current.set(n.id, peak);
+        const peak = Math.max(20, s.backlog, peaks.values.get(n.id) ?? 0);
         return (
           <NodeBadge
             key={n.id}

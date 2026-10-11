@@ -7,7 +7,7 @@ import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/gallery.css";
 import "./styles/canvas.css";
-import { SettingsProvider } from "./harness/settings";
+import { SettingsProvider } from "./harness/SettingsProvider";
 import { App } from "./App";
 
 createRoot(document.getElementById("root")!).render(

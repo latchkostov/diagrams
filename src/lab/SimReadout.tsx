@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import type { DiagramFile } from "../model/types";
 import type { NodeStatus, SimSnapshot } from "../sim/types";
 import { simRoleMeta } from "../lib/simRoles";
@@ -57,44 +57,55 @@ export function SimReadout({
   );
 }
 
-function Runner({
-  create,
-  diagram,
-  scenario,
-  speed,
-  seed,
-  autoplay,
-}: {
+interface RunnerProps {
   create: CreateEngine;
   diagram: DiagramFile;
   scenario: Scenario;
   speed: number;
   seed: number;
   autoplay: boolean;
-}) {
-  const runRef = useRef<ScenarioRun | null>(null);
-  const [run, setRun] = useState<ScenarioRun | null>(null);
-  const [snap, setSnap] = useState<SimSnapshot | null>(null);
-  const [playing, setPlaying] = useState(autoplay);
-  const [error, setError] = useState<string | null>(null);
+}
+
+function Runner(props: RunnerProps) {
+  const { create, diagram, scenario, seed, autoplay } = props;
+  const [inputs, setInputs] = useState({ create, diagram, scenario, seed, autoplay });
   const [generation, setGeneration] = useState(0);
+  if (
+    inputs.create !== create ||
+    inputs.diagram !== diagram ||
+    inputs.scenario !== scenario ||
+    inputs.seed !== seed ||
+    inputs.autoplay !== autoplay
+  ) {
+    setInputs({ create, diagram, scenario, seed, autoplay });
+    setGeneration(generation + 1);
+  }
+  return <RunnerSession key={generation} {...props} onRestart={() => setGeneration((g) => g + 1)} />;
+}
 
-  // (Re)create the run when the scenario, seed or a restart changes.
-  useEffect(() => {
+function RunnerSession({
+  create,
+  diagram,
+  scenario,
+  speed,
+  seed,
+  autoplay,
+  onRestart,
+}: RunnerProps & { onRestart: () => void }) {
+  // A new keyed session owns a new run. Speed updates below leave that run intact.
+  const [session] = useState(() => {
     try {
-      const r = createScenarioRun(create, diagram, scenario, { seed, speed });
-      runRef.current = r;
-      setRun(r);
-      setSnap(r.snapshot());
-      setError(null);
-      setPlaying(autoplay);
+      return { run: createScenarioRun(create, diagram, scenario, { seed, speed }), error: null };
     } catch (e) {
-      setError(String(e instanceof Error ? e.message : e));
+      return { run: null, error: String(e instanceof Error ? e.message : e) };
     }
-    // speed is applied separately below so changing it doesn't restart the run
-  }, [create, diagram, scenario, seed, autoplay, generation]);
+  });
+  const run: ScenarioRun | null = session.run;
+  const [snap, setSnap] = useState<SimSnapshot | null>(() => run?.snapshot() ?? null);
+  const [playing, setPlaying] = useState(autoplay);
+  const [error, setError] = useState<string | null>(session.error);
 
-  useEffect(() => runRef.current?.setSpeed(speed), [speed, run]);
+  useEffect(() => run?.setSpeed(speed), [speed, run]);
 
   const guard = useCallback((fn: () => void) => {
     try {
@@ -134,7 +145,7 @@ function Runner({
     return (
       <div className="sim-readout is-empty is-error" data-testid="sim-error">
         <strong>The engine threw:</strong> <code>{error}</code>
-        <button className="btn" onClick={() => setGeneration((g) => g + 1)} data-testid="sim-restart">
+        <button className="btn" onClick={onRestart} data-testid="sim-restart">
           Restart
         </button>
       </div>
@@ -187,7 +198,7 @@ function Runner({
         >
           Run to end
         </button>
-        <button className="btn" onClick={() => setGeneration((g) => g + 1)} data-testid="sim-restart">
+        <button className="btn" onClick={onRestart} data-testid="sim-restart">
           Restart
         </button>
         <div className="sim-clock mono" data-testid="sim-time" data-ms={Math.round(snap.time)}>

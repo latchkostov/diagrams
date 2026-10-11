@@ -1,16 +1,7 @@
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fromFlow, type DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
-import {
-  canRedo,
-  canUndo,
-  commit,
-  createHistory,
-  present,
-  redo as redoH,
-  undo as undoH,
-  type History,
-} from "./history";
+import { canRedo, canUndo, commit, createHistory, present, redo as redoH, undo as undoH } from "./history";
 
 export interface CanvasSnapshot {
   meta: DiagramMeta;
@@ -44,40 +35,35 @@ const clean = (s: CanvasSnapshot): CanvasSnapshot => ({
  * into history: a change is committed once things settle and no drag is in progress.
  */
 export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => void): HistoryApi {
-  const hist = useRef<History<CanvasSnapshot> | null>(null);
-  if (!hist.current) hist.current = createHistory(keyOf(state), clean(state), Date.now());
+  const [history, setHistory] = useState(() => createHistory(keyOf(state), clean(state), Date.now()));
+  const hist = useRef(history);
   const latest = useRef(state);
-  latest.current = state;
   const applyRef = useRef(apply);
-  applyRef.current = apply;
+  useLayoutEffect(() => {
+    latest.current = state;
+    applyRef.current = apply;
+  });
   const mergeKey = useRef<string | undefined>(undefined);
   const timer = useRef<number | undefined>(undefined);
   /** An uncommitted change exists (so Undo is available before the debounce fires). */
-  const pending = useRef(false);
-  const [, rerender] = useReducer((x: number) => x + 1, 0);
+  const pending = keyOf(state) !== present(history).key;
 
   const flush = useCallback(() => {
     window.clearTimeout(timer.current);
     timer.current = undefined;
     const s = latest.current;
     if (s.nodes.some((n) => n.dragging || n.resizing)) return;
-    const next = commit(hist.current!, { key: keyOf(s), value: clean(s), mergeKey: mergeKey.current, at: Date.now() });
+    const next = commit(hist.current, { key: keyOf(s), value: clean(s), mergeKey: mergeKey.current, at: Date.now() });
     mergeKey.current = undefined;
-    const wasPending = pending.current;
-    pending.current = false;
-    if (next !== hist.current || wasPending) {
+    if (next !== hist.current) {
       hist.current = next;
-      rerender();
+      setHistory(next);
     }
   }, []);
 
   useEffect(() => {
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(flush, DEBOUNCE_MS);
-    if (!pending.current && keyOf(latest.current) !== present(hist.current!).key) {
-      pending.current = true;
-      rerender();
-    }
   }, [state.meta, state.nodes, state.edges, flush]);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -85,10 +71,10 @@ export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => 
   const go = useCallback(
     (step: typeof undoH) => {
       flush();
-      const next = step(hist.current!);
+      const next = step(hist.current);
       if (next === hist.current) return;
       hist.current = next;
-      rerender();
+      setHistory(next);
       // The restored state has the present entry's key, so the next flush is a no-op.
       applyRef.current(present(next).value);
     },
@@ -110,7 +96,7 @@ export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => 
     undo,
     redo,
     hint,
-    canUndo: canUndo(hist.current) || pending.current,
-    canRedo: canRedo(hist.current) && !pending.current,
+    canUndo: canUndo(history) || pending,
+    canRedo: canRedo(history) && !pending,
   };
 }

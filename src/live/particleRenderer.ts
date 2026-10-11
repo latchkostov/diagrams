@@ -293,8 +293,17 @@ export class ParticleRenderer {
     n++;
     const a = sampleIndex(s, Math.min(t, tail));
     const b = sampleIndex(s, Math.max(t, tail));
-    if (reverse) for (let i = b; i > a; i--) (out.push(s.points[i * 2] * k + ox, s.points[i * 2 + 1] * k + oy), n++);
-    else for (let i = a + 1; i <= b; i++) (out.push(s.points[i * 2] * k + ox, s.points[i * 2 + 1] * k + oy), n++);
+    if (reverse) {
+      for (let i = b; i > a; i--) {
+        out.push(s.points[i * 2] * k + ox, s.points[i * 2 + 1] * k + oy);
+        n++;
+      }
+    } else {
+      for (let i = a + 1; i <= b; i++) {
+        out.push(s.points[i * 2] * k + ox, s.points[i * 2 + 1] * k + oy);
+        n++;
+      }
+    }
     pointOnSamples(s, t, this.pt);
     out.push(this.pt.x * k + ox, this.pt.y * k + oy);
     n++;

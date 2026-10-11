@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 
 /** Fails a production build if anything from src/examples/private (local-only work diagrams) ships. */
 function noPrivateExamples(): Plugin {
-  const isPrivate = (id: string) => /[\/]examples[\/]private[\/]/.test(id);
+  const isPrivate = (id: string) => /[/\\]examples[/\\]private[/\\]/.test(id);
   return {
     name: "no-private-examples",
     apply: "build",
