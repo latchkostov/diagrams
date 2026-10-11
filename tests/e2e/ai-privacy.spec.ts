@@ -1,3 +1,5 @@
+// Runs on the dev server (see DEV_ONLY in playwright.config.ts): local-only examples and the content
+// fingerprint exist only in development builds, by design.
 import type { Page } from "@playwright/test";
 import { deflateRawSync } from "node:zlib";
 import { localOnlyFixture } from "../../src/lab/localOnlyFixture";

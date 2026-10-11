@@ -50,7 +50,7 @@ const prebuilt = process.env.E2E_PREBUILT === "1";
  * `{ tag: "@dev" }`; a spec file listed here runs on the dev server whole. (`grep` matches the project
  * name, file path, titles and tags.)
  */
-const DEV_ONLY = /@dev|library-regressions\.spec\.ts/;
+const DEV_ONLY = /@dev|library-regressions\.spec\.ts|ai-privacy\.spec\.ts/;
 
 /**
  * `vite build` directly (not `pnpm build`) so another lane's in-progress type errors don't block the suite;
