@@ -778,7 +778,8 @@
   position: absolute;
   top: 16px;
   left: 16px;
-  max-width: 380px;
+  /* Room on the right for the Live toggle when the canvas is narrow (both side panels open). */
+  max-width: min(380px, calc(100% - 156px));
   padding: 12px 14px;
   border-radius: 12px;
   background: color-mix(in oklab, var(--surface) 86%, transparent);
@@ -817,7 +818,7 @@
 .diagram-card.is-large {
   top: 28px;
   left: 32px;
-  max-width: 560px;
+  max-width: min(560px, calc(100% - 340px));
   padding: 0;
   background: none;
   backdrop-filter: none;
@@ -2056,7 +2057,7 @@ select.insp-input {
 [data-theme="dark"] .ann-paper {
   background: linear-gradient(
     color-mix(in oklab, var(--ann) 85%, #fff) 0 3px,
-    color-mix(in oklab, var(--ann) 13%, #222a3b) 3px
+    color-mix(in oklab, var(--ann) 17%, #222a3b) 3px
   );
 }
 
@@ -2115,10 +2116,9 @@ select.insp-input {
   max-width: calc(100% - 28px);
   padding: 2px 4px;
   border-radius: 5px;
-  font-size: calc(var(--ann-fs) * 0.82);
-  font-weight: 680;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: calc(var(--ann-fs) * 0.93);
+  font-weight: 620;
+  letter-spacing: -0.005em;
   line-height: 1.3;
   color: var(--ann-ink);
   white-space: nowrap;
@@ -2134,8 +2134,6 @@ select.insp-input {
 
 .ann-zone.is-editing .ann-zone-label {
   overflow: visible;
-  text-transform: none;
-  letter-spacing: 0;
 }
 
 /* ---- shape: a crisp outline drawn at real pixel size, text centred inside */
@@ -2231,7 +2229,6 @@ select.insp-input {
   border-radius: 6px;
   background: var(--surface);
   box-shadow: 0 0 0 1.5px var(--accent);
-  text-transform: none;
   white-space: nowrap;
 }
 
@@ -2262,6 +2259,23 @@ select.insp-input {
 }
 
 /* ---- presentation reads at a distance; live keeps annotations visible but quiet */
+.is-presenting .ann .react-flow__resize-control {
+  display: none;
+}
+
+.is-presenting .ann.is-selected {
+  outline: 0;
+}
+
+.is-presenting .ann-placeholder {
+  visibility: hidden;
+}
+
+.is-presenting .ann-zone.is-selected {
+  border-color: color-mix(in oklab, var(--ann) 55%, transparent);
+  border-style: dashed;
+}
+
 .is-presenting .ann-zone-label {
   color: color-mix(in oklab, var(--ann) 70%, var(--text));
 }
@@ -2274,15 +2288,35 @@ select.insp-input {
   transition: opacity var(--dur-3) var(--ease-out);
 }
 
-.canvas-view.is-live .react-flow__node-annotation {
+/* Editing in live view: quiet, so the messages lead. Presenting (and recording): the author's
+   titles and notes are part of the story, at full strength. */
+.canvas-view.is-live:not(.is-presenting) .react-flow__node-annotation {
   opacity: 0.6;
 }
 
-/* ---- the stencil rail's Annotate group */
-.palette-annotate {
+/* ---- the stencil rail's Annotate group: pinned under the list (or among search matches) */
+.palette-annotate.is-results {
   margin-top: 6px;
   padding-top: 4px;
   border-top: 1px solid var(--line);
+}
+
+.palette-annotate.is-pinned {
+  flex: none;
+  padding: 2px 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.palette-annotate.is-pinned h3 {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.palette-annotate.is-pinned + .palette-foot {
+  border-top: 0;
+  padding-top: 4px;
 }
 
 .palette-annotate-grid {

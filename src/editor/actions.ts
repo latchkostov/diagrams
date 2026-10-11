@@ -49,6 +49,8 @@ export interface ActionContext {
   editor: EditorApi;
   /** The canvas mode the menu is for. Default "edit". */
   mode?: EditorMode;
+  /** Who's asking: a context menu (default) or the command palette. */
+  surface?: "menu" | "palette";
 }
 
 /** A rendered menu row. Submenu children are plain data so they can be built per open. */
@@ -93,6 +95,11 @@ export interface Action {
   danger?: boolean;
   /** Order within the section (default 100, then registration order). */
   order?: number;
+  /**
+   * Offered by the command palette but left out of context menus: for actions that already have an
+   * always-visible control and a shortcut (e.g. Fit view), so menus stay within budget.
+   */
+  paletteOnly?: boolean;
   /** Hide the action when false. */
   when?: (ctx: ActionContext) => boolean;
   /** Show the action disabled when false. */
@@ -166,6 +173,7 @@ export class ActionRegistry {
       const a = e.action;
       if (!a.targets.includes(ctx.target)) continue;
       if (!(a.modes ?? EDIT_ONLY).includes(ctx.mode ?? "edit")) continue;
+      if (a.paletteOnly && ctx.surface !== "palette") continue;
       if (a.when && !safe(() => a.when!(ctx), false)) continue;
       if (!bySection.has(a.section)) bySection.set(a.section, []);
       bySection.get(a.section)!.push(e);

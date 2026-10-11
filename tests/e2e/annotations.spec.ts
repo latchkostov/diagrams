@@ -162,11 +162,48 @@ test.describe("annotations", () => {
     // 200 -> 320 at whatever zoom the view has.
     await expect.poll(async () => (await box(annotation(page, "note-1"))).width / before).toBeGreaterThan(1.5);
 
-    await page.getByTestId("palette-annotate-shape-diamond").click();
+    // One Shape tile: a rectangle, whose outline the inspector changes.
+    await page.getByTestId("palette-annotate-shape").click();
+    await expect(annotation(page, "shape-1")).toHaveAttribute("data-shape", "rect");
+    await page.getByTestId("inspector-shape-diamond").click();
     await expect(annotation(page, "shape-1")).toHaveAttribute("data-shape", "diamond");
-    // The search finds the Annotate items too.
+    // The search finds the Annotate items too, each outline by name.
     await page.getByTestId("palette-search").fill("sticky");
     await expect(page.getByTestId("palette-annotate-note")).toBeVisible();
+    await page.getByTestId("palette-search").fill("ellipse");
+    await page.getByTestId("palette-annotate-shape-ellipse").click();
+    await expect(annotation(page, "shape-2")).toHaveAttribute("data-shape", "ellipse");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a click in the rail places each annotation in free space, never on a node or the last one", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, SLUG);
+    await settle(page);
+    for (const kind of ["note", "shape", "note", "text"] as const) {
+      await page.getByTestId(`palette-annotate-${kind}`).click();
+      if (kind !== "shape") await page.keyboard.press("Escape");
+    }
+    await expect(annotation(page, "text-1")).toBeVisible();
+    const boxes = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>(".react-flow__node")].map((el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          annotation: el.classList.contains("react-flow__node-annotation"),
+          x: r.x,
+          y: r.y,
+          w: r.width,
+          h: r.height,
+        };
+      }),
+    );
+    const overlap = (a: (typeof boxes)[number], b: (typeof boxes)[number]) =>
+      a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    const added = boxes.filter((b) => b.annotation);
+    expect(added).toHaveLength(4);
+    for (const a of added) for (const b of boxes) if (a !== b) expect(overlap(a, b)).toBe(false);
     expectNoErrors(consoleErrors);
   });
 
@@ -324,6 +361,12 @@ test.describe("annotations", () => {
       annotation(page, "memo").evaluate((el) => Number(getComputedStyle(el.parentElement ?? el).opacity));
     expect(await opacity()).toBe(1);
     await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+    await expect.poll(opacity).toBeLessThan(0.8);
+    // Presenting, they're part of the story: full strength. Esc steps back out of presentation only.
+    await page.getByTestId("present-toggle").click();
+    await expect.poll(opacity).toBe(1);
+    await page.keyboard.press("Escape");
     await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
     await expect.poll(opacity).toBeLessThan(0.8);
     await expect(annotation(page, "box")).toBeVisible();

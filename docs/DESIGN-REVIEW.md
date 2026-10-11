@@ -1,5 +1,175 @@
 # Design review
 
+## Round 4: UX gate after annotations and Record video
+
+Reviewed 2026-10-11 against `docs/UX-PRINCIPLES.md` on a production build (`pnpm build && pnpm preview`,
+so private examples never load), in Chrome at 1920×1080, 1440×900 and 1024×768, dark and light. Three
+personas walked the real app:
+
+1. **Explainer:** annotates the Kafka example for a design doc (a title, two notes, a zone, a shape),
+   then exports a PNG.
+2. **Presenter:** records a narrated simulation for Slack, from finding "Record video…" through the
+   countdown, Stop, review and download.
+3. **Returning engineer:** after four feature batches, is the app still calm? The chrome was counted
+   again with a script that opens each menu and reads its rows, and one that reads the inspector for
+   each kind of selection.
+
+The exported PNG was captured in the page and viewed at full size; overlap was measured with
+`getBoundingClientRect`.
+
+Screenshots: `docs/screenshots/ux-gate4-before-*.png` and `ux-gate4-after-*.png`.
+
+### Scorecard
+
+Scores are out of 5. "Before" is the app at the start of this round (round 3 ended at 4–4.5).
+
+| Principle                       | Before | After | Why                                                                                                                                                                                               |
+| ------------------------------- | :----: | :---: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Beautiful by default         |  3.5   |  4.5  | The exported PNG drew every edge and every shape as a black blob. Text set to XL wrapped and spilled out of its box. In dark mode a yellow note read as one more node card.                       |
+| 2. Progressive disclosure       |   4    |  4.5  | The rail showed 8 annotate tiles for 4 kinds. A Text showed a Size row it doesn't need, a zone a Text size, and Record video asked about presentation view on every take.                         |
+| 3. Context over chrome          |  4.5   |  4.5  | Unchanged. Annotations are edited in place, with handles, and in the inspector.                                                                                                                   |
+| 4. One primary action / surface |   4    |   4   | Unchanged. Start recording, then Download, are each dialog's one primary action.                                                                                                                  |
+| 5. Budget the chrome            |   4    |  4.5  | The canvas menu sat at its 12-item cap. It's 11 now (live 8), with room for the next feature.                                                                                                     |
+| 6. No dead ends                 |  4.5   |  4.5  | Unchanged. Discarding a recording is undoable; an emptied text removes itself (undoable).                                                                                                         |
+| 7. Consistent names             |  3.5   |  4.5  | "Add node here" sat over a bare "Add ▸" while the rail said "Annotate". The rail said "Box" where the menu says Rectangle. The zone label was tracked capitals. Record video had two icons.       |
+| 8. App, not page                |  4.5   |  4.5  | Unchanged. Inline editing commits on Esc, Ctrl+Enter or a click away; menus and dialogs are keyboard-complete.                                                                                    |
+| 9. Teach in place               |  3.5   |  4.5  | The Annotate group was the rail's last section, below 25 Messaging stencils: off-screen on a first visit at every width. It's now a pinned row.                                                   |
+| 10. Nothing overlaps            |   3    |  4.5  | A click in the rail dropped annotations at the view's centre: on the busiest nodes, stacked on each other, and (notes, shapes) pushing edges into detours. At 1024 the diagram card covered Live. |
+| 11. Presentation first-class    |  3.5   |  4.5  | Live dimmed annotations to 60%, in presentation and in recordings. A selected zone kept its resize handles on stage. Empty notes showed "Double-click to write" in the PNG and in presentation.   |
+
+### Chrome count
+
+| Surface                               | Before                                                                                  | After                                               | Budget |
+| ------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------- | ------ |
+| Top bar                               | 7                                                                                       | 7                                                   | ~7     |
+| Stencil rail sections                 | 8 categories + Annotate (8 tiles, last, below the fold)                                 | 8 categories + a pinned Annotate row (4 tiles)      |        |
+| Canvas right-click, edit / live       | 12 / 9                                                                                  | 11 / 8 (Fit view: control, Shift+1 and Ctrl+K only) | ≤ 12   |
+| Canvas "Add ▸", now "Annotate ▸"      | 4 (Text, Note, Zone, Shape ▸ with 5)                                                    | 4, same rows                                        | ≤ 12   |
+| Live ⋯ menu                           | 4 (Continuous traffic, Step ¼ second, Event log, Record video…)                         | 4, unchanged                                        | ≤ 12   |
+| Inspector, node / edge / boundary     | 4 fields + 2 sections / 4 + 2 sections / 2                                              | Unchanged                                           |        |
+| Inspector, text / note / zone / shape | 4 / 4 / 4 + 2 notes / 5 fields                                                          | 3 / 4 / 3 + 1 note / 5                              |        |
+| Record video setup options            | 2 checkboxes (1 in free play)                                                           | 1 (only with a simulation; none in free play)       |        |
+| Side panels                           | 6: stencils, inspector, Inputs & capacity, simulation editor, event log, narration card | 6, unchanged                                        |        |
+| Dialogs                               | 9 + shortcuts sheet + palette (Record video and Your recording are new)                 | Unchanged                                           |        |
+| Ways to add an annotation             | Rail, right-click, palette, T                                                           | Unchanged                                           |        |
+
+Net: 6 fewer controls (4 rail tiles, 1 canvas-menu row, 1 record option) and 2 fewer inspector rows
+(Size on text, Text size on zones), with one help note merged. Nothing was added to any surface; every
+fix is a better default.
+
+### Findings
+
+**P0 (all fixed)**
+
+1. **The PNG export drew edges and shapes as black blobs.** html-to-image copies computed styles onto
+   HTML elements only; SVG children keep just their attributes, so every edge path, arrowhead and
+   annotation shape lost its CSS fill and stroke and rendered black. It wasn't new with annotations: edges
+   are painted by CSS, so every PNG export was affected. Export now writes each SVG child's
+   computed paint onto it for the shot and restores it afterwards (`src/interop/image.ts`).
+   - The picture also leaves out editing state: selection outlines, resize handles and an empty
+     note's "Double-click to write".
+2. **Click-to-add stacked everything at the view's centre.** A click on a rail tile (or a palette
+   command without a target) put the new annotation or node at the centre of the view. On the Kafka
+   example that's inside the boundary, over edges. Text, a zone and a shape landed on one spot. A note
+   or shape there is a routing obstacle, so nearby edges detoured around it.
+   - Now it goes to the free place nearest the centre: clear of nodes, boundaries, other annotations
+     and edges, by 32px (`placeFree` in `src/canvas/placement.ts`, unit-tested).
+   - A right-click or a drop still puts it exactly where you pointed.
+3. **A new text size didn't resize the text.** Text is 200×30 at M. At XL a one-line title wrapped to
+   two lines and spilled out of its box, past the selection outline and the export bounds. Changing
+   the size now scales the box with the type (one undo step), so a title stays one line.
+
+**P1 (fixed)**
+
+4. **Annotations were dimmed while presenting.** Live view dims annotations to 60% so the messages
+   lead. That also applied in presentation and in recordings, so the author's title and notes looked
+   disabled on stage. They're at full strength when presenting; only the editing live view keeps them
+   quiet.
+5. **Selection chrome on stage.** A selected zone kept its resize handles and solid border in
+   presentation. Presentation hides annotation handles, outlines and placeholders.
+6. **The Annotate group was buried.** It came last in the rail, under 25 Messaging stencils, so a
+   first visit never saw it at any width. Its 8 tiles gave shapes 5 of 8 slots, and the rectangle was
+   called "Box". It's now one row of four, **Text, Note, Zone, Shape**, pinned under the list, so it's
+   always in view.
+   - Shape starts as a rectangle; the inspector, the right-click's Shape ▸ and the rail search
+     ("ellipse", "cylinder") pick an outline directly.
+7. **"Add node here" sat over a bare "Add ▸".** The submenu is now **Annotate ▸**, the rail's word.
+   The palette reads "Annotate › Note".
+8. **The canvas menu was at its 12-item cap.** Fit view is always on screen (canvas controls) and on
+   Shift+1, so it left the right-click: 12 → 11, live 9 → 8. It's still in Ctrl+K: the registry's new
+   `paletteOnly` flag keeps an action out of menus and in the palette.
+9. **The zone label was tracked capitals** ("OBSERVABILITY"), the one label left breaking sentence case.
+   It's now plain sentence-case words in the zone's colour.
+   - Zone vs boundary still reads at a glance: a dashed edge and plain words against a solid edge and a
+     label chip with a swatch.
+10. **Menu-added text was centred on the click,** so a title right-clicked near the left edge started
+    under the stencil rail. Text now starts where you clicked, as `T` does.
+11. **Record video asked about presentation view every time.** Nobody wants editing chrome in a Slack
+    video, so every take is in presentation view and the option is gone. The setup now says what's
+    captured: "Only the diagram is recorded, in presentation view (no editing controls, larger text),
+    without sound." With a simulation picked, the one option left is to play it from the start.
+12. **At 1024 the diagram card covered the Live toggle** with both side panels open (the canvas is
+    480px wide there). The card now leaves room for it at any width, in presentation too.
+13. **The annotation inspector showed more than it needed.**
+    - A Text sizes itself, so its Size row is gone (handles still set its width).
+    - A zone's label has one size, like a boundary's, so its Text size row is gone.
+    - The zone's two help notes are now one: "A zone only marks an area: nodes don't move with it. To
+      keep nodes together, use a boundary."
+14. **Record video had two icons:** a monitor in the right-click and a record dot in ⋯. Both use the
+    record dot now.
+15. **Dark-mode notes read as node cards.** They were dark grey with a thin colour band. The paper now
+    carries a little more of its colour, so a yellow note reads as a note.
+
+**Verified, no change needed**
+
+- **Record flow (presenter):** "Record video…" is in the live ⋯ menu and the live right-click. The
+  steps are setup, the browser's share prompt, a 3-2-1 countdown ("Esc cancels") and a small pill
+  (time, Stop). The live bar and the Live toggle stay out of the take. **Your recording** has a
+  preview, the duration and size, Download as the primary action, and Discard with Undo. With a
+  simulation picked, "Play from the start" stops by itself; pausing notes hold 5 seconds.
+- **Inline editing:** double-click edits in place, Enter adds a line (a zone label is one line), and
+  Esc, Ctrl+Enter or a click away commits. Emptying a text removes it (undoable).
+- **Resizing:** corner and edge handles on the selection, with min sizes per kind.
+- **Colour:** six swatches, the same component as boundary colours.
+- **Smaller round-3 follow-ups:**
+  - Timeline markers are clickable.
+  - Expectation results stay readable in a narrow live bar.
+  - Traffic into X places the entry point beside the node.
+  - The narration card avoids nodes and chrome.
+  - No overlap at 1024 in live with a simulation.
+
+**P2 moved to the backlog**
+
+- The PNG has no title, so explainers add a Text by hand. The export could include the diagram's
+  title and description, as presentation does.
+- A text that grows (a bigger size, a longer line) can run over an edge, because text isn't a routing
+  obstacle. Consider nudging it clear, as placement does.
+- With nodes selected, "Annotate ▸ Zone" could draw the zone around them.
+- Typing a longer text in the inspector doesn't grow a Text's box; typing in place does.
+- At 1024, selecting an annotation near the right edge opens the inspector over half of it; check
+  `useKeepSelectionInView` covers annotations.
+- In the Lab (no presentation mode) the Record setup still says "in presentation view".
+
+### What changed, in numbers
+
+- **Removed or merged:**
+  - 4 annotate tiles (5 shape tiles became 1)
+  - Fit view from the canvas right-click (edit and live)
+  - the Record video "Presentation view" option
+  - Size on Text and Text size on zones in the inspector
+  - one of the zone's two help notes
+  - the 60% dimming of annotations while presenting
+- **Renamed:** Add ▸ → Annotate ▸ (palette: Annotate › …). Box → Shape (Rectangle in search). The
+  zone label, from tracked capitals to sentence case. The right-click's Record icon matches ⋯.
+- **Moved:** the Annotate group, from the end of the rail's list to a pinned row under it.
+- **Better defaults (no new controls):**
+  - free-space placement for click-to-add
+  - text that scales with its size
+  - PNG export with real edge and shape paint and no editing state
+  - presentation without selection chrome
+  - recording always in presentation view
+  - a diagram card that never covers Live
+
 ## Round 3: UX gate after Inputs & capacity, the command palette and Your diagrams
 
 Reviewed 2026-10-11 against `docs/UX-PRINCIPLES.md` on a production build (`pnpm build && pnpm preview`,

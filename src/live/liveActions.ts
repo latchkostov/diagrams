@@ -217,7 +217,7 @@ export function liveActions(host: LiveActionsHost): Action[] {
       section: "simulation",
       targets: ["canvas"],
       label: "Record video…",
-      icon: "present",
+      icon: "record",
       order: 50,
       run: () => host.openRecord(),
     },

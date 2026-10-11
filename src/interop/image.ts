@@ -65,6 +65,12 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
     defsClone.setAttribute("style", "position:absolute;width:0;height:0;overflow:hidden");
     viewport.prepend(defsClone);
   }
+  // The picture shows the diagram, not the editing state: no selection outlines or resize handles.
+  const unselect = clearSelectionMarks(viewport);
+  // html-to-image copies computed styles onto HTML elements only; SVG children (edge paths, arrow
+  // heads, annotation shapes) keep just their attributes, so their CSS fills and strokes would be
+  // lost (black blobs). Write the computed paint onto them for the shot.
+  const restoreSvg = inlineSvgPaint(viewport);
   try {
     const { toPng, toSvg, getFontEmbedCSS } = await import("html-to-image");
     // Embedding web fonts is the slow part (fetch + inline every @font-face): do it once per session.
@@ -81,11 +87,70 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
         height: `${height}px`,
         transform: `translate(${pad - b.x}px, ${pad - b.y}px) scale(1)`,
       },
-      // Connection handles are editing affordances, not part of the picture.
-      filter: (node: Node) => !(node instanceof HTMLElement && node.classList.contains("react-flow__handle")),
+      // Editing affordances aren't part of the picture: connection and resize handles, and the
+      // "Double-click to write" placeholder of an empty note.
+      filter: (node: Node) =>
+        !(node instanceof HTMLElement && EDITING_ONLY.some((cls) => node.classList.contains(cls))),
     };
     return kind === "png" ? await toPng(viewport, options) : await toSvg(viewport, options);
   } finally {
+    restoreSvg();
+    unselect();
     defsClone?.remove();
   }
+}
+
+const EDITING_ONLY = ["react-flow__handle", "react-flow__resize-control", "ann-placeholder"];
+
+const SELECTION_CLASSES = ["selected", "is-selected", "is-editing"] as const;
+
+/** Takes the selection classes off for the shot; returns the function that puts them back. */
+function clearSelectionMarks(root: HTMLElement): () => void {
+  const removed: [Element, string][] = [];
+  for (const cls of SELECTION_CLASSES) {
+    for (const el of root.querySelectorAll(`.${cls}`)) {
+      el.classList.remove(cls);
+      removed.push([el, cls]);
+    }
+  }
+  return () => {
+    for (const [el, cls] of removed) el.classList.add(cls);
+  };
+}
+
+/** SVG paint that comes from stylesheets (classes, variables) and must travel with the clone. */
+const SVG_PAINT = [
+  "fill",
+  "fill-opacity",
+  "stroke",
+  "stroke-width",
+  "stroke-opacity",
+  "stroke-dasharray",
+  "stroke-dashoffset",
+  "stroke-linecap",
+  "stroke-linejoin",
+  "opacity",
+  "display",
+  "visibility",
+] as const;
+
+/** Writes each SVG child's computed paint into its style attribute; returns the undo. */
+function inlineSvgPaint(root: HTMLElement): () => void {
+  const saved: [SVGElement, string | null][] = [];
+  const els = root.querySelectorAll<SVGElement>("svg *");
+  // Read everything first, then write, so one write can't change what the next read sees.
+  const values = [...els].map((el) => {
+    const cs = getComputedStyle(el);
+    return SVG_PAINT.map((p) => [p, cs.getPropertyValue(p)] as const);
+  });
+  els.forEach((el, i) => {
+    saved.push([el, el.getAttribute("style")]);
+    for (const [p, v] of values[i]) if (v) el.style.setProperty(p, v);
+  });
+  return () => {
+    for (const [el, style] of saved) {
+      if (style === null) el.removeAttribute("style");
+      else el.setAttribute("style", style);
+    }
+  };
 }

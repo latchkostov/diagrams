@@ -57,8 +57,20 @@ describe("action registry", () => {
     expect(live("node")).not.toContain("item.delete");
     expect(live("edge")).toEqual(expect.arrayContaining(["edge.edit-label", "node.properties"]));
     expect(live("edge")).not.toContain("edge.reverse");
-    expect(live("canvas")).toEqual(expect.arrayContaining(["canvas.fit", "canvas.properties", "canvas.shortcuts"]));
+    expect(live("canvas")).toEqual(expect.arrayContaining(["canvas.properties", "canvas.shortcuts"]));
     expect(live("canvas")).not.toContain("canvas.add-node");
+  });
+
+  it("palette-only actions stay out of context menus but reach the command palette", async () => {
+    const { builtinActions } = await import("./builtinActions");
+    const r = new ActionRegistry(builtinSections);
+    r.register(builtinActions());
+    const items = (surface?: "menu" | "palette") =>
+      r.build({ ...ctx("canvas"), surface }).flatMap((i) => (i.type === "item" ? [i.id] : []));
+    expect(items()).not.toContain("canvas.fit");
+    expect(items("palette")).toContain("canvas.fit");
+    // The canvas menu stays under its 12-item budget.
+    expect(items().length).toBeLessThanOrEqual(11);
   });
 
   it("the simulation section stays hidden until a provider registers a visible action", () => {
