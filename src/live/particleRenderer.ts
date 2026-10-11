@@ -6,7 +6,7 @@
 
 import type { Particle, ParticleKind, SimSnapshot } from "../sim/types";
 import { PathCache, pointOnSamples, sampleIndex, type PathLike, type PathSamples } from "./pathSampler";
-import { nearestOnBox, placeTraceLabels, type Box, type PlacedLabel } from "./traceLabels";
+import { nearestOnBox, placeTraceLabels, traceLabelInk, type Box, type PlacedLabel } from "./traceLabels";
 
 /** Theme colours the canvas can't read from CSS by itself (from tokens.css, see `readParticleTokens`). */
 export interface ParticleTokens {
@@ -453,7 +453,7 @@ export class ParticleRenderer {
       ctx.fillStyle = color;
       roundRect(ctx, l.x, l.y, l.w, l.h, l.h / 2);
       ctx.fill();
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = traceLabelInk(color);
       ctx.fillText(l.text, l.x + font * 0.55, l.y + l.h / 2 + 0.5 * dpr);
     }
     this.labels = placed.map((l) => ({

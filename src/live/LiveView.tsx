@@ -993,7 +993,8 @@ function LiveSession({
         if (isEditableTarget(t) || document.querySelector(ESC_OWNERS)) return;
         if (document.querySelector(SELECTED)) {
           // The canvas clears its selection when it has focus; otherwise clear it here (no dead end).
-          if (!inCanvas(t)) editor?.clearSelection();
+          if (!inCanvas(t) || (t instanceof Element && t.closest('[data-testid="trace-card"]')))
+            editor?.clearSelection();
           return;
         }
         // The trace comes before presentation: stop App from also leaving presentation.

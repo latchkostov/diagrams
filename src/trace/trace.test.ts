@@ -11,6 +11,26 @@ import { buildSequence, type SequenceArrow, type SequenceNote } from "./sequence
 import { estimateWidth, SEQUENCE_THEMES, toSvg } from "./svg";
 
 const kafka = kafkaJson as DiagramFile;
+it.each([10_000, 40_000])("bounds measurements when truncating a %i character Unicode participant label", (length) => {
+  const label = "😀".repeat(length);
+  const model = buildSequence(tinyTrace, tiny);
+  model.participants[0].label = label;
+  let calls = 0,
+    characters = 0,
+    longest = 0;
+  const picture = toSvg(model, SEQUENCE_THEMES.light, (text, size, opts) => {
+    calls++;
+    characters += text.length;
+    longest = Math.max(longest, text.length);
+    return estimateWidth(text, size, opts);
+  });
+  expect(calls).toBeLessThan(100);
+  expect(characters).toBeLessThan(10_000);
+  expect(longest).toBeLessThanOrEqual(1025);
+  expect(picture.svg).toContain("😀");
+  expect(picture.svg).not.toMatch(/[\uD800-\uDBFF]…/u);
+  expect(model.participants[0].label).toBe(label);
+});
 const azure = azureJson as DiagramFile;
 // The public examples only (never the local-only private folder).
 const publicExamples = Object.entries(

@@ -23,7 +23,7 @@ export interface Family {
   trace?: MessageTrace;
 }
 
-/** Everything the tracer remembers. Engine checkpoints clone it together with the messages. */
+/** Families are cloned with engine messages; trace records are shared with copy-on-write. */
 export interface LineageState {
   /** Recorded families in creation order (the followed one included). */
   store: Map<number, Family>;
@@ -47,6 +47,8 @@ export interface LineageHost {
 
 export interface Lineage extends MessageTracer {
   state: LineageState;
+  /** Protect records shared with a checkpoint from later mutation. */
+  shareRecords(): void;
   /** Forget every recording and request (load, reset). Keeps the history size. */
   reset(): void;
   /** A root message was created at `node`. Records its "emit" step when it's being recorded. */
@@ -64,6 +66,13 @@ export interface Lineage extends MessageTracer {
 export function createLineage(host: LineageHost): Lineage {
   let history = 0;
   let state: LineageState = { store: new Map() };
+  const shared = new WeakSet<MessageTrace>();
+
+  function writable(family: Family): MessageTrace | undefined {
+    const trace = family.trace;
+    if (trace && shared.has(trace)) family.trace = { ...trace, steps: [...trace.steps] };
+    return family.trace;
+  }
 
   function open(family: Family, type: string, origin: string, partial: boolean): void {
     family.trace = {
@@ -82,8 +91,9 @@ export function createLineage(host: LineageHost): Lineage {
   function settle(family: Family): void {
     const trace = family.trace;
     if (!trace || trace.done || family.alive - family.parked > 0) return;
-    trace.done = true;
-    trace.endedAt = host.time();
+    const next = writable(family)!;
+    next.done = true;
+    next.endedAt = host.time();
   }
 
   function follow(family: Family, type: string, node: string): void {
@@ -91,10 +101,11 @@ export function createLineage(host: LineageHost): Lineage {
     state.following = family;
     state.request = undefined;
     state.wanted = undefined;
+    trim();
     settle(family);
   }
 
-  /** Room for one more recording: evicts the oldest finished one that isn't followed. */
+  /** Automatic sampling keeps in-flight history; explicit following can replace any old slot. */
   function room(): boolean {
     if (state.store.size < history) return true;
     for (const [root, family] of state.store) {
@@ -108,15 +119,15 @@ export function createLineage(host: LineageHost): Lineage {
 
   function trim(): void {
     for (const [root, family] of state.store) {
-      if (state.store.size <= history) return;
-      if (family === state.following || !family.trace?.done) continue;
+      if (state.store.size <= Math.max(history, state.following ? 1 : 0)) return;
+      if (family === state.following) continue;
       family.trace = undefined;
       state.store.delete(root);
     }
   }
 
   function record(family: Family, step: TraceStep): void {
-    const trace = family.trace;
+    const trace = writable(family);
     if (!trace) return;
     if (trace.steps.length >= MAX_STEPS) trace.truncated = true;
     else trace.steps.push(step);
@@ -136,6 +147,9 @@ export function createLineage(host: LineageHost): Lineage {
   }
 
   return {
+    shareRecords() {
+      for (const family of state.store.values()) if (family.trace) shared.add(family.trace);
+    },
     get state() {
       return state;
     },
@@ -193,9 +207,7 @@ export function createLineage(host: LineageHost): Lineage {
     followRoot(rootId) {
       const recorded = state.store.get(rootId);
       if (recorded) {
-        state.following = recorded;
-        state.request = undefined;
-        state.wanted = undefined;
+        follow(recorded, recorded.trace!.type, recorded.trace!.origin);
         return;
       }
       const found = host.find((message) => message.family.root === rootId);
@@ -204,17 +216,20 @@ export function createLineage(host: LineageHost): Lineage {
         state.following = undefined;
         state.request = undefined;
         state.wanted = rootId;
+        trim();
       }
     },
     request(next) {
       state.following = undefined;
       state.wanted = undefined;
       state.request = next.next === "message" ? { next: "message", node: next.node } : { next: "deadletter" };
+      trim();
     },
     clear() {
       state.following = undefined;
       state.wanted = undefined;
       state.request = undefined;
+      trim();
     },
     followed: () => state.following?.root ?? state.wanted,
     pending: () => (state.request ? { ...state.request } : undefined),

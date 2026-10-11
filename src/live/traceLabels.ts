@@ -67,19 +67,97 @@ const DIRS: readonly (readonly [number, number])[] = [
 /** Rings of distance (× offset). Past the first, the label gets a leader line. */
 const RINGS = [1, 2.4, 4, 6, 8];
 const PAD = 2;
+/** Floating labels are a preview; the trace card keeps the complete journey. */
+export const MAX_TRACE_LABELS = 48;
+
+/** WCAG relative luminance: black or white always gives at least 4.5:1 on an opaque colour. */
+export function traceLabelInk(background: string): string {
+  const rgb = background.replace("#", "").match(/.{2}/g) ?? [];
+  const channels = rgb.map((hex) => {
+    const v = parseInt(hex, 16) / 255;
+    return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  return luminance > 0.179 ? "#000000" : "#ffffff";
+}
+
+/** Uniform grid for local rectangle queries. Very large obstacles live in a small overflow list. */
+class BoxIndex {
+  private cells = new Map<string, Box[]>();
+  private large: Box[] = [];
+  constructor(
+    private cell: number,
+    boxes: readonly Box[] = [],
+  ) {
+    for (const box of boxes) this.add(box);
+  }
+  private keys(box: Box): string[] {
+    const x0 = Math.floor((box.x - PAD) / this.cell),
+      y0 = Math.floor((box.y - PAD) / this.cell);
+    const x1 = Math.floor((box.x + box.w + PAD) / this.cell),
+      y1 = Math.floor((box.y + box.h + PAD) / this.cell);
+    if ((x1 - x0 + 1) * (y1 - y0 + 1) > 128) return [];
+    const keys: string[] = [];
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) keys.push(`${x}:${y}`);
+    return keys;
+  }
+  add(box: Box): void {
+    const keys = this.keys(box);
+    if (!keys.length) this.large.push(box);
+    for (const key of keys) {
+      const bucket = this.cells.get(key);
+      if (bucket) bucket.push(box);
+      else this.cells.set(key, [box]);
+    }
+  }
+  hits(box: Box, pad: number): boolean {
+    if (this.large.some((other) => hit(box, other, pad))) return true;
+    const keys = this.keys(box);
+    if (!keys.length) return [...this.cells.values()].some((bucket) => bucket.some((other) => hit(box, other, pad)));
+    return keys.some((key) => this.cells.get(key)?.some((other) => hit(box, other, pad)));
+  }
+}
 
 const hit = (a: Box, b: Box, pad = PAD) =>
   a.x < b.x + b.w + pad && b.x < a.x + a.w + pad && a.y < b.y + b.h + pad && b.y < a.y + a.h + pad;
 const inside = (a: Box, b: Box) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
 
 /** Merges same-text requests whose particles sit within `reach` px of each other. */
-export function mergeLabels(reqs: readonly LabelRequest[], reach: number): (LabelRequest & { count: number })[] {
+export function mergeLabels(
+  reqs: readonly LabelRequest[],
+  reach: number,
+  limit = Infinity,
+): (LabelRequest & { count: number })[] {
   const sorted = [...reqs].sort((a, b) => b.priority - a.priority || b.id - a.id);
   const out: (LabelRequest & { count: number })[] = [];
+  const grid = new Map<string, Map<string, (LabelRequest & { count: number })[]>>();
+  const cell = Math.max(1, reach);
   for (const r of sorted) {
-    const near = out.find((o) => o.text === r.text && Math.hypot(o.x - r.x, o.y - r.y) <= reach);
+    const x = Math.floor(r.x / cell),
+      y = Math.floor(r.y / cell);
+    const words = grid.get(r.text);
+    let near: (LabelRequest & { count: number }) | undefined;
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dy = -1; dy <= 1; dy++) {
+        const found = words?.get(`${x + dx}:${y + dy}`)?.find((o) => Math.hypot(o.x - r.x, o.y - r.y) <= reach);
+        // Retain the same priority/id ordering when more than one group is within reach.
+        if (
+          found &&
+          (!near || found.priority > near.priority || (found.priority === near.priority && found.id > near.id))
+        )
+          near = found;
+      }
     if (near) near.count++;
-    else out.push({ ...r, count: 1 });
+    else if (out.length < limit) {
+      const group = { ...r, count: 1 };
+      out.push(group);
+      const buckets = words ?? new Map<string, (LabelRequest & { count: number })[]>();
+      const key = `${x}:${y}`;
+      const bucket = buckets.get(key);
+      if (bucket) bucket.push(group);
+      else buckets.set(key, [group]);
+      grid.set(r.text, buckets);
+    }
   }
   return out;
 }
@@ -87,13 +165,14 @@ export function mergeLabels(reqs: readonly LabelRequest[], reach: number): (Labe
 export function placeTraceLabels(reqs: readonly LabelRequest[], env: LabelEnv): PlacedLabel[] {
   const { offset, bounds, hard, soft = [], previous } = env;
   const probe = env.measure("M");
-  const merged = mergeLabels(reqs, probe.h * 2.5);
+  const merged = mergeLabels(reqs, probe.h * 2.5, MAX_TRACE_LABELS);
   const placed: PlacedLabel[] = [];
+  const cell = Math.max(32, probe.h * 4);
+  const placedIndex = new BoxIndex(cell),
+    hardIndex = new BoxIndex(cell, hard),
+    softIndex = new BoxIndex(cell, soft);
   const free = (b: Box, strict: boolean) =>
-    inside(b, bounds) &&
-    !placed.some((p) => hit(b, p)) &&
-    !hard.some((o) => hit(b, o, 0)) &&
-    (!strict || !soft.some((o) => hit(b, o, 0)));
+    inside(b, bounds) && !placedIndex.hits(b, PAD) && !hardIndex.hits(b, 0) && (!strict || !softIndex.hits(b, 0));
 
   for (const r of merged) {
     const text = r.count > 1 ? `${r.text} ×${r.count}` : r.text;
@@ -125,6 +204,7 @@ export function placeTraceLabels(reqs: readonly LabelRequest[], env: LabelEnv): 
     if (spot === undefined) continue;
     const c = candidates[spot];
     placed.push({ ...at(c.dx, c.dy), id: r.id, text, count: r.count, ax: r.x, ay: r.y, leader: c.leader, spot });
+    placedIndex.add(placed.at(-1)!);
   }
   return placed;
 }

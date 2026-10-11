@@ -31,7 +31,7 @@ import { LiveLabStage } from "../live/LiveLabStage";
 import { badgeStatesDiagram, noteStatesDiagram, particleStressDiagram, type NoteState } from "../live/labDiagrams";
 import { OverlapAudit } from "./OverlapAudit";
 import { annotationCourseDiagram, obstacleCourseDiagram } from "./routingDiagrams";
-import { TraceCardStates, TraceSequencePreview, type TraceFlow } from "../live/TraceLab";
+import { TraceCardInteraction, TraceCardStates, TraceSequencePreview, type TraceFlow } from "../live/TraceLab";
 
 const variantOptions = Object.entries(nodeVariants).map(([value, v]) => ({ value, label: v.label }));
 const variantsOf = (v: unknown): NodeVariantId[] =>
@@ -672,6 +672,15 @@ const traceFlowControl = (key: string, label: string, value: string): ControlDef
 const flowOf = (key: unknown, fallback: string) => (traceFlows[String(key)] ?? traceFlows[fallback]).flow();
 
 const tracePresets: Preset[] = [
+  {
+    kind: "render",
+    id: "trace-card-interaction",
+    title: "Trace: replace and follow",
+    group: "Simulation",
+    description: "Switch between equal-length journeys and append hops to check scrolling in the trace card.",
+    controls: [],
+    render: () => <TraceCardInteraction flow={flowOf(traceDefault, traceDefault)} />,
+  },
   {
     kind: "render",
     id: "trace-card-states",

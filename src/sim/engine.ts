@@ -725,8 +725,23 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     checkpoint() {
       // structuredClone preserves the graph's shared/cyclic references. Deque methods are
       // reattached on restore; its queue contents and head are ordinary own properties.
-      // The lineage is cloned with the messages, so copies and recordings keep sharing families.
-      const graph = structuredClone({ nodes, edges, trips, injections, events, lineage: lineage.state });
+      // Clone family identity with messages, but share recordings. Lineage copies a record on its
+      // first write after capture, so finished history is never deep-cloned during playback.
+      lineage.shareRecords();
+      const cloneGraph = <T extends { lineage: typeof lineage.state }>(source: T): T => {
+        const records = new Map([...source.lineage.store].map(([id, f]) => [id, f.trace]));
+        let copy: T;
+        try {
+          // Synchronous, internal-only graph: omit records just for structuredClone's traversal.
+          for (const family of source.lineage.store.values()) family.trace = undefined;
+          copy = structuredClone(source);
+        } finally {
+          for (const [id, family] of source.lineage.store) family.trace = records.get(id);
+        }
+        for (const [id, family] of copy.lineage.store) family.trace = records.get(id);
+        return copy;
+      };
+      const graph = cloneGraph({ nodes, edges, trips, injections, events, lineage: lineage.state });
       const clock = {
         time,
         accumulator,
@@ -747,7 +762,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const token = Object.freeze({ time });
       checkpoints.set(token, () => {
         if (topology !== clock.topology) throw new Error("Checkpoint belongs to a previous diagram");
-        const copy = structuredClone(graph);
+        const copy = cloneGraph(graph);
         nodes.clear();
         for (const [id, node] of copy.nodes) {
           Object.setPrototypeOf(node.pending, Deque.prototype);

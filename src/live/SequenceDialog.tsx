@@ -8,6 +8,7 @@ import { downloadBlob, downloadDataUrl, slugify } from "../interop/files";
 import { svgToPng } from "../interop/image";
 import { toast } from "../interop/ui/toast";
 import { buildSequence } from "../trace/sequence";
+import { formatOffset } from "../trace/journey";
 import { toMermaid } from "../trace/mermaid";
 import { SEQUENCE_THEMES, toSvg, type Measure } from "../trace/svg";
 import { LiveIcon } from "./icons";
@@ -52,6 +53,7 @@ export function SequenceDialog({
   onClose(): void;
 }) {
   const model = useMemo(() => buildSequence(trace, diagram), [trace, diagram]);
+  const participantName = (id: string) => model.participants.find((p) => p.id === id)?.label ?? id;
   const picture = useMemo(() => toSvg(model, SEQUENCE_THEMES[theme], measureText), [model, theme]);
   const file = `${slugify(diagram.title)}-${slugify(model.title)}-sequence`;
 
@@ -145,6 +147,27 @@ export function SequenceDialog({
         {/* The SVG is built from escaped text (src/trace/svg.ts), never from raw markup. */}
         <div className="tr-seq-body" dangerouslySetInnerHTML={{ __html: picture.svg }} />
       </div>
+      <section className="sr-only" aria-label="Sequence details" data-testid="sequence-accessible">
+        <h3>Participants</h3>
+        <ul data-testid="sequence-participants">
+          {model.participants.map((p) => (
+            <li key={p.id}>{p.label}</li>
+          ))}
+        </ul>
+        <h3>Messages and timing</h3>
+        <ol data-testid="sequence-messages">
+          {model.items.map((item, i) => (
+            <li key={i}>
+              {formatOffset(item.t)}:{" "}
+              {item.kind === "arrow"
+                ? `${participantName(item.from)} → ${participantName(item.to)}: ${item.label} (${item.style}), arrives ${formatOffset(item.until)}${item.detail ? `. ${item.detail}` : ""}`
+                : item.kind === "note"
+                  ? `${participantName(item.over)}: ${item.text}`
+                  : `${item.node ? `${participantName(item.node)}: ` : ""}${item.text}`}
+            </li>
+          ))}
+        </ol>
+      </section>
     </Dialog>
   );
 }

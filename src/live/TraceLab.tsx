@@ -2,7 +2,7 @@
 // public example's flow. Traces come from the real engine (src/trace/headless.ts), so these are
 // exactly what the live view would show.
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { DiagramFile, Simulation } from "../model/types";
 import type { MessageTrace } from "../sim/types";
 import { useSettings } from "../harness/settings";
@@ -32,6 +32,57 @@ function inFlight(trace: MessageTrace, share: number): MessageTrace {
 }
 
 const noop = () => {};
+
+/** Interactive fixture: switch equal-length journeys and append hops to exercise scroll-following. */
+export function TraceCardInteraction({ flow }: { flow: TraceFlow }) {
+  const original = useTrace(flow);
+  const [root, setRoot] = useState(1);
+  const [extra, setExtra] = useState(0);
+  if (!original) return <p className="lab-note">No message finished its journey.</p>;
+  const trace: MessageTrace = {
+    ...original,
+    rootId: root,
+    steps: [
+      ...original.steps,
+      ...Array.from({ length: extra }, (_, i) => ({
+        t: (original.endedAt ?? 0) + i * 100,
+        kind: "arrive" as const,
+        id: root,
+        type: original.type,
+        node: original.origin,
+      })),
+    ],
+  };
+  return (
+    <div className="tr-lab-seq">
+      <div>
+        <button
+          className="btn"
+          data-testid="trace-lab-replace"
+          onClick={() => {
+            setRoot(root + 1);
+            setExtra(0);
+          }}
+        >
+          Replace message
+        </button>
+        <button className="btn" data-testid="trace-lab-append" onClick={() => setExtra(extra + 1)}>
+          Append hop
+        </button>
+      </div>
+      <div className="tr-lab-slot">
+        <TraceCard
+          trace={{ rootId: root, current: trace }}
+          diagram={flow.diagram}
+          now={trace.endedAt ?? 0}
+          onClose={noop}
+          onSequence={noop}
+          room={320}
+        />
+      </div>
+    </div>
+  );
+}
 
 export function TraceCardStates({ flow, failing }: { flow: TraceFlow; failing: TraceFlow }) {
   const trace = useTrace(flow);

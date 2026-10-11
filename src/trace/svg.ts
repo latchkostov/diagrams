@@ -107,10 +107,20 @@ const MAX_BOX = 190;
 const ROW = { arrow: 44, detail: 54, self: 58, note: 34, gap: 38 } as const;
 
 function truncate(text: string, max: number, size: number, measure: Measure, bold = false): string {
-  if (measure(text, size, { bold }) <= max) return text;
-  let out = text;
-  while (out.length > 1 && measure(`${out}…`, size, { bold }) > max) out = out.slice(0, -1);
-  return `${out.trimEnd()}…`;
+  // Bound input to expensive canvas measurements; retain the full label in the model.
+  // Array.from respects code points, including astral characters at the cut boundary.
+  const points = Array.from(text.slice(0, 1024));
+  if (/[\uD800-\uDBFF]/u.test(points.at(-1) ?? "")) points.pop();
+  const bounded = points.join("");
+  if (bounded === text && measure(bounded, size, { bold }) <= max) return text;
+  let lo = 0,
+    hi = points.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (measure(`${points.slice(0, mid).join("")}…`, size, { bold }) <= max) lo = mid;
+    else hi = mid - 1;
+  }
+  return `${points.slice(0, lo).join("").trimEnd()}…`;
 }
 
 function stroke(style: ArrowStyle, theme: SequenceTheme): { color: string; dash?: string } {
