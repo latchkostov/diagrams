@@ -97,6 +97,9 @@ export interface NodeSimProps {
   partitions?: number;
   /** Message type emitted by sources / injection. Default derived from node label. */
   messageType?: string;
+  /** Processors: the message type sent downstream. A string renames every message; a map renames by
+   *  incoming type ("*" = fallback). Default: unchanged. E.g. { "MemberJoined": "WelcomeEmailRequested" }. */
+  emits?: string | Record<string, string>;
 }
 
 /** Per-edge tunables from DiagramEdge.props. */
@@ -108,6 +111,11 @@ export interface EdgeSimProps {
   dlq?: boolean;
   /** Travel time in ms at 1x speed. Default 900 (async) / 450 (sync). */
   travelMs?: number;
+  /** Only these message types travel this edge (subscription filter). Supports a trailing "*" wildcard,
+   *  e.g. ["Order*"]. Messages matching no outgoing edge of a broker group are simply not delivered to it. */
+  filter?: string[];
+  /** Rename messages as they leave along this edge (overrides the source node's `emits`). */
+  emits?: string;
 }
 
 export interface InjectOptions {
@@ -143,4 +151,55 @@ export interface EngineOptions {
   roleOf?: (stencilId: string) => SimRole;
   /** Hard cap on live particles; beyond it messages still flow but aren't drawn. Default 1500. */
   maxParticles?: number;
+}
+
+// ---------- Simulation runner (src/sim/simulation.ts) ----------
+// Plays a saved Simulation (src/model/types.ts) on top of an engine: traffic profiles, timeline
+// actions, narration notes and live expectations. Pure and deterministic like the engine.
+
+export type ExpectationStatus = "pending" | "pass" | "fail";
+
+export interface ExpectationState {
+  id: string;
+  label: string;
+  status: ExpectationStatus;
+  /** Latest measured value of the metric. */
+  value: number;
+}
+
+export interface TimelineMarker {
+  atMs: number;
+  kind: "note" | "status" | "props" | "inject" | "traffic";
+  label: string;
+}
+
+export interface SimulationRunState {
+  /** Simulation time in ms since the run started. */
+  time: number;
+  /** Estimated total length in ms (durationMs, or traffic/timeline end + drain allowance). */
+  totalMs: number;
+  done: boolean;
+  /** True while a pausing note is waiting for resume(). */
+  waiting: boolean;
+  /** The latest note reached (stays visible until the next note or 6 s pass). */
+  note?: { text: string; focus: string[]; atMs: number };
+  expectations: ExpectationState[];
+  /** Static markers for drawing the timeline (computed once per load). */
+  markers: TimelineMarker[];
+}
+
+export interface SimulationRun {
+  readonly engine: SimEngine;
+  /** Advance by dtMs of wall time (engine speed applies). No-op while waiting on a note or done. */
+  step(dtMs: number): void;
+  state(): SimulationRunState;
+  /** Continue after a pausing note. */
+  resume(): void;
+  /** Start over from t=0 with the same seed. */
+  restart(): void;
+}
+
+export interface SimulationRunOptions extends EngineOptions {
+  /** Reuse an existing engine (it is re-loaded with the diagram); otherwise one is created. */
+  engine?: SimEngine;
 }

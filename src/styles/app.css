@@ -19,6 +19,38 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* App, not a document: no text cursor or accidental selection on chrome, tiles and nodes. */
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Places where text is meant to be typed or copied opt back in. */
+input,
+textarea,
+[contenteditable="true"],
+.selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
+textarea,
+[contenteditable="true"] {
+  cursor: text;
+}
+
+img {
+  -webkit-user-drag: none;
+}
+
+[draggable="true"] {
+  cursor: grab;
+}
+
+[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 button,
@@ -28,7 +60,10 @@ select {
   color: inherit;
 }
 
-button {
+button,
+select,
+a[href],
+label[for] {
   cursor: pointer;
 }
 

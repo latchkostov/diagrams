@@ -23,7 +23,8 @@
       "x": 40,
       "y": 280,
       "props": {
-        "ratePerSec": 25
+        "ratePerSec": 25,
+        "messageType": "OrderRequest"
       }
     },
     {
@@ -45,7 +46,13 @@
       "group": "aks",
       "props": {
         "group": "orders-payments",
-        "idempotent": true
+        "idempotent": true,
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": {
+          "OrderRequest": "OrderPlaced",
+          "PaymentCompleted": "OrderUpdated"
+        }
       }
     },
     {
@@ -57,7 +64,7 @@
       "y": 280,
       "group": "aks",
       "props": {
-        "partitions": 12,
+        "partitions": 64,
         "replicationFactor": 3
       }
     },
@@ -71,7 +78,9 @@
       "group": "aks",
       "props": {
         "group": "inventory-reservations",
-        "concurrency": 6
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": "InventoryReserved"
       }
     },
     {
@@ -84,7 +93,9 @@
       "group": "aks",
       "props": {
         "group": "payment-authorizations",
-        "concurrency": 6
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": "PaymentCompleted"
       }
     },
     {
@@ -96,7 +107,10 @@
       "y": 400,
       "group": "aks",
       "props": {
-        "group": "customer-notifications"
+        "group": "customer-notifications",
+        "concurrency": 64,
+        "latencyMs": 150,
+        "emits": "NotificationRequested"
       }
     },
     {
@@ -134,7 +148,7 @@
       "x": 1120,
       "y": 520,
       "props": {
-        "partitions": 12,
+        "partitions": 64,
         "replicationFactor": 3
       }
     },
@@ -186,7 +200,9 @@
       "to": "gateway",
       "label": "HTTPS",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "gateway-to-orders",
@@ -194,7 +210,9 @@
       "to": "orders",
       "label": "POST /orders",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "orders-to-order-db",
@@ -202,7 +220,13 @@
       "to": "order-db",
       "label": "Commit order + outbox",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200,
+        "filter": [
+          "OrderPlaced",
+          "OrderUpdated"
+        ]
+      }
     },
     {
       "id": "orders-to-order-events",
@@ -210,7 +234,12 @@
       "to": "order-events",
       "label": "OrderPlaced",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "OrderPlaced"
+        ]
+      }
     },
     {
       "id": "order-events-to-inventory",
@@ -218,7 +247,13 @@
       "to": "inventory",
       "label": "Reserve inventory",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "OrderPlaced"
+        ],
+        "group": "inventory-reservations"
+      }
     },
     {
       "id": "order-events-to-payments",
@@ -226,7 +261,13 @@
       "to": "payments",
       "label": "Authorize payment",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "OrderPlaced"
+        ],
+        "group": "payment-authorizations"
+      }
     },
     {
       "id": "order-events-to-notifications",
@@ -234,7 +275,13 @@
       "to": "notifications",
       "label": "Send confirmation",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "OrderPlaced"
+        ],
+        "group": "customer-notifications"
+      }
     },
     {
       "id": "inventory-to-stock-db",
@@ -242,7 +289,9 @@
       "to": "stock-db",
       "label": "Reserve SKUs",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "payments-to-payment-db",
@@ -250,7 +299,9 @@
       "to": "payment-db",
       "label": "Record authorization",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "notifications-to-notify-cache",
@@ -258,7 +309,9 @@
       "to": "notify-cache",
       "label": "SET NX · dedupe",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "payments-to-payment-events",
@@ -266,7 +319,9 @@
       "to": "payment-events",
       "label": "PaymentCompleted",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300
+      }
     },
     {
       "id": "payment-events-to-orders",
@@ -274,7 +329,13 @@
       "to": "orders",
       "label": "group: orders-payments",
       "kind": "async",
-      "props": {}
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "PaymentCompleted"
+        ],
+        "group": "orders-payments"
+      }
     },
     {
       "id": "orders-to-schemas",
@@ -282,7 +343,12 @@
       "to": "schemas",
       "label": "Fetch Avro schema",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200,
+        "filter": [
+          "OrderPlaced"
+        ]
+      }
     },
     {
       "id": "metrics-to-orders",
@@ -290,7 +356,9 @@
       "to": "orders",
       "label": "GET /metrics",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
     },
     {
       "id": "dashboard-to-metrics",
@@ -298,7 +366,270 @@
       "to": "metrics",
       "label": "PromQL",
       "kind": "sync",
-      "props": {}
+      "props": {
+        "travelMs": 200
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "black-friday",
+      "title": "Black Friday: 500 orders in 10 s",
+      "seed": 7,
+      "traffic": [
+        {
+          "id": "ramp",
+          "node": "shopper",
+          "messageType": "OrderRequest",
+          "label": "Checkout demand ramps up",
+          "shape": {
+            "kind": "ramp",
+            "stages": [
+              {
+                "durationMs": 10000,
+                "targetRate": 60
+              }
+            ]
+          }
+        },
+        {
+          "id": "spike",
+          "node": "shopper",
+          "messageType": "OrderRequest",
+          "label": "Flash-sale spike",
+          "shape": {
+            "kind": "spike",
+            "baseRate": 10,
+            "peakRate": 60,
+            "atMs": 4000,
+            "peakMs": 2000,
+            "durationMs": 10000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "500 checkouts. Each order fans out to inventory, payments and notifications.",
+            "focus": [
+              "shopper",
+              "order-events"
+            ]
+          }
+        },
+        {
+          "atMs": 6000,
+          "action": {
+            "do": "note",
+            "text": "PaymentCompleted updates the order without creating another order.",
+            "focus": [
+              "payments",
+              "payment-events",
+              "orders"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "stock",
+          "label": "All 500 orders reserve stock",
+          "metric": {
+            "node": "stock-db",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 500,
+          "when": "end"
+        },
+        {
+          "id": "payments",
+          "label": "All 500 payments are recorded",
+          "metric": {
+            "node": "payment-db",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 500,
+          "when": "end"
+        },
+        {
+          "id": "notifications",
+          "label": "Notifications",
+          "metric": {
+            "node": "notify-cache",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 500,
+          "when": "end"
+        },
+        {
+          "id": "orders",
+          "label": "500 orders created and 500 payment updates",
+          "metric": {
+            "node": "order-db",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 1000,
+          "when": "end"
+        },
+        {
+          "id": "no-dlq",
+          "label": "No dlq",
+          "metric": {
+            "node": "order-events",
+            "field": "deadLettered"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        },
+        {
+          "id": "no-drop",
+          "label": "No drop",
+          "metric": {
+            "node": "order-events",
+            "field": "dropped"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    },
+    {
+      "id": "payments-outage",
+      "title": "Payments service goes down",
+      "seed": 7,
+      "traffic": [
+        {
+          "id": "checkouts",
+          "node": "shopper",
+          "messageType": "OrderRequest",
+          "label": "300 checkouts during an outage",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 50,
+            "durationMs": 6000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Inventory and notifications have independent consumer groups.",
+            "focus": [
+              "order-events"
+            ]
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "status",
+            "node": "payments",
+            "status": "down"
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "note",
+            "text": "Payments is offline. Its group accumulates lag while the other groups continue.",
+            "focus": [
+              "payments",
+              "order-events"
+            ],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 12000,
+          "action": {
+            "do": "status",
+            "node": "payments",
+            "status": "up"
+          }
+        },
+        {
+          "atMs": 12000,
+          "action": {
+            "do": "note",
+            "text": "Payments is back. Watch its backlog drain and the ledger catch up.",
+            "focus": [
+              "payments",
+              "payment-db"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "outage-lag",
+          "label": "Payment lag grows during the outage",
+          "metric": {
+            "node": "order-events",
+            "field": "lag",
+            "group": "payment-authorizations"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 11000
+        },
+        {
+          "id": "recovered",
+          "label": "Recovered",
+          "metric": {
+            "node": "order-events",
+            "field": "lag",
+            "group": "payment-authorizations"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "eventually"
+        },
+        {
+          "id": "drained",
+          "label": "Drained",
+          "metric": {
+            "node": "order-events",
+            "field": "lag",
+            "group": "payment-authorizations"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "payments",
+          "label": "Payments",
+          "metric": {
+            "node": "payment-db",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 300,
+          "when": "end"
+        },
+        {
+          "id": "stock",
+          "label": "Stock",
+          "metric": {
+            "node": "stock-db",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 300,
+          "when": "end"
+        }
+      ]
     }
   ]
 }
