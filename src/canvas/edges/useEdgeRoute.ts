@@ -103,10 +103,13 @@ export function selectRoutes(s: ReactFlowState<FlowNode, DiagramFlowEdge>, opts:
   const optsKey = `${opts.style}|${opts.direction}|${opts.captions ? 1 : 0}`;
   if (e.state === s && e.optsKey === optsKey) return e.routes;
   // Same nodes (by identity: React Flow replaces an internal node whenever it changes) and edges?
-  let same = e.optsKey === optsKey && e.edges === s.edges && e.nodes.length === s.nodeLookup.size;
+  const relevantNodes = [...s.nodeLookup.values()].filter(
+    (n) => !n.hidden && (n.type !== "annotation" || isObstacle((n.data as AnnotationNodeData).kind)),
+  );
+  let same = e.optsKey === optsKey && e.edges === s.edges && e.nodes.length === relevantNodes.length;
   if (same) {
     let i = 0;
-    for (const n of s.nodeLookup.values())
+    for (const n of relevantNodes)
       if (e.nodes[i++] !== n) {
         same = false;
         break;
@@ -115,7 +118,7 @@ export function selectRoutes(s: ReactFlowState<FlowNode, DiagramFlowEdge>, opts:
   e.state = s;
   if (same) return e.routes;
   const t0 = performance.now();
-  e.nodes = [...s.nodeLookup.values()];
+  e.nodes = relevantNodes;
   e.edges = s.edges;
   e.optsKey = optsKey;
   e.routes = e.router.route(routeInputFromStore(e.nodes, s.edges, opts));

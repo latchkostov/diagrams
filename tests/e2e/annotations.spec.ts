@@ -100,6 +100,200 @@ async function seed(page: Page, diagram: unknown) {
 }
 
 test.describe("annotations", () => {
+  for (const control of ["top-left", "line-left"] as const) {
+    test(`${control} resize stops at the persistence limit and a connected shape reopens`, async ({
+      page,
+      consoleErrors,
+    }) => {
+      await seed(page, {
+        format: "diagrams/v1",
+        title: "Resize budget",
+        nodes: [{ id: "web", stencil: "client.browser", label: "Web", x: 0, y: 0 }],
+        annotations: [{ id: "shape", kind: "shape", text: "Shape", x: 400, y: 0, width: 160, height: 90 }],
+        edges: [{ id: "edge", from: "web", to: "shape" }],
+      });
+      await gotoCanvas(page, SLUG);
+      await annotation(page, "shape").click();
+      await page.getByTestId("inspector-field-width").fill("19990");
+      await page.getByTestId("inspector-field-width").press("Enter");
+      if (control === "top-left") {
+        await page.getByTestId("inspector-field-height").fill("19990");
+        await page.getByTestId("inspector-field-height").press("Enter");
+      }
+      let previous = "";
+      await expect
+        .poll(
+          async () => {
+            const current = JSON.stringify(await annotation(page, "shape").boundingBox());
+            const stable = current === previous;
+            previous = current;
+            return stable;
+          },
+          { intervals: [100, 150, 250] },
+        )
+        .toBe(true);
+      const testId = control === "line-left" ? "annotation-resize-line-shape-left" : "annotation-resize-shape-top-left";
+      const handle = await box(page.getByTestId(testId));
+      const startY = handle.y + handle.height * (control === "line-left" ? 0.25 : 0.5);
+      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.getAttribute("data-testid"), {
+        x: handle.x + handle.width / 2,
+        y: startY,
+      });
+      expect(hit).toBe(testId);
+      await page.mouse.move(handle.x + handle.width / 2, startY);
+      await page.mouse.down();
+      await page.mouse.move(handle.x - 100, control === "line-left" ? startY : handle.y - 100, { steps: 8 });
+      await page.mouse.up();
+      const width = () => annotation(page, "shape").evaluate((el) => el.parentElement?.style.width);
+      await expect.poll(width).toBe("20000px");
+      if (control === "top-left")
+        await expect
+          .poll(() => annotation(page, "shape").evaluate((el) => el.parentElement?.style.height))
+          .toBe("20000px");
+      await page.waitForTimeout(700);
+      await page.reload();
+      await expect(annotation(page, "shape")).toBeAttached();
+      await expect.poll(width).toBe("20000px");
+      await expect(page.getByTestId("edge-edge")).toBeAttached();
+      expectNoErrors(consoleErrors);
+    });
+  }
+  test("live caption text meets AA contrast in both themes after compositing", async ({ page }) => {
+    const colors = ["neutral", "yellow", "green", "blue", "purple", "red"];
+    await seed(page, {
+      ...kafka,
+      annotations: colors.map((color, i) => ({
+        id: `caption-${color}`,
+        kind: "text",
+        text: color,
+        color,
+        x: 100 + i * 150,
+        y: 80,
+        width: 140,
+        height: 30,
+      })),
+    });
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("live-toggle").click();
+    for (const theme of ["light", "dark"]) {
+      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
+        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
+      );
+      const contrasts = await page.getByTestId("canvas-wrap").evaluate((wrap) => {
+        const ctx = document.createElement("canvas").getContext("2d");
+        if (!ctx) throw new Error("Missing color context");
+        const rgb = (color: string) => {
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = color;
+          ctx.fillRect(0, 0, 1, 1);
+          return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+        };
+        const luminance = (channels: number[]) =>
+          channels
+            .map((v) => {
+              const c = v / 255;
+              return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+            })
+            .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+        const bg = rgb(getComputedStyle(wrap).getPropertyValue("--bg"));
+        return [...wrap.querySelectorAll('[data-testid^="annotation-text-caption-"]')].map((el) => {
+          let opacity = 1;
+          for (let parent: Element | null = el; parent; parent = parent.parentElement)
+            opacity *= Number(getComputedStyle(parent).opacity);
+          const ink = rgb(getComputedStyle(el).color).map((c, i) => c * opacity + bg[i] * (1 - opacity));
+          const a = luminance(ink),
+            b = luminance(bg);
+          return { id: el.getAttribute("data-testid"), ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+        });
+      });
+      expect(contrasts).toHaveLength(colors.length);
+      for (const c of contrasts) expect(c.ratio, `${theme}: ${c.id}`).toBeGreaterThanOrEqual(4.5);
+      if (theme === "light") await page.getByTestId("theme-toggle").click();
+    }
+  });
+  test("keyboard commits restore canvas focus for F2, movement and Delete; blur keeps the next control focused", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("palette-annotate-note").click();
+    await typeAndCommit(page, "Keyboard note");
+    const focused = () => annotation(page, "note-1").evaluate((el) => el.parentElement === document.activeElement);
+    await expect.poll(focused).toBe(true);
+    const before = await box(annotation(page, "note-1"));
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(async () => (await box(annotation(page, "note-1"))).x).toBeGreaterThan(before.x);
+    await page.keyboard.press("F2");
+    await expect(page.getByTestId("annotation-editor")).toBeFocused();
+    await page.keyboard.press(`${MOD}+Enter`);
+    await expect.poll(focused).toBe(true);
+    await page.keyboard.press("F2");
+    await expect(page.getByTestId("annotation-editor")).toBeFocused();
+    await page.getByTestId("inspector-field-text").click();
+    await expect(page.getByTestId("inspector-field-text")).toBeFocused();
+    await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+    await annotation(page, "note-1").click();
+    await page.keyboard.press("F2");
+    await page.keyboard.press("Escape");
+    await expect.poll(focused).toBe(true);
+    await page.keyboard.press("Delete");
+    await expect(annotation(page, "note-1")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("inline auto-growth and inspector text stay within persistence limits on reload", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, SLUG);
+    await settle(page);
+    await page.getByTestId("palette-annotate-note").click();
+    await expect(page.getByTestId("annotation-editor")).toBeFocused();
+    await page.keyboard.insertText("x\n".repeat(1300));
+    await page.keyboard.press("Escape");
+    const size = () =>
+      annotation(page, "note-1").evaluate((el) => ({
+        width: el.parentElement?.style.width,
+        height: el.parentElement?.style.height,
+      }));
+    await expect.poll(async () => (await size()).height).toBe("20000px");
+    const field = page.getByTestId("inspector-field-text");
+    await field.fill("x".repeat(10050));
+    await expect.poll(async () => (await field.inputValue()).length).toBe(10000);
+    await page.waitForTimeout(700);
+    await page.reload();
+    await expect(annotation(page, "note-1")).toBeVisible();
+    await expect.poll(async () => (await size()).height).toBe("20000px");
+    await expect.poll(async () => (await page.getByTestId("annotation-text-note-1").textContent())?.length).toBe(10000);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("sending a note behind nodes is undoable and survives autosave reload", async ({ page, consoleErrors }) => {
+    await seed(page, annotatedKafka);
+    await gotoCanvas(page, SLUG);
+    await settle(page);
+    await annotation(page, "note-retry").click({ button: "right" });
+    await menuItem(page, "annotation.back").click();
+    const stored = () =>
+      page.evaluate(
+        (key) => JSON.parse(localStorage.getItem(key) ?? "{}") as { layerOrder?: string[] },
+        STORAGE_KEYS.autosavePrefix + SLUG,
+      );
+    await expect.poll(async () => (await stored()).layerOrder?.[0]).toBe("note-retry");
+    await page.keyboard.press(`${MOD}+z`);
+    await expect.poll(async () => (await stored()).layerOrder).toBeUndefined();
+    await page.keyboard.press(`${MOD}+Shift+z`);
+    await expect.poll(async () => (await stored()).layerOrder?.[0]).toBe("note-retry");
+    await page.reload();
+    await expect(annotation(page, "note-retry")).toBeVisible();
+    const behind = await page.getByTestId("canvas-wrap").evaluate((el) => {
+      const note = el.querySelector('[data-testid="annotation-note-retry"]')?.parentElement;
+      const node = el.querySelector('[data-testid="node-payments"]')?.closest(".react-flow__node");
+      return !!note && !!node && !!(note.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(behind).toBe(true);
+    expectNoErrors(consoleErrors);
+  });
   test("adds text, a note, a zone and each shape from the canvas menu", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
     await settle(page);
@@ -343,7 +537,7 @@ test.describe("annotations", () => {
     expect(problems.out).toEqual([]);
   });
 
-  test("live view keeps annotations, dims them, and sends no traffic to or from them", async ({ page }) => {
+  test("live view keeps annotation text opaque and sends no traffic to or from them", async ({ page }) => {
     const diagram = {
       format: "diagrams/v1",
       title: "Only a shape downstream",
@@ -362,13 +556,13 @@ test.describe("annotations", () => {
     expect(await opacity()).toBe(1);
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
-    await expect.poll(opacity).toBeLessThan(0.8);
+    await expect.poll(opacity).toBe(1);
     // Presenting, they're part of the story: full strength. Esc steps back out of presentation only.
     await page.getByTestId("present-toggle").click();
     await expect.poll(opacity).toBe(1);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
-    await expect.poll(opacity).toBeLessThan(0.8);
+    await expect.poll(opacity).toBe(1);
     await expect(annotation(page, "box")).toBeVisible();
     // Traffic leaves the storefront, but its only edge ends on a shape: nothing is ever drawn.
     for (let i = 0; i < 8; i++) {

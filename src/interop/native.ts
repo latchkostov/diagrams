@@ -1,5 +1,6 @@
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
-import { ANNOTATION_COLORS, ANNOTATION_KINDS, ANNOTATION_SHAPES, ANNOTATION_TEXT_SIZES } from "../canvas/annotations";
+import { ANNOTATION_LIMITS, normalizeAnnotation } from "../model/annotations";
+import type { DiagramAnnotation } from "../model/types";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -21,11 +22,7 @@ export const LIMITS = {
   maxNodes: 5_000,
   maxEdges: 20_000,
   maxGroups: 1_000,
-  maxAnnotations: 2_000,
-  /** Characters of text in one annotation (longer text is cut, with a warning). */
-  maxAnnotationText: 10_000,
-  /** Largest width or height of one annotation, in canvas pixels. */
-  maxAnnotationSize: 20_000,
+  ...ANNOTATION_LIMITS,
   maxSimulations: 200,
   maxTimelineSteps: 10_000,
   maxTrafficProfiles: 2_000,
@@ -36,7 +33,6 @@ export const LIMITS = {
   maxTrafficVolume: 200_000,
   maxSimulationMs: 600_000,
   maxPages: 100,
-  maxCoordinate: 1_000_000,
 } as const;
 
 /** Iterative depth check (no recursion, so it can't overflow on hostile input). */
@@ -199,7 +195,9 @@ export function validateDiagram(data: unknown): NativeResult {
 
   // Annotations: documentation only, so a malformed one is skipped (with a warning), never fatal.
   // Ids share the node namespace; only shapes may be edge ends.
-  const annotations: Record<string, unknown>[] = [];
+  const annotations: DiagramAnnotation[] = [];
+  const rejectedAnnotationIds = new Set<string>();
+  const annotationUsedIds = new Set(ids);
   const shapeIds = new Set<string>();
   const annotationIds = new Set<string>();
   if (d.annotations !== undefined) {
@@ -208,44 +206,14 @@ export function validateDiagram(data: unknown): NativeResult {
     } else {
       d.annotations.forEach((a, i) => {
         const what = describe("Annotation", i, isObj(a) ? a.id : undefined);
-        if (
-          !isObj(a) ||
-          typeof a.id !== "string" ||
-          !a.id ||
-          !ANNOTATION_KINDS.includes(a.kind as never) ||
-          ![a.x, a.y, a.width, a.height].every(isNum)
-        ) {
-          warnings.push(
-            `${what} was skipped: it needs an id, a kind (text, note, zone or shape), x, y, width and height.`,
-          );
+        const out = normalizeAnnotation(a, annotationUsedIds, (message) => warnings.push(`${what} ${message}`));
+        if (!out) {
+          if (isObj(a) && typeof a.id === "string") rejectedAnnotationIds.add(a.id);
           return;
         }
-        const [x, y, w, h] = [a.x, a.y, a.width, a.height] as number[];
-        if (Math.abs(x) > LIMITS.maxCoordinate || Math.abs(y) > LIMITS.maxCoordinate) {
-          warnings.push(`${what} was skipped: it's outside the coordinate budget.`);
-          return;
-        }
-        if (w <= 0 || h <= 0 || w > LIMITS.maxAnnotationSize || h > LIMITS.maxAnnotationSize) {
-          warnings.push(`${what} was skipped: its size must be between 1 and ${LIMITS.maxAnnotationSize} pixels.`);
-          return;
-        }
-        if (ids.has(a.id) || annotationIds.has(a.id)) {
-          warnings.push(`${what} was skipped: its id is already used by a node or another annotation.`);
-          return;
-        }
-        annotationIds.add(a.id);
-        const out = { ...a };
-        if (typeof out.text !== "string") out.text = typeof out.text === "number" ? String(out.text) : "";
-        if ((out.text as string).length > LIMITS.maxAnnotationText) {
-          out.text = (out.text as string).slice(0, LIMITS.maxAnnotationText);
-          warnings.push(`${what} had more than ${LIMITS.maxAnnotationText} characters; the rest was cut.`);
-        }
-        if (out.kind === "shape") {
-          if (out.shape !== undefined && !ANNOTATION_SHAPES.includes(out.shape as never)) delete out.shape;
-          shapeIds.add(a.id);
-        } else delete out.shape;
-        if (out.color !== undefined && !Object.hasOwn(ANNOTATION_COLORS, out.color as string)) delete out.color;
-        if (out.textSize !== undefined && !ANNOTATION_TEXT_SIZES.includes(out.textSize as never)) delete out.textSize;
+        annotationIds.add(out.id);
+        annotationUsedIds.add(out.id);
+        if (out.kind === "shape") shapeIds.add(out.id);
         annotations.push(out);
       });
     }
@@ -264,6 +232,10 @@ export function validateDiagram(data: unknown): NativeResult {
         ok: false,
         error: `Every edge needs an id, a from and a to. ${describe("Edge", i, isObj(e) ? e.id : undefined)} doesn't.`,
       };
+    }
+    if ([e.from, e.to].some((id) => rejectedAnnotationIds.has(id) && !ids.has(id) && !annotationIds.has(id))) {
+      warnings.push(`Edge "${e.id}" ended on a skipped annotation and was skipped.`);
+      continue;
     }
     const end = (id: string) => ids.has(id) || shapeIds.has(id);
     if (!end(e.from) || !end(e.to)) {
@@ -291,6 +263,16 @@ export function validateDiagram(data: unknown): NativeResult {
     edges.push(out);
   }
   d.edges = edges;
+  if (d.layerOrder !== undefined) {
+    if (Array.isArray(d.layerOrder)) {
+      const seen = new Set<string>();
+      d.layerOrder = d.layerOrder.filter((id): id is string => {
+        if (typeof id !== "string" || seen.has(id) || (!ids.has(id) && !annotationIds.has(id))) return false;
+        seen.add(id);
+        return true;
+      });
+    } else delete d.layerOrder;
+  }
 
   if (d.simulations !== undefined) {
     if (!Array.isArray(d.simulations)) {
@@ -575,6 +557,7 @@ const KNOWN_TOP = new Set([
   "edges",
   "simulations",
   "annotations",
+  "layerOrder",
 ]);
 const KNOWN_NODE = new Set(["id", "stencil", "label", "sublabel", "x", "y", "group", "props"]);
 const KNOWN_EDGE = new Set(["id", "from", "to", "label", "kind", "sourceSide", "targetSide", "props"]);

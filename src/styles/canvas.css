@@ -2258,7 +2258,7 @@ select.insp-input {
   inset: -6px;
 }
 
-/* ---- presentation reads at a distance; live keeps annotations visible but quiet */
+/* ---- presentation reads at a distance; annotations retain full text contrast in live mode */
 .is-presenting .ann .react-flow__resize-control {
   display: none;
 }
@@ -2290,7 +2290,9 @@ select.insp-input {
 
 /* Editing in live view: quiet, so the messages lead. Presenting (and recording): the author's
    titles and notes are part of the story, at full strength. */
-.canvas-view.is-live:not(.is-presenting) .react-flow__node-annotation {
+.canvas-view.is-live:not(.is-presenting) .ann-shape-svg,
+.canvas-view.is-live:not(.is-presenting) .ann-paper,
+.canvas-view.is-live:not(.is-presenting) .ann-fold {
   opacity: 0.6;
 }
 

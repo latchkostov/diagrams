@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { CLIP_FORMAT, makePayload, parsePayload, payloadOrigin, remapPayload } from "./clipboard";
 import { uniqueId } from "./ids";
+import { LIMITS, validateDiagram } from "../interop/native";
+import { toFlow } from "../canvas/convert";
 
 const diagram: DiagramFile = {
   format: "diagrams/v1",
@@ -19,6 +21,48 @@ const diagram: DiagramFile = {
 };
 
 describe("clipboard", () => {
+  it("repairs malformed clipboard annotations and drops their attached edges safely", () => {
+    const shape = { id: "shape", kind: "shape", text: 42, x: 0, y: 0, width: 100, height: 90 };
+    const raw = {
+      ...diagram,
+      annotations: [
+        { ...shape, color: "teal", shape: "triangle", textSize: "xxl" },
+        ...[0, -1, Infinity, LIMITS.maxAnnotationSize + 1].map((width, i) => ({ ...shape, id: `bad${i}`, width })),
+        { ...shape, id: "far", x: LIMITS.maxCoordinate + 1 },
+        { ...shape, id: "long", text: "x".repeat(LIMITS.maxAnnotationText + 1) },
+        { ...shape, id: "shape" },
+      ],
+      edges: [...diagram.edges, { id: "bad-edge", from: "a", to: "bad0" }],
+    };
+    const p = parsePayload(JSON.stringify(raw))!;
+    expect(p.annotations?.map((a) => a.id)).toEqual(["shape", "long"]);
+    expect(p.annotations?.[0]).toEqual({ ...shape, kind: "shape", text: "42" });
+    expect(p.annotations?.[1].text).toHaveLength(LIMITS.maxAnnotationText);
+    expect(p.nodes).toEqual(diagram.nodes);
+    expect(p.edges).toEqual(diagram.edges);
+    const merged = { ...diagram, ...p, format: diagram.format };
+    expect(() => toFlow(merged)).not.toThrow();
+    expect(validateDiagram(merged).ok).toBe(true);
+  });
+
+  it("refuses clipboard annotation counts exceeding the input budget", () => {
+    expect(
+      parsePayload(
+        JSON.stringify({
+          ...diagram,
+          annotations: Array.from({ length: LIMITS.maxAnnotations + 1 }, (_, i) => ({
+            id: `a${i}`,
+            kind: "note",
+            text: "",
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100,
+          })),
+        }),
+      ),
+    ).toBeNull();
+  });
   it("keeps only edges between copied nodes", () => {
     const p = makePayload(diagram, ["b", "c"])!;
     expect(p.nodes.map((n) => n.id)).toEqual(["b", "c"]);

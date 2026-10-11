@@ -74,7 +74,7 @@ export interface EditorApi {
    * Adds a text, note, zone or shape centred on `at` (flow coords; default = the pointer for "T",
    * else the view centre), selects it and, except for shapes, starts editing its text. Returns its id.
    */
-  addAnnotation(kind: AnnotationKind, opts?: { at?: XY; shape?: AnnotationShape; atPointer?: boolean }): string;
+  addAnnotation(kind: AnnotationKind, opts?: { at?: XY; shape?: AnnotationShape; atPointer?: boolean }): string | null;
   updateAnnotation(id: string, patch: Partial<Omit<DiagramAnnotation, "id">>, opts?: EditOptions): void;
   updateMeta(patch: DiagramMetaPatch, opts?: EditOptions): void;
   connect(from: string, to: string): string | null;

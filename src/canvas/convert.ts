@@ -137,15 +137,24 @@ export function toFlow(d: DiagramFile): { meta: DiagramMeta; nodes: FlowNode[]; 
     ...annotations.map((a): [string, string] => [a.id, annotationTitle(a)]),
     ...d.nodes.map((n): [string, string] => [n.id, n.label || n.id]),
   ]);
+  const nodes: FlowNode[] = [
+    ...annotations.filter((a) => a.kind === "zone").map(annotationToFlow),
+    ...(d.groups ?? []).map(groupToFlow),
+    ...d.nodes.map(nodeToFlow),
+    ...annotations.filter((a) => a.kind !== "zone").map(annotationToFlow),
+  ];
+  if (d.layerOrder) {
+    const order = new Map(d.layerOrder.map((id, i) => [id, i]));
+    const backdrops = nodes.filter((n) => n.type === "boundary" || (n.type === "annotation" && n.data.kind === "zone"));
+    const foreground = nodes.filter(
+      (n) => n.type !== "boundary" && !(n.type === "annotation" && n.data.kind === "zone"),
+    );
+    foreground.sort((a, b) => (order.get(a.id) ?? Infinity) - (order.get(b.id) ?? Infinity));
+    nodes.splice(0, nodes.length, ...backdrops, ...foreground);
+  }
   return {
     meta: { title: d.title, description: d.description, direction: d.direction, simulations: d.simulations },
-    // Zones first (they draw behind everything), then boundaries, nodes, and the other annotations.
-    nodes: [
-      ...annotations.filter((a) => a.kind === "zone").map(annotationToFlow),
-      ...(d.groups ?? []).map(groupToFlow),
-      ...d.nodes.map(nodeToFlow),
-      ...annotations.filter((a) => a.kind !== "zone").map(annotationToFlow),
-    ],
+    nodes,
     edges: withEdgeAria(d.edges.map(edgeToFlow), (id) => labels.get(id) ?? id),
   };
 }
@@ -207,6 +216,11 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
     targetSide: e.data?.targetSide,
     props: e.data?.props,
   }));
+  const layerOrder = nodes
+    .filter((n) => n.type !== "boundary" && !(n.type === "annotation" && n.data.kind === "zone"))
+    .map((n) => n.id);
+  const defaultOrder = [...out.map((n) => n.id), ...annotations.filter((a) => a.kind !== "zone").map((a) => a.id)];
+  const reordered = layerOrder.some((id, i) => id !== defaultOrder[i]);
   return {
     format: DIAGRAM_FORMAT,
     title: meta.title,
@@ -217,6 +231,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
     edges: outEdges,
     ...(meta.simulations ? { simulations: meta.simulations } : {}),
     ...(annotations.length ? { annotations } : {}),
+    ...(reordered ? { layerOrder } : {}),
   };
 }
 

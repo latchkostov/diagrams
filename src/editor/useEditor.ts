@@ -10,6 +10,7 @@ import {
   type DiagramMeta,
 } from "../canvas/convert";
 import { annotationIdBase, defaultSize, defaultText, isConnectable, textSizePx } from "../canvas/annotations";
+import { ANNOTATION_LIMITS, annotationSize, annotationCoordinate, annotationText } from "../model/annotations";
 import { placeFree, type Box as PlaceBox } from "../canvas/placement";
 import type { EditTarget } from "../canvas/DiagramContext";
 import {
@@ -83,7 +84,7 @@ function withoutUndefined<T extends Record<string, unknown>>(o: T): T | undefine
   return Object.keys(out).length ? out : undefined;
 }
 
-function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialDeps: EditorDeps) {
+export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialDeps: EditorDeps) {
   let latest = initialDeps;
   const deps = () => latest;
   const box = (n: FlowNode): Box => ({
@@ -125,6 +126,7 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
 
   const insert = (p: ClipboardPayload, offset: XY) => {
     const ns = rf.getNodes();
+    if (ns.filter(isAnnotation).length + (p.annotations?.length ?? 0) > ANNOTATION_LIMITS.maxAnnotations) return;
     const taken = {
       nodes: new Set(ns.filter(isPlaced).map((n) => n.id)),
       groups: new Set(ns.filter(isGroup).map((n) => n.data.groupId)),
@@ -218,6 +220,7 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
     addAnnotation: (kind, opts = {}) => {
       const size = defaultSize[kind];
       const ns = rf.getNodes();
+      if (ns.filter(isAnnotation).length >= ANNOTATION_LIMITS.maxAnnotations) return null;
       const pointed = opts.at ?? (opts.atPointer ? deps().pointer?.() : undefined);
       // No spot given (a click in the rail or the palette): the free place nearest the view's centre,
       // so it never lands on a node (notes and shapes would push edges around) or on the last one added.
@@ -253,7 +256,7 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
         ns.map((n) => {
           if (n.id !== id || !isAnnotation(n)) return n;
           const data = { ...n.data };
-          if ("text" in patch) data.text = patch.text ?? "";
+          if ("text" in patch) data.text = annotationText(patch.text ?? "");
           if ("color" in patch) data.color = patch.color;
           if ("textSize" in patch) data.textSize = patch.textSize;
           if ("shape" in patch && data.kind === "shape") data.shape = patch.shape;
@@ -275,9 +278,12 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
             ...n,
             data,
             connectable: isConnectable(kind),
-            position: { x: patch.x ?? n.position.x, y: patch.y ?? n.position.y },
-            width,
-            height,
+            position: {
+              x: annotationCoordinate(patch.x ?? n.position.x),
+              y: annotationCoordinate(patch.y ?? n.position.y),
+            },
+            width: annotationSize(width ?? 1),
+            height: annotationSize(height ?? 1),
           };
         }),
       );

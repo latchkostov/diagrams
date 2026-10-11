@@ -919,6 +919,11 @@
   transform: scale(1.35);
 }
 
+.lv-marker:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
 .lv-marker.is-status:hover {
   transform: rotate(45deg) scale(1.35);
 }

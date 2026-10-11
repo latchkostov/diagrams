@@ -64,21 +64,31 @@ export function requestTabCapture(): Promise<MediaStream> {
  * Frames the capture to `target`: Element Capture, then Region Capture, else nothing. Both only
  * work when the person shared this tab; any refusal falls through to the next option.
  */
-export async function frameTo(stream: MediaStream, target: Element | null): Promise<CropMode> {
+export async function frameTo(
+  stream: MediaStream,
+  target: Element | null,
+  valid: () => boolean = () => true,
+): Promise<CropMode> {
   const track = stream.getVideoTracks()[0] as CaptureTrack | undefined;
   if (!track || !target) return "none";
   const { RestrictionTarget, CropTarget } = win();
   if (RestrictionTarget && typeof track.restrictTo === "function") {
     try {
-      await track.restrictTo(await RestrictionTarget.fromElement(target));
+      const restriction = await RestrictionTarget.fromElement(target);
+      if (!valid()) return "none";
+      await track.restrictTo(restriction);
+      if (!valid()) return "none";
       return "element";
     } catch {
       // Another surface was shared, or the element isn't eligible: try a crop.
     }
   }
-  if (CropTarget && typeof track.cropTo === "function") {
+  if (valid() && CropTarget && typeof track.cropTo === "function") {
     try {
-      await track.cropTo(await CropTarget.fromElement(target));
+      const crop = await CropTarget.fromElement(target);
+      if (!valid()) return "none";
+      await track.cropTo(crop);
+      if (!valid()) return "none";
       return "region";
     } catch {
       // Another surface was shared: record it whole.

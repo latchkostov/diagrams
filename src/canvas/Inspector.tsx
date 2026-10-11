@@ -1,3 +1,4 @@
+import { ANNOTATION_LIMITS } from "../model/annotations";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { getStencil } from "../stencils/registry";
 import { simRoleMeta } from "../lib/simRoles";
@@ -588,6 +589,7 @@ function AnnotationPanel({ note, editor }: InspectorProps & { note: AnnotationFl
           value={note.data.text}
           placeholder={kind === "zone" ? "Zone name" : "Write something"}
           onChange={(e) => editor.updateAnnotation(id, { text: e.target.value }, merge("text"))}
+          maxLength={ANNOTATION_LIMITS.maxAnnotationText}
           name="annotation-text"
           data-testid="inspector-field-text"
         />
@@ -694,7 +696,8 @@ function SizeInput({
     if (draft === null) return;
     const v = Math.round(Number(draft));
     setDraft(null);
-    if (Number.isFinite(v) && v !== Math.round(value)) onCommit(Math.max(min, Math.min(20_000, v)));
+    if (Number.isFinite(v) && v !== Math.round(value))
+      onCommit(Math.max(min, Math.min(ANNOTATION_LIMITS.maxAnnotationSize, v)));
   };
   return (
     <input

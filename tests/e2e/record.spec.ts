@@ -12,7 +12,8 @@ const OUTAGE = "payments-outage";
 
 interface StubOptions {
   /** "deny" rejects the share prompt like a refusal; "missing" removes getDisplayMedia. */
-  prompt?: "grant" | "deny" | "missing";
+  prompt?: "grant" | "deny" | "missing" | "pending";
+  frame?: "fail" | "pending";
   /** Keep the browser's own MediaRecorder instead of the fake. */
   realRecorder?: boolean;
 }
@@ -20,7 +21,12 @@ interface StubOptions {
 async function stubCapture(page: Page, opts: StubOptions = {}) {
   await page.addInitScript((o: StubOptions) => {
     const w = window as unknown as Record<string, unknown> & { __rec: Record<string, unknown> };
-    w.__rec = { requests: 0 };
+    w.__rec = { requests: 0, stopped: 0, created: 0, revoked: [] };
+    const revoke = URL.revokeObjectURL.bind(URL);
+    URL.revokeObjectURL = (url) => {
+      (w.__rec.revoked as string[]).push(url);
+      revoke(url);
+    };
     const fakeStream = () => {
       const c = document.createElement("canvas");
       c.width = 320;
@@ -37,7 +43,20 @@ async function stubCapture(page: Page, opts: StubOptions = {}) {
       const stream = c.captureStream(30);
       // Behave like a captured tab that can be framed to an element.
       const track = stream.getVideoTracks()[0] as MediaStreamTrack & { restrictTo?: (t: unknown) => Promise<void> };
+      const stop = track.stop.bind(track);
+      track.stop = () => {
+        w.__rec.stopped = (w.__rec.stopped as number) + 1;
+        stop();
+      };
+      w.__rec.endTrack = () => track.dispatchEvent(new Event("ended"));
+      w.__rec.failTrack = () => track.dispatchEvent(new Event("error"));
       track.restrictTo = async (target) => {
+        if (o.frame === "fail") throw new Error("Crop failed");
+        if (o.frame === "pending") w.__rec.framing = true;
+        if (o.frame === "pending")
+          await new Promise<void>((resolve) => {
+            w.__rec.resolveFrame = resolve;
+          });
         w.__rec.framedTo = (target as { el: Element }).el.getAttribute("data-testid");
       };
       return stream;
@@ -50,6 +69,10 @@ async function stubCapture(page: Page, opts: StubOptions = {}) {
         w.__rec.requests = (w.__rec.requests as number) + 1;
         w.__rec.options = JSON.parse(JSON.stringify(options ?? {}));
         if (o.prompt === "deny") throw new DOMException("Permission denied", "NotAllowedError");
+        if (o.prompt === "pending")
+          return new Promise<MediaStream>((resolve) => {
+            w.__rec.grant = () => resolve(fakeStream());
+          });
         return fakeStream();
       };
     }
@@ -64,6 +87,11 @@ async function stubCapture(page: Page, opts: StubOptions = {}) {
         super();
         this.mimeType = options?.mimeType ?? "video/webm";
         w.__rec.mime = this.mimeType;
+        w.__rec.created = (w.__rec.created as number) + 1;
+        w.__rec.failEncoder = () => {
+          this.state = "inactive";
+          this.dispatchEvent(Object.assign(new Event("error"), { error: new Error("Encoder failed") }));
+        };
       }
       start() {
         this.state = "recording";
@@ -93,6 +121,113 @@ async function openRecord(page: Page) {
 }
 
 test.describe("record video", () => {
+  test("a late permission grant after unmount stops capture without framing or recording", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await stubCapture(page, { prompt: "pending" });
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await openRecord(page);
+    await page.getByTestId("record-start").click();
+    await page.evaluate(() => {
+      history.pushState(null, "", "?view=gallery");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await expect(page.getByTestId("record-setup")).toHaveCount(0);
+    await page.evaluate(() => (window as never as { __rec: { grant: () => void } }).__rec.grant());
+    await expect.poll(() => rec(page, "stopped")).toBe(1);
+    expect(await rec(page, "created")).toBe(0);
+    expect(await rec(page, "framedTo")).toBeUndefined();
+    await expect(page).not.toHaveURL(/present=1/);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("cancellation during asynchronous framing cannot create a recorder", async ({ page, consoleErrors }) => {
+    await stubCapture(page, { frame: "pending" });
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await openRecord(page);
+    await page.getByTestId("record-start").click();
+    await expect.poll(() => rec(page, "framing")).toBeTruthy();
+    await page.keyboard.press("Escape");
+    await page.evaluate(() => (window as never as { __rec: { resolveFrame: () => void } }).__rec.resolveFrame());
+    await page.waitForTimeout(100);
+    expect(await rec(page, "created")).toBe(0);
+    expect(await rec(page, "stopped")).toBeGreaterThan(0);
+    await expect(page.getByTestId("record-countdown")).toHaveCount(0);
+    await expect(page).not.toHaveURL(/present=1/);
+    expectNoErrors(consoleErrors);
+  });
+
+  for (const failure of ["failEncoder", "failTrack"] as const) {
+    test(`${failure}: failure stops capture and permits retry`, async ({ page, consoleErrors }) => {
+      await stubCapture(page);
+      await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+      await openRecord(page);
+      await page.getByTestId("record-start").click();
+      await expect.poll(() => rec(page, "started"), { timeout: 6000 }).toBe(true);
+      await page.evaluate((key) => (window as never as { __rec: Record<string, () => void> }).__rec[key](), failure);
+      await expect(page.getByTestId("record-error")).toContainText(/Recording failed/);
+      await expect(page.getByTestId("record-indicator")).toHaveCount(0);
+      await expect(page).not.toHaveURL(/present=1/);
+      await expect.poll(() => rec(page, "stopped")).toBeGreaterThan(0);
+      await expect(page.getByTestId("record-start")).toBeEnabled();
+      await page.getByTestId("record-start").click();
+      await expect(page.getByTestId("record-countdown")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("live-controls")).toBeVisible();
+      expectNoErrors(consoleErrors);
+    });
+  }
+
+  test("failed cropping discloses whole-surface capture before countdown, with Cancel or Continue", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await stubCapture(page, { frame: "fail" });
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await openRecord(page);
+    await page.getByTestId("record-start").click();
+    await expect(page.getByTestId("record-scope")).toContainText("everything you shared");
+    await expect(page.getByTestId("record-countdown")).toHaveCount(0);
+    expect(await rec(page, "created")).toBe(0);
+    await page.getByTestId("record-scope-cancel").click();
+    await expect.poll(() => rec(page, "stopped")).toBe(1);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await openRecord(page);
+    await page.getByTestId("record-start").click();
+    await page.getByTestId("record-scope-continue").click();
+    await expect(page.getByTestId("record-countdown")).toBeVisible();
+    await page.keyboard.press("Escape");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("successive discards release both video URLs and Undo restores only its own clip", async ({ page }) => {
+    await stubCapture(page);
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await page.clock.install();
+    const urls: string[] = [];
+    for (let i = 0; i < 2; i++) {
+      await openRecord(page);
+      await page.getByTestId("record-start").click();
+      await expect(page.getByTestId("record-countdown")).toBeVisible();
+      await page.clock.runFor(3500);
+      await expect.poll(() => rec(page, "started")).toBe(true);
+      await page.getByTestId("record-stop").click();
+      await page.clock.runFor(100);
+      await expect(page.getByTestId("record-review")).toBeVisible();
+      const url = await page.getByTestId("record-preview").getAttribute("src");
+      if (!url) throw new Error("Expected a recording URL");
+      urls.push(url);
+      await page.getByTestId("record-discard").click();
+    }
+    await page.getByTestId("record-discard-undo").click();
+    await page.clock.fastForward(9000);
+    expect(await rec(page, "revoked")).toEqual([urls[0]]);
+    await expect(page.getByTestId("record-preview")).toHaveAttribute("src", urls[1]);
+    await page.getByTestId("record-discard").click();
+    await page.clock.fastForward(9000);
+    expect(await rec(page, "revoked")).toEqual(urls);
+  });
   test("start → countdown → indicator → stop → review → download", async ({ page, consoleErrors }) => {
     await stubCapture(page);
     await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=${OUTAGE}&paused=1`);

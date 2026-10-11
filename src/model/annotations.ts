@@ -1,0 +1,88 @@
+import type { DiagramAnnotation } from "./types";
+
+export const ANNOTATION_KINDS = ["text", "note", "zone", "shape"] as const;
+export const ANNOTATION_SHAPES = ["rect", "rounded", "ellipse", "diamond", "cylinder"] as const;
+export const ANNOTATION_TEXT_SIZES = ["s", "m", "l", "xl"] as const;
+export const ANNOTATION_COLOR_IDS = ["neutral", "yellow", "green", "blue", "purple", "red"] as const;
+export const ANNOTATION_LIMITS = {
+  maxAnnotations: 2_000,
+  maxAnnotationText: 10_000,
+  maxAnnotationSize: 20_000,
+  maxCoordinate: 1_000_000,
+} as const;
+
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const member = <T extends string>(list: readonly T[], v: unknown): v is T =>
+  typeof v === "string" && list.some((s) => s === v);
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** Pure normalization for every untrusted annotation. Never mutates the input or asserts its type. */
+export function normalizeAnnotation(
+  value: unknown,
+  usedIds: ReadonlySet<string> = new Set(),
+  warn: (message: string) => void = () => {},
+): DiagramAnnotation | null {
+  if (!isObject(value)) {
+    warn("was skipped: it isn't an annotation object.");
+    return null;
+  }
+  const a = value;
+  const { id, kind, x, y, width, height } = a;
+  if (
+    typeof id !== "string" ||
+    !id ||
+    !member(ANNOTATION_KINDS, kind) ||
+    !finite(x) ||
+    !finite(y) ||
+    !finite(width) ||
+    !finite(height)
+  ) {
+    warn("was skipped: it needs an id, a kind (text, note, zone or shape), x, y, width and height.");
+    return null;
+  }
+  if (Math.abs(x) > ANNOTATION_LIMITS.maxCoordinate || Math.abs(y) > ANNOTATION_LIMITS.maxCoordinate) {
+    warn("was skipped: it's outside the coordinate budget.");
+    return null;
+  }
+  if (
+    width < 1 ||
+    height < 1 ||
+    width > ANNOTATION_LIMITS.maxAnnotationSize ||
+    height > ANNOTATION_LIMITS.maxAnnotationSize
+  ) {
+    warn(`was skipped: its size must be between 1 and ${ANNOTATION_LIMITS.maxAnnotationSize} pixels.`);
+    return null;
+  }
+  if (usedIds.has(id)) {
+    warn("was skipped: its id is already used by a node or another annotation.");
+    return null;
+  }
+  const text = typeof a.text === "string" ? a.text : typeof a.text === "number" ? String(a.text) : "";
+  if (text.length > ANNOTATION_LIMITS.maxAnnotationText)
+    warn(`had more than ${ANNOTATION_LIMITS.maxAnnotationText} characters; the rest was cut.`);
+  // Preserve extension fields, but replace every field in the annotation contract with checked values.
+  const out: DiagramAnnotation = {
+    ...a,
+    id,
+    kind,
+    x,
+    y,
+    width,
+    height,
+    text: text.slice(0, ANNOTATION_LIMITS.maxAnnotationText),
+  };
+  delete out.shape;
+  delete out.color;
+  delete out.textSize;
+  if (kind === "shape" && member(ANNOTATION_SHAPES, a.shape)) out.shape = a.shape;
+  if (member(ANNOTATION_COLOR_IDS, a.color)) out.color = a.color;
+  if (member(ANNOTATION_TEXT_SIZES, a.textSize)) out.textSize = a.textSize;
+  return out;
+}
+
+/** Editing clamps rather than discards: the resulting object always survives native persistence. */
+export const annotationSize = (v: number) =>
+  Number.isFinite(v) ? Math.max(1, Math.min(ANNOTATION_LIMITS.maxAnnotationSize, v)) : 1;
+export const annotationCoordinate = (v: number) =>
+  Number.isFinite(v) ? Math.max(-ANNOTATION_LIMITS.maxCoordinate, Math.min(ANNOTATION_LIMITS.maxCoordinate, v)) : 0;
+export const annotationText = (v: string) => v.slice(0, ANNOTATION_LIMITS.maxAnnotationText);
