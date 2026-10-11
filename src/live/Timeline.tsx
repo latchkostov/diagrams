@@ -54,10 +54,8 @@ export function Timeline({
       </div>
       {markers.map((m, i) => (
         // A click jumps there (just past the marker, so its note shows or its chaos has happened).
-        // Keyboard users scrub with the slider; the markers stay out of the Tab order.
         <button
           type="button"
-          tabIndex={-1}
           key={`${m.atMs}-${i}`}
           className={`lv-marker is-${m.kind}`}
           style={{ left: pct(m.at), "--row": m.row } as CSSProperties}

@@ -92,7 +92,7 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
 
   const annotations = d.annotations ?? [];
   const annotationCell = (a: DiagramAnnotation) => [
-    `        <object id="${escapeXml(cellId("a", a.id))}" label="${escapeXml(textHtml(a.text))}" dg_id="${escapeXml(a.id)}" dg_annotation="${a.kind}"${attr("dg_shape", a.kind === "shape" ? (a.shape ?? "rect") : undefined)}${attr("dg_color", a.color)}${attr("dg_text_size", a.textSize)}>`,
+    `        <object id="${escapeXml(cellId("a", a.id))}" label="${escapeXml(textHtml(a.text))}" dg_id="${escapeXml(a.id)}" dg_annotation="${a.kind}"${attr("dg_shape", a.kind === "shape" ? (a.shape ?? "rect") : undefined)}${attr("dg_color", a.color)}${attr("dg_text_size", a.textSize)}${attr("dg_text", a.text)}>`,
     `          <mxCell style="${escapeXml(annotationStyle(a))}" vertex="1" parent="1">`,
     `            <mxGeometry x="${r(a.x)}" y="${r(a.y)}" width="${r(a.width)}" height="${r(a.height)}" as="geometry" />`,
     `          </mxCell>`,

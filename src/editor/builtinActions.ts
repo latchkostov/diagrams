@@ -548,7 +548,10 @@ export function builtinActions(): Action[] {
       shortcut: shortcutKeys("group"),
       order: 30,
       // Boundaries hold nodes; a selection of annotations only has nothing to put in one.
-      when: (ctx) => ctx.selection.nodeIds.some((id) => !!ctx.editor.getNode(id)),
+      when: (ctx) => {
+        const selected = new Set(ctx.selection.nodeIds);
+        return ctx.editor.getDiagram().nodes.some((n) => selected.has(n.id));
+      },
       children: (ctx) => toneMenu("group-tone", undefined, (t) => void ctx.editor.groupNodes(ctx.selection.nodeIds, t)),
     },
 

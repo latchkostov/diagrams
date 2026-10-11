@@ -5,7 +5,7 @@ import { notify } from "../../interop/ui/toast";
 import type { LiveController, LiveState } from "../controller";
 import { LiveIcon } from "../icons";
 import { canFrameToElement, captureSupport, createRecording, frameTo, requestTabCapture, stopStream } from "./capture";
-import type { Recording } from "./capture";
+import { useRecordingSession } from "./useRecordingSession";
 import { RECORDING_ATTR, setPresentation, setRecordingActive } from "./framing";
 import {
   captureErrorMessage,
@@ -57,8 +57,8 @@ export interface RecorderProps {
  * machine is `recordReducer`; this component runs its side effects.
  */
 export function Recorder({ rec, dispatch, controller, state, target, title, presenting, canPresent }: RecorderProps) {
-  const stream = useRef<MediaStream | null>(null);
-  const recording = useRef<Recording | null>(null);
+  const [scopeConfirmation, setScopeConfirmation] = useState<(() => void) | null>(null);
+  const stoppedDuration = useRef(0);
   const crop = useRef<CropMode>("none");
   const framed = useRef<{ target: Element | null; presented: boolean }>({ target: null, presented: false });
   const options = useRef<Options>({ fromStart: false, present: false });
@@ -79,52 +79,46 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
     framed.current = { target: null, presented: false };
   }, []);
 
-  /** Stops the capture: the recorder hands its video over, then the review opens. */
+  const { stream, recording, begin, valid, cancel } = useRecordingSession(unframe);
+  const fail = useCallback(
+    (token: number, message: string) => {
+      if (!valid(token)) return;
+      cancel();
+      phase.current = "setup";
+      setScopeConfirmation(null);
+      dispatch({ type: "failed", message });
+    },
+    [valid, cancel, dispatch],
+  );
+
+  /** Stops the capture: completion/error handlers already own the take's result. */
   const stop = useCallback(() => {
     const p = phase.current;
     if (p === "countdown" || p === "requesting") {
+      phase.current = "idle";
+      cancel();
+      setScopeConfirmation(null);
       dispatch({ type: "stop" });
-      stopStream(stream.current);
-      stream.current = null;
-      recording.current = null;
-      unframe();
       return;
     }
     if (p !== "recording") return;
+    phase.current = "stopping";
     dispatch({ type: "stop" });
-    const take = recording.current;
-    const durationMs = startedAt.current ? performance.now() - startedAt.current : 0;
+    stoppedDuration.current = startedAt.current ? performance.now() - startedAt.current : 0;
     unframe();
+    const take = recording.current;
     if (!take || take.recorder.state === "inactive") {
-      stopStream(stream.current);
-      dispatch({ type: "failed", message: "Nothing was recorded. Start again and keep this tab open." });
+      cancel();
+      dispatch({ type: "failed", message: "Recording failed. Start again and keep this tab open." });
       return;
     }
-    take.done
-      .then(async (raw) => {
-        if (!raw.size) throw new Error("empty");
-        const blob = await fixWebmDuration(raw, durationMs);
-        const kind = describeMime(blob.type || take.recorder.mimeType);
-        const diagram = title();
-        const result: RecordResult = {
-          blob,
-          url: URL.createObjectURL(blob),
-          mime: blob.type,
-          format: kind.label,
-          filename: recordingFilename(diagram, controller.getState().simulation?.title ?? null, kind.ext),
-          durationMs,
-          crop: crop.current,
-        };
-        dispatch({ type: "finished", result });
-      })
-      .catch(() => dispatch({ type: "failed", message: "Nothing was recorded. Start again and keep this tab open." }))
-      .finally(() => {
-        stopStream(stream.current);
-        stream.current = null;
-        recording.current = null;
-      });
-    take.recorder.stop();
-  }, [dispatch, unframe, title, controller]);
+    try {
+      take.recorder.stop();
+    } catch {
+      cancel();
+      dispatch({ type: "failed", message: "Recording failed. Start again and keep this tab open." });
+    }
+  }, [dispatch, unframe, cancel, recording]);
   const stopRef = useRef(stop);
   useLayoutEffect(() => {
     stopRef.current = stop;
@@ -136,6 +130,11 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
       const support = captureSupport();
       if (unsupportedReason(support) || !support.type) return;
       const type = support.type;
+      const token = begin();
+      phase.current = "requesting";
+      startedAt.current = 0;
+      stoppedDuration.current = 0;
+      setScopeConfirmation(null);
       options.current = opts;
       setFromStart(opts.fromStart);
       dispatch({ type: "start" });
@@ -143,40 +142,98 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
       try {
         prompt = requestTabCapture();
       } catch (err) {
-        dispatch({ type: "denied", message: captureErrorMessage(err) });
+        fail(token, captureErrorMessage(err));
         return;
       }
-      prompt.then(
-        async (media) => {
-          if (phase.current !== "requesting") return stopStream(media);
+      void prompt
+        .then(async (media) => {
+          if (!valid(token)) {
+            stopStream(media);
+            return;
+          }
           stream.current = media;
-          // The browser's own "Stop sharing" ends the take like Stop does.
-          media.getVideoTracks()[0]?.addEventListener("ended", () => stopRef.current());
+          const track = media.getVideoTracks()[0];
+          const failure = () =>
+            fail(token, "Recording failed: the browser lost the capture. Start again and keep this tab open.");
+          for (const t of media.getTracks()) {
+            t.addEventListener("error", failure, { once: true });
+            t.addEventListener(
+              "ended",
+              () => {
+                if (!valid(token)) return;
+                if (phase.current === "recording") stopRef.current();
+                else if (phase.current !== "stopping") failure();
+              },
+              { once: true },
+            );
+          }
+          if (!track || track.readyState === "ended") {
+            failure();
+            return;
+          }
           const el = target();
           el?.setAttribute(RECORDING_ATTR, "");
           framed.current = { target: el, presented: opts.present && setPresentation(true) };
-          try {
-            crop.current = await frameTo(media, el);
-            recording.current = createRecording(media, type);
-          } catch (err) {
+          crop.current = await frameTo(media, el, () => valid(token));
+          if (!valid(token)) {
             stopStream(media);
-            stream.current = null;
-            unframe();
-            dispatch({ type: "failed", message: captureErrorMessage(err) });
             return;
           }
-          if (phase.current !== "requesting") return;
-          // Frame 0 shows 0:00 through the countdown; playback starts with the recorder.
-          if (opts.fromStart) {
-            controller.restart();
-            controller.setPlaying(false);
+          if (media.getVideoTracks()[0]?.readyState !== "live") {
+            failure();
+            return;
           }
-          dispatch({ type: "granted" });
-        },
-        (err) => dispatch({ type: "denied", message: captureErrorMessage(err) }),
-      );
+          const ready = () => {
+            if (!valid(token)) return;
+            setScopeConfirmation(null);
+            try {
+              const take = createRecording(media, type);
+              recording.current = take;
+              // Subscribe immediately: encoder failures can arrive long before Stop.
+              void take.done
+                .then(async (raw) => {
+                  if (!valid(token)) return;
+                  const durationMs =
+                    stoppedDuration.current || (startedAt.current ? performance.now() - startedAt.current : 0);
+                  if (phase.current !== "stopping" && phase.current !== "recording")
+                    throw new Error("Capture stopped before recording");
+                  phase.current = "stopping";
+                  dispatch({ type: "stop" });
+                  unframe();
+                  if (!raw.size) throw new Error("Empty recording");
+                  const blob = await fixWebmDuration(raw, durationMs);
+                  if (!valid(token)) return;
+                  const kind = describeMime(blob.type || take.recorder.mimeType);
+                  const result: RecordResult = {
+                    blob,
+                    url: URL.createObjectURL(blob),
+                    mime: blob.type,
+                    format: kind.label,
+                    filename: recordingFilename(title(), controller.getState().simulation?.title ?? null, kind.ext),
+                    durationMs,
+                    crop: crop.current,
+                  };
+                  cancel();
+                  dispatch({ type: "finished", result });
+                })
+                .catch(() =>
+                  fail(token, "Recording failed: the video could not be saved. Start again and keep this tab open."),
+                );
+              if (opts.fromStart) {
+                controller.restart();
+                controller.setPlaying(false);
+              }
+              dispatch({ type: "granted" });
+            } catch (err) {
+              fail(token, captureErrorMessage(err));
+            }
+          };
+          if (crop.current === "none") setScopeConfirmation(() => ready);
+          else ready();
+        })
+        .catch((err: unknown) => fail(token, captureErrorMessage(err)));
     },
-    [dispatch, target, controller, unframe],
+    [dispatch, target, controller, unframe, begin, valid, fail, cancel, stream, recording, title],
   );
 
   // 3, 2, 1: one second each.
@@ -197,8 +254,7 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
         try {
           take.recorder.start(1000);
         } catch (err) {
-          stopStream(stream.current);
-          unframe();
+          cancel();
           dispatch({ type: "failed", message: captureErrorMessage(err) });
           return;
         }
@@ -210,7 +266,7 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
       cancelAnimationFrame(first);
       cancelAnimationFrame(second);
     };
-  }, [rec.phase, controller, dispatch, unframe]);
+  }, [rec.phase, controller, dispatch, cancel, recording]);
 
   // From the start: stop a moment after the run finishes, and let pausing notes hold, then continue.
   const auto = rec.phase === "recording" && fromStart;
@@ -246,19 +302,8 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
     };
   }, [capturing]);
 
-  // Leaving live view (or the page) mid-take: stop everything and put the chrome back.
-  useEffect(
-    () => () => {
-      const take = recording.current;
-      if (take && take.recorder.state !== "inactive") take.recorder.stop();
-      stopStream(stream.current);
-      unframe();
-    },
-    [unframe],
-  );
-
   // The finished video is released when it's downloaded (after the browser has it) or discarded.
-  const release = useRef<number | undefined>(undefined);
+  const releases = useRef(new Map<string, number>());
   const result = rec.result;
   const download = () => {
     if (!result) return;
@@ -276,15 +321,19 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
   const discard = () => {
     if (!result) return;
     dispatch({ type: "close" });
-    window.clearTimeout(release.current);
-    release.current = window.setTimeout(() => URL.revokeObjectURL(result.url), UNDO_MS + 500);
+    const timer = window.setTimeout(() => {
+      URL.revokeObjectURL(result.url);
+      releases.current.delete(result.url);
+    }, UNDO_MS + 500);
+    releases.current.set(result.url, timer);
     notify("Discarded the recording.", {
       duration: UNDO_MS,
       action: {
         label: "Undo",
         testId: "record-discard-undo",
         run: () => {
-          window.clearTimeout(release.current);
+          window.clearTimeout(releases.current.get(result.url));
+          releases.current.delete(result.url);
           dispatch({ type: "reopen", result });
         },
       },
@@ -293,7 +342,7 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
 
   return (
     <>
-      {(rec.phase === "setup" || rec.phase === "requesting") && (
+      {(rec.phase === "setup" || rec.phase === "requesting") && !scopeConfirmation && (
         <SetupDialog
           rec={rec}
           simulation={sim?.title ?? null}
@@ -301,6 +350,30 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
           onStart={start}
           onClose={() => (rec.phase === "requesting" ? stop() : dispatch({ type: "close" }))}
         />
+      )}
+      {scopeConfirmation && rec.phase === "requesting" && (
+        <Dialog
+          title="Record the shared surface?"
+          testId="record-scope"
+          onClose={stop}
+          width={460}
+          footer={
+            <>
+              <span className="ix-grow" />
+              <button className="btn" data-testid="record-scope-cancel" data-autofocus onClick={stop}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" data-testid="record-scope-continue" onClick={scopeConfirmation}>
+                Record shared surface
+              </button>
+            </>
+          }
+        >
+          <p>
+            The browser couldn't crop to the diagram. The video will include everything you shared, including content
+            outside the diagram. Cancel to choose a different surface, or continue with this one.
+          </p>
+        </Dialog>
       )}
       {rec.phase === "countdown" &&
         createPortal(
@@ -393,8 +466,8 @@ function SetupDialog({
           <p className="ix-muted" data-testid="record-what">
             Your browser will ask to share this tab: choose it and Allow.{" "}
             {exact
-              ? "Only the diagram is recorded, in presentation view (no editing controls, larger text)"
-              : "The tab is recorded as it looks, in presentation view"}
+              ? "We’ll try to record only the diagram, in presentation view (no editing controls, larger text). If cropping fails, you can cancel before recording"
+              : "The shared surface is recorded as it looks, in presentation view"}
             , without sound. Stop with <kbd>Esc</kbd> or the Stop button. The video stays on this computer until you
             download it.
           </p>

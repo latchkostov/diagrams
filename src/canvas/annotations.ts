@@ -9,9 +9,8 @@ import type {
 // Annotations (text, notes, zones, shapes): the rules every lane shares, in one place. Rendering is
 // in nodes/AnnotationNode.tsx; routing, the overlap audit, interop and validation read from here.
 
-export const ANNOTATION_KINDS: readonly AnnotationKind[] = ["text", "note", "zone", "shape"];
-export const ANNOTATION_SHAPES: readonly AnnotationShape[] = ["rect", "rounded", "ellipse", "diamond", "cylinder"];
-export const ANNOTATION_TEXT_SIZES: readonly AnnotationTextSize[] = ["s", "m", "l", "xl"];
+import { ANNOTATION_KINDS, ANNOTATION_SHAPES, ANNOTATION_LIMITS } from "../model/annotations";
+export { ANNOTATION_KINDS, ANNOTATION_SHAPES, ANNOTATION_TEXT_SIZES, ANNOTATION_COLOR_IDS } from "../model/annotations";
 
 export const kindLabel: Record<AnnotationKind, string> = { text: "Text", note: "Note", zone: "Zone", shape: "Shape" };
 export const shapeLabel: Record<AnnotationShape, string> = {
@@ -37,7 +36,6 @@ export const ANNOTATION_COLORS: Record<AnnotationColor, { label: string; hex: st
   purple: { label: "Purple", hex: "#8B5CF6", fill: "#EDE7FE" },
   red: { label: "Red", hex: "#E5484D", fill: "#FDE3E4" },
 };
-export const ANNOTATION_COLOR_IDS = Object.keys(ANNOTATION_COLORS) as AnnotationColor[];
 
 export const defaultColor: Record<AnnotationKind, AnnotationColor> = {
   text: "neutral",
@@ -101,7 +99,7 @@ export function estimateTextHeight(text: string, width: number, size: Annotation
   const px = textSizePx[size];
   const perLine = Math.max(1, Math.floor((width - 16) / (px * 0.56)));
   const lines = text.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / perLine)), 0);
-  return Math.ceil(lines * px * 1.35 + 12);
+  return Math.min(ANNOTATION_LIMITS.maxAnnotationSize, Math.ceil(lines * px * 1.35 + 12));
 }
 
 // ---------------------------------------------------------------- palette drag and drop

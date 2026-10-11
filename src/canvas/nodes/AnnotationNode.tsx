@@ -8,6 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { Handle, NodeResizeControl, ResizeControlVariant, useReactFlow, type NodeProps } from "@xyflow/react";
+import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
 import type { AnnotationKind, AnnotationShape } from "../../model/types";
 import { ANNOTATION_COLORS, annotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
 import { useDiagram } from "../DiagramContext";
@@ -46,9 +47,9 @@ function AnnotationNodeImpl({ id, data, selected, width, height }: NodeProps<Ann
       n.type !== "annotation"
         ? {}
         : {
-            data: { ...n.data, text },
+            data: { ...n.data, text: annotationText(text) },
             // Text and notes grow to fit what was typed (never shrink: a size you chose stays).
-            ...(kind !== "zone" && overflow > 0 ? { height: Math.ceil(h + overflow) } : {}),
+            ...(kind !== "zone" && overflow > 0 ? { height: annotationSize(Math.ceil(h + overflow)) } : {}),
           },
     );
   };
@@ -113,11 +114,23 @@ function Resizer({ id, kind }: { id: string; kind: AnnotationKind }) {
           variant={ResizeControlVariant.Line}
           minWidth={m.width}
           minHeight={m.height}
+          maxWidth={ANNOTATION_LIMITS.maxAnnotationSize}
+          maxHeight={ANNOTATION_LIMITS.maxAnnotationSize}
           className="ann-resize-line"
-        />
+        >
+          <span className="ann-resize-hit" data-testid={`annotation-resize-line-${id}-${p}`} />
+        </NodeResizeControl>
       ))}
       {CORNERS.map((p) => (
-        <NodeResizeControl key={p} position={p} minWidth={m.width} minHeight={m.height} className="ann-resize-handle">
+        <NodeResizeControl
+          key={p}
+          position={p}
+          minWidth={m.width}
+          minHeight={m.height}
+          maxWidth={ANNOTATION_LIMITS.maxAnnotationSize}
+          maxHeight={ANNOTATION_LIMITS.maxAnnotationSize}
+          className="ann-resize-handle"
+        >
           <span className="ann-resize-hit" data-testid={`annotation-resize-${id}-${p}`} />
         </NodeResizeControl>
       ))}
@@ -196,7 +209,12 @@ function AnnotationEditor({
     e.stopPropagation();
     if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || e.metaKey || kind === "zone"))) {
       e.preventDefault();
+      const wrapper = ref.current?.closest<HTMLElement>(".react-flow__node");
       finish();
+      // Keyboard commits return to the canvas object; blur commits leave the new control focused.
+      requestAnimationFrame(() => {
+        if (wrapper?.isConnected) wrapper.focus();
+      });
     }
   };
   return (
@@ -204,8 +222,9 @@ function AnnotationEditor({
       ref={ref}
       className="ann-editor nodrag nopan nowheel"
       value={v}
+      maxLength={ANNOTATION_LIMITS.maxAnnotationText}
       rows={kind === "zone" ? 1 : undefined}
-      onChange={(e) => setV(e.target.value)}
+      onChange={(e) => setV(annotationText(e.target.value))}
       onKeyDown={onKey}
       onBlur={finish}
       onDoubleClick={(e) => e.stopPropagation()}

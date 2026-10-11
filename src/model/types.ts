@@ -55,6 +55,8 @@ export interface DiagramFile {
    * on a shape (for documentation; it carries no traffic).
    */
   annotations?: DiagramAnnotation[];
+  /** Shared back-to-front order of diagram nodes and annotations; absent means default order. */
+  layerOrder?: string[];
 }
 
 // ---------- Annotations ----------

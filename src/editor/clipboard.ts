@@ -7,7 +7,8 @@ import {
   type DiagramNode,
 } from "../model/types";
 import { uniqueId } from "./ids";
-import { ANNOTATION_KINDS } from "../canvas/annotations";
+import { normalizeAnnotation, annotationCoordinate } from "../model/annotations";
+import { LIMITS, exceedsDepth } from "../interop/native";
 
 // Copy / paste on the saved-file level, so it is pure and the system clipboard carries plain
 // JSON that also pastes into another tab (or a text editor).
@@ -60,6 +61,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object
 
 /** Accepts a clipboard payload or a whole diagrams/v1 file (pasting a file merges it in). */
 export function parsePayload(text: string): ClipboardPayload | null {
+  if (text.length > LIMITS.maxTextChars) return null;
   let data: unknown;
   try {
     data = JSON.parse(text);
@@ -68,13 +70,14 @@ export function parsePayload(text: string): ClipboardPayload | null {
   }
   if (!isObj(data) || (data.format !== CLIP_FORMAT && data.format !== DIAGRAM_FORMAT)) return null;
   if (!Array.isArray(data.nodes)) return null;
-  const annotations = (Array.isArray(data.annotations) ? data.annotations : []).filter(
-    (a): a is DiagramAnnotation =>
-      isObj(a) &&
-      typeof a.id === "string" &&
-      ANNOTATION_KINDS.includes(a.kind as DiagramAnnotation["kind"]) &&
-      ["x", "y", "width", "height"].every((k) => typeof a[k] === "number"),
-  );
+  if (exceedsDepth(data)) return null;
+  for (const [list, max] of [
+    [data.nodes, LIMITS.maxNodes],
+    [data.annotations, LIMITS.maxAnnotations],
+    [data.edges, LIMITS.maxEdges],
+    [data.groups, LIMITS.maxGroups],
+  ] as const)
+    if (Array.isArray(list) && list.length > max) return null;
   const nodes = data.nodes.filter(
     (n): n is DiagramNode =>
       isObj(n) &&
@@ -83,6 +86,15 @@ export function parsePayload(text: string): ClipboardPayload | null {
       typeof n.x === "number" &&
       typeof n.y === "number",
   );
+  const used = new Set(nodes.map((n) => n.id));
+  const annotations: DiagramAnnotation[] = [];
+  for (const raw of Array.isArray(data.annotations) ? data.annotations : []) {
+    const a = normalizeAnnotation(raw, used);
+    if (a) {
+      annotations.push(a);
+      used.add(a.id);
+    }
+  }
   const ids = new Set([...nodes.map((n) => n.id), ...annotations.filter((a) => a.kind === "shape").map((a) => a.id)]);
   const edges = (Array.isArray(data.edges) ? data.edges : []).filter(
     (e): e is DiagramEdge =>
@@ -98,9 +110,7 @@ export function parsePayload(text: string): ClipboardPayload | null {
     groups,
     nodes: nodes.map((n) => ({ ...n, label: n.label ?? "" })),
     edges,
-    ...(annotations.length
-      ? { annotations: annotations.map((a) => ({ ...a, text: typeof a.text === "string" ? a.text : "" })) }
-      : {}),
+    ...(annotations.length ? { annotations } : {}),
   };
 }
 
@@ -139,7 +149,12 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
     const id = uniqueId(a.id, nodeIds);
     nodeIds.add(id);
     nmap.set(a.id, id);
-    return { ...structuredClone(a), id, x: a.x + offset.x, y: a.y + offset.y };
+    return {
+      ...structuredClone(a),
+      id,
+      x: annotationCoordinate(a.x + offset.x),
+      y: annotationCoordinate(a.y + offset.y),
+    };
   });
   const edges = p.edges.map((e) => {
     const id = uniqueId(e.id, edgeIds);

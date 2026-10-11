@@ -1,3 +1,4 @@
+import { ANNOTATION_LIMITS, annotationSize, annotationCoordinate, annotationText } from "../../model/annotations";
 import {
   DIAGRAM_FORMAT,
   type AnnotationKind,
@@ -488,12 +489,14 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
   // ---- annotations (after nodes, so node ids keep their names)
   const annotations: DiagramAnnotation[] = [];
   const shapeIdByCell = new Map<string, string>();
+  if (annotationCells.length > ANNOTATION_LIMITS.maxAnnotations)
+    throw new DrawioError("This page exceeds the annotation budget.");
   for (const { cell: c, kind, shape } of annotationCells) {
     const o = absOrigin(c.id);
     const lines = htmlToLines(c.value, c.style.html === "1");
     const m = minSize[kind];
-    const width = Math.max(m.width, snap(c.geo!.width));
-    const height = Math.max(m.height, snap(c.geo!.height));
+    const width = annotationSize(Math.max(m.width, snap(c.geo!.width)));
+    const height = annotationSize(Math.max(m.height, snap(c.geo!.height)));
     // Foreign geometry is spread like the nodes': keep each annotation's centre where its neighbours are.
     const x = ours ? snap(o.x) : snap((o.x + c.geo!.width / 2) * sx - width / 2);
     const y = ours ? snap(o.y) : snap((o.y + c.geo!.height / 2) * sy - height / 2);
@@ -505,9 +508,9 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     annotations.push({
       id,
       kind,
-      text: lines.join("\n"),
-      x,
-      y,
+      text: annotationText(c.data.dg_text ?? lines.join("\n")),
+      x: annotationCoordinate(x),
+      y: annotationCoordinate(y),
       width,
       height,
       ...(kind === "shape" ? { shape: shape ?? "rect" } : {}),

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DiagramAnnotation, DiagramFile } from "../model/types";
 import { ActionRegistry, builtinSections, type ActionContext, type MenuItem, type MenuNode } from "./actions";
 import { annotateMenu, builtinActions } from "./builtinActions";
@@ -39,6 +39,20 @@ function setup(annotations: DiagramAnnotation[]) {
 }
 
 describe("annotation actions", () => {
+  it("checks Add boundary with one diagram read for an annotation-only selection", () => {
+    const getDiagram = vi.fn(() => ({ nodes: [{ id: "node" }] }));
+    const getNode = vi.fn(() => undefined);
+    const when = builtinActions().find((a) => a.id === "selection.group")!.when!;
+    const context = {
+      editor: { getDiagram, getNode },
+      selection: { nodeIds: Array.from({ length: 2000 }, (_, i) => `annotation-${i}`) },
+    } as unknown as ActionContext;
+    expect(when(context)).toBe(false);
+    expect(getDiagram).toHaveBeenCalledTimes(1);
+    expect(getNode).not.toHaveBeenCalled();
+    context.selection.nodeIds.push("node");
+    expect(when(context)).toBe(true);
+  });
   it("T adds text; Shift+T and Ctrl+T don't", () => {
     expect(shortcutFor(key("t"))).toBe("add-text");
     expect(shortcutFor(key("T", { shiftKey: true }))).toBeNull();

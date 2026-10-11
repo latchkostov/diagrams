@@ -33,6 +33,17 @@ const annotated: DiagramFile = {
 };
 
 describe("native format", () => {
+  it("repairs a malformed connected shape without rejecting valid content", () => {
+    const r = validateDiagram({
+      ...annotated,
+      annotations: annotated.annotations!.map((a) => (a.id === "legacy" ? { ...a, width: 0 } : a)),
+    });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.diagram.nodes).toEqual(annotated.nodes);
+    expect(r.diagram.annotations?.some((a) => a.id === "legacy")).toBe(false);
+    expect(r.diagram.edges).toEqual([annotated.edges[0]]);
+    expect(r.warnings).toEqual([expect.stringMatching(/skipped/), expect.stringMatching(/skipped/)]);
+  });
   it("round-trips annotations exactly", () => {
     const r = parseNative(serializeNative(annotated));
     expect(r.ok && r.warnings).toEqual([]);
@@ -133,6 +144,34 @@ describe("native format", () => {
 });
 
 describe("draw.io", () => {
+  it("preserves paragraph spacing, indentation and XML characters in annotation text", async () => {
+    const text = "First\n\n  indented  words & <tag>\nLast\n";
+    const d = { ...annotated, annotations: annotated.annotations!.map((a) => ({ ...a, text })) };
+    const { diagram } = drawioPageToDiagram((await readDrawio(diagramToDrawio(d))).pages[0]);
+    expect(diagram.annotations?.map((a) => a.text)).toEqual(d.annotations.map(() => text));
+  });
+  it("bounds imported annotation geometry and text to persistence limits", async () => {
+    const d = {
+      ...annotated,
+      annotations: annotated.annotations!.map((a) => ({
+        ...a,
+        width: LIMITS.maxAnnotationSize + 100,
+        height: LIMITS.maxAnnotationSize + 100,
+        text: "x".repeat(LIMITS.maxAnnotationText + 1),
+      })),
+    };
+    const { diagram } = drawioPageToDiagram((await readDrawio(diagramToDrawio(d))).pages[0]);
+    expect(diagram.annotations).toHaveLength(d.annotations.length);
+    expect(
+      diagram.annotations?.every(
+        (a) =>
+          a.width <= LIMITS.maxAnnotationSize &&
+          a.height <= LIMITS.maxAnnotationSize &&
+          a.text.length <= LIMITS.maxAnnotationText,
+      ),
+    ).toBe(true);
+    expect(validateDiagram(diagram).ok).toBe(true);
+  });
   it("round-trips annotations and edges to shapes", async () => {
     const xml = diagramToDrawio(annotated);
     expect(xml).toContain('dg_annotation="note"');

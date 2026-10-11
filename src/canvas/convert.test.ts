@@ -4,6 +4,19 @@ import { edgeAriaLabel, fromFlow, nodeAriaLabel, toFlow, withEdgeAria, withNodeA
 import type { FlowNode } from "./types";
 
 describe("convert", () => {
+  it("persists mixed node and annotation order in history keys and restores it", () => {
+    const f = toFlow({
+      format: "diagrams/v1",
+      title: "t",
+      nodes: [{ id: "node", stencil: "service.go", label: "Node", x: 0, y: 0 }],
+      edges: [],
+      annotations: [{ id: "note", kind: "note", text: "Note", x: 0, y: 0, width: 100, height: 100 }],
+    });
+    const before = fromFlow(f.meta, f.nodes, f.edges);
+    const after = fromFlow(f.meta, [...f.nodes].reverse(), f.edges);
+    expect(JSON.stringify(after)).not.toBe(JSON.stringify(before));
+    expect(toFlow(JSON.parse(JSON.stringify(after)) as DiagramFile).nodes.map((n) => n.id)).toEqual(["note", "node"]);
+  });
   it("round-trips edge sides and saved simulations untouched", () => {
     const simulations = [{ id: "s1", title: "Black Friday" }] as unknown as NonNullable<DiagramFile["simulations"]>;
     const d: DiagramFile = {
