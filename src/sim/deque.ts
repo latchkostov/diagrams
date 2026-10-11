@@ -4,6 +4,7 @@ export class Deque<T> {
   private head = 0;
 
   get length(): number { return this.items.length - this.head; }
+  peek(): T | undefined { return this.items[this.head]; }
   push(item: T): void { this.items.push(item); }
   shift(): T | undefined {
     if (!this.length) return undefined;

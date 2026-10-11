@@ -51,6 +51,57 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
 - `setTraffic(true)` — every `source` emits continuously at `ratePerSec` (default 2/s).
 - Message colour comes from its type (stable hash → palette), so different event types are distinct.
 
+## Typed routing
+- `edge.props.filter` applies to downstream requests/messages on sync, async and DLQ edges.
+  Omitted means accept every type; an empty array accepts none. Entries match exactly, except a
+  trailing `*` matches a prefix (`Order*`); `*` accepts everything.
+- Processors and `none` nodes apply `node.props.emits` before choosing outgoing edges. A string
+  renames every forwarded message; a map uses an exact incoming-type key, then `"*"` as fallback,
+  otherwise leaves the type unchanged. Filters see this resulting type.
+- `edge.props.emits` overrides the type after the edge accepts the message. Renaming also updates
+  its colour, independently for each outgoing copy. Replies remain visual responses to accepted
+  requests and do not undergo another filter/rename pass.
+- Gateways round-robin across accepting edges. Sources/processors fan out across accepting edges;
+  stores copy to accepting async change feeds. No accepting route ends that branch without a drop.
+- A broker group skips types rejected by all its edges, so its lag contains only accepted pending
+  messages. Within a group, delivery uses accepting ready consumers in round-robin order, retaining
+  FIFO when the first pending message has no ready matching consumer. Retry restores the original
+  broker type before routing again, even when a delivery edge renamed it. A rejected DLQ route drops
+  the exhausted message instead of delivering it.
+
+## Saved simulation runner
+`createSimulationRun` in `src/sim/simulation.ts` loads the diagram with the saved seed (default 1),
+applies setup, and runs traffic plus a stably sorted timeline. Runner scheduling uses the engine's
+10 ms simulation ticks. An action between ticks fires at the next tick; speed changes alter wall
+time only. At the same time, timeline actions run in their saved order before traffic is injected.
+
+Each continuous traffic profile has its own fractional message accumulator. Constant, ramp and
+spike rates are integrated exactly across shape boundaries; fractional remainders stay with their
+profile. Bursts call `inject` once at their start, including `spreadMs`, so their count is exact.
+Preview rates use half-open windows; an instantaneous burst is displayed as a 1 ms pulse, while its
+actual injection is discrete. `trafficWindow` describes the scheduled start/end and
+`estimateTotalMs` uses explicit duration, or the latest traffic/timeline end plus 10 s of drain
+allowance, capped at 10 min.
+
+A pausing note freezes runner and engine time until `resume()`, including following same-time
+actions and traffic. Notes replace previous narration and expire after 6 simulation seconds;
+waiting notes remain visible. Unknown action/injection/focus node ids are ignored; expectations
+for unknown nodes remain pending. Static markers describe timeline actions and labelled traffic
+window boundaries.
+
+Expectations sample snapshots at initialization, every tick and resume. `always` fails permanently
+on a violation, otherwise passes at completion; `eventually` passes permanently on first success,
+otherwise fails at completion. `end` checks at completion; `at` checks once on crossing its time
+(and fails if the run ends before that time). Every chip keeps its latest measured value. Named
+`lag` reads that group; unnamed `lag` reads the maximum group lag; system metrics read `inSystem`.
+
+A run stops at explicit `durationMs`, otherwise after traffic and timeline finish and `inSystem`
+stays zero for 1.5 s. All runs stop by 600,000 simulation ms, including retained DLQ/backlog runs.
+Retained quarantine scenarios therefore use explicit duration. `restart()` reloads the original
+diagram and setup, resets speed to 1, and resets the seed, counters, traffic credits and timeline.
+Reused engines from `createEngine` are reseeded internally; custom `SimEngine` implementations
+must supply their own deterministic seed because the public interface has no seed setter.
+
 ## Snapshot
 `snapshot()` returns particles, per-node state (`backlog`, `lag` per group, `inFlight`, `processed`,
 `failed`, `deadLettered`, `dropped`, `throughput`), per-edge counters, recent events, and `inSystem`.

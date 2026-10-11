@@ -36,7 +36,7 @@
       "y": 280,
       "group": "azure",
       "props": {
-        "partitions": 256,
+        "partitions": 64,
         "retentionDays": 7
       }
     },
@@ -51,7 +51,7 @@
       "props": {
         "group": "hot-state",
         "batchSize": 100,
-        "concurrency": 256,
+        "concurrency": 128,
         "latencyMs": 150,
         "emits": {
           "TelemetryReading": "DeviceStateUpdated",
@@ -70,7 +70,7 @@
       "props": {
         "group": "lake-stream",
         "checkpointIntervalSec": 30,
-        "concurrency": 256,
+        "concurrency": 128,
         "latencyMs": 150
       }
     },
@@ -106,7 +106,7 @@
       "group": "azure",
       "props": {
         "retryTtlSec": 86400,
-        "partitions": 256
+        "partitions": 64
       }
     },
     {
@@ -118,7 +118,7 @@
       "y": 40,
       "group": "azure",
       "props": {
-        "concurrency": 256,
+        "concurrency": 128,
         "latencyMs": 150,
         "emits": "IncidentEmail"
       }
@@ -209,7 +209,7 @@
       "from": "stream",
       "to": "blob",
       "label": "Commit Delta microbatch",
-      "kind": "sync",
+      "kind": "async",
       "props": {
         "travelMs": 200
       }
@@ -426,7 +426,7 @@
             "do": "props",
             "node": "hub",
             "props": {
-              "partitions": 256
+              "partitions": 64
             }
           }
         },

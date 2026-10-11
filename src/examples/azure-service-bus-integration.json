@@ -350,7 +350,7 @@
       "traffic": [
         {
           "id": "batch",
-          "node": "partner",
+          "node": "ingest",
           "messageType": "InvoiceHighValue",
           "label": "300 high-value month-end invoices",
           "shape": {
@@ -440,7 +440,7 @@
       "traffic": [
         {
           "id": "poison-batch",
-          "node": "partner",
+          "node": "ingest",
           "messageType": "InvoiceHighValue",
           "label": "30 malformed posting requests",
           "shape": {
