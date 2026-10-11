@@ -45,12 +45,12 @@ describe("annotation actions", () => {
     expect(shortcutFor(key("t", { ctrlKey: true }))).toBeNull();
   });
 
-  it("the canvas menu offers Add ▸ Text / Note / Zone / Shape ▸ at the click, within the 12-item budget", () => {
+  it("the canvas menu offers Annotate ▸ Text / Note / Zone / Shape ▸ at the click, within the 12-item budget", () => {
     const { build, calls } = setup([]);
     const menu = items(build({ point: { x: 10, y: 20 } }));
     expect(menu.length).toBeLessThanOrEqual(12);
     const add = menu.find((i) => i.id === "canvas.annotate")!;
-    expect(add.label).toBe("Add");
+    expect(add.label).toBe("Annotate");
     expect(items(add.children!).map((i) => i.label)).toEqual(["Text", "Note", "Zone", "Shape"]);
     const shapes = items(items(add.children!).find((i) => i.id === "annotate:shape")!.children!);
     expect(shapes.map((i) => i.id)).toEqual([

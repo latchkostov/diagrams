@@ -42,7 +42,7 @@ const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
 /** Registry contexts for a selection: the canvas, plus the selected thing (most specific first). */
 export function contextsFor(editor: EditorApi, mode: EditorMode): ActionContext[] {
   const sel = editor.getSelection();
-  const base = { editor, mode };
+  const base = { editor, mode, surface: "palette" as const };
   const canvas: ActionContext = { ...base, target: "canvas", selection: sel };
   const n = sel.nodeIds.length;
   const e = sel.edgeIds.length;

@@ -15,7 +15,9 @@ path wins by default and the power path stays one step away.
 4. **One primary action per surface.** Each panel, dialog and bar has one obvious main action; the rest
    are visually secondary.
 5. **Budget the chrome.** Top bar: at most ~7 controls. Floating bars: one row. Menus: ≤ 12 items per
-   level, grouped with separators. Adding a control means removing or folding another.
+   level, grouped with separators. Adding a control means removing or folding another. An action that
+   already has an always-visible control and a shortcut (Fit view) stays out of menus; the palette
+   still finds it (`paletteOnly` in the action registry).
 6. **No dead ends, no surprises.** Everything is undoable; destructive actions say so; empty states
    explain what to do next; errors say how to fix them.
 7. **Consistent affordances.** Cursor, hover, focus and pressed states match behaviour everywhere
@@ -23,9 +25,13 @@ path wins by default and the power path stays one step away.
 8. **App, not page.** No browser context menu, no stray text selection, no layout jumps. Keyboard first-class.
 9. **Teach in place.** Hints, shortcut labels and placeholders over docs. Discoverable from the right-click.
 10. **Nothing overlaps by default.** Labels never cover nodes, parallel edges stay distinguishable,
-    edges route around nodes, and floating panels never hide content after fit-view. An automated
-    overlap audit (`tests/e2e/layout.spec.ts`) guards every example.
-11. **Presentation is a first-class mode.** Anything shown in a meeting reads at a distance and hides editing chrome.
+    edges route around nodes, and floating panels never hide content after fit-view. Anything added
+    without a spot (a click in the rail, the palette) goes to the free place nearest the view's centre,
+    clear of nodes, edges and the last thing added. An automated overlap audit
+    (`tests/e2e/layout.spec.ts`) guards every example.
+11. **Presentation is a first-class mode.** Anything shown in a meeting reads at a distance and hides editing
+    chrome (selection handles, placeholders). The same goes for exported images and recorded videos:
+    a recording is always in presentation view, and annotations are at full strength in all three.
 
 ## Vocabulary
 
@@ -39,12 +45,17 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   - **Note**: a tinted sticky note.
   - **Zone**: a labelled, dashed region drawn behind nodes. **Zone vs boundary:** a boundary groups nodes
     (they belong to it and move with it, and it can be fitted to them); a zone is a visual region only.
-    Nodes don't belong to a zone, and moving a zone moves nothing else.
+    Nodes don't belong to a zone, and moving a zone moves nothing else. They look different too: a
+    boundary has a solid edge and a label chip with a swatch; a zone has a dashed edge and plain
+    sentence-case words.
   - **Shape**: a plain outline (rectangle, rounded rectangle, ellipse, diamond, cylinder) for when no stencil
     fits. The only annotation an edge may end on, for documentation; no traffic flows to or from it.
 
-  They're added from **Add ▸** on the canvas right-click, the stencil rail's **Annotate** group, or the palette
-  ("Add › Note"). Their menu says **Edit text** (a zone: **Rename**), **Colour** and **Shape**.
+  One verb, **Annotate**, everywhere they're added: **Annotate ▸** on the canvas right-click (next to
+  "Add node here"), the stencil rail's **Annotate** row (Text, Note, Zone, Shape, pinned under the
+  list), the palette ("Annotate › Note"), and `T`. A Shape starts as a rectangle; the inspector, the
+  right-click's Shape ▸ and search ("ellipse") pick the outline. Their menu says **Edit text** (a zone:
+  **Rename**), **Colour** and **Shape**.
 
 - **Subtitle** for a node's second line. **Properties** opens the inspector for the thing.
 - **Your diagrams** is the user's own library in this browser (File > Your diagrams…, the picker's
@@ -58,6 +69,10 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   View menu, Show ▸ Capacity) is the heat map over the diagram, one remembered setting; the panel
   shows it while open without changing that setting. The callout's verb is **Apply fix**.
 - The Live toggle's words are **Go live** and **Back to editing**, in the palette too.
+- **Record video…** (live ⋯ menu and the live right-click, same icon in both): **Start recording**, a
+  3-2-1 countdown, a pill with the time and **Stop** (or Esc), then **Your recording** with **Download**
+  and **Discard** (undoable). With a simulation picked, the one option is to play it from the start
+  and stop when it ends.
 - Same action, same name in the File menu and the right-click (e.g. Export PNG, Copy share link).
 - Esc backs out one level: menu, dialog, selection, trace, presentation, then live view.
 

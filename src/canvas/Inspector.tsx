@@ -631,39 +631,44 @@ function AnnotationPanel({ note, editor }: InspectorProps & { note: AnnotationFl
           ))}
         </div>
       </Field>
-      <Field label="Text size" group>
-        <Segmented
-          testId="inspector-field-text-size"
-          value={note.data.textSize ?? "m"}
-          options={ANNOTATION_TEXT_SIZES.map((t) => ({ value: t, label: textSizeLabel[t] }))}
-          onChange={(textSize) => editor.updateAnnotation(id, { textSize })}
-        />
-      </Field>
-      <Field label="Size" group>
-        <div className="insp-size">
-          <SizeInput
-            label="Width"
-            value={note.width ?? note.measured?.width ?? 0}
-            min={min.width}
-            testId="inspector-field-width"
-            onCommit={(width) => editor.updateAnnotation(id, { width })}
+      {/* A zone's label is a label, like a boundary's: one size. */}
+      {kind !== "zone" && (
+        <Field label="Text size" group>
+          <Segmented
+            testId="inspector-field-text-size"
+            value={note.data.textSize ?? "m"}
+            options={ANNOTATION_TEXT_SIZES.map((t) => ({ value: t, label: textSizeLabel[t] }))}
+            onChange={(textSize) => editor.updateAnnotation(id, { textSize })}
           />
-          <span aria-hidden>{"×"}</span>
-          <SizeInput
-            label="Height"
-            value={note.height ?? note.measured?.height ?? 0}
-            min={min.height}
-            testId="inspector-field-height"
-            onCommit={(height) => editor.updateAnnotation(id, { height })}
-          />
-        </div>
-      </Field>
-      {kind === "zone" && (
-        <p className="insp-note">
-          A zone only marks an area. To keep nodes together so they move as one, use a boundary instead.
-        </p>
+        </Field>
       )}
-      <p className="insp-note">Annotations don't take part in the simulation.</p>
+      {/* Text sizes itself from what you type and its text size (the handles still set its width). */}
+      {kind !== "text" && (
+        <Field label="Size" group>
+          <div className="insp-size">
+            <SizeInput
+              label="Width"
+              value={note.width ?? note.measured?.width ?? 0}
+              min={min.width}
+              testId="inspector-field-width"
+              onCommit={(width) => editor.updateAnnotation(id, { width })}
+            />
+            <span aria-hidden>{"×"}</span>
+            <SizeInput
+              label="Height"
+              value={note.height ?? note.measured?.height ?? 0}
+              min={min.height}
+              testId="inspector-field-height"
+              onCommit={(height) => editor.updateAnnotation(id, { height })}
+            />
+          </div>
+        </Field>
+      )}
+      <p className="insp-note">
+        {kind === "zone"
+          ? "A zone only marks an area: nodes don't move with it. To keep nodes together, use a boundary."
+          : "Annotations don't take part in the simulation."}
+      </p>
       <CopyId id={id} />
     </Section>
   );

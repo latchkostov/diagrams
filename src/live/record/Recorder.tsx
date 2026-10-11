@@ -32,7 +32,7 @@ const UNDO_MS = 8000;
 interface Options {
   /** Play the selected simulation from 0:00 and stop when it ends. */
   fromStart: boolean;
-  /** Presentation view for the take (hides editing chrome, larger type). */
+  /** Presentation view for the take (hides editing chrome, larger type); always, where it exists. */
   present: boolean;
 }
 
@@ -336,7 +336,6 @@ function SetupDialog({
 }) {
   const [support] = useState(captureSupport);
   const [fromStart, setFromStart] = useState(!!simulation);
-  const [present, setPresent] = useState(true);
   const reason = unsupportedReason(support);
   const asking = rec.phase === "requesting";
   const exact = canFrameToElement();
@@ -361,7 +360,7 @@ function SetupDialog({
           </button>
           <button
             className="btn btn-primary"
-            onClick={() => onStart({ fromStart: !!simulation && fromStart, present: canPresent && present })}
+            onClick={() => onStart({ fromStart: !!simulation && fromStart, present: canPresent })}
             disabled={!!reason || asking}
             data-testid="record-start"
             data-autofocus={reason ? undefined : ""}
@@ -386,29 +385,18 @@ function SetupDialog({
             </span>
           </label>
         )}
-        {canPresent && (
-          <label className="ix-check">
-            <input
-              type="checkbox"
-              checked={present}
-              onChange={(e) => setPresent(e.target.checked)}
-              data-testid="record-opt-present"
-            />
-            <span>
-              Presentation view
-              <small>Hides the editing controls and enlarges text while recording.</small>
-            </span>
-          </label>
-        )}
         {reason ? (
           <p className="ix-error" role="alert" data-testid="record-unsupported">
             {reason}
           </p>
         ) : (
-          <p className="ix-muted">
+          <p className="ix-muted" data-testid="record-what">
             Your browser will ask to share this tab: choose it and Allow.{" "}
-            {exact ? "Only the diagram is recorded" : "The tab is recorded as it looks"}, without sound. Stop with{" "}
-            <kbd>Esc</kbd> or the Stop button. The video stays on this computer until you download it.
+            {exact
+              ? "Only the diagram is recorded, in presentation view (no editing controls, larger text)"
+              : "The tab is recorded as it looks, in presentation view"}
+            , without sound. Stop with <kbd>Esc</kbd> or the Stop button. The video stays on this computer until you
+            download it.
           </p>
         )}
         {rec.error && (

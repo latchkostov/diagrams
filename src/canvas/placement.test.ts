@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { placeNextTo } from "./placement";
+import { placeFree, placeNextTo } from "./placement";
 
 const box = (x: number, y: number, width = 220, height = 72) => ({ x, y, width, height });
 const overlaps = (c: { x: number; y: number }, b: ReturnType<typeof box>, w = 220, h = 72) =>
@@ -28,5 +28,34 @@ describe("placeNextTo upstream", () => {
     const blocker = box(0, 140);
     const moved = placeNextTo(target, { width: 220, height: 72 }, [target, blocker], "TB", "upstream");
     expect(overlaps(moved, blocker)).toBe(false);
+  });
+});
+
+describe("placeFree", () => {
+  const size = { width: 200, height: 120 };
+  const clear = (c: { x: number; y: number }, b: ReturnType<typeof box>) =>
+    !(c.x - 100 < b.x + b.width && b.x < c.x + 100 && c.y - 60 < b.y + b.height && b.y < c.y + 60);
+
+  it("keeps the centre when it's free", () => {
+    expect(placeFree({ x: 0, y: 0 }, size, [box(400, 400)])).toEqual({ x: 0, y: 0 });
+  });
+
+  it("moves off a node under the centre, to the nearest clear spot", () => {
+    const node = box(-110, -36);
+    const at = placeFree({ x: 0, y: 0 }, size, [node]);
+    expect(clear(at, node)).toBe(true);
+    expect(Math.hypot(at.x, at.y)).toBeLessThan(260);
+  });
+
+  it("never stacks a second addition on the first", () => {
+    const first = placeFree({ x: 0, y: 0 }, size, []);
+    const firstBox = { x: first.x - 100, y: first.y - 60, ...size };
+    const second = placeFree({ x: 0, y: 0 }, size, [firstBox]);
+    expect(clear(second, firstBox)).toBe(true);
+  });
+
+  it("falls back to the centre when there's no room at all", () => {
+    const wall = { x: -5000, y: -5000, width: 10000, height: 10000 };
+    expect(placeFree({ x: 0, y: 0 }, size, [wall], { maxRings: 3 })).toEqual({ x: 0, y: 0 });
   });
 });

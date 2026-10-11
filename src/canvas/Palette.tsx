@@ -91,7 +91,7 @@ export function Palette({
     [family],
   );
   const results = useMemo(() => (q.trim() ? searchStencils(inFamily, q) : null), [inFamily, q]);
-  const annotateHits = useMemo(() => (q.trim() ? matchAnnotate(q) : ANNOTATE), [q]);
+  const annotateHits = useMemo(() => (q.trim() ? matchAnnotate(q) : []), [q]);
   const groups = useMemo(() => {
     const map = new Map<StencilCategory, Stencil[]>();
     for (const s of inFamily) {
@@ -211,7 +211,9 @@ export function Palette({
                 <PaletteItem key={s.id} stencil={s} onAdd={add} />
               ))}
             </div>
-            {onAnnotate && annotateHits.length > 0 && <AnnotateGroup items={annotateHits} onAdd={onAnnotate} />}
+            {onAnnotate && annotateHits.length > 0 && (
+              <AnnotateGroup items={annotateHits} onAdd={onAnnotate} className="is-results" />
+            )}
             {results.length === 0 && annotateHits.length === 0 && (
               <div className="palette-empty" data-testid="palette-empty">
                 <p>
@@ -263,10 +265,11 @@ export function Palette({
                 </section>
               );
             })}
-            {onAnnotate && <AnnotateGroup items={ANNOTATE} onAdd={onAnnotate} />}
           </>
         )}
       </div>
+      {/* Pinned under the list, so it's in view whatever is open above (searching lists matches instead). */}
+      {onAnnotate && !results && <AnnotateGroup items={ANNOTATE} onAdd={onAnnotate} className="is-pinned" />}
       <div className="palette-foot">
         Drag onto the canvas or click to add. <kbd>{formatCombo(shortcutKeys("command-palette"))}</kbd> finds anything;{" "}
         <kbd>?</kbd> lists shortcuts.
@@ -286,7 +289,7 @@ interface AnnotateItem {
   keywords: string;
 }
 
-const ANNOTATE: readonly AnnotateItem[] = [
+const TEXT_NOTE_ZONE: readonly AnnotateItem[] = [
   {
     kind: "text",
     label: "Text",
@@ -302,34 +305,53 @@ const ANNOTATE: readonly AnnotateItem[] = [
     hint: "A labelled region behind nodes. Unlike a boundary, nodes don't move with it",
     keywords: "region area lane band highlight",
   },
+];
+
+/** The rail's row: one tile per kind. A shape starts as a rectangle; the inspector changes its outline. */
+const ANNOTATE: readonly AnnotateItem[] = [
+  ...TEXT_NOTE_ZONE,
+  {
+    kind: "shape",
+    label: "Shape",
+    icon: "shape-rect",
+    hint: "A plain shape for when no stencil fits: rectangle, ellipse, diamond, cylinder",
+    keywords: "shape outline rectangle box",
+  },
+];
+
+/** What search finds: each outline by name, so "ellipse" or "cylinder" adds that one directly. */
+const ANNOTATE_SEARCH: readonly AnnotateItem[] = [
+  ...TEXT_NOTE_ZONE,
   ...(["rect", "rounded", "ellipse", "diamond", "cylinder"] as const).map((shape) => ({
     kind: "shape" as const,
     shape,
-    label: shape === "rect" ? "Box" : shape === "rounded" ? "Rounded" : shapeLabel[shape],
+    label: shapeLabel[shape].replace(" rectangle", ""),
     icon: `shape-${shape}` as IconName,
     hint: `${shapeLabel[shape]}: a plain shape for when no stencil fits`,
-    keywords: `shape outline ${shapeLabel[shape]}`,
+    keywords: `shape outline ${shapeLabel[shape]}${shape === "rect" ? " box" : ""}`,
   })),
 ];
 
 function matchAnnotate(q: string): AnnotateItem[] {
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  return ANNOTATE.filter((a) => {
+  return ANNOTATE_SEARCH.filter((a) => {
     const hay = `${a.label} ${a.kind} ${a.keywords} annotate annotation`.toLowerCase();
     return words.every((w) => hay.includes(w));
   });
 }
 
-/** The rail's last group: documentation that never takes part in the simulation. */
+/** Text, notes, zones and shapes: documentation that never takes part in the simulation. */
 function AnnotateGroup({
   items,
   onAdd,
+  className,
 }: {
   items: readonly AnnotateItem[];
   onAdd: (kind: AnnotationKind, shape?: AnnotationShape) => void;
+  className: string;
 }) {
   return (
-    <section className="palette-annotate" data-testid="palette-annotate">
+    <section className={`palette-annotate ${className}`} data-testid="palette-annotate">
       <h3 className="palette-sec-static" title="Text, notes, zones and shapes. They don't take part in the simulation">
         Annotate
       </h3>
