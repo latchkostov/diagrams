@@ -193,6 +193,15 @@
       "y": 700,
       "group": "aws",
       "props": {}
+    },
+    {
+      "id": "cognito",
+      "stencil": "generic.identity-provider",
+      "label": "Cognito user pool",
+      "sublabel": "Shopper sign-in",
+      "x": 431,
+      "y": 400,
+      "group": "aws"
     }
   ],
   "edges": [
@@ -368,6 +377,16 @@
         "travelMs": 300,
         "group": "sms"
       }
+    },
+    {
+      "id": "apigw-to-cognito",
+      "from": "apigw",
+      "to": "cognito",
+      "label": "JWT authorizer",
+      "kind": "async",
+      "relation": "identity",
+      "sourceSide": "bottom",
+      "targetSide": "top"
     }
   ],
   "simulations": [

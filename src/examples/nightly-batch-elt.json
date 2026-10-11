@@ -21,11 +21,7 @@
       "label": "Airflow",
       "sublabel": "Nightly DAG · 02:00 UTC",
       "x": 800,
-      "y": 40,
-      "props": {
-        "ratePerSec": 1.15740740740741e-5,
-        "messageType": "DbtModel"
-      }
+      "y": 40
     },
     {
       "id": "app-db",
@@ -170,11 +166,8 @@
       "from": "airflow",
       "to": "airbyte",
       "label": "1 · Sync sources",
-      "kind": "sync",
-      "props": {
-        "travelMs": 200,
-        "filter": []
-      },
+      "kind": "async",
+      "relation": "depends",
       "targetSide": "top"
     },
     {
@@ -182,11 +175,8 @@
       "from": "airflow",
       "to": "dbt",
       "label": "2 · dbt build",
-      "kind": "sync",
-      "props": {
-        "travelMs": 200,
-        "filter": ["DbtModel"]
-      },
+      "kind": "async",
+      "relation": "depends",
       "targetSide": "top"
     },
     {
@@ -204,11 +194,8 @@
       "from": "dbt",
       "to": "raw",
       "label": "SELECT",
-      "kind": "sync",
-      "props": {
-        "travelMs": 200,
-        "filter": []
-      }
+      "kind": "async",
+      "relation": "depends"
     },
     {
       "id": "dbt-to-marts",
@@ -287,7 +274,7 @@
         },
         {
           "id": "dbt",
-          "node": "airflow",
+          "node": "dbt",
           "messageType": "DbtModel",
           "label": "03:00 · dbt builds 120 models",
           "shape": {
@@ -410,7 +397,7 @@
         },
         {
           "id": "dbt",
-          "node": "airflow",
+          "node": "dbt",
           "messageType": "DbtModel",
           "label": "03:00 · dbt builds 120 models",
           "shape": {

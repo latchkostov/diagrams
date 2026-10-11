@@ -234,6 +234,14 @@
       "x": 2320,
       "y": 480,
       "props": {}
+    },
+    {
+      "id": "vault",
+      "stencil": "vault",
+      "label": "Vault",
+      "sublabel": "Stripe API key",
+      "x": 1940,
+      "y": 640
     }
   ],
   "edges": [
@@ -436,6 +444,15 @@
         "travelMs": 300,
         "group": "saga"
       }
+    },
+    {
+      "id": "payment-svc-to-vault",
+      "from": "payment-svc",
+      "to": "vault",
+      "kind": "async",
+      "relation": "secret",
+      "sourceSide": "bottom",
+      "targetSide": "top"
     }
   ],
   "simulations": [

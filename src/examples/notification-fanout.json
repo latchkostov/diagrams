@@ -9,9 +9,9 @@
       "label": "Azure · notifications",
       "tone": "azure",
       "x": 380,
-      "y": 80,
+      "y": 0,
       "width": 1860,
-      "height": 432
+      "height": 512
     }
   ],
   "nodes": [
@@ -70,7 +70,7 @@
       "label": "email",
       "sublabel": "~90% opted in",
       "x": 1560,
-      "y": 160,
+      "y": 40,
       "group": "azure",
       "props": {}
     },
@@ -100,7 +100,7 @@
       "label": "Email sender",
       "sublabel": "Templates · 500/s",
       "x": 1940,
-      "y": 160,
+      "y": 40,
       "group": "azure",
       "props": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "EmailSent" }
     },
@@ -130,8 +130,17 @@
       "label": "SendGrid",
       "sublabel": "Email",
       "x": 2320,
-      "y": 160,
+      "y": 40,
       "props": {}
+    },
+    {
+      "id": "key-vault",
+      "stencil": "azure.key-vault",
+      "label": "notify-kv",
+      "sublabel": "Provider API keys",
+      "x": 1940,
+      "y": 160,
+      "group": "azure"
     },
     { "id": "twilio", "stencil": "twilio", "label": "Twilio", "sublabel": "SMS", "x": 2320, "y": 280, "props": {} },
     {
@@ -245,6 +254,24 @@
       "label": "Send",
       "kind": "sync",
       "props": { "travelMs": 200 }
+    },
+    {
+      "id": "email-sender-to-key-vault",
+      "from": "email-sender",
+      "to": "key-vault",
+      "kind": "async",
+      "relation": "secret",
+      "sourceSide": "bottom",
+      "targetSide": "top"
+    },
+    {
+      "id": "sms-limiter-to-key-vault",
+      "from": "sms-limiter",
+      "to": "key-vault",
+      "kind": "async",
+      "relation": "secret",
+      "sourceSide": "top",
+      "targetSide": "bottom"
     }
   ],
   "simulations": [

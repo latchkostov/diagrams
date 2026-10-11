@@ -143,6 +143,14 @@
         "concurrency": 400,
         "latencyMs": 150
       }
+    },
+    {
+      "id": "vault",
+      "stencil": "vault",
+      "label": "Vault",
+      "sublabel": "LLM API keys",
+      "x": 1180,
+      "y": 320
     }
   ],
   "edges": [
@@ -268,6 +276,24 @@
       "props": {
         "travelMs": 200
       }
+    },
+    {
+      "id": "rag-api-to-vault",
+      "from": "rag-api",
+      "to": "vault",
+      "kind": "async",
+      "relation": "secret",
+      "sourceSide": "bottom",
+      "targetSide": "top"
+    },
+    {
+      "id": "embed-worker-to-vault",
+      "from": "embed-worker",
+      "to": "vault",
+      "kind": "async",
+      "relation": "secret",
+      "sourceSide": "right",
+      "targetSide": "bottom"
     }
   ],
   "simulations": [

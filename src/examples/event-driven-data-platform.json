@@ -185,7 +185,7 @@
       "stencil": "kafka.schema-registry",
       "label": "Schema registry",
       "sublabel": "Avro · backward compatible",
-      "x": 1180,
+      "x": 1166,
       "y": 80,
       "props": {
         "compatibility": "BACKWARD"
@@ -252,12 +252,8 @@
       "stencil": "airflow",
       "label": "Airflow",
       "sublabel": "dbt build · every 15 min",
-      "x": 1940,
-      "y": 80,
-      "props": {
-        "ratePerSec": 0.0011111111111111111,
-        "messageType": "DbtBuild"
-      }
+      "x": 1932,
+      "y": 80
     },
     {
       "id": "dbt",
@@ -383,11 +379,10 @@
       "from": "snowpipe",
       "to": "schema-registry",
       "label": "Avro schemas",
-      "kind": "sync",
-      "props": {
-        "travelMs": 200,
-        "filter": []
-      }
+      "kind": "async",
+      "relation": "depends",
+      "sourceSide": "top",
+      "targetSide": "bottom"
     },
     {
       "id": "snowpipe-to-raw",
@@ -415,10 +410,10 @@
       "from": "airflow",
       "to": "dbt",
       "label": "dbt build",
-      "kind": "sync",
-      "props": {
-        "travelMs": 200
-      }
+      "kind": "async",
+      "relation": "depends",
+      "sourceSide": "bottom",
+      "targetSide": "top"
     },
     {
       "id": "dbt-to-marts",

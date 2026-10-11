@@ -709,6 +709,27 @@ exports[`public examples route cleanly (estimated card sizes) > aws-serverless-o
       },
     ],
   },
+  {
+    "id": "apigw-to-cognito",
+    "points": [
+      {
+        "x": 540.5,
+        "y": 232,
+      },
+      {
+        "x": 540.5,
+        "y": 316,
+      },
+      {
+        "x": 541,
+        "y": 384,
+      },
+      {
+        "x": 541,
+        "y": 400,
+      },
+    ],
+  },
 ]
 `;
 
@@ -1551,11 +1572,11 @@ exports[`public examples route cleanly (estimated card sizes) > event-driven-dat
         "y": 356,
       },
       {
-        "x": 1164,
+        "x": 1157,
         "y": 356,
       },
       {
-        "x": 1164,
+        "x": 1157,
         "y": 250,
       },
       {
@@ -1576,11 +1597,11 @@ exports[`public examples route cleanly (estimated card sizes) > event-driven-dat
         "y": 176,
       },
       {
-        "x": 1303.5,
+        "x": 1289.5,
         "y": 176,
       },
       {
-        "x": 1303.5,
+        "x": 1289.5,
         "y": 152,
       },
     ],
@@ -1606,11 +1627,11 @@ exports[`public examples route cleanly (estimated card sizes) > event-driven-dat
         "y": 236,
       },
       {
-        "x": 1876.5,
+        "x": 1920,
         "y": 236,
       },
       {
-        "x": 1876.5,
+        "x": 1920,
         "y": 349,
       },
       {
@@ -1623,11 +1644,11 @@ exports[`public examples route cleanly (estimated card sizes) > event-driven-dat
     "id": "airflow-to-dbt",
     "points": [
       {
-        "x": 2057,
+        "x": 2049,
         "y": 152,
       },
       {
-        "x": 2057,
+        "x": 2049,
         "y": 236,
       },
       {
@@ -1648,11 +1669,11 @@ exports[`public examples route cleanly (estimated card sizes) > event-driven-dat
         "y": 363,
       },
       {
-        "x": 1876.5,
+        "x": 1872.5,
         "y": 363,
       },
       {
-        "x": 1876.5,
+        "x": 1872.5,
         "y": 469,
       },
       {
@@ -1669,11 +1690,11 @@ exports[`public examples route cleanly (estimated card sizes) > event-driven-dat
         "y": 596,
       },
       {
-        "x": 1876.5,
+        "x": 1872.5,
         "y": 596,
       },
       {
-        "x": 1876.5,
+        "x": 1872.5,
         "y": 483,
       },
       {
@@ -2771,11 +2792,11 @@ exports[`public examples route cleanly (estimated card sizes) > notification-fan
       },
       {
         "x": 1483,
-        "y": 196,
+        "y": 76,
       },
       {
         "x": 1560,
-        "y": 196,
+        "y": 76,
       },
     ],
   },
@@ -2818,11 +2839,11 @@ exports[`public examples route cleanly (estimated card sizes) > notification-fan
     "points": [
       {
         "x": 1780,
-        "y": 196,
+        "y": 76,
       },
       {
         "x": 1940,
-        "y": 196,
+        "y": 76,
       },
     ],
   },
@@ -2857,11 +2878,11 @@ exports[`public examples route cleanly (estimated card sizes) > notification-fan
     "points": [
       {
         "x": 2160,
-        "y": 196,
+        "y": 76,
       },
       {
         "x": 2320,
-        "y": 196,
+        "y": 76,
       },
     ],
   },
@@ -2888,6 +2909,32 @@ exports[`public examples route cleanly (estimated card sizes) > notification-fan
       {
         "x": 2320,
         "y": 436,
+      },
+    ],
+  },
+  {
+    "id": "email-sender-to-key-vault",
+    "points": [
+      {
+        "x": 2050,
+        "y": 112,
+      },
+      {
+        "x": 2050,
+        "y": 160,
+      },
+    ],
+  },
+  {
+    "id": "sms-limiter-to-key-vault",
+    "points": [
+      {
+        "x": 2050,
+        "y": 280,
+      },
+      {
+        "x": 2050,
+        "y": 232,
       },
     ],
   },
@@ -3239,6 +3286,19 @@ exports[`public examples route cleanly (estimated card sizes) > outbox-saga-chec
       },
     ],
   },
+  {
+    "id": "payment-svc-to-vault",
+    "points": [
+      {
+        "x": 2050,
+        "y": 552,
+      },
+      {
+        "x": 2050,
+        "y": 640,
+      },
+    ],
+  },
 ]
 `;
 
@@ -3261,11 +3321,11 @@ exports[`public examples route cleanly (estimated card sizes) > rag-assistant.js
     "id": "rag-api-to-cache",
     "points": [
       {
-        "x": 543.5,
+        "x": 536.5,
         "y": 232,
       },
       {
-        "x": 543.5,
+        "x": 536.5,
         "y": 276,
       },
       {
@@ -3419,6 +3479,14 @@ exports[`public examples route cleanly (estimated card sizes) > rag-assistant.js
     "points": [
       {
         "x": 1041,
+        "y": 523,
+      },
+      {
+        "x": 1110.5,
+        "y": 523,
+      },
+      {
+        "x": 1110.5,
         "y": 516,
       },
       {
@@ -3444,6 +3512,52 @@ exports[`public examples route cleanly (estimated card sizes) > rag-assistant.js
       },
       {
         "x": 910,
+        "y": 392,
+      },
+    ],
+  },
+  {
+    "id": "rag-api-to-vault",
+    "points": [
+      {
+        "x": 550.5,
+        "y": 232,
+      },
+      {
+        "x": 550.5,
+        "y": 276,
+      },
+      {
+        "x": 1290,
+        "y": 276,
+      },
+      {
+        "x": 1290,
+        "y": 320,
+      },
+    ],
+  },
+  {
+    "id": "embed-worker-to-vault",
+    "points": [
+      {
+        "x": 1041,
+        "y": 509,
+      },
+      {
+        "x": 1110.5,
+        "y": 509,
+      },
+      {
+        "x": 1110.5,
+        "y": 436,
+      },
+      {
+        "x": 1290,
+        "y": 436,
+      },
+      {
+        "x": 1290,
         "y": 392,
       },
     ],
@@ -3622,6 +3736,27 @@ exports[`public examples route cleanly (estimated card sizes) > webhook-ingestio
       {
         "x": 1290,
         "y": 512,
+      },
+    ],
+  },
+  {
+    "id": "receiver-to-vault",
+    "points": [
+      {
+        "x": 911,
+        "y": 352,
+      },
+      {
+        "x": 911,
+        "y": 396,
+      },
+      {
+        "x": 910,
+        "y": 396,
+      },
+      {
+        "x": 910,
+        "y": 440,
       },
     ],
   },

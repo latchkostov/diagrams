@@ -132,8 +132,16 @@
       "label": "On-call engineer",
       "sublabel": "Runbook: replay DLQ",
       "x": 1180,
-      "y": 600,
-      "props": { "ratePerSec": 0, "messageType": "ReplayRequested" }
+      "y": 600
+    },
+    {
+      "id": "vault",
+      "stencil": "vault",
+      "label": "Vault",
+      "sublabel": "HMAC signing secrets",
+      "x": 800,
+      "y": 440,
+      "group": "k8s"
     }
   ],
   "edges": [
@@ -230,8 +238,17 @@
       "from": "operator",
       "to": "replay",
       "label": "Start replay",
-      "kind": "sync",
-      "props": { "travelMs": 200, "filter": [] }
+      "kind": "async",
+      "relation": "depends"
+    },
+    {
+      "id": "receiver-to-vault",
+      "from": "receiver",
+      "to": "vault",
+      "kind": "async",
+      "relation": "secret",
+      "sourceSide": "bottom",
+      "targetSide": "top"
     }
   ],
   "simulations": [
