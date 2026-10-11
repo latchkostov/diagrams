@@ -344,7 +344,8 @@
           "value": 0,
           "when": "end"
         }
-      ]
+      ],
+      "scale": 5
     },
     {
       "id": "search-slow",
@@ -447,7 +448,8 @@
           "value": 200,
           "when": "end"
         }
-      ]
+      ],
+      "scale": 2
     }
   ]
 }

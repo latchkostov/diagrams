@@ -1,6 +1,6 @@
 // Public contract for the simulation engine. The engine (src/sim/engine.ts) is pure TypeScript —
 // no DOM, no React — so it can be unit-tested deterministically. The UI drives it with step(dt)
-// from requestAnimationFrame and renders snapshot() each frame. Semantics: docs/SIMULATION.md.
+// from requestAnimationFrame and renders frame() each frame. Semantics: docs/SIMULATION.md.
 
 import type { DiagramFile, Expectation, SimRole } from "../model/types";
 
@@ -35,7 +35,7 @@ export interface NodeSimState {
   backlog: number;
   /** Per consumer group lag (topics / streams / queues). Key = group name. */
   lag: Record<string, number>;
-  /** Messages currently being processed (processors) — at most `concurrency`. */
+  /** Messages currently being processed, including blocked in-place retries. */
   inFlight: number;
   /** Total messages successfully handled / stored / emitted. */
   processed: number;
@@ -47,6 +47,10 @@ export interface NodeSimState {
   dropped: number;
   /** Smoothed throughput in messages / second (processed). */
   throughput: number;
+  /** Configured and partition-assigned instances (not current busy counts). */
+  replicas?: number;
+  activeReplicas?: number;
+  idleReplicas?: number;
 }
 
 export interface EdgeSimState {
@@ -69,7 +73,11 @@ export interface SimEvent {
   text: string;
 }
 
+export type SimFrame = Pick<SimSnapshot, "time" | "particles" | "nodes" | "inSystem" | "scale">;
+
 export interface SimSnapshot {
+  /** Real messages per simulated message. Default 1. */
+  scale?: number;
   /** Simulation clock in ms (scaled by speed). */
   time: number;
   particles: Particle[];
@@ -96,9 +104,12 @@ export interface NodeSimProps {
   jitter?: number;
   /** Processors: probability 0..1 that processing a message fails. Default 0. */
   failureRate?: number;
+  /** Broker deliveries: requeue (default) or hold the slot and retry in place. */
+  retry?: "requeue" | "inplace";
+  retryBackoffMs?: number;
   /** Brokers (topic/queue/stream): deliveries before dead-lettering. Default 3. */
   maxDeliveryCount?: number;
-  /** Topics / streams: max in-flight deliveries per consumer group. Default 3. */
+  /** Topics / streams: available replica assignments per consumer group. Default 3. */
   partitions?: number;
   /** Message type emitted by sources / injection. Default derived from node label. */
   messageType?: string;
@@ -111,8 +122,10 @@ export interface NodeSimProps {
 export interface EdgeSimProps {
   /** Consumer group for edges leaving a topic/stream. Edges sharing a group compete; default = edge id. */
   group?: string;
+  /** Independent probability for a source/processor/store fan-out copy. Default 1. */
+  share?: number;
   /** Marks this edge as the dead-letter path of its source broker. Also inferred when the target
-   *  node's label/sublabel matches /dlq|dead.?letter/i. */
+   *  node's label/sublabel matches /dlq|dead.?letter/i on broker-to-broker/store edges. False opts out. */
   dlq?: boolean;
   /** Travel time in ms at 1x speed. Default 900 (async) / 450 (sync). */
   travelMs?: number;
@@ -148,8 +161,14 @@ export interface SimEngine {
   load(diagram: DiagramFile): void;
   /** Advance the simulation by dtMs of wall time (multiplied by speed). Internally fixed-step. */
   step(dtMs: number): void;
-  /** Current state for rendering. Cheap enough to call every frame. */
+  /** Full inspection state, including a detached copy of the recent event log. */
   snapshot(): SimSnapshot;
+  /** Detached rendering state without edge counters or event-log copies. */
+  frame(): SimFrame;
+  /** Sampling weight, used by the runner; direct inject still takes simulated counts. */
+  setScale(scale: number): void;
+  /** Capacity multiplier changes replicas without overwriting base node props. */
+  setCapacityMultiplier(multiplier: number): void;
   /** Inject `count` messages at a node as if it had just produced/received them. */
   inject(nodeId: string, count: number, opts?: InjectOptions): void;
   setNodeStatus(nodeId: string, status: NodeStatus): void;
@@ -169,6 +188,7 @@ export interface EngineOptions {
   roleOf?: (stencilId: string) => SimRole;
   /** Hard cap on live particles; beyond it messages still flow but aren't drawn. Default 1500. */
   maxParticles?: number;
+  scale?: number;
 }
 
 // ---------- Simulation runner (src/sim/simulation.ts) ----------
@@ -204,6 +224,8 @@ export interface SimulationRunState {
   expectations: ExpectationState[];
   /** Static markers for drawing the timeline (computed once per load). */
   markers: TimelineMarker[];
+  scale?: number;
+  multipliers?: { traffic: number; capacity: number };
 }
 
 export interface SimulationRun {
@@ -213,6 +235,8 @@ export interface SimulationRun {
   /** Update both the runner clock and engine without replacing caller-owned methods. */
   setSpeed(speed: number): void;
   state(): SimulationRunState;
+  /** Partial live patch; restart restores saved multipliers. */
+  setMultipliers(patch: { traffic?: number; capacity?: number }): void;
   /** Continue after a pausing note. */
   resume(): void;
   /** Start over from t=0 with the same seed. */

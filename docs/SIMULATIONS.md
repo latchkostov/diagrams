@@ -76,13 +76,13 @@ Messages carry a `type`. Two small props make flows realistic without code:
 ## Runner semantics (`createSimulationRun`)
 
 - Loads the diagram into an engine with the simulation's `seed`, applies `setup`, then plays.
-- **Traffic:** each profile has a rate function r(t) (msgs/s); the runner integrates it with an
-  accumulator each step and calls `engine.inject(node, n, { type })` (bursts use `spreadMs`).
+- **Traffic:** each profile has a rate function r(t) in real msgs/s; the runner integrates it with an
+  accumulator each step, applies `multipliers.traffic / scale`, and calls `engine.inject(node, n, { type })` (bursts use `spreadMs`).
   `trafficRateAt(shape, t)` is exported for previews (sparklines in the editor).
 - **Timeline:** actions fire when sim time crosses `atMs`, in order. A `note` with `pause: true` sets
   `waiting` until `resume()`.
 - **Expectations:** evaluated every step. `always` fails on first violation; `eventually` passes on first
-  success; `end` / `at` are pending until checked. Status is `pending | pass | fail`, and the latest value is kept.
+  success; `end` / `at` are pending until checked. Status is `pending | pass | fail`, and the latest value is kept in real units.
 - **Done:** at `durationMs`, or once traffic and timeline are finished and nothing is in the system
   (plus a short drain grace), with a hard cap.
 - Deterministic: same diagram + simulation + seed ⇒ same run.
@@ -96,3 +96,44 @@ Messages carry a `type`. Two small props make flows realistic without code:
   sparkline), add timeline steps (pick node, action, time), add expectations (metric picker, op, value).
 - **Quick start from the canvas:** right-click a node → _Simulate from here…_, e.g. "Send a burst of
   100 `MemberJoined`", which creates a simulation you can save, tweak and replay.
+
+## Inputs & capacity
+
+Save entry rates/counts in real units. `scale` is a sampling weight, not a traffic multiplier:
+`scale: 50` means one animated dot represents 50 messages. `autoScale(simulation, diagram)` chooses
+a round 1/2/5-series value for at most ~60 entry dots/s. Exact low-count presentations can use 1;
+coarse sampling rounds away a final remainder smaller than one dot.
+
+```jsonc
+{
+  "id": "black-friday",
+  "title": "Black Friday: 2,000 orders/s",
+  "scale": 50,
+  "multipliers": { "traffic": 1, "capacity": 1 },
+  "setup": { "props": { "payments": { "replicas": 6, "concurrency": 64, "jitter": 0.2 } } },
+  "traffic": [
+    { "id": "orders", "node": "shopper", "shape": { "kind": "constant", "ratePerSec": 2000, "durationMs": 10000 } },
+  ],
+}
+```
+
+`createSimulationRun` exposes `setMultipliers({ traffic?, capacity? })` for live sliders. Capacity
+multiplies base replicas with rounding and a minimum of one, respecting topic partitions. It does
+not overwrite saved/setup/timeline props. Traffic applies to future input; previously scheduled burst
+batches remain fixed. Restart restores saved values. `state()` includes the current scale/multipliers.
+
+For the panel, `analyzeCapacity(diagram, simulation)` returns real per-node `capacity`, `offered`,
+`utilization`, replica assignments, a bottleneck node and a human suggestion. Recompute with current
+slider values and setup overrides, without starting a run. A false `converged` flags cycle uncertainty.
+The analysis uses nominal peak demand; gateway/store capacities are single-lane planning estimates,
+while playback permits parallel requests. See `docs/SIMULATION.md` for assumptions and exact routing.
+
+For rendering, use `engine.frame()`; detailed event inspection still uses `snapshot()`. Both expose
+`scale`. Convert node message metrics with `realNodeMetrics(node, scale)`; keep replicas, clocks and
+particle geometry unscaled. Runner expectation values already use real units and need no conversion.
+
+The public scenarios now save explicit scales. Kafka Black Friday sends 2,000 real orders/s with scale
+50 and a matching service fleet. The partition-hot-spot scenario uses 64 replicas at concurrency 1,
+so increasing partitions actually activates idle instances. Poison invoices demonstrate in-place
+retries with backoff. Other presentations sample batches and spikes while preserving their real-count
+expectations. Edge `share` models optional branches; `retry` and `retryBackoffMs` control broker retries.

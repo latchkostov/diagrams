@@ -415,7 +415,8 @@
           "value": 0,
           "when": "always"
         }
-      ]
+      ],
+      "scale": 2
     },
     {
       "id": "poison",
@@ -501,11 +502,14 @@
       "setup": {
         "props": {
           "worker": {
-            "failureRate": 1
+            "failureRate": 1,
+            "retry": "inplace",
+            "retryBackoffMs": 100
           }
         }
       },
-      "durationMs": 20000
+      "durationMs": 20000,
+      "scale": 1
     }
   ]
 }

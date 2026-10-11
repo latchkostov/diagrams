@@ -359,35 +359,17 @@
   "simulations": [
     {
       "id": "black-friday",
-      "title": "Black Friday: 500 orders in 10 s",
+      "title": "Black Friday: 2,000 orders/s",
       "seed": 7,
       "traffic": [
         {
-          "id": "ramp",
+          "id": "checkouts",
           "node": "shopper",
           "messageType": "OrderRequest",
-          "label": "Checkout demand ramps up",
+          "label": "Black Friday: 2,000 orders per second",
           "shape": {
-            "kind": "ramp",
-            "stages": [
-              {
-                "durationMs": 10000,
-                "targetRate": 60
-              }
-            ]
-          }
-        },
-        {
-          "id": "spike",
-          "node": "shopper",
-          "messageType": "OrderRequest",
-          "label": "Flash-sale spike",
-          "shape": {
-            "kind": "spike",
-            "baseRate": 10,
-            "peakRate": 60,
-            "atMs": 4000,
-            "peakMs": 2000,
+            "kind": "constant",
+            "ratePerSec": 2000,
             "durationMs": 10000
           }
         }
@@ -397,7 +379,7 @@
           "atMs": 0,
           "action": {
             "do": "note",
-            "text": "500 checkouts. Each order fans out to inventory, payments and notifications.",
+            "text": "20,000 checkouts at 2,000 orders/s. Each dot represents 50 orders; independent groups reserve stock, authorize payment and notify customers.",
             "focus": ["shopper", "order-events"]
           }
         },
@@ -413,24 +395,24 @@
       "expectations": [
         {
           "id": "stock",
-          "label": "All 500 orders reserve stock",
+          "label": "All 20,000 orders reserve stock",
           "metric": {
             "node": "stock-db",
             "field": "processed"
           },
           "op": "==",
-          "value": 500,
+          "value": 20000,
           "when": "end"
         },
         {
           "id": "payments",
-          "label": "All 500 payments are recorded",
+          "label": "All 20,000 payments are recorded",
           "metric": {
             "node": "payment-db",
             "field": "processed"
           },
           "op": "==",
-          "value": 500,
+          "value": 20000,
           "when": "end"
         },
         {
@@ -441,18 +423,18 @@
             "field": "processed"
           },
           "op": "==",
-          "value": 500,
+          "value": 20000,
           "when": "end"
         },
         {
           "id": "orders",
-          "label": "500 orders created and 500 payment updates",
+          "label": "20,000 orders created and 20,000 payment updates",
           "metric": {
             "node": "order-db",
             "field": "processed"
           },
           "op": "==",
-          "value": 1000,
+          "value": 40000,
           "when": "end"
         },
         {
@@ -477,7 +459,25 @@
           "value": 0,
           "when": "always"
         }
-      ]
+      ],
+      "scale": 50,
+      "description": "20,000 checkouts in ten seconds; each dot represents 50 orders.",
+      "setup": {
+        "props": {
+          "orders": {
+            "replicas": 12
+          },
+          "inventory": {
+            "replicas": 6
+          },
+          "payments": {
+            "replicas": 6
+          },
+          "notifications": {
+            "replicas": 6
+          }
+        }
+      }
     },
     {
       "id": "payments-outage",
@@ -599,7 +599,8 @@
           "value": 300,
           "when": "end"
         }
-      ]
+      ],
+      "scale": 1
     }
   ]
 }
