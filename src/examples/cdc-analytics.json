@@ -10,16 +10,16 @@
       "tone": "onprem",
       "x": 0,
       "y": 240,
-      "width": 300,
+      "width": 321,
       "height": 152
     },
     {
       "id": "platform",
       "label": "Kubernetes · CDC platform",
       "tone": "k8s",
-      "x": 360,
+      "x": 380,
       "y": 0,
-      "width": 1020,
+      "width": 1100,
       "height": 632
     }
   ],
@@ -41,7 +41,7 @@
       "stencil": "kafka.connect",
       "label": "Debezium SQL Server",
       "sublabel": "retail-cdc · snapshot then tail",
-      "x": 400,
+      "x": 420,
       "y": 280,
       "group": "platform",
       "props": {
@@ -56,7 +56,7 @@
       "stencil": "kafka.topic",
       "label": "retail.dbo.orders",
       "sublabel": "CDC envelope · key: order_id",
-      "x": 760,
+      "x": 800,
       "y": 160,
       "group": "platform",
       "props": {
@@ -68,7 +68,7 @@
       "stencil": "kafka.topic",
       "label": "retail.dbo.customers",
       "sublabel": "CDC envelope · key: customer_id",
-      "x": 760,
+      "x": 800,
       "y": 400,
       "group": "platform",
       "props": {
@@ -80,7 +80,7 @@
       "stencil": "service.java",
       "label": "Retail projections",
       "sublabel": "Kafka Streams · group: retail-projector",
-      "x": 1120,
+      "x": 1180,
       "y": 280,
       "group": "platform",
       "props": {
@@ -95,7 +95,7 @@
       "stencil": "elasticsearch",
       "label": "Retail search",
       "sublabel": "orders-v1 · customer-v1 indexes",
-      "x": 1480,
+      "x": 1560,
       "y": 160,
       "props": {}
     },
@@ -104,7 +104,7 @@
       "stencil": "snowflake",
       "label": "Retail warehouse",
       "sublabel": "RETAIL_ANALYTICS · MERGE by key",
-      "x": 1480,
+      "x": 1560,
       "y": 400,
       "props": {}
     },
@@ -113,7 +113,7 @@
       "stencil": "kafka.connect",
       "label": "S3 sink connector",
       "sublabel": "retail-raw-sink · Parquet",
-      "x": 1120,
+      "x": 1180,
       "y": 520,
       "group": "platform",
       "props": {
@@ -128,7 +128,7 @@
       "stencil": "aws.s3",
       "label": "Retail raw lake",
       "sublabel": "s3://retail-cdc-raw/table/date/",
-      "x": 1480,
+      "x": 1560,
       "y": 520,
       "props": {}
     },
@@ -137,7 +137,7 @@
       "stencil": "kafka.schema-registry",
       "label": "CDC schemas",
       "sublabel": "Avro envelopes · compatibility checks",
-      "x": 760,
+      "x": 800,
       "y": 40,
       "group": "platform",
       "props": {}

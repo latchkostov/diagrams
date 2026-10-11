@@ -8,9 +8,9 @@
       "id": "azure",
       "label": "Azure · enterprise integration",
       "tone": "azure",
-      "x": 360,
+      "x": 380,
       "y": 0,
-      "width": 2100,
+      "width": 2240,
       "height": 632
     }
   ],
@@ -31,7 +31,7 @@
       "stencil": "azure.api-management",
       "label": "Partner API",
       "sublabel": "/v1/invoices · JWT validation",
-      "x": 400,
+      "x": 420,
       "y": 280,
       "group": "azure",
       "props": {}
@@ -41,7 +41,7 @@
       "stencil": "azure.functions",
       "label": "Invoice intake",
       "sublabel": "Validate · normalize · publish",
-      "x": 760,
+      "x": 800,
       "y": 280,
       "group": "azure",
       "props": {
@@ -57,7 +57,7 @@
       "stencil": "azure.service-bus.topic",
       "label": "invoices",
       "sublabel": "InvoiceAccepted · session: tenantId",
-      "x": 1120,
+      "x": 1180,
       "y": 280,
       "group": "azure",
       "props": {
@@ -70,7 +70,7 @@
       "stencil": "generic.queue",
       "label": "approval-workflow",
       "sublabel": "Subscription · amount > 10000",
-      "x": 1480,
+      "x": 1560,
       "y": 160,
       "group": "azure",
       "props": {
@@ -83,7 +83,7 @@
       "stencil": "generic.queue",
       "label": "ledger-posting",
       "sublabel": "Subscription · all accepted invoices",
-      "x": 1480,
+      "x": 1560,
       "y": 400,
       "group": "azure",
       "props": {
@@ -95,7 +95,7 @@
       "stencil": "azure.logic-apps",
       "label": "Invoice approval",
       "sublabel": "Finance approval workflow",
-      "x": 1840,
+      "x": 1940,
       "y": 160,
       "group": "azure",
       "props": {
@@ -109,7 +109,7 @@
       "stencil": "azure.container-apps",
       "label": "Ledger worker",
       "sublabel": "KEDA · group: ledger-posting",
-      "x": 1840,
+      "x": 1940,
       "y": 400,
       "group": "azure",
       "props": {
@@ -124,7 +124,7 @@
       "stencil": "azure.service-bus.queue",
       "label": "invoice.commands",
       "sublabel": "PostInvoice · session: tenantId",
-      "x": 2200,
+      "x": 2320,
       "y": 160,
       "group": "azure",
       "props": {
@@ -138,7 +138,7 @@
       "stencil": "azure.service-bus.queue",
       "label": "invoice.commands DLQ",
       "sublabel": "$DeadLetterQueue · operator replay",
-      "x": 2200,
+      "x": 2320,
       "y": 40,
       "group": "azure",
       "props": {
@@ -150,7 +150,7 @@
       "stencil": "azure.cosmos-db",
       "label": "Invoice ledger",
       "sublabel": "Partition key: /tenantId",
-      "x": 2200,
+      "x": 2320,
       "y": 400,
       "group": "azure",
       "props": {}
@@ -160,7 +160,7 @@
       "stencil": "azure.blob-storage",
       "label": "Invoice originals",
       "sublabel": "invoices-raw · immutable archive",
-      "x": 1120,
+      "x": 1180,
       "y": 520,
       "group": "azure",
       "props": {}
@@ -170,7 +170,7 @@
       "stencil": "azure.key-vault",
       "label": "Integration secrets",
       "sublabel": "ERP credentials · managed identity",
-      "x": 760,
+      "x": 800,
       "y": 40,
       "group": "azure",
       "props": {}
@@ -180,7 +180,7 @@
       "stencil": "azure.app-insights",
       "label": "Integration telemetry",
       "sublabel": "Trace by invoiceId · DLQ alerts",
-      "x": 760,
+      "x": 800,
       "y": 520,
       "group": "azure",
       "props": {}

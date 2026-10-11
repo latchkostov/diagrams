@@ -27,6 +27,8 @@ import { AllStencils, NODE_STATES, NodeMatrix, NodePlayground } from "./NodeShow
 import type { ControlDef, Preset } from "./types";
 import { LiveLabStage } from "../live/LiveLabStage";
 import { badgeStatesDiagram, noteStatesDiagram, particleStressDiagram, type NoteState } from "../live/labDiagrams";
+import { OverlapAudit } from "./OverlapAudit";
+import { obstacleCourseDiagram } from "./routingDiagrams";
 
 const variantOptions = Object.entries(nodeVariants).map(([value, v]) => ({ value, label: v.label }));
 const variantsOf = (v: unknown): NodeVariantId[] =>
@@ -461,6 +463,43 @@ const livePresets: Preset[] = [
     ),
 ];
 
+// ---------- layout quality (routing, labels, overlap audit) ----------
+
+const auditSources: Record<string, { label: string; diagram: () => DiagramFile }> = {
+  ...Object.fromEntries(examples.map((e) => [e.slug, { label: e.diagram.title, diagram: () => e.diagram }])),
+  obstacles: { label: "Routing obstacle course", diagram: () => obstacleCourseDiagram() },
+  "stress-150": { label: "Stress: 150 nodes", diagram: () => stressDiagram({ nodes: 150, seed: 1, density: 0.25, groups: false, direction: "LR" }) },
+};
+const auditDefault = examples.some((e) => e.slug === "kafka-order-pipeline") ? "kafka-order-pipeline" : Object.keys(auditSources)[0];
+
+const layoutPresets: Preset[] = [
+  {
+    kind: "diagram",
+    id: "edges-obstacles",
+    title: "Routing obstacle course",
+    group: "Edges",
+    description: "Edges that skip columns, fan out from one side, run backwards and come in reverse pairs: routes go around cards, ports spread, parallel runs separate.",
+    controls: [
+      { type: "number", key: "cols", label: "Columns", default: 4, min: 3, max: 8 },
+      { type: "number", key: "rows", label: "Rows", default: 3, min: 1, max: 7 },
+      { type: "number", key: "gap", label: "Column pitch", default: 400, min: 300, max: 600, step: 20 },
+    ],
+    diagram: (v) => obstacleCourseDiagram(Number(v.cols), Number(v.rows), Number(v.gap)),
+  },
+  {
+    kind: "render",
+    id: "overlap-audit",
+    title: "Overlap audit",
+    group: "Diagrams",
+    description: "A diagram on the real canvas with every overlap outlined: nodes, label pills, routes through cards, shared tracks and group headers. Drag nodes to watch it update.",
+    controls: [{ type: "select", key: "diagram", label: "Diagram", default: auditDefault, options: Object.entries(auditSources).map(([value, s]) => ({ value, label: s.label })) }],
+    render: (v) => {
+      const src = auditSources[String(v.diagram)] ?? auditSources[auditDefault];
+      return <OverlapAudit key={String(v.diagram)} diagram={src.diagram()} />;
+    },
+  },
+];
+
 export const presets: readonly Preset[] = [
   ...nodePresets,
   ...edgePresets,
@@ -468,6 +507,7 @@ export const presets: readonly Preset[] = [
   ...simPresets,
   ...livePresets,
   ...playgroundPresets,
+  ...layoutPresets,
 ];
 
 export const DEFAULT_PRESET_ID = "nodes-states";

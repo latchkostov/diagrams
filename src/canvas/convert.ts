@@ -1,4 +1,5 @@
 import { DIAGRAM_FORMAT, type DiagramEdge, type DiagramFile, type DiagramGroup, type DiagramNode } from "../model/types";
+import { getStencil } from "../stencils/registry";
 import {
   GROUP_PREFIX,
   type DiagramFlowEdge,
@@ -13,8 +14,64 @@ import {
  */
 export type DiagramMeta = Pick<DiagramFile, "title" | "description" | "direction" | "simulations">;
 
+// ---------------------------------------------------------------- accessible names
+// React Flow renders nodes and edges as focusable elements named by `ariaLabel`, so every one
+// gets a name derived from what's drawn: "Order service, .NET Service, processor".
+
+export function nodeAriaLabel(d: { stencil: string; label: string }): string {
+  const s = getStencil(d.stencil);
+  return [d.label || s.label, s.label, s.simRole !== "none" ? s.simRole : null].filter(Boolean).join(", ");
+}
+
+export const groupAriaLabel = (label: string) => `${label || "Untitled"}, boundary`;
+
+export function edgeAriaLabel(from: string, to: string, kind: "async" | "sync" | undefined, label?: string): string {
+  return `${from} to ${to}, ${kind === "sync" ? "request" : "message"}${label ? `: ${label}` : ""}`;
+}
+
+const nodeAriaCopies = new WeakMap<object, FlowNode>();
+
+/**
+ * Nodes with up-to-date accessible names (labels change by inline edit, the inspector, undo...).
+ * Unchanged nodes pass through; refreshed copies are cached per node object, so React Flow sees
+ * stable identities and does no extra work.
+ */
+export function withNodeAria(nodes: FlowNode[]): FlowNode[] {
+  let changed = false;
+  const out = nodes.map((n) => {
+    const want = n.type === "boundary" ? groupAriaLabel(n.data.label) : nodeAriaLabel(n.data);
+    if (n.ariaLabel === want) return n;
+    changed = true;
+    const cached = nodeAriaCopies.get(n);
+    if (cached?.ariaLabel === want) return cached;
+    const copy = { ...n, ariaLabel: want } as FlowNode;
+    nodeAriaCopies.set(n, copy);
+    return copy;
+  });
+  return changed ? out : nodes;
+}
+
+const edgeAriaCopies = new WeakMap<object, DiagramFlowEdge>();
+
+/** Edges with accessible names that follow the current node labels (see withNodeAria). */
+export function withEdgeAria(edges: DiagramFlowEdge[], labelOf: (id: string) => string): DiagramFlowEdge[] {
+  let changed = false;
+  const out = edges.map((e) => {
+    const want = edgeAriaLabel(labelOf(e.source), labelOf(e.target), e.data?.kind, e.data?.label);
+    if (e.ariaLabel === want) return e;
+    changed = true;
+    const cached = edgeAriaCopies.get(e);
+    if (cached?.ariaLabel === want) return cached;
+    const copy = { ...e, ariaLabel: want };
+    edgeAriaCopies.set(e, copy);
+    return copy;
+  });
+  return changed ? out : edges;
+}
+
 export const groupToFlow = (g: DiagramGroup): GroupFlowNode => ({
   id: GROUP_PREFIX + g.id,
+  ariaLabel: groupAriaLabel(g.label),
   type: "boundary",
   position: { x: g.x, y: g.y },
   width: g.width,
@@ -27,6 +84,7 @@ export const groupToFlow = (g: DiagramGroup): GroupFlowNode => ({
 export const nodeToFlow = (n: DiagramNode): DiagramFlowNode => ({
   id: n.id,
   type: "diagram",
+  ariaLabel: nodeAriaLabel(n),
   position: { x: n.x, y: n.y },
   data: { stencil: n.stencil, label: n.label, sublabel: n.sublabel, group: n.group, props: n.props },
 });
@@ -44,10 +102,11 @@ export const edgeToFlow = (e: DiagramEdge): DiagramFlowEdge => ({
  * parents, so every node keeps the absolute coordinates stored in the file.
  */
 export function toFlow(d: DiagramFile): { meta: DiagramMeta; nodes: FlowNode[]; edges: DiagramFlowEdge[] } {
+  const labels = new Map(d.nodes.map((n) => [n.id, n.label || n.id]));
   return {
     meta: { title: d.title, description: d.description, direction: d.direction, simulations: d.simulations },
     nodes: [...(d.groups ?? []).map(groupToFlow), ...d.nodes.map(nodeToFlow)],
-    edges: d.edges.map(edgeToFlow),
+    edges: withEdgeAria(d.edges.map(edgeToFlow), (id) => labels.get(id) ?? id),
   };
 }
 

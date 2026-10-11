@@ -1,6 +1,6 @@
-/** Edge path styles selectable in the harness. The edge component maps each to an @xyflow path fn. */
+/** Edge path styles. "smoothstep" (shown as Orthogonal) routes around nodes; bezier and straight draw direct curves. */
 export const edgeStyles = [
-  { id: "smoothstep", label: "Smooth step" },
+  { id: "smoothstep", label: "Orthogonal" },
   { id: "bezier", label: "Bezier" },
   { id: "straight", label: "Straight" },
 ] as const;

@@ -811,6 +811,38 @@
   font-size: 15px;
 }
 
+/* Nodes under the card (zoomed / panned): fold to a title chip; hover shows the rest again. */
+.diagram-card {
+  transition: opacity 0.18s, padding 0.18s;
+}
+
+.diagram-card.is-compact:not(:hover) {
+  padding: 6px 12px;
+  opacity: 0.86;
+}
+
+.diagram-card.is-compact:not(:hover) h1 {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diagram-card.is-compact:not(:hover) > :not(h1) {
+  display: none;
+}
+
+.diagram-card.is-large.is-compact:not(:hover) {
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface) 86%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.diagram-card.is-large.is-compact:not(:hover) h1 {
+  font-size: 16px;
+}
+
 .present-exit {
   position: absolute;
   top: 24px;
