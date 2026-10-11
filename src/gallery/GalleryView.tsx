@@ -579,19 +579,20 @@ function StencilTile({ stencil: s, open, onOpen, onMenu, onAdd, onCopyId, onDrag
             missing {s.icon}.svg
           </span>
         )}
-        <button
+        {/* Pointer shortcuts only: the tile is a button, so it can't hold buttons. Keyboard and screen
+            readers reach Add and Copy id through the tile's menu (Shift+F10) and the details drawer. */}
+        <span
           className="tile-add"
+          aria-hidden="true"
           onClick={(e) => {
             e.stopPropagation();
             onAdd();
           }}
-          onKeyDown={(e) => e.stopPropagation()}
           title="Add to current diagram"
-          aria-label={`Add ${s.label} to current diagram`}
           data-testid={`tile-add-${s.id}`}
         >
           <Icon name="plus" size={14} />
-        </button>
+        </span>
       </div>
       <div className="tile-body">
         <div className="tile-row">
@@ -606,19 +607,19 @@ function StencilTile({ stencil: s, open, onOpen, onMenu, onAdd, onCopyId, onDrag
         </div>
         <p className="tile-desc">{s.description}</p>
         <div className="tile-foot">
-          <button
+          <span
             className="tile-id"
+            aria-hidden="true"
             title="Copy stencil id"
             onClick={(e) => {
               e.stopPropagation();
               onCopyId();
             }}
-            onKeyDown={(e) => e.stopPropagation()}
             data-testid={`tile-copy-${s.id}`}
           >
             <span>{s.id}</span>
             <Icon name="copy" size={11} />
-          </button>
+          </span>
         </div>
       </div>
     </div>

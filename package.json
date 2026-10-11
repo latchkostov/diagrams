@@ -16,6 +16,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:coverage": "vitest run --coverage",
+    "size": "node scripts/bundle-budget.mjs",
     "review": "bash scripts/review/run.sh",
     "build:site": "tsc --noEmit && vite build --outDir ../blog/public/tools/diagrams --emptyOutDir"
   },
@@ -28,6 +29,7 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.0",
     "@types/node": "^26.6.5",

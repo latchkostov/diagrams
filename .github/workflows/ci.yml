@@ -4,13 +4,28 @@ on:
     branches: [master]
   pull_request:
 
+# A newer push to the same branch or PR supersedes the running checks.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # GitHub sets CI=true already; explicit because the suites depend on it (Playwright retries and
+  # workers, Vitest timeouts, perfBudget scaling in src/test/perfBudget.ts).
+  CI: "true"
+
 jobs:
-  check:
+  checks:
+    name: Types, lint, unit, build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -18,13 +33,85 @@ jobs:
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
       - run: pnpm test:coverage
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
-        env:
-          CI: "true"
       - run: pnpm build
-      - uses: actions/upload-artifact@v4
-        if: failure()
+      - name: Entry chunk size budget
+        run: pnpm size
+
+  e2e:
+    name: E2E ${{ matrix.shard }}/${{ strategy.job-total }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
-          name: playwright-output
-          path: tests/.output
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+      - run: pnpm test:e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: tests/.output/blob
+          retention-days: 3
+      - name: Upload report and traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-output-${{ matrix.shard }}
+          path: |
+            tests/.output/report
+            tests/.output/results
+          retention-days: 14
+
+  e2e-report:
+    name: Merged E2E report
+    needs: e2e
+    # Only when a shard failed: one HTML report with every shard's failures and traces.
+    if: failure() && needs.e2e.result == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: blob-report-*
+          path: tests/.output/all-blob-reports
+          merge-multiple: true
+      - run: pnpm exec playwright merge-reports --reporter html tests/.output/all-blob-reports
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: tests/.output/merged-report
+          PLAYWRIGHT_HTML_OPEN: never
+      - uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-merged
+          path: tests/.output/merged-report
+          retention-days: 14
