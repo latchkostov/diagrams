@@ -20,6 +20,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
+  useNodesInitialized,
   useNodesState,
   useReactFlow,
   type Connection,
@@ -36,8 +37,9 @@ import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
 import { emptyDiagram, getAutosave, getOriginal, writeAutosave } from "../lib/diagramIO";
 import type { DiagramFile } from "../model/types";
-import { fromFlow, groupAt, toFlow, type DiagramMeta } from "./convert";
+import { fromFlow, groupAt, toFlow, withEdgeAria, withNodeAria, type DiagramMeta } from "./convert";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
+import { useCovered, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
 import { DiagramNode } from "./nodes/DiagramNode";
 import { GroupNode, toneColor } from "./nodes/GroupNode";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
@@ -63,8 +65,6 @@ const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
 // Pixel padding keeps the title card (top-left) from covering the diagram.
 const FIT: FitViewOptions = { padding: { top: "110px", right: "48px", bottom: "48px", left: "48px" }, maxZoom: 1.25 };
-// Live: keep the diagram clear of the floating control bar.
-const FIT_LIVE: FitViewOptions = { padding: { top: "110px", right: "48px", bottom: `${48 + LIVE_BAR_SPACE}px`, left: "48px" }, maxZoom: 1.25 };
 const FIT_PRESENT: FitViewOptions = { padding: { top: "190px", right: "64px", bottom: "64px", left: "64px" }, maxZoom: 1.6 };
 
 const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
@@ -150,7 +150,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     setEdges(s.edges);
   });
 
-  const fit = useCallback(() => void fitView({ ...FIT, duration: 300 }), [fitView]);
+  // Fit-view keeps content out from under the title card, minimap, controls and live bar.
+  const overlayFit = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
+  const fit = useCallback(() => overlayFit({ maxZoom: 1.25, duration: 300 }), [overlayFit]);
   const editor = useEditor({
     slug,
     meta,
@@ -194,9 +196,31 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   // Refit when chrome appears / disappears (presentation mode).
   useEffect(() => {
     // Wait for React Flow's ResizeObserver to pick up the new pane size first.
-    const id = setTimeout(() => fitView({ ...(presenting ? FIT_PRESENT : live ? FIT_LIVE : FIT), duration: 350 }), 80);
+    const id = setTimeout(
+      () =>
+        overlayFit({
+          maxZoom: (presenting ? FIT_PRESENT : FIT).maxZoom,
+          margin: presenting ? 64 : 40,
+          insets: live ? { bottom: LIVE_BAR_SPACE } : undefined,
+          duration: 350,
+        }),
+      80,
+    );
     return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit on mode changes only
   }, [presenting, live, fitView]);
+  // First fit once every node is measured (React Flow's own fit can't see the overlays).
+  const nodesReady = useNodesInitialized();
+  const firstFit = useRef(false);
+  useEffect(() => {
+    if (!nodesReady || firstFit.current) return;
+    firstFit.current = true;
+    overlayFit({ maxZoom: (presenting ? FIT_PRESENT : FIT).maxZoom, margin: presenting ? 64 : 40 });
+  }, [nodesReady, overlayFit, presenting]);
+  // The title card folds to a chip while nodes sit under it, so it never hides the diagram.
+  const card = useRef<HTMLDivElement>(null);
+  const cardCovers = useCovered(card, wrapper);
+  useOverlayTestIds(wrapper);
 
   /** Reset is a normal (undoable) edit. */
   const reset = () => {
@@ -204,7 +228,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     setMeta(f.meta);
     setNodes(f.nodes);
     setEdges(f.edges);
-    setTimeout(() => fitView({ ...FIT, duration: 350 }), 50);
+    setTimeout(() => overlayFit({ maxZoom: FIT.maxZoom, duration: 350 }), 50);
   };
 
   // New edges float (sides picked from geometry); pin a side from the menu or inspector.
@@ -347,6 +371,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const paletteHidden = paletteCollapsed || (live && !openedByHand.palette);
   const inspectorHidden = !prefs.inspector || ((live || (narrow && nothingSelected)) && !openedByHand.inspector);
   const labels = useMemo(() => new Map(diagramNodes.map((n) => [n.id, n.data.label || n.id])), [diagramNodes]);
+  // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel).
+  const ariaNodes = useMemo(() => withNodeAria(nodes), [nodes]);
+  const ariaEdges = useMemo(() => withEdgeAria(edges, (id) => labels.get(id) ?? id), [edges, labels]);
   const nodeCount = diagramNodes.length;
   const undoTitle = `Undo (${formatCombo(shortcutKeys("undo"))})`;
   const redoTitle = `Redo (${formatCombo(shortcutKeys("redo"))})`;
@@ -385,8 +412,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         >
           <EdgeMarkers />
           <ReactFlow<FlowNode, DiagramFlowEdge>
-            nodes={nodes}
-            edges={edges}
+            nodes={ariaNodes}
+            edges={ariaEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
@@ -426,7 +453,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           >
             {prefs.grid && <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />}
             {!hideChrome && (
-              <Controls showInteractive={false} position="bottom-left">
+              <Controls showInteractive={false} showFitView={false} position="bottom-left">
+                {/* Our fit keeps content clear of the title card, minimap and live bar. */}
+                <ControlButton onClick={fit} title={`Fit view (${formatCombo(shortcutKeys("fit-view"))})`} aria-label="Fit view" data-testid="fit-view-button">
+                  <Icon name="fit" size={14} />
+                </ControlButton>
                 <ControlButton onClick={editor.undo} disabled={!history.canUndo} title={undoTitle} aria-label="Undo" data-testid="undo-button">
                   <Icon name="undo" size={14} />
                 </ControlButton>
@@ -459,7 +490,13 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             />
           </ReactFlow>
 
-          <div className={`diagram-card${presenting ? " is-large" : ""}`} data-testid="diagram-card">
+          <div
+            ref={card}
+            className={`diagram-card${presenting ? " is-large" : ""}${cardCovers ? " is-compact" : ""}`}
+            data-testid="diagram-card"
+            data-canvas-overlay
+            data-collapsed={cardCovers ? "1" : undefined}
+          >
             <h1 data-testid="diagram-title">{meta.title}</h1>
             {meta.description && <p>{meta.description}</p>}
             {!hideChrome && (

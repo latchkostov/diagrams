@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export type View = "gallery" | "canvas" | "lab";
 
@@ -21,12 +21,23 @@ function read(): UrlState {
   };
 }
 
+/** Query keys owned by the live view, preserved across URL rewrites on the same diagram. */
+const LIVE_KEYS = ["live", "sim", "speed", "paused", "traffic"] as const;
+
 function write(s: UrlState, push: boolean) {
   const current = new URLSearchParams(window.location.search);
   const p = new URLSearchParams();
   p.set("view", s.view);
   if (s.view === "canvas" && s.example) p.set("example", s.example);
   if (s.view === "canvas" && s.present) p.set("present", "1");
+  // The live view owns these (src/live/urlParams.ts); keep them while the same diagram stays open
+  // (e.g. toggling presentation). Simulation ids belong to a diagram, so switching drops them.
+  if (s.view === "canvas" && current.get("view") === "canvas" && current.get("example") === (s.example ?? null)) {
+    for (const k of LIVE_KEYS) {
+      const v = current.get(k);
+      if (v !== null) p.set(k, v);
+    }
+  }
   // The Lab owns the rest of its query string (preset + control values); keep it when staying in the Lab.
   if (s.view === "lab" && current.get("view") === "lab") {
     for (const [k, v] of current) if (k !== "view") p.set(k, v);
@@ -40,7 +51,9 @@ function write(s: UrlState, push: boolean) {
 export function useUrlState(): [UrlState, (next: Partial<UrlState>, opts?: { replace?: boolean }) => void] {
   const [state, setState] = useState(read);
   const latest = useRef(state);
-  latest.current = state;
+  useLayoutEffect(() => {
+    latest.current = state;
+  }, [state]);
   useEffect(() => {
     const onPop = () => setState(read());
     window.addEventListener("popstate", onPop);

@@ -1,11 +1,37 @@
-import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from "react";
+import {
+  Component,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ErrorInfo,
+  type ReactNode,
+} from "react";
 import { examples } from "./examples";
 import { TopBar, type ExampleOption } from "./components/TopBar";
 import type { CanvasHandle } from "./canvas/CanvasView";
 import type { OpenTarget } from "./lab/LabView";
+import type { DiagramFile } from "./model/types";
 import { useUrlState, type View } from "./lib/urlState";
-import { downloadDiagram, getImported, IMPORTED_SLUG, parseDiagram, setImported, writeAutosave } from "./lib/diagramIO";
+import {
+  clearShared,
+  DIAGRAMS_CHANGED,
+  getImported,
+  getShared,
+  IMPORTED_SLUG,
+  setImported,
+  setShared,
+  SHARED_SLUG,
+  writeAutosave,
+} from "./lib/diagramIO";
 import { Icon } from "./components/Icon";
+import { useInterop, type Slot } from "./interop/useInterop";
+import { notify, Toaster } from "./interop/ui/toast";
+import { EmbedView, isEmbed } from "./interop/embed/EmbedView";
+import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
 // with the canvas), and the Lab never downloads unless someone opens ?view=lab.
@@ -13,23 +39,53 @@ const GalleryView = lazy(() => import("./gallery/GalleryView").then((m) => ({ de
 const CanvasView = lazy(() => import("./canvas/CanvasView").then((m) => ({ default: m.CanvasView })));
 const LabView = lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })));
 
-type Toast = { kind: "error" | "info"; text: string } | null;
+// Public examples by file name (the glob doesn't descend into ./private, which only loads in dev).
+const publicSlugs = new Set(
+  Object.keys(import.meta.glob("./examples/*.json")).map((p) => p.slice("./examples/".length, -".json".length)),
+);
 
 export function App() {
+  // ?embed=1 renders the read-only viewer only: no top bar, no editor.
+  const embed = useMemo(() => isEmbed(), []);
+  return (
+    <>
+      {embed ? <EmbedView /> : <MainApp />}
+      <Toaster />
+    </>
+  );
+}
+
+function MainApp() {
   const [url, setUrl] = useUrlState();
   const canvasRef = useRef<CanvasHandle>(null);
-  const [toast, setToast] = useState<Toast>(null);
-  const [importedVersion, setImportedVersion] = useState(0);
+  // Bumped whenever a slot (imported / shared) is replaced, to re-read it and remount the canvas.
+  const [slotVersion, setSlotVersion] = useState(0);
 
   const options: ExampleOption[] = useMemo(() => {
+    void slotVersion; // the trigger to re-read the stored slots from localStorage
     const list = examples.map((e) => ({ slug: e.slug, title: e.diagram.title }));
     const imported = getImported();
     if (imported) list.push({ slug: IMPORTED_SLUG, title: `Imported: ${imported.title}` });
+    const shared = getShared();
+    if (shared) list.push({ slug: SHARED_SLUG, title: `Shared: ${shared.title}` });
     return list;
-    // importedVersion is the trigger to re-read the imported diagram from localStorage.
-  }, [importedVersion]);
+  }, [slotVersion]);
 
-  const slug = options.some((o) => o.slug === url.example) ? url.example! : options[0]?.slug ?? IMPORTED_SLUG;
+  const slug = options.some((o) => o.slug === url.example) ? url.example! : (options[0]?.slug ?? IMPORTED_SLUG);
+
+  // Slots written elsewhere (gallery "New diagram", another tab): re-read options, remount the canvas.
+  useEffect(() => {
+    const bump = () => setSlotVersion((v) => v + 1);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || e.key === "diagrams.imported.v1" || e.key === "diagrams.shared.v1") bump();
+    };
+    window.addEventListener(DIAGRAMS_CHANGED, bump);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(DIAGRAMS_CHANGED, bump);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
   // Normalise the URL once we know which example is shown.
   useEffect(() => {
@@ -43,41 +99,37 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [url.present, setUrl]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), toast.kind === "error" ? 7000 : 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
+  const openSlot = useCallback(
+    (slot: Slot, d: DiagramFile) => {
+      // Validates before replacing the slot; on failure the current diagram stays (and the caller reports why).
+      if (slot === IMPORTED_SLUG) {
+        setImported(d);
+        if (slug === SHARED_SLUG) clearShared();
+      } else {
+        setShared(d);
+      }
+      setSlotVersion((v) => v + 1);
+      setUrl({ view: "canvas", example: slot, present: false });
+    },
+    [setUrl, slug],
+  );
 
-  const showImported = (title: string) => {
-    setImportedVersion((v) => v + 1);
-    setUrl({ view: "canvas", example: IMPORTED_SLUG, present: false });
-    setToast({ kind: "info", text: `Imported “${title}”.` });
-  };
-
-  const onImport = async (file: File) => {
-    const result = parseDiagram(await file.text());
-    if (!result.ok) {
-      setToast({ kind: "error", text: `Couldn't import ${file.name}. ${result.error}` });
-      return;
-    }
-    setImported(result.diagram);
-    showImported(result.diagram.title);
-  };
-
-  const onExport = () => {
-    const d = canvasRef.current?.getDiagram();
-    if (!d) return;
-    downloadDiagram(d, slug === IMPORTED_SLUG ? slugify(d.title) : slug);
-    setToast({ kind: "info", text: `Exported ${d.nodes.length} nodes and ${d.edges.length} edges.` });
-  };
+  const interop = useInterop({
+    view: url.view,
+    slug,
+    canvas: canvasRef,
+    openSlot,
+    isPublicExample: (s) => publicSlugs.has(s),
+  });
 
   const onLabOpen = (target: OpenTarget) => {
     if ("slug" in target) return setUrl({ view: "canvas", example: target.slug, present: false });
-    setImported(target.diagram);
-    showImported(target.diagram.title);
+    try {
+      openSlot(IMPORTED_SLUG, target.diagram);
+    } catch (err) {
+      notify(`Couldn't open it. ${err instanceof Error ? err.message : String(err)}`, { kind: "error" });
+    }
   };
-
   const presenting = url.view === "canvas" && url.present;
   const goTo = (view: View) => setUrl({ view, present: false });
 
@@ -90,15 +142,19 @@ export function App() {
           exampleOptions={options}
           example={slug}
           onExample={(example) => setUrl({ example })}
-          onImport={onImport}
-          onExport={onExport}
+          interop={interop}
+          shared={
+            url.view === "canvas" && slug === SHARED_SLUG
+              ? { onKeep: () => void interop.keepSharedCopy(), replaces: interop.replacesImported }
+              : undefined
+          }
           onPresent={() => setUrl({ present: true })}
         />
       )}
       <div className="app-body">
         <ViewBoundary
           // Remount (and clear the error) when the user navigates elsewhere.
-          resetKey={`${url.view}:${url.view === "canvas" ? `${slug}:${importedVersion}` : ""}`}
+          resetKey={`${url.view}:${url.view === "canvas" ? `${slug}:${slotVersion}` : ""}`}
           view={url.view}
           onClearAutosave={url.view === "canvas" ? () => writeAutosave(slug, null) : undefined}
           onGoGallery={() => goTo("gallery")}
@@ -110,7 +166,7 @@ export function App() {
               <LabView onOpen={onLabOpen} />
             ) : (
               <CanvasView
-                key={`${slug}:${importedVersion}`}
+                key={`${slug}:${slotVersion}`}
                 ref={canvasRef}
                 slug={slug}
                 presenting={presenting}
@@ -120,19 +176,10 @@ export function App() {
           </Suspense>
         </ViewBoundary>
       </div>
-      {toast && (
-        <div className={`toast toast-${toast.kind}`} role={toast.kind === "error" ? "alert" : "status"} data-testid="toast">
-          <span>{toast.text}</span>
-          <button onClick={() => setToast(null)} aria-label="Dismiss" data-testid="toast-dismiss">
-            ×
-          </button>
-        </div>
-      )}
+      {interop.layer}
     </div>
   );
 }
-
-const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "diagram";
 
 function ViewLoading() {
   return (
@@ -175,7 +222,9 @@ class ViewBoundary extends Component<BoundaryProps, { error: Error | null; key: 
     if (!error) return this.props.children;
     const { view, onClearAutosave, onGoGallery } = this.props;
     // A failed lazy chunk (e.g. after a redeploy) is fixed by reloading, not by retrying.
-    const chunkFailed = /dynamically imported module|Importing a module script failed|Failed to fetch/i.test(error.message);
+    const chunkFailed = /dynamically imported module|Importing a module script failed|Failed to fetch/i.test(
+      error.message,
+    );
     return (
       <div style={centered} data-testid="error-boundary" role="alert">
         <div
@@ -199,7 +248,13 @@ class ViewBoundary extends Component<BoundaryProps, { error: Error | null; key: 
                 : "Try again, or head back to the gallery."}
           </p>
           <code
-            style={{ fontSize: 11.5, color: "var(--text-3)", overflowWrap: "anywhere", maxHeight: 96, overflow: "auto" }}
+            style={{
+              fontSize: 11.5,
+              color: "var(--text-3)",
+              overflowWrap: "anywhere",
+              maxHeight: 96,
+              overflow: "auto",
+            }}
             data-testid="error-message"
           >
             {error.message}
@@ -210,7 +265,11 @@ class ViewBoundary extends Component<BoundaryProps, { error: Error | null; key: 
                 <Icon name="reset" size={14} /> Reload
               </button>
             ) : (
-              <button className="btn btn-primary" onClick={() => this.setState({ error: null })} data-testid="error-retry">
+              <button
+                className="btn btn-primary"
+                onClick={() => this.setState({ error: null })}
+                data-testid="error-retry"
+              >
                 <Icon name="reset" size={14} /> Try again
               </button>
             )}

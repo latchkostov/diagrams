@@ -8,9 +8,9 @@
       "id": "aws",
       "label": "AWS · commerce production",
       "tone": "aws",
-      "x": 360,
+      "x": 380,
       "y": 0,
-      "width": 2100,
+      "width": 2240,
       "height": 632
     }
   ],
@@ -31,7 +31,7 @@
       "stencil": "aws.api-gateway",
       "label": "Orders API",
       "sublabel": "POST /orders · JWT authorizer",
-      "x": 400,
+      "x": 420,
       "y": 280,
       "group": "aws",
       "props": {}
@@ -41,7 +41,7 @@
       "stencil": "aws.lambda",
       "label": "Create order",
       "sublabel": "Node.js · publish OrderPlaced",
-      "x": 760,
+      "x": 800,
       "y": 280,
       "group": "aws",
       "props": {
@@ -55,7 +55,7 @@
       "stencil": "aws.sns",
       "label": "order-events",
       "sublabel": "OrderPlaced · subscription filters",
-      "x": 1120,
+      "x": 1180,
       "y": 280,
       "group": "aws",
       "props": {
@@ -67,7 +67,7 @@
       "stencil": "aws.sqs",
       "label": "fulfillment-orders",
       "sublabel": "Visibility: 60s · retry limit: 5",
-      "x": 1480,
+      "x": 1560,
       "y": 160,
       "group": "aws",
       "props": {
@@ -80,7 +80,7 @@
       "stencil": "aws.sqs",
       "label": "order-archive",
       "sublabel": "Batch: 100 · retention: 14 days",
-      "x": 1480,
+      "x": 1560,
       "y": 280,
       "group": "aws",
       "props": {
@@ -93,7 +93,7 @@
       "stencil": "aws.sqs",
       "label": "order-receipts",
       "sublabel": "Visibility: 30s · retry limit: 5",
-      "x": 1480,
+      "x": 1560,
       "y": 400,
       "group": "aws",
       "props": {
@@ -106,7 +106,7 @@
       "stencil": "aws.lambda",
       "label": "Reserve fulfillment",
       "sublabel": "Batch: 10 · idempotent writes",
-      "x": 1840,
+      "x": 1940,
       "y": 160,
       "group": "aws",
       "props": {
@@ -121,7 +121,7 @@
       "stencil": "aws.lambda",
       "label": "Archive orders",
       "sublabel": "Batch: 100 · compressed JSONL",
-      "x": 1840,
+      "x": 1940,
       "y": 280,
       "group": "aws",
       "props": {
@@ -136,7 +136,7 @@
       "stencil": "aws.lambda",
       "label": "Prepare receipt",
       "sublabel": "Batch: 10 · receipt status",
-      "x": 1840,
+      "x": 1940,
       "y": 400,
       "group": "aws",
       "props": {
@@ -151,7 +151,7 @@
       "stencil": "aws.dynamodb",
       "label": "Order state",
       "sublabel": "PK: ORDER#id · conditional writes",
-      "x": 2200,
+      "x": 2320,
       "y": 160,
       "group": "aws",
       "props": {}
@@ -161,7 +161,7 @@
       "stencil": "aws.s3",
       "label": "Order archive",
       "sublabel": "s3://commerce-orders/year/month/",
-      "x": 2200,
+      "x": 2320,
       "y": 280,
       "group": "aws",
       "props": {}
@@ -171,7 +171,7 @@
       "stencil": "aws.dynamodb",
       "label": "Receipt state",
       "sublabel": "PK: ORDER#id · dedupe token",
-      "x": 2200,
+      "x": 2320,
       "y": 400,
       "group": "aws",
       "props": {}
@@ -181,7 +181,7 @@
       "stencil": "aws.eventbridge",
       "label": "Reconcile schedule",
       "sublabel": "rate(15 minutes)",
-      "x": 1480,
+      "x": 1560,
       "y": 40,
       "group": "aws",
       "props": {
@@ -193,7 +193,7 @@
       "stencil": "aws.lambda",
       "label": "Reconcile orders",
       "sublabel": "Detect pending reservations",
-      "x": 1840,
+      "x": 1940,
       "y": 40,
       "group": "aws",
       "props": {
@@ -206,7 +206,7 @@
       "stencil": "aws.sqs",
       "label": "fulfillment-orders-dlq",
       "sublabel": "Redrive after 5 failed receives",
-      "x": 1480,
+      "x": 1560,
       "y": 520,
       "group": "aws",
       "props": {
