@@ -35,7 +35,9 @@ const SIM_FIELDS: Record<SimKey, SimField> = {
   ratePerSec: { label: "Rate", unit: "msg/s", kind: "number", min: 0, step: 0.5, placeholder: "2", hint: "Messages per second while traffic is on" },
   messageType: { label: "Message type", kind: "text", placeholder: "derived from label", hint: "Type emitted by this source" },
   latencyMs: { label: "Latency", unit: "ms", kind: "number", min: 0, step: 10, placeholder: "default", hint: "Processing time per message" },
-  concurrency: { label: "Concurrency", kind: "number", min: 1, step: 1, placeholder: "4", hint: "Messages processed in parallel" },
+  concurrency: { label: "Concurrency", kind: "number", min: 1, step: 1, placeholder: "4", hint: "Messages processed in parallel per replica" },
+  replicas: { label: "Replicas", kind: "number", min: 1, step: 1, placeholder: "1", hint: "Instances (pods); behind a topic, only as many as there are partitions do work" },
+  jitter: { label: "Latency jitter", unit: "0–1", kind: "number", min: 0, max: 1, step: 0.05, placeholder: "0.2", hint: "Random spread on latency (0.2 = ±20%)" },
   failureRate: { label: "Failure rate", unit: "0–1", kind: "number", min: 0, max: 1, step: 0.05, placeholder: "0", hint: "Probability a message fails processing" },
   maxDeliveryCount: { label: "Max deliveries", kind: "number", min: 1, step: 1, placeholder: "3", hint: "Attempts before dead-lettering" },
   partitions: { label: "Partitions", kind: "number", min: 1, step: 1, placeholder: "3", hint: "Max in-flight deliveries per consumer group" },
@@ -50,7 +52,7 @@ const SIM_FIELDS: Record<SimKey, SimField> = {
 /** Which simulation tunables apply to each role. */
 export const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
   source: ["ratePerSec", "messageType"],
-  processor: ["latencyMs", "concurrency", "failureRate", "emits"],
+  processor: ["replicas", "latencyMs", "concurrency", "failureRate", "emits"],
   gateway: ["latencyMs", "concurrency"],
   store: ["latencyMs"],
   sink: ["latencyMs"],
