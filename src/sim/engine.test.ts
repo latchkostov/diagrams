@@ -25,6 +25,99 @@ function broker(role: SimRole = "queue", props = {}, edgeProps = {}) {
   ], [edge("b", "c", edgeProps), edge("c", "end"), edge("b", "dlq")]);
 }
 
+describe("typed messages", () => {
+  it.each(["source", "processor", "none", "store"] as const)("%s filters sync and async routes using exact and trailing wildcard matches", role => {
+    const sim = engine([node("s", role), node("a", "sink"), node("b", "sink"), node("c", "sink")],
+      [edge("s", "a", { filter: ["Order*"] }), edge("s", "b", { filter: ["OrderPlaced"] }),
+        { ...edge("s", "c", { filter: ["Order", "O*Placed"] }), kind: "sync" }]);
+    sim.inject("s", 3, { type: "OrderPlaced" });
+    sim.inject("s", 2, { type: "OrderRefunded" });
+    sim.inject("s", 1, { type: "Invoice" });
+    run(sim);
+    expect(sim.snapshot().nodes.a.processed).toBe(5);
+    expect(sim.snapshot().nodes.b.processed).toBe(3);
+    expect(sim.snapshot().nodes.c.processed).toBe(0);
+    expect(sim.snapshot().inSystem).toBe(0);
+  });
+
+  it("sync edges filter requests and permit their replies", () => {
+    const sim = engine([node("s", "source"), node("a", "store")],
+      [{ ...edge("s", "a", { filter: ["Order*"] }), kind: "sync" }]);
+    sim.inject("s", 1, { type: "Invoice" });
+    sim.inject("s", 1, { type: "OrderPlaced" });
+    sim.step(70);
+    expect(sim.snapshot().particles.some(p => p.kind === "reply")).toBe(true);
+    run(sim);
+    expect(sim.snapshot().nodes.a.processed).toBe(1);
+  });
+
+  it("gateways round-robin only among accepting edges", () => {
+    const sim = engine([node("g", "gateway"), node("a", "sink"), node("b", "sink"), node("c", "sink")],
+      [edge("g", "a", { filter: ["Order*"] }), edge("g", "b", { filter: ["Invoice"] }), edge("g", "c", { filter: ["*"] })]);
+    sim.inject("g", 10, { type: "OrderPlaced" });
+    run(sim);
+    expect(sim.snapshot().nodes.a.processed).toBe(5);
+    expect(sim.snapshot().nodes.b.processed).toBe(0);
+    expect(sim.snapshot().nodes.c.processed).toBe(5);
+  });
+
+  it.each(["topic", "stream", "queue"] as const)("%s counts only accepted messages in lag and routes to accepting group members", role => {
+    const sim = engine([node("b", role), node("a", "processor", { status: "paused" }),
+      node("c", "processor", { status: "paused" }), node("d", "sink")],
+      [edge("b", "a", { group: "shared", filter: ["Order*"] }),
+        edge("b", "c", { group: "shared", filter: ["Invoice"] }), edge("b", "d", { group: "reject", filter: [] })]);
+    sim.inject("b", 7, { type: "OrderPlaced" });
+    sim.inject("b", 4, { type: "Invoice" });
+    sim.inject("b", 9, { type: "Other" });
+    expect(sim.snapshot().nodes.b.lag).toEqual(role === "queue" ? { queue: 11 } : { shared: 11, reject: 0 });
+    expect(sim.snapshot().inSystem).toBe(11);
+    sim.setNodeStatus("a", "up"); sim.setNodeStatus("c", "up");
+    run(sim);
+    expect(sim.snapshot().nodes.a.processed).toBe(7);
+    expect(sim.snapshot().nodes.c.processed).toBe(4);
+    expect(sim.snapshot().nodes.d.processed).toBe(0);
+    expect(sim.snapshot().inSystem).toBe(0);
+  });
+
+  it.each(["processor", "none"] as const)("%s emits a string, exact map entry, fallback, or unchanged type with matching colours", role => {
+    for (const [emits, incoming, outgoing] of [
+      ["PaymentCompleted", "OrderPlaced", "PaymentCompleted"],
+      [{ OrderPlaced: "PaymentCompleted", "*": "AuditLogged" }, "OrderPlaced", "PaymentCompleted"],
+      [{ OrderPlaced: "PaymentCompleted", "*": "AuditLogged" }, "Other", "AuditLogged"],
+      [{ OrderPlaced: "PaymentCompleted" }, "Other", "Other"],
+    ] as const) {
+      const sim = engine([node("p", role, { emits, latencyMs: 0 }), node("s", "sink")], [edge("p", "s", { travelMs: 500 })]);
+      sim.inject("p", 1, { type: incoming }); sim.step(10);
+      expect(sim.snapshot().particles[0]).toMatchObject({ type: outgoing, color: messageColor(outgoing) });
+    }
+  });
+
+  it("edge emits overrides node emits after filtering, independently per edge", () => {
+    const sim = engine([node("p", "processor", { emits: "PaymentCompleted", latencyMs: 0 }), node("a", "sink"), node("b", "sink")],
+      [edge("p", "a", { filter: ["Payment*"], emits: "AuditLogged" }), edge("p", "b", { filter: ["Payment*"] })]);
+    sim.inject("p", 1, { type: "OrderPlaced" }); sim.step(10);
+    expect(sim.snapshot().particles.map(p => p.type)).toEqual(["AuditLogged", "PaymentCompleted"]);
+  });
+
+  it("broker retries retain the original type for filters despite edge renaming", () => {
+    const sim = engine([node("b", "queue"), node("p", "processor", { latencyMs: 0, failureRate: 1 }), node("dlq", "sink")],
+      [edge("b", "p", { filter: ["Order*"], emits: "Command" }), edge("b", "dlq", { filter: ["Order*"], emits: "PoisonOrder" })]);
+    sim.inject("b", 2, { type: "OrderPlaced" }); run(sim);
+    expect(sim.snapshot().nodes.p.failed).toBe(6);
+    expect(sim.snapshot().nodes.b.deadLettered).toBe(2);
+    expect(sim.snapshot().nodes.dlq.processed).toBe(2);
+    expect(sim.snapshot().inSystem).toBe(0);
+  });
+
+  it("a rejected DLQ edge drops a failed message without sending it", () => {
+    const sim = engine([node("b", "queue", { maxDeliveryCount: 1 }), node("p", "processor", { failureRate: 1 }), node("dlq", "sink")],
+      [edge("b", "p"), edge("b", "dlq", { filter: [] })]);
+    sim.inject("b", 1); run(sim);
+    expect(sim.snapshot().nodes.b.dropped).toBe(1);
+    expect(sim.snapshot().nodes.dlq.processed).toBe(0);
+  });
+});
+
 describe("message routing", () => {
   it("sources fan out to every edge, including a named DLQ target", () => {
     const sim = engine([node("s", "source"), node("a", "sink"), node("dlq", "sink")], [edge("s", "a"), edge("s", "dlq")]);
