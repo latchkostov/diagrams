@@ -7,12 +7,16 @@ import { writeHandle } from "../interop/files";
 class MemoryStorage {
   private m = new Map<string, string>();
   quotaBytes = Infinity;
+  failKey: string | undefined;
+  beforeWrite: ((key: string) => void) | undefined;
   get length() {
     return this.m.size;
   }
   key = (i: number) => [...this.m.keys()][i] ?? null;
   getItem = (k: string) => this.m.get(k) ?? null;
   setItem = (k: string, v: string) => {
+    this.beforeWrite?.(k);
+    if (k === this.failKey) throw new DOMException("full", "QuotaExceededError");
     if (v.length > this.quotaBytes) throw new DOMException("full", "QuotaExceededError");
     this.m.set(k, v);
   };
@@ -40,10 +44,68 @@ const handle: FileHandle = {
 beforeEach(() => {
   storage.clear();
   storage.quotaBytes = Infinity;
+  storage.failKey = undefined;
+  storage.beforeWrite = undefined;
   vi.clearAllMocks();
 });
 
 describe("diagramIO storage goes through the shared validator", () => {
+  it("an autosave finishing during deletion cannot re-list the deleted diagram", () => {
+    const slug = io.createLibraryDiagram(good);
+    let undo: (() => boolean) | undefined;
+    storage.beforeWrite = (key) => {
+      if (key !== `diagrams.library-entry.v1:${slug}`) return;
+      storage.beforeWrite = undefined;
+      undo = io.deleteLibraryDiagram(slug);
+    };
+    io.writeAutosave(slug, { ...good, title: "Latest edit" });
+    expect(io.hasLibraryEntry(slug)).toBe(false);
+    expect(io.writeAutosave(slug, good)).toBe(false);
+    expect(undo?.()).toBe(true);
+    expect(io.getCurrent(slug)?.title).toBe("Latest edit");
+    expect(io.listLibrary()[0].title).toBe("Latest edit");
+  });
+  it("migrates a legacy autosave without an original, preserving content and identity", () => {
+    storage.setItem("diagrams.autosave.v1:imported", JSON.stringify(good));
+    const identity = io.getDiagramIdentity(io.LEGACY_SLUG);
+    io.migrateLegacySlot();
+    io.migrateLegacySlot();
+    expect(io.getOriginal(io.LEGACY_SLUG)).toEqual(good);
+    expect(io.getCurrent(io.LEGACY_SLUG)).toEqual(good);
+    expect(io.getDiagramIdentity(io.LEGACY_SLUG)).toBe(identity);
+    expect(io.listLibrary().map((e) => e.title)).toEqual(["Good"]);
+  });
+
+  it("rename rolls back when the autosave write fails after the original write", () => {
+    const slug = io.createLibraryDiagram(good);
+    const identity = io.getDiagramIdentity(slug);
+    io.writeAutosave(slug, { ...good, title: "Edited" }, identity);
+    const before = Array.from({ length: storage.length }, (_, i) => storage.key(i)!).map((key) => [
+      key,
+      storage.getItem(key),
+    ]);
+    storage.failKey = `diagrams.autosave.v1:${slug}`;
+    expect(() => io.renameLibraryDiagram(slug, "Renamed")).toThrow(/storage/);
+    expect(before.map(([key]) => [key, storage.getItem(key!)])).toEqual(before);
+    expect(io.getDiagramIdentity(slug)).toBe(identity);
+    expect(io.getOriginal(slug)?.title).toBe("Good");
+    expect(io.getCurrent(slug)?.title).toBe("Edited");
+    expect(io.listLibrary()[0].title).toBe("Edited");
+  });
+
+  it("notifies subscribers after autosaves refresh metadata", () => {
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal("window", { dispatchEvent });
+    try {
+      const slug = io.createLibraryDiagram(good);
+      dispatchEvent.mockClear();
+      expect(io.writeAutosave(slug, { ...good, title: "Updated", nodes: [] })).toBe(true);
+      expect(io.listLibrary()[0]).toMatchObject({ title: "Updated", nodes: 0 });
+      expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({ type: io.DIAGRAMS_CHANGED }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("rejects an invalid diagram without adding it to Your diagrams", () => {
     const bad = { ...good, title: "Bad", edges: [{ id: "e", from: "a", to: "ghost" }] } as DiagramFile;
     expect(() => io.createLibraryDiagram(bad)).toThrow(/points at a node/);

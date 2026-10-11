@@ -120,6 +120,7 @@ test.describe("command palette", () => {
   });
 
   test("goes to a node by label, selecting it", async ({ page, consoleErrors }) => {
+    await page.getByTestId("example-picker").focus();
     await openPalette(page);
     await input(page).fill("@inventory");
     expect(await firstItemId(page)).toBe("node:inventory");
@@ -127,6 +128,10 @@ test.describe("command palette", () => {
     await expect(palette(page)).toHaveCount(0);
     await expect(page.getByTestId("inspector-field-label")).toHaveValue("Inventory service");
     await expect(page.getByTestId("node-inventory")).toBeInViewport();
+    expect(await page.getByTestId("node-inventory").evaluate((el) => document.activeElement?.contains(el))).toBe(true);
+    await page.keyboard.press("F2");
+    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await page.keyboard.press("Escape");
 
     // With a node selected, its actions are offered with their noun.
     await openPalette(page);
@@ -178,6 +183,28 @@ test.describe("command palette", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("go to node honours reduced motion for JavaScript viewport navigation", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.getByTestId("node-payments").click();
+    await openPalette(page);
+    await input(page).fill("@inventory");
+    const changes = await page.getByTestId("canvas-wrap").evaluate(async (wrap) => {
+      const viewport = wrap.querySelector<HTMLElement>(".react-flow__viewport");
+      const command = document.querySelector<HTMLElement>('[data-testid="command-item-node:inventory"]');
+      if (!viewport || !command) throw new Error("Missing viewport or command");
+      const seen = new Set([viewport.style.transform]);
+      command.click();
+      const until = performance.now() + 500;
+      while (performance.now() < until) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        seen.add(viewport.style.transform);
+      }
+      return seen.size;
+    });
+    expect(changes).toBeGreaterThan(1);
+    expect(changes).toBeLessThanOrEqual(2);
+  });
+
   test("prefixes narrow to actions, nodes or stencils, and the footer buttons type them", async ({
     page,
     consoleErrors,
@@ -210,6 +237,12 @@ test.describe("command palette", () => {
     await page.keyboard.press("Enter");
     await expect(palette(page)).toBeVisible();
     await expect(item(page, "action:export:drawio")).toBeVisible();
+    await expect(item(page, "action:canvas.export")).toHaveCount(0);
+    await expect(items(page).first()).toHaveAttribute("aria-selected", "true");
+    // The second Enter runs a leaf instead of repeatedly selecting the parent.
+    await page.keyboard.press("Enter");
+    await expect(palette(page)).toHaveCount(0);
+    await openPalette(page);
 
     await input(page).fill("zzzzqqq");
     await expect(page.getByTestId("command-empty")).toBeVisible();

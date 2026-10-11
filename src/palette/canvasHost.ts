@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { useReactFlow } from "@xyflow/react";
 import type { EditorApi } from "../editor/types";
 import { publish } from "./host";
+import { motionMs } from "../lib/motion";
 
 // The canvas half of the palette host. Kept apart from ./host so the palette itself never pulls in
 // React Flow: only the canvas (which already has it) imports this file.
@@ -64,7 +65,10 @@ export function useCanvasHost(editor: EditorApi, opts: { live: boolean; enabled:
         editor.select({ nodeIds: [id] });
         if (!box) return;
         const zoom = Math.max(rfRef.current.getZoom(), 0.9);
-        void rfRef.current.setCenter(box.x + box.width / 2, box.y + box.height / 2, { zoom, duration: 300 });
+        void rfRef.current.setCenter(box.x + box.width / 2, box.y + box.height / 2, { zoom, duration: motionMs(300) });
+        document
+          .querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
+          ?.focus({ preventScroll: true });
       },
       addStencil(stencilId) {
         const sel = editor.getSelection();

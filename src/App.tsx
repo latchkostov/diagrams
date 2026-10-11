@@ -75,6 +75,8 @@ function MainApp() {
   // Your diagrams and the shared slot, re-read when they change (here or in another tab).
   const library = useLibrary();
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [libraryUndo, setLibraryUndo] = useState<{ message: string; run: () => void } | null>(null);
 
   // No diagram in the URL: reopen the last one, else your most recent, else a blank draft (the start card).
   const valid = (s: string | undefined): s is string =>
@@ -126,6 +128,7 @@ function MainApp() {
   // "Your diagrams": the open diagram's pending edits are saved first, so the list is current.
   const refreshLibrary = library.refresh;
   const openLibrary = useCallback(() => {
+    setLibraryError(null);
     canvasRef.current?.flush();
     refreshLibrary();
     setLibraryOpen(true);
@@ -194,13 +197,26 @@ function MainApp() {
 
   // ---------------------------------------------------------------- Your diagrams (the library)
 
-  const failed = (what: string, err: unknown) =>
-    notify(`Couldn't ${what}. ${err instanceof Error ? err.message : String(err)}`, { kind: "error" });
+  const failed = (what: string, err: unknown) => {
+    const message = `Couldn't ${what}. ${err instanceof Error ? err.message : String(err)}`;
+    setLibraryError(message);
+    notify(message, { kind: "error" });
+  };
+  // CanvasHandle.flush currently hides persistence failures. Persist its live snapshot
+  // through the result-bearing API before any action that depends on stored content.
+  const saveForLibraryAction = (target: string): boolean => {
+    setLibraryError(null);
+    if (target !== slug || !canvasRef.current) return true;
+    if (writeAutosave(target, canvasRef.current.getDiagram(), canvasIdentity)) return true;
+    failed("save your edits", new Error("Storage is full or blocked. Save or export this diagram before continuing."));
+    return false;
+  };
   const titleOf = (target: string) => library.entries.find((e) => e.slug === target)?.title ?? UNTITLED;
   const libraryActions = {
     onOpen: (example: string) => setUrl({ view: "canvas", example, present: false }),
     onNew: newDiagram,
     onRename: (target: string, title: string) => {
+      setLibraryError(null);
       // The open diagram is renamed through its canvas: an undoable edit that the autosave keeps.
       if (target === slug && canvasRef.current) return canvasRef.current.setTitle(title);
       try {
@@ -210,7 +226,7 @@ function MainApp() {
       }
     },
     onDuplicate: (target: string) => {
-      if (target === slug) canvasRef.current?.flush();
+      if (!saveForLibraryAction(target)) return;
       try {
         const copy = duplicateLibraryDiagram(target);
         notify(`Duplicated “${titleOf(target)}”.`, {
@@ -230,7 +246,7 @@ function MainApp() {
     },
     onDelete: (target: string) => {
       const wasOpen = target === slug;
-      if (wasOpen) canvasRef.current?.flush();
+      if (!saveForLibraryAction(target)) return;
       const title = titleOf(target);
       let undo: () => boolean;
       try {
@@ -244,13 +260,18 @@ function MainApp() {
         if (!next) newDraft();
         setUrl({ view: "canvas", example: next ?? DRAFT_SLUG, present: false }, { replace: true });
       }
-      notify(`Deleted “${title}”.`, {
+      const message = `Deleted “${title}”.`;
+      const restore = () => {
+        if (!undo()) return failed("restore it", new Error("The browser's storage is full."));
+        setLibraryUndo(null);
+        setLibraryError(null);
+        if (wasOpen) setUrl({ view: "canvas", example: target, present: false });
+      };
+      setLibraryUndo({ message, run: restore });
+      notify(message, {
         action: {
           label: "Undo",
-          run: () => {
-            if (!undo()) return failed("restore it", new Error("The browser's storage is full."));
-            if (wasOpen) setUrl({ view: "canvas", example: target, present: false });
-          },
+          run: restore,
           testId: "delete-undo",
         },
       });
@@ -350,6 +371,8 @@ function MainApp() {
         <LibraryDialog
           entries={library.entries.map((e) => (e.slug === slug ? { ...e, title: liveTitle(e.title) } : e))}
           current={slug}
+          error={libraryError}
+          undo={libraryUndo}
           onClose={() => setLibraryOpen(false)}
           {...libraryActions}
         />
