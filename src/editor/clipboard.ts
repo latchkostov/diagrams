@@ -6,6 +6,7 @@ import {
   type DiagramGroup,
   type DiagramNode,
 } from "../model/types";
+import { filterLayerOrder } from "../model/layers";
 import { uniqueId } from "./ids";
 import { normalizeAnnotation, annotationCoordinate } from "../model/annotations";
 import { LIMITS, exceedsDepth } from "../interop/native";
@@ -17,6 +18,8 @@ export const CLIP_FORMAT = "diagrams/clip-v1" as const;
 
 export interface ClipboardPayload {
   format: typeof CLIP_FORMAT;
+  /** Foreground ids, back to front, in the shared node/annotation namespace. */
+  layerOrder?: string[];
   groups: DiagramGroup[];
   nodes: DiagramNode[];
   /** Only edges whose both ends were copied. */
@@ -54,6 +57,7 @@ export function makePayload(
     nodes,
     edges,
     ...(annotations.length ? { annotations } : {}),
+    ...(d.layerOrder ? { layerOrder: filterLayerOrder(d.layerOrder, { nodes, annotations }) } : {}),
   });
 }
 
@@ -111,6 +115,9 @@ export function parsePayload(text: string): ClipboardPayload | null {
     nodes: nodes.map((n) => ({ ...n, label: n.label ?? "" })),
     edges,
     ...(annotations.length ? { annotations } : {}),
+    ...(Array.isArray(data.layerOrder)
+      ? { layerOrder: filterLayerOrder(data.layerOrder, { nodes, annotations }) }
+      : {}),
   };
 }
 
@@ -161,5 +168,12 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
     edgeIds.add(id);
     return { ...structuredClone(e), id, from: nmap.get(e.from) ?? e.from, to: nmap.get(e.to) ?? e.to };
   });
-  return { format: CLIP_FORMAT, groups, nodes, edges, ...(annotations.length ? { annotations } : {}) };
+  return {
+    format: CLIP_FORMAT,
+    groups,
+    nodes,
+    edges,
+    ...(annotations.length ? { annotations } : {}),
+    ...(p.layerOrder ? { layerOrder: filterLayerOrder(p.layerOrder, p)?.map((id) => nmap.get(id)!) } : {}),
+  };
 }

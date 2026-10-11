@@ -1,3 +1,4 @@
+import { edgeMarks } from "./edgeMarks";
 import {
   useCallback,
   useEffect,
@@ -913,22 +914,4 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       {nodeTip && !menu && <NodeTooltip tip={nodeTip} />}
     </DiagramContext.Provider>
   );
-}
-
-/**
- * Points every 24px along the drawn edges, as tiny boxes in flow coordinates (edge paths are drawn
- * in flow space), so "place it somewhere free" also keeps clear of the lines between nodes.
- */
-function edgeMarks(root: HTMLElement | null): { x: number; y: number; width: number; height: number }[] {
-  const out: { x: number; y: number; width: number; height: number }[] = [];
-  if (!root) return out;
-  for (const path of root.querySelectorAll<SVGPathElement>(".react-flow__edge-path")) {
-    // Detached or degenerate paths (jsdom, zero-length) have no length to walk.
-    const len = typeof path.getTotalLength === "function" ? path.getTotalLength() : 0;
-    for (let d = 0; d <= len; d += 24) {
-      const p = path.getPointAtLength(d);
-      out.push({ x: p.x - 2, y: p.y - 2, width: 4, height: 4 });
-    }
-  }
-  return out;
 }

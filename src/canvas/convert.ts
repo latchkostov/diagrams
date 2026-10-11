@@ -6,6 +6,7 @@ import {
   type DiagramGroup,
   type DiagramNode,
 } from "../model/types";
+import { foregroundLayerOrder } from "../model/layers";
 import { getStencil } from "../stencils/registry";
 import { annotationAriaLabel, annotationTitle, isConnectable } from "./annotations";
 import {
@@ -144,7 +145,7 @@ export function toFlow(d: DiagramFile): { meta: DiagramMeta; nodes: FlowNode[]; 
     ...annotations.filter((a) => a.kind !== "zone").map(annotationToFlow),
   ];
   if (d.layerOrder) {
-    const order = new Map(d.layerOrder.map((id, i) => [id, i]));
+    const order = new Map(foregroundLayerOrder(d).map((id, i) => [id, i]));
     const backdrops = nodes.filter((n) => n.type === "boundary" || (n.type === "annotation" && n.data.kind === "zone"));
     const foreground = nodes.filter(
       (n) => n.type !== "boundary" && !(n.type === "annotation" && n.data.kind === "zone"),

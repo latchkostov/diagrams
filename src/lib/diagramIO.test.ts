@@ -462,3 +462,27 @@ it("copyTitle doesn't pile up suffixes", () => {
   expect(io.copyTitle("Orders (copy)", ["Orders (copy)"])).toBe("Orders (copy 2)");
   expect(io.copyTitle("Orders (copy 2)", ["Orders (copy)", "Orders (copy 2)"])).toBe("Orders (copy 3)");
 });
+
+it("clipboard ordering survives share links and library duplicate/reopen", async () => {
+  const { makePayload, parsePayload, remapPayload } = await import("../editor/clipboard");
+  const { encodeShare, decodeShare } = await import("../interop/share");
+  const { toFlow } = await import("../canvas/convert");
+  const { layersFixture } = await import("../lab/layersFixture");
+  const source = { ...layersFixture, layerOrder: ["note", "service"] };
+  const payload = parsePayload(JSON.stringify(makePayload(source, ["note", "service"])))!;
+  const remapped = remapPayload(
+    payload,
+    { nodes: new Set(["note", "service"]), edges: new Set(), groups: new Set() },
+    { x: 30, y: 30 },
+  );
+  const transferred: DiagramFile = { ...source, ...remapped, format: "diagrams/v1" };
+  const shared = await decodeShare(await encodeShare(transferred));
+  expect(shared.layerOrder).toEqual(["note-1", "service-1"]);
+  const slug = io.createLibraryDiagram(shared);
+  io.writeAutosave(slug, shared);
+  const duplicate = io.duplicateLibraryDiagram(slug);
+  for (const reopened of [io.getOriginal(slug)!, io.getCurrent(slug)!, io.getCurrent(duplicate)!]) {
+    expect(reopened.layerOrder).toEqual(["note-1", "service-1"]);
+    expect(toFlow(reopened).nodes.map((n) => n.id)).toEqual(["note-1", "service-1"]);
+  }
+});

@@ -24,6 +24,7 @@ const HEADER_GAP = 28;
 function addHeader(viewport: HTMLElement, b: Bounds, header: { title: string; description?: string }) {
   const el = document.createElement("div");
   el.className = "export-header";
+  el.dataset.testid = "export-header";
   const h = document.createElement("h1");
   h.textContent = header.title;
   el.append(h);
@@ -33,6 +34,7 @@ function addHeader(viewport: HTMLElement, b: Bounds, header: { title: string; de
     el.append(p);
   }
   el.style.left = `${b.x}px`;
+  el.style.overflowWrap = "anywhere";
   el.style.maxWidth = `${Math.max(b.width, 420)}px`;
   viewport.append(el);
   // offsetWidth / offsetHeight are layout sizes, unaffected by the viewport's zoom.

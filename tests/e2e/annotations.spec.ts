@@ -268,30 +268,40 @@ test.describe("annotations", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("sending a note behind nodes is undoable and survives autosave reload", async ({ page, consoleErrors }) => {
-    await seed(page, annotatedKafka);
-    await gotoCanvas(page, SLUG);
-    await settle(page);
-    await annotation(page, "note-retry").click({ button: "right" });
+  test("Send to back restores visible stacking through Undo, Redo and reload", async ({ page, consoleErrors }) => {
+    await gotoLab(page, "overlapping-layers");
+    await page.getByTestId("lab-open-editor").click();
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    // The same Lab fixture runs on the editor's real persistence/history path.
+    const top = () =>
+      page.getByTestId("node-service").evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return hit
+          ?.closest('[data-testid="annotation-note"], [data-testid="node-service"]')
+          ?.getAttribute("data-testid");
+      });
+    const clear = async () => {
+      await page.getByTestId("canvas-wrap").click({ position: await emptySpot(page) });
+      await expect
+        .poll(() => annotation(page, "note").evaluate((el) => el.classList.contains("is-selected")))
+        .toBe(false);
+    };
+    await expect.poll(top).toBe("annotation-note");
+    await annotation(page, "note").click({ button: "right" });
     await menuItem(page, "annotation.back").click();
-    const stored = () =>
-      page.evaluate(
-        (key) => JSON.parse(localStorage.getItem(key) ?? "{}") as { layerOrder?: string[] },
-        STORAGE_KEYS.autosavePrefix + SLUG,
-      );
-    await expect.poll(async () => (await stored()).layerOrder?.[0]).toBe("note-retry");
+    await clear();
+    await expect.poll(top).toBe("node-service");
     await page.keyboard.press(`${MOD}+z`);
-    await expect.poll(async () => (await stored()).layerOrder).toBeUndefined();
+    await clear();
+    await expect.poll(top).toBe("annotation-note");
     await page.keyboard.press(`${MOD}+Shift+z`);
-    await expect.poll(async () => (await stored()).layerOrder?.[0]).toBe("note-retry");
+    await clear();
+    await expect.poll(top).toBe("node-service");
+    await page.waitForTimeout(700);
     await page.reload();
-    await expect(annotation(page, "note-retry")).toBeVisible();
-    const behind = await page.getByTestId("canvas-wrap").evaluate((el) => {
-      const note = el.querySelector('[data-testid="annotation-note-retry"]')?.parentElement;
-      const node = el.querySelector('[data-testid="node-payments"]')?.closest(".react-flow__node");
-      return !!note && !!node && !!(note.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING);
-    });
-    expect(behind).toBe(true);
+    await expect(page.getByTestId("node-service")).toBeVisible();
+    await expect.poll(top).toBe("node-service");
     expectNoErrors(consoleErrors);
   });
   test("adds text, a note, a zone and each shape from the canvas menu", async ({ page, consoleErrors }) => {

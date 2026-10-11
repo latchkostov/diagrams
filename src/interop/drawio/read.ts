@@ -17,7 +17,8 @@ import { LIMITS, tooLargeMessage } from "../native";
 import { FALLBACK_STENCIL_ID, inferStencil } from "../infer";
 import { childrenNamed, decodeEntities, findFirst, parseXml, XmlError, type XmlElement } from "../xml";
 import { parseStyle, stencilFromStyle, toneFromStyle } from "./mapping";
-import { CARD } from "./write";
+import { filterLayerOrder } from "../../model/layers";
+import { CARD, textHtml } from "./write";
 import {
   ANNOTATION_COLORS,
   ANNOTATION_KINDS,
@@ -508,7 +509,9 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     annotations.push({
       id,
       kind,
-      text: annotationText(c.data.dg_text ?? lines.join("\n")),
+      text: annotationText(
+        c.data.dg_text !== undefined && c.value === textHtml(c.data.dg_text) ? c.data.dg_text : lines.join("\n"),
+      ),
       x: annotationCoordinate(x),
       y: annotationCoordinate(y),
       width,
@@ -602,6 +605,14 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     ...(simulations ? { simulations } : {}),
     ...(annotations.length ? { annotations } : {}),
   };
+  if (meta.dg_layer_order) {
+    try {
+      const order = filterLayerOrder(JSON.parse(meta.dg_layer_order), diagram);
+      if (order) diagram.layerOrder = order;
+    } catch {
+      warnings.push("Layer order in this file couldn't be read and was dropped.");
+    }
+  }
   if (!diagram.nodes.length && !annotations.length) warnings.push("No shapes were found on this page.");
   return { diagram, warnings };
 }

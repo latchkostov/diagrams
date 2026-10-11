@@ -40,17 +40,9 @@ export function normalizeAnnotation(
     warn("was skipped: it needs an id, a kind (text, note, zone or shape), x, y, width and height.");
     return null;
   }
-  if (Math.abs(x) > ANNOTATION_LIMITS.maxCoordinate || Math.abs(y) > ANNOTATION_LIMITS.maxCoordinate) {
-    warn("was skipped: it's outside the coordinate budget.");
-    return null;
-  }
-  if (
-    width < 1 ||
-    height < 1 ||
-    width > ANNOTATION_LIMITS.maxAnnotationSize ||
-    height > ANNOTATION_LIMITS.maxAnnotationSize
-  ) {
-    warn(`was skipped: its size must be between 1 and ${ANNOTATION_LIMITS.maxAnnotationSize} pixels.`);
+  const geometryError = annotationGeometryError({ x, y, width, height });
+  if (geometryError) {
+    warn(`was skipped: ${geometryError}`);
     return null;
   }
   if (usedIds.has(id)) {
@@ -86,3 +78,23 @@ export const annotationSize = (v: number) =>
 export const annotationCoordinate = (v: number) =>
   Number.isFinite(v) ? Math.max(-ANNOTATION_LIMITS.maxCoordinate, Math.min(ANNOTATION_LIMITS.maxCoordinate, v)) : 0;
 export const annotationText = (v: string) => v.slice(0, ANNOTATION_LIMITS.maxAnnotationText);
+
+/** Shared creation/persistence gate. Reject rather than shrink a zone away from its selection. */
+export function annotationGeometryError({
+  x,
+  y,
+  width,
+  height,
+}: Pick<DiagramAnnotation, "x" | "y" | "width" | "height">): string | null {
+  if (![x, y, width, height].every(Number.isFinite)) return "its geometry must be finite.";
+  if (Math.abs(x) > ANNOTATION_LIMITS.maxCoordinate || Math.abs(y) > ANNOTATION_LIMITS.maxCoordinate)
+    return "it's outside the coordinate budget. Move the selection closer to the origin.";
+  if (
+    width < 1 ||
+    height < 1 ||
+    width > ANNOTATION_LIMITS.maxAnnotationSize ||
+    height > ANNOTATION_LIMITS.maxAnnotationSize
+  )
+    return `its size must be between 1 and ${ANNOTATION_LIMITS.maxAnnotationSize} pixels. Choose a smaller selection.`;
+  return null;
+}
