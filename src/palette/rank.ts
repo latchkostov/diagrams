@@ -39,6 +39,8 @@ export interface Command {
   score?: (query: string) => number;
   /** Submenu parent: Enter narrows the query to its entries instead of running. */
   drill?: string;
+  /** Submenu whose executable descendants include this command. */
+  parent?: string;
   run?: () => void;
 }
 
@@ -103,11 +105,13 @@ export function rank(commands: readonly Command[], raw: string, recent: readonly
           .slice(0, IDLE_RECENT);
     const shown = new Set(recentItems.map((c) => c.id));
     const out: Ranked[] = recentItems.length ? [{ group: "recent", items: recentItems }] : [];
+    let remaining = MAX_RESULTS - recentItems.length;
     for (const group of GROUP_ORDER) {
       if (group === "recent") continue;
       let items = pool.filter((c) => c.group === group && !shown.has(c.id) && (only ? true : c.idle !== false));
-      const cap = only ? MAX_RESULTS : IDLE_PER_GROUP[group];
-      if (cap) items = items.slice(0, cap);
+      const cap = only ? remaining : Math.min(remaining, IDLE_PER_GROUP[group] ?? remaining);
+      items = items.slice(0, cap);
+      remaining -= items.length;
       if (items.length) out.push({ group, items });
     }
     return out;

@@ -76,7 +76,11 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
   );
   const [recent] = useState(getRecentCommands);
   const [query, setQuery] = useState("");
-  const ranked = useMemo(() => rank(commands, query, recent), [commands, query, recent]);
+  const [submenu, setSubmenu] = useState<string | null>(null);
+  const ranked = useMemo(
+    () => rank(submenu ? commands.filter((c) => c.parent === submenu) : commands, query, recent),
+    [commands, query, recent, submenu],
+  );
   const flat = useMemo(() => flatten(ranked), [ranked]);
   const [active, setActive] = useState(0);
   // A new query highlights its best match before the next paint.
@@ -117,6 +121,7 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
   const run = (c: Command | undefined) => {
     if (!c) return;
     if (c.drill) {
+      setSubmenu(c.id);
       setQuery(`>${c.drill} `);
       input.current?.focus();
       return;
@@ -168,7 +173,10 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
         break;
       case "Escape":
         e.preventDefault();
-        closeRef.current();
+        if (submenu) {
+          setSubmenu(null);
+          setQuery(">");
+        } else closeRef.current();
         break;
       case "Tab": {
         // Focus trap: cycle between the input and the prefix buttons.
@@ -208,6 +216,7 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
   }, []);
 
   const setPrefix = (prefix: string) => {
+    setSubmenu(null);
     setQuery((q) => `${prefix}${q.replace(/^\s*[>@+]\s*/, "")}`);
     input.current?.focus();
   };
@@ -240,7 +249,10 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
             aria-label="Search commands"
             placeholder={placeholder}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setSubmenu(null);
+              setQuery(e.target.value);
+            }}
             name="command-search"
             autoComplete="off"
             spellCheck={false}
