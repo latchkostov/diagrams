@@ -26,3 +26,13 @@ Review findings and ideas not yet scheduled. Remove items when they land.
 - Scrub-back replays from zero each step (slow on long simulations): keep periodic engine checkpoints.
 - Very dense traffic merges particles into lines: auto-raise `scale` (phase 4) or thin particles by density.
 - Edge labels draw above particles and badges while live; live context menu exceeds the 12-item budget.
+
+## Engine gaps found while modelling real systems
+- **Bug:** DLQ inference by label (`/dlq|dead.?letter/`) can't be opted out; a consumer whose sublabel says
+  "no DLQ" became a dead-letter path and stopped all flow. Support `props.dlq: false` and only infer for
+  edges leaving brokers into broker/store targets.
+- Retries go to the back of the group's queue, so "N retries then DLQ" only happens with short backlogs.
+  Add retry modes: in-place (blocking) vs. requeue, with optional backoff ms.
+- Probabilistic split: let an edge carry a fraction of traffic (`props.share: 0.35`, e.g. "35% open the
+  email") instead of modelling ratios as separate traffic profiles. Fits phase 4.
+- Layout lint for authors (overlaps, crossings, truncated labels) is in progress via the overlap audit.
