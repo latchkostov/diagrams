@@ -249,7 +249,14 @@ export interface SimulationRunState {
   multipliers?: { traffic: number; capacity: number };
 }
 
+/** Opaque full-run checkpoint, owned by one runner and invalidated by restart. */
+export interface SimulationRunCheckpoint {
+  readonly time: number;
+}
+
 export interface SimulationRun {
+  checkpoint(): SimulationRunCheckpoint;
+  restore(checkpoint: SimulationRunCheckpoint): void;
   /** Low-level engine: all message metrics and direct injections use sampled units. */
   readonly engine: SimEngine;
   readonly units: SimulationUnits;

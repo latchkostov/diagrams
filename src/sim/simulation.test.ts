@@ -542,3 +542,81 @@ describe("completion and replay", () => {
     expect(reused.engine.snapshot()).toEqual(fresh.engine.snapshot());
   });
 });
+
+describe("full runner checkpoints", () => {
+  it.each([false, true])("restore + run equals uninterrupted run (waiting: %s)", (waiting) => {
+    const run = make({
+      scale: 5,
+      durationMs: 12000,
+      traffic: [
+        {
+          id: "c",
+          node: "source",
+          messageType: "Order",
+          shape: { kind: "constant", ratePerSec: 13, durationMs: 8000 },
+        },
+        {
+          id: "b",
+          node: "source",
+          messageType: "Order",
+          shape: { kind: "burst", count: 11, atMs: 1500, spreadMs: 1000 },
+        },
+      ],
+      setup: {
+        props: { worker: { jitter: 0.3, failureRate: 0.2, maxDeliveryCount: 2 }, source: { messageType: "Order" } },
+      },
+      timeline: [
+        { atMs: 500, action: { do: "inject", node: "source", count: 3, messageType: "Order" } },
+        { atMs: 1000, action: { do: "note", text: "Checkpoint note", pause: waiting, focus: ["worker"] } },
+        { atMs: 2100, action: { do: "inject", node: "source", count: 4, messageType: "Order" } },
+        { atMs: 2500, action: { do: "props", node: "worker", props: { replicas: 2 } } },
+      ],
+      expectations: [
+        expectation({ id: "always", metric: { node: "worker", field: "failed" }, when: "always", op: "==", value: 0 }),
+        expectation({ id: "eventually", when: "eventually", op: ">=", value: 5 }),
+        expectation({ id: "at", when: "at", atMs: 1800, op: ">=", value: 1 }),
+      ],
+    });
+    run.setSpeed(1.5);
+    run.step(waiting ? 671 : 1371); // Captures fractional ticks and an already-fired burst when not waiting.
+    run.inject("source", 2);
+    run.setMultipliers({ traffic: 1.3, capacity: 2 });
+    const cp = run.checkpoint();
+    const state = run.state();
+    const snapshot = run.engine.snapshot();
+    const tail = () => {
+      run.resume();
+      run.inject("source", 3, { type: "Order", spreadMs: 100 });
+      for (let i = 0; i < 600; i++) run.step(17);
+      return { state: run.state(), snapshot: run.engine.snapshot() };
+    };
+    const uninterrupted = tail();
+    run.restore(cp);
+    expect(run.state()).toEqual(state);
+    expect(run.engine.snapshot()).toEqual(snapshot);
+    expect(tail()).toEqual(uninterrupted);
+    run.restore(cp); // Tokens remain reusable and detached from earlier restores.
+    expect(tail()).toEqual(uninterrupted);
+  });
+
+  it("captures drain grace, completion and expired notes", () => {
+    const run = make({ timeline: [{ atMs: 0, action: { do: "note", text: "start" } }] });
+    run.step(777);
+    const cp = run.checkpoint();
+    finish(run);
+    const done = { state: run.state(), snapshot: run.engine.snapshot() };
+    const end = run.checkpoint();
+    run.restore(cp);
+    finish(run);
+    expect({ state: run.state(), snapshot: run.engine.snapshot() }).toEqual(done);
+    run.restore(end);
+    run.step(1000);
+    expect(run.state()).toEqual(done.state);
+    const notes = make({ durationMs: 10000, timeline: [{ atMs: 0, action: { do: "note", text: "expired" } }] });
+    notes.step(7000);
+    const expired = notes.checkpoint();
+    notes.restart();
+    expect(() => notes.restore(expired)).toThrow("previous run");
+    expect(() => make().restore(cp)).toThrow("another runner");
+  });
+});

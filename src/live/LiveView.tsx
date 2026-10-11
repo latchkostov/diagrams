@@ -37,15 +37,14 @@ import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
 import { useLiveHost, useLiveSessionHost } from "../palette/host";
 import {
   capacityView,
-  effectiveSimulation,
   emptyInputs,
-  freePlaySaveProps,
   freePlaySimulation,
   inputsWithoutFix,
   withFix,
   type CapacityFix,
   type LiveInputs,
 } from "./capacityModel";
+import { capacitySaveCandidate, capacitySaveError } from "./capacityPersistence";
 import { notify } from "../interop/ui/toast";
 
 export interface LiveViewProps {
@@ -465,6 +464,9 @@ function LiveSession({
 
   // ---------------------------------------------------------------- commands
 
+  const [capacityError, setCapacityError] = useState<string | null>(null);
+  const clearCapacityError = useCallback(() => setCapacityError(null), []);
+
   const selectSimulation = useCallback(
     (id: string | null) => {
       const sim = id
@@ -473,6 +475,7 @@ function LiveSession({
           : simsRef.current.find((s) => s.id === id)
         : null;
       setTrace(null);
+      setCapacityError(null);
       controller.selectSimulation(sim ?? null);
       if (sim) controller.setTraffic(false);
       controller.setPlaying(true);
@@ -493,6 +496,7 @@ function LiveSession({
         simsRef.current.find((s) => s.id === sim.id) ?? (draftRef.current?.id === sim.id ? draftRef.current : null);
       if (!known) return;
       setTrace(null);
+      setCapacityError(null);
       controller.selectSimulation(known);
       controller.setTraffic(false);
     },
@@ -506,6 +510,7 @@ function LiveSession({
       draftRef.current = saved ? null : sim;
       setTrace(null);
       controller.setTraffic(false);
+      setCapacityError(null);
       controller.selectSimulation(sim);
       controller.setPlaying(true);
     },
@@ -519,6 +524,13 @@ function LiveSession({
       const i = list.findIndex((s) => s.id === sim.id);
       if (i >= 0) list[i] = sim;
       else list.push(sim);
+      const error = capacitySaveError({ ...editor.getDiagram(), simulations: list });
+      if (error) {
+        setCapacityError(error);
+        notify(error, { kind: "error" });
+        return false;
+      }
+      setCapacityError(null);
       editor.updateMeta({ simulations: list });
       onSaveDiagram?.({ ...editor.getDiagram(), simulations: list });
       if (draftRef.current?.id === sim.id) {
@@ -526,6 +538,7 @@ function LiveSession({
         draftRef.current = null;
       }
       flash(`Saved “${sim.title}” to this diagram.`);
+      return true;
     },
     [editor, flash, onSaveDiagram],
   );
@@ -569,6 +582,8 @@ function LiveSession({
     if (open) capacityOverlay.set(true);
     setPanel((p) => (open ? { open: true, kind: "capacity", sim: null } : { ...p, open: false }));
   }, []);
+
+  const closeCapacity = useCallback(() => openCapacity(false), [openCapacity]);
 
   /** Apply a bottleneck fix as one undoable edit: to the saved simulation, or the diagram in free play. */
   const applyFix = useCallback(
@@ -620,25 +635,22 @@ function LiveSession({
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
   const saveInputs = useCallback(() => {
     if (!editor) return;
-    controller.flush();
     const st = controller.getState();
-    const base = st.simulation;
-    if (base) {
-      const next = { ...effectiveSimulation(base, st.inputs), scale: st.scale };
-      saveSimulation(next);
-      controller.commitInputs(next);
+    const candidate = capacitySaveCandidate(editor.getDiagram(), st.simulation, st.inputs);
+    const error = capacitySaveError(candidate.diagram);
+    setCapacityError(error);
+    if (error) return;
+    controller.flush();
+    if (candidate.saved) {
+      if (saveSimulation(candidate.saved)) controller.commitInputs(candidate.saved, candidate.diagram);
       return;
     }
-    const d = controller.currentDiagram;
-    const patch = freePlaySaveProps(d, st.inputs);
     const merge = "capacity:save:" + Date.now();
-    for (const [id, props] of Object.entries(patch)) editor.setNodeProps(id, props, { merge });
-    controller.commitInputs(null, {
-      ...d,
-      nodes: d.nodes.map((n) => (patch[n.id] ? { ...n, props: { ...n.props, ...patch[n.id] } } : n)),
-    });
+    for (const [id, props] of Object.entries(candidate.patches)) editor.setNodeProps(id, props, { merge });
+    onSaveDiagram?.(candidate.diagram);
+    controller.commitInputs(null, candidate.diagram);
     flash("Saved rates and sizes to the diagram (undo with Ctrl+Z).");
-  }, [controller, editor, saveSimulation, flash]);
+  }, [controller, editor, saveSimulation, flash, onSaveDiagram]);
 
   // While live, the Simulation section leads every context menu.
   useEffect(() => {
@@ -788,9 +800,17 @@ function LiveSession({
       </div>
       {capacityOpen && capacity && (
         <CapacityPanel
-          state={state}
+          key={state.simulation?.id ?? "free"}
+          controller={controller}
+          diagram={planDiagram}
+          base={state.simulation}
+          inputs={state.inputs}
+          running={state.running}
+          scale={state.scale}
+          error={capacityError}
+          onChange={clearCapacityError}
           view={capacity}
-          onClose={() => openCapacity(false)}
+          onClose={closeCapacity}
           onApplyFix={applyFix}
           onSave={editor ? saveInputs : undefined}
         />

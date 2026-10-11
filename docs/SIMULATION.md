@@ -241,3 +241,24 @@ of the simulation with current live multipliers for an up-to-date panel; the ana
 
 `frame()` returns detached particles and per-node metrics plus `time`, `inSystem` and `scale`,
 without edge counters or event-log copies. Use it for animation; call `snapshot()` for detailed inspection.
+
+## Runner checkpoints and live scrubbing
+
+`SimulationRun.checkpoint()` returns an opaque, reusable in-memory token with a `time`.
+`restore(cp)` restores the engine and the complete runner state: timeline cursor, profile and
+injection credits, fired bursts, expectations, note, waiting/completion flags, drain grace,
+multipliers, speed and fractional fixed-step clock credit. Tokens belong to the runner that
+captured them and become invalid after restart. Restoring a token and applying the same subsequent
+steps and actions produces the same state as uninterrupted playback.
+
+Live scrubbing keeps the origin plus at most 23 recent checkpoints, spaced five seconds apart.
+It restores the nearest retained checkpoint at or before the requested time and advances the
+remaining interval, skipping pausing notes on the way. Older positions can use the retained origin.
+Plan and diagram changes invalidate incompatible samples. Automatic replay after changing rates or
+sampling runs in cancellable slices of at most 200 ticks / roughly six milliseconds, yielding to
+browser frames between slices. Restart and leaving live view cancel pending and active replay.
+
+Manual real-count injection in free play and saved runs uses the shared injector in
+`src/sim/injection.ts`, resolving omitted types before assigning fractional credit. Restart clears
+credit; checkpoint restore reinstates it. Capacity saves validate the complete prospective document
+against native persistence limits before changing the editor or clearing unsaved inputs.
