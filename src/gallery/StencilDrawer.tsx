@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import type { Stencil } from "../model/types";
 import { nodeVariants } from "../harness/nodeVariants";
 import { categoryLabel } from "../lib/categories";
 import { simRoleMeta } from "../lib/simRoles";
 import { familyOf, getFamily } from "../lib/vendorFamilies";
-import { replacedByNewDiagram } from "../lib/canvasBridge";
 import { Icon } from "../components/Icon";
 import { StencilIcon } from "../components/StencilIcon";
 import { iconSource, roleExplained } from "./stencilInfo";
@@ -35,7 +34,6 @@ export function StencilDrawer({
   onCopyJson,
 }: Props) {
   const root = useRef<HTMLDivElement>(null);
-  const [confirmReplace, setConfirmReplace] = useState<string | null>(null);
   const role = simRoleMeta[s.simRole] ?? simRoleMeta.none;
   const family = getFamily(familyOf(s));
   const icon = iconSource(s.icon);
@@ -57,17 +55,6 @@ export function StencilDrawer({
     el.addEventListener("keydown", onKey);
     return () => el.removeEventListener("keydown", onKey);
   }, [onClose, onStep]);
-  const [stencilId, setStencilId] = useState(s.id);
-  if (stencilId !== s.id) {
-    setStencilId(s.id);
-    setConfirmReplace(null);
-  }
-
-  const startNew = () => {
-    const replaced = replacedByNewDiagram();
-    if (replaced && confirmReplace === null) setConfirmReplace(replaced);
-    else onNewDiagram();
-  };
 
   return (
     <div
@@ -199,39 +186,21 @@ export function StencilDrawer({
       </div>
 
       <footer className="drawer-foot">
-        {confirmReplace !== null ? (
-          <div className="drawer-confirm" role="alert" data-testid="drawer-confirm">
-            <span>
-              A new diagram replaces your diagram, “{confirmReplace}”. Export it first if you want to keep it.
-            </span>
-            <div>
-              <button className="btn" onClick={() => setConfirmReplace(null)} data-testid="drawer-confirm-cancel">
-                Keep it
-              </button>
-              <button className="btn btn-danger-solid" onClick={onNewDiagram} data-testid="drawer-confirm-replace">
-                Replace
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <button className="btn btn-primary" onClick={onAdd} data-testid="drawer-add">
-              <Icon name="plus" size={14} /> Add to current diagram
-            </button>
-            <button className="btn" onClick={startNew} data-testid="drawer-new">
-              New diagram with this
-            </button>
-            <button
-              className="icon-btn"
-              onClick={onCopyJson}
-              aria-label="Copy as JSON node"
-              title="Copy as JSON node"
-              data-testid="drawer-copy-json"
-            >
-              <Icon name="copy" size={14} />
-            </button>
-          </>
-        )}
+        <button className="btn btn-primary" onClick={onAdd} data-testid="drawer-add">
+          <Icon name="plus" size={14} /> Add to current diagram
+        </button>
+        <button className="btn" onClick={onNewDiagram} data-testid="drawer-new">
+          New diagram with this
+        </button>
+        <button
+          className="icon-btn"
+          onClick={onCopyJson}
+          aria-label="Copy as JSON node"
+          title="Copy as JSON node"
+          data-testid="drawer-copy-json"
+        >
+          <Icon name="copy" size={14} />
+        </button>
       </footer>
     </div>
   );

@@ -35,8 +35,12 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   replay in it. "Free play" is live without one.
 - **Boundary** (never "group") for the box around nodes: Add boundary, Remove boundary, Colour.
 - **Subtitle** for a node's second line. **Properties** opens the inspector for the thing.
-- **Your diagram** is the user's own slot; the built-in ones are **Examples**; the **Stencils** tab
-  is the catalogue.
+- **Your diagrams** is the user's own library in this browser (File > Your diagrams…, the picker's
+  first group, the start card's first list). Open, Import, Paste and **Save a copy** each add a diagram
+  to it; nothing ever replaces another. A blank **New diagram** joins it on its first edit. The
+  built-in ones are **Examples**; the **Stencils** tab is the catalogue.
+- In Your diagrams: **Rename**, **Duplicate** and **Delete** (undoable), the same names everywhere.
+- A simulation's scripted events are its **Timeline** (not "Story & chaos").
 - Same action, same name in the File menu and the right-click (e.g. Export PNG, Copy share link).
 - Esc backs out one level: menu, dialog, selection, trace, presentation, then live view.
 

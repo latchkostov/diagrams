@@ -17,6 +17,7 @@ export type ShortcutId =
   | "escape"
   | "fit-view"
   | "zoom-100"
+  | "command-palette"
   | "shortcuts";
 
 export interface Shortcut {
@@ -53,6 +54,12 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: "escape", keys: ["Escape"], label: "Close menus, clear selection, then leave live view", group: "Selection" },
   { id: "fit-view", keys: ["Shift+1"], label: "Fit diagram to view", group: "View" },
   { id: "zoom-100", keys: ["Shift+0"], label: "Zoom to 100%", group: "View" },
+  {
+    id: "command-palette",
+    keys: ["Mod+K"],
+    label: "Command palette: run an action, find a node, add a stencil",
+    group: "Help",
+  },
   { id: "shortcuts", keys: ["?"], label: "Show keyboard shortcuts", group: "Help" },
 ];
 

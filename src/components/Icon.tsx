@@ -1,3 +1,5 @@
+import { TRAFFIC_PATH } from "./glyphPaths";
+
 /** Small UI glyphs (stroke icons, 16px grid). */
 const paths = {
   search: "M7.25 12.5a5.25 5.25 0 1 0 0-10.5 5.25 5.25 0 0 0 0 10.5ZM14 14l-3-3",
@@ -34,6 +36,7 @@ const paths = {
   front: "M6 6h7.5v7.5H6zM3.5 10V2.5H10",
   back: "M2.5 2.5H10V10H2.5zM13.5 6v7.5H6",
   swap: "M3 5.5h10M10.5 3 13 5.5 10.5 8M13 10.5H3M5.5 8 3 10.5 5.5 13",
+  traffic: TRAFFIC_PATH,
   link: "M6.5 9.5l3-3M7 4.5l1-1a2.8 2.8 0 0 1 4 4l-1 1M9 11.5l-1 1a2.8 2.8 0 0 1-4-4l1-1",
   boundary: "M2.5 5V2.5H5M11 2.5h2.5V5M13.5 11v2.5H11M5 13.5H2.5V11M5.5 5.5h5v5h-5z",
   ungroup: "M2.5 2.5h4.5v4.5H2.5zM9 9h4.5v4.5H9zM9 2.5h4.5V7M2.5 9v4.5H7",

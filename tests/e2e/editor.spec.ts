@@ -23,6 +23,22 @@ async function clickEmpty(page: Page) {
 }
 
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
+/** The element's box once it has stopped moving (two equal readings, a frame apart). */
+async function settledBox(locator: import("@playwright/test").Locator) {
+  let last = "";
+  await expect
+    .poll(
+      async () => {
+        const now = JSON.stringify(await locator.boundingBox());
+        const still = now === last;
+        last = now;
+        return still;
+      },
+      { intervals: [50, 100, 100, 200] },
+    )
+    .toBe(true);
+  return requiredBox(locator);
+}
 const requiredBox = async (locator: import("@playwright/test").Locator) => {
   const box = await locator.boundingBox();
   if (!box) throw new Error("Expected a visible element");
@@ -260,7 +276,8 @@ test.describe("editor", () => {
   test("arrow keys nudge the selection", async ({ page }) => {
     const node = page.getByTestId("node-payments");
     await node.click();
-    const before = await requiredBox(node);
+    // Selecting opens the inspector, which may pan to keep the node in view: measure once it rests.
+    const before = await settledBox(node);
     await page.keyboard.press("Shift+ArrowRight");
     await page.keyboard.press("Shift+ArrowRight");
     // 20 flow px; on screen that is 20 × zoom.

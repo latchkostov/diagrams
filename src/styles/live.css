@@ -404,6 +404,13 @@
   }
 }
 
+/* While live, edge labels sit under the particles and metric badges (the viewport portal, later in
+   the DOM) instead of on top of everything: they stay readable between dots, and dots never vanish
+   under a pill. A hovered, truncated label still expands above (its own z-index). */
+.react-flow[data-live] .react-flow__edgelabel-renderer {
+  z-index: auto;
+}
+
 .react-flow[data-live] .react-flow__node,
 .react-flow[data-live] .react-flow__edge .fe-path,
 .react-flow[data-live] .fe-label {
@@ -478,6 +485,12 @@
 
 .react-flow[data-live] .react-flow__panel.bottom.left {
   bottom: 96px;
+}
+
+/* React Flow's credit rises above the bar too (there's no minimap to clear while live). */
+.react-flow[data-live] .react-flow__panel.react-flow__attribution.bottom.right,
+.react-flow[data-live]:has(.react-flow__minimap) .react-flow__panel.react-flow__attribution.bottom.right {
+  margin-bottom: 96px;
 }
 
 /* ---------- HUD (screen space over the canvas) ---------- */
@@ -1070,6 +1083,32 @@
   top: -7px;
   border-top: 1px solid color-mix(in oklab, var(--accent) 30%, var(--line));
   border-left: 1px solid color-mix(in oklab, var(--accent) 30%, var(--line));
+}
+
+.lv-note.is-right::after,
+.lv-note.is-left::after {
+  content: "";
+  position: absolute;
+  top: var(--arrow-y, 50%);
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  background: inherit;
+  border: inherit;
+  border-width: 0;
+  transform: rotate(45deg);
+}
+
+.lv-note.is-right::after {
+  left: -7px;
+  border-bottom: 1px solid color-mix(in oklab, var(--accent) 30%, var(--line));
+  border-left: 1px solid color-mix(in oklab, var(--accent) 30%, var(--line));
+}
+
+.lv-note.is-left::after {
+  right: -7px;
+  border-top: 1px solid color-mix(in oklab, var(--accent) 30%, var(--line));
+  border-right: 1px solid color-mix(in oklab, var(--accent) 30%, var(--line));
 }
 
 .lv-note.is-above::after {

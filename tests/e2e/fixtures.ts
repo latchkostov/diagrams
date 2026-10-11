@@ -12,6 +12,9 @@ import { test as base, expect, type Page } from "@playwright/test";
 export const STORAGE_KEYS = {
   settings: "diagrams.settings.v1",
   autosavePrefix: "diagrams.autosave.v1:",
+  /** Your diagrams: the index (documents live under diagrams.doc.v1:<id>). */
+  library: "diagrams.library.v1",
+  /** The single "Your diagram" slot from before the library (still read, in place). */
   imported: "diagrams.imported.v1",
   paletteCollapsed: "diagrams.paletteCollapsed.v1",
   labCustom: "diagrams.lab.custom.v1",

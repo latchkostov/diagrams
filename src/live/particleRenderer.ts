@@ -102,6 +102,20 @@ interface Seen {
   frame: number;
 }
 
+/** Screen gap between dots on one edge, in particle sizes, below which a crowded edge is thinned. */
+const DENSITY_SPACING = 2.2;
+
+/**
+ * Thinning for a crowded edge: draw one particle in `stride` (chosen by particle id, so the same
+ * ones stay visible from frame to frame). 1 when the edge has room for every particle. A fallback
+ * for traffic too dense even at the automatic dot scale: dots stay dots instead of a solid line.
+ */
+export function densityStride(count: number, pathLengthPx: number, particlePx: number): number {
+  if (count <= 3 || !(pathLengthPx > 0) || !(particlePx > 0)) return 1;
+  const room = Math.max(3, Math.floor(pathLengthPx / (particlePx * DENSITY_SPACING)));
+  return count > room ? Math.ceil(count / room) : 1;
+}
+
 const PULSE_MS = 520;
 const FLASH_MS = 700;
 const MAX_PULSES = 90;
@@ -120,6 +134,7 @@ export class ParticleRenderer {
   private failed = new Map<string, number>();
   private frame = 0;
   private pt = { x: 0, y: 0 };
+  private perEdge = new Map<string, number>();
   private dpr = 1;
   private w = 0;
   private h = 0;
@@ -212,11 +227,19 @@ export class ParticleRenderer {
 
     const particles = snap.particles;
     const stride = reduced && particles.length > REDUCED_MAX ? Math.ceil(particles.length / REDUCED_MAX) : 1;
+    const perEdge = this.perEdge;
+    perEdge.clear();
+    for (let i = 0; i < particles.length; i += stride) {
+      const id = particles[i].edgeId;
+      perEdge.set(id, (perEdge.get(id) ?? 0) + 1);
+    }
     let drawn = 0;
     for (let i = 0; i < particles.length; i += stride) {
       const p = particles[i];
       const s = this.cache.get(p.edgeId, this.frame);
       if (!s || s.length === 0) continue;
+      const crowd = densityStride(perEdge.get(p.edgeId) ?? 0, s.length * k, size);
+      if (crowd > 1 && p.id % crowd !== 0) continue;
       const reverse = p.kind === "reply" || p.kind === "retry";
       const t = reverse ? 1 - p.progress : p.progress;
       pointOnSamples(s, t, this.pt);
