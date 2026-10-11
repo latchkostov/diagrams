@@ -1,4 +1,6 @@
 import {
+  memo,
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -221,6 +223,22 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
     input.current?.focus();
   };
 
+  // Rows are memoized: moving the highlight re-renders the two rows that changed, not the list.
+  // Their callbacks are stable and reach the latest state through a ref.
+  const latest = useRef({ flat, active, run });
+  useLayoutEffect(() => {
+    latest.current = { flat, active, run };
+  });
+  const rowHover = useCallback((c: Command) => {
+    const i = latest.current.flat.indexOf(c);
+    if (i !== latest.current.active) setActive(i);
+  }, []);
+  const rowRun = useCallback((c: Command) => latest.current.run(c), []);
+  const rowRef = useCallback((c: Command, el: HTMLDivElement | null) => {
+    if (el) itemRefs.current.set(c.id, el);
+    else itemRefs.current.delete(c.id);
+  }, []);
+
   // The > @ + prefixes are taught once, by the footer's clickable chips.
   const placeholder = view === "canvas" ? "Search actions, nodes and stencils…" : "Search diagrams and stencils…";
   const count = flat.length;
@@ -276,15 +294,9 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
                   id={optionId(c)}
                   active={c === activeItem}
                   group={g.group}
-                  refCallback={(el) => {
-                    if (el) itemRefs.current.set(c.id, el);
-                    else itemRefs.current.delete(c.id);
-                  }}
-                  onHover={() => {
-                    const i = flat.indexOf(c);
-                    if (i !== active) setActive(i);
-                  }}
-                  onRun={() => run(c)}
+                  setRef={rowRef}
+                  onHover={rowHover}
+                  onRun={rowRun}
                 />
               ))}
             </div>
@@ -333,16 +345,17 @@ interface RowProps {
   id: string;
   active: boolean;
   group: CommandGroup;
-  refCallback: (el: HTMLDivElement | null) => void;
-  onHover: () => void;
-  onRun: () => void;
+  setRef: (command: Command, el: HTMLDivElement | null) => void;
+  onHover: (command: Command) => void;
+  onRun: (command: Command) => void;
 }
 
-function Row({ command: c, id, active, group, refCallback, onHover, onRun }: RowProps) {
+const Row = memo(function Row({ command: c, id, active, group, setRef, onHover, onRun }: RowProps) {
   const stencil = c.stencil ? getStencil(c.stencil) : undefined;
+  const ref = useCallback((el: HTMLDivElement | null) => setRef(c, el), [setRef, c]);
   return (
     <div
-      ref={refCallback}
+      ref={ref}
       id={id}
       role="option"
       aria-selected={active}
@@ -351,9 +364,9 @@ function Row({ command: c, id, active, group, refCallback, onHover, onRun }: Row
       data-testid={`command-item-${c.id}`}
       data-group={group}
       data-active={active || undefined}
-      onMouseMove={onHover}
+      onMouseMove={() => onHover(c)}
       onMouseDown={(e) => e.preventDefault()}
-      onClick={onRun}
+      onClick={() => onRun(c)}
       onKeyDown={() => {}}
     >
       <span className="cmdk-lead">
@@ -383,4 +396,4 @@ function Row({ command: c, id, active, group, refCallback, onHover, onRun }: Row
       )}
     </div>
   );
-}
+});

@@ -208,9 +208,19 @@ export function useCovered(
           });
     ro?.observe(el);
     check();
-    const unsubscribe = store.subscribe(check);
+    // The store changes many times a frame while dragging, zooming or measuring; checking on each
+    // forced a layout (two rect reads) every time. Once per frame, at the frame's own layout, is enough.
+    let frame = 0;
+    const unsubscribe = store.subscribe(() => {
+      if (!frame)
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          check();
+        });
+    });
     return () => {
       unsubscribe();
+      cancelAnimationFrame(frame);
       ro?.disconnect();
     };
   }, [card, root, store, enabled]);

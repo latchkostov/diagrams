@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { getStencil, stencils } from "../stencils/registry";
 import type { AnnotationKind, AnnotationShape, Stencil, StencilCategory } from "../model/types";
 import { StencilIcon } from "../components/StencilIcon";
@@ -39,8 +39,11 @@ function readClosed(): StencilCategory[] {
   }
 }
 
-/** Left rail of stencils. Search first, then family, then collapsible categories; recents pinned on top. */
-export function Palette({
+/**
+ * Left rail of stencils. Search first, then family, then collapsible categories; recents pinned on top.
+ * Memoized: the canvas re-renders on every drag frame, selection and zoom; the rail has no reason to.
+ */
+export const Palette = memo(function Palette({
   collapsed,
   onToggle,
   onAdd,
@@ -276,7 +279,7 @@ export function Palette({
       </div>
     </aside>
   );
-}
+});
 
 // ---------------------------------------------------------------- Annotate
 
