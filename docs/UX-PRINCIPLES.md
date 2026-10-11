@@ -107,11 +107,15 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - The **AI panel** is the docked panel at the right edge, in every diagram (editor and live view; never
   presenting or in embeds), where you see and control what AI did. AI here means **agents**: the
   browser's AI assistant, or any agent that can use the page, changes the diagram through the page's
-  tools (WebMCP); the app never asks for an API key. The slim **rail** at the right edge (the panel folds to it), Ctrl+I, and **AI panel** on the canvas right-click and in Ctrl+K show it; the top bar has no AI button. A status line says whether this browser offers the page's tools, and points agents
-  that drive pages to llms.txt when it doesn't.
+  tools (WebMCP); the app never asks for an API key. It starts folded to its slim **rail** at the right
+  edge (40 px) and after that stays as the person left it. The rail, Ctrl+I, and **AI panel** on the
+  canvas right-click and in Ctrl+K show it; the top bar has no AI button. An agent acting never opens the
+  panel or moves the canvas: while folded, the rail's spark counts the agent changes not yet seen in this
+  diagram ("AI panel, 2 new changes"), and opening the panel clears it. A status line says whether this
+  browser offers the page's tools, and points agents that drive pages to llms.txt when it doesn't.
 - Each change is a **turn** in the diagram's **conversation**: the agent's own note (the tools' optional
-  `summary`), what changed ("+3 nodes, +2 connections"; while the panel is folded, the toast carries **Undo**) and a highlight on
-  hover. A turn offers **Undo this change** only while its own step is the next undo; any turn offers
+  `summary`), what changed ("+3 nodes, +2 connections"; while the panel is folded, a toast carries **Undo**, and it goes
+  when the panel opens) and a highlight on hover. A turn offers **Undo this change** only while its own step is the next undo; any turn offers
   **Revert to here** (itself one undo step). **Clear conversation** is undoable. The conversation stays in
   this browser and never goes into files, exports or share links.
 - **Copy for AI** (node, edge or selection right-click, editing and live) puts the elements' ids and labels on the clipboard,
@@ -136,7 +140,7 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   control: play, Restart (Replay), speed (pace) and the timeline drive the replay while it's on, ← →
   step hop by hop, and Esc goes back to live where it left off. Record video… offers **Record this slow
   motion**. Below 1× live draws a calm sample of whole journeys; the counts never change.
-- Side panels make room rather than cover: below 1680 px, live view and an open Ask AI fold the stencils to
+- Side panels make room rather than cover: below 1680 px, live view and an open AI panel fold the stencils to
   their rail until they are opened by hand. Toasts centre on the canvas pane and stack above its bars.
 - Esc backs out one level: menu, dialog, selection, slow motion, trace, highlighted path, presentation, then live view.
 

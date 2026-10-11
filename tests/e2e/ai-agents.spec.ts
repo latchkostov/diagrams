@@ -74,12 +74,92 @@ test.describe("an agent's changes in the AI panel", () => {
     await expect(page.getByTestId("ai-turn-0-revert")).toBeVisible();
   });
 
+  test("with the panel open, no tool's change shows a toast: the turn carries the Undo", async ({ page }) => {
+    await openAiPanel(page);
+    const aiToast = page.getByTestId("toast").filter({ hasText: /^AI:/ });
+    await callTool(page, "edit_diagram", {
+      ops: [{ op: "add_node", kind: "Redis cache", label: "orders-cache" }],
+      summary: "Added a cache",
+    });
+    await expect(page.getByTestId("ai-turn-0-undo")).toBeVisible();
+    await callTool(page, "set_simulation", {
+      title: "Agent storm",
+      traffic: [{ from: "shopper", pattern: "burst", count: 20 }],
+    });
+    await expect(page.getByTestId("ai-turn-1-undo")).toBeVisible();
+    await expect(aiToast).toHaveCount(0);
+    await expect(page.getByTestId("ai-toast-undo")).toHaveCount(0);
+    const res = await callTool(page, "new_diagram", { title: "Agent sketch" });
+    expect(res.isError).toBe(false);
+    // The new diagram's own thread opens with the agent's turn.
+    await expect(page.getByTestId("ai-turn-0-who")).toContainText("Started a new diagram");
+    await expect(page.getByTestId("ai-turn-0")).toContainText("Agent sketch");
+    await expect(aiToast).toHaveCount(0);
+    await expect(page.getByTestId("ai-toast-undo")).toHaveCount(0);
+  });
+
+  test("folded, an agent's change shows a toast that goes once the panel opens", async ({ page }) => {
+    await callTool(page, "set_simulation", {
+      title: "Agent storm",
+      traffic: [{ from: "shopper", pattern: "burst", count: 20 }],
+    });
+    await expect(page.getByTestId("ai-toast-undo")).toBeVisible();
+    await openAiPanel(page);
+    await expect(page.getByTestId("ai-turn-0-undo")).toBeVisible();
+    await expect(page.getByTestId("ai-toast-undo")).toHaveCount(0);
+  });
+
+  test("folded, agent changes count on the rail without opening the panel or moving the canvas", async ({ page }) => {
+    // A first visit starts folded.
+    await expect(page.getByTestId("ai-rail")).toBeVisible();
+    await expect(page.getByTestId("ai-dock")).toHaveCount(0);
+    const rail = page.getByTestId("ai-rail-open");
+    await expect(rail).toHaveAccessibleName("AI panel");
+    await expect(page.getByTestId("ai-rail-badge")).toHaveCount(0);
+    const pane = await page.getByTestId("canvas-wrap").boundingBox();
+
+    await callTool(page, "edit_diagram", {
+      ops: [{ op: "add_node", kind: "Redis cache", label: "orders-cache" }],
+    });
+    await expect(page.getByTestId("ai-rail-badge")).toHaveText("1");
+    await expect(rail).toHaveAccessibleName("AI panel, 1 new change");
+    await callTool(page, "set_simulation", {
+      title: "Agent storm",
+      traffic: [{ from: "shopper", pattern: "burst", count: 20 }],
+    });
+    await expect(page.getByTestId("ai-rail-badge")).toHaveText("2");
+    await expect(rail).toHaveAccessibleName("AI panel, 2 new changes");
+    await expect(page.getByTestId("ai-dock")).toHaveCount(0);
+    expect(await page.getByTestId("canvas-wrap").boundingBox()).toEqual(pane);
+
+    // Opening shows them and clears the count; folding again leaves it clear.
+    await openAiPanel(page);
+    await expect(page.getByTestId("ai-turn-1")).toBeVisible();
+    await page.getByTestId("ai-collapse").click();
+    await expect(rail).toHaveAccessibleName("AI panel");
+    await expect(page.getByTestId("ai-rail-badge")).toHaveCount(0);
+  });
+
   test("the idle panel says the page's tools are available in this browser", async ({ page }) => {
     await openAiPanel(page);
     await expect(page.getByTestId("ai-agent-status")).toHaveAttribute("data-available", "1");
     await expect(page.getByTestId("ai-agent-status")).toContainText("WebMCP");
     await expect(page.getByTestId("ai-llms-link")).toHaveCount(0);
   });
+});
+
+test("the panel starts folded, then opens or stays folded as it was left", async ({ page }) => {
+  await gotoCanvas(page, SLUG);
+  await expect(page.getByTestId("ai-rail")).toBeVisible();
+  await expect(page.getByTestId("ai-dock")).toHaveCount(0);
+  await openAiPanel(page);
+  await page.reload();
+  await expect(page.getByTestId("ai-panel")).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId("ai-collapse").click();
+  await page.reload();
+  await expect(page.getByTestId("node-payments")).toBeVisible();
+  await expect(page.getByTestId("ai-rail")).toBeVisible();
+  await expect(page.getByTestId("ai-dock")).toHaveCount(0);
 });
 
 test("without WebMCP the panel points agents that drive pages to llms.txt", async ({ page }) => {

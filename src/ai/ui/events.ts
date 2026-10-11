@@ -1,4 +1,4 @@
-// Opening the AI panel from anywhere (the top bar, the rail, a right-click, the palette) without importing
+// Opening the AI panel from anywhere (the rail, Ctrl+I, a right-click, the palette) without importing
 // it: it's lazy-loaded by AiMount. Keep this file tiny: it's in the main bundle.
 
 import { formatCombo } from "../../editor/shortcuts";

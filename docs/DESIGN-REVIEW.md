@@ -275,6 +275,13 @@ the browser built-in agents or anything that could browse our site and not for m
   toast (the turn has the Undo; one Undo, not two). Stencil-choice chips leave a turn once its node changed
   (undo, revert, an edit) instead of sitting there disabled. Advanced's placeholder names a node that's in
   the diagram. The dock's frame is no longer a second landmark around the panel's region.
+- **Lead review:** an idle open panel spent about 360 px of a 1024 screen on explanation, so the panel
+  starts folded to its 40 px rail on a first visit (then stays as the person left it). An agent's change
+  never opens it or moves the canvas; while folded, the rail's spark shows a count of the agent changes not
+  yet seen in this diagram ("AI panel, 2 new changes"), cleared by opening the panel. No AI change toasts
+  while the panel is open, for any tool, and a toast left from a change made while folded goes when the
+  panel opens (its turn has the Undo). With Build with AI off the start card, round 7's rule hiding it
+  while the panel is open went too.
 
 Chrome: the top bar goes from 8 to 7, the start card and the File menu lose an item each, the node, edge
 and selection menus swap Change with AI… for Copy for AI (same count), and the panel's composer moves

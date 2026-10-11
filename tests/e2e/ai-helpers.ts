@@ -43,7 +43,7 @@ export async function settle(page: Page, testId = "node-payments") {
     .toBe(true);
 }
 
-/** Opens the AI panel from the top bar. */
+/** Opens the AI panel from its rail. */
 export async function openAiPanel(page: Page) {
   await page.getByTestId("ai-rail-open").click();
   // The panel is its own chunk: the dev server may still be transforming it on a busy first load.

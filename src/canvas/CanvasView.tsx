@@ -591,7 +591,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const selectedEdges = useMemo(() => edges.filter((e) => e.selected), [edges]);
   const nothingSelected =
     !selectedNodes.length && !selectedGroups.length && !selectedEdges.length && !selectedAnnotations.length;
-  // Below ROOMY an open Ask AI dock folds the stencils to their rail too, as live view does: at 1440 the
+  // Below ROOMY an open AI panel folds the stencils to their rail too, as live view does: at 1440 the
   // dock, the stencils and the inspector's rail left the diagram 780 px.
   const paletteHidden = paletteCollapsed || ((live || (narrow && aiDockOpen)) && !openedByHand.palette);
   const inspectorHidden =

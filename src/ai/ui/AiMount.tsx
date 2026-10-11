@@ -6,6 +6,7 @@ import { Icon } from "../../components/Icon";
 import { AI_PANEL_COMBO, OPEN_AI_PANEL, aiPanelTitle, buildWithAi, openAiPanel, type OpenAiPanel } from "./events";
 import { aiDock, RAIL_WIDTH, clampWidth, collapseDock, useAiDock } from "./dock";
 import { forgetLegacyAiKeys } from "./legacy";
+import { railLabel, unseen, useUnseen } from "./unseen";
 
 // The app shell's only AI code, kept small because it's in the main bundle: the dock's frame (the slim
 // rail, or the column the AI panel loads into), the shortcut, and the menu entries. The panel, the AI
@@ -137,6 +138,14 @@ export function AiMount({
     [],
   );
 
+  // Agent changes made while folded show as a count on the rail; opening the panel shows them.
+  const documentId = canvas?.documentId;
+  const fresh = useUnseen(documentId);
+  const shown = docked && dock.open;
+  useEffect(() => {
+    if (shown && documentId && fresh) unseen.clear(documentId);
+  }, [shown, documentId, fresh]);
+
   const [mcp] = useState(hasModelContext);
   const live = !!canvas?.live || presenting;
 
@@ -163,11 +172,16 @@ export function AiMount({
             <button
               className="ai-rail-btn"
               onClick={() => openAiPanel()}
-              aria-label="AI panel"
+              aria-label={railLabel(fresh)}
               title={aiPanelTitle()}
               data-testid="ai-rail-open"
             >
               <Icon name="ai" size={18} />
+              {fresh > 0 && (
+                <span className="ai-rail-badge" aria-hidden="true" data-testid="ai-rail-badge">
+                  {fresh > 9 ? "9+" : fresh}
+                </span>
+              )}
             </button>
           </aside>
         ))}

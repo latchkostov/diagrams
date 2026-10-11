@@ -1,5 +1,6 @@
-// The AI panel's open state and width: one remembered setting, shared by the top-bar button, the
-// rail, the panel and the canvas (which folds the inspector to make room). Main bundle: keep it tiny.
+// The AI panel's open state and width: one remembered setting, shared by the rail, the panel and the
+// canvas (which folds the inspector to make room). Folded on a first visit; after that, as the person
+// left it. Main bundle: keep it tiny.
 
 import { useSyncExternalStore } from "react";
 

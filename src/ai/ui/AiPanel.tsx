@@ -17,7 +17,7 @@ import { getStencil } from "../../stencils/registry";
 import { isLocalOnly } from "../../lib/localOnly";
 import { LOCAL_ONLY_MESSAGE } from "../privacy";
 import { choiceIsCurrent, diffDiagrams, summarize, swapStencil, type StencilChoice } from "./apply";
-import { markElements, showApplied } from "./feedback";
+import { dismissAppliedToast, markElements, showApplied } from "./feedback";
 import { aiDock, clampWidth, collapseDock, useAiDock } from "./dock";
 import { sameContent, turnId, type ThreadTurn } from "./thread";
 import { threads, useThread } from "./threadStore";
@@ -72,7 +72,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   }, [editor, host, turns, refresh]);
   const current: DiagramFile | null = snap?.diagram ?? null;
 
-  // Each open request (the top bar, the rail, Ctrl+I, a menu) brings the keyboard here; Build with AI
+  // Each open request (the rail, Ctrl+I, a menu) brings the keyboard here; Build with AI
   // opens Advanced, ready to describe the diagram. A request made just now still counts when this panel
   // mounts after it (Build with AI opens a new diagram first); an old one is only why the dock is open.
   const [fresh] = useState(() => !!opened && Date.now() - opened.at < FRESH_MS);
@@ -95,8 +95,12 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     if (!opened.advanced) panelRef.current?.focus({ preventScroll: true });
   }, [opened]);
 
-  // Leaving the panel (it unmounts with a diagram switch) clears any highlight.
-  useEffect(() => () => markElements([]), []);
+  // Opening, the turns take over the Undo of a toast for an agent change made while folded. Leaving
+  // (the panel unmounts with a diagram switch) clears any highlight.
+  useEffect(() => {
+    dismissAppliedToast();
+    return () => markElements([]);
+  }, []);
 
   useEffect(() => {
     historyEnd.current?.scrollIntoView({ block: "nearest" });
