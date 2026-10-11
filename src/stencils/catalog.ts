@@ -34,6 +34,7 @@ const AZURE = "#0078D4";
 const AWS_INTEGRATION = "#E7157B";
 const AWS_ANALYTICS_NET = "#8C4FFF";
 const AWS_COMPUTE = "#ED7100";
+const AWS_SECURITY = "#DD344C";
 const REDIS = "#DC382D";
 const GCP = "#4285F4";
 
@@ -1111,6 +1112,16 @@ const observability = group("observability", [
     "Error tracking and performance monitoring for apps.",
     "errors",
   ],
+  [
+    "aws.cloudwatch",
+    "CloudWatch",
+    "AWS",
+    "aws-cloudwatch",
+    AWS_INTEGRATION,
+    "sink",
+    "AWS logs, metrics, alarms and dashboards; where Lambda writes by default.",
+    "logs · metrics",
+  ],
 ]);
 
 const security = group("security", [
@@ -1171,6 +1182,87 @@ const security = group("security", [
     "none",
     "Open-source identity and access management (OIDC, SAML).",
     "identity",
+  ],
+  // Config stores, secret stores and workload identities: targets of dependency edges, not flows.
+  [
+    "azure.app-config",
+    "App Configuration",
+    "Azure",
+    "azure-app-config",
+    AZURE,
+    "none",
+    "Central settings and feature flags; an entry can reference a Key Vault secret.",
+    "config store",
+  ],
+  [
+    "azure.managed-identity",
+    "Managed Identity",
+    "Azure",
+    "azure-managed-identity",
+    "#1490DF",
+    "none",
+    "An Entra identity for a workload, with no stored credentials (also AKS workload identity).",
+    "workload identity",
+  ],
+  [
+    "aws.secrets-manager",
+    "Secrets Manager",
+    "AWS",
+    "aws-secrets-manager",
+    AWS_SECURITY,
+    "none",
+    "Stores and rotates secrets such as database credentials and API keys.",
+    "secrets",
+  ],
+  [
+    "aws.parameter-store",
+    "Parameter Store",
+    "AWS",
+    "aws-parameter-store",
+    AWS_INTEGRATION,
+    "none",
+    "Systems Manager parameters; /aws/reference/secretsmanager/ paths pass through to Secrets Manager.",
+    "parameters",
+  ],
+  [
+    "aws.iam-role",
+    "IAM Role",
+    "AWS",
+    "aws-iam-role",
+    AWS_SECURITY,
+    "none",
+    "The identity a Lambda function, ECS task or pod (IRSA) runs as.",
+    "execution role",
+  ],
+  [
+    "gcp.secret-manager",
+    "Secret Manager",
+    "Google Cloud",
+    "gcp-secret-manager",
+    GCP,
+    "none",
+    "Google Cloud's store for API keys, passwords and certificates.",
+    "secrets",
+  ],
+  [
+    "k8s.configmap",
+    "ConfigMap",
+    "Kubernetes",
+    "k8s-configmap",
+    "#326CE5",
+    "none",
+    "Non-secret settings mounted into pods as files or environment variables.",
+    "configmap",
+  ],
+  [
+    "k8s.secret",
+    "Kubernetes Secret",
+    "Kubernetes",
+    "k8s-secret",
+    "#326CE5",
+    "none",
+    "Secret values mounted into pods; often synced from a vault.",
+    "secret",
   ],
 ]);
 
@@ -1519,6 +1611,37 @@ const generic = group("generic", [
     "source",
     "GitOps controller that syncs Kubernetes clusters from Git.",
     "gitops",
+  ],
+  // Vendor-neutral config, secrets and identity, for block diagrams that shouldn't show logos.
+  [
+    "generic.config-store",
+    "Config Store",
+    "Generic",
+    "generic-config-store",
+    "#0D9488",
+    "none",
+    "Any central configuration service or feature-flag store.",
+    "config",
+  ],
+  [
+    "generic.secret-store",
+    "Secret Store",
+    "Generic",
+    "generic-secret-store",
+    "#B45309",
+    "none",
+    "Any secrets manager or vault.",
+    "secrets",
+  ],
+  [
+    "generic.identity-provider",
+    "Identity Provider",
+    "Generic",
+    "generic-identity-provider",
+    "#4F46E5",
+    "none",
+    "Issues OAuth 2.0 / OIDC tokens to users and workloads.",
+    "IdP",
   ],
 ]);
 

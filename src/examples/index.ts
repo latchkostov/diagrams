@@ -4,6 +4,7 @@ import azureServiceBusIntegration from "./azure-service-bus-integration.json";
 import cdcAnalytics from "./cdc-analytics.json";
 import awsFanout from "./aws-fanout.json";
 import iotTelemetry from "./iot-telemetry.json";
+import aksAppConfigKeyVault from "./aks-app-config-key-vault.json";
 
 export interface Example {
   slug: string;
@@ -24,4 +25,5 @@ export const examples: Example[] = [
   { slug: "cdc-analytics", diagram: cdcAnalytics as DiagramFile },
   { slug: "aws-fanout", diagram: awsFanout as DiagramFile },
   { slug: "iot-telemetry", diagram: iotTelemetry as DiagramFile },
+  { slug: "aks-app-config-key-vault", diagram: aksAppConfigKeyVault as DiagramFile },
 ];

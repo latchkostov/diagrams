@@ -453,6 +453,27 @@
   }
 }
 
+/* Dependencies carry no messages: they recede to about 35% so particles own the stage, and come back
+   while hovered. */
+.react-flow[data-live] .react-flow__edge .fe-dep,
+.react-flow[data-live] .fe-label-dep,
+.react-flow[data-live] .fe-chip {
+  opacity: 0.35;
+  transition: opacity 0.2s;
+}
+
+.react-flow[data-live] .react-flow__edge:hover .fe-dep,
+.react-flow[data-live] .fe-label-dep:hover,
+.react-flow[data-live] .fe-chip:hover {
+  opacity: 1;
+}
+
+.react-flow[data-live] .react-flow__edge .fe-dep .fe-path.react-flow__edge-path {
+  opacity: 1;
+  stroke-width: 1.25;
+  animation: none;
+}
+
 /* Spotlight (narration focus / trace): everything else steps back. */
 .react-flow[data-live-spotlight] .react-flow__node[data-live-dim],
 .react-flow[data-live-spotlight] .react-flow__node-boundary {

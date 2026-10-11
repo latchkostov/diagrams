@@ -21,9 +21,13 @@ export const LABEL = {
   minChars: 5,
   /** Never draw a single-line pill wider than this many characters; wrap or truncate instead. */
   maxLineChars: 34,
+  /** A dependency's glyph inside a pill: 12px icon + 4px gap before the text. */
+  glyphLead: 16,
+  /** A dependency with no text: a round chip around its 14px glyph. */
+  chip: 20,
 } as const;
 
-export type LabelMode = "full" | "wrap" | "truncate" | "dot";
+export type LabelMode = "full" | "wrap" | "truncate" | "dot" | "glyph";
 
 export interface LabelPlacement {
   /** Centre of the pill / dot. */
@@ -37,6 +41,8 @@ export interface LabelPlacement {
   text: string;
   /** 1-based number shown in the dot (mode "dot"). */
   dot?: number;
+  /** A dependency: its glyph leads the pill, replaces a dot's number, or is the whole chip ("glyph"). */
+  glyph?: boolean;
 }
 
 export interface LabelRequest {
@@ -44,6 +50,8 @@ export interface LabelRequest {
   text: string;
   /** The edge's route, source to target. */
   points: readonly Point[];
+  /** A dependency: the pill leads with a glyph; with no text it's a glyph chip. */
+  glyph?: boolean;
 }
 
 export interface LabelEnv {
@@ -163,7 +171,7 @@ export function placeLabels(reqs: readonly LabelRequest[], env: LabelEnv): Map<s
   const lengthOf = (pts: readonly Point[]) =>
     pts.reduce((s, p, i) => (i ? s + Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y) : 0), 0);
   const order = reqs
-    .filter((r) => r.text.trim() && r.points.length >= 2)
+    .filter((r) => (r.text.trim() || r.glyph) && r.points.length >= 2)
     .map((r) => ({ r, len: lengthOf(r.points) }))
     .sort((a, b) => a.len - b.len || (a.r.id < b.r.id ? -1 : a.r.id > b.r.id ? 1 : 0))
     .map((x) => x.r);
@@ -172,10 +180,28 @@ export function placeLabels(reqs: readonly LabelRequest[], env: LabelEnv): Map<s
   for (const req of order) {
     const text = req.text.trim();
     const cands = candidates(req.points);
+    const lead = req.glyph ? LABEL.glyphLead : 0;
     const commit = (pl: LabelPlacement) => {
+      if (req.glyph) pl.glyph = true;
       out.set(req.id, pl);
       placed.insert(box({ x: pl.x, y: pl.y }, pl.width, pl.height), box({ x: pl.x, y: pl.y }, pl.width, pl.height));
     };
+
+    // 0. A dependency with no text: a glyph chip, on the free spot that crosses the fewest lines.
+    if (!text) {
+      const c = LABEL.chip;
+      let chip: { p: Point; cost: number } | null = null;
+      for (const cand of cands) {
+        const r = box(cand.p, c, c);
+        if (blocked(r)) continue;
+        const cost = crossings(r, req.id);
+        if (!chip || cost < chip.cost) chip = { p: cand.p, cost };
+        if (cost === 0) break;
+      }
+      const spot = chip?.p ?? cands[Math.floor(cands.length / 2)]?.p ?? req.points[0];
+      commit({ x: spot.x, y: spot.y, width: c, height: c, mode: "glyph", lines: [], text: "" });
+      continue;
+    }
 
     // 1. Full text: one line, then wrapped. Prefer spots that sit on no other line.
     const variants: { mode: LabelMode; lines: string[] }[] = [];
@@ -193,7 +219,7 @@ export function placeLabels(reqs: readonly LabelRequest[], env: LabelEnv): Map<s
     variants.forEach((v, vi) => {
       // A full-text spot on no other line already beats anything later in the list.
       if (best && best.cost < 10) return;
-      const w = pillWidth(Math.max(...v.lines.map((l) => l.length)));
+      const w = pillWidth(Math.max(...v.lines.map((l) => l.length))) + lead;
       const h = pillHeight(v.lines.length);
       for (const c of cands) {
         const r = box(c.p, w, h);
@@ -212,8 +238,8 @@ export function placeLabels(reqs: readonly LabelRequest[], env: LabelEnv): Map<s
 
     // 2. Truncate: the widest single-line pill that fits anywhere on the route.
     const h1 = pillHeight(1);
-    const minW = pillWidth(LABEL.minChars);
-    const fullW = pillWidth(Math.min(text.length, LABEL.maxLineChars));
+    const minW = pillWidth(LABEL.minChars) + lead;
+    const fullW = pillWidth(Math.min(text.length, LABEL.maxLineChars)) + lead;
     let trunc: { p: Point; w: number } | null = null;
     for (const c of cands.slice(0, 60)) {
       if (blocked(box(c.p, minW, h1))) continue;
@@ -228,11 +254,11 @@ export function placeLabels(reqs: readonly LabelRequest[], env: LabelEnv): Map<s
       if (lo >= fullW - LABEL.charW) break;
     }
     if (trunc) {
-      const chars = Math.floor((trunc.w - pillWidth(0)) / LABEL.charW);
+      const chars = Math.floor((trunc.w - lead - pillWidth(0)) / LABEL.charW);
       commit({
         x: trunc.p.x,
         y: trunc.p.y,
-        width: pillWidth(chars),
+        width: pillWidth(chars) + lead,
         height: h1,
         mode: "truncate",
         lines: [text],

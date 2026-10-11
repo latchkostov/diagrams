@@ -39,6 +39,22 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
   terminal (`store` / `sink`) or finishes processing, a `reply` particle travels back. The caller
   does not wait for the reply (keep it simple) — the reply is visual.
 
+## Dependencies
+
+- An edge's `relation` says what it means. Absent (or `"flow"`) is a flow and everything above applies.
+  `config`, `secret`, `identity`, `telemetry`, `deploy` and `depends` are **dependencies**: they carry no
+  messages, no particles and no traffic.
+- `compileTopology` (`src/sim/topology.ts`) leaves them out, so the engine, capacity analysis
+  (`analyzeCapacity`), the tracer and sequence diagrams never see them; nor do entry-point detection,
+  consumer-group lists or the storm builder. A diagram with dependencies runs exactly like the same diagram
+  without them, seed for seed (`src/sim/relations.test.ts`).
+- Flow-only fields on a dependency (`kind`, `props.group`, `dlq`, `filter`, `share`, `emits`) stay in the
+  file untouched, so switching it back to a flow restores its behaviour.
+- The live view dims dependencies to about 35% (full strength on hover); the decorator never marks them
+  active.
+- Not yet (phase 3 of `docs/research/diagram-semantics.md`): dependency outages. A `when` of `startup`,
+  `cached`, `request` or `never` is accepted on a dependency and kept, but the engine doesn't read it.
+
 ## Failure, retry, dead-letter
 
 - A processor fails a message with probability `failureRate`, or always while its status is `down`.

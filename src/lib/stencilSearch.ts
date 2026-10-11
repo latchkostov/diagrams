@@ -76,7 +76,7 @@ export const STENCIL_ALIASES: Record<string, readonly string[]> = {
   "azure.app-insights": ["appinsights", "ai", "azure monitor", "telemetry"],
   opentelemetry: ["otel", "otlp", "tracing", "collector"],
   splunk: ["logs", "siem"],
-  "azure.key-vault": ["kv", "akv", "secrets", "keyvault"],
+  "azure.key-vault": ["kv", "akv", "secrets", "keyvault", "kv refs", "key vault references"],
   "entra-id": ["aad", "azure ad", "active directory", "oauth", "oidc", "identity", "sso"],
   vault: ["secrets", "hashicorp"],
   "client.user": ["person", "human", "actor", "customer"],
@@ -166,6 +166,18 @@ export const STENCIL_ALIASES: Record<string, readonly string[]> = {
   "generic.external-api": ["third party", "3rd party", "external", "api", "rest", "saas"],
   terraform: ["iac", "infrastructure as code", "tf", "hcl", "opentofu"],
   argocd: ["argo", "gitops", "cd", "deploy", "kubernetes"],
+  "azure.app-config": ["app config", "appconfig", "appcs", "configuration", "feature flags", "kv refs", "settings"],
+  "azure.managed-identity": ["mi", "msi", "workload identity", "user assigned", "system assigned", "identity"],
+  "aws.secrets-manager": ["asm", "secrets", "rotation", "credentials"],
+  "aws.parameter-store": ["ssm", "systems manager", "parameters", "config", "securestring"],
+  "aws.iam-role": ["iam", "role", "irsa", "execution role", "task role", "identity"],
+  "gcp.secret-manager": ["secrets", "google"],
+  "k8s.configmap": ["configmap", "config map", "cm", "kubernetes", "k8s", "config"],
+  "k8s.secret": ["secret", "kubernetes", "k8s", "csi", "external secrets"],
+  "generic.config-store": ["config", "configuration", "settings", "feature flags", "consul", "etcd"],
+  "generic.secret-store": ["secrets", "vault", "credentials", "kms"],
+  "generic.identity-provider": ["idp", "sso", "oauth", "oidc", "saml", "identity", "auth"],
+  "aws.cloudwatch": ["logs", "metrics", "alarms", "cw", "monitoring"],
 };
 
 interface Indexed {

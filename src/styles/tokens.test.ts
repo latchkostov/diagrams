@@ -30,3 +30,17 @@ it("keeps readable secondary and muted text at AA on both themes' surfaces", () 
       }
   }
 });
+
+it("keeps dependency tints at 3:1 on the canvas and label pills in both themes", () => {
+  for (const block of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]]) {
+    const tokens = Object.fromEntries(
+      [...block.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map((match) => [match[1], match[2]]),
+    );
+    for (const rel of ["config", "secret", "identity", "telemetry", "deploy", "depends"])
+      for (const surface of ["bg", "stage-bg", "edge-label-bg", "node-bg"]) {
+        const a = luminance(tokens[`rel-${rel}`]),
+          b = luminance(tokens[surface]);
+        expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), `rel-${rel} on ${surface}`).toBeGreaterThanOrEqual(3);
+      }
+  }
+});

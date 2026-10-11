@@ -77,6 +77,14 @@
   --edge: #97a0b3;
   --edge-strong: #556075;
   --edge-label-bg: #ffffff;
+  /* Dependency tints (config, secret...): muted, about 60% of a stencil accent, at least 3:1 on the
+     canvas. A third cue after the dotted line and the glyph, never the only one. */
+  --rel-config: #2a8a83;
+  --rel-secret: #a6720c;
+  --rel-identity: #5a61c4;
+  --rel-telemetry: #7c6d98;
+  --rel-deploy: #3b8752;
+  --rel-depends: #556075;
 
   --node-bg: #ffffff;
   --node-border: #dde2ea;
@@ -141,6 +149,12 @@
   --edge: #58637b;
   --edge-strong: #9aa5bc;
   --edge-label-bg: #182030;
+  --rel-config: #5cb5ad;
+  --rel-secret: #d3a24b;
+  --rel-identity: #9aa1ee;
+  --rel-telemetry: #a99bc4;
+  --rel-deploy: #6bbf87;
+  --rel-depends: #9aa5bc;
 
   --node-bg: #171e2c;
   --node-border: #283149;

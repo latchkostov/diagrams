@@ -18,6 +18,7 @@ import { FALLBACK_STENCIL_ID, inferStencil } from "../infer";
 import { childrenNamed, decodeEntities, findFirst, parseXml, XmlError, type XmlElement } from "../xml";
 import { parseStyle, stencilFromStyle, toneFromStyle } from "./mapping";
 import { filterLayerOrder } from "../../model/layers";
+import { isEdgeRelation } from "../../model/relations";
 import { CARD, textHtml } from "./write";
 import {
   ANNOTATION_COLORS,
@@ -554,8 +555,13 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     if (edgeUsed.has(id)) id = `${id}-${edgeUsed.size + 1}`;
     edgeUsed.add(id);
     const dashed = c.style.dashed === "1";
-    // Dashed means async (message), solid means sync (request/response), in both directions.
-    const kind: DiagramEdge["kind"] = dashed ? "async" : "sync";
+    // Ours: dg_relation (or the dfRelation style key, which survives draw.io editing the object away).
+    const relation = [c.data.dg_relation, c.style.dfRelation].find((r) => isEdgeRelation(r) && r !== "flow") as
+      DiagramEdge["relation"] | undefined;
+    // Dashed means async (message), solid means sync (request/response), in both directions. A
+    // dependency is dotted whatever its kind, so its saved kind (kept for switching back) wins.
+    const savedKind = c.data.dg_kind === "sync" || c.data.dg_kind === "async" ? c.data.dg_kind : undefined;
+    const kind: DiagramEdge["kind"] = relation && savedKind ? savedKind : dashed ? "async" : "sync";
     let props: Record<string, unknown> | undefined;
     if (c.data.dg_props) {
       try {
@@ -572,6 +578,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
       to,
       ...(label ? { label } : {}),
       kind,
+      ...(relation ? { relation } : {}),
       ...(sourceSide ? { sourceSide } : {}),
       ...(targetSide ? { targetSide } : {}),
       ...(props ? { props } : {}),

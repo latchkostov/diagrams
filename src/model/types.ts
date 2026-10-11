@@ -187,14 +187,24 @@ export interface DiagramNode {
   props?: Record<string, unknown>;
 }
 
+/**
+ * What an edge means. "flow" (the default) carries messages or requests; the other six are
+ * dependencies: drawn dotted, never carry traffic, and the simulation ignores them.
+ */
+export type EdgeRelation = "flow" | "config" | "secret" | "identity" | "telemetry" | "deploy" | "depends";
+
 export interface DiagramEdge {
   id: string;
   /** Message / request flows from `from` to `to`. Either end may also be a shape annotation's id. */
   from: string;
   to: string;
   label?: string;
-  /** "async" = message-based (dashed, animated in sim); "sync" = request/response (solid). Default "async". */
+  /** "async" = message-based (dashed, animated in sim); "sync" = request/response (solid). Default "async".
+   *  Only meaningful for flows; kept on dependencies so switching back to a flow restores it. */
   kind?: "async" | "sync";
+  /** Absent = "flow". Dependencies point from the thing that needs it to the dependency (Deploy: from
+   *  the actor to its target). Config edges may list what they read in `props.settings`. */
+  relation?: EdgeRelation;
   /** Which side of each node the edge attaches to. Omitted = chosen automatically from node positions. */
   sourceSide?: Side;
   targetSide?: Side;

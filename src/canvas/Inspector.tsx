@@ -26,6 +26,18 @@ import {
   textSizeLabel,
 } from "./annotations";
 import { safeStorage } from "../lib/storage";
+import {
+  RELATION_META,
+  edgeSettings,
+  isDependency,
+  parseSettings,
+  relationOf,
+  settingsSummary,
+  settingsText,
+  type ConfigSetting,
+} from "../model/relations";
+import { RELATION_CHOICES, applyChoice, choiceOf, relationIcon } from "../editor/relationActions";
+import { inferRelation } from "../stencils/relations";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.
@@ -144,7 +156,7 @@ const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
 };
 
 const SIM_KEYS = new Set<string>(Object.keys(SIM_FIELDS));
-const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share"]);
+const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share", "settings"]);
 const SIDES: Side[] = ["top", "right", "bottom", "left"];
 
 export interface InspectorProps {
@@ -376,7 +388,10 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
   const data = edge.data ?? { kind: "async" as const };
   const props = data.props ?? {};
   const merge = (f: string) => ({ merge: `inspector:edge:${edge.id}:${f}` });
-  const fanOut = isFanOut(editor, edge.source, data.kind);
+  const relation = relationOf(data);
+  const flow = relation === "flow";
+  const fanOut = flow && isFanOut(editor, edge.source, data.kind);
+  const choice = choiceOf(data);
   return (
     <>
       <Section>
@@ -398,47 +413,77 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
           <input
             className="insp-input"
             value={data.label ?? ""}
-            placeholder="e.g. OrderPlaced"
+            placeholder={flow ? "e.g. OrderPlaced" : "Optional, e.g. Key Vault Secrets User"}
             onChange={(e) => editor.updateEdge(edge.id, { label: e.target.value }, merge("label"))}
             name="edge-label"
             data-testid="inspector-field-label"
           />
         </Field>
-        <Field label="Kind" group>
-          <Segmented
-            testId="inspector-field-kind"
-            value={data.kind}
-            options={[
-              { value: "async", label: "Async", hint: "Message (dashed)" },
-              { value: "sync", label: "Sync", hint: "Request / response (solid)" },
-            ]}
-            onChange={(kind) => editor.updateEdge(edge.id, { kind })}
-          />
-        </Field>
-        <Field label="Consumer group" hint="Edges from a topic sharing a group compete for messages">
-          <input
-            className="insp-input mono"
-            value={typeof props.group === "string" ? props.group : ""}
-            placeholder={edge.id}
-            onChange={(e) => editor.setEdgeProps(edge.id, { group: e.target.value || undefined }, merge("group"))}
-            name="consumer-group"
-            data-testid="inspector-field-group"
-          />
-        </Field>
-        <label className="insp-check">
-          <input
-            type="checkbox"
-            checked={props.dlq === true}
-            onChange={(e) => editor.setEdgeProps(edge.id, { dlq: e.target.checked || undefined })}
-            name="dlq"
-            data-testid="inspector-field-dlq"
-          />
-          <span>
-            Dead-letter path
-            <small>Failed messages from the source broker go here</small>
+        <Field label="Relationship" hint="Flows carry messages in Live; dependencies are drawn dotted and carry none">
+          <span className={`insp-relation${flow ? "" : ` fe-rel-${relation}`}`}>
+            <Icon name={relationIcon(relation, data.kind)} size={14} />
+            <select
+              className="insp-input"
+              value={choice}
+              onChange={(e) => {
+                const next = RELATION_CHOICES.find((c) => c.id === e.target.value);
+                if (next) applyChoice(editor, [edge.id], next);
+              }}
+              name="relationship"
+              data-testid="inspector-field-relation"
+            >
+              <optgroup label="Flow">
+                {RELATION_CHOICES.filter((c) => c.relation === "flow").map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label} ({c.kind})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Dependency">
+                {RELATION_CHOICES.filter((c) => c.relation !== "flow").map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
           </span>
-        </label>
+        </Field>
+        <RelationHint edge={edge} editor={editor} />
+        {flow && (
+          <>
+            <Field label="Consumer group" hint="Edges from a topic sharing a group compete for messages">
+              <input
+                className="insp-input mono"
+                value={typeof props.group === "string" ? props.group : ""}
+                placeholder={edge.id}
+                onChange={(e) => editor.setEdgeProps(edge.id, { group: e.target.value || undefined }, merge("group"))}
+                name="consumer-group"
+                data-testid="inspector-field-group"
+              />
+            </Field>
+            <label className="insp-check">
+              <input
+                type="checkbox"
+                checked={props.dlq === true}
+                onChange={(e) => editor.setEdgeProps(edge.id, { dlq: e.target.checked || undefined })}
+                name="dlq"
+                data-testid="inspector-field-dlq"
+              />
+              <span>
+                Dead-letter path
+                <small>Failed messages from the source broker go here</small>
+              </span>
+            </label>
+          </>
+        )}
+        {!flow && (
+          <p className="insp-note" data-testid="inspector-relation-note">
+            {RELATION_META[relation].hint}. No messages flow here in Live.
+          </p>
+        )}
       </Section>
+      {relation === "config" && <SettingsEditor key={edge.id} edge={edge} editor={editor} />}
       {fanOut && (
         <Disclosure id="edge-simulation" title="Simulation">
           <SimInput
@@ -477,42 +522,46 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
             />
           </Field>
         </div>
-        <SimInput
-          name="travelMs"
-          field={{
-            label: "Travel time",
-            unit: "ms",
-            kind: "number",
-            min: 0,
-            step: 50,
-            placeholder: data.kind === "sync" ? "450" : "900",
-            hint: "Time a message spends on this edge at 1x",
-          }}
-          value={props.travelMs}
-          onChange={(v) => editor.setEdgeProps(edge.id, { travelMs: v }, merge("travelMs"))}
-        />
-        <SimInput
-          name="filter"
-          field={{
-            label: "Filter",
-            kind: "list",
-            placeholder: "all message types",
-            hint: 'Only these message types travel this edge; trailing * wildcard, e.g. "Order*"',
-          }}
-          value={props.filter}
-          onChange={(v) => editor.setEdgeProps(edge.id, { filter: v }, merge("filter"))}
-        />
-        <SimInput
-          name="emits"
-          field={{
-            label: "Rename to",
-            kind: "text",
-            placeholder: "unchanged",
-            hint: "Rename messages as they leave along this edge",
-          }}
-          value={props.emits}
-          onChange={(v) => editor.setEdgeProps(edge.id, { emits: v }, merge("emits"))}
-        />
+        {flow && (
+          <>
+            <SimInput
+              name="travelMs"
+              field={{
+                label: "Travel time",
+                unit: "ms",
+                kind: "number",
+                min: 0,
+                step: 50,
+                placeholder: data.kind === "sync" ? "450" : "900",
+                hint: "Time a message spends on this edge at 1x",
+              }}
+              value={props.travelMs}
+              onChange={(v) => editor.setEdgeProps(edge.id, { travelMs: v }, merge("travelMs"))}
+            />
+            <SimInput
+              name="filter"
+              field={{
+                label: "Filter",
+                kind: "list",
+                placeholder: "all message types",
+                hint: 'Only these message types travel this edge; trailing * wildcard, e.g. "Order*"',
+              }}
+              value={props.filter}
+              onChange={(v) => editor.setEdgeProps(edge.id, { filter: v }, merge("filter"))}
+            />
+            <SimInput
+              name="emits"
+              field={{
+                label: "Rename to",
+                kind: "text",
+                placeholder: "unchanged",
+                hint: "Rename messages as they leave along this edge",
+              }}
+              value={props.emits}
+              onChange={(v) => editor.setEdgeProps(edge.id, { emits: v }, merge("emits"))}
+            />
+          </>
+        )}
         <span className="insp-label">Custom properties</span>
         <PropsEditor
           props={props}
@@ -522,6 +571,118 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
         />
       </Disclosure>
     </>
+  );
+}
+
+/** Flow edges into a typed stencil (Key Vault, an IdP...): offer the dependency they look like. */
+const dismissedHints = new Set<string>();
+function RelationHint({ edge, editor }: { edge: DiagramFlowEdge; editor: EditorApi }) {
+  const [, rerender] = useState(0);
+  if (isDependency(edge.data) || dismissedHints.has(edge.id)) return null;
+  const want = inferRelation(editor.getNode(edge.source)?.stencil, editor.getNode(edge.target)?.stencil);
+  if (want === "flow") return null;
+  const meta = RELATION_META[want];
+  return (
+    <div className="insp-hint" data-testid="inspector-relation-hint">
+      <Icon name={relationIcon(want)} size={13} />
+      <span>Looks like a {meta.label.toLowerCase()} dependency, not a flow.</span>
+      <button
+        type="button"
+        className="insp-link"
+        onClick={() => editor.updateEdge(edge.id, { relation: want })}
+        data-testid="inspector-relation-hint-apply"
+      >
+        Apply
+      </button>
+      <button
+        type="button"
+        className="icon-btn insp-mini"
+        title="Keep it a flow"
+        aria-label="Keep it a flow"
+        onClick={() => {
+          dismissedHints.add(edge.id);
+          rerender((n) => n + 1);
+        }}
+        data-testid="inspector-relation-hint-dismiss"
+      >
+        <Icon name="close" size={12} />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * The settings a service reads over a config edge: one key per line, `!` before a secret (a Key Vault
+ * reference). Pasting appsettings.json, `az appconfig kv list` or .env output just works. Each key can
+ * also be locked or unlocked from the list.
+ */
+function SettingsEditor({ edge, editor }: { edge: DiagramFlowEdge; editor: EditorApi }) {
+  const settings = edgeSettings(edge.data);
+  const committed = settingsText(settings);
+  const [draft, setDraft] = useState(committed);
+  const [seen, setSeen] = useState(committed);
+  if (committed !== seen) {
+    // Undo, a lock toggle or a paste elsewhere changed them: show the new list unless it's what we typed.
+    setSeen(committed);
+    if (settingsText(parseSettings(draft)) !== committed) setDraft(committed);
+  }
+  const save = (next: ConfigSetting[], mergeTag?: string) =>
+    editor.setEdgeProps(
+      edge.id,
+      { settings: next.length ? next : undefined },
+      mergeTag ? { merge: mergeTag } : undefined,
+    );
+  const summary = settingsSummary(settings);
+  return (
+    <Section title="Settings" aside={summary ? <span className="insp-count">{summary}</span> : undefined}>
+      <textarea
+        className="insp-input mono insp-settings"
+        rows={Math.min(8, Math.max(3, settings.length + 1))}
+        value={draft}
+        placeholder={"Orders:PageSize\n!ConnectionStrings:Orders"}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          save(parseSettings(e.target.value), `inspector:edge:${edge.id}:settings`);
+        }}
+        spellCheck={false}
+        aria-label="Settings read over this edge, one per line; ! marks a secret"
+        name="settings"
+        data-testid="inspector-field-settings"
+      />
+      <p className="insp-note">
+        One key per line; ! marks a secret (a Key Vault reference). Pasting appsettings.json works too.
+      </p>
+      {settings.length > 0 && (
+        <ul className="insp-settings-list" data-testid="inspector-settings-list">
+          {settings.map((s, i) => (
+            <li key={s.key}>
+              <button
+                type="button"
+                className={`icon-btn insp-mini insp-lock${s.secret ? " is-on" : ""}`}
+                aria-pressed={!!s.secret}
+                aria-label={`Secret: ${s.key}`}
+                title={
+                  s.secret
+                    ? "Secret (a Key Vault reference): click for a plain value"
+                    : "Plain value: click to mark secret"
+                }
+                onClick={() => {
+                  const next = settings.map((x, j) =>
+                    j === i ? (x.secret ? { key: x.key } : { key: x.key, secret: true }) : x,
+                  );
+                  setDraft(settingsText(next));
+                  save(next);
+                }}
+                data-testid={`inspector-setting-lock-${i}`}
+              >
+                <Icon name="lock" size={12} />
+              </button>
+              <span className="mono">{s.key}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
 

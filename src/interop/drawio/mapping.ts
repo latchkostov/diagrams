@@ -46,6 +46,8 @@ export const AZURE_ICONS: Record<string, string> = {
   "azure.app-insights": "devops/Application_Insights.svg",
   "azure.key-vault": "security/Key_Vaults.svg",
   "entra-id": "identity/Azure_Active_Directory.svg",
+  "azure.app-config": "integration/App_Configuration.svg",
+  "azure.managed-identity": "identity/Managed_Identities.svg",
 };
 
 /** Stencil id -> [aws4 resIcon name, category fill colour]. */
@@ -61,9 +63,16 @@ export const AWS_ICONS: Record<string, [string, string]> = {
   "aws.ecs": ["ecs", "#ED7100"],
   "aws.s3": ["s3", "#7AA116"],
   "aws.dynamodb": ["dynamodb", "#C925D1"],
+  "aws.secrets-manager": ["secrets_manager", "#DD344C"],
+  "aws.cloudwatch": ["cloudwatch_2", "#E7157B"],
 };
 
-export const K8S_ICONS: Record<string, string> = { "k8s.pod": "pod", "k8s.deployment": "deploy" };
+export const K8S_ICONS: Record<string, string> = {
+  "k8s.pod": "pod",
+  "k8s.deployment": "deploy",
+  "k8s.configmap": "cm",
+  "k8s.secret": "secret",
+};
 
 /** draw.io's built-in shape for a stencil, if there is one. */
 export function nativeShape(stencilId: string): DrawioShape | undefined {
@@ -156,6 +165,9 @@ const IMAGE_NAMES: Record<string, string> = {
   monitor: "azure.app-insights",
   log_analytics_workspaces: "azure.app-insights",
   key_vaults: "azure.key-vault",
+  app_configuration: "azure.app-config",
+  managed_identities: "azure.managed-identity",
+  managed_identity: "azure.managed-identity",
   azure_active_directory: "entra-id",
   entra_identity: "entra-id",
   azure_databricks: "databricks",
@@ -208,6 +220,13 @@ const AWS_NAMES: Record<string, string> = {
   users: "client.user",
   client: "client.browser",
   mobile_client: "client.mobile",
+  secrets_manager: "aws.secrets-manager",
+  parameter_store: "aws.parameter-store",
+  systems_manager_parameter_store: "aws.parameter-store",
+  role: "aws.iam-role",
+  iam_role: "aws.iam-role",
+  cloudwatch: "aws.cloudwatch",
+  cloudwatch_2: "aws.cloudwatch",
 };
 
 const K8S_NAMES: Record<string, string> = {
@@ -215,6 +234,9 @@ const K8S_NAMES: Record<string, string> = {
   deploy: "k8s.deployment",
   deployment: "k8s.deployment",
   ing: "nginx",
+  cm: "k8s.configmap",
+  configmap: "k8s.configmap",
+  secret: "k8s.secret",
 };
 
 /** Shapes that say what a box is, but not which product: label keywords take precedence over these. */

@@ -1,3 +1,4 @@
+import { flowEdges } from "../model/relations";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useStoreApi } from "@xyflow/react";
 import type {
@@ -378,8 +379,9 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
 }
 
 function lastNode(d: DiagramFile): string | undefined {
-  const from = new Set(d.edges.map((e) => e.from));
-  return d.nodes.find((n) => !from.has(n.id) && d.edges.some((e) => e.to === n.id))?.id ?? d.nodes.at(-1)?.id;
+  const edges = flowEdges(d.edges);
+  const from = new Set(edges.map((e) => e.from));
+  return d.nodes.find((n) => !from.has(n.id) && edges.some((e) => e.to === n.id))?.id ?? d.nodes.at(-1)?.id;
 }
 
 /** While a picker is active, the next click on a diagram node chooses it (instead of selecting it). */
@@ -1275,7 +1277,9 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
 function groupsOf(d: DiagramFile, nodeId: string): string[] {
   return [
     ...new Set(
-      d.edges.filter((e) => e.from === nodeId).map((e) => (typeof e.props?.group === "string" ? e.props.group : e.id)),
+      flowEdges(d.edges)
+        .filter((e) => e.from === nodeId)
+        .map((e) => (typeof e.props?.group === "string" ? e.props.group : e.id)),
     ),
   ];
 }

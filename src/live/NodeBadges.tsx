@@ -1,3 +1,4 @@
+import { flowEdges } from "../model/relations";
 import { memo, useEffect, useState, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
 import type { DiagramFile, SimRole } from "../model/types";
@@ -135,7 +136,7 @@ function useHoveredNode(): string | null {
 function groupNames(d: DiagramFile, nodeId: string): Map<string, string> {
   const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
   const out = new Map<string, string>();
-  for (const e of d.edges) {
+  for (const e of flowEdges(d.edges)) {
     if (e.from !== nodeId) continue;
     const group = typeof e.props?.group === "string" ? e.props.group : e.id;
     const who = labels.get(e.to) ?? e.to;

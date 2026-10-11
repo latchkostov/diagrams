@@ -1,6 +1,7 @@
 // "Start a storm here…": build a ready-to-run simulation from a right-click on a node, plus the
 // small id / message-type helpers the authoring panel shares.
 
+import { flowEdges } from "../model/relations";
 import type { DiagramFile, DiagramNode, Simulation, TrafficProfile, TrafficShape } from "../model/types";
 
 /** The message type a storm uses when nothing better is known (the story from docs/SIMULATIONS.md). */
@@ -57,7 +58,7 @@ export function knownMessageTypes(diagram: DiagramFile): string[] {
       }
     }
   }
-  for (const e of diagram.edges) {
+  for (const e of flowEdges(diagram.edges)) {
     add(e.props?.emits);
     if (Array.isArray(e.props?.filter)) e.props.filter.forEach(add);
   }

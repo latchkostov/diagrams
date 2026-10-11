@@ -78,7 +78,7 @@ reload is needed.
   Writes are validated too: `setImported` / `setShared` throw a readable error _before_ replacing a slot, so a bad
   file can't overwrite good work or crash the canvas. It checks every field the UI renders: string ids, stencils
   and labels; finite coordinates; edges pointing at real nodes; groups with finite, non-negative geometry; side
-  and kind enums; and simulation shape (traffic, timeline, expectations). Malformed simulations are skipped with
+  kind and relationship enums; well-formed `props.settings` on edges; and simulation shape (traffic, timeline, expectations). Malformed simulations are skipped with
   a reason.
 - **Budgets for untrusted input** (`LIMITS`): 8 MB of text (files are checked by `File.size` before reading),
   48 levels of nesting (iterative walk), 5,000 nodes / 20,000 edges / 1,000 groups / 200 simulations /
@@ -109,6 +109,9 @@ reload is needed.
   orthogonal, dashed for async, with labels and pinned sides. Our ids, stencils, props, description,
   direction and simulations ride along as `<object>` properties (`dg_*`), so importing our own export is
   lossless (unit-tested on every public example).
+- **Relationships.** A dependency exports as a thin dotted connector (`dashed=1;dashPattern=1 4`) with an open
+  arrowhead, stroked in its light-theme tint, plus `dg_relation` and a `dfRelation=<relation>` style key. Import
+  reads either, so the relation survives even if draw.io drops our custom data; its saved kind comes back too.
 
 ### Mermaid (`src/interop/mermaid/`)
 
@@ -120,6 +123,11 @@ reload is needed.
 - **Import.** The syntax above. Positions come from the editor's layered auto-layout (`src/editor/layout.ts`),
   with subgraph members kept adjacent in each layer and boundaries fitted around them. Stencils come from
   the metadata comment, then label keywords, then shape (a cylinder means a store).
+- **Relationships.** A dependency exports as a dotted link whose label starts with its implicit words:
+  `-.->|"reads secrets"|`, or `-.->|"reads secrets: Key Vault Secrets User"|` with a user label, and gets a
+  fine dotted, tinted `linkStyle`. The metadata comment records each one (and a sync kind), so our own export
+  round-trips exactly. Without metadata, a dotted link whose label starts with an implicit label or a
+  relation word (`secret:`) becomes that dependency; any other dotted link stays an async message, as before.
 
 ### Share links and embeds (`src/interop/share.ts`, `src/interop/embed/`)
 

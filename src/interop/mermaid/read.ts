@@ -11,6 +11,23 @@ import { boundaryAround } from "../../editor/arrange";
 import { FALLBACK_STENCIL_ID, inferStencil } from "../infer";
 import { LIMITS, tooLargeMessage } from "../native";
 import { META_PREFIX, type MermaidMeta } from "./write";
+import { DEPENDENCY_RELATIONS, RELATION_META, isEdgeRelation, type DependencyRelation } from "../../model/relations";
+
+/** "reads secrets: Key Vault Secrets User" -> secret + the rest; also a bare relation word ("secret"). */
+export function readDependencyLabel(
+  label: string | undefined,
+): { relation: DependencyRelation; label?: string } | undefined {
+  if (!label) return undefined;
+  const text = label.trim();
+  const lower = text.toLowerCase();
+  for (const r of DEPENDENCY_RELATIONS) {
+    for (const word of [RELATION_META[r].implicit, RELATION_META[r].label.toLowerCase(), r]) {
+      if (lower === word) return { relation: r };
+      if (lower.startsWith(`${word}:`)) return { relation: r, label: text.slice(word.length + 1).trim() || undefined };
+    }
+  }
+  return undefined;
+}
 
 // Mermaid flowchart -> diagrams/v1. Supports `flowchart` / `graph` with any direction, node shapes,
 // quoted / markdown labels, `-->`, `---`, `-.->`, `==>`, `--o`, `--x`, `<-->`, labels written as
@@ -433,13 +450,22 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
       };
     });
 
-  const outEdges: DiagramEdge[] = edges.map((e, i) => ({
-    id: meta?.edges?.[i] ?? `e${i + 1}-${idMap.get(e.from)}-${idMap.get(e.to)}`,
-    from: idMap.get(e.from)!,
-    to: idMap.get(e.to)!,
-    ...(e.label ? { label: e.label } : {}),
-    kind: e.kind,
-  }));
+  const outEdges: DiagramEdge[] = edges.map((e, i) => {
+    // A dotted link whose label starts with a relationship's implicit label ("reads secrets: ...")
+    // is that dependency; our metadata says so exactly. Anything else stays a message, as before.
+    const saved: unknown = meta?.relations?.[i];
+    const read = e.kind === "async" ? readDependencyLabel(e.label) : undefined;
+    const relation = meta?.relations ? (isEdgeRelation(saved) && saved !== "flow" ? saved : undefined) : read?.relation;
+    const label = relation && read?.relation === relation ? read.label : e.label;
+    return {
+      id: meta?.edges?.[i] ?? `e${i + 1}-${idMap.get(e.from)}-${idMap.get(e.to)}`,
+      from: idMap.get(e.from)!,
+      to: idMap.get(e.to)!,
+      ...(label ? { label } : {}),
+      kind: relation && Array.isArray(meta?.syncDependencies) && meta.syncDependencies.includes(i) ? "sync" : e.kind,
+      ...(relation ? { relation } : {}),
+    };
+  });
   const usedEdgeIds = new Set<string>();
   for (const e of outEdges) {
     let id = e.id;

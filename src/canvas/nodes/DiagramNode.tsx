@@ -6,6 +6,8 @@ import { useSettings } from "../../harness/settings";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { DiagramFlowNode } from "../types";
+import { useShowDependencies } from "../dependencyVisibility";
+import { DependencyPips } from "./DependencyPips";
 
 /**
  * React Flow wrapper: handles + inline editing around whichever body variant is selected.
@@ -20,6 +22,7 @@ function DiagramNodeImpl({ id, data, selected }: NodeProps<DiagramFlowNode>) {
   const unknown = stencil === FALLBACK_STENCIL;
   const { Component } = getNodeVariant(nodeVariant);
   const edit = editing?.kind === "node" && editing.id === id ? editing : null;
+  const showDeps = useShowDependencies();
 
   return (
     <div
@@ -42,6 +45,7 @@ function DiagramNodeImpl({ id, data, selected }: NodeProps<DiagramFlowNode>) {
           data-testid={`handle-${id}-${side}`}
         />
       ))}
+      {!showDeps && <DependencyPips id={id} />}
       {unknown && (
         <div className="dn-unknown" title={`Unknown stencil "${data.stencil}"`}>
           ? {data.stencil}

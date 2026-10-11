@@ -317,11 +317,8 @@
       "id": "ingest-to-vault",
       "from": "ingest",
       "to": "vault",
-      "label": "Get secret",
       "kind": "sync",
-      "props": {
-        "travelMs": 200
-      }
+      "relation": "secret"
     },
     {
       "id": "ingest-to-insights",
@@ -329,9 +326,7 @@
       "to": "insights",
       "label": "Traces / exceptions",
       "kind": "async",
-      "props": {
-        "travelMs": 300
-      }
+      "relation": "telemetry"
     }
   ],
   "simulations": [

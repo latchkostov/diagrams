@@ -58,6 +58,21 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   right-click's Shape ▸ and search ("ellipse") pick the outline. Their menu says **Edit text** (a zone:
   **Rename**), **Colour** and **Shape**.
 
+- **Relationship** is what an edge means: a **flow** or a **dependency**. One word everywhere: the edge
+  right-click's **Relationship ▸**, the inspector's Relationship select, and Ctrl+K ("Relationship › Secret").
+  - A **Flow** carries messages in Live: a **Message** (async, dashed) or a **Request** (sync, solid). The words
+    "async" and "sync" stay in hints only.
+  - A **Dependency** never carries messages: drawn thin and dotted with an open arrowhead, a glyph and a muted
+    tint (never colour alone). Six, fixed: **Config**, **Secret**, **Identity**, **Telemetry**, **Deploys** and
+    **Depends on**. The arrow points from the thing that needs it to the dependency (Deploys: from the actor
+    to what it changes). No default text on the canvas; the glyph says it, and the implicit words ("reads
+    secrets") are for the tooltip, screen readers and exports.
+  - Drawing an edge into a typed stencil (Key Vault, App Configuration, an identity, an observability
+    backend) picks the dependency; the first time, a toast offers **Make it a flow**.
+  - **Settings** are the keys a config edge reads, a lock on the secret ones: "4 settings · 2 secret" on the
+    canvas, the list on hover or focus. A config store's secret edge says "2 references".
+  - **Dependencies** (Show ▸ Dependencies, View menu) shows or hides them all, one remembered setting.
+    Hidden, a node keeps small glyph **pips** with the list on hover.
 - **Subtitle** for a node's second line. **Properties** opens the inspector for the thing.
 - **Your diagrams** is the user's own library in this browser (File > Your diagrams…, the picker's
   first group, the start card's first list). Open, Import, Paste and **Save a copy** each add a diagram

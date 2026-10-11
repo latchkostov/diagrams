@@ -536,3 +536,28 @@ it("clipboard ordering survives share links and library duplicate/reopen", async
     expect(toFlow(reopened).nodes.map((n) => n.id)).toEqual(["note-1", "service-1"]);
   }
 });
+
+it("Your diagrams keep relationships and settings through save, autosave and duplicate", () => {
+  const withDeps: DiagramFile = {
+    ...good,
+    nodes: [...good.nodes, { id: "kv", stencil: "azure.key-vault", label: "Vault", x: 300, y: 0 }],
+    edges: [
+      {
+        id: "a-kv",
+        from: "a",
+        to: "kv",
+        relation: "secret",
+        kind: "sync",
+        props: { settings: [{ key: "Stripe:ApiKey", secret: true }] },
+      },
+    ],
+  };
+  const slug = io.createLibraryDiagram(withDeps);
+  io.writeAutosave(slug, { ...withDeps, title: "Edited" });
+  const duplicate = io.duplicateLibraryDiagram(slug);
+  for (const reopened of [io.getOriginal(slug)!, io.getCurrent(slug)!, io.getCurrent(duplicate)!])
+    expect(reopened.edges[0]).toMatchObject({
+      relation: "secret",
+      props: { settings: [{ key: "Stripe:ApiKey", secret: true }] },
+    });
+});

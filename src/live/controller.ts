@@ -8,6 +8,7 @@
 // `state.snapshot` is converted once to real messages for every number people read, and manual
 // injections take real counts (fractions of a dot carry over to the next injection).
 
+import { flowEdges, relationOf } from "../model/relations";
 import type { DiagramFile, Simulation } from "../model/types";
 import { createRealCountInjector } from "../sim/injection";
 import { stencilRole } from "../stencils/roles";
@@ -83,7 +84,7 @@ export type DiagramUpdate = "none" | "patched" | "reloaded";
 export function structuralKey(d: DiagramFile): string {
   return JSON.stringify([
     d.nodes.map((n) => [n.id, n.stencil, n.label, n.sublabel ?? ""]),
-    d.edges.map((e) => [e.id, e.from, e.to, e.kind ?? "async", e.props ?? null]),
+    d.edges.map((e) => [e.id, e.from, e.to, e.kind ?? "async", relationOf(e), e.props ?? null]),
   ]);
 }
 
@@ -591,9 +592,10 @@ export class LiveController {
 
   /** Injects at every node that has no incoming edges (the diagram's entry points). */
   injectAtSources(count: number): string[] {
-    const targets = new Set(this.diagram.edges.map((e) => e.to));
+    const edges = flowEdges(this.diagram.edges);
+    const targets = new Set(edges.map((e) => e.to));
     const sources = this.diagram.nodes
-      .filter((n) => !targets.has(n.id) && this.diagram.edges.some((e) => e.from === n.id))
+      .filter((n) => !targets.has(n.id) && edges.some((e) => e.from === n.id))
       .map((n) => n.id);
     for (const id of sources) this.injectReal(id, count);
     this.dirty = true;

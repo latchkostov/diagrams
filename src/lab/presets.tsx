@@ -16,6 +16,7 @@ import {
   backEdgeDiagram,
   cycleDiagram,
   edgeKindsDiagram,
+  edgeRelationsDiagram,
   edgeSidesDiagram,
   fanEdgesDiagram,
   fanOutDiagram,
@@ -165,6 +166,15 @@ const edgePresets: Preset[] = [
     group: "Edges",
     description: "async, sync, labelled, long label, two-way.",
     diagram: () => edgeKindsDiagram(),
+  },
+  {
+    kind: "diagram",
+    id: "edges-relations",
+    title: "Relationships",
+    group: "Edges",
+    description:
+      "Message and request flows, then the six dependencies: dotted, glyph and tint. Hover the config edge for its settings.",
+    diagram: () => edgeRelationsDiagram(),
   },
   {
     kind: "diagram",
