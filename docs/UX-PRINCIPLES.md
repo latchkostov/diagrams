@@ -110,7 +110,15 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   **not sure** (or **a guess**) with its alternatives as one-click chips.
 - **Dictate** is the mic in the describe box (Ctrl+Shift+M): **Listening…** while on, interim words shown
   lighter; **Stop dictating** to end. It's hidden where the browser has no speech recognition.
-- Esc backs out one level: menu, dialog, selection, trace, highlighted path, presentation, then live view.
+- **Slow motion** (noun and mode) is a paced _replay_ of a trace: one message's recorded journey, node
+  by node, while live waits frozen ("Slow motion · live paused" in the bar). Menus say **Watch … in slow
+  motion**: the node right-click's **Watch one message in slow motion from here**, and **Next message, in
+  slow motion** first in Trace a message ▸ (right-click, ⋯, Ctrl+K). The trace card's **Slow motion**
+  (and the palette's "Slow motion: replay this trace") replays the message traced now. It adds no bar
+  control: play, Restart (Replay), speed (pace) and the timeline drive the replay while it's on, ← →
+  step hop by hop, and Esc goes back to live where it left off. Record video… offers **Record this slow
+  motion**. Below 1× live draws a calm sample of whole journeys; the counts never change.
+- Esc backs out one level: menu, dialog, selection, slow motion, trace, highlighted path, presentation, then live view.
 
 ## Process
 

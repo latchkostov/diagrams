@@ -280,3 +280,7 @@
     justify-content: flex-end;
   }
 }
+.cmdk-item.is-disabled {
+  color: var(--text-3);
+  cursor: default;
+}

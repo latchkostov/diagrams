@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LiveState } from "./controller";
 import { SPEEDS } from "./controller";
 import { useLive, type TraceChoice } from "./context";
@@ -6,7 +6,9 @@ import { formatClock, formatCount, formatSpeed } from "./format";
 import { LiveIcon } from "./icons";
 import { Timeline } from "./Timeline";
 import { PANEL_OPENER_ATTR } from "./usePanelEscape";
+import { SlowBar } from "./slowmo/SlowBar";
 import type { ExpectationState } from "../sim/types";
+import { liveMutationGuard } from "./liveActions";
 
 /**
  * The floating bar while live: one row with the essentials (play / pause, restart, speed, the
@@ -26,30 +28,52 @@ export function ControlBar({ state }: { state: LiveState }) {
   const expectations = run?.expectations ?? [];
   const passed = expectations.filter((e) => e.status === "pass").length;
   const failed = expectations.some((e) => e.status === "fail");
+  // Slow motion: play, restart and the timeline drive the replay; live is paused meanwhile.
+  const slow = useSyncExternalStore(ui.slowmo.subscribe, ui.slowmo.getState, ui.slowmo.getState);
+  const slowOn = slow.status === "on";
 
   return (
-    <div className="lv-bar" data-testid="live-controls" data-editor-overlay data-done={done ? "1" : undefined}>
-      <button
-        className="lv-btn lv-play"
-        onClick={() => (waiting ? c.resume() : c.togglePlaying())}
-        title={waiting ? "Continue (Space)" : state.playing ? "Pause (Space)" : done ? "Play again" : "Play (Space)"}
-        aria-label={state.playing && !waiting ? "Pause" : "Play"}
-        data-testid="live-play"
-        data-state={waiting ? "waiting" : state.playing ? "playing" : done ? "done" : "paused"}
-      >
-        <LiveIcon name={state.playing && !waiting ? "pause" : "play"} size={15} />
-      </button>
+    <div
+      className={`lv-bar${slowOn ? " is-slowmo" : ""}`}
+      data-testid="live-controls"
+      data-editor-overlay
+      data-done={done ? "1" : undefined}
+    >
+      {slowOn ? (
+        <button
+          className="lv-btn lv-play"
+          onClick={() => ui.slowmo.toggle()}
+          title={slow.playing ? "Pause the slow motion (Space)" : slow.done ? "Replay" : "Play the slow motion (Space)"}
+          aria-label={slow.playing ? "Pause" : "Play"}
+          data-testid="live-play"
+          data-state="slowmo"
+          data-playing={slow.playing ? "1" : "0"}
+        >
+          <LiveIcon name={slow.playing ? "pause" : "play"} size={15} />
+        </button>
+      ) : (
+        <button
+          className="lv-btn lv-play"
+          onClick={() => (waiting ? c.resume() : c.togglePlaying())}
+          title={waiting ? "Continue (Space)" : state.playing ? "Pause (Space)" : done ? "Play again" : "Play (Space)"}
+          aria-label={state.playing && !waiting ? "Pause" : "Play"}
+          data-testid="live-play"
+          data-state={waiting ? "waiting" : state.playing ? "playing" : done ? "done" : "paused"}
+        >
+          <LiveIcon name={state.playing && !waiting ? "pause" : "play"} size={15} />
+        </button>
+      )}
       <button
         className="lv-btn"
-        onClick={() => c.restart()}
-        title="Restart (same seed)"
-        aria-label="Restart"
+        onClick={() => (slowOn ? ui.slowmo.restart() : c.restart())}
+        title={slowOn ? "Replay the slow motion from the start" : "Restart (same seed)"}
+        aria-label={slowOn ? "Replay" : "Restart"}
         data-testid="live-restart"
       >
         <LiveIcon name="restart" size={15} />
       </button>
 
-      <label className="lv-select lv-speed" title="Playback speed">
+      <label className="lv-select lv-speed" title={slowOn ? "Slow motion pace" : SPEED_HINT}>
         <span className="sr-only">Speed</span>
         <select
           value={String(state.speed)}
@@ -65,75 +89,81 @@ export function ControlBar({ state }: { state: LiveState }) {
         </select>
       </label>
 
-      <label className="lv-select lv-sim" title="Choose a saved simulation, or free play">
-        <span className="sr-only">Simulation</span>
-        <select
-          value={simId}
-          onChange={(e) => ui.selectSimulation(e.target.value || null)}
-          data-testid="live-sim-picker"
-          name="live-sim"
-        >
-          <option value="">Free play</option>
-          {options.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.title}
-              {ui.draft?.id === s.id ? " (unsaved)" : ""}
-            </option>
-          ))}
-        </select>
-        <LiveIcon name="chevron" size={11} />
-      </label>
-
-      <button
-        className={`lv-btn lv-inputs${ui.capacityOpen ? " is-on" : ""}`}
-        onClick={() => ui.openCapacity(!ui.capacityOpen)}
-        aria-pressed={ui.capacityOpen}
-        aria-label="Inputs"
-        title="Inputs & capacity: traffic, replicas, partitions and bottlenecks"
-        data-testid="live-capacity"
-      >
-        <LiveIcon name="gauge" size={15} />
-        <span>Inputs</span>
-      </button>
-
-      {state.simulation && run ? (
+      {slowOn ? (
+        <SlowBar slow={ui.slowmo} />
+      ) : (
         <>
-          <span
-            className="lv-clock mono"
-            data-testid="live-clock"
-            data-ms={Math.round(run.time)}
-            title={`of ${formatClock(Math.max(run.totalMs, run.time))}`}
-          >
-            {formatClock(run.time)}
-          </span>
-          <Timeline sim={state.simulation} run={run} onSeek={(ms) => c.seek(ms)} />
-          {expectations.length > 0 && (
-            <div
-              className={`lv-checks${done ? (failed ? " is-fail" : " is-pass") : ""}`}
-              data-testid="live-expectations"
-              title={`${passed} of ${expectations.length} expectations hold`}
+          <label className="lv-select lv-sim" title="Choose a saved simulation, or free play">
+            <span className="sr-only">Simulation</span>
+            <select
+              value={simId}
+              onChange={(e) => ui.selectSimulation(e.target.value || null)}
+              data-testid="live-sim-picker"
+              name="live-sim"
             >
-              {expectations.map((e) => (
-                <ExpectationDot key={e.id} e={e} />
+              <option value="">Free play</option>
+              {options.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title}
+                  {ui.draft?.id === s.id ? " (unsaved)" : ""}
+                </option>
               ))}
-            </div>
-          )}
-          {expectations.length > 0 && (
-            <ExpectationSummary expectations={expectations} passed={passed} failed={failed} done={done} />
-          )}
-          {done && (
-            <span
-              className={`lv-done${failed ? " is-fail" : " is-pass"}`}
-              data-testid="live-done"
-              data-status={failed ? "fail" : "pass"}
-            >
-              <LiveIcon name={failed ? "x" : "check"} size={12} />
-              {expectations.length ? `${passed}/${expectations.length}` : "Done"}
-            </span>
+            </select>
+            <LiveIcon name="chevron" size={11} />
+          </label>
+
+          <button
+            className={`lv-btn lv-inputs${ui.capacityOpen ? " is-on" : ""}`}
+            onClick={() => ui.openCapacity(!ui.capacityOpen)}
+            aria-pressed={ui.capacityOpen}
+            aria-label="Inputs"
+            title="Inputs & capacity: traffic, replicas, partitions and bottlenecks"
+            data-testid="live-capacity"
+          >
+            <LiveIcon name="gauge" size={15} />
+            <span>Inputs</span>
+          </button>
+
+          {state.simulation && run ? (
+            <>
+              <span
+                className="lv-clock mono"
+                data-testid="live-clock"
+                data-ms={Math.round(run.time)}
+                title={`of ${formatClock(Math.max(run.totalMs, run.time))}`}
+              >
+                {formatClock(run.time)}
+              </span>
+              <Timeline sim={state.simulation} run={run} onSeek={(ms) => c.seek(ms)} />
+              {expectations.length > 0 && (
+                <div
+                  className={`lv-checks${done ? (failed ? " is-fail" : " is-pass") : ""}`}
+                  data-testid="live-expectations"
+                  title={`${passed} of ${expectations.length} expectations hold`}
+                >
+                  {expectations.map((e) => (
+                    <ExpectationDot key={e.id} e={e} />
+                  ))}
+                </div>
+              )}
+              {expectations.length > 0 && (
+                <ExpectationSummary expectations={expectations} passed={passed} failed={failed} done={done} />
+              )}
+              {done && (
+                <span
+                  className={`lv-done${failed ? " is-fail" : " is-pass"}`}
+                  data-testid="live-done"
+                  data-status={failed ? "fail" : "pass"}
+                >
+                  <LiveIcon name={failed ? "x" : "check"} size={12} />
+                  {expectations.length ? `${passed}/${expectations.length}` : "Done"}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="lv-grow" />
           )}
         </>
-      ) : (
-        <span className="lv-grow" />
       )}
 
       <span
@@ -155,9 +185,13 @@ export function ControlBar({ state }: { state: LiveState }) {
   );
 }
 
+/** Below 1×, fewer dots are drawn (slowmo/sampler.ts); the counts never change. */
+const SPEED_HINT = "Playback speed. Slower speeds draw fewer dots so each one is easy to follow; counts stay exact.";
+
 /** The "⋯" overflow: the less common controls. */
 /** Same words as the right-click's "Trace a message ▸" (src/live/liveActions.ts). */
 const TRACE_CHOICES: readonly (readonly [TraceChoice, string])[] = [
+  ["slowmo", "Next message, in slow motion"],
   ["next", "Next message"],
   ["slowest", "Slowest so far"],
   ["deadletter", "One that dead-lettered"],
@@ -170,6 +204,9 @@ function MoreMenu({ state }: { state: LiveState }) {
   const [traceOpen, setTraceOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const waiting = !!state.run?.waiting;
+  const slowOn = useSyncExternalStore(ui.slowmo.subscribe, ui.slowmo.getState, ui.slowmo.getState).status === "on";
+  const mutations = liveMutationGuard(() => ui.slowmo.active);
+  const traffic = ui.action("sim.traffic");
   useEffect(() => {
     if (!open) return;
     const outside = (e: PointerEvent) => !root.current?.contains(e.target as Node) && setOpen(false);
@@ -210,22 +247,32 @@ function MoreMenu({ state }: { state: LiveState }) {
           <button
             role="menuitemcheckbox"
             aria-checked={state.traffic}
-            onClick={pick(() => c.setTraffic(!state.traffic), true)}
+            onClick={pick(() => (traffic ? traffic.run?.() : c.setTraffic(!state.traffic)), true)}
+            disabled={traffic?.disabled ?? !mutations.enabled()}
+            title={traffic?.hint ?? mutations.hint()}
             data-testid="live-traffic"
           >
             <LiveIcon name="traffic" size={14} />
             <span>Continuous traffic</span>
             <i className={`lv-switch${state.traffic ? " is-on" : ""}`} aria-hidden />
           </button>
-          <button
-            role="menuitem"
-            onClick={pick(() => c.step(), true)}
-            disabled={waiting || !!state.run?.done}
-            data-testid="live-step"
-          >
-            <LiveIcon name="step" size={14} />
-            <span>Step ¼ second</span>
-          </button>
+          {slowOn ? (
+            <button role="menuitem" onClick={pick(() => ui.slowmo.step(1), true)} data-testid="live-step">
+              <LiveIcon name="step" size={14} />
+              <span>Next hop</span>
+              <kbd>→</kbd>
+            </button>
+          ) : (
+            <button
+              role="menuitem"
+              onClick={pick(() => c.step(), true)}
+              disabled={waiting || !!state.run?.done}
+              data-testid="live-step"
+            >
+              <LiveIcon name="step" size={14} />
+              <span>Step ¼ second</span>
+            </button>
+          )}
           <button
             role="menuitemcheckbox"
             aria-checked={ui.events.open}
@@ -270,6 +317,8 @@ function MoreMenu({ state }: { state: LiveState }) {
             <button
               role="menuitem"
               onClick={pick(() => ui.openPanel(state.simulation ?? undefined))}
+              disabled={!mutations.enabled()}
+              title={mutations.hint()}
               data-testid="live-edit-sims"
             >
               <LiveIcon name="edit" size={14} />
@@ -277,7 +326,8 @@ function MoreMenu({ state }: { state: LiveState }) {
             </button>
           )}
           <div className="lv-more-hint">
-            Right-click any node to inject messages, break things or trace one. Click a moving message to trace it.
+            {mutations.hint() ??
+              "Right-click any node to inject messages, break things or trace one. Click a moving message to trace it."}
           </div>
         </div>
       )}

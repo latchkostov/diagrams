@@ -59,6 +59,7 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
         registry: actionRegistry,
         canvas: host.canvas,
         live: host.live,
+        session: host.session,
         view: opened.view,
         stencils,
         recentStencils: getRecentStencils(),
@@ -73,7 +74,6 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
         },
       }),
     // The session registers the live actions, so its arrival refreshes the list too.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [host.canvas, host.live, host.session, opened],
   );
   const [recent] = useState(getRecentCommands);
@@ -121,7 +121,7 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
   }, []);
 
   const run = (c: Command | undefined) => {
-    if (!c) return;
+    if (!c || c.disabled) return;
     if (c.drill) {
       setSubmenu(c.id);
       setQuery(`>${c.drill} `);
@@ -359,8 +359,9 @@ const Row = memo(function Row({ command: c, id, active, group, setRef, onHover, 
       id={id}
       role="option"
       aria-selected={active}
+      aria-disabled={c.disabled || undefined}
       tabIndex={-1}
-      className={`cmdk-item${active ? " is-active" : ""}${c.danger ? " is-danger" : ""}`}
+      className={`cmdk-item${active ? " is-active" : ""}${c.danger ? " is-danger" : ""}${c.disabled ? " is-disabled" : ""}`}
       data-testid={`command-item-${c.id}`}
       data-group={group}
       data-active={active || undefined}

@@ -122,10 +122,11 @@ interface CalloutProps {
   /** Floating over the canvas (top centre) rather than inside the panel. */
   floating?: boolean;
   onOpenPanel?: () => void;
+  disabledHint?: string;
 }
 
 /** The top bottleneck in plain language, with a one-click fix when it maps to replicas or partitions. */
-export function BottleneckCallout({ view, onApply, floating, onOpenPanel }: CalloutProps) {
+export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabledHint }: CalloutProps) {
   const fix = view.fix;
   const callout = useRef<HTMLDivElement>(null);
   const applied = useRef(false);
@@ -169,7 +170,8 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel }: Call
             onApply(fix);
           }}
           data-testid="bottleneck-apply"
-          title="Apply the fix (undo with Ctrl+Z)"
+          disabled={!!disabledHint}
+          title={disabledHint ?? "Apply the fix (undo with Ctrl+Z)"}
         >
           <LiveIcon name="check" size={13} /> Apply fix
         </button>

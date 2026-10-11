@@ -312,3 +312,72 @@ totals, retries, dead letters), `buildSequence` (participants in path order, arr
 rows that say where the time went), `toMermaid` (`sequenceDiagram` text) and `toSvg` (the picture
 shown in the app and downloaded, themed from the design tokens). `traceOnce` runs one trace headless
 for the Lab and tests.
+
+## Slow motion
+
+A paced **replay** of one message's journey (and its fan-out copies), node by node, while live is
+frozen. Code: `src/live/slowmo/` (pure: `script.ts`, `session.ts`, `sampler.ts`, `camera.ts`; drawing:
+`painter.ts`; wiring: `useSlowMotion.ts`). Research and parameters: `docs/research/watchable-simulation.md`.
+
+- **Record first, then replay.** `LiveController.lookAhead()` checkpoints the whole run (the runner's
+  checkpoint in a saved simulation, the engine's in free play), the session asks the tracer for the
+  message (`request` next at a node, `followRoot`, or what's followed now) and steps simulated time in
+  slices (at most 2 s simulated or ~6 ms of work, then a browser frame) until the journey is done, at
+  most **30 s** of simulated time ahead. Pausing notes pass as in `seek`. Then the checkpoint is
+  restored exactly and the tracer keeps following the same root, so after slow motion live shows the
+  very journey that was replayed (runs are deterministic; a unit test compares the steps).
+- **Nothing can arrive** (free play with no traffic and an empty system, a finished run): the session
+  is _armed_. The live trace waits (the card offers **Send one now**) and slow motion starts once the
+  message is on its way. A journey still under way at the cap plays what was recorded and ends on
+  "Still waiting at Payments service · lag 1,240".
+- **Live is frozen**, not just dimmed: the engine is paused, background dots are drawn at 12% with no
+  trails, pulses or failure flashes, edges stop marching, off-path nodes, edges and badges step back.
+  Leaving (Esc, the card's close) restores the play state from before and the view; the engine time is
+  unchanged.
+- **The script** (`buildScript`): every lineage step becomes a beat with its own wall duration; branches
+  run in parallel and a beat starts when its message's previous one ends. Real timings only appear as
+  text (captions, the trace card, the clock "0.43 s / 2.42 s real"). Pacing at 1× (the speed select
+  scales the replay's clock):
+
+  | Beat                          | Duration                                                           | Notes                                                                                                                                                          |
+  | ----------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | Establish (`emit`)            | 0.8 s                                                              | "Storefront sends OrderRequest"                                                                                                                                |
+  | Hop (`send` → `arrive`)       | `clamp(L / 260 px/s, 0.9, 1.8)` s, L = on-screen edge length       | easeInOutCubic, 150 ms lift-off, 250 ms landing ring, 40 px trail; the edge brightens                                                                          |
+  | Processing (`start` → `done`) | `clamp(0.55 + 0.22·log2(1 + ms/25), 0.6, 1.6)` s                   | a ring around the node fills linearly; "Payments service · Authorize payment · 150 ms → PaymentCompleted" (node, the incoming edge's words, real ms, a rename) |
+  | Waiting (> 20 ms)             | `clamp(0.5 + 0.3·log2(1 + ms/100), 0.5, 2)` s                      | queued dots behind it; "waited 4.2 s"                                                                                                                          |
+  | Append (broker)               | 0.45 s                                                             | "appended to orders.created.v1"                                                                                                                                |
+  | Split (fan-out)               | 0.4 s                                                              | copies leave together on one shared duration (the longest); more than 4 leaving together: 4 are shown with "×6 OrderPlaced", the card says "+2 more"           |
+  | Write (store)                 | processing + 0.3 s sink                                            | the dot shrinks into the store, its top edge flashes in the message colour                                                                                     |
+  | Sync reply                    | 0.6 × hop                                                          | small, faint, never holds anything up                                                                                                                          |
+  | Retry                         | full hops for the 1st and 2nd; later ones fold into one 1.2 s beat | amber; "↺ retried 3× over 0.74 s"                                                                                                                              |
+  | Dead letter                   | 1.2 × hop                                                          | red; "Dead-lettered after 5 attempts"                                                                                                                          |
+  | Drop                          | 0.6 s                                                              | "Dropped · consumer down"                                                                                                                                      |
+  | End                           | 1.2 s hold                                                         | "Done · 2.42 s · 5 copies · 5 writes"; visited nodes keep their real offset ("+0.43 s")                                                                        |
+
+  The Kafka order takes about 17 s and never moves more than 4 dots at once. With
+  `prefers-reduced-motion` every beat is a still state held 1.5 s (a 200 ms cross-fade, no replies,
+  no camera moves).
+
+- **Captions** sit beside their node (or ride their dot), clear of node cards, badges, chrome and
+  each other (`placeTraceLabels`). With no room there they try a shorter form, then just the real time,
+  and the full words go to a short stack just above the live bar. The latest caption is also in a
+  polite live region for screen readers.
+- **Camera.** Fit the whole path once (keeping clear of the trace card's first rows, max zoom 1.25) and
+  stay put. If that fit is below 55% zoom, follow instead at 80%: pan (700 ms) only while no dot is
+  travelling, looking one hop ahead. Panning or zooming by hand stops following until Replay.
+- **Controls**: Space plays or pauses, ← → step hop by hop (and pause), Restart replays, the timeline
+  scrubs (a tick per hop), the trace card highlights the hop being told (`aria-current`) and a click on
+  a hop plays from there, Esc goes back to live. **Record video…** offers one option, "Record this slow
+  motion": it plays from the first beat and stops at its end (`<diagram>-<type>-slow-motion.webm`).
+
+## Calmer slow speeds
+
+Speed changes how fast dots move, not how many there are. Below 1× the renderer draws a sample of whole
+journeys (`CalmSampler`, `src/live/slowmo/sampler.ts`): one family (a root and its copies) in
+`k = 2^round(log2(max(1, dots / D)))`, with **D = 24** at 0.25× and **D = 48** at 0.5×. A family is in
+or out by a hash of its root id, decided when it's first seen and kept until it leaves the screen, so a
+sampled message is visible on every hop and nothing pops in or out mid-edge. k is re-planned at most
+once a second, one doubling or halving per step with ±25% hysteresis (a new speed jumps straight to
+the ideal k). The traced family, retries and dead letters are always drawn. At 1× and above nothing
+changes; the per-edge density thinning stays as the fallback. It's a drawing limit only: counters,
+badges, scale, capacity and recordings never see it.

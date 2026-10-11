@@ -104,6 +104,8 @@ export interface Action {
   when?: (ctx: ActionContext) => boolean;
   /** Show the action disabled when false. */
   enabled?: (ctx: ActionContext) => boolean;
+  /** Explanation shown beside an unavailable action. */
+  hint?: string | ((ctx: ActionContext) => string | undefined);
   checked?: (ctx: ActionContext) => boolean;
   run?: (ctx: ActionContext) => void;
   /** Submenu contents (makes the action a submenu; `run` is then ignored). */
@@ -216,6 +218,7 @@ function toItem(a: Action, ctx: ActionContext): MenuItem | null {
     shortcut: a.shortcut,
     danger: a.danger,
     disabled: a.enabled ? !safe(() => a.enabled!(ctx), false) : false,
+    hint: typeof a.hint === "function" ? a.hint(ctx) : a.hint,
     checked: a.checked ? safe(() => a.checked!(ctx), false) : undefined,
     children,
     searchable: a.searchable,

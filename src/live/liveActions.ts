@@ -11,6 +11,7 @@ import type { XY } from "../editor/types";
 
 export interface LiveActionsHost {
   controller: LiveController;
+  slowMotionActive(): boolean;
   /** "Custom…" injection: opens the small inject dialog at a screen point. */
   openInject(nodeId: string, at: XY | undefined): void;
   /** "Start a storm here…". */
@@ -23,6 +24,11 @@ export interface LiveActionsHost {
   traceNext(nodeId?: string): void;
   traceSlowest(): void;
   traceDeadLettered(): void;
+  /** Slow motion: the next message from a node (or anywhere), or the message traced now. */
+  slowMotion(nodeId?: string): void;
+  slowMotionTrace(): void;
+  /** A traced message whose journey can be replayed (the palette's "Slow motion: replay this trace"). */
+  canReplayTrace(): boolean;
   endTrace(): void;
   tracingMessage(): boolean;
   /** Writes a node's live tweaks into the diagram (undoable). */
@@ -36,8 +42,35 @@ const FAILURE_RATES = [0, 0.1, 0.25, 0.5, 1];
 const SLOWDOWNS = [1, 2, 5, 10];
 const CONCURRENCY = [1, 2, 4, 8, 16, 64];
 
+export const EXIT_SLOW_MOTION_HINT = "Exit slow motion (Esc) first";
+
+/** Shared registry availability for every surface that can change the live engine. */
+export function liveMutationGuard(active: () => boolean) {
+  return {
+    enabled: () => !active(),
+    hint: () => (active() ? EXIT_SLOW_MOTION_HINT : undefined),
+  };
+}
+
 export function liveActions(host: LiveActionsHost): Action[] {
   const c = host.controller;
+  const guard = liveMutationGuard(host.slowMotionActive);
+  const protect = (rows: MenuNode[]): MenuNode[] =>
+    rows.map((row) =>
+      row.type !== "item" || row.id === "sim.events"
+        ? row
+        : {
+            ...row,
+            disabled: !guard.enabled(),
+            hint: guard.hint(),
+            run: row.run
+              ? () => {
+                  if (guard.enabled()) row.run?.();
+                }
+              : undefined,
+            children: row.children && protect(row.children),
+          },
+    );
   const status = (id: string): NodeStatus => c.snapshot().nodes[id]?.status ?? "up";
   const role = (id: string) => c.snapshot().nodes[id]?.role ?? "none";
   const props = (id: string) => {
@@ -76,7 +109,7 @@ export function liveActions(host: LiveActionsHost): Action[] {
           { type: "separator" },
           { type: "item", id: "sim.inject:custom", label: "Custom…", run: () => host.openInject(id, ctx.point) },
         );
-        return rows;
+        return protect(rows);
       },
     },
     {
@@ -88,6 +121,16 @@ export function liveActions(host: LiveActionsHost): Action[] {
       order: 15,
       when: (ctx) => isNode(ctx.nodeId),
       run: (ctx) => host.traceNext(ctx.nodeId!),
+    },
+    {
+      id: "sim.slowmo-from",
+      section: "simulation",
+      targets: ["node"],
+      label: "Watch one message in slow motion from here",
+      icon: "slowmo",
+      order: 16,
+      when: (ctx) => isNode(ctx.nodeId),
+      run: (ctx) => host.slowMotion(ctx.nodeId!),
     },
     {
       id: "sim.storm",
@@ -187,7 +230,7 @@ export function liveActions(host: LiveActionsHost): Action[] {
             run: () => host.saveTweaks(id),
           });
         }
-        return rows;
+        return protect(rows);
       },
     },
     {
@@ -228,6 +271,13 @@ export function liveActions(host: LiveActionsHost): Action[] {
       icon: "trace",
       order: 25,
       children: () => [
+        {
+          type: "item",
+          id: "sim.trace-message:slowmo",
+          label: "Next message, in slow motion",
+          keywords: "slow motion watch replay step",
+          run: () => host.slowMotion(),
+        },
         { type: "item", id: "sim.trace-message:next", label: "Next message", run: () => host.traceNext() },
         {
           type: "item",
@@ -244,6 +294,16 @@ export function liveActions(host: LiveActionsHost): Action[] {
           run: () => host.traceDeadLettered(),
         },
       ],
+    },
+    {
+      id: "sim.slowmo-trace",
+      section: "simulation",
+      targets: ["canvas"],
+      label: "Slow motion: replay this trace",
+      icon: "slowmo",
+      paletteOnly: true,
+      when: () => host.canReplayTrace(),
+      run: () => host.slowMotionTrace(),
     },
     {
       id: "sim.trace-end",
@@ -285,5 +345,19 @@ export function liveActions(host: LiveActionsHost): Action[] {
     },
   ];
   // Live verbs only exist in live view; the registry offers them there and nowhere else.
-  return actions.map((action) => ({ ...action, modes: ["live"] }));
+  const mutations = new Set(["sim.inject", "sim.storm", "sim.kill", "sim.inject-sources", "sim.traffic", "sim.reset"]);
+  return actions.map((action) => ({
+    ...action,
+    ...(mutations.has(action.id)
+      ? {
+          ...guard,
+          run: action.run
+            ? (ctx) => {
+                if (guard.enabled()) action.run?.(ctx);
+              }
+            : undefined,
+        }
+      : {}),
+    modes: ["live"],
+  }));
 }

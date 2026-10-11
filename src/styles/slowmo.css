@@ -1,0 +1,105 @@
+/* Slow motion: the live bar's middle while it plays, the trace card as its event list, and the
+   frozen live view under it. Tokens from tokens.css. */
+
+/* "Slow motion · live paused": says why live stopped (and that it's on purpose). */
+.lv-slowmo-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.lv-slowmo-sep,
+.lv-slowmo-paused {
+  color: var(--text-2);
+  font-weight: 550;
+}
+
+.lv-bar.is-slowmo .lv-clock {
+  min-width: 128px;
+}
+
+/* A tick per hop on the replay's timeline. */
+.lv-slowmo-timeline .lv-slowmo-tick {
+  position: absolute;
+  top: 8px;
+  width: 2px;
+  height: 11px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: color-mix(in oklab, var(--text-2) 45%, transparent);
+  pointer-events: none;
+}
+
+/* The frozen live view: nothing marches, badges off the path step back with their nodes. */
+.react-flow[data-live-slowmo] .react-flow__edge .fe-path {
+  animation: none !important;
+}
+
+.react-flow[data-live-slowmo] [data-slowmo-off] {
+  opacity: 0.4;
+  transition: opacity 0.3s var(--ease-out);
+}
+
+/* The trace card while slow motion plays: the hop being told, and hops that are places to go. */
+.tr-hop.is-seekable {
+  display: block;
+  padding: 0;
+}
+
+.tr-hop-seek {
+  display: grid;
+  grid-template-columns: 52px 18px 1fr auto;
+  align-items: center;
+  column-gap: 6px;
+  width: 100%;
+  padding: 4px 14px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tr-hop-seek:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.tr-hop.is-active {
+  background: color-mix(in oklab, var(--accent) 6%, transparent);
+}
+
+.tr-hop.is-current {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.tr-hop.is-current .tr-what b {
+  color: var(--accent);
+}
+
+.tr-hop.is-current .tr-dot {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 30%, transparent);
+}
+
+.tr-dot {
+  transition: transform 0.2s var(--ease-out);
+}
+
+/* Two actions and a hint: the hint takes the next line when they don't fit. */
+.tr-foot {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}

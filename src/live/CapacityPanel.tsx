@@ -65,6 +65,7 @@ interface Props {
   /** Adds an upstream entry point in front of a node (one undoable edit); omitted where nothing can be edited. */
   onAddEntry?: (nodeId: string) => void;
   onChange?: () => void;
+  disabledHint?: string;
 }
 
 /**
@@ -86,6 +87,7 @@ export const CapacityPanel = memo(function CapacityPanel({
   onSave,
   onChange,
   onAddEntry,
+  disabledHint,
 }: Props) {
   const [showAll, setShowAll] = useState(false);
   const [heldRows, setHeldRows] = useState<ReturnType<typeof selectRows> | null>(null);
@@ -106,6 +108,7 @@ export const CapacityPanel = memo(function CapacityPanel({
   usePanelEscape(onClose);
 
   const set = (next: LiveInputs) => {
+    if (disabledHint) return;
     onChange?.();
     c.setInputs(next);
   };
@@ -166,7 +169,9 @@ export const CapacityPanel = memo(function CapacityPanel({
 
         <div className="lv-panel-body cap-body">
           <p className="cap-context" data-testid="capacity-context">
-            {base ? (
+            {disabledHint ? (
+              disabledHint
+            ) : base ? (
               <>
                 For <b>{base.title}</b>. Changes apply now; save to keep them.
               </>
@@ -176,93 +181,94 @@ export const CapacityPanel = memo(function CapacityPanel({
           </p>
 
           {rates.size === 0 ? (
-            <NoEntryPoints diagram={diagram} onAdd={onAddEntry} />
+            <NoEntryPoints diagram={diagram} onAdd={onAddEntry} disabledHint={disabledHint} />
           ) : (
-            <BottleneckCallout view={view} onApply={onApplyFix} />
+            <BottleneckCallout view={view} onApply={onApplyFix} disabledHint={disabledHint} />
           )}
 
-          <section className="cap-section" aria-labelledby="cap-whatif">
-            <h4 id="cap-whatif">What if</h4>
-            <Multiplier
-              id="capacity-traffic-mult"
-              label="Traffic"
-              hint="Every entry rate at once"
-              stops={TRAFFIC_STOPS}
-              value={traffic}
-              onChange={(v) => set({ ...inputs, traffic: v })}
-            />
-            <Multiplier
-              id="capacity-capacity-mult"
-              label="Capacity"
-              hint="Every service's replicas at once"
-              stops={CAPACITY_STOPS}
-              value={capacity}
-              onChange={(v) => set({ ...inputs, capacity: v })}
-            />
-            <div className="cap-presets" role="group" aria-label="Presets">
-              {PRESETS.map((p) => {
-                const on = isPresetActive(p.id, inputs, diagram, base);
-                return (
-                  <button
-                    key={p.id}
-                    className={`cap-preset${on ? " is-on" : ""}`}
-                    aria-pressed={on}
-                    title={p.hint}
-                    onClick={() => set(applyPreset(p.id, inputs, diagram, base))}
-                    data-testid={`capacity-preset-${p.id}`}
-                  >
-                    {p.label}
-                    {p.id === "black-friday" && <small>5×</small>}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+          <fieldset className="cap-edit-fields" disabled={!!disabledHint} title={disabledHint}>
+            <section className="cap-section" aria-labelledby="cap-whatif">
+              <h4 id="cap-whatif">What if</h4>
+              <Multiplier
+                id="capacity-traffic-mult"
+                label="Traffic"
+                hint="Every entry rate at once"
+                stops={TRAFFIC_STOPS}
+                value={traffic}
+                onChange={(v) => set({ ...inputs, traffic: v })}
+              />
+              <Multiplier
+                id="capacity-capacity-mult"
+                label="Capacity"
+                hint="Every service's replicas at once"
+                stops={CAPACITY_STOPS}
+                value={capacity}
+                onChange={(v) => set({ ...inputs, capacity: v })}
+              />
+              <div className="cap-presets" role="group" aria-label="Presets">
+                {PRESETS.map((p) => {
+                  const on = isPresetActive(p.id, inputs, diagram, base);
+                  return (
+                    <button
+                      key={p.id}
+                      className={`cap-preset${on ? " is-on" : ""}`}
+                      aria-pressed={on}
+                      title={p.hint}
+                      onClick={() => set(applyPreset(p.id, inputs, diagram, base))}
+                      data-testid={`capacity-preset-${p.id}`}
+                    >
+                      {p.label}
+                      {p.id === "black-friday" && <small>5×</small>}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
 
-          {rows.entries.length > 0 && (
-            <Group title="Entry points" hint="How many messages enter here per second" count={rows.entries.length}>
-              {rows.entries.map((id) => (
-                <EntryRow
-                  key={`${id}:${resetVersion}`}
-                  node={byId.get(id)!}
-                  rate={rates.get(id) ?? 0}
-                  traffic={traffic}
-                  onValidity={(valid) => validity(`capacity-rate-${id}`, valid)}
-                  onRate={(rate) => set({ ...inputs, rates: { ...inputs.rates, [id]: rate } })}
-                />
-              ))}
-            </Group>
-          )}
+            {rows.entries.length > 0 && (
+              <Group title="Entry points" hint="How many messages enter here per second" count={rows.entries.length}>
+                {rows.entries.map((id) => (
+                  <EntryRow
+                    key={`${id}:${resetVersion}`}
+                    node={byId.get(id)!}
+                    rate={rates.get(id) ?? 0}
+                    traffic={traffic}
+                    onValidity={(valid) => validity(`capacity-rate-${id}`, valid)}
+                    onRate={(rate) => set({ ...inputs, rates: { ...inputs.rates, [id]: rate } })}
+                  />
+                ))}
+              </Group>
+            )}
 
-          {rows.services.length > 0 && (
-            <Group title="Services" hint="Replicas are pods; latency is the time to handle one message">
-              {rows.services.map((id) => (
-                <ServiceRow
-                  key={`${id}:${resetVersion}`}
-                  node={byId.get(id)!}
-                  heat={view.nodes[id]}
-                  props={props(byId.get(id)!)}
-                  capacity={capacity}
-                  onProp={(key, value) => setProp(id, key, value)}
-                />
-              ))}
-            </Group>
-          )}
+            {rows.services.length > 0 && (
+              <Group title="Services" hint="Replicas are pods; latency is the time to handle one message">
+                {rows.services.map((id) => (
+                  <ServiceRow
+                    key={`${id}:${resetVersion}`}
+                    node={byId.get(id)!}
+                    heat={view.nodes[id]}
+                    props={props(byId.get(id)!)}
+                    capacity={capacity}
+                    onProp={(key, value) => setProp(id, key, value)}
+                  />
+                ))}
+              </Group>
+            )}
 
-          {rows.brokers.length > 0 && (
-            <Group title="Topics & queues" hint="Partitions cap how many consumers in a group work at once">
-              {rows.brokers.map((id) => (
-                <BrokerRow
-                  key={`${id}:${resetVersion}`}
-                  node={byId.get(id)!}
-                  heat={view.nodes[id]}
-                  partitions={props(byId.get(id)!).partitions}
-                  onPartitions={(n) => setProp(id, "partitions", n)}
-                />
-              ))}
-            </Group>
-          )}
-
+            {rows.brokers.length > 0 && (
+              <Group title="Topics & queues" hint="Partitions cap how many consumers in a group work at once">
+                {rows.brokers.map((id) => (
+                  <BrokerRow
+                    key={`${id}:${resetVersion}`}
+                    node={byId.get(id)!}
+                    heat={view.nodes[id]}
+                    partitions={props(byId.get(id)!).partitions}
+                    onPartitions={(n) => setProp(id, "partitions", n)}
+                  />
+                ))}
+              </Group>
+            )}
+          </fieldset>
           {(rows.hidden > 0 || showAll) && (
             <button
               className="lv-add cap-show-all"
@@ -274,14 +280,16 @@ export const CapacityPanel = memo(function CapacityPanel({
             </button>
           )}
 
-          <ScaleIndicator
-            scale={scale}
-            running={running}
-            diagram={diagram}
-            base={base}
-            inputs={inputs}
-            onScale={(scale) => set({ ...inputs, scale })}
-          />
+          <fieldset className="cap-edit-fields" disabled={!!disabledHint} title={disabledHint}>
+            <ScaleIndicator
+              scale={scale}
+              running={running}
+              diagram={diagram}
+              base={base}
+              inputs={inputs}
+              onScale={(scale) => set({ ...inputs, scale })}
+            />
+          </fieldset>
 
           <p className="cap-footnote">
             Planning estimate at peak rates. Gateways and databases aren&apos;t capacity-limited in this simulation.
@@ -301,9 +309,9 @@ export const CapacityPanel = memo(function CapacityPanel({
               setResetVersion((v) => v + 1);
               set(emptyInputs());
             }}
-            disabled={!dirty}
+            disabled={!!disabledHint || !dirty}
             data-testid="capacity-reset"
-            title="Back to the saved values"
+            title={disabledHint ?? "Back to the saved values"}
           >
             Reset
           </button>
@@ -312,7 +320,8 @@ export const CapacityPanel = memo(function CapacityPanel({
             <button
               className="btn btn-primary"
               onClick={onSave}
-              disabled={!dirty || invalidFields.size > 0}
+              disabled={!!disabledHint || !dirty || invalidFields.size > 0}
+              title={disabledHint}
               data-testid="capacity-save"
             >
               <LiveIcon name="save" size={13} /> {base ? "Save to simulation" : "Save to diagram"}
@@ -328,7 +337,15 @@ export const CapacityPanel = memo(function CapacityPanel({
  * No entry points yet (nothing in the diagram sends traffic): name where messages could enter and
  * add an upstream source there in one step, rather than a dead end.
  */
-function NoEntryPoints({ diagram, onAdd }: { diagram: DiagramFile; onAdd?: (nodeId: string) => void }) {
+function NoEntryPoints({
+  diagram,
+  onAdd,
+  disabledHint,
+}: {
+  diagram: DiagramFile;
+  onAdd?: (nodeId: string) => void;
+  disabledHint?: string;
+}) {
   const targets = useMemo(() => entryCandidates(diagram), [diagram]);
   return (
     <div className="cap-start" data-testid="capacity-no-entries">
@@ -345,6 +362,8 @@ function NoEntryPoints({ diagram, onAdd }: { diagram: DiagramFile; onAdd?: (node
             className="lv-add cap-start-add"
             onClick={() => onAdd(n.id)}
             data-testid={`capacity-add-entry-${n.id}`}
+            disabled={!!disabledHint}
+            title={disabledHint}
           >
             <LiveIcon name="plus" size={12} /> Traffic into {n.label || n.id}
           </button>

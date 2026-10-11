@@ -76,6 +76,21 @@ export interface LiveTrace {
   current?: MessageTrace;
 }
 
+/** A restorable sandbox over the running engine (see `LiveController.lookAhead`). */
+export interface LookAhead {
+  tracer: SimEngine["tracer"];
+  /** Simulation time now, ms. */
+  time(): number;
+  /** Advance `simMs` of simulated time. False when time can't move (a finished run). */
+  step(simMs: number): boolean;
+  /** Nothing more can happen (free play with no traffic and an empty system; a finished run). */
+  idle(): boolean;
+  /** A node's backlog or lag, in real messages. */
+  lag(nodeId: string): number | undefined;
+  /** Back to the checkpoint, exactly. */
+  restore(): void;
+}
+
 type TraceIntent = { kind: "idle" } | { kind: "root"; rootId: number } | { kind: "pending"; request: TraceRequest };
 
 export type DiagramUpdate = "none" | "patched" | "reloaded";
@@ -268,6 +283,51 @@ export class LiveController {
     if (!this.engine.tracer.followed() && !this.engine.tracer.pending()) return;
     this.engine.tracer.clear();
     this.publish();
+  }
+
+  /**
+   * Slow motion's look-ahead (src/live/slowmo/session.ts): checkpoint the whole run now, let the
+   * caller step simulated time and read the tracer, then `restore()` exactly. Pausing notes on the
+   * way pass, as in `seek`. Call it paused; nothing is published until `restore()`.
+   */
+  lookAhead(): LookAhead {
+    const runner = this.runner,
+      engine = this.engine;
+    const cp = runner ? runner.checkpoint() : engine.checkpoint();
+    const time = () => (runner ? runner.state().time : engine.metrics().time);
+    return {
+      tracer: engine.tracer,
+      time,
+      step: (simMs) => {
+        const before = time();
+        if (runner) {
+          const s = runner.state();
+          if (s.done) return false;
+          if (s.waiting) runner.resume();
+          runner.step(simMs / this.speed);
+        } else engine.step(simMs / this.speed);
+        return time() > before;
+      },
+      // Free play with no traffic and nothing in the system: no message can ever arrive.
+      idle: () => {
+        if (runner) return runner.state().done;
+        const m = engine.metrics();
+        return !this.traffic && m.inSystem === 0 && m.pendingInjections === 0;
+      },
+      lag: (nodeId) => {
+        // Read the engine directly: the published (frozen) snapshot must not move.
+        const snap = engine.snapshot();
+        const n = snap.nodes[nodeId];
+        return n ? Math.round(n.backlog * resolveScale(snap.scale)) : undefined;
+      },
+      restore: () => {
+        if (runner) runner.restore(cp as SimulationRunCheckpoint);
+        else engine.restore(cp);
+        this.applySpeed();
+        this.engine.setTraffic(this.traffic);
+        this.dirty = true;
+      },
+    };
   }
 
   private readTrace(): LiveTrace | null {

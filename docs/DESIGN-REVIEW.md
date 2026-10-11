@@ -755,6 +755,24 @@ General:
 New global classes: `.btn-ghost`, `.icon-btn-quiet`, `.btn-danger-solid`, `.btn.is-pressed`,
 `.field-clear`, `.copy-chip`, and `label.field` (the whole field focuses its input).
 
+## Slow motion UX review — 2026-10-11
+
+Passed after addressing two findings: returning from replay to a waiting watch now restores live
+speed, and the command palette disables simulation switching during slow motion.
+
+- Replay starts at 1×, its pace remains adjustable, and exit restores the previous live speed.
+- Visited offsets are smaller, muted and increasingly faint with age. They never cover node cards,
+  existing labels, captions or each other; crowded offsets wait for room.
+- Folded retries show a compact `↻ ×N` chip beside the retrying node only during that beat.
+- Engine-changing actions share registry availability and the hint "Exit slow motion (Esc) first".
+  Trace, event inspection, sequence diagrams and recording remain available. Open Inputs fields and
+  Apply fix wait until replay ends.
+- Existing play, replay, speed and timeline controls serve slow motion. No toolbar control was added;
+  context menus and the palette retain progressive disclosure.
+
+Regression coverage includes pace restoration and the waiting fallback, painted offset styling and
+collision checks, retry-chip timing, registry and palette availability, and the browser flows.
+
 ## Cross-lane hooks I added (small, isolated)
 
 - `src/lib/canvasBridge.ts`: the Gallery queues stencil ids in `sessionStorage` and switches to the

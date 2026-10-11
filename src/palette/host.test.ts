@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { placeNextTo } from "./canvasHost";
-import { paletteHost } from "./host";
+import { paletteHost, publish } from "./host";
 
 const box = (x: number, y: number, width = 100, height = 50) => ({ x, y, width, height });
 
@@ -25,6 +25,14 @@ describe("placeNextTo", () => {
 });
 
 describe("paletteHost", () => {
+  it("does not switch simulations while the live session is guarded", () => {
+    paletteHost.reset();
+    const run = vi.fn();
+    const off = publish("session", { run, disabledHint: "Exit slow motion (Esc) first" });
+    expect(paletteHost.runSimulation("peak")).toBe(false);
+    expect(run).not.toHaveBeenCalled();
+    off();
+  });
   it("can't run a simulation without a live view", () => {
     paletteHost.reset();
     expect(paletteHost.runSimulation("peak")).toBe(false);

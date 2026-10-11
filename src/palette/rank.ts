@@ -32,6 +32,7 @@ export interface Command {
   shortcut?: string;
   /** Muted right-aligned text. */
   hint?: string;
+  disabled?: boolean;
   danger?: boolean;
   /** `false`: hidden until the user types (submenu leaves, the long stencil list). */
   idle?: boolean;
