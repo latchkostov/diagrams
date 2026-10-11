@@ -34,6 +34,91 @@ const traffic = (rates: Record<string, number>, patch: Partial<Simulation> = {})
   ...patch,
 });
 
+describe("capacity routing regressions", () => {
+  it.each(["generic.queue", "kafka.topic", "azure.event-hubs"])(
+    "%s excludes incompatible consumers and preserves blocked demand",
+    (stencil) => {
+      const d = diagram(
+        [
+          node("s", "client.user"),
+          node("b", stencil, { partitions: 10 }),
+          node("orders", undefined, { status: "paused", concurrency: 1, latencyMs: 100 }),
+          node("invoices", undefined, { concurrency: 1, latencyMs: 100 }),
+        ],
+        [
+          edge("s", "b", { share: 0.5, emits: "Order" }),
+          edge("b", "orders", { group: "g", filter: ["Order"] }),
+          edge("b", "invoices", { group: "g", filter: ["Invoice"] }),
+        ],
+      );
+      const result = analyzeCapacity(d, traffic({ s: 10 }));
+      expect(result.nodes.b).toMatchObject({ offered: 5, capacity: 0, utilization: Infinity });
+      expect(result.nodes.orders).toMatchObject({ offered: 5, utilization: Infinity });
+      expect(result.nodes.invoices.offered).toBe(0);
+    },
+  );
+
+  it("accounts for per-type compatibility and shared service budgets within a group", () => {
+    const d = diagram(
+      [
+        node("b", "generic.queue"),
+        node("a", undefined, { concurrency: 1, latencyMs: 100 }),
+        node("c", undefined, { concurrency: 1, latencyMs: 100 }),
+      ],
+      [edge("b", "a", { filter: ["Order", "Invoice"] }), edge("b", "c", { filter: ["Invoice"] })],
+    );
+    const profiles: Simulation["traffic"] = [
+      { id: "o", node: "b", messageType: "Order", shape: { kind: "constant", ratePerSec: 8, durationMs: 1000 } },
+      { id: "i", node: "b", messageType: "Invoice", shape: { kind: "constant", ratePerSec: 8, durationMs: 1000 } },
+    ];
+    expect(analyzeCapacity(d, traffic({}, { traffic: profiles })).nodes.b.capacity).toBe(20);
+    profiles[0].shape = { kind: "constant", ratePerSec: 12, durationMs: 1000 };
+    profiles[1].shape = { kind: "constant", ratePerSec: 4, durationMs: 1000 };
+    expect(analyzeCapacity(d, traffic({}, { traffic: profiles })).nodes.b.capacity).toBeCloseTo(40 / 3);
+  });
+
+  it("normalizes DLQ classification identically to playback, including ordinary source/store edges", () => {
+    const d = diagram(
+      [node("s", "client.user"), node("db", "postgres", { latencyMs: 0 }), node("p")],
+      [edge("s", "db", { dlq: true }), edge("db", "p", { dlq: true })],
+    );
+    const input = traffic({ s: 5 });
+    const analysis = analyzeCapacity(d, input);
+    expect(analysis.nodes.db.offered).toBe(5);
+    expect(analysis.nodes.p.offered).toBe(5);
+    const run = createSimulationRun(d, {
+      ...input,
+      traffic: [{ id: "burst", node: "s", shape: { kind: "burst", count: 10 } }],
+      durationMs: 2000,
+    });
+    run.step(2000);
+    expect(run.engine.frame().nodes.db.processed).toBe(10);
+    expect(run.engine.frame().nodes.p.processed).toBeGreaterThan(0);
+  });
+
+  it("finds a shared type-subset limit and handles unlimited compatible consumers", () => {
+    const d = diagram(
+      [
+        node("b", "generic.queue"),
+        node("a", undefined, { concurrency: 1, latencyMs: 100 }),
+        node("c", undefined, { concurrency: 1, latencyMs: 100 }),
+      ],
+      [edge("b", "a", { filter: ["Order", "Invoice"] }), edge("b", "c", { filter: ["Email"] })],
+    );
+    const profiles: Simulation["traffic"] = ["Order", "Invoice", "Email"].map((type) => ({
+      id: type,
+      node: "b",
+      messageType: type,
+      shape: { kind: "constant", ratePerSec: 5, durationMs: 1000 },
+    }));
+    expect(analyzeCapacity(d, traffic({}, { traffic: profiles })).nodes.b.capacity).toBe(15);
+    d.nodes[2] = node("c", "generic.email");
+    expect(analyzeCapacity(d, traffic({}, { traffic: profiles })).nodes.b.capacity).toBe(15);
+    d.edges[1] = edge("b", "c");
+    expect(analyzeCapacity(d, traffic({}, { traffic: profiles })).nodes.b.capacity).toBe(Infinity);
+  });
+});
+
 describe("capacity analysis by hand", () => {
   it("computes real processor capacity and replica suggestions without mutation or a run", () => {
     const d = diagram(

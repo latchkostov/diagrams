@@ -4,7 +4,7 @@ import { messageColor } from "./colors";
 import { resolveProps, type ResolvedProps } from "./defaults";
 import { Deque } from "./deque";
 import { mulberry32 } from "./rng";
-import { allocateReplicas, isDlqEdge } from "./topology";
+import { acceptsType, allocateGroupReplicas, compileTopology, type CompiledTopology } from "./topology";
 import { resolveScale, resolveMultiplier } from "./units";
 import type {
   EngineOptions,
@@ -38,6 +38,8 @@ interface Group {
   cursor: number;
   allocations: Map<string, number>;
   activeByNode: Record<string, number>;
+  members: string[];
+  limit: number;
 }
 interface Delivery {
   broker: Node;
@@ -151,6 +153,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   const events: SimEvent[] = [];
   let eventHead = 0;
   let topology = 0;
+  let compiled: CompiledTopology = { edges: [], outgoing: new Map(), groups: new Map(), restricted: new Set() };
+  const groupsByConsumer = new Map<string, Group[]>();
   const checkpoints = new WeakMap<EngineCheckpoint, () => void>();
   // Min-heap contains one entry per spread batch, not one per future message.
   const injections: Injection[] = [];
@@ -213,10 +217,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function accepts(edge: Edge, type: string): boolean {
-    return (
-      edge.filter === undefined ||
-      edge.filter.some((pattern) => (pattern.endsWith("*") ? type.startsWith(pattern.slice(0, -1)) : type === pattern))
-    );
+    return acceptsType(edge.filter, type);
   }
 
   function rename(message: Message, type: string | undefined): Message {
@@ -232,35 +233,88 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     return node.role === "processor" ? node.activeReplicas * node.props.concurrency : node.props.concurrency;
   }
 
-  function assignReplicas(): void {
-    const assigned = new Map<string, number>();
-    const restricted = new Set<string>();
-    const unrestricted = new Set<string>();
-    for (const node of nodes.values())
-      node.replicas = Math.max(1, Math.round(node.props.replicas * capacityMultiplier));
-    for (const edge of edges) {
-      if (edge.dlq) continue;
-      if (edge.from.role === "topic" || edge.from.role === "stream") restricted.add(edge.to.id);
-      else unrestricted.add(edge.to.id);
-    }
+  function indexGroups(): void {
+    groupsByConsumer.clear();
     for (const broker of nodes.values())
-      for (const group of broker.groups) {
-        group.allocations = allocateReplicas(
-          group.edges.map((edge) => ({
-            id: edge.to.id,
-            replicas: edge.to.role === "processor" ? edge.to.replicas : broker.props.partitions,
-          })),
-          broker.role === "queue"
-            ? group.edges.reduce((sum, edge) => sum + edge.to.replicas, 0)
-            : broker.props.partitions,
-        );
-        for (const [id, count] of group.allocations) assigned.set(id, Math.max(assigned.get(id) ?? 0, count));
+      for (const group of broker.groups)
+        for (const id of group.members) {
+          const memberships = groupsByConsumer.get(id) ?? [];
+          memberships.push(group);
+          groupsByConsumer.set(id, memberships);
+        }
+  }
+
+  function refreshGroupLimit(group: Group): void {
+    group.limit =
+      group.edges[0].from.role === "queue"
+        ? Infinity
+        : group.members.reduce((sum, id) => {
+            const target = nodes.get(id)!;
+            return (
+              sum + (group.allocations.get(id) ?? 0) * (target.role === "processor" ? target.props.concurrency : 1)
+            );
+          }, 0);
+  }
+
+  function assignReplicas(changed: Set<string>): void {
+    const affected = new Set<Group>();
+    const targets = new Set(changed);
+    for (const id of changed) {
+      const node = nodes.get(id)!;
+      node.replicas = Math.max(1, Math.round(node.props.replicas * capacityMultiplier));
+      for (const group of node.groups) affected.add(group);
+      for (const group of groupsByConsumer.get(id) ?? []) affected.add(group);
+    }
+    for (const group of affected) {
+      const broker = group.edges[0].from;
+      group.allocations = allocateGroupReplicas(
+        broker.role,
+        broker.props.partitions,
+        group.members.map((id) => {
+          const node = nodes.get(id)!;
+          return { id, role: node.role, replicas: node.replicas };
+        }),
+      );
+      refreshGroupLimit(group);
+      for (const id of group.members) targets.add(id);
+    }
+    for (const id of targets) {
+      const node = nodes.get(id)!;
+      const assigned = compiled.restricted.has(id)
+        ? (groupsByConsumer.get(id) ?? []).reduce((max, group) => Math.max(max, group.allocations.get(id) ?? 0), 0)
+        : node.replicas;
+      node.activeReplicas = Math.min(node.replicas, assigned);
+    }
+  }
+
+  function setNodePropsBatch(patches: Record<string, NodeSimProps>, multiplier?: number): void {
+    const changed = new Set<string>(),
+      limits = new Set<Group>();
+    for (const [id, patch] of Object.entries(patches)) {
+      const node = nodes.get(id);
+      if (!node) continue;
+      const previous = node.props;
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === undefined) Reflect.deleteProperty(node.rawProps, key);
+        else node.rawProps[key] = structuredClone(value);
       }
-    for (const node of nodes.values())
-      node.activeReplicas =
-        restricted.has(node.id) && !unrestricted.has(node.id)
-          ? Math.min(node.replicas, assigned.get(node.id) ?? 0)
-          : node.replicas;
+      node.props = resolveProps(node.role, node.label, node.rawProps);
+      if (
+        Math.max(1, Math.round(node.props.replicas * capacityMultiplier)) !== node.replicas ||
+        (isBroker(node) && node.props.partitions !== previous.partitions)
+      )
+        changed.add(id);
+      if (node.props.concurrency !== previous.concurrency)
+        for (const group of groupsByConsumer.get(id) ?? []) limits.add(group);
+    }
+    const next = resolveMultiplier(multiplier, capacityMultiplier);
+    if (next !== capacityMultiplier) {
+      capacityMultiplier = next;
+      for (const node of nodes.values())
+        if (Math.max(1, Math.round(node.props.replicas * next)) !== node.replicas) changed.add(node.id);
+    }
+    if (changed.size) assignReplicas(changed);
+    for (const group of limits) refreshGroupLimit(group);
   }
 
   function takesShare(edge: Edge): boolean {
@@ -395,6 +449,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function arrive(node: Node, work: Work): void {
     if (node.status === "down") {
       finish(node, work);
+      if (work.retained) node.working.push(work);
       return;
     }
     // Pausing a broker stops consumers pulling, not publishers appending to its log.
@@ -435,17 +490,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function pull(node: Node): void {
     if (node.status !== "up") return;
     for (const group of node.groups) {
-      const limit =
-        node.role === "queue"
-          ? Infinity
-          : [...new Map(group.edges.map((edge) => [edge.to.id, edge])).values()].reduce(
-              (sum, edge) =>
-                sum +
-                (group.allocations.get(edge.to.id) ?? 0) *
-                  (edge.to.role === "processor" ? edge.to.props.concurrency : 1),
-              0,
-            );
-      while (group.pending.length && group.active < limit) {
+      if (!group.pending.length) continue;
+      while (group.pending.length && group.active < group.limit) {
         const message = group.pending.peek()!;
         let ready: Edge | undefined;
         for (let offset = 0; offset < group.edges.length; offset++) {
@@ -632,6 +678,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           for (const group of node.groups) Object.setPrototypeOf(group.pending, Deque.prototype);
           nodes.set(id, node);
         }
+        indexGroups();
         edges.splice(0, edges.length, ...copy.edges);
         trips = copy.trips;
         injections.splice(0, injections.length, ...copy.injections);
@@ -689,6 +736,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       topology++;
       nodes.clear();
       edges.length = 0;
+      compiled = compileTopology(diagram, roleOf);
       for (const input of diagram.nodes) {
         const role = roleOf(input.stencil);
         const rawProps = { ...input.props };
@@ -718,68 +766,32 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           serviceCredit: 0,
         });
       }
-      const inputById = new Map(diagram.nodes.map((node) => [node.id, node]));
-      const edgeIds = new Set<string>();
-      for (const input of diagram.edges) {
-        const from = nodes.get(input.from),
-          to = nodes.get(input.to);
-        if (!from || !to || edgeIds.has(input.id)) continue;
-        edgeIds.add(input.id);
-        const target = inputById.get(input.to)!;
-        const dlq = isDlqEdge(input, from.role, target, to.role);
-        const value = input.props?.travelMs;
-        const edge: Edge = {
-          id: input.id,
-          from,
-          to,
-          sync: input.kind === "sync",
-          dlq,
-          travelMs:
-            typeof value === "number" && Number.isFinite(value)
-              ? Math.max(0, value)
-              : input.kind === "sync"
-                ? 450
-                : 900,
-          share:
-            typeof input.props?.share === "number" && Number.isFinite(input.props.share)
-              ? Math.max(0, Math.min(1, input.props.share))
-              : undefined,
-          filter: Array.isArray(input.props?.filter)
-            ? input.props.filter.filter((value): value is string => typeof value === "string")
-            : undefined,
-          emits: typeof input.props?.emits === "string" ? input.props.emits : undefined,
-          groupName: typeof input.props?.group === "string" ? input.props.group : input.id,
-          delivered: 0,
-          active: 0,
-        };
+      const edgeById = new Map<string, Edge>();
+      for (const input of compiled.edges) {
+        const from = nodes.get(input.from)!,
+          to = nodes.get(input.to)!;
+        const edge: Edge = { ...input, from, to, delivered: 0, active: 0 };
         edges.push(edge);
-        // Only brokers and processors have a separate dead-letter path.
-        if (dlq && (isBroker(from) || from.role === "processor")) from.dlq ??= edge;
+        edgeById.set(edge.id, edge);
+        if (edge.dlq) from.dlq ??= edge;
         else from.outgoing.push(edge);
       }
-      for (const node of nodes.values()) {
-        if (!isBroker(node)) continue;
-        const byGroup = new Map<string, Group>();
-        for (const edge of node.outgoing) {
-          const name = node.role === "queue" ? "queue" : edge.groupName;
-          let group = byGroup.get(name);
-          if (!group) {
-            group = {
-              name,
-              edges: [],
-              pending: new Deque(),
-              active: 0,
-              cursor: 0,
-              allocations: new Map(),
-              activeByNode: Object.create(null),
-            };
-            byGroup.set(name, group);
-            node.groups.push(group);
-          }
-          group.edges.push(edge);
-        }
+      for (const [id, groups] of compiled.groups) {
+        const node = nodes.get(id)!;
+        node.groups = groups.map((group) => ({
+          name: group.name,
+          edges: group.edges.map((edge) => edgeById.get(edge.id)!),
+          members: group.members,
+          limit: 0,
+          pending: new Deque(),
+          active: 0,
+          cursor: 0,
+          allocations: new Map(),
+          activeByNode: Object.create(null),
+        }));
       }
-      assignReplicas();
+      indexGroups();
+      assignReplicas(new Set(nodes.keys()));
       traffic = false;
       speed = 1;
       reset();
@@ -860,21 +872,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       log("status", node, undefined, status);
     },
     setNodeProps(nodeId: string, patch: NodeSimProps): void {
-      const node = nodes.get(nodeId);
-      if (!node) return;
-      for (const [key, value] of Object.entries(patch)) {
-        if (value === undefined) Reflect.deleteProperty(node.rawProps, key);
-        else node.rawProps[key] = structuredClone(value);
-      }
-      node.props = resolveProps(node.role, node.label, node.rawProps);
-      assignReplicas();
+      setNodePropsBatch({ [nodeId]: patch });
     },
+    setNodePropsBatch,
     setScale(value): void {
       scale = resolveScale(value);
     },
     setCapacityMultiplier(value): void {
-      capacityMultiplier = resolveMultiplier(value, capacityMultiplier);
-      assignReplicas();
+      setNodePropsBatch({}, value);
     },
     setTraffic(on: boolean): void {
       traffic = on;

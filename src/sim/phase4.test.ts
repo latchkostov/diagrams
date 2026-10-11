@@ -4,6 +4,7 @@ import { createEngine } from "./engine";
 import { resolveProps } from "./defaults";
 import { createSimulationRun, autoScale } from "./simulation";
 import { realNodeMetrics, realSnapshot, toRealUnits, toSimulatedUnits } from "./units";
+import * as topology from "./topology";
 
 const node = (id: string, role: SimRole, props: Record<string, unknown> = {}): DiagramNode => ({
   id,
@@ -36,6 +37,215 @@ const simulation = (patch: Partial<Simulation> = {}): Simulation => ({
   title: "Phase 4",
   traffic: [],
   ...patch,
+});
+
+describe("review regressions", () => {
+  it("retains arrival-time in-place failures and frees the partition after recovery", () => {
+    const e = engine(
+      diagram(
+        [
+          node("b", "topic", { partitions: 1 }),
+          node("p", "processor", { concurrency: 1, retry: "inplace", retryBackoffMs: 500, latencyMs: 100, jitter: 0 }),
+        ],
+        [edge("b", "p", { travelMs: 100 })],
+      ),
+    );
+    e.inject("b", 2);
+    e.step(10);
+    e.setNodeStatus("p", "down");
+    e.step(100);
+    expect(e.frame().nodes.p).toMatchObject({ failed: 1, inFlight: 1 });
+    expect(e.frame().nodes.b.backlog).toBe(1);
+    e.setNodeStatus("p", "up");
+    e.step(1000);
+    expect(e.frame().nodes.p.processed).toBe(2);
+    expect(e.metrics().inSystem).toBe(0);
+  });
+
+  it("skips assignments for nonallocation patches and unchanged effective replica counts", () => {
+    const e = engine(diagram([node("b", "topic"), node("p", "processor")], [edge("b", "p")]));
+    const assign = vi.spyOn(topology, "allocateGroupReplicas");
+    try {
+      e.setNodeProps("p", { latencyMs: 200, failureRate: 0.2 });
+      e.setNodeProps("p", { replicas: 1 });
+      e.setCapacityMultiplier(1.1);
+      expect(assign).not.toHaveBeenCalled();
+    } finally {
+      assign.mockRestore();
+    }
+  });
+
+  it("batches allocation changes once per affected group and leaves disconnected groups alone", () => {
+    const e = engine(
+      diagram(
+        [node("b", "topic"), node("p", "processor"), node("c", "topic"), node("q", "processor")],
+        [edge("b", "p"), edge("c", "q")],
+      ),
+    );
+    const assign = vi.spyOn(topology, "allocateGroupReplicas");
+    try {
+      e.setNodePropsBatch({ b: { partitions: 4 }, p: { replicas: 5 } });
+      expect(assign).toHaveBeenCalledTimes(1);
+      expect(e.frame().nodes.p.activeReplicas).toBe(4);
+      expect(e.frame().nodes.q.activeReplicas).toBe(1);
+      assign.mockClear();
+      e.setNodeProps("p", { replicas: 6 });
+      expect(assign).toHaveBeenCalledTimes(1);
+    } finally {
+      assign.mockRestore();
+    }
+  });
+
+  it("applies setup allocation overrides in one batch", () => {
+    const e = createEngine(options);
+    const batch = vi.spyOn(e, "setNodePropsBatch");
+    const assign = vi.spyOn(topology, "allocateGroupReplicas");
+    try {
+      createSimulationRun(
+        diagram([node("b", "topic"), node("p", "processor")], [edge("b", "p")]),
+        simulation({ multipliers: { capacity: 2 }, setup: { props: { b: { partitions: 4 }, p: { replicas: 5 } } } }),
+        { ...options, engine: e },
+      );
+      expect(batch).toHaveBeenCalledTimes(1);
+      expect(assign).toHaveBeenCalledTimes(2); // load, then setup
+      expect(e.frame().nodes.p.activeReplicas).toBe(4);
+      expect(e.frame().nodes.p.replicas).toBe(10);
+    } finally {
+      batch.mockRestore();
+      assign.mockRestore();
+    }
+  });
+
+  it("caches group limits between ticks and refreshes consumer concurrency", () => {
+    const e = engine(
+      diagram(
+        [node("b", "topic", { partitions: 1 }), node("p", "processor", { concurrency: 1, latencyMs: 1000, jitter: 0 })],
+        [edge("b", "p")],
+      ),
+    );
+    const maps = vi.spyOn(globalThis, "Map");
+    try {
+      e.step(100);
+      expect(maps).not.toHaveBeenCalled();
+    } finally {
+      maps.mockRestore();
+    }
+    e.inject("b", 3);
+    e.step(20);
+    expect(e.frame().nodes.p.inFlight).toBe(1);
+    e.setNodeProps("p", { concurrency: 3 });
+    e.step(20);
+    expect(e.frame().nodes.p.inFlight).toBe(3);
+    const saved = e.checkpoint();
+    e.setNodeProps("p", { concurrency: 0 });
+    e.restore(saved);
+    e.setNodeProps("p", { concurrency: 4 });
+    e.inject("b", 1);
+    e.step(20);
+    expect(e.frame().nodes.p.inFlight).toBe(4);
+  });
+
+  it("runner exposes sampled and real views and manual injections accept real counts", () => {
+    const run = createSimulationRun(
+      diagram([node("s", "source"), node("p", "processor")], [edge("s", "p")]),
+      simulation({ scale: 50, multipliers: { traffic: 3 }, durationMs: 10000 }),
+      options,
+    );
+    run.inject("s", 100);
+    expect(run.units.sampledFrame().nodes.s.processed).toBe(2);
+    expect(run.units.realFrame().nodes.s.processed).toBe(100);
+    expect(run.units.realFrame().inSystem).toBe(100);
+    expect(run.units.realFrame().units).toBe("real");
+    const raw = run.units.sampledSnapshot(),
+      real = run.units.realSnapshot();
+    expect(real.particles).toEqual(raw.particles);
+    expect(real.time).toBe(raw.time);
+    expect(real.nodes.p.replicas).toBe(raw.nodes.p.replicas);
+    expect(real.edges["s-p"].active).toBe(raw.edges["s-p"].active * 50);
+    expect(realSnapshot(real)).toEqual(real);
+    expect(realNodeMetrics(real.nodes.s, 50).processed).toBe(100);
+    run.inject("s", 25, { type: "A" });
+    run.inject("s", 25, { type: "B" });
+    run.inject("missing", 25, { type: "A" });
+    run.inject("s", 25, { type: "A" });
+    expect(run.units.sampledFrame().nodes.s.processed).toBe(3);
+    run.inject("s", NaN);
+    run.inject("s", -10);
+    run.restart();
+    run.inject("s", 25, { type: "B" });
+    expect(run.units.sampledFrame().nodes.s.processed).toBe(0);
+    run.injectAtSources(100);
+    expect(run.units.realFrame().nodes.s.processed).toBe(100);
+  });
+
+  it("manual real injection spreads sampled dots and coalesces default/explicit type credit", () => {
+    const run = createSimulationRun(
+      diagram([node("a", "source", { messageType: "Order" }), node("b", "source")]),
+      simulation({ scale: 50, durationMs: 10000 }),
+      options,
+    );
+    run.inject("a", 25);
+    run.inject("a", 25, { type: "Order" });
+    expect(run.units.realFrame().nodes.a.processed).toBe(50);
+    run.injectAtSources(150, { spreadMs: 1000 });
+    expect(run.units.sampledFrame().nodes.a.processed).toBe(2);
+    expect(run.units.sampledFrame().nodes.b.processed).toBe(1);
+    run.step(490);
+    expect(run.units.sampledFrame().nodes.b.processed).toBe(1);
+    run.step(10);
+    expect(run.units.sampledFrame().nodes.b.processed).toBe(2);
+    run.step(500);
+    expect(run.units.realFrame().nodes.a.processed).toBe(200);
+    expect(run.units.realFrame().nodes.b.processed).toBe(150);
+  });
+
+  it("sampling preserves admitted-message latency", () => {
+    const e = engine(diagram([node("p", "processor", { concurrency: 1, latencyMs: 100, jitter: 0 })]));
+    e.setScale(10);
+    e.inject("p", 1);
+    while (!e.frame().nodes.p.inFlight && e.metrics().time < 2000) e.step(10);
+    const admitted = e.metrics().time;
+    expect(e.frame().nodes.p.inFlight).toBe(1);
+    e.step(90);
+    expect(e.frame().nodes.p.processed).toBe(0);
+    e.step(10);
+    expect(e.frame().nodes.p.processed).toBe(1);
+    expect(e.snapshot().events.find((event) => event.kind === "process")?.time).toBe(admitted + 100);
+  });
+
+  it("store CDC arrivals honor independent shares", () => {
+    const d = diagram(
+      [
+        node("s", "source"),
+        node("db", "store", { latencyMs: 10, jitter: 0 }),
+        ...["zero", "one", "fraction", "other", "sync"].map((id) => node(id, "sink")),
+      ],
+      [
+        edge("s", "db"),
+        edge("db", "zero", { share: 0 }),
+        edge("db", "one", { share: 1 }),
+        edge("db", "fraction", { share: 0.35 }),
+        edge("db", "other", { share: 0.35 }),
+        { ...edge("db", "sync", { share: 1 }), kind: "sync" },
+      ],
+    );
+    const execute = () => {
+      const e = engine(d);
+      e.inject("s", 1000);
+      e.step(100);
+      return e.snapshot();
+    };
+    const first = execute();
+    expect(first).toEqual(execute());
+    expect(first.nodes.db.processed).toBe(1000);
+    expect(first.nodes.zero.processed).toBe(0);
+    expect(first.nodes.one.processed).toBe(1000);
+    expect(first.nodes.sync.processed).toBe(0);
+    expect(first.nodes.fraction.processed).toBeGreaterThan(300);
+    expect(first.nodes.fraction.processed).toBeLessThan(400);
+    expect(first.nodes.other.processed).not.toBe(first.nodes.fraction.processed);
+    expect(first.inSystem).toBe(0);
+  });
 });
 
 describe("replica assignments and parallelism", () => {
@@ -406,7 +616,7 @@ describe("real units, automatic sampling and live multipliers", () => {
     run.step(2000);
     expect(run.engine.frame().nodes.s.processed).toBe(7);
   });
-  it("sampling preserves processor real throughput capacity and per-message latency", () => {
+  it("sampling preserves sustained processor real throughput capacity", () => {
     const d = diagram([node("p", "processor", { replicas: 2, concurrency: 2, latencyMs: 100, jitter: 0 })]);
     const run = createSimulationRun(
       d,
