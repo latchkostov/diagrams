@@ -1,6 +1,6 @@
 import { stencils, getStencil } from "../stencils/registry";
 import { CATEGORY_ORDER, categoryLabel } from "../lib/categories";
-import { toneColor, toneLabel } from "../canvas/nodes/GroupNode";
+import { toneColor, toneLabel } from "../canvas/groupTones";
 import type { GroupTone } from "../canvas/types";
 import type { Side, Stencil } from "../model/types";
 import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";

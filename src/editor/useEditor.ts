@@ -1,9 +1,9 @@
-import { useMemo, useRef, type Dispatch, type SetStateAction } from "react";
+import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
 import { edgeToFlow, fromFlow, groupAt, groupToFlow, nodeToFlow, type DiagramMeta } from "../canvas/convert";
 import type { EditTarget } from "../canvas/DiagramContext";
 import { type DiagramFlowEdge, type DiagramFlowNode, type FlowNode, type GroupFlowNode } from "../canvas/types";
-import { toneLabel } from "../canvas/nodes/GroupNode";
+import { toneLabel } from "../canvas/groupTones";
 import { getStencil } from "../stencils/registry";
 import { downloadDiagram, IMPORTED_SLUG } from "../lib/diagramIO";
 import { align, boundaryAround, distribute, type Box, type Positions } from "./arrange";
@@ -14,7 +14,7 @@ import type { HistoryApi } from "./useHistory";
 import type { EditorApi, EditorPrefs, Selection, XY } from "./types";
 
 // The EditorApi implementation over React Flow state. Built once per canvas; reads the latest
-// props through a ref so menus / shortcuts never see stale state.
+// committed props so menus / shortcuts never see stale state.
 
 /** Internal clipboard, shared across diagrams in this tab. Mirrored to the system clipboard. */
 let clipboard: ClipboardPayload | null = null;
@@ -43,9 +43,11 @@ export interface EditorDeps {
 
 export function useEditor(deps: EditorDeps): EditorApi {
   const rf = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const ref = useRef(deps);
-  ref.current = deps;
-  return useMemo(() => createEditor(rf, ref), [rf]);
+  const [editor] = useState(() => createEditor(rf, deps));
+  useLayoutEffect(() => {
+    editor.updateDeps(rf, deps);
+  });
+  return editor.api;
 }
 
 const isDiagram = (n: FlowNode): n is DiagramFlowNode => n.type === "diagram";
@@ -57,8 +59,9 @@ function withoutUndefined<T extends Record<string, unknown>>(o: T): T | undefine
   return Object.keys(out).length ? out : undefined;
 }
 
-function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { current: EditorDeps }): EditorApi {
-  const deps = () => ref.current;
+function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialDeps: EditorDeps) {
+  let latest = initialDeps;
+  const deps = () => latest;
   const box = (n: FlowNode): Box => ({
     id: n.id,
     x: n.position.x,
@@ -464,5 +467,11 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
       setTimeout(() => deps().fit(), 60);
     },
   };
-  return api;
+  return {
+    api,
+    updateDeps: (flow: ReactFlowInstance<FlowNode, DiagramFlowEdge>, next: EditorDeps) => {
+      rf = flow;
+      latest = next;
+    },
+  };
 }

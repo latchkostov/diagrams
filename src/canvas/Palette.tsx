@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type DragEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { getStencil, stencils } from "../stencils/registry";
 import type { Stencil, StencilCategory } from "../model/types";
 import { StencilIcon } from "../components/StencilIcon";
@@ -48,12 +48,17 @@ export function Palette({
   useEffect(() => localStorage.setItem(FAMILY_KEY, family), [family]);
   useEffect(() => localStorage.setItem(SECTIONS_KEY, JSON.stringify(closed)), [closed]);
 
+  const onAddRef = useRef(onAdd);
+  useLayoutEffect(() => {
+    onAddRef.current = onAdd;
+  });
+
   // Stencils sent from the Gallery ("Add to current diagram"), and which diagram is "current".
   useEffect(() => {
     const t = setTimeout(() => {
       const slug = new URLSearchParams(window.location.search).get("example");
       if (slug) rememberCanvas(slug);
-      for (const id of takePendingStencils()) onAdd(id);
+      for (const id of takePendingStencils()) onAddRef.current(id);
     }, PENDING_DELAY);
     return () => clearTimeout(t);
     // Mount only: the queue is drained once per canvas.

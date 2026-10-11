@@ -42,6 +42,16 @@ export function GalleryView() {
   const search = useRef<HTMLInputElement>(null);
   const main = useRef<HTMLElement>(null);
   const lastTile = useRef<string | null>(null);
+  const closeDetail = useCallback(() => {
+    setDetail(null);
+    const id = lastTile.current;
+    if (id)
+      requestAnimationFrame(() =>
+        document
+          .querySelector<HTMLElement>(`[data-testid="stencil-tile-${CSS.escape(id)}"]`)
+          ?.focus({ preventScroll: true }),
+      );
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -57,11 +67,11 @@ export function GalleryView() {
   useEffect(() => {
     if (!detail || menu) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !(document.activeElement instanceof HTMLInputElement)) closeDetailRef.current();
+      if (e.key === "Escape" && !(document.activeElement instanceof HTMLInputElement)) closeDetail();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [detail, menu]);
+  }, [detail, menu, closeDetail]);
 
   useEffect(() => {
     if (!note) return;
@@ -131,19 +141,6 @@ export function GalleryView() {
     lastTile.current = id;
     setDetail(id);
   };
-  const closeDetail = () => {
-    setDetail(null);
-    const id = lastTile.current;
-    if (id)
-      requestAnimationFrame(() =>
-        document
-          .querySelector<HTMLElement>(`[data-testid="stencil-tile-${CSS.escape(id)}"]`)
-          ?.focus({ preventScroll: true }),
-      );
-  };
-  const closeDetailRef = useRef(closeDetail);
-  closeDetailRef.current = closeDetail;
-
   const detailStencil = detail ? stencils.find((s) => s.id === detail) : undefined;
   const detailIndex = detailStencil ? ordered.findIndex((s) => s.id === detailStencil.id) : -1;
   const step = (dir: 1 | -1) => {
@@ -457,7 +454,13 @@ export function GalleryView() {
 
       {detailStencil && (
         <>
-          <div className="drawer-scrim" onClick={closeDetail} data-testid="drawer-scrim" />
+          <button
+            type="button"
+            className="drawer-scrim"
+            onClick={closeDetail}
+            aria-label="Close stencil details"
+            data-testid="drawer-scrim"
+          />
           <StencilDrawer
             key="drawer"
             stencil={detailStencil}
@@ -535,7 +538,7 @@ function StencilTile({ stencil: s, open, onOpen, onMenu, onAdd, onCopyId, onDrag
   const hasIcon = !!iconUrl(s.icon);
 
   return (
-    <article
+    <div
       className={`tile${open ? " is-open" : ""}`}
       role="button"
       tabIndex={0}
@@ -618,6 +621,6 @@ function StencilTile({ stencil: s, open, onOpen, onMenu, onAdd, onCopyId, onDrag
           </button>
         </div>
       </div>
-    </article>
+    </div>
   );
 }

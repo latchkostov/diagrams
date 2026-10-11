@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useStoreApi } from "@xyflow/react";
 import type {
   DiagramFile,
@@ -373,7 +373,9 @@ function lastNode(d: DiagramFile): string | undefined {
 function usePickNode(picker: Picker, done: () => void) {
   const store = useStoreApi();
   const ref = useRef({ picker, done });
-  ref.current = { picker, done };
+  useLayoutEffect(() => {
+    ref.current = { picker, done };
+  });
   useEffect(() => {
     const root = store.getState().domNode;
     if (!picker || !root) return;
@@ -1034,9 +1036,8 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
               <select
                 value={propKey}
                 onChange={(e) => {
-                  const rest = { ...a.props };
-                  const v = rest[propKey];
-                  delete rest[propKey];
+                  const v = a.props[propKey];
+                  const rest = Object.fromEntries(Object.entries(a.props).filter(([key]) => key !== propKey));
                   setAction({ ...a, props: { [e.target.value]: v, ...rest } });
                 }}
                 data-testid={`${t}-prop`}

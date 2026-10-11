@@ -11,8 +11,6 @@ import { Glyph } from "../ui/glyphs";
 
 const CanvasView = lazy(() => import("../../canvas/CanvasView").then((m) => ({ default: m.CanvasView })));
 
-export const isEmbed = () => new URLSearchParams(window.location.search).get("embed") === "1";
-
 type State =
   | { status: "loading" }
   | { status: "ready"; diagram: DiagramFile; key: string; openHref: string }

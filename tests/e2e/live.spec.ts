@@ -28,7 +28,7 @@ test.describe("live view", () => {
     // The less common controls live behind "⋯".
     await expect(page.getByTestId("live-traffic")).toHaveCount(0);
     await page.getByTestId("live-more").click();
-    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByTestId("live-traffic")).toHaveAttribute("aria-checked", "true");
     await page.getByTestId("live-more").click();
     await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
     await expect(page).toHaveURL(/live=1/);
@@ -104,8 +104,9 @@ test.describe("live view", () => {
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
     const clock = page.getByTestId("live-clock");
     const at = await clock.getAttribute("data-ms");
+    if (at === null) throw new Error("Live clock has no timestamp");
     await page.waitForTimeout(800);
-    await expect(clock).toHaveAttribute("data-ms", at!);
+    await expect(clock).toHaveAttribute("data-ms", at);
 
     await page.getByTestId("live-note-continue").click();
     await expect(page.getByTestId("live-note-continue")).toHaveCount(0);

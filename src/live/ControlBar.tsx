@@ -195,7 +195,6 @@ function MoreMenu({ state }: { state: LiveState }) {
             aria-checked={state.traffic}
             onClick={pick(() => c.setTraffic(!state.traffic), true)}
             data-testid="live-traffic"
-            aria-pressed={state.traffic}
           >
             <LiveIcon name="traffic" size={14} />
             <span>Continuous traffic</span>
@@ -245,6 +244,7 @@ const ExpectationDot = memo(function ExpectationDot({ e }: { e: ExpectationState
       data-testid={`expectation-${e.id}`}
       data-status={e.status}
       data-value={e.value}
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Focus exposes an informational tooltip to keyboard users; it has no button action.
       tabIndex={0}
       aria-label={`${e.label}: ${word}, now ${value}`}
     >

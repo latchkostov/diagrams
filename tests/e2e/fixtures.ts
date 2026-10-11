@@ -100,7 +100,11 @@ export async function labPresetIds(page: Page): Promise<string[]> {
   const links = page.getByTestId(/^lab-preset-link-/);
   await expect(links.first()).toBeVisible();
   const ids = await links.evaluateAll((els) =>
-    els.map((el) => el.getAttribute("data-testid")!.slice("lab-preset-link-".length)),
+    els.map((el) => {
+      const id = el.getAttribute("data-testid");
+      if (!id) throw new Error("Preset link has no test id");
+      return id.slice("lab-preset-link-".length);
+    }),
   );
   return ids;
 }

@@ -11,7 +11,7 @@ import type { EditorApi } from "../editor/types";
 import type { AlignMode } from "../editor/arrange";
 import { parseEmits } from "../editor/emits";
 import type { DiagramMeta } from "./convert";
-import { toneColor, toneLabel } from "./nodes/GroupNode";
+import { toneColor, toneLabel } from "./groupTones";
 import type { DiagramFlowEdge, DiagramFlowNode, GroupFlowNode, GroupTone } from "./types";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
@@ -117,7 +117,7 @@ const SIM_FIELDS: Record<SimKey, SimField> = {
 };
 
 /** Which simulation tunables apply to each role. */
-export const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
+const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
   source: ["ratePerSec", "messageType"],
   processor: ["replicas", "latencyMs", "concurrency", "failureRate", "emits"],
   gateway: ["latencyMs", "concurrency"],

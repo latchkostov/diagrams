@@ -1,7 +1,3 @@
-import { useEffect, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
-import { Glyph } from "./glyphs";
-
 // App-wide toasts. A tiny external store, so any module (not just components) can report
 // progress or errors: `toast.info("Saved")`, `toast.error("...")`, `toast.busy("Rendering…")`.
 // One toast at a time: a new message replaces the current one.
@@ -67,61 +63,7 @@ export function notify(text: string, opts: NotifyOptions = {}): number {
   return show(opts.kind ?? "info", text, opts);
 }
 
-function subscribe(l: () => void) {
+export function subscribe(l: () => void) {
   listeners.add(l);
   return () => listeners.delete(l);
-}
-
-const ICON: Record<ToastKind, Parameters<typeof Glyph>[0]["name"]> = {
-  info: "info",
-  success: "check-circle",
-  error: "alert",
-  busy: "spinner",
-};
-
-export function Toaster() {
-  const t = useSyncExternalStore(subscribe, () => current);
-  useEffect(() => {
-    if (!t || !t.duration) return;
-    const id = setTimeout(() => toast.dismiss(t.id), t.duration);
-    return () => clearTimeout(id);
-  }, [t]);
-  if (!t) return null;
-  return createPortal(
-    <div
-      key={t.id}
-      className={`ix-toast ix-toast-${t.kind}`}
-      role={t.kind === "error" ? "alert" : "status"}
-      aria-live={t.kind === "error" ? "assertive" : "polite"}
-      data-testid="toast"
-      data-kind={t.kind}
-      data-editor-overlay
-    >
-      <span className="ix-toast-icon">
-        <Glyph name={ICON[t.kind]} size={16} />
-      </span>
-      <span className="ix-toast-text">{t.text}</span>
-      {t.action && (
-        <button
-          className="ix-toast-action"
-          onClick={() => {
-            t.action!.run();
-            toast.dismiss(t.id);
-          }}
-          data-testid={t.action.testId ?? "toast-action"}
-        >
-          {t.action.label}
-        </button>
-      )}
-      <button
-        className="ix-toast-close"
-        onClick={() => toast.dismiss(t.id)}
-        aria-label="Dismiss"
-        data-testid="toast-dismiss"
-      >
-        <Glyph name="close" size={14} />
-      </button>
-    </div>,
-    document.body,
-  );
 }

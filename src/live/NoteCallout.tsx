@@ -24,14 +24,29 @@ export function NoteCallout({ state }: { state: LiveState }) {
   const height = useStore((s) => s.height);
   const lookup = useStore((s) => s.nodeLookup);
   const ref = useRef<HTMLDivElement>(null);
+  const continueRef = useRef<HTMLButtonElement>(null);
   const [size, setSize] = useState({ w: 420, h: 110 });
+  const noteKey = note ? `${note.atMs}:${note.text}` : "";
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    if (Math.abs(r.width - size.w) > 1 || Math.abs(r.height - size.h) > 1) setSize({ w: r.width, h: r.height });
-  });
+    const observer = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      setSize((previous) =>
+        Math.abs(r.width - previous.w) > 1 || Math.abs(r.height - previous.h) > 1
+          ? { w: r.width, h: r.height }
+          : previous,
+      );
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [noteKey]);
+
+  useLayoutEffect(() => {
+    // A pausing presentation note moves keyboard focus to its explicit resume action.
+    if (waiting && ui.presenting) continueRef.current?.focus();
+  }, [noteKey, waiting, ui.presenting]);
 
   if (!note) return null;
   // The authoring panel covers the right side of the pane.
@@ -88,10 +103,10 @@ export function NoteCallout({ state }: { state: LiveState }) {
       {waiting && (
         <div className="lv-note-actions">
           <button
+            ref={continueRef}
             className="lv-note-continue"
             onClick={() => ui.controller.resume()}
             data-testid="live-note-continue"
-            autoFocus={ui.presenting}
           >
             Continue <LiveIcon name="play" size={10} />
           </button>
