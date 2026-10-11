@@ -36,7 +36,7 @@ export interface SessionHost {
   /** Replays a saved simulation in the running session. */
   run(simulationId: string): void;
   disabledHint?: string;
-  /** What's running now (Ask AI's "What's happening?"). */
+  /** What's running now (the AI panel's Explain, in live view). */
   state?(): LiveState;
 }
 

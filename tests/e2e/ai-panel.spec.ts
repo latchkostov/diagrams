@@ -1,5 +1,5 @@
 import { test, expect, gotoCanvas, expectNoErrors, STORAGE_KEYS } from "./fixtures";
-import { MOD, SLUG, must, nodeCount, openAskAi, savedDiagram } from "./ai-helpers";
+import { MOD, SLUG, must, nodeCount, openAdvanced, savedDiagram } from "./ai-helpers";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 /** Where "payments" is in flow coordinates: the saved edits, or the example as shipped when there are none. */
@@ -15,7 +15,7 @@ async function paymentsX(page: import("@playwright/test").Page) {
   ).x;
 }
 
-// The docked Ask AI panel: part of the tooling beside the canvas, with a thread per diagram (Undo this
+// The docked AI panel: part of the tooling beside the canvas, with a thread per diagram (Undo this
 // change, Revert to here, a highlight of what each turn touched) kept in this browser only.
 
 const ADD_WORKER = JSON.stringify([
@@ -43,7 +43,7 @@ async function nodeIdByLabel(page: import("@playwright/test").Page, label: strin
   ).id;
 }
 
-test.describe("Ask AI dock", () => {
+test.describe("AI panel dock", () => {
   test.beforeEach(async ({ page }) => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("node-payments")).toBeVisible();
@@ -52,7 +52,7 @@ test.describe("Ask AI dock", () => {
   test("docks beside the canvas, shrinking it, and remembers open state and width", async ({ page }) => {
     const before = must(await page.getByTestId("canvas-wrap").boundingBox(), "canvas");
     await expect(page.getByTestId("ai-rail")).toBeVisible();
-    await openAskAi(page);
+    await openAdvanced(page);
     const dock = must(await page.getByTestId("ai-dock").boundingBox(), "dock");
     const after = must(await page.getByTestId("canvas-wrap").boundingBox(), "canvas");
     expect(after.width).toBeLessThan(before.width);
@@ -74,7 +74,7 @@ test.describe("Ask AI dock", () => {
   test("Ctrl+I opens and focuses it, and from inside hides it", async ({ page }) => {
     await page.getByTestId("canvas-wrap").click({ position: { x: 30, y: 300 } });
     await page.keyboard.press(`${MOD}+i`);
-    await expect(page.getByTestId("ai-request")).toBeFocused();
+    await expect(page.getByTestId("ai-panel")).toBeFocused();
     await page.keyboard.press(`${MOD}+i`);
     await expect(page.getByTestId("ai-panel")).toHaveCount(0);
     await expect(page.getByTestId("ai-rail")).toBeVisible();
@@ -82,7 +82,7 @@ test.describe("Ask AI dock", () => {
     await page.keyboard.press(`${MOD}+i`);
     await page.getByTestId("canvas-wrap").click({ position: { x: 30, y: 300 } });
     await page.keyboard.press(`${MOD}+i`);
-    await expect(page.getByTestId("ai-request")).toBeFocused();
+    await expect(page.getByTestId("ai-panel")).toBeFocused();
   });
 
   test("a thread: Undo this change on the latest turn, Revert to here, and a highlight", async ({
@@ -90,7 +90,7 @@ test.describe("Ask AI dock", () => {
     consoleErrors,
   }) => {
     const before = await nodeCount(page);
-    await openAskAi(page);
+    await openAdvanced(page);
     await applyTurn(page, "Add a billing worker", ADD_WORKER);
     await applyTurn(page, "Add a dead-letter queue", ADD_DLQ);
     await expect(page.getByTestId("ai-turn-1-summary")).toHaveText("+1 node, +1 connection");
@@ -134,7 +134,7 @@ test.describe("Ask AI dock", () => {
     page,
   }) => {
     const before = await nodeCount(page);
-    await openAskAi(page);
+    await openAdvanced(page);
     await applyTurn(page, "Add a billing worker", ADD_WORKER);
     await expect(page.getByTestId("ai-turn-0-undo")).toBeVisible();
 
@@ -165,7 +165,7 @@ test.describe("Ask AI dock", () => {
   });
 
   test("a malformed stored conversation is dropped, not fatal", async ({ page, consoleErrors }) => {
-    await openAskAi(page);
+    await openAdvanced(page);
     await applyTurn(page, "Add a billing worker", ADD_WORKER);
     // Corrupt this diagram's stored conversation: one turn with a broken snapshot, one not a turn at all.
     await page.evaluate(() => {
@@ -184,7 +184,7 @@ test.describe("Ask AI dock", () => {
   });
 
   test("the thread is kept per diagram in this browser, never in the file, and can be cleared", async ({ page }) => {
-    await openAskAi(page);
+    await openAdvanced(page);
     await applyTurn(page, "Add a billing worker", ADD_WORKER);
     await page.reload();
     await expect(page.getByTestId("ai-turn-0")).toContainText("Add a billing worker");
@@ -209,26 +209,22 @@ test.describe("Ask AI dock", () => {
   });
 });
 
-test("the start card offers Build with AI, and the File menu starts a new diagram with it", async ({ page }) => {
+test("Build with AI is one discreet entry: the command palette, into Advanced on a new diagram", async ({ page }) => {
   await page.goto("./");
   await expect(page.getByTestId("start-card")).toBeVisible();
-  await page.getByTestId("start-build-with-ai").click();
-  await expect(page.getByTestId("ai-request")).toBeFocused();
-  await expect(page.getByTestId("ai-empty")).toContainText("Build with AI");
+  await expect(page.getByTestId("start-build-with-ai")).toHaveCount(0);
+  await page.getByTestId("file-button").click();
+  await expect(page.getByTestId("file-new")).toBeVisible();
+  await expect(page.getByTestId("file-build-with-ai")).toHaveCount(0);
+  await page.keyboard.press("Escape");
 
   await gotoCanvas(page, SLUG);
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("file-build-with-ai").click();
+  await page.keyboard.press(`${MOD}+k`);
+  await page.getByTestId("command-input").fill("build with ai");
+  await page.getByTestId("command-item-action:file.build-with-ai").click();
   await expect(page.getByTestId("start-card")).toBeVisible();
   await expect(page.getByTestId("ai-request")).toBeFocused();
   await applyTurn(page, "A queue", JSON.stringify([{ op: "add_node", kind: "Service Bus queue", label: "jobs" }]));
   await expect.poll(() => nodeCount(page)).toBe(1);
   await expect(page.getByTestId("start-card")).toHaveCount(0);
-
-  // The command palette starts one too.
-  await page.keyboard.press(`${MOD}+k`);
-  await page.getByTestId("command-input").fill("build with ai");
-  await page.getByTestId("command-item-action:file.build-with-ai").click();
-  await expect(page.getByTestId("start-card")).toBeVisible();
-  await expect(page.getByTestId("ai-empty")).toContainText("Build with AI");
 });

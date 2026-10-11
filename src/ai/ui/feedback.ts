@@ -1,5 +1,5 @@
 // What every AI change shows once applied: a toast with Undo and a brief highlight of what changed.
-// Shared by the Ask AI panel and the WebMCP tools.
+// Shared by the AI panel and the WebMCP tools.
 
 import type { EditorApi } from "../../editor/types";
 import { notify } from "../../interop/ui/toast";
@@ -73,12 +73,16 @@ ${edges.join(",\n")} { stroke: var(--accent); stroke-width: 2.5px; }`;
   markStyle = style;
 }
 
-/** "AI: +3 nodes, +2 connections" with Undo, and the highlight. */
+/**
+ * "AI: +3 nodes, +2 connections" with Undo, and the highlight. While the AI panel is open the change is a
+ * turn there with its own Undo, so the toast stays away (one Undo, not two).
+ */
 export function showApplied(summary: string, changed: readonly string[], editor: EditorApi): void {
-  notify(`AI: ${summary}`, {
-    kind: "success",
-    action: { label: "Undo", run: () => editor.undo(), testId: "ai-toast-undo" },
-  });
+  if (typeof document === "undefined" || !document.querySelector('[data-testid="ai-panel"]'))
+    notify(`AI: ${summary}`, {
+      kind: "success",
+      action: { label: "Undo", run: () => editor.undo(), testId: "ai-toast-undo" },
+    });
   flashChanged(changed);
   revealChanged(changed, editor);
 }

@@ -1,4 +1,4 @@
-// What one Ask AI turn does to the diagram, whoever produced it: a pasted reply, or a connected model's
+// What one AI turn does to the diagram, whoever produced it: a pasted reply (Advanced), or an agent's
 // successful tool calls, recorded in order. The same steps plan (src/ai/ui/apply.ts planSteps) and
 // commit the same way, so both paths make identical turns.
 

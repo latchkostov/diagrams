@@ -1,6 +1,5 @@
-// Where Ask AI is being used, and what that changes: the panel's heading and suggestions, what the
-// request is about (a selection), and what's running in live view. Pure, so it's unit-tested and the
-// prompt builders and the model share it.
+// Where the AI panel is being used and what that changes: the kind of prompt Advanced copies, the
+// elements Copy for AI names, and what's running in live view. Pure, so it's unit-tested.
 
 import type { DiagramFile } from "../../model/types";
 import type { LiveState } from "../../live/controller";
@@ -12,79 +11,6 @@ export type AiIntent = "change" | "explain";
 export function aiPlace(diagram: DiagramFile | null, live: boolean): AiPlace {
   if (live) return "live";
   return !diagram || (!diagram.nodes.length && !diagram.annotations?.length) ? "create" : "edit";
-}
-
-export interface Suggestion {
-  /** Short words on the chip. */
-  label: string;
-  /** What goes in the request box. */
-  request: string;
-  intent: AiIntent;
-}
-
-const s = (label: string, request = label, intent: AiIntent = "change"): Suggestion => ({ label, request, intent });
-
-/** Suggestion chips for an empty conversation. */
-export function suggestions(place: AiPlace, scoped: boolean): Suggestion[] {
-  if (place === "create")
-    return [
-      s(
-        "An order pipeline on Kafka",
-        "An orders API publishes OrderPlaced to a Kafka topic; inventory, payments and notification services consume it, each with its own database.",
-      ),
-      s(
-        "A web app with a cache",
-        "A browser calls an API gateway, which calls a .NET API that reads through a Redis cache from PostgreSQL.",
-      ),
-      s(
-        "Event-driven on Azure",
-        "An Azure Function receives webhooks and puts them on a Service Bus queue; a worker processes them into Cosmos DB, with a dead-letter queue for failures. Put it in an Azure boundary.",
-      ),
-    ];
-  if (place === "live")
-    return [
-      s("A storm at 9am", "A storm of 100 new orders at the start, then steady traffic for a minute."),
-      s(
-        "A dependency fails",
-        "Steady traffic, then the busiest downstream service goes down at 20 seconds and comes back at 40.",
-      ),
-      s("A slow ramp", "Traffic ramps from 1 to 20 messages per second over two minutes."),
-      s("What's happening?", "What's happening right now, and where is the bottleneck?", "explain"),
-    ];
-  if (scoped)
-    return [
-      s("Scale it out", "Run these with 3 replicas."),
-      s("Add a retry queue", "Add a retry queue with a dead-letter queue after these."),
-      s("Explain these", "What do these do, and what depends on them?", "explain"),
-    ];
-  return [
-    s("Add a cache", "Put a Redis cache in front of the busiest database."),
-    s("Add a dead-letter queue", "Add a dead-letter queue for messages that keep failing."),
-    s("Group into boundaries", "Group the nodes into boundaries by cloud or team."),
-    s("Explain this diagram", "Explain what this system does, step by step.", "explain"),
-  ];
-}
-
-export function emptyHeading(place: AiPlace, scoped: boolean): { title: string; text: string } {
-  if (place === "create")
-    return {
-      title: "Build with AI",
-      text: "Describe the system you want: the services, queues and databases, and how messages flow between them.",
-    };
-  if (place === "live")
-    return {
-      title: "Simulate a scenario",
-      text: "Describe traffic and failures in plain words. It becomes a saved simulation and plays straight away.",
-    };
-  if (scoped)
-    return {
-      title: "Change the selection",
-      text: "Your request is about the elements on the chip. Each change is one undo step.",
-    };
-  return {
-    title: "Change this diagram",
-    text: "Ask for a change in plain words. Each change is one undo step, and you can revert to any earlier one.",
-  };
 }
 
 export interface ScopeItem {
@@ -114,11 +40,13 @@ export function resolveScope(diagram: DiagramFile, ids: readonly string[]): Scop
   return out;
 }
 
-/** The lines that name the selection as the request's targets (for the prompt and the model). */
-export function scopeText(scope: readonly ScopeItem[]): string {
-  if (!scope.length) return "";
+/**
+ * Copy for AI: the selected elements as text for the person to give their agent ("change these"): the
+ * diagram's title, then each element's id and label, so an agent finds them with describe_diagram.
+ */
+export function referenceText(title: string, scope: readonly ScopeItem[]): string {
   return [
-    "The request is about these selected elements (its targets; change others only if the request needs it):",
+    `In my Diagrams diagram ${JSON.stringify(title)} (https://www.livediagrams.dev), these elements:`,
     ...scope.map((s) => `- ${s.kind} ${JSON.stringify(s.id)} ${JSON.stringify(s.label)}`),
   ].join("\n");
 }

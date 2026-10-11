@@ -198,7 +198,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const [openedByHand, setOpenedByHand] = useState({ live, palette: false, inspector: false });
   if (openedByHand.live !== live) setOpenedByHand({ live, palette: false, inspector: false });
   const [narrow, setNarrow] = useState(() => window.innerWidth < ROOMY);
-  // Below CRAMPED, an open Ask AI dock keeps the inspector folded to its rail until opened by hand.
+  // Below CRAMPED, an open AI panel keeps the inspector folded to its rail until opened by hand.
   const [cramped, setCramped] = useState(() => window.innerWidth < CRAMPED);
   const aiDock = useAiDock();
   const aiDockOpen = aiDock.open;
@@ -631,7 +631,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when a side panel opens or closes
   }, [panelsKey]);
-  // The Ask AI dock opened, closed or was resized by more than a little: the pane changed size at its
+  // The AI panel opened, closed or was resized by more than a little: the pane changed size at its
   // right edge. A fit is refitted to the new pane; a view the user panned or zoomed keeps the selection
   // (or, with none, the diagram's centre) in view with a pan.
   const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}`;

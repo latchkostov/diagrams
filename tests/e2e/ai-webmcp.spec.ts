@@ -1,5 +1,5 @@
 import { test, expect, gotoCanvas, gotoGallery, expectNoErrors } from "./fixtures";
-import { SLUG, callTool, must, installFakeModelContext, nodeCount, openAskAi, toolNames } from "./ai-helpers";
+import { SLUG, callTool, must, installFakeModelContext, nodeCount, openAdvanced, toolNames } from "./ai-helpers";
 
 // WebMCP: a fake document.modelContext (installed before the app loads) records registerTool, so the
 // test can call the tools the way a browsing agent would. Selectors are data-testid only.
@@ -132,7 +132,7 @@ test("without document.modelContext nothing registers, errors or shows", async (
   await gotoCanvas(page, SLUG);
   await expect(page.getByTestId("node-payments")).toBeVisible();
   expect(await page.evaluate(() => "modelContext" in document || "modelContext" in navigator)).toBe(false);
-  await openAskAi(page);
+  await openAdvanced(page);
   await page.getByTestId("ai-collapse").click();
   await expect(page.getByTestId("ai-rail")).toBeVisible();
   await page.getByTestId("live-toggle").click();

@@ -151,13 +151,25 @@ describe("tools", () => {
             { op: "add_node", kind: "Kafka topic", label: "orders", key: "t" },
             { op: "connect", from: "orders-api", to: "t" },
           ],
+          summary: "Added an orders topic",
         })
       ).content[0].text,
     );
     expect(ok).toMatchObject({ ok: true, summary: "+1 node, +1 connection" });
     expect(editor.applyDiagram).toHaveBeenCalledTimes(1);
     expect(get().nodes).toHaveLength(2);
-    expect(host.onApplied).toHaveBeenCalledWith("+1 node, +1 connection", expect.any(Array), editor);
+    // The change is recorded for the AI panel: the agent's note, what changed, and its own history step.
+    expect(host.onApplied).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tool: "edit_diagram",
+        note: "Added an orders topic",
+        summary: "+1 node, +1 connection",
+        editor,
+        historyKey: expect.stringMatching(/^ai:/),
+      }),
+    );
+    const tag = (editor.applyDiagram as ReturnType<typeof vi.fn>).mock.calls[0][1] as { merge: string };
+    expect((host.onApplied as ReturnType<typeof vi.fn>).mock.calls[0][0].historyKey).toBe(tag.merge);
 
     const bad = await edit.execute({ ops: [{ op: "remove", targets: ["nope"] }] });
     expect(bad.isError).toBe(true);

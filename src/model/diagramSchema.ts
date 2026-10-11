@@ -21,7 +21,7 @@ function diagramSchema() {
     $id: `${SITE}/schema/diagram.v1.json`,
     title: "Diagrams file (diagrams/v1)",
     description:
-      "A .diagram.json file for Diagrams (https://www.livediagrams.dev). Coordinates are canvas pixels. The app's 'Ask AI' paste box also accepts a file without x/y (it lays the nodes out) and plain-word stencils such as 'Kafka topic'.",
+      "A .diagram.json file for Diagrams (https://www.livediagrams.dev). Coordinates are canvas pixels. The AI panel's Advanced paste box also accepts a file without x/y (it lays the nodes out) and plain-word stencils such as 'Kafka topic'.",
     type: "object",
     required: ["format", "title", "nodes", "edges"],
     properties: {

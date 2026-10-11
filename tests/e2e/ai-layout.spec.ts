@@ -1,9 +1,9 @@
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas } from "./fixtures";
-import { SLUG, must, openAskAi, settle } from "./ai-helpers";
+import { SLUG, callTool, installFakeModelContext, must, openAdvanced, settle, toolNames } from "./ai-helpers";
 
 // Nothing overlaps by default: toasts stack above the canvas's bottom bars, the first-run hint never cuts
-// a word, and opening, closing or resizing the Ask AI dock keeps the diagram in view.
+// a word, and opening, closing or resizing the AI panel keeps the diagram in view.
 
 type Box = { x: number; y: number; width: number; height: number };
 const apart = (a: Box, b: Box) =>
@@ -30,34 +30,36 @@ const hintFits = (page: Page) =>
     .getByTestId("first-run-hint")
     .evaluate((el) => [el, ...el.children].every((c) => c.scrollWidth <= c.clientWidth + 1));
 
-async function applyAddNode(page: Page) {
-  await page.getByTestId("ai-reply").fill(JSON.stringify([{ op: "add_node", kind: "Redis cache", label: "cache" }]));
-  await page.getByTestId("ai-apply").click();
+/** A toast from Copy for AI on a node (a right-click, so not while the first-run hint should stay). */
+async function showToast(page: Page) {
+  await page.getByTestId("node-payments").click({ button: "right" });
+  await page.getByTestId("context-menu-item-item.copy-for-ai").click();
   await expect(page.getByTestId("toast")).toBeVisible();
 }
 
 for (const width of [1024, 1440]) {
   test(`at ${width}px a toast never covers the hint or the live bar, and the hint never clips`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
+    await installFakeModelContext(page);
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("first-run-hint")).toBeVisible();
     expect(await hintFits(page)).toBe(true);
 
-    await openAskAi(page);
+    await openAdvanced(page);
     await settle(page);
     await expect.poll(() => hintFits(page)).toBe(true);
-    await applyAddNode(page);
+    // An agent's change while the panel is folded: its toast (with Undo) stacks above the hint.
+    await page.getByTestId("ai-collapse").click();
+    await expect.poll(async () => (await toolNames(page)).length).toBe(6);
+    await callTool(page, "edit_diagram", { ops: [{ op: "add_node", kind: "Redis cache", label: "cache" }] });
+    await expect(page.getByTestId("toast")).toBeVisible();
     await expect.poll(async () => apart(await box(page, "toast"), await box(page, "first-run-hint"))).toBe(true);
 
     // Live view: the toast stacks above the live bar.
     await page.getByTestId("toast-dismiss").click();
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("live-controls")).toBeVisible();
-    await page
-      .getByTestId("ai-reply")
-      .fill(JSON.stringify({ title: "Layout storm", traffic: [{ from: "shopper", pattern: "burst", count: 10 }] }));
-    await page.getByTestId("ai-apply").click();
-    await expect(page.getByTestId("toast")).toBeVisible();
+    await showToast(page);
     await expect.poll(async () => apart(await box(page, "toast"), await box(page, "live-controls"))).toBe(true);
   });
 }
@@ -67,7 +69,7 @@ test("the hint keeps whole words on a narrow pane (one hint, then wrapping)", as
   await gotoCanvas(page, SLUG);
   await expect(page.getByTestId("first-run-hint")).toBeVisible();
   // The widest dock leaves the narrowest pane.
-  await openAskAi(page);
+  await openAdvanced(page);
   for (let i = 0; i < 10; i++) await page.getByTestId("ai-resize").press("ArrowLeft");
   await expect.poll(() => hintFits(page)).toBe(true);
   await expect(page.getByTestId("first-run-hint")).toContainText("Go live");
@@ -79,7 +81,7 @@ test("opening, closing and resizing the dock refits the diagram at 1024", async 
   await settle(page);
   expect(await allNodesInView(page)).toBe(true);
 
-  await openAskAi(page);
+  await openAdvanced(page);
   await settle(page);
   await expect.poll(() => allNodesInView(page)).toBe(true);
 
@@ -105,7 +107,7 @@ test("after a pan by hand, opening the dock keeps the selection in view instead 
   await settle(page);
   const before = await box(page, "node-payments");
   await page.getByTestId("node-notifications").click();
-  await openAskAi(page);
+  await openAdvanced(page);
   await settle(page);
   const sel = await box(page, "node-notifications");
   const pane = await box(page, "canvas-wrap");
@@ -114,14 +116,4 @@ test("after a pan by hand, opening the dock keeps the selection in view instead 
   // A pan, not a refit: the zoom stayed (node sizes unchanged).
   const after = await box(page, "node-payments");
   expect(Math.abs(after.width - before.width)).toBeLessThan(1);
-});
-
-test("the panel says you can connect your own model, and the link opens it", async ({ page }) => {
-  await gotoCanvas(page, SLUG);
-  await openAskAi(page);
-  await page.getByTestId("ai-connect-link").click();
-  await expect(page.getByTestId("ai-connect")).toBeVisible();
-  await expect(page.getByTestId("ai-key")).toBeFocused();
-  await expect(page.getByTestId("ai-connect-link")).toHaveCount(0);
-  await expect(page.getByTestId("ai-model")).toBeEditable();
 });

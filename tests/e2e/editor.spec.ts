@@ -103,7 +103,7 @@ test.describe("editor", () => {
     await page.keyboard.press("ArrowDown");
     await expect(menuItem(page, "canvas.annotate")).toHaveAttribute("data-active", "true");
     await page.keyboard.press("ArrowDown");
-    await expect(menuItem(page, "canvas.ask-ai")).toHaveAttribute("data-active", "true");
+    await expect(menuItem(page, "canvas.ai-panel")).toHaveAttribute("data-active", "true");
     await page.keyboard.press("ArrowDown");
     // "Paste here" is disabled with an empty clipboard, so it is skipped.
     await expect(menuItem(page, "canvas.paste")).toHaveAttribute("aria-disabled", "true");

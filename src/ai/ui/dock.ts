@@ -1,4 +1,4 @@
-// The Ask AI dock's open state and width: one remembered setting, shared by the top-bar button, the
+// The AI panel's open state and width: one remembered setting, shared by the top-bar button, the
 // rail, the panel and the canvas (which folds the inspector to make room). Main bundle: keep it tiny.
 
 import { useSyncExternalStore } from "react";

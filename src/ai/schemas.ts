@@ -2,6 +2,14 @@
 import { aiNodePropsSchema, simPropsPatchSchema } from "../model/simProps";
 export type { JsonSchema } from "../model/jsonSchema";
 import type { JsonSchema } from "../model/jsonSchema";
+/** An agent's note for the person, on every tool that changes the diagram: shown with the change. */
+const summaryField = {
+  type: "string",
+  maxLength: 200,
+  description:
+    "One short sentence for the person, e.g. 'Added a Redis cache in front of orders-db'. Shown with the change in the app's AI panel.",
+} as const;
+
 export const sharedDefs = {
   Ref: {
     type: "string",
@@ -300,6 +308,7 @@ export const edit_diagramSchema: JsonSchema = {
         default: false,
         description: "Validate and report without changing the diagram.",
       },
+      summary: summaryField,
     },
   },
   $defs: sharedDefs,
@@ -313,6 +322,7 @@ export const set_simulationSchema: JsonSchema = {
         type: "string",
         maxLength: 200,
       },
+      summary: summaryField,
       replace: {
         $ref: "#/$defs/Ref",
         description: "Existing simulation id or title to overwrite; omitted = add new.",
@@ -474,6 +484,7 @@ export const new_diagramSchema: JsonSchema = {
         enum: ["LR", "TB"],
         default: "LR",
       },
+      summary: summaryField,
     },
   },
   $defs: sharedDefs,

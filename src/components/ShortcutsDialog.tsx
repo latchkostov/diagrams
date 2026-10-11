@@ -22,11 +22,11 @@ const LIVE: [string, string][] = [
   ["Esc", "Leave presentation, then live view"],
 ];
 
-/** The Ask AI panel (AiMount opens it; the rest is handled in the panel). */
+/** The AI panel (AiMount opens it; Advanced handles the rest). */
 const AI: [string, string][] = [
-  ["Mod+I", "Show Ask AI and focus it; from inside it, hide it"],
-  ["Mod+Shift+M", "Dictate, or stop dictating"],
-  ["Mod+Enter", "Apply the pasted reply"],
+  ["Mod+I", "Show the AI panel and focus it; from inside it, hide it"],
+  ["Mod+Shift+M", "Dictate in Advanced, or stop dictating"],
+  ["Mod+Enter", "Apply the reply pasted in Advanced"],
   ["Esc", "Stop dictating, then back to the canvas"],
 ];
 
@@ -141,7 +141,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             ))}
           </section>
           <section>
-            <h3>Ask AI</h3>
+            <h3>AI panel</h3>
             {AI.map(([k, v]) => (
               <div key={k} className="sc-row">
                 <span>{v}</span>

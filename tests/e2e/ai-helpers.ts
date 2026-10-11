@@ -43,11 +43,18 @@ export async function settle(page: Page, testId = "node-payments") {
     .toBe(true);
 }
 
-/** Opens the Ask AI dock from the top bar. */
-export async function openAskAi(page: Page) {
-  await page.getByTestId("ask-ai-toggle").click();
+/** Opens the AI panel from the top bar. */
+export async function openAiPanel(page: Page) {
+  await page.getByTestId("ai-rail-open").click();
   // The panel is its own chunk: the dev server may still be transforming it on a busy first load.
   await expect(page.getByTestId("ai-panel")).toBeVisible({ timeout: 20_000 });
+}
+
+/** Opens the AI panel and its Advanced copy-and-paste flow (closed by default, remembered). */
+export async function openAdvanced(page: Page) {
+  if (!(await page.getByTestId("ai-panel").isVisible())) await openAiPanel(page);
+  if (!(await page.getByTestId("ai-request").isVisible())) await page.getByTestId("ai-advanced-toggle").click();
+  await expect(page.getByTestId("ai-request")).toBeVisible();
 }
 
 /**

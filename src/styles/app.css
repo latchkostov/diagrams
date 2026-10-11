@@ -221,10 +221,6 @@ kbd {
   border-color: color-mix(in oklab, var(--accent) 40%, transparent);
 }
 
-.btn.ai-topbar-btn svg {
-  color: var(--accent);
-}
-
 .ai-rail-btn:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
