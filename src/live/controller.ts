@@ -9,6 +9,8 @@
 // injections take real counts (fractions of a dot carry over to the next injection).
 
 import type { DiagramFile, Simulation } from "../model/types";
+import { createRealCountInjector } from "../sim/injection";
+import { stencilRole } from "../stencils/roles";
 import { createEngine } from "../sim/engine";
 import { createSimulationRun } from "../sim/simulation";
 import type {
@@ -21,6 +23,7 @@ import type {
   SimSnapshot,
   SimulationRun,
   SimulationRunState,
+  SimulationRunCheckpoint,
 } from "../sim/types";
 import { realSnapshot, resolveMultiplier, resolveScale } from "../sim/units";
 import { autoScale } from "../sim/scale";
@@ -99,13 +102,16 @@ export class LiveController {
   /** Free play: the engine props the inputs currently override, and the dot scale. */
   private freeApplied: Record<string, Record<string, unknown>> = {};
   private freeScale = 1;
+  private replayFrame: (() => void) | undefined;
+  private replayTarget: number | null = null;
   private replayTimer: ReturnType<typeof setTimeout> | undefined;
   private engine!: SimEngine;
   private runner: SimulationRun | null = null;
   private snap!: SimSnapshot;
   private real: RealSimSnapshot | null = null;
   /** Free play's fractional injection credit per node and type (runs keep their own). */
-  private credits = new Map<string, number>();
+  private injector!: ReturnType<typeof createRealCountInjector>;
+  private checkpoints: SimulationRunCheckpoint[] = [];
   private runState: SimulationRunState | null = null;
   private dirty = true;
   private playing = false;
@@ -191,9 +197,10 @@ export class LiveController {
 
   /** Advance by wall-clock ms (speed applies). No-op while paused, waiting on a note, or done. */
   advance(wallMs: number): void {
-    if (!this.playing || !(wallMs > 0)) return;
+    if (!this.playing || this.replayTarget !== null || !(wallMs > 0)) return;
     if (this.runner) {
       this.runner.step(wallMs);
+      this.captureCheckpoint();
       this.dirty = true;
       this.snapshot();
       if (this.runState?.done) {
@@ -208,7 +215,10 @@ export class LiveController {
 
   setPlaying(on: boolean): void {
     // A finished run plays again from the start.
-    if (on && this.runState?.done) this.build();
+    if (on && this.runState?.done) {
+      this.cancelReplay();
+      this.build();
+    }
     this.playing = on;
     this.publish();
   }
@@ -231,10 +241,12 @@ export class LiveController {
 
   /** Advance a fixed slice of sim time, playing or not. */
   step(simMs = STEP_MS): void {
+    if (this.replayTarget !== null) return;
     const wall = simMs / this.speed;
     if (this.runner) {
       if (this.runState?.waiting || this.runState?.done) return;
       this.runner.step(wall);
+      this.captureCheckpoint();
     } else this.engine.step(wall);
     this.dirty = true;
     this.publish();
@@ -249,18 +261,29 @@ export class LiveController {
 
   /** Start over: same diagram, same simulation and seed; live tweaks are dropped. */
   restart(): void {
+    this.cancelReplay();
     this.build();
     this.publish();
   }
 
   /**
-   * Jump to `targetMs` of the current simulation. Runs are seeded, so going back restarts and
-   * fast-forwards deterministically. Pausing notes on the way are skipped.
+   * Jump to `targetMs`, restoring the nearest retained full-run checkpoint when moving back.
+   * Older positions fall back to the origin. Pausing notes on the way are skipped.
    */
   seek(targetMs: number): void {
     if (!this.runner) return;
+    if (!Number.isFinite(targetMs)) return;
     const target = Math.max(0, targetMs);
-    if (target < this.snapshot().time - 1) this.build();
+    this.cancelReplay();
+    if (target < this.snapshot().time - 1) {
+      const cp = [...this.checkpoints].reverse().find((cp) => cp.time <= target);
+      if (cp) {
+        this.runner.restore(cp);
+        this.checkpoints = this.checkpoints.filter((p) => p.time <= cp.time);
+        this.applySpeed();
+        this.engine.setTraffic(this.traffic);
+      } else this.build();
+    }
     let guard = 0;
     while (guard++ < 10_000) {
       const s = this.runner.state();
@@ -271,6 +294,7 @@ export class LiveController {
       }
       const before = s.time;
       this.runner.step(Math.min(1000, target - s.time) / this.speed);
+      this.captureCheckpoint();
       if (this.runner.state().time <= before && !this.runner.state().waiting) break;
     }
     this.dirty = true;
@@ -310,6 +334,11 @@ export class LiveController {
 
   /** Saved: `saved` becomes the base and the inputs are folded into it (no restart when equal). */
   commitInputs(saved: Simulation | null, diagram?: DiagramFile): void {
+    if (!saved && diagram) {
+      // Fold saved base props and normalize the multiplier in ONE allocation pass.
+      const patches = Object.fromEntries(diagram.nodes.map((n) => [n.id, n.props ?? {}]));
+      this.engine.setNodePropsBatch(patches, 1);
+    }
     if (diagram) {
       this.diagram = diagram;
       this.rememberProps(diagram);
@@ -323,7 +352,7 @@ export class LiveController {
   /** Runs a pending replay now (before saving, and in tests). */
   flush(): void {
     if (this.replayTimer === undefined) return;
-    this.cancelReplay();
+    this.cancelReplay(true);
     this.replay();
   }
 
@@ -337,7 +366,14 @@ export class LiveController {
       const next = effectiveSimulation(this.base, this.inputs);
       const prev = this.sim;
       this.sim = next;
-      if (!prev || !this.runner || !sameScript(prev, next)) this.scheduleReplay();
+      if (
+        !prev ||
+        !this.runner ||
+        this.replayTarget !== null ||
+        this.replayTimer !== undefined ||
+        !sameScript(prev, next)
+      )
+        this.scheduleReplay();
       else this.patchRun(prev, next);
     } else if (freePlayScale(this.diagram, this.inputs) !== this.freeScale) {
       this.scheduleReplay();
@@ -368,6 +404,7 @@ export class LiveController {
   }
 
   private patchRun(prev: Simulation, next: Simulation): void {
+    this.checkpoints = [];
     this.patchProps(prev.setup?.props ?? {}, next.setup?.props ?? {});
     this.runner?.setMultipliers({
       traffic: resolveMultiplier(next.multipliers?.traffic),
@@ -384,7 +421,7 @@ export class LiveController {
 
   private scheduleReplay(): void {
     const delay = this.opts.replayDelayMs ?? 250;
-    this.cancelReplay();
+    this.cancelReplay(true);
     if (delay <= 0) return this.replay();
     this.replayTimer = setTimeout(() => {
       this.replayTimer = undefined;
@@ -392,17 +429,55 @@ export class LiveController {
     }, delay);
   }
 
-  private cancelReplay(): void {
+  private cancelReplay(keepTarget = false): void {
     clearTimeout(this.replayTimer);
     this.replayTimer = undefined;
+    this.replayFrame?.();
+    this.replayFrame = undefined;
+    if (!keepTarget) this.replayTarget = null;
   }
 
-  /** Rebuild with the current inputs; a saved run fast-forwards to where it was. */
+  private yieldReplay(work: () => void): void {
+    if (typeof requestAnimationFrame === "function") {
+      const id = requestAnimationFrame(work);
+      this.replayFrame = () => cancelAnimationFrame(id);
+    } else {
+      const id = setTimeout(work, 1);
+      this.replayFrame = () => clearTimeout(id);
+    }
+  }
+
+  /** Each slice handles at most 200 ticks / ~6 ms, then yields to the next browser frame. */
   private replay(): void {
-    const time = this.snapshot().time;
+    const target = this.replayTarget ?? this.snapshot().time;
     this.build();
-    if (this.runner && time > 0) this.seek(time);
-    else this.publish();
+    if (!this.runner || target <= 0) {
+      this.replayTarget = null;
+      this.publish();
+      return;
+    }
+    this.replayTarget = target;
+    const runner = this.runner;
+    const chunk = () => {
+      this.replayFrame = undefined;
+      const start = performance.now();
+      for (let slices = 0; slices < 20; slices++) {
+        const s = runner.state();
+        if (s.done || s.time >= target - 5) {
+          this.replayTarget = null;
+          break;
+        }
+        if (s.waiting) runner.resume();
+        else runner.step(Math.min(100, target - s.time) / this.speed);
+        this.captureCheckpoint();
+        if (performance.now() - start >= 6) break;
+      }
+      this.dirty = true;
+      this.publish();
+      if (this.replayTarget !== null) this.yieldReplay(chunk);
+    };
+    // The first slice is bounded too; even replayDelayMs: 0 never seeks synchronously.
+    chunk();
   }
 
   // ---------------------------------------------------------------- live tweaks (engine only)
@@ -462,6 +537,7 @@ export class LiveController {
   updateDiagram(next: DiagramFile): DiagramUpdate {
     const key = structuralKey(next);
     if (key !== this.structKey) {
+      this.cancelReplay();
       this.diagram = next;
       this.structKey = key;
       this.rememberProps(next);
@@ -492,6 +568,9 @@ export class LiveController {
     }
     this.diagram = next;
     if (patched) {
+      if (!this.sim) this.applyInputs();
+      this.checkpoints = [];
+      this.captureCheckpoint(true);
       this.dirty = true;
       this.publish();
     }
@@ -509,15 +588,21 @@ export class LiveController {
 
   private injectReal(nodeId: string, count: number, opts?: InjectOptions): void {
     if (this.runner) return this.runner.inject(nodeId, count, opts);
-    const key = JSON.stringify([nodeId, opts?.type ?? null]);
-    const credit = (this.credits.get(key) ?? 0) + Math.max(0, count) / this.scale;
-    const dots = Math.floor(credit + 1e-9);
-    this.credits.set(key, credit - dots);
-    if (dots > 0) this.engine.inject(nodeId, dots, opts);
+    this.injector.inject(nodeId, count, this.scale, opts);
   }
 
   private rememberProps(d: DiagramFile): void {
     this.nodeProps = new Map(d.nodes.map((n) => [n.id, propsKey(n.props)]));
+  }
+
+  private captureCheckpoint(force = false): void {
+    if (!this.runner) return;
+    const time = this.runner.state().time;
+    const last = this.checkpoints.at(-1);
+    if (!force && last && time < last.time + 5000) return;
+    this.checkpoints.push(this.runner.checkpoint());
+    // Keep the origin and at most 23 recent samples (~two minutes); old tokens are GC-able.
+    if (this.checkpoints.length > 24) this.checkpoints.splice(1, 1);
   }
 
   private build(): void {
@@ -545,7 +630,13 @@ export class LiveController {
     this.applySpeed();
     this.engine.setTraffic(this.traffic);
     this.tweaks.clear();
-    this.credits.clear();
+    this.injector = createRealCountInjector(
+      this.engine,
+      (id) => this.diagram.nodes.find((n) => n.id === id),
+      this.opts.roleOf ?? stencilRole,
+    );
+    this.checkpoints = [];
+    this.captureCheckpoint(true);
     this.generation++;
     this.dirty = true;
   }

@@ -440,7 +440,7 @@
 .cap-box i {
   position: absolute;
   right: 8px;
-  top: 50%;
+  top: 15px;
   transform: translateY(-50%);
   color: var(--text-3);
   font-size: 11px;
@@ -453,9 +453,9 @@
 }
 
 .cap-stepper {
-  display: flex;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 26px;
   align-items: stretch;
-  height: 30px;
   border-radius: 7px;
   border: 1px solid var(--line);
   background: var(--surface-2);
@@ -467,7 +467,8 @@
 }
 
 .cap-stepper button {
-  flex: none;
+  grid-row: 1;
+  height: 30px;
   width: 26px;
   display: grid;
   place-items: center;
@@ -486,7 +487,8 @@
 }
 
 .cap-panel .cap-stepper input {
-  height: 100%;
+  grid-row: 1;
+  height: 30px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -805,4 +807,38 @@
   color: var(--text-3);
   font-size: 11px;
   line-height: 1.4;
+}
+
+.cap-error {
+  color: var(--danger);
+  font-size: 12px;
+  padding: 4px 10px;
+}
+.cap-callout:focus-visible {
+  outline: 2px solid var(--accent, #547cff);
+  outline-offset: 3px;
+}
+
+.cap-rate-field,
+.cap-numeric-field {
+  display: contents;
+}
+.cap-rate .cap-error {
+  grid-row: 2;
+  grid-column: 1 / -1;
+}
+.cap-stepper .cap-error {
+  grid-row: 2;
+  grid-column: 1 / -1;
+}
+.cap-box {
+  flex-wrap: wrap;
+}
+.cap-box .cap-error {
+  flex-basis: 100%;
+}
+
+.cap-rate .cap-unit {
+  grid-row: 1;
+  grid-column: 3;
 }

@@ -4,12 +4,13 @@
 // with a one-click fix. All rates are real messages per second.
 
 import type { DiagramFile, DiagramNode, SimRole, Simulation, TrafficShape } from "../model/types";
+import { LIMITS } from "../interop/native";
 import { stencilRole } from "../stencils/roles";
 import { analyzeCapacity, type NodeCapacity } from "../sim/capacity";
 import { resolveProps } from "../sim/defaults";
 import { autoScale, peakRate } from "../sim/scale";
 import { trafficWindow } from "../sim/simulation";
-import { isDlqEdge } from "../sim/topology";
+import { allocateGroupReplicas, compileTopology } from "../sim/topology";
 import { resolveMultiplier, resolveScale } from "../sim/units";
 import { formatCount, formatRate } from "./format";
 
@@ -281,30 +282,6 @@ export function rankedNodes(d: DiagramFile, nodes: Record<string, NodeHeat>): No
     .sort(rank(order));
 }
 
-/** Consumer groups leaving partitioned brokers: broker id → member processor ids per group. */
-function partitionGroups(d: DiagramFile): Map<string, string[][]> {
-  const byId = new Map(d.nodes.map((n) => [n.id, n]));
-  const out = new Map<string, string[][]>();
-  for (const broker of d.nodes) {
-    const role = roleOf(broker);
-    if (!PARTITIONED.has(role)) continue;
-    const groups = new Map<string, Set<string>>();
-    for (const e of d.edges) {
-      const target = byId.get(e.to);
-      if (e.from !== broker.id || !target || roleOf(target) !== "processor") continue;
-      if (isDlqEdge(e, role, target, roleOf(target))) continue;
-      const name = typeof e.props?.group === "string" ? e.props.group : e.id;
-      groups.set(name, (groups.get(name) ?? new Set()).add(e.to));
-    }
-    if (groups.size)
-      out.set(
-        broker.id,
-        [...groups.values()].map((g) => [...g]),
-      );
-  }
-  return out;
-}
-
 /**
  * The one-click fix: raise replicas on every service at ≥ 90% so it lands around 55%, and raise a
  * topic's partitions when its consumer group needs more of them (including idle replicas on the
@@ -323,23 +300,48 @@ export function computeFix(d: DiagramFile, sim: Simulation, nodes: Record<string
     effective.set(n.id, wanted);
     const node = byId.get(n.id)!;
     const from = baseProps(node, sim).replicas;
-    const to = Math.max(from, Math.ceil(wanted / Math.max(m, 1e-9)));
+    const to = Math.min(LIMITS.maxRatePerSec, Math.max(from, Math.ceil(wanted / Math.max(m, 1e-9))));
     if (to > from) changes.push({ nodeId: n.id, label: n.label, key: "replicas", from, to });
   }
   const busy = top && (top.level === "warn" || top.level === "hot" || top.level === "over");
   const needsPartitions = (id: string) => effective.has(id) || (busy && top.id === id && top.idleReplicas > 0);
-  for (const [brokerId, groups] of partitionGroups(d)) {
+  for (const [brokerId, groups] of compileTopology(d).groups) {
     const broker = byId.get(brokerId)!;
+    if (!PARTITIONED.has(roleOf(broker))) continue;
     const from = baseProps(broker, sim).partitions;
     let to = from;
-    for (const members of groups) {
-      if (!members.some(needsPartitions)) continue;
-      const needed = members.reduce((sum, id) => sum + (effective.get(id) ?? nodes[id]?.replicas ?? 1), 0);
-      to = Math.max(to, needed);
+    for (const group of groups) {
+      if (!group.members.some(needsPartitions)) continue;
+      const members = group.members.map((id) => ({
+        id,
+        role: roleOf(byId.get(id)!),
+        replicas: effective.get(id) ?? nodes[id]?.replicas ?? 1,
+      }));
+      const sufficient = (partitions: number) => {
+        const allocated = allocateGroupReplicas(roleOf(broker), partitions, members);
+        return members.every(
+          (member) => !needsPartitions(member.id) || (allocated.get(member.id) ?? 0) >= member.replicas,
+        );
+      };
+      // Nonprocessor members can consume a partition budget too. Search using the same allocator
+      // as playback, with an explicit bound rather than reconstructing processor-only groups.
+      let high = Math.max(from, 1);
+      while (high < LIMITS.maxRatePerSec && !sufficient(high)) high = Math.min(LIMITS.maxRatePerSec, high * 2);
+      if (!sufficient(high)) continue;
+      let low = from;
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        if (sufficient(mid)) high = mid;
+        else low = mid + 1;
+      }
+      to = Math.max(to, high);
     }
     if (to > from) changes.push({ nodeId: brokerId, label: broker.label, key: "partitions", from, to });
   }
   if (!changes.length) return null;
+  const prospective = withFix(sim, { changes, label: "" });
+  const verified = analyzeCapacity(d, planningSimulation(d, prospective));
+  if ([...effective.keys()].some((id) => verified.nodes[id].utilization > FIX_TARGET + 1e-9)) return null;
   const phrase = (c: FixChange) => `${c.label} ${c.from} → ${c.to} ${c.key}`;
   const label =
     changes.length <= 2
@@ -433,10 +435,14 @@ export function selectRows(
   d: DiagramFile,
   view: CapacityView,
   entries: Iterable<string>,
-  { showAll = false, limit = 4 }: { showAll?: boolean; limit?: number } = {},
+  { showAll = false, limit = 4, editing }: { showAll?: boolean; limit?: number; editing?: string | null } = {},
 ): PanelRows {
   const order = new Map(d.nodes.map((n, i) => [n.id, i]));
-  const pinned = new Set([...(view.fix?.changes.map((c) => c.nodeId) ?? []), ...(view.top ? [view.top.id] : [])]);
+  const pinned = new Set([
+    ...(editing ? [editing] : []),
+    ...(view.fix?.changes.map((c) => c.nodeId) ?? []),
+    ...(view.top ? [view.top.id] : []),
+  ]);
   const busiest = (ids: string[]) =>
     ids
       .map((id) => view.nodes[id])
@@ -574,9 +580,11 @@ export function sliderFromRate(rate: number, max: number): number {
 
 /** Choices for the "1 dot ≈ N" override: the 1/2/5 series up to well past the automatic value. */
 export function scaleOptions(auto: number, current: number): number[] {
-  const out = new Set<number>([current]);
-  const top = Math.max(1000, auto * 20, current);
-  for (let p = 1; p <= top; p *= 10) for (const v of [1, 2, 5]) if (v * p <= top) out.add(v * p);
+  const valid = (v: number) => Number.isFinite(v) && v >= 1;
+  const out = new Set<number>(valid(current) ? [current] : []);
+  const top = Math.min(1e7, Math.max(1000, valid(auto) ? auto * 20 : 1000, valid(current) ? current : 1));
+  for (let exponent = 0; exponent <= 7; exponent++)
+    for (const v of [1, 2, 5]) if (v * 10 ** exponent <= top) out.add(v * 10 ** exponent);
   return [...out].sort((a, b) => a - b);
 }
 

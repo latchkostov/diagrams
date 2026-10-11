@@ -3,7 +3,7 @@ import { DIAGRAM_FORMAT, type DiagramFile, type Simulation } from "../model/type
 import type { SimRole } from "../model/types";
 import { LiveController, structuralKey } from "./controller";
 import kafka from "../examples/kafka-order-pipeline.json";
-import { emptyInputs } from "./capacityModel";
+import { emptyInputs, freePlaySaveProps } from "./capacityModel";
 
 const roles: Record<string, SimRole> = { src: "source", q: "queue", svc: "processor", db: "store" };
 const roleOf = (stencil: string) => roles[stencil] ?? "none";
@@ -277,15 +277,23 @@ describe("LiveController", () => {
     });
 
     it("entry rates and the dot scale replay the run to the same moment", () => {
-      const c = running();
-      const { generation } = c.getState();
-      const time = c.snapshot().time;
-      c.setInputs({ ...emptyInputs(), rates: { shopper: 4000 } });
-      expect(c.getState().generation).toBeGreaterThan(generation);
-      expect(c.snapshot().time).toBeGreaterThanOrEqual(time - 10);
-      expect(c.getState().running?.traffic[0].shape).toMatchObject({ ratePerSec: 4000 });
-      c.setInputs({ ...emptyInputs(), scale: 100 });
-      expect(c.getState().scale).toBe(100);
+      vi.useFakeTimers();
+      try {
+        const c = running();
+        const { generation } = c.getState();
+        const time = c.snapshot().time;
+        c.setInputs({ ...emptyInputs(), rates: { shopper: 4000 } });
+        expect(c.getState().generation).toBeGreaterThan(generation);
+        vi.runAllTimers();
+        expect(c.snapshot().time).toBeGreaterThanOrEqual(time - 10);
+        expect(c.getState().running?.traffic[0].shape).toMatchObject({ ratePerSec: 4000 });
+        c.setInputs({ ...emptyInputs(), scale: 100 });
+        vi.runAllTimers();
+        expect(c.getState().scale).toBe(100);
+        c.dispose();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("waits for rate edits to settle before replaying", () => {
@@ -380,5 +388,163 @@ describe("automatic dot scale for runs", () => {
     expect(c.getState().scale).toBe(1);
     c.selectSimulation(storm);
     expect(c.getState().scale).toBe(1);
+  });
+});
+
+describe("fourth review controller regressions", () => {
+  it("saving free-play capacity preserves effective replicas", () => {
+    const d = structuredClone(kafka) as DiagramFile;
+    const worker = d.nodes.find((n) => n.id === "payments")!;
+    worker.props = { ...worker.props, replicas: 2 };
+    const c = new LiveController(d, { replayDelayMs: 0 });
+    c.setInputs({ ...emptyInputs(), capacity: 2 });
+    c.setPlaying(true);
+    c.inject("payments", 5);
+    c.step(100);
+    const before = c.snapshot();
+    const generation = c.getState().generation;
+    const patch = freePlaySaveProps(d, c.getState().inputs);
+    const next = { ...d, nodes: d.nodes.map((n) => ({ ...n, props: { ...n.props, ...patch[n.id] } })) };
+    expect(patch.payments.replicas).toBe(4);
+    expect(before.nodes.payments.replicas).toBe(4);
+    c.commitInputs(null, next);
+    expect(c.effectiveProps("payments").replicas).toBe(4);
+    expect(c.snapshot().nodes.payments.replicas).toBe(4);
+    expect(c.snapshot().nodes.payments.activeReplicas).toBe(before.nodes.payments.activeReplicas);
+    expect(c.snapshot().nodes.payments.processed).toBe(before.nodes.payments.processed);
+    expect(c.snapshot().time).toBe(before.time);
+    expect(c.getState()).toMatchObject({ generation, playing: true, inputs: emptyInputs() });
+    expect(c.updateDiagram(next)).toBe("none");
+    c.restart();
+    expect(c.snapshot().nodes.payments.replicas).toBe(4);
+  });
+
+  it("recalculates derived traffic rates on edits and undo while preserving explicit rates", () => {
+    const d = structuredClone(kafka) as DiagramFile;
+    const source = d.nodes.find((n) => n.id === "shopper")!;
+    source.props = { ...source.props, ratePerSec: 2 };
+    const c = new LiveController(d, { replayDelayMs: 0 });
+    c.setInputs({ ...emptyInputs(), traffic: 2 });
+    const next = structuredClone(d);
+    next.nodes.find((n) => n.id === "shopper")!.props!.ratePerSec = 10;
+    c.updateDiagram(next);
+    expect(c.effectiveProps("shopper").ratePerSec).toBe(20);
+    c.updateDiagram(d);
+    expect(c.effectiveProps("shopper").ratePerSec).toBe(4);
+    c.setInputs({ ...emptyInputs(), traffic: 2, rates: { shopper: 3 } });
+    c.updateDiagram(next);
+    expect(c.effectiveProps("shopper").ratePerSec).toBe(6);
+  });
+
+  it("restart consumes pending input replay", () => {
+    vi.useFakeTimers();
+    try {
+      const c = new LiveController(diagram(), { roleOf });
+      c.selectSimulation({ id: "r", title: "r", scale: 1, traffic: [], durationMs: 10000 });
+      c.setInputs({ ...emptyInputs(), rates: { api: 10 } });
+      c.restart();
+      c.inject("db", 7);
+      c.step(500);
+      const generation = c.getState().generation;
+      const before = c.snapshot();
+      expect(before.nodes.db.processed).toBe(7);
+      vi.advanceTimersByTime(1000);
+      expect(c.getState().generation).toBe(generation);
+      expect(c.snapshot()).toEqual(before);
+      c.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shares manual sampling by effective type in free play and saved runs", () => {
+    for (const saved of [false, true]) {
+      const d = diagram();
+      d.nodes[3].props = { messageType: "Order" };
+      const c = new LiveController(d, { roleOf, replayDelayMs: 0 });
+      if (saved) c.selectSimulation({ id: "r", title: "r", traffic: [], scale: 50, durationMs: 10000 });
+      else c.setInputs({ ...emptyInputs(), scale: 50 });
+      c.inject("db", 25);
+      c.inject("db", 25, { type: "Order" });
+      c.step(100);
+      expect(c.snapshot().nodes.db.processed).toBe(1);
+      c.restart();
+      c.inject("db", 25);
+      c.setNodeProps("db", { messageType: "Invoice" });
+      c.inject("db", 25);
+      c.step(100);
+      expect(c.snapshot().nodes.db.processed).toBe(0);
+      for (const invalid of [NaN, Infinity, -1]) c.inject("db", invalid);
+      c.inject("db", 25);
+      c.step(100);
+      expect(c.snapshot().nodes.db.processed).toBe(1);
+      c.dispose();
+    }
+  });
+});
+
+describe("bounded replay and checkpoint scrubbing", () => {
+  const longRun: Simulation = {
+    id: "long",
+    title: "Long",
+    seed: 3,
+    scale: 1,
+    durationMs: 300000,
+    traffic: [
+      { id: "t", node: "api", messageType: "Order", shape: { kind: "constant", ratePerSec: 2, durationMs: 300000 } },
+    ],
+  };
+
+  it("yields automatic replay and cancels obsolete work while retaining its original target", () => {
+    vi.useFakeTimers();
+    try {
+      const c = new LiveController(diagram(), { roleOf, replayDelayMs: 0 });
+      c.selectSimulation(longRun);
+      c.seek(60000);
+      const generation = c.getState().generation;
+      c.setInputs({ ...emptyInputs(), rates: { api: 3 } });
+      expect(c.snapshot().time).toBeLessThan(60000);
+      c.setInputs({ ...emptyInputs(), rates: { api: 4 } });
+      expect(c.getState().generation).toBe(generation + 2);
+      vi.runAllTimers();
+      expect(c.snapshot().time).toBe(60000);
+      expect(c.getState().running?.traffic[0].shape).toMatchObject({ ratePerSec: 4 });
+      const expected = new LiveController(diagram(), { roleOf });
+      expected.selectSimulation({
+        ...longRun,
+        traffic: [{ ...longRun.traffic[0], shape: { kind: "constant", ratePerSec: 4, durationMs: 300000 } }],
+      });
+      expected.seek(60000);
+      expect(c.snapshot()).toEqual(expected.snapshot());
+      c.setInputs({ ...emptyInputs(), rates: { api: 5 } });
+      c.restart();
+      c.inject("db", 7);
+      c.step(500);
+      const before = c.snapshot();
+      vi.runAllTimers();
+      expect(c.snapshot()).toEqual(before);
+      c.dispose();
+      expected.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("scrubs backwards from checkpoints without rebuilding and matches uninterrupted playback", () => {
+    const c = new LiveController(diagram(), { roleOf });
+    c.selectSimulation(longRun);
+    c.seek(240000); // More than the retention window exercises eviction of old checkpoints.
+    const generation = c.getState().generation;
+    const uninterrupted = c.snapshot();
+    c.seek(222000);
+    expect(c.getState().generation).toBe(generation);
+    expect(c.snapshot().time).toBe(222000);
+    c.seek(240000);
+    expect(c.snapshot()).toEqual(uninterrupted);
+    c.seek(1000); // Origin survives eviction.
+    expect(c.snapshot().time).toBe(1000);
+    expect(c.getState().generation).toBe(generation);
+    c.seek(240000);
+    expect(c.snapshot()).toEqual(uninterrupted);
   });
 });

@@ -1,6 +1,6 @@
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
-import { resolveProps } from "./defaults";
+import { createRealCountInjector } from "./injection";
 import { createEngine, seedEngine } from "./engine";
 import { realFrame, realSnapshot, resolveScale, resolveMultiplier, toRealUnits } from "./units";
 export { autoScale } from "./scale";
@@ -10,6 +10,7 @@ import type {
   SimulationRun,
   SimulationRunOptions,
   SimulationRunState,
+  SimulationRunCheckpoint,
   TimelineMarker,
 } from "./types";
 
@@ -126,12 +127,14 @@ export function createSimulationRun(
     capacity: resolveMultiplier(simulation.multipliers?.capacity),
   };
   const injectionCredits = new Map<string, number>();
-  const manualCredits = new Map<string, number>();
   const inputs = new Map(diagram.nodes.map((node) => [node.id, node]));
   const sourceIds = diagram.nodes
     .filter((node) => (opts.roleOf ?? stencilRole)(node.stencil) === "source")
     .map((node) => node.id);
   const engine = opts.engine ?? createEngine({ ...opts, seed });
+  const manual = createRealCountInjector(engine, (id) => inputs.get(id), opts.roleOf ?? stencilRole);
+  const checkpoints = new WeakMap<SimulationRunCheckpoint, () => void>();
+  let epoch = 0;
   const timeline = [...(simulation.timeline ?? [])].sort((a, b) => a.atMs - b.atMs);
   const markers: TimelineMarker[] = timeline.map((step) => ({
     atMs: step.atMs,
@@ -169,16 +172,7 @@ export function createSimulationRun(
   }
 
   function injectManual(node: string, count: number, options: InjectOptions = {}): void {
-    const input = inputs.get(node);
-    if (!input || !Number.isFinite(count) || count <= 0) return;
-    const type =
-      options.type ??
-      resolveProps((opts.roleOf ?? stencilRole)(input.stencil), input.label, engine.effectiveProps(node)).messageType;
-    const key = JSON.stringify([node, type]);
-    const credit = (manualCredits.get(key) ?? 0) + count / scale;
-    const samples = Math.floor(credit + 1e-9);
-    manualCredits.set(key, credit - samples);
-    if (samples > 0) engine.inject(node, samples, { ...options, type });
+    manual.inject(node, count, scale, options);
     refresh();
   }
 
@@ -269,7 +263,8 @@ export function createSimulationRun(
     };
     engine.setNodePropsBatch(simulation.setup?.props ?? {}, multipliers.capacity);
     injectionCredits.clear();
-    manualCredits.clear();
+    manual.clear();
+    epoch++;
     speed = 1;
     scheduler.reset();
     cursor = 0;
@@ -294,6 +289,43 @@ export function createSimulationRun(
   restart();
   return {
     engine,
+    checkpoint() {
+      const engineState = engine.checkpoint();
+      const saved = structuredClone({
+        multipliers,
+        speed,
+        cursor,
+        done,
+        waiting,
+        idleSince,
+        note,
+        expectations,
+        credits,
+        fired,
+        injectionCredits,
+      });
+      const manualState = manual.checkpoint();
+      const clock = scheduler.checkpoint();
+      const savedEpoch = epoch;
+      const token = Object.freeze({ time: metrics.time });
+      checkpoints.set(token, () => {
+        if (epoch !== savedEpoch) throw new Error("Checkpoint belongs to a previous run");
+        engine.restore(engineState);
+        const copy = structuredClone(saved);
+        ({ multipliers, speed, cursor, done, waiting, idleSince, note, expectations, credits, fired } = copy);
+        injectionCredits.clear();
+        for (const [key, value] of copy.injectionCredits) injectionCredits.set(key, value);
+        manual.restore(manualState);
+        scheduler.restore(clock);
+        metrics = engine.metrics();
+      });
+      return token;
+    },
+    restore(checkpoint) {
+      const restore = checkpoints.get(checkpoint);
+      if (!restore) throw new Error("Checkpoint belongs to another runner");
+      restore();
+    },
     units: {
       sampledFrame: () => engine.frame(),
       realFrame: () => realFrame(engine.frame()),

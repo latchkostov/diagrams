@@ -13,7 +13,10 @@ export function peakRate(shape: TrafficShape): number {
     case "ramp":
       return Math.max(positive(shape.startRate), ...shape.stages.map((stage) => positive(stage.targetRate)));
     case "burst":
-      return (positive(shape.count) * 1000) / (positive(shape.spreadMs) || 1000);
+      return Math.min(
+        Number.MAX_SAFE_INTEGER,
+        (positive(shape.count) * 1000) / (positive(shape.spreadMs) ? Math.max(1, positive(shape.spreadMs)) : 1000),
+      );
   }
 }
 /** Conservative sum of entry peaks, rounded upward to the 1/2/5 series. Does not mutate the input. */
@@ -38,7 +41,8 @@ export function autoScale(simulation: Simulation, diagram: DiagramFile): number 
     0,
   );
   const required = ((rate + injections) * resolveMultiplier(simulation.multipliers?.traffic)) / 60;
+  if (!Number.isFinite(required)) return Number.MAX_SAFE_INTEGER;
   if (required <= 1) return 1;
   const power = 10 ** Math.floor(Math.log10(required));
-  return [1, 2, 5, 10].find((value) => value * power >= required)! * power;
+  return Math.min(Number.MAX_SAFE_INTEGER, [1, 2, 5, 10].find((value) => value * power >= required)! * power);
 }
