@@ -45,6 +45,7 @@ import { notify } from "./interop/ui/toast";
 import { Toaster } from "./interop/ui/Toaster";
 import { EmbedView } from "./interop/embed/EmbedView";
 import { CommandPalette } from "./palette/CommandPalette";
+import { AiMount } from "./ai/ui/AiMount";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -383,6 +384,7 @@ function MainApp() {
         currentSlug={slug}
         onOpenDiagram={(example) => setUrl({ view: "canvas", example, present: false })}
       />
+      <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />
     </div>
   );
 }

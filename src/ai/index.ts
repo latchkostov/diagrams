@@ -1,0 +1,110 @@
+// Pure TypeScript contract shared by the editor, tool adapters and Node consumers.
+import type { DiagramFile, DiagramGroup, MetricField } from "../model/types";
+
+export type Ref = string;
+export type LayoutMode = "auto" | "full" | "none";
+export type NodeProps = Record<string, unknown>;
+export type DiagramOp =
+  | { op: "add_node"; kind: string; label: string; sublabel?: string; key?: string; in?: Ref; props?: NodeProps }
+  | { op: "connect"; from: Ref; to: Ref; label?: string; kind?: "async" | "sync"; key?: string }
+  | {
+      op: "update";
+      target: Ref;
+      label?: string;
+      sublabel?: string | null;
+      kind?: string;
+      in?: Ref | null;
+      props?: NodeProps;
+      members?: Ref[];
+      tone?: DiagramGroup["tone"];
+    }
+  | { op: "remove"; targets: Ref[] }
+  | { op: "add_boundary"; label: string; members: Ref[]; tone?: DiagramGroup["tone"]; key?: string }
+  | { op: "add_note"; text: string; style?: "note" | "text"; near?: Ref; key?: string }
+  | { op: "set_meta"; title?: string; description?: string; direction?: "LR" | "TB" };
+export interface ApplyOpsOptions {
+  layout?: LayoutMode;
+  dryRun?: boolean;
+}
+export interface Candidate {
+  id: string;
+  label: string;
+  stencil?: string;
+}
+export interface AiError {
+  i: number;
+  error: string;
+  candidates?: Candidate[];
+  hint?: string;
+}
+export interface StencilResolution {
+  id: string;
+  label: string;
+  confidence: "high" | "medium" | "low";
+  alternatives: string[];
+}
+export interface OpResult {
+  i: number;
+  op: DiagramOp["op"];
+  id?: string;
+  ids?: string[];
+  label?: string;
+  from?: string;
+  to?: string;
+  stencil?: StencilResolution;
+}
+export interface ApplyOpsResult {
+  ok: boolean;
+  diagram: DiagramFile;
+  results: OpResult[];
+  errors: AiError[];
+  warnings: string[];
+  summary: string;
+  dryRun?: boolean;
+}
+export interface DescribeOptions {
+  format?: "text" | "json";
+  focus?: Ref[];
+  limit?: number;
+}
+export interface SimulationSpec {
+  title: string;
+  replace?: Ref;
+  durationSec?: number;
+  traffic: {
+    from: Ref;
+    pattern: "constant" | "burst" | "ramp" | "spike";
+    ratePerSec?: number;
+    toRatePerSec?: number;
+    count?: number;
+    startSec?: number;
+    durationSec?: number;
+    peakSec?: number;
+    messageType?: string;
+    label?: string;
+  }[];
+  events?: {
+    atSec: number;
+    node: Ref;
+    do: "down" | "up" | "pause" | "slow" | "set";
+    latencyMs?: number;
+    props?: NodeProps;
+    note?: string;
+  }[];
+  expectations?: {
+    label: string;
+    node?: Ref;
+    metric: MetricField | "inSystem";
+    op: "<" | "<=" | "==" | ">=" | ">";
+    value: number;
+    when?: "always" | "eventually" | "end";
+  }[];
+}
+
+export { applyOps } from "./ops";
+export { describeDiagram } from "./describe";
+export { buildSimulation } from "./simulate";
+export { resolveKind, findStencils } from "./stencils";
+export { resolveRef, ReferenceError } from "./refs";
+export { placeNew, fitGroupToContents } from "./place";
+export * from "./schemas";

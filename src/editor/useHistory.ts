@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fromFlow, type DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
-import { canRedo, canUndo, commit, createHistory, present, redo as redoH, undo as undoH } from "./history";
+import {
+  canRedo,
+  canUndo,
+  commit,
+  commitReplacement,
+  createHistory,
+  present,
+  redo as redoH,
+  undo as undoH,
+} from "./history";
 
 export interface CanvasSnapshot {
   meta: DiagramMeta;
@@ -16,6 +25,8 @@ export interface HistoryApi {
   canRedo: boolean;
   /** Tag the next commit for coalescing (see EditOptions.merge). Call before mutating. */
   hint(mergeKey: string | undefined): void;
+  /** Flush the actual current snapshot, commit a replacement, then apply it once. */
+  replace(next: CanvasSnapshot, mergeKey?: string, before?: CanvasSnapshot): void;
 }
 
 /** Quiet time after the last change before it becomes an undo step. */
@@ -92,10 +103,28 @@ export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => 
     [flush],
   );
 
+  const replace = useCallback((snapshot: CanvasSnapshot, key?: string, before?: CanvasSnapshot) => {
+    window.clearTimeout(timer.current);
+    timer.current = undefined;
+    const current = clean(before ?? latest.current);
+    const next = clean(snapshot);
+    // Break coalescing on both sides, even when an adapter reuses its call id.
+    hist.current = commitReplacement(
+      hist.current,
+      { key: keyOf(current), value: current, mergeKey: mergeKey.current, at: Date.now() },
+      { key: keyOf(next), value: next, mergeKey: key, at: Date.now() },
+    );
+    mergeKey.current = undefined;
+    latest.current = next;
+    setHistory(hist.current);
+    applyRef.current(next);
+  }, []);
+
   return {
     undo,
     redo,
     hint,
+    replace,
     canUndo: canUndo(history) || pending,
     canRedo: canRedo(history) && !pending,
   };

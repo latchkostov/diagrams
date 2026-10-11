@@ -1,0 +1,1937 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.livediagrams.dev/schema/ops.v1.json",
+  "title": "Diagrams edit ops (v1)",
+  "description": "Add, connect, change or remove diagram elements in one atomic step (one undo). Describe kinds in plain words ('.NET consumer', 'Kafka topic'); the app picks the icon and position. Put a whole request in one call. The same input as the WebMCP tool edit_diagram and the 'Build with AI' paste box (which also takes a bare array of ops).",
+  "type": "object",
+  "required": [
+    "ops"
+  ],
+  "properties": {
+    "ops": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "kind",
+              "label"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "add_node"
+              },
+              "kind": {
+                "type": "string",
+                "maxLength": 100,
+                "description": "Plain words or a stencil id, e.g. 'Kafka topic', 'service.dotnet'."
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "sublabel": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "Second line, e.g. a topic name 'orders.created'."
+              },
+              "key": {
+                "type": "string",
+                "maxLength": 50,
+                "description": "Name to refer to this node later in the same call."
+              },
+              "in": {
+                "$ref": "#/$defs/Ref",
+                "description": "Boundary to place it in."
+              },
+              "props": {
+                "$ref": "#/$defs/NodeProps"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "from",
+              "to"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "connect"
+              },
+              "from": {
+                "$ref": "#/$defs/Ref"
+              },
+              "to": {
+                "$ref": "#/$defs/Ref"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "async",
+                  "sync"
+                ],
+                "default": "async",
+                "description": "async = messages/events; sync = request/response, writes to a database."
+              },
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "target"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "update"
+              },
+              "target": {
+                "$ref": "#/$defs/Ref"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "sublabel": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 200
+              },
+              "kind": {
+                "type": "string",
+                "maxLength": 100,
+                "description": "Nodes: change the stencil. Connections: 'async' or 'sync'."
+              },
+              "in": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Move into this boundary; null removes it from its boundary."
+              },
+              "props": {
+                "$ref": "#/$defs/PropsPatch"
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Ref"
+                }
+              },
+              "tone": {
+                "$ref": "#/$defs/Tone"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "targets"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "remove"
+              },
+              "targets": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100,
+                "items": {
+                  "$ref": "#/$defs/Ref"
+                },
+                "description": "Nodes, connections ('A -> B'), boundaries (contents are kept) or notes."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "label",
+              "members"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "add_boundary"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "members": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/Ref"
+                }
+              },
+              "tone": {
+                "$ref": "#/$defs/Tone"
+              },
+              "key": {
+                "type": "string",
+                "maxLength": 50
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "text"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "add_note"
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "style": {
+                "type": "string",
+                "enum": [
+                  "note",
+                  "text"
+                ],
+                "default": "note"
+              },
+              "near": {
+                "$ref": "#/$defs/Ref"
+              },
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "set_meta"
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "LR",
+                  "TB"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "layout": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "full",
+        "none"
+      ],
+      "default": "auto"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "default": false,
+      "description": "Validate and report without changing the diagram."
+    }
+  },
+  "$defs": {
+    "Ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "An element: id from describe_diagram (preferred), a key set earlier in this call, an exact label, 'label (sublabel)', or for a connection 'From -> To'."
+    },
+    "NodeProps": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Simulation settings. Unknown keys are kept.",
+      "properties": {
+        "ratePerSec": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sources: messages per second."
+        },
+        "latencyMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Processors: messages handled at once per replica."
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "partitions": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Topics/streams."
+        },
+        "failureRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "maxDeliveryCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "retry": {
+          "type": "string",
+          "enum": [
+            "requeue",
+            "inplace"
+          ]
+        },
+        "messageType": {
+          "type": "string"
+        },
+        "emits": {
+          "type": "string",
+          "description": "Message type this node emits downstream."
+        }
+      }
+    },
+    "Tone": {
+      "type": "string",
+      "enum": [
+        "azure",
+        "aws",
+        "gcp",
+        "k8s",
+        "onprem",
+        "neutral"
+      ]
+    },
+    "PropsPatch": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Simulation settings. Unknown keys are kept.",
+      "properties": {
+        "ratePerSec": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Sources: messages per second."
+        },
+        "latencyMs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "concurrency": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Processors: messages handled at once per replica."
+        },
+        "replicas": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "partitions": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Topics/streams."
+        },
+        "failureRate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "maxDeliveryCount": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "retry": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "requeue",
+            "inplace",
+            null
+          ]
+        },
+        "messageType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "emits": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Message type this node emits downstream."
+        }
+      }
+    }
+  },
+  "$comment": "The other tools' inputs are under $tools.",
+  "$tools": {
+    "describe_diagram": {
+      "description": "Read the current diagram as compact text: nodes with ids, kinds and labels, connections, boundaries and simulations. Call before editing an existing diagram.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "text",
+              "json"
+            ],
+            "default": "text"
+          },
+          "focus": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Ref"
+            },
+            "maxItems": 20,
+            "description": "Only these elements and their direct neighbours."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 500,
+            "default": 150,
+            "description": "Max lines."
+          }
+        },
+        "$defs": {
+          "Ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "An element: id from describe_diagram (preferred), a key set earlier in this call, an exact label, 'label (sublabel)', or for a connection 'From -> To'."
+          },
+          "NodeProps": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": "number",
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "retry": {
+                "type": "string",
+                "enum": [
+                  "requeue",
+                  "inplace"
+                ]
+              },
+              "messageType": {
+                "type": "string"
+              },
+              "emits": {
+                "type": "string",
+                "description": "Message type this node emits downstream."
+              }
+            }
+          },
+          "Tone": {
+            "type": "string",
+            "enum": [
+              "azure",
+              "aws",
+              "gcp",
+              "k8s",
+              "onprem",
+              "neutral"
+            ]
+          },
+          "PropsPatch": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "retry": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "requeue",
+                  "inplace",
+                  null
+                ]
+              },
+              "messageType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "emits": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Message type this node emits downstream."
+              }
+            }
+          }
+        }
+      }
+    },
+    "find_stencils": {
+      "description": "Search the stencil catalog (Kafka, Azure, AWS, GCP, databases, services…). Use when edit_diagram reported low confidence for a kind.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Free text, e.g. '.NET consumer', 'service bus queue'."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "messaging",
+              "compute",
+              "data",
+              "network",
+              "observability",
+              "security",
+              "clients",
+              "generic"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 5
+          }
+        },
+        "$defs": {
+          "Ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "An element: id from describe_diagram (preferred), a key set earlier in this call, an exact label, 'label (sublabel)', or for a connection 'From -> To'."
+          },
+          "NodeProps": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": "number",
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "retry": {
+                "type": "string",
+                "enum": [
+                  "requeue",
+                  "inplace"
+                ]
+              },
+              "messageType": {
+                "type": "string"
+              },
+              "emits": {
+                "type": "string",
+                "description": "Message type this node emits downstream."
+              }
+            }
+          },
+          "Tone": {
+            "type": "string",
+            "enum": [
+              "azure",
+              "aws",
+              "gcp",
+              "k8s",
+              "onprem",
+              "neutral"
+            ]
+          },
+          "PropsPatch": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "retry": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "requeue",
+                  "inplace",
+                  null
+                ]
+              },
+              "messageType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "emits": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Message type this node emits downstream."
+              }
+            }
+          }
+        }
+      }
+    },
+    "edit_diagram": {
+      "description": "Add, connect, change or remove diagram elements in one atomic step (one undo). Describe kinds in plain words ('.NET consumer', 'Kafka topic'); the app picks the icon and position. Put a whole request in one call.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "ops"
+        ],
+        "properties": {
+          "ops": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "op",
+                    "kind",
+                    "label"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "op": {
+                      "const": "add_node"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "Plain words or a stencil id, e.g. 'Kafka topic', 'service.dotnet'."
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "sublabel": {
+                      "type": "string",
+                      "maxLength": 200,
+                      "description": "Second line, e.g. a topic name 'orders.created'."
+                    },
+                    "key": {
+                      "type": "string",
+                      "maxLength": 50,
+                      "description": "Name to refer to this node later in the same call."
+                    },
+                    "in": {
+                      "$ref": "#/$defs/Ref",
+                      "description": "Boundary to place it in."
+                    },
+                    "props": {
+                      "$ref": "#/$defs/NodeProps"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "op",
+                    "from",
+                    "to"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "op": {
+                      "const": "connect"
+                    },
+                    "from": {
+                      "$ref": "#/$defs/Ref"
+                    },
+                    "to": {
+                      "$ref": "#/$defs/Ref"
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "async",
+                        "sync"
+                      ],
+                      "default": "async",
+                      "description": "async = messages/events; sync = request/response, writes to a database."
+                    },
+                    "key": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 50
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "op",
+                    "target"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "op": {
+                      "const": "update"
+                    },
+                    "target": {
+                      "$ref": "#/$defs/Ref"
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "sublabel": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 200
+                    },
+                    "kind": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "Nodes: change the stencil. Connections: 'async' or 'sync'."
+                    },
+                    "in": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Move into this boundary; null removes it from its boundary."
+                    },
+                    "props": {
+                      "$ref": "#/$defs/PropsPatch"
+                    },
+                    "members": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/Ref"
+                      }
+                    },
+                    "tone": {
+                      "$ref": "#/$defs/Tone"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "op",
+                    "targets"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "op": {
+                      "const": "remove"
+                    },
+                    "targets": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 100,
+                      "items": {
+                        "$ref": "#/$defs/Ref"
+                      },
+                      "description": "Nodes, connections ('A -> B'), boundaries (contents are kept) or notes."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "op",
+                    "label",
+                    "members"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "op": {
+                      "const": "add_boundary"
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "members": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "$ref": "#/$defs/Ref"
+                      }
+                    },
+                    "tone": {
+                      "$ref": "#/$defs/Tone"
+                    },
+                    "key": {
+                      "type": "string",
+                      "maxLength": 50
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "op",
+                    "text"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "op": {
+                      "const": "add_note"
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "style": {
+                      "type": "string",
+                      "enum": [
+                        "note",
+                        "text"
+                      ],
+                      "default": "note"
+                    },
+                    "near": {
+                      "$ref": "#/$defs/Ref"
+                    },
+                    "key": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 50
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "op"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "op": {
+                      "const": "set_meta"
+                    },
+                    "title": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "description": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "direction": {
+                      "type": "string",
+                      "enum": [
+                        "LR",
+                        "TB"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "layout": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "full",
+              "none"
+            ],
+            "default": "auto"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "default": false,
+            "description": "Validate and report without changing the diagram."
+          }
+        },
+        "$defs": {
+          "Ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "An element: id from describe_diagram (preferred), a key set earlier in this call, an exact label, 'label (sublabel)', or for a connection 'From -> To'."
+          },
+          "NodeProps": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": "number",
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "retry": {
+                "type": "string",
+                "enum": [
+                  "requeue",
+                  "inplace"
+                ]
+              },
+              "messageType": {
+                "type": "string"
+              },
+              "emits": {
+                "type": "string",
+                "description": "Message type this node emits downstream."
+              }
+            }
+          },
+          "Tone": {
+            "type": "string",
+            "enum": [
+              "azure",
+              "aws",
+              "gcp",
+              "k8s",
+              "onprem",
+              "neutral"
+            ]
+          },
+          "PropsPatch": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "retry": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "requeue",
+                  "inplace",
+                  null
+                ]
+              },
+              "messageType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "emits": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Message type this node emits downstream."
+              }
+            }
+          }
+        }
+      }
+    },
+    "set_simulation": {
+      "description": "Create or replace a simulation in plain units: who sends how much traffic, what breaks when, and what should hold true. Times are seconds.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "title",
+          "traffic"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "replace": {
+            "$ref": "#/$defs/Ref",
+            "description": "Existing simulation id or title to overwrite; omitted = add new."
+          },
+          "durationSec": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 3600
+          },
+          "traffic": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "required": [
+                "from",
+                "pattern"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "from": {
+                  "$ref": "#/$defs/Ref"
+                },
+                "pattern": {
+                  "type": "string",
+                  "enum": [
+                    "constant",
+                    "burst",
+                    "ramp",
+                    "spike"
+                  ]
+                },
+                "ratePerSec": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "constant; ramp start; spike base."
+                },
+                "toRatePerSec": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "ramp target; spike peak."
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "burst size."
+                },
+                "startSec": {
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 0
+                },
+                "durationSec": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "constant/ramp/spike length; burst spread."
+                },
+                "peakSec": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "spike: how long the peak lasts."
+                },
+                "messageType": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "events": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "required": [
+                "atSec",
+                "node",
+                "do"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "atSec": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "node": {
+                  "$ref": "#/$defs/Ref"
+                },
+                "do": {
+                  "type": "string",
+                  "enum": [
+                    "down",
+                    "up",
+                    "pause",
+                    "slow",
+                    "set"
+                  ]
+                },
+                "latencyMs": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "for 'slow'."
+                },
+                "props": {
+                  "$ref": "#/$defs/NodeProps",
+                  "description": "for 'set'."
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "description": "Optional narration shown at this time."
+                }
+              }
+            }
+          },
+          "expectations": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "metric",
+                "op",
+                "value"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "node": {
+                  "$ref": "#/$defs/Ref",
+                  "description": "Omit with metric 'inSystem'."
+                },
+                "metric": {
+                  "type": "string",
+                  "enum": [
+                    "processed",
+                    "backlog",
+                    "inFlight",
+                    "failed",
+                    "deadLettered",
+                    "dropped",
+                    "throughput",
+                    "lag",
+                    "inSystem"
+                  ]
+                },
+                "op": {
+                  "type": "string",
+                  "enum": [
+                    "<",
+                    "<=",
+                    "==",
+                    ">=",
+                    ">"
+                  ]
+                },
+                "value": {
+                  "type": "number"
+                },
+                "when": {
+                  "type": "string",
+                  "enum": [
+                    "always",
+                    "eventually",
+                    "end"
+                  ],
+                  "default": "end"
+                }
+              }
+            }
+          }
+        },
+        "$defs": {
+          "Ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "An element: id from describe_diagram (preferred), a key set earlier in this call, an exact label, 'label (sublabel)', or for a connection 'From -> To'."
+          },
+          "NodeProps": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": "number",
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "retry": {
+                "type": "string",
+                "enum": [
+                  "requeue",
+                  "inplace"
+                ]
+              },
+              "messageType": {
+                "type": "string"
+              },
+              "emits": {
+                "type": "string",
+                "description": "Message type this node emits downstream."
+              }
+            }
+          },
+          "Tone": {
+            "type": "string",
+            "enum": [
+              "azure",
+              "aws",
+              "gcp",
+              "k8s",
+              "onprem",
+              "neutral"
+            ]
+          },
+          "PropsPatch": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "retry": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "requeue",
+                  "inplace",
+                  null
+                ]
+              },
+              "messageType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "emits": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Message type this node emits downstream."
+              }
+            }
+          }
+        }
+      }
+    },
+    "new_diagram": {
+      "description": "Start a new, empty diagram. The current one stays in the library.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "LR",
+              "TB"
+            ],
+            "default": "LR"
+          }
+        },
+        "$defs": {
+          "Ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "An element: id from describe_diagram (preferred), a key set earlier in this call, an exact label, 'label (sublabel)', or for a connection 'From -> To'."
+          },
+          "NodeProps": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": "number",
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "retry": {
+                "type": "string",
+                "enum": [
+                  "requeue",
+                  "inplace"
+                ]
+              },
+              "messageType": {
+                "type": "string"
+              },
+              "emits": {
+                "type": "string",
+                "description": "Message type this node emits downstream."
+              }
+            }
+          },
+          "Tone": {
+            "type": "string",
+            "enum": [
+              "azure",
+              "aws",
+              "gcp",
+              "k8s",
+              "onprem",
+              "neutral"
+            ]
+          },
+          "PropsPatch": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "retry": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "requeue",
+                  "inplace",
+                  null
+                ]
+              },
+              "messageType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "emits": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Message type this node emits downstream."
+              }
+            }
+          }
+        }
+      }
+    },
+    "get_share_link": {
+      "description": "Get a link that opens the current diagram. The diagram is stored in the link itself; nothing is uploaded.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "$defs": {
+          "Ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "An element: id from describe_diagram (preferred), a key set earlier in this call, an exact label, 'label (sublabel)', or for a connection 'From -> To'."
+          },
+          "NodeProps": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": "number",
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "retry": {
+                "type": "string",
+                "enum": [
+                  "requeue",
+                  "inplace"
+                ]
+              },
+              "messageType": {
+                "type": "string"
+              },
+              "emits": {
+                "type": "string",
+                "description": "Message type this node emits downstream."
+              }
+            }
+          },
+          "Tone": {
+            "type": "string",
+            "enum": [
+              "azure",
+              "aws",
+              "gcp",
+              "k8s",
+              "onprem",
+              "neutral"
+            ]
+          },
+          "PropsPatch": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Simulation settings. Unknown keys are kept.",
+            "properties": {
+              "ratePerSec": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Sources: messages per second."
+              },
+              "latencyMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "concurrency": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Processors: messages handled at once per replica."
+              },
+              "replicas": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Topics/streams."
+              },
+              "failureRate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "retry": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "requeue",
+                  "inplace",
+                  null
+                ]
+              },
+              "messageType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "emits": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Message type this node emits downstream."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
