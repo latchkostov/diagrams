@@ -15,7 +15,9 @@ async function installSyntheticRegistry(page: Page) {
       export const examples = [
         { slug: "${SLUG}", diagram: publicDiagram },
         { slug: "synthetic-local", localOnly: true, diagram: ${JSON.stringify(localOnlyFixture)} }
-      ];`,
+      ];
+      export const EXAMPLE_THEMES = [];
+      export const themeLabel = (theme) => theme;`,
     }),
   );
 }
