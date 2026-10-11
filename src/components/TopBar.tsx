@@ -12,7 +12,7 @@ import { capacityOverlay } from "../live/capacityOverlay";
 export interface ExampleOption {
   slug: string;
   title: string;
-  /** "yours": your diagram (and a shared one); "examples": the built-in examples. */
+  /** "yours": your diagrams (and a shared one); "examples": the built-in examples. */
   group: "yours" | "examples";
 }
 
@@ -25,9 +25,12 @@ interface Props {
   /** Import / export / storage controller (src/interop). */
   interop: Omit<Interop, "layer">;
   /** Set while a diagram from a share link is open: offers to keep it. */
-  shared?: { onKeep: () => void; replaces?: string };
+  shared?: { onKeep: () => void };
   onPresent: () => void;
   onNewDiagram: () => void;
+  /** Opens "Your diagrams". */
+  onLibrary: () => void;
+  libraryCount: number;
 }
 
 export function TopBar(p: Props) {
@@ -88,11 +91,15 @@ export function TopBar(p: Props) {
             data-testid="example-picker"
           >
             {(["yours", "examples"] as const).map((group) => (
-              <optgroup key={group} label={group === "yours" ? "Your diagram" : "Examples"}>
+              <optgroup
+                key={group}
+                label={group === "yours" ? "Your diagrams" : "Examples"}
+                data-testid={`picker-group-${group}`}
+              >
                 {p.exampleOptions
                   .filter((o) => o.group === group)
                   .map((o) => (
-                    <option key={o.slug} value={o.slug}>
+                    <option key={o.slug} value={o.slug} data-testid={`picker-option-${o.slug}`}>
                       {o.title}
                     </option>
                   ))}
@@ -108,7 +115,13 @@ export function TopBar(p: Props) {
 
       <div className="topbar-group" data-testid="topbar-actions">
         <ViewMenu edges={canvas || lab} overlays={canvas} />
-        <FileMenu api={p.interop} canvas={canvas} onNewDiagram={p.onNewDiagram} />
+        <FileMenu
+          api={p.interop}
+          canvas={canvas}
+          onNewDiagram={p.onNewDiagram}
+          onLibrary={p.onLibrary}
+          libraryCount={p.libraryCount}
+        />
         {canvas && (
           <button
             className="btn btn-primary"

@@ -5,7 +5,8 @@ import type { EditTarget } from "../canvas/DiagramContext";
 import { type DiagramFlowEdge, type DiagramFlowNode, type FlowNode, type GroupFlowNode } from "../canvas/types";
 import { toneLabel } from "../canvas/groupTones";
 import { getStencil } from "../stencils/registry";
-import { downloadDiagram, IMPORTED_SLUG } from "../lib/diagramIO";
+import { downloadDiagram, isOwnSlug } from "../lib/diagramIO";
+import { motionMs } from "../lib/motion";
 import { align, boundaryAround, distribute, type Box, type Positions } from "./arrange";
 import { makePayload, parsePayload, payloadOrigin, remapPayload, type ClipboardPayload } from "./clipboard";
 import { stencilIdBase, uniqueId } from "./ids";
@@ -424,7 +425,7 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
     canRedo: () => deps().history.canRedo,
 
     fitView: () => deps().fit(),
-    zoomTo100: () => void rf.zoomTo(1, { duration: 250 }),
+    zoomTo100: () => void rf.zoomTo(1, { duration: motionMs(250) }),
     get prefs() {
       return deps().prefs;
     },
@@ -435,13 +436,12 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
     exportJson: () => {
       const d = diagram();
       const slug = deps().slug;
-      const name =
-        slug === IMPORTED_SLUG
-          ? d.title
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, "-")
-              .replace(/(^-|-$)/g, "")
-          : slug;
+      const name = isOwnSlug(slug)
+        ? d.title
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "")
+        : slug;
       downloadDiagram(d, name || "diagram");
     },
     autoLayout: () => {

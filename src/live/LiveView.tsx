@@ -34,6 +34,7 @@ import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "./layout";
 import { CapacityPanel } from "./CapacityPanel";
 import { BottleneckCallout, CapacityLayer } from "./CapacityLayer";
 import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
+import { useLiveHost, useLiveSessionHost } from "../palette/host";
 import {
   capacityView,
   effectiveSimulation,
@@ -109,6 +110,8 @@ export function LiveView(props: LiveViewProps) {
   const [live, setLive] = useState(enabled && (params.live || !!props.alwaysOn));
   const [firstSession, setFirstSession] = useState(true);
   const toggle = useCallback(() => setLive((l) => !l), []);
+  // "Toggle live" in the command palette.
+  useLiveHost(toggle, enabled && !props.alwaysOn && !!props.editor);
   // React Flow fills its store in an effect; start the session once nodes are there and measured.
   const mounted = useStore((s) => s.domNode !== null);
   const initialized = useNodesInitialized();
@@ -476,6 +479,25 @@ function LiveSession({
     },
     [controller],
   );
+  // "Run <simulation>" in the command palette.
+  useLiveSessionHost(selectSimulation, !!editor && !alwaysOn);
+
+  /**
+   * A saved simulation (or the draft) opened for editing becomes the one that runs, so the live
+   * bar's picker and the canvas show what's being edited instead of free play. Play / pause stays.
+   */
+  const showSimulation = useCallback(
+    (sim: Simulation) => {
+      if (controller.getState().simulation?.id === sim.id) return;
+      const known =
+        simsRef.current.find((s) => s.id === sim.id) ?? (draftRef.current?.id === sim.id ? draftRef.current : null);
+      if (!known) return;
+      setTrace(null);
+      controller.selectSimulation(known);
+      controller.setTraffic(false);
+    },
+    [controller],
+  );
 
   const runDraft = useCallback(
     (sim: Simulation) => {
@@ -782,6 +804,7 @@ function LiveSession({
           onRun={runDraft}
           onSave={saveSimulation}
           onDelete={deleteSimulation}
+          onOpen={showSimulation}
         />
       )}
       {inject && <InjectDialog request={inject} onClose={() => setInject(null)} />}

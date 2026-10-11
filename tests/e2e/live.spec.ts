@@ -386,6 +386,11 @@ test.describe("live view", () => {
   });
 
   test("saved simulation survives immediate diagram navigation", async ({ page }) => {
+    // The clock goes in before the app loads, so every timer is a fake one. Installed later, a
+    // debounced autosave scheduled before the install stayed a native timer that the faked
+    // clearTimeout couldn't cancel: it fired after Save with a stale diagram and erased the new
+    // simulation (only under load, when it was still pending at install time).
+    await page.clock.install();
     await page.goto("./?view=canvas&example=azure-service-bus-integration&live=1&traffic=0");
     await openNodeMenu(page, "ingest");
     await menuItem(page, "sim.storm").click();
@@ -393,8 +398,8 @@ test.describe("live view", () => {
     await page.getByTestId("sim-panel-traffic-0-type").fill("ImmediateEvent");
     await page.getByTestId("sim-panel-traffic-0-count").fill("37");
     await page.getByTestId("sim-panel-traffic-0-spread").fill("2.5");
-    await page.clock.install();
-    await page.clock.pauseAt(new Date());
+    // No timer runs from here until after the round trip: the save must not depend on one.
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
     await page.getByTestId("sim-panel-save").click();
     await page.getByTestId("example-picker").selectOption(KAFKA);
     await page.getByTestId("example-picker").selectOption("azure-service-bus-integration");

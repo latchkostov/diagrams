@@ -23,6 +23,7 @@ import type {
   SimulationRunState,
 } from "../sim/types";
 import { realSnapshot, resolveMultiplier, resolveScale } from "../sim/units";
+import { autoScale } from "../sim/scale";
 import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type LiveInputs } from "./capacityModel";
 import { DEFAULT_SEED } from "./storm";
 
@@ -522,7 +523,10 @@ export class LiveController {
   private build(): void {
     const engineOpts = { roleOf: this.opts.roleOf, maxParticles: this.opts.maxParticles };
     if (this.sim) {
-      this.runner = createSimulationRun(this.diagram, this.sim, {
+      // No saved dot scale: pick one from the traffic (the 1/2/5 series, about 60 dots a second at
+      // most), so dense runs stay readable as separate dots instead of merging into solid lines.
+      const sim = this.sim.scale === undefined ? { ...this.sim, scale: autoScale(this.sim, this.diagram) } : this.sim;
+      this.runner = createSimulationRun(this.diagram, sim, {
         ...engineOpts,
         seed: this.opts.seed ?? DEFAULT_SEED,
       });

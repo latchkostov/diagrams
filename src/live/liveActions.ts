@@ -195,7 +195,7 @@ export function liveActions(host: LiveActionsHost): Action[] {
       section: "simulation",
       targets: ["canvas"],
       label: "Continuous traffic",
-      icon: "swap",
+      icon: "traffic",
       order: 20,
       checked: () => c.getState().traffic,
       run: () => c.setTraffic(!c.getState().traffic),

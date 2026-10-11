@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, publicExamples, expectNoErrors } from "./fixtures";
 
 // First run and starting a diagram: the bare URL opens a blank canvas with the start card, the
-// card's three ways in, File > New diagram (with Undo), the one-time hint and the node tooltip.
+// card's ways in, File > New diagram (nothing is replaced), the one-time hint and the node tooltip.
 
 /** A small native file with extension metadata the canvas doesn't model (top level and per node). */
 const WORK = JSON.stringify({
@@ -48,15 +48,24 @@ async function exportedJson(page: Page, path: string) {
 }
 
 test.describe("first run", () => {
-  test("a bare URL opens your (blank) diagram with the start card", async ({ page, consoleErrors }) => {
+  test("a bare URL opens a blank diagram with the start card", async ({ page, consoleErrors }) => {
     await page.goto("./");
     await expect(page.getByTestId("canvas-view")).toBeVisible();
-    await expect(page.getByTestId("example-picker")).toHaveValue("imported");
+    // A blank draft: nothing is kept until the first edit.
+    await expect(page.getByTestId("example-picker")).toHaveValue("new");
     const card = page.getByTestId("start-card");
     await expect(card).toBeVisible();
-    // Only public examples are offered.
-    for (const ex of publicExamples) await expect(page.getByTestId(`start-example-${ex.slug}`)).toBeVisible();
-    await expect(page.getByTestId(/^start-example-/)).toHaveCount(publicExamples.length);
+    // Only public examples are offered, each with a rendered thumbnail of its nodes.
+    for (const ex of publicExamples) {
+      await expect(page.getByTestId(`start-example-${ex.slug}`)).toBeVisible();
+      await expect(page.getByTestId(`start-example-${ex.slug}-thumb`)).toHaveAttribute(
+        "data-nodes",
+        String(ex.nodeIds.length),
+      );
+    }
+    await expect(page.getByTestId(/^start-example-.*(?<!-thumb)$/)).toHaveCount(publicExamples.length);
+    // Nobody has diagrams of their own yet.
+    await expect(page.getByTestId(/^start-recent-/)).toHaveCount(0);
     // Nothing to simulate yet: no Live toggle, no minimap.
     await expect(page.getByTestId("live-toggle")).toHaveCount(0);
     await expect(page.getByTestId("canvas-minimap")).toHaveCount(0);
@@ -84,24 +93,45 @@ test.describe("first run", () => {
     await expect(page.getByTestId("paste-dialog")).toBeVisible();
   });
 
-  test("File > New diagram replaces your diagram, with Undo", async ({ page }) => {
+  test("the first edit keeps a blank diagram in Your diagrams, without remounting the canvas", async ({ page }) => {
+    await page.goto("./");
+    await page.getByTestId("start-blank").click();
+    await page.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "kept"));
+    await page.keyboard.type("kafka topic");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("live-toggle")).toBeVisible();
+    await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+    await expect(page).toHaveURL(/example=my-/);
+    await expect(page.getByTestId("canvas-view")).toHaveAttribute("data-test-instance", "kept");
+    // Undo history survived too: the add can be undone.
+    await page.getByTestId("undo-button").click();
+    await expect(page.getByTestId("live-toggle")).toHaveCount(0);
+  });
+
+  test("File > New diagram starts a blank one and keeps the previous in Your diagrams", async ({ page }) => {
     await page.goto("./");
     await page.getByTestId("start-blank").click();
     await page.keyboard.type("kafka topic");
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("live-toggle")).toBeVisible();
+    // The first edit kept it in Your diagrams.
+    await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+    const first = await page.getByTestId("example-picker").inputValue();
 
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-new").click();
     await expect(page.getByTestId("start-card")).toBeVisible();
-    await page.getByTestId("new-diagram-undo").click();
+    await expect(page.getByTestId("example-picker")).toHaveValue("new");
+    // Nothing was replaced: the previous diagram is listed first on the start card.
+    await expect(page.getByTestId(`start-recent-${first}`)).toBeVisible();
+    await expect(page.getByTestId(`start-recent-${first}-thumb`)).toHaveAttribute("data-nodes", "1");
+    await page.getByTestId(`start-recent-${first}`).click();
     await expect(page.getByTestId("start-card")).toHaveCount(0);
     await expect(page.getByTestId("live-toggle")).toBeVisible();
+    await expect(page.getByTestId("example-picker")).toHaveValue(first);
   });
 
-  test("New diagram Undo restores unsaved content, extension metadata included, across reload", async ({
-    page,
-  }, info) => {
+  test("New diagram keeps unsaved content, extension metadata included, across reload", async ({ page }, info) => {
     await page.goto("./");
     await pasteDiagram(page, WORK);
     // An unsaved edit on top of the imported file.
@@ -116,10 +146,11 @@ test.describe("first run", () => {
       "x-runbook": "https://runbooks.example/api",
     });
 
+    const mine = await page.getByTestId("example-picker").inputValue();
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-new").click();
     await expect(page.getByTestId("start-card")).toBeVisible();
-    await page.getByTestId("new-diagram-undo").click();
+    await page.getByTestId(`start-recent-${mine}`).click();
     await expect(page.getByTestId("node-api")).toContainText("Orders API v2");
     await expect(page.getByTestId("node-topic")).toBeVisible();
     await expect(page.getByTestId("edge-api-topic")).toBeAttached();
@@ -130,16 +161,17 @@ test.describe("first run", () => {
     expect(await exportedJson(page, info.outputPath("reloaded.json"))).toEqual(before);
   });
 
-  test("New diagram from an open example still offers Undo of your saved work", async ({ page }) => {
+  test("New diagram from an open example: your saved work is one click away", async ({ page }) => {
     await page.goto("./");
     await pasteDiagram(page, WORK);
     await expect(page.getByTestId("node-api")).toBeVisible();
+    const mine = await page.getByTestId("example-picker").inputValue();
     await gotoCanvas(page, publicExamples[0].slug);
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-new").click();
-    await expect(page.getByTestId("example-picker")).toHaveValue("imported");
+    await expect(page.getByTestId("example-picker")).toHaveValue("new");
     await expect(page.getByTestId("start-card")).toBeVisible();
-    await page.getByTestId("new-diagram-undo").click();
+    await page.getByTestId(`start-recent-${mine}`).click();
     await expect(page.getByTestId("node-api")).toBeVisible();
     await expect(page.getByTestId("node-topic")).toBeVisible();
     await expect(page.getByTestId("edge-api-topic")).toBeAttached();

@@ -36,6 +36,8 @@ export function Dialog({
     const backdropEl = backdrop.current;
     if (!panelEl || !backdropEl) return;
     const onKeyDown = (e: KeyboardEvent) => {
+      // An inline editor inside the dialog (e.g. a rename field) owns Enter and Esc.
+      if ((e.key === "Escape" || e.key === "Enter") && (e.target as Element).closest?.("[data-local-keys]")) return;
       e.stopPropagation();
       if (e.key === "Escape") {
         e.preventDefault();

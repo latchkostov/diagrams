@@ -27,6 +27,8 @@ interface Props {
   onRun: (sim: Simulation) => void;
   onSave: (sim: Simulation) => void;
   onDelete: (id: string) => void;
+  /** A simulation from the list was opened for editing (the live bar then shows it, not free play). */
+  onOpen?: (sim: Simulation) => void;
 }
 
 type Picker = { label: string; apply: (nodeId: string) => void } | null;
@@ -70,7 +72,7 @@ const num = (v: string) => (v.trim() === "" ? 0 : Number(v));
  * Right-side drawer to create and edit the diagram's saved simulations. Edits a working copy;
  * Save writes it through the editor (one undo step) and Run plays it immediately, saved or not.
  */
-export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: Props) {
+export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onOpen }: Props) {
   const ui = useLive();
   const diagram = ui.diagram();
   const [sim, setSim] = useState<Simulation | null>(() => (initial ? structuredClone(initial) : null));
@@ -136,7 +138,10 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
 
       {!sim ? (
         <SimList
-          onEdit={(s) => setSim(structuredClone(s))}
+          onEdit={(s) => {
+            setSim(structuredClone(s));
+            onOpen?.(s);
+          }}
           onNew={() => setSim(blankSimulation(diagram))}
           onRun={onRun}
           running={state.simulation?.id ?? null}
@@ -195,7 +200,7 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
 
           <Disclosure
             id="timeline"
-            title="Story & chaos"
+            title="Timeline"
             hint="Notes, outages and changes over time"
             count={sim.timeline?.length ?? 0}
             warn={warnings.some((w) => w.where.startsWith("timeline"))}

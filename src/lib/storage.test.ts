@@ -32,4 +32,22 @@ describe("safe storage", () => {
     expect(storage.removeItem("key")).toBe(true);
     expect(storage.getItem("key")).toBeNull();
   });
+  it("lists keys, and lists nothing when storage is blocked", () => {
+    const values = new Map([
+      ["a", "1"],
+      ["b", "2"],
+    ]);
+    const storage = createSafeStorage(() => ({
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => void values.set(key, value),
+      removeItem: (key) => void values.delete(key),
+      key: (i) => [...values.keys()][i] ?? null,
+      length: values.size,
+    }));
+    expect(storage.keys()).toEqual(["a", "b"]);
+    const blocked = createSafeStorage(() => {
+      throw new DOMException("Blocked", "SecurityError");
+    });
+    expect(blocked.keys()).toEqual([]);
+  });
 });

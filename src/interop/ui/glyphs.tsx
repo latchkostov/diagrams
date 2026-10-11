@@ -27,6 +27,8 @@ const strokes = {
   check: "M3 8.5 6.5 12 13 4.5",
   sliders: "M3 4.5h10M3 11.5h10M6 3v3M10 10v3",
   eye: "M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8ZM8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+  /** Your diagrams: a small stack of documents. */
+  stack: "M5.25 4.25h7v9.5h-7zM3.75 11.75V2.25h6.5M7.25 7.25h3M7.25 9.75h3",
 } as const;
 
 export type GlyphName = keyof typeof strokes | "spinner" | "drive" | "drawio" | "mermaid";

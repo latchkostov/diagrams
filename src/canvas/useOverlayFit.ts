@@ -1,8 +1,9 @@
 import { useEffect, useState, type RefObject } from "react";
 import { useReactFlow, useStoreApi, type ReactFlowState } from "@xyflow/react";
 import type { EdgeStyle } from "../harness/edgeStyles";
-import { fitAvoiding, type FitOptions } from "./geometry/fit";
-import { intersects, type Rect } from "./geometry/rect";
+import { fitAvoiding, panIntoView, type FitOptions } from "./geometry/fit";
+import { intersects, union, type Rect } from "./geometry/rect";
+import { motionMs } from "../lib/motion";
 import { selectRoutes } from "./edges/useEdgeRoute";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 
@@ -69,7 +70,71 @@ export function useOverlayFit(root: RefObject<HTMLElement | null>, opts: { style
     const s = store.getState() as State;
     if (!el || !s.width || !s.height) return;
     const v = fitAvoiding(contentRects(s, style, direction), { width: s.width, height: s.height }, overlayRects(el), o);
-    if (v) void setViewport(v, { duration: o.duration ?? 0 });
+    if (v) void setViewport(v, { duration: motionMs(o.duration ?? 0) });
+  };
+}
+
+/** Screen room kept around a selection brought into view: clear of the title card, controls and minimap edges. */
+const VIEW_MARGIN = { top: 72, right: 40, bottom: 56, left: 40 };
+
+/**
+ * Pans (never zooms) so the selection and its edges are visible in the pane as it is now, e.g.
+ * after the inspector opened and narrowed the canvas. If they can't all fit, the selection itself
+ * wins. Returns false when nothing is selected or nothing had to move.
+ */
+export function useKeepSelectionInView(
+  root: RefObject<HTMLElement | null>,
+  opts: { style: EdgeStyle; direction: "LR" | "TB" },
+) {
+  const store = useStoreApi<FlowNode, DiagramFlowEdge>();
+  const { setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
+  const { style, direction } = opts;
+  return (duration = 250): boolean => {
+    const el = root.current;
+    if (!el) return false;
+    const s = store.getState() as State;
+    const must: Rect[] = [];
+    const around: Rect[] = [];
+    const selectedNodes = new Set<string>();
+    for (const n of s.nodeLookup.values()) {
+      if (!n.selected || n.hidden) continue;
+      const w = n.measured?.width ?? 0;
+      const h = n.measured?.height ?? 0;
+      if (!w || !h) continue;
+      selectedNodes.add(n.id);
+      must.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: w, height: h });
+    }
+    const routes = selectRoutes(s, { style, direction });
+    for (const e of s.edges) {
+      const attached = selectedNodes.has(e.source) || selectedNodes.has(e.target);
+      if (!e.selected && !attached) continue;
+      const r = routes.get(e.id);
+      if (!r) continue;
+      const out = e.selected ? must : around;
+      for (const p of r.points) out.push({ x: p.x - 2, y: p.y - 2, width: 4, height: 4 });
+      if (r.label)
+        out.push({
+          x: r.label.x - r.label.width / 2,
+          y: r.label.y - r.label.height / 2,
+          width: r.label.width,
+          height: r.label.height,
+        });
+    }
+    const core = union(must);
+    const want = union([...must, ...around]);
+    if (!core || !want) return false;
+    const { width, height } = el.getBoundingClientRect();
+    const [x, y, zoom] = s.transform;
+    const view = {
+      x: VIEW_MARGIN.left,
+      y: VIEW_MARGIN.top,
+      width: width - VIEW_MARGIN.left - VIEW_MARGIN.right,
+      height: height - VIEW_MARGIN.top - VIEW_MARGIN.bottom,
+    };
+    const v = panIntoView(want, core, { x, y, zoom }, view);
+    if (!v) return false;
+    void setViewport(v, { duration: motionMs(duration) });
+    return true;
   };
 }
 
@@ -147,7 +212,7 @@ export function useCovered(
 
 /**
  * React Flow's minimap and controls panels don't forward props, so tag them for tests (which
- * select by data-testid only): `canvas-minimap`, `canvas-controls`.
+ * select by data-testid only): `canvas-minimap`, `canvas-controls`, `canvas-attribution`.
  */
 export function useOverlayTestIds(root: RefObject<HTMLElement | null>) {
   useEffect(() => {
@@ -155,5 +220,6 @@ export function useOverlayTestIds(root: RefObject<HTMLElement | null>) {
     if (!el) return;
     el.querySelector(".react-flow__panel.react-flow__minimap")?.setAttribute("data-testid", "canvas-minimap");
     el.querySelector(".react-flow__panel.react-flow__controls")?.setAttribute("data-testid", "canvas-controls");
+    el.querySelector(".react-flow__panel.react-flow__attribution")?.setAttribute("data-testid", "canvas-attribution");
   });
 }

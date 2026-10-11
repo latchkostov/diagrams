@@ -1,6 +1,6 @@
 import { safeStorage, safeSessionStorage } from "./storage";
 import { DIAGRAM_FORMAT, type DiagramFile, type DiagramNode, type Stencil } from "../model/types";
-import { createDiagram, getImported } from "./diagramIO";
+import { createDiagram } from "./diagramIO";
 import { notify } from "../interop/ui/toast";
 import { pushRecentStencil } from "./recentStencils";
 
@@ -80,12 +80,7 @@ export function nodeJson(s: Stencil, at = { x: 40, y: 40 }): DiagramNode {
   };
 }
 
-/** The title of the diagram a new one would replace (only one imported/new diagram is kept). */
-export function replacedByNewDiagram(): string | undefined {
-  return getImported()?.title;
-}
-
-/** Starts a new diagram holding just this stencil, stored in the imported-diagram slot. */
+/** Starts a new diagram holding just this stencil, in Your diagrams (nothing is replaced). */
 export function openNewDiagramWith(s: Stencil) {
   const d: DiagramFile = {
     format: DIAGRAM_FORMAT,
@@ -94,7 +89,12 @@ export function openNewDiagramWith(s: Stencil) {
     edges: [],
   };
   pushRecentStencil(s.id);
-  // createDiagram tells the App to re-read its slots; openCanvas navigates client-side (no reload).
-  openCanvas(createDiagram(d));
-  notify(`Started “${d.title}”.`, { kind: "success" });
+  // createDiagram tells the App to re-read the library; openCanvas navigates client-side (no reload).
+  try {
+    openCanvas(createDiagram(d));
+  } catch (err) {
+    notify(`Couldn't start a new diagram. ${err instanceof Error ? err.message : String(err)}`, { kind: "error" });
+    return;
+  }
+  notify(`Started “${d.title}” in Your diagrams.`, { kind: "success" });
 }

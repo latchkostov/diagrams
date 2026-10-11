@@ -4,9 +4,8 @@ import type { LiveState } from "./controller";
 import { useLive } from "./context";
 import { formatClock } from "./format";
 import { LiveIcon } from "./icons";
+import { NOTE_GAP, placeNote, type Box } from "./notePlacement";
 
-// Clears the metric pill under the focused nodes.
-const GAP = 48;
 /** Keep clear of the control bar at the bottom. */
 const BOTTOM_RESERVE = 170;
 
@@ -52,29 +51,49 @@ export function NoteCallout({ state }: { state: LiveState }) {
   // The authoring panel covers the right side of the pane.
   const width = paneWidth - (ui.panelOpen ? 408 : 0);
 
-  // Screen-space bounding box of the focused nodes.
+  // Screen-space boxes of every node, and the bounding box of the focused ones.
   const [tx, ty, zoom] = transform;
-  let box: { l: number; t: number; r: number; b: number } | null = null;
-  for (const id of note.focus) {
-    const n = lookup.get(id);
-    if (!n) continue;
+  const focusIds = new Set(note.focus);
+  const others: Box[] = [];
+  const focused: Box[] = [];
+  let box: Box | null = null;
+  for (const n of lookup.values()) {
+    if (n.type !== "diagram" || n.hidden) continue;
     const l = n.internals.positionAbsolute.x * zoom + tx;
     const t = n.internals.positionAbsolute.y * zoom + ty;
-    const r = l + (n.measured.width ?? 0) * zoom;
-    const b = t + (n.measured.height ?? 0) * zoom;
+    const rect = { l, t, r: l + (n.measured.width ?? 0) * zoom, b: t + (n.measured.height ?? 0) * zoom };
+    if (!focusIds.has(n.id)) {
+      others.push(rect);
+      continue;
+    }
+    focused.push(rect);
     box = box
-      ? { l: Math.min(box.l, l), t: Math.min(box.t, t), r: Math.max(box.r, r), b: Math.max(box.b, b) }
-      : { l, t, r, b };
+      ? {
+          l: Math.min(box.l, rect.l),
+          t: Math.min(box.t, rect.t),
+          r: Math.max(box.r, rect.r),
+          b: Math.max(box.b, rect.b),
+        }
+      : rect;
   }
 
   let style: CSSProperties;
-  let placement: "below" | "above" | "free" = "free";
-  if (box) {
+  let placement: "below" | "above" | "right" | "left" | "free" = "free";
+  // Beside the focus, in the free space around it (covering as little of the diagram as it can).
+  const spot = box && placeNote(box, size, { width, height: height - BOTTOM_RESERVE }, others, focused);
+  if (spot) {
+    placement = spot.placement;
+    const vertical = placement === "below" || placement === "above";
+    style = {
+      left: spot.left,
+      top: spot.top,
+      [vertical ? "--arrow" : "--arrow-y"]: `${spot.arrow}px`,
+    } as CSSProperties;
+  } else if (box) {
     const cx = (box.l + box.r) / 2;
     const left = Math.min(Math.max(16, cx - size.w / 2), Math.max(16, width - size.w - 16));
-    const below = box.b + GAP + size.h < height - BOTTOM_RESERVE;
-    placement = below ? "below" : box.t - GAP - size.h > 16 ? "above" : "below";
-    const top = placement === "below" ? Math.min(box.b + GAP, height - BOTTOM_RESERVE - size.h) : box.t - GAP - size.h;
+    placement = "below";
+    const top = Math.min(box.b + NOTE_GAP, height - BOTTOM_RESERVE - size.h);
     const arrow = Math.min(Math.max(24, cx - left), size.w - 24);
     style = { left, top: Math.max(16, top), "--arrow": `${arrow}px` } as CSSProperties;
   } else {
@@ -91,6 +110,7 @@ export function NoteCallout({ state }: { state: LiveState }) {
       role="status"
       aria-live="polite"
       data-testid="live-note"
+      data-placement={placement}
       data-waiting={waiting ? "1" : undefined}
       data-editor-overlay
     >
