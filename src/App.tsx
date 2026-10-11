@@ -14,6 +14,7 @@ import { examples, getLoadedExample, loadExample } from "./examples";
 import { groupByTheme, themeInfo } from "./examples/themes";
 import { TopBar, type ExampleOption } from "./components/TopBar";
 import type { CanvasHandle } from "./canvas/CanvasView";
+import { LazyCanvasView as CanvasView, preloadCanvasView } from "./canvas/loadCanvasView";
 import type { OpenTarget } from "./lab/LabView";
 import type { DiagramFile } from "./model/types";
 import { useUrlState, type View } from "./lib/urlState";
@@ -52,7 +53,6 @@ import "./styles/interop.css";
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
 // with the canvas), and the Lab never downloads unless someone opens ?view=lab.
 const GalleryView = lazy(() => import("./gallery/GalleryView").then((m) => ({ default: m.GalleryView })));
-const CanvasView = lazy(() => import("./canvas/CanvasView").then((m) => ({ default: m.CanvasView })));
 const LabView = lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })));
 
 // Only public examples appear in prompts, the palette and the start card.
@@ -94,7 +94,8 @@ function MainApp() {
       : (library.entries[0]?.slug ?? DRAFT_SLUG);
 
   // Keep the mounted canvas (and its edits) until the requested example is ready. The
-  // cleanup also prevents a slow import from replacing a newer navigation.
+  // cleanup also prevents a slow import from replacing a newer navigation. Meanwhile the picker
+  // shows targetSlug (the pending selection), so keyboard navigation moves on from it.
   const waitingForExample = examples.some((e) => e.slug === targetSlug) && !getLoadedExample(targetSlug);
   const [loadedSlug, setLoadedSlug] = useState<string | undefined>(() => (waitingForExample ? undefined : targetSlug));
   // Stored documents and cached examples still open synchronously, including Lab imports.
@@ -103,6 +104,8 @@ function MainApp() {
   useEffect(() => {
     if (url.view !== "canvas") return;
     let active = true;
+    // On a cold start nothing is mounted yet: fetch the canvas code beside the example.
+    if (waitingForExample) preloadCanvasView();
     const ready = waitingForExample ? loadExample(targetSlug) : Promise.resolve();
     void ready.then(
       () => active && setLoadedSlug(targetSlug),
@@ -367,7 +370,7 @@ function MainApp() {
           view={url.view}
           onView={goTo}
           exampleOptions={options}
-          example={slug}
+          example={targetSlug}
           onExample={(example) => setUrl({ example })}
           interop={interop}
           shared={
@@ -410,6 +413,11 @@ function MainApp() {
           </ViewBoundary>
         </div>
         <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />
+      </div>
+      <div className="sr-only" role="status" data-testid="example-loading">
+        {url.view === "canvas" && waitingForExample
+          ? `Loading ${examples.find((e) => e.slug === targetSlug)?.title ?? "the example"}…`
+          : ""}
       </div>
       {interop.layer}
       {libraryOpen && (

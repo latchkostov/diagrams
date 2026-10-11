@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import { examples, loadExample } from "../../examples";
+import { LazyCanvasView as CanvasView, preloadCanvasView } from "../../canvas/loadCanvasView";
 import { decodeShare, sharePayloadFromHash } from "../share";
 import { Glyph } from "../ui/glyphs";
 import { notify } from "../ui/toast";
@@ -10,12 +11,11 @@ import { notify } from "../ui/toast";
 // share payload in the fragment (`#d=...`). `live=1&sim=<id>` are passed through untouched for the
 // live view.
 
-const CanvasView = lazy(() => import("../../canvas/CanvasView").then((m) => ({ default: m.CanvasView })));
-
 type State =
   | { status: "loading" }
   | { status: "ready"; diagram: DiagramFile; key: string; openHref: string }
-  | { status: "error"; message: string };
+  /** `toast`: also announce the error (a failed download, not a bad link). */
+  | { status: "error"; message: string; toast?: boolean };
 
 function resolve(): Promise<State> {
   const params = new URLSearchParams(window.location.search);
@@ -42,11 +42,11 @@ function resolve(): Promise<State> {
         key: `ex:${ex.slug}`,
         openHref: `${base}?view=canvas&example=${encodeURIComponent(ex.slug)}`,
       }),
-      () => {
-        const message = "Couldn't load that example. Check your connection and reload.";
-        notify(message, { kind: "error" });
-        return { status: "error", message };
-      },
+      (): State => ({
+        status: "error",
+        message: "Couldn't load that example. Check your connection and reload.",
+        toast: true,
+      }),
     );
   return Promise.resolve({
     status: "error",
@@ -59,12 +59,23 @@ function resolve(): Promise<State> {
 export function EmbedView() {
   const [state, setState] = useState<State>({ status: "loading" });
   useEffect(() => {
-    let live = true;
-    const load = () => void resolve().then((s) => live && setState(s));
+    // The diagram is always shown on the canvas: fetch its code while the diagram resolves.
+    preloadCanvasView();
+    // Only the latest navigation may apply: a slow example download that finishes after a newer
+    // hash change (or after unmounting) is dropped, toast included.
+    let latest = 0;
+    const load = () => {
+      const request = ++latest;
+      void resolve().then((s) => {
+        if (request !== latest) return;
+        if (s.status === "error" && s.toast) notify(s.message, { kind: "error" });
+        setState(s);
+      });
+    };
     load();
     window.addEventListener("hashchange", load);
     return () => {
-      live = false;
+      latest++;
       window.removeEventListener("hashchange", load);
     };
   }, []);
