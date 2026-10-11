@@ -1,3 +1,5 @@
+import { safeStorage } from "../lib/storage";
+import { exportFixture } from "./exportFixture";
 // The Lab's preset registry. Every entry renders the *current* components with fixed data, so
 // opening ?view=lab&preset=<id> is a quick visual check of whatever you're working on.
 //
@@ -23,15 +25,30 @@ import {
 import { scenarioDefs } from "./scenarios";
 import { AllStencils, NODE_STATES, NodeMatrix, NodePlayground } from "./NodeShowcase";
 import type { ControlDef, Preset } from "./types";
+import { LiveLabStage } from "../live/LiveLabStage";
+import { badgeStatesDiagram, noteStatesDiagram, particleStressDiagram, type NoteState } from "../live/labDiagrams";
 
 const variantOptions = Object.entries(nodeVariants).map(([value, v]) => ({ value, label: v.label }));
-const variantsOf = (v: unknown): NodeVariantId[] => (v === "all" ? (Object.keys(nodeVariants) as NodeVariantId[]) : [v as NodeVariantId]);
+const variantsOf = (v: unknown): NodeVariantId[] =>
+  v === "all" ? (Object.keys(nodeVariants) as NodeVariantId[]) : [v as NodeVariantId];
 
 const STENCIL_SETS: Record<string, { label: string; ids: string[] }> = {
-  mixed: { label: "Mixed", ids: ["kafka.topic", "azure.service-bus.queue", "service.dotnet", "postgres", "aws.api-gateway", "client.browser"] },
-  messaging: { label: "Messaging", ids: ["kafka.topic", "azure.service-bus.topic", "azure.event-hubs", "aws.sqs", "rabbitmq.exchange", "nats.subject"] },
-  wordmarks: { label: "Wide icons", ids: ["splunk", "service.go", "snowflake", "databricks", "elasticsearch", "datadog"] },
-  compute: { label: "Compute", ids: ["azure.functions", "aws.lambda", "k8s.deployment", "service.java", "service.python", "docker.container"] },
+  mixed: {
+    label: "Mixed",
+    ids: ["kafka.topic", "azure.service-bus.queue", "service.dotnet", "postgres", "aws.api-gateway", "client.browser"],
+  },
+  messaging: {
+    label: "Messaging",
+    ids: ["kafka.topic", "azure.service-bus.topic", "azure.event-hubs", "aws.sqs", "rabbitmq.exchange", "nats.subject"],
+  },
+  wordmarks: {
+    label: "Wide icons",
+    ids: ["splunk", "service.go", "snowflake", "databricks", "elasticsearch", "datadog"],
+  },
+  compute: {
+    label: "Compute",
+    ids: ["azure.functions", "aws.lambda", "k8s.deployment", "service.java", "service.python", "docker.container"],
+  },
 };
 
 // ---------- nodes ----------
@@ -42,12 +59,27 @@ const nodePresets: Preset[] = [
     id: "nodes-states",
     title: "Node states",
     group: "Nodes",
-    description: "Every node variant × a few stencils × states: selected, long label, no sublabel, unknown stencil, missing icon.",
+    description:
+      "Every node variant × a few stencils × states: selected, long label, no sublabel, unknown stencil, missing icon.",
     controls: [
-      { type: "select", key: "variant", label: "Variant", default: "all", options: [{ value: "all", label: "All variants" }, ...variantOptions] },
-      { type: "select", key: "set", label: "Stencils", default: "mixed", options: Object.entries(STENCIL_SETS).map(([value, s]) => ({ value, label: s.label })) },
+      {
+        type: "select",
+        key: "variant",
+        label: "Variant",
+        default: "all",
+        options: [{ value: "all", label: "All variants" }, ...variantOptions],
+      },
+      {
+        type: "select",
+        key: "set",
+        label: "Stencils",
+        default: "mixed",
+        options: Object.entries(STENCIL_SETS).map(([value, s]) => ({ value, label: s.label })),
+      },
     ],
-    render: (v) => <NodeMatrix variants={variantsOf(v.variant)} stencilIds={STENCIL_SETS[String(v.set)].ids} states={NODE_STATES} />,
+    render: (v) => (
+      <NodeMatrix variants={variantsOf(v.variant)} stencilIds={STENCIL_SETS[String(v.set)].ids} states={NODE_STATES} />
+    ),
   },
   {
     kind: "render",
@@ -62,11 +94,16 @@ const nodePresets: Preset[] = [
         key: "category",
         label: "Category",
         default: "all",
-        options: [{ value: "all", label: "All categories" }, ...CATEGORY_ORDER.map((c) => ({ value: c, label: categoryLabel[c] }))],
+        options: [
+          { value: "all", label: "All categories" },
+          ...CATEGORY_ORDER.map((c) => ({ value: c, label: categoryLabel[c] })),
+        ],
       },
       { type: "text", key: "q", label: "Filter", default: "", placeholder: "id, label or vendor" },
     ],
-    render: (v) => <AllStencils variant={v.variant as NodeVariantId} category={String(v.category)} query={String(v.q)} />,
+    render: (v) => (
+      <AllStencils variant={v.variant as NodeVariantId} category={String(v.category)} query={String(v.q)} />
+    ),
   },
   {
     kind: "render",
@@ -75,14 +112,32 @@ const nodePresets: Preset[] = [
     group: "Nodes",
     description: "One node, any stencil and text.",
     controls: [
-      { type: "select", key: "variant", label: "Variant", default: "all", options: [{ value: "all", label: "All variants" }, ...variantOptions] },
-      { type: "select", key: "stencil", label: "Stencil", default: "kafka.topic", options: stencils.map((s) => ({ value: s.id, label: `${s.label} (${s.id})` })) },
+      {
+        type: "select",
+        key: "variant",
+        label: "Variant",
+        default: "all",
+        options: [{ value: "all", label: "All variants" }, ...variantOptions],
+      },
+      {
+        type: "select",
+        key: "stencil",
+        label: "Stencil",
+        default: "kafka.topic",
+        options: stencils.map((s) => ({ value: s.id, label: `${s.label} (${s.id})` })),
+      },
       { type: "text", key: "label", label: "Label", default: "orders" },
       { type: "text", key: "sublabel", label: "Sublabel", default: "orders.created.v1" },
       { type: "boolean", key: "selected", label: "Selected", default: false },
     ],
     render: (v) => (
-      <NodePlayground variant={v.variant as NodeVariantId | "all"} stencil={String(v.stencil)} label={String(v.label)} sublabel={String(v.sublabel)} selected={!!v.selected} />
+      <NodePlayground
+        variant={v.variant as NodeVariantId | "all"}
+        stencil={String(v.stencil)}
+        label={String(v.label)}
+        sublabel={String(v.sublabel)}
+        selected={!!v.selected}
+      />
     ),
   },
   {
@@ -98,7 +153,14 @@ const nodePresets: Preset[] = [
 // ---------- edges ----------
 
 const edgePresets: Preset[] = [
-  { kind: "diagram", id: "edges-kinds", title: "Edge kinds", group: "Edges", description: "async, sync, labelled, long label, two-way.", diagram: () => edgeKindsDiagram() },
+  {
+    kind: "diagram",
+    id: "edges-kinds",
+    title: "Edge kinds",
+    group: "Edges",
+    description: "async, sync, labelled, long label, two-way.",
+    diagram: () => edgeKindsDiagram(),
+  },
   {
     kind: "diagram",
     id: "edges-back",
@@ -130,12 +192,28 @@ const edgePresets: Preset[] = [
 
 // ---------- diagrams ----------
 
+// Local-only work diagrams (dev only) never get presets; only their file names are read here.
+const localOnly = new Set(
+  Object.keys(import.meta.env.DEV ? import.meta.glob("../examples/private/*.json") : {}).map((p) =>
+    p.slice(p.lastIndexOf("/") + 1, -".json".length),
+  ),
+);
+
 const stressControls = (nodes: number): ControlDef[] => [
   { type: "number", key: "nodes", label: "Nodes", default: nodes, min: 1, max: 1000, step: 10 },
   { type: "number", key: "seed", label: "Seed", default: 1, min: 1, max: 9999 },
   { type: "number", key: "density", label: "Cross-links", default: 0.25, min: 0, max: 1, step: 0.05 },
   { type: "boolean", key: "groups", label: "Group columns", default: false },
-  { type: "select", key: "direction", label: "Direction", default: "LR", options: [{ value: "LR", label: "Left → right" }, { value: "TB", label: "Top → bottom" }] },
+  {
+    type: "select",
+    key: "direction",
+    label: "Direction",
+    default: "LR",
+    options: [
+      { value: "LR", label: "Left → right" },
+      { value: "TB", label: "Top → bottom" },
+    ],
+  },
 ];
 
 const stress = (nodes: number): Preset => ({
@@ -146,12 +224,19 @@ const stress = (nodes: number): Preset => ({
   description: "Procedural layered pipeline. Change Nodes to try any size.",
   controls: stressControls(nodes),
   diagram: (v) =>
-    stressDiagram({ nodes: Number(v.nodes), seed: Number(v.seed), density: Number(v.density), groups: !!v.groups, direction: v.direction === "TB" ? "TB" : "LR" }),
+    stressDiagram({
+      nodes: Number(v.nodes),
+      seed: Number(v.seed),
+      density: Number(v.density),
+      groups: !!v.groups,
+      direction: v.direction === "TB" ? "TB" : "LR",
+    }),
 });
 
 const diagramPresets: Preset[] = [
-  ...examples.map(
-    (e): Preset => ({
+  ...examples
+    .filter((e) => !localOnly.has(e.slug))
+    .map((e): Preset => ({
       kind: "diagram",
       id: `example-${e.slug}`,
       title: e.diagram.title,
@@ -159,8 +244,7 @@ const diagramPresets: Preset[] = [
       description: e.diagram.description,
       exampleSlug: e.slug,
       diagram: () => e.diagram,
-    }),
-  ),
+    })),
   stress(10),
   stress(50),
   stress(150),
@@ -185,7 +269,14 @@ const diagramPresets: Preset[] = [
     controls: [{ type: "number", key: "size", label: "Nodes", default: 8, min: 2, max: 40 }],
     diagram: (v) => cycleDiagram(Number(v.size)),
   },
-  { kind: "diagram", id: "group-tones", title: "Group tones", group: "Diagrams", description: "Every boundary tone with cross-boundary edges.", diagram: () => groupsDiagram() },
+  {
+    kind: "diagram",
+    id: "group-tones",
+    title: "Group tones",
+    group: "Diagrams",
+    description: "Every boundary tone with cross-boundary edges.",
+    diagram: () => groupsDiagram(),
+  },
   {
     kind: "diagram",
     id: "empty",
@@ -210,18 +301,16 @@ const simControls: ControlDef[] = [
   { type: "boolean", key: "autoplay", label: "Autoplay", default: true },
 ];
 
-const simPresets: Preset[] = scenarioDefs.map(
-  (s): Preset => ({
-    kind: "scenario",
-    id: s.id,
-    title: s.title,
-    group: "Simulation",
-    description: s.description,
-    controls: [...(s.controls ?? []), ...simControls],
-    diagram: s.diagram,
-    scenario: s.scenario,
-  }),
-);
+const simPresets: Preset[] = scenarioDefs.map((s): Preset => ({
+  kind: "scenario",
+  id: s.id,
+  title: s.title,
+  group: "Simulation",
+  description: s.description,
+  controls: [...(s.controls ?? []), ...simControls],
+  diagram: s.diagram,
+  scenario: s.scenario,
+}));
 
 // ---------- playground ----------
 
@@ -230,7 +319,7 @@ export const CUSTOM_STORAGE_KEY = "diagrams.lab.custom.v1";
 
 export function readCustomDiagram(): DiagramFile | null {
   try {
-    const raw = localStorage.getItem(CUSTOM_STORAGE_KEY);
+    const raw = safeStorage.getItem(CUSTOM_STORAGE_KEY);
     return raw ? (JSON.parse(raw) as DiagramFile) : null;
   } catch {
     return null;
@@ -238,6 +327,13 @@ export function readCustomDiagram(): DiagramFile | null {
 }
 
 const playgroundPresets: Preset[] = [
+  {
+    kind: "diagram",
+    id: "export-contract",
+    title: "Complete export contract",
+    group: "Playground",
+    diagram: () => exportFixture,
+  },
   {
     kind: "diagram",
     id: CUSTOM_PRESET_ID,
@@ -255,7 +351,124 @@ const playgroundPresets: Preset[] = [
   },
 ];
 
-export const presets: readonly Preset[] = [...nodePresets, ...edgePresets, ...diagramPresets, ...simPresets, ...playgroundPresets];
+// ---------- live view ----------
+
+const liveSpeed: ControlDef = {
+  type: "select",
+  key: "livespeed",
+  label: "Speed",
+  default: "1",
+  options: ["0.25", "0.5", "1", "2", "4", "8"].map((s) => ({ value: s, label: `${s}×` })),
+};
+const livePresent: ControlDef = { type: "boolean", key: "livepresent", label: "Presentation sizing", default: false };
+
+const livePresets: Preset[] = [
+  {
+    kind: "render",
+    id: "live-particles-stress",
+    title: "Live: particles stress",
+    group: "Simulation",
+    description:
+      "Continuous traffic sized to keep ~N particles in flight (the engine draws at most 1,500). Watch the frame rate.",
+    controls: [
+      {
+        type: "select",
+        key: "particles",
+        label: "Particles",
+        default: "1500",
+        options: ["250", "500", "1000", "1500", "3000"].map((v) => ({ value: v, label: v })),
+      },
+      liveSpeed,
+      livePresent,
+    ],
+    render: (v) => (
+      <LiveLabStage
+        key={`${v.particles}:${v.livespeed}`}
+        diagram={particleStressDiagram(Number(v.particles))}
+        presenting={!!v.livepresent}
+        initial={{ traffic: true, speed: Number(v.livespeed) }}
+      />
+    ),
+  },
+  {
+    kind: "render",
+    id: "live-badge-states",
+    title: "Live: badge states",
+    group: "Simulation",
+    description: "Down, paused, slow, failing (retries and dead letters) and healthy nodes, paused a few seconds in.",
+    controls: [
+      { type: "number", key: "at", label: "Paused at (s)", default: 5, min: 0, max: 20, step: 0.5 },
+      { type: "boolean", key: "play", label: "Keep playing", default: false },
+      livePresent,
+    ],
+    render: (v) => {
+      const d = badgeStatesDiagram();
+      return (
+        <LiveLabStage
+          key={`${v.at}:${v.play}`}
+          diagram={d}
+          presenting={!!v.livepresent}
+          initial={{ sim: d.simulations![0].id, seekMs: Number(v.at) * 1000, paused: !v.play }}
+        />
+      );
+    },
+  },
+  {
+    kind: "render",
+    id: "live-note-states",
+    title: "Live: narration callouts",
+    group: "Simulation",
+    description: "A note focused on one node, a pausing note, a note spanning the diagram, and a free-floating note.",
+    controls: [
+      {
+        type: "select",
+        key: "note",
+        label: "Note",
+        default: "focus",
+        options: [
+          { value: "focus", label: "Focused on one node" },
+          { value: "pause", label: "Pausing (waits for Continue)" },
+          { value: "wide", label: "Focus far apart" },
+          { value: "free", label: "No focus" },
+        ],
+      },
+      livePresent,
+    ],
+    render: (v) => {
+      const d = noteStatesDiagram(v.note as NoteState);
+      return <LiveLabStage key={String(v.note)} diagram={d} presenting={!!v.livepresent} initial={{ sim: "story" }} />;
+    },
+  },
+  ...examples
+    .filter((e) => !localOnly.has(e.slug))
+    .flatMap((e) =>
+      (e.diagram.simulations ?? []).map((s): Preset => ({
+        kind: "render",
+        id: `live-${e.slug}-${s.id}`.toLowerCase().replace(/[^a-z0-9-]+/g, "-"),
+        title: `Live: ${s.title}`,
+        group: "Simulation",
+        description: `${e.diagram.title}. ${s.description ?? ""}`.trim(),
+        controls: [liveSpeed, livePresent],
+        render: (v) => (
+          <LiveLabStage
+            key={String(v.livespeed)}
+            diagram={e.diagram}
+            presenting={!!v.livepresent}
+            initial={{ sim: s.id, speed: Number(v.livespeed) }}
+          />
+        ),
+      })),
+    ),
+];
+
+export const presets: readonly Preset[] = [
+  ...nodePresets,
+  ...edgePresets,
+  ...diagramPresets,
+  ...simPresets,
+  ...livePresets,
+  ...playgroundPresets,
+];
 
 export const DEFAULT_PRESET_ID = "nodes-states";
 

@@ -1,0 +1,205 @@
+import { memo, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useNodes, useStore } from "@xyflow/react";
+import type { DiagramFile, SimRole } from "../model/types";
+import type { NodeSimState } from "../sim/types";
+import { resolveProps } from "../sim/defaults";
+import type { DiagramFlowNode, FlowNode } from "../canvas/types";
+import type { LiveState } from "./controller";
+import { useLive } from "./context";
+import { formatCount, formatRate, heatOf } from "./format";
+import { LiveIcon } from "./icons";
+
+const BROKERS: ReadonlySet<SimRole> = new Set(["topic", "queue", "stream"]);
+
+const doneLabel: Record<SimRole, string> = {
+  source: "Sent",
+  gateway: "Routed",
+  processor: "Processed",
+  topic: "Published",
+  stream: "Published",
+  queue: "Enqueued",
+  store: "Written",
+  sink: "Received",
+  none: "Passed",
+};
+
+const backlogLabel = (role: SimRole) => (role === "queue" ? "queued" : role === "topic" || role === "stream" ? "lag" : "waiting");
+
+/**
+ * Per-node live readouts in React Flow's viewport (they pan and zoom with the diagram). Each node
+ * shows one primary metric (backlog / lag for brokers, throughput for everything else), a status
+ * ring when it isn't up, and a red count when something failed. Hovering a node shows the full
+ * breakdown. Re-renders at the UI clock (~8 Hz), never per frame.
+ */
+export function NodeBadges({ state, presenting }: { state: LiveState; presenting: boolean }) {
+  const ui = useLive();
+  const nodes = useNodes<FlowNode>();
+  const peaks = useRef(new Map<string, number>());
+  const diagram = ui.controller.currentDiagram;
+  const hovered = useHoveredNode();
+  // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
+  const zoom = useStore((s) => s.transform[2]);
+  const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
+  return (
+    <div className={`lv-badges${presenting ? " is-presenting" : ""}`} style={{ "--inv": inv.toFixed(3) } as CSSProperties}>
+      {nodes.map((n) => {
+        if (n.type !== "diagram") return null;
+        const s = state.snapshot.nodes[n.id];
+        if (!s || s.role === "none") return null;
+        const peak = Math.max(20, s.backlog, (peaks.current.get(n.id) ?? 0) * 0.995);
+        peaks.current.set(n.id, peak);
+        return (
+          <NodeBadge
+            key={n.id}
+            node={n}
+            s={s}
+            peak={peak}
+            hovered={hovered === n.id}
+            concurrency={s.role === "processor" ? resolveProps(s.role, n.data.label, ui.controller.effectiveProps(n.id)).concurrency : 0}
+            groups={hovered === n.id && (s.role === "topic" || s.role === "stream") ? groupNames(diagram, n.id) : undefined}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/** The diagram node under the pointer (the badge layer itself ignores the pointer). */
+function useHoveredNode(): string | null {
+  const domNode = useStore((s) => s.domNode);
+  const [id, setId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!domNode) return;
+    const over = (e: PointerEvent) => {
+      const el = e.target instanceof Element ? e.target.closest<HTMLElement>(".react-flow__node-diagram[data-id]") : null;
+      setId(el?.dataset.id ?? null);
+    };
+    const leave = () => setId(null);
+    domNode.addEventListener("pointerover", over);
+    domNode.addEventListener("pointerleave", leave);
+    return () => {
+      domNode.removeEventListener("pointerover", over);
+      domNode.removeEventListener("pointerleave", leave);
+    };
+  }, [domNode]);
+  return id;
+}
+
+/** Consumer-group name → who consumes it, for the lag breakdown. */
+function groupNames(d: DiagramFile, nodeId: string): Map<string, string> {
+  const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
+  const out = new Map<string, string>();
+  for (const e of d.edges) {
+    if (e.from !== nodeId) continue;
+    const group = typeof e.props?.group === "string" ? e.props.group : e.id;
+    const who = labels.get(e.to) ?? e.to;
+    out.set(group, out.has(group) ? `${out.get(group)}, ${who}` : who);
+  }
+  return out;
+}
+
+interface BadgeProps {
+  node: DiagramFlowNode;
+  s: NodeSimState;
+  peak: number;
+  hovered: boolean;
+  concurrency: number;
+  groups?: Map<string, string>;
+}
+
+const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency, groups }: BadgeProps) {
+  const w = node.measured?.width ?? node.width ?? 220;
+  const h = node.measured?.height ?? node.height ?? 72;
+  const broker = BROKERS.has(s.role);
+  const heat = heatOf(s.backlog);
+  const problems = s.failed + s.deadLettered + s.dropped;
+  const active = s.processed > 0 || s.inFlight > 0 || s.backlog > 0 || problems > 0;
+  const style = { transform: `translate(${node.position.x}px, ${node.position.y}px)`, width: w, height: h } as CSSProperties;
+
+  return (
+    <div
+      className={`lv-node is-${s.status}`}
+      style={style}
+      data-testid={`node-badge-${node.id}`}
+      data-status={s.status}
+      data-processed={s.processed}
+      data-backlog={s.backlog}
+      data-inflight={s.inFlight}
+      data-failed={s.failed}
+      data-dlq={s.deadLettered}
+    >
+      {s.status !== "up" && <div className={`lv-ring is-${s.status}`} />}
+      {s.status === "down" && (
+        <div className="lv-down" title="Down: messages fail or are dropped">
+          <LiveIcon name="x" size={18} />
+        </div>
+      )}
+      {s.status === "paused" && (
+        <div className="lv-paused" title="Paused: messages wait here">
+          <LiveIcon name="pause" size={9} /> paused
+        </div>
+      )}
+      {problems > 0 && s.status !== "down" && (
+        <div className="lv-alert mono" title={`${problems} failed, dead-lettered or dropped`} data-testid={`node-alert-${node.id}`}>
+          {formatCount(problems)}
+        </div>
+      )}
+
+      {broker && (s.backlog > 0 || s.processed > 0) && (
+        <div className="lv-depth" aria-hidden>
+          <i style={{ "--d": `${Math.min(100, (s.backlog / peak) * 100).toFixed(1)}%` } as CSSProperties} />
+        </div>
+      )}
+
+      {active && (
+        <div className="lv-strip">
+          {broker ? (
+            <span className={`lv-metric is-backlog${s.backlog > 0 ? " is-hot" : ""}`} style={{ "--heat": heat.toFixed(3) } as CSSProperties} data-testid={`node-metric-${node.id}`}>
+              <b className="mono">{formatCount(s.backlog)}</b> {backlogLabel(s.role)}
+            </span>
+          ) : (
+            <span className={`lv-metric is-rate${s.throughput >= 0.05 ? " is-on" : ""}`} data-testid={`node-metric-${node.id}`}>
+              <LiveIcon name="bolt" size={10} />
+              <b className="mono">{formatRate(s.throughput)}</b>
+            </span>
+          )}
+        </div>
+      )}
+
+      {hovered && active && (
+        <div className="lv-detail" role="tooltip" data-testid={`node-detail-${node.id}`}>
+          <Row label={doneLabel[s.role]} value={formatCount(s.processed)} />
+          <Row label="Throughput" value={formatRate(s.throughput)} />
+          {broker ? <Row label={s.role === "queue" ? "Queued" : "Lag (max group)"} value={formatCount(s.backlog)} /> : s.backlog > 0 && <Row label="Waiting" value={formatCount(s.backlog)} />}
+          {s.role === "processor" && <Row label="In flight" value={`${s.inFlight} / ${concurrency}`} />}
+          {s.failed > 0 && <Row label="Failed attempts" value={formatCount(s.failed)} bad />}
+          {s.deadLettered > 0 && <Row label="Dead-lettered" value={formatCount(s.deadLettered)} bad />}
+          {s.dropped > 0 && <Row label="Dropped" value={formatCount(s.dropped)} bad />}
+          {groups && Object.keys(s.lag).length > 1 && (
+            <div className="lv-lag-list">
+              <div className="lv-lag-title">Lag by consumer group</div>
+              {Object.entries(s.lag)
+                .sort((a, b) => b[1] - a[1])
+                .map(([g, v]) => (
+                  <div key={g} className="lv-lag-row">
+                    <span>{groups.get(g) ?? g}</span>
+                    <i style={{ "--w": `${Math.min(100, (v / Math.max(1, s.backlog)) * 100)}%` } as CSSProperties} />
+                    <b className="mono">{formatCount(v)}</b>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
+
+function Row({ label, value, bad }: { label: string; value: string; bad?: boolean }) {
+  return (
+    <div className={`lv-detail-row${bad ? " is-bad" : ""}`}>
+      <span>{label}</span>
+      <b className="mono">{value}</b>
+    </div>
+  );
+}
