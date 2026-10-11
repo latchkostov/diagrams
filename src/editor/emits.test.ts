@@ -7,7 +7,10 @@ describe("parseEmits", () => {
     expect(parseEmits("PaymentRequested")).toBe("PaymentRequested");
   });
   it("arrow pairs build a map (→ or ->), * as fallback", () => {
-    expect(parseEmits("OrderPlaced → PaymentRequested, * -> Other")).toEqual({ OrderPlaced: "PaymentRequested", "*": "Other" });
+    expect(parseEmits("OrderPlaced → PaymentRequested, * -> Other")).toEqual({
+      OrderPlaced: "PaymentRequested",
+      "*": "Other",
+    });
   });
   it("accepts JSON maps", () => {
     expect(parseEmits('{"A": "B"}')).toEqual({ A: "B" });

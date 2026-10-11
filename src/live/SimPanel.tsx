@@ -95,7 +95,13 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
     <aside className="lv-panel" data-testid="sim-panel" data-editor-overlay aria-label="Simulations">
       <header className="lv-panel-head">
         {sim ? (
-          <button className="lv-btn" onClick={() => setSim(null)} title="All simulations" aria-label="All simulations" data-testid="sim-panel-back">
+          <button
+            className="lv-btn"
+            onClick={() => setSim(null)}
+            title="All simulations"
+            aria-label="All simulations"
+            data-testid="sim-panel-back"
+          >
             <LiveIcon name="chevron" size={13} className="lv-rot90" />
           </button>
         ) : (
@@ -122,7 +128,12 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
       )}
 
       {!sim ? (
-        <SimList onEdit={(s) => setSim(structuredClone(s))} onNew={() => setSim(blankSimulation(diagram))} onRun={onRun} running={state.simulation?.id ?? null} />
+        <SimList
+          onEdit={(s) => setSim(structuredClone(s))}
+          onNew={() => setSim(blankSimulation(diagram))}
+          onRun={onRun}
+          running={state.simulation?.id ?? null}
+        />
       ) : (
         <div className="lv-panel-body">
           <input
@@ -135,7 +146,11 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
             name="sim-title"
           />
 
-          <Section title="Traffic" count={sim.traffic.length} warn={warnings.some((w) => w.where.startsWith("traffic"))}>
+          <Section
+            title="Traffic"
+            count={sim.traffic.length}
+            warn={warnings.some((w) => w.where.startsWith("traffic"))}
+          >
             {sim.traffic.map((p, i) => (
               <TrafficCard
                 key={i}
@@ -155,7 +170,10 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
                 edit((d) => {
                   const node = diagram.nodes[0]?.id ?? "";
                   d.traffic.push({
-                    id: uniqueSimId("traffic", d.traffic.map((t) => t.id)),
+                    id: uniqueSimId(
+                      "traffic",
+                      d.traffic.map((t) => t.id),
+                    ),
                     node,
                     messageType: node ? suggestedMessageType(diagram, node) : undefined,
                     shape: defaultShape("burst"),
@@ -168,7 +186,13 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
             </button>
           </Section>
 
-          <Disclosure id="timeline" title="Story & chaos" hint="Notes, outages and changes over time" count={sim.timeline?.length ?? 0} warn={warnings.some((w) => w.where.startsWith("timeline"))}>
+          <Disclosure
+            id="timeline"
+            title="Story & chaos"
+            hint="Notes, outages and changes over time"
+            count={sim.timeline?.length ?? 0}
+            warn={warnings.some((w) => w.where.startsWith("timeline"))}
+          >
             {(sim.timeline ?? []).map((step, i) => (
               <StepRow
                 key={i}
@@ -196,7 +220,13 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
             </button>
           </Disclosure>
 
-          <Disclosure id="expectations" title="Expectations" hint="What must hold true" count={sim.expectations?.length ?? 0} warn={warnings.some((w) => w.where.startsWith("expectation"))}>
+          <Disclosure
+            id="expectations"
+            title="Expectations"
+            hint="What must hold true"
+            count={sim.expectations?.length ?? 0}
+            warn={warnings.some((w) => w.where.startsWith("expectation"))}
+          >
             {(sim.expectations ?? []).map((e, i) => (
               <ExpectationRow
                 key={i}
@@ -216,7 +246,10 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
                   const list = (d.expectations ??= []);
                   const sink = lastNode(diagram);
                   list.push({
-                    id: uniqueSimId("check", list.map((x) => x.id)),
+                    id: uniqueSimId(
+                      "check",
+                      list.map((x) => x.id),
+                    ),
                     label: "Everything arrives",
                     metric: sink ? { node: sink, field: "processed" } : { system: "inSystem" },
                     op: sink ? ">=" : "==",
@@ -244,7 +277,15 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
             </Field>
             <div className="lv-row2">
               <Field label="Seed">
-                <input type="number" value={sim.seed ?? ""} onChange={(e) => edit((d) => void (d.seed = e.target.value === "" ? undefined : Math.floor(num(e.target.value))))} data-testid="sim-panel-seed" name="sim-seed" />
+                <input
+                  type="number"
+                  value={sim.seed ?? ""}
+                  onChange={(e) =>
+                    edit((d) => void (d.seed = e.target.value === "" ? undefined : Math.floor(num(e.target.value))))
+                  }
+                  data-testid="sim-panel-seed"
+                  name="sim-seed"
+                />
               </Field>
               <Field label="Stop after (s)" hint="Empty: when it drains">
                 <input
@@ -252,7 +293,9 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
                   min={0}
                   step={1}
                   value={sim.durationMs === undefined ? "" : sec(sim.durationMs)}
-                  onChange={(e) => edit((d) => void (d.durationMs = e.target.value === "" ? undefined : ms(num(e.target.value))))}
+                  onChange={(e) =>
+                    edit((d) => void (d.durationMs = e.target.value === "" ? undefined : ms(num(e.target.value))))
+                  }
                   data-testid="sim-panel-duration"
                   name="sim-duration"
                 />
@@ -260,7 +303,13 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
             </div>
             {!saved && (
               <Field label="Id">
-                <input className="mono" value={sim.id} onChange={(e) => edit((d) => void (d.id = e.target.value.replace(/[^a-z0-9-]/gi, "-").toLowerCase()))} data-testid="sim-panel-id" name="sim-id" />
+                <input
+                  className="mono"
+                  value={sim.id}
+                  onChange={(e) => edit((d) => void (d.id = e.target.value.replace(/[^a-z0-9-]/gi, "-").toLowerCase()))}
+                  data-testid="sim-panel-id"
+                  name="sim-id"
+                />
               </Field>
             )}
           </Disclosure>
@@ -293,10 +342,20 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
             </button>
           )}
           <span className="lv-grow" />
-          <button className="btn" onClick={() => onRun(sim)} data-testid="sim-panel-run" title={running ? "Restart this simulation" : "Play this simulation now"}>
+          <button
+            className="btn"
+            onClick={() => onRun(sim)}
+            data-testid="sim-panel-run"
+            title={running ? "Restart this simulation" : "Play this simulation now"}
+          >
             <LiveIcon name="play" size={11} /> {running ? "Run again" : "Run"}
           </button>
-          <button className="btn btn-primary" onClick={() => onSave(sim)} disabled={!dirty || !sim.title.trim() || !sim.id} data-testid="sim-panel-save">
+          <button
+            className="btn btn-primary"
+            onClick={() => onSave(sim)}
+            disabled={!dirty || !sim.title.trim() || !sim.id}
+            data-testid="sim-panel-save"
+          >
             <LiveIcon name="save" size={13} /> Save
           </button>
         </footer>
@@ -320,7 +379,8 @@ function usePickNode(picker: Picker, done: () => void) {
     if (!picker || !root) return;
     root.dataset.livePicking = "1";
     const onClick = (e: MouseEvent) => {
-      const el = e.target instanceof Element ? e.target.closest<HTMLElement>(".react-flow__node-diagram[data-id]") : null;
+      const el =
+        e.target instanceof Element ? e.target.closest<HTMLElement>(".react-flow__node-diagram[data-id]") : null;
       if (!el) return;
       e.preventDefault();
       e.stopPropagation();
@@ -338,7 +398,17 @@ function usePickNode(picker: Picker, done: () => void) {
   }, [picker, store]);
 }
 
-function SimList({ onEdit, onNew, onRun, running }: { onEdit: (s: Simulation) => void; onNew: () => void; onRun: (s: Simulation) => void; running: string | null }) {
+function SimList({
+  onEdit,
+  onNew,
+  onRun,
+  running,
+}: {
+  onEdit: (s: Simulation) => void;
+  onNew: () => void;
+  onRun: (s: Simulation) => void;
+  running: string | null;
+}) {
   const ui = useLive();
   const list = [...ui.simulations];
   if (ui.draft && !list.some((s) => s.id === ui.draft!.id)) list.push(ui.draft);
@@ -350,7 +420,11 @@ function SimList({ onEdit, onNew, onRun, running }: { onEdit: (s: Simulation) =>
         </p>
       )}
       {list.map((s) => (
-        <div key={s.id} className={`lv-sim-item${running === s.id ? " is-running" : ""}`} data-testid={`sim-panel-item-${s.id}`}>
+        <div
+          key={s.id}
+          className={`lv-sim-item${running === s.id ? " is-running" : ""}`}
+          data-testid={`sim-panel-item-${s.id}`}
+        >
           <button className="lv-sim-main" onClick={() => onEdit(s)} data-testid={`sim-panel-edit-${s.id}`}>
             <strong>
               {s.title}
@@ -361,7 +435,13 @@ function SimList({ onEdit, onNew, onRun, running }: { onEdit: (s: Simulation) =>
               {s.traffic.length} traffic · {s.timeline?.length ?? 0} steps · {s.expectations?.length ?? 0} checks
             </small>
           </button>
-          <button className="lv-btn" onClick={() => onRun(s)} title="Run" aria-label={`Run ${s.title}`} data-testid={`sim-panel-run-${s.id}`}>
+          <button
+            className="lv-btn"
+            onClick={() => onRun(s)}
+            title="Run"
+            aria-label={`Run ${s.title}`}
+            data-testid={`sim-panel-run-${s.id}`}
+          >
             <LiveIcon name="play" size={12} />
           </button>
         </div>
@@ -373,7 +453,17 @@ function SimList({ onEdit, onNew, onRun, running }: { onEdit: (s: Simulation) =>
   );
 }
 
-function Section({ title, count, warn, children }: { title: string; count?: number; warn?: boolean; children: ReactNode }) {
+function Section({
+  title,
+  count,
+  warn,
+  children,
+}: {
+  title: string;
+  count?: number;
+  warn?: boolean;
+  children: ReactNode;
+}) {
   return (
     <section className="lv-section">
       <h4>
@@ -387,7 +477,21 @@ function Section({ title, count, warn, children }: { title: string; count?: numb
 }
 
 /** A collapsible group, closed by default: the common path never needs it. */
-function Disclosure({ id, title, hint, count, warn, children }: { id: string; title: string; hint?: string; count?: number; warn?: boolean; children: ReactNode }) {
+function Disclosure({
+  id,
+  title,
+  hint,
+  count,
+  warn,
+  children,
+}: {
+  id: string;
+  title: string;
+  hint?: string;
+  count?: number;
+  warn?: boolean;
+  children: ReactNode;
+}) {
   return (
     <details className="lv-disclosure" data-testid={`sim-panel-section-${id}`}>
       <summary data-testid={`sim-panel-section-${id}-toggle`}>
@@ -414,11 +518,31 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-function NodeSelect({ value, diagram, onChange, onPick, testId, allowEmpty }: { value: string; diagram: DiagramFile; onChange: (id: string) => void; onPick?: () => void; testId: string; allowEmpty?: boolean }) {
+function NodeSelect({
+  value,
+  diagram,
+  onChange,
+  onPick,
+  testId,
+  allowEmpty,
+}: {
+  value: string;
+  diagram: DiagramFile;
+  onChange: (id: string) => void;
+  onPick?: () => void;
+  testId: string;
+  allowEmpty?: boolean;
+}) {
   const missing = !!value && !diagram.nodes.some((n) => n.id === value);
   return (
     <div className="lv-node-select">
-      <select value={value} onChange={(e) => onChange(e.target.value)} data-testid={testId} name={testId} className={missing ? "is-missing" : undefined}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        data-testid={testId}
+        name={testId}
+        className={missing ? "is-missing" : undefined}
+      >
         {(allowEmpty || !value) && <option value="">Choose a node…</option>}
         {missing && <option value={value}>{value} (missing)</option>}
         {diagram.nodes.map((n) => (
@@ -428,7 +552,14 @@ function NodeSelect({ value, diagram, onChange, onPick, testId, allowEmpty }: { 
         ))}
       </select>
       {onPick && (
-        <button type="button" className="lv-btn" onClick={onPick} title="Pick on the canvas" aria-label="Pick on the canvas" data-testid={`${testId}-pick`}>
+        <button
+          type="button"
+          className="lv-btn"
+          onClick={onPick}
+          title="Pick on the canvas"
+          aria-label="Pick on the canvas"
+          data-testid={`${testId}-pick`}
+        >
           <LiveIcon name="target" size={13} />
         </button>
       )}
@@ -449,10 +580,34 @@ function Warnings({ list }: { list: SimWarning[] }) {
   );
 }
 
-function NumberField({ label, value, onChange, testId, step = 1, min = 0, unit }: { label: string; value: number; onChange: (v: number) => void; testId: string; step?: number; min?: number; unit?: string }) {
+function NumberField({
+  label,
+  value,
+  onChange,
+  testId,
+  step = 1,
+  min = 0,
+  unit,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  testId: string;
+  step?: number;
+  min?: number;
+  unit?: string;
+}) {
   return (
     <Field label={unit ? `${label} (${unit})` : label}>
-      <input type="number" value={value} step={step} min={min} onChange={(e) => onChange(num(e.target.value))} data-testid={testId} name={testId} />
+      <input
+        type="number"
+        value={value}
+        step={step}
+        min={min}
+        onChange={(e) => onChange(num(e.target.value))}
+        data-testid={testId}
+        name={testId}
+      />
     </Field>
   );
 }
@@ -476,17 +631,38 @@ function TrafficCard({ index, profile: p, diagram, types, warnings, onChange, on
   return (
     <div className="lv-card" data-testid={t}>
       <div className="lv-card-head">
-        <input className="lv-card-title" value={p.label ?? ""} placeholder={`Traffic ${index + 1}`} onChange={(e) => set({ label: e.target.value || undefined })} data-testid={`${t}-label`} name={`${t}-label`} />
+        <input
+          className="lv-card-title"
+          value={p.label ?? ""}
+          placeholder={`Traffic ${index + 1}`}
+          onChange={(e) => set({ label: e.target.value || undefined })}
+          data-testid={`${t}-label`}
+          name={`${t}-label`}
+        />
         <button className="lv-btn" onClick={onRemove} aria-label="Remove traffic" data-testid={`${t}-remove`}>
           <LiveIcon name="trash" size={13} />
         </button>
       </div>
       <div className="lv-row2">
         <Field label="Starts at">
-          <NodeSelect value={p.node} diagram={diagram} testId={`${t}-node`} onChange={(node) => set({ node })} onPick={() => onPick((node) => set({ node }))} />
+          <NodeSelect
+            value={p.node}
+            diagram={diagram}
+            testId={`${t}-node`}
+            onChange={(node) => set({ node })}
+            onPick={() => onPick((node) => set({ node }))}
+          />
         </Field>
         <Field label="Message type">
-          <input list={`${t}-types`} className="mono" value={p.messageType ?? ""} placeholder="default" onChange={(e) => set({ messageType: e.target.value || undefined })} data-testid={`${t}-type`} name={`${t}-type`} />
+          <input
+            list={`${t}-types`}
+            className="mono"
+            value={p.messageType ?? ""}
+            placeholder="default"
+            onChange={(e) => set({ messageType: e.target.value || undefined })}
+            data-testid={`${t}-type`}
+            name={`${t}-type`}
+          />
           <datalist id={`${t}-types`}>
             {types.map((x) => (
               <option key={x} value={x} />
@@ -496,8 +672,21 @@ function TrafficCard({ index, profile: p, diagram, types, warnings, onChange, on
       </div>
       {s.kind === "burst" ? (
         <div className="lv-row2">
-          <NumberField label="Messages" value={s.count} min={1} onChange={(v) => shape({ count: Math.floor(v) })} testId={`${t}-count`} />
-          <NumberField label="Over" unit="s" step={0.5} value={sec(s.spreadMs)} onChange={(v) => shape({ spreadMs: ms(v) })} testId={`${t}-spread`} />
+          <NumberField
+            label="Messages"
+            value={s.count}
+            min={1}
+            onChange={(v) => shape({ count: Math.floor(v) })}
+            testId={`${t}-count`}
+          />
+          <NumberField
+            label="Over"
+            unit="s"
+            step={0.5}
+            value={sec(s.spreadMs)}
+            onChange={(v) => shape({ spreadMs: ms(v) })}
+            testId={`${t}-spread`}
+          />
         </div>
       ) : (
         <p className="lv-summary" data-testid={`${t}-summary`}>
@@ -511,7 +700,14 @@ function TrafficCard({ index, profile: p, diagram, types, warnings, onChange, on
         </summary>
         <div className="lv-seg" role="radiogroup" aria-label="Shape">
           {SHAPES.map((k) => (
-            <button key={k.kind} role="radio" aria-checked={s.kind === k.kind} className={s.kind === k.kind ? "is-on" : undefined} onClick={() => s.kind !== k.kind && set({ shape: defaultShape(k.kind, s) })} data-testid={`${t}-kind-${k.kind}`}>
+            <button
+              key={k.kind}
+              role="radio"
+              aria-checked={s.kind === k.kind}
+              className={s.kind === k.kind ? "is-on" : undefined}
+              onClick={() => s.kind !== k.kind && set({ shape: defaultShape(k.kind, s) })}
+              data-testid={`${t}-kind-${k.kind}`}
+            >
               {k.label}
             </button>
           ))}
@@ -519,43 +715,154 @@ function TrafficCard({ index, profile: p, diagram, types, warnings, onChange, on
         <div className="lv-shape">
           {s.kind === "burst" && (
             <>
-              <NumberField label="At" unit="s" step={0.5} value={sec(s.atMs)} onChange={(v) => shape({ atMs: ms(v) })} testId={`${t}-at`} />
+              <NumberField
+                label="At"
+                unit="s"
+                step={0.5}
+                value={sec(s.atMs)}
+                onChange={(v) => shape({ atMs: ms(v) })}
+                testId={`${t}-at`}
+              />
             </>
           )}
           {s.kind === "constant" && (
             <>
-              <NumberField label="Rate" unit="/s" value={s.ratePerSec} onChange={(v) => shape({ ratePerSec: v })} testId={`${t}-rate`} />
-              <NumberField label="From" unit="s" step={0.5} value={sec(s.fromMs)} onChange={(v) => shape({ fromMs: ms(v) })} testId={`${t}-from`} />
-              <NumberField label="For" unit="s" step={0.5} value={sec(s.durationMs)} onChange={(v) => shape({ durationMs: ms(v) })} testId={`${t}-duration`} />
+              <NumberField
+                label="Rate"
+                unit="/s"
+                value={s.ratePerSec}
+                onChange={(v) => shape({ ratePerSec: v })}
+                testId={`${t}-rate`}
+              />
+              <NumberField
+                label="From"
+                unit="s"
+                step={0.5}
+                value={sec(s.fromMs)}
+                onChange={(v) => shape({ fromMs: ms(v) })}
+                testId={`${t}-from`}
+              />
+              <NumberField
+                label="For"
+                unit="s"
+                step={0.5}
+                value={sec(s.durationMs)}
+                onChange={(v) => shape({ durationMs: ms(v) })}
+                testId={`${t}-duration`}
+              />
             </>
           )}
           {s.kind === "spike" && (
             <>
-              <NumberField label="Base" unit="/s" value={s.baseRate} onChange={(v) => shape({ baseRate: v })} testId={`${t}-base`} />
-              <NumberField label="Peak" unit="/s" value={s.peakRate} onChange={(v) => shape({ peakRate: v })} testId={`${t}-peak`} />
-              <NumberField label="Peak at" unit="s" step={0.5} value={sec(s.atMs)} onChange={(v) => shape({ atMs: ms(v) })} testId={`${t}-at`} />
-              <NumberField label="Peak for" unit="s" step={0.5} value={sec(s.peakMs)} onChange={(v) => shape({ peakMs: ms(v) })} testId={`${t}-peak-for`} />
-              <NumberField label="Total" unit="s" step={0.5} value={sec(s.durationMs)} onChange={(v) => shape({ durationMs: ms(v) })} testId={`${t}-duration`} />
+              <NumberField
+                label="Base"
+                unit="/s"
+                value={s.baseRate}
+                onChange={(v) => shape({ baseRate: v })}
+                testId={`${t}-base`}
+              />
+              <NumberField
+                label="Peak"
+                unit="/s"
+                value={s.peakRate}
+                onChange={(v) => shape({ peakRate: v })}
+                testId={`${t}-peak`}
+              />
+              <NumberField
+                label="Peak at"
+                unit="s"
+                step={0.5}
+                value={sec(s.atMs)}
+                onChange={(v) => shape({ atMs: ms(v) })}
+                testId={`${t}-at`}
+              />
+              <NumberField
+                label="Peak for"
+                unit="s"
+                step={0.5}
+                value={sec(s.peakMs)}
+                onChange={(v) => shape({ peakMs: ms(v) })}
+                testId={`${t}-peak-for`}
+              />
+              <NumberField
+                label="Total"
+                unit="s"
+                step={0.5}
+                value={sec(s.durationMs)}
+                onChange={(v) => shape({ durationMs: ms(v) })}
+                testId={`${t}-duration`}
+              />
             </>
           )}
           {s.kind === "ramp" && (
             <>
-              <NumberField label="Start rate" unit="/s" value={s.startRate ?? 0} onChange={(v) => shape({ startRate: v })} testId={`${t}-start-rate`} />
-              <NumberField label="From" unit="s" step={0.5} value={sec(s.fromMs)} onChange={(v) => shape({ fromMs: ms(v) })} testId={`${t}-from`} />
+              <NumberField
+                label="Start rate"
+                unit="/s"
+                value={s.startRate ?? 0}
+                onChange={(v) => shape({ startRate: v })}
+                testId={`${t}-start-rate`}
+              />
+              <NumberField
+                label="From"
+                unit="s"
+                step={0.5}
+                value={sec(s.fromMs)}
+                onChange={(v) => shape({ fromMs: ms(v) })}
+                testId={`${t}-from`}
+              />
               <div className="lv-stages">
                 {s.stages.map((st, i) => (
                   <div className="lv-stage" key={i}>
                     <span className="mono">{i + 1}</span>
-                    <input type="number" value={sec(st.durationMs)} step={0.5} min={0} aria-label="Stage seconds" onChange={(e) => shape({ stages: s.stages.map((x, j) => (j === i ? { ...x, durationMs: ms(num(e.target.value)) } : x)) })} data-testid={`${t}-stage-${i}-duration`} name={`${t}-stage-${i}-duration`} />
+                    <input
+                      type="number"
+                      value={sec(st.durationMs)}
+                      step={0.5}
+                      min={0}
+                      aria-label="Stage seconds"
+                      onChange={(e) =>
+                        shape({
+                          stages: s.stages.map((x, j) => (j === i ? { ...x, durationMs: ms(num(e.target.value)) } : x)),
+                        })
+                      }
+                      data-testid={`${t}-stage-${i}-duration`}
+                      name={`${t}-stage-${i}-duration`}
+                    />
                     <small>s to</small>
-                    <input type="number" value={st.targetRate} min={0} aria-label="Target rate" onChange={(e) => shape({ stages: s.stages.map((x, j) => (j === i ? { ...x, targetRate: num(e.target.value) } : x)) })} data-testid={`${t}-stage-${i}-rate`} name={`${t}-stage-${i}-rate`} />
+                    <input
+                      type="number"
+                      value={st.targetRate}
+                      min={0}
+                      aria-label="Target rate"
+                      onChange={(e) =>
+                        shape({
+                          stages: s.stages.map((x, j) => (j === i ? { ...x, targetRate: num(e.target.value) } : x)),
+                        })
+                      }
+                      data-testid={`${t}-stage-${i}-rate`}
+                      name={`${t}-stage-${i}-rate`}
+                    />
                     <small>/s</small>
-                    <button className="lv-btn" onClick={() => shape({ stages: s.stages.filter((_, j) => j !== i) })} aria-label="Remove stage" disabled={s.stages.length < 2}>
+                    <button
+                      className="lv-btn"
+                      onClick={() => shape({ stages: s.stages.filter((_, j) => j !== i) })}
+                      aria-label="Remove stage"
+                      disabled={s.stages.length < 2}
+                    >
                       <LiveIcon name="close" size={11} />
                     </button>
                   </div>
                 ))}
-                <button className="link-btn" onClick={() => shape({ stages: [...s.stages, { durationMs: 2000, targetRate: s.stages.at(-1)?.targetRate ?? 10 }] })} data-testid={`${t}-add-stage`}>
+                <button
+                  className="link-btn"
+                  onClick={() =>
+                    shape({
+                      stages: [...s.stages, { durationMs: 2000, targetRate: s.stages.at(-1)?.targetRate ?? 10 }],
+                    })
+                  }
+                  data-testid={`${t}-add-stage`}
+                >
                   + Stage
                 </button>
               </div>
@@ -603,7 +910,8 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
     if (kind === "note") setAction({ do: "note", text: "", focus: node ? [node] : [] });
     if (kind === "status") setAction({ do: "status", node, status: "down" });
     if (kind === "props") setAction({ do: "props", node, props: { latencyMs: 1000 } });
-    if (kind === "inject") setAction({ do: "inject", node, count: 10, messageType: suggestedMessageType(diagram, node) });
+    if (kind === "inject")
+      setAction({ do: "inject", node, count: 10, messageType: suggestedMessageType(diagram, node) });
   };
   const labels = new Map(diagram.nodes.map((n) => [n.id, n.label || n.id]));
   const propKey = a.do === "props" ? (Object.keys(a.props)[0] ?? "latencyMs") : "latencyMs";
@@ -611,9 +919,24 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
   return (
     <div className={`lv-card lv-step is-${a.do}`} data-testid={t}>
       <div className="lv-step-head">
-        <input type="number" className="lv-step-time" step={0.5} min={0} value={sec(step.atMs)} onChange={(e) => onChange({ ...step, atMs: ms(num(e.target.value)) })} aria-label="Time (s)" data-testid={`${t}-time`} name={`${t}-time`} />
+        <input
+          type="number"
+          className="lv-step-time"
+          step={0.5}
+          min={0}
+          value={sec(step.atMs)}
+          onChange={(e) => onChange({ ...step, atMs: ms(num(e.target.value)) })}
+          aria-label="Time (s)"
+          data-testid={`${t}-time`}
+          name={`${t}-time`}
+        />
         <small>s</small>
-        <select value={a.do} onChange={(e) => switchTo(e.target.value as TimelineAction["do"])} data-testid={`${t}-action`} name={`${t}-action`}>
+        <select
+          value={a.do}
+          onChange={(e) => switchTo(e.target.value as TimelineAction["do"])}
+          data-testid={`${t}-action`}
+          name={`${t}-action`}
+        >
           {ACTIONS.map((x) => (
             <option key={x.value} value={x.value}>
               {x.label}
@@ -627,19 +950,31 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
       </div>
       {a.do === "note" ? (
         <>
-          <textarea rows={2} value={a.text} placeholder="What should the audience notice?" onChange={(e) => setAction({ ...a, text: e.target.value })} data-testid={`${t}-text`} name={`${t}-text`} />
+          <textarea
+            rows={2}
+            value={a.text}
+            placeholder="What should the audience notice?"
+            onChange={(e) => setAction({ ...a, text: e.target.value })}
+            data-testid={`${t}-text`}
+            name={`${t}-text`}
+          />
           <div className="lv-focus">
             {(a.focus ?? []).map((id) => (
               <span key={id} className={`lv-focus-chip${labels.has(id) ? "" : " is-missing"}`}>
                 {labels.get(id) ?? `${id} (missing)`}
-                <button onClick={() => setAction({ ...a, focus: (a.focus ?? []).filter((x) => x !== id) })} aria-label={`Remove ${id}`}>
+                <button
+                  onClick={() => setAction({ ...a, focus: (a.focus ?? []).filter((x) => x !== id) })}
+                  aria-label={`Remove ${id}`}
+                >
                   <LiveIcon name="close" size={10} />
                 </button>
               </span>
             ))}
             <select
               value=""
-              onChange={(e) => e.target.value && setAction({ ...a, focus: [...new Set([...(a.focus ?? []), e.target.value])] })}
+              onChange={(e) =>
+                e.target.value && setAction({ ...a, focus: [...new Set([...(a.focus ?? []), e.target.value])] })
+              }
               data-testid={`${t}-focus`}
               name={`${t}-focus`}
               aria-label="Add a focus node"
@@ -651,20 +986,44 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
                 </option>
               ))}
             </select>
-            <button className="lv-btn" onClick={() => onPick("the note's focus", (id) => setAction({ ...a, focus: [...new Set([...(a.focus ?? []), id])] }))} aria-label="Pick focus on the canvas" title="Pick on the canvas">
+            <button
+              className="lv-btn"
+              onClick={() =>
+                onPick("the note's focus", (id) => setAction({ ...a, focus: [...new Set([...(a.focus ?? []), id])] }))
+              }
+              aria-label="Pick focus on the canvas"
+              title="Pick on the canvas"
+            >
               <LiveIcon name="target" size={13} />
             </button>
           </div>
           <label className="lv-check">
-            <input type="checkbox" checked={!!a.pause} onChange={(e) => setAction({ ...a, pause: e.target.checked || undefined })} data-testid={`${t}-pause`} name={`${t}-pause`} />
+            <input
+              type="checkbox"
+              checked={!!a.pause}
+              onChange={(e) => setAction({ ...a, pause: e.target.checked || undefined })}
+              data-testid={`${t}-pause`}
+              name={`${t}-pause`}
+            />
             <span>Pause until the presenter continues</span>
           </label>
         </>
       ) : (
         <div className="lv-step-body">
-          <NodeSelect value={a.node} diagram={diagram} testId={`${t}-node`} onChange={(node) => setAction({ ...a, node })} onPick={() => onPick("this step", (node) => setAction({ ...a, node }))} />
+          <NodeSelect
+            value={a.node}
+            diagram={diagram}
+            testId={`${t}-node`}
+            onChange={(node) => setAction({ ...a, node })}
+            onPick={() => onPick("this step", (node) => setAction({ ...a, node }))}
+          />
           {a.do === "status" && (
-            <select value={a.status} onChange={(e) => setAction({ ...a, status: e.target.value as "up" | "paused" | "down" })} data-testid={`${t}-status`} name={`${t}-status`}>
+            <select
+              value={a.status}
+              onChange={(e) => setAction({ ...a, status: e.target.value as "up" | "paused" | "down" })}
+              data-testid={`${t}-status`}
+              name={`${t}-status`}
+            >
               <option value="down">down</option>
               <option value="paused">paused</option>
               <option value="up">up</option>
@@ -689,13 +1048,38 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
                   </option>
                 ))}
               </select>
-              <input type="number" step="any" value={Number(a.props[propKey] ?? 0)} onChange={(e) => setAction({ ...a, props: { ...a.props, [propKey]: num(e.target.value) } })} data-testid={`${t}-value`} name={`${t}-value`} aria-label="Value" />
+              <input
+                type="number"
+                step="any"
+                value={Number(a.props[propKey] ?? 0)}
+                onChange={(e) => setAction({ ...a, props: { ...a.props, [propKey]: num(e.target.value) } })}
+                data-testid={`${t}-value`}
+                name={`${t}-value`}
+                aria-label="Value"
+              />
             </div>
           )}
           {a.do === "inject" && (
             <div className="lv-inline">
-              <input type="number" min={1} value={a.count} onChange={(e) => setAction({ ...a, count: Math.max(1, Math.floor(num(e.target.value))) })} aria-label="Messages" data-testid={`${t}-count`} name={`${t}-count`} />
-              <input list={`${t}-types`} className="mono" value={a.messageType ?? ""} placeholder="type" onChange={(e) => setAction({ ...a, messageType: e.target.value || undefined })} aria-label="Message type" data-testid={`${t}-type`} name={`${t}-type`} />
+              <input
+                type="number"
+                min={1}
+                value={a.count}
+                onChange={(e) => setAction({ ...a, count: Math.max(1, Math.floor(num(e.target.value))) })}
+                aria-label="Messages"
+                data-testid={`${t}-count`}
+                name={`${t}-count`}
+              />
+              <input
+                list={`${t}-types`}
+                className="mono"
+                value={a.messageType ?? ""}
+                placeholder="type"
+                onChange={(e) => setAction({ ...a, messageType: e.target.value || undefined })}
+                aria-label="Message type"
+                data-testid={`${t}-type`}
+                name={`${t}-type`}
+              />
               <datalist id={`${t}-types`}>
                 {types.map((x) => (
                   <option key={x} value={x} />
@@ -728,7 +1112,14 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
   return (
     <div className="lv-card lv-exp-row" data-testid={t}>
       <div className="lv-card-head">
-        <input className="lv-card-title" value={exp.label} placeholder="What must hold?" onChange={(e) => onChange({ ...exp, label: e.target.value })} data-testid={`${t}-label`} name={`${t}-label`} />
+        <input
+          className="lv-card-title"
+          value={exp.label}
+          placeholder="What must hold?"
+          onChange={(e) => onChange({ ...exp, label: e.target.value })}
+          data-testid={`${t}-label`}
+          name={`${t}-label`}
+        />
         {live && (
           <span className={`lv-exp is-${live.status} is-small`} title="Live value from the current run">
             {Number.isInteger(live.value) ? live.value : live.value.toFixed(1)}
@@ -741,13 +1132,23 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
       <div className="lv-inline">
         <select
           value={isSystem ? "__system" : m.node}
-          onChange={(e) => onChange({ ...exp, metric: e.target.value === "__system" ? { system: "inSystem" } : { node: e.target.value, field: isSystem ? "processed" : m.field } })}
+          onChange={(e) =>
+            onChange({
+              ...exp,
+              metric:
+                e.target.value === "__system"
+                  ? { system: "inSystem" }
+                  : { node: e.target.value, field: isSystem ? "processed" : m.field },
+            })
+          }
           data-testid={`${t}-node`}
           name={`${t}-node`}
           aria-label="Metric node"
         >
           <option value="__system">Whole system</option>
-          {!isSystem && !diagram.nodes.some((n) => n.id === m.node) && <option value={m.node}>{m.node} (missing)</option>}
+          {!isSystem && !diagram.nodes.some((n) => n.id === m.node) && (
+            <option value={m.node}>{m.node} (missing)</option>
+          )}
           {diagram.nodes.map((n) => (
             <option key={n.id} value={n.id}>
               {n.label || n.id}
@@ -757,7 +1158,13 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
         {isSystem ? (
           <span className="lv-muted">in system</span>
         ) : (
-          <select value={m.field} onChange={(e) => onChange({ ...exp, metric: { node: m.node, field: e.target.value as MetricField } })} data-testid={`${t}-field`} name={`${t}-field`} aria-label="Metric">
+          <select
+            value={m.field}
+            onChange={(e) => onChange({ ...exp, metric: { node: m.node, field: e.target.value as MetricField } })}
+            data-testid={`${t}-field`}
+            name={`${t}-field`}
+            aria-label="Metric"
+          >
             {FIELDS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}
@@ -766,7 +1173,13 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
           </select>
         )}
         {groups.length > 1 && !isSystem && (
-          <select value={m.group ?? ""} onChange={(e) => onChange({ ...exp, metric: { ...m, group: e.target.value || undefined } })} data-testid={`${t}-group`} name={`${t}-group`} aria-label="Consumer group">
+          <select
+            value={m.group ?? ""}
+            onChange={(e) => onChange({ ...exp, metric: { ...m, group: e.target.value || undefined } })}
+            data-testid={`${t}-group`}
+            name={`${t}-group`}
+            aria-label="Consumer group"
+          >
             <option value="">max of groups</option>
             {groups.map((g) => (
               <option key={g} value={g}>
@@ -777,15 +1190,41 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
         )}
       </div>
       <div className="lv-inline">
-        <select value={exp.op} onChange={(e) => onChange({ ...exp, op: e.target.value as Expectation["op"] })} data-testid={`${t}-op`} name={`${t}-op`} aria-label="Comparison">
+        <select
+          value={exp.op}
+          onChange={(e) => onChange({ ...exp, op: e.target.value as Expectation["op"] })}
+          data-testid={`${t}-op`}
+          name={`${t}-op`}
+          aria-label="Comparison"
+        >
           {OPS.map((o) => (
             <option key={o} value={o}>
               {o}
             </option>
           ))}
         </select>
-        <input type="number" step="any" value={exp.value} onChange={(e) => onChange({ ...exp, value: num(e.target.value) })} data-testid={`${t}-value`} name={`${t}-value`} aria-label="Value" />
-        <select value={exp.when ?? "end"} onChange={(e) => onChange({ ...exp, when: e.target.value as Expectation["when"], atMs: e.target.value === "at" ? (exp.atMs ?? 5000) : undefined })} data-testid={`${t}-when`} name={`${t}-when`} aria-label="When">
+        <input
+          type="number"
+          step="any"
+          value={exp.value}
+          onChange={(e) => onChange({ ...exp, value: num(e.target.value) })}
+          data-testid={`${t}-value`}
+          name={`${t}-value`}
+          aria-label="Value"
+        />
+        <select
+          value={exp.when ?? "end"}
+          onChange={(e) =>
+            onChange({
+              ...exp,
+              when: e.target.value as Expectation["when"],
+              atMs: e.target.value === "at" ? (exp.atMs ?? 5000) : undefined,
+            })
+          }
+          data-testid={`${t}-when`}
+          name={`${t}-when`}
+          aria-label="When"
+        >
           {WHENS.map((w) => (
             <option key={w.value} value={w.value}>
               {w.label}
@@ -794,7 +1233,16 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
         </select>
         {exp.when === "at" && (
           <>
-            <input type="number" step={0.5} min={0} value={sec(exp.atMs)} onChange={(e) => onChange({ ...exp, atMs: ms(num(e.target.value)) })} aria-label="At (s)" data-testid={`${t}-at`} name={`${t}-at`} />
+            <input
+              type="number"
+              step={0.5}
+              min={0}
+              value={sec(exp.atMs)}
+              onChange={(e) => onChange({ ...exp, atMs: ms(num(e.target.value)) })}
+              aria-label="At (s)"
+              data-testid={`${t}-at`}
+              name={`${t}-at`}
+            />
             <small>{formatSeconds(exp.atMs ?? 0)}</small>
           </>
         )}
@@ -806,5 +1254,9 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
 
 /** Consumer-group names on a node's outgoing edges (edge id when no group is set). */
 function groupsOf(d: DiagramFile, nodeId: string): string[] {
-  return [...new Set(d.edges.filter((e) => e.from === nodeId).map((e) => (typeof e.props?.group === "string" ? e.props.group : e.id)))];
+  return [
+    ...new Set(
+      d.edges.filter((e) => e.from === nodeId).map((e) => (typeof e.props?.group === "string" ? e.props.group : e.id)),
+    ),
+  ];
 }

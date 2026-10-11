@@ -172,10 +172,7 @@
       "kind": "async",
       "props": {
         "travelMs": 100,
-        "filter": [
-          "TelemetryReading",
-          "TemperatureExceeded"
-        ],
+        "filter": ["TelemetryReading", "TemperatureExceeded"],
         "group": "hot-state"
       }
     },
@@ -187,10 +184,7 @@
       "kind": "async",
       "props": {
         "travelMs": 100,
-        "filter": [
-          "TelemetryReading",
-          "TemperatureExceeded"
-        ],
+        "filter": ["TelemetryReading", "TemperatureExceeded"],
         "group": "lake-stream"
       }
     },
@@ -222,9 +216,7 @@
       "kind": "async",
       "props": {
         "travelMs": 100,
-        "filter": [
-          "TemperatureExceeded"
-        ]
+        "filter": ["TemperatureExceeded"]
       }
     },
     {
@@ -235,9 +227,7 @@
       "kind": "async",
       "props": {
         "travelMs": 100,
-        "filter": [
-          "Temperature*"
-        ],
+        "filter": ["Temperature*"],
         "group": "on-call"
       }
     },
@@ -323,10 +313,7 @@
           "action": {
             "do": "note",
             "text": "Morning check-ins ramp from 100 to 300 per second. Both consumer groups receive every reading.",
-            "focus": [
-              "devices",
-              "hub"
-            ]
+            "focus": ["devices", "hub"]
           }
         },
         {
@@ -334,11 +321,7 @@
           "action": {
             "do": "note",
             "text": "Only TemperatureExceeded events go to the on-call mailbox.",
-            "focus": [
-              "hot",
-              "alerts",
-              "email"
-            ]
+            "focus": ["hot", "alerts", "email"]
           }
         }
       ],
@@ -412,11 +395,7 @@
           "action": {
             "do": "note",
             "text": "One effective partition serializes each group. Lag grows even though consumers have capacity.",
-            "focus": [
-              "hub",
-              "hot",
-              "stream"
-            ],
+            "focus": ["hub", "hot", "stream"],
             "pause": true
           }
         },
@@ -435,9 +414,7 @@
           "action": {
             "do": "note",
             "text": "The partition key is redistributed; the backlog drains.",
-            "focus": [
-              "hub"
-            ]
+            "focus": ["hub"]
           }
         }
       ],

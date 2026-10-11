@@ -93,7 +93,9 @@ export class PathCache {
     const d = entry.el.getAttribute("d") ?? "";
     if (d !== entry.d) {
       entry.d = d;
-      entry.samples = d ? samplePath(entry.el.getTotalLength(), (l) => entry.el.getPointAtLength(l), this.spacing) : { length: 0, points: new Float32Array(4) };
+      entry.samples = d
+        ? samplePath(entry.el.getTotalLength(), (l) => entry.el.getPointAtLength(l), this.spacing)
+        : { length: 0, points: new Float32Array(4) };
     }
     return entry.samples;
   }

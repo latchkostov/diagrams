@@ -26,8 +26,14 @@ describe("pickSides", () => {
   });
 
   it("TB diagrams prefer the vertical axis", () => {
-    expect(pickSides(card(0, 0), card(300, 160), { direction: "TB" })).toEqual({ sourceSide: "bottom", targetSide: "top" });
-    expect(pickSides(card(0, 0), card(300, 160), { direction: "LR" })).toEqual({ sourceSide: "right", targetSide: "left" });
+    expect(pickSides(card(0, 0), card(300, 160), { direction: "TB" })).toEqual({
+      sourceSide: "bottom",
+      targetSide: "top",
+    });
+    expect(pickSides(card(0, 0), card(300, 160), { direction: "LR" })).toEqual({
+      sourceSide: "right",
+      targetSide: "left",
+    });
   });
 
   it("overlapping boxes use the dominant centre offset", () => {
@@ -36,7 +42,10 @@ describe("pickSides", () => {
   });
 
   it("keeps pinned sides and points the free end at the pinned one", () => {
-    expect(pickSides(at(0, 0), at(1, 0), { sourceSide: "top", targetSide: "top" })).toEqual({ sourceSide: "top", targetSide: "top" });
+    expect(pickSides(at(0, 0), at(1, 0), { sourceSide: "top", targetSide: "top" })).toEqual({
+      sourceSide: "top",
+      targetSide: "top",
+    });
     expect(pickSides(at(0, 0), at(0, 2), { sourceSide: "right" }).sourceSide).toBe("right");
     expect(pickSides(at(0, 0), at(0, 2), { sourceSide: "bottom" }).targetSide).toBe("top");
     expect(pickSides(at(0, 0), at(1, 0), { targetSide: "bottom" }).targetSide).toBe("bottom");

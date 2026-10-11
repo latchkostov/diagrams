@@ -20,7 +20,14 @@ export interface ParticleTokens {
   fail: string;
 }
 
-export const DEFAULT_TOKENS: ParticleTokens = { core: "#ffffff", glowOpacity: 0.5, glowBlur: 6, retry: "#d99000", dlq: "#d1393f", fail: "#d1393f" };
+export const DEFAULT_TOKENS: ParticleTokens = {
+  core: "#ffffff",
+  glowOpacity: 0.5,
+  glowBlur: 6,
+  retry: "#d99000",
+  dlq: "#d1393f",
+  fail: "#d1393f",
+};
 
 /** Reads the particle tokens off the document (call after the theme attribute changed). */
 export function readParticleTokens(el: Element = document.documentElement): ParticleTokens {
@@ -131,7 +138,8 @@ export class ParticleRenderer {
   }
 
   setOptions(opts: RenderOptions): void {
-    if (opts.theme !== this.opts.theme || opts.scale !== this.opts.scale || opts.tokens !== this.opts.tokens) this.sprites.clear();
+    if (opts.theme !== this.opts.theme || opts.scale !== this.opts.scale || opts.tokens !== this.opts.tokens)
+      this.sprites.clear();
     this.opts = opts;
     this.lastKey = "";
   }
@@ -265,7 +273,16 @@ export class ParticleRenderer {
   }
 
   /** Appends the polyline from the trail's tail to the head, walking the path samples. */
-  private pushTrail(out: number[], s: PathSamples, t: number, reverse: boolean, span: number, k: number, ox: number, oy: number): void {
+  private pushTrail(
+    out: number[],
+    s: PathSamples,
+    t: number,
+    reverse: boolean,
+    span: number,
+    k: number,
+    ox: number,
+    oy: number,
+  ): void {
     const tail = reverse ? Math.min(1, t + span) : Math.max(0, t - span);
     if (Math.abs(tail - t) < 1e-4) return;
     const countAt = out.length;
@@ -288,7 +305,7 @@ export class ParticleRenderer {
   private strokeTrails(trails: number[], part: number): void {
     const ctx = this.ctx;
     ctx.beginPath();
-    for (let i = 0; i < trails.length; ) {
+    for (let i = 0; i < trails.length;) {
       const n = trails[i];
       const from = i + 1 + Math.floor((n - 1) * (1 - part)) * 2;
       const end = i + 1 + n * 2;
@@ -341,7 +358,15 @@ export class ParticleRenderer {
       const r = this.env.nodeRect(id);
       if (!r) continue;
       this.lastPulseAt.set(`node:${id}`, now);
-      this.pulses.push({ x: r.x, y: r.y, w: r.width, h: r.height, color: this.opts.tokens.fail, start: now, type: "flash" });
+      this.pulses.push({
+        x: r.x,
+        y: r.y,
+        w: r.width,
+        h: r.height,
+        color: this.opts.tokens.fail,
+        start: now,
+        type: "flash",
+      });
     }
   }
 

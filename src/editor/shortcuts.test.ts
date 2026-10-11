@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { formatCombo, matches, shortcutFor, type KeyLike } from "./shortcuts";
 
-const key = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({ key: k, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, ...mods });
+const key = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({
+  key: k,
+  ctrlKey: false,
+  metaKey: false,
+  shiftKey: false,
+  altKey: false,
+  ...mods,
+});
 
 describe("shortcuts", () => {
   it("Mod matches Ctrl or Cmd", () => {

@@ -39,7 +39,11 @@ describe("clipboard", () => {
 
   it("remaps ids, rewires edges and offsets positions", () => {
     const p = makePayload(diagram, ["a", "b"], ["g"])!;
-    const r = remapPayload(p, { nodes: new Set(["a", "b", "c"]), edges: new Set(["e1", "e2"]), groups: new Set(["g"]) }, { x: 30, y: 20 });
+    const r = remapPayload(
+      p,
+      { nodes: new Set(["a", "b", "c"]), edges: new Set(["e1", "e2"]), groups: new Set(["g"]) },
+      { x: 30, y: 20 },
+    );
     expect(r.nodes.map((n) => n.id)).toEqual(["a-1", "b-1"]);
     expect(r.groups[0]).toMatchObject({ id: "g-1", x: 30, y: 20 });
     expect(r.nodes[0]).toMatchObject({ x: 70, y: 60, group: "g-1" });

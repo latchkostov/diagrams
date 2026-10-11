@@ -141,7 +141,12 @@ test.describe("gallery", () => {
     const tile = page.getByTestId("stencil-tile-aws.sqs");
     const prevented = await tile.evaluate((el) => {
       const r = el.getBoundingClientRect();
-      const ev = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 20 });
+      const ev = new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: r.left + 20,
+        clientY: r.top + 20,
+      });
       el.dispatchEvent(ev);
       return ev.defaultPrevented;
     });
@@ -211,11 +216,13 @@ test.describe("gallery", () => {
     expect(await cursor("tile-copy-kafka.topic")).toBe("copy");
     expect(await cursor("family-chip-aws")).toBe("pointer");
     expect(await cursor("gallery-search")).toBe("text");
-    const texty = await page.getByTestId("gallery-view").evaluate((root) =>
-      [...root.querySelectorAll("*")]
-        .filter((el) => getComputedStyle(el).cursor === "text" && !el.closest("input, label"))
-        .map((el) => el.outerHTML.slice(0, 80)),
-    );
+    const texty = await page
+      .getByTestId("gallery-view")
+      .evaluate((root) =>
+        [...root.querySelectorAll("*")]
+          .filter((el) => getComputedStyle(el).cursor === "text" && !el.closest("input, label"))
+          .map((el) => el.outerHTML.slice(0, 80)),
+      );
     expect(texty).toEqual([]);
   });
 

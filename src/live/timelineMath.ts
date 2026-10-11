@@ -38,7 +38,13 @@ export function trafficBands(sim: Simulation, totalMs: number): TrafficBand[] {
     const start = timeToFraction(w.startMs, totalMs);
     // Give zero-length windows a visible sliver.
     const end = Math.max(start + 0.006, timeToFraction(w.endMs, totalMs));
-    return { id: p.id, label: p.label ?? p.messageType ?? p.id, start, end: Math.min(1, end), burst: p.shape.kind === "burst" };
+    return {
+      id: p.id,
+      label: p.label ?? p.messageType ?? p.id,
+      start,
+      end: Math.min(1, end),
+      burst: p.shape.kind === "burst",
+    };
   });
 }
 

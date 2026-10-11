@@ -1,4 +1,10 @@
-import { DIAGRAM_FORMAT, type DiagramEdge, type DiagramFile, type DiagramGroup, type DiagramNode } from "../model/types";
+import {
+  DIAGRAM_FORMAT,
+  type DiagramEdge,
+  type DiagramFile,
+  type DiagramGroup,
+  type DiagramNode,
+} from "../model/types";
 import { uniqueId } from "./ids";
 
 // Copy / paste on the saved-file level, so it is pure and the system clipboard carries plain
@@ -50,11 +56,16 @@ export function parsePayload(text: string): ClipboardPayload | null {
   if (!Array.isArray(data.nodes)) return null;
   const nodes = data.nodes.filter(
     (n): n is DiagramNode =>
-      isObj(n) && typeof n.id === "string" && typeof n.stencil === "string" && typeof n.x === "number" && typeof n.y === "number",
+      isObj(n) &&
+      typeof n.id === "string" &&
+      typeof n.stencil === "string" &&
+      typeof n.x === "number" &&
+      typeof n.y === "number",
   );
   const ids = new Set(nodes.map((n) => n.id));
   const edges = (Array.isArray(data.edges) ? data.edges : []).filter(
-    (e): e is DiagramEdge => isObj(e) && typeof e.id === "string" && ids.has(e.from as string) && ids.has(e.to as string),
+    (e): e is DiagramEdge =>
+      isObj(e) && typeof e.id === "string" && ids.has(e.from as string) && ids.has(e.to as string),
   );
   const groups = (Array.isArray(data.groups) ? data.groups : []).filter(
     (g): g is DiagramGroup =>

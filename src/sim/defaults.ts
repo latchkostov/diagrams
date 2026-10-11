@@ -4,13 +4,10 @@ import type { NodeSimProps } from "./types";
 export type ResolvedProps = Required<Omit<NodeSimProps, "emits">> & Pick<NodeSimProps, "emits">;
 
 /** Ignore malformed free-form diagram props rather than poisoning the clock. */
-export function resolveProps(
-  role: SimRole, label: string, props: Record<string, unknown>,
-): ResolvedProps {
+export function resolveProps(role: SimRole, label: string, props: Record<string, unknown>): ResolvedProps {
   const number = (key: string, fallback: number, min = 0, max = Infinity) => {
     const value = props[key];
-    return typeof value === "number" && Number.isFinite(value)
-      ? Math.max(min, Math.min(max, value)) : fallback;
+    return typeof value === "number" && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
   };
   return {
     ratePerSec: number("ratePerSec", 2),
@@ -22,10 +19,14 @@ export function resolveProps(
     failureRate: number("failureRate", 0, 0, 1),
     maxDeliveryCount: Math.floor(number("maxDeliveryCount", 3, 1)),
     partitions: Math.floor(number("partitions", 3, 1)),
-    emits: typeof props.emits === "string" ? props.emits
-      : props.emits && typeof props.emits === "object" && !Array.isArray(props.emits)
-        ? Object.fromEntries(Object.entries(props.emits).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
-        : undefined,
+    emits:
+      typeof props.emits === "string"
+        ? props.emits
+        : props.emits && typeof props.emits === "object" && !Array.isArray(props.emits)
+          ? Object.fromEntries(
+              Object.entries(props.emits).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+            )
+          : undefined,
     messageType: typeof props.messageType === "string" ? props.messageType : label || "Message",
   };
 }

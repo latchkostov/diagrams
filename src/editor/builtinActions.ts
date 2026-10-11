@@ -13,7 +13,11 @@ const TONES = Object.keys(toneColor) as GroupTone[];
 const SIDE_LABEL: Record<Side, string> = { top: "Top", right: "Right", bottom: "Bottom", left: "Left" };
 
 /** Category ▸ stencil submenus. `pick` builds the leaf for one stencil. */
-export function stencilMenu(idPrefix: string, pick: (s: Stencil) => Pick<MenuItem, "run" | "checked">, first?: string): MenuNode[] {
+export function stencilMenu(
+  idPrefix: string,
+  pick: (s: Stencil) => Pick<MenuItem, "run" | "checked">,
+  first?: string,
+): MenuNode[] {
   const cats = [...CATEGORY_ORDER];
   if (first) cats.sort((a, b) => (a === first ? -1 : b === first ? 1 : 0));
   return cats.map((c) => ({
@@ -35,7 +39,8 @@ export function stencilMenu(idPrefix: string, pick: (s: Stencil) => Pick<MenuIte
 }
 
 const nodeCount = (ctx: ActionContext) => ctx.selection.nodeIds.length;
-const total = (ctx: ActionContext) => ctx.selection.nodeIds.length + ctx.selection.groupIds.length + ctx.selection.edgeIds.length;
+const total = (ctx: ActionContext) =>
+  ctx.selection.nodeIds.length + ctx.selection.groupIds.length + ctx.selection.edgeIds.length;
 
 const ALIGN: { mode: AlignMode; label: string; icon: MenuItem["icon"] }[] = [
   { mode: "left", label: "Left edges", icon: "align-left" },
@@ -51,17 +56,22 @@ function sideMenu(ctx: ActionContext, end: "sourceSide" | "targetSide"): MenuNod
   const current = ctx.editor.getEdge(id)?.[end];
   const prefix = end === "sourceSide" ? "edge.from-side" : "edge.to-side";
   return [
-    { type: "item", id: `${prefix}:auto`, label: "Auto", hint: "follows layout", checked: !current, run: () => ctx.editor.updateEdge(id, { [end]: undefined }) },
+    {
+      type: "item",
+      id: `${prefix}:auto`,
+      label: "Auto",
+      hint: "follows layout",
+      checked: !current,
+      run: () => ctx.editor.updateEdge(id, { [end]: undefined }),
+    },
     { type: "separator" },
-    ...(["top", "right", "bottom", "left"] as Side[]).map(
-      (side): MenuItem => ({
-        type: "item",
-        id: `${prefix}:${side}`,
-        label: SIDE_LABEL[side],
-        checked: current === side,
-        run: () => ctx.editor.updateEdge(id, { [end]: side }),
-      }),
-    ),
+    ...(["top", "right", "bottom", "left"] as Side[]).map((side): MenuItem => ({
+      type: "item",
+      id: `${prefix}:${side}`,
+      label: SIDE_LABEL[side],
+      checked: current === side,
+      run: () => ctx.editor.updateEdge(id, { [end]: side }),
+    })),
   ];
 }
 
@@ -116,8 +126,24 @@ export function builtinActions(): Action[] {
       enabled: (ctx) => ctx.editor.getDiagram().nodes.length > 1,
       run: (ctx) => ctx.editor.autoLayout(),
     },
-    { id: "canvas.fit", section: "view", targets: ["canvas"], label: "Fit view", icon: "fit", shortcut: shortcutKeys("fit-view"), run: (ctx) => ctx.editor.fitView() },
-    { id: "canvas.zoom-100", section: "view", targets: ["canvas"], label: "Zoom to 100%", icon: "zoom", shortcut: shortcutKeys("zoom-100"), run: (ctx) => ctx.editor.zoomTo100() },
+    {
+      id: "canvas.fit",
+      section: "view",
+      targets: ["canvas"],
+      label: "Fit view",
+      icon: "fit",
+      shortcut: shortcutKeys("fit-view"),
+      run: (ctx) => ctx.editor.fitView(),
+    },
+    {
+      id: "canvas.zoom-100",
+      section: "view",
+      targets: ["canvas"],
+      label: "Zoom to 100%",
+      icon: "zoom",
+      shortcut: shortcutKeys("zoom-100"),
+      run: (ctx) => ctx.editor.zoomTo100(),
+    },
     {
       id: "canvas.view-options",
       section: "view",
@@ -142,17 +168,45 @@ export function builtinActions(): Action[] {
         ];
       },
     },
-    { id: "canvas.undo", section: "history", targets: ["canvas"], label: "Undo", icon: "undo", shortcut: shortcutKeys("undo"), enabled: (ctx) => ctx.editor.canUndo(), run: (ctx) => ctx.editor.undo() },
-    { id: "canvas.redo", section: "history", targets: ["canvas"], label: "Redo", icon: "redo", shortcut: shortcutKeys("redo"), enabled: (ctx) => ctx.editor.canRedo(), run: (ctx) => ctx.editor.redo() },
+    {
+      id: "canvas.undo",
+      section: "history",
+      targets: ["canvas"],
+      label: "Undo",
+      icon: "undo",
+      shortcut: shortcutKeys("undo"),
+      enabled: (ctx) => ctx.editor.canUndo(),
+      run: (ctx) => ctx.editor.undo(),
+    },
+    {
+      id: "canvas.redo",
+      section: "history",
+      targets: ["canvas"],
+      label: "Redo",
+      icon: "redo",
+      shortcut: shortcutKeys("redo"),
+      enabled: (ctx) => ctx.editor.canRedo(),
+      run: (ctx) => ctx.editor.redo(),
+    },
     {
       id: "canvas.export",
       section: "file",
       targets: ["canvas"],
       label: "Export",
       icon: "download",
-      children: (ctx) => [{ type: "item", id: "export:json", label: "JSON", hint: "diagrams/v1", run: () => ctx.editor.exportJson() }],
+      children: (ctx) => [
+        { type: "item", id: "export:json", label: "JSON", hint: "diagrams/v1", run: () => ctx.editor.exportJson() },
+      ],
     },
-    { id: "canvas.shortcuts", section: "file", targets: ["canvas"], label: "Keyboard shortcuts", icon: "keyboard", shortcut: "?", run: (ctx) => ctx.editor.showShortcuts() },
+    {
+      id: "canvas.shortcuts",
+      section: "file",
+      targets: ["canvas"],
+      label: "Keyboard shortcuts",
+      icon: "keyboard",
+      shortcut: "?",
+      run: (ctx) => ctx.editor.showShortcuts(),
+    },
 
     // ---------------- node ----------------
     {
@@ -184,7 +238,10 @@ export function builtinActions(): Action[] {
         const current = node ? getStencil(node.stencil) : undefined;
         return stencilMenu(
           "change-stencil",
-          (s) => ({ checked: s.id === node?.stencil, run: () => ctx.editor.updateNode(ctx.nodeId!, { stencil: s.id }) }),
+          (s) => ({
+            checked: s.id === node?.stencil,
+            run: () => ctx.editor.updateNode(ctx.nodeId!, { stencil: s.id }),
+          }),
           current?.category,
         );
       },
@@ -210,7 +267,15 @@ export function builtinActions(): Action[] {
             run: () => void ctx.editor.connect(ctx.nodeId!, n.id),
           })),
     },
-    { id: "node.properties", section: "edit", targets: ["node", "edge", "group"], label: "Properties", icon: "sliders", order: 200, run: (ctx) => ctx.editor.openInspector() },
+    {
+      id: "node.properties",
+      section: "edit",
+      targets: ["node", "edge", "group"],
+      label: "Properties",
+      icon: "sliders",
+      order: 200,
+      run: (ctx) => ctx.editor.openInspector(),
+    },
     {
       id: "node.copy-id",
       section: "edit",
@@ -250,8 +315,24 @@ export function builtinActions(): Action[] {
       when: (ctx) => nodeCount(ctx) + ctx.selection.groupIds.length > 0,
       run: (ctx) => ctx.editor.cut(ctx.selection),
     },
-    { id: "node.front", section: "arrange", targets: ["node", "selection"], label: "Bring to front", icon: "front", when: (ctx) => nodeCount(ctx) > 0, run: (ctx) => ctx.editor.bringToFront(ctx.selection.nodeIds) },
-    { id: "node.back", section: "arrange", targets: ["node", "selection"], label: "Send to back", icon: "back", when: (ctx) => nodeCount(ctx) > 0, run: (ctx) => ctx.editor.sendToBack(ctx.selection.nodeIds) },
+    {
+      id: "node.front",
+      section: "arrange",
+      targets: ["node", "selection"],
+      label: "Bring to front",
+      icon: "front",
+      when: (ctx) => nodeCount(ctx) > 0,
+      run: (ctx) => ctx.editor.bringToFront(ctx.selection.nodeIds),
+    },
+    {
+      id: "node.back",
+      section: "arrange",
+      targets: ["node", "selection"],
+      label: "Send to back",
+      icon: "back",
+      when: (ctx) => nodeCount(ctx) > 0,
+      run: (ctx) => ctx.editor.sendToBack(ctx.selection.nodeIds),
+    },
     {
       id: "item.delete",
       section: "danger",
@@ -264,19 +345,34 @@ export function builtinActions(): Action[] {
     },
 
     // ---------------- edge ----------------
-    { id: "edge.edit-label", section: "edit", targets: ["edge"], label: "Edit label", icon: "tag", run: (ctx) => ctx.editor.startEditing({ kind: "edge", id: ctx.edgeId! }) },
+    {
+      id: "edge.edit-label",
+      section: "edit",
+      targets: ["edge"],
+      label: "Edit label",
+      icon: "tag",
+      run: (ctx) => ctx.editor.startEditing({ kind: "edge", id: ctx.edgeId! }),
+    },
     {
       id: "edge.toggle-kind",
       section: "edge",
       targets: ["edge"],
-      label: (ctx) => (ctx.editor.getEdge(ctx.edgeId!)?.kind === "sync" ? "Make async (message)" : "Make sync (request)"),
+      label: (ctx) =>
+        ctx.editor.getEdge(ctx.edgeId!)?.kind === "sync" ? "Make async (message)" : "Make sync (request)",
       icon: "bolt",
       run: (ctx) => {
         const e = ctx.editor.getEdge(ctx.edgeId!);
         if (e) ctx.editor.updateEdge(e.id, { kind: e.kind === "sync" ? "async" : "sync" });
       },
     },
-    { id: "edge.reverse", section: "edge", targets: ["edge"], label: "Reverse direction", icon: "swap", run: (ctx) => ctx.editor.reverseEdge(ctx.edgeId!) },
+    {
+      id: "edge.reverse",
+      section: "edge",
+      targets: ["edge"],
+      label: "Reverse direction",
+      icon: "swap",
+      run: (ctx) => ctx.editor.reverseEdge(ctx.edgeId!),
+    },
     {
       id: "edge.toggle-dlq",
       section: "edge",
@@ -289,9 +385,30 @@ export function builtinActions(): Action[] {
         ctx.editor.setEdgeProps(ctx.edgeId!, { dlq: on ? undefined : true });
       },
     },
-    { id: "edge.consumer-group", section: "edge", targets: ["edge"], label: "Set consumer group…", icon: "users", run: (ctx) => ctx.editor.openInspector("group") },
-    { id: "edge.from-side", section: "edge", targets: ["edge"], label: "Route from side", icon: "route", children: (ctx) => sideMenu(ctx, "sourceSide") },
-    { id: "edge.to-side", section: "edge", targets: ["edge"], label: "Route to side", icon: "route", children: (ctx) => sideMenu(ctx, "targetSide") },
+    {
+      id: "edge.consumer-group",
+      section: "edge",
+      targets: ["edge"],
+      label: "Set consumer group…",
+      icon: "users",
+      run: (ctx) => ctx.editor.openInspector("group"),
+    },
+    {
+      id: "edge.from-side",
+      section: "edge",
+      targets: ["edge"],
+      label: "Route from side",
+      icon: "route",
+      children: (ctx) => sideMenu(ctx, "sourceSide"),
+    },
+    {
+      id: "edge.to-side",
+      section: "edge",
+      targets: ["edge"],
+      label: "Route to side",
+      icon: "route",
+      children: (ctx) => sideMenu(ctx, "targetSide"),
+    },
 
     // ---------------- selection ----------------
     {
@@ -305,7 +422,13 @@ export function builtinActions(): Action[] {
       children: (ctx) =>
         ALIGN.flatMap((a, i): MenuNode[] => [
           ...(i === 3 ? [{ type: "separator" } as const] : []),
-          { type: "item", id: `align:${a.mode}`, label: a.label, icon: a.icon, run: () => ctx.editor.align(ctx.selection.nodeIds, a.mode) },
+          {
+            type: "item",
+            id: `align:${a.mode}`,
+            label: a.label,
+            icon: a.icon,
+            run: () => ctx.editor.align(ctx.selection.nodeIds, a.mode),
+          },
         ]),
     },
     {
@@ -316,8 +439,22 @@ export function builtinActions(): Action[] {
       icon: "distribute-h",
       order: 20,
       children: (ctx) => [
-        { type: "item", id: "distribute:h", label: "Horizontally", icon: "distribute-h", disabled: nodeCount(ctx) < 3, run: () => ctx.editor.distribute(ctx.selection.nodeIds, "h") },
-        { type: "item", id: "distribute:v", label: "Vertically", icon: "distribute-v", disabled: nodeCount(ctx) < 3, run: () => ctx.editor.distribute(ctx.selection.nodeIds, "v") },
+        {
+          type: "item",
+          id: "distribute:h",
+          label: "Horizontally",
+          icon: "distribute-h",
+          disabled: nodeCount(ctx) < 3,
+          run: () => ctx.editor.distribute(ctx.selection.nodeIds, "h"),
+        },
+        {
+          type: "item",
+          id: "distribute:v",
+          label: "Vertically",
+          icon: "distribute-v",
+          disabled: nodeCount(ctx) < 3,
+          run: () => ctx.editor.distribute(ctx.selection.nodeIds, "v"),
+        },
       ],
     },
     {
@@ -333,17 +470,50 @@ export function builtinActions(): Action[] {
     },
 
     // ---------------- group ----------------
-    { id: "group.rename", section: "edit", targets: ["group"], label: "Rename", icon: "edit", shortcut: shortcutKeys("rename"), run: (ctx) => ctx.editor.startEditing({ kind: "group", id: ctx.groupId! }) },
+    {
+      id: "group.rename",
+      section: "edit",
+      targets: ["group"],
+      label: "Rename",
+      icon: "edit",
+      shortcut: shortcutKeys("rename"),
+      run: (ctx) => ctx.editor.startEditing({ kind: "group", id: ctx.groupId! }),
+    },
     {
       id: "group.tone",
       section: "edit",
       targets: ["group"],
       label: "Tone",
       icon: "tone",
-      children: (ctx) => toneMenu("tone", ctx.editor.getGroup(ctx.groupId!)?.tone ?? "neutral", (t) => ctx.editor.updateGroup(ctx.groupId!, { tone: t })),
+      children: (ctx) =>
+        toneMenu("tone", ctx.editor.getGroup(ctx.groupId!)?.tone ?? "neutral", (t) =>
+          ctx.editor.updateGroup(ctx.groupId!, { tone: t }),
+        ),
     },
-    { id: "group.fit", section: "arrange", targets: ["group"], label: "Fit to contents", icon: "fit", run: (ctx) => ctx.editor.fitGroupToContents(ctx.groupId!) },
-    { id: "group.ungroup", section: "danger", targets: ["group"], label: "Ungroup", icon: "ungroup", run: (ctx) => ctx.editor.ungroup(ctx.groupId!) },
-    { id: "group.delete", section: "danger", targets: ["group"], label: "Delete with contents", icon: "trash", danger: true, run: (ctx) => ctx.editor.deleteGroupWithContents(ctx.groupId!) },
+    {
+      id: "group.fit",
+      section: "arrange",
+      targets: ["group"],
+      label: "Fit to contents",
+      icon: "fit",
+      run: (ctx) => ctx.editor.fitGroupToContents(ctx.groupId!),
+    },
+    {
+      id: "group.ungroup",
+      section: "danger",
+      targets: ["group"],
+      label: "Ungroup",
+      icon: "ungroup",
+      run: (ctx) => ctx.editor.ungroup(ctx.groupId!),
+    },
+    {
+      id: "group.delete",
+      section: "danger",
+      targets: ["group"],
+      label: "Delete with contents",
+      icon: "trash",
+      danger: true,
+      run: (ctx) => ctx.editor.deleteGroupWithContents(ctx.groupId!),
+    },
   ];
 }

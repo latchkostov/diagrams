@@ -5,6 +5,7 @@ power user can model a real system and replay it in a meeting. When the two conf
 path wins by default and the power path stays one step away.
 
 ## Rules
+
 1. **Beautiful by default.** Every default (layout, colours, edge style, simulation speed) should look
    and behave well without touching a setting. A setting that most people need to change is a bad default.
 2. **Progressive disclosure.** Show the 20% of controls used 80% of the time. Everything else lives in
@@ -22,11 +23,12 @@ path wins by default and the power path stays one step away.
 8. **App, not page.** No browser context menu, no stray text selection, no layout jumps. Keyboard first-class.
 9. **Teach in place.** Hints, shortcut labels and placeholders over docs. Discoverable from the right-click.
 10. **Nothing overlaps by default.** Labels never cover nodes, parallel edges stay distinguishable,
-   edges route around nodes, and floating panels never hide content after fit-view. An automated
-   overlap audit (`tests/e2e/layout.spec.ts`) guards every example.
+    edges route around nodes, and floating panels never hide content after fit-view. An automated
+    overlap audit (`tests/e2e/layout.spec.ts`) guards every example.
 11. **Presentation is a first-class mode.** Anything shown in a meeting reads at a distance and hides editing chrome.
 
 ## Process
+
 Every feature batch ends with a **UX review gate** before new work starts: a designer agent walks the
 whole app against these rules, flags clutter and inconsistency, and simplifies (removes, merges, moves to
 context) before adding. Findings go in `docs/DESIGN-REVIEW.md`.

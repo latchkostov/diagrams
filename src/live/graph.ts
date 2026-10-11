@@ -34,6 +34,9 @@ export function downstreamOfEdge(edges: readonly Pick<DiagramEdge, "id" | "from"
 }
 
 /** Edges with both ends in `nodes` (kept bright while a note focuses on those nodes). */
-export function edgesWithin(edges: readonly Pick<DiagramEdge, "id" | "from" | "to">[], nodes: ReadonlySet<string>): Set<string> {
+export function edgesWithin(
+  edges: readonly Pick<DiagramEdge, "id" | "from" | "to">[],
+  nodes: ReadonlySet<string>,
+): Set<string> {
   return new Set(edges.filter((e) => nodes.has(e.from) && nodes.has(e.to)).map((e) => e.id));
 }

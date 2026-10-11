@@ -67,7 +67,8 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
     height: n.measured?.height ?? n.height ?? deps().nodeSize.height,
   });
   const diagram = () => fromFlow(deps().meta, rf.getNodes(), rf.getEdges());
-  const members = (groupId: string) => rf.getNodes().filter((n): n is DiagramFlowNode => isDiagram(n) && n.data.group === groupId);
+  const members = (groupId: string) =>
+    rf.getNodes().filter((n): n is DiagramFlowNode => isDiagram(n) && n.data.group === groupId);
   const hint = (merge?: string) => deps().history.hint(merge);
 
   const setSelected = (sel: Partial<Selection>) => {
@@ -80,7 +81,9 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
         return !!n.selected === want ? n : { ...n, selected: want };
       }),
     );
-    deps().setEdges((es) => es.map((e) => (!!e.selected === edges.has(e.id) ? e : { ...e, selected: edges.has(e.id) })));
+    deps().setEdges((es) =>
+      es.map((e) => (!!e.selected === edges.has(e.id) ? e : { ...e, selected: edges.has(e.id) })),
+    );
   };
 
   const movePositions = (pos: Positions) => {
@@ -110,8 +113,15 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
       const group = n.group && newGroups.has(n.group) ? n.group : groupAt(all, n.x + width / 2, n.y + height / 2);
       return { ...f, data: { ...f.data, group }, selected: true };
     });
-    deps().setNodes((cur) => [...cur.map((n) => (n.selected ? { ...n, selected: false } : n)), ...groupNodes, ...nodes]);
-    deps().setEdges((cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), ...r.edges.map(edgeToFlow)]);
+    deps().setNodes((cur) => [
+      ...cur.map((n) => (n.selected ? { ...n, selected: false } : n)),
+      ...groupNodes,
+      ...nodes,
+    ]);
+    deps().setEdges((cur) => [
+      ...cur.map((e) => (e.selected ? { ...e, selected: false } : e)),
+      ...r.edges.map(edgeToFlow),
+    ]);
   };
 
   const readSystemClipboard = async (): Promise<ClipboardPayload | null> => {
@@ -132,8 +142,14 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
       const ns = rf.getNodes();
       return {
         nodeIds: ns.filter((n) => isDiagram(n) && n.selected).map((n) => n.id),
-        groupIds: ns.filter(isGroup).filter((n) => n.selected).map((n) => n.data.groupId),
-        edgeIds: rf.getEdges().filter((e) => e.selected).map((e) => e.id),
+        groupIds: ns
+          .filter(isGroup)
+          .filter((n) => n.selected)
+          .map((n) => n.data.groupId),
+        edgeIds: rf
+          .getEdges()
+          .filter((e) => e.selected)
+          .map((e) => e.id),
       };
     },
 
@@ -185,7 +201,11 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
     setNodeProps: (id, patch, opts) => {
       hint(opts?.merge);
       deps().setNodes((ns) =>
-        ns.map((n) => (n.id === id && isDiagram(n) ? { ...n, data: { ...n.data, props: withoutUndefined({ ...n.data.props, ...patch }) } } : n)),
+        ns.map((n) =>
+          n.id === id && isDiagram(n)
+            ? { ...n, data: { ...n.data, props: withoutUndefined({ ...n.data.props, ...patch }) } }
+            : n,
+        ),
       );
     },
     updateEdge: (id, patch, opts) => {
@@ -207,7 +227,12 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
       hint(opts?.merge);
       deps().setEdges((es) =>
         es.map((e) =>
-          e.id === id ? { ...e, data: { kind: "async" as const, ...e.data, props: withoutUndefined({ ...e.data?.props, ...patch }) } } : e,
+          e.id === id
+            ? {
+                ...e,
+                data: { kind: "async" as const, ...e.data, props: withoutUndefined({ ...e.data?.props, ...patch }) },
+              }
+            : e,
         ),
       );
     },
@@ -247,7 +272,12 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
                 ...e,
                 source: e.target,
                 target: e.source,
-                data: { kind: "async" as const, ...e.data, sourceSide: e.data?.targetSide, targetSide: e.data?.sourceSide },
+                data: {
+                  kind: "async" as const,
+                  ...e.data,
+                  sourceSide: e.data?.targetSide,
+                  targetSide: e.data?.sourceSide,
+                },
               }
             : e,
         ),
@@ -263,7 +293,11 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
       deps().setNodes((ns) =>
         ns
           .filter((n) => (isGroup(n) ? !groupIds.has(n.data.groupId) : !nodeIds.has(n.id)))
-          .map((n) => (isDiagram(n) && n.data.group && groupIds.has(n.data.group) ? { ...n, data: { ...n.data, group: undefined } } : n)),
+          .map((n) =>
+            isDiagram(n) && n.data.group && groupIds.has(n.data.group)
+              ? { ...n, data: { ...n.data, group: undefined } }
+              : n,
+          ),
       );
       deps().setEdges((es) => es.filter((e) => !edgeIds.has(e.id) && !nodeIds.has(e.source) && !nodeIds.has(e.target)));
     },
@@ -273,11 +307,27 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
     },
     align: (ids, mode) => {
       const set = new Set(ids);
-      movePositions(align(rf.getNodes().filter((n) => set.has(n.id) && isDiagram(n)).map(box), mode));
+      movePositions(
+        align(
+          rf
+            .getNodes()
+            .filter((n) => set.has(n.id) && isDiagram(n))
+            .map(box),
+          mode,
+        ),
+      );
     },
     distribute: (ids, axis) => {
       const set = new Set(ids);
-      movePositions(distribute(rf.getNodes().filter((n) => set.has(n.id) && isDiagram(n)).map(box), axis));
+      movePositions(
+        distribute(
+          rf
+            .getNodes()
+            .filter((n) => set.has(n.id) && isDiagram(n))
+            .map(box),
+          axis,
+        ),
+      );
     },
     groupNodes: (ids, tone = "neutral") => {
       const set = new Set(ids);
@@ -316,17 +366,25 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
     },
     sendToBack: (ids) => {
       const set = new Set(ids);
-      deps().setNodes((ns) => [...ns.filter(isGroup), ...ns.filter((n) => set.has(n.id) && isDiagram(n)), ...ns.filter((n) => isDiagram(n) && !set.has(n.id))]);
+      deps().setNodes((ns) => [
+        ...ns.filter(isGroup),
+        ...ns.filter((n) => set.has(n.id) && isDiagram(n)),
+        ...ns.filter((n) => isDiagram(n) && !set.has(n.id)),
+      ]);
     },
     moveSelection: (dx, dy) => {
       const ns = rf.getNodes();
       const groups = new Set(ns.filter((n) => isGroup(n) && n.selected).map((n) => (n as GroupFlowNode).data.groupId));
       const moving = new Set(
-        ns.filter((n) => n.selected || (isDiagram(n) && n.data.group !== undefined && groups.has(n.data.group))).map((n) => n.id),
+        ns
+          .filter((n) => n.selected || (isDiagram(n) && n.data.group !== undefined && groups.has(n.data.group)))
+          .map((n) => n.id),
       );
       if (!moving.size) return;
       hint("nudge");
-      deps().setNodes((cur) => cur.map((n) => (moving.has(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n)));
+      deps().setNodes((cur) =>
+        cur.map((n) => (moving.has(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n)),
+      );
     },
 
     copy: (sel) => {
@@ -374,7 +432,13 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
     exportJson: () => {
       const d = diagram();
       const slug = deps().slug;
-      const name = slug === IMPORTED_SLUG ? d.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : slug;
+      const name =
+        slug === IMPORTED_SLUG
+          ? d.title
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/(^-|-$)/g, "")
+          : slug;
       downloadDiagram(d, name || "diagram");
     },
     autoLayout: () => {
@@ -388,7 +452,12 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, ref: { c
           .filter((n) => n.group === g.id && pos.has(n.id))
           .map((n) => {
             const measured = rf.getNode(n.id);
-            return { id: n.id, ...pos.get(n.id)!, width: measured?.measured?.width ?? width, height: measured?.measured?.height ?? height };
+            return {
+              id: n.id,
+              ...pos.get(n.id)!,
+              width: measured?.measured?.width ?? width,
+              height: measured?.measured?.height ?? height,
+            };
           });
         if (boxes.length) api.updateGroup(g.id, boundaryAround(boxes));
       }

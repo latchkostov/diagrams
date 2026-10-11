@@ -47,7 +47,9 @@ export function NoteCallout({ state }: { state: LiveState }) {
     const t = n.internals.positionAbsolute.y * zoom + ty;
     const r = l + (n.measured.width ?? 0) * zoom;
     const b = t + (n.measured.height ?? 0) * zoom;
-    box = box ? { l: Math.min(box.l, l), t: Math.min(box.t, t), r: Math.max(box.r, r), b: Math.max(box.b, b) } : { l, t, r, b };
+    box = box
+      ? { l: Math.min(box.l, l), t: Math.min(box.t, t), r: Math.max(box.r, r), b: Math.max(box.b, b) }
+      : { l, t, r, b };
   }
 
   let style: CSSProperties;
@@ -85,7 +87,12 @@ export function NoteCallout({ state }: { state: LiveState }) {
       <p className="lv-note-text">{note.text}</p>
       {waiting && (
         <div className="lv-note-actions">
-          <button className="lv-note-continue" onClick={() => ui.controller.resume()} data-testid="live-note-continue" autoFocus={ui.presenting}>
+          <button
+            className="lv-note-continue"
+            onClick={() => ui.controller.resume()}
+            data-testid="live-note-continue"
+            autoFocus={ui.presenting}
+          >
             Continue <LiveIcon name="play" size={10} />
           </button>
           <span className="lv-note-hint">

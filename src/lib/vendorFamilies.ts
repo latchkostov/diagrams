@@ -21,10 +21,34 @@ export const FAMILIES: readonly Family[] = [
   { id: "azure", label: "Azure", short: "Azure", hue: "#0078D4", hint: "Azure services and Microsoft products" },
   { id: "aws", label: "AWS", short: "AWS", hue: "#FF9900", hint: "Amazon Web Services" },
   { id: "gcp", label: "Google Cloud", short: "GCP", hue: "#4285F4", hint: "Google Cloud services" },
-  { id: "streaming", label: "Kafka & streaming", short: "Streaming", hue: "#7C3AED", hint: "Kafka, RabbitMQ, NATS and other brokers" },
-  { id: "oss", label: "Open source", short: "Open source", hue: "#10B981", hint: "Databases, runtimes, orchestration and tooling you can self-host" },
-  { id: "saas", label: "SaaS", short: "SaaS", hue: "#E5484D", hint: "Hosted platforms: data, observability, edge and CI" },
-  { id: "generic", label: "Generic & clients", short: "Generic", hue: "#64748B", hint: "Vendor-neutral shapes, people, devices and partners" },
+  {
+    id: "streaming",
+    label: "Kafka & streaming",
+    short: "Streaming",
+    hue: "#7C3AED",
+    hint: "Kafka, RabbitMQ, NATS and other brokers",
+  },
+  {
+    id: "oss",
+    label: "Open source",
+    short: "Open source",
+    hue: "#10B981",
+    hint: "Databases, runtimes, orchestration and tooling you can self-host",
+  },
+  {
+    id: "saas",
+    label: "SaaS",
+    short: "SaaS",
+    hue: "#E5484D",
+    hint: "Hosted platforms: data, observability, edge and CI",
+  },
+  {
+    id: "generic",
+    label: "Generic & clients",
+    short: "Generic",
+    hue: "#64748B",
+    hint: "Vendor-neutral shapes, people, devices and partners",
+  },
   { id: "other", label: "Other", short: "Other", hue: "#8A94A6", hint: "Vendors without a family yet" },
 ];
 
@@ -88,7 +112,9 @@ export function familyCounts(list: readonly Stencil[]): { family: Family; count:
 }
 
 /** Vendors grouped by family (most stencils first), for the vendor overflow menu. */
-export function vendorsByFamily(list: readonly Stencil[]): { family: Family; vendors: { vendor: string; count: number }[] }[] {
+export function vendorsByFamily(
+  list: readonly Stencil[],
+): { family: Family; vendors: { vendor: string; count: number }[] }[] {
   const byVendor = new Map<string, number>();
   for (const s of list) byVendor.set(s.vendor, (byVendor.get(s.vendor) ?? 0) + 1);
   return FAMILIES.map((family) => ({

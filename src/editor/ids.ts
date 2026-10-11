@@ -8,5 +8,10 @@ export function uniqueId(base: string, taken: ReadonlySet<string>): string {
 
 /** Id stem for a node created from a stencil, e.g. "kafka.topic" → "topic". */
 export function stencilIdBase(stencilId: string): string {
-  return stencilId.split(".").slice(-1)[0].replace(/[^a-z0-9-]/gi, "") || "node";
+  return (
+    stencilId
+      .split(".")
+      .slice(-1)[0]
+      .replace(/[^a-z0-9-]/gi, "") || "node"
+  );
 }

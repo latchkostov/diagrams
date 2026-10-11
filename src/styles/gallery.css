@@ -38,7 +38,9 @@
   font-weight: 550;
   font-size: 13.5px;
   text-align: left;
-  transition: background var(--dur-1), color var(--dur-1);
+  transition:
+    background var(--dur-1),
+    color var(--dur-1);
 }
 
 .rail-link:hover:not(:disabled) {
@@ -185,7 +187,10 @@
   font-size: 13px;
   font-weight: 550;
   white-space: nowrap;
-  transition: background var(--dur-1), color var(--dur-1), box-shadow var(--dur-1);
+  transition:
+    background var(--dur-1),
+    color var(--dur-1),
+    box-shadow var(--dur-1);
 }
 
 .family i {
@@ -214,12 +219,16 @@
 .family.is-on {
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 0 0 1px var(--line);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 0 0 1px var(--line);
 }
 
 [data-theme="dark"] .family.is-on {
   background: var(--surface-2);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px var(--line-strong);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 0 0 1px var(--line-strong);
 }
 
 .family.is-empty:not(.is-on) {
@@ -430,7 +439,11 @@
   box-shadow: var(--shadow-1);
   opacity: 0;
   scale: 0.92;
-  transition: opacity var(--dur-1), scale var(--dur-1), background var(--dur-1), color var(--dur-1);
+  transition:
+    opacity var(--dur-1),
+    scale var(--dur-1),
+    background var(--dur-1),
+    color var(--dur-1);
 }
 
 .tile:hover .tile-add,
@@ -552,7 +565,9 @@
   border-radius: 5px;
   padding: 3px 6px;
   cursor: copy;
-  transition: background var(--dur-1), color var(--dur-1);
+  transition:
+    background var(--dur-1),
+    color var(--dur-1);
 }
 
 .tile-id span {
@@ -977,7 +992,11 @@
   font-size: 13.5px;
   font-weight: 600;
   animation: dock-in var(--dur-2) var(--ease-out);
-  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1), scale var(--dur-1);
+  transition:
+    background var(--dur-1),
+    color var(--dur-1),
+    border-color var(--dur-1),
+    scale var(--dur-1);
 }
 
 .gallery-dock.is-over {

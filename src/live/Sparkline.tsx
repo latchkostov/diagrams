@@ -8,12 +8,16 @@ const H = 54;
 const N = 120;
 
 /** Samples a traffic shape's rate curve; also integrates it for the "≈ N messages" readout. */
-export function sampleRate(shape: TrafficShape, points = N): { tMax: number; rates: number[]; peak: number; total: number } {
+export function sampleRate(
+  shape: TrafficShape,
+  points = N,
+): { tMax: number; rates: number[]; peak: number; total: number } {
   const w = trafficWindow(shape);
   const tMax = Math.max(1000, w.endMs * 1.08 + 200);
   const rates: number[] = [];
   for (let i = 0; i <= points; i++) rates.push(trafficRateAt(shape, (tMax * i) / points));
-  const total = shape.kind === "burst" ? Math.max(0, shape.count) : rates.reduce((sum, r) => sum + (r * tMax) / points / 1000, 0);
+  const total =
+    shape.kind === "burst" ? Math.max(0, shape.count) : rates.reduce((sum, r) => sum + (r * tMax) / points / 1000, 0);
   return { tMax, rates, peak: Math.max(0, ...rates), total };
 }
 
@@ -43,7 +47,9 @@ export function Sparkline({ shape, testId }: { shape: TrafficShape; testId?: str
         <line x1="0" x2={W} y1={H - 4} y2={H - 4} className="lv-spark-base" />
         <path d={area} className="lv-spark-area" />
         <path d={line} className="lv-spark-line" vectorEffect="non-scaling-stroke" />
-        {hi !== null && <line x1={x(hi)} x2={x(hi)} y1="2" y2={H - 4} className="lv-spark-cross" vectorEffect="non-scaling-stroke" />}
+        {hi !== null && (
+          <line x1={x(hi)} x2={x(hi)} y1="2" y2={H - 4} className="lv-spark-cross" vectorEffect="non-scaling-stroke" />
+        )}
       </svg>
       <div className="lv-spark-legend mono">
         {hi !== null ? (

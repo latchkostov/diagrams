@@ -225,9 +225,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "InvoiceHighValue"
-        ],
+        "filter": ["InvoiceHighValue"],
         "group": "finance-approval"
       }
     },
@@ -239,9 +237,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "InvoiceAccepted"
-        ],
+        "filter": ["InvoiceAccepted"],
         "group": "ledger-posting"
       }
     },
@@ -263,9 +259,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "InvoiceAccepted"
-        ]
+        "filter": ["InvoiceAccepted"]
       }
     },
     {
@@ -286,9 +280,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "PostInvoice"
-        ]
+        "filter": ["PostInvoice"]
       }
     },
     {
@@ -366,11 +358,7 @@
           "action": {
             "do": "note",
             "text": "The ERP submits 300 high-value invoices. Only the approval subscription accepts them.",
-            "focus": [
-              "partner",
-              "invoices",
-              "approval-sub"
-            ]
+            "focus": ["partner", "invoices", "approval-sub"]
           }
         },
         {
@@ -378,11 +366,7 @@
           "action": {
             "do": "note",
             "text": "Approved invoices become PostInvoice commands; originals remain archived.",
-            "focus": [
-              "workflow",
-              "commands",
-              "cosmos"
-            ]
+            "focus": ["workflow", "commands", "cosmos"]
           }
         }
       ],
@@ -456,10 +440,7 @@
           "action": {
             "do": "note",
             "text": "A schema mismatch makes every ledger attempt fail. Commands are retried five times.",
-            "focus": [
-              "worker",
-              "commands"
-            ]
+            "focus": ["worker", "commands"]
           }
         },
         {
@@ -467,10 +448,7 @@
           "action": {
             "do": "note",
             "text": "Poison commands are quarantined in the DLQ for operator replay.",
-            "focus": [
-              "commands",
-              "dlq"
-            ],
+            "focus": ["commands", "dlq"],
             "pause": true
           }
         },

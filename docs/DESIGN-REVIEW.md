@@ -21,33 +21,33 @@ Screenshots: `docs/screenshots/design-before-*.png` (before) and `design-after-*
 
 ## What was off (and is now fixed in the design lane)
 
-| Issue | Fix |
-|---|---|
-| 31 vendor chips in one scrolling row: overwhelming, and it doesn't scale | Seven **families** in one quiet segmented track (All, Azure, AWS, Google Cloud, Kafka & streaming, Open source, SaaS, Generic & clients) with live counts, plus a **Vendor** menu (families, then vendors, searchable) for the long tail. Mapping in `src/lib/vendorFamilies.ts`. |
-| Search matched a description substring, so "sb" or "pg" found nothing useful | Ranked search over label, vendor, id, role, category, family and an alias table (`src/lib/stencilSearch.ts`): "sb" finds Service Bus, "pg" Postgres, "k8s" Kubernetes, "lambda" puts AWS Lambda first. Two-letter tokens must start a word. |
-| Gallery tiles only displayed | Tiles open a **details drawer** (all three node variants, description, sim role explained, id/accent copy, icon source and licence, add / new diagram / copy JSON, ←/→ to step). Tiles **drag** (grab cursor; a drop dock appears, and dropping into an editor pastes a JSON node), have a hover **+** quick add, and an app **context menu** (Add, View details, Copy id, Copy as JSON node). |
-| Text cursor and accidental selection everywhere | Lead's global defaults plus a full pass (table below). |
-| Light-mode `--text-3` was 3.1:1 on white; dark 3.5:1 | Now about 4.6:1 in both themes. `--text-4` added for placeholders and decorative counts only. |
-| Platform scrollbars with arrows inside panels | Thin, theme-coloured scrollbars app-wide. |
-| Disabled controls kept the arrow or pointer | `not-allowed`, plus consistent 45% opacity on `.btn` / `.icon-btn`. |
-| No press states | Buttons, rail links, family chips, palette rows and section headers get a pressed tone (and `.btn` a half-pixel drop). |
-| "Loading…" flashed on every view switch | Views fade in; the loading note only appears after 350 ms. |
-| Canvas palette was one long list | Search first (Enter adds the top hit), family filter, collapsible categories (remembered), **Recently used** pinned on top (also shown in the collapsed rail). |
+| Issue                                                                        | Fix                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 31 vendor chips in one scrolling row: overwhelming, and it doesn't scale     | Seven **families** in one quiet segmented track (All, Azure, AWS, Google Cloud, Kafka & streaming, Open source, SaaS, Generic & clients) with live counts, plus a **Vendor** menu (families, then vendors, searchable) for the long tail. Mapping in `src/lib/vendorFamilies.ts`.                                                                                                              |
+| Search matched a description substring, so "sb" or "pg" found nothing useful | Ranked search over label, vendor, id, role, category, family and an alias table (`src/lib/stencilSearch.ts`): "sb" finds Service Bus, "pg" Postgres, "k8s" Kubernetes, "lambda" puts AWS Lambda first. Two-letter tokens must start a word.                                                                                                                                                    |
+| Gallery tiles only displayed                                                 | Tiles open a **details drawer** (all three node variants, description, sim role explained, id/accent copy, icon source and licence, add / new diagram / copy JSON, ←/→ to step). Tiles **drag** (grab cursor; a drop dock appears, and dropping into an editor pastes a JSON node), have a hover **+** quick add, and an app **context menu** (Add, View details, Copy id, Copy as JSON node). |
+| Text cursor and accidental selection everywhere                              | Lead's global defaults plus a full pass (table below).                                                                                                                                                                                                                                                                                                                                         |
+| Light-mode `--text-3` was 3.1:1 on white; dark 3.5:1                         | Now about 4.6:1 in both themes. `--text-4` added for placeholders and decorative counts only.                                                                                                                                                                                                                                                                                                  |
+| Platform scrollbars with arrows inside panels                                | Thin, theme-coloured scrollbars app-wide.                                                                                                                                                                                                                                                                                                                                                      |
+| Disabled controls kept the arrow or pointer                                  | `not-allowed`, plus consistent 45% opacity on `.btn` / `.icon-btn`.                                                                                                                                                                                                                                                                                                                            |
+| No press states                                                              | Buttons, rail links, family chips, palette rows and section headers get a pressed tone (and `.btn` a half-pixel drop).                                                                                                                                                                                                                                                                         |
+| "Loading…" flashed on every view switch                                      | Views fade in; the loading note only appears after 350 ms.                                                                                                                                                                                                                                                                                                                                     |
+| Canvas palette was one long list                                             | Search first (Enter adds the top hit), family filter, collapsible categories (remembered), **Recently used** pinned on top (also shown in the collapsed rail).                                                                                                                                                                                                                                 |
 
 ### Cursor model (now enforced)
 
-| Element | Cursor |
-|---|---|
-| Buttons, links, selects, checkboxes, menu buttons | `pointer` |
-| Gallery tiles, palette items, recent tiles | `grab` / `grabbing` |
-| Canvas nodes, boundary labels, multi-selection box | `move` |
-| Empty canvas, minimap | `grab` / `grabbing` (pans) |
-| Node handles | `crosshair` |
-| Edges and edge labels | `pointer` |
-| Stencil ids, accent hex and other copy chips | `copy` |
-| Disabled controls | `not-allowed` (menu items keep the arrow, as native menus do) |
-| Inputs, textareas, search fields (whole field), the Lab's share URL | `text` |
-| Everything else | `default`, no text selection |
+| Element                                                             | Cursor                                                        |
+| ------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Buttons, links, selects, checkboxes, menu buttons                   | `pointer`                                                     |
+| Gallery tiles, palette items, recent tiles                          | `grab` / `grabbing`                                           |
+| Canvas nodes, boundary labels, multi-selection box                  | `move`                                                        |
+| Empty canvas, minimap                                               | `grab` / `grabbing` (pans)                                    |
+| Node handles                                                        | `crosshair`                                                   |
+| Edges and edge labels                                               | `pointer`                                                     |
+| Stencil ids, accent hex and other copy chips                        | `copy`                                                        |
+| Disabled controls                                                   | `not-allowed` (menu items keep the arrow, as native menus do) |
+| Inputs, textareas, search fields (whole field), the Lab's share URL | `text`                                                        |
+| Everything else                                                     | `default`, no text selection                                  |
 
 Covered by e2e: `gallery.spec.ts` (tiles grab, ids copy, nothing in the gallery shows `text`),
 `palette.spec.ts` (items grab, nodes move).
@@ -101,24 +101,24 @@ Covered by e2e: `gallery.spec.ts` (tiles grab, ids copy, nothing in the gallery 
 
 For the Live view (all theme-aware):
 
-| Token | Use |
-|---|---|
-| `--status-up`, `--status-paused`, `--status-down` | Node status ink (dot, ring, label) |
-| `--status-up-soft`, `--status-paused-soft`, `--status-down-soft` | Status backgrounds / badges |
-| `--success`, `--warning`, `--danger` (+ `-soft`), `--info`, `--info-soft` | Expectations pass/fail, alerts |
-| `--live-backlog`, `--live-dlq`, `--live-throughput` | Metric colours (backlog = paused amber, DLQ = down red, throughput = accent) |
-| `--particle-core`, `--particle-glow-blur`, `--particle-glow-opacity` | Particle centre and glow; particle hue stays the stencil accent |
+| Token                                                                     | Use                                                                          |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `--status-up`, `--status-paused`, `--status-down`                         | Node status ink (dot, ring, label)                                           |
+| `--status-up-soft`, `--status-paused-soft`, `--status-down-soft`          | Status backgrounds / badges                                                  |
+| `--success`, `--warning`, `--danger` (+ `-soft`), `--info`, `--info-soft` | Expectations pass/fail, alerts                                               |
+| `--live-backlog`, `--live-dlq`, `--live-throughput`                       | Metric colours (backlog = paused amber, DLQ = down red, throughput = accent) |
+| `--particle-core`, `--particle-glow-blur`, `--particle-glow-opacity`      | Particle centre and glow; particle hue stays the stencil accent              |
 
 General:
 
-| Token | Use |
-|---|---|
-| `--text-4` | Placeholders, decorative counts. Never body text. |
-| `--focus-ring` | Box-shadow ring for custom focus (tiles); `:focus-visible` outlines now use `--accent` |
-| `--hover`, `--press` | Translucent overlays for rows, chips and quiet buttons |
-| `--surface-raised`, `--shadow-1/2/3`, `--scrim` | Elevation: cards, popovers, drawers |
-| `--ease-out`, `--dur-1/2/3` | Motion (120/180/260 ms). The global reduced-motion rule turns animation off. |
-| `--sp-1` … `--sp-9` | 4px spacing scale (4–48) |
+| Token                                           | Use                                                                                    |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `--text-4`                                      | Placeholders, decorative counts. Never body text.                                      |
+| `--focus-ring`                                  | Box-shadow ring for custom focus (tiles); `:focus-visible` outlines now use `--accent` |
+| `--hover`, `--press`                            | Translucent overlays for rows, chips and quiet buttons                                 |
+| `--surface-raised`, `--shadow-1/2/3`, `--scrim` | Elevation: cards, popovers, drawers                                                    |
+| `--ease-out`, `--dur-1/2/3`                     | Motion (120/180/260 ms). The global reduced-motion rule turns animation off.           |
+| `--sp-1` … `--sp-9`                             | 4px spacing scale (4–48)                                                               |
 
 New global classes: `.btn-ghost`, `.icon-btn-quiet`, `.btn-danger-solid`, `.btn.is-pressed`,
 `.field-clear`, `.copy-chip`, and `label.field` (the whole field focuses its input).
