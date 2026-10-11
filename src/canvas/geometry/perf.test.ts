@@ -7,6 +7,7 @@ import { estimateCardSize } from "../nodes/size";
 import { groupHeaderRect, Router, type RouteInput } from "./router";
 import { routeOrthogonal } from "./orthogonal";
 import { nudgeRoutes } from "./nudge";
+import { perfBudget } from "../../test/perfBudget";
 
 function offsetRoute(count: number) {
   const side = Math.sqrt(count);
@@ -39,14 +40,14 @@ function separatedRoutes(count: number) {
 it("routes distinct obstacle coordinates without rescanning obstacles per grid cell", () => {
   const start = performance.now();
   expect(offsetRoute(400).ok).toBe(true);
-  expect(performance.now() - start).toBeLessThan(1500);
+  expect(performance.now() - start).toBeLessThan(perfBudget(1500));
 });
 
 it("nudges separated pinned routes without an all-pairs pass", () => {
   const routes = separatedRoutes(30_000);
   const start = performance.now();
   expect(nudgeRoutes(routes, [])).toEqual(routes);
-  expect(performance.now() - start).toBeLessThan(1000);
+  expect(performance.now() - start).toBeLessThan(perfBudget(1000));
 });
 
 const files = import.meta.glob<DiagramFile>("../../examples/*.json", { eager: true, import: "default" });

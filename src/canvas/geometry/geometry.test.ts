@@ -7,6 +7,7 @@ import { pointAlong, roundedPath } from "./path";
 import { slotOffset, spreadPorts } from "./ports";
 import { intersects, segmentHitsRect, simplify, type Point, type Rect } from "./rect";
 import { Router, routeDiagram, type RouteInput } from "./router";
+import { perfBudget } from "../../test/perfBudget";
 
 const card = (x: number, y: number, width = 220, height = 72): Rect => ({ x, y, width, height });
 const boxOf = (l: { x: number; y: number; width: number; height: number }): Rect => ({
@@ -437,7 +438,7 @@ describe("Router", () => {
     const r = routeDiagram({ nodes, edges });
     const ms = performance.now() - t0;
     expect(r.size).toBe(149);
-    expect(ms).toBeLessThan(1500);
+    expect(ms).toBeLessThan(perfBudget(1500));
     const v = auditLayout({
       nodes,
       edges: edges.map((e) => ({ ...e, points: r.get(e.id)!.points })),
