@@ -80,8 +80,13 @@ export interface DiagramEdge {
   label?: string;
   /** "async" = message-based (dashed, animated in sim); "sync" = request/response (solid). Default "async". */
   kind?: "async" | "sync";
+  /** Which side of each node the edge attaches to. Omitted = chosen automatically from node positions. */
+  sourceSide?: Side;
+  targetSide?: Side;
   props?: Record<string, unknown>;
 }
+
+export type Side = "top" | "right" | "bottom" | "left";
 
 export interface DiagramGroup {
   id: string;
