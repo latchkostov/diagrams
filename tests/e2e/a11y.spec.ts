@@ -116,6 +116,7 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
       await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=8`);
       await page.getByTestId("live-more").click();
       await page.getByTestId("live-trace-message").click();
+      await page.getByTestId("live-trace-next").click();
       await page.getByTestId("live-more").click();
       await page.getByTestId("live-traffic").click();
       await expect(page.getByTestId("trace-card")).toHaveAttribute("data-state", "done", { timeout: 15_000 });
@@ -128,6 +129,7 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
       await page.goto(`./?view=canvas&example=${KAFKA}&live=1&speed=8`);
       await page.getByTestId("live-more").click();
       await page.getByTestId("live-trace-message").click();
+      await page.getByTestId("live-trace-next").click();
       await expect(page.getByTestId("trace-card")).toHaveAttribute("data-state", "done", { timeout: 15_000 });
       await page.getByTestId("trace-sequence").click();
       await expect(page.getByTestId("sequence-view")).toBeVisible();

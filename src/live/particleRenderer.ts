@@ -6,6 +6,7 @@
 
 import type { Particle, ParticleKind, SimSnapshot } from "../sim/types";
 import { PathCache, pointOnSamples, sampleIndex, type PathLike, type PathSamples } from "./pathSampler";
+import { nearestOnBox, placeTraceLabels, type Box, type PlacedLabel } from "./traceLabels";
 
 /** Theme colours the canvas can't read from CSS by itself (from tokens.css, see `readParticleTokens`). */
 export interface ParticleTokens {
@@ -63,6 +64,11 @@ export interface RenderEnv {
   edgePath(edgeId: string): PathLike | null;
   /** A node's box in flow coordinates. */
   nodeRect(nodeId: string): Rect | null;
+  /**
+   * What a traced message's labels keep clear of, in pane CSS px: `hard` is never covered (node
+   * cards, their badges, floating chrome), `soft` only when there's a choice (edge labels).
+   */
+  obstacles?(): { hard: readonly Rect[]; soft: readonly Rect[] };
 }
 
 export interface RenderOptions {
@@ -145,7 +151,19 @@ export class ParticleRenderer {
   /** Hit targets from the last frame, in pane CSS px: x, y, message id (for click-to-trace). */
   private hits: number[] = [];
   /** The traced message's particles this frame (device px), drawn last, brighter and labelled. */
-  private focusHeads: { x: number; y: number; color: string; kind: ParticleKind; type: string; trail: number[] }[] = [];
+  private focusHeads: {
+    id: number;
+    x: number;
+    y: number;
+    color: string;
+    kind: ParticleKind;
+    type: string;
+    trail: number[];
+  }[] = [];
+  /** The traced message's labels in the last frame, in pane CSS px (tests read them off the canvas). */
+  labels: readonly PlacedLabel[] = [];
+  /** Each label's spot last frame, so it stays put while it can. */
+  private labelSpots = new Map<number, number>();
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -280,7 +298,7 @@ export class ParticleRenderer {
         const trail: number[] = [];
         if (!reduced && p.kind !== "reply")
           this.pushTrail(trail, s, t, reverse, (TRAIL[p.kind] * 2) / s.length, k, ox, oy);
-        this.focusHeads.push({ x, y, color, kind: p.kind, type: p.type, trail });
+        this.focusHeads.push({ id: p.messageId, x, y, color, kind: p.kind, type: p.type, trail });
         drawn++;
         continue;
       }
@@ -330,6 +348,10 @@ export class ParticleRenderer {
     }
     ctx.globalCompositeOperation = "source-over";
     if (this.focusHeads.length) this.drawFocus(size, dpr);
+    else if (this.labels.length) {
+      this.labels = [];
+      this.labelSpots.clear();
+    }
 
     this.trackArrivals(particles, now);
     this.drawPulses(now, k, ox, oy, size);
@@ -359,54 +381,90 @@ export class ParticleRenderer {
       ctx.drawImage(sprite, f.x - sprite.width / 2, f.y - sprite.height / 2);
     }
     ctx.globalCompositeOperation = "source-over";
-    // Labels follow the particle size (zoom and presentation), never smaller than 9 px.
-    const font = Math.max(9 * dpr, size * 3);
-    ctx.font = `600 ${font}px "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
-    ctx.textBaseline = "middle";
-    // Labels take the first free corner around their particle; one with no free corner is left out.
-    const placed: number[] = [];
-    const free = (x: number, y: number, w: number, h: number) => {
-      for (let i = 0; i < placed.length; i += 4)
-        if (
-          x < placed[i] + placed[i + 2] &&
-          placed[i] < x + w &&
-          y < placed[i + 1] + placed[i + 3] &&
-          placed[i + 1] < y + h
-        )
-          return false;
-      return true;
-    };
     for (const f of this.focusHeads) {
-      // A ring that reads on any background, then the type on a pill in the message colour.
+      // A ring that reads on any background.
       ctx.globalAlpha = 0.95;
       ctx.strokeStyle = dark ? "#ffffff" : f.color;
       ctx.lineWidth = Math.max(1.5, 1.6 * dpr);
       ctx.beginPath();
       ctx.arc(f.x, f.y, size * 2.3, 0, Math.PI * 2);
       ctx.stroke();
+    }
+    this.drawLabels(size, dpr);
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * The type on a pill in the message colour, beside each traced particle and clear of node cards,
+   * badges, chrome and each other (see traceLabels.ts). Labels follow the particle size (zoom and
+   * presentation) but never drop below 11 px, so they read at a distance.
+   */
+  private drawLabels(size: number, dpr: number): void {
+    const ctx = this.ctx;
+    const font = Math.max(11 * dpr, size * 3.2);
+    ctx.font = `600 ${font}px "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
+    ctx.textBaseline = "middle";
+    const scaled = (r: Rect): Box => ({ x: r.x * dpr, y: r.y * dpr, w: r.width * dpr, h: r.height * dpr });
+    const found = this.env.obstacles?.();
+    const ring = size * 2.4;
+    const colors = new Map<number, string>();
+    const reqs = [];
+    for (const f of this.focusHeads) {
       if (f.kind === "reply") continue;
-      const label = f.kind === "retry" ? `${f.type} \u21ba` : f.kind === "dlq" ? `${f.type} \u2192 DLQ` : f.type;
-      const w = ctx.measureText(label).width + font * 1.1;
-      const h = font * 1.75;
-      const off = size * 2.6;
-      const spot = [
-        [f.x + off, f.y - off - h],
-        [f.x + off, f.y + off],
-        [f.x - off - w, f.y - off - h],
-        [f.x - off - w, f.y + off],
-      ].find(([x, y]) => free(x, y, w, h));
-      if (!spot) continue;
-      placed.push(spot[0], spot[1], w, h);
-      const x = spot[0];
-      const y = spot[1] + h / 2;
+      colors.set(f.id, f.color);
+      reqs.push({
+        id: f.id,
+        text: f.kind === "retry" ? `${f.type} ↺` : f.kind === "dlq" ? `${f.type} → DLQ` : f.type,
+        x: f.x,
+        y: f.y,
+        priority: f.kind === "dlq" ? 3 : f.kind === "retry" ? 2 : 1,
+      });
+    }
+    const placed = placeTraceLabels(reqs, {
+      measure: (text) => ({ w: ctx.measureText(text).width + font * 1.1, h: font * 1.75 }),
+      offset: size * 2.6,
+      bounds: { x: 4 * dpr, y: 4 * dpr, w: this.canvas.width - 8 * dpr, h: this.canvas.height - 8 * dpr },
+      hard: found?.hard.map(scaled) ?? [],
+      // Other traced particles stay visible where they can.
+      soft: [
+        ...(found?.soft.map(scaled) ?? []),
+        ...this.focusHeads.map((f) => ({ x: f.x - ring, y: f.y - ring, w: ring * 2, h: ring * 2 })),
+      ],
+      previous: this.labelSpots,
+    });
+    this.labelSpots.clear();
+    for (const l of placed) {
+      this.labelSpots.set(l.id, l.spot);
+      const color = colors.get(l.id) ?? "#888888";
+      if (l.leader) {
+        const end = nearestOnBox(l, l.ax, l.ay);
+        const len = Math.hypot(end.x - l.ax, end.y - l.ay);
+        if (len > ring) {
+          ctx.globalAlpha = 0.85;
+          ctx.strokeStyle = color;
+          ctx.lineWidth = Math.max(1, 1.25 * dpr);
+          ctx.beginPath();
+          ctx.moveTo(l.ax + ((end.x - l.ax) / len) * ring, l.ay + ((end.y - l.ay) / len) * ring);
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+        }
+      }
       ctx.globalAlpha = 1;
-      ctx.fillStyle = f.color;
-      roundRect(ctx, x, y - h / 2, w, h, h / 2);
+      ctx.fillStyle = color;
+      roundRect(ctx, l.x, l.y, l.w, l.h, l.h / 2);
       ctx.fill();
       ctx.fillStyle = "#ffffff";
-      ctx.fillText(label, x + font * 0.55, y + 0.5 * dpr);
+      ctx.fillText(l.text, l.x + font * 0.55, l.y + l.h / 2 + 0.5 * dpr);
     }
-    ctx.globalAlpha = 1;
+    this.labels = placed.map((l) => ({
+      ...l,
+      x: l.x / dpr,
+      y: l.y / dpr,
+      w: l.w / dpr,
+      h: l.h / dpr,
+      ax: l.ax / dpr,
+      ay: l.ay / dpr,
+    }));
   }
 
   /** Appends the polyline from the trail's tail to the head, walking the path samples. */

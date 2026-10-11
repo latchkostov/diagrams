@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import type { LiveState } from "./controller";
 import { SPEEDS } from "./controller";
-import { useLive } from "./context";
+import { useLive, type TraceChoice } from "./context";
 import { formatClock, formatCount, formatSpeed } from "./format";
 import { LiveIcon } from "./icons";
 import { Timeline } from "./Timeline";
@@ -156,10 +156,18 @@ export function ControlBar({ state }: { state: LiveState }) {
 }
 
 /** The "⋯" overflow: the less common controls. */
+/** Same words as the right-click's "Trace a message ▸" (src/live/liveActions.ts). */
+const TRACE_CHOICES: readonly (readonly [TraceChoice, string])[] = [
+  ["next", "Next message"],
+  ["slowest", "Slowest so far"],
+  ["deadletter", "One that dead-lettered"],
+];
+
 function MoreMenu({ state }: { state: LiveState }) {
   const ui = useLive();
   const c = ui.controller;
   const [open, setOpen] = useState(false);
+  const [traceOpen, setTraceOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const waiting = !!state.run?.waiting;
   useEffect(() => {
@@ -177,7 +185,10 @@ function MoreMenu({ state }: { state: LiveState }) {
     (fn: () => void, keepOpen = false) =>
     () => {
       fn();
-      if (!keepOpen) setOpen(false);
+      if (!keepOpen) {
+        setOpen(false);
+        setTraceOpen(false);
+      }
     };
 
   return (
@@ -224,10 +235,33 @@ function MoreMenu({ state }: { state: LiveState }) {
             <LiveIcon name="events" size={14} />
             <span>Event log</span>
           </button>
-          <button role="menuitem" onClick={pick(() => ui.startTrace())} data-testid="live-trace-message">
+          {/* The same three ways in as the right-click's "Trace a message ▸", unfolded in place. */}
+          <button
+            role="menuitem"
+            aria-expanded={traceOpen}
+            onClick={() => setTraceOpen((o) => !o)}
+            data-testid="live-trace-message"
+          >
             <LiveIcon name="trace" size={14} />
             <span>Trace a message</span>
+            <i className={`lv-more-fold${traceOpen ? " is-open" : ""}`} aria-hidden>
+              <LiveIcon name="chevron" size={12} />
+            </i>
           </button>
+          {traceOpen && (
+            <div className="lv-more-sub" role="group" aria-label="Trace a message">
+              {TRACE_CHOICES.map(([which, label]) => (
+                <button
+                  key={which}
+                  role="menuitem"
+                  onClick={pick(() => ui.startTrace(which))}
+                  data-testid={`live-trace-${which}`}
+                >
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <button role="menuitem" onClick={pick(() => ui.openRecord())} data-testid="live-record">
             <LiveIcon name="record" size={14} />
             <span>Record video…</span>

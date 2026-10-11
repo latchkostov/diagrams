@@ -85,6 +85,14 @@ export interface SvgLayout {
   svg: string;
   width: number;
   height: number;
+  /**
+   * The top of the same picture (title and participant boxes), `headerHeight` tall, for the dialog
+   * to pin over the scrolling body: participants stay in view however far down the journey goes.
+   * Its band of boxes starts at `bandTop`.
+   */
+  header: string;
+  headerHeight: number;
+  bandTop: number;
 }
 
 const esc = (s: string) =>
@@ -275,5 +283,18 @@ export function toSvg(model: SequenceModel, theme: SequenceTheme, measure: Measu
     ...body,
     `</svg>`,
   ].join("");
-  return { svg, width, height };
+  // The pinned copy: identical pixels down to just under the boxes, so it lines up exactly.
+  const headerHeight = boxTop + BOX_H + 12;
+  const header = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${headerHeight}" viewBox="0 0 ${width} ${headerHeight}" aria-hidden="true">`,
+    `<rect width="${width}" height="${headerHeight}" fill="${t.background}"/>`,
+    ...head,
+    ...xs.map(
+      (x) =>
+        `<line x1="${n(x)}" y1="${boxTop + BOX_H}" x2="${n(x)}" y2="${headerHeight}" stroke="${t.lineStrong}" stroke-width="1" stroke-dasharray="3 4"/>`,
+    ),
+    ...boxes.map((b) => b.replace(/ data-testid="seq-participant-[^"]*"/, "")),
+    `</svg>`,
+  ].join("");
+  return { svg, width, height, header, headerHeight, bandTop: boxTop - 12 };
 }

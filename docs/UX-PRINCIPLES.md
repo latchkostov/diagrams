@@ -27,7 +27,8 @@ path wins by default and the power path stays one step away.
 10. **Nothing overlaps by default.** Labels never cover nodes, parallel edges stay distinguishable,
     edges route around nodes, and floating panels never hide content after fit-view. Anything added
     without a spot (a click in the rail, the palette) goes to the free place nearest the view's centre,
-    clear of nodes, edges and the last thing added. An automated overlap audit
+    clear of nodes, edges and the last thing added. A traced message's labels never cover a node, its
+    badges or each other (they step out with a leader line, or wait for room). An automated overlap audit
     (`tests/e2e/layout.spec.ts`) guards every example.
 11. **Presentation is a first-class mode.** Anything shown in a meeting reads at a distance and hides editing
     chrome (selection handles, placeholders). The same goes for exported images and recorded videos:

@@ -143,14 +143,14 @@ export function NoteCallout({ state }: { state: LiveState }) {
   );
 }
 
-/** Canvas overlays (title card, bottleneck callout, corner buttons) in pane coordinates. */
+/** Canvas overlays (title card, bottleneck callout, corner buttons, trace card) in pane coordinates. */
 function overlayBoxes(pane: HTMLElement | null): Box[] {
   const wrap = pane?.parentElement;
   if (!pane || !wrap) return [];
   const origin = pane.getBoundingClientRect();
   const out: Box[] = [];
-  // Plus the Live toggle and "Exit presentation" in the top-right corner.
-  for (const el of wrap.querySelectorAll<HTMLElement>("[data-canvas-overlay], .lv-toggle, .present-exit")) {
+  // Plus the Live toggle and "Exit presentation" in the top-right corner, and the trace card.
+  for (const el of wrap.querySelectorAll<HTMLElement>("[data-canvas-overlay], .lv-toggle, .present-exit, .tr-card")) {
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height) continue;
     out.push({ l: r.left - origin.left, t: r.top - origin.top, r: r.right - origin.left, b: r.bottom - origin.top });

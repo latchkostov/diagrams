@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import "../styles/trace.css";
 import type { DiagramFile } from "../model/types";
 import { messageColor } from "../sim/colors";
 import { buildJourney, formatDuration, formatOffset, type Journey, type JourneyRow } from "../trace/journey";
 import type { LiveTrace } from "./controller";
 import { LiveIcon } from "./icons";
+import { TRACE_CARD_FOOTPRINT } from "./traceCardLayout";
 
 export interface TraceCardProps {
   trace: LiveTrace;
@@ -15,6 +16,8 @@ export interface TraceCardProps {
   onSequence(): void;
   /** Waiting at a node: inject one message there. Absent where injecting isn't offered. */
   onSendOne?(nodeId: string): void;
+  /** How tall it may grow before it reaches the diagram, in px (see `roomUnderCard`); 0 = no limit. */
+  room?: number;
 }
 
 /** "Done", "In flight", "Dead-lettered", "Dropped". */
@@ -29,7 +32,7 @@ function journeyStatus(j: Journey): { key: "flight" | "done" | "dlq" | "dropped"
  * The compact card for a traced message: its hops with timestamps and the latency of each, the
  * end-to-end total, retries (amber) and dead letters (red). One primary action: the sequence diagram.
  */
-export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne }: TraceCardProps) {
+export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne, room = 0 }: TraceCardProps) {
   const labels = useMemo(() => new Map(diagram.nodes.map((n) => [n.id, n.label || n.id])), [diagram]);
   const name = (id: string | undefined) => (id ? (labels.get(id) ?? id) : "");
   const current = trace.current;
@@ -44,11 +47,37 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne 
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
   }, [rows]);
 
+  // With a side panel open the card heads the panel's column; the panel starts below it.
+  const card = useRef<HTMLElement>(null);
+  const shape = journey ? "journey" : "waiting";
+  useLayoutEffect(() => {
+    const el = card.current;
+    const host = el?.closest<HTMLElement>(".react-flow");
+    if (!el || !host) return;
+    const report = () => host.style.setProperty("--lv-trace-h", `${el.offsetHeight + 10}px`);
+    report();
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(report);
+    ro?.observe(el);
+    return () => {
+      ro?.disconnect();
+      host.style.removeProperty("--lv-trace-h");
+    };
+  }, [shape]);
+
   if (!journey) {
     const p = trace.pending;
     const where = p?.next === "message" && p.node ? p.node : undefined;
     return (
-      <section className="tr-card is-waiting" data-testid="trace-card" data-state="waiting" aria-label="Message trace">
+      <section
+        ref={card}
+        style={room ? { maxHeight: room } : undefined}
+        className="tr-card is-waiting"
+        data-canvas-overlay
+        data-overlay-height={TRACE_CARD_FOOTPRINT}
+        data-testid="trace-card"
+        data-state="waiting"
+        aria-label="Message trace"
+      >
         <header className="tr-head">
           <span className="tr-icon" aria-hidden>
             <LiveIcon name="trace" size={14} />
@@ -82,7 +111,12 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne 
   const status = journeyStatus(journey);
   return (
     <section
+      ref={card}
+      style={room ? { maxHeight: room } : undefined}
       className={`tr-card is-${status.key}`}
+      // Fit view keeps its first rows clear; below them it stops above the diagram by itself.
+      data-canvas-overlay
+      data-overlay-height={TRACE_CARD_FOOTPRINT}
       data-testid="trace-card"
       data-state={status.key}
       data-root={journey.rootId}

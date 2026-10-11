@@ -25,9 +25,11 @@ export interface LiveUi {
   exit: (() => void) | null;
   /** "Record video…": the setup dialog, then the share prompt, countdown and recording. */
   openRecord(): void;
-  /** "Trace a message" (live ⋯ menu): follow the next message anywhere. */
-  startTrace(): void;
+  /** "Trace a message ▸" (live ⋯ menu): the next message anywhere, the slowest so far, or a dead letter. */
+  startTrace(which: TraceChoice): void;
 }
+
+export type TraceChoice = "next" | "slowest" | "deadletter";
 
 export const LiveContext = createContext<LiveUi | null>(null);
 
