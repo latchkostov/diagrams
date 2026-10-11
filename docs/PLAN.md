@@ -68,7 +68,7 @@ Every id below MUST exist in the catalog. More may be added.
 
 ## Layout conventions for examples
 
-- Node card is ~220 x 72 px. Use a column grid: x = 40 + col*360, y = 40 + row*120 (LR flow).
+- Node cards are 220–260 × 72 px (long labels truncate with a tooltip). Use a column grid: x = 40 + col*380, y = 40 + row*120 (LR flow). Edges are routed around cards automatically; leave label room between columns.
 - Groups (cloud / cluster boundaries) are drawn behind nodes; give them ~40px padding around their nodes.
 - Edge direction = direction messages/requests travel.
 
