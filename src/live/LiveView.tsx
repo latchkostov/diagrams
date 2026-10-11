@@ -8,6 +8,7 @@ import {
   type FitViewOptions,
 } from "@xyflow/react";
 import "../styles/live.css";
+import "../styles/capacity.css";
 import type { DiagramFile, Simulation } from "../model/types";
 import type { EditorApi } from "../editor/types";
 import { actionRegistry, builtinSections } from "../editor/actions";
@@ -30,6 +31,21 @@ import { InjectDialog, type InjectRequest } from "./InjectDialog";
 import { SimPanel } from "./SimPanel";
 import { LiveIcon } from "./icons";
 import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "./layout";
+import { CapacityPanel } from "./CapacityPanel";
+import { BottleneckCallout, CapacityLayer } from "./CapacityLayer";
+import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
+import {
+  capacityView,
+  effectiveSimulation,
+  emptyInputs,
+  freePlaySaveProps,
+  freePlaySimulation,
+  inputsWithoutFix,
+  withFix,
+  type CapacityFix,
+  type LiveInputs,
+} from "./capacityModel";
+import { notify } from "../interop/ui/toast";
 
 export interface LiveViewProps {
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
@@ -40,7 +56,16 @@ export interface LiveViewProps {
   /** Lab: the diagram to simulate when there's no editor. */
   diagram?: DiagramFile;
   /** Start options. Default: read from the URL (`live`, `sim`, `speed`, `paused`, `traffic`). */
-  initial?: Partial<LiveParams> & { traffic?: boolean; seekMs?: number };
+  initial?: Partial<LiveParams> & {
+    traffic?: boolean;
+    seekMs?: number;
+    /** Open a side panel at start (Lab presets). */
+    panel?: "capacity";
+    /** Force the capacity heat map on or off for this view (Lab presets), ignoring the preference. */
+    capacity?: boolean;
+    /** Start with these Inputs & capacity values. */
+    inputs?: Partial<LiveInputs>;
+  };
   /** Lab stages are always live and hide the toggle. */
   alwaysOn?: boolean;
   /** Read-only embeds expose live playback only when explicitly requested in the URL. */
@@ -59,6 +84,7 @@ const ESC_OWNERS = [
   '[role="menu"]',
   '[role="dialog"]',
   '[data-testid="sim-panel"]',
+  '[data-testid="capacity-panel"]',
   ".react-flow__node.selected",
   ".react-flow__edge.selected",
 ].join(",");
@@ -106,6 +132,40 @@ export function LiveView(props: LiveViewProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggle, props.alwaysOn, enabled]);
 
+  // "C" shows or hides the capacity heat map (edit and live).
+  useEffect(() => {
+    if (!enabled) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "c" || e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.defaultPrevented) return;
+      if (isEditableTarget(e.target)) return;
+      e.preventDefault();
+      capacityOverlay.toggle();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [enabled]);
+
+  // "Show capacity" on the canvas right-click, in both modes.
+  const hasEditor = !!props.editor;
+  useEffect(() => {
+    if (!hasEditor) return;
+    return actionRegistry.register([
+      {
+        id: "view.capacity",
+        section: "view",
+        targets: ["canvas"],
+        modes: ["edit", "live"],
+        order: 15,
+        label: "Show capacity",
+        icon: "sliders",
+        shortcut: "C",
+        checked: () => capacityOverlay.get(),
+        run: () => capacityOverlay.toggle(),
+      },
+    ]);
+  }, [hasEditor]);
+  const overlayOn = useCapacityOverlay();
+
   const onLiveChange = props.onLiveChange;
   useEffect(() => onLiveChange?.(live), [live, onLiveChange]);
 
@@ -136,6 +196,9 @@ export function LiveView(props: LiveViewProps) {
           <kbd>L</kbd>
         </button>
       )}
+      {!live && ready && overlayOn && props.editor && (
+        <EditCapacity editor={props.editor} presenting={props.presenting} />
+      )}
       {live && ready && (
         <LiveSession
           {...props}
@@ -148,7 +211,7 @@ export function LiveView(props: LiveViewProps) {
 }
 
 interface SessionProps extends LiveViewProps {
-  params: Partial<LiveParams> & { traffic?: boolean; seekMs?: number };
+  params: NonNullable<LiveViewProps["initial"]>;
   onExit: () => void;
 }
 
@@ -187,13 +250,20 @@ function LiveSession({
     // Free play starts with gentle continuous traffic so something is always flowing.
     else if (params.traffic !== false) c.setTraffic(true);
     if (params.traffic === false) c.setTraffic(false);
+    if (params.inputs) c.setInputs({ ...emptyInputs(), ...params.inputs });
     if (sim && params.seekMs) c.seek(params.seekMs);
     if (!params.paused) c.setPlaying(true);
     return c;
   });
   const state = useLiveState(controller);
 
-  const [panel, setPanel] = useState<{ open: boolean; sim: Simulation | null }>({ open: false, sim: null });
+  const [panel, setPanel] = useState<{ open: boolean; kind: "sims" | "capacity"; sim: Simulation | null }>(() => ({
+    open: params.panel === "capacity",
+    kind: params.panel === "capacity" ? "capacity" : "sims",
+    sim: null,
+  }));
+  const capacityOpen = panel.open && panel.kind === "capacity";
+  useEffect(() => () => controller.dispose(), [controller]);
   const [events, setEvents] = useState<{ open: boolean; nodeId: string | null }>({ open: false, nodeId: null });
   const [trace, setTrace] = useState<string | null>(null);
   const traceRef = useRef(trace);
@@ -229,7 +299,8 @@ function LiveSession({
     if (!cur || cur.id === draftRef.current?.id) return;
     const next = simulations.find((s) => s.id === cur.id);
     if (!next) controller.selectSimulation(null);
-    else if (JSON.stringify(next) !== JSON.stringify(cur)) controller.selectSimulation(next);
+    // Keep the Inputs & capacity what-ifs; prop changes (Apply fix, undo) patch the run live.
+    else if (JSON.stringify(next) !== JSON.stringify(cur)) controller.setBase(next);
   }, [simulations, controller]);
 
   // Mirror the live state into the URL (canvas only) so the address is a shareable live link.
@@ -450,7 +521,7 @@ function LiveSession({
   const startStorm = useCallback(
     (nodeId: string) => {
       const sim = createStormSimulation(getDiagram(), nodeId);
-      setPanel({ open: true, sim });
+      setPanel({ open: true, kind: "sims", sim });
       runDraft(sim);
     },
     [getDiagram, runDraft],
@@ -458,11 +529,100 @@ function LiveSession({
 
   const showEvents = useCallback((nodeId: string | null, open = true) => setEvents({ open, nodeId }), []);
 
+  // ---------------------------------------------------------------- inputs & capacity
+
+  const [forcedOverlay] = useState(params.capacity);
+  const overlayPref = useCapacityOverlay();
+  const showCapacity = forcedOverlay ?? overlayPref;
+  const planDiagram = controller.currentDiagram;
+  const freePlan = useMemo(() => freePlaySimulation(planDiagram, state.inputs), [planDiagram, state.inputs]);
+  const plan = state.running ?? freePlan;
+  // Recomputed only when the plan changes (sliders, saves, diagram edits), never per frame.
+  const capacity = useMemo(
+    () => (showCapacity || capacityOpen ? capacityView(planDiagram, plan) : null),
+    [showCapacity, capacityOpen, planDiagram, plan],
+  );
+
+  const openCapacity = useCallback((open = true) => {
+    if (open) capacityOverlay.set(true);
+    setPanel((p) => (open ? { open: true, kind: "capacity", sim: null } : { ...p, open: false }));
+  }, []);
+
+  /** Apply a bottleneck fix as one undoable edit: to the saved simulation, or the diagram in free play. */
+  const applyFix = useCallback(
+    (fix: CapacityFix) => {
+      const st = controller.getState();
+      const base = st.simulation;
+      const inputs = inputsWithoutFix(st.inputs, fix);
+      const saved = base && simsRef.current.find((x) => x.id === base.id);
+      if (editor && base && saved && draftRef.current?.id !== base.id) {
+        const next = withFix(saved, fix);
+        editor.updateMeta({
+          simulations: (editor.getDiagram().simulations ?? []).map((x) => (x.id === next.id ? next : x)),
+        });
+        controller.setInputs(inputs);
+        controller.setBase(next);
+      } else if (base) {
+        // An unsaved draft (or the Lab): the fix joins it, to be saved with it.
+        const next = withFix(base, fix);
+        if (draftRef.current?.id === base.id) {
+          setDraft(next);
+          draftRef.current = next;
+        }
+        controller.setInputs(inputs);
+        controller.setBase(next);
+      } else if (editor) {
+        const merge = "capacity:fix:" + Date.now();
+        for (const c of fix.changes) editor.setNodeProps(c.nodeId, { [c.key]: c.to }, { merge });
+        const d = controller.currentDiagram;
+        controller.setInputs(inputs);
+        controller.updateDiagram({
+          ...d,
+          nodes: d.nodes.map((n) => {
+            const own = fix.changes.filter((c) => c.nodeId === n.id);
+            return own.length
+              ? { ...n, props: { ...n.props, ...Object.fromEntries(own.map((c) => [c.key, c.to])) } }
+              : n;
+          }),
+        });
+      } else {
+        const props = structuredClone(inputs.props);
+        for (const c of fix.changes) props[c.nodeId] = { ...props[c.nodeId], [c.key]: c.to };
+        controller.setInputs({ ...inputs, props });
+      }
+      if (editor) flash("Applied the fix: " + fix.label + " (undo with Ctrl+Z).");
+    },
+    [controller, editor, flash],
+  );
+
+  /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
+  const saveInputs = useCallback(() => {
+    if (!editor) return;
+    controller.flush();
+    const st = controller.getState();
+    const base = st.simulation;
+    if (base) {
+      const next = { ...effectiveSimulation(base, st.inputs), scale: st.scale };
+      saveSimulation(next);
+      controller.commitInputs(next);
+      return;
+    }
+    const d = controller.currentDiagram;
+    const patch = freePlaySaveProps(d, st.inputs);
+    const merge = "capacity:save:" + Date.now();
+    for (const [id, props] of Object.entries(patch)) editor.setNodeProps(id, props, { merge });
+    controller.commitInputs(null, {
+      ...d,
+      nodes: d.nodes.map((n) => (patch[n.id] ? { ...n, props: { ...n.props, ...patch[n.id] } } : n)),
+    });
+    flash("Saved rates and sizes to the diagram (undo with Ctrl+Z).");
+  }, [controller, editor, saveSimulation, flash]);
+
   // While live, the Simulation section leads every context menu.
   useEffect(() => {
     if (!editor) return;
     const builtin = builtinSections.find((x) => x.id === "simulation");
-    const off = actionRegistry.registerSection({ id: "simulation", order: 5 });
+    const off = actionRegistry.registerSection({ id: "simulation", order: 5, title: "Live" });
     return () => {
       off();
       if (builtin) actionRegistry.registerSection(builtin);
@@ -546,8 +706,10 @@ function LiveSession({
       simulations,
       draft,
       selectSimulation,
-      openPanel: (sim) => setPanel({ open: true, sim: sim ?? null }),
+      openPanel: (sim) => setPanel({ open: true, kind: "sims", sim: sim ?? null }),
       panelOpen: panel.open,
+      capacityOpen,
+      openCapacity,
       events,
       showEvents,
       notice,
@@ -562,6 +724,8 @@ function LiveSession({
       draft,
       selectSimulation,
       panel.open,
+      capacityOpen,
+      openCapacity,
       events,
       showEvents,
       notice,
@@ -574,7 +738,7 @@ function LiveSession({
     <LiveContext.Provider value={ui}>
       <ViewportPortal>
         <canvas ref={setCanvas} className="lv-canvas" data-testid="live-canvas" aria-hidden />
-        <NodeBadges state={state} presenting={presenting} />
+        <NodeBadges state={state} presenting={presenting} capacity={showCapacity ? capacity : null} />
       </ViewportPortal>
       <div
         className={`lv-hud${presenting ? " is-presenting" : ""}${panel.open ? " has-panel" : ""}`}
@@ -588,16 +752,33 @@ function LiveSession({
             </button>
           </div>
         )}
+        {showCapacity && capacity && !capacityOpen && (
+          <BottleneckCallout
+            view={capacity}
+            floating
+            onApply={applyFix}
+            onOpenPanel={presenting ? undefined : () => openCapacity()}
+          />
+        )}
         <NoteCallout state={state} />
         {events.open && <EventLog state={state} />}
         <ControlBar state={state} />
       </div>
-      {panel.open && editor && (
+      {capacityOpen && capacity && (
+        <CapacityPanel
+          state={state}
+          view={capacity}
+          onClose={() => openCapacity(false)}
+          onApplyFix={applyFix}
+          onSave={editor ? saveInputs : undefined}
+        />
+      )}
+      {panel.open && panel.kind === "sims" && editor && (
         <SimPanel
           key={panel.sim?.id ?? "picker"}
           initial={panel.sim}
           state={state}
-          onClose={() => setPanel({ open: false, sim: null })}
+          onClose={() => setPanel({ open: false, kind: "sims", sim: null })}
           onRun={runDraft}
           onSave={saveSimulation}
           onDelete={deleteSimulation}
@@ -620,4 +801,45 @@ function useReducedMotion(): boolean {
     return () => mq.removeEventListener("change", on);
   }, []);
   return reduced;
+}
+
+/** Edit mode's capacity heat map: the diagram's own rates and sizes, with the bottleneck callout. */
+function EditCapacity({ editor, presenting }: { editor: EditorApi; presenting: boolean }) {
+  const nodes = useStore((st) => st.nodes);
+  const edges = useStore((st) => st.edges);
+  // Positions don't change capacity: key the analysis on what does.
+  const structure = useMemo(
+    () =>
+      JSON.stringify([
+        nodes.map((n) => (n.type === "diagram" ? [n.id, n.data.stencil, n.data.label, n.data.props ?? null] : n.id)),
+        edges.map((e) => [e.id, e.source, e.target, e.data?.kind, e.data?.props ?? null]),
+      ]),
+    [nodes, edges],
+  );
+  const view = useMemo(() => {
+    if (!structure) return null;
+    const d = editor.getDiagram();
+    return capacityView(d, freePlaySimulation(d, emptyInputs()));
+  }, [structure, editor]);
+  const apply = useCallback(
+    (fix: CapacityFix) => {
+      const merge = "capacity:fix:" + Date.now();
+      for (const c of fix.changes) editor.setNodeProps(c.nodeId, { [c.key]: c.to }, { merge });
+      notify("Applied the fix: " + fix.label + ".", {
+        action: { label: "Undo", run: () => editor.undo(), testId: "capacity-fix-undo" },
+      });
+    },
+    [editor],
+  );
+  if (!view) return null;
+  return (
+    <>
+      <ViewportPortal>
+        <CapacityLayer view={view} presenting={presenting} />
+      </ViewportPortal>
+      <div className={"cap-hud" + (presenting ? " is-presenting" : "")}>
+        <BottleneckCallout view={view} floating onApply={presenting ? undefined : apply} />
+      </div>
+    </>
+  );
 }

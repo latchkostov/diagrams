@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DIAGRAM_FORMAT, type DiagramFile, type Simulation } from "../model/types";
 import type { SimRole } from "../model/types";
 import { LiveController, structuralKey } from "./controller";
+import kafka from "../examples/kafka-order-pipeline.json";
+import { emptyInputs } from "./capacityModel";
 
 const roles: Record<string, SimRole> = { src: "source", q: "queue", svc: "processor", db: "store" };
 const roleOf = (stencil: string) => roles[stencil] ?? "none";
@@ -201,5 +203,157 @@ describe("LiveController", () => {
     c.setPlaying(true);
     expect(c.snapshot().time).toBe(0);
     expect(c.getState().playing).toBe(true);
+  });
+
+  it("publishes real units at scale > 1 while particles and the sampled snapshot stay in dots", () => {
+    const sim: Simulation = {
+      id: "sampled",
+      title: "sampled",
+      seed: 1,
+      scale: 50,
+      traffic: [{ id: "t", node: "api", shape: { kind: "burst", count: 1000 } }],
+      expectations: [{ id: "all", label: "all", metric: { node: "db", field: "processed" }, op: "==", value: 1000 }],
+    };
+    const c = new LiveController(diagram(), { roleOf });
+    c.selectSimulation(sim);
+    c.setSpeed(8);
+    c.setPlaying(true);
+    play(c, 30000);
+    c.publish();
+    const state = c.getState();
+    expect(state.scale).toBe(50);
+    expect(c.snapshot().nodes.db.processed).toBe(20);
+    expect(state.snapshot.nodes.db.processed).toBe(1000);
+    expect(state.snapshot.units).toBe("real");
+    // Expectations and badges now agree.
+    expect(state.run?.expectations[0]).toMatchObject({ status: "pass", value: 1000 });
+  });
+
+  it("manual injections take real counts and carry fractions of a dot", () => {
+    const sim: Simulation = { id: "s", title: "s", scale: 50, traffic: [] };
+    const c = new LiveController(diagram(), { roleOf });
+    c.selectSimulation(sim);
+    c.inject("api", 100);
+    expect(c.snapshot().inSystem).toBe(2);
+    expect(c.getState().snapshot.inSystem).toBe(100);
+    c.inject("api", 30);
+    expect(c.snapshot().inSystem).toBe(2);
+    c.inject("api", 30); // 60 carried: one more dot
+    expect(c.snapshot().inSystem).toBe(3);
+    // Free play keeps scale 1, so counts are exact.
+    const free = new LiveController(diagram(), { roleOf });
+    free.inject("api", 7);
+    expect(free.snapshot().inSystem).toBe(7);
+    expect(free.injectAtSources(3)).toEqual(["api"]);
+    expect(free.getState().snapshot.inSystem).toBe(10);
+  });
+
+  describe("inputs & capacity", () => {
+    const KAFKA = kafka as DiagramFile;
+    const blackFriday = KAFKA.simulations!.find((x) => x.id === "black-friday")!;
+    const running = () => {
+      const c = new LiveController(KAFKA, { replayDelayMs: 0 });
+      c.selectSimulation(blackFriday);
+      c.setPlaying(true);
+      play(c, 2000);
+      return c;
+    };
+
+    it("multipliers and props patch the running run without restarting it", () => {
+      const c = running();
+      const { generation } = c.getState();
+      const time = c.snapshot().time;
+      c.setInputs({ ...emptyInputs(), traffic: 3, props: { payments: { replicas: 9 } } });
+      const state = c.getState();
+      expect(state.generation).toBe(generation);
+      expect(c.snapshot().time).toBe(time);
+      expect(state.run?.multipliers).toEqual({ traffic: 3, capacity: 1 });
+      expect(c.effectiveProps("payments").replicas).toBe(9);
+      expect(state.simulation).toBe(blackFriday);
+      expect(state.running?.multipliers?.traffic).toBe(3);
+      // Removing the override falls back to the saved setup.
+      c.setInputs({ ...emptyInputs(), traffic: 3 });
+      expect(c.effectiveProps("payments").replicas).toBe(6);
+    });
+
+    it("entry rates and the dot scale replay the run to the same moment", () => {
+      const c = running();
+      const { generation } = c.getState();
+      const time = c.snapshot().time;
+      c.setInputs({ ...emptyInputs(), rates: { shopper: 4000 } });
+      expect(c.getState().generation).toBeGreaterThan(generation);
+      expect(c.snapshot().time).toBeGreaterThanOrEqual(time - 10);
+      expect(c.getState().running?.traffic[0].shape).toMatchObject({ ratePerSec: 4000 });
+      c.setInputs({ ...emptyInputs(), scale: 100 });
+      expect(c.getState().scale).toBe(100);
+    });
+
+    it("waits for rate edits to settle before replaying", () => {
+      vi.useFakeTimers();
+      try {
+        const c = new LiveController(KAFKA, { replayDelayMs: 250 });
+        c.selectSimulation(blackFriday);
+        const { generation } = c.getState();
+        c.setInputs({ ...emptyInputs(), rates: { shopper: 3000 } });
+        c.setInputs({ ...emptyInputs(), rates: { shopper: 3500 } });
+        expect(c.getState().generation).toBe(generation);
+        vi.advanceTimersByTime(300);
+        expect(c.getState().generation).toBe(generation + 1);
+        c.setInputs({ ...emptyInputs(), rates: { shopper: 1000 } });
+        c.flush();
+        expect(c.getState().generation).toBe(generation + 2);
+        c.dispose();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("a new saved definition keeps the inputs and patches live; selecting another simulation clears them", () => {
+      const c = running();
+      c.setInputs({ ...emptyInputs(), traffic: 2 });
+      const { generation } = c.getState();
+      const fixed = structuredClone(blackFriday);
+      fixed.setup!.props!.payments = { replicas: 20 };
+      c.setBase(fixed);
+      expect(c.getState().generation).toBe(generation);
+      expect(c.effectiveProps("payments").replicas).toBe(20);
+      expect(c.getState().inputs.traffic).toBe(2);
+      c.commitInputs({ ...fixed, multipliers: { traffic: 2, capacity: 1 } });
+      expect(c.getState().inputs).toEqual(emptyInputs());
+      expect(c.getState().generation).toBe(generation);
+      c.selectSimulation(null);
+      expect(c.getState().inputs).toEqual(emptyInputs());
+    });
+
+    it("free play: Traffic × scales source rates, Capacity × replicas, and busy rates pick a coarser dot", () => {
+      const c = new LiveController(KAFKA, { replayDelayMs: 0 });
+      expect(c.getState().scale).toBe(1);
+      const { generation } = c.getState();
+      c.setInputs({ ...emptyInputs(), traffic: 2, capacity: 2 });
+      expect(c.getState().generation).toBe(generation);
+      expect(c.effectiveProps("shopper").ratePerSec).toBe(50);
+      c.setInputs({ ...emptyInputs(), rates: { shopper: 2000 } });
+      expect(c.getState().generation).toBe(generation + 1);
+      expect(c.getState().scale).toBe(50);
+      expect(c.effectiveProps("shopper").ratePerSec).toBe(2000);
+      // Saving folds the inputs into the diagram without touching the engine.
+      const next = structuredClone(KAFKA);
+      next.nodes.find((n) => n.id === "shopper")!.props!.ratePerSec = 2000;
+      c.commitInputs(null, next);
+      expect(c.getState().generation).toBe(generation + 1);
+      expect(c.effectiveProps("shopper").ratePerSec).toBe(2000);
+    });
+
+    it("diagram prop edits don't override what the running simulation sets", () => {
+      const c = running();
+      const next = structuredClone(KAFKA);
+      next.nodes.find((n) => n.id === "payments")!.props = {
+        ...next.nodes.find((n) => n.id === "payments")!.props,
+        replicas: 1,
+        latencyMs: 90,
+      };
+      expect(c.updateDiagram(next)).toBe("patched");
+      expect(c.effectiveProps("payments")).toMatchObject({ replicas: 6, latencyMs: 90 });
+    });
   });
 });

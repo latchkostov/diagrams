@@ -12,7 +12,8 @@ async function waitForPreset(page: import("@playwright/test").Page) {
 
 test.describe("lab", () => {
   test("every preset renders without errors", async ({ page, consoleErrors }) => {
-    test.setTimeout(180_000);
+    // One page load per preset (about 45 of them) on a dev server shared by the whole suite.
+    test.setTimeout(300_000);
     const ids = await labPresetIds(page);
     expect(ids.length).toBeGreaterThan(20);
     for (const id of ids) {

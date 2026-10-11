@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { LiveState } from "./controller";
 import { useLive } from "./context";
 import { LiveIcon } from "./icons";
+import { formatCount } from "./format";
 
 const KIND_LABEL: Record<string, string> = {
   inject: "in",
@@ -55,6 +56,11 @@ export function EventLog({ state }: { state: LiveState }) {
           <LiveIcon name="close" size={13} />
         </button>
       </header>
+      {state.scale > 1 && (
+        <p className="lv-events-scale" data-testid="live-events-scale">
+          Each event is one dot, about {formatCount(state.scale)} messages. Counters show every message.
+        </p>
+      )}
       <ol className="mono" data-testid="live-events-list">
         {rows.length === 0 && (
           <li className="lv-events-empty">

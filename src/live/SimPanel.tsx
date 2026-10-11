@@ -17,6 +17,7 @@ import { simulationWarnings, type SimWarning } from "./validate";
 import { Sparkline } from "./Sparkline";
 import { LiveIcon } from "./icons";
 import { formatSeconds } from "./format";
+import { usePanelEscape } from "./usePanelEscape";
 
 interface Props {
   /** Simulation to open for editing; null shows the list. */
@@ -80,6 +81,12 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete }: P
   const types = useMemo(() => knownMessageTypes(diagram), [diagram]);
 
   usePickNode(picker, () => setPicker(null));
+  // Esc cancels a node pick first, then closes the panel.
+  usePanelEscape(onClose, () => {
+    if (!picker) return false;
+    setPicker(null);
+    return true;
+  });
 
   const edit = (fn: (draft: Simulation) => void) =>
     setSim((s) => {
@@ -389,13 +396,10 @@ function usePickNode(picker: Picker, done: () => void) {
       ref.current.picker?.apply(el.dataset.id!);
       ref.current.done();
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && ref.current.done();
     root.addEventListener("click", onClick, true);
-    window.addEventListener("keydown", onKey);
     return () => {
       delete root.dataset.livePicking;
       root.removeEventListener("click", onClick, true);
-      window.removeEventListener("keydown", onKey);
     };
   }, [picker, store]);
 }

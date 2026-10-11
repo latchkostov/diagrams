@@ -15,6 +15,7 @@ import type { EditorApi, Selection, XY } from "./types";
  *       id: "sim.inject-10",
  *       section: "simulation",           // shown under a "Live" header
  *       targets: ["node"],
+ *       modes: ["live"],                 // default ["edit"]: say where the action makes sense
  *       label: "Inject 10 messages",
  *       icon: "bolt",
  *       when: (ctx) => engineIsLoaded && !!ctx.nodeId,
@@ -23,7 +24,14 @@ import type { EditorApi, Selection, XY } from "./types";
  *   ]), [engine]);                       // register() returns the unregister function
  *
  * The "simulation" section is predefined and stays hidden until it has a visible action.
+ *
+ * Modes: the canvas builds menus for the editor ("edit") or for live view ("live"). An action is
+ * offered only in the modes it lists, so live menus lead with live verbs and keep just the editing
+ * actions that still make sense mid-run, without any filtering outside the registry.
  */
+
+/** Which canvas mode a menu is built for. */
+export type EditorMode = "edit" | "live";
 
 export type MenuTarget = "canvas" | "node" | "edge" | "selection" | "group";
 
@@ -38,6 +46,8 @@ export interface ActionContext {
   /** Where the menu was opened, in flow coordinates ("Add node here", "Paste here"). */
   point?: XY;
   editor: EditorApi;
+  /** The canvas mode the menu is for. Default "edit". */
+  mode?: EditorMode;
 }
 
 /** A rendered menu row. Submenu children are plain data so they can be built per open. */
@@ -74,6 +84,8 @@ export interface Action {
   /** Section id; see `builtinSections`. Unknown sections sort last. */
   section: string;
   targets: readonly MenuTarget[];
+  /** Modes the action is offered in. Default ["edit"]. */
+  modes?: readonly EditorMode[];
   label: string | ((ctx: ActionContext) => string);
   icon?: IconName;
   shortcut?: string;
@@ -111,6 +123,8 @@ export const builtinSections: readonly MenuSection[] = [
   { id: "file", order: 80 },
   { id: "danger", order: 90 },
 ];
+
+const EDIT_ONLY: readonly EditorMode[] = ["edit"];
 
 export class ActionRegistry {
   private actions = new Map<string, { action: Action; seq: number }>();
@@ -150,6 +164,7 @@ export class ActionRegistry {
     for (const e of this.actions.values()) {
       const a = e.action;
       if (!a.targets.includes(ctx.target)) continue;
+      if (!(a.modes ?? EDIT_ONLY).includes(ctx.mode ?? "edit")) continue;
       if (a.when && !safe(() => a.when!(ctx), false)) continue;
       if (!bySection.has(a.section)) bySection.set(a.section, []);
       bySection.get(a.section)!.push(e);

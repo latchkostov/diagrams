@@ -464,6 +464,104 @@ const livePresets: Preset[] = [
     ),
 ];
 
+// ---------- inputs & capacity (heat map, bottleneck callout, the panel) ----------
+
+const publicExamples = examples.filter((e) => !localOnly.has(e.slug));
+const exampleBySlug = (slug: string) => publicExamples.find((e) => e.slug === slug);
+
+/** Heat map states on real examples: which simulation, what what-if, and a word for each. */
+const CAPACITY_STATES: Record<string, { label: string; slug: string; sim: string; traffic?: number }> = {
+  healthy: { label: "Healthy (Black Friday at 0.5×)", slug: "kafka-order-pipeline", sim: "black-friday", traffic: 0.5 },
+  busy: { label: "Busy (Black Friday as saved)", slug: "kafka-order-pipeline", sim: "black-friday" },
+  saturated: { label: "Saturated (Black Friday at 3×)", slug: "kafka-order-pipeline", sim: "black-friday", traffic: 3 },
+  idle: { label: "Idle replicas (partition hot spot)", slug: "iot-telemetry", sim: "hot-spot" },
+};
+
+const capacityPresets: Preset[] = [
+  {
+    kind: "render",
+    id: "capacity-heat-map",
+    title: "Capacity: heat map states",
+    group: "Simulation",
+    description:
+      "The capacity heat map with its bottleneck callout: green below 60%, amber to 90%, red above, pulsing past 100%, and replicas left idle by too few partitions.",
+    controls: [
+      {
+        type: "select",
+        key: "state",
+        label: "State",
+        default: "saturated",
+        options: Object.entries(CAPACITY_STATES)
+          .filter(([, s]) => exampleBySlug(s.slug))
+          .map(([value, s]) => ({ value, label: s.label })),
+      },
+      { type: "boolean", key: "panel", label: "Inputs panel open", default: false },
+      livePresent,
+    ],
+    render: (v) => {
+      const state = CAPACITY_STATES[String(v.state)] ?? CAPACITY_STATES.saturated;
+      const example = exampleBySlug(state.slug);
+      if (!example) return null;
+      return (
+        <LiveLabStage
+          key={`${String(v.state)}:${String(v.panel)}`}
+          diagram={example.diagram}
+          presenting={!!v.livepresent}
+          initial={{
+            sim: state.sim,
+            paused: true,
+            capacity: true,
+            panel: v.panel ? "capacity" : undefined,
+            inputs: state.traffic === undefined ? undefined : { traffic: state.traffic },
+          }}
+        />
+      );
+    },
+  },
+  {
+    kind: "render",
+    id: "capacity-panel",
+    title: "Inputs & capacity panel",
+    group: "Simulation",
+    description:
+      "The Inputs & capacity panel generated from each public example, with the heat map on: entry points, services and topics, the what-if sliders and the bottleneck callout.",
+    controls: [
+      {
+        type: "select",
+        key: "diagram",
+        label: "Example",
+        default: publicExamples[0]?.slug ?? "",
+        options: publicExamples.map((e) => ({ value: e.slug, label: e.diagram.title })),
+      },
+      {
+        type: "select",
+        key: "run",
+        label: "Run",
+        default: "0",
+        options: [
+          { value: "0", label: "First saved simulation" },
+          { value: "1", label: "Second saved simulation" },
+          { value: "free", label: "Free play" },
+        ],
+      },
+      livePresent,
+    ],
+    render: (v) => {
+      const example = exampleBySlug(String(v.diagram)) ?? publicExamples[0];
+      if (!example) return null;
+      const sim = v.run === "free" ? null : (example.diagram.simulations?.[Number(v.run)]?.id ?? null);
+      return (
+        <LiveLabStage
+          key={`${example.slug}:${String(v.run)}`}
+          diagram={example.diagram}
+          presenting={!!v.livepresent}
+          initial={{ sim, paused: true, capacity: true, panel: "capacity" }}
+        />
+      );
+    },
+  },
+];
+
 // ---------- layout quality (routing, labels, overlap audit) ----------
 
 const auditSources: Record<string, { label: string; diagram: () => DiagramFile }> = {
@@ -522,6 +620,7 @@ export const presets: readonly Preset[] = [
   ...diagramPresets,
   ...simPresets,
   ...livePresets,
+  ...capacityPresets,
   ...playgroundPresets,
   ...layoutPresets,
 ];

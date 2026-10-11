@@ -132,7 +132,7 @@ const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
 };
 
 const SIM_KEYS = new Set<string>(Object.keys(SIM_FIELDS));
-const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits"]);
+const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share"]);
 const SIDES: Side[] = ["top", "right", "bottom", "left"];
 
 export interface InspectorProps {
@@ -356,6 +356,7 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
   const data = edge.data ?? { kind: "async" as const };
   const props = data.props ?? {};
   const merge = (f: string) => ({ merge: `inspector:edge:${edge.id}:${f}` });
+  const fanOut = isFanOut(editor, edge.source, data.kind);
   return (
     <>
       <Section>
@@ -418,6 +419,27 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
           </span>
         </label>
       </Section>
+      {fanOut && (
+        <Disclosure id="edge-simulation" title="Simulation">
+          <SimInput
+            name="share"
+            field={{
+              label: "Share of messages",
+              unit: "%",
+              kind: "number",
+              min: 0,
+              max: 100,
+              step: 5,
+              placeholder: "100",
+              hint: "How many of the messages leaving this node also take this edge. Each edge decides on its own, so two edges at 80% can both get a message.",
+            }}
+            value={typeof props.share === "number" ? Math.round(props.share * 1000) / 10 : undefined}
+            onChange={(v) =>
+              editor.setEdgeProps(edge.id, { share: typeof v === "number" ? v / 100 : undefined }, merge("share"))
+            }
+          />
+        </Disclosure>
+      )}
       <Disclosure id="edge-advanced" title="Advanced">
         <div className="insp-row2">
           <Field label="From side">
@@ -481,6 +503,15 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
       </Disclosure>
     </>
   );
+}
+
+/** Edges whose source copies each message to every route (sources, services, change feeds): they take a share. */
+const FAN_OUT_ROLES: ReadonlySet<SimRole> = new Set(["source", "processor", "none"]);
+function isFanOut(editor: EditorApi, sourceId: string, kind: string | undefined): boolean {
+  const node = editor.getNode(sourceId);
+  if (!node) return false;
+  const role = getStencil(node.stencil).simRole;
+  return FAN_OUT_ROLES.has(role) || (role === "store" && kind !== "sync");
 }
 
 function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }) {

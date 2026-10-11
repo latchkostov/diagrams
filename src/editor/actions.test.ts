@@ -23,6 +23,44 @@ describe("action registry", () => {
     expect(ids(r.build(ctx("canvas")))).toEqual(["paste"]);
   });
 
+  it("offers each action only in the modes it declares (default edit), whatever its id", () => {
+    const r = new ActionRegistry(builtinSections);
+    r.registerSection({ id: "simulation", order: 5, title: "Live" });
+    r.register([
+      { id: "rename", section: "edit", targets: ["node"], label: "Rename", modes: ["edit", "live"] },
+      { id: "duplicate", section: "edit", targets: ["node"], label: "Duplicate" },
+      // Not a `sim.*` id: availability comes from metadata, not naming conventions.
+      { id: "capacity.explain", section: "simulation", targets: ["node"], label: "Explain capacity", modes: ["live"] },
+      { id: "sim.inject", section: "simulation", targets: ["node"], label: "Inject", modes: ["live"] },
+    ]);
+    expect(ids(r.build(ctx("node")))).toEqual(["rename", "duplicate"]);
+    expect(ids(r.build({ ...ctx("node"), mode: "edit" }))).toEqual(["rename", "duplicate"]);
+    expect(ids(r.build({ ...ctx("node"), mode: "live" }))).toEqual([
+      "[Live]",
+      "capacity.explain",
+      "sim.inject",
+      "---",
+      "rename",
+    ]);
+  });
+
+  it("live menus from the built-in actions keep only what makes sense mid-run", async () => {
+    const { builtinActions } = await import("./builtinActions");
+    const r = new ActionRegistry(builtinSections);
+    r.register(builtinActions());
+    const live = (target: ActionContext["target"]) =>
+      r
+        .build({ ...ctx(target), nodeId: "n", edgeId: "e", groupId: "g", mode: "live" })
+        .flatMap((i) => (i.type === "item" ? [i.id] : []));
+    expect(live("node")).toEqual(expect.arrayContaining(["node.rename", "node.properties"]));
+    expect(live("node")).not.toContain("item.duplicate");
+    expect(live("node")).not.toContain("item.delete");
+    expect(live("edge")).toEqual(expect.arrayContaining(["edge.edit-label", "node.properties"]));
+    expect(live("edge")).not.toContain("edge.reverse");
+    expect(live("canvas")).toEqual(expect.arrayContaining(["canvas.fit", "canvas.properties", "canvas.shortcuts"]));
+    expect(live("canvas")).not.toContain("canvas.add-node");
+  });
+
   it("the simulation section stays hidden until a provider registers a visible action", () => {
     const r = new ActionRegistry(builtinSections);
     r.register([{ id: "rename", section: "edit", targets: ["node"], label: "Rename" }]);

@@ -15,6 +15,9 @@ export interface LiveUi {
   selectSimulation(id: string | null): void;
   openPanel(sim?: Simulation): void;
   panelOpen: boolean;
+  /** The Inputs & capacity panel. */
+  capacityOpen: boolean;
+  openCapacity(open?: boolean): void;
   events: { open: boolean; nodeId: string | null };
   showEvents(nodeId: string | null, open?: boolean): void;
   notice: string | null;
