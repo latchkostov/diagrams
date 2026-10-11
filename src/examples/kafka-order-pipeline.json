@@ -1,0 +1,304 @@
+{
+  "format": "diagrams/v1",
+  "title": "Kafka order pipeline",
+  "description": "Order placement with independent consumer groups, local stores and payment confirmation events.",
+  "direction": "LR",
+  "groups": [
+    {
+      "id": "aks",
+      "label": "AKS · commerce workloads + Kafka",
+      "tone": "k8s",
+      "x": 720,
+      "y": 120,
+      "width": 1020,
+      "height": 392
+    }
+  ],
+  "nodes": [
+    {
+      "id": "shopper",
+      "stencil": "client.browser",
+      "label": "Storefront",
+      "sublabel": "Browser / mobile checkout",
+      "x": 40,
+      "y": 280,
+      "props": {
+        "ratePerSec": 25
+      }
+    },
+    {
+      "id": "gateway",
+      "stencil": "nginx",
+      "label": "Commerce gateway",
+      "sublabel": "TLS termination · /api/orders",
+      "x": 400,
+      "y": 280,
+      "props": {}
+    },
+    {
+      "id": "orders",
+      "stencil": "service.dotnet",
+      "label": "Order service",
+      "sublabel": ".NET 10 · group: orders-payments",
+      "x": 760,
+      "y": 280,
+      "group": "aks",
+      "props": {
+        "group": "orders-payments",
+        "idempotent": true
+      }
+    },
+    {
+      "id": "order-events",
+      "stencil": "kafka.topic",
+      "label": "orders.created.v1",
+      "sublabel": "OrderPlaced · keyed by orderId",
+      "x": 1120,
+      "y": 280,
+      "group": "aks",
+      "props": {
+        "partitions": 12,
+        "replicationFactor": 3
+      }
+    },
+    {
+      "id": "inventory",
+      "stencil": "service.java",
+      "label": "Inventory service",
+      "sublabel": "group: inventory-reservations",
+      "x": 1480,
+      "y": 160,
+      "group": "aks",
+      "props": {
+        "group": "inventory-reservations",
+        "concurrency": 6
+      }
+    },
+    {
+      "id": "payments",
+      "stencil": "service.go",
+      "label": "Payments service",
+      "sublabel": "group: payment-authorizations",
+      "x": 1480,
+      "y": 280,
+      "group": "aks",
+      "props": {
+        "group": "payment-authorizations",
+        "concurrency": 6
+      }
+    },
+    {
+      "id": "notifications",
+      "stencil": "service.node",
+      "label": "Notification service",
+      "sublabel": "group: customer-notifications",
+      "x": 1480,
+      "y": 400,
+      "group": "aks",
+      "props": {
+        "group": "customer-notifications"
+      }
+    },
+    {
+      "id": "stock-db",
+      "stencil": "postgres",
+      "label": "Inventory database",
+      "sublabel": "Reservations · SKU availability",
+      "x": 1840,
+      "y": 160,
+      "props": {}
+    },
+    {
+      "id": "payment-db",
+      "stencil": "postgres",
+      "label": "Payment ledger",
+      "sublabel": "Idempotency keys · authorizations",
+      "x": 1840,
+      "y": 280,
+      "props": {}
+    },
+    {
+      "id": "notify-cache",
+      "stencil": "redis.cache",
+      "label": "Notification dedupe",
+      "sublabel": "Order / template key · TTL 24h",
+      "x": 1840,
+      "y": 400,
+      "props": {}
+    },
+    {
+      "id": "payment-events",
+      "stencil": "kafka.topic",
+      "label": "payments.completed.v1",
+      "sublabel": "PaymentCompleted · keyed by orderId",
+      "x": 1120,
+      "y": 520,
+      "props": {
+        "partitions": 12,
+        "replicationFactor": 3
+      }
+    },
+    {
+      "id": "order-db",
+      "stencil": "postgres",
+      "label": "Orders database",
+      "sublabel": "Order state · transactional outbox",
+      "x": 760,
+      "y": 520,
+      "props": {}
+    },
+    {
+      "id": "schemas",
+      "stencil": "kafka.schema-registry",
+      "label": "Schema registry",
+      "sublabel": "Avro · backward compatible",
+      "x": 1120,
+      "y": 40,
+      "props": {
+        "compatibility": "BACKWARD"
+      }
+    },
+    {
+      "id": "metrics",
+      "stencil": "prometheus",
+      "label": "Commerce metrics",
+      "sublabel": "Scrape interval: 15s",
+      "x": 1480,
+      "y": 640,
+      "props": {
+        "scrapeIntervalSec": 15
+      }
+    },
+    {
+      "id": "dashboard",
+      "stencil": "grafana",
+      "label": "Order operations",
+      "sublabel": "Lag · checkout latency · failures",
+      "x": 1840,
+      "y": 640,
+      "props": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "shopper-to-gateway",
+      "from": "shopper",
+      "to": "gateway",
+      "label": "HTTPS",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "gateway-to-orders",
+      "from": "gateway",
+      "to": "orders",
+      "label": "POST /orders",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "orders-to-order-db",
+      "from": "orders",
+      "to": "order-db",
+      "label": "Commit order + outbox",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "orders-to-order-events",
+      "from": "orders",
+      "to": "order-events",
+      "label": "OrderPlaced",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "order-events-to-inventory",
+      "from": "order-events",
+      "to": "inventory",
+      "label": "Reserve inventory",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "order-events-to-payments",
+      "from": "order-events",
+      "to": "payments",
+      "label": "Authorize payment",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "order-events-to-notifications",
+      "from": "order-events",
+      "to": "notifications",
+      "label": "Send confirmation",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "inventory-to-stock-db",
+      "from": "inventory",
+      "to": "stock-db",
+      "label": "Reserve SKUs",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "payments-to-payment-db",
+      "from": "payments",
+      "to": "payment-db",
+      "label": "Record authorization",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "notifications-to-notify-cache",
+      "from": "notifications",
+      "to": "notify-cache",
+      "label": "SET NX · dedupe",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "payments-to-payment-events",
+      "from": "payments",
+      "to": "payment-events",
+      "label": "PaymentCompleted",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "payment-events-to-orders",
+      "from": "payment-events",
+      "to": "orders",
+      "label": "group: orders-payments",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "orders-to-schemas",
+      "from": "orders",
+      "to": "schemas",
+      "label": "Fetch Avro schema",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "metrics-to-orders",
+      "from": "metrics",
+      "to": "orders",
+      "label": "GET /metrics",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "dashboard-to-metrics",
+      "from": "dashboard",
+      "to": "metrics",
+      "label": "PromQL",
+      "kind": "sync",
+      "props": {}
+    }
+  ]
+}

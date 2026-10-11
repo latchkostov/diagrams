@@ -1,0 +1,230 @@
+{
+  "format": "diagrams/v1",
+  "title": "CDC search and analytics",
+  "description": "Debezium captures retail table changes for search projections, a warehouse and raw lake retention.",
+  "direction": "LR",
+  "groups": [
+    {
+      "id": "onprem",
+      "label": "On-prem · retail datacenter",
+      "tone": "onprem",
+      "x": 0,
+      "y": 240,
+      "width": 300,
+      "height": 152
+    },
+    {
+      "id": "platform",
+      "label": "Kubernetes · CDC platform",
+      "tone": "k8s",
+      "x": 360,
+      "y": 0,
+      "width": 1020,
+      "height": 632
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sql",
+      "stencil": "sqlserver",
+      "label": "Retail SQL Server",
+      "sublabel": "retail-prod · CDC enabled",
+      "x": 40,
+      "y": 280,
+      "group": "onprem",
+      "props": {
+        "ratePerSec": 120
+      }
+    },
+    {
+      "id": "debezium",
+      "stencil": "kafka.connect",
+      "label": "Debezium SQL Server",
+      "sublabel": "retail-cdc · snapshot then tail",
+      "x": 400,
+      "y": 280,
+      "group": "platform",
+      "props": {
+        "connector": "debezium-sqlserver",
+        "source": true
+      }
+    },
+    {
+      "id": "orders-topic",
+      "stencil": "kafka.topic",
+      "label": "retail.dbo.orders",
+      "sublabel": "CDC envelope · key: order_id",
+      "x": 760,
+      "y": 160,
+      "group": "platform",
+      "props": {
+        "partitions": 12
+      }
+    },
+    {
+      "id": "customers-topic",
+      "stencil": "kafka.topic",
+      "label": "retail.dbo.customers",
+      "sublabel": "CDC envelope · key: customer_id",
+      "x": 760,
+      "y": 400,
+      "group": "platform",
+      "props": {
+        "partitions": 6
+      }
+    },
+    {
+      "id": "processor",
+      "stencil": "service.java",
+      "label": "Retail projections",
+      "sublabel": "Kafka Streams · group: retail-projector",
+      "x": 1120,
+      "y": 280,
+      "group": "platform",
+      "props": {
+        "group": "retail-projector",
+        "processingGuarantee": "exactly_once_v2"
+      }
+    },
+    {
+      "id": "search",
+      "stencil": "elasticsearch",
+      "label": "Retail search",
+      "sublabel": "orders-v1 · customer-v1 indexes",
+      "x": 1480,
+      "y": 160,
+      "props": {}
+    },
+    {
+      "id": "warehouse",
+      "stencil": "snowflake",
+      "label": "Retail warehouse",
+      "sublabel": "RETAIL_ANALYTICS · MERGE by key",
+      "x": 1480,
+      "y": 400,
+      "props": {}
+    },
+    {
+      "id": "s3-sink",
+      "stencil": "kafka.connect",
+      "label": "S3 sink connector",
+      "sublabel": "retail-raw-sink · Parquet",
+      "x": 1120,
+      "y": 520,
+      "group": "platform",
+      "props": {
+        "group": "retail-raw-sink",
+        "flushSize": 10000
+      }
+    },
+    {
+      "id": "lake",
+      "stencil": "aws.s3",
+      "label": "Retail raw lake",
+      "sublabel": "s3://retail-cdc-raw/table/date/",
+      "x": 1480,
+      "y": 520,
+      "props": {}
+    },
+    {
+      "id": "registry",
+      "stencil": "kafka.schema-registry",
+      "label": "CDC schemas",
+      "sublabel": "Avro envelopes · compatibility checks",
+      "x": 760,
+      "y": 40,
+      "group": "platform",
+      "props": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "sql-to-debezium",
+      "from": "sql",
+      "to": "debezium",
+      "label": "CDC · transaction log",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "debezium-to-orders-topic",
+      "from": "debezium",
+      "to": "orders-topic",
+      "label": "Order row changes",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "debezium-to-customers-topic",
+      "from": "debezium",
+      "to": "customers-topic",
+      "label": "Customer row changes",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "orders-topic-to-processor",
+      "from": "orders-topic",
+      "to": "processor",
+      "label": "group: retail-projector",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "customers-topic-to-processor",
+      "from": "customers-topic",
+      "to": "processor",
+      "label": "group: retail-projector",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "processor-to-search",
+      "from": "processor",
+      "to": "search",
+      "label": "Bulk index / delete",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "processor-to-warehouse",
+      "from": "processor",
+      "to": "warehouse",
+      "label": "Batch MERGE",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "orders-topic-to-s3-sink",
+      "from": "orders-topic",
+      "to": "s3-sink",
+      "label": "group: retail-raw-sink",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "customers-topic-to-s3-sink",
+      "from": "customers-topic",
+      "to": "s3-sink",
+      "label": "group: retail-raw-sink",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "s3-sink-to-lake",
+      "from": "s3-sink",
+      "to": "lake",
+      "label": "PutObject · Parquet",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "debezium-to-registry",
+      "from": "debezium",
+      "to": "registry",
+      "label": "Register schema",
+      "kind": "sync",
+      "props": {}
+    }
+  ]
+}
