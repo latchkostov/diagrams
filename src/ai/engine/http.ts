@@ -17,7 +17,7 @@ const STATUS_HINT: Record<number, string> = {
   400: "The request was rejected",
   401: "The key was rejected. Check it, or connect again with a new one",
   403: "This key isn't allowed to use that model",
-  404: "That model wasn't found. Pick another one",
+  404: "That model wasn't found. Check the model name in Connect a model",
   429: "Too many requests or no credit left. Wait a moment, or check your plan",
 };
 
@@ -62,7 +62,12 @@ export async function* postSse(
   if (!res.ok || !res.body) {
     const body = await res.text().catch(() => "");
     const detail = messageFrom(body);
-    const hint = STATUS_HINT[res.status] ?? (res.status >= 500 ? `${provider} had a problem. Try again` : "It failed");
+    // Some providers answer an unknown model with a 400 that names the model.
+    const unknownModel =
+      res.status === 400 && /model/i.test(detail) && /not (found|exist|supported)|unknown|invalid/i.test(detail);
+    const hint = unknownModel
+      ? STATUS_HINT[404]
+      : (STATUS_HINT[res.status] ?? (res.status >= 500 ? `${provider} had a problem. Try again` : "It failed"));
     throw new ProviderError(
       redact(`${hint} (${provider} ${res.status}${detail ? `: ${detail}` : ""}).`, init.key),
       res.status,

@@ -581,15 +581,14 @@ kbd {
 
 .toast {
   position: fixed;
-  /* Centred on the canvas, clear of the Ask AI dock. */
-  left: calc((100vw - var(--ai-dock-w, 0px)) / 2);
+  left: 50%;
   bottom: 24px;
   transform: translateX(-50%);
   z-index: 100;
   display: flex;
   align-items: center;
   gap: 14px;
-  max-width: min(640px, calc(100vw - var(--ai-dock-w, 0px) - 32px));
+  max-width: min(640px, calc(100vw - 32px));
   padding: 10px 10px 10px 16px;
   border-radius: 10px;
   background: var(--text);

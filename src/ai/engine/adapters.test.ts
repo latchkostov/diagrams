@@ -237,6 +237,21 @@ describe("gemini", () => {
   });
 });
 
+describe("unknown models", () => {
+  it("says to check the model name, for a 404 or a 400 about the model", async () => {
+    const { fetch } = scriptedFetch([
+      new Response(JSON.stringify({ error: { message: "The model `gpt-9` does not exist" } }), { status: 404 }),
+      new Response(JSON.stringify({ error: { message: "models/gemini-9 is not found for API version v1beta" } }), {
+        status: 400,
+      }),
+    ]);
+    const a = await failure(openai.step(request(openai, OPENAI_KEY, fetch)));
+    expect(a.message).toContain("Check the model name");
+    const b = await failure(gemini.step(request(gemini, GEMINI_KEY, fetch)));
+    expect(b.message).toContain("Check the model name");
+  });
+});
+
 describe("helpers", () => {
   it("redacts the exact key and key-shaped strings", () => {
     expect(redact(`a ${KEY} b`, KEY)).toBe("a [key] b");

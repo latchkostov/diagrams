@@ -2179,12 +2179,21 @@ select.insp-input {
 
 /* ---------- first-run hint ---------- */
 
-.first-hint {
+/* Spans the pane's bottom edge: the query container, so the hint adapts to the canvas, not the window. */
+.first-hint-slot {
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
   bottom: 28px;
-  transform: translateX(-50%);
   z-index: 5;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  container: first-hint / inline-size;
+}
+
+.first-hint {
+  pointer-events: auto;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -2204,7 +2213,7 @@ select.insp-input {
 @keyframes start-hint-in {
   from {
     opacity: 0;
-    transform: translate(-50%, 6px);
+    transform: translateY(6px);
   }
 }
 
@@ -2212,8 +2221,20 @@ select.insp-input {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* Never a word cut off: a narrow pane keeps the live hint only, and a very narrow one lets it wrap. */
+@container first-hint (max-width: 880px) {
+  .first-hint .first-hint-menu {
+    display: none;
+  }
+}
+
+@container first-hint (max-width: 640px) {
+  .first-hint {
+    white-space: normal;
+    border-radius: 14px;
+  }
 }
 
 .first-hint > span svg {

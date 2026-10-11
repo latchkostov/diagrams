@@ -1,7 +1,8 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Glyph } from "./glyphs";
 import { subscribe, toast, type ToastKind } from "./toast";
+import { avoidedBars, toastBottom } from "./toastStack";
 
 const ICON: Record<ToastKind, Parameters<typeof Glyph>[0]["name"]> = {
   info: "info",
@@ -17,10 +18,30 @@ export function Toaster() {
     const id = setTimeout(() => toast.dismiss(t.id), t.duration);
     return () => clearTimeout(id);
   }, [t]);
+  // One bottom-centre stack: the toast sits above the hint or the live bar instead of over them (they
+  // can appear, move or resize while it shows, so it follows them).
+  const el = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!t) return;
+    const place = () => {
+      const node = el.current;
+      if (!node) return;
+      const r = node.getBoundingClientRect();
+      node.style.bottom = `${toastBottom(r, avoidedBars(), window.innerHeight)}px`;
+    };
+    place();
+    const id = setInterval(place, 250);
+    window.addEventListener("resize", place);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("resize", place);
+    };
+  }, [t]);
   if (!t) return null;
   return createPortal(
     <div
       key={t.id}
+      ref={el}
       className={`ix-toast ix-toast-${t.kind}`}
       role={t.kind === "error" ? "alert" : "status"}
       aria-live={t.kind === "error" ? "assertive" : "polite"}

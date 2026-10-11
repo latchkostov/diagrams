@@ -750,6 +750,15 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
                 </div>
               </>
             )}
+            {!conn && !showConnect && (
+              <button
+                className="link-btn ai-use-model"
+                onClick={() => setShowConnect(true)}
+                data-testid="ai-connect-link"
+              >
+                Or connect your own model to apply changes directly
+              </button>
+            )}
             {conn && (
               <button
                 className="link-btn ai-use-model"

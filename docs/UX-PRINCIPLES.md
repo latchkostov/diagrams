@@ -115,7 +115,8 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   and **explains what's happening**. **Explain** never changes the diagram.
 - **Build with AI** is starting a new diagram from a description: the start card, File > Build with AI…
   and Ctrl+K. It opens a blank diagram with Ask AI ready. Never "Build with AI" for changing a diagram.
-- Ask AI answers through **your model** (Connect a model: Claude, OpenAI or Gemini with your own key,
+- Ask AI answers through **your model** (**Connect a model**, from the key in its header or "Or connect
+  your own model to apply changes directly" under Copy prompt: Claude, OpenAI or Gemini with your own key,
   kept in this browser; **Forget key**) or **copy and paste**: **Copy prompt**, paste the reply,
   **Apply**. Copy and paste is always there, with or without a key. A failed reply shows **Nothing was
   applied**, the elements it could mean (pick one to apply) and **Copy fix-up prompt**. A stencil the

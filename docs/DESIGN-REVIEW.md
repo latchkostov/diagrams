@@ -103,9 +103,21 @@ start card, the editor with a two-turn thread (hovering a turn outlines its node
 view after a pasted scenario (saved, picked and playing), Explain in live view, and Connect a model. At 1024
 the top bar keeps every control in one row with no overlap (Ask AI is an icon), and with the dock open and a
 node selected the inspector stays on its rail, leaving the canvas about 560 px. `tests/e2e/ai-context.spec.ts`
-measures both with bounding boxes. Two notes for later rounds: with something selected, opening the dock keeps
-the view (like the inspector) rather than refitting, so a wide diagram can sit partly off screen at 1024; and
-the toast still shares the bottom centre with the live bar, as before this round.
+measures both with bounding boxes.
+
+The lead's review then fixed three overlaps, each checked with bounding boxes at 1024 and 1440
+(`tests/e2e/ai-layout.spec.ts`):
+
+- **Toasts stack** above the canvas's bottom bars (the first-run hint, the live bar) instead of covering
+  them: one bottom-centre stack. Bars opt in with `data-toast-avoid`; the toast follows them while it shows.
+- **The first-run hint never cuts a word.** It sizes to the pane, not the window: a narrow pane keeps the
+  live hint only ("Go live to …"), and a very narrow one lets it wrap.
+- **The dock keeps the diagram in view.** Opening, closing or resizing it (by 40 px or more) refits a fitted
+  view to the new pane; a view the user panned or zoomed is panned just enough to keep the selection (or,
+  with none, the diagram's centre) in view.
+
+Connecting a model was only a key icon; the copy-and-paste composer now also says **Or connect your own model
+to apply changes directly**, and an unknown model's error says to check the model name.
 
 ## Round 5: UX gate after message trace and sequence diagrams
 

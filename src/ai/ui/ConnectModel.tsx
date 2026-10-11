@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "../../components/Icon";
 import { connection, modelLabel, PROVIDERS, providerInfo, useConnection } from "../engine/settings";
 import type { ProviderId } from "../engine/types";
@@ -15,6 +15,13 @@ export function ConnectModel({ onDone }: { onDone: () => void }) {
   const [key, setKey] = useState("");
   const [failed, setFailed] = useState(false);
   const info = providerInfo(provider);
+  const section = useRef<HTMLElement>(null);
+  const keyInput = useRef<HTMLInputElement>(null);
+  // Opened from the composer's link or the header's key: bring it into view, ready for the key.
+  useEffect(() => {
+    section.current?.scrollIntoView({ block: "nearest" });
+    keyInput.current?.focus({ preventScroll: true });
+  }, []);
   const keepsKey = !!conn && conn.provider === provider && !key.trim();
   const canSave = !!model.trim() && (!!key.trim() || keepsKey);
 
@@ -27,7 +34,7 @@ export function ConnectModel({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <section className="ai-connect" aria-labelledby={`${id}-title`} data-testid="ai-connect">
+    <section ref={section} className="ai-connect" aria-labelledby={`${id}-title`} data-testid="ai-connect">
       <h3 id={`${id}-title`}>Connect a model</h3>
       <p className="ai-hint">
         Optional. With your own key, Ask AI changes the diagram right here. Without one, it copies a prompt for any
@@ -78,6 +85,7 @@ export function ConnectModel({ onDone }: { onDone: () => void }) {
         <label htmlFor={`${id}-key`}>API key</label>
         <input
           id={`${id}-key`}
+          ref={keyInput}
           className="ix-input"
           type="password"
           value={key}
