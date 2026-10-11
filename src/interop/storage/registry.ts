@@ -23,7 +23,7 @@ export interface ProviderFlags {
   gdrive: boolean;
   onedrive: boolean;
   dropbox: boolean;
-  /** The dev-only fake provider (`?storage=test`); never true in a production build. */
+  /** The dev-only fake provider (`?storage=test`); never true in a production build (the e2e build aside). */
   test: boolean;
 }
 
@@ -70,8 +70,9 @@ const CLOUD: (ProviderInfo & { flag: keyof ProviderFlags })[] = [
     icon: "dropbox",
     load: once(() => import("./dropbox").then((m) => m.dropboxProvider() as StorageProvider)),
   },
-  // Statically false in production builds, so the bundler drops this entry and its chunk.
-  ...(import.meta.env.DEV
+  // Statically false in production builds, so the bundler drops this entry and its chunk. The e2e build
+  // (VITE_E2E=1) keeps it; vite.config.ts fails any other build that bundles it.
+  ...(import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
     ? [
         {
           flag: "test" as const,
@@ -103,7 +104,7 @@ export const CLOUD_PROVIDERS: ProviderInfo[] = cloudProviders({
   gdrive: driveEnabled,
   onedrive: !!oneDriveConfig,
   dropbox: !!dropboxConfig,
-  test: import.meta.env.DEV && typeof window !== "undefined" && testRequested(),
+  test: (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && typeof window !== "undefined" && testRequested(),
 });
 
 /** Device first, then the configured cloud providers. */

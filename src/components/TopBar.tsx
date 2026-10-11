@@ -38,8 +38,9 @@ export function TopBar(p: Props) {
   const canvas = p.view === "canvas";
   const lab = p.view === "lab";
   // The Lab is a dev harness: linked from the top bar in dev builds only. Production keeps it
-  // reachable by URL (?view=lab) and shows the tab only while you're on it.
-  const showLab = import.meta.env.DEV || lab;
+  // reachable by URL (?view=lab) and shows the tab only while you're on it. The e2e build (VITE_E2E=1)
+  // keeps the dev behaviour so the suite can run against a production bundle.
+  const showLab = import.meta.env.DEV || import.meta.env.VITE_E2E === "1" || lab;
 
   return (
     <header className="topbar" data-testid="topbar">
