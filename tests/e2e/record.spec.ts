@@ -141,15 +141,18 @@ test.describe("record video", () => {
     await expect(page.getByTestId("record-setup")).toBeVisible();
     // Free play has nothing to play from the start.
     await expect(page.getByTestId("record-opt-from-start")).toHaveCount(0);
-    await page.getByTestId("record-opt-present").uncheck();
+    // Every take is in presentation view: no option to forget.
+    await expect(page.getByTestId("record-what")).toContainText("presentation view");
     await page.getByTestId("record-start").click();
     await expect(page.getByTestId("record-indicator")).toBeVisible({ timeout: 6_000 });
-    await expect(page).not.toHaveURL(/present=1/);
+    await expect(page).toHaveURL(/present=1/);
     // L doesn't leave live view mid-take; Esc stops the recording (and only that).
     await page.keyboard.press("l");
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("record-review")).toBeVisible();
     await expect(page.getByTestId("live-controls")).toBeVisible();
+    // The take turned presentation on, so stopping turns it back off.
+    await expect(page).not.toHaveURL(/present=1/);
 
     await page.getByTestId("record-discard").click();
     await expect(page.getByTestId("record-review")).toHaveCount(0);

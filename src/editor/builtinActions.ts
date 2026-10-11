@@ -115,7 +115,7 @@ const KIND_KEYWORDS: Record<AnnotationKind, string> = {
   shape: "annotation outline box",
 };
 
-/** Text, Note, Zone, Shape ▸: what "Add" offers on the canvas (and the palette as "Add › …"). */
+/** Text, Note, Zone, Shape ▸: what "Annotate" offers on the canvas (and the palette as "Annotate › …"). */
 export function annotateMenu(add: (kind: AnnotationKind, shape?: AnnotationShape) => void): MenuNode[] {
   return [
     ...(["text", "note", "zone"] as const).map((k): MenuItem => ({
@@ -160,7 +160,7 @@ export function builtinActions(): Action[] {
       id: "canvas.annotate",
       section: "insert",
       targets: ["canvas"],
-      label: "Add",
+      label: "Annotate",
       icon: "note",
       children: (ctx) => annotateMenu((kind, shape) => void ctx.editor.addAnnotation(kind, { at: ctx.point, shape })),
     },
@@ -195,6 +195,8 @@ export function builtinActions(): Action[] {
     {
       id: "canvas.fit",
       modes: ["edit", "live"],
+      // The canvas controls show it and Shift+1 does it; the right-click has no room to repeat it.
+      paletteOnly: true,
       section: "view",
       targets: ["canvas"],
       label: "Fit view",

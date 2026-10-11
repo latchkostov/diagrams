@@ -9,7 +9,8 @@ import {
   nodeToFlow,
   type DiagramMeta,
 } from "../canvas/convert";
-import { annotationIdBase, defaultSize, defaultText, isConnectable } from "../canvas/annotations";
+import { annotationIdBase, defaultSize, defaultText, isConnectable, textSizePx } from "../canvas/annotations";
+import { placeFree, type Box as PlaceBox } from "../canvas/placement";
 import type { EditTarget } from "../canvas/DiagramContext";
 import {
   type AnnotationFlowNode,
@@ -54,6 +55,8 @@ export interface EditorDeps {
   viewCenter: () => XY;
   /** The pointer over the canvas, in flow coordinates (undefined when it's elsewhere). */
   pointer?: () => XY | undefined;
+  /** Small boxes along the drawn edges (flow coordinates), so new things are placed off them. */
+  edgeMarks?: () => PlaceBox[];
   fit: () => void;
   /** Nominal node size for the current renderer (before React Flow has measured). */
   nodeSize: { width: number; height: number };
@@ -195,8 +198,10 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
     addNode: (stencilId, at) => {
       const s = getStencil(stencilId);
       const { width, height } = deps().nodeSize;
-      const c = at ?? deps().viewCenter();
       const ns = rf.getNodes();
+      // No spot given (a click in the rail or the palette): the free place nearest the view's centre.
+      const c =
+        at ?? placeFree(deps().viewCenter(), { width, height }, [...ns.map(box), ...(deps().edgeMarks?.() ?? [])]);
       const id = uniqueId(stencilIdBase(s.id), new Set(ns.map((n) => n.id)));
       const node: DiagramFlowNode = {
         id,
@@ -212,11 +217,14 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
 
     addAnnotation: (kind, opts = {}) => {
       const size = defaultSize[kind];
-      const c = opts.at ?? (opts.atPointer ? deps().pointer?.() : undefined) ?? deps().viewCenter();
       const ns = rf.getNodes();
+      const pointed = opts.at ?? (opts.atPointer ? deps().pointer?.() : undefined);
+      // No spot given (a click in the rail or the palette): the free place nearest the view's centre,
+      // so it never lands on a node (notes and shapes would push edges around) or on the last one added.
+      const c = pointed ?? placeFree(deps().viewCenter(), size, [...ns.map(box), ...(deps().edgeMarks?.() ?? [])]);
       const id = uniqueId(annotationIdBase(kind), new Set(ns.map((n) => n.id)));
       // Text starts where you pointed (its first line under the cursor); the rest centre on it.
-      const x = kind === "text" && opts.atPointer ? c.x - 8 : c.x - size.width / 2;
+      const x = kind === "text" && pointed ? c.x - 8 : c.x - size.width / 2;
       const y = c.y - size.height / 2;
       const node: AnnotationFlowNode = {
         ...annotationToFlow({
@@ -252,13 +260,24 @@ function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, initialD
           const kind = patch.kind ?? data.kind;
           data.kind = kind;
           if (kind !== "shape") data.shape = undefined;
+          let width = patch.width ?? n.width;
+          let height = patch.height ?? n.height;
+          // Text has no frame to fill: a new text size scales its box with the type, so a one-line
+          // title stays one line (instead of wrapping and spilling out of a box sized for 14px).
+          if (kind === "text" && "textSize" in patch && patch.width === undefined && patch.height === undefined) {
+            const r = textSizePx[data.textSize ?? "m"] / textSizePx[n.data.textSize ?? "m"];
+            if (r !== 1 && width && height) {
+              width = Math.round(width * r);
+              height = Math.round(height * r);
+            }
+          }
           return {
             ...n,
             data,
             connectable: isConnectable(kind),
             position: { x: patch.x ?? n.position.x, y: patch.y ?? n.position.y },
-            width: patch.width ?? n.width,
-            height: patch.height ?? n.height,
+            width,
+            height,
           };
         }),
       );

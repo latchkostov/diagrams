@@ -64,7 +64,9 @@ test.describe("editor", () => {
 
     await openCanvasMenu(page);
     await expect(menuItem(page, "canvas.add-node")).toBeVisible();
-    await expect(menuItem(page, "canvas.fit")).toBeVisible();
+    await expect(menuItem(page, "canvas.annotate")).toHaveText(/Annotate/);
+    // Fit view is a canvas control and Shift+1 (and in Ctrl+K); the right-click doesn't repeat it.
+    await expect(menuItem(page, "canvas.fit")).toHaveCount(0);
     await expect(menuItem(page, "node.rename")).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("context-menu")).toHaveCount(0);

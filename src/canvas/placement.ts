@@ -43,3 +43,44 @@ export function placeNextTo(
   }
   return { x: x + size.width / 2, y: y + size.height / 2 };
 }
+
+/**
+ * Where something added without a spot (a click in the stencil rail, the command palette) goes:
+ * the free place nearest `center`, at least `margin` clear of every box in `others`, so it never
+ * lands on a node or stacks on the last thing added. Candidates ring outward on a `step` grid;
+ * when nothing is free within `maxRings`, the centre wins (the view is simply full).
+ * Takes and returns the new element's centre.
+ */
+export function placeFree(
+  center: { x: number; y: number },
+  size: { width: number; height: number },
+  others: readonly Box[],
+  { margin = 32, step = 40, maxRings = 24 }: { margin?: number; step?: number; maxRings?: number } = {},
+): { x: number; y: number } {
+  const fits = (cx: number, cy: number) => {
+    const b = {
+      x: cx - size.width / 2 - margin,
+      y: cy - size.height / 2 - margin,
+      width: size.width + margin * 2,
+      height: size.height + margin * 2,
+    };
+    return !others.some((o) => overlaps(b, o));
+  };
+  if (fits(center.x, center.y)) return center;
+  for (let ring = 1; ring <= maxRings; ring++) {
+    // Every grid point on this ring, nearest to the centre first (ties: above before below, left before right).
+    const spots: { x: number; y: number; d: number }[] = [];
+    for (let i = -ring; i <= ring; i++) {
+      for (let j = -ring; j <= ring; j++) {
+        if (Math.max(Math.abs(i), Math.abs(j)) !== ring) continue;
+        const x = center.x + i * step;
+        const y = center.y + j * step;
+        spots.push({ x, y, d: Math.hypot(i, j) });
+      }
+    }
+    spots.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x);
+    const hit = spots.find((s) => fits(s.x, s.y));
+    if (hit) return { x: hit.x, y: hit.y };
+  }
+  return center;
+}
