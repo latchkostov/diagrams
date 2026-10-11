@@ -2,9 +2,10 @@ import { expect, it } from "vitest";
 import type { InternalNode, ReactFlowState } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { selectRoutes } from "./useEdgeRoute";
+import { segmentHitsRect } from "../geometry/rect";
 import { annotationToFlow, nodeToFlow } from "../convert";
 
-it("reuses routes when zones or text move or change; notes still invalidate", () => {
+it("moving a note across an edge reroutes around its new bounds; zones and text reuse routes", () => {
   const internal = (n: FlowNode): InternalNode<FlowNode> => ({
     ...n,
     measured: { width: n.width ?? 220, height: n.height ?? 72 },
@@ -24,11 +25,30 @@ it("reuses routes when zones or text move or change; notes still invalidate", ()
   const first = selectRoutes(state(), opts);
   for (const kind of ["zone", "text"] as const) {
     const n = lookup.get(kind)!;
-    lookup.set(kind, { ...n, position: { x: 100, y: 500 }, data: { ...n.data, text: "Changed" } });
+    lookup.set(kind, {
+      ...n,
+      position: { x: 100, y: 500 },
+      internals: { ...n.internals, positionAbsolute: { x: 100, y: 500 } },
+      data: { ...n.data, text: "Changed" },
+    });
     expect(selectRoutes(state(), opts)).toBe(first);
     lookup.delete(kind);
     expect(selectRoutes(state(), opts)).toBe(first);
   }
-  lookup.set("note", { ...lookup.get("note")!, position: { x: 500, y: 500 } });
-  expect(selectRoutes(state(), opts)).not.toBe(first);
+  const crosses = (points: { x: number; y: number }[], rect: { x: number; y: number; width: number; height: number }) =>
+    points.slice(1).some((p, i) => segmentHitsRect(points[i], p, rect));
+  const rect = { x: 280, y: 0, width: 100, height: 100 };
+  const original = first.get("e")!.points;
+  expect(crosses(original, rect)).toBe(true);
+  const moveNote = (position: { x: number; y: number }) => {
+    const note = lookup.get("note")!;
+    lookup.set("note", { ...note, position, internals: { ...note.internals, positionAbsolute: position } });
+  };
+  // Move a real obstacle into the original edge, then out again.
+  moveNote({ x: rect.x, y: rect.y });
+  const blocked = selectRoutes(state(), opts).get("e")!;
+  expect(blocked.points).not.toEqual(original);
+  expect(crosses(blocked.points, rect)).toBe(false);
+  moveNote({ x: 500, y: 500 });
+  expect(selectRoutes(state(), opts).get("e")!.points).toEqual(original);
 });

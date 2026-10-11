@@ -265,3 +265,17 @@ test.describe("gallery", () => {
     }
   });
 });
+
+test("folding a keyboard-focused family restores focus to Vendor on resize", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  await gotoGallery(page);
+  const chip = page.getByTestId("family-chip-generic");
+  await expect(chip).toBeVisible();
+  await chip.focus();
+  await expect(chip).toBeFocused();
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await expect(chip).toHaveAttribute("data-folded", "1");
+  await expect(page.getByTestId("vendor-overflow")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("vendor-menu")).toBeVisible();
+});

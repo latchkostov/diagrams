@@ -10,7 +10,15 @@ import {
   type DiagramMeta,
 } from "../canvas/convert";
 import { annotationIdBase, defaultSize, defaultText, isConnectable, textSizePx } from "../canvas/annotations";
-import { ANNOTATION_LIMITS, annotationSize, annotationCoordinate, annotationText } from "../model/annotations";
+import {
+  ANNOTATION_LIMITS,
+  annotationGeometryError,
+  annotationSize,
+  annotationCoordinate,
+  annotationText,
+} from "../model/annotations";
+import { foregroundLayerOrder } from "../model/layers";
+import { notify } from "../interop/ui/toast";
 import { overlaps, placeFree, type Box as PlaceBox } from "../canvas/placement";
 import type { EditTarget } from "../canvas/DiagramContext";
 import {
@@ -143,12 +151,12 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       return { ...f, data: { ...f.data, group }, selected: true };
     });
     const notes = (r.annotations ?? []).map((a) => ({ ...annotationToFlow(a), selected: true }));
+    const foreground = new Map([...nodes, ...notes.filter((n) => n.data.kind !== "zone")].map((n) => [n.id, n]));
     deps().setNodes((cur) => [
       ...notes.filter((n) => n.data.kind === "zone"),
       ...cur.map((n) => (n.selected ? { ...n, selected: false } : n)),
       ...groupNodes,
-      ...nodes,
-      ...notes.filter((n) => n.data.kind !== "zone"),
+      ...foregroundLayerOrder(r).map((id) => foreground.get(id)!),
     ]);
     deps().setEdges((cur) => [
       ...cur.map((e) => (e.selected ? { ...e, selected: false } : e)),
@@ -235,6 +243,11 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         // Text starts where you pointed (its first line under the cursor); the rest centre on it.
         const x = kind === "text" && pointed ? c.x - 8 : c.x - size.width / 2;
         at = { x: snap10(x), y: snap10(c.y - size.height / 2), ...size };
+      }
+      const geometryError = annotationGeometryError(at);
+      if (geometryError) {
+        notify(`Couldn't add ${kind}: ${geometryError}`, { kind: "error" });
+        return null;
       }
       const id = uniqueId(annotationIdBase(kind), new Set(ns.map((n) => n.id)));
       const node: AnnotationFlowNode = {
@@ -516,6 +529,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         width: n.width ?? n.measured?.width ?? 0,
         height: n.height ?? n.measured?.height ?? 0,
       };
+      if (before && b.x === before.x && b.y === before.y && b.width === before.width && b.height === before.height)
+        return null;
       // Cards, notes, shapes and other text; not the backdrops (zones, boundaries) it may sit on.
       const solid = ns
         .filter((o) => o.id !== id && !isGroup(o) && !(isAnnotation(o) && o.data.kind === "zone"))

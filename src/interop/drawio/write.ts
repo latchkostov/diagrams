@@ -1,5 +1,6 @@
 import type { DiagramAnnotation, DiagramFile, DiagramNode, Side } from "../../model/types";
 import { ANNOTATION_COLORS, annotationColor, textSizePx } from "../../canvas/annotations";
+import { foregroundLayerOrder } from "../../model/layers";
 import { catalog } from "../../stencils/catalog";
 import { escapeXml } from "../xml";
 import { boxShape, groupStyle, imageShape, nativeShape, type DrawioShape } from "./mapping";
@@ -51,7 +52,7 @@ export function annotationStyle(a: DiagramAnnotation): string {
 }
 
 /** Multi-line text as a draw.io HTML label. */
-const textHtml = (text: string) =>
+export const textHtml = (text: string) =>
   text
     .split("\n")
     .map((l) => escapeXml(l, false))
@@ -84,7 +85,7 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
 
   // Root cell carries diagram-level fields (description, direction, simulations).
   lines.push(
-    `        <object id="0"${attr("dg_format", d.format)}${attr("dg_description", d.description)}${attr("dg_direction", d.direction)}${attr("dg_simulations", json(d.simulations))}>`,
+    `        <object id="0"${attr("dg_format", d.format)}${attr("dg_description", d.description)}${attr("dg_direction", d.direction)}${attr("dg_simulations", json(d.simulations))}${attr("dg_layer_order", json(d.layerOrder))}>`,
     `          <mxCell />`,
     `        </object>`,
     `        <mxCell id="1" parent="0" />`,
@@ -112,7 +113,15 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
     );
   }
 
-  for (const n of d.nodes) {
+  const nodesById = new Map(d.nodes.map((n) => [n.id, n]));
+  const annotationsById = new Map(annotations.map((a) => [a.id, a]));
+  for (const id of foregroundLayerOrder(d)) {
+    const n = nodesById.get(id);
+    if (!n) {
+      const a = annotationsById.get(id);
+      if (a) lines.push(...annotationCell(a));
+      continue;
+    }
     const shape = shapeFor(n, opts);
     const g = n.group ? groups.get(n.group) : undefined;
     // Centre the shape on the card; geometry is relative to the container when the node is in one.
@@ -126,8 +135,6 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
       `        </object>`,
     );
   }
-
-  for (const a of annotations) if (a.kind !== "zone") lines.push(...annotationCell(a));
 
   const shapes = new Set(annotations.filter((a) => a.kind === "shape").map((a) => a.id));
   const end = (id: string) => cellId(shapes.has(id) ? "a" : "n", id);

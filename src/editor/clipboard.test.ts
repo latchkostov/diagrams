@@ -129,3 +129,31 @@ describe("clipboard", () => {
     expect(uniqueId("orders", new Set(["orders-1", "orders-2"]))).toBe("orders-3");
   });
 });
+
+it("filters, validates and remaps mixed foreground order through clipboard JSON", () => {
+  const d: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Layers",
+    nodes: [
+      { id: "a", stencil: "service.go", label: "A", x: 0, y: 0 },
+      { id: "b", stencil: "service.go", label: "B", x: 400, y: 0 },
+    ],
+    edges: [],
+    annotations: [
+      { id: "note", kind: "note", text: "", x: 0, y: 0, width: 200, height: 100 },
+      { id: "zone", kind: "zone", text: "", x: 0, y: 0, width: 300, height: 200 },
+    ],
+    layerOrder: ["note", "a", "b"],
+  };
+  const p = makePayload(d, ["a", "note", "zone"])!;
+  expect(p.layerOrder).toEqual(["note", "a"]);
+  const parsed = parsePayload(JSON.stringify({ ...p, layerOrder: ["note", "ghost", "zone", "note", 3, "a"] }))!;
+  expect(parsed.layerOrder).toEqual(["note", "a"]);
+  expect(parsePayload(JSON.stringify({ ...p, layerOrder: "bad" }))?.layerOrder).toBeUndefined();
+  const r = remapPayload(
+    parsed,
+    { nodes: new Set(["a", "note"]), edges: new Set(), groups: new Set() },
+    { x: 30, y: 30 },
+  );
+  expect(r.layerOrder).toEqual([r.annotations![0].id, r.nodes[0].id]);
+});

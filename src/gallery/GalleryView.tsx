@@ -125,6 +125,9 @@ export function GalleryView() {
         if (!next.length && w <= room) room -= w;
         else next.push(f.id);
       }
+      // Transfer keyboard position before the chip becomes invisible.
+      if (next.some((id) => track.querySelector(`[data-testid="family-chip-${id}"]`) === document.activeElement))
+        end.querySelector<HTMLElement>('[data-testid="vendor-overflow"]')?.focus({ preventScroll: true });
       setFolded((cur) => (cur.join() === next.join() ? cur : next));
     };
     fit();

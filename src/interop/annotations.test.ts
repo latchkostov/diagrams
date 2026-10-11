@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { LIMITS, parseNative, preserveUnknown, serializeNative, validateDiagram } from "./native";
+import { escapeXml } from "./xml";
 import { diagramToDrawio } from "./drawio/write";
 import { drawioPageToDiagram, readDrawio } from "./drawio/read";
 import { diagramToMermaid } from "./mermaid/write";
@@ -240,4 +241,33 @@ describe("Mermaid", () => {
     expect(back.nodes.map((n) => n.id)).toEqual(expect.arrayContaining(["web", "api", "legacy", "d1"]));
     expect(back.edges).toHaveLength(2);
   });
+});
+
+it.each(["text", "note", "zone", "shape"] as const)(
+  "draw.io respects edited visible %s text over stale metadata",
+  async (kind) => {
+    const d: DiagramFile = {
+      ...annotated,
+      annotations: [{ id: "edit", kind, text: "Before", x: 0, y: 0, width: 200, height: 100 }],
+    };
+    for (const label of ["After", "", "New&lt;br&gt;paragraph"]) {
+      const xml = diagramToDrawio(d).replace('label="Before"', `label="${label}"`);
+      const { diagram } = drawioPageToDiagram((await readDrawio(xml)).pages[0]);
+      expect(diagram.annotations?.[0].text).toBe(label === "New&lt;br&gt;paragraph" ? "New\nparagraph" : label);
+    }
+  },
+);
+
+it("draw.io paints and restores a mixed node/annotation order, filtering invalid metadata", async () => {
+  const d = { ...annotated, layerOrder: ["n1", "web", "legacy", "api", "title", "d1", "r1", "r2", "o1"] };
+  const xml = diagramToDrawio(d);
+  expect(xml.indexOf('id="dg-a-n1"')).toBeLessThan(xml.indexOf('id="dg-n-web"'));
+  const { diagram } = drawioPageToDiagram((await readDrawio(xml)).pages[0]);
+  expect(diagram.layerOrder).toEqual(d.layerOrder);
+  const edited = xml.replace(
+    escapeXml(JSON.stringify(d.layerOrder)),
+    escapeXml(JSON.stringify(["n1", "missing", "edge-zone", "n1", 5, "web"])),
+  );
+  const filtered = drawioPageToDiagram((await readDrawio(edited)).pages[0]).diagram;
+  expect(filtered.layerOrder).toEqual(["n1", "web"]);
 });

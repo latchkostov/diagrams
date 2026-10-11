@@ -1,4 +1,5 @@
 import { safeStorage } from "../lib/storage";
+import { layersFixture, headerOverflowFixture } from "./layersFixture";
 import { exportFixture } from "./exportFixture";
 // The Lab's preset registry. Every entry renders the *current* components with fixed data, so
 // opening ?view=lab&preset=<id> is a quick visual check of whatever you're working on.
@@ -337,6 +338,23 @@ const playgroundPresets: Preset[] = [
     title: "Complete export contract",
     group: "Playground",
     diagram: () => exportFixture,
+  },
+
+  {
+    kind: "diagram",
+    id: "overlapping-layers",
+    title: "Overlapping layers",
+    group: "Diagrams",
+    description: "A note over a node for inspecting Send to back, undo and reload.",
+    diagram: () => layersFixture,
+  },
+  {
+    kind: "diagram",
+    id: "header-overflow",
+    title: "Long export header",
+    group: "Diagrams",
+    description: "A one-node diagram with unbroken title and description text.",
+    diagram: () => headerOverflowFixture,
   },
   {
     kind: "diagram",

@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { ReactFlowInstance } from "@xyflow/react";
 import { toFlow } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
+import { validateDiagram } from "../interop/native";
+import { makePayload } from "./clipboard";
+import { toast } from "../interop/ui/toast";
 import { createEditor, type EditorDeps } from "./useEditor";
 
 type Rect = { x: number; y: number; width: number; height: number };
@@ -27,12 +30,13 @@ function setup(selected: string[], opts: { marks?: Rect[]; textHeight?: number }
   let nodes: FlowNode[] = flow.nodes.map((n) => ({ ...n, selected: selected.includes(n.id) }));
   const rf = { getNodes: () => nodes, getEdges: () => flow.edges } as ReactFlowInstance<FlowNode, DiagramFlowEdge>;
   const hint = vi.fn();
+  const edgeMarks = vi.fn(() => opts.marks ?? []);
   const deps = {
     meta: flow.meta,
     history: { hint },
     nodeSize: { width: 180, height: 64 },
     viewCenter: () => ({ x: 2000, y: 2000 }),
-    edgeMarks: () => opts.marks ?? [],
+    edgeMarks,
     setEditing: vi.fn(),
     setNodes: (update: Parameters<EditorDeps["setNodes"]>[0]) => {
       nodes = typeof update === "function" ? update(nodes) : update;
@@ -40,7 +44,7 @@ function setup(selected: string[], opts: { marks?: Rect[]; textHeight?: number }
     setEdges: vi.fn(),
   } as unknown as EditorDeps;
   const { api } = createEditor(rf, deps);
-  return { api, hint, nodes: () => nodes };
+  return { api, hint, edgeMarks, nodes: () => nodes };
 }
 
 const TEXT_BEFORE = { x: 0, y: -40, width: 200, height: 30 };
@@ -106,4 +110,44 @@ describe("Annotate › Zone with a selection", () => {
     const id = api.addAnnotation("note", { at: { x: 1000, y: 1000 } });
     expect(api.getAnnotation(id!)).toMatchObject({ width: 200, height: 120 });
   });
+});
+
+it("does not sample edges on focus/blur or a same-size text edit", () => {
+  const { api, edgeMarks, hint } = setup([]);
+  expect(api.keepTextClear("text", TEXT_BEFORE)).toBeNull();
+  api.updateAnnotation("text", { text: "Other" });
+  expect(api.keepTextClear("text", TEXT_BEFORE)).toBeNull();
+  expect(edgeMarks).not.toHaveBeenCalled();
+  expect(hint).not.toHaveBeenCalledWith("keep-text-clear");
+});
+
+it.each([
+  [20000, 0, "smaller selection"],
+  [21000, 0, "smaller selection"],
+  [25000, 0, "smaller selection"],
+  [300, -1000000, "coordinate"],
+])("refuses a wrapping zone that cannot reopen (span %s, origin %s)", (span, origin, message) => {
+  const { api, nodes } = setup(["a", "b"]);
+  nodes().find((n) => n.id === "a")!.position.x = origin;
+  nodes().find((n) => n.id === "b")!.position.x = origin + span;
+  const before = api.getDiagram();
+  expect(api.addAnnotation("zone")).toBeNull();
+  expect(api.getDiagram()).toEqual(before);
+  expect(toast.current?.text).toContain(message);
+});
+
+it("a supported wrapping zone survives native validation unchanged", () => {
+  const { api } = setup(["a", "b"]);
+  const id = api.addAnnotation("zone")!;
+  const saved = validateDiagram(api.getDiagram());
+  expect(saved.ok && saved.warnings).toEqual([]);
+  expect(saved.ok && saved.diagram.annotations?.find((a) => a.id === id)).toEqual(api.getAnnotation(id));
+});
+
+it.each(["duplicate", "paste"] as const)("%s preserves mixed foreground layer order", (transfer) => {
+  const { api } = setup([]);
+  api.sendToBack(["text"]);
+  if (transfer === "duplicate") api.duplicate({ nodeIds: ["a", "text"] });
+  else api.pastePayload(makePayload(api.getDiagram(), ["a", "text"])!);
+  expect(api.getDiagram().layerOrder).toEqual(["text", "a", "b", "text-1", "a-1"]);
 });

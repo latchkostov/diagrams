@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, publicExamples, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoGallery, gotoLab, publicExamples, expectNoErrors } from "./fixtures";
 
 // Import / export / storage (src/interop). Selectors are data-testid only.
 
@@ -574,4 +574,43 @@ test.describe("interop review regressions", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("file-button")).toBeFocused();
   });
+});
+
+test("image export wraps an unbroken title and URL within the measured one-node bounds", async ({ page }) => {
+  test.slow();
+  await gotoLab(page, "header-overflow");
+  await page.getByTestId("lab-open-editor").click();
+  await expect(page.getByTestId("canvas-view")).toBeVisible();
+  await expect(page.getByTestId("node-service")).toBeVisible();
+  const result = await page.getByTestId("canvas-wrap").evaluate(async (root) => {
+    const url = "/src/interop/image.ts";
+    const { renderDiagramImage } = (await import(url)) as typeof import("../../src/interop/image");
+    const title = "identifier".repeat(80);
+    const description = "https://example.test/" + "path".repeat(120);
+    const rendering = renderDiagramImage("svg", { header: { title, description } });
+    const header = root.querySelector<HTMLElement>('[data-testid="export-header"]');
+    if (!header) throw new Error("Export header was not added");
+    const size = {
+      width: header.offsetWidth,
+      contentWidth: header.scrollWidth,
+      height: header.offsetHeight,
+      contentHeight: header.scrollHeight,
+    };
+    const image = await rendering;
+    const svg = new DOMParser().parseFromString(
+      decodeURIComponent(image.slice(image.indexOf(",") + 1)),
+      "image/svg+xml",
+    );
+    return {
+      ...size,
+      exportedTitle: svg.querySelector('[data-testid="export-header"] h1')?.textContent,
+      exportedDescription: svg.querySelector('[data-testid="export-header"] p')?.textContent,
+    };
+  });
+  expect(result.contentWidth).toBeLessThanOrEqual(result.width);
+  expect(result.contentHeight).toBeLessThanOrEqual(result.height);
+  expect(result.width).toBeLessThanOrEqual(420);
+  expect(result.exportedTitle).toBe("identifier".repeat(80));
+  expect(result.exportedDescription).toBe("https://example.test/" + "path".repeat(120));
+  await expect(page.getByTestId("export-header")).toHaveCount(0);
 });
