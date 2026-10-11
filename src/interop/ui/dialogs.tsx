@@ -437,19 +437,21 @@ export function Disclosure({
   );
 }
 
-/** Image export: PNG by default; size, background and SVG behind Options. */
+/** Image export: PNG by default, with the diagram's title; size, background, title and SVG behind Options. */
 export function ImageDialog({
   onExport,
   onClose,
 }: {
-  onExport: (kind: "png" | "svg", opts: { scale: number; transparent: boolean }) => void;
+  onExport: (kind: "png" | "svg", opts: { scale: number; transparent: boolean; title: boolean }) => void;
   onClose: () => void;
 }) {
   const [kind, setKind] = useState<"png" | "svg">("png");
   const [scale, setScale] = useState(2);
   const [transparent, setTransparent] = useState(false);
+  const [title, setTitle] = useState(true);
   const summary =
-    kind === "svg" ? "SVG, scalable" : `PNG, ${scale}× resolution${transparent ? ", transparent background" : ""}`;
+    (kind === "svg" ? "SVG, scalable" : `PNG, ${scale}× resolution${transparent ? ", transparent background" : ""}`) +
+    (title ? "" : ", without the title");
   return (
     <Dialog
       title="Export image"
@@ -466,7 +468,7 @@ export function ImageDialog({
           </button>
           <button
             className="btn btn-primary"
-            onClick={() => onExport(kind, { scale, transparent })}
+            onClick={() => onExport(kind, { scale, transparent, title })}
             data-testid="image-export"
             data-autofocus
           >
@@ -495,6 +497,16 @@ export function ImageDialog({
               </button>
             ))}
           </div>
+          <span className="ix-form-label">Title</span>
+          <label className="ix-check">
+            <input
+              type="checkbox"
+              checked={title}
+              onChange={(e) => setTitle(e.target.checked)}
+              data-testid="image-title"
+            />
+            Diagram title and description
+          </label>
           {kind === "png" && (
             <>
               <span className="ix-form-label">Resolution</span>

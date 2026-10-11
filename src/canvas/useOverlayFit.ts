@@ -98,8 +98,9 @@ export function useKeepSelectionInView(
     const selectedNodes = new Set<string>();
     for (const n of s.nodeLookup.values()) {
       if (!n.selected || n.hidden) continue;
-      const w = n.measured?.width ?? 0;
-      const h = n.measured?.height ?? 0;
+      // A just-added annotation isn't measured yet, but it has its size (a node waits for the measure).
+      const w = n.measured?.width ?? n.width ?? 0;
+      const h = n.measured?.height ?? n.height ?? 0;
       if (!w || !h) continue;
       selectedNodes.add(n.id);
       must.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: w, height: h });

@@ -8,12 +8,54 @@ export interface ImageOptions {
   transparent?: boolean;
   /** Padding around the diagram in px. */
   padding?: number;
+  /** A header above the diagram: its title and description, as presentation shows them. */
+  header?: { title: string; description?: string };
+}
+
+type Bounds = { x: number; y: number; width: number; height: number };
+
+/** Room between the header and the diagram, in px. */
+const HEADER_GAP = 28;
+
+/**
+ * Puts the title (and description) above the diagram, in flow coordinates, for the shot. It wraps
+ * at the diagram's width (never narrower than a readable line). Returns its box and the undo.
+ */
+function addHeader(viewport: HTMLElement, b: Bounds, header: { title: string; description?: string }) {
+  const el = document.createElement("div");
+  el.className = "export-header";
+  const h = document.createElement("h1");
+  h.textContent = header.title;
+  el.append(h);
+  if (header.description) {
+    const p = document.createElement("p");
+    p.textContent = header.description;
+    el.append(p);
+  }
+  el.style.left = `${b.x}px`;
+  el.style.maxWidth = `${Math.max(b.width, 420)}px`;
+  viewport.append(el);
+  // offsetWidth / offsetHeight are layout sizes, unaffected by the viewport's zoom.
+  const rect = { x: b.x, y: b.y - HEADER_GAP - el.offsetHeight, width: el.offsetWidth, height: el.offsetHeight };
+  el.style.top = `${rect.y}px`;
+  return { rect, remove: () => el.remove() };
+}
+
+function unionBounds(a: Bounds, b: Bounds): Bounds {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.max(a.x + a.width, b.x + b.width) - x,
+    height: Math.max(a.y + a.height, b.y + b.height) - y,
+  };
 }
 
 const translateRe = /translate\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px\s*\)/;
 
 /** Diagram bounds in flow coordinates, from the rendered nodes (groups included). */
-function bounds(viewport: HTMLElement) {
+function bounds(viewport: HTMLElement): Bounds | undefined {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -43,8 +85,10 @@ const MAX_PIXELS = 16_000_000; // keep well under browsers' canvas limits
 
 export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions = {}): Promise<string> {
   const viewport = findViewport();
-  const b = bounds(viewport);
-  if (!b) throw new Error("This diagram is empty, so there's nothing to export.");
+  const content = bounds(viewport);
+  if (!content) throw new Error("This diagram is empty, so there's nothing to export.");
+  const header = opts.header?.title.trim() ? addHeader(viewport, content, opts.header) : undefined;
+  const b = header ? unionBounds(content, header.rect) : content;
   const pad = opts.padding ?? 48;
   const width = Math.ceil(b.width + pad * 2);
   const height = Math.ceil(b.height + pad * 2);
@@ -97,6 +141,7 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
     restoreSvg();
     unselect();
     defsClone?.remove();
+    header?.remove();
   }
 }
 

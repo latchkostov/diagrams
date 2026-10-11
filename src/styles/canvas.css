@@ -838,6 +838,32 @@
   font-size: 15px;
 }
 
+/* The title above an exported image (src/interop/image.ts): the presentation card's type, no chrome.
+   It's in the canvas only for the moment of the shot. */
+.export-header {
+  position: absolute;
+  width: max-content;
+  color: var(--text);
+  font-family: var(--font-ui);
+  pointer-events: none;
+}
+
+.export-header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.export-header p {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
 /* Nodes under the card (zoomed / panned): fold to a title chip; hover shows the rest again. */
 .diagram-card {
   transition:

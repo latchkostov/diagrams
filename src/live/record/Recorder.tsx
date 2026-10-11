@@ -347,6 +347,7 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
           rec={rec}
           simulation={sim?.title ?? null}
           canPresent={canPresent && !presenting}
+          inPresentation={canPresent || presenting}
           onStart={start}
           onClose={() => (rec.phase === "requesting" ? stop() : dispatch({ type: "close" }))}
         />
@@ -398,12 +399,15 @@ function SetupDialog({
   rec,
   simulation,
   canPresent,
+  inPresentation,
   onStart,
   onClose,
 }: {
   rec: RecordState;
   simulation: string | null;
   canPresent: boolean;
+  /** The take is in presentation view (turned on for it, or already on). The Lab has none. */
+  inPresentation: boolean;
   onStart: (o: Options) => void;
   onClose: () => void;
 }) {
@@ -465,11 +469,11 @@ function SetupDialog({
         ) : (
           <p className="ix-muted" data-testid="record-what">
             Your browser will ask to share this tab: choose it and Allow.{" "}
-            {exact
-              ? "We’ll try to record only the diagram, in presentation view (no editing controls, larger text). If cropping fails, you can cancel before recording"
-              : "The shared surface is recorded as it looks, in presentation view"}
-            , without sound. Stop with <kbd>Esc</kbd> or the Stop button. The video stays on this computer until you
-            download it.
+            {exact ? "We’ll try to record only the diagram" : "The shared surface is recorded as it looks"}
+            {inPresentation &&
+              (exact ? ", in presentation view (no editing controls, larger text)" : ", in presentation view")}
+            , without sound.{exact && " If cropping fails, you can cancel before recording."} Stop with <kbd>Esc</kbd>{" "}
+            or the Stop button. The video stays on this computer until you download it.
           </p>
         )}
         {rec.error && (

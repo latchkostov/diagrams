@@ -11,7 +11,7 @@ import {
 } from "../canvas/convert";
 import { annotationIdBase, defaultSize, defaultText, isConnectable, textSizePx } from "../canvas/annotations";
 import { ANNOTATION_LIMITS, annotationSize, annotationCoordinate, annotationText } from "../model/annotations";
-import { placeFree, type Box as PlaceBox } from "../canvas/placement";
+import { overlaps, placeFree, type Box as PlaceBox } from "../canvas/placement";
 import type { EditTarget } from "../canvas/DiagramContext";
 import {
   type AnnotationFlowNode,
@@ -222,21 +222,27 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const ns = rf.getNodes();
       if (ns.filter(isAnnotation).length >= ANNOTATION_LIMITS.maxAnnotations) return null;
       const pointed = opts.at ?? (opts.atPointer ? deps().pointer?.() : undefined);
-      // No spot given (a click in the rail or the palette): the free place nearest the view's centre,
-      // so it never lands on a node (notes and shapes would push edges around) or on the last one added.
-      const c = pointed ?? placeFree(deps().viewCenter(), size, [...ns.map(box), ...(deps().edgeMarks?.() ?? [])]);
+      // A zone added with things selected marks them: it's drawn around them, with room for its label.
+      const wrapped =
+        kind === "zone" && opts.aroundSelection !== false
+          ? ns.filter((n) => n.selected && !(isAnnotation(n) && n.data.kind === "zone")).map(box)
+          : [];
+      let at = wrapped.length ? boundaryAround(wrapped) : undefined;
+      if (!at) {
+        // No spot given (a click in the rail or the palette): the free place nearest the view's centre,
+        // so it never lands on a node (notes and shapes would push edges around) or on the last one added.
+        const c = pointed ?? placeFree(deps().viewCenter(), size, [...ns.map(box), ...(deps().edgeMarks?.() ?? [])]);
+        // Text starts where you pointed (its first line under the cursor); the rest centre on it.
+        const x = kind === "text" && pointed ? c.x - 8 : c.x - size.width / 2;
+        at = { x: snap10(x), y: snap10(c.y - size.height / 2), ...size };
+      }
       const id = uniqueId(annotationIdBase(kind), new Set(ns.map((n) => n.id)));
-      // Text starts where you pointed (its first line under the cursor); the rest centre on it.
-      const x = kind === "text" && pointed ? c.x - 8 : c.x - size.width / 2;
-      const y = c.y - size.height / 2;
       const node: AnnotationFlowNode = {
         ...annotationToFlow({
           id,
           kind,
           text: defaultText[kind],
-          x: snap10(x),
-          y: snap10(y),
-          ...size,
+          ...at,
           ...(kind === "shape" ? { shape: opts.shape ?? "rect" } : {}),
         }),
         selected: true,
@@ -498,6 +504,37 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       deps().setNodes((cur) =>
         cur.map((n) => (moving.has(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n)),
       );
+    },
+    keepTextClear: (id, before) => {
+      const ns = rf.getNodes();
+      const n = ns.find((x) => x.id === id);
+      if (!n || !isAnnotation(n) || n.data.kind !== "text") return null;
+      // Its own size first: the measure lags a box that just grew.
+      const b = {
+        x: n.position.x,
+        y: n.position.y,
+        width: n.width ?? n.measured?.width ?? 0,
+        height: n.height ?? n.measured?.height ?? 0,
+      };
+      // Cards, notes, shapes and other text; not the backdrops (zones, boundaries) it may sit on.
+      const solid = ns
+        .filter((o) => o.id !== id && !isGroup(o) && !(isAnnotation(o) && o.data.kind === "zone"))
+        .map(box);
+      const marks = deps().edgeMarks?.() ?? [];
+      // Only what the growth newly covers (or touches): a text placed over something on purpose stays put.
+      const near = (r: PlaceBox, o: PlaceBox) =>
+        overlaps({ x: r.x - 4, y: r.y - 4, width: r.width + 8, height: r.height + 8 }, o);
+      const covers = (list: readonly PlaceBox[]) => list.some((o) => near(b, o) && !(before && near(before, o)));
+      const hit = covers(solid) ? "node" : covers(marks) ? "edge" : null;
+      if (!hit) return null;
+      const c = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+      const to = placeFree(c, b, [...solid, ...marks], { margin: 12, step: 10, maxRings: 40 });
+      if (to.x === c.x && to.y === c.y) return null;
+      // Its own undo step, after the edit that grew it.
+      hint("keep-text-clear");
+      const position = { x: Math.round(to.x - b.width / 2), y: Math.round(to.y - b.height / 2) };
+      deps().setNodes((cur) => cur.map((o) => (o.id === id ? { ...o, position } : o)));
+      return hit;
     },
 
     copy: (sel) => {

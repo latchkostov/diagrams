@@ -15,6 +15,8 @@ export interface DiagramUi {
   setEditing: (target: EditTarget | null) => void;
   /** Opens the edge context menu (edge labels live outside the edge's SVG group). */
   openEdgeMenu: (e: MouseEvent | ReactMouseEvent, edgeId: string) => void;
+  /** A text's edit is done: if it grew over a node or edge it didn't cover at `before`, move it clear. */
+  settleText?: (id: string, before: { x: number; y: number; width: number; height: number }) => void;
 }
 
 export const DiagramContext = createContext<DiagramUi>({

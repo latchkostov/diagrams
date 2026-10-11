@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+} from "react";
 import { iconUrl, stencils } from "../stencils/registry";
 import type { Stencil, StencilCategory } from "../model/types";
 import { useSettings } from "../harness/settings";
@@ -90,6 +99,40 @@ export function GalleryView() {
     return m;
   }, [searched]);
 
+  // A narrow window folds the last families into the Vendor menu instead of scrolling them behind
+  // a fade. The picked family always keeps its chip. Folded chips stay in the track, invisible, so
+  // they can still be measured.
+  const filters = useRef<HTMLDivElement>(null);
+  const [folded, setFolded] = useState<FamilyId[]>([]);
+  useLayoutEffect(() => {
+    const row = filters.current;
+    const track = row?.querySelector<HTMLElement>(".families");
+    const end = row?.querySelector<HTMLElement>(".gallery-filter-end");
+    if (!row || !track || !end) return;
+    const fit = () => {
+      const chip = (id: string) =>
+        track.querySelector<HTMLElement>(`[data-testid="family-chip-${id}"]`)?.offsetWidth ?? 0;
+      const css = getComputedStyle(row);
+      const gap = parseFloat(css.columnGap) || 0;
+      // The row's room, less the Vendor end, the track's padding and its 2px gaps.
+      let room = row.clientWidth - end.offsetWidth - gap - 6 - chip("all");
+      const picked = family !== "all" && !vendor ? family : null;
+      if (picked) room -= chip(picked) + 2;
+      const next: FamilyId[] = [];
+      for (const { family: f } of families) {
+        if (f.id === picked) continue;
+        const w = chip(f.id) + 2;
+        if (!next.length && w <= room) room -= w;
+        else next.push(f.id);
+      }
+      setFolded((cur) => (cur.join() === next.join() ? cur : next));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [families, family, vendor, searchedFamilies]);
+
   const filtered = useMemo(
     () => searched.filter((s) => (vendor ? s.vendor === vendor : family === "all" || familyOf(s) === family)),
     [searched, family, vendor],
@@ -179,6 +222,21 @@ export function GalleryView() {
     // Families at the top level, vendors one level down: short enough to open below the button,
     // and the search box still finds any vendor directly.
     const items: MenuNode[] = [
+      // Families that don't fit the track (a narrow window) are picked here instead.
+      ...(folded.length ? [{ type: "header", label: "More families" } as const] : []),
+      ...folded.map((id): MenuNode => {
+        const f = getFamily(id);
+        return {
+          type: "item",
+          id: `family:${id}`,
+          label: f.label,
+          swatch: f.hue,
+          hint: String(searchedFamilies.get(id) ?? 0),
+          checked: family === id && !vendor,
+          run: () => pickFamily(id),
+        };
+      }),
+      ...(folded.length ? [{ type: "separator" } as const] : []),
       {
         type: "item",
         id: "vendor:all",
@@ -323,7 +381,7 @@ export function GalleryView() {
             </div>
           </div>
 
-          <div className="gallery-filters">
+          <div className="gallery-filters" ref={filters}>
             <div className="families" role="group" aria-label="Filter by family">
               <button
                 className={`family${family === "all" && !vendor ? " is-on" : ""}`}
@@ -336,11 +394,13 @@ export function GalleryView() {
               {families.map(({ family: f }) => {
                 const n = searchedFamilies.get(f.id) ?? 0;
                 const on = family === f.id && !vendor;
+                const isFolded = folded.includes(f.id);
                 return (
                   <button
                     key={f.id}
-                    className={`family${on ? " is-on" : ""}${n ? "" : " is-empty"}`}
+                    className={`family${on ? " is-on" : ""}${n ? "" : " is-empty"}${isFolded ? " is-folded" : ""}`}
                     aria-pressed={on}
+                    data-folded={isFolded ? "1" : undefined}
                     title={f.hint}
                     onClick={() => pickFamily(on ? "all" : f.id)}
                     style={{ "--family": f.hue } as CSSProperties}
