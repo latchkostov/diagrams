@@ -332,3 +332,35 @@ describe("presets", () => {
     expect(util(applyPreset("half-pods", emptyInputs(), KAFKA, sim))).toBeCloseTo(normal * 2);
   });
 });
+
+describe("fourth review planning regressions", () => {
+  it("bounds scale options even when automatic bounds overflow", () => {
+    for (const auto of [Infinity, NaN, Number.MAX_VALUE, Number.MAX_SAFE_INTEGER]) {
+      const options = scaleOptions(auto, 50);
+      expect(options).toContain(50);
+      expect(options.length).toBeLessThanOrEqual(25);
+      expect(options.every((v) => Number.isFinite(v) && v >= 1)).toBe(true);
+    }
+  });
+
+  it("partition fixes give headroom with a nonprocessor in the same filtered group", () => {
+    const d = small();
+    d.nodes.find((n) => n.id === "topic")!.props = { partitions: 1 };
+    d.nodes.find((n) => n.id === "worker")!.props = { replicas: 1, concurrency: 1, latencyMs: 100 };
+    d.edges = d.edges.filter((e) => e.to !== "audit");
+    d.edges.find((e) => e.id === "e2")!.props = { group: "shared", filter: ["Order"] };
+    d.edges.push({ id: "sink", from: "topic", to: "db", props: { group: "shared", filter: ["Invoice"] } });
+    const sim: Simulation = {
+      id: "r",
+      title: "r",
+      traffic: [
+        { id: "t", node: "api", messageType: "Order", shape: { kind: "constant", ratePerSec: 100, durationMs: 1000 } },
+      ],
+    };
+    const view = capacityView(d, sim);
+    expect(view.fix).not.toBeNull();
+    const fixed = capacityView(d, withFix(sim, view.fix!));
+    expect(fixed.nodes.worker.utilization).toBeLessThanOrEqual(0.6);
+    expect(fixed.nodes.topic.utilization).toBeLessThanOrEqual(0.6);
+  });
+});

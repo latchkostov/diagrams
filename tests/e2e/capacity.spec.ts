@@ -181,3 +181,178 @@ test.describe("inputs & capacity", () => {
     await expect(page.getByTestId("inspector-section-edge-simulation")).toHaveCount(0);
   });
 });
+
+test.describe("fourth review capacity regressions", () => {
+  test("unsupported rate drafts show inline errors and never save", async ({ page }) => {
+    await openBlackFridayInputs(page);
+    await page.getByTestId("capacity-capacity-mult").fill("9");
+    for (const rate of ["12k", "20k"]) {
+      await page.getByTestId("capacity-rate-shopper").fill(rate);
+      await page.getByTestId("capacity-rate-shopper").press("Enter");
+      await expect(page.getByTestId("capacity-rate-shopper")).toHaveAttribute("aria-invalid", "true");
+      await expect(page.getByTestId("capacity-rate-shopper-error")).toContainText("10,000");
+      await expect(page.getByTestId("capacity-save")).toBeDisabled();
+      await page.getByTestId("capacity-context").click();
+      await expect(page.getByTestId("capacity-rate-shopper")).toHaveValue(rate);
+    }
+    await page.reload();
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-rate-shopper")).toHaveValue("2k");
+    await expect(page.getByTestId("capacity-capacity-mult-value")).toHaveText("1×");
+  });
+
+  test("invalid numeric drafts explain native bounds and block Save until corrected", async ({ page }) => {
+    await openBlackFridayInputs(page);
+    await page.getByTestId("capacity-capacity-mult").fill("9");
+    await page.getByTestId("capacity-replicas-payments").fill("10001");
+    await expect(page.getByTestId("capacity-replicas-payments-error")).toBeVisible();
+    expect(
+      await page.getByTestId("capacity-replicas-payments-error").evaluate((el) => el.scrollHeight <= el.clientHeight),
+    ).toBe(true);
+    await expect(page.getByTestId("capacity-save")).toBeDisabled();
+    await page.getByTestId("capacity-replicas-payments").fill("7");
+    await page.getByTestId("capacity-latency-payments").fill("600001");
+    await expect(page.getByTestId("capacity-latency-payments-error")).toBeVisible();
+    await expect(page.getByTestId("capacity-save")).toBeDisabled();
+    await page.getByTestId("capacity-latency-payments").press("Escape");
+    await expect(page.getByTestId("capacity-save")).toBeEnabled();
+    await page.getByTestId("capacity-replicas-payments").fill("0");
+    await page.getByTestId("capacity-reset").click();
+    await expect(page.getByTestId("capacity-replicas-payments-error")).toHaveCount(0);
+    await expect(page.getByTestId("capacity-replicas-payments")).toHaveValue("6");
+  });
+
+  test("Save rejects the document traffic budget and keeps unsaved inputs", async ({ page }) => {
+    await openBlackFridayInputs(page);
+    await page.getByTestId("capacity-traffic-mult").fill("19");
+    await page.getByTestId("capacity-save").click();
+    await expect(page.getByTestId("capacity-save-error")).toContainText("traffic volume budget");
+    await expect(page.getByTestId("capacity-dirty")).toBeVisible();
+    await expect(page.getByTestId("capacity-traffic-mult-value")).toHaveText("10×");
+    await expect(page.getByTestId("live-notice")).toHaveCount(0);
+    await page.reload();
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-traffic-mult-value")).toHaveText("1×");
+  });
+
+  test("free-play Save rejects folded rates over the native limit", async ({ page }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&paused=1`);
+    await page.getByTestId("live-capacity").click();
+    await page.getByTestId("capacity-rate-shopper").fill("2k");
+    await page.getByTestId("capacity-rate-shopper").press("Enter");
+    await page.getByTestId("capacity-traffic-mult").fill("19");
+    await page.getByTestId("capacity-save").click();
+    await expect(page.getByTestId("capacity-save-error")).toContainText("10,000");
+    await expect(page.getByTestId("capacity-dirty")).toBeVisible();
+    await page.reload();
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-rate-shopper")).toHaveValue("25");
+  });
+
+  test("Apply fix transfers keyboard focus to the stable announcement in both modes", async ({ page }) => {
+    await openBlackFridayInputs(page);
+    await page.getByTestId("capacity-traffic-mult").fill(TRAFFIC_3X);
+    await page.getByTestId("bottleneck-apply").focus();
+    await page.getByTestId("bottleneck-apply").press("Enter");
+    await expect(page.getByTestId("bottleneck-callout")).toBeFocused();
+    await expect(page.getByTestId("bottleneck-callout")).toHaveAttribute("role", "status");
+    await page.getByTestId("capacity-close").click();
+    await page.getByTestId("live-toggle").click();
+    await page.getByTestId("node-payments").click();
+    await page.getByTestId("inspector-section-node-simulation").click();
+    await page.getByTestId("inspector-field-latencyMs").fill("20000");
+    await page.getByTestId("bottleneck-apply").focus();
+    await page.getByTestId("bottleneck-apply").press("Enter");
+    await expect(page.getByTestId("bottleneck-callout")).toBeFocused();
+  });
+
+  test("service and topic fields identify their node to screen readers", async ({ page }) => {
+    await openBlackFridayInputs(page);
+    await expect(page.getByTestId("capacity-row-payments")).toHaveAccessibleName("Payments service");
+    await expect(page.getByTestId("capacity-replicas-payments")).toHaveAccessibleName("Payments service Replicas");
+    await expect(page.getByTestId("capacity-latency-payments")).toHaveAccessibleName("Payments service Latency");
+    await expect(page.getByTestId("capacity-failure-payments")).toHaveAccessibleName("Payments service Failures");
+    await page.getByTestId("capacity-advanced-payments-toggle").click();
+    await expect(page.getByTestId("capacity-concurrency-payments")).toHaveAccessibleName("Payments service Parallel");
+    await expect(page.getByTestId("capacity-jitter-payments")).toHaveAccessibleName("Payments service Jitter");
+    await expect(page.getByTestId("capacity-retry-payments")).toHaveAccessibleName("Payments service On failure");
+    await expect(page.getByTestId("capacity-partitions-order-events")).toHaveAccessibleName(
+      "orders.created.v1 Partitions",
+    );
+  });
+
+  test("editing the fourth of five services keeps its row and keyboard focus", async ({ page }) => {
+    const diagram = {
+      format: "diagrams/v1",
+      title: "Editing rows",
+      nodes: [
+        { id: "source", stencil: "client.browser", label: "Source", x: 0, y: 0, props: { ratePerSec: 1 } },
+        ...[500, 400, 300, 200, 100].map((latencyMs, i) => ({
+          id: `svc${i}`,
+          stencil: "service.go",
+          label: `Service ${i}`,
+          x: 400,
+          y: i * 120,
+          props: { latencyMs, concurrency: 1, replicas: 1 },
+        })),
+      ],
+      edges: [0, 1, 2, 3, 4].map((i) => ({ id: `e${i}`, from: "source", to: `svc${i}` })),
+    };
+    // Custom fixtures enter through the Lab's existing JSON surface.
+    await page.goto("./?view=lab&preset=custom-json");
+    await page.getByTestId("lab-json-toggle").click();
+    await page.getByTestId("lab-json-input").fill(JSON.stringify(diagram));
+    await page.getByTestId("lab-json-apply").click();
+    await page.getByTestId("lab-open-editor").click();
+    await page.getByTestId("live-toggle").click();
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-row-svc4")).toHaveCount(0);
+    const edited = page.getByTestId("capacity-replicas-svc3");
+    await edited.fill("10");
+    await expect(edited).toBeFocused();
+    await expect(page.getByTestId("capacity-row-svc3")).toBeVisible();
+    await edited.press("Tab");
+    await expect(page.getByTestId("capacity-replicas-svc3-inc")).toBeFocused();
+  });
+
+  test("playback clock ticks do not render unchanged capacity controls", async ({ page }) => {
+    await page.addInitScript(() => {
+      type Fiber = { child: Fiber | null; sibling: Fiber | null; memoizedProps?: { "data-testid"?: string } };
+      let last: Fiber["memoizedProps"];
+      let renders = 0;
+      Object.assign(window, {
+        capacityRenderCount: () => renders,
+        __REACT_DEVTOOLS_GLOBAL_HOOK__: {
+          supportsFiber: true,
+          renderers: new Map(),
+          inject: () => 1,
+          onCommitFiberRoot: (_id: number, root: { current: Fiber }) => {
+            const visit = (fiber: Fiber | null) => {
+              if (!fiber) return;
+              if (fiber.memoizedProps?.["data-testid"] === "capacity-panel" && fiber.memoizedProps !== last) {
+                renders++;
+                last = fiber.memoizedProps;
+              }
+              visit(fiber.child);
+              visit(fiber.sibling);
+            };
+            visit(root.current);
+          },
+          onCommitFiberUnmount: () => {},
+        },
+      });
+    });
+    await openBlackFridayInputs(page);
+    const count = () =>
+      page.evaluate(() => (window as unknown as { capacityRenderCount(): number }).capacityRenderCount());
+    const before = await count();
+    expect(before).toBeGreaterThan(0);
+    const clock = Number(await page.getByTestId("live-clock").getAttribute("data-ms"));
+    await expect
+      .poll(async () => Number(await page.getByTestId("live-clock").getAttribute("data-ms")))
+      .toBeGreaterThan(clock + 1000);
+    expect(await count()).toBe(before);
+    await page.getByTestId("capacity-replicas-payments-inc").click();
+    expect(await count()).toBeGreaterThan(before);
+  });
+});

@@ -7,6 +7,10 @@ export function clampSpeed(value: number, previous = 1): number {
 export function createScheduler() {
   let credit = 0;
   return {
+    checkpoint: () => credit,
+    restore(saved: number) {
+      credit = saved;
+    },
     reset() {
       credit = 0;
     },

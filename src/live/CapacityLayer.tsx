@@ -1,4 +1,4 @@
-import { memo, type CSSProperties } from "react";
+import { memo, useLayoutEffect, useRef, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
 import type { FlowNode } from "../canvas/types";
 import type { CapacityFix, CapacityView, NodeHeat } from "./capacityModel";
@@ -127,8 +127,18 @@ interface CalloutProps {
 /** The top bottleneck in plain language, with a one-click fix when it maps to replicas or partitions. */
 export function BottleneckCallout({ view, onApply, floating, onOpenPanel }: CalloutProps) {
   const fix = view.fix;
+  const callout = useRef<HTMLDivElement>(null);
+  const applied = useRef(false);
+  useLayoutEffect(() => {
+    if (applied.current && !fix) {
+      callout.current?.focus();
+      applied.current = false;
+    }
+  }, [fix]);
   return (
     <div
+      ref={callout}
+      tabIndex={-1}
       className={`cap-callout is-${view.tone}${floating ? " is-floating" : ""}`}
       data-testid="bottleneck-callout"
       data-tone={view.tone}
@@ -154,7 +164,10 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel }: Call
       {fix && onApply ? (
         <button
           className="btn cap-callout-apply is-fix"
-          onClick={() => onApply(fix)}
+          onClick={() => {
+            applied.current = true;
+            onApply(fix);
+          }}
           data-testid="bottleneck-apply"
           title="Apply the fix (undo with Ctrl+Z)"
         >
