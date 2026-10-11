@@ -610,6 +610,13 @@
   }
 }
 
+/* 1024 px with a side panel open and the Ask AI rail: a little less room again. */
+@container live-bar (max-width: 520px) {
+  .lv-bar .lv-timeline {
+    min-width: 52px;
+  }
+}
+
 @keyframes lv-rise {
   from {
     opacity: 0;

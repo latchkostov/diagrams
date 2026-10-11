@@ -1,4 +1,4 @@
-// One "Build with AI" turn: a parsed reply becomes the next diagram (or an error to show), plus what
+// One "Ask AI" turn: a parsed reply becomes the next diagram (or an error to show), plus what
 // changed. Pure, so the dialog, its tests and any later front-end share it.
 
 import type { DiagramFile, DiagramNode } from "../../model/types";

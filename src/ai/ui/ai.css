@@ -1,50 +1,65 @@
-/* "Build with AI": a floating panel over the right of the canvas (like the live side panels), so the
-   diagram stays in view while you iterate. Lazy-loaded with the dialog. */
+/* "Ask AI": the docked panel beside the canvas (the dock's frame and rail are in app.css, which is in the
+   main bundle). Lazy-loaded with the panel. */
 
 .ai-panel {
-  position: fixed;
-  top: calc(var(--topbar-h) + 12px);
-  right: 12px;
-  z-index: 60;
-  width: min(408px, calc(100vw - 24px));
-  max-height: calc(100vh - var(--topbar-h) - 24px);
+  position: relative;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
-  border: 1px solid var(--line);
-  background: color-mix(in oklab, var(--surface) 97%, transparent);
-  backdrop-filter: blur(16px);
-  box-shadow: var(--shadow-3);
   color: var(--text);
   font-size: 13px;
-  animation: ai-in var(--dur-3) var(--ease-out);
 }
 
-[data-theme="dark"] .ai-panel {
-  background: color-mix(in oklab, var(--surface-2) 97%, transparent);
+.ai-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  width: 8px;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
 }
 
-@keyframes ai-in {
-  from {
-    opacity: 0;
-    transform: translateX(14px);
-  }
+.ai-resize::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: transparent;
+  transition: background var(--dur-1);
+}
+
+.ai-resize:hover::after,
+.ai-resize:focus-visible::after,
+.ai-resize.is-dragging::after {
+  background: var(--accent);
+}
+
+.ai-resize:focus-visible {
+  outline: none;
 }
 
 .ai-head {
   display: flex;
-  align-items: flex-start;
-  gap: 11px;
-  padding: 14px 12px 10px 16px;
+  align-items: center;
+  gap: 9px;
+  height: 53px;
+  flex: none;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--line);
 }
 
 .ai-head-icon {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 8px;
   background: var(--accent-soft);
   color: var(--accent);
 }
@@ -52,29 +67,228 @@
 .ai-head-titles {
   flex: 1;
   min-width: 0;
+  display: grid;
 }
 
 .ai-head-titles h2 {
-  margin: 1px 0 1px;
-  font-size: 14.5px;
+  margin: 0;
+  font-size: 13.5px;
   font-weight: 650;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
 }
 
 .ai-head-titles p {
   margin: 0;
   color: var(--text-3);
-  font-size: 12px;
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-head .icon-btn {
+  width: 28px;
+  height: 28px;
 }
 
 .ai-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 4px 16px 14px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+/* ---------- empty state ---------- */
+
+.ai-empty {
+  display: grid;
+  gap: 8px;
+  padding: 6px 2px 2px;
+}
+
+.ai-empty h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.ai-empty p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 520;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ai-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------- thread ---------- */
+
+.ai-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: grid;
   gap: 14px;
-  align-content: start;
+}
+
+.ai-turn {
+  display: grid;
+  gap: 6px;
+  border-radius: 11px;
+  outline: none;
+}
+
+.ai-turn-request {
+  justify-self: end;
+  max-width: 88%;
+  margin: 0;
+  padding: 7px 11px;
+  border-radius: 12px 12px 4px 12px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ai-turn-request.is-system {
+  justify-self: start;
+  background: none;
+  padding: 0;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.ai-turn-card {
+  display: grid;
+  gap: 6px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: border-color var(--dur-1);
+}
+
+.ai-turn:hover .ai-turn-card,
+.ai-turn:focus-within .ai-turn-card {
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
+}
+
+.ai-turn-reply {
+  margin: 0;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ai-turn-summary {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-turn.is-undone .ai-turn-summary {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
+.ai-turn-tag {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 560;
+  text-decoration: none;
+}
+
+.ai-turn-warnings {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--warning);
+  font-size: 11.5px;
+}
+
+.ai-turn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 1px;
+}
+
+.ai-turn-actions .btn {
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.ai-history-end {
+  height: 0;
+}
+
+/* ---------- composer ---------- */
+
+.ai-composer {
+  flex: none;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--line);
+  max-height: 62%;
+  overflow-y: auto;
+}
+
+.ai-composer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-composer-row .ai-hint {
+  flex: 1;
+  min-width: 0;
 }
 
 /* ---------- steps ---------- */
@@ -112,12 +326,12 @@
   font-family: var(--font-ui);
   line-height: 1.5;
   resize: vertical;
-  min-height: 76px;
-  max-height: 40vh;
+  min-height: 64px;
+  max-height: 30vh;
 }
 
 .ai-reply {
-  min-height: 92px;
+  min-height: 64px;
   font-family: var(--font-mono);
   font-size: 11.5px;
 }
@@ -334,58 +548,6 @@ button.ai-candidate:focus-visible {
   font-size: 11px;
 }
 
-/* ---------- history ---------- */
-
-.ai-history {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 8px;
-}
-
-.ai-turn {
-  display: grid;
-  gap: 5px;
-  padding: 9px 11px;
-  border-radius: 11px;
-  background: var(--surface-3);
-}
-
-.ai-turn-request {
-  margin: 0;
-  color: var(--text-2);
-  font-size: 12.5px;
-  line-height: 1.45;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.ai-turn-summary {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--success);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.ai-turn-warnings {
-  margin: 0;
-  padding-left: 16px;
-  color: var(--warning);
-  font-size: 11.5px;
-}
-
-.ai-history-end {
-  height: 0;
-  padding: 0;
-  background: none;
-}
-
 .ai-choice {
   display: grid;
   gap: 5px;
@@ -446,30 +608,6 @@ button.ai-candidate:focus-visible {
 .ai-alt:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
-}
-
-/* ---------- footer ---------- */
-
-.ai-foot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 12px 12px 16px;
-  border-top: 1px solid var(--line);
-}
-
-.ai-foot-hint {
-  flex: 1;
-  color: var(--text-3);
-  font-size: 11.5px;
-}
-
-@media (max-width: 640px) {
-  .ai-panel {
-    top: auto;
-    bottom: 12px;
-    max-height: 70vh;
-  }
 }
 
 .ai-tile {

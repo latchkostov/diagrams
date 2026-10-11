@@ -47,6 +47,7 @@ import { Toaster } from "./interop/ui/Toaster";
 import { EmbedView } from "./interop/embed/EmbedView";
 import { CommandPalette } from "./palette/CommandPalette";
 import { AiMount } from "./ai/ui/AiMount";
+import { openAiPanel } from "./ai/ui/events";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -330,6 +331,7 @@ function MainApp() {
     onOpenFile: () => void interop.openFile(),
     onPaste: interop.openPaste,
     onLibrary: openLibrary,
+    onBuildWithAi: () => openAiPanel(),
   };
   const goTo = (view: View) => setUrl({ view, present: false });
 
@@ -353,31 +355,34 @@ function MainApp() {
         />
       )}
       <div className="app-body">
-        <ViewBoundary
-          // Remount (and clear the error) when the user navigates elsewhere.
-          resetKey={`${url.view}:${url.view === "canvas" ? canvasIdentity : ""}`}
-          view={url.view}
-          onClearAutosave={url.view === "canvas" ? () => writeAutosave(slug, null) : undefined}
-          onGoGallery={() => goTo("gallery")}
-        >
-          <Suspense fallback={<ViewLoading />}>
-            {url.view === "gallery" ? (
-              <GalleryView />
-            ) : url.view === "lab" ? (
-              <LabView onOpen={onLabOpen} />
-            ) : (
-              <CanvasView
-                key={canvasIdentity}
-                ref={canvasCallbackRef}
-                slug={slug}
-                presenting={presenting}
-                onExitPresent={() => setUrl({ present: false })}
-                start={start}
-                onTitleChange={onTitleChange}
-              />
-            )}
-          </Suspense>
-        </ViewBoundary>
+        <div className="app-main">
+          <ViewBoundary
+            // Remount (and clear the error) when the user navigates elsewhere.
+            resetKey={`${url.view}:${url.view === "canvas" ? canvasIdentity : ""}`}
+            view={url.view}
+            onClearAutosave={url.view === "canvas" ? () => writeAutosave(slug, null) : undefined}
+            onGoGallery={() => goTo("gallery")}
+          >
+            <Suspense fallback={<ViewLoading />}>
+              {url.view === "gallery" ? (
+                <GalleryView />
+              ) : url.view === "lab" ? (
+                <LabView onOpen={onLabOpen} />
+              ) : (
+                <CanvasView
+                  key={canvasIdentity}
+                  ref={canvasCallbackRef}
+                  slug={slug}
+                  presenting={presenting}
+                  onExitPresent={() => setUrl({ present: false })}
+                  start={start}
+                  onTitleChange={onTitleChange}
+                />
+              )}
+            </Suspense>
+          </ViewBoundary>
+        </div>
+        <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />
       </div>
       {interop.layer}
       {libraryOpen && (
@@ -396,7 +401,6 @@ function MainApp() {
         currentSlug={slug}
         onOpenDiagram={(example) => setUrl({ view: "canvas", example, present: false })}
       />
-      <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />
     </div>
   );
 }

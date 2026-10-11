@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 import { deflateRawSync } from "node:zlib";
 import { localOnlyFixture } from "../../src/lab/localOnlyFixture";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { SLUG, installFakeModelContext, toolNames, openAiFromFileMenu } from "./ai-helpers";
+import { SLUG, installFakeModelContext, toolNames, openAskAi } from "./ai-helpers";
 
 async function installSyntheticRegistry(page: Page) {
   await installFakeModelContext(page);
@@ -22,7 +22,7 @@ async function installSyntheticRegistry(page: Page) {
 
 async function expectBlocked(page: Page) {
   await expect.poll(() => toolNames(page)).toEqual([]);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   await expect(page.getByTestId("ai-privacy-note")).toContainText("Local-only");
   await page.getByTestId("ai-copy-prompt").click();
   const prompt = await page.evaluate(() => navigator.clipboard.readText());
@@ -40,7 +40,7 @@ test("Save a copy keeps a fingerprint-detected shared diagram local-only", async
   await page.goto(`./?view=canvas&example=${SLUG}#d=${payload}`);
   await expect(page.getByTestId("shared-keep")).toBeVisible();
   await expectBlocked(page);
-  await page.getByTestId("ai-dialog-close").click();
+  await page.getByTestId("ai-collapse").click();
   await page.getByTestId("shared-keep").click();
   await expect(page.getByTestId("shared-keep")).toHaveCount(0);
   const slug = await page.getByTestId("example-picker").inputValue();
@@ -71,7 +71,7 @@ test("import and Duplicate persist local-only metadata and stay blocked after re
   await expect(page.getByTestId("diagram-title")).toHaveText(localOnlyFixture.title);
   const source = await page.getByTestId("example-picker").inputValue();
   await expectBlocked(page);
-  await page.getByTestId("ai-dialog-close").click();
+  await page.getByTestId("ai-collapse").click();
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-library").click();
   await page.getByTestId(`library-duplicate-${source}`).click();
@@ -109,7 +109,7 @@ test("paste with regenerated ids is caught by content, while an unrelated import
   await page.getByTestId("paste-submit").click();
   await expect(page.getByTestId("node-pasted-0")).toBeVisible();
   await expectBlocked(page);
-  await page.getByTestId("ai-dialog-close").click();
+  await page.getByTestId("ai-collapse").click();
   const unrelated = {
     ...pasted,
     title: "Unrelated synthetic diagram",
@@ -122,7 +122,7 @@ test("paste with regenerated ids is caught by content, while an unrelated import
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(unrelated.title);
   await expect.poll(() => toolNames(page)).toHaveLength(6);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   await expect(page.getByTestId("ai-privacy-note")).toHaveCount(0);
   await page.getByTestId("ai-copy-prompt").click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(unrelated.title);

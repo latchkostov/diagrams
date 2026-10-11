@@ -1,5 +1,5 @@
 // What every AI change shows once applied: a toast with Undo and a brief highlight of what changed.
-// Shared by the "Build with AI" dialog and the WebMCP tools.
+// Shared by the Ask AI panel and the WebMCP tools.
 
 import type { EditorApi } from "../../editor/types";
 import { notify } from "../../interop/ui/toast";
@@ -45,6 +45,32 @@ ${edges.join(",\n")} { animation: ai-flash-edge ${FLASH_MS}ms var(--ease-out) bo
     style.remove();
     if (flashStyle === style) flashStyle = undefined;
   }, FLASH_MS + 100);
+}
+
+let markStyle: HTMLStyleElement | undefined;
+
+/**
+ * Outlines elements while a thread turn is hovered or focused (no animation); `[]` clears it. Ids that
+ * are no longer on the canvas simply match nothing.
+ */
+export function markElements(ids: readonly string[]): void {
+  if (typeof document === "undefined") return;
+  markStyle?.remove();
+  markStyle = undefined;
+  if (!ids.length) return;
+  const esc = (s: string) => (typeof CSS !== "undefined" && CSS.escape ? CSS.escape(s) : s.replace(/["\\]/g, "\\$&"));
+  const nodes = ids.flatMap((id) => [
+    `.react-flow__node[data-id="${esc(id)}"]`,
+    `.react-flow__node[data-id="${esc(GROUP_PREFIX + id)}"]`,
+  ]);
+  const edges = ids.map((id) => `.react-flow__edge[data-id="${esc(id)}"] .react-flow__edge-path`);
+  const style = document.createElement("style");
+  style.dataset.aiMark = "";
+  style.textContent = `
+${nodes.join(",\n")} { filter: drop-shadow(0 0 0.5px var(--accent)) drop-shadow(0 0 8px color-mix(in oklab, var(--accent) 50%, transparent)); }
+${edges.join(",\n")} { stroke: var(--accent); stroke-width: 2.5px; }`;
+  document.head.appendChild(style);
+  markStyle = style;
 }
 
 /** "AI: +3 nodes, +2 connections" with Undo, and the highlight. */

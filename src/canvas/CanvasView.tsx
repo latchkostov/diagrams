@@ -82,6 +82,7 @@ import { LiveView } from "../live/LiveView";
 import { LIVE_BAR_SPACE } from "../live/layout";
 import { safeStorage } from "../lib/storage";
 import { StartCard, type StartOptions } from "./StartCard";
+import { useAiDock } from "../ai/ui/dock";
 import { NodeTooltip } from "./NodeTooltip";
 import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { FirstRunHint } from "./FirstRunHint";
@@ -103,6 +104,7 @@ const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
 const HINT_KEY = "diagrams.firstRunHint.v1";
 /** Below this width the inspector waits for a selection: two open side panels leave too little canvas. */
 const ROOMY = 1680;
+const CRAMPED = 1280;
 
 export interface CanvasHandle {
   /** Current canvas as a diagrams/v1 file. */
@@ -192,8 +194,14 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const [openedByHand, setOpenedByHand] = useState({ live, palette: false, inspector: false });
   if (openedByHand.live !== live) setOpenedByHand({ live, palette: false, inspector: false });
   const [narrow, setNarrow] = useState(() => window.innerWidth < ROOMY);
+  // Below CRAMPED, an open Ask AI dock keeps the inspector folded to its rail until opened by hand.
+  const [cramped, setCramped] = useState(() => window.innerWidth < CRAMPED);
+  const aiDockOpen = useAiDock().open;
   useEffect(() => {
-    const onResize = () => setNarrow(window.innerWidth < ROOMY);
+    const onResize = () => {
+      setNarrow(window.innerWidth < ROOMY);
+      setCramped(window.innerWidth < CRAMPED);
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -580,7 +588,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     !selectedNodes.length && !selectedGroups.length && !selectedEdges.length && !selectedAnnotations.length;
   const paletteHidden = paletteCollapsed || (live && !openedByHand.palette);
   const inspectorHidden =
-    livePanelOpen || !prefs.inspector || ((live || (narrow && nothingSelected)) && !openedByHand.inspector);
+    livePanelOpen ||
+    !prefs.inspector ||
+    ((live || (narrow && nothingSelected) || (cramped && aiDockOpen)) && !openedByHand.inspector);
   // Below ROOMY the inspector opens with a selection and narrows the canvas: keep the selection
   // and its edges in view (a pan, never a zoom), once the pane has its new size.
   const keepSelectionInView = useKeepSelectionInView(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
@@ -603,7 +613,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   }, [inspectorHidden, menu]);
   // A side panel opened or closed while the whole diagram was in view refits it to the new pane,
   // so nothing ends up under the panel or its rail. A view the user panned or zoomed stays put.
-  const panelsKey = `${paletteHidden}:${inspectorHidden}`;
+  const panelsKey = `${paletteHidden}:${inspectorHidden}:${aiDockOpen}`;
   const lastPanels = useRef(panelsKey);
   useEffect(() => {
     if (lastPanels.current === panelsKey) return;

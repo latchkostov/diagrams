@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://www.livediagrams.dev/schema/diagram.v1.json",
   "title": "Diagrams file (diagrams/v1)",
-  "description": "A .diagram.json file for Diagrams (https://www.livediagrams.dev). Coordinates are canvas pixels. The app's 'Build with AI' paste box also accepts a file without x/y (it lays the nodes out) and plain-word stencils such as 'Kafka topic'.",
+  "description": "A .diagram.json file for Diagrams (https://www.livediagrams.dev). Coordinates are canvas pixels. The app's 'Ask AI' paste box also accepts a file without x/y (it lays the nodes out) and plain-word stencils such as 'Kafka topic'.",
   "type": "object",
   "required": [
     "format",

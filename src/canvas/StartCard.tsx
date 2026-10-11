@@ -36,6 +36,8 @@ export interface StartOptions {
   onPaste: () => void;
   /** Opens the full "Your diagrams" list. */
   onLibrary: () => void;
+  /** Build with AI: describe the diagram to Ask AI. */
+  onBuildWithAi?: () => void;
 }
 
 /** Recent diagrams shown on the card; the rest are one click away in Your diagrams. */
@@ -129,6 +131,11 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
       )}
 
       <div className="start-actions">
+        {start.onBuildWithAi && (
+          <button className="btn" onClick={start.onBuildWithAi} data-testid="start-build-with-ai">
+            <Icon name="ai" size={14} /> Build with AI
+          </button>
+        )}
         <button className="btn" onClick={onBlank} data-testid="start-blank">
           <Icon name="plus" size={14} /> Start blank
         </button>

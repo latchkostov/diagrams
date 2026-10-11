@@ -1,5 +1,101 @@
 # Design review
 
+## Round 6: Ask AI everywhere (design note before building, 2026-10-11)
+
+The owner, verbatim: "I don't know that there's AI available, not unless I want to build something new",
+then: "it should be an always visible on the side thing so that you can be in any diagram and always ask
+quick to change things around [...] as well as be able to undo or revert things so it should be part of the
+tooling itself". Before this round the AI panel ("Build with AI") floated over the canvas, was reachable only
+from File, the canvas right-click and Ctrl+K, and worked only by copying a prompt to another tab.
+
+### Decision: a docked column, beside the inspector
+
+**Ask AI** is a column at the window's right edge, outside the canvas: stencil rail | canvas | inspector |
+Ask AI. The canvas shrinks to make room; nothing floats over the diagram. Folded, it is a 40 px **rail**
+with the spark, so AI is always in sight. Open state and width (300–640 px, drag or ←/→ on its edge) are
+one remembered setting.
+
+Layouts considered:
+
+1. **Tabs in one right column with the inspector.** Rejected: you select a node to point the AI at it, and
+   selection opens the inspector, so the conversation would keep tabbing away mid-request.
+2. **AI on the left.** Rejected: the stencil rail lives there, and people know chat panes at the right edge
+   (VS Code, Cursor).
+3. **Stacked under the inspector.** Rejected: both get half of 900 px; the composer and the inspector's
+   fields would both scroll.
+4. **Chosen: its own column, right of the inspector.** The inspector is about the selection and sits next to
+   it; Ask AI is about the whole diagram and spans the editor and live view. Below 1280 px an open dock
+   keeps the inspector folded to its 52 px rail until it's opened by hand (one click), so at 1024 the canvas
+   keeps about 560 px: 1024 − 52 (stencil rail) − 52 (inspector rail) − 360 (dock).
+
+### Entry points
+
+| Where                       | What                                                                                     |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| Top bar                     | **Ask AI** (spark and label; icon-only below 1100 px, same tooltip and accessible name)  |
+| Right edge                  | The rail's spark when folded; the panel's **Hide Ask AI** chevron when open              |
+| Keyboard                    | **Ctrl+I** shows and focuses it; from inside it, hides it (Ctrl+Shift+M stays dictation) |
+| Canvas right-click, Ctrl+K  | **Ask AI…** (edit and live)                                                              |
+| Node, edge, selection menus | **Change with AI…**: the selection becomes a removable chip on the request               |
+| Start card, File, Ctrl+K    | **Build with AI**: a new blank diagram with Ask AI ready                                 |
+| Hidden                      | Presenting, embeds (`?embed=1`), the Stencils tab and the Lab (there's no diagram there) |
+
+### The panel per context
+
+| Context                  | Empty-state heading        | Suggestion chips (thread empty)                                               | Intent             |
+| ------------------------ | -------------------------- | ----------------------------------------------------------------------------- | ------------------ |
+| Empty canvas, start card | Build with AI              | Three starter systems                                                         | none               |
+| Editor                   | Change this diagram        | Add a cache, a dead-letter queue, group into boundaries; Explain this diagram | Change · Explain   |
+| Selection chip           | Change the selection       | Scale it out, add a retry queue; Explain it                                   | Change · Explain   |
+| Live view                | Simulate a scenario        | A storm at 9am, a failing dependency, a slow ramp; What's happening?          | Simulate · Explain |
+| Local-only diagram       | AI is off for this diagram | none: the note says why, and nothing is sent                                  | none               |
+
+- **Change / Simulate** apply as one undo step and add a turn. In live view the reply is a simulation
+  (`set_simulation`): it's saved to the diagram, appears in the live bar's picker and plays at once.
+- **Explain** never changes anything. With a connected model the answer is a turn of text; with copy and
+  paste the prompt is copy-only (the reply box and Apply step aside). In live view it includes the running
+  numbers.
+
+### The conversation
+
+One per diagram, in this browser only (never in the file, exports or share links). A turn shows the request,
+the AI's words (plain text, never HTML) and "+3 nodes, +2 connections". The latest turn offers **Undo this
+change**; earlier turns offer **Revert to here** (one undo step, and a turn of its own, so it can be undone
+too). Hovering or focusing a turn outlines what it touched. **Clear conversation** is undoable from its
+toast. Caps: 40 turns; the newest 10 keep their snapshot for Revert.
+
+### Engines
+
+- **Your model** (optional): **Connect a model**: Claude (Haiku 5.5 by default, or Sonnet 5.5), OpenAI or
+  Gemini, called from the browser with the user's key. The key stays in this browser ("Stored only in this
+  browser and sent only to Anthropic"), with **Forget key**; it never reaches files, links, logs or error
+  text. The model edits through the same validated ops as WebMCP (`describe_diagram`, `find_stencils`,
+  `edit_diagram`, `set_simulation`) on a draft, and the whole request lands as one undo step. Its words
+  stream into the turn.
+- **Copy and paste** (always there): **Copy prompt**, paste the reply, **Apply**. With a key, **Copy prompt
+  instead** keeps it one click away.
+
+### Copy
+
+Ask AI · Hide Ask AI · Build with AI · Change with AI… · Change this diagram · Simulate a scenario ·
+Explain · Copy prompt · Paste the reply · Apply · Send · Undo this change · Revert to here · Undone ·
+Clear conversation · Connect a model · Forget key · AI is off for this diagram.
+
+### Chrome count
+
+| Surface                        | Before                                 | After                                               | Budget |
+| ------------------------------ | -------------------------------------- | --------------------------------------------------- | ------ |
+| Top bar                        | 7                                      | 8 (Ask AI)                                          | ~7     |
+| Right edge                     | Inspector                              | Inspector and Ask AI (a 40 px rail when folded)     |        |
+| Canvas right-click (edit/live) | 11 / 9 ("Build with AI…" in edit only) | 11 / 10 ("Ask AI…" in both)                         | ≤ 12   |
+| Node right-click (edit)        | 10                                     | 11 (Change with AI…)                                | ≤ 12   |
+| Edge right-click (edit)        | 9                                      | 10 (Change with AI…)                                | ≤ 12   |
+| File menu                      | Build with AI… (opened the panel)      | Build with AI… (a new diagram), next to New diagram | ≤ 12   |
+
+The top bar goes one over its ~7 budget, on the owner's explicit request that AI be visible on every
+screen; below 1100 px the button is an icon, and the bar is checked for overlap at 1024. If the bar grows
+again, fold the theme toggle into View.
+
 ## Round 5: UX gate after message trace and sequence diagrams
 
 Reviewed 2026-10-11 against `docs/UX-PRINCIPLES.md` on a production build (`pnpm build && pnpm preview`,
