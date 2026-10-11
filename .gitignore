@@ -5,3 +5,5 @@ dist
 src/examples/private/
 .reviews/
 coverage/
+*.local
+.env.local
