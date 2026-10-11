@@ -1,7 +1,7 @@
 # Import, export and storage
 
 Everything runs in the browser. There's no backend: the app is a static site (first at
-`latchkostov.com/tools/diagrams/`, later its own domain). Code lives in `src/interop/`.
+[livediagrams.dev](https://www.livediagrams.dev), deployed from this repo on Vercel). Code lives in `src/interop/`.
 
 ## Research summary (October 2026)
 
@@ -147,14 +147,14 @@ script loads.
    - Application type: **Web application**, name `Diagrams web`.
    - **Authorized JavaScript origins** (no paths, no trailing slash):
      - `http://localhost:5173` (Vite's default dev port; add any other port you use, such as `http://localhost:5196`)
-     - `https://www.latchkostov.com`
-     - `https://latchkostov.com` (only if the bare domain also serves the site)
-     - the future domain, e.g. `https://diagrams.example.com`
+     - `https://www.livediagrams.dev`
+     - `https://livediagrams.dev` (if the bare domain serves the app rather than redirecting)
+     - any Vercel preview domain you want Drive to work on
    - Leave **Authorized redirect URIs** empty. The token model uses a popup, not redirects.
    - **Create**, then copy the **Client ID** (`123456789012-….apps.googleusercontent.com`). There's no secret to keep.
 5. **Create an API key.** Go to **Credentials → Create credentials → API key**, then **Edit API key**:
-   - **Application restrictions: Websites** (HTTP referrers). Add `http://localhost:5173/*`, `https://www.latchkostov.com/*`
-     and `https://<future-domain>/*`. Google's Picker guide also asks for **`https://docs.google.com/*`** (the Picker
+   - **Application restrictions: Websites** (HTTP referrers). Add `http://localhost:5173/*`, `https://www.livediagrams.dev/*`
+     and `https://livediagrams.dev/*`. Google's Picker guide also asks for **`https://docs.google.com/*`** (the Picker
      iframe makes requests from there); without it you get "The API developer key is invalid".
    - **API restrictions: Restrict key**, ticking only **Google Picker API**.
    - Save, then copy the key.
