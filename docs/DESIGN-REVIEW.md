@@ -1,5 +1,244 @@
 # Design review
 
+## Round 7: UX gate after relationships, Ask AI, slow motion and examples (2026-10-11)
+
+Reviewed against `docs/UX-PRINCIPLES.md` after the biggest batch so far: relationship kinds (dotted
+dependencies, Show ▸ Dependencies, Relationship ▸, pips, settings), edge-label pills above particles,
+storage providers, Ask AI (Build with AI, the docked panel, turns with Undo / Revert, Change with AI…,
+live Simulate / Explain, dictation, Ctrl+I, WebMCP), slow motion and calmer speeds below 1×, the inline
+editor drawn on top, and 15 examples with a themed picker and a start card.
+
+Walked on the dev server (port 5501) in Chrome, at 1024×768, 1280×800 and 1440×900, light and dark,
+public examples only. Interactions were driven with the Chrome DevTools MCP and scripted Playwright
+walks: real right-clicks, hovers and key presses. Overlap was measured with `getBoundingClientRect`,
+sampled every 250 ms through a whole slow-motion replay. Menu hovers were traced in Chrome's performance
+panel and timed with the Event Timing API, with and without 4× CPU throttling. The flows:
+
+1. **First visit:** the start card, All examples, three examples opened from it (AKS, Kafka,
+   Event-driven data platform) and the picker.
+2. **Editing:** add, connect and rename inline. Right-click the canvas, a node, an edge (Relationship ▸)
+   and a selection, then Esc out.
+3. **Relationships:** the AKS example. Settings on hover, Show ▸ Dependencies off (pips), the inspector's
+   settings editor, and presentation.
+4. **Ask AI:** open and closed. A thread of three pasted replies, hovering a turn, Revert to here,
+   Connect a model, Build with AI from the start card and Change with AI… on a selection.
+5. **Live:** play, pause and speed, 0.25×, trace, slow motion, then Ask AI with a trace open.
+6. **Keyboard only:** Tab order, Esc layering, Ctrl+K, ? and the menus' keys.
+
+Screenshots: `docs/screenshots/round7/`. Findings cite `before-*` and `after-*`. The walk-through shots:
+
+- start: `start-all-examples-1280-dark`, `picker-1440-light`;
+- editing and relationships: `aks-relationships-1280-dark`, `edge-relationship-menu-1280-dark`,
+  `selection-menu-1280-light`, `shortcuts-1280-dark`;
+- Ask AI: `change-with-ai-1280-light`, `ai-turn-hover-1280-dark`;
+- live: `live-default-1280-dark`, `live-more-1280-dark`, `live-canvas-menu-1280-dark`, `live-slow-1280-dark`;
+- presentation: `present-aks-1280-light`.
+
+Mid-review the lead changed Ask AI's direction: model keys go away, WebMCP browser agents become the main
+path, and copy and paste moves behind "Advanced". That rework is happening in `src/ai/` in parallel, so
+this round changes nothing there. Its Ask AI findings are proposals (A1–A5 below).
+
+### What's great
+
+- **Relationships read at a glance.** Dotted, glyph-marked dependencies next to solid and dashed flows make
+  the AKS example explain itself. Relationship ▸ is one clean submenu: Message and Request first with
+  "async" and "sync" as hints, then the six dependencies with a check on the current one. Show ▸
+  Dependencies is one remembered setting in both places.
+- **Slow motion is the best way yet to explain a system.** "Slow motion · live paused" says what's going
+  on, the captions name each hop, and Esc goes back to live exactly where it left off. 0.25× draws a calm
+  sample, and the counts stay exact.
+- **The start card is a real front door.** Four featured examples with thumbnails, "All examples" grouped
+  by theme in place, and a picker grouped the same way.
+- **Ask AI turns are honest.** "+1 node, +1 connection", hovering a turn outlines what it touched, Revert to
+  here is itself a turn you can undo, and an unsure stencil offers its alternatives as chips.
+- **App, not page.** No browser menu anywhere, the menus are keyboard-complete, presentation hides Ask AI,
+  and Esc backs out of presentation, then live view.
+- **Menus are quick.** A trace of hovering the canvas menu in real Chrome showed no slow interactions.
+  Submenus open after the menu's 110 ms hover delay. Under 4× CPU throttling the first open of Add node here
+  takes about 250 ms; after that, about 65 ms.
+
+### Scorecard
+
+Scores are out of 5. "Before" is the app at the start of this round (round 5 ended at 4–4.5).
+
+| Principle                       | Before | After | Why                                                                                                                                                                    |
+| ------------------------------- | :----: | :---: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Beautiful by default         |   4    |  4.5  | Hover cards shrank to 5 px text; the dependency list wrapped a word per line. With Ask AI open at 1440, Kafka was fitted at 32%.                                       |
+| 2. Progressive disclosure       |   4    |  4.5  | Settings, pips and Relationship ▸ stay one step away. The start card's fourth button is now a link.                                                                    |
+| 3. Context over chrome          |  4.5   |  4.5  | Unchanged. Change with AI… and Relationship ▸ act on the thing itself.                                                                                                 |
+| 4. One primary action / surface |   4    |   4   | Unchanged. The start card still has no single primary action (examples are the point).                                                                                 |
+| 5. Budget the chrome            |  3.5   |   4   | The canvas menu was at its 12 cap, with three rows that repeat the canvas controls. The top bar stays at 8 (A1).                                                       |
+| 6. No dead ends                 |  4.5   |  4.5  | Unchanged. Revert to here is a turn you can undo; Clear conversation is undoable.                                                                                      |
+| 7. Consistent names             |   4    |  4.5  | "Save to device…", and "Depends on · depends on".                                                                                                                      |
+| 8. App, not page                |  3.5   |  4.5  | Esc didn't clear a clicked node. Tab order is still edges before nodes (proposal P1).                                                                                  |
+| 9. Teach in place               |  4.5   |  4.5  | Unchanged. The settings card says what a lock means; the panel says how to connect a model.                                                                            |
+| 10. Nothing overlaps            |  2.5   |  4.5  | Toasts over the Ask AI panel and the minimap, the trace card over the hop being visited, the start card on the controls, and half a live diagram past the pane's edge. |
+| 11. Presentation first-class    |   4    |  4.5  | Dependencies faded to 35% on stage. Ask AI stays out of presentation.                                                                                                  |
+
+### Chrome count
+
+| Surface                          | Before                                                                                         | After                                  | Budget |
+| -------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------- | ------ |
+| Top bar                          | 8 (tabs, picker, Ask AI, View, File, Present, theme; as counted in round 6)                    | 8                                      | ~7     |
+| Right edge                       | Inspector rail (52 px) and Ask AI rail (40 px), side by side                                   | Same                                   |        |
+| Canvas right-click, edit         | 12: Undo, Redo and Keyboard shortcuts repeat the canvas controls                               | **9**                                  | ≤ 12   |
+| Canvas right-click, live         | 10                                                                                             | **9**                                  | ≤ 12   |
+| Node / edge / selection (edit)   | 11 / 8 / 10                                                                                    | Same                                   | ≤ 12   |
+| Live node / live ⋯               | 9 / 6 rows                                                                                     | Same                                   | ≤ 12   |
+| File / View / Show ▸ / Export ▸  | 10 / 8 / 6 / 8                                                                                 | Same                                   | ≤ 12   |
+| Start card actions               | 4 buttons over 2 rows at every width                                                           | **3 on one row** ("paste text" inline) |        |
+| Ways into Ask AI                 | 7: top bar, rail, Ctrl+I, canvas right-click, Ctrl+K, Change with AI…, Build with AI           | Same (A1 proposes 6)                   |        |
+| Surfaces open at once (live, AI) | Up to 8: stencils, inspector rail, Ask AI, trace card, side panel, narration, event log, toast | Same                                   |        |
+
+Net: 4 menu rows removed (3 in edit, 1 in live) and 1 start-card button moved inline. Nothing added.
+
+### Findings
+
+**P1: confusing, broken or overlapping (all fixed)**
+
+1. **Esc never cleared a clicked node's selection.** "Esc backs out one level: … selection" didn't work
+   for the most common case: click a node, press Esc. The canvas cleared the selection first, then React
+   Flow's own Esc handler on the focused node saw it unselected and selected it again. The canvas now
+   clears after React Flow's handler (`src/editor/useCanvasShortcuts.ts`).
+   - Test: `round7-polish.spec.ts` › Esc clears the selection.
+2. **Toasts covered the Ask AI panel, the inspector rail and the minimap.** The toast was centred on the
+   window. With the dock open, the window's centre is near the canvas's right edge.
+   - At 1024 the AI toast sat over the panel's reply box
+     (`before-ai-toast-over-panel-1024-light.png`).
+   - At 1280 and 1440 it sat on the minimap (`before-ai-toast-minimap-1280-dark.png`,
+     `before-ai-reverted-1440-dark.png`).
+   - Toasts now centre on the canvas pane (`data-toast-area`) and stay inside it. The minimap joins the
+     bars a toast stacks above (`data-toast-avoid`). See `after-ai-toast-*.png`.
+   - Test: `round7-polish.spec.ts` › a toast stays in the canvas pane, at 1024 and 1440.
+3. **In slow motion the trace card hid the hop being visited.** On Kafka at 1280, the Schema registry card
+   was fully under the trace card while the card's current row read "→ Schema registry"
+   (`before-slowmo-card-1280-dark.png`). The camera's fallback centred a fan-out that couldn't sit beside
+   the card. At 1024 the camera didn't follow at all, because a fit that left nodes under the card still
+   counted as a fit. Now (`src/live/slowmo/camera.ts`):
+   - a fit that leaves path nodes under the card switches to following;
+   - while following, the camera keeps the node at work and the next targets clear of the card first, then
+     the whole frontier.
+   - At 1280 and 1440, sampled every 250 ms, the current hop is never under the card. At 1024, one fan-out
+     (three copies leaving Order service at once) still lands a target under the card while the dots
+     travel (proposal P4). See `after-slowmo-card-1280-dark.png`.
+   - Tests: unit tests in `camera.test.ts`, and `round7-polish.spec.ts` › slow motion keeps the hop at
+     work out from under the trace card.
+4. **Opening Ask AI in live view left half the diagram past the pane's edge.** With a trace open at 1280, 8
+   of Kafka's 15 nodes ended up beyond the canvas's right edge (`before-live-trace-askai-1280-dark.png`).
+   The editor's dock refit doesn't apply in live view, whose fits keep clear of the trace card. Live view
+   now refits itself when the dock opens, closes or is resized (`after-live-trace-askai-1280-dark.png`).
+   - Test: `round7-polish.spec.ts` › live view with a trace refits when Ask AI opens.
+5. **Settings and dependency hover cards were unreadable.** They're drawn inside the diagram, so they
+   shrank with the zoom. At the AKS example's fit at 1440, the 11 px settings text was about 5 px on
+   screen (`before-settings-card-1440-light.png`). Worse, the dependency list (Show ▸ Dependencies off,
+   hover the pips) put every word on its own line, "orders-" above "config". Its text sat in the 14 px icon
+   column of a two-column grid (`before-pips-card-1440-light.png`). Now:
+   - both cards scale by 1/zoom, so they're never smaller than their CSS size;
+   - the dependency list is one line per dependency with its glyph, and it opens under the pips instead of
+     over the node's own title (`after-settings-card-1440-light.png`, `after-pips-card-1440-light.png`).
+   - A readable card can reach over a neighbouring pill while it is open (it closes when the pointer leaves).
+     The gap-bridge under it stays unscaled, so a card never covers its own pill.
+   - Test: `round7-polish.spec.ts` › hover cards read at their size.
+
+**P2: clutter or inconsistency (fixed: cheap and clear)**
+
+6. **The canvas right-click repeated the canvas controls.** Undo, Redo and Keyboard shortcuts each have an
+   always-visible button and a shortcut. Rule 5 already keeps Fit view out of menus for that reason. They're
+   `paletteOnly` now, so Ctrl+K still finds them. The canvas menu goes from 12 to 9 rows, and live from 10
+   to 9 (`before-canvas-menu-1280-dark.png`, `after-canvas-menu-1280-dark.png`).
+7. **Ask AI left the diagram at a third of its size.** At 1440 the stencils (248 px), the inspector rail and
+   the dock left Kafka 780 px, fitted at 32%. Below 1680 px an open dock now folds the stencils to their
+   rail, as live view does, until you open them by hand. At 1440 Kafka goes from 32% to 41%. At 1280
+   (`before-askai-kafka-1280-dark.png`, stencils opened earlier) it was 25%; now it is 34%.
+   - Test: `round7-polish.spec.ts` › below 1680px Ask AI folds the stencils.
+8. **"Save to device…"** broke the Storage vocabulary ("This device", mid-sentence "this device"). It now
+   reads **Save to this device…**.
+9. **The start card's four actions wrapped onto two rows at every width,** leaving "Paste text…" alone on
+   the second row (`before-first-run-1280-dark.png`). Paste text is now a link in the note ("You can also
+   drop a file anywhere, or paste text"). Build with AI steps aside while Ask AI is open, because the panel
+   itself says "Build with AI" (`after-start-card-1440-light.png`).
+10. **At 1024 with Ask AI open, the start card touched the canvas controls** and overlapped them by 2 px
+    (`before-build-with-ai-1024-dark.png`). The card now keeps 64 px each side on a narrow pane
+    (`after-build-with-ai-1024-light.png`).
+    - Test: `round7-polish.spec.ts` › the start card keeps one row of actions.
+11. **Dependencies all but vanished in presentation.** In live view they recede to 35% so the particles lead.
+    On a projector their labels ("4 settings · 2 secret", "runs as") were unreadable, though the AKS
+    example's description points at them (`before-present-live-1280-light.png`). While presenting they're
+    65%: still the quieter line (`after-present-live-1280-light.png`).
+
+**P3: polish (fixed)**
+
+12. A plain setting in the inspector's list showed a closed (grey) lock, the same picture as a secret. It's an
+    open lock now (`lock-open`, documented in `docs/ICONS.md`).
+13. The Depends on glyph's tooltip and accessible name read "Depends on · depends on". It's "Depends on" now.
+14. React Flow's zoom buttons had no `data-testid`. They're tagged `zoom-in-button` and `zoom-out-button`.
+
+**Ask AI proposals (the panel is being reworked in parallel)**
+
+- **A1. One way to show Ask AI at the right edge, not two.** The top bar's Ask AI button and the rail's
+  spark do the same thing, and the right edge carries two rails side by side (the inspector's 52 px and
+  Ask AI's 40 px; `before-first-run-1280-dark.png`). Merge them into one rail with two buttons (Inspector,
+  Ask AI), or drop the top-bar button now that the rail keeps AI in sight. Either way the top bar returns to
+  its budget of 7.
+- **A2. No toast for a turn the panel already shows.** With the dock open, an applied change shows both the
+  toast ("AI: +1 node, +1 connection · Undo") and the turn ("+1 node, +1 connection · Undo this change"):
+  two Undos for one change (`before-ai-toast-minimap-1280-dark.png`). Toast only when the panel is folded,
+  for example when a WebMCP agent edits.
+- **A3. Stale chips on reverted turns.** After Revert to here, an earlier turn's stencil choices stay as
+  dimmed chips under "This node changed or was removed". Drop the chips and keep the one line.
+- **A4. The placeholder names a node the diagram doesn't have.** "e.g. Add a dead-letter queue after
+  billing-worker" on Kafka. Use one of the diagram's own node names, or a generic example.
+- **A5. Nested landmarks.** The dock is a `region` "Ask AI" inside another `region` "Ask AI". Keep one.
+
+### Simplify before adding
+
+| What                                      | Do                                                                                                                                                  | Why                                                      |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Canvas right-click Undo, Redo, ? sheet    | **Removed** (done): Ctrl+K only                                                                                                                     | Always-visible controls and shortcuts (rule 5)           |
+| Start card "Paste text…" button           | **Moved** into the note as a link (done)                                                                                                            | Four buttons wrapped onto two rows                       |
+| Start card Build with AI with Ask AI open | **Hidden** while the dock is open (done)                                                                                                            | The panel says the same thing                            |
+| Top-bar Ask AI and the Ask AI rail        | **Merge** (A1): one rail, two buttons, or no top-bar button                                                                                         | Two rails, and a top bar over budget                     |
+| AI toast with the dock open               | **Remove** (A2)                                                                                                                                     | The turn shows the change and its Undo                   |
+| Live node menu's two trace rows           | **Merge** "Trace next message from here" and "Watch one message in slow motion from here" into **Trace from here ▸** (Next message, In slow motion) | Two long rows that differ by one idea                    |
+| Inspector settings: text box and list     | **Merge** into one list with inline add and edit, and the lock as the toggle                                                                        | The same four keys are listed twice, one above the other |
+| Minimap                                   | **Default off** below 1440 px or with Ask AI open                                                                                                   | 168×112 px of a 560–780 px pane, and a toast obstacle    |
+
+### Proposals for the lead to schedule
+
+- **P1. Tab order: nodes before edges.** From the top bar, Tab reaches the stencil toggle, then all 15 of
+  Kafka's edges, then the nodes; the Live toggle and canvas controls come after every node. Make the canvas
+  one tab stop with arrow keys between nodes (and Alt+arrows along edges), or at least put nodes first.
+- **P2. Live view's first-run hint, toast and live bar all want the bottom centre.** They stack correctly
+  now, but three layers there is busy. Retire the hint once someone has gone live (it already does) _and_
+  once they've right-clicked once.
+- **P3. The inspector doesn't refit when a selection opens it below 1680 px.** Selecting a node on the
+  right of a wide diagram keeps it in view, but the rest is cut off at the inspector's edge. Consider the
+  dock's rule: refit a fitted view whenever a side panel changes the pane.
+- **P4. Slow motion at 1024 with a fan-out.** The camera doesn't pan while dots travel, so with three copies
+  leaving at once one target can still sit under the trace card. Either let the card show only its header
+  and current hop while slow motion follows on a narrow pane, or allow one gentle pan as a fan-out starts.
+- **P5. "React Flow" attribution** floats over nodes when the camera zooms in (slow motion). Move it under
+  the canvas controls, or into the shortcuts sheet's footer if the license allows.
+- **P6. Palette noise.** Ctrl+K "slow" in the editor lists "Change stencil › Snowflake" and nine more
+  stencils. When nothing matches as a word, say "Slow motion is in live view (L)" rather than fuzzy stencils.
+
+### What changed, in numbers
+
+- **Removed:** Undo, Redo and Keyboard shortcuts from the canvas right-click (edit 12 → 9, live 10 → 9);
+  the start card's Paste text button (now an inline link); Build with AI on the start card while the dock
+  is open.
+- **Renamed:** Save to device… → **Save to this device…**; the Depends on tooltip loses its echo.
+- **Moved:** toasts from the window's centre to the canvas pane's; the dependency list from over the node to
+  under its pips.
+- **Better defaults (no new controls):**
+  - Esc clears a clicked node;
+  - hover cards are readable at any zoom;
+  - the slow-motion camera keeps the hop at work clear of the trace card;
+  - live view refits around the dock;
+  - Ask AI folds the stencils below 1680 px;
+  - dependencies read in presentation;
+  - plain settings show an open lock.
+
 ## Round 6: Ask AI everywhere (design note before building, 2026-10-11)
 
 The owner, verbatim: "I don't know that there's AI available, not unless I want to build something new",

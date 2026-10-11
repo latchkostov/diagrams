@@ -3,6 +3,7 @@ import { Icon } from "../components/Icon";
 import { DiagramThumbnail } from "../components/DiagramThumbnail";
 import type { Thumb } from "../lib/thumbnail";
 import type { ThemeSection } from "../examples/themes";
+import { useAiDock } from "../ai/ui/dock";
 
 export interface StartExample {
   slug: string;
@@ -51,6 +52,7 @@ const RECENT_MAX = 3;
 export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: () => void }) {
   const recent = start.recent.slice(0, RECENT_MAX);
   const [allExamples, setAllExamples] = useState(false);
+  const dockOpen = useAiDock().open;
   const all = start.examples.flatMap((section) => section.items);
   const featured = all.filter((ex) => ex.featured);
   // With nothing featured (or nothing more to show), the card simply lists every example.
@@ -130,8 +132,9 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
         </ul>
       )}
 
+      {/* One row. Build with AI steps aside while Ask AI is open: the panel itself says it. */}
       <div className="start-actions">
-        {start.onBuildWithAi && (
+        {start.onBuildWithAi && !dockOpen && (
           <button className="btn" onClick={start.onBuildWithAi} data-testid="start-build-with-ai">
             <Icon name="ai" size={14} /> Build with AI
           </button>
@@ -142,11 +145,14 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
         <button className="btn btn-ghost" onClick={start.onOpenFile} data-testid="start-open">
           <Icon name="upload" size={14} /> Open a file…
         </button>
-        <button className="btn btn-ghost" onClick={start.onPaste} data-testid="start-paste">
-          <Icon name="paste" size={14} /> Paste text…
-        </button>
       </div>
-      <p className="start-note">Opens diagram files, draw.io and Mermaid. You can also drop a file anywhere.</p>
+      <p className="start-note">
+        Opens diagram files, draw.io and Mermaid. You can also drop a file anywhere, or{" "}
+        <button className="link-btn start-paste" onClick={start.onPaste} data-testid="start-paste">
+          paste text
+        </button>
+        .
+      </p>
     </section>
   );
 }

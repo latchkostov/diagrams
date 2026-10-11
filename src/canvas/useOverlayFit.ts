@@ -229,14 +229,20 @@ export function useCovered(
 
 /**
  * React Flow's minimap and controls panels don't forward props, so tag them for tests (which
- * select by data-testid only): `canvas-minimap`, `canvas-controls`, `canvas-attribution`.
+ * select by data-testid only): `canvas-minimap`, `canvas-controls` (with `zoom-in-button` and
+ * `zoom-out-button`), `canvas-attribution`.
  */
 export function useOverlayTestIds(root: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const el = root.current;
     if (!el) return;
-    el.querySelector(".react-flow__panel.react-flow__minimap")?.setAttribute("data-testid", "canvas-minimap");
+    const minimap = el.querySelector(".react-flow__panel.react-flow__minimap");
+    minimap?.setAttribute("data-testid", "canvas-minimap");
+    // A toast stacks above the minimap rather than over it (src/interop/ui/toastStack.ts).
+    minimap?.setAttribute("data-toast-avoid", "");
     el.querySelector(".react-flow__panel.react-flow__controls")?.setAttribute("data-testid", "canvas-controls");
+    el.querySelector(".react-flow__controls-zoomin")?.setAttribute("data-testid", "zoom-in-button");
+    el.querySelector(".react-flow__controls-zoomout")?.setAttribute("data-testid", "zoom-out-button");
     el.querySelector(".react-flow__panel.react-flow__attribution")?.setAttribute("data-testid", "canvas-attribution");
   });
 }

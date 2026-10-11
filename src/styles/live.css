@@ -463,6 +463,13 @@
   transition: opacity 0.2s;
 }
 
+/* In a meeting they stay the quieter line but still read across the room (at 35% they vanished). */
+.is-presenting .react-flow[data-live] .react-flow__edge .fe-dep,
+.is-presenting .react-flow[data-live] .fe-label-dep,
+.is-presenting .react-flow[data-live] .fe-chip {
+  opacity: 0.65;
+}
+
 .react-flow[data-live] .react-flow__edge:hover .fe-dep,
 .react-flow[data-live] .fe-label-dep:hover,
 .react-flow[data-live] .fe-chip:hover,

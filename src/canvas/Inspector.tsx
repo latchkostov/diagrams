@@ -704,7 +704,7 @@ function SettingsEditor({ edge, editor }: { edge: DiagramFlowEdge; editor: Edito
                 }}
                 data-testid={`inspector-setting-lock-${i}`}
               >
-                <Icon name="lock" size={12} />
+                <Icon name={s.secret ? "lock" : "lock-open"} size={12} />
               </button>
               <span className="mono">{s.key}</span>
             </li>

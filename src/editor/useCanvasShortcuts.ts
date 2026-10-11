@@ -126,7 +126,9 @@ export function useCanvasShortcuts(
         case "escape":
           // Don't stop propagation: the app also uses Esc to leave presentation mode.
           optsRef.current.onEscape();
-          if (hasAny && inCanvas(e.target)) editor.clearSelection();
+          // Cleared after React Flow's own Esc handler on a focused node or edge. Cleared before it, the
+          // node read as unselected and React Flow selected it again, so Esc never cleared a clicked node.
+          if (hasAny && inCanvas(e.target)) window.setTimeout(() => editor.clearSelection(), 0);
           break;
         case "fit-view":
           handled();

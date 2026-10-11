@@ -26,6 +26,12 @@ export function Toaster() {
     const place = () => {
       const node = el.current;
       if (!node) return;
+      // Centred on the canvas pane, not the window: with side panels open the window's centre is near
+      // the pane's edge, and the toast reached over the Ask AI panel and the minimap.
+      const area = document.querySelector<HTMLElement>("[data-toast-area]")?.getBoundingClientRect();
+      const fits = area && area.width >= 320;
+      node.style.left = fits ? `${Math.round(area.left + area.width / 2)}px` : "";
+      node.style.maxWidth = fits ? `${Math.round(area.width - 32)}px` : "";
       const r = node.getBoundingClientRect();
       node.style.bottom = `${toastBottom(r, avoidedBars(), window.innerHeight)}px`;
     };

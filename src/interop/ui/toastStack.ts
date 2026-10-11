@@ -1,5 +1,6 @@
-// Toasts share the bottom centre with the canvas's bars (the first-run hint, the live bar): a toast
-// stacks above any of them it would cover, never on top. Bars opt in with `data-toast-avoid`.
+// Toasts share the bottom centre of the canvas pane (`data-toast-area`) with its bars (the first-run
+// hint, the live bar, the minimap): a toast stacks above any of them it would cover, never on top. Bars
+// opt in with `data-toast-avoid`.
 
 const GAP = 10;
 /** The toast's resting distance from the bottom of the window (matches `.ix-toast`). */

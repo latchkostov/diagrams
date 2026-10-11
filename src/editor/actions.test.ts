@@ -57,7 +57,7 @@ describe("action registry", () => {
     expect(live("node")).not.toContain("item.delete");
     expect(live("edge")).toEqual(expect.arrayContaining(["edge.edit-label", "node.properties"]));
     expect(live("edge")).not.toContain("edge.reverse");
-    expect(live("canvas")).toEqual(expect.arrayContaining(["canvas.properties", "canvas.shortcuts"]));
+    expect(live("canvas")).toEqual(expect.arrayContaining(["canvas.properties", "canvas.export"]));
     expect(live("canvas")).not.toContain("canvas.add-node");
   });
 
@@ -67,10 +67,13 @@ describe("action registry", () => {
     r.register(builtinActions());
     const items = (surface?: "menu" | "palette") =>
       r.build({ ...ctx("canvas"), surface }).flatMap((i) => (i.type === "item" ? [i.id] : []));
-    expect(items()).not.toContain("canvas.fit");
-    expect(items("palette")).toContain("canvas.fit");
-    // The canvas menu stays under its 12-item budget.
-    expect(items().length).toBeLessThanOrEqual(11);
+    // Each has an always-visible canvas control and a shortcut.
+    for (const id of ["canvas.fit", "canvas.undo", "canvas.redo", "canvas.shortcuts"]) {
+      expect(items()).not.toContain(id);
+      expect(items("palette")).toContain(id);
+    }
+    // The canvas menu stays well under its 12-item budget, with room for the next feature.
+    expect(items().length).toBeLessThanOrEqual(9);
   });
 
   it("the simulation section stays hidden until a provider registers a visible action", () => {

@@ -267,6 +267,8 @@ export function builtinActions(): Action[] {
     },
     {
       id: "canvas.undo",
+      // Undo and Redo are canvas controls and Ctrl+Z / Ctrl+Shift+Z: the right-click doesn't repeat them.
+      paletteOnly: true,
       section: "history",
       targets: ["canvas"],
       label: "Undo",
@@ -277,6 +279,7 @@ export function builtinActions(): Action[] {
     },
     {
       id: "canvas.redo",
+      paletteOnly: true,
       section: "history",
       targets: ["canvas"],
       label: "Redo",
@@ -299,6 +302,8 @@ export function builtinActions(): Action[] {
     {
       id: "canvas.shortcuts",
       modes: ["edit", "live"],
+      // A canvas control and ? open the sheet already.
+      paletteOnly: true,
       section: "file",
       targets: ["canvas"],
       label: "Keyboard shortcuts",
