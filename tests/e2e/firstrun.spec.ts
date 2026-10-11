@@ -200,8 +200,8 @@ test.describe("first run", () => {
     await expect(page.getByTestId("node-tooltip")).toHaveCount(0);
   });
 
-  test("showing and hiding the node tooltip doesn't re-render the diagram's nodes", async ({ page }) => {
-    // A minimal React DevTools hook that counts DiagramNode renders per commit (dev build only).
+  test("showing and hiding the node tooltip doesn't re-render the diagram's nodes @dev", async ({ page }) => {
+    // A minimal React DevTools hook that counts DiagramNode renders per commit (dev build only: @dev).
     await page.addInitScript(() => {
       type Fiber = {
         type?: { name?: string; displayName?: string; type?: { name?: string } } | string | null;

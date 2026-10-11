@@ -2,7 +2,8 @@ import type { Page } from "@playwright/test";
 import { perfBudget } from "../../src/test/perfBudget";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 
-// Interaction performance guards (dev server, so React runs in development mode).
+// Interaction performance guards (dev server, so React runs in development mode: tagged @dev, which
+// playwright.config.ts runs in the "dev" project).
 //
 // Two kinds of check:
 //  - Render counts: a fake React DevTools hook (installed before React loads) counts, per component
@@ -136,7 +137,7 @@ async function openCanvasMenu(page: Page) {
   await expect(page.getByTestId("context-menu")).toBeVisible();
 }
 
-test.describe("perf: interactions", () => {
+test.describe("perf: interactions", { tag: "@dev" }, () => {
   test("hovering the canvas menu re-renders only the rows that change", async ({ page, consoleErrors }) => {
     await openDiagram(page);
     await openCanvasMenu(page);

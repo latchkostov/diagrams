@@ -576,7 +576,7 @@ test.describe("interop review regressions", () => {
   });
 });
 
-test("image export wraps an unbroken title and URL within the measured one-node bounds", async ({ page }) => {
+test("image export wraps an unbroken title and URL within the measured one-node bounds @dev", async ({ page }) => {
   test.slow();
   await gotoLab(page, "header-overflow");
   await page.getByTestId("lab-open-editor").click();

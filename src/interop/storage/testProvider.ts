@@ -1,8 +1,8 @@
 import { OPENABLE, StorageError, type StorageEntry, type StorageProvider } from "./types";
 
 // A fake cloud provider for end-to-end tests: files live in this browser's localStorage, with no
-// sign-in and no network. Dev builds only, and only with `?storage=test` in the URL (registry.ts);
-// the production build drops it entirely.
+// sign-in and no network. Dev and e2e (VITE_E2E=1) builds only, and only with `?storage=test` in the URL
+// (registry.ts); the production build drops it entirely.
 //
 // Tests read the files from localStorage (TEST_STORAGE_KEY) and can make the next call fail with
 // `localStorage.setItem("diagrams.test-storage.fail", "save" | "open")`.

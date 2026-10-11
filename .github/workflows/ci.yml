@@ -13,11 +13,87 @@ permissions:
   contents: read
 
 env:
-  # GitHub sets CI=true already; explicit because the suites depend on it (Playwright retries and
-  # workers, Vitest timeouts, perfBudget scaling in src/test/perfBudget.ts).
+  # GitHub sets CI=true already; explicit because the suites depend on it (Playwright retries, workers and
+  # E2E_TARGET=build, Vitest timeouts, perfBudget scaling in src/test/perfBudget.ts).
   CI: "true"
 
 jobs:
+  # Decides whether the e2e matrix has anything to prove. This runs instead of a `paths-ignore` trigger:
+  # skipping the workflow would leave the `CI` gate check pending on a docs-only pull request.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      e2e: ${{ steps.filter.outputs.e2e }}
+      tree: ${{ steps.filter.outputs.tree }}
+    steps:
+      - name: Classify changed files
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REPO_ID: ${{ github.repository_id }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_TREE: ${{ github.event.head_commit.tree_id }}
+        run: |
+          # Prose and licence text can't break the app; the checks job (lint, format) still runs on them.
+          docs_only() {
+            local file any=false
+            while IFS= read -r file; do
+              [ -z "$file" ] && continue
+              any=true
+              case "$file" in
+                docs/*|*.md|LICENSE) ;;
+                *) return 1 ;;
+              esac
+            done <<< "$1"
+            [ "$any" = true ]
+          }
+
+          if [ "$EVENT" = "push" ]; then
+            # A squash-merged pull request whose CI ran against the current master lands exactly the tree
+            # that run tested, and the `CI` gate records every tree it passes as a `ci-tested-tree-<tree>`
+            # artifact. Only a marker from this workflow's own pull_request run on a branch of this
+            # repository counts (a fork can upload an artifact under any name). The tree pins ci.yml too.
+            # If master moved in between, the tree is new and the matrix runs.
+            if [ -n "$HEAD_TREE" ] && run_id="$(gh api \
+                "repos/$REPO/actions/artifacts?name=ci-tested-tree-$HEAD_TREE" \
+                --jq "[.artifacts[] | select((.expired | not) and .workflow_run.head_repository_id == $REPO_ID)][0].workflow_run.id // empty")" \
+              && [ -n "$run_id" ] \
+              && [ "$(gh api "repos/$REPO/actions/runs/$run_id" --jq '"\(.event) \(.path) \(.conclusion)"')" \
+                = "pull_request .github/workflows/ci.yml success" ]; then
+              echo "Tree $HEAD_TREE already passed CI in run $run_id; skipping the e2e matrix."
+              echo "e2e=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            files=""
+            if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+              files="$(gh api "repos/$REPO/compare/$BEFORE_SHA...$GITHUB_SHA" --jq '.files[].filename' || true)"
+            fi
+          else
+            # The tree this run tests (the PR merged into master); the gate records it for the push above.
+            tree="$(gh api "repos/$REPO/git/commits/$GITHUB_SHA" --jq '.tree.sha' || true)"
+            [[ "$tree" =~ ^[0-9a-f]{40}$ ]] && echo "tree=$tree" >> "$GITHUB_OUTPUT"
+            files="$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" --jq '.[].filename' || true)"
+          fi
+
+          echo "Changed files:"
+          echo "${files:-(unknown)}"
+          if [ -n "$files" ] && docs_only "$files"; then
+            echo "Docs only: skipping the e2e matrix."
+            echo "e2e=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Runs on every event (docs-only and already-tested trees included) and beside the e2e matrix.
   checks:
     name: Types, lint, unit, build
     runs-on: ubuntu-latest
@@ -32,19 +108,26 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
+      - run: pnpm format:check
       - run: pnpm test:coverage
+      # `pnpm build` fails if a dev-only test hook or a private example ships (vite.config.ts guards).
       - run: pnpm build
       - name: Entry chunk size budget
         run: pnpm size
 
   e2e:
     name: E2E ${{ matrix.shard }}/${{ strategy.job-total }}
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5, 6]
+    env:
+      # Serve the builds made in "System deps and builds" instead of building inside Playwright.
+      E2E_PREBUILT: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -65,10 +148,32 @@ jobs:
       - name: Install Chromium
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
-      - name: Install Chromium system dependencies
-        if: steps.pw-cache.outputs.cache-hit == 'true'
-        run: pnpm exec playwright install-deps chromium
-      - run: pnpm test:e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+      # The two builds (the e2e build with test hooks, and the production build for the sub-path project)
+      # run while apt installs Chromium's system libraries.
+      - name: System deps and builds
+        env:
+          CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+        run: |
+          VITE_E2E=1 pnpm exec vite build --outDir tests/.output/e2e-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/e2e-build.log" 2>&1 &
+          e2e=$!
+          VITE_E2E= pnpm exec vite build --outDir tests/.output/preview-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/prod-build.log" 2>&1 &
+          prod=$!
+          if [ "$CACHE_HIT" = "true" ]; then pnpm exec playwright install-deps chromium; fi
+          status=0
+          wait "$e2e" || { echo "::error::e2e build failed"; cat "$RUNNER_TEMP/e2e-build.log"; status=1; }
+          wait "$prod" || { echo "::error::production build failed"; cat "$RUNNER_TEMP/prod-build.log"; status=1; }
+          exit "$status"
+      - run: pnpm exec playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+      - name: Durations
+        if: ${{ !cancelled() }}
+        run: node scripts/e2e-durations.mjs tests/.output/results.json 15 >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload durations
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-durations-${{ matrix.shard }}
+          path: tests/.output/results.json
+          retention-days: 30
       - name: Upload blob report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
@@ -115,3 +220,42 @@ jobs:
           name: playwright-report-merged
           path: tests/.output/merged-report
           retention-days: 14
+
+  # The one check to require for merging: passes when every job that had to run passed, and an e2e matrix
+  # that `changes` skipped (docs only, or a tree a pull request run already passed) counts as passed.
+  ci:
+    name: CI
+    needs: [changes, checks, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check results
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CHECKS: ${{ needs.checks.result }}
+          E2E: ${{ needs.e2e.result }}
+          E2E_WANTED: ${{ needs.changes.outputs.e2e }}
+        run: |
+          echo "changes=$CHANGES checks=$CHECKS e2e=$E2E (wanted: $E2E_WANTED)"
+          [ "$CHANGES" = "success" ] || { echo "::error::change detection $CHANGES"; exit 1; }
+          [ "$CHECKS" = "success" ] || { echo "::error::checks $CHECKS"; exit 1; }
+          if [ "$E2E_WANTED" = "true" ]; then
+            [ "$E2E" = "success" ] || { echo "::error::e2e $E2E"; exit 1; }
+          else
+            [ "$E2E" = "skipped" ] || [ "$E2E" = "success" ] || { echo "::error::e2e $E2E"; exit 1; }
+          fi
+          echo "All required jobs passed."
+      # Only reached when the gate passed. The push that lands this tree on master finds the artifact by
+      # name and skips the e2e matrix (see `changes`).
+      - name: Record tested tree
+        if: github.event_name == 'pull_request' && needs.changes.outputs.tree != ''
+        run: echo "$GITHUB_SHA" > tested-tree.txt
+      - name: Upload tested tree marker
+        if: github.event_name == 'pull_request' && needs.changes.outputs.tree != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-tested-tree-${{ needs.changes.outputs.tree }}
+          path: tested-tree.txt
+          retention-days: 14
+          overwrite: true
