@@ -162,6 +162,8 @@ export interface InspectorProps {
   onToggle: () => void;
   /** Focus request: `inspector-field-<name>`; `seq` re-triggers for the same name. */
   focus?: { name: string; seq: number };
+  /** A text's edit is done (see DiagramUi.settleText): it moves clear if it grew over something. */
+  onTextSettled?: (id: string, before: { x: number; y: number; width: number; height: number }) => void;
 }
 
 export function Inspector(p: InspectorProps) {
@@ -574,12 +576,21 @@ function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }
   );
 }
 
-function AnnotationPanel({ note, editor }: InspectorProps & { note: AnnotationFlowNode }) {
+function AnnotationPanel({ note, editor, onTextSettled }: InspectorProps & { note: AnnotationFlowNode }) {
   const id = note.id;
   const { kind } = note.data;
   const merge = (f: string) => ({ merge: `inspector:annotation:${id}:${f}` });
   const color = annotationColor(note.data);
   const min = minSize[kind];
+  /** The text's box as it is now (before an edit that may grow it). */
+  const boxNow = () => ({
+    x: note.position.x,
+    y: note.position.y,
+    width: note.width ?? note.measured?.width ?? 0,
+    height: note.height ?? note.measured?.height ?? 0,
+  });
+  // Typing grows a text as you go; once you're done, it moves clear if it grew over something.
+  const typedFrom = useRef<ReturnType<typeof boxNow> | null>(null);
   return (
     <Section>
       <Field label={kind === "zone" ? "Label" : "Text"}>
@@ -588,6 +599,11 @@ function AnnotationPanel({ note, editor }: InspectorProps & { note: AnnotationFl
           rows={kind === "zone" ? 1 : 3}
           value={note.data.text}
           placeholder={kind === "zone" ? "Zone name" : "Write something"}
+          onFocus={() => (typedFrom.current = kind === "text" ? boxNow() : null)}
+          onBlur={() => {
+            if (typedFrom.current) onTextSettled?.(id, typedFrom.current);
+            typedFrom.current = null;
+          }}
           onChange={(e) => editor.updateAnnotation(id, { text: e.target.value }, merge("text"))}
           maxLength={ANNOTATION_LIMITS.maxAnnotationText}
           name="annotation-text"
@@ -640,7 +656,11 @@ function AnnotationPanel({ note, editor }: InspectorProps & { note: AnnotationFl
             testId="inspector-field-text-size"
             value={note.data.textSize ?? "m"}
             options={ANNOTATION_TEXT_SIZES.map((t) => ({ value: t, label: textSizeLabel[t] }))}
-            onChange={(textSize) => editor.updateAnnotation(id, { textSize })}
+            onChange={(textSize) => {
+              const before = boxNow();
+              editor.updateAnnotation(id, { textSize });
+              if (kind === "text") onTextSettled?.(id, before);
+            }}
           />
         </Field>
       )}

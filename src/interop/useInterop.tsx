@@ -17,6 +17,7 @@ import {
   getSaveTarget,
   getOriginal,
   isOwnSlug,
+  UNTITLED,
   type SaveTarget,
 } from "../lib/diagramIO";
 import { fromFlow, toFlow } from "../canvas/convert";
@@ -68,6 +69,14 @@ interface Options {
   openShared: (d: DiagramFile) => void;
   /** Public examples can be embedded by name. */
   isPublicExample: (slug: string) => boolean;
+}
+
+/** PNG / SVG export choices (the image dialog's Options). The title is in by default. */
+export interface ImageExportOptions {
+  scale?: number;
+  transparent?: boolean;
+  /** The diagram's title and description above it. Default true. */
+  title?: boolean;
 }
 
 type DialogState =
@@ -151,12 +160,18 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       toast.success(`Exported ${d.nodes.length} nodes and ${d.edges.length} edges.`);
     });
 
-  const exportImage = (kind: "png" | "svg", opts: { scale?: number; transparent?: boolean } = {}) =>
+  const exportImage = (kind: "png" | "svg", opts: ImageExportOptions = {}) =>
     attempt(`export the ${kind.toUpperCase()}`, async () => {
       const d = current();
       const busy = toast.busy(`Rendering ${kind.toUpperCase()}…`);
       const { renderDiagramImage } = await import("./image");
-      const url = await renderDiagramImage(kind, opts);
+      // The picture carries its title, as presentation does (an untitled diagram has none to show).
+      const title = d.title.trim();
+      const header =
+        opts.title !== false && title && title !== UNTITLED
+          ? { title, description: d.description?.trim() || undefined }
+          : undefined;
+      const url = await renderDiagramImage(kind, { scale: opts.scale, transparent: opts.transparent, header });
       const suffix = kind === "png" ? `${opts.scale === 1 ? "" : "@2x"}${opts.transparent ? "-transparent" : ""}` : "";
       await downloadDataUrl(url, `${baseName(d)}${suffix}.${kind}`);
       toast.dismiss(busy);
@@ -421,9 +436,9 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
 
   const api = {
     exportNative,
-    exportPng: (opts: { scale?: number; transparent?: boolean } = {}) => exportImage("png", opts),
+    exportPng: (opts: ImageExportOptions = {}) => exportImage("png", opts),
     exportSvg: () => exportImage("svg"),
-    exportImage: (kind: "png" | "svg", opts: { scale?: number; transparent?: boolean } = {}) => exportImage(kind, opts),
+    exportImage: (kind: "png" | "svg", opts: ImageExportOptions = {}) => exportImage(kind, opts),
     openImageOptions: () => setDialog({ kind: "image" }),
     copyShareLink,
     exportDrawio,

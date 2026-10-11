@@ -47,7 +47,7 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
     (they belong to it and move with it, and it can be fitted to them); a zone is a visual region only.
     Nodes don't belong to a zone, and moving a zone moves nothing else. They look different too: a
     boundary has a solid edge and a label chip with a swatch; a zone has a dashed edge and plain
-    sentence-case words.
+    sentence-case words. With things selected, Annotate ▸ Zone draws the zone around them.
   - **Shape**: a plain outline (rectangle, rounded rectangle, ellipse, diamond, cylinder) for when no stencil
     fits. The only annotation an edge may end on, for documentation; no traffic flows to or from it.
 

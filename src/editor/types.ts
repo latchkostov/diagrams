@@ -13,6 +13,8 @@ import type { GroupTone } from "../canvas/types";
 import type { ClipboardPayload } from "./clipboard";
 
 export type XY = { x: number; y: number };
+/** A box in flow coordinates. */
+export type XYBox = XY & { width: number; height: number };
 
 /**
  * Ids use the saved-file namespace: group ids are DiagramGroup ids (not React Flow ids).
@@ -72,9 +74,14 @@ export interface EditorApi {
   updateGroup(id: string, patch: Partial<Omit<DiagramGroup, "id">>, opts?: EditOptions): void;
   /**
    * Adds a text, note, zone or shape centred on `at` (flow coords; default = the pointer for "T",
-   * else the view centre), selects it and, except for shapes, starts editing its text. Returns its id.
+   * else the free place nearest the view centre), selects it and, except for shapes, starts editing its
+   * text. Returns its id. A zone added with things selected is drawn around them instead, unless
+   * `aroundSelection` is false (a drop goes where it's dropped).
    */
-  addAnnotation(kind: AnnotationKind, opts?: { at?: XY; shape?: AnnotationShape; atPointer?: boolean }): string | null;
+  addAnnotation(
+    kind: AnnotationKind,
+    opts?: { at?: XY; shape?: AnnotationShape; atPointer?: boolean; aroundSelection?: boolean },
+  ): string | null;
   updateAnnotation(id: string, patch: Partial<Omit<DiagramAnnotation, "id">>, opts?: EditOptions): void;
   updateMeta(patch: DiagramMetaPatch, opts?: EditOptions): void;
   connect(from: string, to: string): string | null;
@@ -94,6 +101,11 @@ export interface EditorApi {
   sendToBack(nodeIds: string[]): void;
   /** Moves the selected nodes (and the contents of selected boundaries). */
   moveSelection(dx: number, dy: number): void;
+  /**
+   * A text that grew (new words, a new size) and now covers a node or an edge it didn't cover at
+   * `before` moves to the nearest free spot, as its own undo step. Returns what it was moved off.
+   */
+  keepTextClear(id: string, before?: XYBox): "node" | "edge" | null;
 
   // ---- clipboard ----
   copy(sel: Partial<Selection>): void;

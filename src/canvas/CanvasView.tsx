@@ -72,7 +72,7 @@ import { useHistory, type CanvasSnapshot } from "../editor/useHistory";
 import { useEditor } from "../editor/useEditor";
 import { useCanvasShortcuts } from "../editor/useCanvasShortcuts";
 import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
-import type { Selection } from "../editor/types";
+import type { Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { LiveView } from "../live/LiveView";
 import { LIVE_BAR_SPACE } from "../live/layout";
@@ -81,6 +81,7 @@ import { StartCard, type StartOptions } from "./StartCard";
 import { NodeTooltip } from "./NodeTooltip";
 import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { FirstRunHint } from "./FirstRunHint";
+import { notify } from "../interop/ui/toast";
 import { useCanvasHost } from "../palette/canvasHost";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
@@ -515,7 +516,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     const note = parseAnnotationDrag(e.dataTransfer.getData(ANNOTATION_DND_MIME));
     if (note) {
       e.preventDefault();
-      editor.addAnnotation(note.kind, { shape: note.shape, at: screenToFlowPosition({ x: e.clientX, y: e.clientY }) });
+      editor.addAnnotation(note.kind, {
+        shape: note.shape,
+        at: screenToFlowPosition({ x: e.clientX, y: e.clientY }),
+        aroundSelection: false,
+      });
       return;
     }
     const id = e.dataTransfer.getData(STENCIL_DND_MIME);
@@ -527,9 +532,29 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   // ---------------------------------------------------------------- derived
 
   const direction = meta.direction ?? "LR";
+  /** Text isn't a routing obstacle: one that grew over a node or edge moves clear (undoable, said so). */
+  const settleText = useCallback(
+    (id: string, before: XYBox) => {
+      // Once the edit (and any growth it caused) has rendered.
+      setTimeout(() => {
+        const hit = editor.keepTextClear(id, before);
+        if (hit)
+          notify(`Moved the text off ${hit === "node" ? "a node" : "an edge"}.`, {
+            action: { label: "Undo", run: editor.undo, testId: "text-moved-undo" },
+          });
+      }, 60);
+    },
+    [editor],
+  );
   const ui = useMemo<DiagramUi>(
-    () => ({ direction, editing, setEditing: readOnly ? () => {} : setEditing, openEdgeMenu }),
-    [direction, editing, openEdgeMenu, readOnly],
+    () => ({
+      direction,
+      editing,
+      setEditing: readOnly ? () => {} : setEditing,
+      openEdgeMenu,
+      settleText: readOnly ? undefined : settleText,
+    }),
+    [direction, editing, openEdgeMenu, readOnly, settleText],
   );
   // Read-only (embed) hides the same chrome as presenting, without the presentation sizing.
   const hideChrome = presenting || readOnly;
@@ -864,6 +889,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             nodeLabel={(id) => labels.get(id) ?? id}
             counts={{ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }}
             collapsed={inspectorHidden}
+            onTextSettled={settleText}
             onToggle={() => {
               setPref("inspector", inspectorHidden);
               setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));

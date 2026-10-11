@@ -1,6 +1,7 @@
 import {
   memo,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -23,8 +24,16 @@ import type { AnnotationFlowNode, FlowNode } from "../types";
  * - shape: a crisp SVG outline sized in real pixels; the only kind with connection handles.
  * Double-click edits the text in place (multi-line); Esc, Ctrl+Enter or clicking away commits.
  */
-function AnnotationNodeImpl({ id, data, selected, width, height }: NodeProps<AnnotationFlowNode>) {
-  const { editing, setEditing } = useDiagram();
+function AnnotationNodeImpl({
+  id,
+  data,
+  selected,
+  width,
+  height,
+  positionAbsoluteX,
+  positionAbsoluteY,
+}: NodeProps<AnnotationFlowNode>) {
+  const { editing, setEditing, settleText } = useDiagram();
   const { updateNode, deleteElements } = useReactFlow<FlowNode>();
   const kind = data.kind;
   const color = annotationColor(data);
@@ -52,12 +61,30 @@ function AnnotationNodeImpl({ id, data, selected, width, height }: NodeProps<Ann
             ...(kind !== "zone" && overflow > 0 ? { height: annotationSize(Math.ceil(h + overflow)) } : {}),
           },
     );
+    // Text isn't a routing obstacle: if it grew over a node or an edge, it moves clear.
+    if (kind === "text" && text !== data.text)
+      settleText?.(id, { x: positionAbsoluteX, y: positionAbsoluteY, width: w, height: h });
   };
+
+  // Text and notes also grow when their words change elsewhere (the inspector, a new text size),
+  // as they do when typing in place. Never on first show, and never smaller.
+  const content = useRef<HTMLDivElement>(null);
+  const shown = useRef({ text: data.text, size: data.textSize });
+  useLayoutEffect(() => {
+    if (shown.current.text === data.text && shown.current.size === data.textSize) return;
+    shown.current = { text: data.text, size: data.textSize };
+    const el = content.current;
+    const body = el?.parentElement;
+    if (!el || !body || (kind !== "text" && kind !== "note")) return;
+    const pad = getComputedStyle(body);
+    const needed = Math.ceil(el.offsetHeight + parseFloat(pad.paddingTop) + parseFloat(pad.paddingBottom));
+    if (needed > h + 1) updateNode(id, { height: annotationSize(needed) });
+  }, [data.text, data.textSize, kind, h, id, updateNode]);
 
   const text = isEditing ? (
     <AnnotationEditor value={data.text} kind={kind} onDone={commit} />
   ) : (
-    <div className="ann-content" data-testid={`annotation-text-${id}`}>
+    <div className="ann-content" ref={content} data-testid={`annotation-text-${id}`}>
       {data.text || (kind === "note" ? <span className="ann-placeholder">Double-click to write</span> : null)}
     </div>
   );
