@@ -51,5 +51,6 @@
       "esbuild"
     ]
   },
-  "license": "MIT"
+  "license": "MIT",
+  "packageManager": "pnpm@10.0.0"
 }
