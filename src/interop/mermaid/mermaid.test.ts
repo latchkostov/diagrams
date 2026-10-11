@@ -80,6 +80,46 @@ flowchart LR
     expect(diagram.nodes.find((n) => n.id === "C")).toMatchObject({ label: "Orders DB", stencil: "generic.database" });
   });
 
+  it("keeps node ids that start with a directive keyword, and still skips the directives", () => {
+    const src = `
+flowchart LR
+  clickstream[(Clickstream)] --> classifier[Classifier]
+  classifier --> styles_db[(Styles)]
+  directional --> linkstyles
+  accounts --> styles_db; clicker --> classifier
+  classDef hot fill:#f00
+  class classifier hot
+  CLASS clickstream hot
+  style styles_db fill:#0f0
+  linkStyle 0 stroke:#f00
+  click classifier "https://example.com"
+  direction TB
+  accTitle: Clickstream pipeline
+  accDescr: Events flow to a classifier
+  accDescr { A longer description }
+  %% styles_db --> nowhere
+`;
+    const { diagram } = parseMermaid(src);
+    expect(diagram.nodes.map((n) => n.id)).toEqual([
+      "clickstream",
+      "classifier",
+      "styles_db",
+      "directional",
+      "linkstyles",
+      "accounts",
+      "clicker",
+    ]);
+    expect(diagram.nodes.find((n) => n.id === "clickstream")?.label).toBe("Clickstream");
+    expect(diagram.edges.map((e) => [e.from, e.to])).toEqual([
+      ["clickstream", "classifier"],
+      ["classifier", "styles_db"],
+      ["directional", "linkstyles"],
+      ["accounts", "styles_db"],
+      ["clicker", "classifier"],
+    ]);
+    expect(diagram.direction).toBe("LR");
+  });
+
   it("explains unsupported or broken input", () => {
     expect(() => parseMermaid("sequenceDiagram\n A->>B: hi")).toThrow(/Only Mermaid flowcharts/);
     expect(() => parseMermaid("hello")).toThrow(/starts with/);

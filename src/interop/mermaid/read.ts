@@ -169,6 +169,10 @@ function statements(src: string): { text: string; line: number }[] {
   return out;
 }
 
+// Statements we skip: styling, interaction and accessibility directives, matched as whole keywords so
+// node ids that merely start with one (clickstream, classifier, styles_db) still parse, and comments.
+const DIRECTIVE = /^(?:(?:classdef|class|style|linkstyle|click|direction)(?:\s|$)|acc(?:title|descr)\s*[:{]|%%)/i;
+
 // Links: plain forms, then forms with the label in the middle. Groups: 1 = "<", 2 = body.
 const LINK_PLAIN = /\s*(<)?(-{2,}>|-{3,}|={2,}>|={3,}|-\.+->|-\.+-|~{3,}|-{2,}[ox]|={2,}[ox]|-\.+-[ox])/y;
 const LINK_TEXT =
@@ -351,7 +355,7 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
       stack.pop();
       continue;
     }
-    if (/^(classdef|class|style|linkstyle|click|direction|acctitle|accdescr|%%)/.test(kw)) continue;
+    if (DIRECTIVE.test(t)) continue;
 
     const sc = new Scanner(t, st.line);
     let left = readList(sc);
