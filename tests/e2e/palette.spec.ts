@@ -36,19 +36,24 @@ test.describe("palette", () => {
     await expect(page.getByTestId("palette-item-kafka.topic")).toHaveCount(0);
 
     // Search stays inside the family, and offers a way out.
-    await page.getByTestId("palette-search").fill("kafka");
+    await page.getByTestId("palette-search").fill("service bus");
     await expect(page.getByTestId("palette-empty")).toBeVisible();
     await page.getByTestId("palette-all-families").click();
-    await expect(page.getByTestId("palette-item-kafka.topic")).toBeVisible();
+    await expect(page.getByTestId("palette-item-azure.service-bus.queue")).toBeVisible();
 
     await page.getByTestId("palette-family").selectOption("azure");
     await page.reload();
     await expect(page.getByTestId("palette-family")).toHaveValue("azure");
+    // Compute starts folded on a first visit.
+    await page.getByTestId("palette-section-compute").click();
     await expect(page.getByTestId("palette-item-azure.functions")).toBeVisible();
     await expect(page.getByTestId("palette-item-aws.sqs")).toHaveCount(0);
   });
 
-  test("categories collapse and stay collapsed", async ({ page }) => {
+  test("a first visit opens only the first category; categories collapse and stay collapsed", async ({ page }) => {
+    // With 150+ stencils the rail starts as an overview: Messaging open, the rest folded with counts.
+    await expect(page.getByTestId("palette-section-compute")).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByTestId("palette-item-aws.lambda")).toHaveCount(0);
     const header = page.getByTestId("palette-section-messaging");
     await expect(header).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByTestId("palette-item-kafka.topic")).toBeVisible();
@@ -64,6 +69,8 @@ test.describe("palette", () => {
 
   test("recently used stencils are pinned on top", async ({ page }) => {
     await expect(page.getByTestId("palette-recent")).toHaveCount(0);
+    await page.getByTestId("palette-section-compute").click();
+    await page.getByTestId("palette-section-data").click();
     await page.getByTestId("palette-item-aws.lambda").click();
     await expect(page.getByTestId("node-lambda-1")).toBeVisible();
     await page.getByTestId("palette-item-redis.cache").click();

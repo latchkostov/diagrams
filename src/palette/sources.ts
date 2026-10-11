@@ -177,11 +177,11 @@ export function collectCommands(input: SourceInput): Command[] {
     out.push({
       id: "live:toggle",
       group: "actions",
-      label: "Toggle live",
+      // The Live toggle's own words: "Go live", and "Back to editing" (its tooltip) while live.
+      label: canvas.live ? "Back to editing" : "Go live",
       icon: "bolt",
       shortcut: "L",
-      checked: canvas.live,
-      keywords: canvas.live ? "back to editing stop exit" : "go live start play simulate",
+      keywords: canvas.live ? "toggle live stop exit edit" : "toggle live start play simulate",
       run: live.toggle,
     });
   }

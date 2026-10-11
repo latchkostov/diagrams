@@ -18,6 +18,11 @@ export interface IconSource {
   licence: string;
 }
 
+// Icons from sources other than gilbarbara/logos (the fallback below), by file name in docs/ICONS.md.
+const THE_SVG = new Set(["sqlserver", "confluent", "keycloak", "microsoft-fabric"]);
+const SIMPLE_ICONS = new Set(["pulsar", "camunda", "istio", "traefik", "cassandra", "minio", "stripe", "hubspot"]);
+const DEVICON = new Set(["haproxy", "clickhouse", "loki", "jaeger"]);
+
 /** Where a stencil's icon comes from, condensed from docs/ICONS.md. */
 export function iconSource(icon: string): IconSource {
   if (icon.startsWith("azure-"))
@@ -33,7 +38,10 @@ export function iconSource(icon: string): IconSource {
   if (icon.startsWith("gcp-")) return { source: "Google Cloud icons", licence: "Apache-2.0" };
   if (icon.startsWith("k8s-")) return { source: "Kubernetes community icons", licence: "Apache-2.0 or CC BY 4.0" };
   if (icon === "entra-id") return { source: "selfh.st icons", licence: "CC BY 4.0, attribution required" };
-  if (icon === "sqlserver") return { source: "theSVG", licence: "MIT" };
+  if (THE_SVG.has(icon)) return { source: "theSVG", licence: "MIT" };
+  if (SIMPLE_ICONS.has(icon))
+    return { source: "Simple Icons", licence: "CC0 artwork; the logo is its owner's trademark" };
+  if (DEVICON.has(icon)) return { source: "Devicon", licence: "MIT" };
   if (icon.startsWith("client-") || icon.startsWith("generic-")) return { source: "Lucide", licence: "ISC" };
   return { source: "gilbarbara/logos", licence: "CC0 artwork; the logo is its owner's trademark" };
 }

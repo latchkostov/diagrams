@@ -552,3 +552,37 @@ test.describe("live view", () => {
     expectNoErrors(consoleErrors);
   });
 });
+
+test.describe("live overlap (UX gate 3)", () => {
+  const box = async (page: Page, testId: string) => {
+    const b = await page.getByTestId(testId).boundingBox();
+    if (!b) throw new Error(`${testId} has no box`);
+    return b;
+  };
+  const apart = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+    a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+
+  for (const width of [1024, 1440]) {
+    test(`at ${width}px the bar, the Inputs panel and the event log never cover each other`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 768 });
+      await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
+      await expect(page.getByTestId("live-controls")).toBeVisible();
+      await page.getByTestId("live-capacity").click();
+      await expect(page.getByTestId("capacity-panel")).toBeVisible();
+      await page.getByTestId("live-more").click();
+      await page.getByTestId("live-events-toggle").click();
+      await expect(page.getByTestId("live-events")).toBeVisible();
+
+      const bar = await box(page, "live-controls");
+      expect(apart(bar, await box(page, "capacity-panel"))).toBe(true);
+      expect(apart(bar, await box(page, "live-events"))).toBe(true);
+      // Every bar control stays inside the bar (nothing spills under the panel), and the simulation keeps its name.
+      for (const id of ["live-play", "live-sim-picker", "live-capacity", "live-timeline", "live-more"]) {
+        const b = await box(page, id);
+        expect(b.x).toBeGreaterThanOrEqual(bar.x - 1);
+        expect(b.x + b.width).toBeLessThanOrEqual(bar.x + bar.width + 1);
+      }
+      expect((await box(page, "live-sim-picker")).width).toBeGreaterThan(90);
+    });
+  }
+});

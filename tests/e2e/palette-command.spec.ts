@@ -46,7 +46,10 @@ test.describe("command palette", () => {
     await expect(palette(page)).toHaveAttribute("aria-modal", "true");
     await expect(input(page)).toHaveAttribute("role", "combobox");
     await expect(page.getByTestId("command-list")).toHaveAttribute("role", "listbox");
-    await expect(input(page)).toHaveAttribute("placeholder", /> actions\s+@ nodes\s+\+ add/);
+    await expect(input(page)).toHaveAttribute("placeholder", "Search actions, nodes and stencils…");
+    // The prefixes are taught by the footer's chips, not repeated in the placeholder.
+    for (const chip of ["command-prefix-actions", "command-prefix-nodes", "command-prefix-stencils"])
+      await expect(page.getByTestId(chip)).toBeVisible();
 
     // The highlighted option is announced through aria-activedescendant and moves with the arrows.
     const activeId = async () => (await input(page).getAttribute("aria-activedescendant")) ?? "";
@@ -141,11 +144,11 @@ test.describe("command palette", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test('runs "Toggle live", then offers live actions and saved simulations', async ({ page, consoleErrors }) => {
+  test('runs "Go live", then offers live actions and saved simulations', async ({ page, consoleErrors }) => {
     const toggle = page.getByTestId("live-toggle");
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
     await openPalette(page);
-    await input(page).fill("toggle live");
+    await input(page).fill("go live");
     expect(await firstItemId(page)).toBe("live:toggle");
     await page.keyboard.press("Enter");
     await expect(toggle).toHaveAttribute("aria-pressed", "true");
@@ -168,7 +171,8 @@ test.describe("command palette", () => {
 
     // And back to editing.
     await openPalette(page);
-    await input(page).fill("toggle live");
+    await input(page).fill("back to editing");
+    expect(await firstItemId(page)).toBe("live:toggle");
     await page.keyboard.press("Enter");
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
     expectNoErrors(consoleErrors);

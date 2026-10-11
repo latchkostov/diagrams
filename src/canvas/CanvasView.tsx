@@ -36,7 +36,15 @@ import {
 import { getStencil } from "../stencils/registry";
 import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
-import { emptyDiagram, getAutosave, getDiagramIdentity, getOriginal, writeAutosave } from "../lib/diagramIO";
+import {
+  DRAFT_SLUG,
+  emptyDiagram,
+  getAutosave,
+  getDiagramIdentity,
+  getOriginal,
+  isLibrarySlug,
+  writeAutosave,
+} from "../lib/diagramIO";
 import type { DiagramFile } from "../model/types";
 import { fromFlow, groupAt, toFlow, withEdgeAria, withNodeAria, type DiagramMeta } from "./convert";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
@@ -208,7 +216,16 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   });
 
   // Fit-view keeps content out from under the title card, minimap, controls and live bar.
-  const overlayFit = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
+  const fitView_ = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
+  /** True while the view is a fit (the whole diagram in view), false once the user pans or zooms. */
+  const showingAll = useRef(true);
+  const overlayFit = useCallback(
+    (o?: Parameters<typeof fitView_>[0]) => {
+      showingAll.current = true;
+      fitView_(o);
+    },
+    [fitView_],
+  );
   const fit = useCallback(() => overlayFit({ maxZoom: 1.25, duration: 300 }), [overlayFit]);
   const editor = useEditor({
     slug,
@@ -326,6 +343,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const cardCovers = useCovered(card, wrapper);
   useOverlayTestIds(wrapper);
 
+  // Your own diagrams have no "original" worth going back to: the edits are the diagram (and undo
+  // covers mistakes). Examples and shared diagrams keep "Edited, reset".
+  const ownDiagram = isLibrarySlug(slug) || slug === DRAFT_SLUG;
   /** Reset is a normal (undoable) edit. */
   const reset = () => {
     const f = toFlow(original);
@@ -510,6 +530,19 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     return () => cancelAnimationFrame(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the inspector opens or a menu closes
   }, [inspectorHidden, menu]);
+  // A side panel opened or closed while the whole diagram was in view refits it to the new pane,
+  // so nothing ends up under the panel or its rail. A view the user panned or zoomed stays put.
+  const panelsKey = `${paletteHidden}:${inspectorHidden}`;
+  const lastPanels = useRef(panelsKey);
+  useEffect(() => {
+    if (lastPanels.current === panelsKey) return;
+    lastPanels.current = panelsKey;
+    if (!showingAll.current || live || presenting || !nothingSelected) return;
+    // After React Flow's ResizeObserver has the new pane size.
+    const id = setTimeout(() => overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 }), 80);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when a side panel opens or closes
+  }, [panelsKey]);
   const labels = useMemo(() => new Map(diagramNodes.map((n) => [n.id, n.data.label || n.id])), [diagramNodes]);
   // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel).
   const ariaNodes = useMemo(() => withNodeAria(nodes), [nodes]);
@@ -569,9 +602,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             onEdgeContextMenu={onEdgeContextMenu}
             onSelectionContextMenu={onSelectionContextMenu}
             onDoubleClick={onPaneDoubleClick}
-            onMoveStart={() => {
+            onMoveStart={(e) => {
               setMenu(null);
               hideTip();
+              // A pan or zoom by hand (an event) means the view is the user's now, not a fit.
+              if (e) showingAll.current = false;
             }}
             onNodeMouseEnter={(e, node) => {
               if (node.type === "diagram" && !editing)
@@ -613,7 +648,13 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           >
             {prefs.grid && <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />}
             {!hideChrome && (
-              <Controls showInteractive={false} showFitView={false} position="bottom-left">
+              <Controls
+                showInteractive={false}
+                showFitView={false}
+                position="bottom-left"
+                onZoomIn={() => (showingAll.current = false)}
+                onZoomOut={() => (showingAll.current = false)}
+              >
                 {/* Our fit keeps content clear of the title card, minimap and live bar. */}
                 <ControlButton
                   onClick={fit}
@@ -705,7 +746,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                   {nodeCount} {nodeCount === 1 ? "node" : "nodes"}, {edges.length}{" "}
                   {edges.length === 1 ? "edge" : "edges"}
                 </span>
-                {modified && (
+                {modified && !ownDiagram && (
                   <button
                     className="link-btn"
                     onClick={reset}

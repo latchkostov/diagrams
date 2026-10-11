@@ -9,6 +9,7 @@ import { pushRecentStencil, useRecentStencils } from "../lib/recentStencils";
 import { rememberCanvas, STENCIL_DND_MIME, takePendingStencils } from "../lib/canvasBridge";
 import { Icon } from "../components/Icon";
 import { safeStorage } from "../lib/storage";
+import { formatCombo, shortcutKeys } from "../editor/shortcuts";
 
 export { STENCIL_DND_MIME };
 
@@ -22,9 +23,15 @@ function readFamily(): FamilyId | "all" {
   return isFamilyId(v) ? v : "all";
 }
 
+/**
+ * Folded categories. A first visit opens only the first (Messaging) so the rail reads as an overview
+ * of categories with counts rather than 150 rows; search ignores folding, and choices are remembered.
+ */
 function readClosed(): StencilCategory[] {
+  const stored = safeStorage.getItem(SECTIONS_KEY);
+  if (stored === null) return CATEGORY_ORDER.slice(1);
   try {
-    const v = JSON.parse(safeStorage.getItem(SECTIONS_KEY) ?? "[]");
+    const v = JSON.parse(stored);
     return Array.isArray(v) ? v : [];
   } catch {
     return [];
@@ -254,7 +261,8 @@ export function Palette({
         )}
       </div>
       <div className="palette-foot">
-        Drag onto the canvas or click to add. Double-click the canvas to search, press <kbd>?</kbd> for shortcuts.
+        Drag onto the canvas or click to add. <kbd>{formatCombo(shortcutKeys("command-palette"))}</kbd> finds anything;{" "}
+        <kbd>?</kbd> lists shortcuts.
       </div>
     </aside>
   );

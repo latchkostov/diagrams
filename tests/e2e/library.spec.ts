@@ -51,6 +51,15 @@ test.describe("data safety", () => {
     await expect(page.getByTestId("reset-diagram")).toBeVisible();
   });
 
+  test('your own diagrams don\'t offer "Edited, reset": the edits are the diagram', async ({ page }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    await importDiagram(page, "Mine");
+    await page.getByTestId("node-n0").click();
+    await page.getByTestId("inspector-field-label").fill("Renamed");
+    await expect(page.getByTestId("node-n0")).toContainText("Renamed");
+    await expect(page.getByTestId("reset-diagram")).toHaveCount(0);
+  });
+
   test("hiding the page saves pending edits (reload, close, tab switch)", async ({ page }) => {
     const ex = publicExamples[0];
     const node = ex.nodeIds[0];
