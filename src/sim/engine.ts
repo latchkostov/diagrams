@@ -139,7 +139,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function forward(node: Node, message: Message): void {
     const outgoing = node.outgoing;
-    if (!outgoing.length) { drop(node, message, "no outgoing edge"); return; }
+    // A node with nowhere to send (e.g. a final worker) is a terminal consumer, not a drop.
+    if (!outgoing.length) { inSystem--; return; }
     if (node.role === "gateway") {
       travel(outgoing[node.cursor++ % outgoing.length], { ...message, attempts: 0 }, "message");
     } else {
