@@ -26,6 +26,7 @@ export interface Particle {
   color: string;
 }
 
+/** Native engine message counts and rates are sampled units; time and replica counts are unscaled. */
 export interface NodeSimState {
   id: string;
   role: SimRole;
@@ -57,7 +58,7 @@ export interface EdgeSimState {
   id: string;
   /** Total messages that have finished travelling this edge. */
   delivered: number;
-  /** Particles currently on this edge. */
+  /** Sampled trips currently on this edge, including visual replies. */
   active: number;
 }
 
@@ -68,6 +69,7 @@ export interface SimEvent {
   time: number;
   kind: SimEventKind;
   nodeId: string;
+  /** Identity of a sampled message; never multiply ids or attempt numbers by scale. */
   messageId?: number;
   /** Human readable, e.g. "payments failed OrderPlaced #42 (attempt 2/3)". */
   text: string;
@@ -75,6 +77,23 @@ export interface SimEvent {
 
 export type SimFrame = Pick<SimSnapshot, "time" | "particles" | "nodes" | "inSystem" | "scale">;
 
+/** Converted message counts/rates; the tag makes this view explicit and prevents repeat conversion. */
+export type RealNodeMetrics = NodeSimState & { readonly units: "real" };
+export type RealSimFrame = Omit<SimFrame, "nodes"> & {
+  readonly units: "real";
+  nodes: Record<string, RealNodeMetrics>;
+};
+export type RealSimSnapshot = Omit<SimSnapshot, "nodes"> & RealSimFrame;
+
+/** Detached views of the same engine. Real views retain sampled particle geometry and event identities. */
+export interface SimulationUnits {
+  sampledFrame(): SimFrame;
+  realFrame(): RealSimFrame;
+  sampledSnapshot(): SimSnapshot;
+  realSnapshot(): RealSimSnapshot;
+}
+
+/** Native engine snapshot: every message count/rate (nodes, edges, inSystem) is sampled. */
 export interface SimSnapshot {
   /** Real messages per simulated message. Default 1. */
   scale?: number;
@@ -91,9 +110,9 @@ export interface SimSnapshot {
 
 /** Per-node tunables. Read from DiagramNode.props on load; can be changed live via setNodeProps. */
 export interface NodeSimProps {
-  /** Sources: messages / second when traffic is on. Default 2. */
+  /** Sources: real messages / second when traffic is on. Default 2. */
   ratePerSec?: number;
-  /** Processors / gateways / stores: processing time per message in ms. Defaults by role. */
+  /** Processors / gateways / stores: per-message processing time in ms, never scaled. Defaults by role. */
   latencyMs?: number;
   /** Processors: parallel messages per replica. Default 4. */
   concurrency?: number;
@@ -153,9 +172,9 @@ export interface SimEngine {
   restore(checkpoint: EngineCheckpoint): void;
   /** Detached raw properties currently used by the engine, including runtime overrides. */
   effectiveProps(nodeId: string): Record<string, unknown>;
-  /** Clock and completion counters without rendering allocations. */
+  /** Clock in ms; inSystem is sampled, pendingInjections counts scheduled batches (never scale it). */
   metrics(): { time: number; inSystem: number; pendingInjections: number };
-  /** Read just the metric an expectation needs, without copying node or rendering state. */
+  /** Read a sampled metric without copying node or rendering state. Runner expectations convert it. */
   measure(metric: Expectation["metric"]): number | undefined;
   /** Replace the diagram being simulated. Resets all state. */
   load(diagram: DiagramFile): void;
@@ -169,10 +188,12 @@ export interface SimEngine {
   setScale(scale: number): void;
   /** Capacity multiplier changes replicas without overwriting base node props. */
   setCapacityMultiplier(multiplier: number): void;
-  /** Inject `count` messages at a node as if it had just produced/received them. */
+  /** Inject `count` sampled messages. For real counts use SimulationRun.inject. */
   inject(nodeId: string, count: number, opts?: InjectOptions): void;
   setNodeStatus(nodeId: string, status: NodeStatus): void;
   setNodeProps(nodeId: string, patch: NodeSimProps): void;
+  /** Apply patches and an optional capacity multiplier with one incremental allocation pass. */
+  setNodePropsBatch(patches: Record<string, NodeSimProps>, capacityMultiplier?: number): void;
   /** Continuous traffic from every source node at its ratePerSec. */
   setTraffic(on: boolean): void;
   /** Time multiplier (0.25 – 8). Default 1. */
@@ -201,7 +222,7 @@ export interface ExpectationState {
   id: string;
   label: string;
   status: ExpectationStatus;
-  /** Latest measured value of the metric. */
+  /** Latest measured value in real message units (counts or messages/s). */
   value: number;
 }
 
@@ -229,7 +250,14 @@ export interface SimulationRunState {
 }
 
 export interface SimulationRun {
+  /** Low-level engine: all message metrics and direct injections use sampled units. */
   readonly engine: SimEngine;
+  readonly units: SimulationUnits;
+  /** Inject a real message count, divided by scale; fractional credit is retained per node/type.
+   * Manual injection is independent of the traffic multiplier. Restart clears its credits. */
+  inject(nodeId: string, count: number, opts?: InjectOptions): void;
+  /** Inject the real count independently at every source, using each source's default type. */
+  injectAtSources(count: number, opts?: InjectOptions): void;
   /** Advance by dtMs of wall time (engine speed applies). No-op while waiting on a note or done. */
   step(dtMs: number): void;
   /** Update both the runner clock and engine without replacing caller-owned methods. */

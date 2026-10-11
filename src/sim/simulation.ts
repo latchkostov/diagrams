@@ -1,9 +1,12 @@
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
+import { stencilRole } from "../stencils/roles";
+import { resolveProps } from "./defaults";
 import { createEngine, seedEngine } from "./engine";
-import { resolveScale, resolveMultiplier, toRealUnits } from "./units";
+import { realFrame, realSnapshot, resolveScale, resolveMultiplier, toRealUnits } from "./units";
 export { autoScale } from "./scale";
 import type {
   ExpectationState,
+  InjectOptions,
   SimulationRun,
   SimulationRunOptions,
   SimulationRunState,
@@ -123,6 +126,11 @@ export function createSimulationRun(
     capacity: resolveMultiplier(simulation.multipliers?.capacity),
   };
   const injectionCredits = new Map<string, number>();
+  const manualCredits = new Map<string, number>();
+  const inputs = new Map(diagram.nodes.map((node) => [node.id, node]));
+  const sourceIds = diagram.nodes
+    .filter((node) => (opts.roleOf ?? stencilRole)(node.stencil) === "source")
+    .map((node) => node.id);
   const engine = opts.engine ?? createEngine({ ...opts, seed });
   const timeline = [...(simulation.timeline ?? [])].sort((a, b) => a.atMs - b.atMs);
   const markers: TimelineMarker[] = timeline.map((step) => ({
@@ -152,12 +160,26 @@ export function createSimulationRun(
     fired: boolean[] = [];
 
   function injectReal(node: string, count: number, type?: string, spreadMs?: number): void {
-    if (!diagram.nodes.some((input) => input.id === node)) return;
+    if (!inputs.has(node)) return;
     const key = JSON.stringify([node, type]);
     const credit = (injectionCredits.get(key) ?? 0) + (positive(count) * multipliers.traffic) / scale;
     const samples = Math.floor(credit + 1e-9);
     injectionCredits.set(key, credit - samples);
     if (samples > 0) engine.inject(node, samples, { type, spreadMs });
+  }
+
+  function injectManual(node: string, count: number, options: InjectOptions = {}): void {
+    const input = inputs.get(node);
+    if (!input || !Number.isFinite(count) || count <= 0) return;
+    const type =
+      options.type ??
+      resolveProps((opts.roleOf ?? stencilRole)(input.stencil), input.label, engine.effectiveProps(node)).messageType;
+    const key = JSON.stringify([node, type]);
+    const credit = (manualCredits.get(key) ?? 0) + count / scale;
+    const samples = Math.floor(credit + 1e-9);
+    manualCredits.set(key, credit - samples);
+    if (samples > 0) engine.inject(node, samples, { ...options, type });
+    refresh();
   }
 
   function actions(time: number): void {
@@ -177,7 +199,7 @@ export function createSimulationRun(
         case "note":
           note = {
             text: action.text,
-            focus: (action.focus ?? []).filter((id) => diagram.nodes.some((node) => node.id === id)),
+            focus: (action.focus ?? []).filter((id) => inputs.has(id)),
             atMs: step.atMs,
           };
           waiting = action.pause === true;
@@ -245,8 +267,9 @@ export function createSimulationRun(
       traffic: resolveMultiplier(simulation.multipliers?.traffic),
       capacity: resolveMultiplier(simulation.multipliers?.capacity),
     };
-    engine.setCapacityMultiplier(multipliers.capacity);
+    engine.setNodePropsBatch(simulation.setup?.props ?? {}, multipliers.capacity);
     injectionCredits.clear();
+    manualCredits.clear();
     speed = 1;
     scheduler.reset();
     cursor = 0;
@@ -262,7 +285,6 @@ export function createSimulationRun(
       status: "pending",
       value: 0,
     }));
-    for (const [id, props] of Object.entries(simulation.setup?.props ?? {})) engine.setNodeProps(id, props);
     for (const [id, status] of Object.entries(simulation.setup?.status ?? {})) engine.setNodeStatus(id, status);
     actions(0);
     if (!waiting) bursts(0);
@@ -272,6 +294,16 @@ export function createSimulationRun(
   restart();
   return {
     engine,
+    units: {
+      sampledFrame: () => engine.frame(),
+      realFrame: () => realFrame(engine.frame()),
+      sampledSnapshot: () => engine.snapshot(),
+      realSnapshot: () => realSnapshot(engine.snapshot()),
+    },
+    inject: injectManual,
+    injectAtSources(count, options) {
+      for (const id of sourceIds) injectManual(id, count, options);
+    },
     setMultipliers(patch) {
       multipliers = {
         traffic: resolveMultiplier(patch.traffic, multipliers.traffic),

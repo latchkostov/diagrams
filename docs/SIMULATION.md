@@ -55,6 +55,8 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
   delivery limit. `retryBackoffMs` (default 0) delays redelivery; in-place backoff blocks the slot,
   freezes while paused, and does not allow a long backlog to overtake the retry. An exhausted
   attempt goes straight to the DLQ path without another backoff. Checkpoints include retry state.
+  This also applies when a consumer goes down while a reserved delivery is still travelling:
+  arrival failures retain the work and reservation, allowing recovery or exhaustion to release it.
 - A message pushed to a `down` node (not from a broker) is `dropped`.
 - `paused` nodes accept and hold messages (backlog grows) but don't process or pull.
 
@@ -141,6 +143,13 @@ reservations, rather than processor replicas. Replica counts describe assignment
 status and lack of traffic do not change the idle-replica badge. Live replica/partition changes
 reassign capacity, preserving work already running until completion.
 
+`engine.setNodePropsBatch(patches, capacityMultiplier?)` applies all overrides before one assignment
+pass over affected groups. Setup uses this API, including its capacity multiplier. Individual patches
+skip assignment when effective replicas and broker partitions stay unchanged; concurrency changes
+refresh cached group slot limits. Unrelated groups are untouched. Ordinary routes, dead-letter
+classification, distinct membership and replica budgets come from the shared topology compiler in
+`src/sim/topology.ts`; polling uses cached limits and skips empty groups.
+
 `latencyMs` is sampled uniformly within ±`jitter` for each message and in-place retry. Jitter defaults
 to 0.2; `jitter: 0` gives exact timings. The same seed, operations and tick sequence produce the same
 jitter, routing and failures, including after checkpoint restore.
@@ -151,6 +160,20 @@ timeline injection counts and expectation values are all real units. Engine coun
 provide the weight. `toRealUnits`, `toSimulatedUnits`, `realNodeMetrics` and `realSnapshot` in
 `src/sim/units.ts` convert counts, throughput and lag. Time, replica counts and particles keep their
 native units; do not convert an already-converted snapshot again.
+
+The runner exposes explicit views through `run.units.sampledFrame()`, `realFrame()`,
+`sampledSnapshot()` and `realSnapshot()`. Real views have `units: "real"` and distinct exported types;
+their counters, rates, edge totals and lag are weighted, while clocks, replicas, particles and
+event/message identities remain sampled/native. `realFrame`, `realSnapshot` and `realNodeMetrics`
+preserve that tag and avoid repeated conversion. `run.state()` contains scheduling metadata and
+expectations in real units; `run.engine` remains the low-level sampled interface.
+
+`run.inject(node, count, options?)` accepts real message counts; at scale 50, 100 messages produce
+two sampled dots. Fractional credits accumulate independently per node and resolved message type,
+so two 25-message injections produce one dot. Unknown nodes and invalid counts do not consume
+credits. `run.injectAtSources(count, options?)` applies the count independently to every source-role
+node. Manual injection is independent of the traffic multiplier; scheduled profiles and timeline
+injections still use it. Restart clears manual credits. `spreadMs` always stays in milliseconds.
 
 A sampled processor admission consumes `scale` messages of service budget while its visible work
 keeps the configured per-message latency and parallelism. This preserves sustained real throughput
@@ -192,6 +215,9 @@ Traffic and capacity multipliers apply; scale does not change the analytic answe
 - A queue's capacity is the sum of ready consumer capacities. Topics/streams use the slowest required
   consumer group, with replicas capped by that group's partitions; filtered groups normalize their
   capacity by the accepted fraction of incoming traffic. A broker with no consumers has zero capacity.
+  For mixed types in a group, capacity uses compatible consumers only and accounts for shared service
+  budgets via residual minimum cuts. A consumer accepting only unrelated types contributes no capacity;
+  a blocked compatible route keeps its offered demand visible even when all matching weights are zero.
 - Offered demand is propagated by message type: copies for fan-out and distinct groups, capacity-weighted
   shares for competing group members, equal gateway routing, filters, node/edge emits and probabilistic
   share. Duplicate group routes share their target's capacity. Injected terminal traffic follows output

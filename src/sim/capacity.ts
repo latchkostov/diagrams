@@ -1,8 +1,15 @@
-import type { DiagramEdge, DiagramFile, DiagramNode, SimRole, Simulation } from "../model/types";
+import type { DiagramFile, DiagramNode, SimRole, Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { resolveProps, type ResolvedProps } from "./defaults";
 import { peakRate } from "./scale";
-import { acceptsType, allocateReplicas, brokerRole, emittedType, isDlqEdge } from "./topology";
+import {
+  acceptsType,
+  allocateGroupReplicas,
+  brokerRole,
+  compileTopology,
+  emittedType,
+  type CompiledEdge,
+} from "./topology";
 import { resolveMultiplier } from "./units";
 
 export interface NodeCapacity {
@@ -35,7 +42,7 @@ interface Entry {
 }
 interface ConsumerGroup {
   broker: Entry;
-  edges: DiagramEdge[];
+  edges: CompiledEdge[];
   allocations: Map<string, number>;
 }
 type Rates = Map<string, Map<string, number>>;
@@ -55,6 +62,75 @@ const total = (rates: Map<string, number> | undefined) =>
   [...(rates?.values() ?? [])].reduce((sum, rate) => sum + rate, 0);
 const ratio = (offered: number, capacity: number) =>
   capacity === 0 ? (offered > 0 ? Infinity : 0) : offered / capacity;
+
+/** Largest common demand multiplier feasible with compatible consumers sharing finite service budgets.
+ * Residual min-cuts identify constrained type subsets, avoiding exponential subset enumeration. */
+function compatibleScale(demand: { rate: number; consumers: string[] }[], capacities: Map<string, number>): number {
+  // Types with an unlimited compatible route can always use that route without consuming finite service.
+  const finite = demand.filter((item) => !item.consumers.some((id) => capacities.get(id) === Infinity));
+  if (!finite.length) return Infinity;
+  const members = [...new Set(finite.flatMap((item) => item.consumers))];
+  const total = finite.reduce((sum, item) => sum + item.rate, 0);
+  let multiplier = members.reduce((sum, id) => sum + capacities.get(id)!, 0) / total;
+  interface Arc {
+    to: number;
+    remaining: number;
+    reverse: number;
+  }
+  const source = 0,
+    sink = 1 + finite.length + members.length;
+  const memberIndex = new Map(members.map((id, index) => [id, 1 + finite.length + index]));
+  // As the multiplier decreases, source-side minimum cuts are nested (at most one per type).
+  for (let iteration = 0; iteration <= finite.length && multiplier > 0; iteration++) {
+    const graph: Arc[][] = Array.from({ length: sink + 1 }, () => []);
+    function connect(from: number, to: number, remaining: number): void {
+      graph[from].push({ to, remaining, reverse: graph[to].length });
+      graph[to].push({ to: from, remaining: 0, reverse: graph[from].length - 1 });
+    }
+    finite.forEach((item, index) => {
+      connect(source, 1 + index, item.rate * multiplier);
+      for (const id of item.consumers) connect(1 + index, memberIndex.get(id)!, Infinity);
+    });
+    for (const id of members) connect(memberIndex.get(id)!, sink, capacities.get(id)!);
+    let flow = 0;
+    let reached: number[] = [];
+    for (;;) {
+      const parent = Array<number>(graph.length).fill(-1),
+        via = Array<number>(graph.length).fill(-1);
+      parent[source] = source;
+      reached = [source];
+      for (let head = 0; head < reached.length && parent[sink] < 0; head++) {
+        const from = reached[head];
+        graph[from].forEach((arc, index) => {
+          if (arc.remaining > 1e-10 && parent[arc.to] < 0) {
+            parent[arc.to] = from;
+            via[arc.to] = index;
+            reached.push(arc.to);
+          }
+        });
+      }
+      if (parent[sink] < 0) break;
+      let amount = Infinity;
+      for (let to = sink; to !== source; to = parent[to])
+        amount = Math.min(amount, graph[parent[to]][via[to]].remaining);
+      for (let to = sink; to !== source; to = parent[to]) {
+        const arc = graph[parent[to]][via[to]];
+        arc.remaining -= amount;
+        graph[to][arc.reverse].remaining += amount;
+      }
+      flow += amount;
+    }
+    if (flow >= total * multiplier - 1e-8 * Math.max(1, total * multiplier)) return multiplier;
+    const cut = new Set(reached);
+    const constrained = finite.filter((_, index) => cut.has(1 + index));
+    const budget = [...new Set(constrained.flatMap((item) => item.consumers))].reduce(
+      (sum, id) => sum + capacities.get(id)!,
+      0,
+    );
+    multiplier = budget / constrained.reduce((sum, item) => sum + item.rate, 0);
+  }
+  return multiplier;
+}
 
 /** Nominal peak-demand planning: setup and multipliers apply; timeline chaos/retries/travel are excluded.
  * Demand is not clipped at upstream capacity, so downstream overloads remain visible. */
@@ -77,55 +153,30 @@ export function analyzeCapacity(diagram: DiagramFile, simulation?: Simulation): 
       up: status !== "down" && status !== "paused",
     });
   }
-  const ids = new Set<string>();
-  const edges = diagram.edges.filter((edge) => {
-    const from = entries.get(edge.from),
-      to = entries.get(edge.to);
-    if (!from || !to || ids.has(edge.id)) return false;
-    ids.add(edge.id);
-    return !isDlqEdge(edge, from.role, to.input, to.role);
-  });
-  const outgoing = new Map<string, DiagramEdge[]>();
-  for (const edge of edges) {
-    const list = outgoing.get(edge.from) ?? [];
-    list.push(edge);
-    outgoing.set(edge.from, list);
-  }
+  const compiled = compileTopology(diagram);
+  const outgoing = compiled.outgoing;
   const groups = new Map<string, ConsumerGroup[]>();
-  const restricted = new Set<string>(),
-    unrestricted = new Set<string>();
   const assigned = new Map<string, number>();
-  for (const edge of edges) {
-    const from = entries.get(edge.from)!;
-    if (from.role === "topic" || from.role === "stream") restricted.add(edge.to);
-    else unrestricted.add(edge.to);
-  }
-  for (const entry of entries.values()) {
-    if (!brokerRole(entry.role)) continue;
-    const named = new Map<string, DiagramEdge[]>();
-    for (const edge of outgoing.get(entry.input.id) ?? []) {
-      const name =
-        entry.role === "queue" ? "queue" : typeof edge.props?.group === "string" ? edge.props.group : edge.id;
-      const list = named.get(name) ?? [];
-      list.push(edge);
-      named.set(name, list);
-    }
-    const consumerGroups = [...named.values()].map((groupEdges) => {
-      const members = groupEdges.map((edge) => ({
-        id: edge.to,
-        replicas: entries.get(edge.to)!.role === "processor" ? entries.get(edge.to)!.replicas : entry.props.partitions,
-      }));
-      const allocations = allocateReplicas(
-        members,
-        entry.role === "queue" ? members.reduce((sum, member) => sum + member.replicas, 0) : entry.props.partitions,
-      );
-      for (const [id, count] of allocations) assigned.set(id, Math.max(assigned.get(id) ?? 0, count));
-      return { broker: entry, edges: groupEdges, allocations };
-    });
-    groups.set(entry.input.id, consumerGroups);
+  for (const [id, compiledGroups] of compiled.groups) {
+    const broker = entries.get(id)!;
+    groups.set(
+      id,
+      compiledGroups.map((group) => {
+        const allocations = allocateGroupReplicas(
+          broker.role,
+          broker.props.partitions,
+          group.members.map((id) => {
+            const target = entries.get(id)!;
+            return { id, role: target.role, replicas: target.replicas };
+          }),
+        );
+        for (const [id, count] of allocations) assigned.set(id, Math.max(assigned.get(id) ?? 0, count));
+        return { broker, edges: group.edges, allocations };
+      }),
+    );
   }
   for (const [id, entry] of entries) {
-    if (restricted.has(id) && !unrestricted.has(id)) entry.active = Math.min(entry.replicas, assigned.get(id) ?? 0);
+    if (compiled.restricted.has(id)) entry.active = Math.min(entry.replicas, assigned.get(id) ?? 0);
   }
   const external: Rates = new Map();
   let capped = false;
@@ -152,27 +203,33 @@ export function analyzeCapacity(diagram: DiagramFile, simulation?: Simulation): 
     for (const [id, entry] of entries)
       if (entry.role === "source") add(external, id, entry.props.messageType, entry.props.ratePerSec);
   }
-  const groupRate = (group: ConsumerGroup, edge: DiagramEdge) => {
+  const groupRate = (group: ConsumerGroup, edge: CompiledEdge) => {
     const target = entries.get(edge.to)!;
     const allocated = group.allocations.get(edge.to) ?? 0;
     return allocated ? serviceRate(target, allocated) : 0;
   };
-  function split(next: Rates, candidates: DiagramEdge[], type: string, rate: number, weights: number[]): void {
+  function split(next: Rates, candidates: CompiledEdge[], type: string, rate: number, weights: number[]): void {
     const infinite = weights.filter((weight) => weight === Infinity).length;
     const sum = weights.reduce((value, weight) => value + (Number.isFinite(weight) ? weight : 0), 0);
     candidates.forEach((edge, index) => {
-      const fraction = infinite ? (weights[index] === Infinity ? 1 / infinite : 0) : sum ? weights[index] / sum : 0;
-      add(next, edge.to, emittedType(edge.props?.emits, type), rate * fraction);
+      const fraction = infinite
+        ? weights[index] === Infinity
+          ? 1 / infinite
+          : 0
+        : sum
+          ? weights[index] / sum
+          : 1 / candidates.length;
+      add(next, edge.to, emittedType(edge.emits, type), rate * fraction);
     });
   }
   function propagate(next: Rates, entry: Entry, type: string, rate: number, injected: boolean): void {
     if (!rate) return;
     const id = entry.input.id;
     if (entry.role === "processor" || entry.role === "none") type = emittedType(entry.props.emits, type);
-    const routes = (outgoing.get(id) ?? []).filter((edge) => acceptsType(edge.props?.filter, type));
+    const routes = (outgoing.get(id) ?? []).filter((edge) => acceptsType(edge.filter, type));
     if (brokerRole(entry.role)) {
       for (const group of groups.get(id) ?? []) {
-        const accepting = group.edges.filter((edge) => acceptsType(edge.props?.filter, type));
+        const accepting = group.edges.filter((edge) => acceptsType(edge.filter, type));
         split(
           next,
           accepting,
@@ -193,12 +250,10 @@ export function analyzeCapacity(diagram: DiagramFile, simulation?: Simulation): 
       );
     } else {
       for (const edge of routes) {
-        if (!injected && (entry.role === "sink" || (entry.role === "store" && edge.kind === "sync"))) continue;
+        if (!injected && (entry.role === "sink" || (entry.role === "store" && edge.sync))) continue;
         const share =
-          typeof edge.props?.share === "number" && Number.isFinite(edge.props.share)
-            ? Math.max(0, Math.min(1, edge.props.share))
-            : 1;
-        add(next, edge.to, emittedType(edge.props?.emits, type), rate * share);
+          typeof edge.share === "number" && Number.isFinite(edge.share) ? Math.max(0, Math.min(1, edge.share)) : 1;
+        add(next, edge.to, emittedType(edge.emits, type), rate * share);
       }
     }
   }
@@ -233,13 +288,17 @@ export function analyzeCapacity(diagram: DiagramFile, simulation?: Simulation): 
     let capacity = serviceRate(entry);
     if (brokerRole(entry.role)) {
       const limits = (groups.get(id) ?? []).map((group) => {
-        const unique = [...new Map(group.edges.map((edge) => [edge.to, edge])).values()];
-        const service = unique.reduce((sum, edge) => sum + groupRate(group, edge), 0);
-        const accepted = [...(rates.get(id) ?? [])].reduce(
-          (sum, [type, rate]) => sum + (group.edges.some((edge) => acceptsType(edge.props?.filter, type)) ? rate : 0),
-          0,
-        );
-        return offered && !accepted ? Infinity : accepted ? (service * offered) / accepted : service;
+        const capacities = new Map(group.edges.map((edge) => [edge.to, groupRate(group, edge)]));
+        const demands = [...(rates.get(id) ?? [])]
+          .map(([type, rate]) => ({
+            rate,
+            consumers: [
+              ...new Set(group.edges.filter((edge) => acceptsType(edge.filter, type)).map((edge) => edge.to)),
+            ],
+          }))
+          .filter((demand) => demand.consumers.length);
+        if (!demands.length) return offered ? Infinity : [...capacities.values()].reduce((sum, rate) => sum + rate, 0);
+        return compatibleScale(demands, capacities) * offered;
       });
       capacity = !entry.up ? 0 : limits.length ? Math.min(...limits) : 0;
     }
