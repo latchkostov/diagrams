@@ -107,6 +107,7 @@ export function sanitizeSettings(raw: unknown): ConfigSetting[] | undefined {
     if (typeof item !== "object" || item === null) continue;
     const { key, secret } = item as { key?: unknown; secret?: unknown };
     if (typeof key !== "string") continue;
+    if (looksLikeCredential(key)) continue;
     const k = key.trim().slice(0, MAX_SETTING_KEY);
     if (!k || seen.has(k)) continue;
     seen.add(k);
@@ -119,95 +120,171 @@ export function sanitizeSettings(raw: unknown): ConfigSetting[] | undefined {
 const SECRET_VALUE =
   /@Microsoft\.KeyVault|vault\.azure\.net|application\/vnd\.microsoft\.appconfig\.keyvaultref|\/aws\/reference\/secretsmanager\/|secretsmanager:|"uri"\s*:/i;
 
-/**
- * Forgiving paste parser: one setting per line. A leading `!` (or a lock) marks a secret. Lines from
- * appsettings.json (`"Key": value`), .env / az appconfig output (`key=value`, `key value`) and plain
- * keys all work; values that are Key Vault or Secrets Manager references mark the key secret.
- * Keys may contain `:` (".NET sections") and `/` (parameter paths), so only `"…":` and `=` split.
- */
+export const MAX_SETTINGS_TEXT = 1_000_000;
+export const MAX_SETTINGS_DEPTH = 16;
+
+/** Credential-shaped text is never a setting name, including names supplied by JSON imports. */
+function looksLikeCredential(key: string): boolean {
+  return (
+    /(?:^|[;:])\s*(?:Server|Data Source|AccountKey|SharedAccessKey|Password|User Id)\s*=[^;]+(?:;|$)/i.test(key) ||
+    /(?:^|[:/])(?:Bearer\s+|eyJ[\w-]+\.[\w-]+\.[\w-]+|(?:sk|ghp|github_pat|AKIA)[_-]?[\w-]{16,})/i.test(key.trim()) ||
+    (/^[A-Za-z0-9+/_=-]{40,}$/.test(key.trim()) && /[A-Z]/.test(key) && /[a-z]/.test(key) && /\d/.test(key)) ||
+    /:\/\/[^\s/]+:[^\s/]+@/.test(key)
+  );
+}
+
+/** Bound before parsing. Braces inside strings do not count as nesting. */
+function checkSettingsInput(text: string): void {
+  if (text.length > MAX_SETTINGS_TEXT) throw new Error("Settings paste is too large (maximum 1,000,000 characters).");
+  let depth = 0,
+    quoted = false,
+    escaped = false;
+  for (const c of text) {
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (c === "\\") escaped = true;
+      else if (c === '"') quoted = false;
+    } else if (c === '"') quoted = true;
+    else if (c === "{" || c === "[") {
+      if (++depth > MAX_SETTINGS_DEPTH) throw new Error("Settings paste exceeds the nesting limit (16 levels).");
+    } else if (c === "}" || c === "]") depth--;
+  }
+}
+
+/** Detect references without serializing values. Input is depth bounded. */
+function secretValue(value: unknown): boolean {
+  const pending: unknown[] = [value];
+  while (pending.length) {
+    const v = pending.pop();
+    if (typeof v === "string" && SECRET_VALUE.test(v)) return true;
+    if (v && typeof v === "object") {
+      if ("uri" in v) return true;
+      for (const item of Object.values(v)) pending.push(item);
+    }
+  }
+  return false;
+}
+
+/** Paste import only: discard values from appsettings, .env, CLI JSON and key/value lines. */
 export function parseSettings(text: string): ConfigSetting[] {
-  const whole = parseJsonSettings(text);
-  if (whole) return whole;
+  checkSettingsInput(text);
+  const t = text.trim();
+  if (/^[[{]/.test(t) && !t.startsWith("[lock]")) return parseJsonSettings(t);
   const out: ConfigSetting[] = [];
   for (const raw of text.split(/\r?\n/)) {
     let line = raw.trim().replace(/,$/, "").trim();
-    if (!line || line.startsWith("#") || line.startsWith("//") || /^[{}[\]]+$/.test(line)) continue;
+    if (!line || line.startsWith("#") || line.startsWith("//")) continue;
     let secret = false;
     const marker = /^(!|🔒|\[lock\])\s*/u.exec(line);
     if (marker) {
       secret = true;
       line = line.slice(marker[0].length);
     }
-    let key = line;
-    let value = "";
+    line = line.replace(/^export\s+/, "");
+    // Recognize the name=connection-string case before rejecting standalone credential values.
+    if (
+      /^(?:Server|Data Source|DefaultEndpointsProtocol|AccountName|Host)\s*=.*;/i.test(line) ||
+      (!/^[\w:/.-]+=/.test(line) && looksLikeCredential(line))
+    )
+      continue;
+    let key = line,
+      value = "";
     const json = /^"((?:[^"\\]|\\.)*)"\s*:\s*(.*)$/.exec(line);
     if (json) {
-      key = json[1];
+      try {
+        key = JSON.parse(`"${json[1]}"`) as string;
+      } catch {
+        throw new Error("Invalid JSON setting name.");
+      }
       value = json[2];
     } else {
       const eq = line.indexOf("=");
+      const sp = /\s/.exec(line);
       if (eq > 0) {
         key = line.slice(0, eq);
         value = line.slice(eq + 1);
-      } else {
-        const sp = /\s/.exec(line);
-        if (sp) {
-          key = line.slice(0, sp.index);
-          value = line.slice(sp.index);
-        }
+      } else if (sp) {
+        key = line.slice(0, sp.index);
+        value = line.slice(sp.index);
       }
+      key = key.trim().replace(/^["'`]|["'`]$/g, "");
     }
-    key = key.trim().replace(/^["'`]|["'`]$/g, "");
-    if (!key) continue;
     if (SECRET_VALUE.test(value) || /^\/aws\/reference\/secretsmanager\//i.test(key)) secret = true;
+    out.push(secret ? { key, secret: true } : { key });
+    if (out.length >= MAX_SETTINGS) break;
+  }
+  return sanitizeSettings(out) ?? [];
+}
+
+/** Structured input never falls back to lines, even when malformed or rejected. */
+function parseJsonSettings(text: string): ConfigSetting[] {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("Invalid JSON settings paste. Paste a complete document.");
+  }
+  const out: ConfigSetting[] = [];
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      if (!item || typeof item !== "object") continue;
+      const { key, value, contentType } = item as Record<string, unknown>;
+      if (typeof key === "string")
+        out.push({
+          key,
+          ...(secretValue(value) || (typeof contentType === "string" && /keyvaultref/i.test(contentType))
+            ? { secret: true }
+            : {}),
+        });
+      if (out.length >= MAX_SETTINGS) break;
+    }
+  } else if (data && typeof data === "object") {
+    const walk = (obj: Record<string, unknown>, prefix: string) => {
+      for (const [k, v] of Object.entries(obj)) {
+        if (out.length >= MAX_SETTINGS) return;
+        const key = prefix ? `${prefix}:${k}` : k;
+        if (v && typeof v === "object" && !Array.isArray(v) && !("uri" in v)) walk(v as Record<string, unknown>, key);
+        else out.push({ key, ...(secretValue(v) ? { secret: true } : {}) });
+      }
+    };
+    walk(data as Record<string, unknown>, "");
+  }
+  return sanitizeSettings(out) ?? [];
+}
+
+/** Lossless literal editor codec: leading ! and JSON-quoted names are the only syntax. */
+export function parseSettingsEditor(text: string): ConfigSetting[] {
+  if (text.length > MAX_SETTINGS_TEXT) return [];
+  const out: ConfigSetting[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const secret = raw.startsWith("!");
+    let key = (secret ? raw.slice(1) : raw).trim();
+    if (key.startsWith('"')) {
+      try {
+        const decoded: unknown = JSON.parse(key);
+        if (typeof decoded !== "string") continue;
+        key = decoded;
+      } catch {
+        continue;
+      } // Incomplete quoted names are still being edited.
+    }
     out.push(secret ? { key, secret: true } : { key });
   }
   return sanitizeSettings(out) ?? [];
 }
 
-/**
- * A whole pasted JSON document: `az appconfig kv list` (an array of `{ key, value, contentType }`)
- * or an appsettings.json object (nested sections flatten to "Section:Key"). Undefined otherwise.
- */
-function parseJsonSettings(text: string): ConfigSetting[] | undefined {
-  const t = text.trim();
-  if (!/^[[{]/.test(t) || t.length > 1_000_000) return undefined;
-  let data: unknown;
-  try {
-    data = JSON.parse(t);
-  } catch {
-    return undefined;
-  }
-  const out: ConfigSetting[] = [];
-  const isSecret = (v: unknown, contentType?: unknown) =>
-    (typeof contentType === "string" && /keyvaultref/i.test(contentType)) ||
-    (typeof v === "string" && SECRET_VALUE.test(v)) ||
-    (typeof v === "object" && v !== null && SECRET_VALUE.test(JSON.stringify(v)));
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      if (typeof item !== "object" || item === null) continue;
-      const { key, value, contentType } = item as Record<string, unknown>;
-      if (typeof key === "string") out.push({ key, ...(isSecret(value, contentType) ? { secret: true } : {}) });
-    }
-  } else if (typeof data === "object" && data !== null) {
-    const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
-      for (const [k, v] of Object.entries(obj)) {
-        if (out.length >= MAX_SETTINGS) return;
-        const key = prefix ? `${prefix}:${k}` : k;
-        const keyVaultRef = typeof v === "object" && v !== null && "uri" in v;
-        if (typeof v === "object" && v !== null && !Array.isArray(v) && !keyVaultRef && depth < 8)
-          walk(v as Record<string, unknown>, key, depth + 1);
-        else out.push({ key, ...(isSecret(v) ? { secret: true } : {}) });
-      }
-    };
-    walk(data as Record<string, unknown>, "", 0);
-  }
-  return sanitizeSettings(out) ?? [];
-}
-
-/** The textarea form: one key per line, `!` before a secret. Round-trips through parseSettings. */
 export const settingsText = (settings: readonly ConfigSetting[]) =>
-  settings.map((s) => `${s.secret ? "!" : ""}${s.key}`).join("\n");
+  settings.map((s) => `${s.secret ? "!" : ""}${/^[\w:/*.-]+$/.test(s.key) ? s.key : JSON.stringify(s.key)}`).join("\n");
+
+/** Shared semantics for playback and edit-capacity cache invalidation. */
+export const edgeSemanticSignature = (e: Pick<DiagramEdge, "id" | "from" | "to" | "kind" | "relation" | "props">) => [
+  e.id,
+  e.from,
+  e.to,
+  e.kind ?? "async",
+  relationOf(e),
+  e.props ?? null,
+];
 
 /** "4 settings · 2 secret", "1 setting", or undefined when there are none. */
 export function settingsSummary(settings: readonly ConfigSetting[]): string | undefined {
@@ -252,4 +329,52 @@ export function edgeSettingsList(edge: EdgeLike, edges: readonly EdgeLike[]): Co
   if (relation === "config") return edgeSettings(edge);
   if (relation === "secret") return referencedSettings(edges, edge.from);
   return [];
+}
+
+export interface EdgeRelationInfo {
+  relation: DependencyRelation;
+  text?: string;
+  derived: boolean;
+  settings: ConfigSetting[];
+}
+
+/** Sanitize each config once, then aggregate references once per store, shared by labels and cards. */
+export function deriveRelationInfo(
+  edges: readonly (EdgeLike & { id: string; label?: string })[],
+): Map<string, EdgeRelationInfo> {
+  const settingsByEdge = new Map<string, ConfigSetting[]>();
+  const refs = new Map<string, Map<string, ConfigSetting>>();
+  for (const e of edges) {
+    if (relationOf(e) !== "config") continue;
+    const settings = edgeSettings(e);
+    settingsByEdge.set(e.id, settings);
+    let store = refs.get(e.to);
+    if (!store) {
+      store = new Map();
+      refs.set(e.to, store);
+    }
+    for (const setting of settings) if (setting.secret && !store.has(setting.key)) store.set(setting.key, setting);
+  }
+  const referencedSettingsByStore = new Map([...refs].map(([id, settings]) => [id, [...settings.values()]]));
+  const result = new Map<string, EdgeRelationInfo>();
+  const empty: ConfigSetting[] = [];
+  for (const e of edges) {
+    const relation = relationOf(e);
+    if (relation === "flow") continue;
+    const settings =
+      relation === "config"
+        ? (settingsByEdge.get(e.id) ?? empty)
+        : relation === "secret"
+          ? (referencedSettingsByStore.get(e.from) ?? empty)
+          : empty;
+    const label = e.label?.trim();
+    const derived =
+      relation === "config"
+        ? settingsSummary(settings)
+        : relation === "secret" && settings.length
+          ? `${settings.length} reference${settings.length === 1 ? "" : "s"}`
+          : undefined;
+    result.set(e.id, { relation, text: label || derived, derived: !label && !!derived, settings });
+  }
+  return result;
 }

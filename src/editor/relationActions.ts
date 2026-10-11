@@ -60,14 +60,14 @@ export function choiceOf(e: Pick<DiagramEdge, "kind" | "relation"> | undefined):
 /** Sets one relationship on many edges as a single undo step. Kind is kept on dependencies. */
 export function applyChoice(editor: EditorApi, edgeIds: readonly string[], choice: RelationChoice): void {
   const merge = `relation:${edgeIds.join(",")}:${Date.now()}`;
-  for (const id of edgeIds) {
-    if (!editor.getEdge(id)) continue;
-    editor.updateEdge(
-      id,
-      choice.relation === "flow" ? { relation: undefined, kind: choice.kind } : { relation: choice.relation },
-      { merge },
-    );
-  }
+  const existing = new Set(editor.getDiagram().edges.map((e) => e.id));
+  const ids = edgeIds.filter((id) => existing.has(id));
+  if (!ids.length) return;
+  editor.updateEdges(
+    ids,
+    choice.relation === "flow" ? { relation: undefined, kind: choice.kind } : { relation: choice.relation },
+    { merge },
+  );
 }
 
 /** The edges a menu acts on: the selection when the clicked edge is part of it, else just that edge. */
@@ -79,7 +79,8 @@ function targetEdges(ctx: ActionContext): string[] {
 
 export function relationMenu(ctx: ActionContext): MenuNode[] {
   const ids = targetEdges(ctx);
-  const current = new Set(ids.map((id) => choiceOf(ctx.editor.getEdge(id))));
+  const byId = new Map(ctx.editor.getDiagram().edges.map((e) => [e.id, e]));
+  const current = new Set(ids.map((id) => choiceOf(byId.get(id))));
   return RELATION_CHOICES.flatMap((c): MenuNode[] => [
     ...(GROUP_STARTS.has(c.id) ? [{ type: "separator" } as const] : []),
     {

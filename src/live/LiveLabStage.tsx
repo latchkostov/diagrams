@@ -1,3 +1,4 @@
+import { projectDependencies, useShowDependencies } from "../canvas/dependencyVisibility";
 import { useContext, useMemo, useState, type ContextType } from "react";
 import {
   Background,
@@ -48,6 +49,8 @@ function Stage({ diagram, initial, presenting = false }: LiveLabStageProps) {
   const flow = useMemo(() => toFlow(diagram), [diagram]);
   const [nodes, , onNodesChange] = useNodesState<FlowNode>(flow.nodes);
   const [edges, , onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
+  const showDependencies = useShowDependencies();
+  const visibleEdges = useMemo(() => projectDependencies(edges, showDependencies), [edges, showDependencies]);
   const base = useContext(DiagramContext);
   const [editing, setEditing] = useState<unknown>(null);
   const ui = useMemo(
@@ -61,7 +64,7 @@ function Stage({ diagram, initial, presenting = false }: LiveLabStageProps) {
         <EdgeMarkers />
         <ReactFlow<FlowNode, DiagramFlowEdge>
           nodes={nodes}
-          edges={edges}
+          edges={visibleEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}

@@ -1,3 +1,6 @@
+import { useSettings } from "../../harness/settings";
+import { useDiagram } from "../DiagramContext";
+import { useShowDependencies } from "../dependencyVisibility";
 import { useCallback } from "react";
 import { useStore, type InternalNode, type ReactFlowState } from "@xyflow/react";
 import type { EdgeStyle } from "../../harness/edgeStyles";
@@ -41,7 +44,21 @@ interface Entry {
   ms: number;
 }
 
-const entries = new WeakMap<object, Entry>();
+const entries = new WeakMap<object, Map<string, Entry>>();
+
+/** Every canvas consumer uses the same view options, including dependency visibility. */
+export function useRoutingOptions(overrides?: Pick<RouteOptions, "style" | "direction" | "captions">): RouteOptions {
+  const { edgeStyle, nodeVariant } = useSettings();
+  const { direction } = useDiagram();
+  const showDependencies = useShowDependencies();
+  return {
+    style: edgeStyle,
+    direction,
+    captions: nodeVariant === "iconOnly",
+    ...overrides,
+    hideDependencies: !showDependencies,
+  };
+}
 
 function rectOf(n: InternalNode<FlowNode>): Rect {
   const d = n.data as Partial<DiagramNodeData>;
@@ -87,7 +104,7 @@ export function routeInputFromStore(
     direction: opts.direction,
     style: opts.style,
     edges: edges
-      .filter((e) => !(opts.hideDependencies && deps.has(e.id)))
+      .filter((e) => !e.hidden && !(opts.hideDependencies && deps.has(e.id)))
       .map((e) => {
         const dep = deps.get(e.id);
         return {
@@ -105,12 +122,17 @@ export function routeInputFromStore(
 
 /** Routes for every edge in the store (memoised per store state). */
 export function selectRoutes(s: ReactFlowState<FlowNode, DiagramFlowEdge>, opts: RouteOptions): Map<string, EdgeRoute> {
-  let e = entries.get(s.nodeLookup);
+  const optsKey = `${opts.style}|${opts.direction}|${opts.captions ? 1 : 0}|${opts.hideDependencies ? 1 : 0}`;
+  let byOptions = entries.get(s.nodeLookup);
+  if (!byOptions) {
+    byOptions = new Map();
+    entries.set(s.nodeLookup, byOptions);
+  }
+  let e = byOptions.get(optsKey);
   if (!e) {
     e = { router: new Router(), nodes: [], routes: new Map(), ms: 0 };
-    entries.set(s.nodeLookup, e);
+    byOptions.set(optsKey, e);
   }
-  const optsKey = `${opts.style}|${opts.direction}|${opts.captions ? 1 : 0}|${opts.hideDependencies ? 1 : 0}`;
   if (e.state === s && e.optsKey === optsKey) return e.routes;
   // Same nodes (by identity: React Flow replaces an internal node whenever it changes) and edges?
   const relevantNodes = [...s.nodeLookup.values()].filter(
@@ -138,7 +160,7 @@ export function selectRoutes(s: ReactFlowState<FlowNode, DiagramFlowEdge>, opts:
 
 /** Duration of the last routing pass for this store, for the Lab's perf readout. */
 export function lastRoutingMs(s: ReactFlowState<FlowNode, DiagramFlowEdge>): number {
-  return entries.get(s.nodeLookup)?.ms ?? 0;
+  return Math.max(0, ...[...(entries.get(s.nodeLookup)?.values() ?? [])].map((e) => e.ms));
 }
 
 export function useEdgeRoute(id: string, opts: RouteOptions): EdgeRoute | undefined {

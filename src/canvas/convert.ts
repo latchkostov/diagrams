@@ -85,7 +85,15 @@ export function withEdgeAria(edges: DiagramFlowEdge[], labelOf: (id: string) => 
     changed = true;
     const cached = edgeAriaCopies.get(e);
     if (cached?.ariaLabel === want) return cached;
-    const copy = { ...e, ariaLabel: want };
+    const copy = {
+      ...e,
+      ariaLabel: want,
+      domAttributes: {
+        ...e.domAttributes,
+        "data-testid": `relationship-wrapper-${e.id}`,
+        "data-dependency": isDependency(e.data) ? "true" : "false",
+      },
+    };
     edgeAriaCopies.set(e, copy);
     return copy;
   });

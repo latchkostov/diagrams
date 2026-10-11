@@ -455,7 +455,7 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
     // is that dependency; our metadata says so exactly. Anything else stays a message, as before.
     const saved: unknown = meta?.relations?.[i];
     const read = e.kind === "async" ? readDependencyLabel(e.label) : undefined;
-    const relation = meta?.relations ? (isEdgeRelation(saved) && saved !== "flow" ? saved : undefined) : read?.relation;
+    const relation = meta ? (isEdgeRelation(saved) && saved !== "flow" ? saved : undefined) : read?.relation;
     const label = relation && read?.relation === relation ? read.label : e.label;
     return {
       id: meta?.edges?.[i] ?? `e${i + 1}-${idMap.get(e.from)}-${idMap.get(e.to)}`,

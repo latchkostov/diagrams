@@ -320,14 +320,11 @@ function repairRelation(e: Record<string, unknown>, warnings: string[]): void {
   const props = e.props as Record<string, unknown> | undefined;
   if (props?.settings !== undefined) {
     const settings = sanitizeSettings(props.settings);
-    const same = Array.isArray(props.settings) && settings?.length === props.settings.length;
-    if (!same) {
-      const next = { ...props };
-      if (settings) next.settings = settings;
-      else delete next.settings;
-      if (Object.keys(next).length) e.props = next;
-      else delete e.props;
-    }
+    const next = { ...props };
+    if (settings) next.settings = settings;
+    else delete next.settings;
+    if (Object.keys(next).length) e.props = next;
+    else delete e.props;
   }
 }
 

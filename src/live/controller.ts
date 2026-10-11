@@ -8,7 +8,7 @@
 // `state.snapshot` is converted once to real messages for every number people read, and manual
 // injections take real counts (fractions of a dot carry over to the next injection).
 
-import { flowEdges, relationOf } from "../model/relations";
+import { flowEdges, edgeSemanticSignature } from "../model/relations";
 import type { DiagramFile, Simulation } from "../model/types";
 import { createRealCountInjector } from "../sim/injection";
 import { stencilRole } from "../stencils/roles";
@@ -84,7 +84,7 @@ export type DiagramUpdate = "none" | "patched" | "reloaded";
 export function structuralKey(d: DiagramFile): string {
   return JSON.stringify([
     d.nodes.map((n) => [n.id, n.stencil, n.label, n.sublabel ?? ""]),
-    d.edges.map((e) => [e.id, e.from, e.to, e.kind ?? "async", relationOf(e), e.props ?? null]),
+    d.edges.map(edgeSemanticSignature),
   ]);
 }
 

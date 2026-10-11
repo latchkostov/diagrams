@@ -59,17 +59,15 @@ test.describe("relationships", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("drawing an edge to Key Vault infers a secret; the toast's Make it a flow undoes it", async ({
-    page,
-    consoleErrors,
-  }) => {
+  test("immediate Make it a flow undoes to the inferred dependency", async ({ page, consoleErrors }) => {
+    await page.clock.install();
+    await page.clock.pauseAt(new Date());
     await drawEdge(page, "handle-notify-bottom", "handle-kv-right");
     const edge = page.getByTestId("edge-e-1");
     await expect(edge).toHaveAttribute("data-relation", "secret");
     await expect(page.getByTestId("edge-glyph-e-1")).toBeVisible();
     await expect(page.getByTestId("toast")).toContainText("Secret dependency: no messages flow here");
-    // Let the drawn edge settle into its own undo step (history commits after a short quiet time).
-    await page.waitForTimeout(600);
+    // Frozen clock: conversion happens before the 350 ms history debounce.
     await page.getByTestId("toast-make-flow").click();
     await expect(edge).not.toHaveAttribute("data-relation", /.+/);
     await expect(edge).toHaveAttribute("class", /fe-async/);
@@ -78,6 +76,8 @@ test.describe("relationships", () => {
     await page.getByTestId("canvas-wrap").click({ position: { x: 600, y: 90 } });
     await page.keyboard.press(process.platform === "darwin" ? "Meta+z" : "Control+z");
     await expect(edge).toHaveAttribute("data-relation", "secret");
+    await page.keyboard.press(process.platform === "darwin" ? "Meta+Shift+z" : "Control+Shift+z");
+    await expect(edge).not.toHaveAttribute("data-relation", /.+/);
     expectNoErrors(consoleErrors);
   });
 
@@ -249,4 +249,195 @@ test.describe("relationships", () => {
     await expect(page.getByTestId("edge-api-to-mi")).toHaveAttribute("data-relation", "identity");
     await expect(page.getByTestId("inspector-relation-hint")).toHaveCount(0);
   });
+});
+
+async function pasteSettings(page: Page, text: string) {
+  const field = page.getByTestId("inspector-field-settings");
+  await field.focus();
+  await field.selectText();
+  await field.evaluate((el, value) => {
+    const data = new DataTransfer();
+    data.setData("text/plain", value);
+    const event = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
+    if (el.dispatchEvent(event)) {
+      // Match the browser's default paste when the app doesn't intercept it.
+      const field = el as HTMLTextAreaElement;
+      const next = field.value.slice(0, field.selectionStart) + value + field.value.slice(field.selectionEnd);
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+      if (!setter) throw new Error("Textarea value setter missing");
+      setter.call(field, next);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }, text);
+}
+
+for (const theme of ["light", "dark"] as const)
+  test(`settings cards are hoverable, Escape dismisses and focus restores contrast in ${theme}`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.clock.install();
+    await gotoCanvas(page, SLUG);
+    if (theme === "dark") await page.getByTestId("theme-toggle").click();
+    await page.getByTestId("live-toggle").click();
+    await page.clock.runFor(1200);
+    const pill = page.getByTestId("edge-label-api-to-appcfg");
+    const card = page.getByTestId("edge-settings-api-to-appcfg");
+    await pill.hover();
+    await expect(card).toBeVisible();
+    await card.hover();
+    await expect(card).toBeVisible();
+    await page.mouse.move(5, 500);
+    await expect(card).toHaveCount(0);
+    await pill.focus();
+    await expect(card).toBeVisible();
+    await expect.poll(() => pill.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+    await expectNoViolations(page, "edge-label-api-to-appcfg");
+    await pill.press("Escape");
+    await expect(card).toHaveCount(0);
+    await expect(pill).toBeFocused();
+    await pill.blur();
+    await pill.focus();
+    await expect(card).toBeVisible();
+    await pill.blur();
+    await page.getByTestId("relationship-wrapper-api-to-appcfg").focus();
+    await expect
+      .poll(() => page.getByTestId("edge-api-to-appcfg").evaluate((el) => getComputedStyle(el).opacity))
+      .toBe("1");
+    expectNoErrors(consoleErrors);
+  });
+
+test("hidden dependencies remove wrappers and expose pip lists to keyboard users in Live", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("live-toggle").click();
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("dependencies-toggle").click();
+  await expect(page.getByTestId("relationship-wrapper-api-to-appcfg")).toHaveCount(0);
+  const pips = page.getByTestId("node-pips-api");
+  const list = page.getByTestId("node-dependencies-api");
+  await pips.focus();
+  await expect(list).toBeVisible();
+  await expect(list).toContainText("Config · orders-config");
+  await expect(pips).toHaveAttribute("aria-describedby", "node-dependencies-api");
+  await pips.press("Escape");
+  await expect(list).toHaveCount(0);
+  await expect(pips).toBeFocused();
+  await pips.blur();
+  await pips.focus();
+  await expect(list).toBeVisible();
+  await expectNoViolations(page, "node-pips-api");
+  expectNoErrors(consoleErrors);
+});
+
+test("hiding the focused dependency restores canvas focus @dev", async ({ page, consoleErrors }) => {
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("edge-label-api-to-appcfg").focus();
+  await page.evaluate(async () => {
+    const path = "/src/canvas/dependencyVisibility.ts";
+    const { dependencyVisibility } = await import(/* @vite-ignore */ path);
+    dependencyVisibility.set(false);
+  });
+  await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+  await expect(page.getByTestId("relationship-wrapper-api-to-appcfg")).toHaveCount(0);
+  expectNoErrors(consoleErrors);
+});
+
+test("settings paste stores names only and rejects oversized or nested JSON without changing settings", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("edge-label-api-to-appcfg").click();
+  const password = "Fake-password-7!";
+  const connection = `Server=db.example;Database=orders;User Id=svc;Password=${password}`;
+  const token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmYWtlLXN2YyJ9.fake_signature_0123456789";
+  const field = page.getByTestId("inspector-field-settings");
+  for (const text of [
+    JSON.stringify({ Password: password, ConnectionStrings: { Orders: connection }, Token: token }),
+    `Password=${password}\nConnectionStrings:Orders=${connection}\nToken=${token}`,
+    JSON.stringify([
+      { key: "Password", value: password },
+      { key: "ConnectionStrings:Orders", value: connection },
+      { key: "Token", value: token },
+    ]),
+  ]) {
+    await pasteSettings(page, text);
+    await expect(field).toHaveValue("Password\nConnectionStrings:Orders\nToken");
+  }
+  for (const text of [
+    JSON.stringify({ Password: password, Padding: "x".repeat(1_000_000) }),
+    '{"nested":'.repeat(12_000) + JSON.stringify(password) + "}".repeat(12_000),
+    '{"Password":"Fake-password-7!",',
+  ]) {
+    await pasteSettings(page, text);
+    await expect(page.getByTestId("inspector-settings-error")).toBeVisible();
+    await expect(field).toHaveValue("Password\nConnectionStrings:Orders\nToken");
+  }
+  await page.waitForTimeout(800);
+  const persisted = await page.evaluate(() => Object.values(localStorage).join("\n"));
+  for (const secret of [password, connection, token]) expect(persisted).not.toContain(secret);
+  expectNoErrors(consoleErrors);
+});
+
+test("literal names survive editing another row and toggling locks", async ({ page }) => {
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("edge-label-api-to-appcfg").click();
+  await pasteSettings(page, JSON.stringify({ "Feature Flag": true, "A=B": "fake", "!Literal": 1 }));
+  const field = page.getByTestId("inspector-field-settings");
+  await expect(field).toHaveValue('"Feature Flag"\n"A=B"\n"!Literal"');
+  await field.press("Control+End");
+  await field.pressSequentially("\nAdded");
+  await page.getByTestId("inspector-setting-lock-0").click();
+  await expect(field).toHaveValue('!"Feature Flag"\n"A=B"\n"!Literal"\nAdded');
+  await page.getByTestId("canvas-wrap").click({ position: { x: 600, y: 90 } });
+  await page.getByTestId("edge-label-api-to-appcfg").click();
+  await expect(field).toHaveValue('!"Feature Flag"\n"A=B"\n"!Literal"\nAdded');
+});
+
+test("relationship-only changes invalidate edit capacity demand and bottleneck fixes", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoLab(page, "relationship-regressions");
+  await page.getByTestId("lab-open-editor").click();
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("capacity-overlay-toggle").click();
+  await expect(page.getByTestId("capacity-label-worker")).toHaveAttribute("data-level", "over");
+  await expect(page.getByTestId("bottleneck-fix")).toBeVisible();
+  await page.getByTestId("edge-label-demand").click();
+  await page.getByTestId("inspector-field-relation").selectOption("secret");
+  await expect(page.getByTestId("capacity-label-worker")).toHaveCount(0);
+  await expect(page.getByTestId("bottleneck-fix")).toHaveCount(0);
+  await page.getByTestId("inspector-field-relation").selectOption("message");
+  await expect(page.getByTestId("capacity-label-worker")).toHaveAttribute("data-level", "over");
+  expectNoErrors(consoleErrors);
+});
+
+test("delimiter-bearing node IDs and labels stay one dependency in the hidden list", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoLab(page, "relationship-regressions");
+  await page.getByTestId("lab-open-editor").click();
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("dependencies-toggle").click();
+  const pip = page.getByTestId("node-pips-worker");
+  await expect(pip).toHaveAttribute("data-count", "1");
+  await pip.focus();
+  await expect(page.getByTestId("node-dependencies-worker")).toHaveText("DependenciesSecret · Vault\nInjected label");
+  expectNoErrors(consoleErrors);
+});
+
+test("the overlap audit uses the same hidden-dependency route set as its rendered edges", async ({
+  page,
+  consoleErrors,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("diagrams.showDependencies.v1", "0"));
+  await gotoLab(page, "overlap-audit", { diagram: SLUG });
+  await expect(page.getByTestId("relationship-wrapper-api-to-appcfg")).toHaveCount(0);
+  await expect(page.getByTestId("audit-summary")).toHaveAttribute("data-routes", "5");
+  expectNoErrors(consoleErrors);
 });

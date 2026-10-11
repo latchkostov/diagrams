@@ -31,6 +31,8 @@ import {
   edgeSettings,
   isDependency,
   parseSettings,
+  parseSettingsEditor,
+  MAX_SETTINGS_TEXT,
   relationOf,
   settingsSummary,
   settingsText,
@@ -620,11 +622,12 @@ function SettingsEditor({ edge, editor }: { edge: DiagramFlowEdge; editor: Edito
   const settings = edgeSettings(edge.data);
   const committed = settingsText(settings);
   const [draft, setDraft] = useState(committed);
+  const [error, setError] = useState<string>();
   const [seen, setSeen] = useState(committed);
   if (committed !== seen) {
     // Undo, a lock toggle or a paste elsewhere changed them: show the new list unless it's what we typed.
     setSeen(committed);
-    if (settingsText(parseSettings(draft)) !== committed) setDraft(committed);
+    if (settingsText(parseSettingsEditor(draft)) !== committed) setDraft(committed);
   }
   const save = (next: ConfigSetting[], mergeTag?: string) =>
     editor.setEdgeProps(
@@ -641,14 +644,38 @@ function SettingsEditor({ edge, editor }: { edge: DiagramFlowEdge; editor: Edito
         value={draft}
         placeholder={"Orders:PageSize\n!ConnectionStrings:Orders"}
         onChange={(e) => {
+          setError(undefined);
           setDraft(e.target.value);
-          save(parseSettings(e.target.value), `inspector:edge:${edge.id}:settings`);
+          save(parseSettingsEditor(e.target.value), `inspector:edge:${edge.id}:settings`);
         }}
+        maxLength={MAX_SETTINGS_TEXT}
+        onPaste={(e) => {
+          e.preventDefault();
+          try {
+            const imported = settingsText(parseSettings(e.clipboardData.getData("text/plain")));
+            const field = e.currentTarget;
+            const nextText = draft.slice(0, field.selectionStart) + imported + draft.slice(field.selectionEnd);
+            if (nextText.length > MAX_SETTINGS_TEXT) throw new Error("Settings paste is too large.");
+            const next = parseSettingsEditor(nextText);
+            setError(undefined);
+            setDraft(settingsText(next));
+            save(next, `inspector:edge:${edge.id}:settings`);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Could not import settings.");
+          }
+        }}
+        aria-invalid={!!error}
+        aria-describedby={error ? "settings-paste-error" : undefined}
         spellCheck={false}
         aria-label="Settings read over this edge, one per line; ! marks a secret"
         name="settings"
         data-testid="inspector-field-settings"
       />
+      {error && (
+        <p role="alert" id="settings-paste-error" data-testid="inspector-settings-error" className="insp-note">
+          {error}
+        </p>
+      )}
       <p className="insp-note">
         One key per line; ! marks a secret (a Key Vault reference). Pasting appsettings.json works too.
       </p>

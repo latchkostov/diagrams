@@ -1,57 +1,29 @@
-import {
-  derivedLabel,
-  edgeSettingsList,
-  isDependency,
-  relationOf,
-  type ConfigSetting,
-  type DependencyRelation,
-} from "../../model/relations";
+import { deriveRelationInfo, type EdgeRelationInfo } from "../../model/relations";
 import type { DiagramFlowEdge } from "../types";
 
-/** What a dependency edge shows besides its line: the glyph's relation, text, and settings for the card. */
-export interface EdgeRelationInfo {
-  relation: DependencyRelation;
-  /** The user's label, else a derived one ("4 settings · 2 secret", "2 references"), else none. */
-  text?: string;
-  /** True when `text` was derived (a user label always wins). */
-  derived: boolean;
-  /** Settings for the hover card: a config edge's own, or the references a secret edge carries. */
-  settings: ConfigSetting[];
-}
-
+export type { EdgeRelationInfo } from "../../model/relations";
 const cache = new WeakMap<readonly DiagramFlowEdge[], Map<string, EdgeRelationInfo>>();
-const EMPTY = new Map<string, EdgeRelationInfo>();
+const stable = new WeakMap<object, EdgeRelationInfo>();
 
-/**
- * Per-edge relationship info for one React Flow edges array, computed once per array (React Flow
- * replaces it on every edge change) and shared by the router and every FlowEdge. Flows have no entry.
- */
+const same = (a: EdgeRelationInfo, b: EdgeRelationInfo) =>
+  a.relation === b.relation &&
+  a.text === b.text &&
+  a.derived === b.derived &&
+  a.settings.length === b.settings.length &&
+  a.settings.every((s, i) => s.key === b.settings[i].key && s.secret === b.settings[i].secret);
+
+/** Adapt at the canvas boundary; derivation and indexing live in the shared model. */
 export function relationInfo(edges: readonly DiagramFlowEdge[]): Map<string, EdgeRelationInfo> {
-  let hit = cache.get(edges);
-  if (hit) return hit;
-  if (!edges.some((e) => isDependency(e.data))) {
-    cache.set(edges, EMPTY);
-    return EMPTY;
+  const cached = cache.get(edges);
+  if (cached) return cached;
+  const result = deriveRelationInfo(edges.map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data })));
+  for (const e of edges) {
+    const info = result.get(e.id);
+    if (!info || !e.data) continue;
+    const previous = stable.get(e.data);
+    if (previous && same(previous, info)) result.set(e.id, previous);
+    else stable.set(e.data, info);
   }
-  const plain = edges.map((e) => ({
-    id: e.id,
-    from: e.source,
-    to: e.target,
-    label: e.data?.label?.trim(),
-    relation: e.data?.relation,
-    props: e.data?.props,
-  }));
-  hit = new Map();
-  for (const e of plain) {
-    if (!isDependency(e)) continue;
-    const derived = e.label ? undefined : derivedLabel(e, plain);
-    hit.set(e.id, {
-      relation: relationOf(e) as DependencyRelation,
-      text: e.label || derived,
-      derived: !e.label && !!derived,
-      settings: edgeSettingsList(e, plain),
-    });
-  }
-  cache.set(edges, hit);
-  return hit;
+  cache.set(edges, result);
+  return result;
 }

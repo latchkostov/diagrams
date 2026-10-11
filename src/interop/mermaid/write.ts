@@ -135,7 +135,7 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
         ? { groups: Object.fromEntries(d.groups.map((g) => [groupIds.get(g.id)!, [g.id, g.tone ?? "neutral"]])) }
         : {}),
       edges: edges.map((e) => e.id),
-      ...(Object.keys(relations).length ? { relations } : {}),
+      relations,
       ...(edges.some((e, i) => relations[i] && e.kind === "sync")
         ? { syncDependencies: edges.flatMap((e, i) => (relations[i] && e.kind === "sync" ? [i] : [])) }
         : {}),

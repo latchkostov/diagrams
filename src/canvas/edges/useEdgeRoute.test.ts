@@ -52,3 +52,33 @@ it("moving a note across an edge reroutes around its new bounds; zones and text 
   moveNote({ x: 500, y: 500 });
   expect(selectRoutes(state(), opts).get("e")!.points).toEqual(original);
 });
+
+it("keeps concurrent visible and hidden route subscribers stable on an unchanged store", () => {
+  const n = (id: string, x: number): InternalNode<FlowNode> => {
+    const node = nodeToFlow({ id, stencil: "service.go", label: id, x, y: 0 });
+    return {
+      ...node,
+      measured: { width: 180, height: 64 },
+      internals: { positionAbsolute: node.position, z: 0, userNode: node },
+    };
+  };
+  const s = {
+    nodeLookup: new Map([
+      ["a", n("a", 0)],
+      ["b", n("b", 400)],
+    ]),
+    edges: [
+      { id: "flow", source: "a", target: "b" },
+      { id: "dep", source: "a", target: "b", data: { relation: "secret" } },
+    ],
+  } as ReactFlowState<FlowNode, DiagramFlowEdge>;
+  const opts = { style: "smoothstep", direction: "LR" } as const;
+  const visible = selectRoutes(s, opts);
+  const hidden = selectRoutes(s, { ...opts, hideDependencies: true });
+  expect(hidden.has("dep")).toBe(false);
+  expect(visible.has("dep")).toBe(true);
+  for (let i = 0; i < 5; i++) {
+    expect(selectRoutes(s, opts)).toBe(visible);
+    expect(selectRoutes(s, { ...opts, hideDependencies: true })).toBe(hidden);
+  }
+});

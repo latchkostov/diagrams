@@ -1,15 +1,14 @@
-import { memo, useCallback, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { useTooltip } from "../../components/useTooltip";
+import { memo, useCallback, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { EdgeLabelRenderer, useReactFlow, useStore, type EdgeProps, type ReactFlowState } from "@xyflow/react";
-import { useSettings } from "../../harness/settings";
 import { InlineInput } from "../../components/InlineInput";
 import { Icon } from "../../components/Icon";
 import { useDiagram } from "../DiagramContext";
 import type { DiagramFlowEdge, DiagramNodeData } from "../types";
 import { pointAlong } from "../geometry/path";
 import type { LabelPlacement } from "../geometry/labels";
-import { useEdgeRoute } from "./useEdgeRoute";
+import { useEdgeRoute, useRoutingOptions } from "./useEdgeRoute";
 import { relationInfo, type EdgeRelationInfo } from "./relationInfo";
-import { useShowDependencies } from "../dependencyVisibility";
 import { RELATION_META, isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { relationIcon } from "../../editor/relationActions";
 
@@ -25,16 +24,9 @@ import { relationIcon } from "../../editor/relationActions";
  */
 function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const { id, data, selected, source } = props;
-  const { edgeStyle, nodeVariant } = useSettings();
-  const { direction, editing, setEditing, openEdgeMenu } = useDiagram();
+  const { editing, setEditing, openEdgeMenu } = useDiagram();
   const { updateEdgeData } = useReactFlow();
-  const showDeps = useShowDependencies();
-  const route = useEdgeRoute(id, {
-    style: edgeStyle,
-    direction,
-    captions: nodeVariant === "iconOnly",
-    hideDependencies: !showDeps,
-  });
+  const route = useEdgeRoute(id, useRoutingOptions());
   const dep = useStore(useCallback((s: ReactFlowState) => relationInfo(s.edges as DiagramFlowEdge[]).get(id), [id]));
   const sourceStencil = useStore(
     useCallback(
@@ -42,7 +34,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       [source],
     ),
   );
-  const [card, setCard] = useState(false);
+  const tooltip = useTooltip();
+  const card = tooltip.open;
   const kind = data?.kind ?? "async";
   const relation = isDependency(data) ? (relationOf(data) as DependencyRelation) : null;
   const isEditing = editing?.kind === "edge" && editing.id === id;
@@ -68,10 +61,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
     onContextMenu: (e: MouseEvent) => openEdgeMenu(e, id),
     ...(settings.length
       ? {
-          onPointerEnter: () => setCard(true),
-          onPointerLeave: () => setCard(false),
-          onFocus: () => setCard(true),
-          onBlur: () => setCard(false),
+          ...tooltip.trigger,
         }
       : {}),
   };
@@ -89,6 +79,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
         className={`fe-label fe-label-${relation ? `dep fe-rel-${relation}` : kind} is-${isEditing ? "editing" : label!.mode}${selected ? " is-selected" : ""}${relation && !isEditing ? " has-glyph" : ""} nodrag nopan`}
         style={labelStyle(mid.x, mid.y, isEditing ? null : label)}
         data-testid={`edge-label-${id}`}
+        data-dependency={relation ? "true" : undefined}
         title={
           isEditing || settings.length
             ? undefined
@@ -144,6 +135,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
         className={`fe-label fe-chip fe-rel-${relation} is-glyph${selected ? " is-selected" : ""} nodrag nopan`}
         style={labelStyle(mid.x, mid.y, label)}
         data-testid={`edge-label-${id}`}
+        data-dependency={relation ? "true" : undefined}
         title={tip}
         {...labelEvents}
       >
@@ -171,6 +163,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
           {body}
           {card && settings.length > 0 && label && (
             <SettingsCard
+              pointer={tooltip.pointer}
               id={id}
               relation={relation!}
               settings={settings}
@@ -213,6 +206,7 @@ function referenceNote(relation: DependencyRelation, sourceStencil?: string): st
 }
 
 function SettingsCard({
+  pointer,
   id,
   relation,
   settings,
@@ -220,6 +214,7 @@ function SettingsCard({
   x,
   y,
 }: {
+  pointer: ReturnType<typeof useTooltip>["pointer"];
   id: string;
   relation: DependencyRelation;
   settings: readonly { key: string; secret?: boolean }[];
@@ -230,6 +225,7 @@ function SettingsCard({
   const heading = relation === "secret" ? "Secret references" : "Settings read";
   return (
     <div
+      {...pointer}
       className="fe-card nodrag nopan"
       style={{ transform: `translate(-50%, -100%) translate(${x}px, ${y - 8}px)` }}
       role="tooltip"

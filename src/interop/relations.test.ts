@@ -172,3 +172,44 @@ describe("Mermaid", () => {
     expect(readDependencyLabel("depends")).toEqual({ relation: "depends" });
   });
 });
+
+it("normalizes settings without changing their count and strips credential value fields from exports", async () => {
+  const r = validateDiagram(
+    base([
+      {
+        id: "c",
+        from: "api",
+        to: "cfg",
+        relation: "config",
+        props: {
+          other: 42,
+          settings: [
+            { key: " padded ", value: "Fake-password-7!", secret: "yes" },
+            { key: "x".repeat(220), secret: true },
+          ],
+        },
+      },
+    ]),
+  );
+  expect(r.ok).toBe(true);
+  if (!r.ok) throw new Error(r.error);
+  expect(r.diagram.edges[0].props).toEqual({
+    other: 42,
+    settings: [{ key: "padded" }, { key: "x".repeat(200), secret: true }],
+  });
+  expect(serializeNative(r.diagram)).not.toContain("Fake-password-7!");
+  const shared = await decodeShare(await encodeShare(r.diagram));
+  expect(shared.edges[0].props).toEqual(r.diagram.edges[0].props);
+});
+
+it("preserves dependency-like labels on flow-only Mermaid round trips", () => {
+  for (const relation of [undefined, "flow"] as const)
+    for (const label of ["secret", "secret: ERP creds", "reads config", "depends on"]) {
+      const d = validateOk(base([{ id: "f", from: "api", to: "cfg", kind: "async", relation, label }]) as DiagramFile);
+      const text = diagramToMermaid(d);
+      for (const exported of [text, text.replace(/,"relations":\{\}/, "")]) {
+        expect(parseMermaid(exported).diagram.edges[0]).toMatchObject({ kind: "async", label });
+        expect(parseMermaid(exported).diagram.edges[0].relation).toBeUndefined();
+      }
+    }
+});

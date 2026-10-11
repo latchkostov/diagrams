@@ -464,7 +464,10 @@
 
 .react-flow[data-live] .react-flow__edge:hover .fe-dep,
 .react-flow[data-live] .fe-label-dep:hover,
-.react-flow[data-live] .fe-chip:hover {
+.react-flow[data-live] .fe-chip:hover,
+.react-flow[data-live] .react-flow__edge:focus-within .fe-dep,
+.react-flow[data-live] .fe-label-dep:focus-within,
+.react-flow[data-live] .fe-chip:focus-within {
   opacity: 1;
 }
 

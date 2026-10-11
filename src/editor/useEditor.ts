@@ -351,11 +351,13 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         ),
       );
     },
-    updateEdge: (id, patch, opts) => {
+    updateEdge: (id, patch, opts) => api.updateEdges([id], patch, opts),
+    updateEdges: (ids, patch, opts) => {
+      const targets = new Set(ids);
       hint(opts?.merge);
       deps().setEdges((es) =>
         es.map((e) => {
-          if (e.id !== id) return e;
+          if (!targets.has(e.id)) return e;
           const data = { kind: "async" as const, ...e.data };
           if ("label" in patch) data.label = patch.label || undefined;
           if ("kind" in patch) data.kind = patch.kind ?? "async";
@@ -421,7 +423,10 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           data: relation === "flow" ? { kind: "async" } : { kind: "async", relation },
         },
       ]);
-      if (relation !== "flow") explainInference(relation, () => api.updateEdge(id, { relation: undefined }));
+      if (relation !== "flow")
+        explainInference(relation, () =>
+          api.updateEdge(id, { relation: undefined }, { merge: `inference:flow:${id}` }),
+        );
       return id;
     },
     reverseEdge: (id) => {

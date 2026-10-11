@@ -1,3 +1,5 @@
+import { isDependency } from "../model/relations";
+import { dependencyVisibility, projectDependencies, useShowDependencies } from "./dependencyVisibility";
 import { edgeMarks } from "./edgeMarks";
 import {
   useCallback,
@@ -624,7 +626,24 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   );
   // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel).
   const ariaNodes = useMemo(() => withNodeAria(nodes), [nodes]);
-  const ariaEdges = useMemo(() => withEdgeAria(edges, (id) => labels.get(id) ?? id), [edges, labels]);
+  const showDependencies = useShowDependencies();
+  useEffect(
+    () =>
+      dependencyVisibility.subscribe(() => {
+        if (dependencyVisibility.get()) return;
+        if (document.activeElement?.closest('[data-dependency="true"]')) wrapper.current?.focus();
+        setEdges((es) => es.map((e) => (e.selected && isDependency(e.data) ? { ...e, selected: false } : e)));
+      }),
+    [setEdges],
+  );
+  const ariaEdges = useMemo(
+    () =>
+      projectDependencies(
+        withEdgeAria(edges, (id) => labels.get(id) ?? id),
+        showDependencies,
+      ),
+    [edges, labels, showDependencies],
+  );
   const nodeCount = diagramNodes.length;
   /** Anything drawn: an annotations-only canvas isn't "empty", though there's nothing to simulate. */
   const contentCount = nodeCount + annotationNodes.length;
@@ -652,6 +671,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         <div
           className="canvas-wrap"
           data-testid="canvas-wrap"
+          tabIndex={-1}
           ref={wrapper}
           onPointerMove={(e) => (pointer.current = { x: e.clientX, y: e.clientY })}
           onPointerLeave={() => (pointer.current = null)}

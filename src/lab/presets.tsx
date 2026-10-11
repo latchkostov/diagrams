@@ -1,3 +1,4 @@
+import { relationshipFixture } from "./relationshipFixture";
 import { safeStorage } from "../lib/storage";
 import { layersFixture, headerOverflowFixture } from "./layersFixture";
 import { exportFixture } from "./exportFixture";
@@ -342,6 +343,13 @@ export function readCustomDiagram(): DiagramFile | null {
 }
 
 const playgroundPresets: Preset[] = [
+  {
+    kind: "diagram",
+    id: "relationship-regressions",
+    title: "Relationship regressions",
+    group: "Playground",
+    diagram: () => relationshipFixture,
+  },
   {
     kind: "diagram",
     id: "export-contract",

@@ -1,3 +1,5 @@
+import { isDependency } from "../model/relations";
+import type { DiagramFlowEdge } from "./types";
 // "Show ▸ Dependencies": whether config, secret, identity, telemetry, deploy and depends-on edges are
 // drawn. One app-wide preference, on by default and remembered across visits, shared by the View menu,
 // the canvas right-click's Show ▸ and Ctrl+K. While they're hidden, nodes show small glyph pips so
@@ -30,4 +32,12 @@ export const dependencyVisibility = {
 
 export function useShowDependencies(): boolean {
   return useSyncExternalStore(dependencyVisibility.subscribe, dependencyVisibility.get, dependencyVisibility.get);
+}
+
+/** React Flow must hide its outer wrappers as well as the custom edge body. Saved edges stay intact. */
+export function projectDependencies(edges: DiagramFlowEdge[], show: boolean): DiagramFlowEdge[] {
+  if (show) return edges;
+  return edges.map((e) =>
+    isDependency(e.data) ? { ...e, hidden: true, focusable: false, selectable: false, selected: false } : e,
+  );
 }

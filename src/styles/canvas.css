@@ -508,7 +508,7 @@
   background: var(--surface-raised);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-2);
-  pointer-events: none;
+  pointer-events: auto;
   font-size: 11px;
   line-height: 1.35;
   color: var(--text);
@@ -2720,4 +2720,25 @@ select.insp-input {
 .insp-size .insp-input {
   width: 0;
   flex: 1;
+}
+
+.dn-pip-card {
+  right: 0;
+  bottom: 16px;
+  white-space: pre-wrap;
+}
+
+.dn-pips:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Bridge the visual gap so slow pointer travel into a settings card keeps it open. */
+.fe-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 12px;
 }

@@ -1,3 +1,4 @@
+import { projectDependencies, useShowDependencies } from "../canvas/dependencyVisibility";
 import { useContext, useMemo, useState, type ContextType } from "react";
 import {
   Background,
@@ -20,7 +21,13 @@ import { toFlow } from "../canvas/convert";
 import { DiagramContext } from "../canvas/DiagramContext";
 import { canvasNodeTypes } from "../canvas/nodes/nodeTypes";
 import { EdgeMarkers, FlowEdge } from "../canvas/edges/FlowEdge";
-import { lastRoutingMs, routeInputFromStore, useAllRoutes } from "../canvas/edges/useEdgeRoute";
+import {
+  lastRoutingMs,
+  routeInputFromStore,
+  useAllRoutes,
+  useRoutingOptions,
+  type RouteOptions,
+} from "../canvas/edges/useEdgeRoute";
 import { auditLayout, countViolations, type Violation, type ViolationKind } from "../canvas/geometry/audit";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 
@@ -56,6 +63,8 @@ function Stage({ diagram }: { diagram: DiagramFile }) {
   const flow = useMemo(() => toFlow(diagram), [diagram]);
   const [nodes, , onNodesChange] = useNodesState<FlowNode>(flow.nodes);
   const [edges, , onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
+  const showDependencies = useShowDependencies();
+  const visibleEdges = useMemo(() => projectDependencies(edges, showDependencies), [edges, showDependencies]);
   const base = useContext(DiagramContext);
   const [editing, setEditing] = useState<unknown>(null);
   const direction = flow.meta.direction ?? "LR";
@@ -68,7 +77,7 @@ function Stage({ diagram }: { diagram: DiagramFile }) {
         <EdgeMarkers />
         <ReactFlow<FlowNode, DiagramFlowEdge>
           nodes={nodes}
-          edges={edges}
+          edges={visibleEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
@@ -96,18 +105,15 @@ function Stage({ diagram }: { diagram: DiagramFile }) {
   );
 }
 
-function AuditLayer({
-  opts,
-}: {
-  opts: { style: "smoothstep" | "bezier" | "straight"; direction: "LR" | "TB"; captions: boolean };
-}) {
-  const routes = useAllRoutes(opts);
+function AuditLayer({ opts }: { opts: Pick<RouteOptions, "style" | "direction" | "captions"> }) {
+  const routing = useRoutingOptions(opts);
+  const routes = useAllRoutes(routing);
   const lookup = useStore((s: ReactFlowState) => s.nodeLookup);
   const sEdges = useStore((s: ReactFlowState) => s.edges as DiagramFlowEdge[]);
   const ms = useStore((s: ReactFlowState) => lastRoutingMs(s as never));
   // Recompute when routes change (they change whenever nodes or edges do).
   const violations = useMemo<Violation[]>(() => {
-    const input = routeInputFromStore(lookup.values() as never, sEdges, opts);
+    const input = routeInputFromStore(lookup.values() as never, sEdges, routing);
     return auditLayout({
       nodes: input.nodes,
       groups: input.groups,
@@ -145,7 +151,12 @@ function AuditLayer({
           />
         ))}
       </ViewportPortal>
-      <div className="lab-audit-panel" data-testid="audit-summary" data-total={violations.length}>
+      <div
+        className="lab-audit-panel"
+        data-testid="audit-summary"
+        data-total={violations.length}
+        data-routes={routes.size}
+      >
         <strong>
           {violations.length ? `${violations.length} overlap${violations.length === 1 ? "" : "s"}` : "No overlaps"}
         </strong>

@@ -8,6 +8,8 @@ import {
   isDependency,
   MAX_SETTINGS,
   parseSettings,
+  parseSettingsEditor,
+  edgeSemanticSignature,
   referencedSettings,
   relationLabel,
   relationOf,
@@ -144,5 +146,71 @@ describe("settings on config edges", () => {
     // A direct secret read references nothing; flows never get derived text.
     expect(derivedLabel(edges[3], edges)).toBeUndefined();
     expect(derivedLabel(edges[4], edges)).toBeUndefined();
+  });
+});
+
+describe("settings privacy and editor regressions", () => {
+  it("rejects oversized structured input instead of capturing a credential as a key", () => {
+    const text = JSON.stringify({ Password: "Fake-password-7!", Padding: "x".repeat(1_000_000) });
+    expect(() => parseSettings(text)).toThrow(/too large/i);
+  });
+  it("rejects deeply nested values before secret detection", () => {
+    const text = '{"nested":'.repeat(12_000) + '"Fake-password-7!"' + "}".repeat(12_000);
+    expect(() => parseSettings(text)).toThrow(/nesting/i);
+  });
+  it("rejects malformed structured paste instead of storing its values", () => {
+    expect(() => parseSettings('{"Password":"Fake-password-7!",')).toThrow(/JSON/i);
+  });
+  it("only imports names and flags from realistic appsettings, env and CLI secrets", () => {
+    const password = "Fake-password-7!";
+    const connection = "Server=db.example;Database=orders;User Id=svc;Password=Fake-password-7!";
+    const token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmYWtlLXN2YyJ9.fake_signature_0123456789";
+    for (const text of [
+      JSON.stringify({ Password: password, ConnectionStrings: { Orders: connection }, Auth: { Token: token } }),
+      `Password=${password}\nConnectionStrings:Orders=${connection}\nAuth:Token=${token}`,
+      JSON.stringify([
+        { key: "Password", value: password },
+        { key: "ConnectionStrings:Orders", value: connection },
+        { key: "Auth:Token", value: token },
+      ]),
+    ]) {
+      expect(parseSettings(text)).toEqual([
+        { key: "Password" },
+        { key: "ConnectionStrings:Orders" },
+        { key: "Auth:Token" },
+      ]);
+    }
+    for (const text of [
+      connection,
+      token,
+      `Bearer ${token}`,
+      JSON.stringify([{ key: connection, value: password }]),
+      JSON.stringify({ Auth: { [token]: password } }),
+    ]) {
+      expect(parseSettings(text)).toEqual([]);
+    }
+  });
+  it("losslessly edits every accepted literal key while paste still recognizes assignments", () => {
+    const keys = [
+      "Feature Flag",
+      "A=B",
+      "!Literal",
+      'A"B',
+      "[lock]Key",
+      "#Key",
+      "//Key",
+      "Line\nBreak",
+      "Back\\slash",
+      "B:C",
+    ];
+    const settings = keys.map((key, i) => ({ key, ...(i % 2 ? { secret: true as const } : {}) }));
+    expect(parseSettingsEditor(settingsText(settings))).toEqual(settings);
+    expect(parseSettingsEditor("Feature Flag\nA=B")).toEqual([{ key: "Feature Flag" }, { key: "A=B" }]);
+    expect(parseSettings("A=Fake-password-7!")).toEqual([{ key: "A" }]);
+  });
+  it("normalizes flow semantics and invalidates an edge signature on relation changes", () => {
+    const edge = { id: "e", from: "a", to: "b" };
+    expect(edgeSemanticSignature(edge)).toEqual(edgeSemanticSignature({ ...edge, kind: "async", relation: "flow" }));
+    expect(edgeSemanticSignature(edge)).not.toEqual(edgeSemanticSignature({ ...edge, relation: "secret" }));
   });
 });

@@ -4,7 +4,7 @@ import type { EdgeStyle } from "../harness/edgeStyles";
 import { fitAvoiding, panIntoView, type FitOptions } from "./geometry/fit";
 import { intersects, union, type Rect } from "./geometry/rect";
 import { motionMs } from "../lib/motion";
-import { selectRoutes } from "./edges/useEdgeRoute";
+import { selectRoutes, useRoutingOptions, type RouteOptions } from "./edges/useEdgeRoute";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 
 /**
@@ -38,7 +38,7 @@ export function overlayRects(root: HTMLElement): Rect[] {
 }
 
 /** Flow-space rects of everything that should stay visible: nodes, groups, routes and labels. */
-function contentRects(s: State, style: EdgeStyle, direction: "LR" | "TB"): Rect[] {
+function contentRects(s: State, opts: RouteOptions): Rect[] {
   const out: Rect[] = [];
   for (const n of s.nodeLookup.values()) {
     if (n.hidden) continue;
@@ -46,7 +46,7 @@ function contentRects(s: State, style: EdgeStyle, direction: "LR" | "TB"): Rect[
     const h = n.measured?.height ?? n.height ?? 0;
     if (w && h) out.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: w, height: h });
   }
-  for (const r of selectRoutes(s, { style, direction }).values()) {
+  for (const r of selectRoutes(s, opts).values()) {
     for (const p of r.points) out.push({ x: p.x - 2, y: p.y - 2, width: 4, height: 4 });
     if (r.label)
       out.push({
@@ -63,13 +63,13 @@ function contentRects(s: State, style: EdgeStyle, direction: "LR" | "TB"): Rect[
 export function useOverlayFit(root: RefObject<HTMLElement | null>, opts: { style: EdgeStyle; direction: "LR" | "TB" }) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const { style, direction } = opts;
+  const routing = useRoutingOptions(opts);
   // Plain function: the React compiler memoises it (it reads root.current at call time).
   return (o: FitOptions & { duration?: number } = {}) => {
     const el = root.current;
     const s = store.getState() as State;
     if (!el || !s.width || !s.height) return;
-    const v = fitAvoiding(contentRects(s, style, direction), { width: s.width, height: s.height }, overlayRects(el), o);
+    const v = fitAvoiding(contentRects(s, routing), { width: s.width, height: s.height }, overlayRects(el), o);
     if (v) void setViewport(v, { duration: motionMs(o.duration ?? 0) });
   };
 }
@@ -88,7 +88,7 @@ export function useKeepSelectionInView(
 ) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const { style, direction } = opts;
+  const routing = useRoutingOptions(opts);
   return (duration = 250): boolean => {
     const el = root.current;
     if (!el) return false;
@@ -105,7 +105,7 @@ export function useKeepSelectionInView(
       selectedNodes.add(n.id);
       must.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: w, height: h });
     }
-    const routes = selectRoutes(s, { style, direction });
+    const routes = selectRoutes(s, routing);
     for (const e of s.edges) {
       const attached = selectedNodes.has(e.source) || selectedNodes.has(e.target);
       if (!e.selected && !attached) continue;
