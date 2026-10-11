@@ -99,6 +99,49 @@ describe("runAgentTurn", () => {
     });
   });
 
+  it("records the successful edits as steps, never dry runs or failed calls", async () => {
+    const add = { ops: [{ op: "add_node", kind: "Redis cache", label: "cache", key: "c" }] };
+    const { adapter } = fakeProvider([
+      {
+        text: "",
+        stop: "tools",
+        calls: [
+          { id: "a", name: "edit_diagram", input: { ...add, dryRun: true } },
+          { id: "b", name: "edit_diagram", input: { ops: [{ op: "update", target: "nope", label: "x" }] } },
+          { id: "c", name: "edit_diagram", input: add },
+          {
+            id: "d",
+            name: "set_simulation",
+            input: { title: "S", traffic: [{ from: "billing-worker", pattern: "burst", count: 3 }] },
+          },
+        ],
+      },
+      { text: "Done.", stop: "end", calls: [] },
+    ]);
+    const result = await runAgentTurn(input(adapter));
+    expect(result.steps).toEqual([
+      { kind: "ops", ops: add.ops },
+      { kind: "simulation", spec: { title: "S", traffic: [{ from: "billing-worker", pattern: "burst", count: 3 }] } },
+    ]);
+  });
+
+  it("a stream failure after an editing call fails the whole turn, so nothing is applied", async () => {
+    const { adapter } = fakeProvider([
+      {
+        text: "",
+        stop: "tools",
+        calls: [{ id: "c", name: "edit_diagram", input: { ops: [{ op: "add_node", kind: "cache", label: "c" }] } }],
+      },
+    ]);
+    const step = adapter.step;
+    let n = 0;
+    adapter.step = vi.fn(async (req: StepRequest) => {
+      if (n++ === 0) return step(req);
+      throw new ProviderError("Claude stopped with an error: Overloaded.");
+    });
+    await expect(runAgentTurn(input(adapter))).rejects.toThrow("Overloaded");
+  });
+
   it("adds a simulation through set_simulation", async () => {
     const { adapter } = fakeProvider([
       {

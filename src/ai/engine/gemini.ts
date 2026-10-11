@@ -2,7 +2,7 @@
 // (sent in a header, never in the URL).
 
 import { inlineRefs, postSse } from "./http";
-import type { ProviderAdapter, StepResult, ToolCall } from "./types";
+import { ProviderError, type ProviderAdapter, type StepResult, type ToolCall } from "./types";
 
 export const geminiUrl = (model: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`;
@@ -64,6 +64,7 @@ export const gemini: ProviderAdapter = {
       }
       if (typeof candidate.finishReason === "string") finish = candidate.finishReason;
     }
+    if (!finish) throw new ProviderError("Gemini's answer ended early (the connection closed). Try again.");
     return {
       text,
       calls,

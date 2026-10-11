@@ -4,7 +4,7 @@ import type { LiveState } from "../../live/controller";
 import { aiPlace, emptyHeading, liveText, resolveScope, scopeText, suggestions } from "./context";
 import { buildExplainPrompt, buildFixPrompt, buildPrompt, buildSimulationPrompt } from "./prompt";
 import { parseReply } from "./reply";
-import { planTurn } from "./apply";
+import { planSteps, planTurn } from "./apply";
 
 const diagram = (): DiagramFile => ({
   format: "diagrams/v1",
@@ -180,5 +180,32 @@ describe("simulation replies", () => {
     expect(plan.ok).toBe(false);
     if (plan.ok) return;
     expect(plan.error.error).toContain("orders");
+  });
+});
+
+describe("planSteps", () => {
+  it("plans a model's steps in order as one turn, and keeps an edit made meanwhile", () => {
+    const steps = [
+      { kind: "ops" as const, ops: [{ op: "add_node" as const, kind: "Redis cache", label: "cache", key: "c" }] },
+      { kind: "ops" as const, ops: [{ op: "connect" as const, from: "api", to: "cache", kind: "sync" as const }] },
+    ];
+    // The user moved "db" while the model worked: the steps replay on the moved diagram.
+    const moved = { ...diagram(), nodes: diagram().nodes.map((n) => (n.id === "db" ? { ...n, x: 999 } : n)) };
+    const plan = planSteps(moved, steps);
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    expect(plan.summary).toBe("+1 node, +1 connection");
+    expect(plan.next.nodes.find((n) => n.id === "db")?.x).toBe(999);
+    // One step reads exactly like the paste flow's plan for the same reply.
+    const one = planSteps(diagram(), [steps[0]]);
+    const pasted = planTurn(diagram(), parseReply(JSON.stringify(steps[0].ops)));
+    expect(one.ok && pasted.ok && one.summary === pasted.summary && one.choices.length === pasted.choices.length).toBe(
+      true,
+    );
+  });
+
+  it("fails as a whole when a step no longer applies", () => {
+    const plan = planSteps(diagram(), [{ kind: "ops", ops: [{ op: "update", target: "gone", label: "x" }] }]);
+    expect(plan.ok).toBe(false);
   });
 });

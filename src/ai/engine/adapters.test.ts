@@ -237,6 +237,39 @@ describe("gemini", () => {
   });
 });
 
+describe("errors inside a 200 stream", () => {
+  const cases: [string, ProviderAdapter, string, object][] = [
+    [
+      "anthropic",
+      anthropic,
+      KEY,
+      { type: "error", error: { type: "overloaded_error", message: `Overloaded for ${KEY}` } },
+    ],
+    ["openai", openai, OPENAI_KEY, { error: { message: `Rate limited, key ${OPENAI_KEY}`, type: "server_error" } }],
+    ["gemini", gemini, GEMINI_KEY, { error: { code: 500, message: `Internal error for ${GEMINI_KEY}` } }],
+  ];
+  for (const [name, adapter, key, event] of cases)
+    it(`${name}: an SSE error rejects the step, without the key`, async () => {
+      const { fetch } = scriptedFetch([sse([event])]);
+      const err = await failure(adapter.step(request(adapter, key, fetch)));
+      expect(err.message).toContain("stopped with an error");
+      expect(err.message).not.toContain("SECRET");
+    });
+
+  for (const [name, adapter, key] of cases)
+    it(`${name}: a stream that ends without finishing is an error, not an empty answer`, async () => {
+      const partial =
+        name === "anthropic"
+          ? [{ type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }]
+          : name === "openai"
+            ? [{ choices: [{ delta: { content: "Half" } }] }]
+            : [{ candidates: [{ content: { role: "model", parts: [{ text: "Half" }] } }] }];
+      const { fetch } = scriptedFetch([sse(partial)]);
+      const err = await failure(adapter.step(request(adapter, key, fetch)));
+      expect(err.message).toContain("ended early");
+    });
+});
+
 describe("unknown models", () => {
   it("says to check the model name, for a 404 or a 400 about the model", async () => {
     const { fetch } = scriptedFetch([

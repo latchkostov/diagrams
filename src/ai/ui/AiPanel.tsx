@@ -39,7 +39,8 @@ import { isLocalOnly } from "../../lib/localOnly";
 import { useParsedReply } from "./useParsedReply";
 import { useDictation } from "./useDictation";
 import { aiDock, clampWidth, collapseDock, useAiDock } from "./dock";
-import { latestTurn, loadThread, saveThread, sameContent, turnId, type ThreadTurn } from "./thread";
+import { capThread, loadThread, saveThread, sameContent, turnId, type ThreadTurn } from "./thread";
+import { commitPlan } from "./commitTurn";
 import type { PanelRequest } from "./AiMount";
 import { useModelTurn, type ModelTurnDone } from "./useModelTurn";
 import { ConnectModel } from "./ConnectModel";
@@ -67,6 +68,8 @@ const MOD = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator
 
 let mergeSeq = 0;
 const FRESH_MS = 5000;
+/** How long the canvas settles before the panel re-reads it. */
+const SNAP_MS = 200;
 
 export default function AiPanel({ request: opened }: { request: PanelRequest | null }) {
   const host = useSyncExternalStore(paletteHost.subscribe, paletteHost.get);
@@ -88,6 +91,20 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const promptedFor = useRef("");
   const conn = useConnection();
   const [showConnect, setShowConnect] = useState(false);
+  /** What opened Connect a model: the keyboard goes back there when it closes. */
+  const connectOpener = useRef<HTMLElement | null>(null);
+  const openConnect = (open = true) => {
+    connectOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setShowConnect(open);
+  };
+  /** Closing Connect a model: after connecting, on to the request; otherwise back to its opener. */
+  const closeConnect = (connected?: boolean) => {
+    setShowConnect(false);
+    requestAnimationFrame(() => {
+      const opener = connectOpener.current;
+      (!connected && opener?.isConnected ? opener : requestRef.current)?.focus();
+    });
+  };
   /** With a connected model, the user can still copy and paste (this panel session). */
   const [pasteInstead, setPasteInstead] = useState(false);
   const modelMode = !!conn && !pasteInstead;
@@ -100,8 +117,20 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   );
   const [intent, setIntent] = useState<AiIntent>(() => (fresh && opened?.intent) || "change");
 
-  // The diagram as it is now (re-read on every edit: the host republishes with each revision).
-  const current = useMemo<DiagramFile | null>(() => (editor ? editor.getDiagram() : null), [editor, host]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The diagram as it is now and the step Undo would reverse, read once the canvas settles (the host
+  // republishes on every drag frame and selection; typing and streaming don't touch it), and at once
+  // after the panel's own changes.
+  const readSnap = useCallback(() => {
+    const ed = editorNow();
+    return ed ? { diagram: ed.getDiagram(), undoTarget: ed.undoTarget() } : null;
+  }, []);
+  const [snap, setSnap] = useState(readSnap);
+  const refresh = useCallback(() => setSnap(readSnap()), [readSnap]);
+  useEffect(() => {
+    const t = setTimeout(refresh, SNAP_MS);
+    return () => clearTimeout(t);
+  }, [editor, host, refresh]);
+  const current: DiagramFile | null = snap?.diagram ?? null;
 
   // The thread is saved per diagram, in this browser only.
   const loadedFor = useRef(documentId);
@@ -159,9 +188,14 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     setTimeout(() => setCopied((c) => (c === what ? null : c)), 2000);
   };
 
-  const addTurn = useCallback((turn: Omit<ThreadTurn, "id" | "at">) => {
-    setTurns((t) => [...t, { ...turn, id: turnId(), at: Date.now() }]);
-  }, []);
+  // The caps hold in memory too: the open panel keeps what's saved, no more.
+  const addTurn = useCallback(
+    (turn: Omit<ThreadTurn, "id" | "at">) => {
+      setTurns((t) => capThread([...t, { ...turn, id: turnId(), at: Date.now() }]));
+      refresh();
+    },
+    [refresh],
+  );
 
   const live = !!canvas?.live;
   const place = aiPlace(current, live);
@@ -185,12 +219,10 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
 
   const scopeRecord = () => (scopeItems.length ? scopeItems.map(({ id, label }) => ({ id, label })) : undefined);
 
-  /** The scope at the time a request was sent (the turn records it). */
-  const scopeRef = useRef<ThreadTurn["scope"]>(undefined);
   const onModelDone = useCallback(
-    ({ turn, simulations }: ModelTurnDone) => {
-      addTurn({ ...turn, ...(scopeRef.current ? { scope: scopeRef.current } : {}) });
-      playSimulation(simulations[0]);
+    ({ turn, simulationId }: ModelTurnDone) => {
+      addTurn(turn);
+      playSimulation(simulationId);
       setRequest("");
       requestRef.current?.focus();
     },
@@ -210,13 +242,19 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         { role: "user" as const, text: t.request },
         { role: "assistant" as const, text: t.reply || t.summary || "Done." },
       ]);
-    scopeRef.current = scopeRecord();
+    const scopeNow = scopeRecord();
     const liveNote =
       live && !explaining
         ? "The user is in live view. Unless they ask to change the diagram itself, describe their scenario as one simulation with set_simulation: it's saved and plays straight away."
         : "";
     const context = [contextFor(intent), liveNote].filter(Boolean).join("\n\n");
-    void model.send({ request: text, intent: explaining ? "explain" : "change", context, history });
+    void model.send({
+      request: text,
+      intent: explaining ? "explain" : "change",
+      context,
+      history,
+      ...(scopeNow ? { scope: scopeNow } : {}),
+    });
   };
 
   const copyPrompt = async () => {
@@ -258,21 +296,10 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     replyRef.current?.select();
   };
 
-  /** Applies a plan as one undo step and records the turn. */
+  /** Applies a plan as one undo step and records the turn (the same path as a model's turn). */
   const commit = (ed: EditorApi, plan: Extract<TurnPlan, { ok: true }>, title: string) => {
-    ed.applyDiagram(plan.next, { merge: `ai:panel:${++mergeSeq}` });
-    showApplied(plan.summary, plan.changed, ed);
-    addTurn({
-      kind: "change",
-      request: title,
-      ...(scopeRecord() ? { scope: scopeRecord() } : {}),
-      summary: plan.summary,
-      changed: plan.changed,
-      choices: plan.choices,
-      warnings: plan.warnings,
-      after: ed.getDiagram(),
-      engine: "paste",
-    });
+    const scopeNow = scopeRecord();
+    addTurn(commitPlan(ed, plan, { request: title, engine: "paste", ...(scopeNow ? { scope: scopeNow } : {}) }));
     playSimulation(plan.simulationId);
     setFailure(null);
     setReply("");
@@ -367,12 +394,19 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     );
   };
 
-  /** Undo this change: the latest turn, through the normal undo history. */
+  /**
+   * Undo this change: offered only while the turn's own history step is the one Undo would reverse, so
+   * it never undoes something else (a move made since, say).
+   */
   const undoTurn = (turn: ThreadTurn) => {
     const ed = editorNow();
-    if (!ed || latestTurn(turns, ed.getDiagram())?.id !== turn.id) return;
+    if (!ed || !turn.historyKey || ed.undoTarget() !== turn.historyKey) {
+      refresh();
+      return notify("Something changed since this turn. Use Revert to here instead.", { kind: "error" });
+    }
     ed.undo();
     setTurns((all) => all.map((t) => (t.id === turn.id ? { ...t, undone: true } : t)));
+    refresh();
   };
 
   /** Revert to here: the diagram as it was after this turn, as one undo step (and a turn of its own). */
@@ -380,8 +414,9 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     const ed = editorNow();
     if (!ed || !turn.after || localOnly) return;
     const before = ed.getDiagram();
+    const historyKey = `ai:${turnId()}`;
     try {
-      ed.applyDiagram(turn.after, { merge: `ai:revert:${++mergeSeq}` });
+      ed.applyDiagram(turn.after, { merge: historyKey });
     } catch (err) {
       return notify(`Couldn't revert. ${err instanceof Error ? err.message : String(err)}`, { kind: "error" });
     }
@@ -394,6 +429,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
       summary: summarize(diff),
       changed: diff.changed,
       after,
+      historyKey,
     });
     notify(`Reverted to “${label.length > 40 ? `${label.slice(0, 40)}…` : label}”.`, {
       kind: "success",
@@ -412,6 +448,8 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
 
   // Esc stops listening first, then hands the keyboard back to the canvas. Ctrl+Enter applies.
   const onKeyDownCapture = (e: ReactKeyboardEvent) => {
+    // An input method uses Enter (and Esc) to confirm or cancel a composition: never send on those.
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -440,7 +478,13 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
 
   const listening = dictation.status !== "idle";
   const hasReply = !!reply.trim();
-  const latest = latestTurn(turns, current);
+  // Per turn: is the diagram as this turn left it (content, not positions)? Recomputed only when the
+  // diagram or the thread changes; content keys are cached per diagram object.
+  const atTurn = useMemo(
+    () => new Map(turns.map((t) => [t.id, !!t.after && !!current && sameContent(current, t.after)])),
+    [turns, current],
+  );
+  const undoTarget = snap?.undoTarget;
   const heading = emptyHeading(place, scopeItems.length > 0);
   const chips = localOnly ? [] : suggestions(place, scopeItems.length > 0);
   const placeholder = explaining
@@ -484,7 +528,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         </div>
         <button
           className={`icon-btn icon-btn-quiet${showConnect ? " is-pressed" : ""}`}
-          onClick={() => setShowConnect((v) => !v)}
+          onClick={() => (showConnect ? closeConnect() : openConnect())}
           aria-pressed={showConnect}
           aria-label="Connect a model"
           title="Connect a model (your own key)"
@@ -520,7 +564,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
             {LOCAL_ONLY_MESSAGE}
           </p>
         )}
-        {showConnect && <ConnectModel onDone={() => setShowConnect(false)} />}
+        {showConnect && <ConnectModel onDone={closeConnect} />}
         {turns.length > 0 || model.running ? (
           <ol className="ai-history" aria-label="Conversation" data-testid="ai-history">
             {turns.map((t, n) => (
@@ -529,7 +573,8 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
                 turn={t}
                 n={n}
                 current={current}
-                latest={latest?.id === t.id}
+                atThisTurn={atTurn.get(t.id) ?? false}
+                canUndo={!!t.historyKey && t.historyKey === undoTarget}
                 canChange={!!editor && !localOnly}
                 onUndo={() => undoTurn(t)}
                 onRevert={() => revertTo(t)}
@@ -576,9 +621,14 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
           </div>
         )}
         {model.error && (
-          <p className="ai-note is-error" role="alert" data-testid="ai-model-error">
-            {model.error}
-          </p>
+          <div className="ai-note is-error ai-model-error" role="alert" data-testid="ai-model-error">
+            <span>{model.error}</span>
+            {model.canRetry && (
+              <button className="btn" onClick={model.retry} data-testid="ai-retry">
+                <Icon name="reset" size={13} /> Retry
+              </button>
+            )}
+          </div>
         )}
         {failure && <FailureBox failure={failure} copied={copied === "fix"} onCopyFix={copyFix} onChoose={choose} />}
       </div>
@@ -751,11 +801,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
               </>
             )}
             {!conn && !showConnect && (
-              <button
-                className="link-btn ai-use-model"
-                onClick={() => setShowConnect(true)}
-                data-testid="ai-connect-link"
-              >
+              <button className="link-btn ai-use-model" onClick={() => openConnect()} data-testid="ai-connect-link">
                 Or connect your own model to apply changes directly
               </button>
             )}
@@ -826,7 +872,8 @@ function TurnItem({
   turn,
   n,
   current,
-  latest,
+  atThisTurn,
+  canUndo,
   canChange,
   onUndo,
   onRevert,
@@ -835,13 +882,13 @@ function TurnItem({
   turn: ThreadTurn;
   n: number;
   current: DiagramFile | null;
-  latest: boolean;
+  atThisTurn: boolean;
+  canUndo: boolean;
   canChange: boolean;
   onUndo: () => void;
   onRevert: () => void;
   onSwap: (choice: StencilChoice, stencilId: string) => void;
 }) {
-  const atThisTurn = !!turn.after && !!current && sameContent(current, turn.after);
   const undone = !!turn.undone && !atThisTurn;
   const mark = () => markElements(turn.changed);
   const unmark = () => markElements([]);
@@ -888,9 +935,9 @@ function TurnItem({
             onSwap={(id) => onSwap(c, id)}
           />
         ))}
-        {canChange && turn.after && (latest || !atThisTurn) && (
+        {canChange && turn.after && (canUndo || !atThisTurn) && (
           <div className="ai-turn-actions">
-            {latest && (
+            {canUndo && (
               <button className="btn btn-ghost" onClick={onUndo} data-testid={`ai-turn-${n}-undo`}>
                 <Icon name="undo" size={13} /> Undo this change
               </button>

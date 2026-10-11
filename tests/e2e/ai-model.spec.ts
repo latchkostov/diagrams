@@ -1,6 +1,20 @@
 import type { Page, Request } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { SLUG, nodeCount, openAskAi } from "./ai-helpers";
+import { MOD, SLUG, must, nodeCount, openAskAi, savedDiagram } from "./ai-helpers";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+/** Where "payments" is in flow coordinates: the saved edits, or the example as shipped when there are none. */
+async function paymentsX(page: import("@playwright/test").Page) {
+  const saved = (await savedDiagram(page))?.nodes.find((n) => n.id === "payments");
+  if (saved) return (saved as unknown as { x: number }).x;
+  const original = JSON.parse(readFileSync(join(process.cwd(), "src/examples/kafka-order-pipeline.json"), "utf8")) as {
+    nodes: { id: string; x: number }[];
+  };
+  return must(
+    original.nodes.find((n) => n.id === "payments"),
+    "payments",
+  ).x;
+}
 
 // Ask AI with a connected model (the user's own key), against a mocked Anthropic API: page.route answers
 // every call, so no request leaves the machine.
@@ -38,11 +52,15 @@ const TEXT_TURN = sse([
 ]);
 
 /** Answers Anthropic calls in order; anything else on the network to a model provider fails the test. */
-async function mockAnthropic(page: Page, bodies: (string | { status: number; body: string })[]) {
+type MockBody = string | { status: number; body: string } | (() => Promise<string>);
+
+async function mockAnthropic(page: Page, bodies: MockBody[]) {
   const seen: Request[] = [];
   await page.route("https://api.anthropic.com/**", async (route) => {
     seen.push(route.request());
-    const next = bodies[seen.length - 1] ?? TEXT_TURN;
+    const scripted = bodies[seen.length - 1] ?? TEXT_TURN;
+    // A function holds the response until the test releases it.
+    const next = typeof scripted === "function" ? await scripted() : scripted;
     if (typeof next === "string")
       await route.fulfill({ status: 200, contentType: "text/event-stream", body: next, headers: CORS });
     else await route.fulfill({ status: next.status, contentType: "application/json", body: next.body, headers: CORS });
@@ -215,5 +233,100 @@ test.describe("Ask AI with your own key, in context", () => {
     expect(await nodeCount(page)).toBe(before);
     const body = seen[0].postDataJSON() as { tools: { name: string }[] };
     expect(body.tools.map((t) => t.name)).toEqual(["describe_diagram"]);
+  });
+});
+
+test.describe("Ask AI with your own key, while you keep editing", () => {
+  test.beforeEach(async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    await expect(page.getByTestId("node-payments")).toBeVisible();
+    await openAskAi(page);
+  });
+
+  /** A response the test releases by hand, after editing the diagram meanwhile. */
+  function held() {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    return { release, body: async () => (await gate, TEXT_TURN) };
+  }
+
+  async function nudge(page: Page, testId: string) {
+    await page.getByTestId(testId).click();
+    for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowRight");
+  }
+
+  test("a node moved while the model works keeps its move; the turn lands on top", async ({ page }) => {
+    const second = held();
+    const seen = await mockAnthropic(page, [TOOL_TURN, second.body]);
+    await connect(page);
+    await page.getByTestId("ai-request").fill("Put a Redis cache in front of the orders API");
+    await page.getByTestId("ai-send").click();
+    await expect.poll(() => seen.length).toBe(2);
+    await expect(page.getByTestId("ai-running")).toBeVisible();
+
+    const x = () => paymentsX(page);
+    const start = await x();
+    await nudge(page, "node-payments");
+    await expect.poll(x).toBe(start + 30);
+    second.release();
+
+    await expect(page.getByTestId("ai-turn-0-summary")).toHaveText("+1 node, +1 connection");
+    await expect(page.getByTestId("ai-turn-0")).toContainText("Applied on top of the edits you made meanwhile");
+    // The move survived the AI's change.
+    await expect.poll(async () => (await savedDiagram(page))?.nodes.length).toBe(16);
+    expect(await x()).toBe(start + 30);
+  });
+
+  test("when the model's change no longer fits, nothing is applied and Retry is offered", async ({ page }) => {
+    const second = held();
+    await mockAnthropic(page, [TOOL_TURN, second.body, TOOL_TURN, TEXT_TURN]);
+    await connect(page);
+    await page.getByTestId("ai-request").fill("Put a Redis cache in front of the orders API");
+    await page.getByTestId("ai-send").click();
+    await expect(page.getByTestId("ai-running")).toBeVisible();
+    // The model connects to "orders"; delete it meanwhile.
+    await page.getByTestId("node-orders").click();
+    await page.keyboard.press("Delete");
+    await expect(page.getByTestId("node-orders")).toHaveCount(0);
+    const count = await nodeCount(page);
+    second.release();
+    await expect(page.getByTestId("ai-model-error")).toContainText("The diagram changed while the AI was working");
+    expect(await nodeCount(page)).toBe(count);
+    await expect(page.getByTestId("ai-retry")).toBeVisible();
+    // Bring "orders" back and retry: the request goes again and applies.
+    await page.getByTestId("canvas-wrap").click({ position: { x: 30, y: 300 } });
+    await page.keyboard.press(`${MOD}+z`);
+    await expect(page.getByTestId("node-orders")).toBeVisible();
+    await page.getByTestId("ai-retry").click();
+    await expect(page.getByTestId("ai-turn-0-summary")).toHaveText("+1 node, +1 connection");
+  });
+
+  test("Enter while an input method is composing doesn't send", async ({ page }) => {
+    const seen = await mockAnthropic(page, [TOOL_TURN, TEXT_TURN]);
+    await connect(page);
+    await page.getByTestId("ai-request").fill("キャッシュを追加");
+    await page.getByTestId("ai-request").evaluate((el) => {
+      el.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", isComposing: true, bubbles: true, cancelable: true }),
+      );
+      el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 229, bubbles: true, cancelable: true }));
+    });
+    await page.waitForTimeout(300);
+    expect(seen).toHaveLength(0);
+    await expect(page.getByTestId("ai-running")).toHaveCount(0);
+  });
+
+  test("closing Connect a model returns the keyboard to what opened it", async ({ page }) => {
+    await mockAnthropic(page, []);
+    await page.getByTestId("ai-connect-toggle").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("ai-key")).toBeFocused();
+    await page.getByTestId("ai-connect-cancel").click();
+    await expect(page.getByTestId("ai-connect-toggle")).toBeFocused();
+    // After connecting, it goes on to the request instead.
+    await page.getByTestId("ai-connect-toggle").click();
+    await page.getByTestId("ai-key").fill(KEY);
+    await page.getByTestId("ai-key-save").click();
+    await expect(page.getByTestId("ai-request")).toBeFocused();
   });
 });

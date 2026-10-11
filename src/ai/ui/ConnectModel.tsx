@@ -7,7 +7,7 @@ import type { ProviderId } from "../engine/types";
  * "Connect a model": the user's own key for Claude, OpenAI or Gemini, kept in this browser only. Optional:
  * without it, Ask AI copies a prompt for any chatbot.
  */
-export function ConnectModel({ onDone }: { onDone: () => void }) {
+export function ConnectModel({ onDone }: { onDone: (connected?: boolean) => void }) {
   const conn = useConnection();
   const id = useId();
   const [provider, setProvider] = useState<ProviderId>(conn?.provider ?? "anthropic");
@@ -30,7 +30,7 @@ export function ConnectModel({ onDone }: { onDone: () => void }) {
     const ok = connection.set({ provider, model: model.trim(), key: key.trim() || conn!.key });
     setKey("");
     setFailed(!ok);
-    if (ok) onDone();
+    if (ok) onDone(true);
   };
 
   return (
@@ -119,7 +119,7 @@ export function ConnectModel({ onDone }: { onDone: () => void }) {
           </button>
         )}
         <span className="ai-grow" />
-        <button className="btn" onClick={onDone} data-testid="ai-connect-cancel">
+        <button className="btn" onClick={() => onDone()} data-testid="ai-connect-cancel">
           {conn ? "Done" : "Cancel"}
         </button>
         <button className="btn btn-primary" disabled={!canSave} onClick={save} data-testid="ai-key-save">

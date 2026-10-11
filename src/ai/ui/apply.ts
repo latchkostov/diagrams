@@ -19,6 +19,7 @@ import {
   type StencilResolution,
 } from "../index";
 import type { ParsedReply } from "./reply";
+import type { TurnStep } from "../turn";
 
 /** A stencil the app picked from the model's words, with how sure it was. */
 export interface StencilChoice {
@@ -232,6 +233,37 @@ export function planTurn(current: DiagramFile, reply: ParsedReply): TurnPlan {
     })),
     warnings: result.warnings,
     replaced: false,
+  };
+}
+
+/**
+ * Plans a whole turn: its steps in order, each on the result of the last (a pasted reply is one step;
+ * a model's turn is its successful tool calls). One plan, so both paths record the same kind of turn.
+ */
+export function planSteps(current: DiagramFile, steps: readonly TurnStep[]): TurnPlan {
+  let next = current;
+  const plans: Extract<TurnPlan, { ok: true }>[] = [];
+  for (const step of steps) {
+    const plan = planTurn(next, { ok: true, ...step } as ParsedReply);
+    if (!plan.ok) return plan;
+    plans.push(plan);
+    next = plan.next;
+  }
+  if (plans.length === 1) return plans[0];
+  const d = diagramDiff(current, next);
+  const simulationId = plans.find((p) => p.simulationId)?.simulationId;
+  return {
+    ok: true,
+    next,
+    hasChanges: d.hasChanges,
+    summary: d.summary,
+    changed: [...new Set(plans.flatMap((p) => p.changed))].filter(
+      (id) => next.nodes.some((n) => n.id === id) || next.edges.some((e) => e.id === id) || d.added.ids.includes(id),
+    ),
+    choices: plans.flatMap((p) => p.choices),
+    warnings: plans.flatMap((p) => p.warnings),
+    replaced: plans.some((p) => p.replaced),
+    ...(simulationId ? { simulationId } : {}),
   };
 }
 

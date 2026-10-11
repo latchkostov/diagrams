@@ -1,7 +1,7 @@
 // OpenAI through Chat Completions, streamed, straight from the browser with the user's own key.
 
 import { inlineRefs, parseArgs, postSse } from "./http";
-import type { ProviderAdapter, StepResult, ToolCall } from "./types";
+import { ProviderError, type ProviderAdapter, type StepResult, type ToolCall } from "./types";
 
 export const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -52,6 +52,7 @@ export const openai: ProviderAdapter = {
       }
       if (typeof choice.finish_reason === "string") finish = choice.finish_reason;
     }
+    if (!finish) throw new ProviderError("OpenAI's answer ended early (the connection closed). Try again.");
     const raw = [...pending.entries()].sort((a, b) => a[0] - b[0]).map(([, c]) => c);
     const calls: ToolCall[] = raw.map((c, i) => {
       const { input, invalid } = parseArgs(c.args);

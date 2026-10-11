@@ -4,10 +4,12 @@
 
 import type { EditorApi } from "../../editor/types";
 import type { DiagramFile } from "../../model/types";
+import type { DiagramOp, LayoutMode, SimulationSpec } from "../index";
 import { diagramDiff } from "../../model/diagramDiff";
 import { LOCAL_ONLY_MESSAGE } from "../privacy";
 import { buildTools, type ToolName, type WebMcpHost } from "../webmcp/tools";
 import { redact } from "./http";
+import type { TurnStep } from "../turn";
 import { ProviderError, type ProviderAdapter, type ToolOutcome, type ToolSpec } from "./types";
 
 /** Tools for a change (or a simulation) and for an explanation. Never new_diagram or get_share_link. */
@@ -62,6 +64,11 @@ export interface AgentTurnResult {
   changed: boolean;
   /** "steps": it was still calling tools when the step limit came. */
   stop: "end" | "length" | "refused" | "steps";
+  /**
+   * The tool calls that changed the draft, in order: the caller plans them on the diagram as it is when
+   * the model finishes (src/ai/ui/apply.ts planSteps), never applying the draft over newer edits.
+   */
+  steps: TurnStep[];
 }
 
 /** The user's message: the diagram, any context, then the request. */
@@ -108,6 +115,7 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnResu
   const messages = input.adapter.start(input.history ?? [], userMessage(input.describe, input.request, input.context));
   let text = "";
   let stop: AgentTurnResult["stop"] = "steps";
+  const steps: TurnStep[] = [];
   for (let step = 0; step < (input.maxSteps ?? 8); step++) {
     guard();
     const result = await input.adapter.step({
@@ -140,8 +148,17 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnResu
         output = { ok: false, error: call.invalid ?? `There is no tool named ${JSON.stringify(call.name)}.` };
       } else {
         try {
-          output = await def.run((call.input ?? {}) as Record<string, unknown>, input.signal);
+          const args = (call.input ?? {}) as Record<string, unknown>;
+          output = await def.run(args, input.signal);
           isError = !!output && typeof output === "object" && (output as { ok?: unknown }).ok === false;
+          if (!isError && def.name === "edit_diagram" && !args.dryRun)
+            steps.push({
+              kind: "ops",
+              ops: args.ops as DiagramOp[],
+              ...(args.layout ? { layout: args.layout as LayoutMode } : {}),
+            });
+          else if (!isError && def.name === "set_simulation")
+            steps.push({ kind: "simulation", spec: args as unknown as SimulationSpec });
         } catch (err) {
           isError = true;
           output = { ok: false, error: redact(err instanceof Error ? err.message : String(err), input.key) };
@@ -152,5 +169,5 @@ export async function runAgentTurn(input: AgentTurnInput): Promise<AgentTurnResu
     }
     messages.push(...input.adapter.results(outcomes));
   }
-  return { text: text.trim(), next: draft, changed: diagramDiff(input.diagram, draft).hasChanges, stop };
+  return { text: text.trim(), next: draft, changed: diagramDiff(input.diagram, draft).hasChanges, stop, steps };
 }

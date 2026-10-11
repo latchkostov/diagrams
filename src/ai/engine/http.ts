@@ -81,11 +81,19 @@ export async function* postSse(
     const payload = data.join("\n");
     data = [];
     if (payload === "[DONE]") return;
+    let event: Record<string, unknown>;
     try {
-      yield JSON.parse(payload) as Record<string, unknown>;
+      event = JSON.parse(payload) as Record<string, unknown>;
     } catch {
       // A keep-alive or a partial line the provider will repeat: skip it.
+      return;
     }
+    // A failure can arrive inside a 200 stream (Anthropic's `error` event, an OpenAI or Gemini error
+    // object): it fails the call, so nothing the model did so far is applied.
+    const streamed = streamedError(event);
+    if (streamed !== undefined)
+      throw new ProviderError(redact(`${provider} stopped with an error${streamed ? `: ${streamed}` : ""}.`, init.key));
+    yield event;
   };
   for (;;) {
     const { value, done } = await reader.read();
@@ -125,6 +133,14 @@ export function inlineRefs(schema: Record<string, unknown>): Record<string, unkn
     return out;
   };
   return walk(schema, 0) as Record<string, unknown>;
+}
+
+/** The message of an error event in a stream ("" when it has none), or undefined for a normal event. */
+export function streamedError(event: Record<string, unknown>): string | undefined {
+  const e = event.error;
+  if (event.type !== "error" && (!e || typeof e !== "object")) return undefined;
+  const m = e && typeof e === "object" ? (e as { message?: unknown }).message : undefined;
+  return typeof m === "string" ? m : "";
 }
 
 /** Parses a tool call's arguments; bad JSON becomes an `invalid` call the loop reports back. */

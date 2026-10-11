@@ -1,5 +1,19 @@
 import { test, expect, gotoCanvas, expectNoErrors, STORAGE_KEYS } from "./fixtures";
 import { MOD, SLUG, must, nodeCount, openAskAi, savedDiagram } from "./ai-helpers";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+/** Where "payments" is in flow coordinates: the saved edits, or the example as shipped when there are none. */
+async function paymentsX(page: import("@playwright/test").Page) {
+  const saved = (await savedDiagram(page))?.nodes.find((n) => n.id === "payments");
+  if (saved) return (saved as unknown as { x: number }).x;
+  const original = JSON.parse(readFileSync(join(process.cwd(), "src/examples/kafka-order-pipeline.json"), "utf8")) as {
+    nodes: { id: string; x: number }[];
+  };
+  return must(
+    original.nodes.find((n) => n.id === "payments"),
+    "payments",
+  ).x;
+}
 
 // The docked Ask AI panel: part of the tooling beside the canvas, with a thread per diagram (Undo this
 // change, Revert to here, a highlight of what each turn touched) kept in this browser only.
@@ -116,12 +130,67 @@ test.describe("Ask AI dock", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("Undo this change is bound to the turn's own step: a move made since is never undone by it", async ({
+    page,
+  }) => {
+    const before = await nodeCount(page);
+    await openAskAi(page);
+    await applyTurn(page, "Add a billing worker", ADD_WORKER);
+    await expect(page.getByTestId("ai-turn-0-undo")).toBeVisible();
+
+    // A move: the next Undo would reverse the move, so the turn no longer offers it.
+    const x = () => paymentsX(page);
+    const start = await x();
+    await page.getByTestId("node-payments").click();
+    for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowRight");
+    await expect.poll(x).toBe(start + 30);
+    await expect(page.getByTestId("ai-turn-0-undo")).toHaveCount(0);
+
+    // Undo the move by hand: now the turn's step is next again, and its Undo reverses only the turn.
+    await page.keyboard.press(`${MOD}+z`);
+    await expect.poll(x).toBe(start);
+    await expect(page.getByTestId("ai-turn-0-undo")).toBeVisible();
+    await page.getByTestId("ai-turn-0-undo").click();
+    await expect.poll(() => nodeCount(page)).toBe(before);
+    await expect(page.getByTestId("ai-turn-0-undone")).toBeVisible();
+    expect(await x()).toBe(start);
+
+    // After a reload the history is new: nothing claims to undo the turn.
+    await page.getByTestId("ai-turn-0-revert").click();
+    await expect.poll(() => nodeCount(page)).toBe(before + 1);
+    await page.reload();
+    await expect(page.getByTestId("ai-turn-1")).toBeVisible();
+    await expect(page.getByTestId("ai-turn-1-undo")).toHaveCount(0);
+    await expect(page.getByTestId("ai-turn-0-undo")).toHaveCount(0);
+  });
+
+  test("a malformed stored conversation is dropped, not fatal", async ({ page, consoleErrors }) => {
+    await openAskAi(page);
+    await applyTurn(page, "Add a billing worker", ADD_WORKER);
+    // Corrupt this diagram's stored conversation: one turn with a broken snapshot, one not a turn at all.
+    await page.evaluate(() => {
+      const key = Object.keys(localStorage).find((k) => k.startsWith("diagrams.ai-thread.v1:"));
+      if (!key) throw new Error("no stored conversation");
+      localStorage.setItem(
+        key,
+        JSON.stringify({ turns: [{ id: "t1", request: "Old", kind: "change", after: { nodes: "oops" } }, 7] }),
+      );
+    });
+    await page.reload();
+    await expect(page.getByTestId("ai-turn-0")).toContainText("Old");
+    await expect(page.getByTestId("ai-turn-1")).toHaveCount(0);
+    await expect(page.getByTestId("ai-turn-0-revert")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
   test("the thread is kept per diagram in this browser, never in the file, and can be cleared", async ({ page }) => {
     await openAskAi(page);
     await applyTurn(page, "Add a billing worker", ADD_WORKER);
     await page.reload();
     await expect(page.getByTestId("ai-turn-0")).toContainText("Add a billing worker");
-    await expect(page.getByTestId("ai-turn-0-undo")).toBeVisible();
+    // A reload starts a new undo history: the turn no longer claims it can undo itself.
+    await expect(page.getByTestId("ai-turn-0-summary")).toBeVisible();
+    await expect(page.getByTestId("ai-turn-0-undo")).toHaveCount(0);
 
     // Not in the diagram's saved file (so not in exports or share links).
     const raw = await page.evaluate((key) => localStorage.getItem(key) ?? "", STORAGE_KEYS.autosavePrefix + SLUG);

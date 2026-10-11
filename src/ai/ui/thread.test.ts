@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import {
   capThread,
-  latestTurn,
+  validTurn,
   loadThread,
   MAX_SNAPSHOTS,
   MAX_TURNS,
@@ -65,13 +65,34 @@ describe("thread", () => {
     expect(sameContent(a, diagram(["api", "cache"]))).toBe(false);
   });
 
-  it("offers Undo only for the last change, while the diagram is still as it left it", () => {
-    const one = diagram(["api"]);
-    const two = diagram(["api", "db"]);
-    const turns = [turn(0, one), turn(1, two), turn(2, undefined, { kind: "explain" })];
-    expect(latestTurn(turns, two)?.id).toBe("t1");
-    expect(latestTurn(turns, one)).toBeUndefined();
-    expect(latestTurn([turn(0, one), turn(1, two, { undone: true })], two)).toBeUndefined();
+  it("drops malformed stored turns and snapshots instead of crashing, and caps on load", () => {
+    const good = turn(1, diagram(["api"]));
+    store.set(
+      "diagrams.ai-thread.v1:doc-x",
+      JSON.stringify({
+        turns: [
+          null,
+          "nope",
+          { id: 3, request: "x", kind: "change" },
+          { id: "t2", request: "bad snapshot", kind: "change", changed: "x", after: { nodes: "oops" } },
+          { id: "t9", request: "bad kind", kind: "delete" },
+          good,
+        ],
+      }),
+    );
+    const loaded = loadThread("doc-x");
+    expect(loaded.map((t) => t.id)).toEqual(["t2", "t1"]);
+    expect(loaded[0].after).toBeUndefined();
+    expect(loaded[0].changed).toEqual([]);
+    expect(loaded[1].after?.nodes).toHaveLength(1);
+    store.set("diagrams.ai-thread.v1:doc-y", "{not json");
+    expect(loadThread("doc-y")).toEqual([]);
+    expect(
+      validTurn({ id: "a", request: "", kind: "explain", scope: [{ id: 1 }, { id: "n", label: "N" }] })?.scope,
+    ).toEqual([{ id: "n", label: "N" }]);
+    const many = Array.from({ length: MAX_TURNS + 3 }, (_, i) => turn(i));
+    store.set("diagrams.ai-thread.v1:doc-z", JSON.stringify({ turns: many }));
+    expect(loadThread("doc-z")).toHaveLength(MAX_TURNS);
   });
 
   it("round-trips through storage per diagram, and an empty thread removes its key", () => {

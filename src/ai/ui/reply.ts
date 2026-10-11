@@ -9,14 +9,12 @@ import {
   type SimulationSpec,
 } from "../index";
 import { checkSchema } from "../validation";
+import type { TurnStep } from "../turn";
 import type { JsonSchema } from "../schemas";
 import { exceedsDepth, LIMITS, tooLargeMessage } from "../../interop/native";
 
-export type ParsedReply =
-  | { ok: true; kind: "ops"; ops: DiagramOp[]; layout?: LayoutMode }
-  | { ok: true; kind: "file"; file: Record<string, unknown> }
-  | { ok: true; kind: "simulation"; spec: SimulationSpec }
-  | { ok: false; error: string; hint: string };
+/** A reply is one turn step (see src/ai/turn.ts), or why it can't be read. */
+export type ParsedReply = ({ ok: true } & TurnStep) | { ok: false; error: string; hint: string };
 
 const ASK_AGAIN = "Ask your AI to answer with one ```json block that holds an array of ops.";
 const LAYOUTS: readonly LayoutMode[] = ["auto", "full", "none"];

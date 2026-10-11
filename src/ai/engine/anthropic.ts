@@ -70,12 +70,9 @@ export const anthropic: ProviderAdapter = {
         case "message_delta":
           stopReason = String((ev.delta as Record<string, unknown> | undefined)?.stop_reason ?? stopReason);
           break;
-        case "error": {
-          const e = ev.error as { message?: string } | undefined;
-          throw new ProviderError(`Claude stopped: ${e?.message ?? "an error"}.`);
-        }
       }
     }
+    if (!stopReason) throw new ProviderError("Claude's answer ended early (the connection closed). Try again.");
     const calls: ToolCall[] = [];
     blocks.forEach((block, i) => {
       if (block?.type !== "tool_use") return;

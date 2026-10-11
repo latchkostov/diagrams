@@ -4,7 +4,7 @@
 // small storage wrapper, so the caps are unit-tested.
 
 import type { DiagramFile } from "../../model/types";
-import { diagramDiff } from "../../model/diagramDiff";
+import { validateDiagram } from "../../interop/native";
 import type { StencilChoice } from "./apply";
 
 export interface ThreadTurn {
@@ -29,6 +29,11 @@ export interface ThreadTurn {
   after?: DiagramFile;
   /** "Undo this change" was used. */
   undone?: boolean;
+  /**
+   * The editor history step this turn made (its applyDiagram `merge` tag): Undo this change is offered
+   * only while that step is the one Undo would reverse.
+   */
+  historyKey?: string;
   /** Which engine answered: the copy-paste flow or a connected model. */
   engine?: string;
 }
@@ -60,16 +65,86 @@ export function capThread(turns: readonly ThreadTurn[]): ThreadTurn[] {
   return out;
 }
 
-/** True when two diagrams have the same content (positions and sizes aside). */
-export function sameContent(a: DiagramFile, b: DiagramFile): boolean {
-  const d = diagramDiff(a, b);
-  return !d.added.count && !d.removed.count && !d.updated.count && !d.metaChanged;
+const contentKeys = new WeakMap<DiagramFile, string>();
+
+/**
+ * The diagram's content as text, positions and boundary sizes aside (cached per diagram object, so a
+ * render compares strings instead of diffing whole diagrams).
+ */
+export function contentKey(d: DiagramFile): string {
+  let key = contentKeys.get(d);
+  if (key === undefined) {
+    const place = <T extends object>(items: readonly T[] | undefined, size: boolean) =>
+      (items ?? []).map((item) => {
+        const rest: Record<string, unknown> = { ...(item as Record<string, unknown>) };
+        delete rest.x;
+        delete rest.y;
+        if (size) {
+          delete rest.width;
+          delete rest.height;
+        }
+        return rest;
+      });
+    key = JSON.stringify([
+      d.title,
+      d.description,
+      d.direction,
+      place(d.nodes, false),
+      d.edges,
+      place(d.groups, true),
+      place(d.annotations, false),
+      d.simulations ?? [],
+    ]);
+    contentKeys.set(d, key);
+  }
+  return key;
 }
 
-/** The turn whose change is the latest thing that happened to the diagram: only it offers "Undo this change". */
-export function latestTurn(turns: readonly ThreadTurn[], current: DiagramFile | null): ThreadTurn | undefined {
-  const last = [...turns].reverse().find((t) => t.kind !== "explain");
-  return last?.after && !last.undone && current && sameContent(current, last.after) ? last : undefined;
+/** True when two diagrams have the same content (positions and sizes aside). */
+export const sameContent = (a: DiagramFile, b: DiagramFile) => contentKey(a) === contentKey(b);
+
+const KINDS = new Set(["change", "explain", "revert"]);
+const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
+
+/** A stored turn, checked field by field: anything malformed is dropped, never rendered. */
+export function validTurn(raw: unknown): ThreadTurn | null {
+  if (!raw || typeof raw !== "object") return null;
+  const t = raw as Record<string, unknown>;
+  if (typeof t.id !== "string" || typeof t.request !== "string" || !KINDS.has(t.kind as string)) return null;
+  const turn: ThreadTurn = {
+    id: t.id,
+    at: typeof t.at === "number" ? t.at : 0,
+    request: t.request,
+    kind: t.kind as ThreadTurn["kind"],
+    changed: isStringArray(t.changed) ? t.changed : [],
+  };
+  if (typeof t.reply === "string") turn.reply = t.reply;
+  if (typeof t.summary === "string") turn.summary = t.summary;
+  if (typeof t.engine === "string") turn.engine = t.engine;
+  if (typeof t.historyKey === "string") turn.historyKey = t.historyKey;
+  if (t.undone === true) turn.undone = true;
+  if (isStringArray(t.warnings)) turn.warnings = t.warnings;
+  if (Array.isArray(t.scope))
+    turn.scope = t.scope.filter(
+      (s): s is { id: string; label: string } =>
+        !!s && typeof s === "object" && typeof s.id === "string" && typeof s.label === "string",
+    );
+  if (Array.isArray(t.choices))
+    turn.choices = t.choices.filter(
+      (c): c is StencilChoice =>
+        !!c &&
+        typeof c === "object" &&
+        typeof c.nodeId === "string" &&
+        typeof c.kind === "string" &&
+        !!c.stencil &&
+        typeof c.stencil.id === "string" &&
+        Array.isArray(c.stencil.alternatives),
+    );
+  if (t.after !== undefined) {
+    const checked = validateDiagram(t.after);
+    if (checked.ok) turn.after = checked.diagram;
+  }
+  return turn;
 }
 
 const keyFor = (documentId: string) => PREFIX + documentId;
@@ -77,7 +152,8 @@ const keyFor = (documentId: string) => PREFIX + documentId;
 export function loadThread(documentId: string): ThreadTurn[] {
   try {
     const raw = JSON.parse(localStorage.getItem(keyFor(documentId)) ?? "null") as { turns?: unknown } | null;
-    return Array.isArray(raw?.turns) ? (raw.turns as ThreadTurn[]).filter((t) => t && typeof t.id === "string") : [];
+    if (!Array.isArray(raw?.turns)) return [];
+    return capThread(raw.turns.map(validTurn).filter((t): t is ThreadTurn => !!t));
   } catch {
     return [];
   }

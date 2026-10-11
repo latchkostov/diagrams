@@ -796,3 +796,19 @@ button.ai-candidate:focus-visible {
   color: var(--text-3);
   font-size: 11.5px;
 }
+
+.ai-model-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-model-error > span {
+  flex: 1;
+}
+
+.ai-model-error .btn {
+  height: 26px;
+  padding: 0 9px;
+  font-size: 12px;
+}
