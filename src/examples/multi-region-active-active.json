@@ -1,0 +1,331 @@
+{
+  "format": "diagrams/v1",
+  "title": "Multi-region active/active",
+  "description": "Route 53 sends each customer to the nearest healthy region; both regions take writes and a DynamoDB global table replicates them.",
+  "direction": "LR",
+  "groups": [
+    { "id": "us", "label": "AWS · us-east-1", "tone": "aws", "x": 760, "y": 160, "width": 1100, "height": 152 },
+    { "id": "eu", "label": "AWS · eu-west-1", "tone": "aws", "x": 760, "y": 480, "width": 1100, "height": 152 }
+  ],
+  "nodes": [
+    {
+      "id": "users",
+      "stencil": "client.user",
+      "label": "Customers",
+      "sublabel": "Americas and Europe",
+      "x": 40,
+      "y": 360,
+      "props": { "ratePerSec": 20, "messageType": "Checkout" }
+    },
+    {
+      "id": "r53",
+      "stencil": "aws.route53",
+      "label": "Route 53",
+      "sublabel": "Latency · health checks",
+      "x": 420,
+      "y": 360,
+      "props": { "latencyMs": 1 }
+    },
+    {
+      "id": "alb-us",
+      "stencil": "aws.elb",
+      "label": "Load balancer",
+      "sublabel": "us-east-1 · 3 AZs",
+      "x": 800,
+      "y": 200,
+      "group": "us",
+      "props": { "latencyMs": 1 }
+    },
+    {
+      "id": "api-us",
+      "stencil": "aws.ecs",
+      "label": "Checkout API",
+      "sublabel": "Fargate · sized for 100%",
+      "x": 1180,
+      "y": 200,
+      "group": "us",
+      "props": { "replicas": 6, "concurrency": 32, "latencyMs": 120, "emits": "OrderWrite" }
+    },
+    {
+      "id": "table-us",
+      "stencil": "aws.dynamodb",
+      "label": "Orders global table",
+      "sublabel": "us-east-1 replica",
+      "x": 1560,
+      "y": 200,
+      "group": "us",
+      "props": { "latencyMs": 0 }
+    },
+    {
+      "id": "alb-eu",
+      "stencil": "aws.elb",
+      "label": "Load balancer",
+      "sublabel": "eu-west-1 · 3 AZs",
+      "x": 800,
+      "y": 520,
+      "group": "eu",
+      "props": { "latencyMs": 1 }
+    },
+    {
+      "id": "api-eu",
+      "stencil": "aws.ecs",
+      "label": "Checkout API",
+      "sublabel": "Fargate · sized for 100%",
+      "x": 1180,
+      "y": 520,
+      "group": "eu",
+      "props": { "replicas": 6, "concurrency": 32, "latencyMs": 120, "emits": "OrderWrite" }
+    },
+    {
+      "id": "table-eu",
+      "stencil": "aws.dynamodb",
+      "label": "Orders global table",
+      "sublabel": "eu-west-1 replica",
+      "x": 1560,
+      "y": 520,
+      "group": "eu",
+      "props": { "latencyMs": 0 }
+    }
+  ],
+  "edges": [
+    {
+      "id": "users-to-r53",
+      "from": "users",
+      "to": "r53",
+      "label": "DNS lookup",
+      "kind": "sync",
+      "props": { "travelMs": 150 }
+    },
+    {
+      "id": "r53-to-alb-us",
+      "from": "r53",
+      "to": "alb-us",
+      "label": "Nearest: us-east-1",
+      "kind": "sync",
+      "props": { "travelMs": 250, "filter": ["Checkout"] }
+    },
+    {
+      "id": "r53-to-alb-eu",
+      "from": "r53",
+      "to": "alb-eu",
+      "label": "Nearest: eu-west-1",
+      "kind": "sync",
+      "props": { "travelMs": 250, "filter": ["Checkout", "CheckoutFailover"] }
+    },
+    {
+      "id": "alb-us-to-api-us",
+      "from": "alb-us",
+      "to": "api-us",
+      "label": "HTTPS",
+      "kind": "sync",
+      "props": { "travelMs": 150 }
+    },
+    {
+      "id": "alb-eu-to-api-eu",
+      "from": "alb-eu",
+      "to": "api-eu",
+      "label": "HTTPS",
+      "kind": "sync",
+      "props": { "travelMs": 150 }
+    },
+    {
+      "id": "api-us-to-table-us",
+      "from": "api-us",
+      "to": "table-us",
+      "label": "Local write",
+      "kind": "sync",
+      "props": { "travelMs": 150 }
+    },
+    {
+      "id": "api-eu-to-table-eu",
+      "from": "api-eu",
+      "to": "table-eu",
+      "label": "Local write",
+      "kind": "sync",
+      "props": { "travelMs": 150 }
+    },
+    {
+      "id": "table-us-to-table-eu",
+      "from": "table-us",
+      "to": "table-eu",
+      "label": "Replicate · ~1 s",
+      "kind": "async",
+      "sourceSide": "bottom",
+      "targetSide": "top",
+      "props": { "travelMs": 900, "filter": ["OrderWrite"], "emits": "ReplicatedWrite" }
+    },
+    {
+      "id": "table-eu-to-table-us",
+      "from": "table-eu",
+      "to": "table-us",
+      "label": "Replicate · ~1 s",
+      "kind": "async",
+      "sourceSide": "right",
+      "targetSide": "right",
+      "props": { "travelMs": 900, "filter": ["OrderWrite"], "emits": "ReplicatedWrite" }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "failover",
+      "title": "Region outage and failover",
+      "description": "us-east-1's API fails; requests in flight error until health checks trip, then Route 53 sends everyone to eu-west-1.",
+      "seed": 7,
+      "scale": 2,
+      "traffic": [
+        {
+          "id": "before",
+          "node": "users",
+          "messageType": "Checkout",
+          "label": "Latency routing: 100 checkouts/s",
+          "shape": { "kind": "constant", "ratePerSec": 100, "durationMs": 5500 }
+        },
+        {
+          "id": "after",
+          "node": "users",
+          "messageType": "CheckoutFailover",
+          "label": "After failover: eu-west-1 only",
+          "shape": { "kind": "constant", "ratePerSec": 100, "fromMs": 5500, "durationMs": 5500 }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Both regions are live. Route 53 sends each customer to the closer one, and every write replicates to the other region in about a second. Each dot is two checkouts.",
+            "focus": ["r53", "table-us", "table-eu"]
+          }
+        },
+        { "atMs": 4000, "action": { "do": "status", "node": "alb-us", "status": "down" } },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "note",
+            "text": "us-east-1 has an outage. Until Route 53's health checks fail, requests sent there error out.",
+            "focus": ["alb-us", "api-us"],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 5500,
+          "action": {
+            "do": "note",
+            "text": "Health checks trip and Route 53 stops answering with us-east-1. eu-west-1 is sized to carry everyone.",
+            "focus": ["r53", "alb-eu", "api-eu"]
+          }
+        },
+        {
+          "atMs": 9000,
+          "action": {
+            "do": "note",
+            "text": "No data was stranded: everything us-east-1 wrote before the outage had already replicated to eu-west-1.",
+            "focus": ["table-us", "table-eu"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "blip",
+          "label": "A short error blip before failover",
+          "metric": { "node": "alb-us", "field": "dropped" },
+          "op": ">",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "eu-carries",
+          "label": "eu-west-1 holds every committed order",
+          "metric": { "node": "table-eu", "field": "processed" },
+          "op": "==",
+          "value": 1004,
+          "when": "end"
+        },
+        {
+          "id": "no-eu-drops",
+          "label": "eu-west-1 never drops a request",
+          "metric": { "node": "alb-eu", "field": "dropped" },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    },
+    {
+      "id": "both-write",
+      "title": "Both regions take writes",
+      "description": "A sale peaks at 600 checkouts a second; each region serves half and the replicas converge.",
+      "seed": 7,
+      "scale": 10,
+      "traffic": [
+        {
+          "id": "sale",
+          "node": "users",
+          "messageType": "Checkout",
+          "label": "Sale: 200 → 600 checkouts/s",
+          "shape": {
+            "kind": "spike",
+            "baseRate": 200,
+            "peakRate": 600,
+            "atMs": 3000,
+            "peakMs": 3000,
+            "durationMs": 9000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Active/active: both regions serve customers and accept writes. Neither waits for the other. Each dot is 10 checkouts.",
+            "focus": ["api-us", "api-eu"]
+          }
+        },
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "note",
+            "text": "The sale peaks at 600 a second. Each region carries half, with room to take all of it if the other fails.",
+            "focus": ["alb-us", "alb-eu"],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 7000,
+          "action": {
+            "do": "note",
+            "text": "Writes replicate asynchronously in both directions; conflicting updates resolve last-writer-wins. When the sale ends, the two replicas hold the same orders.",
+            "focus": ["table-us", "table-eu"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "us",
+          "label": "us-east-1 holds all 3,000 orders",
+          "metric": { "node": "table-us", "field": "processed" },
+          "op": "==",
+          "value": 3000,
+          "when": "end"
+        },
+        {
+          "id": "eu",
+          "label": "eu-west-1 holds all 3,000 orders",
+          "metric": { "node": "table-eu", "field": "processed" },
+          "op": "==",
+          "value": 3000,
+          "when": "end"
+        },
+        {
+          "id": "no-drops",
+          "label": "Nothing is dropped",
+          "metric": { "node": "alb-us", "field": "dropped" },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    }
+  ]
+}

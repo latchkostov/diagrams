@@ -9,12 +9,26 @@ import { Menu } from "../interop/ui/Menu";
 import { Glyph } from "../interop/ui/glyphs";
 import { capacityOverlay } from "../live/capacityOverlay";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
+import { groupByTheme, type ExampleThemeInfo } from "../examples/themes";
 
 export interface ExampleOption {
   slug: string;
   title: string;
   /** "yours": your diagrams (and a shared one); "examples": the built-in examples. */
   group: "yours" | "examples";
+  /** An example's theme: the picker shows one group per theme ("Event streaming", "Data & AI"…). */
+  theme?: ExampleThemeInfo;
+}
+
+/** The picker's groups: Your diagrams, then examples by theme (unthemed ones under "Examples"). */
+function pickerGroups(options: ExampleOption[]) {
+  return [
+    { id: "yours", label: "Your diagrams", options: options.filter((o) => o.group === "yours") },
+    ...groupByTheme(
+      options.filter((o) => o.group === "examples"),
+      (o) => o.theme?.id,
+    ).map((s) => ({ id: s.theme?.id ?? "examples", label: s.theme?.label ?? "Examples", options: s.items })),
+  ];
 }
 
 interface Props {
@@ -92,19 +106,13 @@ export function TopBar(p: Props) {
             name="example"
             data-testid="example-picker"
           >
-            {(["yours", "examples"] as const).map((group) => (
-              <optgroup
-                key={group}
-                label={group === "yours" ? "Your diagrams" : "Examples"}
-                data-testid={`picker-group-${group}`}
-              >
-                {p.exampleOptions
-                  .filter((o) => o.group === group)
-                  .map((o) => (
-                    <option key={o.slug} value={o.slug} data-testid={`picker-option-${o.slug}`}>
-                      {o.title}
-                    </option>
-                  ))}
+            {pickerGroups(p.exampleOptions).map((g) => (
+              <optgroup key={g.id} label={g.label} data-testid={`picker-group-${g.id}`}>
+                {g.options.map((o) => (
+                  <option key={o.slug} value={o.slug} data-testid={`picker-option-${o.slug}`}>
+                    {o.title}
+                  </option>
+                ))}
               </optgroup>
             ))}
           </select>

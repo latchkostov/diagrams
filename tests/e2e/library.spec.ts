@@ -92,11 +92,11 @@ test.describe("Your diagrams", () => {
     const a = await importDiagram(page, "Alpha");
     const b = await importDiagram(page, "Beta", 3);
     expect(a).not.toBe(b);
-    // Yours come first in the picker, most recent first; the examples follow in their own group.
+    // Yours come first in the picker, most recent first; the examples follow in their theme groups.
     const yours = page.getByTestId("picker-group-yours").getByTestId(/^picker-option-/);
     await expect(yours).toHaveText(["Beta", "Alpha"]);
     await expect(
-      page.getByTestId("picker-group-examples").getByTestId(`picker-option-${publicExamples[0].slug}`),
+      page.getByTestId(/^picker-group-(?!yours$)/).getByTestId(`picker-option-${publicExamples[0].slug}`),
     ).toHaveText(publicExamples[0].title);
     await page.getByTestId("example-picker").selectOption(a);
     await expect(page.getByTestId("diagram-title")).toHaveText("Alpha");

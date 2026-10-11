@@ -6,6 +6,7 @@ import {
   type DiagramNode,
 } from "../../model/types";
 import { catalog } from "../../stencils/catalog";
+import { cylinderStencils } from "../../stencils/exportShape";
 import { layeredLayout } from "../../editor/layout";
 import { boundaryAround } from "../../editor/arrange";
 import { FALLBACK_STENCIL_ID, inferStencil } from "../infer";
@@ -77,7 +78,6 @@ interface PGroup {
 }
 
 const stencilIds = new Set(catalog.map((s) => s.id));
-const dataStencils = new Set(catalog.filter((s) => s.category === "data").map((s) => s.id));
 
 // Openers, longest first, with their closers.
 const SHAPES: [string, string, Shape][] = [
@@ -168,6 +168,10 @@ function statements(src: string): { text: string; line: number }[] {
   });
   return out;
 }
+
+// Statements we skip: styling, interaction and accessibility directives, matched as whole keywords so
+// node ids that merely start with one (clickstream, classifier, styles_db) still parse, and comments.
+const DIRECTIVE = /^(?:(?:classdef|class|style|linkstyle|click|direction)(?:\s|$)|acc(?:title|descr)\s*[:{]|%%)/i;
 
 // Links: plain forms, then forms with the label in the middle. Groups: 1 = "<", 2 = body.
 const LINK_PLAIN = /\s*(<)?(-{2,}>|-{3,}|={2,}>|={3,}|-\.+->|-\.+-|~{3,}|-{2,}[ox]|={2,}[ox]|-\.+-[ox])/y;
@@ -351,7 +355,7 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
       stack.pop();
       continue;
     }
-    if (/^(classdef|class|style|linkstyle|click|direction|acctitle|accdescr|%%)/.test(kw)) continue;
+    if (DIRECTIVE.test(t)) continue;
 
     const sc = new Scanner(t, st.line);
     let left = readList(sc);
@@ -435,8 +439,9 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
       const known = m?.[1] && stencilIds.has(m[1]) ? m[1] : undefined;
       const inferred = inferStencil(lines.join(" ")) ?? (n.label ? undefined : inferStencil(n.id));
       const byShape = n.shape === "cylinder" ? "generic.database" : n.shape === "asym" ? "generic.queue" : undefined;
-      // A cylinder is a store (or a queue): a named product wins, a generic keyword doesn't.
-      const named = inferred && (!inferred.startsWith("generic.") || dataStencils.has(inferred)) ? inferred : undefined;
+      // A cylinder is a store: a named product wins, and so does a generic store, but not another generic keyword.
+      const named =
+        inferred && (!inferred.startsWith("generic.") || cylinderStencils.has(inferred)) ? inferred : undefined;
       const stencil =
         known ?? (byShape === "generic.database" ? (named ?? byShape) : (inferred ?? byShape ?? FALLBACK_STENCIL_ID));
       return {

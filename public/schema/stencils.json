@@ -2379,6 +2379,235 @@
         "identity",
         "auth"
       ]
+    },
+    {
+      "id": "dbt",
+      "label": "dbt",
+      "vendor": "dbt Labs",
+      "category": "data",
+      "simRole": "processor",
+      "description": "SQL transformations that build tested models (staging, marts) inside the warehouse.",
+      "aliases": [
+        "dbt core",
+        "dbt cloud",
+        "transform",
+        "elt",
+        "models",
+        "marts",
+        "sql"
+      ]
+    },
+    {
+      "id": "airbyte",
+      "label": "Airbyte",
+      "vendor": "Airbyte",
+      "category": "data",
+      "simRole": "processor",
+      "description": "Open-source ELT connectors that copy SaaS and database tables into a warehouse.",
+      "aliases": [
+        "elt",
+        "etl",
+        "connector",
+        "fivetran",
+        "stitch",
+        "ingestion"
+      ]
+    },
+    {
+      "id": "snowflake.snowpipe",
+      "label": "Snowpipe Streaming",
+      "vendor": "Snowflake",
+      "category": "data",
+      "simRole": "processor",
+      "description": "Loads rows into Snowflake tables continuously, e.g. from the Snowflake Kafka connector.",
+      "aliases": [
+        "snowpipe",
+        "streaming ingest",
+        "loader",
+        "kafka connector",
+        "copy into"
+      ]
+    },
+    {
+      "id": "generic.reverse-etl",
+      "label": "Reverse ETL",
+      "vendor": "Generic",
+      "category": "data",
+      "simRole": "processor",
+      "description": "Syncs warehouse tables back to operational tools and topics (Hightouch, Census).",
+      "aliases": [
+        "reverse etl",
+        "hightouch",
+        "census",
+        "activation",
+        "warehouse sync"
+      ]
+    },
+    {
+      "id": "gcp.cloud-storage",
+      "label": "Cloud Storage",
+      "vendor": "Google Cloud",
+      "category": "data",
+      "simRole": "store",
+      "description": "Object storage buckets on Google Cloud.",
+      "aliases": [
+        "gcs",
+        "bucket",
+        "object storage",
+        "blob",
+        "google"
+      ]
+    },
+    {
+      "id": "looker",
+      "label": "Looker",
+      "vendor": "Google Cloud",
+      "category": "data",
+      "simRole": "sink",
+      "description": "BI dashboards and a semantic model.",
+      "aliases": [
+        "bi",
+        "dashboard",
+        "lookml",
+        "looker studio",
+        "google"
+      ]
+    },
+    {
+      "id": "tableau",
+      "label": "Tableau",
+      "vendor": "Tableau",
+      "category": "data",
+      "simRole": "sink",
+      "description": "BI dashboards and visual analytics.",
+      "aliases": [
+        "bi",
+        "dashboard",
+        "visualization",
+        "reports"
+      ]
+    },
+    {
+      "id": "aws.route53",
+      "label": "Route 53",
+      "vendor": "AWS",
+      "category": "network",
+      "simRole": "gateway",
+      "description": "DNS with health checks and latency, weighted or failover routing across regions.",
+      "aliases": [
+        "route53",
+        "dns",
+        "failover",
+        "latency routing",
+        "global load balancer",
+        "health check"
+      ]
+    },
+    {
+      "id": "azure.traffic-manager",
+      "label": "Traffic Manager",
+      "vendor": "Azure",
+      "category": "network",
+      "simRole": "gateway",
+      "description": "DNS-based global traffic routing with endpoint health checks.",
+      "aliases": [
+        "atm",
+        "dns",
+        "failover",
+        "global load balancer",
+        "geo routing"
+      ]
+    },
+    {
+      "id": "gcp.cloud-load-balancing",
+      "label": "Cloud Load Balancing",
+      "vendor": "Google Cloud",
+      "category": "network",
+      "simRole": "gateway",
+      "description": "Global anycast load balancer in front of regional backends.",
+      "aliases": [
+        "glb",
+        "global load balancer",
+        "anycast",
+        "lb",
+        "google"
+      ]
+    },
+    {
+      "id": "generic.event-store",
+      "label": "Event Store",
+      "vendor": "Generic",
+      "category": "generic",
+      "simRole": "stream",
+      "description": "Append-only log of domain events per aggregate; projections subscribe and catch up.",
+      "aliases": [
+        "event sourcing",
+        "eventstoredb",
+        "kurrent",
+        "append only",
+        "ledger"
+      ]
+    },
+    {
+      "id": "generic.projection",
+      "label": "Projection",
+      "vendor": "Generic",
+      "category": "generic",
+      "simRole": "processor",
+      "description": "Builds a read model from events. Rebuild it any time by replaying the log.",
+      "aliases": [
+        "read model",
+        "cqrs",
+        "projector",
+        "materialized view",
+        "denormalizer"
+      ]
+    },
+    {
+      "id": "generic.saga",
+      "label": "Saga Orchestrator",
+      "vendor": "Generic",
+      "category": "generic",
+      "simRole": "processor",
+      "description": "Coordinates a multi-step transaction and runs compensating steps when one fails.",
+      "aliases": [
+        "orchestrator",
+        "orchestration",
+        "compensation",
+        "process manager",
+        "workflow"
+      ]
+    },
+    {
+      "id": "generic.rate-limiter",
+      "label": "Rate Limiter",
+      "vendor": "Generic",
+      "category": "generic",
+      "simRole": "processor",
+      "description": "Caps throughput (token bucket); work over the limit waits its turn.",
+      "aliases": [
+        "throttle",
+        "throttling",
+        "token bucket",
+        "quota",
+        "rate limit"
+      ]
+    },
+    {
+      "id": "generic.marketing",
+      "label": "Marketing Automation",
+      "vendor": "Generic",
+      "category": "generic",
+      "simRole": "sink",
+      "description": "Campaigns and journeys driven by customer data (Braze, Customer.io, Iterable).",
+      "aliases": [
+        "braze",
+        "customer.io",
+        "iterable",
+        "marketo",
+        "campaigns",
+        "crm"
+      ]
     }
   ]
 }

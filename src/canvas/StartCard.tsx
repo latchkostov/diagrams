@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Icon } from "../components/Icon";
 import { DiagramThumbnail } from "../components/DiagramThumbnail";
 import type { Thumb } from "../lib/thumbnail";
+import type { ThemeSection } from "../examples/themes";
 
 export interface StartExample {
   slug: string;
@@ -8,6 +10,8 @@ export interface StartExample {
   description?: string;
   /** A tiny rendering of the diagram (the same renderer as Your diagrams). */
   thumb: Thumb;
+  /** Shown before "All examples" is opened. */
+  featured?: boolean;
 }
 
 export interface StartRecent {
@@ -21,7 +25,11 @@ export interface StartRecent {
 export interface StartOptions {
   /** Your diagrams, most recent first (the open one excluded). */
   recent: StartRecent[];
-  examples: StartExample[];
+  /**
+   * Examples by theme, in display order (groupByTheme, as in the picker). "All examples" shows one
+   * section per theme: its id names the section, its label is the heading.
+   */
+  examples: ThemeSection<StartExample>[];
   /** Opens a diagram (yours or an example) by slug. */
   onOpen: (slug: string) => void;
   onOpenFile: () => void;
@@ -40,6 +48,22 @@ const RECENT_MAX = 3;
  */
 export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: () => void }) {
   const recent = start.recent.slice(0, RECENT_MAX);
+  const [allExamples, setAllExamples] = useState(false);
+  const all = start.examples.flatMap((section) => section.items);
+  const featured = all.filter((ex) => ex.featured);
+  // With nothing featured (or nothing more to show), the card simply lists every example.
+  const expandable = featured.length > 0 && featured.length < all.length;
+  const expanded = !expandable || allExamples;
+  const exampleRow = (ex: StartExample) => (
+    <StartRow
+      key={ex.slug}
+      testId={`start-example-${ex.slug}`}
+      title={ex.title}
+      detail={ex.description}
+      thumb={ex.thumb}
+      onClick={() => start.onOpen(ex.slug)}
+    />
+  );
   return (
     <section className="start-card" data-testid="start-card" aria-labelledby="start-card-title">
       <h2 id="start-card-title">Draw a system, then watch messages flow through it</h2>
@@ -71,24 +95,38 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
               />
             ))}
           </ul>
-          <div className="start-heading">
-            <h3>Examples</h3>
-          </div>
         </>
       )}
 
-      <ul className="start-examples" aria-label="Examples">
-        {start.examples.map((ex) => (
-          <StartRow
-            key={ex.slug}
-            testId={`start-example-${ex.slug}`}
-            title={ex.title}
-            detail={ex.description}
-            thumb={ex.thumb}
-            onClick={() => start.onOpen(ex.slug)}
-          />
-        ))}
-      </ul>
+      <div className="start-heading">
+        <h3>Examples</h3>
+        {expandable && (
+          <button
+            className="link-btn start-all"
+            onClick={() => setAllExamples((v) => !v)}
+            aria-expanded={allExamples}
+            data-testid="start-all-examples"
+          >
+            {allExamples ? "Fewer" : "All examples"}
+            {!allExamples && <Icon name="chevron-right" size={12} />}
+          </button>
+        )}
+      </div>
+
+      {expanded ? (
+        start.examples.map(({ theme, items }) => (
+          <div key={theme?.id ?? ""} className="start-section" data-testid={`start-theme-${theme?.id ?? "other"}`}>
+            {theme && <h4 className="start-theme">{theme.label}</h4>}
+            <ul className={`start-examples${expandable ? " is-compact" : ""}`} aria-label={theme?.label ?? "Examples"}>
+              {items.map(exampleRow)}
+            </ul>
+          </div>
+        ))
+      ) : (
+        <ul className="start-examples" aria-label="Featured examples">
+          {featured.map(exampleRow)}
+        </ul>
+      )}
 
       <div className="start-actions">
         <button className="btn" onClick={onBlank} data-testid="start-blank">

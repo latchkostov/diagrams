@@ -118,6 +118,9 @@ const VENDOR_FAMILY: Record<string, FamilyId> = {
   Slack: "saas",
   OpenAI: "saas",
   Anthropic: "saas",
+  "dbt Labs": "oss",
+  Airbyte: "oss",
+  Tableau: "saas",
   Generic: "generic",
   Client: "generic",
 };

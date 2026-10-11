@@ -225,3 +225,26 @@ are Lucide (ISC) paths, each flattened to one stroked path on the 24 px grid: `s
 (Config), `key-round` (Secret), `id-card` (Identity), `activity` (Telemetry), `rocket` (Deploys), `link-2`
 (Depends on) and `lock` (a secret setting). Message, Request and the menu's Relationship glyph are drawn
 for this app.
+
+### Stencils batch 3 (scenario examples)
+
+Added for the data-platform, pattern and multi-region examples. No new icon needs attribution. Skipped for
+lack of a clean, permissive mark: Fivetran, Hightouch, Census, Braze and Customer.io (covered by the generic
+Reverse ETL and Marketing Automation stencils, and Airbyte for ELT). Snowpipe Streaming reuses `snowflake.svg`.
+
+| Icon file                      | Source                                   | Original asset                                                    |
+| ------------------------------ | ---------------------------------------- | ----------------------------------------------------------------- |
+| `aws-route53.svg`              | AWS 2026-07                              | `Arch_Networking-Content-Delivery/48/Arch_Amazon-Route-53_48.svg` |
+| `azure-traffic-manager.svg`    | Azure V24                                | `networking/10065-icon-service-Traffic-Manager-Profiles.svg`      |
+| `gcp-cloud-storage.svg`        | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:cloud-storage`                                               |
+| `gcp-cloud-load-balancing.svg` | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:cloud-load-balancing`                                        |
+| `dbt.svg`                      | gilbarbara/logos (CC0)                   | `logos:dbt-icon`                                                  |
+| `looker.svg`                   | gilbarbara/logos (CC0)                   | `logos:looker-icon`                                               |
+| `tableau.svg`                  | gilbarbara/logos (CC0)                   | `logos:tableau-icon`                                              |
+| `airbyte.svg`                  | Simple Icons (CC0)                       | `simple-icons:airbyte`, fill `#615EFF`                            |
+| `generic-event-store.svg`      | Lucide (ISC)                             | `scroll-text`                                                     |
+| `generic-projection.svg`       | Lucide (ISC)                             | `projector`                                                       |
+| `generic-saga.svg`             | Lucide (ISC)                             | `workflow`                                                        |
+| `generic-rate-limiter.svg`     | Lucide (ISC)                             | `gauge`                                                           |
+| `generic-marketing.svg`        | Lucide (ISC)                             | `megaphone` (marketing automation: Braze, Customer.io, Iterable)  |
+| `generic-reverse-etl.svg`      | Lucide (ISC)                             | `arrow-left-right` (reverse ETL: Hightouch, Census)               |

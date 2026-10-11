@@ -20,7 +20,17 @@ export interface IconSource {
 
 // Icons from sources other than gilbarbara/logos (the fallback below), by file name in docs/ICONS.md.
 const THE_SVG = new Set(["sqlserver", "confluent", "keycloak", "microsoft-fabric"]);
-const SIMPLE_ICONS = new Set(["pulsar", "camunda", "istio", "traefik", "cassandra", "minio", "stripe", "hubspot"]);
+const SIMPLE_ICONS = new Set([
+  "pulsar",
+  "camunda",
+  "istio",
+  "traefik",
+  "cassandra",
+  "minio",
+  "stripe",
+  "hubspot",
+  "airbyte",
+]);
 const DEVICON = new Set(["haproxy", "clickhouse", "loki", "jaeger"]);
 
 /** Where a stencil's icon comes from, condensed from docs/ICONS.md. */

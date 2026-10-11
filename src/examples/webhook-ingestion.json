@@ -1,0 +1,432 @@
+{
+  "format": "diagrams/v1",
+  "title": "Webhook ingestion at scale",
+  "description": "Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand.",
+  "direction": "LR",
+  "groups": [
+    {
+      "id": "k8s",
+      "label": "Kubernetes",
+      "tone": "k8s",
+      "x": 760,
+      "y": 240,
+      "width": 1480,
+      "height": 312
+    }
+  ],
+  "nodes": [
+    {
+      "id": "partners",
+      "stencil": "generic.webhook",
+      "label": "Partner webhooks",
+      "sublabel": "Shopify · Stripe · GitHub",
+      "x": 40,
+      "y": 280,
+      "props": { "ratePerSec": 20, "messageType": "WebhookEvent" }
+    },
+    {
+      "id": "edge",
+      "stencil": "cloudflare",
+      "label": "Cloudflare",
+      "sublabel": "WAF · IP allowlists",
+      "x": 420,
+      "y": 280,
+      "props": { "latencyMs": 1 }
+    },
+    {
+      "id": "raw",
+      "stencil": "aws.s3",
+      "label": "Raw payloads",
+      "sublabel": "Kept 30 days for replay",
+      "x": 800,
+      "y": 120,
+      "props": { "latencyMs": 0 }
+    },
+    {
+      "id": "receiver",
+      "stencil": "service.go",
+      "label": "Webhook receiver",
+      "sublabel": "Verify HMAC · 202 fast",
+      "x": 800,
+      "y": 280,
+      "group": "k8s",
+      "props": { "replicas": 4, "concurrency": 128, "latencyMs": 30 }
+    },
+    {
+      "id": "exchange",
+      "stencil": "rabbitmq.exchange",
+      "label": "webhooks",
+      "sublabel": "Topic exchange",
+      "x": 1180,
+      "y": 280,
+      "group": "k8s",
+      "props": { "partitions": 64 }
+    },
+    {
+      "id": "replay",
+      "stencil": "service.node",
+      "label": "Replay tool",
+      "sublabel": "Republish on demand",
+      "x": 1180,
+      "y": 440,
+      "group": "k8s",
+      "props": { "concurrency": 64, "latencyMs": 50 }
+    },
+    {
+      "id": "queue",
+      "stencil": "rabbitmq.queue",
+      "label": "webhooks.process",
+      "sublabel": "Quorum · delivery limit 5",
+      "x": 1560,
+      "y": 280,
+      "group": "k8s",
+      "props": { "maxDeliveryCount": 5 }
+    },
+    {
+      "id": "dlq",
+      "stencil": "rabbitmq.queue",
+      "label": "webhooks.dlq",
+      "sublabel": "Parked after 5 tries",
+      "x": 1560,
+      "y": 440,
+      "group": "k8s",
+      "props": { "isDeadLetter": true }
+    },
+    {
+      "id": "workers",
+      "stencil": "k8s.deployment",
+      "label": "Webhook workers",
+      "sublabel": "Retry with backoff",
+      "x": 1940,
+      "y": 280,
+      "group": "k8s",
+      "props": {
+        "replicas": 4,
+        "concurrency": 16,
+        "latencyMs": 160,
+        "retryBackoffMs": 300,
+        "emits": "PartnerChangeApplied"
+      }
+    },
+    {
+      "id": "dedupe",
+      "stencil": "redis.cache",
+      "label": "Seen event IDs",
+      "sublabel": "SET NX · TTL 7 days",
+      "x": 1940,
+      "y": 120,
+      "props": { "latencyMs": 0 }
+    },
+    {
+      "id": "integration-db",
+      "stencil": "postgres",
+      "label": "Integration database",
+      "sublabel": "Orders · products · refunds",
+      "x": 2320,
+      "y": 280,
+      "props": { "latencyMs": 1 }
+    },
+    {
+      "id": "operator",
+      "stencil": "client.team",
+      "label": "On-call engineer",
+      "sublabel": "Runbook: replay DLQ",
+      "x": 1180,
+      "y": 600
+    },
+    {
+      "id": "vault",
+      "stencil": "vault",
+      "label": "Vault",
+      "sublabel": "HMAC signing secrets",
+      "x": 800,
+      "y": 440,
+      "group": "k8s"
+    }
+  ],
+  "edges": [
+    {
+      "id": "partners-to-edge",
+      "from": "partners",
+      "to": "edge",
+      "label": "HTTPS POST",
+      "kind": "sync",
+      "props": { "travelMs": 200 }
+    },
+    {
+      "id": "edge-to-receiver",
+      "from": "edge",
+      "to": "receiver",
+      "label": "/hooks/:partner",
+      "kind": "sync",
+      "props": { "travelMs": 200 }
+    },
+    {
+      "id": "receiver-to-raw",
+      "from": "receiver",
+      "to": "raw",
+      "label": "PUT body",
+      "kind": "sync",
+      "props": { "travelMs": 200 }
+    },
+    {
+      "id": "receiver-to-exchange",
+      "from": "receiver",
+      "to": "exchange",
+      "label": "Publish",
+      "kind": "async",
+      "props": { "travelMs": 300 }
+    },
+    {
+      "id": "exchange-to-queue",
+      "from": "exchange",
+      "to": "queue",
+      "label": "webhook.#",
+      "kind": "async",
+      "props": { "travelMs": 300, "group": "process" }
+    },
+    {
+      "id": "queue-to-workers",
+      "from": "queue",
+      "to": "workers",
+      "label": "Prefetch 4",
+      "kind": "async",
+      "props": { "travelMs": 300 }
+    },
+    {
+      "id": "queue-to-dlq",
+      "from": "queue",
+      "to": "dlq",
+      "label": "Dead-letter",
+      "kind": "async",
+      "props": { "travelMs": 300, "dlq": true }
+    },
+    {
+      "id": "workers-to-dedupe",
+      "from": "workers",
+      "to": "dedupe",
+      "label": "Idempotency check",
+      "kind": "sync",
+      "props": { "travelMs": 200 }
+    },
+    {
+      "id": "workers-to-integration-db",
+      "from": "workers",
+      "to": "integration-db",
+      "label": "Apply change",
+      "kind": "sync",
+      "props": { "travelMs": 200 }
+    },
+    {
+      "id": "dlq-to-replay",
+      "from": "dlq",
+      "to": "replay",
+      "label": "Drain",
+      "kind": "async",
+      "props": { "travelMs": 300, "dlq": false }
+    },
+    {
+      "id": "replay-to-exchange",
+      "from": "replay",
+      "to": "exchange",
+      "label": "Republish",
+      "kind": "async",
+      "props": { "travelMs": 300 }
+    },
+    {
+      "id": "operator-to-replay",
+      "from": "operator",
+      "to": "replay",
+      "label": "Start replay",
+      "kind": "async",
+      "relation": "depends"
+    },
+    {
+      "id": "receiver-to-vault",
+      "from": "receiver",
+      "to": "vault",
+      "kind": "async",
+      "relation": "secret",
+      "sourceSide": "bottom",
+      "targetSide": "top"
+    }
+  ],
+  "simulations": [
+    {
+      "id": "bulk-sync",
+      "title": "Partner bulk sync: 5,000 in 5 seconds",
+      "description": "A partner replays a day of changes at 1,000 webhooks a second; receivers ack immediately and the queue absorbs the rest.",
+      "seed": 7,
+      "scale": 20,
+      "traffic": [
+        {
+          "id": "bulk",
+          "node": "partners",
+          "messageType": "WebhookEvent",
+          "label": "1,000 webhooks/s for 5 seconds",
+          "shape": { "kind": "constant", "ratePerSec": 1000, "durationMs": 5000 }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "A partner sends 1,000 webhooks a second. The receiver only verifies the signature, stores the body and publishes, so it answers 202 in milliseconds. Each dot is 20 webhooks.",
+            "focus": ["partners", "receiver", "raw"],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 2500,
+          "action": {
+            "do": "note",
+            "text": "Workers apply about 400 a second. The queue holds the difference, so the partner never sees a timeout and never retries.",
+            "focus": ["queue", "workers"]
+          }
+        },
+        {
+          "atMs": 8000,
+          "action": {
+            "do": "note",
+            "text": "The backlog drains. Event IDs are recorded, so a partner's duplicate delivery is applied once.",
+            "focus": ["workers", "dedupe", "integration-db"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "buffered",
+          "label": "The queue absorbs the burst",
+          "metric": { "node": "queue", "field": "lag" },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 4000
+        },
+        {
+          "id": "drained",
+          "label": "The backlog drains",
+          "metric": { "node": "queue", "field": "lag" },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "applied",
+          "label": "All 5,000 changes applied",
+          "metric": { "node": "integration-db", "field": "processed" },
+          "op": "==",
+          "value": 5000,
+          "when": "end"
+        },
+        {
+          "id": "stored",
+          "label": "All 5,000 bodies stored for replay",
+          "metric": { "node": "raw", "field": "processed" },
+          "op": "==",
+          "value": 5000,
+          "when": "end"
+        },
+        {
+          "id": "no-dlq",
+          "label": "Nothing is dead-lettered",
+          "metric": { "node": "queue", "field": "deadLettered" },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    },
+    {
+      "id": "outage-replay",
+      "title": "Database outage, then replay",
+      "description": "The integration database fails for six seconds. Retries with backoff save some events; the rest are dead-lettered and replayed by the on-call engineer.",
+      "seed": 7,
+      "scale": 1,
+      "setup": { "status": { "dlq": "paused" } },
+      "traffic": [
+        {
+          "id": "steady",
+          "node": "partners",
+          "messageType": "WebhookEvent",
+          "label": "30 webhooks/s for 8 seconds",
+          "shape": { "kind": "constant", "ratePerSec": 30, "durationMs": 8000 }
+        }
+      ],
+      "timeline": [
+        { "atMs": 1000, "action": { "do": "props", "node": "workers", "props": { "failureRate": 1 } } },
+        {
+          "atMs": 1000,
+          "action": {
+            "do": "note",
+            "text": "The integration database goes down. Workers reject each delivery, and it comes back after a short backoff.",
+            "focus": ["workers", "integration-db", "queue"]
+          }
+        },
+        {
+          "atMs": 6500,
+          "action": {
+            "do": "note",
+            "text": "After five tries a webhook is parked in the dead-letter queue rather than retried forever. Nothing is lost: partners already got their 202.",
+            "focus": ["queue", "dlq"],
+            "pause": true
+          }
+        },
+        { "atMs": 7000, "action": { "do": "props", "node": "workers", "props": { "failureRate": 0 } } },
+        {
+          "atMs": 7000,
+          "action": {
+            "do": "note",
+            "text": "The database is back. Webhooks still retrying go through by themselves.",
+            "focus": ["workers", "integration-db"]
+          }
+        },
+        { "atMs": 10000, "action": { "do": "status", "node": "dlq", "status": "up" } },
+        {
+          "atMs": 10000,
+          "action": {
+            "do": "note",
+            "text": "The on-call engineer replays the DLQ. Republished events run through the same idempotent workers.",
+            "focus": ["operator", "replay", "dlq", "exchange"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "parked",
+          "label": "Webhooks are parked, not dropped",
+          "metric": { "node": "queue", "field": "deadLettered" },
+          "op": ">",
+          "value": 0,
+          "when": "at",
+          "atMs": 9500
+        },
+        {
+          "id": "applied",
+          "label": "All 240 webhooks are applied",
+          "metric": { "node": "integration-db", "field": "processed" },
+          "op": "==",
+          "value": 240,
+          "when": "end"
+        },
+        {
+          "id": "dlq-empty",
+          "label": "The DLQ is empty after the replay",
+          "metric": { "node": "dlq", "field": "backlog" },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "no-drop",
+          "label": "Nothing is dropped",
+          "metric": { "node": "queue", "field": "dropped" },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    }
+  ]
+}
