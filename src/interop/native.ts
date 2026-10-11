@@ -405,6 +405,8 @@ export function simulationProblem(sim: unknown): string | undefined {
           if (!count(a.count) || !optString(a.messageType) || !optTime(a.spreadMs))
             return "an inject action needs a bounded count, messageType and spreadMs";
           break;
+        case "trace":
+          break;
         default:
           return "unknown timeline action";
       }

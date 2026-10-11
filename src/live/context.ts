@@ -25,6 +25,8 @@ export interface LiveUi {
   exit: (() => void) | null;
   /** "Record video…": the setup dialog, then the share prompt, countdown and recording. */
   openRecord(): void;
+  /** "Trace a message" (live ⋯ menu): follow the next message anywhere. */
+  startTrace(): void;
 }
 
 export const LiveContext = createContext<LiveUi | null>(null);

@@ -110,6 +110,30 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
     },
   },
   {
+    name: "trace card",
+    scope: "trace-card",
+    open: async (page) => {
+      await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=8`);
+      await page.getByTestId("live-more").click();
+      await page.getByTestId("live-trace-message").click();
+      await page.getByTestId("live-more").click();
+      await page.getByTestId("live-traffic").click();
+      await expect(page.getByTestId("trace-card")).toHaveAttribute("data-state", "done", { timeout: 15_000 });
+    },
+  },
+  {
+    name: "sequence dialog",
+    scope: "sequence-dialog",
+    open: async (page) => {
+      await page.goto(`./?view=canvas&example=${KAFKA}&live=1&speed=8`);
+      await page.getByTestId("live-more").click();
+      await page.getByTestId("live-trace-message").click();
+      await expect(page.getByTestId("trace-card")).toHaveAttribute("data-state", "done", { timeout: 15_000 });
+      await page.getByTestId("trace-sequence").click();
+      await expect(page.getByTestId("sequence-view")).toBeVisible();
+    },
+  },
+  {
     name: "Inputs & capacity panel",
     scope: "capacity-panel",
     open: async (page) => {

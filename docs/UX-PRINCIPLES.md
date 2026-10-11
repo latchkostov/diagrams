@@ -74,7 +74,13 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   and **Discard** (undoable). With a simulation picked, the one option is to play it from the start
   and stop when it ends.
 - Same action, same name in the File menu and the right-click (e.g. Export PNG, Copy share link).
-- Esc backs out one level: menu, dialog, selection, trace, presentation, then live view.
+- **Trace a message** follows one message (and its fan-out copies) hop by hop: click a moving message,
+  right-click a node for **Trace next message from here**, or use **Trace a message ▸** (Next message,
+  Slowest so far, One that dead-lettered) on the live right-click, in ⋯ and in Ctrl+K. The **trace
+  card** lists its hops; **Sequence diagram** turns the journey into one (Copy as Mermaid, SVG, PNG).
+  The edge's **Highlight this path** is a different idea (a static path, no message), so it never
+  says "trace".
+- Esc backs out one level: menu, dialog, selection, trace, highlighted path, presentation, then live view.
 
 ## Process
 

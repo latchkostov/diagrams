@@ -943,6 +943,11 @@
   border-color: var(--live-backlog);
 }
 
+.lv-marker.is-trace {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+
 .lv-playhead {
   position: absolute;
   top: 6px;

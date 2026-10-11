@@ -10,7 +10,7 @@ const inOverlay = (t: EventTarget | null) => t instanceof Element && !!t.closest
 const hasTextSelection = () => !!window.getSelection()?.toString();
 
 // React Flow owns focusable node wrappers; all other interactive descendants are controls.
-const inCanvas = (target: EventTarget | null) =>
+export const inCanvas = (target: EventTarget | null) =>
   target instanceof Element &&
   !!target.closest('[data-testid="canvas-wrap"]') &&
   !target.closest(

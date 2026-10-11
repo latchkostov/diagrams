@@ -1,0 +1,418 @@
+/* Message trace: the trace card in the live HUD and the sequence dialog. Tokens from tokens.css. */
+
+.tr-card {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  width: min(352px, calc(100% - 32px));
+  max-height: calc(100% - 64px - 96px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: var(--shadow-2);
+  font-size: 12.5px;
+  color: var(--text);
+  overflow: hidden;
+  animation: tr-in 0.3s var(--ease-out);
+  z-index: 2;
+}
+
+.lv-hud.has-panel .tr-card {
+  right: 456px;
+}
+
+.lv-hud.is-presenting .tr-card {
+  font-size: 13.5px;
+  width: min(392px, calc(100% - 32px));
+}
+
+@keyframes tr-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.tr-card.is-dlq {
+  border-color: color-mix(in oklab, var(--danger) 40%, var(--line));
+  box-shadow:
+    0 0 0 3px var(--danger-soft),
+    var(--shadow-2);
+}
+
+.tr-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 8px 10px 14px;
+}
+
+.tr-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tr-swatch {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px color-mix(in oklab, currentColor 0%, var(--surface-3));
+}
+
+.tr-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.3;
+}
+
+.tr-titles strong {
+  font-size: 13px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tr-titles > span {
+  color: var(--text-2);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tr-id {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.tr-status {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tr-status.is-done {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.tr-status.is-dlq,
+.tr-status.is-dropped {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.tr-status.is-flight::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 1px;
+  animation: tr-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes tr-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.tr-close {
+  width: 26px;
+  height: 26px;
+}
+
+.tr-stats {
+  flex-wrap: wrap;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 14px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tr-total {
+  flex: none;
+  white-space: nowrap;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.tr-total strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.tr-total span {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.tr-chips {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.tr-chip {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tr-chip.is-warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.tr-chip.is-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.tr-hops {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  max-height: 300px;
+  scrollbar-width: thin;
+}
+
+.tr-hop {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px 18px 1fr auto;
+  align-items: center;
+  column-gap: 6px;
+  padding: 4px 14px;
+}
+
+/* The timeline rail joining the dots. */
+.tr-hop::before {
+  content: "";
+  position: absolute;
+  left: calc(14px + 52px + 6px + 8px);
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+
+.tr-hop:first-child::before {
+  top: 50%;
+}
+
+.tr-hop:last-child::before {
+  bottom: 50%;
+}
+
+.tr-hop:hover {
+  background: var(--hover);
+}
+
+.tr-time {
+  color: var(--text-3);
+  font-size: 11px;
+  text-align: right;
+}
+
+.tr-dot {
+  position: relative;
+  z-index: 1;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--surface);
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+}
+
+.tr-dot.is-origin {
+  width: 12px;
+  height: 12px;
+}
+
+.tr-hop.is-warn .tr-dot {
+  width: 14px;
+  height: 14px;
+  background: var(--warning);
+}
+
+.tr-hop.is-danger .tr-dot {
+  width: 14px;
+  height: 14px;
+  background: var(--danger);
+}
+
+.tr-what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.tr-what b {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tr-what small {
+  color: var(--text-3);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tr-hop.is-warn .tr-what small {
+  color: var(--warning);
+}
+
+.tr-hop.is-danger .tr-what b,
+.tr-hop.is-danger .tr-what small {
+  color: var(--danger);
+}
+
+.tr-lat {
+  color: var(--text-2);
+  font-size: 11.5px;
+}
+
+.tr-note {
+  margin: 0;
+  padding: 6px 14px;
+  color: var(--text-3);
+  font-size: 11.5px;
+  border-top: 1px solid var(--line);
+}
+
+.tr-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.tr-card.is-waiting .tr-foot {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.tr-foot .btn {
+  height: 30px;
+}
+
+.tr-hint {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+/* Particles are clickable (to trace their message). */
+.react-flow[data-live-particle="hover"] .react-flow__pane,
+.react-flow[data-live-particle="hover"] .react-flow__edge {
+  cursor: pointer;
+}
+
+/* ---------- sequence dialog ---------- */
+
+.tr-seq {
+  overflow: auto;
+  max-height: min(68vh, 760px);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.tr-seq svg {
+  display: block;
+}
+
+/* ---------- Lab previews ---------- */
+
+.tr-lab-states {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 24px;
+  padding: 24px;
+  align-items: start;
+}
+
+.tr-lab-state {
+  margin: 0;
+}
+
+.tr-lab-state figcaption {
+  margin-bottom: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tr-lab-slot .tr-card {
+  position: relative;
+  top: auto;
+  right: auto;
+  max-height: none;
+  animation: none;
+}
+
+.tr-lab-seq {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+}
+
+.tr-lab-seq .tr-seq {
+  max-height: none;
+}
+
+.tr-lab-seq pre {
+  overflow: auto;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 12px;
+}

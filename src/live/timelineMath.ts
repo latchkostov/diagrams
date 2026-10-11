@@ -83,5 +83,6 @@ export const markerGlyph: Record<TimelineMarker["kind"], string> = {
   status: "chaos",
   props: "tweak",
   inject: "inject",
+  trace: "trace",
   traffic: "traffic",
 };

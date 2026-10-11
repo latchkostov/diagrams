@@ -17,6 +17,8 @@ export interface Particle {
   id: number;
   edgeId: string;
   messageId: number;
+  /** The original message this one descends from (itself unless it's a fan-out copy). */
+  rootId: number;
   kind: ParticleKind;
   /** 0..1 along the edge path. For reply / retry particles the UI draws it target → source. */
   progress: number;
@@ -162,12 +164,111 @@ export interface InjectOptions {
   spreadMs?: number;
 }
 
+// ---------- Message trace (src/sim/lineage.ts) ----------
+// A message's lineage: every hop it and its fan-out copies took, with times. Recorded only for the
+// followed message and a bounded history of recent ones, so memory stays capped.
+
+export type TraceStepKind =
+  | "emit" // the root message was created (injection or source traffic) at `node`
+  | "copy" // a fan-out copy `id` of `parent` was made at `node` (it leaves on its own edge)
+  | "send" // left `node` along `edge` as a `via` particle, arriving at `until`
+  | "arrive" // reached `node` along `edge`
+  | "start" // `node` began processing it (after any wait in its backlog)
+  | "done" // `node` finished it (a broker appended it to its log)
+  | "fail" // `node` failed attempt `attempt`
+  | "retry" // broker `node` will redeliver it (delivery `attempt` failed)
+  | "deadletter" // broker `node` gave up after `attempt` deliveries and sent it to its DLQ edge
+  | "drop" // lost at `node` (down, no route); `reason` says why
+  | "park" // kept at `node`: a broker with no consumers (a dead-letter queue)
+  | "end"; // consumed at `node` (a sink, a store, a final worker)
+
+export interface TraceStep {
+  /** Simulation time in ms. */
+  t: number;
+  kind: TraceStepKind;
+  /** The message or copy this step is about. */
+  id: number;
+  /** Its type at this step (renames show up as a change between steps). */
+  type: string;
+  node?: string;
+  edge?: string;
+  /** send: why it's travelling. */
+  via?: ParticleKind;
+  /** send: when it arrives at the other end. */
+  until?: number;
+  /** copy: the message it was copied from. */
+  parent?: number;
+  /** fail / retry / deadletter: the delivery attempt (1-based). */
+  attempt?: number;
+  /** drop / end: a short reason. */
+  reason?: string;
+}
+
+export interface MessageTrace {
+  rootId: number;
+  /** The root's type when it was created. */
+  type: string;
+  /** Where the root was created (or first seen, for a partial trace). */
+  origin: string;
+  startedAt: number;
+  /** When the last copy finished (consumed, dropped or parked); undefined while in flight. */
+  endedAt?: number;
+  done: boolean;
+  /** Recording began after the message was created (its earlier hops are unknown). */
+  partial: boolean;
+  /** The step cap was reached; later steps are missing. */
+  truncated: boolean;
+  steps: TraceStep[];
+}
+
+/** Enough about a recorded journey to choose one (the slowest, one that dead-lettered). */
+export interface TraceSummary {
+  rootId: number;
+  type: string;
+  origin: string;
+  startedAt: number;
+  endedAt?: number;
+  done: boolean;
+  partial: boolean;
+  retries: number;
+  deadLettered: boolean;
+  dropped: boolean;
+}
+
+/** What the tracer is waiting for: the next message at a node (or anywhere), or the next dead letter. */
+export type TraceRequest = { next: "message"; node?: string } | { next: "deadletter" };
+
+export interface MessageTracer {
+  /** Keep the lineage of up to `count` recent messages (0: only the followed one). Survives load(). */
+  setHistory(count: number): void;
+  /** Follow the message (or copy) with this id. Returns its root id, or undefined if it isn't alive. */
+  follow(messageId: number): number | undefined;
+  /** Follow a root by id: now if it's recorded or alive, otherwise as soon as it's created. */
+  followRoot(rootId: number): void;
+  /** Follow the next message to arrive at (or start from) a node, or the next one to dead-letter. */
+  request(next: TraceRequest): void;
+  /** Stop following and forget any pending request. */
+  clear(): void;
+  /** The followed root id, if any. */
+  followed(): number | undefined;
+  /** The pending request, if any. */
+  pending(): TraceRequest | undefined;
+  /** A detached copy of the followed message's trace. */
+  current(): MessageTrace | undefined;
+  /** A detached copy of a recorded trace. */
+  get(rootId: number): MessageTrace | undefined;
+  /** Summaries of every recorded trace, oldest first. */
+  recent(): TraceSummary[];
+}
+
 /** Opaque, in-memory checkpoint. Only the engine that captured it can restore it. */
 export interface EngineCheckpoint {
   readonly time: number;
 }
 
 export interface SimEngine {
+  /** Message lineage: follow one message and its copies hop by hop. Its state is part of checkpoints. */
+  readonly tracer: MessageTracer;
   checkpoint(): EngineCheckpoint;
   restore(checkpoint: EngineCheckpoint): void;
   /** Detached raw properties currently used by the engine, including runtime overrides. */
@@ -210,6 +311,8 @@ export interface EngineOptions {
   /** Hard cap on live particles; beyond it messages still flow but aren't drawn. Default 1500. */
   maxParticles?: number;
   scale?: number;
+  /** Message trace: keep the lineage of this many recent messages (MessageTracer.setHistory). Default 0. */
+  traceHistory?: number;
 }
 
 // ---------- Simulation runner (src/sim/simulation.ts) ----------
@@ -228,7 +331,7 @@ export interface ExpectationState {
 
 export interface TimelineMarker {
   atMs: number;
-  kind: "note" | "status" | "props" | "inject" | "traffic";
+  kind: "note" | "status" | "props" | "inject" | "trace" | "traffic";
   label: string;
 }
 

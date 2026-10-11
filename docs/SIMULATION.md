@@ -262,3 +262,37 @@ Manual real-count injection in free play and saved runs uses the shared injector
 `src/sim/injection.ts`, resolving omitted types before assigning fractional credit. Restart clears
 credit; checkpoint restore reinstates it. Capacity saves validate the complete prospective document
 against native persistence limits before changing the editor or clearing unsaved inputs.
+
+## Message trace
+
+Every message carries a **family** shared with its fan-out copies: `rootId` (on particles), a live-copy
+count and, when recorded, a lineage. Fan-out keeps the original id on the first route; every other
+route gets a new id with `parent` pointing at the message it was copied from (`copy` step). Renames
+(`emits`) keep the id and show up as a type change between steps. Ids don't depend on tracing, so a
+traced and an untraced run are identical.
+
+`engine.tracer` (`MessageTracer`, `src/sim/lineage.ts`) records a family's steps: `emit`, `copy`,
+`send` (edge, particle kind, arrival time), `arrive`, `start` / `done` (processing), `fail`, `retry`,
+`deadletter`, `drop`, `park` (kept by a broker with no consumers, such as a DLQ) and `end`. A trace is
+done when no copy is still travelling, queued or in process (parked copies count as finished).
+
+- **What's recorded.** The followed family, plus a bounded history of recent ones
+  (`setHistory(n)` or `EngineOptions.traceHistory`, default 0, at most 1,000; the live view keeps 160).
+  When the history is full, the oldest finished family is evicted; if every slot is still in flight,
+  new messages aren't sampled (so slow ones survive). Each family keeps at most 600 steps
+  (`truncated` after that).
+- **Choosing one.** `follow(messageId)` (a clicked particle, copies included), `followRoot(rootId)`
+  (now, or as soon as that root is created), and `request({ next: "message", node? })` or
+  `request({ next: "deadletter" })`. A message followed after it was created without being in the
+  history starts a `partial` trace.
+- **Determinism.** Recording draws no random numbers. The tracer state is cloned with the engine's
+  messages in `checkpoint()`, so restoring a checkpoint restores recordings and what's followed.
+  The live controller re-follows the same root after scrubbing (ids are deterministic).
+- **Narration.** A timeline step `{ "do": "trace", "node": "orders" }` follows the next message to
+  reach that node.
+
+Pure readers in `src/trace/`: `buildJourney` (hops with latency, wait, processing and travel per hop,
+totals, retries, dead letters), `buildSequence` (participants in path order, arrows, notes and gap
+rows that say where the time went), `toMermaid` (`sequenceDiagram` text) and `toSvg` (the picture
+shown in the app and downloaded, themed from the design tokens). `traceOnce` runs one trace headless
+for the Lab and tests.

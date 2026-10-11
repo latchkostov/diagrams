@@ -224,6 +224,10 @@ function MoreMenu({ state }: { state: LiveState }) {
             <LiveIcon name="events" size={14} />
             <span>Event log</span>
           </button>
+          <button role="menuitem" onClick={pick(() => ui.startTrace())} data-testid="live-trace-message">
+            <LiveIcon name="trace" size={14} />
+            <span>Trace a message</span>
+          </button>
           <button role="menuitem" onClick={pick(() => ui.openRecord())} data-testid="live-record">
             <LiveIcon name="record" size={14} />
             <span>Record video…</span>
@@ -238,7 +242,9 @@ function MoreMenu({ state }: { state: LiveState }) {
               <span>{state.simulation ? "Edit this simulation" : "Simulations…"}</span>
             </button>
           )}
-          <div className="lv-more-hint">Right-click any node to inject messages, start a storm or break things.</div>
+          <div className="lv-more-hint">
+            Right-click any node to inject messages, break things or trace one. Click a moving message to trace it.
+          </div>
         </div>
       )}
     </div>

@@ -22,6 +22,11 @@ export class Deque<T> {
     }
     return item;
   }
+  /** The first queued item matching `test`, front to back. */
+  find(test: (item: T) => boolean): T | undefined {
+    for (let i = this.head; i < this.items.length; i++) if (test(this.items[i] as T)) return this.items[i];
+    return undefined;
+  }
   clear(): void {
     this.items = [];
     this.head = 0;
