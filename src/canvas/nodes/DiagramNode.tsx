@@ -106,6 +106,7 @@ function NodeEditor({
     <div
       ref={root}
       className="dn-editor nodrag nopan nowheel"
+      data-testid="node-editor"
       onDoubleClick={(e) => e.stopPropagation()}
       onBlur={(e) => {
         if (!root.current?.contains(e.relatedTarget as Node | null)) finish({ label: l, sublabel: s });

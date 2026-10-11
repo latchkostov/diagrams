@@ -17,8 +17,8 @@ import {
 import type { DiagramFile } from "../model/types";
 import { useSettings } from "../harness/settings";
 import { getStencil } from "../stencils/registry";
-import { toFlow } from "../canvas/convert";
-import { DiagramContext } from "../canvas/DiagramContext";
+import { toFlow, withEditingOnTop } from "../canvas/convert";
+import { DiagramContext, type EditTarget } from "../canvas/DiagramContext";
 import { canvasNodeTypes } from "../canvas/nodes/nodeTypes";
 import { EdgeMarkers, FlowEdge } from "../canvas/edges/FlowEdge";
 import type { DiagramFlowEdge, DiagramFlowNode, FlowNode } from "../canvas/types";
@@ -69,16 +69,17 @@ function Stage({ diagram, minimap = true, onRendered }: Props) {
 
   // Inline editing (F2 / double-click) works like on the canvas; edits stay local to the Lab.
   const base = useContext(DiagramContext);
-  const [editing, setEditing] = useState<unknown>(null);
+  const [editing, setEditing] = useState<EditTarget | null>(null);
   const direction = flow.meta.direction ?? "LR";
   const ui = useMemo(() => ({ ...base, direction, editing, setEditing }) as Ui, [base, direction, editing]);
+  const raised = useMemo(() => withEditingOnTop(nodes, editing), [nodes, editing]);
 
   return (
     <DiagramContext.Provider value={ui}>
       <div className="lab-canvas" data-testid="lab-canvas">
         <EdgeMarkers />
         <ReactFlow<FlowNode, DiagramFlowEdge>
-          nodes={nodes}
+          nodes={raised}
           edges={visibleEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}

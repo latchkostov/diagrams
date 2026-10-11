@@ -413,7 +413,8 @@
 
 /* Live layers inside the viewport, bottom to top: edges, nodes, particles (.lv-canvas), edge label
    pills (above, so they always read), the overlay (dots passing behind a pill, dimmed, and the
-   traced message with its labels), then the metric badges. */
+   traced message with its labels), then the metric badges. A card being edited inline sits above
+   them all (EDITING_Z in canvas/convert.ts), and its hover breakdown is hidden meanwhile. */
 .lv-canvas-over {
   z-index: 2;
 }

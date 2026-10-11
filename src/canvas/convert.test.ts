@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
-import { edgeAriaLabel, fromFlow, nodeAriaLabel, toFlow, withEdgeAria, withNodeAria } from "./convert";
+import {
+  EDITING_Z,
+  edgeAriaLabel,
+  fromFlow,
+  nodeAriaLabel,
+  toFlow,
+  withEdgeAria,
+  withEditingOnTop,
+  withNodeAria,
+} from "./convert";
 import type { FlowNode } from "./types";
 
 describe("convert", () => {
@@ -81,5 +90,30 @@ describe("accessible names", () => {
     expect(withEdgeAria(f.edges, (id) => labels.get(id)!)[0].ariaLabel).toBe(
       "payments to Worker, message: OrderPlaced",
     );
+  });
+
+  it("raises only the node being edited inline, without touching state", () => {
+    const f = toFlow({
+      format: "diagrams/v1",
+      title: "t",
+      nodes: [
+        { id: "a", stencil: "kafka.topic", label: "A", x: 0, y: 0 },
+        { id: "b", stencil: "service.go", label: "B", x: 0, y: 100 },
+      ],
+      edges: [],
+      groups: [{ id: "g", label: "G", x: 0, y: 0, width: 300, height: 300 }],
+    });
+    const raised = withEditingOnTop(f.nodes, { kind: "node", id: "a", field: "label" });
+    expect(raised.find((n) => n.id === "a")?.zIndex).toBe(EDITING_Z);
+    expect(raised.filter((n) => n.zIndex === EDITING_Z)).toHaveLength(1);
+    // The input is never mutated, and nothing else changes identity.
+    expect(f.nodes.find((n) => n.id === "a")?.zIndex).toBeUndefined();
+    expect(raised.find((n) => n.id === "b")).toBe(f.nodes.find((n) => n.id === "b"));
+    // Nothing to raise: the same array back (memoised renders stay cheap).
+    expect(withEditingOnTop(f.nodes, null)).toBe(f.nodes);
+    expect(withEditingOnTop(f.nodes, { kind: "edge", id: "a" })).toBe(f.nodes);
+    expect(withEditingOnTop(f.nodes, { kind: "node", id: "gone", field: "label" })).toBe(f.nodes);
+    // A boundary's rename keeps it behind its nodes.
+    expect(withEditingOnTop(f.nodes, { kind: "group", id: "g" })).toBe(f.nodes);
   });
 });

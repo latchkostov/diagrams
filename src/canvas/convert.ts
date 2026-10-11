@@ -11,6 +11,7 @@ import { implicitLabel, isDependency, relationOf } from "../model/relations";
 import { foregroundLayerOrder } from "../model/layers";
 import { getStencil } from "../stencils/registry";
 import { annotationAriaLabel, annotationTitle, isConnectable } from "./annotations";
+import type { EditTarget } from "./DiagramContext";
 import {
   GROUP_PREFIX,
   type AnnotationFlowNode,
@@ -98,6 +99,30 @@ export function withEdgeAria(edges: DiagramFlowEdge[], labelOf: (id: string) => 
     return copy;
   });
   return changed ? out : edges;
+}
+
+// ---------------------------------------------------------------- inline editing on top
+
+/**
+ * The z-index of a node whose inline editor is open. Everything else in React Flow's viewport stacks
+ * lower: nodes (0), edge label pills (1001 while editing, 1 while live), the live particle canvases
+ * and metric badges (≤ 3), so the editor below the card is never covered by a neighbour, a label,
+ * a badge or the hover breakdown.
+ */
+export const EDITING_Z = 2000;
+
+/**
+ * The nodes as React Flow should draw them while `editing` is open: the edited card raised above
+ * everything else on the canvas. A render-time decoration only (the state, history and saved file
+ * never see it); returns `nodes` itself when nothing changes, so memoised renders stay cheap.
+ */
+export function withEditingOnTop(nodes: FlowNode[], editing: EditTarget | null): FlowNode[] {
+  if (editing?.kind !== "node") return nodes;
+  const i = nodes.findIndex((n) => n.id === editing.id && n.type === "diagram");
+  if (i < 0) return nodes;
+  const out = nodes.slice();
+  out[i] = { ...nodes[i], zIndex: EDITING_Z } as FlowNode;
+  return out;
 }
 
 export const groupToFlow = (g: DiagramGroup): GroupFlowNode => ({

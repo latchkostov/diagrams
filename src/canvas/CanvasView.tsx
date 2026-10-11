@@ -51,7 +51,7 @@ import {
   writeAutosave,
 } from "../lib/diagramIO";
 import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
-import { fromFlow, groupAt, toFlow, withEdgeAria, withNodeAria, type DiagramMeta } from "./convert";
+import { fromFlow, groupAt, toFlow, withEdgeAria, withEditingOnTop, withNodeAria, type DiagramMeta } from "./convert";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
 import { useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
 import { canvasNodeTypes } from "./nodes/nodeTypes";
@@ -215,7 +215,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     },
     [dismissHint],
   );
-  const { tip: nodeTip, show: showTip, hide: hideTip } = useNodeTooltip(!live && !readOnly && !presenting);
+  const { tip: nodeTip, show: showTip, hide: hideTip } = useNodeTooltip(!live && !readOnly && !presenting && !editing);
   useNodeTipKeyboard(
     wrapper,
     (id) => {
@@ -632,8 +632,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       ]),
     [diagramNodes, annotationNodes],
   );
-  // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel).
-  const ariaNodes = useMemo(() => withNodeAria(nodes), [nodes]);
+  // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel), and a
+  // card being edited inline draws above everything else (its editor hangs below the card).
+  const ariaNodes = useMemo(() => withEditingOnTop(withNodeAria(nodes), editing), [nodes, editing]);
   const showDependencies = useShowDependencies();
   useEffect(
     () =>
