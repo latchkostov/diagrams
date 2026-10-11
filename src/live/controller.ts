@@ -16,6 +16,7 @@ import { createSimulationRun } from "../sim/simulation";
 import type {
   EngineOptions,
   InjectOptions,
+  MessageTrace,
   NodeSimProps,
   NodeStatus,
   RealSimSnapshot,
@@ -24,6 +25,7 @@ import type {
   SimulationRun,
   SimulationRunState,
   SimulationRunCheckpoint,
+  TraceRequest,
 } from "../sim/types";
 import { realSnapshot, resolveMultiplier, resolveScale } from "../sim/units";
 import { autoScale } from "../sim/scale";
@@ -33,6 +35,8 @@ import { DEFAULT_SEED } from "./storm";
 export const SPEEDS = [0.25, 0.5, 1, 2, 4, 8] as const;
 /** Sim time one press of "step" advances. */
 export const STEP_MS = 250;
+/** Recent message journeys kept for "Trace slowest" / "Trace one that dead-lettered" (bounded memory). */
+export const TRACE_HISTORY = 160;
 
 /** A live, engine-only change ("Kill", "Slow down ×5"...), kept so it can be saved to the diagram. */
 export interface NodeTweak {
@@ -58,6 +62,17 @@ export interface LiveState {
   tweaks: ReadonlyMap<string, NodeTweak>;
   /** Bumps whenever the engine is rebuilt (restart, new simulation, structural edit). */
   generation: number;
+  /** The message trace: what's followed (its journey so far) or what's awaited. Null when not tracing. */
+  trace: LiveTrace | null;
+}
+
+export interface LiveTrace {
+  /** The followed root message id (its journey may not have started yet after scrubbing back). */
+  rootId?: number;
+  /** Waiting for the next message at a node (or anywhere), or the next dead letter. */
+  pending?: TraceRequest;
+  /** A detached copy of the journey so far. */
+  current?: MessageTrace;
 }
 
 export type DiagramUpdate = "none" | "patched" | "reloaded";
@@ -181,6 +196,7 @@ export class LiveController {
       run: this.runState,
       tweaks: new Map(this.tweaks),
       generation: this.generation,
+      trace: this.readTrace(),
     };
     for (const l of this.listeners) l();
   }
@@ -191,6 +207,78 @@ export class LiveController {
 
   get currentDiagram(): DiagramFile {
     return this.diagram;
+  }
+
+  // ---------------------------------------------------------------- message trace
+
+  /** The followed root message id, read every frame by the particle renderer. */
+  get tracedRoot(): number | undefined {
+    return this.engine.tracer.followed();
+  }
+
+  /** Follow the next message to arrive at (or start from) a node; anywhere when omitted. */
+  traceNext(nodeId?: string): void {
+    this.engine.tracer.request({ next: "message", node: nodeId });
+    this.publish();
+  }
+
+  /** Follow a message on screen (a clicked particle). False when it's no longer in the system. */
+  traceMessage(messageId: number): boolean {
+    const root = this.engine.tracer.follow(messageId);
+    this.publish();
+    return root !== undefined;
+  }
+
+  /** Follow the slowest finished journey still remembered. False when none has finished yet. */
+  traceSlowest(): boolean {
+    let best: { rootId: number; ms: number } | undefined;
+    for (const s of this.engine.tracer.recent()) {
+      if (!s.done || s.partial || s.endedAt === undefined) continue;
+      const ms = s.endedAt - s.startedAt;
+      if (!best || ms > best.ms) best = { rootId: s.rootId, ms };
+    }
+    if (best) this.engine.tracer.followRoot(best.rootId);
+    this.publish();
+    return !!best;
+  }
+
+  /** Follow the latest message that dead-lettered, or wait for the next one. */
+  traceDeadLettered(): "now" | "waiting" {
+    const hit = this.engine.tracer
+      .recent()
+      .filter((s) => s.deadLettered)
+      .at(-1);
+    if (hit) this.engine.tracer.followRoot(hit.rootId);
+    else this.engine.tracer.request({ next: "deadletter" });
+    this.publish();
+    return hit ? "now" : "waiting";
+  }
+
+  /** One sampled message at a node, whatever the dot scale ("Send one now" while a trace waits there). */
+  sendOne(nodeId: string, type?: string): void {
+    this.engine.inject(nodeId, 1, type ? { type } : undefined);
+    this.dirty = true;
+    this.publish();
+  }
+
+  endTrace(): void {
+    if (!this.engine.tracer.followed() && !this.engine.tracer.pending()) return;
+    this.engine.tracer.clear();
+    this.publish();
+  }
+
+  private readTrace(): LiveTrace | null {
+    const tracer = this.engine.tracer;
+    const rootId = tracer.followed();
+    const pending = tracer.pending();
+    if (rootId === undefined && !pending) return null;
+    return { rootId, pending, current: tracer.current() };
+  }
+
+  /** Scrubbing restores older engine state: keep following the same message (ids are deterministic). */
+  private keepTrace(intent: { rootId?: number; pending?: TraceRequest }): void {
+    if (intent.rootId !== undefined) this.engine.tracer.followRoot(intent.rootId);
+    else if (intent.pending) this.engine.tracer.request(intent.pending);
   }
 
   // ---------------------------------------------------------------- playback
@@ -276,6 +364,7 @@ export class LiveController {
     const target = Math.max(0, targetMs);
     this.cancelReplay();
     if (target < this.snapshot().time - 1) {
+      const intent = { rootId: this.engine.tracer.followed(), pending: this.engine.tracer.pending() };
       const cp = [...this.checkpoints].reverse().find((cp) => cp.time <= target);
       if (cp) {
         this.runner.restore(cp);
@@ -283,6 +372,7 @@ export class LiveController {
         this.applySpeed();
         this.engine.setTraffic(this.traffic);
       } else this.build();
+      this.keepTrace(intent);
     }
     let guard = 0;
     while (guard++ < 10_000) {
@@ -606,7 +696,7 @@ export class LiveController {
   }
 
   private build(): void {
-    const engineOpts = { roleOf: this.opts.roleOf, maxParticles: this.opts.maxParticles };
+    const engineOpts = { roleOf: this.opts.roleOf, maxParticles: this.opts.maxParticles, traceHistory: TRACE_HISTORY };
     if (this.sim) {
       // No saved dot scale: pick one from the traffic (the 1/2/5 series, about 60 dots a second at
       // most), so dense runs stay readable as separate dots instead of merging into solid lines.

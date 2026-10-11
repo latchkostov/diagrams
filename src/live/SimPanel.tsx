@@ -44,6 +44,7 @@ const ACTIONS: { value: TimelineAction["do"]; label: string }[] = [
   { value: "status", label: "Set status" },
   { value: "props", label: "Change prop" },
   { value: "inject", label: "Inject" },
+  { value: "trace", label: "Trace a message" },
 ];
 const FIELDS: { value: MetricField; label: string }[] = [
   { value: "processed", label: "processed" },
@@ -926,6 +927,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
     if (kind === "props") setAction({ do: "props", node, props: { latencyMs: 1000 } });
     if (kind === "inject")
       setAction({ do: "inject", node, count: 10, messageType: suggestedMessageType(diagram, node) });
+    if (kind === "trace") setAction({ do: "trace", node });
   };
   const labels = new Map(diagram.nodes.map((n) => [n.id, n.label || n.id]));
   const propKey = a.do === "props" ? (Object.keys(a.props)[0] ?? "latencyMs") : "latencyMs";

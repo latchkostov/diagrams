@@ -30,6 +30,7 @@ import { LiveLabStage } from "../live/LiveLabStage";
 import { badgeStatesDiagram, noteStatesDiagram, particleStressDiagram, type NoteState } from "../live/labDiagrams";
 import { OverlapAudit } from "./OverlapAudit";
 import { annotationCourseDiagram, obstacleCourseDiagram } from "./routingDiagrams";
+import { TraceCardStates, TraceSequencePreview, type TraceFlow } from "../live/TraceLab";
 
 const variantOptions = Object.entries(nodeVariants).map(([value, v]) => ({ value, label: v.label }));
 const variantsOf = (v: unknown): NodeVariantId[] =>
@@ -615,12 +616,106 @@ const layoutPresets: Preset[] = [
   },
 ];
 
+// ---------- message trace (trace card states, sequence diagrams of each public example) ----------
+
+/** Each public example's first message from its entry point, plus every dead-lettering simulation. */
+const traceFlows: Record<string, { label: string; flow: () => TraceFlow }> = Object.fromEntries([
+  ...examples
+    .filter((e) => !localOnly.has(e.slug))
+    .map((e) => [e.slug, { label: e.diagram.title, flow: () => ({ diagram: e.diagram }) }]),
+  ...examples
+    .filter((e) => !localOnly.has(e.slug))
+    .flatMap((e) =>
+      (e.diagram.simulations ?? [])
+        // Simulations that expect dead letters.
+        .filter((s) =>
+          (s.expectations ?? []).some(
+            (x) => "node" in x.metric && x.metric.field === "deadLettered" && (x.op === ">" || x.op === ">="),
+          ),
+        )
+        .map((s) => [
+          `${e.slug}:${s.id}`,
+          {
+            label: `${e.diagram.title}: ${s.title} (dead letter)`,
+            flow: () => ({ diagram: e.diagram, simulation: s, deadLetter: true }),
+          },
+        ]),
+    ),
+]);
+const traceDefault = Object.keys(traceFlows)[0];
+const deadLetterDefault = Object.keys(traceFlows).find((k) => k.includes(":")) ?? traceDefault;
+const traceFlowControl = (key: string, label: string, value: string): ControlDef => ({
+  type: "select",
+  key,
+  label,
+  default: value,
+  options: Object.entries(traceFlows).map(([v, f]) => ({ value: v, label: f.label })),
+});
+const flowOf = (key: unknown, fallback: string) => (traceFlows[String(key)] ?? traceFlows[fallback]).flow();
+
+const tracePresets: Preset[] = [
+  {
+    kind: "render",
+    id: "trace-card-states",
+    title: "Trace: card states",
+    group: "Simulation",
+    description:
+      "The trace card waiting at a node, in flight, done (with fan-out copies) and retried then dead-lettered.",
+    controls: [
+      traceFlowControl("flow", "Message", traceDefault),
+      traceFlowControl("failing", "Failing", deadLetterDefault),
+    ],
+    render: (v) => (
+      <TraceCardStates
+        key={`${v.flow}:${v.failing}`}
+        flow={flowOf(v.flow, traceDefault)}
+        failing={flowOf(v.failing, deadLetterDefault)}
+      />
+    ),
+  },
+  {
+    kind: "render",
+    id: "trace-sequence",
+    title: "Trace: sequence diagram",
+    group: "Simulation",
+    description:
+      "The sequence diagram generated from one traced message (its whole fan-out tree), and its Mermaid text.",
+    controls: [traceFlowControl("flow", "Flow", traceDefault)],
+    render: (v) => <TraceSequencePreview key={String(v.flow)} flow={flowOf(v.flow, traceDefault)} />,
+  },
+  {
+    kind: "render",
+    id: "trace-live",
+    title: "Trace: live",
+    group: "Simulation",
+    description: "A traced message on the live canvas: it glows with a label, the rest dims, its path lights up.",
+    controls: [traceFlowControl("flow", "Flow", traceDefault), liveSpeed, livePresent],
+    render: (v) => {
+      const flow = flowOf(v.flow, traceDefault);
+      return (
+        <LiveLabStage
+          key={`${v.flow}:${v.livespeed}`}
+          diagram={flow.diagram}
+          presenting={!!v.livepresent}
+          initial={{
+            sim: flow.simulation?.id ?? null,
+            traffic: !flow.simulation,
+            speed: Number(v.livespeed),
+            trace: flow.deadLetter ? "deadletter" : "next",
+          }}
+        />
+      );
+    },
+  },
+];
+
 export const presets: readonly Preset[] = [
   ...nodePresets,
   ...edgePresets,
   ...diagramPresets,
   ...simPresets,
   ...livePresets,
+  ...tracePresets,
   ...capacityPresets,
   ...playgroundPresets,
   ...layoutPresets,

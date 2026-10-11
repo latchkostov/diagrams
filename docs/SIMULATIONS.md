@@ -80,7 +80,8 @@ Messages carry a `type`. Two small props make flows realistic without code:
   accumulator each step, applies `multipliers.traffic / scale`, and calls `engine.inject(node, n, { type })` (bursts use `spreadMs`).
   `trafficRateAt(shape, t)` is exported for previews (sparklines in the editor).
 - **Timeline:** actions fire when sim time crosses `atMs`, in order. A `note` with `pause: true` sets
-  `waiting` until `resume()`.
+  `waiting` until `resume()`. A `trace` step (`{ "do": "trace", "node": "orders" }`) follows the next
+  message to reach that node, so a presentation can show one order's journey and its sequence diagram.
 - **Expectations:** evaluated every step. `always` fails on first violation; `eventually` passes on first
   success; `end` / `at` are pending until checked. Status is `pending | pass | fail`, and the latest value is kept in real units.
 - **Done:** at `durationMs`, or once traffic and timeline are finished and nothing is in the system

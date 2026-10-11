@@ -142,6 +142,10 @@ export class ParticleRenderer {
   private wasEmpty = true;
   /** Particles drawn in the last frame (for the stats readout and tests). */
   drawn = 0;
+  /** Hit targets from the last frame, in pane CSS px: x, y, message id (for click-to-trace). */
+  private hits: number[] = [];
+  /** The traced message's particles this frame (device px), drawn last, brighter and labelled. */
+  private focusHeads: { x: number; y: number; color: string; kind: ParticleKind; type: string; trail: number[] }[] = [];
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -193,7 +197,28 @@ export class ParticleRenderer {
     return t;
   }
 
-  draw(snap: SimSnapshot, now: number): void {
+  /**
+   * The message under a pane point (CSS px from the pane's top-left), within `radius`, if any.
+   * Uses the last frame's positions, so it costs nothing until someone clicks or hovers.
+   */
+  hitTest(x: number, y: number, radius = 12): number | undefined {
+    let best: number | undefined;
+    let bestD = radius * radius;
+    const h = this.hits;
+    for (let i = 0; i < h.length; i += 3) {
+      const dx = h[i] - x,
+        dy = h[i + 1] - y,
+        d = dx * dx + dy * dy;
+      if (d <= bestD) {
+        bestD = d;
+        best = h[i + 2];
+      }
+    }
+    return best;
+  }
+
+  /** `focus`: the traced root message id. Its particles glow and carry a label; the rest dim. */
+  draw(snap: SimSnapshot, now: number, focus?: number): void {
     this.frame++;
     const [tx, ty, zoom] = this.layout();
     const key = `${tx}|${ty}|${zoom}|${this.w}|${this.h}`;
@@ -201,6 +226,7 @@ export class ParticleRenderer {
     this.lastKey = key;
     this.detectFailures(snap, now);
     const empty = snap.particles.length === 0 && this.pulses.length === 0;
+    this.hits.length = 0;
     // Nothing to draw and nothing was drawn: skip the clear (keeps idle live mode at ~0% CPU).
     if (empty && this.wasEmpty && !moved) {
       this.trackArrivals(snap.particles, now);
@@ -234,19 +260,30 @@ export class ParticleRenderer {
       perEdge.set(id, (perEdge.get(id) ?? 0) + 1);
     }
     let drawn = 0;
+    this.focusHeads.length = 0;
     for (let i = 0; i < particles.length; i += stride) {
       const p = particles[i];
       const s = this.cache.get(p.edgeId, this.frame);
       if (!s || s.length === 0) continue;
+      const focused = focus !== undefined && p.rootId === focus;
       const crowd = densityStride(perEdge.get(p.edgeId) ?? 0, s.length * k, size);
-      if (crowd > 1 && p.id % crowd !== 0) continue;
+      if (!focused && crowd > 1 && p.id % crowd !== 0) continue;
       const reverse = p.kind === "reply" || p.kind === "retry";
       const t = reverse ? 1 - p.progress : p.progress;
       pointOnSamples(s, t, this.pt);
       const x = this.pt.x * k + ox;
       const y = this.pt.y * k + oy;
       if (x < -margin || y < -margin || x > W || y > H) continue;
+      if (p.kind !== "reply") this.hits.push(x / dpr, y / dpr, p.messageId);
       const color = p.kind === "retry" ? this.opts.tokens.retry : p.kind === "dlq" ? this.opts.tokens.dlq : p.color;
+      if (focused) {
+        const trail: number[] = [];
+        if (!reduced && p.kind !== "reply")
+          this.pushTrail(trail, s, t, reverse, (TRAIL[p.kind] * 2) / s.length, k, ox, oy);
+        this.focusHeads.push({ x, y, color, kind: p.kind, type: p.type, trail });
+        drawn++;
+        continue;
+      }
       const bk = `${p.kind}|${color}`;
       let b = this.batches.get(bk);
       if (!b) {
@@ -261,16 +298,18 @@ export class ParticleRenderer {
     this.drawn = drawn;
 
     // Trails under heads: a wide faint pass along the full trail, then a narrow brighter one.
+    // While a message is traced, everything else steps back.
     const dark = this.opts.theme === "dark";
+    const dim = focus !== undefined ? 0.2 : 1;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     for (const b of this.batches.values()) {
       if (!b.trails.length) continue;
       ctx.strokeStyle = b.color;
-      ctx.globalAlpha = dark ? 0.26 : 0.2;
+      ctx.globalAlpha = (dark ? 0.26 : 0.2) * dim;
       ctx.lineWidth = size * (b.kind === "dlq" ? 1.6 : 1.25);
       this.strokeTrails(b.trails, 1);
-      ctx.globalAlpha = dark ? 0.62 : 0.5;
+      ctx.globalAlpha = (dark ? 0.62 : 0.5) * dim;
       ctx.lineWidth = size * 0.7;
       this.strokeTrails(b.trails, 0.5);
     }
@@ -284,15 +323,90 @@ export class ParticleRenderer {
       const r = b.kind === "reply" ? size * 0.55 : b.kind === "dlq" ? size * 1.15 : size;
       const sprite = this.sprite(b.color, b.kind, r);
       const half = sprite.width / 2;
-      if (b.kind === "reply") ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = (b.kind === "reply" ? 0.55 : 1) * (focus !== undefined ? 0.28 : 1);
       const heads = b.heads;
       for (let i = 0; i < heads.length; i += 2) ctx.drawImage(sprite, heads[i] - half, heads[i + 1] - half);
       ctx.globalAlpha = 1;
     }
     ctx.globalCompositeOperation = "source-over";
+    if (this.focusHeads.length) this.drawFocus(size, dpr);
 
     this.trackArrivals(particles, now);
     this.drawPulses(now, k, ox, oy, size);
+  }
+
+  /** The traced message and its copies: a long bright trail, a halo ring and a type label. */
+  private drawFocus(size: number, dpr: number): void {
+    const ctx = this.ctx;
+    const dark = this.opts.theme === "dark";
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (const f of this.focusHeads) {
+      if (!f.trail.length) continue;
+      ctx.strokeStyle = f.color;
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = size * 1.8;
+      this.strokeTrails(f.trail, 1);
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = size * 0.9;
+      this.strokeTrails(f.trail, 0.6);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = dark ? "screen" : "source-over";
+    for (const f of this.focusHeads) {
+      const r = f.kind === "reply" ? size * 0.9 : size * 1.55;
+      const sprite = this.sprite(f.color, f.kind === "reply" ? "message" : f.kind, r);
+      ctx.drawImage(sprite, f.x - sprite.width / 2, f.y - sprite.height / 2);
+    }
+    ctx.globalCompositeOperation = "source-over";
+    // Labels follow the particle size (zoom and presentation), never smaller than 9 px.
+    const font = Math.max(9 * dpr, size * 3);
+    ctx.font = `600 ${font}px "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
+    ctx.textBaseline = "middle";
+    // Labels take the first free corner around their particle; one with no free corner is left out.
+    const placed: number[] = [];
+    const free = (x: number, y: number, w: number, h: number) => {
+      for (let i = 0; i < placed.length; i += 4)
+        if (
+          x < placed[i] + placed[i + 2] &&
+          placed[i] < x + w &&
+          y < placed[i + 1] + placed[i + 3] &&
+          placed[i + 1] < y + h
+        )
+          return false;
+      return true;
+    };
+    for (const f of this.focusHeads) {
+      // A ring that reads on any background, then the type on a pill in the message colour.
+      ctx.globalAlpha = 0.95;
+      ctx.strokeStyle = dark ? "#ffffff" : f.color;
+      ctx.lineWidth = Math.max(1.5, 1.6 * dpr);
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, size * 2.3, 0, Math.PI * 2);
+      ctx.stroke();
+      if (f.kind === "reply") continue;
+      const label = f.kind === "retry" ? `${f.type} \u21ba` : f.kind === "dlq" ? `${f.type} \u2192 DLQ` : f.type;
+      const w = ctx.measureText(label).width + font * 1.1;
+      const h = font * 1.75;
+      const off = size * 2.6;
+      const spot = [
+        [f.x + off, f.y - off - h],
+        [f.x + off, f.y + off],
+        [f.x - off - w, f.y - off - h],
+        [f.x - off - w, f.y + off],
+      ].find(([x, y]) => free(x, y, w, h));
+      if (!spot) continue;
+      placed.push(spot[0], spot[1], w, h);
+      const x = spot[0];
+      const y = spot[1] + h / 2;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = f.color;
+      roundRect(ctx, x, y - h / 2, w, h, h / 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(label, x + font * 0.55, y + 0.5 * dpr);
+    }
+    ctx.globalAlpha = 1;
   }
 
   /** Appends the polyline from the trail's tail to the head, walking the path samples. */

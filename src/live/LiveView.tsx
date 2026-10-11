@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   ViewportPortal,
   useNodesInitialized,
@@ -10,10 +10,11 @@ import {
 import "../styles/live.css";
 import "../styles/capacity.css";
 import type { DiagramFile, Simulation } from "../model/types";
-import type { NodeStatus } from "../sim/types";
+import type { MessageTrace, NodeStatus } from "../sim/types";
 import type { EditorApi } from "../editor/types";
 import { actionRegistry, builtinSections } from "../editor/actions";
 import { isEditableTarget } from "../editor/shortcuts";
+import { inCanvas } from "../editor/useCanvasShortcuts";
 import { useSettings } from "../harness/settings";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { LiveController } from "./controller";
@@ -53,6 +54,10 @@ import { placeNextTo } from "../canvas/placement";
 import { Recorder } from "./record/Recorder";
 import { initialRecordState, isCapturing, recordReducer } from "./record/recordModel";
 import { isRecordingActive } from "./record/framing";
+import { TraceCard } from "./TraceCard";
+// Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
+const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
+import { buildJourney } from "../trace/journey";
 
 export interface LiveViewProps {
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
@@ -72,6 +77,8 @@ export interface LiveViewProps {
     capacity?: boolean;
     /** Start with these Inputs & capacity values. */
     inputs?: Partial<LiveInputs>;
+    /** Start a message trace (Lab presets): the next message, or the next one to dead-letter. */
+    trace?: "next" | "deadletter";
   };
   /** Lab stages are always live and hide the toggle. */
   alwaysOn?: boolean;
@@ -94,9 +101,9 @@ const ESC_OWNERS = [
   '[role="dialog"]',
   '[data-testid="sim-panel"]',
   '[data-testid="capacity-panel"]',
-  ".react-flow__node.selected",
-  ".react-flow__edge.selected",
 ].join(",");
+/** A selection is cleared before Esc backs out of a trace or live view. */
+const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
 const NOTE_PADDING = { top: "170px", right: "80px", bottom: "230px", left: "80px" } as const;
 const NOTE_FIT: FitViewOptions = { padding: NOTE_PADDING, maxZoom: 1, duration: 900 };
 const FULL_FIT: FitViewOptions = {
@@ -245,6 +252,8 @@ function LiveSession({
     // Free play starts with gentle continuous traffic so something is always flowing.
     else if (params.traffic !== false) c.setTraffic(true);
     if (params.traffic === false) c.setTraffic(false);
+    if (params.trace === "next") c.traceNext();
+    else if (params.trace === "deadletter") c.traceDeadLettered();
     if (params.inputs) c.setInputs({ ...emptyInputs(), ...params.inputs });
     if (sim && params.seekMs) c.seek(params.seekMs);
     if (!params.paused) c.setPlaying(true);
@@ -311,8 +320,20 @@ function LiveSession({
   // The controller publishes fresh note objects each tick; keep the focus stable for camera effects.
   const focusKey = JSON.stringify(note?.focus ?? []);
   const noteFocus = useMemo(() => JSON.parse(focusKey) as string[], [focusKey]);
+  // A traced message lights the path it has taken so far (or the node it's awaited at).
+  const tracedNow = state.trace?.current;
+  const awaitedAt = state.trace?.pending?.next === "message" ? state.trace.pending.node : undefined;
+  const tracedDiagram = controller.currentDiagram;
+  const tracedPath = useMemo(() => {
+    if (tracedNow) {
+      const j = buildJourney(tracedNow, tracedDiagram);
+      return { nodes: new Set(j.nodes), edges: new Set(j.edges) };
+    }
+    return awaitedAt ? { nodes: new Set([awaitedAt]), edges: new Set<string>() } : null;
+  }, [tracedNow, awaitedAt, tracedDiagram]);
   const spotlight = (() => {
     const d = controller.currentDiagram;
+    if (tracedPath) return { ...tracedPath, kind: "trace" as const };
     if (trace) {
       const r = downstreamOfEdge(d.edges, trace);
       return { nodes: r.nodes, edges: r.edges, kind: "trace" as const };
@@ -332,6 +353,17 @@ function LiveSession({
   useLayoutEffect(() => {
     panelOpenRef.current = panel.open;
   }, [panel.open]);
+  // The trace card sits at the top right: every fit leaves room for it, as for a side panel.
+  const cardOpen = !!state.trace;
+  const cardOpenRef = useRef(false);
+  useLayoutEffect(() => {
+    cardOpenRef.current = cardOpen;
+  }, [cardOpen]);
+  const fitPadding = useCallback((base: typeof NOTE_PADDING, panelOpen = panelOpenRef.current) => {
+    if (panelOpen) return { ...base, right: "440px" as const };
+    return cardOpenRef.current ? { ...base, right: "400px" as const } : base;
+  }, []);
+  const FULL_PADDING = FULL_FIT.padding as typeof NOTE_PADDING;
 
   // Pan / zoom to a note's focus, and back out to the whole diagram when the story moves on.
   const zoomedForNote = useRef(false);
@@ -343,7 +375,7 @@ function LiveSession({
       () => {
         if (focus.length) {
           zoomedForNote.current = true;
-          const padding = panelOpenRef.current ? { ...NOTE_PADDING, right: "440px" as const } : NOTE_PADDING;
+          const padding = fitPadding(NOTE_PADDING);
           void fitView({
             ...NOTE_FIT,
             padding,
@@ -352,13 +384,17 @@ function LiveSession({
           });
         } else if (zoomedForNote.current) {
           zoomedForNote.current = false;
-          void fitView({ ...FULL_FIT, duration: reducedMotion ? 0 : FULL_FIT.duration });
+          void fitView({
+            ...FULL_FIT,
+            padding: fitPadding(FULL_PADDING),
+            duration: reducedMotion ? 0 : FULL_FIT.duration,
+          });
         }
       },
       panelOpenRef.current ? 320 : 160,
     );
     return () => window.clearTimeout(t);
-  }, [noteKey, noteFocus, fitView, reducedMotion]);
+  }, [noteKey, noteFocus, fitView, reducedMotion, fitPadding, FULL_PADDING]);
 
   // The authoring panel covers the right of the pane: fit the diagram into what's left (unless a
   // note is steering the camera).
@@ -376,17 +412,29 @@ function LiveSession({
       if (zoomedForNote.current) {
         const focus = noteFocusRef.current;
         if (!focus.length) return;
-        const padding = panel.open ? { ...NOTE_PADDING, right: "440px" as const } : NOTE_PADDING;
+        const padding = fitPadding(NOTE_PADDING, panel.open);
         void fitView({ ...NOTE_FIT, padding, nodes: focus.map((id) => ({ id })), duration });
         return;
       }
-      const padding = panel.open
-        ? { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const }
-        : FULL_FIT.padding;
-      void fitView({ ...FULL_FIT, padding, duration });
+      void fitView({ ...FULL_FIT, padding: fitPadding(FULL_PADDING, panel.open), duration });
     }, 320);
     return () => window.clearTimeout(t);
-  }, [panel.open, fitView, reducedMotion]);
+  }, [panel.open, fitView, reducedMotion, fitPadding, FULL_PADDING]);
+
+  // Opening or closing the trace card refits, so it never covers the diagram.
+  const cardFitted = useRef(false);
+  useEffect(() => {
+    if (cardOpen === cardFitted.current || panelOpenRef.current) return;
+    cardFitted.current = cardOpen;
+    const t = window.setTimeout(() => {
+      const duration = reducedMotion ? 0 : FULL_FIT.duration;
+      const focus = noteFocusRef.current;
+      if (zoomedForNote.current && focus.length)
+        void fitView({ ...NOTE_FIT, padding: fitPadding(NOTE_PADDING), nodes: focus.map((id) => ({ id })), duration });
+      else void fitView({ ...FULL_FIT, padding: fitPadding(FULL_PADDING), duration });
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [cardOpen, fitView, reducedMotion, fitPadding, FULL_PADDING]);
 
   // ---------------------------------------------------------------- the frame loop
 
@@ -448,7 +496,7 @@ function LiveSession({
         renderer.reset();
       }
       const snap = controller.snapshot();
-      renderer.draw(snap, now);
+      renderer.draw(snap, now, controller.tracedRoot);
       if (now - lastUi >= UI_MS) {
         lastUi = now;
         if (controller.isPlaying) controller.publish();
@@ -466,6 +514,51 @@ function LiveSession({
     };
     // renderOpts changes are applied through setOptions above, without restarting the loop.
   }, [controller, store, canvas]);
+
+  // Click a particle to trace its message; the pointer says when one is under it.
+  useEffect(() => {
+    const root = store.getState().domNode;
+    if (!canvas || !root) return;
+    let down: { x: number; y: number } | null = null;
+    const hit = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      if (target?.closest(".react-flow__node, [data-editor-overlay], button, input, select")) return undefined;
+      const r = root.getBoundingClientRect();
+      return rendererRef.current?.hitTest(e.clientX - r.left, e.clientY - r.top);
+    };
+    const onDown = (e: PointerEvent) => {
+      down = { x: e.clientX, y: e.clientY };
+    };
+    const onClick = (e: MouseEvent) => {
+      if (e.button !== 0 || !down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+      const id = hit(e);
+      if (id === undefined) return;
+      e.stopPropagation();
+      e.preventDefault();
+      controller.traceMessage(id);
+    };
+    const onMove = (e: PointerEvent) => {
+      const over = !e.buttons && hit(e) !== undefined;
+      if (over) root.setAttribute("data-live-particle", "hover");
+      else root.removeAttribute("data-live-particle");
+    };
+    root.addEventListener("pointerdown", onDown, true);
+    root.addEventListener("click", onClick, true);
+    root.addEventListener("pointermove", onMove);
+    return () => {
+      root.removeEventListener("pointerdown", onDown, true);
+      root.removeEventListener("click", onClick, true);
+      root.removeEventListener("pointermove", onMove);
+      root.removeAttribute("data-live-particle");
+    };
+  }, [controller, store, canvas]);
+
+  const [sequence, setSequence] = useState<MessageTrace | null>(null);
+  const startTrace = useCallback(() => controller.traceNext(), [controller]);
+  const sendOne = useCallback(
+    (nodeId: string) => controller.sendOne(nodeId, suggestedMessageType(getDiagram(), nodeId)),
+    [controller, getDiagram],
+  );
 
   // ---------------------------------------------------------------- commands
 
@@ -769,6 +862,16 @@ function LiveSession({
         showEvents: (id) => showEvents(id),
         trace: setTrace,
         tracing: () => traceRef.current,
+        traceNext: (nodeId) => controller.traceNext(nodeId),
+        traceSlowest: () => {
+          if (!controller.traceSlowest()) flash("No message has finished its journey yet. Try again in a moment.");
+        },
+        traceDeadLettered: () => {
+          if (controller.traceDeadLettered() === "waiting")
+            flash("Nothing has dead-lettered yet: the next message that does will be traced.");
+        },
+        endTrace: () => controller.endTrace(),
+        tracingMessage: () => controller.getState().trace !== null,
         saveTweaks: (nodeId) => {
           const tweak = controller.getState().tweaks.get(nodeId);
           if (!tweak) return;
@@ -785,8 +888,8 @@ function LiveSession({
   }, [editor, controller, store, startStorm, showEvents, getDiagram, flash, openRecord]);
 
   // Keyboard: Space plays / pauses (or continues a pausing note), Enter continues, Esc backs out
-  // one level: a trace first, then live view itself. Presentation handles its own Esc (App), and
-  // open menus, dialogs, panels, inline editors and selections get theirs first.
+  // one level: a selection, a message trace, a highlighted path, then live view itself. Open menus,
+  // dialogs, panels and inline editors get theirs first; presentation handles its own Esc (App).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
@@ -794,7 +897,19 @@ function LiveSession({
       if (e.key === "Escape") {
         // A recording owns Esc (it stops the recording, see Recorder).
         if (isRecordingActive()) return;
-        if (presenting || isEditableTarget(t) || document.querySelector(ESC_OWNERS)) return;
+        if (isEditableTarget(t) || document.querySelector(ESC_OWNERS)) return;
+        if (document.querySelector(SELECTED)) {
+          // The canvas clears its selection when it has focus; otherwise clear it here (no dead end).
+          if (!inCanvas(t)) editor?.clearSelection();
+          return;
+        }
+        // The trace comes before presentation: stop App from also leaving presentation.
+        if (controller.getState().trace) {
+          e.stopPropagation();
+          controller.endTrace();
+          return;
+        }
+        if (presenting) return;
         if (traceRef.current) setTrace(null);
         else if (!alwaysOn) onExit();
         return;
@@ -815,7 +930,7 @@ function LiveSession({
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [controller, presenting, alwaysOn, onExit]);
+  }, [controller, presenting, alwaysOn, onExit, editor]);
 
   const ui = useMemo<LiveUi>(
     () => ({
@@ -835,6 +950,7 @@ function LiveSession({
       notice,
       exit: alwaysOn ? null : onExit,
       openRecord,
+      startTrace,
     }),
     [
       controller,
@@ -853,6 +969,7 @@ function LiveSession({
       onExit,
       openRecord,
       alwaysOn,
+      startTrace,
     ],
   );
 
@@ -868,8 +985,8 @@ function LiveSession({
       >
         {trace && (
           <div className="lv-trace-chip" data-testid="live-trace">
-            <LiveIcon name="target" size={13} /> Tracing downstream of this edge
-            <button onClick={() => setTrace(null)} data-testid="live-trace-clear" aria-label="Clear trace">
+            <LiveIcon name="target" size={13} /> Highlighting everything downstream of this edge
+            <button onClick={() => setTrace(null)} data-testid="live-trace-clear" aria-label="Clear highlight">
               <LiveIcon name="close" size={12} />
             </button>
           </div>
@@ -880,6 +997,16 @@ function LiveSession({
             floating
             onApply={applyFix}
             onOpenPanel={presenting ? undefined : () => openCapacity()}
+          />
+        )}
+        {state.trace && !capturing && (
+          <TraceCard
+            trace={state.trace}
+            diagram={controller.currentDiagram}
+            now={state.snapshot.time}
+            onClose={() => controller.endTrace()}
+            onSequence={() => state.trace?.current && setSequence(state.trace.current)}
+            onSendOne={sendOne}
           />
         )}
         <NoteCallout state={state} />
@@ -918,6 +1045,16 @@ function LiveSession({
         />
       )}
       {inject && <InjectDialog request={inject} onClose={() => setInject(null)} />}
+      {sequence && (
+        <Suspense fallback={null}>
+          <SequenceDialog
+            trace={sequence}
+            diagram={controller.currentDiagram}
+            theme={theme}
+            onClose={() => setSequence(null)}
+          />
+        </Suspense>
+      )}
       <Recorder
         rec={rec}
         dispatch={dispatchRec}

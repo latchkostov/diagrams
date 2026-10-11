@@ -199,3 +199,30 @@ function inlineSvgPaint(root: HTMLElement): () => void {
     }
   };
 }
+
+/**
+ * A standalone SVG (with its own colours and sizes, e.g. a sequence diagram) as a PNG data URL,
+ * rendered through an <img> onto a canvas at `scale` (kept under the canvas pixel budget).
+ */
+export async function svgToPng(svg: string, width: number, height: number, scale = 2): Promise<string> {
+  const ratio = width * height * scale * scale > MAX_PIXELS ? Math.sqrt(MAX_PIXELS / (width * height)) : scale;
+  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("The SVG couldn't be drawn."));
+      img.src = url;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * ratio));
+    canvas.height = Math.max(1, Math.round(height * ratio));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("No 2D canvas available.");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/png");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}

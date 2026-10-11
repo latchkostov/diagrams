@@ -190,6 +190,9 @@ export function createSimulationRun(
         case "inject":
           injectReal(action.node, action.count, action.messageType, action.spreadMs);
           break;
+        case "trace":
+          if (inputs.has(action.node)) engine.tracer.request({ next: "message", node: action.node });
+          break;
         case "note":
           note = {
             text: action.text,

@@ -150,7 +150,9 @@ export type TimelineAction =
   | { do: "props"; node: string; props: Record<string, unknown> }
   | { do: "inject"; node: string; count: number; messageType?: string; spreadMs?: number }
   /** Narration for presenting: a callout, optionally highlighting nodes and pausing playback. */
-  | { do: "note"; text: string; focus?: string[]; pause?: boolean };
+  | { do: "note"; text: string; focus?: string[]; pause?: boolean }
+  /** Narration: trace the next message to arrive at (or start from) `node`, hop by hop. */
+  | { do: "trace"; node: string };
 
 export type MetricField =
   "processed" | "backlog" | "inFlight" | "failed" | "deadLettered" | "dropped" | "throughput" | "lag";

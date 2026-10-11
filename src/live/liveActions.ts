@@ -16,8 +16,15 @@ export interface LiveActionsHost {
   /** "Start a storm here…". */
   startStorm(nodeId: string): void;
   showEvents(nodeId: string | null): void;
+  /** "Highlight this path": dims everything that isn't downstream of an edge. */
   trace(edgeId: string | null): void;
   tracing(): string | null;
+  /** Message trace: follow the next message at a node (or anywhere), the slowest, or a dead letter. */
+  traceNext(nodeId?: string): void;
+  traceSlowest(): void;
+  traceDeadLettered(): void;
+  endTrace(): void;
+  tracingMessage(): boolean;
   /** Writes a node's live tweaks into the diagram (undoable). */
   saveTweaks(nodeId: string): void;
   messageType(nodeId: string): string;
@@ -71,6 +78,16 @@ export function liveActions(host: LiveActionsHost): Action[] {
         );
         return rows;
       },
+    },
+    {
+      id: "sim.trace-next",
+      section: "simulation",
+      targets: ["node"],
+      label: "Trace next message from here",
+      icon: "trace",
+      order: 15,
+      when: (ctx) => isNode(ctx.nodeId),
+      run: (ctx) => host.traceNext(ctx.nodeId!),
     },
     {
       id: "sim.storm",
@@ -177,7 +194,7 @@ export function liveActions(host: LiveActionsHost): Action[] {
       id: "sim.trace",
       section: "simulation",
       targets: ["edge"],
-      label: (ctx) => (host.tracing() === ctx.edgeId ? "Clear trace" : "Trace this path"),
+      label: (ctx) => (host.tracing() === ctx.edgeId ? "Clear highlight" : "Highlight this path"),
       icon: "route",
       order: 10,
       when: (ctx) => !!ctx.edgeId,
@@ -203,10 +220,46 @@ export function liveActions(host: LiveActionsHost): Action[] {
       run: () => c.setTraffic(!c.getState().traffic),
     },
     {
+      // One entry for the three ways in; the palette lists them as "Trace a message › …".
+      id: "sim.trace-message",
+      section: "simulation",
+      targets: ["canvas"],
+      label: "Trace a message",
+      icon: "trace",
+      order: 25,
+      children: () => [
+        { type: "item", id: "sim.trace-message:next", label: "Next message", run: () => host.traceNext() },
+        {
+          type: "item",
+          id: "sim.trace-message:slowest",
+          label: "Slowest so far",
+          keywords: "latency longest outage",
+          run: () => host.traceSlowest(),
+        },
+        {
+          type: "item",
+          id: "sim.trace-message:dead-letter",
+          label: "One that dead-lettered",
+          keywords: "dlq dead letter poison failed outage",
+          run: () => host.traceDeadLettered(),
+        },
+      ],
+    },
+    {
+      id: "sim.trace-end",
+      section: "simulation",
+      targets: ["canvas"],
+      label: "End trace",
+      icon: "trace",
+      paletteOnly: true,
+      when: () => host.tracingMessage(),
+      run: () => host.endTrace(),
+    },
+    {
       id: "sim.clear-trace",
       section: "simulation",
       targets: ["canvas"],
-      label: "Clear trace",
+      label: "Clear highlight",
       icon: "route",
       order: 30,
       when: () => host.tracing() !== null,

@@ -3,6 +3,7 @@ import { stencilRole } from "../stencils/roles";
 import { messageColor } from "./colors";
 import { resolveProps, type ResolvedProps } from "./defaults";
 import { Deque } from "./deque";
+import { createLineage, type Family } from "./lineage";
 import { mulberry32 } from "./rng";
 import { acceptsType, allocateGroupReplicas, compileTopology, type CompiledTopology } from "./topology";
 import { resolveScale, resolveMultiplier } from "./units";
@@ -18,6 +19,8 @@ import type {
   SimEvent,
   SimEventKind,
   SimSnapshot,
+  TraceStep,
+  TraceStepKind,
 } from "./types";
 
 const STEP = 10;
@@ -29,6 +32,8 @@ interface Message {
   type: string;
   color: string;
   attempts: number;
+  /** Shared by the root message and all its fan-out copies. */
+  family: Family;
 }
 interface Group {
   name: string;
@@ -156,6 +161,26 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let compiled: CompiledTopology = { edges: [], outgoing: new Map(), groups: new Map(), restricted: new Set() };
   const groupsByConsumer = new Map<string, Group[]>();
   const checkpoints = new WeakMap<EngineCheckpoint, () => void>();
+  const lineage = createLineage({
+    time: () => time,
+    find(test) {
+      for (const trip of trips)
+        if (test(trip.message))
+          return {
+            message: trip.message,
+            node: trip.kind === "reply" || trip.kind === "retry" ? trip.edge.to.id : trip.edge.from.id,
+          };
+      for (const node of nodes.values()) {
+        const work = node.working.find((w) => test(w.message)) ?? node.pending.find((w) => test(w.message));
+        if (work) return { message: work.message, node: node.id };
+        for (const group of node.groups) {
+          const queued = group.pending.find(test);
+          if (queued) return { message: queued, node: node.id };
+        }
+      }
+      return undefined;
+    },
+  });
   // Min-heap contains one entry per spread batch, not one per future message.
   const injections: Injection[] = [];
   const before = (a: Injection, b: Injection) => a.due < b.due || (a.due === b.due && a.order < b.order);
@@ -208,12 +233,44 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     node.processed++;
     node.completedThisStep++;
     log("process", node, message);
+    if (message.family.trace) step(message, "done", node.id);
+  }
+
+  /** Records a lineage step for a message whose family is being traced (callers check first). */
+  function step(message: Message, kind: TraceStepKind, node: string, extra?: Partial<TraceStep>): void {
+    lineage.record(message.family, { t: time, kind, id: message.id, type: message.type, node, ...extra });
+  }
+
+  /** A message's journey ends at `node`: consumed ("end") or lost ("drop"). */
+  function gone(node: Node, message: Message, kind: "end" | "drop", reason: string): void {
+    inSystem--;
+    message.family.alive--;
+    if (message.family.trace) {
+      step(message, kind, node.id, { reason });
+      lineage.settle(message.family);
+    }
+  }
+
+  /** A fan-out copy with its own id, in the same family (its parent keeps the original id). */
+  function copy(node: Node, message: Message): Message {
+    const next = { ...message, id: nextMessage++, attempts: 0 };
+    inSystem++;
+    message.family.alive++;
+    if (message.family.trace) step(next, "copy", node.id, { parent: message.id });
+    return next;
+  }
+
+  /** One message per route: the first route keeps the message, the others get new copies. */
+  function fanOut(node: Node, message: Message, routes: number): Message[] {
+    const out = [{ ...message, attempts: 0 }];
+    for (let i = 1; i < routes; i++) out.push(copy(node, message));
+    return out;
   }
 
   function drop(node: Node, message: Message, reason: string): void {
     node.dropped++;
-    inSystem--;
     log("drop", node, message, reason);
+    gone(node, message, "drop", reason);
   }
 
   function accepts(edge: Edge, type: string): boolean {
@@ -327,16 +384,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (visible) drawn++;
     edge.active++;
     if (kind === "message" || kind === "dlq") edge.to.incoming++;
-    trips.push({
-      id: nextParticle++,
-      edge,
-      message,
-      kind,
-      delivery,
-      start: time,
-      end: time + Math.max(STEP, edge.travelMs) + delay,
-      drawn: visible,
-    });
+    const end = time + Math.max(STEP, edge.travelMs) + delay;
+    trips.push({ id: nextParticle++, edge, message, kind, delivery, start: time, end, drawn: visible });
+    if (message.family.trace) {
+      const back = kind === "reply" || kind === "retry";
+      step(message, "send", back ? edge.to.id : edge.from.id, { edge: edge.id, via: kind, until: end });
+    }
   }
 
   function acknowledge(work: Work): void {
@@ -366,14 +419,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     );
     // A node with nowhere to send (e.g. a final worker) is a terminal consumer, not a drop.
     if (!outgoing.length) {
-      inSystem--;
+      gone(node, message, "end", "consumed");
       return;
     }
     if (node.role === "gateway") {
       travel(outgoing[node.cursor++ % outgoing.length], { ...message, attempts: 0 }, "message");
     } else {
-      inSystem += outgoing.length - 1;
-      for (const edge of outgoing) travel(edge, { ...message, attempts: 0 }, "message");
+      const copies = fanOut(node, message, outgoing.length);
+      outgoing.forEach((edge, i) => travel(edge, copies[i], "message"));
     }
   }
 
@@ -382,19 +435,31 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (!node.groups.length) {
       // A queue without a consumer (including a DLQ queue) retains its backlog.
       node.pending.push({ message, remaining: 0 });
+      message.family.parked++;
+      if (message.family.trace) {
+        step(message, "park", node.id);
+        lineage.settle(message.family);
+      }
       return;
     }
     const accepting = node.groups.filter((group) => group.edges.some((edge) => accepts(edge, message.type)));
-    inSystem += accepting.length - 1;
-    for (const group of accepting) group.pending.push({ ...message, attempts: 0 });
+    if (!accepting.length) {
+      gone(node, message, "end", "no subscription accepts it");
+      return;
+    }
+    const copies = fanOut(node, message, accepting.length);
+    accepting.forEach((group, i) => group.pending.push(copies[i]));
   }
 
   function fail(node: Node, work: Work): void {
     node.failed++;
     log("fail", node, work.message, `attempt ${work.message.attempts + 1}`);
+    if (work.message.family.trace) step(work.message, "fail", node.id, { attempt: work.message.attempts + 1 });
     if (work.delivery) {
       work.message.attempts++;
       log("retry", work.delivery.broker, work.message, `attempt ${work.message.attempts}`);
+      if (work.message.family.trace && work.message.attempts < work.delivery.broker.props.maxDeliveryCount)
+        step(work.message, "retry", work.delivery.broker.id, { attempt: work.message.attempts });
       if (node.props.retry === "inplace" && work.message.attempts < work.delivery.broker.props.maxDeliveryCount) {
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.retained = true;
@@ -433,16 +498,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     processed(node, work.message);
     if (work.injected && (node.role === "sink" || node.role === "store")) forward(node, work.message);
-    else if (node.role === "sink") inSystem--;
+    else if (node.role === "sink") gone(node, work.message, "end", "received");
     else if (node.role === "store") {
       // Outgoing async edges from a store model change feeds / CDC: each gets a copy.
       const feeds = node.outgoing.filter((edge) => !edge.sync && accepts(edge, work.message.type) && takesShare(edge));
       if (!feeds.length) {
-        inSystem--;
+        gone(node, work.message, "end", "stored");
         return;
       }
-      inSystem += feeds.length - 1;
-      for (const edge of feeds) travel(edge, { ...work.message, attempts: 0 }, "message");
+      const copies = fanOut(node, work.message, feeds.length);
+      feeds.forEach((edge, i) => travel(edge, copies[i], "message"));
     } else forward(node, work.message);
   }
 
@@ -467,8 +532,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function emit(node: Node, type: string, injected: boolean): void {
-    const message = { id: nextMessage++, type, color: messageColor(type), attempts: 0 };
+    const id = nextMessage++;
+    const message = { id, type, color: messageColor(type), attempts: 0, family: { root: id, alive: 1, parked: 0 } };
     inSystem++;
+    lineage.born(message.family, type, node.id);
     if (injected) log("inject", node, message);
     arrive(node, { message, remaining: latency(node), injected });
   }
@@ -482,6 +549,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (broker.dlq && accepts(broker.dlq, trip.message.type)) {
         broker.deadLettered++;
         log("deadletter", broker, trip.message, `${trip.message.attempts} deliveries`);
+        lineage.deadLettered(trip.message, broker.id, trip.message.attempts);
         travel(broker.dlq, trip.message, "dlq");
       } else drop(broker, trip.message, "delivery limit; no DLQ edge");
     } else group.pending.push(trip.message);
@@ -554,6 +622,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         trip.edge.delivered++;
         trip.edge.to.incoming--;
         log("deliver", trip.edge.to, trip.message);
+        lineage.arrived(trip.message, trip.edge.to.id, trip.edge.id);
         arrive(trip.edge.to, {
           message: trip.message,
           via: trip.edge,
@@ -595,7 +664,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (node.status === "down" || work.remaining <= 0 || isBroker(node) || node.role === "source") {
             finish(node, work);
             if (work.retained) node.working.push(work);
-          } else node.working.push(work);
+          } else {
+            node.working.push(work);
+            if (work.message.family.trace) step(work.message, "start", node.id);
+          }
         }
       }
     }
@@ -620,6 +692,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     eventHead = 0;
     randomCalls = 0;
     randomState = mulberry32(seed);
+    lineage.reset();
     for (const node of nodes.values()) {
       node.pending.clear();
       node.working.length = 0;
@@ -646,11 +719,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
+  lineage.setHistory(opts.traceHistory ?? 0);
   const engine: SimEngine = {
+    tracer: lineage,
     checkpoint() {
       // structuredClone preserves the graph's shared/cyclic references. Deque methods are
       // reattached on restore; its queue contents and head are ordinary own properties.
-      const graph = structuredClone({ nodes, edges, trips, injections, events });
+      // The lineage is cloned with the messages, so copies and recordings keep sharing families.
+      const graph = structuredClone({ nodes, edges, trips, injections, events, lineage: lineage.state });
       const clock = {
         time,
         accumulator,
@@ -683,6 +759,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         trips = copy.trips;
         injections.splice(0, injections.length, ...copy.injections);
         events.splice(0, events.length, ...copy.events);
+        lineage.state = copy.lineage;
         ({
           time,
           accumulator,
@@ -811,6 +888,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             id: trip.id,
             edgeId: trip.edge.id,
             messageId: trip.message.id,
+            rootId: trip.message.family.root,
             kind: trip.kind,
             progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
             type: trip.message.type,
