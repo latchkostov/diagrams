@@ -1,0 +1,489 @@
+{
+  "format": "diagrams/v1",
+  "title": "Nightly batch ELT",
+  "description": "Airflow runs a nightly Airbyte sync from app, CRM and billing sources into Snowflake, then dbt builds marts for Tableau.",
+  "direction": "LR",
+  "groups": [
+    {
+      "id": "snowflake",
+      "label": "Snowflake · ANALYTICS",
+      "tone": "neutral",
+      "x": 760,
+      "y": 280,
+      "width": 1100,
+      "height": 152
+    }
+  ],
+  "nodes": [
+    {
+      "id": "airflow",
+      "stencil": "airflow",
+      "label": "Airflow",
+      "sublabel": "Nightly DAG · 02:00 UTC",
+      "x": 800,
+      "y": 40,
+      "props": {
+        "ratePerSec": 1.15740740740741e-5,
+        "messageType": "DbtModel"
+      }
+    },
+    {
+      "id": "app-db",
+      "stencil": "postgres",
+      "label": "App database",
+      "sublabel": "Read replica",
+      "x": 40,
+      "y": 160,
+      "props": {
+        "latencyMs": 0,
+        "messageType": "AppTableBatch"
+      }
+    },
+    {
+      "id": "crm",
+      "stencil": "salesforce",
+      "label": "Salesforce",
+      "sublabel": "Accounts · opportunities",
+      "x": 40,
+      "y": 320,
+      "props": {
+        "messageType": "CrmObjectBatch"
+      }
+    },
+    {
+      "id": "billing",
+      "stencil": "stripe",
+      "label": "Stripe",
+      "sublabel": "Invoices · subscriptions",
+      "x": 40,
+      "y": 480,
+      "props": {
+        "messageType": "BillingObjectBatch"
+      }
+    },
+    {
+      "id": "airbyte",
+      "stencil": "airbyte",
+      "label": "Airbyte",
+      "sublabel": "Incremental syncs",
+      "x": 420,
+      "y": 320,
+      "props": {
+        "replicas": 3,
+        "concurrency": 5,
+        "latencyMs": 250,
+        "emits": "RawBatch"
+      }
+    },
+    {
+      "id": "raw",
+      "stencil": "snowflake",
+      "label": "Raw tables",
+      "sublabel": "RAW schema · 3 sources",
+      "x": 800,
+      "y": 320,
+      "group": "snowflake",
+      "props": {
+        "latencyMs": 0
+      }
+    },
+    {
+      "id": "dbt",
+      "stencil": "dbt",
+      "label": "dbt build",
+      "sublabel": "120 models · tests",
+      "x": 1180,
+      "y": 320,
+      "group": "snowflake",
+      "props": {
+        "concurrency": 8,
+        "latencyMs": 400,
+        "emits": {
+          "DbtModel": "MartTable"
+        }
+      }
+    },
+    {
+      "id": "marts",
+      "stencil": "snowflake",
+      "label": "Marts",
+      "sublabel": "Revenue · pipeline · churn",
+      "x": 1560,
+      "y": 320,
+      "group": "snowflake",
+      "props": {
+        "latencyMs": 0
+      }
+    },
+    {
+      "id": "tableau",
+      "stencil": "tableau",
+      "label": "Tableau",
+      "sublabel": "Extract refresh 06:00",
+      "x": 1940,
+      "y": 320,
+      "props": {}
+    },
+    {
+      "id": "slack",
+      "stencil": "slack",
+      "label": "#data-alerts",
+      "sublabel": "Failed tests",
+      "x": 1180,
+      "y": 520,
+      "props": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "app-db-to-airbyte",
+      "from": "app-db",
+      "to": "airbyte",
+      "label": "Incremental",
+      "kind": "async",
+      "props": {
+        "travelMs": 300
+      }
+    },
+    {
+      "id": "crm-to-airbyte",
+      "from": "crm",
+      "to": "airbyte",
+      "label": "Bulk API",
+      "kind": "async",
+      "props": {
+        "travelMs": 300
+      }
+    },
+    {
+      "id": "billing-to-airbyte",
+      "from": "billing",
+      "to": "airbyte",
+      "label": "Events API",
+      "kind": "async",
+      "props": {
+        "travelMs": 300
+      }
+    },
+    {
+      "id": "airflow-to-airbyte",
+      "from": "airflow",
+      "to": "airbyte",
+      "label": "1 · Sync sources",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "filter": []
+      },
+      "targetSide": "top"
+    },
+    {
+      "id": "airflow-to-dbt",
+      "from": "airflow",
+      "to": "dbt",
+      "label": "2 · dbt build",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "filter": ["DbtModel"]
+      },
+      "targetSide": "top"
+    },
+    {
+      "id": "airbyte-to-raw",
+      "from": "airbyte",
+      "to": "raw",
+      "label": "COPY INTO",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "dbt-to-raw",
+      "from": "dbt",
+      "to": "raw",
+      "label": "SELECT",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "filter": []
+      }
+    },
+    {
+      "id": "dbt-to-marts",
+      "from": "dbt",
+      "to": "marts",
+      "label": "CREATE TABLE AS",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "filter": ["MartTable"]
+      }
+    },
+    {
+      "id": "dbt-to-slack",
+      "from": "dbt",
+      "to": "slack",
+      "label": "Test failed",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "share": 0.05,
+        "emits": "TestFailed"
+      }
+    },
+    {
+      "id": "tableau-to-marts",
+      "from": "tableau",
+      "to": "marts",
+      "label": "Refresh extracts",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "nightly-run",
+      "title": "The nightly run",
+      "description": "Extract and load 300 table batches, then build 120 dbt models. Time is compressed: an hour takes a few seconds.",
+      "seed": 7,
+      "scale": 1,
+      "traffic": [
+        {
+          "id": "app",
+          "node": "app-db",
+          "messageType": "AppTableBatch",
+          "label": "02:00 · 150 app table batches",
+          "shape": {
+            "kind": "burst",
+            "count": 150,
+            "spreadMs": 1500
+          }
+        },
+        {
+          "id": "crm",
+          "node": "crm",
+          "messageType": "CrmObjectBatch",
+          "label": "02:00 · 75 CRM batches",
+          "shape": {
+            "kind": "burst",
+            "count": 75,
+            "spreadMs": 1500
+          }
+        },
+        {
+          "id": "billing",
+          "node": "billing",
+          "messageType": "BillingObjectBatch",
+          "label": "02:00 · 75 billing batches",
+          "shape": {
+            "kind": "burst",
+            "count": 75,
+            "spreadMs": 1500
+          }
+        },
+        {
+          "id": "dbt",
+          "node": "airflow",
+          "messageType": "DbtModel",
+          "label": "03:00 · dbt builds 120 models",
+          "shape": {
+            "kind": "burst",
+            "atMs": 7000,
+            "count": 120,
+            "spreadMs": 500
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "02:00. Airflow starts the nightly DAG: Airbyte copies whatever changed since yesterday from three sources into raw tables.",
+            "focus": ["airflow", "airbyte", "raw"],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 7000,
+          "action": {
+            "do": "note",
+            "text": "03:00. The load is done, so dbt rebuilds the marts and runs its tests. A failing test posts to Slack.",
+            "focus": ["airflow", "dbt", "marts", "slack"]
+          }
+        },
+        {
+          "atMs": 12000,
+          "action": {
+            "do": "note",
+            "text": "06:00. Tableau refreshes. Simple and cheap, but dashboards show yesterday. Compare the event-driven data platform, where rows land in seconds.",
+            "focus": ["marts", "tableau"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "loaded",
+          "label": "300 batches loaded",
+          "metric": {
+            "node": "raw",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 300,
+          "when": "end"
+        },
+        {
+          "id": "built",
+          "label": "120 marts built",
+          "metric": {
+            "node": "marts",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 120,
+          "when": "end"
+        },
+        {
+          "id": "alerted",
+          "label": "A failing test alerts the team",
+          "metric": {
+            "node": "slack",
+            "field": "processed"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "end"
+        }
+      ]
+    },
+    {
+      "id": "late-load",
+      "title": "Slow source, stale marts",
+      "description": "Salesforce throttles the bulk API, the load overruns, and dbt starts on schedule with partial data.",
+      "seed": 7,
+      "scale": 1,
+      "setup": {
+        "props": {
+          "airbyte": {
+            "latencyMs": 900
+          }
+        }
+      },
+      "traffic": [
+        {
+          "id": "app",
+          "node": "app-db",
+          "messageType": "AppTableBatch",
+          "label": "02:00 · 150 app table batches",
+          "shape": {
+            "kind": "burst",
+            "count": 150,
+            "spreadMs": 1500
+          }
+        },
+        {
+          "id": "crm",
+          "node": "crm",
+          "messageType": "CrmObjectBatch",
+          "label": "02:00 · 75 CRM batches",
+          "shape": {
+            "kind": "burst",
+            "count": 75,
+            "spreadMs": 1500
+          }
+        },
+        {
+          "id": "billing",
+          "node": "billing",
+          "messageType": "BillingObjectBatch",
+          "label": "02:00 · 75 billing batches",
+          "shape": {
+            "kind": "burst",
+            "count": 75,
+            "spreadMs": 1500
+          }
+        },
+        {
+          "id": "dbt",
+          "node": "airflow",
+          "messageType": "DbtModel",
+          "label": "03:00 · dbt builds 120 models",
+          "shape": {
+            "kind": "burst",
+            "atMs": 7000,
+            "count": 120,
+            "spreadMs": 500
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Tonight Salesforce throttles its bulk API, so every sync runs about three times slower.",
+            "focus": ["crm", "airbyte"]
+          }
+        },
+        {
+          "atMs": 7000,
+          "action": {
+            "do": "note",
+            "text": "03:00 arrives and the load isn't finished. A time-based schedule starts dbt anyway, so some marts are built from partial data.",
+            "focus": ["airbyte", "raw", "dbt"],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 12000,
+          "action": {
+            "do": "note",
+            "text": "The fix: make dbt wait for the load (a sensor or a data-aware schedule), or stream the data so there's no window to miss.",
+            "focus": ["airflow", "dbt"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "overrun",
+          "label": "The load is unfinished at 03:00",
+          "metric": {
+            "node": "raw",
+            "field": "processed"
+          },
+          "op": "<",
+          "value": 300,
+          "when": "at",
+          "atMs": 7000
+        },
+        {
+          "id": "loaded",
+          "label": "All 300 batches land eventually",
+          "metric": {
+            "node": "raw",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 300,
+          "when": "end"
+        },
+        {
+          "id": "built",
+          "label": "dbt built 120 marts anyway",
+          "metric": {
+            "node": "marts",
+            "field": "processed"
+          },
+          "op": "==",
+          "value": 120,
+          "when": "end"
+        }
+      ]
+    }
+  ]
+}

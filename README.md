@@ -5,10 +5,10 @@
 Architecture diagrams for event-driven systems, with a **live view** that plays messages through them.
 
 Draw your system with modern stencils (Kafka, Azure Service Bus, Event Hubs, SQS/SNS, Pub/Sub, Flink,
-Postgres, Redis, Stripe, and about 150 more), then go live: inject a storm of events and watch them fan out
-through topics, see a consumer fall behind when it goes down, and see poison messages land in a dead-letter
-queue. Save simulations with the diagram and replay them, narrated, in a meeting. Everything runs in the
-browser. There is no account and no server.
+Postgres, Redis, Snowflake, dbt, Stripe, and about 160 more), then go live: inject a storm of events and watch
+them fan out through topics, see a consumer fall behind when it goes down, and see poison messages land in a
+dead-letter queue. Save simulations with the diagram and replay them, narrated, in a meeting. Everything runs
+in the browser. There is no account and no server.
 
 ## Features
 
@@ -21,6 +21,10 @@ browser. There is no account and no server.
   narration notes, and expectations that pass or fail live. Simulations are saved in the diagram file.
 - **Inputs and capacity.** Rates in real units ("2,000 orders/s"), replicas, partitions, and Traffic × and
   Capacity × what-ifs. A bottleneck heat map suggests a fix you can apply in one click.
+- **Examples.** Fifteen narrated examples grouped by theme: event streaming (Kafka, CQRS and event sourcing,
+  CDC, IoT), data and AI (an event-driven Snowflake platform with reverse ETL, nightly batch ELT, GCP streaming
+  analytics, a RAG assistant), cloud serverless, integration (webhooks, notifications, Service Bus) and
+  reliability (outbox and saga, multi-region active/active). Each has two saved simulations.
 - **Sharing.** Your diagrams are stored locally. Export to PNG, SVG, draw.io and Mermaid, and import draw.io and
   Mermaid. Share links carry the whole diagram in the URL, an embed mode makes a read-only viewer, and Record
   saves a simulation as a video. Google Drive works once it's configured (see `docs/INTEROP.md`).

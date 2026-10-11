@@ -1,0 +1,402 @@
+{
+  "format": "diagrams/v1",
+  "title": "Notification fan-out",
+  "description": "One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit.",
+  "direction": "LR",
+  "groups": [
+    {
+      "id": "azure",
+      "label": "Azure · notifications",
+      "tone": "azure",
+      "x": 380,
+      "y": 80,
+      "width": 1860,
+      "height": 432
+    }
+  ],
+  "nodes": [
+    {
+      "id": "carrier",
+      "stencil": "generic.webhook",
+      "label": "Carrier tracking",
+      "sublabel": "Parcel scanned",
+      "x": 40,
+      "y": 280,
+      "props": { "ratePerSec": 10, "messageType": "ParcelScanned" }
+    },
+    {
+      "id": "shipping",
+      "stencil": "azure.container-apps",
+      "label": "Shipping service",
+      "sublabel": "Publishes OrderShipped",
+      "x": 420,
+      "y": 280,
+      "group": "azure",
+      "props": { "concurrency": 200, "latencyMs": 50, "emits": "OrderShipped" }
+    },
+    {
+      "id": "events",
+      "stencil": "azure.service-bus.topic",
+      "label": "order-events",
+      "sublabel": "Topic",
+      "x": 800,
+      "y": 280,
+      "group": "azure",
+      "props": { "partitions": 32 }
+    },
+    {
+      "id": "preferences",
+      "stencil": "azure.cosmos-db",
+      "label": "Preferences",
+      "sublabel": "Channels · quiet hours",
+      "x": 1180,
+      "y": 120,
+      "group": "azure",
+      "props": { "latencyMs": 0 }
+    },
+    {
+      "id": "router",
+      "stencil": "azure.functions",
+      "label": "Notification router",
+      "sublabel": "sub: notifications",
+      "x": 1180,
+      "y": 280,
+      "group": "azure",
+      "props": { "concurrency": 400, "latencyMs": 60 }
+    },
+    {
+      "id": "email-q",
+      "stencil": "azure.service-bus.queue",
+      "label": "email",
+      "sublabel": "~90% opted in",
+      "x": 1560,
+      "y": 160,
+      "group": "azure",
+      "props": {}
+    },
+    {
+      "id": "sms-q",
+      "stencil": "azure.service-bus.queue",
+      "label": "sms",
+      "sublabel": "~30% opted in",
+      "x": 1560,
+      "y": 280,
+      "group": "azure",
+      "props": {}
+    },
+    {
+      "id": "push-q",
+      "stencil": "azure.service-bus.queue",
+      "label": "push",
+      "sublabel": "~70% have the app",
+      "x": 1560,
+      "y": 400,
+      "group": "azure",
+      "props": {}
+    },
+    {
+      "id": "email-sender",
+      "stencil": "azure.functions",
+      "label": "Email sender",
+      "sublabel": "Templates · 500/s",
+      "x": 1940,
+      "y": 160,
+      "group": "azure",
+      "props": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "EmailSent" }
+    },
+    {
+      "id": "sms-limiter",
+      "stencil": "generic.rate-limiter",
+      "label": "SMS rate limiter",
+      "sublabel": "Token bucket · 50/s",
+      "x": 1940,
+      "y": 280,
+      "group": "azure",
+      "props": { "replicas": 1, "concurrency": 5, "latencyMs": 100, "emits": "SmsSent" }
+    },
+    {
+      "id": "push-sender",
+      "stencil": "azure.functions",
+      "label": "Push sender",
+      "sublabel": "Batches of 500",
+      "x": 1940,
+      "y": 400,
+      "group": "azure",
+      "props": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "PushSent" }
+    },
+    {
+      "id": "sendgrid",
+      "stencil": "sendgrid",
+      "label": "SendGrid",
+      "sublabel": "Email",
+      "x": 2320,
+      "y": 160,
+      "props": {}
+    },
+    { "id": "twilio", "stencil": "twilio", "label": "Twilio", "sublabel": "SMS", "x": 2320, "y": 280, "props": {} },
+    {
+      "id": "push",
+      "stencil": "generic.push",
+      "label": "FCM and APNs",
+      "sublabel": "Mobile push",
+      "x": 2320,
+      "y": 400,
+      "props": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "carrier-to-shipping",
+      "from": "carrier",
+      "to": "shipping",
+      "label": "Webhook",
+      "kind": "sync",
+      "props": { "travelMs": 200 }
+    },
+    {
+      "id": "shipping-to-events",
+      "from": "shipping",
+      "to": "events",
+      "label": "OrderShipped",
+      "kind": "async",
+      "props": { "travelMs": 300 }
+    },
+    {
+      "id": "events-to-router",
+      "from": "events",
+      "to": "router",
+      "label": "Subscription",
+      "kind": "async",
+      "props": { "travelMs": 300, "group": "notifications" }
+    },
+    {
+      "id": "router-to-preferences",
+      "from": "router",
+      "to": "preferences",
+      "label": "Read preferences",
+      "kind": "sync",
+      "props": { "travelMs": 200 }
+    },
+    {
+      "id": "router-to-email-q",
+      "from": "router",
+      "to": "email-q",
+      "label": "If email",
+      "kind": "async",
+      "props": { "travelMs": 300, "share": 0.9 }
+    },
+    {
+      "id": "router-to-sms-q",
+      "from": "router",
+      "to": "sms-q",
+      "label": "If SMS",
+      "kind": "async",
+      "props": { "travelMs": 300, "share": 0.3 }
+    },
+    {
+      "id": "router-to-push-q",
+      "from": "router",
+      "to": "push-q",
+      "label": "If push",
+      "kind": "async",
+      "props": { "travelMs": 300, "share": 0.7 }
+    },
+    {
+      "id": "email-q-to-email-sender",
+      "from": "email-q",
+      "to": "email-sender",
+      "kind": "async",
+      "props": { "travelMs": 300 }
+    },
+    {
+      "id": "sms-q-to-sms-limiter",
+      "from": "sms-q",
+      "to": "sms-limiter",
+      "kind": "async",
+      "props": { "travelMs": 300 }
+    },
+    {
+      "id": "push-q-to-push-sender",
+      "from": "push-q",
+      "to": "push-sender",
+      "kind": "async",
+      "props": { "travelMs": 300 }
+    },
+    {
+      "id": "email-sender-to-sendgrid",
+      "from": "email-sender",
+      "to": "sendgrid",
+      "label": "Mail Send API",
+      "kind": "sync",
+      "props": { "travelMs": 200 }
+    },
+    {
+      "id": "sms-limiter-to-twilio",
+      "from": "sms-limiter",
+      "to": "twilio",
+      "label": "Messages API",
+      "kind": "sync",
+      "props": { "travelMs": 200 }
+    },
+    {
+      "id": "push-sender-to-push",
+      "from": "push-sender",
+      "to": "push",
+      "label": "Send",
+      "kind": "sync",
+      "props": { "travelMs": 200 }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "shipping-wave",
+      "title": "Holiday shipping wave",
+      "description": "2,000 parcels ship in five seconds. Email and push keep up; SMS queues behind its 50-a-second limit.",
+      "seed": 7,
+      "scale": 10,
+      "traffic": [
+        {
+          "id": "scans",
+          "node": "carrier",
+          "messageType": "ParcelScanned",
+          "label": "400 parcels/s for 5 seconds",
+          "shape": { "kind": "constant", "ratePerSec": 400, "durationMs": 5000 }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Every shipped parcel becomes one OrderShipped event. The router reads the customer's preferences and fans out to the channels they chose. Each dot is 10 events.",
+            "focus": ["events", "router", "preferences"]
+          }
+        },
+        {
+          "atMs": 2500,
+          "action": {
+            "do": "note",
+            "text": "SMS is limited to 50 a second to stay inside the provider's throughput. Its queue grows while email and push keep pace.",
+            "focus": ["sms-q", "sms-limiter", "email-q", "push-q"],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 9000,
+          "action": {
+            "do": "note",
+            "text": "The SMS queue drains at its own pace. Separate queues mean one slow channel never delays the others.",
+            "focus": ["sms-q", "twilio"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "sms-backlog",
+          "label": "SMS queues behind its rate limit",
+          "metric": { "node": "sms-q", "field": "lag" },
+          "op": ">",
+          "value": 100,
+          "when": "at",
+          "atMs": 5000
+        },
+        {
+          "id": "email-current",
+          "label": "Email keeps up",
+          "metric": { "node": "email-q", "field": "lag" },
+          "op": "<=",
+          "value": 200,
+          "when": "always"
+        },
+        {
+          "id": "sms-drained",
+          "label": "Every SMS is eventually sent",
+          "metric": { "node": "sms-q", "field": "lag" },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "preferences",
+          "label": "Preferences read for all 2,000",
+          "metric": { "node": "preferences", "field": "processed" },
+          "op": "==",
+          "value": 2000,
+          "when": "end"
+        }
+      ]
+    },
+    {
+      "id": "sms-outage",
+      "title": "SMS provider outage",
+      "description": "Twilio errors for five seconds; the circuit breaker pauses SMS while email and push carry on.",
+      "seed": 7,
+      "scale": 1,
+      "traffic": [
+        {
+          "id": "scans",
+          "node": "carrier",
+          "messageType": "ParcelScanned",
+          "label": "40 parcels/s for 8 seconds",
+          "shape": { "kind": "constant", "ratePerSec": 40, "durationMs": 8000 }
+        }
+      ],
+      "timeline": [
+        { "atMs": 1500, "action": { "do": "status", "node": "sms-limiter", "status": "paused" } },
+        {
+          "atMs": 1500,
+          "action": {
+            "do": "note",
+            "text": "Twilio starts returning errors. The circuit breaker opens and SMS sending pauses; messages wait in the queue instead of failing.",
+            "focus": ["sms-limiter", "twilio", "sms-q"],
+            "pause": true
+          }
+        },
+        { "atMs": 6500, "action": { "do": "status", "node": "sms-limiter", "status": "up" } },
+        {
+          "atMs": 6500,
+          "action": {
+            "do": "note",
+            "text": "The breaker closes. The backlog drains at 50 a second; email and push never noticed.",
+            "focus": ["sms-q", "sms-limiter", "sendgrid", "push"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "waiting",
+          "label": "SMS waits during the outage",
+          "metric": { "node": "sms-q", "field": "lag" },
+          "op": ">",
+          "value": 20,
+          "when": "at",
+          "atMs": 6000
+        },
+        {
+          "id": "drained",
+          "label": "The SMS backlog drains",
+          "metric": { "node": "sms-q", "field": "lag" },
+          "op": "==",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "email",
+          "label": "Email is unaffected",
+          "metric": { "node": "email-q", "field": "lag" },
+          "op": "<=",
+          "value": 10,
+          "when": "always"
+        },
+        {
+          "id": "all-routed",
+          "label": "All 320 events are routed",
+          "metric": { "node": "preferences", "field": "processed" },
+          "op": "==",
+          "value": 320,
+          "when": "end"
+        }
+      ]
+    }
+  ]
+}

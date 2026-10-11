@@ -17,6 +17,8 @@ export interface DiagramOption {
   title: string;
   /** "examples" for the built-in ones; anything else is the user's own. */
   group: string;
+  /** An example's theme, e.g. { label: "Data & AI" }. */
+  theme?: { label: string };
 }
 
 export interface SourceInput {
@@ -260,8 +262,9 @@ export function collectCommands(input: SourceInput): Command[] {
       group: "diagrams",
       label: d.title,
       icon: "canvas",
-      hint: d.group === "examples" ? "Example" : "Your diagram",
-      keywords: d.group === "examples" ? "open example" : "open your diagram mine",
+      hint: d.group === "examples" ? (d.theme ? `Example · ${d.theme.label}` : "Example") : "Your diagram",
+      keywords:
+        d.group === "examples" ? `open example ${d.theme?.label.toLowerCase() ?? ""}`.trim() : "open your diagram mine",
       run: () => input.openDiagram(d.slug),
     });
   }

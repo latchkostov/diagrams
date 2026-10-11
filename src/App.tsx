@@ -10,7 +10,7 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
-import { examples } from "./examples";
+import { examples, themeLabel } from "./examples";
 import { TopBar, type ExampleOption } from "./components/TopBar";
 import type { CanvasHandle } from "./canvas/CanvasView";
 import type { OpenTarget } from "./lab/LabView";
@@ -123,7 +123,12 @@ function MainApp() {
           },
         ]
       : []),
-    ...examples.map((e) => ({ slug: e.slug, title: e.diagram.title, group: "examples" as const })),
+    ...examples.map((e) => ({
+      slug: e.slug,
+      title: e.diagram.title,
+      group: "examples" as const,
+      theme: e.theme && { id: e.theme, label: themeLabel(e.theme) },
+    })),
   ];
 
   // "Your diagrams": the open diagram's pending edits are saved first, so the list is current.
@@ -299,8 +304,10 @@ function MainApp() {
         .map((e) => ({
           slug: e.slug,
           title: e.diagram.title,
-          description: e.diagram.description,
+          description: e.summary ?? e.diagram.description,
           thumb: diagramThumb(e.diagram),
+          theme: e.theme && themeLabel(e.theme),
+          featured: e.featured,
         })),
     [],
   );

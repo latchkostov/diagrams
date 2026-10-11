@@ -55,6 +55,8 @@ test.describe("first run", () => {
     await expect(page.getByTestId("example-picker")).toHaveValue("new");
     const card = page.getByTestId("start-card");
     await expect(card).toBeVisible();
+    // A few featured examples first; "All examples" opens the rest, grouped by theme.
+    await page.getByTestId("start-all-examples").click();
     // Only public examples are offered, each with a rendered thumbnail of its nodes.
     for (const ex of publicExamples) {
       await expect(page.getByTestId(`start-example-${ex.slug}`)).toBeVisible();

@@ -2062,6 +2062,33 @@ select.insp-input {
   color: var(--text-3);
 }
 
+/* "All examples": the link beside the Examples heading, and the theme sections it opens. */
+.start-all {
+  gap: 2px;
+}
+
+.start-section + .start-section {
+  margin-top: 6px;
+}
+
+/* The full list is long: smaller rows and thumbnails keep it scannable. */
+.start-examples.is-compact .start-example {
+  padding: 5px 8px;
+}
+
+.start-examples.is-compact .start-thumb {
+  width: 52px;
+  height: 32px;
+}
+
+.start-theme {
+  margin: 8px 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+}
+
 .start-example-text {
   flex: 1;
   min-width: 0;

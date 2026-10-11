@@ -15,6 +15,23 @@ export interface ExampleOption {
   title: string;
   /** "yours": your diagrams (and a shared one); "examples": the built-in examples. */
   group: "yours" | "examples";
+  /** An example's theme: the picker shows one group per theme ("Event streaming", "Data & AI"…). */
+  theme?: { id: string; label: string };
+}
+
+/** The picker's groups: Your diagrams, then examples by theme (unthemed ones under "Examples"), in first-seen order. */
+function pickerGroups(options: ExampleOption[]) {
+  const groups: { id: string; label: string; options: ExampleOption[] }[] = [
+    { id: "yours", label: "Your diagrams", options: options.filter((o) => o.group === "yours") },
+  ];
+  for (const o of options) {
+    if (o.group !== "examples") continue;
+    const id = o.theme?.id ?? "examples";
+    let g = groups.find((x) => x.id === id);
+    if (!g) groups.push((g = { id, label: o.theme?.label ?? "Examples", options: [] }));
+    g.options.push(o);
+  }
+  return groups;
 }
 
 interface Props {
@@ -92,19 +109,13 @@ export function TopBar(p: Props) {
             name="example"
             data-testid="example-picker"
           >
-            {(["yours", "examples"] as const).map((group) => (
-              <optgroup
-                key={group}
-                label={group === "yours" ? "Your diagrams" : "Examples"}
-                data-testid={`picker-group-${group}`}
-              >
-                {p.exampleOptions
-                  .filter((o) => o.group === group)
-                  .map((o) => (
-                    <option key={o.slug} value={o.slug} data-testid={`picker-option-${o.slug}`}>
-                      {o.title}
-                    </option>
-                  ))}
+            {pickerGroups(p.exampleOptions).map((g) => (
+              <optgroup key={g.id} label={g.label} data-testid={`picker-group-${g.id}`}>
+                {g.options.map((o) => (
+                  <option key={o.slug} value={o.slug} data-testid={`picker-option-${o.slug}`}>
+                    {o.title}
+                  </option>
+                ))}
               </optgroup>
             ))}
           </select>

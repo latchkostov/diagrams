@@ -178,6 +178,21 @@ export const STENCIL_ALIASES: Record<string, readonly string[]> = {
   "generic.secret-store": ["secrets", "vault", "credentials", "kms"],
   "generic.identity-provider": ["idp", "sso", "oauth", "oidc", "saml", "identity", "auth"],
   "aws.cloudwatch": ["logs", "metrics", "alarms", "cw", "monitoring"],
+  dbt: ["dbt core", "dbt cloud", "transform", "elt", "models", "marts", "sql"],
+  airbyte: ["elt", "etl", "connector", "fivetran", "stitch", "ingestion"],
+  "snowflake.snowpipe": ["snowpipe", "streaming ingest", "loader", "kafka connector", "copy into"],
+  "generic.reverse-etl": ["reverse etl", "hightouch", "census", "activation", "warehouse sync"],
+  "gcp.cloud-storage": ["gcs", "bucket", "object storage", "blob", "google"],
+  looker: ["bi", "dashboard", "lookml", "looker studio", "google"],
+  tableau: ["bi", "dashboard", "visualization", "reports"],
+  "aws.route53": ["route53", "dns", "failover", "latency routing", "global load balancer", "health check"],
+  "azure.traffic-manager": ["atm", "dns", "failover", "global load balancer", "geo routing"],
+  "gcp.cloud-load-balancing": ["glb", "global load balancer", "anycast", "lb", "google"],
+  "generic.event-store": ["event sourcing", "eventstoredb", "kurrent", "append only", "ledger"],
+  "generic.projection": ["read model", "cqrs", "projector", "materialized view", "denormalizer"],
+  "generic.saga": ["orchestrator", "orchestration", "compensation", "process manager", "workflow"],
+  "generic.rate-limiter": ["throttle", "throttling", "token bucket", "quota", "rate limit"],
+  "generic.marketing": ["braze", "customer.io", "iterable", "marketo", "campaigns", "crm"],
 };
 
 interface Indexed {
