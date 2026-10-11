@@ -15,6 +15,8 @@ export interface History<T> {
   entries: HistoryEntry<T>[];
   /** Index of the present entry. */
   index: number;
+  /** Undo/redo starts a fresh edit sequence even when the restored tag matches. */
+  coalescingBroken?: boolean;
 }
 
 export const HISTORY_CAP = 200;
@@ -37,7 +39,12 @@ export function commit<T>(h: History<T>, entry: HistoryEntry<T>, cap = HISTORY_C
   const cur = present(h);
   if (cur.key === entry.key) return h;
   const merge =
-    entry.mergeKey !== undefined && cur.mergeKey === entry.mergeKey && h.index > 0 && entry.at - cur.at <= MERGE_WINDOW_MS;
+    !h.coalescingBroken &&
+    h.index === h.entries.length - 1 &&
+    entry.mergeKey !== undefined &&
+    cur.mergeKey === entry.mergeKey &&
+    h.index > 0 &&
+    entry.at - cur.at <= MERGE_WINDOW_MS;
   const base = h.entries.slice(0, merge ? h.index : h.index + 1);
   const entries = [...base, entry];
   const overflow = Math.max(0, entries.length - cap);
@@ -45,9 +52,9 @@ export function commit<T>(h: History<T>, entry: HistoryEntry<T>, cap = HISTORY_C
 }
 
 export function undo<T>(h: History<T>): History<T> {
-  return canUndo(h) ? { ...h, index: h.index - 1 } : h;
+  return canUndo(h) ? { ...h, index: h.index - 1, coalescingBroken: true } : h;
 }
 
 export function redo<T>(h: History<T>): History<T> {
-  return canRedo(h) ? { ...h, index: h.index + 1 } : h;
+  return canRedo(h) ? { ...h, index: h.index + 1, coalescingBroken: true } : h;
 }

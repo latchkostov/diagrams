@@ -1,5 +1,7 @@
+import { safeStorage, safeSessionStorage } from "./storage";
 import { DIAGRAM_FORMAT, type DiagramFile, type DiagramNode, type Stencil } from "../model/types";
-import { getImported, IMPORTED_SLUG, setImported } from "./diagramIO";
+import { createDiagram, getImported } from "./diagramIO";
+import { notify } from "../interop/ui/toast";
 import { pushRecentStencil } from "./recentStencils";
 
 /**
@@ -14,7 +16,7 @@ export const STENCIL_DND_MIME = "application/x-diagrams-stencil";
 const PENDING_KEY = "diagrams.pendingStencils.v1";
 const LAST_CANVAS_KEY = "diagrams.lastCanvas.v1";
 
-function readList(storage: Storage, key: string): string[] {
+function readList(storage: Pick<Storage, "getItem">, key: string): string[] {
   try {
     const v = JSON.parse(storage.getItem(key) ?? "[]");
     return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
@@ -24,20 +26,20 @@ function readList(storage: Storage, key: string): string[] {
 }
 
 export function queueStencilsForCanvas(ids: string[]) {
-  sessionStorage.setItem(PENDING_KEY, JSON.stringify([...readList(sessionStorage, PENDING_KEY), ...ids]));
+  safeSessionStorage.setItem(PENDING_KEY, JSON.stringify([...readList(safeSessionStorage, PENDING_KEY), ...ids]));
 }
 
 /** Returns and clears the queued stencil ids. */
 export function takePendingStencils(): string[] {
-  const ids = readList(sessionStorage, PENDING_KEY);
-  sessionStorage.removeItem(PENDING_KEY);
+  const ids = readList(safeSessionStorage, PENDING_KEY);
+  safeSessionStorage.removeItem(PENDING_KEY);
   return ids;
 }
 
 /** The canvas records which diagram is open so the Gallery can send stencils back to it. */
 export function rememberCanvas(slug: string) {
   try {
-    localStorage.setItem(LAST_CANVAS_KEY, slug);
+    safeStorage.setItem(LAST_CANVAS_KEY, slug);
   } catch {
     // ignore
   }
@@ -45,7 +47,7 @@ export function rememberCanvas(slug: string) {
 
 export function lastCanvas(): string | undefined {
   try {
-    return localStorage.getItem(LAST_CANVAS_KEY) ?? undefined;
+    return safeStorage.getItem(LAST_CANVAS_KEY) ?? undefined;
   } catch {
     return undefined;
   }
@@ -91,9 +93,8 @@ export function openNewDiagramWith(s: Stencil) {
     nodes: [nodeJson(s, { x: 40, y: 160 })],
     edges: [],
   };
-  setImported(d);
   pushRecentStencil(s.id);
-  // The app reads the imported diagram when it starts, so this navigation reloads.
-  const p = new URLSearchParams({ view: "canvas", example: IMPORTED_SLUG });
-  window.location.assign(`${window.location.pathname}?${p}`);
+  // createDiagram tells the App to re-read its slots; openCanvas navigates client-side (no reload).
+  openCanvas(createDiagram(d));
+  notify(`Started “${d.title}”.`, { kind: "success" });
 }

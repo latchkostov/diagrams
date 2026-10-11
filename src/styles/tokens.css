@@ -11,8 +11,8 @@
   --line-strong: #cdd3de;
   --text: #131926;
   --text-2: #566074;
-  /* 4.6:1 on --surface: the old #8a92a3 (3.1:1) was too faint for descriptions and counts. */
-  --text-3: #6c7487;
+  /* AA contrast across the light surfaces, including --surface-3. */
+  --text-3: #656d80;
   /* Placeholder / disabled ink only; never for text people need to read. */
   --text-4: #9aa1b0;
   --accent: #4b57d6;
@@ -102,8 +102,8 @@
   --line-strong: #313b51;
   --text: #e8ecf4;
   --text-2: #9ba5b9;
-  /* 4.6:1 on --surface (was #687189, 3.5:1). */
-  --text-3: #7d869d;
+  /* AA contrast across the dark surfaces, including --surface-3. */
+  --text-3: #8992a9;
   --text-4: #5b647a;
   --accent: #8f9bff;
   --accent-ink: #0e131d;

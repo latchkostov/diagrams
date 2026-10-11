@@ -1,4 +1,13 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import type { MenuItem, MenuNode } from "../editor/actions";
 import { formatCombo } from "../editor/shortcuts";
@@ -33,12 +42,24 @@ export interface ContextMenuProps {
   testId?: string;
 }
 
-export function ContextMenu({ x, y, items, onClose, searchable, label = "Context menu", testId = "context-menu" }: ContextMenuProps) {
+export function ContextMenu({
+  x,
+  y,
+  items,
+  onClose,
+  searchable,
+  label = "Context menu",
+  testId = "context-menu",
+}: ContextMenuProps) {
   const layer = useRef<HTMLDivElement>(null);
+  const invoker = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null);
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  useLayoutEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
+    const previousFocus = invoker.current;
     const outside = (e: Event) => {
       if (!layer.current?.contains(e.target as Node)) closeRef.current();
     };
@@ -52,6 +73,11 @@ export function ContextMenu({ x, y, items, onClose, searchable, label = "Context
       window.removeEventListener("wheel", outside, true);
       window.removeEventListener("resize", close);
       window.removeEventListener("blur", close);
+      // Actions and outside clicks may deliberately focus another control. Let them win.
+      queueMicrotask(() => {
+        if (document.activeElement === document.body && previousFocus?.isConnected)
+          previousFocus.focus({ preventScroll: true });
+      });
     };
   }, []);
 
@@ -111,6 +137,7 @@ function search(items: MenuNode[], q: string): MenuNode[] {
 }
 
 function MenuList(p: ListProps) {
+  const id = useId();
   const ref = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
@@ -145,11 +172,13 @@ function MenuList(p: ListProps) {
 
   useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
 
-  // Reset the highlight when the search results change.
-  useEffect(() => {
-    if (q) setActive(shown.findIndex(selectable));
+  // Search changes derive a fresh highlight before the next paint.
+  const [previousShown, setPreviousShown] = useState(shown);
+  if (previousShown !== shown) {
+    setPreviousShown(shown);
+    setActive(shown.findIndex(selectable));
     setOpen(null);
-  }, [q, shown]);
+  }
 
   useEffect(() => {
     if (active >= 0) itemRefs.current[active]?.scrollIntoView({ block: "nearest" });
@@ -258,18 +287,25 @@ function MenuList(p: ListProps) {
   };
 
   const sub = open ? shown[open.index] : undefined;
+  const activeItem = shown[active];
+  const activeId = selectable(activeItem) ? `${id}-item-${activeItem.id}` : undefined;
 
   return (
     <>
       <div
         ref={ref}
         className={`cm${p.searchable ? " cm-searchable" : ""}`}
-        role="menu"
+        role={p.searchable ? undefined : "menu"}
         aria-label={p.label}
+        aria-activedescendant={!p.searchable ? activeId : undefined}
         tabIndex={-1}
         data-testid={p.testId}
         data-depth={p.depth}
-        style={pos ? { left: pos.left, top: pos.top, maxHeight: pos.maxHeight } : { left: p.anchor.x, top: p.anchor.y, visibility: "hidden" }}
+        style={
+          pos
+            ? { left: pos.left, top: pos.top, maxHeight: pos.maxHeight }
+            : { left: p.anchor.x, top: p.anchor.y, visibility: "hidden" }
+        }
         onKeyDown={onKeyDown}
         onMouseLeave={() => {
           window.clearTimeout(hoverTimer.current);
@@ -281,6 +317,11 @@ function MenuList(p: ListProps) {
             <Icon name="search" size={14} />
             <input
               ref={input}
+              role="searchbox"
+              aria-autocomplete="list"
+              aria-haspopup="menu"
+              aria-controls={`${id}-items`}
+              aria-activedescendant={activeId}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={p.searchable}
@@ -292,7 +333,12 @@ function MenuList(p: ListProps) {
             />
           </div>
         )}
-        <div className="cm-items">
+        <div
+          id={`${id}-items`}
+          className="cm-items"
+          role={p.searchable ? "menu" : undefined}
+          aria-label={p.searchable ? p.label : undefined}
+        >
           {shown.map((n, i) => {
             if (n.type === "separator") return <div key={`sep-${i}`} className="cm-sep" role="separator" />;
             if (n.type === "header")
@@ -306,6 +352,7 @@ function MenuList(p: ListProps) {
             return (
               <div
                 key={n.id}
+                id={`${id}-item-${n.id}`}
                 ref={(el) => {
                   itemRefs.current[i] = el;
                 }}
@@ -319,6 +366,7 @@ function MenuList(p: ListProps) {
                 data-active={isActive || undefined}
                 onMouseEnter={() => !n.disabled && hover(i)}
                 onMouseDown={(e) => e.preventDefault()}
+                onKeyDown={onKeyDown}
                 onClick={() => activate(i, false)}
               >
                 <span className="cm-lead">

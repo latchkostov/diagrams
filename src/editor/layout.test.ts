@@ -1,25 +1,55 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { LAYOUT_GRID, layeredLayout } from "./layout";
 
 const n = (id: string, x = 0, y = 0) => ({ id, x, y });
 
 describe("layeredLayout", () => {
+  it("keeps index updates linear for a many-layer chain", () => {
+    const count = 100;
+    const nodes = Array.from({ length: count }, (_, i) => n(`n${i}`));
+    const edges = nodes.slice(1).map((node, i) => ({ from: nodes[i].id, to: node.id }));
+    const set = vi.spyOn(Map.prototype, "set");
+    try {
+      const positions = layeredLayout({ nodes, edges });
+      expect(positions.get(`n${count - 1}`)?.x).toBe(40 + (count - 1) * LAYOUT_GRID.LR.along);
+      expect(set.mock.calls.length).toBeLessThan(count * 30);
+    } finally {
+      set.mockRestore();
+    }
+  });
   it("puts each hop in the next column", () => {
-    const p = layeredLayout({ nodes: [n("a"), n("b"), n("c")], edges: [{ from: "a", to: "b" }, { from: "b", to: "c" }] });
-    expect([p.get("a")!.x, p.get("b")!.x, p.get("c")!.x]).toEqual([40, 40 + LAYOUT_GRID.LR.along, 40 + 2 * LAYOUT_GRID.LR.along]);
+    const p = layeredLayout({
+      nodes: [n("a"), n("b"), n("c")],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" },
+      ],
+    });
+    expect([p.get("a")!.x, p.get("b")!.x, p.get("c")!.x]).toEqual([
+      40,
+      40 + LAYOUT_GRID.LR.along,
+      40 + 2 * LAYOUT_GRID.LR.along,
+    ]);
   });
 
   it("ignores back-edges so cycles don't stretch the layout", () => {
     const p = layeredLayout({
       nodes: [n("a"), n("b"), n("c")],
-      edges: [{ from: "a", to: "b" }, { from: "b", to: "c" }, { from: "c", to: "a" }],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" },
+        { from: "c", to: "a" },
+      ],
     });
     expect(p.get("a")!.x).toBe(40);
     expect(p.get("c")!.x).toBe(40 + 2 * LAYOUT_GRID.LR.along);
   });
 
   it("stacks siblings in a layer and lays out TB vertically", () => {
-    const edges = [{ from: "a", to: "b" }, { from: "a", to: "c" }];
+    const edges = [
+      { from: "a", to: "b" },
+      { from: "a", to: "c" },
+    ];
     const lr = layeredLayout({ nodes: [n("a"), n("b", 0, 0), n("c", 0, 100)], edges });
     expect(lr.get("b")!.x).toBe(lr.get("c")!.x);
     expect(lr.get("c")!.y - lr.get("b")!.y).toBe(LAYOUT_GRID.LR.across);

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { makePayload, parsePayload } from "./clipboard";
 import { isEditableTarget, shortcutFor } from "./shortcuts";
 import type { EditorApi } from "./types";
@@ -9,13 +9,35 @@ const PASTE_FALLBACK_MS = 120;
 const inOverlay = (t: EventTarget | null) => t instanceof Element && !!t.closest("[data-editor-overlay]");
 const hasTextSelection = () => !!window.getSelection()?.toString();
 
+// React Flow owns focusable node wrappers; all other interactive descendants are controls.
+const inCanvas = (target: EventTarget | null) =>
+  target instanceof Element &&
+  !!target.closest('[data-testid="canvas-wrap"]') &&
+  !target.closest(
+    'button, input, textarea, select, a, [contenteditable="true"], [role="button"], [role="radio"], [role="slider"], [role="menu"], [role="menuitem"], [role="combobox"], [role="listbox"], [role="switch"], [role="checkbox"], [role="spinbutton"], [role="tab"], [role="option"], [role="menuitemcheckbox"], [role="menuitemradio"], summary',
+  );
+const SELECTION_SHORTCUTS = new Set([
+  "delete",
+  "copy",
+  "cut",
+  "paste",
+  "duplicate",
+  "group",
+  "select-all",
+  "nudge",
+  "nudge-far",
+  "rename",
+]);
+
 /**
  * Global canvas shortcuts (window, capture phase — so arrow keys beat React Flow's own node
  * nudging and group contents move along). Ignored while typing or inside menus / dialogs.
  */
 export function useCanvasShortcuts(editor: EditorApi, opts: { enabled: boolean; onEscape: () => void }) {
   const optsRef = useRef(opts);
-  optsRef.current = opts;
+  useLayoutEffect(() => {
+    optsRef.current = opts;
+  }, [opts]);
 
   useEffect(() => {
     let pasteFallback: number | undefined;
@@ -25,6 +47,7 @@ export function useCanvasShortcuts(editor: EditorApi, opts: { enabled: boolean; 
       if (isEditableTarget(e.target) || inOverlay(e.target)) return;
       const id = shortcutFor(e);
       if (!id) return;
+      if (SELECTION_SHORTCUTS.has(id) && !inCanvas(e.target)) return;
       const sel = editor.getSelection();
       const hasNodes = sel.nodeIds.length + sel.groupIds.length > 0;
       const hasAny = hasNodes || sel.edgeIds.length > 0;
@@ -93,7 +116,7 @@ export function useCanvasShortcuts(editor: EditorApi, opts: { enabled: boolean; 
         case "escape":
           // Don't stop propagation: the app also uses Esc to leave presentation mode.
           optsRef.current.onEscape();
-          if (hasAny) editor.clearSelection();
+          if (hasAny && inCanvas(e.target)) editor.clearSelection();
           break;
         case "fit-view":
           handled();
@@ -111,7 +134,14 @@ export function useCanvasShortcuts(editor: EditorApi, opts: { enabled: boolean; 
     };
 
     const onCopy = (e: ClipboardEvent) => {
-      if (!optsRef.current.enabled || isEditableTarget(e.target) || inOverlay(e.target) || hasTextSelection()) return;
+      if (
+        !optsRef.current.enabled ||
+        !inCanvas(e.target) ||
+        isEditableTarget(e.target) ||
+        inOverlay(e.target) ||
+        hasTextSelection()
+      )
+        return;
       const sel = editor.getSelection();
       if (!sel.nodeIds.length && !sel.groupIds.length) return;
       const payload = makePayload(editor.getDiagram(), sel.nodeIds, sel.groupIds);
@@ -121,7 +151,7 @@ export function useCanvasShortcuts(editor: EditorApi, opts: { enabled: boolean; 
     };
 
     const onPaste = (e: ClipboardEvent) => {
-      if (!optsRef.current.enabled || isEditableTarget(e.target) || inOverlay(e.target)) return;
+      if (!optsRef.current.enabled || !inCanvas(e.target) || isEditableTarget(e.target) || inOverlay(e.target)) return;
       window.clearTimeout(pasteFallback);
       const payload = parsePayload(e.clipboardData?.getData("text/plain") ?? "");
       e.preventDefault();

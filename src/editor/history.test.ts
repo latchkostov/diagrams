@@ -4,6 +4,14 @@ import { canRedo, canUndo, commit, createHistory, MERGE_WINDOW_MS, present, redo
 const entry = (key: string, at = 0, mergeKey?: string) => ({ key, value: key, at, mergeKey });
 
 describe("history", () => {
+  it("starts a new coalescing sequence after undo or redo", () => {
+    let h = commit(createHistory("original", "original"), entry("A", 100, "label"));
+    h = commit(h, entry("other", 200, "position"));
+    h = commit(undo(h), entry("B", 300, "label"));
+    expect(present(undo(h)).value).toBe("A");
+    h = commit(redo(undo(h)), entry("C", 400, "label"));
+    expect(present(undo(h)).value).toBe("B");
+  });
   it("commits, undoes and redoes", () => {
     let h = createHistory("a", "a");
     h = commit(h, entry("b"));
