@@ -21,7 +21,8 @@ fi
 stamp="$(date +%Y%m%d-%H%M%S)"
 out=".reviews/$stamp"; mkdir -p "$out"
 if [[ "$scope" == "diff" ]]; then
-  range="$since..HEAD"
+  # Three dots: only this branch's changes since it forked, not newer commits on the base.
+  range="$since...HEAD"
   scope_text="Review ONLY the changes in \`git diff $range\` (run \`git diff --stat $range\` and \`git log --oneline $range\` first), reading surrounding code as needed for context."
 else
   scope_text="Review the whole codebase (src/, tests/, configs). Prioritize the most important modules."
