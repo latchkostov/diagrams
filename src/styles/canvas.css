@@ -1,0 +1,562 @@
+.canvas-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.df-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/* ---------- React Flow theming ---------- */
+
+.react-flow {
+  --xy-background-color: var(--bg);
+  --xy-node-boxshadow-selected: none;
+  --xy-node-border-radius: 0;
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-background-color-hover: var(--surface-2);
+  --xy-controls-button-color: var(--text-2);
+  --xy-controls-button-color-hover: var(--text);
+  --xy-controls-button-border-color: var(--line);
+  --xy-controls-box-shadow: none;
+  --xy-minimap-background-color: var(--surface);
+  --xy-minimap-mask-background-color: color-mix(in oklab, var(--bg) 70%, transparent);
+  --xy-minimap-mask-stroke-color: var(--line-strong);
+  --xy-minimap-mask-stroke-width: 1;
+  --xy-handle-background-color: var(--accent);
+  --xy-selection-background-color: var(--accent-soft);
+  --xy-selection-border: 1px solid color-mix(in oklab, var(--accent) 50%, transparent);
+  --xy-resize-background-color: var(--accent);
+  background: var(--bg);
+  font-family: var(--font-ui);
+}
+
+.react-flow__node-diagram,
+.react-flow__node-boundary {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.react-flow__controls {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--node-shadow);
+}
+
+.react-flow__controls-button {
+  width: 30px;
+  height: 30px;
+  border-bottom: 1px solid var(--line);
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: 0;
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+.react-flow__minimap {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--node-shadow);
+}
+
+.react-flow__attribution {
+  background: transparent;
+  opacity: 0.45;
+  font-size: 9px;
+}
+
+.react-flow__attribution a {
+  color: var(--text-3);
+}
+
+.react-flow__panel.bottom.left,
+.react-flow__panel.bottom.right {
+  margin: 16px;
+}
+
+/* ---------- diagram node wrapper ---------- */
+
+.dn {
+  position: relative;
+}
+
+.dn .nb-card:hover,
+.dn .nb-compact:hover {
+  box-shadow: var(--node-shadow-hover);
+}
+
+.dn-handle.react-flow__handle {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--node-bg);
+  border: 1.5px solid color-mix(in oklab, var(--accent) 75%, var(--node-border));
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.dn:hover .dn-handle,
+.react-flow__node.selected .dn-handle,
+.react-flow.connecting .dn-handle,
+.react-flow__handle.connectingto,
+.react-flow__handle.connectingfrom {
+  opacity: 1;
+}
+
+.dn-handle.react-flow__handle:hover {
+  background: var(--accent);
+}
+
+.dn-iconOnly .dn-handle.react-flow__handle-left,
+.dn-iconOnly .dn-handle.react-flow__handle-right {
+  top: 32px;
+}
+
+.dn-unknown {
+  position: absolute;
+  left: 10px;
+  top: -9px;
+  max-width: 200px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--danger);
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dn-editor {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 260px;
+  z-index: 20;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.35);
+  cursor: default;
+}
+
+.dn-editor input {
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  outline: 0;
+  font-size: 13px;
+}
+
+.dn-editor input.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.dn-editor input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.dn-editor-hint {
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 0 2px;
+}
+
+/* ---------- groups ---------- */
+
+.react-flow__node-boundary {
+  pointer-events: none !important;
+}
+
+.grp {
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  border: 1px solid color-mix(in oklab, var(--tone) 32%, transparent);
+  background: color-mix(in oklab, var(--tone) 5%, transparent);
+  position: relative;
+}
+
+[data-theme="dark"] .grp {
+  border-color: color-mix(in oklab, var(--tone) 40%, transparent);
+  background: color-mix(in oklab, var(--tone) 7%, transparent);
+}
+
+.grp.is-selected {
+  border-color: color-mix(in oklab, var(--tone) 70%, transparent);
+}
+
+.grp-label {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 24px;
+  padding: 0 10px 0 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: color-mix(in oklab, var(--tone) 70%, var(--text));
+  background: color-mix(in oklab, var(--tone) 12%, var(--bg));
+  pointer-events: all;
+  cursor: grab;
+  white-space: nowrap;
+}
+
+.grp-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2.5px;
+  background: var(--tone);
+}
+
+.grp .react-flow__resize-control {
+  pointer-events: all;
+}
+
+.grp .grp-resize-line {
+  border-color: transparent;
+}
+
+.grp .grp-resize-handle {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--surface);
+  border: 1.5px solid var(--tone);
+}
+
+/* ---------- edges ---------- */
+
+.fe-path {
+  fill: none;
+  stroke: var(--edge);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fe-async .fe-path {
+  stroke-dasharray: 5 5;
+}
+
+.fe-sync .fe-path {
+  stroke: var(--edge-strong);
+}
+
+.fe-halo {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 8;
+}
+
+.react-flow__edge:hover .fe-halo {
+  stroke: color-mix(in oklab, var(--accent) 14%, transparent);
+}
+
+.fe.is-selected .fe-path {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.fe.is-selected .fe-halo {
+  stroke: color-mix(in oklab, var(--accent) 18%, transparent);
+}
+
+.m-async {
+  fill: var(--edge);
+}
+.m-sync {
+  fill: var(--edge-strong);
+}
+.m-selected {
+  fill: var(--accent);
+}
+
+.react-flow__connection-path {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 5;
+}
+
+/* Labels sit above nodes: example columns leave ~80px between cards, so long labels overlap. */
+.react-flow__edgelabel-renderer {
+  z-index: 1001;
+}
+
+.fe-label {
+  position: absolute;
+  pointer-events: all;
+  max-width: 128px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 13px;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--text-2);
+  background: var(--edge-label-bg);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.fe-label.is-selected {
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
+}
+
+/* ---------- palette ---------- */
+
+.palette {
+  width: 248px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  min-height: 0;
+  z-index: 5;
+}
+
+.palette.is-collapsed {
+  width: 52px;
+  align-items: center;
+  padding-top: 10px;
+}
+
+.palette-head {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.palette-head .field {
+  flex: 1;
+}
+
+.palette-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 10px 16px;
+}
+
+.palette-list h3 {
+  margin: 14px 4px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.palette-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 520;
+  color: var(--text);
+  cursor: grab;
+}
+
+.palette-item:hover {
+  background: var(--surface-3);
+}
+
+.palette-item:active {
+  cursor: grabbing;
+}
+
+.palette-tile {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--accent) var(--tile-mix), var(--tile-base));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 24%, transparent);
+}
+
+.palette-tile .stencil-icon {
+  width: 22px;
+  height: 17px;
+  object-fit: contain;
+}
+
+.palette-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.palette-empty {
+  color: var(--text-3);
+  font-size: 13px;
+  padding: 12px 4px;
+}
+
+.palette-foot {
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+/* ---------- overlays ---------- */
+
+.diagram-card {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  max-width: 380px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface) 86%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  box-shadow: var(--node-shadow);
+  z-index: 5;
+  pointer-events: auto;
+}
+
+.diagram-card h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  font-stretch: 106%;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.diagram-card p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.diagram-card-meta {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.diagram-card.is-large {
+  top: 28px;
+  left: 32px;
+  max-width: 560px;
+  padding: 0;
+  background: none;
+  backdrop-filter: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.diagram-card.is-large h1 {
+  font-size: 30px;
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: -0.03em;
+}
+
+.diagram-card.is-large p {
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.present-exit {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 8px 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 550;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.present-exit:hover {
+  opacity: 1;
+}
+
+.canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  pointer-events: none;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.canvas-empty strong {
+  color: var(--text-2);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Presentation: slightly heavier strokes so edges survive a projector. */
+.is-presenting .fe-path {
+  stroke-width: 2;
+}

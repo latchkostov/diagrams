@@ -1,0 +1,70 @@
+/* Design tokens. Chrome stays cool and quiet; colour comes from the stencils. */
+:root {
+  --font-ui: "Mona Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
+
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #f7f8fa;
+  --surface-3: #eef1f5;
+  --line: #e2e6ed;
+  --line-strong: #cdd3de;
+  --text: #131926;
+  --text-2: #566074;
+  --text-3: #8a92a3;
+  --accent: #4b57d6;
+  --accent-ink: #ffffff;
+  --accent-soft: rgb(75 87 214 / 0.1);
+  --focus: rgb(75 87 214 / 0.45);
+  --danger: #d1393f;
+
+  --dot: #c5ccd8;
+  --edge: #97a0b3;
+  --edge-strong: #556075;
+  --edge-label-bg: #ffffff;
+
+  --node-bg: #ffffff;
+  --node-border: #dde2ea;
+  --node-shadow: 0 1px 2px rgb(16 24 40 / 0.05), 0 6px 16px -8px rgb(16 24 40 / 0.14);
+  --node-shadow-hover: 0 1px 2px rgb(16 24 40 / 0.06), 0 10px 24px -10px rgb(16 24 40 / 0.22);
+  /* Icon tiles stay light in both themes: brand marks (Kafka, Splunk...) are dark ink. */
+  --tile-base: #ffffff;
+  --tile-mix: 11%;
+
+  --stage-bg: #f6f7fa;
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+  --topbar-h: 52px;
+}
+
+[data-theme="dark"] {
+  --bg: #0e131d;
+  --surface: #141a26;
+  --surface-2: #181f2d;
+  --surface-3: #1e2637;
+  --line: #232b3c;
+  --line-strong: #313b51;
+  --text: #e8ecf4;
+  --text-2: #9ba5b9;
+  --text-3: #687189;
+  --accent: #8f9bff;
+  --accent-ink: #0e131d;
+  --accent-soft: rgb(143 155 255 / 0.14);
+  --focus: rgb(143 155 255 / 0.5);
+  --danger: #ff6b6f;
+
+  --dot: #2e3850;
+  --edge: #58637b;
+  --edge-strong: #9aa5bc;
+  --edge-label-bg: #182030;
+
+  --node-bg: #171e2c;
+  --node-border: #283149;
+  --node-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 10px 28px -12px rgb(0 0 0 / 0.7);
+  --node-shadow-hover: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 14px 32px -12px rgb(0 0 0 / 0.8);
+  --tile-base: #e9edf4;
+  --tile-mix: 16%;
+
+  --stage-bg: #111724;
+}
