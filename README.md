@@ -1,5 +1,7 @@
 # Diagrams
 
+**[livediagrams.dev](https://www.livediagrams.dev)**
+
 Architecture diagrams for event-driven systems, with a **live view** that plays messages through them.
 
 Draw your system with modern stencils (Kafka, Azure Service Bus, Event Hubs, SQS/SNS, Pub/Sub, Flink,
@@ -30,7 +32,6 @@ pnpm install
 pnpm dev            # http://localhost:5173
 pnpm check          # typecheck, lint, unit tests (Vitest), e2e tests (Playwright)
 pnpm build          # production build in dist/
-pnpm build:site     # build into ../blog/public/tools/diagrams (latchkostov.com)
 pnpm review         # multi-angle Codex review of changes since review-base
 ```
 

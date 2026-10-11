@@ -1,7 +1,7 @@
 # Diagrams — prototype plan
 
 Goal: a draw.io-lite for modern distributed-systems diagrams (Kafka, Azure Service Bus, ...),
-showcased on latchkostov.com. Beautiful by default, fast to build with, and later a **live view**
+live at livediagrams.dev (first showcased on latchkostov.com). Beautiful by default, fast to build with, and later a **live view**
 that simulates messages flowing through any saved diagram (great for meetings).
 
 Phase 1 (now): stencil gallery + render example diagrams. No simulation yet, but the
