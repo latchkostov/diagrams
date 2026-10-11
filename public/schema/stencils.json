@@ -1590,6 +1590,21 @@
       ]
     },
     {
+      "id": "aws.cloudwatch",
+      "label": "CloudWatch",
+      "vendor": "AWS",
+      "category": "observability",
+      "simRole": "sink",
+      "description": "AWS logs, metrics, alarms and dashboards; where Lambda writes by default.",
+      "aliases": [
+        "logs",
+        "metrics",
+        "alarms",
+        "cw",
+        "monitoring"
+      ]
+    },
+    {
       "id": "azure.key-vault",
       "label": "Key Vault",
       "vendor": "Azure",
@@ -1600,7 +1615,9 @@
         "kv",
         "akv",
         "secrets",
-        "keyvault"
+        "keyvault",
+        "kv refs",
+        "key vault references"
       ]
     },
     {
@@ -1678,6 +1695,127 @@
         "identity",
         "idp",
         "iam"
+      ]
+    },
+    {
+      "id": "azure.app-config",
+      "label": "App Configuration",
+      "vendor": "Azure",
+      "category": "security",
+      "simRole": "none",
+      "description": "Central settings and feature flags; an entry can reference a Key Vault secret.",
+      "aliases": [
+        "app config",
+        "appconfig",
+        "appcs",
+        "configuration",
+        "feature flags",
+        "kv refs",
+        "settings"
+      ]
+    },
+    {
+      "id": "azure.managed-identity",
+      "label": "Managed Identity",
+      "vendor": "Azure",
+      "category": "security",
+      "simRole": "none",
+      "description": "An Entra identity for a workload, with no stored credentials (also AKS workload identity).",
+      "aliases": [
+        "mi",
+        "msi",
+        "workload identity",
+        "user assigned",
+        "system assigned",
+        "identity"
+      ]
+    },
+    {
+      "id": "aws.secrets-manager",
+      "label": "Secrets Manager",
+      "vendor": "AWS",
+      "category": "security",
+      "simRole": "none",
+      "description": "Stores and rotates secrets such as database credentials and API keys.",
+      "aliases": [
+        "asm",
+        "secrets",
+        "rotation",
+        "credentials"
+      ]
+    },
+    {
+      "id": "aws.parameter-store",
+      "label": "Parameter Store",
+      "vendor": "AWS",
+      "category": "security",
+      "simRole": "none",
+      "description": "Systems Manager parameters; /aws/reference/secretsmanager/ paths pass through to Secrets Manager.",
+      "aliases": [
+        "ssm",
+        "systems manager",
+        "parameters",
+        "config",
+        "securestring"
+      ]
+    },
+    {
+      "id": "aws.iam-role",
+      "label": "IAM Role",
+      "vendor": "AWS",
+      "category": "security",
+      "simRole": "none",
+      "description": "The identity a Lambda function, ECS task or pod (IRSA) runs as.",
+      "aliases": [
+        "iam",
+        "role",
+        "irsa",
+        "execution role",
+        "task role",
+        "identity"
+      ]
+    },
+    {
+      "id": "gcp.secret-manager",
+      "label": "Secret Manager",
+      "vendor": "Google Cloud",
+      "category": "security",
+      "simRole": "none",
+      "description": "Google Cloud's store for API keys, passwords and certificates.",
+      "aliases": [
+        "secrets",
+        "google"
+      ]
+    },
+    {
+      "id": "k8s.configmap",
+      "label": "ConfigMap",
+      "vendor": "Kubernetes",
+      "category": "security",
+      "simRole": "none",
+      "description": "Non-secret settings mounted into pods as files or environment variables.",
+      "aliases": [
+        "configmap",
+        "config map",
+        "cm",
+        "kubernetes",
+        "k8s",
+        "config"
+      ]
+    },
+    {
+      "id": "k8s.secret",
+      "label": "Kubernetes Secret",
+      "vendor": "Kubernetes",
+      "category": "security",
+      "simRole": "none",
+      "description": "Secret values mounted into pods; often synced from a vault.",
+      "aliases": [
+        "secret",
+        "kubernetes",
+        "k8s",
+        "csi",
+        "external secrets"
       ]
     },
     {
@@ -2193,6 +2331,53 @@
         "cd",
         "deploy",
         "kubernetes"
+      ]
+    },
+    {
+      "id": "generic.config-store",
+      "label": "Config Store",
+      "vendor": "Generic",
+      "category": "generic",
+      "simRole": "none",
+      "description": "Any central configuration service or feature-flag store.",
+      "aliases": [
+        "config",
+        "configuration",
+        "settings",
+        "feature flags",
+        "consul",
+        "etcd"
+      ]
+    },
+    {
+      "id": "generic.secret-store",
+      "label": "Secret Store",
+      "vendor": "Generic",
+      "category": "generic",
+      "simRole": "none",
+      "description": "Any secrets manager or vault.",
+      "aliases": [
+        "secrets",
+        "vault",
+        "credentials",
+        "kms"
+      ]
+    },
+    {
+      "id": "generic.identity-provider",
+      "label": "Identity Provider",
+      "vendor": "Generic",
+      "category": "generic",
+      "simRole": "none",
+      "description": "Issues OAuth 2.0 / OIDC tokens to users and workloads.",
+      "aliases": [
+        "idp",
+        "sso",
+        "oauth",
+        "oidc",
+        "saml",
+        "identity",
+        "auth"
       ]
     }
   ]

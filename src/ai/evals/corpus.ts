@@ -25,7 +25,7 @@ const flows: [string, [string, string, string][]][] = [
   [
     "Azure App Configuration resolves secrets through Key Vault",
     [
-      ["Azure App Configuration", "App Configuration", "generic.service"],
+      ["Azure App Configuration", "App Configuration", "azure.app-config"],
       ["Key Vault", "Secrets", "azure.key-vault"],
     ],
   ],
