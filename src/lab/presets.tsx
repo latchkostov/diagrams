@@ -10,6 +10,8 @@ import { exportFixture } from "./exportFixture";
 
 import { DIAGRAM_FORMAT, type DiagramFile } from "../model/types";
 import { examples } from "../examples";
+import { labMetadata } from "../examples/labMetadata";
+import { exampleDiagram } from "./exampleDiagram";
 import { stencils } from "../stencils/registry";
 import { CATEGORY_ORDER, categoryLabel } from "../lib/categories";
 import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
@@ -208,12 +210,8 @@ const edgePresets: Preset[] = [
 
 // ---------- diagrams ----------
 
-// Local-only work diagrams (dev only) never get presets; only their file names are read here.
-const localOnly = new Set(
-  Object.keys(import.meta.env.DEV ? import.meta.glob("../examples/private/*.json") : {}).map((p) =>
-    p.slice(p.lastIndexOf("/") + 1, -".json".length),
-  ),
-);
+// Local-only examples never appear in Lab previews or UI copy.
+const localOnly = new Set(examples.filter((e) => e.localOnly).map((e) => e.slug));
 
 const stressControls = (nodes: number): ControlDef[] => [
   { type: "number", key: "nodes", label: "Nodes", default: nodes, min: 1, max: 1000, step: 10 },
@@ -255,11 +253,11 @@ const diagramPresets: Preset[] = [
     .map((e): Preset => ({
       kind: "diagram",
       id: `example-${e.slug}`,
-      title: e.diagram.title,
+      title: e.title,
       group: "Diagrams",
-      description: e.diagram.description,
+      description: e.description,
       exampleSlug: e.slug,
-      diagram: () => e.diagram,
+      diagram: () => exampleDiagram(e.slug),
     })),
   stress(10),
   stress(50),
@@ -482,17 +480,17 @@ const livePresets: Preset[] = [
   ...examples
     .filter((e) => !localOnly.has(e.slug))
     .flatMap((e) =>
-      (e.diagram.simulations ?? []).map((s): Preset => ({
+      (labMetadata[e.slug] ?? []).map((s): Preset => ({
         kind: "render",
         id: `live-${e.slug}-${s.id}`.toLowerCase().replace(/[^a-z0-9-]+/g, "-"),
         title: `Live: ${s.title}`,
         group: "Simulation",
-        description: `${e.diagram.title}. ${s.description ?? ""}`.trim(),
+        description: `${e.title}. ${s.description ?? ""}`.trim(),
         controls: [liveSpeed, livePresent],
         render: (v) => (
           <LiveLabStage
             key={String(v.livespeed)}
-            diagram={e.diagram}
+            diagram={exampleDiagram(e.slug)}
             presenting={!!v.livepresent}
             initial={{ sim: s.id, speed: Number(v.livespeed) }}
           />
@@ -542,7 +540,7 @@ const capacityPresets: Preset[] = [
       return (
         <LiveLabStage
           key={`${String(v.state)}:${String(v.panel)}`}
-          diagram={example.diagram}
+          diagram={exampleDiagram(example.slug)}
           presenting={!!v.livepresent}
           initial={{
             sim: state.sim,
@@ -568,7 +566,7 @@ const capacityPresets: Preset[] = [
         key: "diagram",
         label: "Example",
         default: publicExamples[0]?.slug ?? "",
-        options: publicExamples.map((e) => ({ value: e.slug, label: e.diagram.title })),
+        options: publicExamples.map((e) => ({ value: e.slug, label: e.title })),
       },
       {
         type: "select",
@@ -586,11 +584,11 @@ const capacityPresets: Preset[] = [
     render: (v) => {
       const example = exampleBySlug(String(v.diagram)) ?? publicExamples[0];
       if (!example) return null;
-      const sim = v.run === "free" ? null : (example.diagram.simulations?.[Number(v.run)]?.id ?? null);
+      const sim = v.run === "free" ? null : (labMetadata[example.slug]?.[Number(v.run)]?.id ?? null);
       return (
         <LiveLabStage
           key={`${example.slug}:${String(v.run)}`}
-          diagram={example.diagram}
+          diagram={exampleDiagram(example.slug)}
           presenting={!!v.livepresent}
           initial={{ sim, paused: true, capacity: true, panel: "capacity" }}
         />
@@ -602,7 +600,7 @@ const capacityPresets: Preset[] = [
 // ---------- layout quality (routing, labels, overlap audit) ----------
 
 const auditSources: Record<string, { label: string; diagram: () => DiagramFile }> = {
-  ...Object.fromEntries(examples.map((e) => [e.slug, { label: e.diagram.title, diagram: () => e.diagram }])),
+  ...Object.fromEntries(examples.map((e) => [e.slug, { label: e.title, diagram: () => exampleDiagram(e.slug) }])),
   obstacles: { label: "Routing obstacle course", diagram: () => obstacleCourseDiagram() },
   annotations: { label: "Annotations among routes", diagram: () => annotationCourseDiagram() },
   "stress-150": {
@@ -658,22 +656,21 @@ const layoutPresets: Preset[] = [
 const traceFlows: Record<string, { label: string; flow: () => TraceFlow }> = Object.fromEntries([
   ...examples
     .filter((e) => !localOnly.has(e.slug))
-    .map((e) => [e.slug, { label: e.diagram.title, flow: () => ({ diagram: e.diagram }) }]),
+    .map((e) => [e.slug, { label: e.title, flow: () => ({ diagram: exampleDiagram(e.slug) }) }]),
   ...examples
     .filter((e) => !localOnly.has(e.slug))
     .flatMap((e) =>
-      (e.diagram.simulations ?? [])
-        // Simulations that expect dead letters.
-        .filter((s) =>
-          (s.expectations ?? []).some(
-            (x) => "node" in x.metric && x.metric.field === "deadLettered" && (x.op === ">" || x.op === ">="),
-          ),
-        )
+      (labMetadata[e.slug] ?? [])
+        .filter((s) => s.deadLetter)
         .map((s) => [
           `${e.slug}:${s.id}`,
           {
-            label: `${e.diagram.title}: ${s.title} (dead letter)`,
-            flow: () => ({ diagram: e.diagram, simulation: s, deadLetter: true }),
+            label: `${e.title}: ${s.title} (dead letter)`,
+            flow: () => ({
+              diagram: exampleDiagram(e.slug),
+              simulation: exampleDiagram(e.slug).simulations?.find((simulation) => simulation.id === s.id),
+              deadLetter: true,
+            }),
           },
         ]),
     ),

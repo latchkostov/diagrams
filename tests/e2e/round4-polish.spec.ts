@@ -269,6 +269,19 @@ test.describe("round 4 polish", () => {
       edges: [],
     });
     await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+    // The opening fit closes context menus. Wait for the camera before opening one.
+    let last = "";
+    await expect
+      .poll(
+        async () => {
+          const now = JSON.stringify(await box(page.getByTestId("node-a")));
+          const still = now === last;
+          last = now;
+          return still;
+        },
+        { intervals: [100, 150, 150, 250] },
+      )
+      .toBe(true);
     const wrap = await box(page.getByTestId("canvas-wrap"));
     // Right-click 60px from the pane's right edge: a 200px note centred there pokes past it.
     await expect(async () => {

@@ -165,6 +165,31 @@ test.describe("lab", () => {
     await expect(page.getByTestId("node-n1")).toBeVisible();
   });
 
+  test("Lab recovers after an example download fails", async ({ page }) => {
+    const ex = publicExamples[0];
+    const chunk = new RegExp(
+      String.raw`/(?:assets/${ex.slug}-[A-Za-z0-9_-]+\.js|src/examples/${ex.slug}\.json)(?:\?.*)?$`,
+    );
+    let offline = true;
+    let attempts = 0;
+    await page.route(chunk, async (route) => {
+      attempts++;
+      if (offline) await route.abort("failed");
+      else await route.continue();
+    });
+    await gotoLab(page, `example-${ex.slug}`);
+    await expect(page.getByTestId("lab-stage-error")).toContainText("didn't load");
+    await expect(page.getByTestId("lab-stage-retry")).toBeVisible();
+    expect(attempts).toBe(1);
+
+    offline = false;
+    await page.getByTestId("lab-stage-retry").click();
+    await expect(page.getByTestId("lab-stage-error")).toHaveCount(0);
+    await expect(page.getByTestId(`node-${ex.nodeIds[0]}`)).toBeVisible();
+    await expect(page.getByTestId("lab-render-time")).toHaveAttribute("data-ms", /^\d+$/);
+    expect(attempts).toBe(2);
+  });
+
   test("scenario readout runs the engine and evaluates its checks", async ({ page }) => {
     await gotoLab(page, "sim-fan-out", { autoplay: 0 });
     const readout = page.getByTestId("sim-readout");

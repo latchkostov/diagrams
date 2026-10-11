@@ -5,23 +5,22 @@ import { localOnlyFixture } from "../lab/localOnlyFixture";
 
 vi.mock("../examples", async () => {
   const { localOnlyFixture } = await import("../lab/localOnlyFixture");
-  return {
-    examples: [
-      { slug: "synthetic-local", diagram: localOnlyFixture, localOnly: true },
-      {
-        slug: "synthetic-generic",
-        localOnly: true,
-        diagram: {
-          ...localOnlyFixture,
-          nodes: [
-            { ...localOnlyFixture.nodes[0], id: "api", label: "API", sublabel: "Service" },
-            { ...localOnlyFixture.nodes[0], id: "db", label: "DB", sublabel: "Database" },
-          ],
-          edges: [],
-        },
+  const examples = [
+    { slug: "synthetic-local", diagram: localOnlyFixture, localOnly: true },
+    {
+      slug: "synthetic-generic",
+      localOnly: true,
+      diagram: {
+        ...localOnlyFixture,
+        nodes: [
+          { ...localOnlyFixture.nodes[0], id: "api", label: "API", sublabel: "Service" },
+          { ...localOnlyFixture.nodes[0], id: "db", label: "DB", sublabel: "Database" },
+        ],
+        edges: [],
       },
-    ],
-  };
+    },
+  ];
+  return { examples, getLoadedExample: (slug: string) => examples.find((e) => e.slug === slug)?.diagram };
 });
 
 import { isLocalOnly } from "./localOnly";

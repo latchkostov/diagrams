@@ -24,8 +24,8 @@ async function emptySpot(page: Page, dx = 0) {
 }
 
 /** Waits for the opening fit to finish (a viewport move closes any open menu). */
-async function settle(page: Page) {
-  const node = page.getByTestId("node-payments");
+async function settle(page: Page, nodeId = "payments") {
+  const node = page.getByTestId(`node-${nodeId}`);
   let last = "";
   await expect
     .poll(
@@ -288,6 +288,7 @@ test.describe("annotations", () => {
         .toBe(false);
     };
     await expect.poll(top).toBe("annotation-note");
+    await settle(page, "service");
     await annotation(page, "note").click({ button: "right" });
     await menuItem(page, "annotation.back").click();
     await clear();

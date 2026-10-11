@@ -1,5 +1,5 @@
 import { DIAGRAM_FORMAT, type DiagramFile } from "../model/types";
-import { examples } from "../examples";
+import { examples, getLoadedExample } from "../examples";
 import { LIMITS, parseNative, preserveUnknown, serializeNative, validateDiagram } from "../interop/native";
 import { notify } from "../interop/ui/toast";
 import { safeStorage } from "./storage";
@@ -297,12 +297,12 @@ export function bindSaveTarget(slug: string, target: SaveTarget, expectedIdentit
 
 // ---------------------------------------------------------------- reading documents
 
-/** The pristine diagram for a slug (an example, a library entry as created or imported, or the shared one). */
+/** The pristine diagram for a slug. Public examples must be loaded before this synchronous read. */
 export function getOriginal(slug: string): DiagramFile | undefined {
   if (slug === DRAFT_SLUG) return emptyDiagram();
   const key = slotKey(slug);
   if (key) return readDiagram(key);
-  return examples.find((e) => e.slug === slug)?.diagram;
+  return getLoadedExample(slug);
 }
 
 export function getAutosave(slug: string): DiagramFile | undefined {

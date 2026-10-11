@@ -10,10 +10,11 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
-import { examples } from "./examples";
+import { examples, getLoadedExample, loadExample } from "./examples";
 import { groupByTheme, themeInfo } from "./examples/themes";
 import { TopBar, type ExampleOption } from "./components/TopBar";
 import type { CanvasHandle } from "./canvas/CanvasView";
+import { LazyCanvasView as CanvasView, preloadCanvasView } from "./canvas/loadCanvasView";
 import type { OpenTarget } from "./lab/LabView";
 import type { DiagramFile } from "./model/types";
 import { useUrlState, type View } from "./lib/urlState";
@@ -35,7 +36,6 @@ import {
   writeAutosave,
 } from "./lib/diagramIO";
 import { useLibrary } from "./lib/useLibrary";
-import { diagramThumb } from "./lib/thumbnail";
 import { Icon } from "./components/Icon";
 import { LibraryDialog } from "./components/LibraryDialog";
 import { formatAgo } from "./lib/time";
@@ -53,13 +53,10 @@ import "./styles/interop.css";
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
 // with the canvas), and the Lab never downloads unless someone opens ?view=lab.
 const GalleryView = lazy(() => import("./gallery/GalleryView").then((m) => ({ default: m.GalleryView })));
-const CanvasView = lazy(() => import("./canvas/CanvasView").then((m) => ({ default: m.CanvasView })));
 const LabView = lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })));
 
-// Public examples by file name (the glob doesn't descend into ./private, which only loads in dev).
-const publicSlugs = new Set(
-  Object.keys(import.meta.glob("./examples/*.json")).map((p) => p.slice("./examples/".length, -".json".length)),
-);
+// Only public examples appear in prompts, the palette and the start card.
+const publicSlugs = new Set(examples.filter((e) => !e.localOnly).map((e) => e.slug));
 
 export function App() {
   // ?embed=1 renders the read-only viewer only: no top bar, no editor.
@@ -90,11 +87,41 @@ function MainApp() {
       examples.some((e) => e.slug === s));
   const requested = url.example ? resolveSlug(url.example) : undefined;
   const remembered = lastCanvas();
-  const slug = valid(requested)
+  const targetSlug = valid(requested)
     ? requested
     : remembered && valid(resolveSlug(remembered))
       ? resolveSlug(remembered)
       : (library.entries[0]?.slug ?? DRAFT_SLUG);
+
+  // Keep the mounted canvas (and its edits) until the requested example is ready. The
+  // cleanup also prevents a slow import from replacing a newer navigation. Meanwhile the picker
+  // shows targetSlug (the pending selection), so keyboard navigation moves on from it.
+  const waitingForExample = examples.some((e) => e.slug === targetSlug) && !getLoadedExample(targetSlug);
+  const [loadedSlug, setLoadedSlug] = useState<string | undefined>(() => (waitingForExample ? undefined : targetSlug));
+  // Stored documents and cached examples still open synchronously, including Lab imports.
+  const displayedSlug = waitingForExample ? loadedSlug : targetSlug;
+  const slug = displayedSlug ?? DRAFT_SLUG;
+  useEffect(() => {
+    if (url.view !== "canvas") return;
+    let active = true;
+    // On a cold start nothing is mounted yet: fetch the canvas code beside the example.
+    if (waitingForExample) preloadCanvasView();
+    const ready = waitingForExample ? loadExample(targetSlug) : Promise.resolve();
+    void ready.then(
+      () => active && setLoadedSlug(targetSlug),
+      () => {
+        if (!active) return;
+        notify("Couldn't load that example. Check your connection and try again, or reload the app.", {
+          kind: "error",
+        });
+        setLoadedSlug(slug);
+        setUrl({ example: slug }, { replace: true });
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [targetSlug, waitingForExample, url.view, slug, setUrl]);
 
   // Identity changes only when the open document is replaced. It stays put when a blank draft
   // becomes a library entry on its first edit, so the canvas doesn't remount.
@@ -127,7 +154,7 @@ function MainApp() {
       : []),
     ...examples.map((e) => ({
       slug: e.slug,
-      title: e.diagram.title,
+      title: e.title,
       group: "examples" as const,
       theme: e.theme && themeInfo(e.theme),
     })),
@@ -150,10 +177,11 @@ function MainApp() {
   // Normalise the URL once we know which example is shown.
   useEffect(() => {
     if (url.view !== "canvas") return;
+    if (displayedSlug !== targetSlug) return;
     if (url.example !== slug) setUrl({ example: slug }, { replace: true });
     // A bare URL reopens this one next time (a draft that became an entry is remembered as the entry).
     rememberCanvas(slug);
-  }, [url.view, url.example, slug, setUrl]);
+  }, [url.view, url.example, slug, displayedSlug, targetSlug, setUrl]);
 
   // Once the diagram is up, fetch the stencil library in the background so the tab opens instantly.
   useEffect(() => {
@@ -309,9 +337,9 @@ function MainApp() {
         theme,
         items: items.map((e) => ({
           slug: e.slug,
-          title: e.diagram.title,
-          description: e.summary ?? e.diagram.description,
-          thumb: diagramThumb(e.diagram),
+          title: e.title,
+          description: e.summary ?? e.description,
+          thumb: e.thumb,
           featured: e.featured,
         })),
       })),
@@ -342,7 +370,7 @@ function MainApp() {
           view={url.view}
           onView={goTo}
           exampleOptions={options}
-          example={slug}
+          example={targetSlug}
           onExample={(example) => setUrl({ example })}
           interop={interop}
           shared={
@@ -368,6 +396,8 @@ function MainApp() {
                 <GalleryView />
               ) : url.view === "lab" ? (
                 <LabView onOpen={onLabOpen} />
+              ) : displayedSlug === undefined ? (
+                <ViewLoading />
               ) : (
                 <CanvasView
                   key={canvasIdentity}
@@ -383,6 +413,11 @@ function MainApp() {
           </ViewBoundary>
         </div>
         <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />
+      </div>
+      <div className="sr-only" role="status" data-testid="example-loading">
+        {url.view === "canvas" && waitingForExample
+          ? `Loading ${examples.find((e) => e.slug === targetSlug)?.title ?? "the example"}…`
+          : ""}
       </div>
       {interop.layer}
       {libraryOpen && (

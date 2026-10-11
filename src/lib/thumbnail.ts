@@ -1,6 +1,8 @@
 import type { DiagramFile } from "../model/types";
 import { estimateCardSize } from "../canvas/nodes/size";
-import { getStencil } from "../stencils/registry";
+import { catalog } from "../stencils/catalog";
+
+const accents = new Map(catalog.map((s) => [s.id, s.accent]));
 
 /**
  * A diagram's thumbnail as data, not pixels: node boxes (with their stencil accent), boundary boxes
@@ -33,7 +35,7 @@ export function diagramThumb(d: Pick<DiagramFile, "nodes" | "edges" | "groups">)
   const nodes = d.nodes.slice(0, MAX_NODES);
   const boxes = nodes.map((n) => {
     const size = estimateCardSize(n.label ?? "", n.sublabel);
-    return { id: n.id, x: n.x, y: n.y, w: size.width, h: size.height, accent: getStencil(n.stencil).accent };
+    return { id: n.id, x: n.x, y: n.y, w: size.width, h: size.height, accent: accents.get(n.stencil) ?? "#64748b" };
   });
   const groups = (d.groups ?? []).slice(0, MAX_GROUPS);
   const xs = [...boxes.map((b) => b.x), ...groups.map((g) => g.x)];

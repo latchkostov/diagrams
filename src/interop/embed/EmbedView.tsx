@@ -1,20 +1,21 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import type { DiagramFile } from "../../model/types";
-import { examples } from "../../examples";
+import { examples, loadExample } from "../../examples";
+import { LazyCanvasView as CanvasView, preloadCanvasView } from "../../canvas/loadCanvasView";
 import { decodeShare, sharePayloadFromHash } from "../share";
 import { Glyph } from "../ui/glyphs";
+import { notify } from "../ui/toast";
 
 // ?embed=1 — a clean, read-only viewer for <iframe> embeds: no top bar, fitted to the frame, pan and
 // zoom only, plus a subtle "Open in Diagrams" link. The diagram comes from `example=<slug>` or a
 // share payload in the fragment (`#d=...`). `live=1&sim=<id>` are passed through untouched for the
 // live view.
 
-const CanvasView = lazy(() => import("../../canvas/CanvasView").then((m) => ({ default: m.CanvasView })));
-
 type State =
   | { status: "loading" }
   | { status: "ready"; diagram: DiagramFile; key: string; openHref: string }
-  | { status: "error"; message: string };
+  /** `toast`: also announce the error (a failed download, not a bad link). */
+  | { status: "error"; message: string; toast?: boolean };
 
 function resolve(): Promise<State> {
   const params = new URLSearchParams(window.location.search);
@@ -34,12 +35,19 @@ function resolve(): Promise<State> {
   const slug = params.get("example");
   const ex = slug ? examples.find((e) => e.slug === slug) : undefined;
   if (ex)
-    return Promise.resolve({
-      status: "ready",
-      diagram: ex.diagram,
-      key: `ex:${ex.slug}`,
-      openHref: `${base}?view=canvas&example=${encodeURIComponent(ex.slug)}`,
-    });
+    return loadExample(ex.slug).then(
+      (diagram): State => ({
+        status: "ready",
+        diagram,
+        key: `ex:${ex.slug}`,
+        openHref: `${base}?view=canvas&example=${encodeURIComponent(ex.slug)}`,
+      }),
+      (): State => ({
+        status: "error",
+        message: "Couldn't load that example. Check your connection and reload.",
+        toast: true,
+      }),
+    );
   return Promise.resolve({
     status: "error",
     message: slug
@@ -51,12 +59,23 @@ function resolve(): Promise<State> {
 export function EmbedView() {
   const [state, setState] = useState<State>({ status: "loading" });
   useEffect(() => {
-    let live = true;
-    const load = () => void resolve().then((s) => live && setState(s));
+    // The diagram is always shown on the canvas: fetch its code while the diagram resolves.
+    preloadCanvasView();
+    // Only the latest navigation may apply: a slow example download that finishes after a newer
+    // hash change (or after unmounting) is dropped, toast included.
+    let latest = 0;
+    const load = () => {
+      const request = ++latest;
+      void resolve().then((s) => {
+        if (request !== latest) return;
+        if (s.status === "error" && s.toast) notify(s.message, { kind: "error" });
+        setState(s);
+      });
+    };
     load();
     window.addEventListener("hashchange", load);
     return () => {
-      live = false;
+      latest++;
       window.removeEventListener("hashchange", load);
     };
   }, []);

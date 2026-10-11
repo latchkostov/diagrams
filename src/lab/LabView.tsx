@@ -1,6 +1,7 @@
 import { safeStorage } from "../lib/storage";
 import {
   Component,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -22,6 +23,7 @@ import { LOOK_CONTROLS, LOOK_KEYS, lookSetting, type LookKey } from "./look";
 import { LabCanvas } from "./LabCanvas";
 import { SimReadout } from "./SimReadout";
 import { ControlField } from "./ControlField";
+import { ExampleLoadError, resetExampleResource } from "./exampleDiagram";
 import { PRESET_GROUPS, type ControlValue, type ControlValues, type Preset } from "./types";
 
 export type OpenTarget = { slug: string } | { diagram: DiagramFile };
@@ -296,13 +298,21 @@ export function LabView({ onOpen }: Props) {
           data-kind={preset.kind}
         >
           <PresetBoundary resetKey={stageKey}>
-            <PresetStage
-              key={stageKey}
-              preset={preset}
-              values={stageValues}
-              speed={Number(values.speed) || 1}
-              onRendered={onRendered}
-            />
+            <Suspense
+              fallback={
+                <div role="status" data-testid="lab-example-loading">
+                  Loading example…
+                </div>
+              }
+            >
+              <PresetStage
+                key={stageKey}
+                preset={preset}
+                values={stageValues}
+                speed={Number(values.speed) || 1}
+                onRendered={onRendered}
+              />
+            </Suspense>
           </PresetBoundary>
         </div>
 
@@ -536,12 +546,18 @@ class PresetBoundary extends Component<
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
+    // A failed example download isn't a crash: Retry downloads it again.
+    const download = error instanceof ExampleLoadError;
+    const retry = () => {
+      if (download) resetExampleResource(error.slug);
+      this.setState({ error: null });
+    };
     return (
       <div className="lab-stage-error" role="alert" data-testid="lab-stage-error">
-        <strong>This preset crashed while rendering.</strong>
+        <strong>{download ? "This example didn't load." : "This preset crashed while rendering."}</strong>
         <code>{error.message}</code>
-        {error.stack && <pre>{error.stack.split("\n").slice(0, 8).join("\n")}</pre>}
-        <button className="btn" onClick={() => this.setState({ error: null })} data-testid="lab-stage-retry">
+        {!download && error.stack && <pre>{error.stack.split("\n").slice(0, 8).join("\n")}</pre>}
+        <button className="btn" onClick={retry} data-testid="lab-stage-retry">
           <Icon name="reset" size={14} /> Retry
         </button>
       </div>

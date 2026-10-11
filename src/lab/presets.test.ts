@@ -4,6 +4,7 @@ import { defaultsOf, RESERVED_PARAMS } from "./controls";
 import { diagramProblems } from "./generators";
 import { LOOK_KEYS } from "./look";
 import { PRESET_GROUPS } from "./types";
+import { loadExample } from "../examples";
 
 describe("lab preset registry", () => {
   it("has unique, URL-safe ids and a valid default", () => {
@@ -38,9 +39,10 @@ describe("lab preset registry", () => {
     }
   });
 
-  it("every diagram / scenario preset produces a valid diagram with default controls", () => {
+  it("every diagram / scenario preset produces a valid diagram with default controls", async () => {
     for (const p of presets) {
       if (p.kind === "render") continue;
+      if (p.kind === "diagram" && p.exampleSlug) await loadExample(p.exampleSlug);
       const d = p.diagram(defaultsOf(p.controls));
       expect(diagramProblems(d), p.id).toEqual([]);
     }
