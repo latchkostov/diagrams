@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { exceedsDepth, LIMITS, MIGRATIONS, parseNative, preserveUnknown, validateDiagram } from "./native";
+import { createSimulationRun } from "../sim/simulation";
 import { fromFlow, toFlow } from "../canvas/convert";
 
 const base = {
@@ -184,7 +185,7 @@ describe("review regressions: malformed input never reaches the canvas", () => {
     });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.diagram.simulations).toEqual([good]);
+    expect(r.diagram.simulations?.map((sim) => sim.id)).toEqual(["s", "ghost"]);
     expect(r.warnings.filter((w) => /Simulation/.test(w))).toHaveLength(5);
   });
 
@@ -211,5 +212,188 @@ describe("review regressions: malformed input never reaches the canvas", () => {
     expect(huge.ok === false && huge.error).toMatch(/too large/);
     expect(exceedsDepth({ a: [{ b: 1 }] }, 2)).toBe(true);
     expect(exceedsDepth({ a: [1] }, 2)).toBe(false);
+  });
+});
+
+describe("simulation boundary regressions", () => {
+  const simulation = { id: "s", title: "S", traffic: [] };
+  const accepted = (sim: unknown) => {
+    const r = validateDiagram({ ...base, simulations: [sim] });
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error(r.error);
+    return r;
+  };
+  const malformed: unknown[] = [
+    ...["a", {}, [1]].map((focus) => ({
+      ...simulation,
+      timeline: [{ atMs: 0, action: { do: "note", text: "N", focus } }],
+    })),
+    { ...simulation, timeline: [{ atMs: 0, action: { do: "note", text: "N", pause: "yes" } }] },
+    ...[
+      { kind: "burst" },
+      { kind: "burst", count: -1 },
+      { kind: "constant", durationMs: 1 },
+      { kind: "ramp", stages: [{}] },
+      { kind: "spike", baseRate: 1 },
+    ].map((shape) => ({ ...simulation, traffic: [{ id: "t", node: "a", shape }] })),
+    ...["label", "messageType"].map((field) => ({
+      ...simulation,
+      traffic: [{ id: "t", node: "a", [field]: {}, shape: { kind: "burst", count: 1 } }],
+    })),
+    ...[
+      { do: "props", node: "a", props: [] },
+      { do: "props", node: "a", props: { emits: { A: {} } } },
+      { do: "inject", node: "a" },
+      { do: "inject", node: "a", count: 1, messageType: {} },
+      { do: "inject", node: "a", count: 1, spreadMs: "soon" },
+    ].map((action) => ({ ...simulation, timeline: [{ atMs: 0, action }] })),
+    ...[{ system: "anything" }, { node: "a", field: "anything" }, { node: "a", field: "lag", group: {} }].map(
+      (metric) => ({ ...simulation, expectations: [{ id: "e", label: "E", metric, op: "==", value: 1 }] }),
+    ),
+    ...[
+      { op: "!=", when: "end" },
+      { op: "==", when: "later" },
+      { op: "==", when: "at" },
+      { op: "==", when: "at", atMs: "soon" },
+      { op: "==", label: {} },
+    ].map((patch) => ({
+      ...simulation,
+      expectations: [{ id: "e", label: "E", metric: { system: "inSystem" }, value: 1, ...patch }],
+    })),
+    { ...simulation, setup: { status: { a: "exploded" } } },
+    { ...simulation, setup: { props: { a: { messageType: [] } } } },
+    { ...simulation, multipliers: { traffic: "fast" } },
+    { ...simulation, scale: 0 },
+    { ...simulation, description: {} },
+  ];
+  it.each(malformed.map((sim, i) => [i, sim] as const))(
+    "drops malformed union payload %i before the runner",
+    (_i, sim) => {
+      const r = accepted(sim);
+      expect(r.diagram.simulations).toBeUndefined();
+      expect(r.warnings.join(" ")).toMatch(/skipped/);
+    },
+  );
+
+  it("preserves missing-node traffic, narration, setup and expectations with diagnostics", () => {
+    const sim = {
+      ...simulation,
+      traffic: [{ id: "t", node: "deleted", shape: { kind: "burst", count: 1 } }],
+      timeline: [{ atMs: 0, action: { do: "note", text: "N", focus: ["deleted"], pause: true } }],
+      setup: { status: { deleted: "down" }, props: { deleted: { concurrency: 1 } } },
+      expectations: [{ id: "e", label: "E", metric: { node: "deleted", field: "processed" }, op: "==", value: 0 }],
+    };
+    const r = accepted(sim);
+    expect(r.diagram.simulations).toEqual([sim]);
+    expect(r.warnings.join(" ")).toMatch(/missing node/);
+    expect(r.warnings.join(" ")).not.toMatch(/skipped/);
+    expect(() => createSimulationRun(r.diagram, r.diagram.simulations![0])).not.toThrow();
+  });
+
+  it("accepts every complete variant and initializes the runner", () => {
+    const sim = {
+      ...simulation,
+      seed: 1,
+      scale: 2,
+      multipliers: { traffic: 1, capacity: 1 },
+      durationMs: 100,
+      traffic: [
+        { id: "b", node: "a", shape: { kind: "burst", count: 1, spreadMs: 50, atMs: 1 } },
+        { id: "c", node: "a", shape: { kind: "constant", ratePerSec: 1, durationMs: 100 } },
+        { id: "r", node: "a", shape: { kind: "ramp", startRate: 1, stages: [{ durationMs: 100, targetRate: 2 }] } },
+        {
+          id: "s",
+          node: "a",
+          shape: { kind: "spike", baseRate: 1, peakRate: 2, atMs: 1, peakMs: 50, durationMs: 100 },
+        },
+      ],
+      timeline: [
+        { atMs: 0, action: { do: "props", node: "a", props: { emits: { "*": "B" } } } },
+        { atMs: 1, action: { do: "inject", node: "a", count: 1, messageType: "B" } },
+        { atMs: 2, action: { do: "status", node: "a", status: "up" } },
+        { atMs: 3, action: { do: "note", text: "N", focus: ["a"], pause: false } },
+      ],
+      expectations: [
+        {
+          id: "e",
+          label: "E",
+          metric: { node: "a", field: "lag", group: "g" },
+          op: ">=",
+          value: 0,
+          when: "at",
+          atMs: 10,
+        },
+      ],
+    };
+    const r = accepted(sim);
+    expect(r.diagram.simulations).toEqual([sim]);
+    expect(r.warnings).toEqual([]);
+    const run = createSimulationRun(r.diagram, r.diagram.simulations![0]);
+    expect(() => run.step(100)).not.toThrow();
+  });
+
+  it("bounds finite counts and rates before playback", () => {
+    for (const shape of [
+      { kind: "burst", count: 1e20 },
+      { kind: "constant", ratePerSec: 1e20, durationMs: 1 },
+    ]) {
+      expect(accepted({ ...simulation, traffic: [{ id: "t", node: "a", shape }] }).diagram.simulations).toBeUndefined();
+    }
+    expect(
+      accepted({ ...simulation, timeline: [{ atMs: 0, action: { do: "inject", node: "a", count: 1e20 } }] }).diagram
+        .simulations,
+    ).toBeUndefined();
+  });
+
+  it("enforces document-wide counts and volume before traversing payloads", () => {
+    const steps = Array.from({ length: Math.floor(LIMITS.maxTimelineSteps / 2) + 1 }, () => ({
+      atMs: 0,
+      action: { do: "note", text: "N" },
+    }));
+    const sims = [1, 2].map((id) => ({ ...simulation, id: String(id), timeline: steps }));
+    expect(validateDiagram({ ...base, simulations: sims }).ok).toBe(false);
+    const traffic = [{ id: "t", node: "a", shape: { kind: "burst", count: LIMITS.maxMessageCount } }];
+    expect(
+      validateDiagram({ ...base, simulations: [1, 2, 3].map((id) => ({ ...simulation, id: String(id), traffic })) }).ok,
+    ).toBe(false);
+    for (const patch of [
+      { traffic: Array.from({ length: LIMITS.maxTrafficProfiles + 1 }, () => traffic[0]) },
+      {
+        expectations: Array.from({ length: LIMITS.maxExpectations + 1 }, () => ({
+          id: "e",
+          label: "E",
+          metric: { system: "inSystem" },
+          op: "==",
+          value: 0,
+        })),
+      },
+      {
+        traffic: [
+          {
+            id: "r",
+            node: "a",
+            shape: {
+              kind: "ramp",
+              stages: Array.from({ length: LIMITS.maxRampStages + 1 }, () => ({ durationMs: 0, targetRate: 0 })),
+            },
+          },
+        ],
+      },
+      {
+        traffic: [
+          {
+            id: "c",
+            node: "a",
+            shape: { kind: "constant", durationMs: LIMITS.maxSimulationMs, ratePerSec: LIMITS.maxRatePerSec },
+          },
+        ],
+      },
+    ])
+      expect(validateDiagram({ ...base, simulations: [{ ...simulation, ...patch }] }).ok).toBe(false);
+  });
+
+  it("rejects coordinates and node emission rates unsafe for synchronous consumers", () => {
+    expect(validateDiagram({ ...base, nodes: [{ ...base.nodes[0], x: 1e20 }] }).ok).toBe(false);
+    expect(validateDiagram({ ...base, nodes: [{ ...base.nodes[0], props: { ratePerSec: 1e20 } }] }).ok).toBe(false);
   });
 });

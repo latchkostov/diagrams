@@ -29,6 +29,12 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     environment: "node",
+    css: { include: [/tokens\.css/] },
+    typecheck: {
+      enabled: true,
+      tsconfig: "tsconfig.node.json",
+      include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    },
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],

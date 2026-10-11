@@ -51,7 +51,14 @@ export function structuralKey(d: DiagramFile): string {
   ]);
 }
 
-const propsKey = (props: Record<string, unknown> | undefined) => JSON.stringify(props ?? {});
+// JSON object key order is not a property edit (including nested emission maps).
+const valueKey = (value: unknown) =>
+  JSON.stringify(value, (_key, item: unknown) =>
+    item && typeof item === "object" && !Array.isArray(item)
+      ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b)))
+      : item,
+  );
+const propsKey = (props: Record<string, unknown> | undefined) => valueKey(props ?? {}) ?? "{}";
 
 export interface ControllerOptions extends Pick<EngineOptions, "roleOf" | "maxParticles"> {
   /** Seed for free play; saved simulations use their own. Default 7. */
@@ -269,11 +276,9 @@ export class LiveController {
     this.publish();
   }
 
-  /** Effective sim props for a node: diagram props plus live tweaks. */
+  /** Current engine props, including setup, timeline actions and live tweaks. */
   effectiveProps(nodeId: string): Record<string, unknown> {
-    const node = this.diagram.nodes.find((n) => n.id === nodeId);
-    const fromSetup = this.sim?.setup?.props?.[nodeId] ?? {};
-    return { ...node?.props, ...fromSetup, ...this.tweaks.get(nodeId)?.props };
+    return this.engine.effectiveProps(nodeId);
   }
 
   // ---------------------------------------------------------------- diagram edits
@@ -298,15 +303,12 @@ export class LiveController {
       if (this.nodeProps.get(node.id) === k) continue;
       const before = JSON.parse(this.nodeProps.get(node.id) ?? "{}") as Record<string, unknown>;
       const after = node.props ?? {};
-      // The engine merges props; a removed key needs a rebuild to fall back to its default.
-      if (Object.keys(before).some((p) => !(p in after))) {
-        this.diagram = next;
-        this.rememberProps(next);
-        this.build();
-        this.publish();
-        return "reloaded";
-      }
-      this.engine.setNodeProps(node.id, after as NodeSimProps);
+      const delta = Object.fromEntries(
+        [...new Set([...Object.keys(before), ...Object.keys(after)])]
+          .filter((p) => valueKey(after[p]) !== valueKey(before[p]))
+          .map((p) => [p, after[p]]),
+      );
+      this.engine.setNodeProps(node.id, delta as NodeSimProps);
       if (after.status !== before.status) {
         const s = after.status;
         this.engine.setNodeStatus(node.id, s === "paused" || s === "down" ? s : "up");

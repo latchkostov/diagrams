@@ -4,6 +4,7 @@
 // neighbours. Order within a track is chosen so that segments turn off without crossing each other.
 
 import { inflate, segmentHitsRect, type Point, type Rect } from "./rect";
+import { SpatialGrid } from "./spatial";
 
 interface Seg {
   edge: string;
@@ -206,8 +207,19 @@ function resolvePinnedOverlaps(out: Map<string, Point[]>, obstacles: readonly Re
   for (const vertical of [false, true]) {
     const segs: Seg[] = [];
     for (const [id, pts] of out) segs.push(...segmentsOf(id, pts, vertical).filter((s) => s.pinned));
+    const index = new SpatialGrid<number>();
+    const box = (s: Seg): Rect =>
+      vertical
+        ? { x: s.c, y: s.lo, width: 0, height: s.hi - s.lo }
+        : { x: s.lo, y: s.c, width: s.hi - s.lo, height: 0 };
+    segs.forEach((s, i) => index.insert(box(s), i));
     for (let i = 0; i < segs.length; i++)
-      for (let j = i + 1; j < segs.length; j++) {
+      // Keep the original pair order: bend swaps depend on earlier successful swaps.
+      for (const j of index
+        .query(inflate(box(segs[i]), tol))
+        .map((e) => e.item)
+        .filter((j) => j > i)
+        .sort((a, b) => a - b)) {
         const a = segs[i],
           b = segs[j];
         if (a.edge === b.edge || Math.abs(a.c - b.c) >= tol || Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) <= 2)

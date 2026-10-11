@@ -130,7 +130,16 @@ export interface InjectOptions {
   spreadMs?: number;
 }
 
+/** Opaque, in-memory checkpoint. Only the engine that captured it can restore it. */
+export interface EngineCheckpoint {
+  readonly time: number;
+}
+
 export interface SimEngine {
+  checkpoint(): EngineCheckpoint;
+  restore(checkpoint: EngineCheckpoint): void;
+  /** Detached raw properties currently used by the engine, including runtime overrides. */
+  effectiveProps(nodeId: string): Record<string, unknown>;
   /** Clock and completion counters without rendering allocations. */
   metrics(): { time: number; inSystem: number; pendingInjections: number };
   /** Read just the metric an expectation needs, without copying node or rendering state. */

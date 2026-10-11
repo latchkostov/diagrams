@@ -142,7 +142,7 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--status-down);
+  background: color-mix(in srgb, var(--status-down) 60%, #000);
   color: #fff;
   box-shadow:
     0 0 0 3px var(--bg),
@@ -184,7 +184,7 @@
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: var(--status-down);
+  background: color-mix(in srgb, var(--status-down) 60%, #000);
   color: #fff;
   font-size: 10.5px;
   font-weight: 700;
@@ -262,10 +262,11 @@
 }
 
 .lv-metric.is-backlog.is-hot {
-  --hot: color-mix(in oklab, var(--status-down) calc(var(--heat) * 100%), var(--live-backlog));
+  --hot-hue: color-mix(in oklab, var(--status-down) calc(var(--heat) * 100%), var(--live-backlog));
+  --hot: color-mix(in srgb, var(--hot-hue) 60%, #000);
   border-color: transparent;
   background: var(--hot);
-  color: rgb(255 255 255 / 0.88);
+  color: #fff;
   box-shadow: 0 6px 18px -6px var(--hot);
 }
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useRef, useState, type CSSProperties } from "react";
 import type { Simulation } from "../model/types";
 import type { SimulationRunState } from "../sim/types";
 import { formatClock } from "./format";
@@ -21,6 +21,14 @@ export function Timeline({
   const bands = useMemo(() => trafficBands(sim, total), [sim, total]);
   const markers = useMemo(() => placeMarkers(run.markers, total), [run.markers, total]);
   const [drag, setDrag] = useState<number | null>(null);
+  const pending = useRef<number | null>(null);
+  const commit = () => {
+    if (pending.current === null) return;
+    const fraction = pending.current;
+    pending.current = null;
+    onSeek(fractionToTime(fraction, total));
+    setDrag(null);
+  };
   const progress = drag ?? timeToFraction(run.time, total);
   const pct = (f: number) => `${(f * 100).toFixed(3)}%`;
 
@@ -54,17 +62,20 @@ export function Timeline({
         step={1}
         value={Math.round(progress * 1000)}
         aria-label="Simulation time"
-        aria-valuetext={formatClock(run.time)}
+        aria-valuetext={formatClock(fractionToTime(progress, total))}
         data-testid="live-timeline-input"
         name="live-timeline"
         onChange={(e) => {
           const f = Number(e.target.value) / 1000;
+          pending.current = f;
           setDrag(f);
-          onSeek(fractionToTime(f, total));
         }}
-        onPointerUp={() => setDrag(null)}
-        onKeyUp={() => setDrag(null)}
-        onBlur={() => setDrag(null)}
+        onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)}
+        onPointerUp={commit}
+        onLostPointerCapture={commit}
+        onPointerCancel={commit}
+        onKeyUp={commit}
+        onBlur={commit}
       />
     </div>
   );

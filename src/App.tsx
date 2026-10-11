@@ -20,6 +20,8 @@ import {
   clearShared,
   DIAGRAMS_CHANGED,
   getImported,
+  getDiagramIdentity,
+  type SaveTarget,
   getShared,
   IMPORTED_SLUG,
   setImported,
@@ -28,7 +30,7 @@ import {
   writeAutosave,
 } from "./lib/diagramIO";
 import { Icon } from "./components/Icon";
-import { useInterop, type Slot } from "./interop/useInterop";
+import { useInterop, useInteropCanvasActions, type Slot } from "./interop/useInterop";
 import { notify } from "./interop/ui/toast";
 import { Toaster } from "./interop/ui/Toaster";
 import { EmbedView } from "./interop/embed/EmbedView";
@@ -59,7 +61,7 @@ export function App() {
 function MainApp() {
   const [url, setUrl] = useUrlState();
   const canvasRef = useRef<CanvasHandle>(null);
-  // Bumped whenever a slot (imported / shared) is replaced, to re-read it and remount the canvas.
+  // Refresh the picker independently of the currently open document identity.
   const [slotVersion, setSlotVersion] = useState(0);
 
   const options: ExampleOption[] = useMemo(() => {
@@ -74,7 +76,9 @@ function MainApp() {
 
   const slug = options.some((o) => o.slug === url.example) ? url.example! : (options[0]?.slug ?? IMPORTED_SLUG);
 
-  // Slots written elsewhere (gallery "New diagram", another tab): re-read options, remount the canvas.
+  const canvasIdentity = getDiagramIdentity(slug);
+
+  // Slot changes refresh the picker; only replacement of the open document remounts its canvas.
   useEffect(() => {
     const bump = () => setSlotVersion((v) => v + 1);
     const onStorage = (e: StorageEvent) => {
@@ -101,13 +105,13 @@ function MainApp() {
   }, [url.present, setUrl]);
 
   const openSlot = useCallback(
-    (slot: Slot, d: DiagramFile) => {
+    (slot: Slot, d: DiagramFile, target?: SaveTarget) => {
       // Validates before replacing the slot; on failure the current diagram stays (and the caller reports why).
       if (slot === IMPORTED_SLUG) {
-        setImported(d);
+        setImported(d, target);
         if (slug === SHARED_SLUG) clearShared();
       } else {
-        setShared(d);
+        setShared(d, target);
       }
       setSlotVersion((v) => v + 1);
       setUrl({ view: "canvas", example: slot, present: false });
@@ -122,6 +126,8 @@ function MainApp() {
     openSlot,
     isPublicExample: (s) => publicSlugs.has(s),
   });
+
+  const canvasCallbackRef = useInteropCanvasActions(canvasRef, interop);
 
   const onLabOpen = (target: OpenTarget) => {
     if ("slug" in target) return setUrl({ view: "canvas", example: target.slug, present: false });
@@ -155,7 +161,7 @@ function MainApp() {
       <div className="app-body">
         <ViewBoundary
           // Remount (and clear the error) when the user navigates elsewhere.
-          resetKey={`${url.view}:${url.view === "canvas" ? `${slug}:${slotVersion}` : ""}`}
+          resetKey={`${url.view}:${url.view === "canvas" ? `${slug}:${canvasIdentity}` : ""}`}
           view={url.view}
           onClearAutosave={url.view === "canvas" ? () => writeAutosave(slug, null) : undefined}
           onGoGallery={() => goTo("gallery")}
@@ -167,8 +173,8 @@ function MainApp() {
               <LabView onOpen={onLabOpen} />
             ) : (
               <CanvasView
-                key={`${slug}:${slotVersion}`}
-                ref={canvasRef}
+                key={`${slug}:${canvasIdentity}`}
+                ref={canvasCallbackRef}
                 slug={slug}
                 presenting={presenting}
                 onExitPresent={() => setUrl({ present: false })}

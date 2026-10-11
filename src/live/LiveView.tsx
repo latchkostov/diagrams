@@ -43,8 +43,14 @@ export interface LiveViewProps {
   initial?: Partial<LiveParams> & { traffic?: boolean; seekMs?: number };
   /** Lab stages are always live and hide the toggle. */
   alwaysOn?: boolean;
+  /** Read-only embeds expose live playback only when explicitly requested in the URL. */
+  readOnly?: boolean;
   /** Tells the canvas when live mode turns on or off (it folds the side panels away). */
   onLiveChange?: (live: boolean) => void;
+  /** Persist an explicit simulation save before reporting success to the user. */
+  onSaveDiagram?: (diagram: DiagramFile) => void;
+  /** Temporarily fold the inspector while authoring without changing its saved preference. */
+  onPanelChange?: (open: boolean) => void;
 }
 
 const UI_MS = 125;
@@ -61,11 +67,12 @@ const FULL_FIT: FitViewOptions = {
  * (particles, badges, controls, notes, authoring). Rendered as a child of <ReactFlow>.
  */
 export function LiveView(props: LiveViewProps) {
+  const enabled = !props.readOnly || new URLSearchParams(window.location.search).get("live") === "1";
   const [params] = useState(() => ({
     ...(props.alwaysOn ? { live: true, sim: null, speed: null, paused: false } : readLiveParams()),
     ...props.initial,
   }));
-  const [live, setLive] = useState(params.live || !!props.alwaysOn);
+  const [live, setLive] = useState(enabled && (params.live || !!props.alwaysOn));
   const [firstSession, setFirstSession] = useState(true);
   const toggle = useCallback(() => setLive((l) => !l), []);
   // React Flow fills its store in an effect; start the session once nodes are there and measured.
@@ -79,7 +86,7 @@ export function LiveView(props: LiveViewProps) {
 
   // "L" toggles live mode anywhere on the canvas.
   useEffect(() => {
-    if (props.alwaysOn) return;
+    if (props.alwaysOn || !enabled) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== "l" || e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.defaultPrevented) return;
       // Buttons (including the live bar's) don't take text, so L still works when they have focus.
@@ -89,7 +96,7 @@ export function LiveView(props: LiveViewProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggle, props.alwaysOn]);
+  }, [toggle, props.alwaysOn, enabled]);
 
   const onLiveChange = props.onLiveChange;
   useEffect(() => onLiveChange?.(live), [live, onLiveChange]);
@@ -102,7 +109,7 @@ export function LiveView(props: LiveViewProps) {
 
   return (
     <>
-      {!props.alwaysOn && (
+      {enabled && !props.alwaysOn && (
         <button
           className={`lv-toggle${live ? " is-on" : ""}${props.presenting ? " is-presenting" : ""}`}
           onClick={toggle}
@@ -131,7 +138,17 @@ interface SessionProps extends LiveViewProps {
   onExit: () => void;
 }
 
-function LiveSession({ editor, presenting, simulations: simsProp, diagram, params, onExit, alwaysOn }: SessionProps) {
+function LiveSession({
+  editor,
+  presenting,
+  simulations: simsProp,
+  diagram,
+  params,
+  onExit,
+  alwaysOn,
+  onSaveDiagram,
+  onPanelChange,
+}: SessionProps) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { fitView } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const { theme } = useSettings();
@@ -396,13 +413,14 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
       if (i >= 0) list[i] = sim;
       else list.push(sim);
       editor.updateMeta({ simulations: list });
+      onSaveDiagram?.({ ...editor.getDiagram(), simulations: list });
       if (draftRef.current?.id === sim.id) {
         setDraft(null);
         draftRef.current = null;
       }
       flash(`Saved “${sim.title}” to this diagram.`);
     },
-    [editor, flash],
+    [editor, flash, onSaveDiagram],
   );
 
   const deleteSimulation = useCallback(
@@ -430,25 +448,18 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
   useEffect(() => {
     if (!editor) return;
     const builtin = builtinSections.find((x) => x.id === "simulation");
-    const off = actionRegistry.registerSection({ id: "simulation", order: 5, title: "Simulation" });
+    const off = actionRegistry.registerSection({ id: "simulation", order: 5 });
     return () => {
       off();
       if (builtin) actionRegistry.registerSection(builtin);
     };
   }, [editor]);
 
-  // The authoring panel needs the room: fold the inspector away while it's open.
-  const inspectorWas = useRef<boolean | null>(null);
+  // This is temporary visibility, not a persisted editor preference.
   useEffect(() => {
-    if (!editor) return;
-    if (panel.open && inspectorWas.current === null) {
-      inspectorWas.current = editor.prefs.inspector;
-      if (editor.prefs.inspector) editor.setPref("inspector", false);
-    } else if (!panel.open && inspectorWas.current !== null) {
-      if (inspectorWas.current) editor.setPref("inspector", true);
-      inspectorWas.current = null;
-    }
-  }, [panel.open, editor]);
+    onPanelChange?.(panel.open);
+    return () => onPanelChange?.(false);
+  }, [panel.open, onPanelChange]);
 
   // Context-menu actions (canvas only).
   useEffect(() => {

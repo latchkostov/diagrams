@@ -13,6 +13,22 @@ const isOrthogonal = (pts: Point[]) => pts.every((p, i) => i === 0 || p.x === pt
 const hits = (pts: Point[], r: Rect, tol = 1) => pts.some((p, i) => i > 0 && segmentHitsRect(pts[i - 1], p, r, tol));
 
 describe("routeOrthogonal", () => {
+  it("uses the existing elbow fallback instead of allocating an oversized dense grid", () => {
+    const source = { x: 220, y: 36 },
+      target = { x: 800_000, y: 280_000 };
+    const r = routeOrthogonal({
+      source,
+      sourceDir: R,
+      target,
+      targetDir: L,
+      obstacles: Array.from({ length: 2000 }, (_, i) => card(i * 400, i * 140)),
+    });
+    expect(r.ok).toBe(false);
+    expect(r.points[0]).toEqual(source);
+    expect(r.points.at(-1)).toEqual(target);
+    expect(isOrthogonal(r.points)).toBe(true);
+  });
+
   it("draws a straight line between aligned ports", () => {
     const a = card(0, 0),
       b = card(400, 0);

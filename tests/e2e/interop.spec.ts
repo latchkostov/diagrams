@@ -32,6 +32,87 @@ async function moreFormats(page: Page, item: string) {
   await page.getByTestId(item).click();
 }
 
+const NATIVE = {
+  format: "diagrams/v1",
+  title: "Save regression A",
+  nodes: [{ id: "a", stencil: "generic.service", label: "A", x: 40, y: 160 }],
+  edges: [],
+};
+interface FsState {
+  pickerCalls: number;
+  writes: { name: string; text: string }[];
+  cancel: boolean;
+  rejectWrite: boolean;
+  denyPermission: boolean;
+  defer: boolean;
+  release?: () => void;
+}
+declare global {
+  interface Window {
+    __fs: FsState;
+  }
+}
+
+async function fakeFileSystem(page: Page) {
+  await page.addInitScript((diagram) => {
+    const state: FsState = {
+      pickerCalls: 0,
+      writes: [],
+      cancel: false,
+      rejectWrite: false,
+      denyPermission: false,
+      defer: false,
+    };
+    window.__fs = state;
+    const handle = (name: string) => ({
+      kind: "file",
+      name,
+      getFile: async () => new File([JSON.stringify(diagram)], name, { type: "application/json" }),
+      queryPermission: async () => (state.denyPermission ? "denied" : "granted"),
+      requestPermission: async () => (state.denyPermission ? "denied" : "granted"),
+      createWritable: async () => ({
+        write: async (text: string) => {
+          if (state.rejectWrite) throw new Error("write failed");
+          state.writes.push({ name, text });
+        },
+        close: async () => {},
+      }),
+    });
+    Object.defineProperty(window, "showOpenFilePicker", {
+      configurable: true,
+      value: async () => [handle("opened-a.json")],
+    });
+    Object.defineProperty(window, "showSaveFilePicker", {
+      configurable: true,
+      value: async () => {
+        state.pickerCalls++;
+        if (state.cancel) throw new DOMException("cancelled", "AbortError");
+        const selected = handle(`saved-${state.pickerCalls}.json`);
+        if (state.defer)
+          await new Promise<void>((resolve) => {
+            state.release = resolve;
+          });
+        return selected;
+      },
+    });
+  }, NATIVE);
+}
+
+async function importNative(page: Page, title = NATIVE.title) {
+  await page.getByTestId("import-input").setInputFiles({
+    name: "test.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ ...NATIVE, title })),
+  });
+  await expect(page.getByTestId("diagram-title")).toHaveText(title);
+}
+
+async function saveFile(page: Page) {
+  await openFile(page);
+  await page.getByTestId("file-save").click();
+  await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "success");
+}
+
 test.describe("interop", () => {
   test("File menu: common actions first, Google Drive hidden without configuration", async ({
     page,
@@ -312,5 +393,156 @@ test.describe("interop", () => {
       page.getByTestId("image-export").click(),
     ]);
     expect(download.suggestedFilename()).toMatch(/\.svg$/);
+  });
+});
+
+test.describe("interop review regressions", () => {
+  test("Save reuses its handle with the latest edits", async ({ page }) => {
+    await fakeFileSystem(page);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await importNative(page);
+    await saveFile(page);
+    await page.getByTestId("inspector-field-title").fill("Latest edits");
+    await page.keyboard.press("Control+s");
+    await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
+    const state = await page.evaluate(() => window.__fs);
+    expect(state.pickerCalls).toBe(1);
+    expect(state.writes.map((w) => w.name)).toEqual(["saved-1.json", "saved-1.json"]);
+    expect(JSON.parse(state.writes[1].text).title).toBe("Latest edits");
+  });
+
+  test("cancelled Save As preserves the existing binding", async ({ page }) => {
+    await fakeFileSystem(page);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await importNative(page);
+    await saveFile(page);
+    await page.evaluate(() => {
+      window.__fs.cancel = true;
+    });
+    await moreFormats(page, "export-save-as");
+    await expect.poll(() => page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
+    await page.keyboard.press("Control+s");
+    await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
+    const state = await page.evaluate(() => window.__fs);
+    expect(state.pickerCalls).toBe(2);
+    expect(state.writes[1].name).toBe("saved-1.json");
+  });
+
+  test("rejected writes and permissions show errors without a success toast", async ({ page }) => {
+    await fakeFileSystem(page);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await importNative(page);
+    await saveFile(page);
+    await page.evaluate(() => {
+      window.__fs.rejectWrite = true;
+    });
+    await page.keyboard.press("Control+s");
+    await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
+    await expect(page.getByTestId("toast")).toContainText("write failed");
+    await page.evaluate(() => {
+      window.__fs.rejectWrite = false;
+      window.__fs.denyPermission = true;
+    });
+    await page.keyboard.press("Control+s");
+    await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "error");
+    await expect(page.getByTestId("toast")).toContainText("wasn't granted");
+    expect(await page.evaluate(() => window.__fs.writes.length)).toBe(1);
+  });
+
+  test("gallery replacement never writes the new diagram to A's handle", async ({ page }) => {
+    await fakeFileSystem(page);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await openFile(page);
+    await page.getByTestId("file-open").click();
+    await expect(page.getByTestId("diagram-title")).toHaveText(NATIVE.title);
+    await saveFile(page);
+    await page.getByTestId("view-gallery").click();
+    await page.getByTestId("stencil-tile-generic.service").click();
+    await page.getByTestId("drawer-new").click();
+    await page.getByTestId("drawer-confirm-replace").click();
+    await expect(page.getByTestId("diagram-title")).not.toHaveText(NATIVE.title);
+    await saveFile(page);
+    const state = await page.evaluate(() => window.__fs);
+    expect(state.pickerCalls).toBe(1);
+    expect(state.writes.map((w) => w.name)).toEqual(["opened-a.json", "saved-1.json"]);
+  });
+
+  test("Lab replacement clears the previous Save destination", async ({ page }) => {
+    await fakeFileSystem(page);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await importNative(page);
+    await saveFile(page);
+    await page.getByTestId("view-lab").click();
+    await page.getByTestId("lab-preset-link-nodes-on-canvas").click();
+    await page.getByTestId("lab-open-editor").click();
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await saveFile(page);
+    expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
+  });
+
+  test("late Save As cannot attach its handle to an imported replacement", async ({ page }) => {
+    await fakeFileSystem(page);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await importNative(page);
+    await page.evaluate(() => {
+      window.__fs.defer = true;
+    });
+    await openFile(page);
+    await page.getByTestId("file-save").click();
+    await expect.poll(() => page.evaluate(() => !!window.__fs.release)).toBe(true);
+    await importNative(page, "Replacement B");
+    await page.evaluate(() => {
+      const s = window.__fs;
+      s.defer = false;
+      s.release?.();
+    });
+    await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(1);
+    await expect(page.getByTestId("toast")).toContainText("open diagram has changed");
+    await saveFile(page);
+    expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
+  });
+
+  test("unrelated slot changes preserve the canvas, undo history and pending edits", async ({ page }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    await page.getByTestId("inspector-field-title").fill("Unsaved edit");
+    await page.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "kept"));
+    await page.evaluate((diagram) => {
+      localStorage.setItem("diagrams.imported.v1", JSON.stringify(diagram));
+      window.dispatchEvent(new StorageEvent("storage", { key: "diagrams.imported.v1" }));
+    }, NATIVE);
+    await expect(page.getByTestId("example-picker")).toContainText(NATIVE.title);
+    await expect(page.getByTestId("canvas-view")).toHaveAttribute("data-test-instance", "kept");
+    await expect(page.getByTestId("diagram-title")).toHaveText("Unsaved edit");
+    await page.getByTestId("undo-button").click();
+    await expect(page.getByTestId("diagram-title")).toHaveText(publicExamples[0].title);
+  });
+
+  test("gallery-only sessions do not download the editable canvas", async ({ page }) => {
+    const requests: string[] = [];
+    page.on("request", (r) => requests.push(r.url()));
+    await gotoGallery(page);
+    await openFile(page);
+    expect(requests.some((url) => url.includes("/canvas/CanvasView.tsx"))).toBe(false);
+    await page.keyboard.press("Escape");
+    await page.getByTestId("view-canvas").click();
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: 700, y: 60 } });
+    await page.getByTestId("context-menu-item-canvas.import").hover();
+    await expect(page.getByTestId("context-menu-item-import:paste")).toBeVisible();
+  });
+
+  test("menu selections restore trigger focus and dialog invokers", async ({ page }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    await page.getByTestId("view-button").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId(/^view-node-/).first()).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("view-button")).toBeFocused();
+    await openFile(page);
+    await page.getByTestId("file-import-from").click();
+    await page.getByTestId("import-paste").click();
+    await expect(page.getByTestId("paste-dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("file-button")).toBeFocused();
   });
 });

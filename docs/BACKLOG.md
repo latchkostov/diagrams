@@ -22,15 +22,15 @@ Review findings and ideas not yet scheduled. Remove items when they land.
   consumers, analytic bottleneck heat map (see docs/PLAN.md).
 
 ## From the live view
+- Flaky under full parallel e2e load: live.spec "saved simulation … immediate diagram navigation" (passes 51/51 alone). Stabilize waits.
+- Scrub-back: engine checkpoint API exists; wire the runner to restore the nearest checkpoint.
 
-- Hide the Live toggle in read-only embeds unless the URL has `live=1`.
 - Lint: repo-wide `eslint .` errors remain (CanvasView, useHistory, useEditor, …); fix in the cleanup pass.
 - Injecting at a `sink` with outgoing edges (e.g. a partner system that both receives and sends) goes
   nowhere; injection should emit along outgoing edges like a source.
 - `engine.snapshot()` copies ~200 events per frame; add a cheap particles/nodes accessor for rendering.
-- Scrub-back replays from zero each step (slow on long simulations): keep periodic engine checkpoints.
 - Very dense traffic merges particles into lines: auto-raise `scale` (phase 4) or thin particles by density.
-- Edge labels draw above particles and badges while live; live context menu exceeds the 12-item budget.
+- Edge labels draw above particles and badges while live.
 
 ## Engine gaps found while modelling real systems
 

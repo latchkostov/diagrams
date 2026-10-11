@@ -27,6 +27,20 @@ const FAILURE_RATES = [0, 0.1, 0.25, 0.5, 1];
 const SLOWDOWNS = [1, 2, 5, 10];
 const CONCURRENCY = [1, 2, 4, 8, 16, 64];
 
+/** Reserve room for the Simulation submenu without dropping editing actions. */
+export function compactLiveNodeMenu(items: MenuNode[]): MenuNode[] {
+  const clipboardIds = new Set(["item.duplicate", "item.copy", "item.cut"]);
+  const clipboard = items.filter((item) => item.type === "item" && clipboardIds.has(item.id));
+  if (clipboard.length < 2) return items;
+  let placed = false;
+  return items.flatMap((item): MenuNode[] => {
+    if (item.type !== "item" || !clipboardIds.has(item.id)) return [item];
+    if (placed) return [];
+    placed = true;
+    return [{ type: "item", id: "live.clipboard", label: "Clipboard", icon: "copy", children: clipboard }];
+  });
+}
+
 export function liveActions(host: LiveActionsHost): Action[] {
   const c = host.controller;
   const status = (id: string): NodeStatus => c.snapshot().nodes[id]?.status ?? "up";
@@ -42,7 +56,7 @@ export function liveActions(host: LiveActionsHost): Action[] {
   };
   const isNode = (id: string | undefined): id is string => !!id && !!c.snapshot().nodes[id];
 
-  return [
+  const actions: Action[] = [
     {
       id: "sim.inject",
       section: "simulation",
@@ -219,5 +233,30 @@ export function liveActions(host: LiveActionsHost): Action[] {
       order: 40,
       run: () => c.restart(),
     },
+  ];
+  const nodeActions = actions.filter((action) => action.targets.includes("node"));
+  return [
+    {
+      id: "sim.node",
+      section: "simulation",
+      targets: ["node"],
+      label: "Simulation",
+      icon: "bolt",
+      order: 10,
+      when: (ctx) => isNode(ctx.nodeId),
+      children: (ctx) =>
+        nodeActions
+          .filter((action) => !action.when || action.when(ctx))
+          .map((action) => ({
+            type: "item",
+            id: action.id,
+            label: typeof action.label === "function" ? action.label(ctx) : action.label,
+            icon: action.icon,
+            danger: action.danger,
+            children: action.children?.(ctx),
+            run: action.run ? () => action.run!(ctx) : undefined,
+          })),
+    },
+    ...actions.filter((action) => !action.targets.includes("node")),
   ];
 }

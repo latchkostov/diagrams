@@ -1,3 +1,5 @@
+import { LIMITS, tooLargeMessage } from "../native";
+
 // Google Drive REST v3, the few calls we need, with an injected `fetch` and token source so the
 // logic is unit-testable without Google. Scope: drive.file (only files the user picked with the
 // Picker or that this app created). Docs: https://developers.google.com/workspace/drive/api/guides/manage-uploads
@@ -6,6 +8,7 @@ export interface DriveFile {
   id: string;
   name: string;
   mimeType?: string;
+  size?: string;
   webViewLink?: string;
 }
 
@@ -32,7 +35,7 @@ export class DriveError extends Error {
 
 const API = "https://www.googleapis.com/drive/v3/files";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3/files";
-const FIELDS = "id,name,mimeType,webViewLink";
+const FIELDS = "id,name,mimeType,webViewLink,size";
 
 /** Builds a multipart/related body: JSON metadata part + content part. */
 export function multipartBody(metadata: object, content: string, contentType: string, boundary: string): string {
@@ -104,12 +107,38 @@ export function createDriveClient(deps: DriveClientDeps) {
 
     async download(id: string): Promise<DriveDownload> {
       const meta = await this.getMeta(id);
+      if (Number(meta.size) > LIMITS.maxTextChars) throw new DriveError(tooLargeMessage(Number(meta.size)));
       const res = await call(
         `${API}/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`,
         { method: "GET" },
         "download the file",
       );
-      return { ...meta, text: await res.text() };
+      const size = Number(res.headers.get("Content-Length"));
+      if (size > LIMITS.maxTextChars) {
+        await res.body?.cancel();
+        throw new DriveError(tooLargeMessage(size));
+      }
+      if (!res.body) return { ...meta, text: "" };
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      const chunks: string[] = [];
+      let total = 0;
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          total += value.byteLength;
+          if (total > LIMITS.maxTextChars) {
+            await reader.cancel();
+            throw new DriveError(tooLargeMessage(total));
+          }
+          chunks.push(decoder.decode(value, { stream: true }));
+        }
+        chunks.push(decoder.decode());
+      } finally {
+        reader.releaseLock();
+      }
+      return { ...meta, text: chunks.join("") };
     },
 
     /** Creates a file (in `parents` or My Drive root). */
