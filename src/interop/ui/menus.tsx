@@ -108,7 +108,8 @@ export function FileMenu({
         onSelect: () => void api.save(),
       },
     );
-    if (api.fsSupported) {
+    // Until the diagram is bound to a file, "Save to device…" already asks where: Save as… joins it after.
+    if (api.fsSupported && b) {
       out.push({
         type: "item",
         testId: "export-save-as",

@@ -221,10 +221,8 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
     input.current?.focus();
   };
 
-  const placeholder =
-    view === "canvas"
-      ? "Search actions, nodes and stencils…   > actions  @ nodes  + add"
-      : "Search diagrams and stencils…";
+  // The > @ + prefixes are taught once, by the footer's clickable chips.
+  const placeholder = view === "canvas" ? "Search actions, nodes and stencils…" : "Search diagrams and stencils…";
   const count = flat.length;
 
   return createPortal(

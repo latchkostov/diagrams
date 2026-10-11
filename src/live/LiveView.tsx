@@ -46,6 +46,8 @@ import {
 } from "./capacityModel";
 import { capacitySaveCandidate, capacitySaveError } from "./capacityPersistence";
 import { notify } from "../interop/ui/toast";
+import { stencilRole } from "../stencils/roles";
+import { motionMs } from "../lib/motion";
 
 export interface LiveViewProps {
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
@@ -79,6 +81,10 @@ export interface LiveViewProps {
 }
 
 const UI_MS = 125;
+/** "Traffic into X": the first of these that starts traffic in the simulation (a source). */
+const ENTRY_STENCILS = ["client.user", "client.browser", "generic.webhook"];
+/** Space between the new entry point and the node it feeds. */
+const ENTRY_GAP = 120;
 /** Things that own Esc before live view does (checked before they react, in the capture phase). */
 const ESC_OWNERS = [
   '[role="menu"]',
@@ -147,25 +153,7 @@ export function LiveView(props: LiveViewProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [enabled]);
 
-  // "Show capacity" on the canvas right-click, in both modes.
-  const hasEditor = !!props.editor;
-  useEffect(() => {
-    if (!hasEditor) return;
-    return actionRegistry.register([
-      {
-        id: "view.capacity",
-        section: "view",
-        targets: ["canvas"],
-        modes: ["edit", "live"],
-        order: 15,
-        label: "Show capacity",
-        icon: "sliders",
-        shortcut: "C",
-        checked: () => capacityOverlay.get(),
-        run: () => capacityOverlay.toggle(),
-      },
-    ]);
-  }, [hasEditor]);
+  // "Show capacity" on the canvas right-click lives under Show ▸ (builtinActions), with Grid and Minimap.
   const overlayOn = useCapacityOverlay();
 
   const onLiveChange = props.onLiveChange;
@@ -369,16 +357,28 @@ function LiveSession({
 
   // The authoring panel covers the right of the pane: fit the diagram into what's left (unless a
   // note is steering the camera).
+  // A panel opened during a note refits to the note's focus, so the focused nodes never sit under it.
+  const noteFocusRef = useRef(noteFocus);
+  useLayoutEffect(() => {
+    noteFocusRef.current = noteFocus;
+  }, [noteFocus]);
   const panelFitted = useRef(false);
   useEffect(() => {
-    if (zoomedForNote.current || panel.open === panelFitted.current) return;
+    if (panel.open === panelFitted.current) return;
     panelFitted.current = panel.open;
     const t = window.setTimeout(() => {
-      if (zoomedForNote.current) return;
+      const duration = reducedMotion ? 0 : FULL_FIT.duration;
+      if (zoomedForNote.current) {
+        const focus = noteFocusRef.current;
+        if (!focus.length) return;
+        const padding = panel.open ? { ...NOTE_PADDING, right: "440px" as const } : NOTE_PADDING;
+        void fitView({ ...NOTE_FIT, padding, nodes: focus.map((id) => ({ id })), duration });
+        return;
+      }
       const padding = panel.open
         ? { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const }
         : FULL_FIT.padding;
-      void fitView({ ...FULL_FIT, padding, duration: reducedMotion ? 0 : FULL_FIT.duration });
+      void fitView({ ...FULL_FIT, padding, duration });
     }, 320);
     return () => window.clearTimeout(t);
   }, [panel.open, fitView, reducedMotion]);
@@ -578,8 +578,10 @@ function LiveSession({
     [showCapacity, capacityOpen, planDiagram, plan],
   );
 
+  // The panel shows the heat map for this session only; leaving live view restores the preference.
+  useEffect(() => () => capacityOverlay.endSession(), []);
   const openCapacity = useCallback((open = true) => {
-    if (open) capacityOverlay.set(true);
+    if (open) capacityOverlay.showForSession();
     setPanel((p) => (open ? { open: true, kind: "capacity", sim: null } : { ...p, open: false }));
   }, []);
 
@@ -651,6 +653,47 @@ function LiveSession({
     controller.commitInputs(null, candidate.diagram);
     flash("Saved rates and sizes to the diagram (undo with Ctrl+Z).");
   }, [controller, editor, saveSimulation, flash, onSaveDiagram]);
+
+  /**
+   * "Traffic into X" when nothing sends traffic yet: an upstream source one gap before the node,
+   * connected to it (one undoable edit), then the cursor in its rate field.
+   */
+  const addEntry = useCallback(
+    (targetId: string) => {
+      if (!editor) return;
+      const target = editor.getNode(targetId);
+      if (!target) return;
+      const measured = store.getState().nodeLookup.get(targetId)?.measured;
+      const w = measured?.width ?? 220;
+      const h = measured?.height ?? 72;
+      const at =
+        editor.getDiagram().direction === "TB"
+          ? { x: target.x + w / 2, y: target.y - h / 2 - ENTRY_GAP }
+          : { x: target.x - w / 2 - ENTRY_GAP, y: target.y + h / 2 };
+      // Same tick: the history debounce records the node, its label and its edge as one undo step.
+      const stencil = ENTRY_STENCILS.find((x) => stencilRole(x) === "source") ?? ENTRY_STENCILS[0];
+      const id = editor.addNode(stencil, at);
+      editor.updateNode(id, { label: "Incoming traffic", sublabel: undefined });
+      editor.connect(id, targetId);
+      flash(`Added an entry point into ${target.label || target.id}. Set its rate in msg/s.`);
+      // Bring the new node into view beside the panel.
+      window.setTimeout(() => {
+        const padding = { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const };
+        void fitView({ ...FULL_FIT, padding, duration: motionMs(FULL_FIT.duration ?? 0) });
+      }, 260);
+      // The panel lists it once the session picks up the edit; then the rate field takes the cursor.
+      const started = performance.now();
+      const focusRate = () => {
+        const field = document.querySelector<HTMLInputElement>(`[data-testid="capacity-rate-${CSS.escape(id)}"]`);
+        if (field) {
+          field.focus();
+          field.select();
+        } else if (performance.now() - started < 2000) requestAnimationFrame(focusRate);
+      };
+      requestAnimationFrame(focusRate);
+    },
+    [editor, store, flash, fitView],
+  );
 
   // While live, the Simulation section leads every context menu.
   useEffect(() => {
@@ -813,6 +856,7 @@ function LiveSession({
           onClose={closeCapacity}
           onApplyFix={applyFix}
           onSave={editor ? saveInputs : undefined}
+          onAddEntry={editor && !presenting ? addEntry : undefined}
         />
       )}
       {panel.open && panel.kind === "sims" && editor && (

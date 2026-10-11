@@ -6,6 +6,7 @@ import type { Side, Stencil } from "../model/types";
 import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";
 import type { AlignMode } from "./arrange";
 import { shortcutKeys } from "./shortcuts";
+import { capacityOverlay } from "../live/capacityOverlay";
 
 // Built-in context-menu actions. Each reads the target from ctx and mutates through ctx.editor.
 
@@ -158,6 +159,17 @@ export function builtinActions(): Action[] {
           toggle("snap", "Snap to grid", "snap", "magnet"),
           toggle("minimap", "Minimap", "minimap", "minimap"),
           toggle("inspector", "Inspector", "inspector", "panel-right"),
+          // The capacity heat map: the same app-wide setting as View > Show capacity and C.
+          {
+            type: "item",
+            id: "view:capacity",
+            label: "Capacity",
+            icon: "sliders",
+            shortcut: "C",
+            keywords: "show capacity heat map bottleneck utilization",
+            checked: capacityOverlay.get(),
+            run: () => capacityOverlay.toggle(),
+          },
         ];
       },
     },

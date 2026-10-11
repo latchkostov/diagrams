@@ -18,6 +18,7 @@ import {
   baseProps,
   CAPACITY_STOPS,
   emptyInputs,
+  entryCandidates,
   entryRates,
   formatMultiplier,
   formatRateInput,
@@ -40,7 +41,6 @@ import {
   type LiveInputs,
   type NodeHeat,
 } from "./capacityModel";
-import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
 import { BottleneckCallout } from "./CapacityLayer";
 import { formatCount, formatRate } from "./format";
 import { LiveIcon } from "./icons";
@@ -62,6 +62,8 @@ interface Props {
   onApplyFix?: (fix: CapacityFix) => void;
   /** Writes the inputs (simulation or diagram); omitted where nothing can be saved (the Lab). */
   onSave?: () => void;
+  /** Adds an upstream entry point in front of a node (one undoable edit); omitted where nothing can be edited. */
+  onAddEntry?: (nodeId: string) => void;
   onChange?: () => void;
 }
 
@@ -83,8 +85,8 @@ export const CapacityPanel = memo(function CapacityPanel({
   onApplyFix,
   onSave,
   onChange,
+  onAddEntry,
 }: Props) {
-  const overlay = useCapacityOverlay();
   const [showAll, setShowAll] = useState(false);
   const [heldRows, setHeldRows] = useState<ReturnType<typeof selectRows> | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
@@ -173,7 +175,11 @@ export const CapacityPanel = memo(function CapacityPanel({
             )}
           </p>
 
-          <BottleneckCallout view={view} onApply={onApplyFix} />
+          {rates.size === 0 ? (
+            <NoEntryPoints diagram={diagram} onAdd={onAddEntry} />
+          ) : (
+            <BottleneckCallout view={view} onApply={onApplyFix} />
+          )}
 
           <section className="cap-section" aria-labelledby="cap-whatif">
             <h4 id="cap-whatif">What if</h4>
@@ -211,35 +217,22 @@ export const CapacityPanel = memo(function CapacityPanel({
                 );
               })}
             </div>
-            <label className="cap-switch-row">
-              <span>
-                Show capacity on the diagram
-                <small>Colour every service by how busy it is (C)</small>
-              </span>
-              <input
-                type="checkbox"
-                role="switch"
-                checked={overlay}
-                onChange={(e) => capacityOverlay.set(e.target.checked)}
-                data-testid="capacity-panel-overlay"
-                name="capacity-overlay"
-              />
-            </label>
           </section>
 
-          <Group title="Entry points" hint="How many messages enter here per second" count={rows.entries.length}>
-            {rows.entries.length === 0 && <p className="cap-empty">No sources or traffic yet.</p>}
-            {rows.entries.map((id) => (
-              <EntryRow
-                key={`${id}:${resetVersion}`}
-                node={byId.get(id)!}
-                rate={rates.get(id) ?? 0}
-                traffic={traffic}
-                onValidity={(valid) => validity(`capacity-rate-${id}`, valid)}
-                onRate={(rate) => set({ ...inputs, rates: { ...inputs.rates, [id]: rate } })}
-              />
-            ))}
-          </Group>
+          {rows.entries.length > 0 && (
+            <Group title="Entry points" hint="How many messages enter here per second" count={rows.entries.length}>
+              {rows.entries.map((id) => (
+                <EntryRow
+                  key={`${id}:${resetVersion}`}
+                  node={byId.get(id)!}
+                  rate={rates.get(id) ?? 0}
+                  traffic={traffic}
+                  onValidity={(valid) => validity(`capacity-rate-${id}`, valid)}
+                  onRate={(rate) => set({ ...inputs, rates: { ...inputs.rates, [id]: rate } })}
+                />
+              ))}
+            </Group>
+          )}
 
           {rows.services.length > 0 && (
             <Group title="Services" hint="Replicas are pods; latency is the time to handle one message">
@@ -330,6 +323,35 @@ export const CapacityPanel = memo(function CapacityPanel({
     </FieldValidation.Provider>
   );
 });
+
+/**
+ * No entry points yet (nothing in the diagram sends traffic): name where messages could enter and
+ * add an upstream source there in one step, rather than a dead end.
+ */
+function NoEntryPoints({ diagram, onAdd }: { diagram: DiagramFile; onAdd?: (nodeId: string) => void }) {
+  const targets = useMemo(() => entryCandidates(diagram), [diagram]);
+  return (
+    <div className="cap-start" data-testid="capacity-no-entries">
+      <strong>Where does traffic enter?</strong>
+      <span>
+        {onAdd && targets.length
+          ? "Nothing sends messages into this diagram yet. Add an entry point, then set its rate in msg/s."
+          : "Nothing sends messages into this diagram yet. Add a client, partner or scheduler in front of where messages enter."}
+      </span>
+      {onAdd &&
+        targets.map((n) => (
+          <button
+            key={n.id}
+            className="lv-add cap-start-add"
+            onClick={() => onAdd(n.id)}
+            data-testid={`capacity-add-entry-${n.id}`}
+          >
+            <LiveIcon name="plus" size={12} /> Traffic into {n.label || n.id}
+          </button>
+        ))}
+    </div>
+  );
+}
 
 function Group({ title, hint, count, children }: { title: string; hint: string; count?: number; children: ReactNode }) {
   return (

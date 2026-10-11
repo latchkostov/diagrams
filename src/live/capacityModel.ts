@@ -197,6 +197,15 @@ export function entryRates(d: DiagramFile, sim: Simulation | null, inputs: LiveI
   return new Map(d.nodes.filter((n) => out.has(n.id)).map((n) => [n.id, out.get(n.id)!]));
 }
 
+/** Where traffic would enter: nodes nothing points at that feed something (diagram order, at most three). */
+export function entryCandidates(d: DiagramFile): DiagramNode[] {
+  const fed = new Set(d.edges.map((e) => e.to));
+  const feeds = new Set(d.edges.map((e) => e.from));
+  const roots = d.nodes.filter((n) => !fed.has(n.id));
+  const feeding = roots.filter((n) => feeds.has(n.id));
+  return (feeding.length ? feeding : roots).slice(0, 3);
+}
+
 // ---------------------------------------------------------------- analysis
 
 export type HeatLevel = "idle" | "ok" | "warn" | "hot" | "over";

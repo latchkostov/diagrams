@@ -530,6 +530,37 @@
   width: min(920px, calc(100% - 428px));
 }
 
+/* The bar sheds readouts before it ever overflows (it never runs under a side panel): the play
+   controls, the simulation and the scrubber keep their room, the numbers go first. */
+.lv-bar {
+  container: live-bar / inline-size;
+}
+
+@container live-bar (max-width: 880px) {
+  /* A running simulation shows its progress on the scrubber; "in flight" stays in free play. */
+  .lv-bar .lv-timeline ~ .lv-stat {
+    display: none;
+  }
+}
+
+@container live-bar (max-width: 700px) {
+  .lv-bar .lv-clock,
+  .lv-bar .lv-btn.lv-inputs > span {
+    display: none;
+  }
+
+  .lv-bar .lv-btn.lv-inputs {
+    padding: 0 7px;
+  }
+}
+
+@container live-bar (max-width: 560px) {
+  /* Specific enough to beat the base rules further down the file. */
+  .lv-bar .lv-checks {
+    display: none;
+  }
+}
+
 @keyframes lv-rise {
   from {
     opacity: 0;
@@ -654,7 +685,8 @@
 }
 
 .lv-sim {
-  flex: 0 1 220px;
+  flex: 0 1 200px;
+  min-width: 112px;
   border-color: var(--line);
   background: var(--surface);
 }
@@ -1196,10 +1228,11 @@
 
 /* ---------- event log ---------- */
 
+/* Sits above the control bar (bottom 18px + about 50px tall), never over play / pause. */
 .lv-events {
   position: absolute;
   left: 16px;
-  bottom: 18px;
+  bottom: 80px;
   width: 380px;
   max-width: calc(100% - 32px);
   height: min(320px, 42vh);

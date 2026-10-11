@@ -143,12 +143,77 @@ test.describe("inputs & capacity", () => {
     await expect(page.getByTestId("capacity-layer")).toHaveCount(0);
     await page.getByTestId("diagram-card").click({ position: { x: 4, y: 4 } });
     await page.getByTestId("canvas-view").click({ button: "right", position: { x: 700, y: 820 } });
-    await expect(page.getByTestId("context-menu-item-view.capacity")).toBeVisible();
-    await page.getByTestId("context-menu-item-view.capacity").click();
+    // Under Show ▸, with the other things you can show (grid, minimap, inspector).
+    await page.getByTestId("context-menu-item-canvas.view-options").click();
+    await expect(page.getByTestId("context-menu-item-view:capacity")).toBeVisible();
+    await page.getByTestId("context-menu-item-view:capacity").click();
     await expect(page.getByTestId("capacity-layer")).toBeAttached();
     // It's a remembered preference.
     await page.reload();
     await expect(page.getByTestId("capacity-layer")).toBeAttached();
+    expectNoErrors(consoleErrors);
+  });
+
+  test("opening Inputs shows the heat map for the live session only, not as a remembered setting", async ({ page }) => {
+    await openBlackFridayInputs(page);
+    await expect(page.getByTestId("capacity-ring-payments")).toBeAttached();
+    await page.getByTestId("capacity-close").click();
+    // Closing the panel keeps the colours for the rest of the session...
+    await expect(page.getByTestId("bottleneck-callout")).toBeVisible();
+    // ...but edit mode, and the next visit, return to what the user chose.
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("capacity-layer")).toHaveCount(0);
+    await expect(page.getByTestId("bottleneck-callout")).toHaveCount(0);
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await expect(page.getByTestId("bottleneck-callout")).toHaveCount(0);
+  });
+
+  test("no entry point yet: the panel offers one, and the planner sets 5k msg/s", async ({ page, consoleErrors }) => {
+    const diagram = {
+      format: "diagrams/v1",
+      title: "Orders",
+      nodes: [
+        { id: "api", stencil: "service.go", label: "Order API", x: 0, y: 120 },
+        { id: "orders", stencil: "kafka.topic", label: "orders", x: 320, y: 120, props: { partitions: 6 } },
+        ...["Billing", "Shipping", "Email"].map((label, i) => ({
+          id: label.toLowerCase(),
+          stencil: "service.java",
+          label,
+          x: 640,
+          y: i * 120,
+        })),
+      ],
+      edges: [
+        { id: "e0", from: "api", to: "orders" },
+        ...["billing", "shipping", "email"].map((to) => ({ id: `e-${to}`, from: "orders", to })),
+      ],
+    };
+    await page.goto("./?view=lab&preset=custom-json");
+    await page.getByTestId("lab-json-toggle").click();
+    await page.getByTestId("lab-json-input").fill(JSON.stringify(diagram));
+    await page.getByTestId("lab-json-apply").click();
+    await page.getByTestId("lab-open-editor").click();
+    await page.getByTestId("live-toggle").click();
+    await page.getByTestId("live-capacity").click();
+
+    // Not a dead end: it names where traffic could enter.
+    await expect(page.getByTestId("capacity-no-entries")).toBeVisible();
+    await expect(page.getByTestId("capacity-add-entry-orders")).toHaveCount(0);
+    await page.getByTestId("capacity-add-entry-api").click();
+    await expect(page.getByTestId("capacity-no-entries")).toHaveCount(0);
+    const rate = page.locator('[data-testid^="capacity-rate-"]:not([data-testid*="slider"])').first();
+    await expect(rate).toBeFocused();
+    await rate.fill("5k");
+    await rate.press("Enter");
+    // The answer: a named bottleneck with a fix.
+    await expect(page.getByTestId("bottleneck-callout")).toHaveAttribute("data-tone", "over");
+    await expect(page.getByTestId("bottleneck-apply")).toBeVisible();
+    // One undo removes the entry point (node, label and edge together).
+    await page.getByTestId("capacity-close").click();
+    await page.getByTestId("live-toggle").click();
+    await page.getByTestId("undo-button").click();
+    await expect(page.locator('[data-testid^="node-"]').filter({ hasText: "Incoming traffic" })).toHaveCount(0);
     expectNoErrors(consoleErrors);
   });
 
@@ -258,6 +323,10 @@ test.describe("fourth review capacity regressions", () => {
     await expect(page.getByTestId("bottleneck-callout")).toHaveAttribute("role", "status");
     await page.getByTestId("capacity-close").click();
     await page.getByTestId("live-toggle").click();
+    // The panel showed the heat map for the live session only; edit mode turns it on explicitly.
+    await expect(page.getByTestId("capacity-layer")).toHaveCount(0);
+    await page.keyboard.press("c");
+    await expect(page.getByTestId("capacity-layer")).toBeAttached();
     await page.getByTestId("node-payments").click();
     await page.getByTestId("inspector-section-node-simulation").click();
     await page.getByTestId("inspector-field-latencyMs").fill("20000");
