@@ -55,11 +55,16 @@ import { useCanvasShortcuts } from "../editor/useCanvasShortcuts";
 import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
 import type { Selection } from "../editor/types";
 import type { DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
+import { LiveView } from "../live/LiveView";
+import { LIVE_BAR_SPACE } from "../live/layout";
+import { safeStorage } from "../lib/storage";
 
 const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
 // Pixel padding keeps the title card (top-left) from covering the diagram.
-const FIT: FitViewOptions = { padding: { top: "150px", right: "48px", bottom: "48px", left: "48px" }, maxZoom: 1.25 };
+const FIT: FitViewOptions = { padding: { top: "110px", right: "48px", bottom: "48px", left: "48px" }, maxZoom: 1.25 };
+// Live: keep the diagram clear of the floating control bar.
+const FIT_LIVE: FitViewOptions = { padding: { top: "110px", right: "48px", bottom: `${48 + LIVE_BAR_SPACE}px`, left: "48px" }, maxZoom: 1.25 };
 const FIT_PRESENT: FitViewOptions = { padding: { top: "190px", right: "64px", bottom: "64px", left: "64px" }, maxZoom: 1.6 };
 
 const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
@@ -74,6 +79,10 @@ interface Props {
   presenting: boolean;
   onExitPresent: () => void;
   ref?: Ref<CanvasHandle>;
+  /** Embed / viewer mode: pan and zoom only; no editing chrome, menus, shortcuts or autosave. */
+  readOnly?: boolean;
+  /** Show this diagram instead of the slug's stored one (embeds, share-link viewers). */
+  initial?: DiagramFile;
 }
 
 export function CanvasView(props: Props) {
@@ -98,25 +107,36 @@ type MenuState = { x: number; y: number; items: MenuNode[]; label: string; searc
 // Built-in actions live for the app's lifetime; HMR re-registers them by id.
 actionRegistry.register(builtinActions());
 
-function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
+function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, initial }: Props) {
   const { theme, nodeVariant, edgeStyle } = useSettings();
   const { screenToFlowPosition, fitView } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
 
   const [{ original, flow, originalJson }] = useState(() => {
-    const original = getOriginal(slug) ?? emptyDiagram();
-    return { original, flow: toFlow(getAutosave(slug) ?? original), originalJson: normalize(original) };
+    const original = initial ?? getOriginal(slug) ?? emptyDiagram();
+    return { original, flow: toFlow((initial ? undefined : getAutosave(slug)) ?? original), originalJson: normalize(original) };
   });
   const [meta, setMeta] = useState<DiagramMeta>(flow.meta);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const [modified, setModified] = useState(false);
   const [paletteCollapsed, setPaletteCollapsed] = useState(() => {
-    const saved = localStorage.getItem(PALETTE_KEY);
-    return saved ? saved === "1" : window.innerWidth < 1400;
+    const saved = safeStorage.getItem(PALETTE_KEY);
+    // Narrow windows always start with the canvas, not the stencil list.
+    return saved && window.innerWidth >= 1280 ? saved === "1" : window.innerWidth < 1400;
   });
-  useEffect(() => localStorage.setItem(PALETTE_KEY, paletteCollapsed ? "1" : "0"), [paletteCollapsed]);
+  useEffect(() => void safeStorage.setItem(PALETTE_KEY, paletteCollapsed ? "1" : "0"), [paletteCollapsed]);
   const [prefs, setPref] = useEditorPrefs();
+  // Live mode and narrow windows fold the side panels away by default; opening one by hand wins.
+  const [live, setLive] = useState(false);
+  const [openedByHand, setOpenedByHand] = useState({ palette: false, inspector: false });
+  useEffect(() => setOpenedByHand({ palette: false, inspector: false }), [live]);
+  const [narrow, setNarrow] = useState(() => window.innerWidth < 1440);
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth < 1440);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -143,6 +163,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
     setEditing,
     openInspector: (field) => {
       setPref("inspector", true);
+      setOpenedByHand((o) => ({ ...o, inspector: true }));
       if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1 }));
     },
     showShortcuts: () => setShortcutsOpen(true),
@@ -154,12 +175,13 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
     nodeSize: getNodeVariant(nodeVariant).size,
   });
 
-  useCanvasShortcuts(editor, { enabled: !shortcutsOpen, onEscape: () => setMenu(null) });
+  useCanvasShortcuts(editor, { enabled: !shortcutsOpen && !readOnly, onEscape: () => setMenu(null) });
 
   useImperativeHandle(ref, () => ({ getDiagram: () => fromFlow(meta, nodes, edges) }), [meta, nodes, edges]);
 
   // Autosave per example; drop the save again once the diagram matches the original.
   useEffect(() => {
+    if (readOnly) return;
     const t = setTimeout(() => {
       const d = fromFlow(meta, nodes, edges);
       const mod = JSON.stringify(d) !== originalJson;
@@ -167,14 +189,14 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
       setModified(mod);
     }, 300);
     return () => clearTimeout(t);
-  }, [meta, nodes, edges, slug, originalJson]);
+  }, [meta, nodes, edges, slug, originalJson, readOnly]);
 
   // Refit when chrome appears / disappears (presentation mode).
   useEffect(() => {
     // Wait for React Flow's ResizeObserver to pick up the new pane size first.
-    const id = setTimeout(() => fitView({ ...(presenting ? FIT_PRESENT : FIT), duration: 350 }), 80);
+    const id = setTimeout(() => fitView({ ...(presenting ? FIT_PRESENT : live ? FIT_LIVE : FIT), duration: 350 }), 80);
     return () => clearTimeout(id);
-  }, [presenting, fitView]);
+  }, [presenting, live, fitView]);
 
   /** Reset is a normal (undoable) edit. */
   const reset = () => {
@@ -241,12 +263,13 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
   const openMenu = useCallback(
     (e: ReactMouseEvent | MouseEvent, ctx: Omit<ActionContext, "editor" | "point">) => {
       e.preventDefault();
+      if (readOnly) return;
       const full: ActionContext = { ...ctx, editor, point: screenToFlowPosition({ x: e.clientX, y: e.clientY }) };
       const items = actionRegistry.build(full);
       setEditing(null);
       setMenu(items.length ? { x: e.clientX, y: e.clientY, items, label: `${ctx.target} menu` } : null);
     },
-    [editor, screenToFlowPosition],
+    [editor, screenToFlowPosition, readOnly],
   );
 
   const onPaneContextMenu = useCallback(
@@ -286,6 +309,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
 
   /** Double-click on empty canvas: stencil search at the cursor. */
   const onPaneDoubleClick = (e: ReactMouseEvent) => {
+    if (readOnly) return;
     if (!(e.target instanceof Element) || !e.target.classList.contains("react-flow__pane")) return;
     const point = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     setMenu({
@@ -308,12 +332,20 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
   // ---------------------------------------------------------------- derived
 
   const direction = meta.direction ?? "LR";
-  const ui = useMemo<DiagramUi>(() => ({ direction, editing, setEditing, openEdgeMenu }), [direction, editing, openEdgeMenu]);
+  const ui = useMemo<DiagramUi>(
+    () => ({ direction, editing, setEditing: readOnly ? () => {} : setEditing, openEdgeMenu }),
+    [direction, editing, openEdgeMenu, readOnly],
+  );
+  // Read-only (embed) hides the same chrome as presenting, without the presentation sizing.
+  const hideChrome = presenting || readOnly;
   const diagramNodes = useMemo(() => nodes.filter(isDiagramNode), [nodes]);
   const groupNodes = useMemo(() => nodes.filter(isGroupNode), [nodes]);
   const selectedNodes = useMemo(() => diagramNodes.filter((n) => n.selected), [diagramNodes]);
   const selectedGroups = useMemo(() => groupNodes.filter((n) => n.selected), [groupNodes]);
   const selectedEdges = useMemo(() => edges.filter((e) => e.selected), [edges]);
+  const nothingSelected = !selectedNodes.length && !selectedGroups.length && !selectedEdges.length;
+  const paletteHidden = paletteCollapsed || (live && !openedByHand.palette);
+  const inspectorHidden = !prefs.inspector || ((live || (narrow && nothingSelected)) && !openedByHand.inspector);
   const labels = useMemo(() => new Map(diagramNodes.map((n) => [n.id, n.data.label || n.id])), [diagramNodes]);
   const nodeCount = diagramNodes.length;
   const undoTitle = `Undo (${formatCombo(shortcutKeys("undo"))})`;
@@ -329,8 +361,15 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
           if (!isEditableTarget(e.target)) e.preventDefault();
         }}
       >
-        {!presenting && (
-          <Palette collapsed={paletteCollapsed} onToggle={() => setPaletteCollapsed((c) => !c)} onAdd={(id) => void editor.addNode(id)} />
+        {!hideChrome && (
+          <Palette
+            collapsed={paletteHidden}
+            onToggle={() => {
+              setPaletteCollapsed(!paletteHidden);
+              setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
+            }}
+            onAdd={(id) => void editor.addNode(id)}
+          />
         )}
         <div
           className="canvas-wrap"
@@ -354,7 +393,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
             isValidConnection={isValidConnection}
             connectionMode={ConnectionMode.Loose}
             connectionRadius={28}
-            onEdgeDoubleClick={onEdgeDoubleClick}
+            onEdgeDoubleClick={readOnly ? undefined : onEdgeDoubleClick}
             onNodeDragStart={onNodeDragStart}
             onNodeDrag={onNodeDrag}
             onNodeDragStop={onNodeDragStop}
@@ -375,12 +414,18 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
             snapToGrid={prefs.snap}
             snapGrid={[10, 10]}
             elevateNodesOnSelect={false}
+            nodesDraggable={!readOnly}
+            nodesConnectable={!readOnly}
+            elementsSelectable={!readOnly}
+            // Embedded in a page: let the wheel scroll the page (pinch / Ctrl+wheel still zoom).
+            zoomOnScroll={!readOnly}
+            preventScrolling={!readOnly}
             zoomOnDoubleClick={false}
             deleteKeyCode={null}
             connectionLineType={edgeStyle === "bezier" ? ConnectionLineType.Bezier : edgeStyle === "straight" ? ConnectionLineType.Straight : ConnectionLineType.SmoothStep}
           >
             {prefs.grid && <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />}
-            {!presenting && (
+            {!hideChrome && (
               <Controls showInteractive={false} position="bottom-left">
                 <ControlButton onClick={editor.undo} disabled={!history.canUndo} title={undoTitle} aria-label="Undo" data-testid="undo-button">
                   <Icon name="undo" size={14} />
@@ -393,9 +438,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
                 </ControlButton>
               </Controls>
             )}
-            {!presenting && prefs.minimap && (
+            {!hideChrome && prefs.minimap && (
               <MiniMap
                 position="bottom-right"
+                style={{ width: 168, height: 112 }}
                 pannable
                 zoomable
                 nodeBorderRadius={6}
@@ -404,12 +450,19 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
                 nodeStrokeColor={(n) => (n.type === "boundary" ? toneColor[(n as GroupFlowNode).data.tone] : "transparent")}
               />
             )}
+            <LiveView
+              editor={readOnly ? undefined : editor}
+              diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
+              presenting={presenting}
+              simulations={meta.simulations}
+              onLiveChange={setLive}
+            />
           </ReactFlow>
 
           <div className={`diagram-card${presenting ? " is-large" : ""}`} data-testid="diagram-card">
             <h1 data-testid="diagram-title">{meta.title}</h1>
             {meta.description && <p>{meta.description}</p>}
-            {!presenting && (
+            {!hideChrome && (
               <div className="diagram-card-meta">
                 <span>
                   {nodeCount} nodes, {edges.length} edges
@@ -429,14 +482,14 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
             </button>
           )}
 
-          {nodeCount === 0 && !presenting && (
+          {nodeCount === 0 && !hideChrome && (
             <div className="canvas-empty">
               <strong>This diagram is empty</strong>
               <span>Drag a stencil from the left, or double-click the canvas to add one.</span>
             </div>
           )}
         </div>
-        {!presenting && (
+        {!hideChrome && (
           <Inspector
             editor={editor}
             meta={meta}
@@ -446,8 +499,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref }: Props) {
             groups={groupNodes}
             nodeLabel={(id) => labels.get(id) ?? id}
             counts={{ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }}
-            collapsed={!prefs.inspector}
-            onToggle={() => setPref("inspector", !prefs.inspector)}
+            collapsed={inspectorHidden}
+            onToggle={() => {
+              setPref("inspector", inspectorHidden);
+              setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));
+            }}
             focus={inspectorFocus}
           />
         )}

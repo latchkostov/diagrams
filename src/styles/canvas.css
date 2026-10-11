@@ -77,6 +77,13 @@
   box-shadow: var(--node-shadow);
 }
 
+/* Below ~1100px the minimap covers more of the diagram than it helps navigate. */
+@media (max-width: 1100px) {
+  .react-flow__minimap {
+    display: none;
+  }
+}
+
 .react-flow__attribution {
   background: transparent;
   opacity: 0.45;
@@ -338,7 +345,9 @@
   stroke-dasharray: 5 5;
 }
 
-/* Labels sit above nodes: example columns leave ~80px between cards, so long labels overlap. */
+/* The router (src/canvas/geometry/labels.ts) places every pill where it covers no node or other
+   label, using these exact metrics: 10px mono (6px per char), 13px lines, 2px 7px padding, 1px
+   border. The layer stays above nodes only so a hovered (expanded) label reads in full. */
 .react-flow__edgelabel-renderer {
   z-index: 1001;
 }
@@ -346,7 +355,9 @@
 .fe-label {
   position: absolute;
   pointer-events: all;
-  max-width: 128px;
+  box-sizing: border-box;
+  width: var(--fe-w, auto);
+  height: var(--fe-h, auto);
   padding: 2px 7px;
   border-radius: 8px;
   font-family: var(--font-mono);
@@ -354,12 +365,63 @@
   font-weight: 500;
   line-height: 13px;
   text-align: center;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--text-2);
   background: var(--edge-label-bg);
   border: 1px solid var(--line);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+/* Truncated: hover shows the whole text. */
+.fe-label.is-truncate:hover {
+  width: max-content;
+  z-index: 2;
+}
+
+/* No room for any text: a numbered dot on the line; hover reveals the label. */
+.fe-label.is-dot {
+  padding: 0;
+  overflow: visible;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1;
+  color: var(--text);
+}
+
+.fe-dot-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 13px;
+  color: var(--text-2);
+  background: var(--edge-label-bg);
+  border: 1px solid var(--line);
+  box-shadow: var(--node-shadow);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+
+.fe-label.is-dot:hover .fe-dot-tip {
+  opacity: 1;
+}
+
+/* Presentation: the same boxes (placement depends on them), stronger ink for a projector. */
+.is-presenting .fe-label {
+  color: var(--text);
+  font-weight: 600;
+  border-color: color-mix(in oklab, var(--text) 22%, var(--line));
 }
 
 .fe-label.is-selected {
@@ -369,7 +431,9 @@
 
 .fe-label.is-editing {
   padding: 0;
-  max-width: none;
+  width: auto;
+  height: auto;
+  overflow: visible;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
