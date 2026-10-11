@@ -17,6 +17,8 @@ icons never clash when inlined.
 | [Kubernetes community icons](https://github.com/kubernetes/community/tree/master/icons) (unlabeled resources)                      | master     | Apache-2.0 or CC-BY-4.0 (your choice). The Kubernetes logo is a trademark of The Linux Foundation.                                                                                                                                                           |
 | [selfh.st/icons](https://github.com/selfhst/icons) via Iconify set `selfhst`                                                       | —          | CC-BY-4.0, **attribution required**: "Icon by selfh.st (https://selfh.st/icons), CC BY 4.0".                                                                                                                                                                 |
 | [theSVG](https://github.com/glincker/thesvg) via Iconify set `thesvg-color`                                                        | —          | MIT.                                                                                                                                                                                                                                                         |
+| [Simple Icons](https://simpleicons.org) via Iconify set `simple-icons`                                                             | 16.34.0    | CC0-1.0. Monochrome paths, filled with the brand hex published in Simple Icons data.                                                                                                                                                                         |
+| [Devicon](https://devicon.dev) via Iconify set `devicon`                                                                           | —          | MIT.                                                                                                                                                                                                                                                         |
 
 ## Files
 
@@ -100,7 +102,8 @@ icons never clash when inlined.
 
 Product names, logos and icons are trademarks of their respective owners (Microsoft, Amazon,
 Google, The Apache Software Foundation, Broadcom/VMware (RabbitMQ), Redis Ltd., The Linux
-Foundation, HashiCorp, Splunk/Cisco, etc.). They're used **nominatively**, only to show those
+Foundation, HashiCorp, Splunk/Cisco, Confluent, Okta, Stripe, Twilio, Salesforce, HubSpot, Slack,
+GitHub, OpenAI, Anthropic, etc.). They're used **nominatively**, only to show those
 products in architecture diagrams. This doesn't imply any affiliation with or endorsement by
 the trademark owners. Don't alter the logos beyond scaling, and don't use them as the app's own branding.
 
@@ -113,3 +116,85 @@ line in the app, when distributing.
 | ----------- | ---------------------- | ------------------------------------------------------ |
 | `kong.svg`  | gilbarbara/logos (CC0) | `logos:kong-icon`                                      |
 | `adobe.svg` | gilbarbara/logos (CC0) | `logos:adobe-icon` (used for Adobe Experience Manager) |
+
+### Stencils batch 2
+
+No new icon needs attribution (no CC-BY sources). Skipped for lack of a clean, permissive mark: Redpanda,
+Honeycomb, Weaviate (wordmark only; covered by the generic Vector DB), Grafana Tempo, Azure Durable Functions
+and Event Hubs Capture (no distinct icon). Kafka Streams reuses `kafka.svg`.
+
+| Icon file                   | Source                                   | Original asset                                                                                                                             |
+| --------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `azure-static-web-apps.svg` | Azure V24                                | `web/01007-icon-service-Static-Apps.svg`                                                                                                   |
+| `azure-data-factory.svg`    | Azure V24                                | `analytics/10126-icon-service-Data-Factories.svg`                                                                                          |
+| `azure-synapse.svg`         | Azure V24                                | `analytics/00606-icon-service-Azure-Synapse-Analytics.svg`                                                                                 |
+| `aws-msk.svg`               | AWS 2026-07                              | `Arch_Analytics/48/Arch_Amazon-Managed-Streaming-for-Apache-Kafka_48.svg`                                                                  |
+| `aws-mq.svg`                | AWS 2026-07                              | `Arch_Application-Integration/48/Arch_Amazon-MQ_48.svg`                                                                                    |
+| `aws-redshift.svg`          | AWS 2026-07                              | `Arch_Analytics/48/Arch_Amazon-Redshift_48.svg`                                                                                            |
+| `aws-aurora.svg`            | AWS 2026-07                              | `Arch_Databases/48/Arch_Amazon-Aurora_48.svg`                                                                                              |
+| `gcp-dataflow.svg`          | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:dataflow`                                                                                                                             |
+| `gcp-cloud-run.svg`         | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:cloud-run`                                                                                                                            |
+| `gcp-cloud-functions.svg`   | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:cloud-functions`                                                                                                                      |
+| `gcp-gke.svg`               | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:google-kubernetes-engine`                                                                                                             |
+| `gcp-bigquery.svg`          | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:bigquery`                                                                                                                             |
+| `gcp-spanner.svg`           | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:cloud-spanner`                                                                                                                        |
+| `gcp-cloud-sql.svg`         | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:cloud-sql`                                                                                                                            |
+| `gcp-firestore.svg`         | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:firestore`                                                                                                                            |
+| `flink.svg`                 | gilbarbara/logos (CC0)                   | `logos:apache-flink-icon`                                                                                                                  |
+| `temporal.svg`              | gilbarbara/logos (CC0)                   | `logos:temporal-icon`                                                                                                                      |
+| `airflow.svg`               | gilbarbara/logos (CC0)                   | `logos:airflow-icon`                                                                                                                       |
+| `vercel.svg`                | gilbarbara/logos (CC0)                   | `logos:vercel-icon`                                                                                                                        |
+| `netlify.svg`               | gilbarbara/logos (CC0)                   | `logos:netlify-icon`                                                                                                                       |
+| `cloudflare-workers.svg`    | gilbarbara/logos (CC0)                   | `logos:cloudflare-workers-icon`                                                                                                            |
+| `envoy.svg`                 | gilbarbara/logos (CC0)                   | `logos:envoy-icon`                                                                                                                         |
+| `linkerd.svg`               | gilbarbara/logos (CC0)                   | `logos:linkerd`                                                                                                                            |
+| `supabase.svg`              | gilbarbara/logos (CC0)                   | `logos:supabase-icon`                                                                                                                      |
+| `firebase.svg`              | gilbarbara/logos (CC0)                   | `logos:firebase-icon`                                                                                                                      |
+| `pinecone.svg`              | gilbarbara/logos (CC0)                   | `logos:pinecone-icon`                                                                                                                      |
+| `kibana.svg`                | gilbarbara/logos (CC0)                   | `logos:kibana`                                                                                                                             |
+| `new-relic.svg`             | gilbarbara/logos (CC0)                   | `logos:new-relic-icon`                                                                                                                     |
+| `sentry.svg`                | gilbarbara/logos (CC0)                   | `logos:sentry-icon`                                                                                                                        |
+| `okta.svg`                  | gilbarbara/logos (CC0)                   | `logos:okta-icon`                                                                                                                          |
+| `auth0.svg`                 | gilbarbara/logos (CC0)                   | `logos:auth0-icon`                                                                                                                         |
+| `twilio.svg`                | gilbarbara/logos (CC0)                   | `logos:twilio-icon`                                                                                                                        |
+| `sendgrid.svg`              | gilbarbara/logos (CC0)                   | `logos:sendgrid-icon`                                                                                                                      |
+| `salesforce.svg`            | gilbarbara/logos (CC0)                   | `logos:salesforce`                                                                                                                         |
+| `slack.svg`                 | gilbarbara/logos (CC0)                   | `logos:slack-icon`                                                                                                                         |
+| `github.svg`                | gilbarbara/logos (CC0)                   | `logos:github-icon`                                                                                                                        |
+| `openai.svg`                | gilbarbara/logos (CC0)                   | `logos:openai-icon`                                                                                                                        |
+| `claude.svg`                | gilbarbara/logos (CC0)                   | `logos:claude-icon` (used for the Claude API)                                                                                              |
+| `graphql.svg`               | gilbarbara/logos (CC0)                   | `logos:graphql`                                                                                                                            |
+| `grpc.svg`                  | gilbarbara/logos (CC0)                   | `logos:grpc` (wordmark: gRPC has no standalone symbol)                                                                                     |
+| `terraform.svg`             | gilbarbara/logos (CC0)                   | `logos:terraform-icon`                                                                                                                     |
+| `argo.svg`                  | gilbarbara/logos (CC0)                   | `logos:argo-icon` (used for Argo CD)                                                                                                       |
+| `pulsar.svg`                | Simple Icons (CC0)                       | `simple-icons:apachepulsar`, fill `#188FFF`                                                                                                |
+| `camunda.svg`               | Simple Icons (CC0)                       | `simple-icons:camunda`, fill `#FC5D0D`                                                                                                     |
+| `istio.svg`                 | Simple Icons (CC0)                       | `simple-icons:istio`, fill `#466BB0`                                                                                                       |
+| `traefik.svg`               | Simple Icons (CC0)                       | `simple-icons:traefikproxy`, fill `#24A1C1`                                                                                                |
+| `cassandra.svg`             | Simple Icons (CC0)                       | `simple-icons:apachecassandra`, fill `#1287B1`                                                                                             |
+| `minio.svg`                 | Simple Icons (CC0)                       | `simple-icons:minio`, fill `#C72E49`                                                                                                       |
+| `stripe.svg`                | Simple Icons (CC0)                       | `simple-icons:stripe`, fill `#635BFF`                                                                                                      |
+| `hubspot.svg`               | Simple Icons (CC0)                       | `simple-icons:hubspot`, fill `#FF7A59`                                                                                                     |
+| `haproxy.svg`               | Devicon (MIT)                            | `devicon:haproxy`                                                                                                                          |
+| `clickhouse.svg`            | Devicon (MIT)                            | `devicon:clickhouse`                                                                                                                       |
+| `loki.svg`                  | Devicon (MIT)                            | `devicon:grafanaloki`                                                                                                                      |
+| `jaeger.svg`                | Devicon (MIT)                            | `devicon:jaegertracing`                                                                                                                    |
+| `confluent.svg`             | theSVG (MIT)                             | `thesvg-color:confluent`; only the circular symbol is kept (viewBox cropped to it, wordmark path removed), as Confluent uses it standalone |
+| `keycloak.svg`              | theSVG (MIT)                             | `thesvg-color:keycloak`                                                                                                                    |
+| `microsoft-fabric.svg`      | theSVG (MIT)                             | `thesvg-color:microsoft-fabric`                                                                                                            |
+| `generic-cdc.svg`           | Lucide (ISC)                             | `database-zap` (Debezium CDC: no permissively licensed Debezium logo found)                                                                |
+| `generic-batch-job.svg`     | Lucide (ISC)                             | `layers`                                                                                                                                   |
+| `generic-cdn.svg`           | Lucide (ISC)                             | `globe`                                                                                                                                    |
+| `generic-dns.svg`           | Lucide (ISC)                             | `signpost`                                                                                                                                 |
+| `generic-firewall.svg`      | Lucide (ISC)                             | `brick-wall-shield`                                                                                                                        |
+| `client-team.svg`           | Lucide (ISC)                             | `users`                                                                                                                                    |
+| `generic-push.svg`          | Lucide (ISC)                             | `bell-ring`                                                                                                                                |
+| `generic-sms.svg`           | Lucide (ISC)                             | `message-square-text`                                                                                                                      |
+| `generic-file.svg`          | Lucide (ISC)                             | `file-box`                                                                                                                                 |
+| `generic-warehouse.svg`     | Lucide (ISC)                             | `warehouse`                                                                                                                                |
+| `generic-cache.svg`         | Lucide (ISC)                             | `zap`                                                                                                                                      |
+| `generic-search-index.svg`  | Lucide (ISC)                             | `text-search`                                                                                                                              |
+| `generic-ml-model.svg`      | Lucide (ISC)                             | `brain-circuit`                                                                                                                            |
+| `generic-external-api.svg`  | Lucide (ISC)                             | `cloud`                                                                                                                                    |
+| `generic-llm.svg`           | Lucide (ISC)                             | `sparkles`                                                                                                                                 |
+| `generic-vector-db.svg`     | Lucide (ISC)                             | `orbit`                                                                                                                                    |

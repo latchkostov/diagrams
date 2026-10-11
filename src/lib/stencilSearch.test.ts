@@ -19,6 +19,20 @@ describe("stencil search", () => {
     expect(ids("apim")[0]).toBe("azure.api-management");
   });
 
+  it("finds the newer streaming, platform and AI stencils by alias", () => {
+    expect(ids("msk")[0]).toBe("aws.msk");
+    expect(ids("cf")[0]).toBe("confluent.cloud");
+    expect(ids("llm")[0]).toBe("generic.llm");
+    expect(ids("llm")).toEqual(expect.arrayContaining(["openai", "anthropic.claude"]));
+    expect(ids("vector")[0]).toBe("generic.vector-db");
+    expect(ids("vector")).toContain("pinecone");
+    expect(ids("waf")[0]).toBe("generic.firewall");
+    expect(ids("mesh")).toEqual(expect.arrayContaining(["istio", "linkerd", "envoy"]));
+    expect(ids("bq")[0]).toBe("gcp.bigquery");
+    expect(ids("debezium")[0]).toBe("debezium");
+    expect(ids("loki")[0]).toBe("loki");
+  });
+
   it("ranks the stencil named by the query above alias matches", () => {
     expect(ids("lambda")[0]).toBe("aws.lambda");
     expect(ids("lambda")).toContain("azure.functions");
@@ -40,7 +54,7 @@ describe("stencil search", () => {
 
   it("requires every word to match", () => {
     expect(ids("service bus topic")[0]).toBe("azure.service-bus.topic");
-    expect(ids("aws queue")).toEqual(["aws.sqs"]);
+    expect(ids("aws queue")).toEqual(["aws.sqs", "aws.mq"]);
     expect(ids("zzz-no-such")).toEqual([]);
   });
 
