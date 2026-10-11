@@ -41,6 +41,11 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   built-in ones are **Examples**; the **Stencils** tab is the catalogue.
 - In Your diagrams: **Rename**, **Duplicate** and **Delete** (undoable), the same names everywhere.
 - A simulation's scripted events are its **Timeline** (not "Story & chaos").
+- **Inputs** (the live bar button) opens the **Inputs & capacity** panel: how much traffic enters
+  (**entry points**, in msg/s) and how big things are (replicas, partitions). **Show capacity** (C,
+  View menu, Show ▸ Capacity) is the heat map over the diagram, one remembered setting; the panel
+  shows it while open without changing that setting. The callout's verb is **Apply fix**.
+- The Live toggle's words are **Go live** and **Back to editing**, in the palette too.
 - Same action, same name in the File menu and the right-click (e.g. Export PNG, Copy share link).
 - Esc backs out one level: menu, dialog, selection, trace, presentation, then live view.
 

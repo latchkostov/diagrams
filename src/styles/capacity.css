@@ -671,68 +671,32 @@
   color: inherit;
 }
 
-.cap-switch-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 4px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-  cursor: pointer;
+/* No entry points yet: where traffic could enter, one button each. */
+.cap-start {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in oklab, var(--accent) 45%, var(--line));
+  background: var(--accent-soft);
 }
 
-.cap-switch-row > span {
-  display: grid;
-  flex: 1;
-  font-weight: 600;
+.cap-start strong {
+  font-size: 13px;
   color: var(--text);
 }
 
-.cap-switch-row small {
-  color: var(--text-3);
-  font-size: 11px;
-  font-weight: 500;
+.cap-start span {
+  color: var(--text-2);
+  line-height: 1.45;
 }
 
-.cap-switch-row input {
-  appearance: none;
-  flex: none;
-  position: relative;
-  width: 30px;
-  height: 18px;
-  margin: 0;
-  border-radius: 999px;
-  background: var(--surface-3);
-  border: 1px solid var(--line-strong);
-  cursor: pointer;
-  transition: background var(--dur-1);
-}
-
-.cap-switch-row input::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+.cap-start-add {
+  justify-content: flex-start;
+  padding: 0 10px;
+  border-style: solid;
   background: var(--surface);
-  box-shadow: var(--shadow-1);
-  transition: transform var(--dur-1) var(--ease-out);
-}
-
-.cap-switch-row input:checked {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.cap-switch-row input:checked::after {
-  transform: translateX(12px);
-}
-
-.cap-switch-row input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  color: var(--text);
 }
 
 .cap-rate {

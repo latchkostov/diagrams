@@ -55,10 +55,11 @@ test.describe("gallery", () => {
     await gotoGallery(page);
     const total = await tiles(page).count();
     await page.getByTestId("family-chip-aws").click();
-    await page.getByTestId("gallery-search").fill("kafka topic");
+    // Nothing in AWS is a Service Bus (Amazon MSK now answers "kafka", so that query isn't empty).
+    await page.getByTestId("gallery-search").fill("service bus");
     await expect(page.getByTestId("gallery-empty")).toBeVisible();
     await page.getByTestId("empty-all-families").click();
-    await expect(page.getByTestId("stencil-tile-kafka.topic")).toBeVisible();
+    await expect(page.getByTestId("stencil-tile-azure.service-bus.queue")).toBeVisible();
     await page.getByTestId("gallery-search").fill("zzz");
     await page.getByTestId("empty-clear").click();
     await expect(tiles(page)).toHaveCount(total);
@@ -92,7 +93,7 @@ test.describe("gallery", () => {
 
   test("family counts follow the search", async ({ page }) => {
     await gotoGallery(page);
-    await page.getByTestId("gallery-search").fill("queue");
+    await page.getByTestId("gallery-search").fill("sqs");
     await expect(page.getByTestId("family-chip-aws")).toHaveText(/AWS\s*1$/);
     await expect(page.getByTestId("family-chip-gcp")).toHaveText(/Google Cloud\s*0$/);
   });

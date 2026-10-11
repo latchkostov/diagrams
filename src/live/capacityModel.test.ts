@@ -9,6 +9,7 @@ import {
   computeFix,
   effectiveSimulation,
   emptyInputs,
+  entryCandidates,
   entryRates,
   formatMultiplier,
   formatRateInput,
@@ -362,5 +363,32 @@ describe("fourth review planning regressions", () => {
     const fixed = capacityView(d, withFix(sim, view.fix!));
     expect(fixed.nodes.worker.utilization).toBeLessThanOrEqual(0.6);
     expect(fixed.nodes.topic.utilization).toBeLessThanOrEqual(0.6);
+  });
+});
+
+describe("entryCandidates", () => {
+  const node = (id: string) => ({ id, stencil: "service.go", label: id, x: 0, y: 0 });
+  const d = (nodes: string[], edges: [string, string][]): DiagramFile => ({
+    format: DIAGRAM_FORMAT,
+    title: "t",
+    nodes: nodes.map(node),
+    edges: edges.map(([from, to], i) => ({ id: `e${i}`, from, to })),
+  });
+
+  it("offers the nodes nothing points at that feed something, in diagram order", () => {
+    const ids = entryCandidates(
+      d(
+        ["log", "api", "topic", "svc"],
+        [
+          ["api", "topic"],
+          ["topic", "svc"],
+        ],
+      ),
+    ).map((n) => n.id);
+    expect(ids).toEqual(["api"]);
+  });
+
+  it("falls back to any unfed node, and offers at most three", () => {
+    expect(entryCandidates(d(["a", "b", "c", "d"], [])).map((n) => n.id)).toEqual(["a", "b", "c"]);
   });
 });

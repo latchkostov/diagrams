@@ -1,5 +1,170 @@
 # Design review
 
+## Round 3: UX gate after Inputs & capacity, the command palette and Your diagrams
+
+Reviewed 2026-10-11 against `docs/UX-PRINCIPLES.md` on a production build (`pnpm build && pnpm preview`,
+so private examples never load), in Chrome at 1920×1080, 1440×900 and 1024×768, dark and light. Four
+personas walked the real app:
+
+1. **First-time visitor:** the start card, the library and the examples.
+2. **Engineer:** builds `Kafka Topic → Go / Java / Node.js` from a blank canvas with Ctrl+K only (add a
+   stencil, `@` to select a node, add the next one connected downstream), then saves, renames and finds
+   the diagram again in Your diagrams.
+3. **Capacity planner:** "I have 5k msg/s into orders and 3 services. Where's my bottleneck?"
+4. **Presenter:** share link → present → live → scrub back → narration.
+
+Menus were counted with a script that opens each context menu and reads its rows. Overlap was measured
+with `getBoundingClientRect` on the bar, the panels, the event log and the narration card.
+
+Screenshots: `docs/screenshots/ux-gate3-before-*.png` and `ux-gate3-after-*.png`.
+
+### Scorecard
+
+Scores are out of 5. "Before" is the app at the start of this round. Round 2 ended at 4–4.5
+everywhere; the new features pulled several of those back.
+
+| Principle                       | Before | After | Why                                                                                                                                                                                                                                                            |
+| ------------------------------- | :----: | :---: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Beautiful by default         |   4    |  4.5  | One look at Inputs turned the heat map on for good, so every diagram (edit mode too) wore rings, chips and a callout. Now the panel shows it for that session only; only an explicit toggle is remembered.                                                     |
+| 2. Progressive disclosure       |  3.5   |  4.5  | The stencil rail opened all 155 stencils. A first visit now opens Messaging only, so the rail reads as eight categories with counts. Search ignores folding.                                                                                                   |
+| 3. Context over chrome          |   4    |  4.5  | "Where does traffic enter?" offers **Traffic into X** inside the panel, instead of sending the planner off to find a source stencil.                                                                                                                           |
+| 4. One primary action / surface |   4    |   4   | Unchanged. Save is the panel's primary action; Apply fix stays the callout's one action.                                                                                                                                                                       |
+| 5. Budget the chrome            |  3.5   |  4.5  | The canvas menu had reached its 12-item cap. The File menu showed two identical save rows. The Inputs panel repeated the heat-map toggle. All three are back under budget (table below).                                                                       |
+| 6. No dead ends                 |   3    |  4.5  | Two dead ends: the panel said "No sources or traffic yet." with no way on, and "Edited, reset" on your own diagram reset it to blank. Both are fixed.                                                                                                          |
+| 7. Consistent names             |  3.5   |  4.5  | The palette said "Toggle live" where the toggle says Go live / Back to editing. "Save as…" sat next to an identical "Save to device…". The principles now define the Inputs and capacity words.                                                                |
+| 8. App, not page                |  4.5   |  4.5  | Unchanged. Library, palette and dialogs are keyboard-complete; Esc backs out one level.                                                                                                                                                                        |
+| 9. Teach in place               |   4    |  4.5  | Ctrl+K was taught only in the shortcuts sheet. The stencil rail's footer now names it. The palette teaches `>` `@` `+` once, with its footer chips, not twice.                                                                                                 |
+| 10. Nothing overlaps            |  2.5   |  4.5  | At 1440 and below the event log sat on play / pause. At 1024 the live bar ran under the Inputs panel, hiding ⋯ and squeezing the simulation name to 1px. Narration focus went under the panel. Opening the stencil rail pushed nodes under the inspector rail. |
+| 11. Presentation first-class    |  3.5   |  4.5  | The leaked heat map put "Healthy: every service has headroom" over an outage story. The scrubber got 120px of an 820px bar at 1920; it now gets 194px.                                                                                                         |
+
+### Chrome count
+
+| Surface                            | Before                                                             | After                                                        | Budget |
+| ---------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------ | ------ |
+| Top bar                            | 7                                                                  | 7                                                            | ~7     |
+| Live bar                           | 10, overflows at 1024 with a panel open                            | The same 10, shedding readouts by width (never overflows)    | 1 row  |
+| Live side panels open at once      | 1 (Inputs or simulations) + event log + narration; inspector folds | Same; the log sits above the bar, narration refits beside it |        |
+| Canvas right-click, edit / live    | 12 / 9                                                             | 11 / 8 (Show capacity moved under Show ▸)                    | ≤ 12   |
+| File menu (no file bound)          | 10, with "Save as…" duplicating "Save to device…"                  | 9 ("Save as…" appears once there's a file to save to)        | ≤ 12   |
+| Inputs & capacity panel            | Heat-map switch + presets + rows                                   | Switch removed (−1)                                          |        |
+| Ways to toggle the heat map        | 4: View menu, right-click, C, panel switch                         | 3: View menu, Show ▸ Capacity, C                             |        |
+| Ways to open Inputs & capacity     | 2: live bar Inputs, callout "Inputs…"                              | 2 (unchanged)                                                |        |
+| Stencil rail rows on a first visit | 155 + 8 headers                                                    | 25 + 8 headers                                               |        |
+| Palette prefix hints               | Placeholder and footer                                             | Footer chips only                                            |        |
+
+Net: four fewer always-visible or menu-level controls. One contextual control was added (Traffic into
+X). It appears only when a diagram has no entry point, and it replaces a dead-end sentence.
+
+### Findings
+
+**P0 (all fixed)**
+
+1. **The event log covered play / pause** at 1440 and below: both sat at `bottom: 18px` on the left.
+   The log now sits above the bar. Covered by `live.spec.ts` (live overlap, 1024 and 1440).
+2. **The live bar ran under the Inputs panel at 1024.** The ⋯ menu was hidden and the simulation picker
+   shrank to 1px. The bar is now a size container that sheds readouts in this order:
+   - "In flight" goes first while a simulation runs (the scrubber shows progress).
+   - Then the clock and the Inputs label.
+   - Then the expectation dots (the Done badge still reports them).
+
+   The picker keeps 112px. Covered by the same e2e test.
+
+3. **The capacity planner hit a dead end.** When traffic enters at a processor or a topic (for example
+   `Order API → orders → 3 services`), the diagram has no source. The panel then said "No sources or
+   traffic yet." and the callout said "Set a rate on an entry point", but there wasn't one to set.
+
+   Now the panel asks **Where does traffic enter?** and lists up to three root nodes as **Traffic into
+   X**. One click adds an "Incoming traffic" source in front of X, connected to it, as one undoable edit.
+   It brings the node into view and puts the cursor in its msg/s field. The planner types `5k` and sees
+   the bottleneck with Apply fix: three actions, well under a minute. Covered by `capacity.spec.ts`.
+
+4. **Opening Inputs once turned the heat map on everywhere, for good:** in edit mode, on every diagram
+   and in presentation. Now opening the panel shows the heat map for that live session only
+   (`capacityOverlay.showForSession`). Leaving live view or reloading restores the remembered choice.
+   Only View › Show capacity, Show ▸ Capacity and C change that choice. Covered by `capacity.spec.ts`.
+
+**P1 (fixed)**
+
+5. **"Edited, reset" on your own diagrams** threw away all your work, because a blank diagram's original
+   is empty. It now shows only on examples and shared diagrams; undo covers your own.
+6. **Narration focus went under the Inputs panel** when the panel opened during a note. The camera now
+   refits to the note's focus beside the panel.
+7. **Opening or closing the stencil rail pushed nodes under the inspector rail.** Toggling either side
+   panel now refits the diagram, if the whole of it was in view (a fit, not a view you panned or zoomed).
+8. **File menu: "Save as…" duplicated "Save to device…"** until a file was bound: both opened the same
+   picker. "Save as…" now appears once there's a file. Ctrl+Shift+S always works.
+9. **The canvas menu sat at its 12-item cap** after "Show capacity" was added. It now lives under
+   **Show ▸ Capacity (C)**, with Grid, Snap, Minimap and Inspector. The palette finds it as "Show ›
+   Capacity" or by searching "heat map".
+10. **The Inputs panel repeated the heat-map switch.** The panel shows the heat map while it's open, so
+    the switch is gone.
+11. **The scrubber was starved in presentation:** 120px at 1920. With "in flight" shed while a
+    simulation runs, it's 194px.
+12. **Palette words:** "Toggle live" is now **Go live** / **Back to editing**, the toggle's own words.
+    The placeholder no longer repeats the footer's `>` `@` `+` chips.
+13. **Ctrl+K wasn't taught in place.** The stencil rail's footer now reads "Drag onto the canvas or click
+    to add. Ctrl+K finds anything; ? lists shortcuts." It replaces the double-click tip, which is still
+    in the shortcuts sheet.
+14. **The catalogue nearly doubled, from 81 to 155 stencils.** A first visit opens only the first
+    category (Messaging). The gallery's family track, category sidebar and section headers absorbed the
+    growth unchanged. The details drawer now credits Simple Icons, Devicon and theSVG for the 15 new
+    icons that showed "gilbarbara/logos".
+
+**Verified, no change needed**
+
+- **Start card:** still calm, with one job. Your diagrams come first (the three most recent, then
+  "All"), then examples with real thumbnails, then Start blank / Open / Paste.
+- **Your diagrams:** Rename, Duplicate and Delete have the same names everywhere, and the picker follows
+  a rename at once. A blank diagram joins the library on its first edit.
+- **Scrub-back:** dragging the scrubber back replays deterministically to the same note.
+- **Panels:** Inputs and the simulation editor are mutually exclusive, and the inspector folds while
+  live. The capacity panel starts below the Live toggle.
+
+**P1 and P2 moved to the backlog**
+
+- P1 The bottleneck callout is a static plan. While the timeline has Payments down, it still says
+  "Healthy: every service has headroom". It should account for nodes that are down or paused in the run.
+- P2 Timeline markers (notes, chaos) aren't clickable. Presenters could jump to one with a click.
+- P2 On a blank diagram "Untitled diagram" shows three times: picker, title card and inspector. The title
+  card could wait for the first node.
+- P2 The diagram card's "15 nodes, 15 edges" repeats the inspector's counts.
+- P2 Your diagrams always shows the storage meter. It could wait until storage is half full.
+- P2 At 1024 the gallery's family track scrolls behind a fade. Below 1100px, fold the last families into
+  the Vendor menu.
+- P2 The narration card can still cover dimmed, unfocused nodes. It should prefer free space (from round 2).
+
+### What changed, in numbers
+
+- **Removed or merged:**
+  - the Inputs panel's heat-map switch
+  - "Show capacity" from the top level of the canvas menu (merged into Show ▸)
+  - "Save as…" before a file is bound
+  - the prefix hints in the palette placeholder
+  - "Edited, reset" on your own diagrams
+  - the persisted heat map after opening Inputs
+- **Renamed:** Toggle live → Go live / Back to editing. Show capacity on the diagram → Show ▸ Capacity.
+- **Moved:** the event log, above the bar.
+- **Added:**
+  - "Where does traffic enter?" with Traffic into X (only when there's no entry point)
+  - a refit when a side panel toggles over a fitted view
+  - a refit to a note's focus when a panel opens
+  - responsive shedding in the live bar
+  - credits for three more icon sets
+
+### Round 2 follow-up
+
+| Round 2 item                                            | Status                                                                |
+| ------------------------------------------------------- | --------------------------------------------------------------------- |
+| P1 Keep the selection in view when the inspector opens  | Resolved before this round (`useKeepSelectionInView`); no regression. |
+| P1 "Your diagram" is one slot                           | Resolved: the Your diagrams library; every Open or Import adds one.   |
+| P1 Picker label doesn't follow title edits              | Resolved; verified with Rename in Your diagrams.                      |
+| P1 Live bar picker says "Free play" while editing a sim | Resolved (editing a simulation runs it).                              |
+| P2 React Flow attribution under the live bar            | Resolved (lifted while live).                                         |
+| P2 Narration card covers neighbouring nodes             | Improved (placement avoids the panel); still in the backlog.          |
+| P2 "Story & chaos"                                      | Resolved: Timeline.                                                   |
+| P2 Start-card thumbnails                                | Resolved: rendered thumbnails.                                        |
+| P2 "Continuous traffic" icon differs                    | Not regressed; left as is.                                            |
+
 ## Round 2: UX gate after the live, interop and routing batch
 
 Reviewed 2026-10-11 against `docs/UX-PRINCIPLES.md`, in Chrome at 1920×1080, 1440×900 and 1024×768,

@@ -88,6 +88,7 @@ export function ControlBar({ state }: { state: LiveState }) {
         className={`lv-btn lv-inputs${ui.capacityOpen ? " is-on" : ""}`}
         onClick={() => ui.openCapacity(!ui.capacityOpen)}
         aria-pressed={ui.capacityOpen}
+        aria-label="Inputs"
         title="Inputs & capacity: traffic, replicas, partitions and bottlenecks"
         data-testid="live-capacity"
       >
