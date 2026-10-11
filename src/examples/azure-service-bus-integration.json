@@ -1,0 +1,290 @@
+{
+  "format": "diagrams/v1",
+  "title": "Azure invoice integration",
+  "description": "Partner invoices fan out through filtered Service Bus subscriptions; commands use retries and dead lettering.",
+  "direction": "LR",
+  "groups": [
+    {
+      "id": "azure",
+      "label": "Azure · enterprise integration",
+      "tone": "azure",
+      "x": 360,
+      "y": 0,
+      "width": 2100,
+      "height": 632
+    }
+  ],
+  "nodes": [
+    {
+      "id": "partner",
+      "stencil": "client.partner",
+      "label": "Contoso ERP",
+      "sublabel": "Invoice integration · OAuth2",
+      "x": 40,
+      "y": 280,
+      "props": {
+        "ratePerSec": 8
+      }
+    },
+    {
+      "id": "apim",
+      "stencil": "azure.api-management",
+      "label": "Partner API",
+      "sublabel": "/v1/invoices · JWT validation",
+      "x": 400,
+      "y": 280,
+      "group": "azure",
+      "props": {}
+    },
+    {
+      "id": "ingest",
+      "stencil": "azure.functions",
+      "label": "Invoice intake",
+      "sublabel": "Validate · normalize · publish",
+      "x": 760,
+      "y": 280,
+      "group": "azure",
+      "props": {}
+    },
+    {
+      "id": "invoices",
+      "stencil": "azure.service-bus.topic",
+      "label": "invoices",
+      "sublabel": "InvoiceAccepted · session: tenantId",
+      "x": 1120,
+      "y": 280,
+      "group": "azure",
+      "props": {
+        "sessionEnabled": true
+      }
+    },
+    {
+      "id": "approval-sub",
+      "stencil": "generic.queue",
+      "label": "approval-workflow",
+      "sublabel": "Subscription · amount > 10000",
+      "x": 1480,
+      "y": 160,
+      "group": "azure",
+      "props": {
+        "filter": "amount > 10000",
+        "maxDeliveryCount": 10
+      }
+    },
+    {
+      "id": "posting-sub",
+      "stencil": "generic.queue",
+      "label": "ledger-posting",
+      "sublabel": "Subscription · all accepted invoices",
+      "x": 1480,
+      "y": 400,
+      "group": "azure",
+      "props": {
+        "maxDeliveryCount": 10
+      }
+    },
+    {
+      "id": "workflow",
+      "stencil": "azure.logic-apps",
+      "label": "Invoice approval",
+      "sublabel": "Finance approval workflow",
+      "x": 1840,
+      "y": 160,
+      "group": "azure",
+      "props": {}
+    },
+    {
+      "id": "worker",
+      "stencil": "azure.container-apps",
+      "label": "Ledger worker",
+      "sublabel": "KEDA · group: ledger-posting",
+      "x": 1840,
+      "y": 400,
+      "group": "azure",
+      "props": {
+        "group": "ledger-posting",
+        "concurrency": 8
+      }
+    },
+    {
+      "id": "commands",
+      "stencil": "azure.service-bus.queue",
+      "label": "invoice.commands",
+      "sublabel": "PostInvoice · session: tenantId",
+      "x": 2200,
+      "y": 160,
+      "group": "azure",
+      "props": {
+        "maxDeliveryCount": 5,
+        "lockDurationSec": 60,
+        "sessionEnabled": true
+      }
+    },
+    {
+      "id": "dlq",
+      "stencil": "azure.service-bus.queue",
+      "label": "invoice.commands DLQ",
+      "sublabel": "$DeadLetterQueue · operator replay",
+      "x": 2200,
+      "y": 40,
+      "group": "azure",
+      "props": {
+        "isDeadLetter": true
+      }
+    },
+    {
+      "id": "cosmos",
+      "stencil": "azure.cosmos-db",
+      "label": "Invoice ledger",
+      "sublabel": "Partition key: /tenantId",
+      "x": 2200,
+      "y": 400,
+      "group": "azure",
+      "props": {}
+    },
+    {
+      "id": "blob",
+      "stencil": "azure.blob-storage",
+      "label": "Invoice originals",
+      "sublabel": "invoices-raw · immutable archive",
+      "x": 1120,
+      "y": 520,
+      "group": "azure",
+      "props": {}
+    },
+    {
+      "id": "vault",
+      "stencil": "azure.key-vault",
+      "label": "Integration secrets",
+      "sublabel": "ERP credentials · managed identity",
+      "x": 760,
+      "y": 40,
+      "group": "azure",
+      "props": {}
+    },
+    {
+      "id": "insights",
+      "stencil": "azure.app-insights",
+      "label": "Integration telemetry",
+      "sublabel": "Trace by invoiceId · DLQ alerts",
+      "x": 760,
+      "y": 520,
+      "group": "azure",
+      "props": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "partner-to-apim",
+      "from": "partner",
+      "to": "apim",
+      "label": "HTTPS",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "apim-to-ingest",
+      "from": "apim",
+      "to": "ingest",
+      "label": "POST /v1/invoices",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "ingest-to-invoices",
+      "from": "ingest",
+      "to": "invoices",
+      "label": "InvoiceAccepted",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "invoices-to-approval-sub",
+      "from": "invoices",
+      "to": "approval-sub",
+      "label": "amount > 10000",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "invoices-to-posting-sub",
+      "from": "invoices",
+      "to": "posting-sub",
+      "label": "All invoices",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "approval-sub-to-workflow",
+      "from": "approval-sub",
+      "to": "workflow",
+      "label": "Peek-lock delivery",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "posting-sub-to-worker",
+      "from": "posting-sub",
+      "to": "worker",
+      "label": "Peek-lock delivery",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "workflow-to-commands",
+      "from": "workflow",
+      "to": "commands",
+      "label": "PostInvoice",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "commands-to-worker",
+      "from": "commands",
+      "to": "worker",
+      "label": "Execute command",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "commands-to-dlq",
+      "from": "commands",
+      "to": "dlq",
+      "label": "After 5 failed deliveries",
+      "kind": "async",
+      "props": {}
+    },
+    {
+      "id": "worker-to-cosmos",
+      "from": "worker",
+      "to": "cosmos",
+      "label": "Upsert ledger",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "ingest-to-blob",
+      "from": "ingest",
+      "to": "blob",
+      "label": "Archive original PDF",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "ingest-to-vault",
+      "from": "ingest",
+      "to": "vault",
+      "label": "Get secret",
+      "kind": "sync",
+      "props": {}
+    },
+    {
+      "id": "ingest-to-insights",
+      "from": "ingest",
+      "to": "insights",
+      "label": "Traces / exceptions",
+      "kind": "async",
+      "props": {}
+    }
+  ]
+}

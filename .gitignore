@@ -1,0 +1,5 @@
+node_modules
+dist
+.vite
+# Work diagrams: internal architecture, never commit or ship
+src/examples/private/
