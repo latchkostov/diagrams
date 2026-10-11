@@ -202,7 +202,7 @@ export function StencilDrawer({
         {confirmReplace !== null ? (
           <div className="drawer-confirm" role="alert" data-testid="drawer-confirm">
             <span>
-              A new diagram replaces your imported one, “{confirmReplace}”. Export it first if you want to keep it.
+              A new diagram replaces your diagram, “{confirmReplace}”. Export it first if you want to keep it.
             </span>
             <div>
               <button className="btn" onClick={() => setConfirmReplace(null)} data-testid="drawer-confirm-cancel">

@@ -169,7 +169,8 @@ test.describe("canvas", () => {
   test("view switcher moves between gallery and canvas", async ({ page }) => {
     await gotoCanvas(page, publicExamples[0].slug);
     await page.getByTestId("view-gallery").click();
-    await expect(page.getByTestId("gallery-view")).toBeVisible();
+    // The stencil library is a lazy chunk; a cold dev server under full parallel load can take a while.
+    await expect(page.getByTestId("gallery-view")).toBeVisible({ timeout: 15_000 });
     await expect(page).toHaveURL(/view=gallery/);
     await page.getByTestId("view-canvas").click();
     await expect(page.getByTestId("canvas-view")).toBeVisible();

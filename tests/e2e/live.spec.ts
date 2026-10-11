@@ -11,8 +11,6 @@ const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item
 async function openNodeMenu(page: Page, nodeId: string) {
   await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
   await expect(page.getByTestId("context-menu")).toBeVisible();
-  const simulation = menuItem(page, "sim.node");
-  if (await simulation.count()) await simulation.click();
 }
 
 const processed = async (page: Page, nodeId: string) =>
@@ -41,7 +39,12 @@ test.describe("live view", () => {
     await expect(page).not.toHaveURL(/live=1/);
     await page.keyboard.press("l");
     await expect(page.getByTestId("live-controls")).toBeVisible();
-    await page.getByTestId("live-exit").click();
+    // Esc backs out of live view when nothing else (menu, selection, dialog) claims it.
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
 
     // Let the exit refit finish: viewport movement closes any open context menu.
@@ -97,7 +100,7 @@ test.describe("live view", () => {
     for (const id of ["stock", "payments", "notifications", "orders", "no-dlq", "no-drop"]) {
       await expect(page.getByTestId(`expectation-${id}`)).toHaveAttribute("data-status", "pass");
     }
-    await expect(page.getByTestId("expectation-stock")).toHaveAttribute("data-value", "500");
+    await expect(page.getByTestId("expectation-stock")).toHaveAttribute("data-value", "20000");
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "done");
     expectNoErrors(consoleErrors);
   });
@@ -172,7 +175,7 @@ test.describe("live view", () => {
     await expect(page.getByTestId("present-exit")).toBeVisible();
     await expect(page.getByTestId("topbar")).toHaveCount(0);
     await expect(page.getByTestId("live-controls")).toBeVisible();
-    await expect(page.getByTestId("live-note")).toContainText("500 checkouts");
+    await expect(page.getByTestId("live-note")).toContainText("20,000 checkouts");
     await expect(page.getByTestId("live-edit-sims")).toHaveCount(0);
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
 
@@ -276,13 +279,16 @@ test.describe("live view", () => {
     await openNodeMenu(page, "inventory");
     await menuItem(page, "sim.storm").click();
     await expect(page.getByTestId("sim-panel")).toBeVisible();
-    await page.getByTestId("live-exit").click();
+    // The authoring panel starts below the Live toggle, so leaving live view stays one click away.
+    await page.getByTestId("live-toggle").click();
     await expect
       .poll(() =>
         page.evaluate(() => JSON.parse(localStorage.getItem("diagrams.editor.v1") ?? "{}").inspector as boolean),
       )
       .toBe(true);
     await page.reload();
+    // Below 1680px the inspector waits for a selection; the preference itself survived.
+    await page.getByTestId("node-inventory").click();
     await expect(page.getByTestId("inspector-title")).toBeVisible();
     await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openNodeMenu(page, "inventory");
@@ -391,11 +397,14 @@ test.describe("live view", () => {
     await expect(page.getByTestId("sim-panel-traffic-0-spread")).toHaveValue("2.5");
   });
 
-  test("live node menus group simulation actions and stay within the chrome budget", async ({ page }) => {
+  test("live node menus lead with live actions and stay within the chrome budget", async ({ page }) => {
     await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await expect(page.getByTestId("live-controls")).toBeVisible();
     await page.getByTestId("node-inventory").click({ button: "right" });
-    await expect(menuItem(page, "sim.node")).toBeVisible();
+    await expect(menuItem(page, "sim.inject")).toBeVisible();
+    // Editing that doesn't fit a running simulation waits for edit mode.
+    await expect(menuItem(page, "item.duplicate")).toHaveCount(0);
+    await expect(menuItem(page, "node.properties")).toBeVisible();
     const countLevel = async () => {
       const counts = await page
         .getByTestId(/^context-menu(?:-sub)*$/)
@@ -408,8 +417,6 @@ test.describe("live view", () => {
         expect(count).toBeLessThanOrEqual(12);
       }
     };
-    await countLevel();
-    await menuItem(page, "sim.node").click();
     await countLevel();
     await menuItem(page, "sim.behaviour").click();
     await countLevel();
@@ -491,7 +498,7 @@ test.describe("live view", () => {
     await expect
       .poll(async () => Number(await page.getByTestId("node-badge-worker").getAttribute("data-failed")))
       .toBeGreaterThan(0);
-    await expect(page.getByTestId("live-exit")).toHaveCount(0);
+    await expect(page.getByTestId("live-toggle")).toHaveCount(0);
 
     await gotoLab(page, "live-particles-stress", { particles: 500 });
     await expect

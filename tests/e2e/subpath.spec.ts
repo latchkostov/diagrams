@@ -48,7 +48,8 @@ test.describe("production build under a sub-path", () => {
     const options = await page
       .getByTestId("example-picker")
       .evaluate((el) => [...(el as HTMLSelectElement).options].map((o) => o.value));
-    expect(options.sort()).toEqual(publicExamples.map((e) => e.slug).sort());
+    // "imported" is your own diagram's slot (blank until you start one); the rest are the public examples.
+    expect(options.filter((o) => o !== "imported").sort()).toEqual(publicExamples.map((e) => e.slug).sort());
     expectNoErrors(consoleErrors);
   });
 

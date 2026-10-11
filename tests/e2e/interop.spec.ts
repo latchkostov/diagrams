@@ -25,6 +25,11 @@ async function openFile(page: Page) {
   await expect(page.getByTestId("file-menu")).toBeVisible();
 }
 
+async function fileItem(page: Page, item: string) {
+  await openFile(page);
+  await page.getByTestId(item).click();
+}
+
 async function moreFormats(page: Page, item: string) {
   await openFile(page);
   await page.getByTestId("file-more-formats").click();
@@ -139,11 +144,12 @@ test.describe("interop", () => {
     await expect(menu).toHaveCount(0);
     await expect(page.getByTestId("file-button")).toBeFocused();
 
-    // The canvas context menu offers the same, also without Drive.
+    // The canvas context menu keeps only Export (same names as the File menu); opening and saving stay in File.
     await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: 700, y: 60 } });
-    await page.getByTestId("context-menu-item-canvas.import").hover();
-    await expect(page.getByTestId("context-menu-item-import:paste")).toBeVisible();
-    await expect(page.getByTestId("context-menu-item-import:drive")).toHaveCount(0);
+    await expect(page.getByTestId("context-menu-item-canvas.import")).toHaveCount(0);
+    await expect(page.getByTestId("context-menu-item-canvas.save")).toHaveCount(0);
+    await page.getByTestId("context-menu-item-canvas.export").hover();
+    await expect(page.getByTestId("context-menu-item-export:png")).toContainText("Export PNG");
     expectNoErrors(consoleErrors);
   });
 
@@ -285,7 +291,7 @@ test.describe("interop", () => {
 
   test("embed dialog previews the viewer and copies an iframe", async ({ page }) => {
     await gotoCanvas(page, publicExamples[0].slug);
-    await moreFormats(page, "export-embed");
+    await fileItem(page, "export-embed");
     await expect(page.getByTestId("embed-dialog")).toBeVisible();
     await expect(page.getByTestId("embed-snippet")).toHaveValue(/^<iframe src=".*embed=1/);
     await expect(page.getByTestId("embed-preview")).toBeAttached();
@@ -402,6 +408,7 @@ test.describe("interop review regressions", () => {
     await gotoCanvas(page, publicExamples[0].slug);
     await importNative(page);
     await saveFile(page);
+    await page.getByTestId("inspector-toggle").click();
     await page.getByTestId("inspector-field-title").fill("Latest edits");
     await page.keyboard.press("Control+s");
     await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
@@ -419,7 +426,7 @@ test.describe("interop review regressions", () => {
     await page.evaluate(() => {
       window.__fs.cancel = true;
     });
-    await moreFormats(page, "export-save-as");
+    await fileItem(page, "export-save-as");
     await expect.poll(() => page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
     await page.keyboard.press("Control+s");
     await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);
@@ -504,6 +511,7 @@ test.describe("interop review regressions", () => {
 
   test("unrelated slot changes preserve the canvas, undo history and pending edits", async ({ page }) => {
     await gotoCanvas(page, publicExamples[0].slug);
+    await page.getByTestId("inspector-toggle").click();
     await page.getByTestId("inspector-field-title").fill("Unsaved edit");
     await page.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "kept"));
     await page.evaluate((diagram) => {
@@ -527,8 +535,8 @@ test.describe("interop review regressions", () => {
     await page.getByTestId("view-canvas").click();
     await expect(page.getByTestId("canvas-view")).toBeVisible();
     await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: 700, y: 60 } });
-    await page.getByTestId("context-menu-item-canvas.import").hover();
-    await expect(page.getByTestId("context-menu-item-import:paste")).toBeVisible();
+    await page.getByTestId("context-menu-item-canvas.export").hover();
+    await expect(page.getByTestId("context-menu-item-export:json")).toBeVisible();
   });
 
   test("menu selections restore trigger focus and dialog invokers", async ({ page }) => {

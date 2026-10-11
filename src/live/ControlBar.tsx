@@ -10,7 +10,8 @@ import type { ExpectationState } from "../sim/types";
 /**
  * The floating bar while live: one row with the essentials (play / pause, restart, speed, the
  * simulation and its timeline + expectation dots). Traffic, step, the event log and authoring sit
- * behind "⋯" and in the right-click menu.
+ * behind "⋯" and in the right-click menu. Leaving live view is the Live toggle (or L, or Esc):
+ * one way out, not two buttons.
  */
 export function ControlBar({ state }: { state: LiveState }) {
   const ui = useLive();
@@ -40,7 +41,7 @@ export function ControlBar({ state }: { state: LiveState }) {
       <button
         className="lv-btn"
         onClick={() => c.restart()}
-        title="Restart from zero (same seed)"
+        title="Restart (same seed)"
         aria-label="Restart"
         data-testid="live-restart"
       >
@@ -129,18 +130,6 @@ export function ControlBar({ state }: { state: LiveState }) {
       </span>
 
       <MoreMenu state={state} />
-      {ui.exit && (
-        <button
-          className="lv-btn"
-          onClick={ui.exit}
-          title="Leave live view (L)"
-          aria-label="Leave live view"
-          data-testid="live-exit"
-        >
-          <LiveIcon name="close" size={14} />
-        </button>
-      )}
-
       {ui.notice && (
         <div className="lv-notice" role="status" data-testid="live-notice">
           {ui.notice}

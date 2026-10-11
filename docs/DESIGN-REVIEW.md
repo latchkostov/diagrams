@@ -1,4 +1,170 @@
-# Design review (Phase 3)
+# Design review
+
+## Round 2: UX gate after the live, interop and routing batch
+
+Reviewed 2026-10-11 against `docs/UX-PRINCIPLES.md`, in Chrome at 1920×1080, 1440×900 and 1024×768,
+dark and light, on a production build (so private examples never appear). The app was walked as three
+personas:
+
+1. **First-time visitor** from latchkostov.com: understand it and make a diagram in about a minute.
+2. **Engineer**: add nodes, connect them, set a consumer group and a DLQ, add a boundary, run a storm,
+   save and share.
+3. **Presenter**: open a share link straight into presentation and live with a saved simulation, step
+   through the narration, recover when something goes wrong.
+
+Menus were counted with a script that opens every context menu and reads its rows. Cursors were
+re-audited with the round 1 script (no regressions).
+
+Screenshots: `docs/screenshots/ux-gate-before-*.png` and `ux-gate-after-*.png`.
+
+### Scorecard
+
+Scores are out of 5.
+
+| Principle                       | Before | After | Why                                                                                                                                                    |
+| ------------------------------- | :----: | :---: | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1. Beautiful by default         |   4    |  4.5  | Below 1680px the inspector waits for a selection, so examples fit about 1.4× larger at 1440. A blank canvas is calm: no empty minimap, no Live toggle. |
+| 2. Progressive disclosure       |  2.5   |   4   | The inspector showed 10 node fields and 9 edge fields at once. Simulation tuning, routing and raw properties now sit behind collapsed sections.        |
+| 3. Context over chrome          |   3    |   4   | Live menus lead with live actions. The canvas menu no longer repeats the File menu.                                                                    |
+| 4. One primary action / surface |  3.5   |   4   | The start card has one job (pick a way in). The live bar lost its second exit button.                                                                  |
+| 5. Budget the chrome            |  2.5   |   4   | Canvas menu 14 → 11 items (live 17 → 9), node menu 13 → 10 (live 12 + a submenu → 6). Every menu level is now within 12.                               |
+| 6. No dead ends                 |   2    |   4   | There was no way to start a blank diagram, and the first screen was the stencil catalogue. Now: a start card, File > New diagram, and Undo on replace. |
+| 7. Consistent names             |  2.5   |   4   | One word per idea (below). Right-click and File menu items share names.                                                                                |
+| 8. App, not page                |  3.5   |  4.5  | Native `title` tooltips on nodes are replaced by an app tooltip. Esc now backs out of live view.                                                       |
+| 9. Teach in place               |   3    |   4   | A one-time hint (right-click, L), live keys in the shortcuts sheet, and a Live toggle tooltip that names the saved simulations.                        |
+| 10. Nothing overlaps            |   3    |   4   | The simulation panel covered the Live toggle; it now starts below it. Two side panels no longer squeeze the canvas at 1440. Two P2s remain (below).    |
+| 11. Presentation first-class    |   4    |   4   | Unchanged and good: a share link opens straight into presentation and live, notes wait for Space, Esc steps out one level at a time.                   |
+
+### Chrome count
+
+| Surface                              | Before                                  | After                             | Budget |
+| ------------------------------------ | --------------------------------------- | --------------------------------- | ------ |
+| Top bar (canvas)                     | 7                                       | 7                                 | ~7     |
+| Live bar                             | 6 controls, one row                     | 5, one row                        | 1 row  |
+| Canvas right-click (edit / live)     | 14 / 17                                 | 11 / 9                            | ≤ 12   |
+| Node right-click (edit / live)       | 13 / 12 + "Simulation" submenu          | 10 / 6, live actions at top level | ≤ 12   |
+| Edge right-click (edit / live)       | 9 / 10                                  | 9 / 3                             | ≤ 12   |
+| File menu (top level / formats)      | 7 / 8 (with Save as and Embed misfiled) | 9 / 5                             | ≤ 12   |
+| Inspector, node, fields shown        | 10 + raw properties                     | 5 + 2 collapsed sections          |        |
+| Inspector, edge, fields shown        | 9 + raw properties                      | 4 + "Advanced"                    |        |
+| Inspector open with nothing selected | always at ≥ 1440                        | only at ≥ 1680 (or by hand)       |        |
+| Ways to leave live view              | Live toggle, L, × in the bar            | Live toggle, L, Esc               |        |
+| Ways to export                       | 2, with different names                 | 2, same names                     |        |
+
+### Findings
+
+**P0 (all fixed)**
+
+1. **The first screen was the stencil catalogue** ("Gallery"), not a diagram. A visitor saw 81 cards
+   and no obvious start. Now the bare URL opens the canvas. The tabs read **Diagram | Stencils**,
+   diagram first.
+2. **No way to start a blank diagram** (persona 2 dead end). Added **File > New diagram** (with an
+   Undo toast when it replaces work) and a **start card** on any empty diagram: the five public
+   examples (each with three of its stencils as a preview), **Start blank** (opens the stencil panel
+   with the cursor in its search), **Open a file…** and **Paste text…** (draw.io, Mermaid or JSON).
+   The picker always lists **Your diagram** first, then **Examples**.
+3. **The canvas right-click repeated the File menu** under different names ("Save…", "Import ▸",
+   "PNG image", "Image… PNG / SVG"), pushing it to 14 items. Save and Import are gone from the
+   right-click (File menu, Ctrl+S, Ctrl+O). **Export ▸** stays, with File-menu names.
+4. **Live menus buried live actions** one level down under "Simulation" and kept 12 editing items.
+   Live menus now lead with the live actions (Inject, Start a storm here…, Behaviour, Kill) under a
+   "Live" header, followed by Rename and Properties only. The rest returns in edit mode (L).
+5. **Esc didn't leave live view.** Esc now backs out one level at a time: menu, dialog, selection,
+   trace, presentation, then live view.
+6. **Two side panels squeezed the canvas at 1440** (about 50% of the width; labels unreadable).
+   Below 1680px the inspector opens on selection, and **Diagram properties** is on the canvas
+   right-click.
+
+**P1 (fixed)**
+
+7. **Inspector density.** Node: Stencil, Label, Subtitle, Boundary and the id as a **copy chip**.
+   **Simulation** and **Custom properties** are collapsed sections that remember being opened. Edge:
+   Label, Kind, Consumer group and Dead-letter path. Sides, travel time, filter, rename and raw
+   properties are under **Advanced**. Fields are 28px (was 32), and sections have 12px padding.
+   "1 boundaries" is now pluralised everywhere (inspector, diagram card).
+8. **Sentence case everywhere.** Context-menu headers, Lab headings, the narration card, simulation
+   editor sections, the lag breakdown and the Paused pill no longer use tracked capitals.
+9. **Native `title` tooltips on nodes** are replaced by a designed tooltip (full label, subtitle, what
+   the stencil is) after a 550ms hover. It's off while live (badges have their own detail).
+10. **The empty-canvas hint ignored the palette.** It now says "open the stencil panel on the left"
+    when the panel is collapsed. It's only shown after Start blank, since the start card covers
+    the rest.
+11. **The simulation panel covered the Live toggle**, the way out of live view. It now starts below it.
+12. **The live bar had two exits** (× and the Live toggle). The × is gone.
+13. **Live toggle discoverability.** The tooltip names the saved simulations ("replay 2 saved
+    simulations"). The one-time hint says the same and retires on dismiss, on the first right-click
+    or on going live.
+14. **Terminology** (one word per idea):
+
+    | Was                                          | Now                       |
+    | -------------------------------------------- | ------------------------- |
+    | Gallery / Canvas tabs                        | Stencils / Diagram        |
+    | Group into boundary, Group (inspector)       | Add boundary              |
+    | Ungroup                                      | Remove boundary           |
+    | Delete with contents                         | Delete boundary and nodes |
+    | Tone                                         | Colour                    |
+    | Sublabel, Edit sublabel                      | Subtitle, Edit subtitle   |
+    | Reset simulation (menu) vs Restart (bar)     | Restart                   |
+    | "Simulation" menu header (the mode is Live)  | Live                      |
+    | Imported: X / your imported diagram          | Your diagram              |
+    | More formats (holding Save as and Embed)     | Export as (formats only)  |
+    | PNG image (right-click) vs Export PNG (File) | Export PNG                |
+
+    "Live" is the mode, and a "simulation" is a saved, scripted run you replay in it.
+
+15. **Shortcuts sheet** gains a "Live and presenting" group (L, Space, Esc).
+16. Removed from the node menu: **Copy id** (now the inspector chip), and **Bring to front / Send to
+    back** (still on multi-selections; layering is rare when nothing overlaps). Removed from the
+    canvas menu: **Zoom to 100%** (Shift+0 still works and is in the shortcuts sheet).
+
+**P1 and P2 moved to the backlog**
+
+- P1 Opening the inspector on selection narrows the canvas without keeping the selection's
+  neighbourhood in view; pan so the selected element and its edges stay visible.
+- P1 "Your diagram" is one slot: Open and Import replace it without the Undo that New diagram has.
+  Consider a small local library ("Your diagrams") listed in the picker and on the start card.
+- P1 The picker's "Your diagram" label doesn't follow title edits until the slot is re-read.
+- P1 While a simulation is open in the editor panel, the live bar's picker still says "Free play".
+- P2 The React Flow attribution sits under the live bar and the first-run hint (bottom centre).
+- P2 The narration card in presentation covers neighbouring nodes; place it in free space when
+  there is some.
+- P2 "Story & chaos" in the simulation editor is playful; "Timeline" says what it is.
+- P2 Start-card examples could show a tiny rendered thumbnail instead of three stencil tiles.
+- P2 "Continuous traffic" uses a different icon in the live ⋯ menu and in the right-click menu.
+
+### What changed, in numbers
+
+- **Removed or merged:** live bar ×; canvas right-click Save… and Import ▸; Zoom to 100% from
+  the canvas menu; node Copy id, Bring to front and Send to back; the live "Simulation" submenu level;
+  8 editing items from live node menus and 6 from the live canvas menu; native title tooltips; the
+  Live toggle, minimap and "0 nodes, 0 edges" on a blank canvas; the always-open Diagram inspector
+  below 1680px.
+- **Renamed:** the terminology table above.
+- **Moved:** Save as… and Embed code… out of "More formats" to the File menu top level; Diagram
+  properties to the canvas right-click.
+- **Added:** the start card (only on an empty diagram), File > New diagram, the one-time hint,
+  the node tooltip (replaces a native one), two inspector disclosure headers, and the live keys in
+  the shortcuts sheet.
+
+Net: fewer controls on every always-visible surface; the additions appear only on an empty diagram,
+once, or on hover.
+
+### Round 1 follow-up
+
+| Round 1 item                     | Status                                                                     |
+| -------------------------------- | -------------------------------------------------------------------------- |
+| P0 Top bar overflow below 1100px | Resolved earlier (View menu, icon-only labels); verified at 1024.          |
+| P0 Diagrams fit too small        | Resolved: panels fold below 1440 (palette) and 1680 (inspector, idle).     |
+| P0 Toasts for actions            | Resolved earlier (`notify`), now also used for New diagram with Undo.      |
+| P1 Real "New diagram"            | Resolved: File > New diagram and the start card, no reload.                |
+| P1 Prefix labels on selects      | Resolved earlier by the View menu.                                         |
+| P1 Minimap size                  | Resolved earlier (168×112, hidden below 1100); now also hidden when blank. |
+| P1 Inspector polish              | Resolved this round.                                                       |
+| P1 One label style               | Resolved this round (sentence case).                                       |
+| P2 Native title tooltips         | Resolved this round.                                                       |
+| P2 Empty-canvas copy             | Resolved this round.                                                       |
+
+## Round 1 (Phase 3)
 
 Reviewed 2026-10-11 in Chrome at 1440×900, 1920×1080 and 1024×768, dark and light: Gallery, Canvas
 (every public example), Lab, context menus, inspector and presentation mode. Cursors were audited

@@ -130,7 +130,7 @@ const nodePresets: Preset[] = [
         options: stencils.map((s) => ({ value: s.id, label: `${s.label} (${s.id})` })),
       },
       { type: "text", key: "label", label: "Label", default: "orders" },
-      { type: "text", key: "sublabel", label: "Sublabel", default: "orders.created.v1" },
+      { type: "text", key: "sublabel", label: "Subtitle", default: "orders.created.v1" },
       { type: "boolean", key: "selected", label: "Selected", default: false },
     ],
     render: (v) => (

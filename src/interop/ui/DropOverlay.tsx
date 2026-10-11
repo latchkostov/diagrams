@@ -72,7 +72,7 @@ export function DropOverlay({ onFile }: { onFile: (f: File) => void }) {
             <Glyph name="mermaid" size={14} /> .mmd
           </span>
         </span>
-        <span className="ix-drop-hint">Opens as your imported diagram. Examples are never overwritten.</span>
+        <span className="ix-drop-hint">Opens as your diagram. Examples are never overwritten.</span>
       </div>
     </div>,
     document.body,

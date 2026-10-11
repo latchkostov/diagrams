@@ -410,7 +410,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openSlot, isPublicEx
     attempt("keep a copy", () => {
       const d = current();
       openSlot(IMPORTED_SLUG, d);
-      toast.success(`Kept a copy: “${d.title}” is now your imported diagram.`);
+      toast.success(`Kept a copy: “${d.title}” is now your diagram.`);
     });
 
   // ---------------------------------------------------------------- keyboard
@@ -536,7 +536,11 @@ export function useInteropCanvasActions(canvasRef: RefObject<CanvasHandle | null
   );
 }
 
-/** File entries for the canvas right-click menu (same names and order as the top bar's File menu). */
+/**
+ * The canvas right-click "Export" submenu. Saving and opening stay in the File menu (and Ctrl+S /
+ * Ctrl+O); the right-click keeps only what acts on the picture in front of you. Item names match
+ * the File menu exactly.
+ */
 function canvasActions(get: () => InteropApi): Action[] {
   const item = (id: string, label: string, run: () => unknown, hint?: string): MenuNode => ({
     type: "item",
@@ -547,16 +551,6 @@ function canvasActions(get: () => InteropApi): Action[] {
   });
   return [
     {
-      id: "canvas.save",
-      section: "file",
-      targets: ["canvas"],
-      order: 10,
-      label: () => (get().binding ? `Save to ${get().binding!.name}` : "Save…"),
-      icon: "download",
-      shortcut: "Mod+S",
-      run: () => void get().save(),
-    },
-    {
       // Replaces the editor's built-in JSON-only Export submenu.
       id: "canvas.export",
       section: "file",
@@ -565,29 +559,15 @@ function canvasActions(get: () => InteropApi): Action[] {
       label: "Export",
       icon: "download",
       children: () => [
-        item("export:png", "PNG image", () => get().exportPng({ scale: 2 }), "2×"),
+        item("export:png", "Export PNG", () => get().exportPng({ scale: 2 }), "2×"),
         item("export:share", "Copy share link", () => get().copyShareLink()),
+        item("export:embed", "Embed code…", () => get().openEmbed()),
         { type: "separator" },
         item("export:json", "Diagram file", () => get().exportNative(), ".diagram.json"),
-        item("export:image", "Image…", () => get().openImageOptions(), "PNG / SVG"),
+        item("export:image", "Image…", () => get().openImageOptions(), "PNG or SVG"),
         item("export:drawio", "draw.io", () => get().exportDrawio(), ".drawio"),
-        item("export:mermaid", "Copy as Mermaid", () => get().copyMermaid()),
         item("export:mermaid-download", "Mermaid file", () => get().downloadMermaid(), ".mmd"),
-        item("export:embed", "Embed code…", () => get().openEmbed()),
-      ],
-    },
-    {
-      id: "canvas.import",
-      section: "file",
-      targets: ["canvas"],
-      order: 30,
-      label: "Import",
-      icon: "upload",
-      children: () => [
-        { type: "item", id: "import:file", label: "Open…", shortcut: "Mod+O", run: () => void get().openFile() },
-        ...(get().driveEnabled ? [item("import:drive", "Open from Google Drive…", () => get().openFromDrive())] : []),
-        item("import:paste", "Paste text…", () => get().openPaste()),
-        item("import:link", "Share link…", () => get().openShareLink()),
+        item("export:mermaid", "Copy as Mermaid", () => get().copyMermaid()),
       ],
     },
   ];

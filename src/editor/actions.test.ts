@@ -33,7 +33,7 @@ describe("action registry", () => {
     ]);
     expect(ids(r.build(ctx("node")))).toEqual(["rename"]);
     running = true;
-    expect(ids(r.build(ctx("node")))).toEqual(["rename", "---", "[Simulation]", "sim.inject"]);
+    expect(ids(r.build(ctx("node")))).toEqual(["rename", "---", "[Live]", "sim.inject"]);
     off();
     expect(ids(r.build(ctx("node")))).toEqual(["rename"]);
   });
