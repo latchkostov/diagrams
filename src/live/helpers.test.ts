@@ -131,6 +131,27 @@ describe("path sampling", () => {
     cache.get("e1", 2);
     expect(resolves).toBe(3);
   });
+
+  it("reads each path once per frame and reports when one changed", () => {
+    let d = "M0 0 L100 0";
+    let reads = 0;
+    const el: PathLike = {
+      getAttribute: () => (reads++, d),
+      getTotalLength: () => (d === "M0 0 L100 0" ? 100 : 200),
+      getPointAtLength: (l) => ({ x: l, y: 0 }),
+      isConnected: true,
+    };
+    const cache = new PathCache(() => el, 10);
+    for (let i = 0; i < 50; i++) cache.get("e1", 1); // 50 particles on one edge, one frame
+    expect(reads).toBe(1);
+    cache.get("e1", 2);
+    expect(reads).toBe(2);
+    expect(cache.stale()).toBe(false);
+    d = "M0 0 L200 0"; // a node moved
+    expect(cache.stale()).toBe(true);
+    expect(cache.get("e1", 3)!.length).toBe(200);
+    expect(cache.stale()).toBe(false);
+  });
 });
 
 describe("timeline mapping", () => {

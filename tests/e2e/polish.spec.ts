@@ -76,27 +76,25 @@ test.describe("polish", () => {
     await expect(page.getByTestId("sim-panel-section-timeline-toggle")).toContainText("Timeline");
   });
 
-  test("edge labels draw below particles and badges while live", async ({ page }) => {
+  test("edge labels draw above particles and below badges while live", async ({ page }) => {
     await gotoCanvas(page, KAFKA);
-    const layer = () =>
+    const z = () =>
       page.getByTestId("canvas-wrap").evaluate((el) => {
-        const labels = el.querySelector(".react-flow__edgelabel-renderer");
-        return labels ? getComputedStyle(labels).zIndex : "missing";
+        const of = (e: Element | null) => (e ? getComputedStyle(e).zIndex : "missing");
+        return {
+          labels: of(el.querySelector(".react-flow__edgelabel-renderer")),
+          particles: of(el.querySelector('[data-testid="live-canvas"]')),
+          overlay: of(el.querySelector('[data-testid="live-canvas-over"]')),
+          badges: of(el.querySelector(".lv-badges")),
+        };
       });
     // Editing: labels stay on top (a hovered, truncated label reads in full).
-    expect(await layer()).toBe("1001");
+    expect((await z()).labels).toBe("1001");
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("live-canvas")).toBeAttached();
-    expect(await layer()).toBe("auto");
-    // The particle canvas and badges (later in the DOM, same stacking context) therefore paint above.
-    const order = await page.getByTestId("canvas-wrap").evaluate((el) => {
-      const labels = el.querySelector(".react-flow__edgelabel-renderer");
-      const particles = el.querySelector('[data-testid="live-canvas"]');
-      return (
-        !!labels && !!particles && !!(labels.compareDocumentPosition(particles) & Node.DOCUMENT_POSITION_FOLLOWING)
-      );
-    });
-    expect(order).toBeTruthy();
+    // Live, in one stacking context: particles, then label pills (readable on busy edges), then the
+    // overlay (dimmed dots behind a pill, the traced message), then the metric badges.
+    expect(await z()).toEqual({ labels: "1", particles: "auto", overlay: "2", badges: "3" });
   });
 
   test("viewport animations respect prefers-reduced-motion", async ({ page }) => {

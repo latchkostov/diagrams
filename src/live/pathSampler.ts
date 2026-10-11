@@ -58,6 +58,8 @@ interface Entry {
   el: PathLike;
   d: string;
   samples: PathSamples;
+  /** The frame `d` was last read in: one DOM read per edge per frame, however many particles ride it. */
+  frame: number;
 }
 
 /**
@@ -74,6 +76,8 @@ export class PathCache {
 
   get(edgeId: string, frame = 0): PathSamples | null {
     let entry = this.entries.get(edgeId);
+    // Already checked this frame (frame 0 means "no frame", always check).
+    if (entry && frame !== 0 && entry.frame === frame) return entry.samples;
     if (entry && !entry.el.isConnected) {
       this.entries.delete(edgeId);
       entry = undefined;
@@ -87,9 +91,10 @@ export class PathCache {
         return null;
       }
       this.missing.delete(edgeId);
-      entry = { el, d: "", samples: { length: 0, points: new Float32Array(4) } };
+      entry = { el, d: "", samples: { length: 0, points: new Float32Array(4) }, frame: 0 };
       this.entries.set(edgeId, entry);
     }
+    entry.frame = frame;
     const d = entry.el.getAttribute("d") ?? "";
     if (d !== entry.d) {
       entry.d = d;
@@ -98,6 +103,13 @@ export class PathCache {
         : { length: 0, points: new Float32Array(4) };
     }
     return entry.samples;
+  }
+
+  /** True when a cached path was redrawn or remounted since it was last sampled (a node moved...). */
+  stale(): boolean {
+    for (const entry of this.entries.values())
+      if (!entry.el.isConnected || (entry.el.getAttribute("d") ?? "") !== entry.d) return true;
+    return false;
   }
 
   /** Forget everything (diagram reloaded, renderer detached). */

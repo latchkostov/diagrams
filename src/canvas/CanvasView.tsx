@@ -47,7 +47,7 @@ import {
   UNTITLED,
   writeAutosave,
 } from "../lib/diagramIO";
-import type { DiagramFile } from "../model/types";
+import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
 import { fromFlow, groupAt, toFlow, withEdgeAria, withNodeAria, type DiagramMeta } from "./convert";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
 import { useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
@@ -604,6 +604,16 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when a side panel opens or closes
   }, [panelsKey]);
+  // Stable, so the memoized stencil rail skips the canvas's frequent renders (drag, select, zoom).
+  const togglePalette = useCallback(() => {
+    setPaletteCollapsed(!paletteHidden);
+    setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
+  }, [paletteHidden]);
+  const addFromPalette = useCallback((id: string) => void editor.addNode(id), [editor]);
+  const annotateFromPalette = useCallback(
+    (kind: AnnotationKind, shape?: AnnotationShape) => void editor.addAnnotation(kind, { shape }),
+    [editor],
+  );
   const labels = useMemo(
     () =>
       new Map([
@@ -634,12 +644,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         {!hideChrome && (
           <Palette
             collapsed={paletteHidden}
-            onToggle={() => {
-              setPaletteCollapsed(!paletteHidden);
-              setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
-            }}
-            onAdd={(id) => void editor.addNode(id)}
-            onAnnotate={(kind, shape) => void editor.addAnnotation(kind, { shape })}
+            onToggle={togglePalette}
+            onAdd={addFromPalette}
+            onAnnotate={annotateFromPalette}
           />
         )}
         <div

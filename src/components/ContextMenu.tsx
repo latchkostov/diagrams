@@ -1,4 +1,6 @@
 import {
+  memo,
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -286,6 +288,19 @@ function MenuList(p: ListProps) {
     }, HOVER_DELAY);
   };
 
+  // Rows are memoized: moving the highlight re-renders the two rows that changed, not the menu.
+  // Their callbacks are stable and reach the latest handlers through a ref.
+  const handlers = useRef({ hover, activate, onKeyDown });
+  useLayoutEffect(() => {
+    handlers.current = { hover, activate, onKeyDown };
+  });
+  const rowEnter = useCallback((i: number) => handlers.current.hover(i), []);
+  const rowClick = useCallback((i: number) => handlers.current.activate(i, false), []);
+  const rowKeyDown = useCallback((e: ReactKeyboardEvent) => handlers.current.onKeyDown(e), []);
+  const rowRef = useCallback((i: number, el: HTMLDivElement | null) => {
+    itemRefs.current[i] = el;
+  }, []);
+
   const sub = open ? shown[open.index] : undefined;
   const activeItem = shown[active];
   const activeId = selectable(activeItem) ? `${id}-item-${activeItem.id}` : undefined;
@@ -347,53 +362,19 @@ function MenuList(p: ListProps) {
                   {n.label}
                 </div>
               );
-            const isActive = i === active;
-            const stencil = n.stencil ? getStencil(n.stencil) : undefined;
             return (
-              <div
+              <MenuRow
                 key={n.id}
-                id={`${id}-item-${n.id}`}
-                ref={(el) => {
-                  itemRefs.current[i] = el;
-                }}
-                role={n.checked !== undefined ? "menuitemcheckbox" : "menuitem"}
-                aria-checked={n.checked}
-                aria-disabled={n.disabled || undefined}
-                aria-haspopup={n.children ? "menu" : undefined}
-                aria-expanded={n.children ? open?.index === i : undefined}
-                className={`cm-item${isActive ? " is-active" : ""}${n.disabled ? " is-disabled" : ""}${n.danger ? " is-danger" : ""}${open?.index === i ? " is-open" : ""}`}
-                data-testid={`context-menu-item-${n.id}`}
-                data-active={isActive || undefined}
-                onMouseEnter={() => !n.disabled && hover(i)}
-                onMouseDown={(e) => e.preventDefault()}
-                onKeyDown={onKeyDown}
-                onClick={() => activate(i, false)}
-              >
-                <span className="cm-lead">
-                  {stencil ? (
-                    <span className="cm-tile" style={{ "--accent": stencil.accent } as CSSProperties}>
-                      <StencilIcon stencil={stencil} size={14} />
-                    </span>
-                  ) : n.swatch ? (
-                    <span className="cm-swatch" style={{ background: n.swatch }} />
-                  ) : n.icon ? (
-                    <Icon name={n.icon} size={15} />
-                  ) : null}
-                </span>
-                <span className="cm-label">{n.label}</span>
-                {n.hint && <span className="cm-hint">{n.hint}</span>}
-                {n.shortcut && <span className="cm-kbd">{formatCombo(n.shortcut)}</span>}
-                {n.checked && (
-                  <span className="cm-check">
-                    <Icon name="check" size={14} />
-                  </span>
-                )}
-                {n.children && (
-                  <span className="cm-chevron">
-                    <Icon name="chevron-right" size={13} />
-                  </span>
-                )}
-              </div>
+                item={n}
+                index={i}
+                domId={`${id}-item-${n.id}`}
+                active={i === active}
+                open={open?.index === i}
+                onEnter={rowEnter}
+                onClick={rowClick}
+                onKeyDown={rowKeyDown}
+                setRef={rowRef}
+              />
             );
           })}
           {shown.length === 0 && <div className="cm-empty">No matches</div>}
@@ -417,3 +398,73 @@ function MenuList(p: ListProps) {
     </>
   );
 }
+
+interface RowProps {
+  item: MenuItem;
+  index: number;
+  domId: string;
+  active: boolean;
+  open: boolean;
+  onEnter: (index: number) => void;
+  onClick: (index: number) => void;
+  onKeyDown: (e: ReactKeyboardEvent) => void;
+  setRef: (index: number, el: HTMLDivElement | null) => void;
+}
+
+const MenuRow = memo(function MenuRow({
+  item: n,
+  index,
+  domId,
+  active,
+  open,
+  onEnter,
+  onClick,
+  onKeyDown,
+  setRef,
+}: RowProps) {
+  const ref = useCallback((el: HTMLDivElement | null) => setRef(index, el), [setRef, index]);
+  const stencil = n.stencil ? getStencil(n.stencil) : undefined;
+  return (
+    <div
+      id={domId}
+      ref={ref}
+      role={n.checked !== undefined ? "menuitemcheckbox" : "menuitem"}
+      aria-checked={n.checked}
+      aria-disabled={n.disabled || undefined}
+      aria-haspopup={n.children ? "menu" : undefined}
+      aria-expanded={n.children ? open : undefined}
+      className={`cm-item${active ? " is-active" : ""}${n.disabled ? " is-disabled" : ""}${n.danger ? " is-danger" : ""}${open ? " is-open" : ""}`}
+      data-testid={`context-menu-item-${n.id}`}
+      data-active={active || undefined}
+      onMouseEnter={() => !n.disabled && onEnter(index)}
+      onMouseDown={(e) => e.preventDefault()}
+      onKeyDown={onKeyDown}
+      onClick={() => onClick(index)}
+    >
+      <span className="cm-lead">
+        {stencil ? (
+          <span className="cm-tile" style={{ "--accent": stencil.accent } as CSSProperties}>
+            <StencilIcon stencil={stencil} size={14} />
+          </span>
+        ) : n.swatch ? (
+          <span className="cm-swatch" style={{ background: n.swatch }} />
+        ) : n.icon ? (
+          <Icon name={n.icon} size={15} />
+        ) : null}
+      </span>
+      <span className="cm-label">{n.label}</span>
+      {n.hint && <span className="cm-hint">{n.hint}</span>}
+      {n.shortcut && <span className="cm-kbd">{formatCombo(n.shortcut)}</span>}
+      {n.checked && (
+        <span className="cm-check">
+          <Icon name="check" size={14} />
+        </span>
+      )}
+      {n.children && (
+        <span className="cm-chevron">
+          <Icon name="chevron-right" size={13} />
+        </span>
+      )}
+    </div>
+  );
+});

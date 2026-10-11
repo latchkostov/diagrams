@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -219,6 +220,23 @@ export function GalleryView() {
         { type: "item", id: "tile-copy-json", label: "Copy as JSON node", icon: "copy", run: () => copyJson(s) },
       ],
     });
+
+  // Tiles are memoized: opening one re-renders the two whose "open" changed, not all 155. Their
+  // actions are one stable object reaching the latest handlers through a ref.
+  const latest = useRef({ openDetail, tileMenu });
+  useLayoutEffect(() => {
+    latest.current = { openDetail, tileMenu };
+  });
+  const tileActions = useMemo<TileActions>(
+    () => ({
+      open: (s) => latest.current.openDetail(s.id),
+      menu: (s, x, y) => latest.current.tileMenu(s, x, y),
+      add: (s) => addToCurrentDiagram(s.id),
+      copyId: (s) => copy(s.id, "id"),
+      drag: (s, on) => setDragging(on ? s.id : null),
+    }),
+    [copy],
+  );
 
   const openVendorMenu = (el: HTMLElement) => {
     const r = el.getBoundingClientRect();
@@ -459,16 +477,7 @@ export function GalleryView() {
             </div>
             <div className="tile-grid">
               {items.map((s) => (
-                <StencilTile
-                  key={s.id}
-                  stencil={s}
-                  open={detail === s.id}
-                  onOpen={() => openDetail(s.id)}
-                  onMenu={(x, y) => tileMenu(s, x, y)}
-                  onAdd={() => addToCurrentDiagram(s.id)}
-                  onCopyId={() => copy(s.id, "id")}
-                  onDragState={(on) => setDragging(on ? s.id : null)}
-                />
+                <StencilTile key={s.id} stencil={s} open={detail === s.id} actions={tileActions} />
               ))}
             </div>
           </section>
@@ -584,17 +593,26 @@ export function GalleryView() {
   );
 }
 
+interface TileActions {
+  open: (s: Stencil) => void;
+  menu: (s: Stencil, x: number, y: number) => void;
+  add: (s: Stencil) => void;
+  copyId: (s: Stencil) => void;
+  drag: (s: Stencil, dragging: boolean) => void;
+}
+
 interface TileProps {
   stencil: Stencil;
   open: boolean;
-  onOpen: () => void;
-  onMenu: (x: number, y: number) => void;
-  onAdd: () => void;
-  onCopyId: () => void;
-  onDragState: (dragging: boolean) => void;
+  actions: TileActions;
 }
 
-function StencilTile({ stencil: s, open, onOpen, onMenu, onAdd, onCopyId, onDragState }: TileProps) {
+const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: TileProps) {
+  const onOpen = () => actions.open(s);
+  const onMenu = (x: number, y: number) => actions.menu(s, x, y);
+  const onAdd = () => actions.add(s);
+  const onCopyId = () => actions.copyId(s);
+  const onDragState = (on: boolean) => actions.drag(s, on);
   const { nodeVariant } = useSettings();
   const { Component } = getNodeVariant(nodeVariant);
   const role = simRoleMeta[s.simRole] ?? simRoleMeta.none;
@@ -687,4 +705,4 @@ function StencilTile({ stencil: s, open, onOpen, onMenu, onAdd, onCopyId, onDrag
       </div>
     </div>
   );
-}
+});

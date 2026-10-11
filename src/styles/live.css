@@ -404,11 +404,22 @@
   }
 }
 
-/* While live, edge labels sit under the particles and metric badges (the viewport portal, later in
-   the DOM) instead of on top of everything: they stay readable between dots, and dots never vanish
-   under a pill. A hovered, truncated label still expands above (its own z-index). */
+/* While live, edge label pills sit above the particles (so busy edges stay readable) but under the
+   metric badges, instead of on top of everything. A dot passing behind a pill still shows, dimmed,
+   on the overlay canvas (particleRenderer.ts). A hovered, truncated label expands above its row. */
 .react-flow[data-live] .react-flow__edgelabel-renderer {
-  z-index: auto;
+  z-index: 1;
+}
+
+/* Live layers inside the viewport, bottom to top: edges, nodes, particles (.lv-canvas), edge label
+   pills (above, so they always read), the overlay (dots passing behind a pill, dimmed, and the
+   traced message with its labels), then the metric badges. */
+.lv-canvas-over {
+  z-index: 2;
+}
+
+.lv-badges {
+  z-index: 3;
 }
 
 .react-flow[data-live] .react-flow__node,

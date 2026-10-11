@@ -18,6 +18,8 @@ import { isEditableTarget } from "../editor/shortcuts";
 import { inCanvas } from "../editor/useCanvasShortcuts";
 import { useSettings } from "../harness/settings";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
+import { useDiagram } from "../canvas/DiagramContext";
+import { useAllRoutes } from "../canvas/edges/useEdgeRoute";
 import { LiveController } from "./controller";
 import { LiveContext, useLiveState, type LiveUi, type TraceChoice } from "./context";
 import { Decorator } from "./decorations";
@@ -266,7 +268,8 @@ function LiveSession({
 }: SessionProps) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { fitView, setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const { theme } = useSettings();
+  const { theme, edgeStyle, nodeVariant } = useSettings();
+  const { direction } = useDiagram();
   const getDiagram = useCallback((): DiagramFile => (editor ? editor.getDiagram() : diagram!), [editor, diagram]);
   const simulations = useMemo(() => simsProp ?? diagram?.simulations ?? [], [simsProp, diagram]);
   const simsRef = useRef(simulations);
@@ -491,6 +494,27 @@ function LiveSession({
 
   // A callback ref: ViewportPortal renders nothing until React Flow's DOM exists.
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+  // Edge label pills sit above the particles; dots behind one are drawn dimmed on this overlay.
+  const [overlay, setOverlay] = useState<HTMLCanvasElement | null>(null);
+  // The pills' rects, from the router's placements (the same routes the edges draw; re-read only
+  // when the routes change, never per frame).
+  const routes = useAllRoutes({ style: edgeStyle, direction, captions: nodeVariant === "iconOnly" });
+  const labelRects = useMemo(() => {
+    const out: Rect[] = [];
+    for (const r of routes.values())
+      if (r.label)
+        out.push({
+          x: r.label.x - r.label.width / 2,
+          y: r.label.y - r.label.height / 2,
+          width: r.label.width,
+          height: r.label.height,
+        });
+    return out;
+  }, [routes]);
+  const labelRectsRef = useRef(labelRects);
+  useLayoutEffect(() => {
+    labelRectsRef.current = labelRects;
+  }, [labelRects]);
   // Token values change with the theme attribute, which the settings provider sets in an effect.
   const [tokens, setTokens] = useState(DEFAULT_TOKENS);
   useEffect(() => {
@@ -510,9 +534,10 @@ function LiveSession({
 
   useEffect(() => {
     const root = store.getState().domNode;
-    if (!canvas || !root) return;
+    if (!canvas || !overlay || !root) return;
     let obstacleCache: { at: number; view: string; hard: Rect[]; soft: Rect[] } | null = null;
     const env: RenderEnv = {
+      labelRects: () => labelRectsRef.current,
       transform: () => store.getState().transform,
       size: () => ({ width: store.getState().width, height: store.getState().height }),
       edgePath: (id) =>
@@ -556,7 +581,7 @@ function LiveSession({
     };
     // Fit-view padding elsewhere can reserve room for the control bar.
     root.style.setProperty(LIVE_BAR_VAR, `${LIVE_BAR_SPACE}px`);
-    const renderer = new ParticleRenderer(canvas, env, renderOptsRef.current);
+    const renderer = new ParticleRenderer(canvas, env, renderOptsRef.current, overlay);
     rendererRef.current = renderer;
     const decorator = new Decorator(root);
     let raf = 0;
@@ -597,7 +622,7 @@ function LiveSession({
       rendererRef.current = null;
     };
     // renderOpts changes are applied through setOptions above, without restarting the loop.
-  }, [controller, store, canvas]);
+  }, [controller, store, canvas, overlay]);
 
   // Click a particle to trace its message; the pointer says when one is under it.
   useEffect(() => {
@@ -1071,6 +1096,7 @@ function LiveSession({
     <LiveContext.Provider value={ui}>
       <ViewportPortal>
         <canvas ref={setCanvas} className="lv-canvas" data-testid="live-canvas" aria-hidden />
+        <canvas ref={setOverlay} className="lv-canvas lv-canvas-over" data-testid="live-canvas-over" aria-hidden />
         <NodeBadges state={state} presenting={presenting} capacity={showCapacity ? capacity : null} />
       </ViewportPortal>
       <div

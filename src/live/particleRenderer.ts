@@ -69,6 +69,11 @@ export interface RenderEnv {
    * cards, their badges, floating chrome), `soft` only when there's a choice (edge labels).
    */
   obstacles?(): { hard: readonly Rect[]; soft: readonly Rect[] };
+  /**
+   * Edge label pills in flow coordinates (the router's placements, cached by the caller: called
+   * every frame, so it must not touch the DOM). Dots inside one are drawn dimmed above the pill.
+   */
+  labelRects?(): readonly Rect[];
 }
 
 export interface RenderOptions {
@@ -86,6 +91,28 @@ interface Batch {
   heads: number[];
   /** Trails: [n, x0, y0, ..., xn-1, yn-1, n, ...] in device px. */
   trails: number[];
+  /** Heads inside an edge label pill (device px): drawn dimmed on the overlay, above the pill. */
+  dim: number[];
+}
+
+/** Opacity of a dot passing behind an edge label pill: visible traffic, readable text. */
+export const DIM_UNDER_LABEL = 0.35;
+
+/**
+ * Flow-space rects → device-px [x0, y0, x1, y1, ...] for this frame's view (`out` is reused).
+ * k = zoom × devicePixelRatio, (ox, oy) = the viewport offset in device px.
+ */
+export function deviceRects(rects: readonly Rect[], k: number, ox: number, oy: number, out: number[]): number[] {
+  out.length = 0;
+  for (const r of rects) out.push(r.x * k + ox, r.y * k + oy, (r.x + r.width) * k + ox, (r.y + r.height) * k + oy);
+  return out;
+}
+
+/** Whether (x, y) falls inside any of `rects` (device-px boxes from `deviceRects`). */
+export function insideAny(rects: readonly number[], x: number, y: number): boolean {
+  for (let i = 0; i < rects.length; i += 4)
+    if (x >= rects[i] && x <= rects[i + 2] && y >= rects[i + 1] && y <= rects[i + 3]) return true;
+  return false;
 }
 
 interface Pulse {
@@ -131,6 +158,11 @@ const TRAIL: Record<ParticleKind, number> = { message: 26, retry: 22, dlq: 40, r
 
 export class ParticleRenderer {
   private ctx: CanvasRenderingContext2D;
+  /** The overlay above the edge label pills (dimmed dots, the traced message); `ctx` without one. */
+  private octx: CanvasRenderingContext2D;
+  private overlayDrawn = false;
+  /** Edge label pills this frame, device px [x0, y0, x1, y1, ...] (see deviceRects). */
+  private pills: number[] = [];
   private cache: PathCache;
   private sprites = new Map<string, HTMLCanvasElement>();
   private batches = new Map<string, Batch>();
@@ -145,6 +177,8 @@ export class ParticleRenderer {
   private w = 0;
   private h = 0;
   private lastKey = "";
+  private lastSnap: SimSnapshot | null = null;
+  private lastFocus: number | undefined;
   private wasEmpty = true;
   /** Particles drawn in the last frame (for the stats readout and tests). */
   drawn = 0;
@@ -169,8 +203,11 @@ export class ParticleRenderer {
     private canvas: HTMLCanvasElement,
     private env: RenderEnv,
     private opts: RenderOptions,
+    /** Drawn over the edge label pills; without it everything goes on `canvas`. */
+    private overlay?: HTMLCanvasElement,
   ) {
     this.ctx = canvas.getContext("2d", { alpha: true })!;
+    this.octx = overlay?.getContext("2d", { alpha: true }) ?? this.ctx;
     this.cache = new PathCache((id) => env.edgePath(id));
   }
 
@@ -204,6 +241,12 @@ export class ParticleRenderer {
       this.canvas.height = Math.max(1, Math.round(height * dpr));
       this.canvas.style.width = `${width}px`;
       this.canvas.style.height = `${height}px`;
+      if (this.overlay) {
+        this.overlay.width = this.canvas.width;
+        this.overlay.height = this.canvas.height;
+        this.overlay.style.width = `${width}px`;
+        this.overlay.style.height = `${height}px`;
+      }
       this.lastKey = "";
     }
     // The canvas lives inside React Flow's viewport (so DOM order puts it between nodes and the
@@ -211,6 +254,7 @@ export class ParticleRenderer {
     const key = `${t[0]}|${t[1]}|${t[2]}|${width}|${height}`;
     if (key !== this.lastKey) {
       this.canvas.style.transform = `translate(${-t[0] / t[2]}px, ${-t[1] / t[2]}px) scale(${1 / t[2]})`;
+      if (this.overlay) this.overlay.style.transform = this.canvas.style.transform;
     }
     return t;
   }
@@ -237,10 +281,16 @@ export class ParticleRenderer {
 
   /** `focus`: the traced root message id. Its particles glow and carry a label; the rest dim. */
   draw(snap: SimSnapshot, now: number, focus?: number): void {
-    this.frame++;
     const [tx, ty, zoom] = this.layout();
     const key = `${tx}|${ty}|${zoom}|${this.w}|${this.h}`;
     const moved = key !== this.lastKey;
+    // Paused (the controller hands back the same snapshot), nothing fading out, the view and the
+    // edges where they were: the canvas already shows this frame, and the hit targets still hold.
+    if (!moved && snap === this.lastSnap && focus === this.lastFocus && !this.pulses.length && !this.cache.stale())
+      return;
+    this.lastSnap = snap;
+    this.lastFocus = focus;
+    this.frame++;
     this.lastKey = key;
     this.detectFailures(snap, now);
     const empty = snap.particles.length === 0 && this.pulses.length === 0;
@@ -251,12 +301,18 @@ export class ParticleRenderer {
       return;
     }
     this.wasEmpty = empty;
-    const { ctx, dpr } = this;
+    const { ctx, octx, dpr } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    if (octx !== ctx && this.overlayDrawn) {
+      octx.setTransform(1, 0, 0, 1, 0, 0);
+      octx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    this.overlayDrawn = false;
     const k = zoom * dpr;
     const ox = tx * dpr;
     const oy = ty * dpr;
+    const pills = deviceRects(this.env.labelRects?.() ?? [], k, ox, oy, this.pills);
     const reduced = this.opts.reducedMotion;
     // Particles stay legible when zoomed out and don't balloon when zoomed in.
     const size = 3.5 * this.opts.scale * Math.min(1.5, Math.max(0.75, Math.sqrt(zoom))) * dpr;
@@ -267,6 +323,7 @@ export class ParticleRenderer {
     for (const b of this.batches.values()) {
       b.heads.length = 0;
       b.trails.length = 0;
+      b.dim.length = 0;
     }
 
     const particles = snap.particles;
@@ -305,10 +362,12 @@ export class ParticleRenderer {
       const bk = `${p.kind}|${color}`;
       let b = this.batches.get(bk);
       if (!b) {
-        b = { color, kind: p.kind, heads: [], trails: [] };
+        b = { color, kind: p.kind, heads: [], trails: [], dim: [] };
         this.batches.set(bk, b);
       }
-      b.heads.push(x, y);
+      // Behind a label pill: the pill hides the trail; the dot shows through, dimmed, on the overlay.
+      if (pills.length && insideAny(pills, x, y)) b.dim.push(x, y);
+      else b.heads.push(x, y);
       const trail = TRAIL[p.kind];
       if (trail > 0 && !reduced) this.pushTrail(b.trails, s, t, reverse, trail / s.length, k, ox, oy);
       drawn++;
@@ -347,6 +406,7 @@ export class ParticleRenderer {
       ctx.globalAlpha = 1;
     }
     ctx.globalCompositeOperation = "source-over";
+    this.drawDimmed(size, focus !== undefined);
     if (this.focusHeads.length) this.drawFocus(size, dpr);
     else if (this.labels.length) {
       this.labels = [];
@@ -357,9 +417,32 @@ export class ParticleRenderer {
     this.drawPulses(now, k, ox, oy, size);
   }
 
+  /** Dots passing behind edge label pills: a plain dimmed disc (no glow) over the pill. */
+  private drawDimmed(size: number, focused: boolean): void {
+    const ctx = this.octx;
+    let any = false;
+    for (const b of this.batches.values()) {
+      if (!b.dim.length) continue;
+      any = true;
+      const r = b.kind === "reply" ? size * 0.55 : b.kind === "dlq" ? size * 1.15 : size;
+      ctx.fillStyle = b.color;
+      ctx.globalAlpha = DIM_UNDER_LABEL * (b.kind === "reply" ? 0.55 : 1) * (focused ? 0.28 : 1);
+      ctx.beginPath();
+      for (let i = 0; i < b.dim.length; i += 2) {
+        ctx.moveTo(b.dim[i] + r, b.dim[i + 1]);
+        ctx.arc(b.dim[i], b.dim[i + 1], r, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (any) this.overlayDrawn = true;
+  }
+
   /** The traced message and its copies: a long bright trail, a halo ring and a type label. */
   private drawFocus(size: number, dpr: number): void {
-    const ctx = this.ctx;
+    // Above the edge label pills, like the trace labels always were.
+    const ctx = this.octx;
+    this.overlayDrawn = true;
     const dark = this.opts.theme === "dark";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -368,10 +451,10 @@ export class ParticleRenderer {
       ctx.strokeStyle = f.color;
       ctx.globalAlpha = 0.35;
       ctx.lineWidth = size * 1.8;
-      this.strokeTrails(f.trail, 1);
+      this.strokeTrails(f.trail, 1, ctx);
       ctx.globalAlpha = 0.9;
       ctx.lineWidth = size * 0.9;
-      this.strokeTrails(f.trail, 0.6);
+      this.strokeTrails(f.trail, 0.6, ctx);
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = dark ? "screen" : "source-over";
@@ -400,7 +483,8 @@ export class ParticleRenderer {
    * presentation) but never drop below 11 px, so they read at a distance.
    */
   private drawLabels(size: number, dpr: number): void {
-    const ctx = this.ctx;
+    // On the overlay, so trace labels stay above the edge label pills.
+    const ctx = this.octx;
     const font = Math.max(11 * dpr, size * 3.2);
     ctx.font = `600 ${font}px "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
     ctx.textBaseline = "middle";
@@ -506,8 +590,7 @@ export class ParticleRenderer {
   }
 
   /** Strokes every trail in a batch; `part` < 1 draws only the part nearest the head. */
-  private strokeTrails(trails: number[], part: number): void {
-    const ctx = this.ctx;
+  private strokeTrails(trails: number[], part: number, ctx = this.ctx): void {
     ctx.beginPath();
     for (let i = 0; i < trails.length;) {
       const n = trails[i];
