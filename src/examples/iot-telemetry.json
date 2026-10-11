@@ -370,7 +370,8 @@
           "value": 0,
           "when": "end"
         }
-      ]
+      ],
+      "scale": 10
     },
     {
       "id": "hot-spot",
@@ -394,7 +395,7 @@
           "atMs": 0,
           "action": {
             "do": "note",
-            "text": "One effective partition serializes each group. Lag grows even though consumers have capacity.",
+            "text": "One partition activates one replica per group; the other 63 replicas sit idle. Lag grows despite the configured service fleet.",
             "focus": ["hub", "hot", "stream"],
             "pause": true
           }
@@ -470,9 +471,18 @@
         "props": {
           "hub": {
             "partitions": 1
+          },
+          "hot": {
+            "replicas": 64,
+            "concurrency": 1
+          },
+          "stream": {
+            "replicas": 64,
+            "concurrency": 1
           }
         }
-      }
+      },
+      "scale": 2
     }
   ]
 }

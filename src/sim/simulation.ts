@@ -1,5 +1,7 @@
 import type { DiagramFile, Expectation, Simulation, TrafficShape } from "../model/types";
 import { createEngine, seedEngine } from "./engine";
+import { resolveScale, resolveMultiplier, toRealUnits } from "./units";
+export { autoScale } from "./scale";
 import type {
   ExpectationState,
   SimulationRun,
@@ -115,6 +117,12 @@ export function createSimulationRun(
   opts: SimulationRunOptions = {},
 ): SimulationRun {
   const seed = simulation.seed ?? opts.seed ?? 1;
+  const scale = resolveScale(simulation.scale);
+  let multipliers = {
+    traffic: resolveMultiplier(simulation.multipliers?.traffic),
+    capacity: resolveMultiplier(simulation.multipliers?.capacity),
+  };
+  const injectionCredits = new Map<string, number>();
   const engine = opts.engine ?? createEngine({ ...opts, seed });
   const timeline = [...(simulation.timeline ?? [])].sort((a, b) => a.atMs - b.atMs);
   const markers: TimelineMarker[] = timeline.map((step) => ({
@@ -143,6 +151,15 @@ export function createSimulationRun(
   let credits: number[] = [],
     fired: boolean[] = [];
 
+  function injectReal(node: string, count: number, type?: string, spreadMs?: number): void {
+    if (!diagram.nodes.some((input) => input.id === node)) return;
+    const key = JSON.stringify([node, type]);
+    const credit = (injectionCredits.get(key) ?? 0) + (positive(count) * multipliers.traffic) / scale;
+    const samples = Math.floor(credit + 1e-9);
+    injectionCredits.set(key, credit - samples);
+    if (samples > 0) engine.inject(node, samples, { type, spreadMs });
+  }
+
   function actions(time: number): void {
     while (!waiting && cursor < timeline.length && timeline[cursor].atMs <= time) {
       const step = timeline[cursor++],
@@ -155,7 +172,7 @@ export function createSimulationRun(
           engine.setNodeProps(action.node, action.props);
           break;
         case "inject":
-          engine.inject(action.node, action.count, { type: action.messageType, spreadMs: action.spreadMs });
+          injectReal(action.node, action.count, action.messageType, action.spreadMs);
           break;
         case "note":
           note = {
@@ -172,14 +189,19 @@ export function createSimulationRun(
     simulation.traffic.forEach((profile, index) => {
       if (profile.shape.kind !== "burst" || fired[index] || trafficWindow(profile.shape).startMs > time) return;
       fired[index] = true;
-      engine.inject(profile.node, profile.shape.count, { type: profile.messageType, spreadMs: profile.shape.spreadMs });
+      credits[index] += (positive(profile.shape.count) * multipliers.traffic) / scale;
+      const count = Math.floor(credits[index] + 1e-9);
+      credits[index] -= count;
+      if (count > 0)
+        engine.inject(profile.node, count, { type: profile.messageType, spreadMs: profile.shape.spreadMs });
     });
   }
 
   function evaluate(final = false): void {
     (simulation.expectations ?? []).forEach((expectation, index) => {
       const state = expectations[index],
-        value = engine.measure(expectation.metric);
+        measured = engine.measure(expectation.metric);
+      const value = measured === undefined ? undefined : toRealUnits(measured, scale);
       if (value === undefined) return; // Unknown ids are ignored, like actions and injections.
       state.value = value;
       const pass = matches(expectation, value),
@@ -218,6 +240,13 @@ export function createSimulationRun(
   function restart(): void {
     seedEngine(engine, seed);
     engine.load(diagram);
+    engine.setScale(scale);
+    multipliers = {
+      traffic: resolveMultiplier(simulation.multipliers?.traffic),
+      capacity: resolveMultiplier(simulation.multipliers?.capacity),
+    };
+    engine.setCapacityMultiplier(multipliers.capacity);
+    injectionCredits.clear();
     speed = 1;
     scheduler.reset();
     cursor = 0;
@@ -243,6 +272,13 @@ export function createSimulationRun(
   restart();
   return {
     engine,
+    setMultipliers(patch) {
+      multipliers = {
+        traffic: resolveMultiplier(patch.traffic, multipliers.traffic),
+        capacity: resolveMultiplier(patch.capacity, multipliers.capacity),
+      };
+      engine.setCapacityMultiplier(multipliers.capacity);
+    },
     setSpeed(value) {
       speed = clampSpeed(value, speed);
       engine.setSpeed(speed);
@@ -257,7 +293,7 @@ export function createSimulationRun(
         actions(to);
         if (!waiting) {
           simulation.traffic.forEach((profile, index) => {
-            credits[index] += trafficArea(profile.shape, from, to);
+            credits[index] += (trafficArea(profile.shape, from, to) * multipliers.traffic) / scale;
             const count = Math.floor(credits[index] + 1e-9);
             credits[index] -= count;
             if (count > 0) engine.inject(profile.node, count, { type: profile.messageType });
@@ -266,7 +302,7 @@ export function createSimulationRun(
         } else {
           // The interval elapsed before the note was reached, so retain its traffic credit.
           simulation.traffic.forEach((profile, index) => {
-            credits[index] += trafficArea(profile.shape, from, to);
+            credits[index] += (trafficArea(profile.shape, from, to) * multipliers.traffic) / scale;
           });
         }
         refresh();
@@ -276,6 +312,8 @@ export function createSimulationRun(
     state: () => ({
       time: metrics.time,
       totalMs,
+      scale,
+      multipliers: { ...multipliers },
       done,
       waiting,
       note: note ? { ...note, focus: [...note.focus] } : undefined,
