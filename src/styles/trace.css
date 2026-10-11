@@ -20,8 +20,18 @@
   z-index: 2;
 }
 
+/* With Inputs & capacity or the simulation editor open, the card heads the panel's column (the
+   panel starts below it, see --lv-trace-h) instead of covering the diagram beside it. */
 .lv-hud.has-panel .tr-card {
-  right: 456px;
+  top: 62px;
+  right: 12px;
+  width: min(384px, calc(100% - 24px));
+  max-height: 42%;
+}
+
+.react-flow .lv-panel {
+  top: calc(62px + var(--lv-trace-h, 0px));
+  transition: top 0.2s var(--ease-out);
 }
 
 .lv-hud.is-presenting .tr-card {
@@ -367,6 +377,25 @@
 
 .tr-seq svg {
   display: block;
+}
+
+/* Scaled to fit (data-scale) by width; the viewBox keeps the proportions. */
+.tr-seq-body svg,
+.tr-seq-head svg {
+  width: var(--seq-w, auto);
+  height: auto;
+}
+
+/* A copy of the picture's top, pinned so only its band of participant boxes stays in view as the
+   journey scrolls under it (negative top: the title scrolls away first). */
+.tr-seq-head {
+  position: sticky;
+  top: calc(-1 * var(--seq-band-top, 0px));
+  z-index: 1;
+  width: var(--seq-w, auto);
+  height: var(--seq-head-h, auto);
+  margin-bottom: calc(-1 * var(--seq-head-h, 0px));
+  pointer-events: none;
 }
 
 /* ---------- Lab previews ---------- */

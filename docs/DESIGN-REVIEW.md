@@ -1,5 +1,136 @@
 # Design review
 
+## Round 5: UX gate after message trace and sequence diagrams
+
+Reviewed 2026-10-11 against `docs/UX-PRINCIPLES.md` on a production build (`pnpm build && pnpm preview`,
+public examples only), in Chrome at 1920×1080, 1440×900 and 1024×768, dark and light, in the editor and
+in presentation. Three personas walked the real app:
+
+1. **Presenter explaining one order:** Kafka example → Live → trace a message → watch it fan out →
+   Sequence diagram → Copy as Mermaid. Is it obvious, beautiful and readable at a distance?
+2. **Incident review:** Azure "Poison invoices" → Trace a message ▸ One that dead-lettered. Can you
+   say why it died in under 30 seconds?
+3. **Returning engineer:** recount the live chrome: both live menus, ⋯, the palette entries, and the
+   panels that can be open together (trace card, Inputs & capacity, inspector, narration).
+
+Overlap was measured with `getBoundingClientRect` against the labels the renderer now reports on the
+live canvas (`data-trace-labels`), sampled every 60–80 ms through a whole fan-out.
+
+Screenshots: `docs/screenshots/ux-gate5-before-*.png` and `ux-gate5-after-*.png`.
+
+### Scorecard
+
+Scores are out of 5. "Before" is the app at the start of this round (round 4 ended at 4–4.5).
+
+| Principle                       | Before | After | Why                                                                                                                                                                                         |
+| ------------------------------- | :----: | :---: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Beautiful by default         |  3.5   |  4.5  | Trace labels sat on node cards and badges at 9 px. The sequence dialog was a fixed 1180 px window onto a 2170 px picture.                                                                   |
+| 2. Progressive disclosure       |  4.5   |  4.5  | Unchanged. The hop list, the sequence diagram and its exports stay one step away.                                                                                                           |
+| 3. Context over chrome          |  4.5   |  4.5  | Unchanged. Click a particle, right-click a node, or Trace a message ▸ on the canvas.                                                                                                        |
+| 4. One primary action / surface |   4    |   4   | Unchanged. Sequence diagram on the card, Copy as Mermaid in the dialog.                                                                                                                     |
+| 5. Budget the chrome            |  4.5   |  4.5  | Nothing added: ⋯ keeps 6 rows, the live canvas menu 9. Fit, pinning and stacking are defaults, not controls.                                                                                |
+| 6. No dead ends                 |   4    |  4.5  | "Nothing has dead-lettered yet" stayed up beside a card already saying Dead-lettered.                                                                                                       |
+| 7. Consistent names             |   4    |  4.5  | ⋯ "Trace a message" only traced the next message; the same words on the right-click and in Ctrl+K offer three choices.                                                                      |
+| 8. App, not page                |  4.5   |  4.5  | Unchanged. The sequence view now always opens at its top-left corner.                                                                                                                       |
+| 9. Teach in place               |  4.5   |  4.5  | Unchanged. ⋯'s hint names both ways to trace (right-click a node, click a moving message).                                                                                                  |
+| 10. Nothing overlaps            |  2.5   |  4.5  | Labels covered node titles. With Inputs open the card sat over the diagram and the narration covered the card. Opening the card shrank the diagram by 30–50% to clear a full-height column. |
+| 11. Presentation first-class    |  3.5   |  4.5  | Tracing an order dropped a 1440 view from 58% to 41% zoom, and 1024 from 39% to 20%: unreadable from the back of a room. Labels were 9 px.                                                  |
+
+### Chrome count
+
+| Surface                         | Before                                                           | After                                                             | Budget |
+| ------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------- | ------ |
+| Top bar                         | 7                                                                | 7                                                                 | ~7     |
+| Live canvas right-click         | 9 (Trace a message ▸ with 3)                                     | 9, unchanged                                                      | ≤ 12   |
+| Live node right-click           | 7 (with Trace next message from here)                            | 7, unchanged                                                      | ≤ 12   |
+| Live edge right-click           | 3 (Highlight this path, Edit label, Properties)                  | 3, unchanged                                                      | ≤ 12   |
+| Live ⋯ menu                     | 6 rows; "Trace a message" = next message only                    | 6 rows; "Trace a message" unfolds the same 3 choices in place     | ≤ 12   |
+| Palette, trace                  | Trace a message (drill) + 3; End trace while tracing             | Unchanged                                                         |        |
+| Trace card                      | Sequence diagram (primary), close                                | Unchanged                                                         |        |
+| Sequence dialog                 | Copy as Mermaid (primary), SVG, PNG                              | Unchanged (fit and pinned participants are automatic)             |        |
+| Floating surfaces open together | Trace card, side panel, narration, event log, bottleneck callout | Same five; the trace card heads the side panel's column when open |        |
+
+Net: no control added or removed. One row changed behaviour (⋯ Trace a message); the rest are defaults.
+
+### Findings
+
+**P0 (all fixed)**
+
+1. **Trace labels covered node cards and each other.** Labels tried four corners around their particle
+   and skipped a corner only if another label was there, so on the Kafka fan-out `OrderPlaced`,
+   `PaymentCompleted` and `InventoryReserved` sat on the Payments, Inventory and Notification cards
+   (titles included) and on their throughput badges. Labels now (`src/live/traceLabels.ts`, unit-tested):
+   - merge copies with the same words close together (`OrderPlaced ×3`);
+   - try 8 spots around the particle at 5 distances, and past the first ring draw a leader line back to it;
+   - never cover a node card, its badges, another label or floating chrome (card, bar, panels, title),
+     and avoid edge labels and other traced particles when there's a choice;
+   - keep last frame's spot while it stays free, so they don't hop between corners;
+   - leave a label out when there's no room (the card lists every hop);
+   - go dead letters first, then retries, then the newest copy, and never drop below 11 px.
+2. **The sequence dialog lost its participants.** Scrolling down a 13-participant journey took the
+   names away, and the fixed 1180 px window showed half the picture. Now:
+   - the participant boxes stay pinned at the top while the journey scrolls under them (a copy of the
+     picture's header, so it lines up to the pixel; the exported SVG and PNG are unchanged);
+   - the view always opens at its top-left corner;
+   - the dialog is as wide as the journey needs, up to the window. A journey a little too wide shrinks
+     to fit (down to 80%); a much wider one scrolls at full size. 13 participants fit at 84% at 1920.
+3. **Tracing shrank the diagram.** The card reserved a full-height 400 px column, so on the wide Kafka
+   example the view went from 58% to 41% zoom at 1440 and from 39% to 20% at 1024. The fit now keeps
+   clear of the card's first rows only (a wide diagram moves down instead of shrinking), and the card
+   grows down to the first node under it, its hops scrolling. Now 58% → 57% and 39% → 38%.
+4. **With Inputs & capacity open, the card covered the diagram and the narration covered the card.**
+   The card moved 456 px in from the right, onto the canvas, where the narration card (which didn't
+   know about it) landed on top. With a side panel open the card now heads the panel's column and the
+   panel starts below it. The narration card keeps clear of the trace card everywhere.
+
+**P1 (fixed)**
+
+5. **⋯ "Trace a message" only traced the next message.** The incident reviewer looks in the visible
+   chrome first, and "One that dead-lettered" wasn't there. The row now unfolds the same three choices
+   as the right-click's Trace a message ▸ (Next message, Slowest so far, One that dead-lettered). ⋯ still
+   has 6 rows.
+6. **A stale notice.** "Nothing has dead-lettered yet: the next message that does will be traced"
+   stayed up to 3 s after the card already said Dead-lettered. It now goes as soon as the trace has its
+   message.
+
+**Verified, no change needed**
+
+- **Highlight this path vs Trace a message:** both stay. They differ in target (an edge vs a message),
+  icon (route vs trace) and result (a static downstream view now, vs one real message's hops and
+  timings). The names share no word.
+- **Incident review:** right-click → Trace a message ▸ One that dead-lettered, and in about 15 seconds the
+  card reads: Dead-lettered (red), 4 retries (amber), "Ledger worker: attempts 1–5 failed", "dead-lettered
+  after 5 deliveries", then the DLQ hop. The narration names the cause (a schema mismatch).
+- **Presenter:** Copy as Mermaid is the dialog's one primary action and toasts "Copied the sequence
+  diagram as Mermaid." SVG and PNG are secondary. In presentation the labels scale up with the particles.
+- **Light and dark:** labels are white on the message colour in both; leader lines take the same colour.
+- **Esc** still backs out one level: dialog, selection, trace, live view.
+
+**P2 moved to the backlog**
+
+- A narration close-up (e.g. Poison invoices at 1440) crops nodes at the left under the rail and the zoom
+  controls; the note fit only guarantees the focused nodes.
+- On Azure, a node's badge ("29 queued") can sit on an edge label ("After 5 failed deliveries").
+- At 1440 a 13-participant sequence scrolls sideways (fitting it would take 63%, too small to read).
+  A "whole journey" zoom could help presenters, if anyone asks.
+- In presentation at 1920, wide diagrams show node titles at about 9 px; a camera that follows the
+  traced path would read better at a distance.
+- Hop rows in the trace card truncate "as PaymentCompleted" at 352 px.
+
+### What changed, in numbers
+
+- **Removed or merged:** nothing removed. ⋯ "Trace a message" now holds the same three choices as the
+  right-click (one row, as before).
+- **Renamed:** none.
+- **Moved:** the trace card, from over the canvas to the top of the side panel's column while a panel
+  is open.
+- **Better defaults (no new controls):**
+  - de-collided trace labels with leader lines and merged copies
+  - a trace fit that costs no zoom on wide diagrams, and a card that stops above the first node
+  - pinned participants, start-of-journey scroll and fit-to-width in the sequence dialog
+  - the narration card keeping clear of the trace card
+  - the stale dead-letter notice clearing itself
+
 ## Round 4: UX gate after annotations and Record video
 
 Reviewed 2026-10-11 against `docs/UX-PRINCIPLES.md` on a production build (`pnpm build && pnpm preview`,

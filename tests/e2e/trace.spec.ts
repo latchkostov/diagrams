@@ -1,11 +1,14 @@
 import { readFileSync } from "node:fs";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { test, expect, expectNoErrors } from "./fixtures";
 
 // Message trace: follow one message (and its fan-out copies) hop by hop, then turn its journey into
 // a sequence diagram. Selectors are data-testid only.
 
 const KAFKA = "kafka-order-pipeline";
+const KAFKA_NODES = (
+  JSON.parse(readFileSync("src/examples/kafka-order-pipeline.json", "utf8")) as { nodes: { id: string }[] }
+).nodes.map((n) => n.id);
 const AZURE = "azure-service-bus-integration";
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
 const card = (page: Page) => page.getByTestId("trace-card");
@@ -27,6 +30,13 @@ async function openCanvasSubmenu(page: Page, parent: string, child: string) {
     await menuItem(page, parent).click({ timeout: 1000 });
     await menuItem(page, child).click({ timeout: 1000 });
   }).toPass({ timeout: 8000 });
+}
+
+/** A visible element's box (fails the test when it isn't on screen). */
+async function rect(locator: Locator) {
+  const box = await locator.boundingBox();
+  if (!box) throw new Error("Not visible");
+  return box;
 }
 
 /** Attribute values of every hop row, in order. */
@@ -133,8 +143,13 @@ test.describe("message trace", () => {
   test("the live bar's ⋯ and the command palette start a trace", async ({ page, consoleErrors }) => {
     await page.goto(`./?view=canvas&example=${KAFKA}&live=1&speed=2`);
     await expect(page.getByTestId("live-controls")).toBeVisible();
+    // ⋯ offers the same three ways in as the right-click's "Trace a message ▸".
     await page.getByTestId("live-more").click();
     await page.getByTestId("live-trace-message").click();
+    await expect(page.getByTestId("live-trace-slowest")).toBeVisible();
+    await expect(page.getByTestId("live-trace-deadletter")).toBeVisible();
+    await page.getByTestId("live-trace-next").click();
+    await expect(page.getByTestId("live-more-menu")).toHaveCount(0);
     await expect(card(page)).toHaveAttribute("data-state", /flight|done/, { timeout: 10_000 });
     await page.getByTestId("trace-card-close").click();
     await expect(card(page)).toHaveCount(0);
@@ -180,6 +195,117 @@ test.describe("message trace", () => {
         .getByTestId(/^seq-arrow-/)
         .last(),
     ).toHaveAttribute("data-style", "dlq");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("traced labels never overlap each other or a node card, and tracing keeps the diagram's zoom", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=0.5`);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    // A node card's on-screen width tells the zoom.
+    const scaleOf = async () => (await page.getByTestId("node-shopper").boundingBox())?.width ?? 0;
+    const before = await scaleOf();
+    await openNodeMenu(page, "shopper", "sim.trace-next");
+    await expect(page.getByTestId("trace-waiting")).toBeVisible();
+    // The card opened and the view refitted: the wide diagram moved down, it didn't shrink.
+    await expect.poll(scaleOf).toBeGreaterThan(before * 0.95);
+    await page.getByTestId("trace-send-one").click();
+
+    // Sample the labels (pane px, from the canvas) against every node card while the order fans out.
+    const samples = await page.evaluate(async (ids) => {
+      const out: { labels: number; overlaps: string[] }[] = [];
+      type Box = { x: number; y: number; w: number; h: number };
+      const canvas = document.querySelector<HTMLElement>('[data-testid="live-canvas"]');
+      if (!canvas) return out;
+      const hit = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+      for (let i = 0; i < 90; i++) {
+        await new Promise((r) => setTimeout(r, 60));
+        const raw = canvas.dataset.traceLabels;
+        if (!raw) continue;
+        const labels = JSON.parse(raw) as (Box & { text: string })[];
+        // The canvas covers the pane exactly: its box is the labels' origin.
+        const base = canvas.getBoundingClientRect();
+        const cards = ids.flatMap((id) => {
+          const el = document.querySelector(`[data-testid="node-${id}"]`);
+          if (!el) return [];
+          const r = el.getBoundingClientRect();
+          return [{ id, x: r.left - base.left, y: r.top - base.top, w: r.width, h: r.height }];
+        });
+        const overlaps: string[] = [];
+        labels.forEach((a, i) => {
+          labels.slice(i + 1).forEach((b) => hit(a, b) && overlaps.push(`${a.text} on ${b.text}`));
+          cards.forEach((c) => hit(a, c) && overlaps.push(`${a.text} on node ${c.id}`));
+        });
+        out.push({ labels: labels.length, overlaps });
+      }
+      return out;
+    }, KAFKA_NODES);
+    expect(samples.length).toBeGreaterThan(10);
+    // The fan-out puts several labels on screen at once…
+    expect(Math.max(...samples.map((s) => s.labels))).toBeGreaterThanOrEqual(2);
+    // …and none of them ever covers another or a node card (and so never a node's title).
+    expect(samples.flatMap((s) => s.overlaps)).toEqual([]);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("the sequence dialog opens at the start, pins the participants and fits a wide journey", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await traceKafkaOrder(page);
+    await page.getByTestId("trace-sequence").click();
+    const view = page.getByTestId("sequence-view");
+    await expect(view).toBeVisible();
+    // 13 participants don't fit 1440 px at a readable size: it scrolls, starting at the left.
+    expect(await view.evaluate((el) => [el.scrollLeft, el.scrollTop])).toEqual([0, 0]);
+    expect(await view.getAttribute("data-scale")).toBe("1.000");
+    const first = page.getByTestId("seq-participant-shopper");
+    const viewBox = await rect(view);
+    const firstBox = await rect(first);
+    expect(firstBox.x).toBeGreaterThanOrEqual(viewBox.x);
+    expect(firstBox.x + firstBox.width).toBeLessThanOrEqual(viewBox.x + viewBox.width);
+
+    // Scrolled to the end, the participant boxes stay pinned at the top, over the last arrows.
+    await view.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+    const header = page.getByTestId("sequence-header");
+    await expect
+      .poll(async () => {
+        const h = await rect(header);
+        const v = await rect(view);
+        return Math.round(h.y + h.height - v.y);
+      })
+      .toBeGreaterThanOrEqual(40);
+    const pinned = await rect(header);
+    const last = await rect(page.getByTestId(/^seq-arrow-/).last());
+    expect(last.y).toBeGreaterThanOrEqual(pinned.y + pinned.height - 1);
+
+    // A wider window fits the whole journey without sideways scrolling.
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await expect.poll(() => view.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    expect(Number(await view.getAttribute("data-scale"))).toBeLessThan(1);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("the trace card heads the Inputs panel's column instead of covering the diagram", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await page.getByTestId("live-capacity").click();
+    await expect(page.getByTestId("capacity-panel")).toBeVisible();
+    await openNodeMenu(page, "shopper", "sim.trace-next");
+    await expect(card(page)).toBeVisible();
+    await expect
+      .poll(async () => {
+        const c = await rect(card(page));
+        const p = await rect(page.getByTestId("capacity-panel"));
+        // Same column, the card on top, no overlap.
+        return Math.abs(c.x - p.x) < 2 && Math.abs(c.width - p.width) < 2 && c.y + c.height <= p.y;
+      })
+      .toBe(true);
     expectNoErrors(consoleErrors);
   });
 });

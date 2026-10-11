@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo, useRef, useSyncExternalStore, type CSSProperties } from "react";
 import type { DiagramFile } from "../model/types";
 import type { MessageTrace } from "../sim/types";
 import { Dialog } from "../interop/ui/Dialog";
@@ -25,6 +25,17 @@ const measureText: Measure = (text, size, opts = {}) => {
   return ctx.measureText(text).width;
 };
 
+/** Narrower than this and a wide journey scrolls at full size instead of shrinking to fit. */
+const MIN_FIT = 0.8;
+/** The dialog's padding, the view's border and its vertical scrollbar, around the picture. */
+const CHROME_X = 42 + 16;
+
+const onResize = (cb: () => void) => {
+  window.addEventListener("resize", cb);
+  return () => window.removeEventListener("resize", cb);
+};
+const viewportWidth = () => window.innerWidth;
+
 /**
  * "Sequence": the traced message's whole journey (every fan-out copy from the root) as a sequence
  * diagram, drawn from the same SVG that's downloaded. Copy as Mermaid is the primary action.
@@ -43,6 +54,19 @@ export function SequenceDialog({
   const model = useMemo(() => buildSequence(trace, diagram), [trace, diagram]);
   const picture = useMemo(() => toSvg(model, SEQUENCE_THEMES[theme], measureText), [model, theme]);
   const file = `${slugify(diagram.title)}-${slugify(model.title)}-sequence`;
+
+  // As wide as the journey needs (up to the window). A journey a little too wide shrinks to fit;
+  // a much wider one scrolls at full size, with the participants pinned while it scrolls down.
+  const vw = useSyncExternalStore(onResize, viewportWidth, () => 1280);
+  const room = vw - 32 - CHROME_X;
+  const fit = room / picture.width;
+  const scale = fit >= 1 ? 1 : fit >= MIN_FIT ? fit : 1;
+  const dialogWidth = Math.max(640, Math.ceil(picture.width * scale + CHROME_X));
+  const view = useRef<HTMLDivElement>(null);
+  // Always open at the start of the journey: the first participant and the first arrow.
+  useLayoutEffect(() => {
+    view.current?.scrollTo({ left: 0, top: 0 });
+  }, [picture]);
 
   const copyMermaid = async () => {
     const ok = await copyText(toMermaid(model));
@@ -70,7 +94,7 @@ export function SequenceDialog({
       icon={<LiveIcon name="sequence" size={16} />}
       onClose={onClose}
       testId="sequence-dialog"
-      width={1180}
+      width={dialogWidth}
       footer={
         <>
           <button className="btn" onClick={downloadSvg} data-testid="sequence-download-svg">
@@ -92,6 +116,7 @@ export function SequenceDialog({
       }
     >
       <div
+        ref={view}
         className="tr-seq"
         data-testid="sequence-view"
         role="region"
@@ -101,9 +126,25 @@ export function SequenceDialog({
         tabIndex={0}
         data-participants={model.participants.length}
         data-arrows={model.items.filter((i) => i.kind === "arrow").length}
-        // The SVG is built from escaped text (src/trace/svg.ts), never from raw markup.
-        dangerouslySetInnerHTML={{ __html: picture.svg }}
-      />
+        data-scale={scale.toFixed(3)}
+        style={
+          {
+            "--seq-w": `${picture.width * scale}px`,
+            "--seq-head-h": `${picture.headerHeight * scale}px`,
+            "--seq-band-top": `${picture.bandTop * scale}px`,
+          } as CSSProperties
+        }
+      >
+        {/* The participants, pinned at the top while the journey scrolls under them. */}
+        <div
+          className="tr-seq-head"
+          data-testid="sequence-header"
+          // Built from escaped text (src/trace/svg.ts), never from raw markup.
+          dangerouslySetInnerHTML={{ __html: picture.header }}
+        />
+        {/* The SVG is built from escaped text (src/trace/svg.ts), never from raw markup. */}
+        <div className="tr-seq-body" dangerouslySetInnerHTML={{ __html: picture.svg }} />
+      </div>
     </Dialog>
   );
 }

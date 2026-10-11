@@ -6,6 +6,7 @@ import {
   useStore,
   useStoreApi,
   type FitViewOptions,
+  type ReactFlowState,
 } from "@xyflow/react";
 import "../styles/live.css";
 import "../styles/capacity.css";
@@ -18,11 +19,12 @@ import { inCanvas } from "../editor/useCanvasShortcuts";
 import { useSettings } from "../harness/settings";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { LiveController } from "./controller";
-import { LiveContext, useLiveState, type LiveUi } from "./context";
+import { LiveContext, useLiveState, type LiveUi, type TraceChoice } from "./context";
 import { Decorator } from "./decorations";
 import { downstreamOfEdge, edgesWithin } from "./graph";
 import { liveActions } from "./liveActions";
-import { DEFAULT_TOKENS, ParticleRenderer, readParticleTokens, type RenderEnv } from "./particleRenderer";
+import { DEFAULT_TOKENS, ParticleRenderer, readParticleTokens, type Rect, type RenderEnv } from "./particleRenderer";
+import { OVERLAY_SELECTOR } from "../canvas/useOverlayFit";
 import { createStormSimulation, suggestedMessageType } from "./storm";
 import { readLiveParams, writeLiveParams, type LiveParams } from "./urlParams";
 import { ControlBar } from "./ControlBar";
@@ -55,6 +57,8 @@ import { Recorder } from "./record/Recorder";
 import { initialRecordState, isCapturing, recordReducer } from "./record/recordModel";
 import { isRecordingActive } from "./record/framing";
 import { TraceCard } from "./TraceCard";
+import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP, roomUnderCard } from "./traceCardLayout";
+import { fitAvoiding, type Viewport } from "../canvas/geometry/fit";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
 const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
 import { buildJourney } from "../trace/journey";
@@ -104,6 +108,38 @@ const ESC_OWNERS = [
 ].join(",");
 /** A selection is cleared before Esc backs out of a trace or live view. */
 const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
+/**
+ * A fit of every node that leaves the trace card's footprint (its first rows, top right) clear:
+ * beside it, below it, or untouched when nothing sits there anyway (see geometry/fit.ts).
+ */
+function fitBesideCard(s: ReactFlowState<FlowNode, DiagramFlowEdge>): Viewport | null {
+  const items: Rect[] = [];
+  for (const n of s.nodeLookup.values()) {
+    const width = n.measured?.width ?? 0;
+    const height = n.measured?.height ?? 0;
+    if (n.hidden || !width || !height) continue;
+    items.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width, height });
+  }
+  const pane = s.domNode?.getBoundingClientRect();
+  const el = s.domNode?.querySelector<HTMLElement>('[data-testid="trace-card"]')?.getBoundingClientRect();
+  const width = el?.width || 352;
+  const x = el && pane ? el.left - pane.left : s.width - 16 - width;
+  const pad = FULL_FIT.padding as Record<"top" | "right" | "bottom" | "left", string>;
+  const px = (v: string) => parseFloat(v);
+  return fitAvoiding(
+    items,
+    { width: s.width, height: s.height },
+    [{ x, y: TRACE_CARD_TOP, width, height: TRACE_CARD_FOOTPRINT }],
+    {
+      margin: 0,
+      gap: 16,
+      maxZoom: FULL_FIT.maxZoom,
+      insets: { top: px(pad.top), right: px(pad.right), bottom: px(pad.bottom), left: px(pad.left) },
+    },
+  );
+}
+
+const DEAD_LETTER_WAIT = "Nothing has dead-lettered yet: the next message that does will be traced.";
 const NOTE_PADDING = { top: "170px", right: "80px", bottom: "230px", left: "80px" } as const;
 const NOTE_FIT: FitViewOptions = { padding: NOTE_PADDING, maxZoom: 1, duration: 900 };
 const FULL_FIT: FitViewOptions = {
@@ -229,7 +265,7 @@ function LiveSession({
   onPanelChange,
 }: SessionProps) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
-  const { fitView } = useReactFlow<FlowNode, DiagramFlowEdge>();
+  const { fitView, setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const { theme } = useSettings();
   const getDiagram = useCallback((): DiagramFile => (editor ? editor.getDiagram() : diagram!), [editor, diagram]);
   const simulations = useMemo(() => simsProp ?? diagram?.simulations ?? [], [simsProp, diagram]);
@@ -353,7 +389,8 @@ function LiveSession({
   useLayoutEffect(() => {
     panelOpenRef.current = panel.open;
   }, [panel.open]);
-  // The trace card sits at the top right: every fit leaves room for it, as for a side panel.
+  // The trace card sits at the top right. A note's close-up leaves the card its column; the whole
+  // diagram only keeps clear of the card's first rows (see fitAll), and the card grows down to it.
   const cardOpen = !!state.trace;
   const cardOpenRef = useRef(false);
   useLayoutEffect(() => {
@@ -364,6 +401,24 @@ function LiveSession({
     return cardOpenRef.current ? { ...base, right: "400px" as const } : base;
   }, []);
   const FULL_PADDING = FULL_FIT.padding as typeof NOTE_PADDING;
+  /**
+   * The whole diagram in view. With the trace card open (and no side panel) it keeps clear of the
+   * card's footprint only: a wide diagram moves down a little instead of shrinking to the left of a
+   * full-height column, so tracing costs no zoom.
+   */
+  const fitAll = useCallback(
+    (duration: number, panelOpen = panelOpenRef.current) => {
+      if (cardOpenRef.current && !panelOpen) {
+        const v = fitBesideCard(store.getState());
+        if (v) {
+          void setViewport(v, { duration });
+          return;
+        }
+      }
+      void fitView({ ...FULL_FIT, padding: fitPadding(FULL_PADDING, panelOpen), duration });
+    },
+    [store, setViewport, fitView, fitPadding, FULL_PADDING],
+  );
 
   // Pan / zoom to a note's focus, and back out to the whole diagram when the story moves on.
   const zoomedForNote = useRef(false);
@@ -384,17 +439,13 @@ function LiveSession({
           });
         } else if (zoomedForNote.current) {
           zoomedForNote.current = false;
-          void fitView({
-            ...FULL_FIT,
-            padding: fitPadding(FULL_PADDING),
-            duration: reducedMotion ? 0 : FULL_FIT.duration,
-          });
+          fitAll(reducedMotion ? 0 : (FULL_FIT.duration ?? 0));
         }
       },
       panelOpenRef.current ? 320 : 160,
     );
     return () => window.clearTimeout(t);
-  }, [noteKey, noteFocus, fitView, reducedMotion, fitPadding, FULL_PADDING]);
+  }, [noteKey, noteFocus, fitView, reducedMotion, fitPadding, fitAll]);
 
   // The authoring panel covers the right of the pane: fit the diagram into what's left (unless a
   // note is steering the camera).
@@ -416,10 +467,10 @@ function LiveSession({
         void fitView({ ...NOTE_FIT, padding, nodes: focus.map((id) => ({ id })), duration });
         return;
       }
-      void fitView({ ...FULL_FIT, padding: fitPadding(FULL_PADDING, panel.open), duration });
+      fitAll(duration ?? 0, panel.open);
     }, 320);
     return () => window.clearTimeout(t);
-  }, [panel.open, fitView, reducedMotion, fitPadding, FULL_PADDING]);
+  }, [panel.open, fitView, reducedMotion, fitPadding, fitAll]);
 
   // Opening or closing the trace card refits, so it never covers the diagram.
   const cardFitted = useRef(false);
@@ -431,10 +482,10 @@ function LiveSession({
       const focus = noteFocusRef.current;
       if (zoomedForNote.current && focus.length)
         void fitView({ ...NOTE_FIT, padding: fitPadding(NOTE_PADDING), nodes: focus.map((id) => ({ id })), duration });
-      else void fitView({ ...FULL_FIT, padding: fitPadding(FULL_PADDING), duration });
+      else fitAll(duration ?? 0);
     }, 120);
     return () => window.clearTimeout(t);
-  }, [cardOpen, fitView, reducedMotion, fitPadding, FULL_PADDING]);
+  }, [cardOpen, fitView, reducedMotion, fitPadding, fitAll]);
 
   // ---------------------------------------------------------------- the frame loop
 
@@ -460,6 +511,7 @@ function LiveSession({
   useEffect(() => {
     const root = store.getState().domNode;
     if (!canvas || !root) return;
+    let obstacleCache: { at: number; view: string; hard: Rect[]; soft: Rect[] } | null = null;
     const env: RenderEnv = {
       transform: () => store.getState().transform,
       size: () => ({ width: store.getState().width, height: store.getState().height }),
@@ -474,6 +526,32 @@ function LiveSession({
           width: n.measured.width ?? 0,
           height: n.measured.height ?? 0,
         };
+      },
+      obstacles: () => {
+        // Read from the DOM a few times a second, only while a message is traced, and at once when
+        // the view moves (a refit animates): node cards, their badges, the floating chrome and,
+        // softly, edge labels and annotations.
+        const now = performance.now();
+        const [vx, vy, vz] = store.getState().transform;
+        const view = `${vx}|${vy}|${vz}`;
+        if (obstacleCache && obstacleCache.view === view && now - obstacleCache.at < 200) return obstacleCache;
+        const base = root.getBoundingClientRect();
+        const rects = (selector: string) => {
+          const out: Rect[] = [];
+          for (const el of root.querySelectorAll<HTMLElement>(selector)) {
+            const r = el.getBoundingClientRect();
+            if (r.width && r.height)
+              out.push({ x: r.left - base.left, y: r.top - base.top, width: r.width, height: r.height });
+          }
+          return out;
+        };
+        obstacleCache = {
+          at: now,
+          view,
+          hard: rects(`.react-flow__node-diagram, .lv-strip, .lv-hud > *, .lv-panel, ${OVERLAY_SELECTOR}`),
+          soft: rects(".fe-label, .react-flow__node-annotation"),
+        };
+        return obstacleCache;
       },
     };
     // Fit-view padding elsewhere can reserve room for the control bar.
@@ -502,6 +580,12 @@ function LiveSession({
         if (controller.isPlaying) controller.publish();
         decorator.apply({ snapshot: snap, spotlight: spotlightRef.current });
         if (++stats % 2 === 0) canvas.dataset.particles = String(renderer.drawn);
+        // The traced message's labels, for tests (pane CSS px).
+        if (renderer.labels.length)
+          canvas.dataset.traceLabels = JSON.stringify(
+            renderer.labels.map((l) => ({ text: l.text, x: l.x, y: l.y, w: l.w, h: l.h })),
+          );
+        else delete canvas.dataset.traceLabels;
       }
       raf = requestAnimationFrame(tick);
     };
@@ -554,7 +638,21 @@ function LiveSession({
   }, [controller, store, canvas]);
 
   const [sequence, setSequence] = useState<MessageTrace | null>(null);
-  const startTrace = useCallback(() => controller.traceNext(), [controller]);
+  // One way in for the ⋯ menu, the right-click and the palette (same words when there's nothing yet).
+  const startTrace = useCallback(
+    (which: TraceChoice) => {
+      if (which === "next") controller.traceNext();
+      else if (which === "slowest") {
+        if (!controller.traceSlowest()) flash("No message has finished its journey yet. Try again in a moment.");
+      } else if (controller.traceDeadLettered() === "waiting") flash(DEAD_LETTER_WAIT);
+    },
+    [controller, flash],
+  );
+  // The card grows down to the first node under it (its hops scroll), never over the diagram. Heading
+  // a side panel's column, its height is the panel's business (trace.css).
+  const cardRoom = useStore((s) => (state.trace && !panel.open ? roomUnderCard(s, presenting ? 392 : 352) : 0));
+  // "Nothing has dead-lettered yet" is out of date once one has: the trace card takes over.
+  const shownNotice = notice === DEAD_LETTER_WAIT && state.trace?.current ? null : notice;
   const sendOne = useCallback(
     (nodeId: string) => controller.sendOne(nodeId, suggestedMessageType(getDiagram(), nodeId)),
     [controller, getDiagram],
@@ -863,13 +961,8 @@ function LiveSession({
         trace: setTrace,
         tracing: () => traceRef.current,
         traceNext: (nodeId) => controller.traceNext(nodeId),
-        traceSlowest: () => {
-          if (!controller.traceSlowest()) flash("No message has finished its journey yet. Try again in a moment.");
-        },
-        traceDeadLettered: () => {
-          if (controller.traceDeadLettered() === "waiting")
-            flash("Nothing has dead-lettered yet: the next message that does will be traced.");
-        },
+        traceSlowest: () => startTrace("slowest"),
+        traceDeadLettered: () => startTrace("deadletter"),
         endTrace: () => controller.endTrace(),
         tracingMessage: () => controller.getState().trace !== null,
         saveTweaks: (nodeId) => {
@@ -885,7 +978,7 @@ function LiveSession({
         openRecord,
       }),
     );
-  }, [editor, controller, store, startStorm, showEvents, getDiagram, flash, openRecord]);
+  }, [editor, controller, store, startStorm, showEvents, getDiagram, flash, openRecord, startTrace]);
 
   // Keyboard: Space plays / pauses (or continues a pausing note), Enter continues, Esc backs out
   // one level: a selection, a message trace, a highlighted path, then live view itself. Open menus,
@@ -947,7 +1040,7 @@ function LiveSession({
       openCapacity,
       events,
       showEvents,
-      notice,
+      notice: shownNotice,
       exit: alwaysOn ? null : onExit,
       openRecord,
       startTrace,
@@ -965,7 +1058,7 @@ function LiveSession({
       openCapacity,
       events,
       showEvents,
-      notice,
+      shownNotice,
       onExit,
       openRecord,
       alwaysOn,
@@ -1007,6 +1100,7 @@ function LiveSession({
             onClose={() => controller.endTrace()}
             onSequence={() => state.trace?.current && setSequence(state.trace.current)}
             onSendOne={sendOne}
+            room={cardRoom}
           />
         )}
         <NoteCallout state={state} />

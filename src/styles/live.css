@@ -843,6 +843,31 @@
   transform: translateX(11px);
 }
 
+.lv-more-fold {
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  transform: rotate(-90deg);
+  transition: transform 0.15s var(--ease-out);
+}
+
+.lv-more-fold.is-open {
+  transform: none;
+}
+
+.lv-more-sub {
+  display: grid;
+  gap: 1px;
+  margin: 0 0 2px 22px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+}
+
+.lv-more-sub button {
+  height: 30px;
+  font-size: 12.5px;
+}
+
 .lv-more-hint {
   margin-top: 3px;
   padding: 7px 9px 5px;
