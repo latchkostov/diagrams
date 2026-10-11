@@ -1,4 +1,4 @@
-// One "Build with AI" turn: a parsed reply becomes the next diagram (or an error to show), plus what
+// One "Ask AI" turn: a parsed reply becomes the next diagram (or an error to show), plus what
 // changed. Pure, so the dialog, its tests and any later front-end share it.
 
 import type { DiagramFile, DiagramNode } from "../../model/types";
@@ -9,7 +9,9 @@ import { diagramDiff, structuralText } from "../../model/diagramDiff";
 import { getStencil, FALLBACK_STENCIL } from "../../stencils/registry";
 import {
   applyOps,
+  buildSimulation,
   placeNew,
+  ReferenceError,
   resolveKind,
   type AiError,
   type DiagramOp,
@@ -17,6 +19,7 @@ import {
   type StencilResolution,
 } from "../index";
 import type { ParsedReply } from "./reply";
+import type { TurnStep } from "../turn";
 
 /** A stencil the app picked from the model's words, with how sure it was. */
 export interface StencilChoice {
@@ -42,6 +45,8 @@ export type TurnPlan =
       warnings: string[];
       /** The reply replaced the whole diagram (a full file). */
       replaced: boolean;
+      /** The simulation a simulation reply added or replaced. */
+      simulationId?: string;
     }
   | { ok: false; error: AiError };
 
@@ -212,6 +217,7 @@ export function planTurn(current: DiagramFile, reply: ParsedReply): TurnPlan {
       replaced: true,
     };
   }
+  if (reply.kind === "simulation") return planSimulation(current, reply.spec);
   const result = applyOps(current, reply.ops, reply.layout ? { layout: reply.layout } : {});
   if (!result.ok) return { ok: false, error: result.errors[0] ?? { i: -1, error: "The ops couldn't be applied." } };
   const diff = diffDiagrams(current, result.diagram);
@@ -227,6 +233,67 @@ export function planTurn(current: DiagramFile, reply: ParsedReply): TurnPlan {
     })),
     warnings: result.warnings,
     replaced: false,
+  };
+}
+
+/**
+ * Plans a whole turn: its steps in order, each on the result of the last (a pasted reply is one step;
+ * a model's turn is its successful tool calls). One plan, so both paths record the same kind of turn.
+ */
+export function planSteps(current: DiagramFile, steps: readonly TurnStep[]): TurnPlan {
+  let next = current;
+  const plans: Extract<TurnPlan, { ok: true }>[] = [];
+  for (const step of steps) {
+    const plan = planTurn(next, { ok: true, ...step } as ParsedReply);
+    if (!plan.ok) return plan;
+    plans.push(plan);
+    next = plan.next;
+  }
+  if (plans.length === 1) return plans[0];
+  const d = diagramDiff(current, next);
+  const simulationId = plans.find((p) => p.simulationId)?.simulationId;
+  return {
+    ok: true,
+    next,
+    hasChanges: d.hasChanges,
+    summary: d.summary,
+    changed: [...new Set(plans.flatMap((p) => p.changed))].filter(
+      (id) => next.nodes.some((n) => n.id === id) || next.edges.some((e) => e.id === id) || d.added.ids.includes(id),
+    ),
+    choices: plans.flatMap((p) => p.choices),
+    warnings: plans.flatMap((p) => p.warnings),
+    replaced: plans.some((p) => p.replaced),
+    ...(simulationId ? { simulationId } : {}),
+  };
+}
+
+/** A simulation reply (live view): added, or replacing the one it names, through the same core as WebMCP. */
+function planSimulation(current: DiagramFile, spec: Extract<ParsedReply, { kind: "simulation" }>["spec"]): TurnPlan {
+  let sim;
+  try {
+    sim = buildSimulation(current, spec);
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof ReferenceError
+          ? { i: -1, ref: error.ref, error: error.message, candidates: error.candidates, hint: error.hint }
+          : { i: -1, error: error instanceof Error ? error.message : String(error) },
+    };
+  }
+  const sims = current.simulations ?? [];
+  const replaced = sims.some((s) => s.id === sim.id);
+  const next = { ...current, simulations: replaced ? sims.map((s) => (s.id === sim.id ? sim : s)) : [...sims, sim] };
+  return {
+    ok: true,
+    next,
+    hasChanges: true,
+    summary: `${replaced ? "Updated" : "Added"} simulation “${sim.title}”`,
+    changed: [...new Set(sim.traffic.map((t) => t.node))],
+    choices: [],
+    warnings: [],
+    replaced: false,
+    simulationId: sim.id,
   };
 }
 

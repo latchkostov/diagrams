@@ -22,11 +22,12 @@ const LIVE: [string, string][] = [
   ["Esc", "Leave presentation, then live view"],
 ];
 
-/** Keys inside the "Build with AI" panel (handled there). */
+/** The Ask AI panel (AiMount opens it; the rest is handled in the panel). */
 const AI: [string, string][] = [
+  ["Mod+I", "Show Ask AI and focus it; from inside it, hide it"],
   ["Mod+Shift+M", "Dictate, or stop dictating"],
   ["Mod+Enter", "Apply the pasted reply"],
-  ["Esc", "Stop dictating, then close"],
+  ["Esc", "Stop dictating, then back to the canvas"],
 ];
 
 function displayKeys(s: Shortcut): string[] {
@@ -140,7 +141,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             ))}
           </section>
           <section>
-            <h3>Build with AI</h3>
+            <h3>Ask AI</h3>
             {AI.map(([k, v]) => (
               <div key={k} className="sc-row">
                 <span>{v}</span>

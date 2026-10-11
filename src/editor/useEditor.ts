@@ -193,6 +193,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
 
   const api: EditorApi = {
     getDiagram: diagram,
+    undoTarget: () => deps().history.top(),
     applyDiagram: (next, opts) => {
       const checked = validateDiagram(next);
       if (!checked.ok) throw new Error(checked.error);

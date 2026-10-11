@@ -103,11 +103,25 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   card** lists its hops; **Sequence diagram** turns the journey into one (Copy as Mermaid, SVG, PNG).
   The edge's **Highlight this path** is a different idea (a static path, no message), so it never
   says "trace".
-- **Build with AI…** (File menu, canvas right-click, Ctrl+K) opens the AI panel: **Describe what you want**,
-  **Copy prompt for your AI**, **Paste the reply**, **Apply** (one undo step per change; the toast says
-  "AI: +3 nodes, +2 connections" with **Undo**). A failed reply shows **Nothing was applied**, the elements
-  it could mean (pick one to apply) and **Copy fix-up prompt**. A stencil the app wasn't sure of says
-  **not sure** (or **a guess**) with its alternatives as one-click chips.
+- **Ask AI** is the docked panel at the right edge, part of the tooling in every diagram (editor and live
+  view; never presenting or in embeds). It shows or hides with the top bar's **Ask AI** button, the slim
+  **rail** it folds to, and Ctrl+I; the canvas right-click and Ctrl+K say **Ask AI…**. On a node, an edge
+  or a selection, **Change with AI…** attaches them to the request as a removable chip. Each request is
+  one **turn** in the diagram's **conversation**: what you asked, the AI's words and what changed
+  ("+3 nodes, +2 connections" with **Undo** on the toast). The latest turn offers **Undo this change**;
+  every earlier one **Revert to here** (itself one undo step). **Clear conversation** is undoable. The
+  conversation stays in this browser and never goes into files, exports or share links.
+- In live view Ask AI **simulates a scenario** (the reply becomes a saved simulation that plays at once)
+  and **explains what's happening**. **Explain** never changes the diagram.
+- **Build with AI** is starting a new diagram from a description: the start card, File > Build with AI…
+  and Ctrl+K. It opens a blank diagram with Ask AI ready. Never "Build with AI" for changing a diagram.
+- Ask AI answers through **your model** (**Connect a model**, from the key in its header or "Or connect
+  your own model to apply changes directly" under Copy prompt: Claude, OpenAI or Gemini with your own key,
+  kept in this browser; **Forget key**) or **copy and paste**: **Copy prompt**, paste the reply,
+  **Apply**. Copy and paste is always there, with or without a key. A failed reply shows **Nothing was
+  applied**, the elements it could mean (pick one to apply) and **Copy fix-up prompt**. A stencil the
+  app wasn't sure of says **not sure** (or **a guess**) with its alternatives as one-click chips.
+- A **local-only** diagram never reaches any AI: the panel says AI is off for this diagram.
 - **Dictate** is the mic in the describe box (Ctrl+Shift+M): **Listening…** while on, interim words shown
   lighter; **Stop dictating** to end. It's hidden where the browser has no speech recognition.
 - **Slow motion** (noun and mode) is a paced _replay_ of a trace: one message's recorded journey, node

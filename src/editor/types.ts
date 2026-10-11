@@ -68,6 +68,11 @@ export interface EditorApi {
   // ---- create / update ----
   /** One replacement and one immediate undo step, isolated from user edits. */
   applyDiagram(next: DiagramFile, opts?: EditOptions): DiagramDiff;
+  /**
+   * The `merge` tag of the step Undo would reverse next (e.g. an applyDiagram's), or undefined when
+   * it's untagged, there's nothing to undo, or an edit is still pending.
+   */
+  undoTarget(): string | undefined;
   /** Adds a node centred on `at` (flow coords; default = view centre). Returns its id. */
   addNode(stencilId: string, at?: XY): string;
   updateNode(id: string, patch: Partial<Omit<DiagramNode, "id">>, opts?: EditOptions): void;

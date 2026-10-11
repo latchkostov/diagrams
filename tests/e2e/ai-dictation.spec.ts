@@ -1,7 +1,7 @@
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { MOD, SLUG, installFakeSpeech, openAiFromFileMenu, speech, speechState } from "./ai-helpers";
+import { MOD, SLUG, installFakeSpeech, openAskAi, speech, speechState } from "./ai-helpers";
 
-// Dictation in "Build with AI", against a fake SpeechRecognition installed before the app loads.
+// Dictation in Ask AI, against a fake SpeechRecognition installed before the app loads.
 // Selectors are data-testid only.
 
 const mic = (page: import("@playwright/test").Page) => page.getByTestId("ai-mic");
@@ -10,7 +10,7 @@ test.describe("Dictate", () => {
   test("start, interim words, final words at the caret, stop", async ({ page, consoleErrors }) => {
     await installFakeSpeech(page);
     await gotoCanvas(page, SLUG);
-    await openAiFromFileMenu(page);
+    await openAskAi(page);
 
     await expect(mic(page)).toHaveAttribute("aria-label", "Dictate");
     await mic(page).click();
@@ -46,15 +46,15 @@ test.describe("Dictate", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("Ctrl+Shift+M toggles it; Esc stops it before closing; Apply stops it", async ({ page }) => {
+  test("Ctrl+Shift+M toggles it; Esc stops it before leaving the panel; Apply stops it", async ({ page }) => {
     await installFakeSpeech(page);
     await gotoCanvas(page, SLUG);
-    await openAiFromFileMenu(page);
+    await openAskAi(page);
     await page.keyboard.press(`${MOD}+Shift+M`);
     await expect(mic(page)).toHaveAttribute("aria-pressed", "true");
     await page.keyboard.press("Escape");
     await expect(mic(page)).toHaveAttribute("aria-pressed", "false");
-    await expect(page.getByTestId("ai-dialog")).toBeVisible();
+    await expect(page.getByTestId("ai-panel")).toBeVisible();
 
     await page.keyboard.press(`${MOD}+Shift+M`);
     await expect(page.getByTestId("ai-interim")).toContainText("Listening");
@@ -75,14 +75,17 @@ test.describe("Dictate", () => {
     await expect(page.getByTestId("ai-request")).toHaveValue("Now add a queue");
 
     await page.keyboard.press("Escape");
+    await expect(mic(page)).toHaveAttribute("aria-pressed", "false");
+    // The second Esc hands the keyboard back to the canvas; the dock stays (it's part of the tooling).
     await page.keyboard.press("Escape");
-    await expect(page.getByTestId("ai-dialog")).toHaveCount(0);
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    await expect(page.getByTestId("ai-panel")).toBeVisible();
   });
 
   test("a blocked microphone says how to fix it", async ({ page }) => {
     await installFakeSpeech(page, { deny: true });
     await gotoCanvas(page, SLUG);
-    await openAiFromFileMenu(page);
+    await openAskAi(page);
     await mic(page).click();
     await expect(page.getByTestId("ai-dictation-message")).toContainText("microphone is blocked");
     await expect(mic(page)).toHaveAttribute("aria-pressed", "false");
@@ -91,7 +94,7 @@ test.describe("Dictate", () => {
   test("no speech is a gentle note and listening goes on; on-device needs no note", async ({ page }) => {
     await installFakeSpeech(page, { onDevice: true });
     await gotoCanvas(page, SLUG);
-    await openAiFromFileMenu(page);
+    await openAskAi(page);
     await mic(page).click();
     await expect(page.getByTestId("ai-interim")).toContainText("Listening on this device");
     expect((await speechState(page)).config).toMatchObject({ processLocally: true });
@@ -110,7 +113,7 @@ test("the mic is hidden when the browser has no speech recognition", async ({ pa
     delete (window as unknown as Record<string, unknown>).SpeechRecognition;
   });
   await gotoCanvas(page, SLUG);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   await expect(page.getByTestId("ai-request")).toBeVisible();
   await expect(mic(page)).toHaveCount(0);
   await page.keyboard.press(`${MOD}+Shift+M`);

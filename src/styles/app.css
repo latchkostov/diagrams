@@ -107,7 +107,7 @@ input:disabled,
 }
 
 /* Lazy views fade in; the loading note only appears if loading takes a moment. */
-.app-body > :not(.view-loading) {
+.app-main > :not(.view-loading) {
   animation: view-in var(--dur-2) var(--ease-out);
 }
 
@@ -171,7 +171,63 @@ kbd {
 
 .app-body {
   min-height: 0;
+  display: flex;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
   position: relative;
+}
+
+/* ---------- Ask AI dock (the panel itself is lazy: src/ai/ui/ai.css) ---------- */
+
+.ai-dock,
+.ai-rail {
+  flex: none;
+  position: relative;
+  z-index: 6;
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.ai-dock {
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-rail {
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 9px;
+}
+
+.ai-rail-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.ai-rail-btn:hover {
+  border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+}
+
+.btn.ai-topbar-btn svg {
+  color: var(--accent);
+}
+
+.ai-rail-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .topbar {

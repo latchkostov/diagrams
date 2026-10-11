@@ -27,6 +27,11 @@ export interface HistoryApi {
   hint(mergeKey: string | undefined): void;
   /** Flush the actual current snapshot, commit a replacement, then apply it once. */
   replace(next: CanvasSnapshot, mergeKey?: string, before?: CanvasSnapshot): void;
+  /**
+   * The tag of the step Undo would reverse next, or undefined when that step is untagged, nothing
+   * can be undone, or an edit is still pending (it would be undone first).
+   */
+  top(): string | undefined;
 }
 
 /** Quiet time after the last change before it becomes an undo step. */
@@ -120,11 +125,19 @@ export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => 
     applyRef.current(next);
   }, []);
 
+  const top = useCallback(() => {
+    const h = hist.current;
+    if (h.index === 0) return undefined;
+    const cur = present(h);
+    return keyOf(latest.current) === cur.key ? cur.mergeKey : undefined;
+  }, []);
+
   return {
     undo,
     redo,
     hint,
     replace,
+    top,
     canUndo: canUndo(history) || pending,
     canRedo: canRedo(history) && !pending,
   };

@@ -39,6 +39,7 @@ export function ControlBar({ state }: { state: LiveState }) {
       className={`lv-bar${slowOn ? " is-slowmo" : ""}`}
       data-testid="live-controls"
       data-editor-overlay
+      data-toast-avoid
       data-done={done ? "1" : undefined}
     >
       {slowOn ? (

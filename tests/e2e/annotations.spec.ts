@@ -415,7 +415,8 @@ test.describe("annotations", () => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("node-payments")).toBeVisible();
     const wrap = await box(page.getByTestId("canvas-wrap"));
-    const spot = await emptySpot(page, -200);
+    // Left of centre, but clear of the diagram card (top left, 380 px wide) at any canvas width.
+    const spot = await emptySpot(page, -150);
     await page.mouse.move(wrap.x + spot.x, wrap.y + spot.y);
     await page.keyboard.press("t");
     await typeAndCommit(page, "Order flow");

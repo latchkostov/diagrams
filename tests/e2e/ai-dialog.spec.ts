@@ -1,8 +1,8 @@
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { MOD, SLUG, must, nodeCount, openAiFromFileMenu, savedDiagram } from "./ai-helpers";
+import { MOD, SLUG, must, nodeCount, openAskAi, savedDiagram, settle } from "./ai-helpers";
 
-// "Build with AI": describe, copy a prompt for your own chatbot, paste its reply, apply. Selectors are
-// data-testid only. Uses the public Kafka example (ids from src/examples/kafka-order-pipeline.json).
+// Ask AI without a connected model: describe, copy a prompt for your own chatbot, paste its reply, apply.
+// Selectors are data-testid only. Uses the public Kafka example (ids from src/examples/kafka-order-pipeline.json).
 
 const GOOD = [
   { op: "add_node", kind: ".NET consumer", label: "billing-worker", key: "w" },
@@ -12,38 +12,49 @@ const GOOD = [
 ];
 const fenced = (v: unknown) => "Here are the ops:\n```json\n" + JSON.stringify(v, null, 2) + "\n```\nAnything else?";
 
-test.describe("Build with AI", () => {
+test.describe("Ask AI: copy and paste", () => {
   test.beforeEach(async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("node-payments")).toBeVisible();
   });
 
-  test("opens from the File menu, the canvas right-click and the command palette", async ({ page, consoleErrors }) => {
-    await openAiFromFileMenu(page);
+  test("opens from the top bar, the rail, the canvas right-click and the command palette", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await openAskAi(page);
     await expect(page.getByTestId("ai-request")).toBeFocused();
-    await page.keyboard.press("Escape");
-    await expect(page.getByTestId("ai-dialog")).toHaveCount(0);
+    await expect(page.getByTestId("ask-ai-toggle")).toHaveAttribute("aria-pressed", "true");
+    await page.getByTestId("ai-collapse").click();
+    await expect(page.getByTestId("ai-panel")).toHaveCount(0);
+    // Folded, it's a slim rail that stays on screen; its button has the keyboard.
+    await expect(page.getByTestId("ai-rail-open")).toBeFocused();
+    await page.getByTestId("ai-rail-open").click();
+    await expect(page.getByTestId("ai-request")).toBeFocused();
+    await page.getByTestId("ask-ai-toggle").click();
+    await expect(page.getByTestId("ai-panel")).toHaveCount(0);
+    await settle(page);
 
     const box = must(await page.getByTestId("canvas-wrap").boundingBox(), "the canvas");
     await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: box.width / 2, y: 90 } });
-    await page.getByTestId("context-menu-item-canvas.build-with-ai").click();
-    await expect(page.getByTestId("ai-dialog")).toBeVisible();
-    await page.getByTestId("ai-dialog-close").click();
-    await expect(page.getByTestId("ai-dialog")).toHaveCount(0);
+    await page.getByTestId("context-menu-item-canvas.ask-ai").click();
+    await expect(page.getByTestId("ai-panel")).toBeVisible();
+    await page.getByTestId("ai-collapse").click();
+    await expect(page.getByTestId("ai-panel")).toHaveCount(0);
 
     await page.keyboard.press(`${MOD}+k`);
-    await page.getByTestId("command-input").fill("build with ai");
-    await page.getByTestId("command-item-action:canvas.build-with-ai").click();
-    await expect(page.getByTestId("ai-dialog")).toBeVisible();
+    await page.getByTestId("command-input").fill("ask ai");
+    await page.getByTestId("command-item-action:canvas.ask-ai").click();
+    await expect(page.getByTestId("ai-panel")).toBeVisible();
     // The panel isn't modal: the diagram behind it stays usable.
     await page.getByTestId("node-shopper").click();
-    await expect(page.getByTestId("ai-dialog")).toBeVisible();
+    await expect(page.getByTestId("ai-panel")).toBeVisible();
     expectNoErrors(consoleErrors);
   });
 
   test("copies a prompt with the diagram, the ops format, examples and the request", async ({ page }) => {
-    await openAiFromFileMenu(page);
+    await openAskAi(page);
     await page.getByTestId("ai-request").fill("Add a billing worker that writes to Postgres");
     await page.getByTestId("ai-copy-prompt").click();
     await expect(page.getByTestId("ai-copy-prompt")).toContainText("Copied");
@@ -60,7 +71,7 @@ test.describe("Build with AI", () => {
     consoleErrors,
   }) => {
     const before = await nodeCount(page);
-    await openAiFromFileMenu(page);
+    await openAskAi(page);
     await page.getByTestId("ai-request").fill("Billing reads orders and writes to Postgres");
     await page.getByTestId("ai-reply").fill(fenced(GOOD));
     await expect(page.getByTestId("ai-reply-status")).toHaveText("4 ops ready");
@@ -99,7 +110,7 @@ test.describe("Build with AI", () => {
 
   test("keeps turns: each change is its own undo step", async ({ page }) => {
     const before = await nodeCount(page);
-    await openAiFromFileMenu(page);
+    await openAskAi(page);
     await page.getByTestId("ai-reply").fill(JSON.stringify(GOOD));
     await page.getByTestId("ai-apply").click();
     await expect(page.getByTestId("ai-turn-0")).toBeVisible();
@@ -125,7 +136,7 @@ test.describe("Build with AI", () => {
     consoleErrors,
   }) => {
     const before = await nodeCount(page);
-    await openAiFromFileMenu(page);
+    await openAskAi(page);
     await page.getByTestId("ai-request").fill("Rename the payment service");
     const bad = [{ op: "update", target: "Payment", label: "Payments API" }];
     await page.getByTestId("ai-reply").fill(fenced(bad));
@@ -154,7 +165,7 @@ test.describe("Build with AI", () => {
   });
 
   test("explains a reply with no JSON", async ({ page }) => {
-    await openAiFromFileMenu(page);
+    await openAskAi(page);
     await page.getByTestId("ai-reply").fill("Sorry, I can't draw diagrams.");
     await expect(page.getByTestId("ai-reply-status")).toHaveText("There's no JSON in the reply.");
     await page.getByTestId("ai-apply").click();
@@ -163,7 +174,7 @@ test.describe("Build with AI", () => {
   });
 
   test("an unsure stencil shows its alternatives and swaps in one click", async ({ page }) => {
-    await openAiFromFileMenu(page);
+    await openAskAi(page);
     // "function" could be AWS Lambda, Azure Functions or Cloud Functions: the resolver isn't sure.
     await page
       .getByTestId("ai-reply")
@@ -191,7 +202,7 @@ test.describe("Build with AI", () => {
 
 test("a full diagrams/v1 file without coordinates replaces the diagram, laid out", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   const file = {
     format: "diagrams/v1",
     title: "Orders",

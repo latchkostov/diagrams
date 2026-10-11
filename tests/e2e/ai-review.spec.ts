@@ -4,7 +4,7 @@ import {
   SLUG,
   MOD,
   must,
-  openAiFromFileMenu,
+  openAskAi,
   nodeCount,
   installFakeModelContext,
   toolNames,
@@ -16,7 +16,7 @@ import {
 test("failed block 2 never commits block 1", async ({ page }) => {
   await gotoCanvas(page, SLUG);
   const before = await nodeCount(page);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   for (const bad of ['[{"label":"missing op"}]', '[{"op":"connect",']) {
     await page
       .getByTestId("ai-reply")
@@ -29,7 +29,7 @@ test("failed block 2 never commits block 1", async ({ page }) => {
 
 test("typing defers parsing and immediate Apply validates the latest reply", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   await page.evaluate(() => {
     const original = JSON.parse;
     const state = { reads: 0 };
@@ -56,7 +56,7 @@ test("typing defers parsing and immediate Apply validates the latest reply", asy
 
 test("layout-only replies apply and undo", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   await page.getByTestId("ai-reply").fill('{"ops":[],"layout":"full"}');
   await page.getByTestId("ai-apply").click();
   await expect(page.getByTestId("ai-error")).toHaveCount(0);
@@ -65,28 +65,30 @@ test("layout-only replies apply and undo", async ({ page }) => {
   await expect(page.getByTestId("node-payments")).toBeVisible();
 });
 
-test("close restores keyboard focus and leaves the inspector visible", async ({ page }) => {
+test("the dock sits beside the inspector, never over it, and Esc hands the keyboard back", async ({ page }) => {
   await gotoCanvas(page, SLUG);
   await page.getByTestId("node-payments").click();
-  await openAiFromFileMenu(page);
-  const panel = must(await page.getByTestId("ai-dialog").boundingBox(), "AI panel");
+  await openAskAi(page);
+  const panel = must(await page.getByTestId("ai-dock").boundingBox(), "AI dock");
   const inspector = must(await page.getByTestId("inspector").boundingBox(), "inspector");
-  expect(panel.x + panel.width).toBeLessThanOrEqual(inspector.x);
+  const canvas = must(await page.getByTestId("canvas-wrap").boundingBox(), "canvas");
+  expect(inspector.x + inspector.width).toBeLessThanOrEqual(panel.x);
+  expect(canvas.x + canvas.width).toBeLessThanOrEqual(inspector.x);
   await page.keyboard.press("Escape");
-  await expect(page.getByTestId("file-button")).toBeFocused();
-  await openAiFromFileMenu(page);
-  await page.getByTestId("ai-dialog-close").click();
-  await expect(page.getByTestId("file-button")).toBeFocused();
+  await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+  await page.getByTestId("ai-request").focus();
+  await page.getByTestId("ai-collapse").click();
+  await expect(page.getByTestId("ai-rail-open")).toBeFocused();
 });
 
 test("applied feedback and confidence warnings meet light-theme contrast", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   await page.getByTestId("ai-reply").fill('[{"op":"add_node","kind":"gizmo","label":"Synthetic worker"}]');
   await page.getByTestId("ai-apply").click();
   await expect(page.getByTestId("ai-turn-0")).toBeVisible();
   const { violations } = await new AxeBuilder({ page })
-    .include('[data-testid="ai-dialog"]')
+    .include('[data-testid="ai-panel"]')
     .withTags(["wcag2aa", "wcag21aa"])
     .analyze();
   expect(violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) }))).toEqual([]);
@@ -114,7 +116,7 @@ test("synthetic local example is excluded from tools and copied prompts, includi
   );
   await gotoCanvas(page, SLUG);
   await expect.poll(() => toolNames(page)).toHaveLength(6);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   await page.evaluate(() => {
     history.pushState({}, "", "?view=canvas&example=synthetic-local");
     window.dispatchEvent(new PopStateEvent("popstate"));
@@ -137,7 +139,7 @@ test("synthetic local example is excluded from tools and copied prompts, includi
 test("stop and restart during availability opens only the latest dictation session", async ({ page }) => {
   await installFakeSpeech(page, { deferredAvailability: true });
   await gotoCanvas(page, SLUG);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   const mic = page.getByTestId("ai-mic");
   await mic.click();
   await mic.click();
@@ -145,13 +147,13 @@ test("stop and restart during availability opens only the latest dictation sessi
   await speech(page, "resolveAvailability");
   await expect.poll(async () => (await speechState(page)).starts).toBe(1);
   await expect.poll(async () => (await speechState(page)).active).toBe(1);
-  await page.getByTestId("ai-dialog-close").click();
+  await page.getByTestId("ai-collapse").click();
   await expect.poll(async () => (await speechState(page)).active).toBe(0);
 });
 
 test("undo invalidates stencil choices and a changed node refuses an old choice", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   await page.getByTestId("ai-reply").fill('[{"op":"add_node","kind":"function","label":"Synthetic function"}]');
   await page.getByTestId("ai-apply").click();
   const chip = page.getByTestId(/^ai-swap-.*-azure\.functions$/).first();
@@ -167,7 +169,7 @@ test("undo invalidates stencil choices and a changed node refuses an old choice"
 
 test("a choice remains usable for another swap within its own turn", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAiFromFileMenu(page);
+  await openAskAi(page);
   await page.getByTestId("ai-reply").fill('[{"op":"add_node","kind":"function","label":"Synthetic function"}]');
   await page.getByTestId("ai-apply").click();
   const azure = page.getByTestId(/^ai-swap-.*-azure\.functions$/).first();

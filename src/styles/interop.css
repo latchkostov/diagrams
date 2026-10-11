@@ -182,7 +182,9 @@
 .ix-toast {
   position: fixed;
   left: 50%;
+  /* Lifted above the canvas's bottom bars by the Toaster (toastStack.ts). */
   bottom: 24px;
+  transition: bottom var(--dur-2) var(--ease-out);
   z-index: 300;
   transform: translateX(-50%);
   display: flex;

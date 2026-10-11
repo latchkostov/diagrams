@@ -1,15 +1,20 @@
-// Reads what a chatbot pasted back: ops JSON (fenced or not, a bare array, `{ ops }`, one op) or a
-// whole diagrams/v1 file. Pure: no DOM, no React, so it's unit-tested and shared by every front-end.
+// Reads what a chatbot pasted back: ops JSON (fenced or not, a bare array, `{ ops }`, one op), a
+// whole diagrams/v1 file, or a simulation (the set_simulation input, from live view). Pure: no DOM, no React, so it's unit-tested and shared by every front-end.
 
-import { edit_diagramSchema, type DiagramOp, type LayoutMode } from "../index";
+import {
+  edit_diagramSchema,
+  set_simulationSchema,
+  type DiagramOp,
+  type LayoutMode,
+  type SimulationSpec,
+} from "../index";
 import { checkSchema } from "../validation";
+import type { TurnStep } from "../turn";
 import type { JsonSchema } from "../schemas";
 import { exceedsDepth, LIMITS, tooLargeMessage } from "../../interop/native";
 
-export type ParsedReply =
-  | { ok: true; kind: "ops"; ops: DiagramOp[]; layout?: LayoutMode }
-  | { ok: true; kind: "file"; file: Record<string, unknown> }
-  | { ok: false; error: string; hint: string };
+/** A reply is one turn step (see src/ai/turn.ts), or why it can't be read. */
+export type ParsedReply = ({ ok: true } & TurnStep) | { ok: false; error: string; hint: string };
 
 const ASK_AGAIN = "Ask your AI to answer with one ```json block that holds an array of ops.";
 const LAYOUTS: readonly LayoutMode[] = ["auto", "full", "none"];
@@ -61,6 +66,11 @@ function parseJson(text: string): { value: unknown } | { error: string } {
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 
+/** Is this a simulation (set_simulation's input): a title and a traffic list, not an op or a file? */
+function isSimulation(v: Record<string, unknown>): boolean {
+  return Array.isArray(v.traffic) && typeof v.title === "string" && !("op" in v) && !Array.isArray(v.nodes);
+}
+
 /** Is this a diagrams/v1 file (or close enough to one: nodes and edges arrays)? */
 function isFile(v: Record<string, unknown>): boolean {
   return v.format === "diagrams/v1" || (Array.isArray(v.nodes) && !("op" in v));
@@ -73,8 +83,9 @@ function classify(value: unknown): Classified {
   for (let depth = 0; ; depth++) {
     if (depth >= LIMITS.maxDepth || exceedsDepth(value))
       return { ok: false, error: "The reply exceeds the nesting limit.", hint: ASK_AGAIN };
-    if (!isObject(value) || "ops" in value || "op" in value || isFile(value)) break;
-    const inner = value.arguments ?? value.input ?? value.parameters ?? value.args;
+    if (!isObject(value) || "ops" in value || "op" in value || isFile(value) || isSimulation(value)) break;
+    const inner =
+      value.arguments ?? value.input ?? value.parameters ?? value.args ?? value.simulation ?? value.set_simulation;
     if (typeof inner === "string") {
       const parsed = parseJson(inner);
       if ("error" in parsed)
@@ -84,6 +95,18 @@ function classify(value: unknown): Classified {
     else break;
   }
   if (isObject(value) && isFile(value)) return { ok: true, kind: "file", file: value };
+  if (isObject(value) && isSimulation(value)) {
+    try {
+      checkSchema(value, set_simulationSchema);
+    } catch (error) {
+      return {
+        ok: false,
+        error: `The simulation isn't valid: ${error instanceof Error ? error.message : String(error)}`,
+        hint: "Ask your AI for one JSON object with a title and a traffic list.",
+      };
+    }
+    return { ok: true, kind: "simulation", spec: value as unknown as SimulationSpec };
+  }
   let ops: unknown;
   let layout: LayoutMode | undefined;
   if (Array.isArray(value)) ops = value;
@@ -156,6 +179,16 @@ export function parseReply(text: string): ParsedReply {
           hint: ASK_AGAIN,
         };
       results.push(result);
+    }
+    const sims = results.filter((r) => r.ok && r.kind === "simulation");
+    if (sims.length) {
+      if (results.length !== 1)
+        return {
+          ok: false,
+          error: "Send one simulation on its own; a reply that mixes it with other blocks can't be applied safely.",
+          hint: ASK_AGAIN,
+        };
+      return sims[0];
     }
     const files = results.filter((r) => r.ok && r.kind === "file");
     if (files.length) {

@@ -836,7 +836,12 @@ function LiveSession({
   // While slow motion plays, the card is its event list: the replayed journey, the hop being told.
   const slowState = slow.state;
   // Simulation switching uses the same availability as the registry's engine-changing actions.
-  useLiveSessionHost(selectSimulation, !!editor && !alwaysOn, liveMutationGuard(() => slow.session.active).hint());
+  useLiveSessionHost(
+    selectSimulation,
+    !!editor && !alwaysOn,
+    liveMutationGuard(() => slow.session.active).hint(),
+    controller.getState,
+  );
   const slowCard = useMemo(() => {
     const script = slowState.script;
     if (slowState.status !== "on" || !script || !slowState.trace) return null;

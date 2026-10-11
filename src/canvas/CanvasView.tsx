@@ -82,6 +82,8 @@ import { LiveView } from "../live/LiveView";
 import { LIVE_BAR_SPACE } from "../live/layout";
 import { safeStorage } from "../lib/storage";
 import { StartCard, type StartOptions } from "./StartCard";
+import { useAiDock } from "../ai/ui/dock";
+import { motionMs } from "../lib/motion";
 import { NodeTooltip } from "./NodeTooltip";
 import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { FirstRunHint } from "./FirstRunHint";
@@ -103,6 +105,7 @@ const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
 const HINT_KEY = "diagrams.firstRunHint.v1";
 /** Below this width the inspector waits for a selection: two open side panels leave too little canvas. */
 const ROOMY = 1680;
+const CRAMPED = 1280;
 
 export interface CanvasHandle {
   /** Current canvas as a diagrams/v1 file. */
@@ -158,7 +161,10 @@ actionRegistry.register(builtinActions());
 
 function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, initial, start, onTitleChange }: Props) {
   const { theme, nodeVariant, edgeStyle } = useSettings();
-  const { screenToFlowPosition, fitView } = useReactFlow<FlowNode, DiagramFlowEdge>();
+  const { screenToFlowPosition, fitView, getNodes, getNodesBounds, getViewport, setCenter } = useReactFlow<
+    FlowNode,
+    DiagramFlowEdge
+  >();
   const wrapper = useRef<HTMLDivElement>(null);
   /** The pointer over the canvas (client coords), for "T adds text here". */
   const pointer = useRef<{ x: number; y: number } | null>(null);
@@ -192,8 +198,15 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const [openedByHand, setOpenedByHand] = useState({ live, palette: false, inspector: false });
   if (openedByHand.live !== live) setOpenedByHand({ live, palette: false, inspector: false });
   const [narrow, setNarrow] = useState(() => window.innerWidth < ROOMY);
+  // Below CRAMPED, an open Ask AI dock keeps the inspector folded to its rail until opened by hand.
+  const [cramped, setCramped] = useState(() => window.innerWidth < CRAMPED);
+  const aiDock = useAiDock();
+  const aiDockOpen = aiDock.open;
   useEffect(() => {
-    const onResize = () => setNarrow(window.innerWidth < ROOMY);
+    const onResize = () => {
+      setNarrow(window.innerWidth < ROOMY);
+      setCramped(window.innerWidth < CRAMPED);
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -580,7 +593,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     !selectedNodes.length && !selectedGroups.length && !selectedEdges.length && !selectedAnnotations.length;
   const paletteHidden = paletteCollapsed || (live && !openedByHand.palette);
   const inspectorHidden =
-    livePanelOpen || !prefs.inspector || ((live || (narrow && nothingSelected)) && !openedByHand.inspector);
+    livePanelOpen ||
+    !prefs.inspector ||
+    ((live || (narrow && nothingSelected) || (cramped && aiDockOpen)) && !openedByHand.inspector);
   // Below ROOMY the inspector opens with a selection and narrows the canvas: keep the selection
   // and its edges in view (a pan, never a zoom), once the pane has its new size.
   const keepSelectionInView = useKeepSelectionInView(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
@@ -614,6 +629,32 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when a side panel opens or closes
   }, [panelsKey]);
+  // The Ask AI dock opened, closed or was resized by more than a little: the pane changed size at its
+  // right edge. A fit is refitted to the new pane; a view the user panned or zoomed keeps the selection
+  // (or, with none, the diagram's centre) in view with a pan.
+  const dockKey = `${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}`;
+  const lastDock = useRef(dockKey);
+  useEffect(() => {
+    if (lastDock.current === dockKey) return;
+    lastDock.current = dockKey;
+    if (presenting) return;
+    // After React Flow's ResizeObserver has the new pane size, and once a drag on the dock's edge settles.
+    const id = setTimeout(() => {
+      if (showingAll.current) return overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
+      if (keepSelectionInView()) return;
+      const pane = wrapper.current?.getBoundingClientRect();
+      const nodes = getNodes().filter((n) => !n.hidden);
+      if (!pane || !nodes.length) return;
+      const b = getNodesBounds(nodes);
+      const { x, y, zoom } = getViewport();
+      const cx = (b.x + b.width / 2) * zoom + x;
+      const cy = (b.y + b.height / 2) * zoom + y;
+      if (cx < 40 || cx > pane.width - 40 || cy < 40 || cy > pane.height - 40)
+        void setCenter(b.x + b.width / 2, b.y + b.height / 2, { zoom, duration: motionMs(250) });
+    }, 150);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the dock changes the pane
+  }, [dockKey]);
   // Stable, so the memoized stencil rail skips the canvas's frequent renders (drag, select, zoom).
   const togglePalette = useCallback(() => {
     setPaletteCollapsed(!paletteHidden);

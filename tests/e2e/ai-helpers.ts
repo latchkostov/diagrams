@@ -27,11 +27,27 @@ export async function savedDiagram(page: Page, slug = SLUG) {
 /** Nodes on the canvas (not their tooltips or editors). */
 export const nodeCount = (page: Page) => page.getByTestId(/^node-(?!tooltip$|editor-)/).count();
 
-export async function openAiFromFileMenu(page: Page) {
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("file-build-with-ai").click();
+/** Waits for the view to stop moving (opening or folding the dock refits the diagram; a move closes menus). */
+export async function settle(page: Page, testId = "node-payments") {
+  let last = "";
+  await expect
+    .poll(
+      async () => {
+        const now = JSON.stringify(await page.getByTestId(testId).boundingBox());
+        const still = now === last;
+        last = now;
+        return still;
+      },
+      { intervals: [100, 150, 150, 250] },
+    )
+    .toBe(true);
+}
+
+/** Opens the Ask AI dock from the top bar. */
+export async function openAskAi(page: Page) {
+  await page.getByTestId("ask-ai-toggle").click();
   // The panel is its own chunk: the dev server may still be transforming it on a busy first load.
-  await expect(page.getByTestId("ai-dialog")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("ai-panel")).toBeVisible({ timeout: 20_000 });
 }
 
 /**
