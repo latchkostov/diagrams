@@ -511,7 +511,7 @@
 
 .lab-json-actions .btn:disabled {
   opacity: 0.5;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .lab-json-error {
@@ -529,6 +529,9 @@
   border-radius: 7px;
   background: var(--surface-2);
   border: 1px solid var(--line);
+  /* A link meant to be copied. */
+  user-select: all;
+  cursor: text;
 }
 
 /* ---------- sim readout ---------- */
@@ -572,7 +575,7 @@
 
 .sim-toolbar .btn:disabled {
   opacity: 0.55;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .sim-clock {

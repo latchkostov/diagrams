@@ -63,13 +63,62 @@ select {
 button,
 select,
 a[href],
-label[for] {
+label[for],
+summary,
+input[type="checkbox"],
+input[type="radio"],
+input[type="color"] {
   cursor: pointer;
 }
 
+/* A whole search field focuses its input, so the whole field reads as a text box. */
+label.field {
+  cursor: text;
+}
+
+/* Disabled says so. Menu items keep the arrow, as native menus do. */
+button:disabled,
+select:disabled,
+input:disabled,
+[aria-disabled="true"]:not([role^="menuitem"]) {
+  cursor: not-allowed;
+}
+
+/* Copy-to-clipboard controls. */
+[data-copy],
+.copy-chip {
+  cursor: copy;
+}
+
+/* Text meant to be copied (ids, URLs, code) opts back into the I-beam. */
+.selectable {
+  cursor: text;
+}
+
 :focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Thin, theme-aware scrollbars instead of the platform's arrowed ones. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Lazy views fade in; the loading note only appears if loading takes a moment. */
+.app-body > :not(.view-loading) {
+  animation: view-in var(--dur-2) var(--ease-out);
+}
+
+.view-loading {
+  animation: view-in var(--dur-2) 0.35s both;
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .mono,
@@ -207,6 +256,10 @@ kbd {
   color: var(--text);
 }
 
+.segmented button:active:not(.is-on) {
+  background: var(--press);
+}
+
 .segmented button.is-on {
   background: var(--surface);
   color: var(--text);
@@ -233,13 +286,55 @@ kbd {
   font-size: 13px;
   font-weight: 550;
   white-space: nowrap;
-  transition: background 0.12s, border-color 0.12s;
+  transition: background var(--dur-1), border-color var(--dur-1), color var(--dur-1), opacity var(--dur-1);
 }
 
-.btn:hover,
-.icon-btn:hover {
+.btn:hover:not(:disabled),
+.icon-btn:hover:not(:disabled) {
   background: var(--surface-2);
   border-color: var(--line-strong);
+}
+
+/* Pressed: a step darker and a half-pixel down, like a physical key. */
+.btn:active:not(:disabled),
+.icon-btn:active:not(:disabled),
+.btn.is-pressed {
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  translate: 0 0.5px;
+}
+
+.btn:disabled,
+.icon-btn:disabled {
+  opacity: 0.45;
+}
+
+/* Quiet variants: no chrome until hovered (toolbars, drawer headers). */
+.btn-ghost,
+.icon-btn-quiet {
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn-ghost {
+  color: var(--text-2);
+}
+
+.btn-ghost svg {
+  color: var(--text-3);
+}
+
+.btn-danger-solid {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn.btn-danger-solid:hover:not(:disabled),
+.btn.btn-danger-solid:active:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger);
+  opacity: 0.88;
 }
 
 .btn svg {
@@ -256,10 +351,15 @@ kbd {
   color: inherit;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled),
+.btn-primary:active:not(:disabled) {
   background: var(--text);
   border-color: var(--text);
   opacity: 0.88;
+}
+
+.btn-primary:active:not(:disabled) {
+  opacity: 0.78;
 }
 
 .icon-btn {
@@ -367,6 +467,33 @@ kbd {
   color: var(--text-3);
 }
 
+.field:hover:not(:focus-within) {
+  border-color: var(--line-strong);
+}
+
+.field-clear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-right: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-3);
+}
+
+.field-clear:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.field-clear:active {
+  background: var(--press);
+}
+
 .link-btn {
   display: inline-flex;
   align-items: center;
@@ -381,6 +508,11 @@ kbd {
 
 .link-btn:hover {
   text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link-btn:active {
+  opacity: 0.75;
 }
 
 .toast {
@@ -416,6 +548,10 @@ kbd {
   font-size: 18px;
   line-height: 1;
   padding: 2px 6px;
+}
+
+.toast button:hover {
+  opacity: 1;
 }
 
 @keyframes toast-in {

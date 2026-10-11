@@ -11,12 +11,67 @@
   --line-strong: #cdd3de;
   --text: #131926;
   --text-2: #566074;
-  --text-3: #8a92a3;
+  /* 4.6:1 on --surface: the old #8a92a3 (3.1:1) was too faint for descriptions and counts. */
+  --text-3: #6c7487;
+  /* Placeholder / disabled ink only; never for text people need to read. */
+  --text-4: #9aa1b0;
   --accent: #4b57d6;
   --accent-ink: #ffffff;
   --accent-soft: rgb(75 87 214 / 0.1);
   --focus: rgb(75 87 214 / 0.45);
+  /* Keyboard focus: a solid ring with a soft halo, used by :focus-visible everywhere. */
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px rgb(75 87 214 / 0.75);
   --danger: #d1393f;
+
+  /* Feedback + live-view status. Ink is for text and icons; -soft is a tinted background. */
+  --success: #17895a;
+  --success-soft: rgb(23 137 90 / 0.12);
+  --warning: #b86e00;
+  --warning-soft: rgb(229 160 13 / 0.16);
+  --danger-soft: rgb(209 57 63 / 0.11);
+  --info: var(--accent);
+  --info-soft: var(--accent-soft);
+  --status-up: #1f9d61;
+  --status-paused: #d99000;
+  --status-down: #d1393f;
+  --status-up-soft: rgb(31 157 97 / 0.14);
+  --status-paused-soft: rgb(217 144 0 / 0.16);
+  --status-down-soft: rgb(209 57 63 / 0.13);
+  /* Live particles take the stencil accent; these shape the glow around them. */
+  --particle-core: #ffffff;
+  --particle-glow-blur: 5px;
+  --particle-glow-opacity: 0.4;
+  --live-backlog: var(--status-paused);
+  --live-dlq: var(--status-down);
+  --live-throughput: var(--accent);
+
+  /* Interaction overlays for rows, menu items and quiet buttons. */
+  --hover: rgb(16 24 40 / 0.045);
+  --press: rgb(16 24 40 / 0.08);
+
+  /* Elevation: 1 = resting cards, 2 = popovers and menus, 3 = drawers and dialogs. */
+  --surface-raised: #ffffff;
+  --shadow-1: 0 1px 2px rgb(16 24 40 / 0.05), 0 6px 16px -8px rgb(16 24 40 / 0.14);
+  --shadow-2: 0 1px 2px rgb(16 24 40 / 0.06), 0 18px 40px -14px rgb(16 24 40 / 0.32);
+  --shadow-3: 0 0 0 1px rgb(16 24 40 / 0.04), 0 24px 64px -16px rgb(16 24 40 / 0.3);
+  --scrim: rgb(15 20 30 / 0.18);
+
+  /* Motion. Everything collapses to instant under prefers-reduced-motion (app.css). */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --dur-3: 260ms;
+
+  /* Spacing scale (4px base). */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+  --sp-9: 48px;
 
   --dot: #c5ccd8;
   --edge: #97a0b3;
@@ -47,12 +102,40 @@
   --line-strong: #313b51;
   --text: #e8ecf4;
   --text-2: #9ba5b9;
-  --text-3: #687189;
+  /* 4.6:1 on --surface (was #687189, 3.5:1). */
+  --text-3: #7d869d;
+  --text-4: #5b647a;
   --accent: #8f9bff;
   --accent-ink: #0e131d;
   --accent-soft: rgb(143 155 255 / 0.14);
   --focus: rgb(143 155 255 / 0.5);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px rgb(143 155 255 / 0.8);
   --danger: #ff6b6f;
+
+  --success: #4ad295;
+  --success-soft: rgb(74 210 149 / 0.14);
+  --warning: #f5b84a;
+  --warning-soft: rgb(245 184 74 / 0.15);
+  --danger-soft: rgb(255 107 111 / 0.14);
+  --status-up: #3fcf8e;
+  --status-paused: #f5b84a;
+  --status-down: #ff6b6f;
+  --status-up-soft: rgb(63 207 142 / 0.15);
+  --status-paused-soft: rgb(245 184 74 / 0.15);
+  --status-down-soft: rgb(255 107 111 / 0.15);
+  --particle-core: #ffffff;
+  --particle-glow-blur: 7px;
+  --particle-glow-opacity: 0.7;
+
+  --hover: rgb(255 255 255 / 0.045);
+  --press: rgb(255 255 255 / 0.08);
+
+  /* Dark depth comes from lighter surfaces as things rise, not just darker shadows. */
+  --surface-raised: #1b2232;
+  --shadow-1: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 10px 28px -12px rgb(0 0 0 / 0.7);
+  --shadow-2: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 20px 48px -12px rgb(0 0 0 / 0.75);
+  --shadow-3: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.35), 0 28px 72px -16px rgb(0 0 0 / 0.8);
+  --scrim: rgb(4 7 12 / 0.45);
 
   --dot: #2e3850;
   --edge: #58637b;
