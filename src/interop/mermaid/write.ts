@@ -1,5 +1,7 @@
 import type { AnnotationShape, DiagramFile, DiagramGroup } from "../../model/types";
 import { catalog } from "../../stencils/catalog";
+import { RELATION_META, isDependency, relationOf, type DependencyRelation } from "../../model/relations";
+import { RELATION_STROKE } from "../drawio/write";
 
 // diagrams/v1 -> Mermaid flowchart. Async edges are dotted (-.->), sync edges solid (-->), boundaries
 // become subgraphs. A trailing `%% diagrams:` comment keeps our ids, stencils and tones so importing
@@ -18,6 +20,19 @@ export interface MermaidMeta {
   groups?: Record<string, [string, DiagramGroup["tone"]]>;
   /** Original edge ids, in output order. */
   edges?: string[];
+  /** Output edge index -> relationship, for dependencies (absent = every edge is a flow). */
+  relations?: Record<string, DependencyRelation>;
+  /** Output edge indexes of dependencies saved as sync (their kind returns if they become flows). */
+  syncDependencies?: number[];
+}
+
+/**
+ * A dependency's link text: its implicit label as a prefix ("reads secrets"), then the user's label
+ * ("reads secrets: Key Vault Secrets User"). The importer reads the prefix back.
+ */
+export function dependencyLinkText(relation: DependencyRelation, label?: string): string {
+  const implicit = RELATION_META[relation].implicit;
+  return label?.trim() ? `${implicit}: ${label.trim()}` : implicit;
 }
 
 const RESERVED = new Set([
@@ -90,15 +105,26 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
     lines.push(`  ${nodeIds.get(a.id)}${open}"${mermaidText(a.text.trim() || " ")}"${close}`);
   }
 
-  for (const e of edges) {
-    const arrow = (e.kind ?? "async") === "async" ? "-.->" : "-->";
-    const label = e.label ? `|"${mermaidText(e.label)}"|` : "";
+  const relations: Record<string, DependencyRelation> = {};
+  edges.forEach((e, i) => {
+    if (isDependency(e)) relations[i] = relationOf(e) as DependencyRelation;
+  });
+  edges.forEach((e, i) => {
+    const relation = relations[i];
+    // Dependencies are dotted, like async messages; the label's prefix says which they are.
+    const arrow = relation || (e.kind ?? "async") === "async" ? "-.->" : "-->";
+    const text = relation ? dependencyLinkText(relation, e.label) : e.label;
+    const label = text ? `|"${mermaidText(text)}"|` : "";
     lines.push(`  ${nodeIds.get(e.from)} ${arrow}${label} ${nodeIds.get(e.to)}`);
-  }
+  });
 
-  // Dashed async edges also get a softer colour when rendered.
-  const asyncIdx = edges.flatMap((e, i) => ((e.kind ?? "async") === "async" ? [i] : []));
+  // Dashed async edges also get a softer colour when rendered; dependencies a fine dotted tint.
+  const asyncIdx = edges.flatMap((e, i) => (!relations[i] && (e.kind ?? "async") === "async" ? [i] : []));
   if (asyncIdx.length) lines.push(`  linkStyle ${asyncIdx.join(",")} stroke-dasharray: 6 4`);
+  const byRelation = new Map<DependencyRelation, number[]>();
+  for (const [i, r] of Object.entries(relations)) byRelation.set(r, [...(byRelation.get(r) ?? []), Number(i)]);
+  for (const [r, idx] of byRelation)
+    lines.push(`  linkStyle ${idx.join(",")} stroke:${RELATION_STROKE[r]},stroke-width:1.25px,stroke-dasharray: 2 4`);
 
   if (opts.metadata !== false) {
     const meta: MermaidMeta = {
@@ -109,6 +135,10 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
         ? { groups: Object.fromEntries(d.groups.map((g) => [groupIds.get(g.id)!, [g.id, g.tone ?? "neutral"]])) }
         : {}),
       edges: edges.map((e) => e.id),
+      relations,
+      ...(edges.some((e, i) => relations[i] && e.kind === "sync")
+        ? { syncDependencies: edges.flatMap((e, i) => (relations[i] && e.kind === "sync" ? [i] : [])) }
+        : {}),
     };
     lines.push(`${META_PREFIX}${JSON.stringify(meta)}`);
   }

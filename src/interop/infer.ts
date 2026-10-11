@@ -6,6 +6,19 @@ export const FALLBACK_STENCIL_ID = "generic.service";
 
 /** [pattern, stencil id]. Patterns run against lower-cased text with punctuation folded to spaces. */
 const RULES: [RegExp, string][] = [
+  // Config, secrets and identity first: "Kubernetes ConfigMap" isn't a pod, "secrets manager" isn't Vault.
+  [/\bapp ?config(uration)?\b|\bappcs\b/, "azure.app-config"],
+  [/\bmanaged identit(y|ies)\b|\bworkload identity\b|\bmsi\b/, "azure.managed-identity"],
+  [/\bsecrets manager\b/, "aws.secrets-manager"],
+  [/\bsecret manager\b/, "gcp.secret-manager"],
+  [/\bparameter store\b|\bssm\b/, "aws.parameter-store"],
+  [/\biam roles?\b|\birsa\b|\bexecution role\b|\btask role\b/, "aws.iam-role"],
+  [/\bconfig ?maps?\b/, "k8s.configmap"],
+  [/\b(kubernetes|k8s) secrets?\b/, "k8s.secret"],
+  [/\bcloud ?watch\b/, "aws.cloudwatch"],
+  [/\bconfig(uration)? (store|service|server)\b/, "generic.config-store"],
+  [/\bsecrets? stores?\b/, "generic.secret-store"],
+  [/\bidentity provider\b|\bidp\b/, "generic.identity-provider"],
   // Messaging
   [/\bschema registry\b/, "kafka.schema-registry"],
   [/\bkafka connect\b|\bdebezium\b/, "kafka.connect"],

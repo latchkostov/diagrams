@@ -3,6 +3,7 @@ import type { DiagramFile } from "../../model/types";
 import { estimateCardSize } from "../nodes/size";
 import { auditLayout, countViolations } from "./audit";
 import { groupHeaderRect, Router, type RouteInput } from "./router";
+import { derivedLabel, isDependency } from "../../model/relations";
 
 // Public examples only: the glob doesn't descend into ./private.
 const files = import.meta.glob<DiagramFile>("../../examples/*.json", { eager: true, import: "default" });
@@ -16,13 +17,15 @@ function inputFor(d: DiagramFile): RouteInput {
       const rect = { x: g.x, y: g.y, width: g.width, height: g.height };
       return { id: g.id, rect, header: groupHeaderRect(rect, g.label) };
     }),
+    // Dependencies place their glyph chip (or glyph-led pill, with any derived text) like the canvas does.
     edges: d.edges.map((e) => ({
       id: e.id,
       source: e.from,
       target: e.to,
       sourceSide: e.sourceSide,
       targetSide: e.targetSide,
-      label: e.label,
+      label: e.label ?? derivedLabel(e, d.edges),
+      glyph: isDependency(e) || undefined,
     })),
   };
 }
@@ -51,7 +54,7 @@ describe("public examples route cleanly (estimated card sizes)", () => {
       const routes = new Router().route(input);
       expect([...routes].map(([id, r]) => ({ id, points: r.points }))).toMatchSnapshot();
       const squeezed = [...routes.entries()]
-        .filter(([, r]) => r.label && r.label.mode !== "full" && r.label.mode !== "wrap")
+        .filter(([, r]) => r.label && !["full", "wrap", "glyph"].includes(r.label.mode))
         .map(([id, r]) => `${id}:${r.label!.mode}`);
       if (process.env.ROUTE_DEBUG) console.log(path, JSON.stringify(countViolations(v)), squeezed.join(","));
       expect(v).toEqual([]);

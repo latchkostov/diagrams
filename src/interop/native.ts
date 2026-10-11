@@ -1,6 +1,7 @@
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
 import { ANNOTATION_LIMITS, normalizeAnnotation } from "../model/annotations";
 import type { DiagramAnnotation } from "../model/types";
+import { isDependency, isEdgeRelation, sanitizeSettings } from "../model/relations";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -260,6 +261,7 @@ export function validateDiagram(data: unknown): NativeResult {
     if (out.sourceSide !== undefined && !SIDES.has(out.sourceSide as string)) delete out.sourceSide;
     if (out.targetSide !== undefined && !SIDES.has(out.targetSide as string)) delete out.targetSide;
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
+    repairRelation(out, warnings);
     edges.push(out);
   }
   d.edges = edges;
@@ -298,6 +300,32 @@ export function validateDiagram(data: unknown): NativeResult {
     }
   }
   return { ok: true, diagram: d as unknown as DiagramFile, warnings };
+}
+
+const DEPENDENCY_WHEN = new Set(["startup", "cached", "request", "never"]);
+
+/**
+ * Relationships (docs/research/diagram-semantics.md §2.3). An unknown `relation` is dropped, so the
+ * edge reads as a flow (the safe fallback). `props.settings` keeps only well-formed `{ key, secret? }`
+ * entries (at most MAX_SETTINGS). `when` (a later phase) survives only on a dependency. On a
+ * dependency, flow-only fields (kind, group, dlq, filter, share, emits) stay in the file untouched,
+ * so switching back to a flow restores them; the simulation never sees the edge either way.
+ */
+function repairRelation(e: Record<string, unknown>, warnings: string[]): void {
+  if (e.relation !== undefined && !isEdgeRelation(e.relation)) {
+    warnings.push(`Edge "${String(e.id)}" had an unknown relationship "${String(e.relation)}"; it's drawn as a flow.`);
+    delete e.relation;
+  }
+  if (e.when !== undefined && (!isDependency(e) || !DEPENDENCY_WHEN.has(e.when as string))) delete e.when;
+  const props = e.props as Record<string, unknown> | undefined;
+  if (props?.settings !== undefined) {
+    const settings = sanitizeSettings(props.settings);
+    const next = { ...props };
+    if (settings) next.settings = settings;
+    else delete next.settings;
+    if (Object.keys(next).length) e.props = next;
+    else delete e.props;
+  }
 }
 
 const OPS = new Set(["<", "<=", "==", ">=", ">"]);
@@ -562,7 +590,7 @@ const KNOWN_TOP = new Set([
   "layerOrder",
 ]);
 const KNOWN_NODE = new Set(["id", "stencil", "label", "sublabel", "x", "y", "group", "props"]);
-const KNOWN_EDGE = new Set(["id", "from", "to", "label", "kind", "sourceSide", "targetSide", "props"]);
+const KNOWN_EDGE = new Set(["id", "from", "to", "label", "kind", "relation", "sourceSide", "targetSide", "props"]);
 const KNOWN_GROUP = new Set(["id", "label", "tone", "x", "y", "width", "height"]);
 const KNOWN_ANNOTATION = new Set(["id", "kind", "text", "x", "y", "width", "height", "shape", "color", "textSize"]);
 

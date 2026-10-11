@@ -130,7 +130,8 @@ describe("round-trip: every public example through Mermaid", () => {
           .map((n) => [n.id, n.stencil, n.label, n.sublabel ?? undefined, n.group ?? undefined] as const)
           .sort((a, b) => a[0].localeCompare(b[0]));
       expect(nodes(back)).toEqual(nodes(ex));
-      const edges = (d: DiagramFile) => d.edges.map((e) => [e.id, e.from, e.to, e.label, e.kind ?? "async"]);
+      const edges = (d: DiagramFile) =>
+        d.edges.map((e) => [e.id, e.from, e.to, e.label, e.kind ?? "async", e.relation ?? "flow"]);
       expect(edges(back)).toEqual(edges(ex));
       expect((back.groups ?? []).map((g) => [g.id, g.label, g.tone])).toEqual(
         (ex.groups ?? []).map((g) => [g.id, g.label, g.tone ?? "neutral"]),
@@ -141,7 +142,9 @@ describe("round-trip: every public example through Mermaid", () => {
       expect(plain.nodes).toHaveLength(ex.nodes.length);
       expect(plain.edges).toHaveLength(ex.edges.length);
       expect(plain.nodes.map((n) => n.label).sort()).toEqual(ex.nodes.map((n) => n.label).sort());
-      expect(plain.edges.map((e) => e.kind)).toEqual(ex.edges.map((e) => e.kind ?? "async"));
+      // Dependencies are always dotted, so only a flow's kind survives without metadata; relations do.
+      const kinds = (d: DiagramFile) => d.edges.map((e) => (e.relation ? e.relation : (e.kind ?? "async")));
+      expect(kinds(plain)).toEqual(kinds(ex));
     });
   }
 });

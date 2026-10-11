@@ -35,6 +35,8 @@ export interface RouteEdge {
   sourceSide?: Side;
   targetSide?: Side;
   label?: string;
+  /** A dependency edge: its label leads with a glyph, or is just a glyph chip when there's no text. */
+  glyph?: boolean;
 }
 
 export interface RouteInput {
@@ -95,6 +97,7 @@ const sameLabel = (a: LabelPlacement | null, b: LabelPlacement | null) =>
     a.height === b.height &&
     a.mode === b.mode &&
     a.dot === b.dot &&
+    a.glyph === b.glyph &&
     a.text === b.text &&
     a.lines.join("\n") === b.lines.join("\n"));
 
@@ -226,7 +229,9 @@ export class Router {
 
     // ---- labels
     const labels = placeLabels(
-      edges.filter((e) => e.label?.trim()).map((e) => ({ id: e.id, text: e.label!, points: final.get(e.id)! })),
+      edges
+        .filter((e) => e.label?.trim() || e.glyph)
+        .map((e) => ({ id: e.id, text: e.label ?? "", points: final.get(e.id)!, glyph: e.glyph })),
       {
         nodes: [...nodeRects, ...input.nodes.flatMap((n) => (n.extra ? [n.extra] : []))],
         headers: groups.map((g) => g.header),

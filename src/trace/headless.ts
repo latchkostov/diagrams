@@ -1,6 +1,7 @@
 // Trace one message without the live view: for the Lab's sequence presets and for tests. Runs the
 // same engine (or a saved simulation) to the point where the followed message is done.
 
+import { flowEdges } from "../model/relations";
 import type { DiagramFile, SimRole, Simulation } from "../model/types";
 import { createEngine } from "../sim/engine";
 import { createSimulationRun } from "../sim/simulation";
@@ -22,10 +23,11 @@ export interface TraceOnceOptions {
 
 /** The diagram's entry point: a source, else the first node nothing points at. */
 export function entryNode(diagram: DiagramFile, roleOf = stencilRole): string | undefined {
-  const targets = new Set(diagram.edges.map((e) => e.to));
+  const edges = flowEdges(diagram.edges);
+  const targets = new Set(edges.map((e) => e.to));
   return (
-    diagram.nodes.find((n) => roleOf(n.stencil) === "source" && diagram.edges.some((e) => e.from === n.id))?.id ??
-    diagram.nodes.find((n) => !targets.has(n.id) && diagram.edges.some((e) => e.from === n.id))?.id
+    diagram.nodes.find((n) => roleOf(n.stencil) === "source" && edges.some((e) => e.from === n.id))?.id ??
+    diagram.nodes.find((n) => !targets.has(n.id) && edges.some((e) => e.from === n.id))?.id
   );
 }
 

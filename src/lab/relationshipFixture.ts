@@ -1,0 +1,16 @@
+import type { DiagramFile } from "../model/types";
+
+/** Semantic cache invalidation and delimiter-safe hidden dependencies on the real canvas. */
+export const relationshipFixture: DiagramFile = {
+  format: "diagrams/v1",
+  title: "Relationship regressions",
+  nodes: [
+    { id: "source", stencil: "client.browser", label: "Caller", x: 0, y: 120, props: { ratePerSec: 10 } },
+    { id: "worker", stencil: "service.go", label: "Worker", x: 360, y: 120, props: { latencyMs: 200, concurrency: 1 } },
+    { id: "vault\ninjected\tsecret", stencil: "azure.key-vault", label: "Vault\nInjected label", x: 720, y: 120 },
+  ],
+  edges: [
+    { id: "demand", from: "source", to: "worker", kind: "async", label: "secret" },
+    { id: "credential", from: "worker", to: "vault\ninjected\tsecret", kind: "async", relation: "secret" },
+  ],
+};

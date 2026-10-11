@@ -5,6 +5,7 @@ import type {
   AnnotationShape,
   AnnotationTextSize,
   DiagramGroup,
+  EdgeRelation,
   Side,
 } from "../model/types";
 
@@ -42,6 +43,8 @@ export type FlowNode = DiagramFlowNode | GroupFlowNode | AnnotationFlowNode;
 
 export type FlowEdgeData = {
   kind: "async" | "sync";
+  /** Absent = a flow. Any other relationship is a dependency: dotted, glyph, no traffic. */
+  relation?: EdgeRelation;
   label?: string;
   /** Pinned attachment sides. Omitted = chosen from node positions on every render (floating). */
   sourceSide?: Side;

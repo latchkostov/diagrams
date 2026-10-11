@@ -19,6 +19,8 @@ import {
 } from "../model/annotations";
 import { foregroundLayerOrder } from "../model/layers";
 import { notify } from "../interop/ui/toast";
+import { isDependency, relationOf, RELATION_META, type DependencyRelation } from "../model/relations";
+import { inferRelation } from "../stencils/relations";
 import { overlaps, placeFree, type Box as PlaceBox } from "../canvas/placement";
 import type { EditTarget } from "../canvas/DiagramContext";
 import {
@@ -47,6 +49,18 @@ let clipboard: ClipboardPayload | null = null;
 let pasteCount = 0;
 
 const PASTE_STEP = 30;
+
+/** Relationships already explained by a toast in this session (each one is taught once). */
+const explained = new Set<DependencyRelation>();
+
+/** The first time a relationship is inferred: say what it means, with a way back to a flow. */
+function explainInference(relation: DependencyRelation, makeFlow: () => void): void {
+  if (explained.has(relation)) return;
+  explained.add(relation);
+  notify(`${RELATION_META[relation].noun}: no messages flow here`, {
+    action: { label: "Make it a flow", run: makeFlow, testId: "toast-make-flow" },
+  });
+}
 
 export interface EditorDeps {
   slug: string;
@@ -337,14 +351,17 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         ),
       );
     },
-    updateEdge: (id, patch, opts) => {
+    updateEdge: (id, patch, opts) => api.updateEdges([id], patch, opts),
+    updateEdges: (ids, patch, opts) => {
+      const targets = new Set(ids);
       hint(opts?.merge);
       deps().setEdges((es) =>
         es.map((e) => {
-          if (e.id !== id) return e;
+          if (!targets.has(e.id)) return e;
           const data = { kind: "async" as const, ...e.data };
           if ("label" in patch) data.label = patch.label || undefined;
           if ("kind" in patch) data.kind = patch.kind ?? "async";
+          if ("relation" in patch) data.relation = isDependency(patch) ? relationOf(patch) : undefined;
           if ("sourceSide" in patch) data.sourceSide = patch.sourceSide;
           if ("targetSide" in patch) data.targetSide = patch.targetSide;
           if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
@@ -390,7 +407,26 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const existing = es.find((e) => e.source === from && e.target === to);
       if (existing) return existing.id;
       const id = uniqueId("e", new Set(es.map((e) => e.id)));
-      deps().setEdges((cur) => [...cur, { id, source: from, target: to, type: "flow", data: { kind: "async" } }]);
+      // An edge into a typed stencil (Key Vault, App Configuration, an IdP...) is a dependency, not a flow.
+      const stencilOf = (nodeId: string) => {
+        const n = rf.getNode(nodeId);
+        return n && isDiagram(n) ? n.data.stencil : undefined;
+      };
+      const relation = inferRelation(stencilOf(from), stencilOf(to));
+      deps().setEdges((cur) => [
+        ...cur,
+        {
+          id,
+          source: from,
+          target: to,
+          type: "flow",
+          data: relation === "flow" ? { kind: "async" } : { kind: "async", relation },
+        },
+      ]);
+      if (relation !== "flow")
+        explainInference(relation, () =>
+          api.updateEdge(id, { relation: undefined }, { merge: `inference:flow:${id}` }),
+        );
       return id;
     },
     reverseEdge: (id) => {

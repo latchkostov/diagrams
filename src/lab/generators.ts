@@ -266,6 +266,51 @@ export function edgeSidesDiagram(spacing = 1): DiagramFile {
 }
 
 /** async, sync, labelled, long label, bidirectional pair. */
+/**
+ * Every relationship side by side: the two flows, then the six dependencies, glyph-only, labelled and
+ * with settings (a config store whose secret edge derives "2 references").
+ */
+export function edgeRelationsDiagram(): DiagramFile {
+  const rows: [string, string, Omit<DiagramEdge, "id" | "from" | "to">][] = [
+    ["service.node", "kafka.topic", { kind: "async", label: "Message" }],
+    ["aws.api-gateway", "service.java", { kind: "sync", label: "Request" }],
+    [
+      "service.dotnet",
+      "azure.app-config",
+      {
+        relation: "config",
+        props: {
+          settings: [
+            { key: "Orders:PageSize" },
+            { key: "Features:*" },
+            { key: "ConnectionStrings:Orders", secret: true },
+            { key: "Stripe:ApiKey", secret: true },
+          ],
+        },
+      },
+    ],
+    ["service.go", "aws.secrets-manager", { relation: "secret" }],
+    ["aws.lambda", "aws.iam-role", { relation: "identity", label: "execution role" }],
+    ["service.python", "azure.app-insights", { relation: "telemetry" }],
+    ["github-actions", "azure.aks", { relation: "deploy", label: "helm upgrade" }],
+    ["azure.aks", "generic.dns", { relation: "depends", label: "resolves orders.internal" }],
+  ];
+  const nodes: DiagramNode[] = [];
+  const edges: DiagramEdge[] = [];
+  rows.forEach(([a, b, edge], r) => {
+    const name = edge.relation ?? (edge.kind === "sync" ? "request" : "message");
+    nodes.push(
+      { id: `${name}-a`, stencil: a, label: `${name} source`, x: colX(0), y: rowY(r * 1.25) },
+      { id: `${name}-b`, stencil: b, label: `${name} target`, x: colX(1.4), y: rowY(r * 1.25) },
+    );
+    edges.push({ id: `edge-${name}`, from: `${name}-a`, to: `${name}-b`, kind: "async", ...edge });
+  });
+  // The App Configuration store references a vault: its edge reads "2 references".
+  nodes.push({ id: "kv", stencil: "azure.key-vault", label: "Key Vault", x: colX(2.8), y: rowY(2 * 1.25) });
+  edges.push({ id: "edge-references", from: "config-b", to: "kv", kind: "async", relation: "secret" });
+  return { format: DIAGRAM_FORMAT, title: "Relationships", direction: "LR", nodes, edges };
+}
+
 export function edgeKindsDiagram(): DiagramFile {
   const row = (
     r: number,

@@ -8,6 +8,7 @@ import { FileMenu, SaveStatus, SharedChip } from "../interop/ui/menus";
 import { Menu } from "../interop/ui/Menu";
 import { Glyph } from "../interop/ui/glyphs";
 import { capacityOverlay } from "../live/capacityOverlay";
+import { dependencyVisibility } from "../canvas/dependencyVisibility";
 
 export interface ExampleOption {
   slug: string;
@@ -188,6 +189,14 @@ function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
                 shortcut: "C",
                 checked: capacityOverlay.get(),
                 onSelect: () => capacityOverlay.toggle(),
+              },
+              {
+                type: "item" as const,
+                testId: "dependencies-toggle",
+                title: "Show dependencies",
+                desc: "Config, secret, identity and other dotted edges",
+                checked: dependencyVisibility.get(),
+                onSelect: () => dependencyVisibility.toggle(),
               },
             ]
           : []),

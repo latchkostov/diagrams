@@ -1,3 +1,4 @@
+import { edgeSemanticSignature } from "../model/relations";
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   ViewportPortal,
@@ -18,8 +19,7 @@ import { isEditableTarget } from "../editor/shortcuts";
 import { inCanvas } from "../editor/useCanvasShortcuts";
 import { useSettings } from "../harness/settings";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
-import { useDiagram } from "../canvas/DiagramContext";
-import { useAllRoutes } from "../canvas/edges/useEdgeRoute";
+import { useAllRoutes, useRoutingOptions } from "../canvas/edges/useEdgeRoute";
 import { LiveController } from "./controller";
 import { LiveContext, useLiveState, type LiveUi, type TraceChoice } from "./context";
 import { Decorator } from "./decorations";
@@ -268,8 +268,7 @@ function LiveSession({
 }: SessionProps) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { fitView, setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
-  const { theme, edgeStyle, nodeVariant } = useSettings();
-  const { direction } = useDiagram();
+  const { theme } = useSettings();
   const getDiagram = useCallback((): DiagramFile => (editor ? editor.getDiagram() : diagram!), [editor, diagram]);
   const simulations = useMemo(() => simsProp ?? diagram?.simulations ?? [], [simsProp, diagram]);
   const simsRef = useRef(simulations);
@@ -498,7 +497,7 @@ function LiveSession({
   const [overlay, setOverlay] = useState<HTMLCanvasElement | null>(null);
   // The pills' rects, from the router's placements (the same routes the edges draw; re-read only
   // when the routes change, never per frame).
-  const routes = useAllRoutes({ style: edgeStyle, direction, captions: nodeVariant === "iconOnly" });
+  const routes = useAllRoutes(useRoutingOptions());
   const labelRects = useMemo(() => {
     const out: Rect[] = [];
     for (const r of routes.values())
@@ -1213,7 +1212,7 @@ function EditCapacity({ editor, presenting }: { editor: EditorApi; presenting: b
     () =>
       JSON.stringify([
         nodes.map((n) => (n.type === "diagram" ? [n.id, n.data.stencil, n.data.label, n.data.props ?? null] : n.id)),
-        edges.map((e) => [e.id, e.source, e.target, e.data?.kind, e.data?.props ?? null]),
+        edges.map((e) => edgeSemanticSignature({ id: e.id, from: e.source, to: e.target, ...e.data })),
       ]),
     [nodes, edges],
   );

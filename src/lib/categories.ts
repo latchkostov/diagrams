@@ -17,7 +17,7 @@ export const categoryLabel: Record<StencilCategory, string> = {
   data: "Data",
   network: "Network",
   observability: "Observability",
-  security: "Security",
+  security: "Security & config",
   clients: "Clients",
   generic: "Generic",
 };
@@ -28,7 +28,7 @@ export const categoryBlurb: Record<StencilCategory, string> = {
   data: "Databases, caches, object storage and analytics platforms.",
   network: "Gateways, load balancers and edge networks in front of services.",
   observability: "Metrics, logs and traces.",
-  security: "Identity and secrets.",
+  security: "Identity, secrets and configuration stores.",
   clients: "People, devices and external systems at the edge of the diagram.",
   generic: "Vendor-neutral shapes for anything else.",
 };

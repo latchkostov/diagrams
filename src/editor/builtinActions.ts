@@ -15,6 +15,8 @@ import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";
 import type { AlignMode } from "./arrange";
 import { shortcutKeys } from "./shortcuts";
 import { capacityOverlay } from "../live/capacityOverlay";
+import { isFlowEdgeTarget, relationshipAction } from "./relationActions";
+import { dependencyVisibility } from "../canvas/dependencyVisibility";
 
 // Built-in context-menu actions. Each reads the target from ctx and mutates through ctx.editor.
 
@@ -237,6 +239,16 @@ export function builtinActions(): Action[] {
             checked: capacityOverlay.get(),
             run: () => capacityOverlay.toggle(),
           },
+          // Config, secret, identity... edges; hidden, nodes show their glyphs as pips instead.
+          {
+            type: "item",
+            id: "view:dependencies",
+            label: "Dependencies",
+            icon: "rel-any",
+            keywords: "show hide dependencies relationships config secret identity telemetry deploy layers",
+            checked: dependencyVisibility.get(),
+            run: () => dependencyVisibility.toggle(),
+          },
         ];
       },
     },
@@ -435,18 +447,7 @@ export function builtinActions(): Action[] {
       icon: "tag",
       run: (ctx) => ctx.editor.startEditing({ kind: "edge", id: ctx.edgeId! }),
     },
-    {
-      id: "edge.toggle-kind",
-      section: "edge",
-      targets: ["edge"],
-      label: (ctx) =>
-        ctx.editor.getEdge(ctx.edgeId!)?.kind === "sync" ? "Make async (message)" : "Make sync (request)",
-      icon: "bolt",
-      run: (ctx) => {
-        const e = ctx.editor.getEdge(ctx.edgeId!);
-        if (e) ctx.editor.updateEdge(e.id, { kind: e.kind === "sync" ? "async" : "sync" });
-      },
-    },
+    relationshipAction,
     {
       id: "edge.reverse",
       section: "edge",
@@ -461,6 +462,7 @@ export function builtinActions(): Action[] {
       targets: ["edge"],
       label: "Dead-letter path",
       icon: "inbox",
+      when: isFlowEdgeTarget,
       checked: (ctx) => ctx.editor.getEdge(ctx.edgeId!)?.props?.dlq === true,
       run: (ctx) => {
         const on = ctx.editor.getEdge(ctx.edgeId!)?.props?.dlq === true;
@@ -473,6 +475,7 @@ export function builtinActions(): Action[] {
       targets: ["edge"],
       label: "Set consumer group…",
       icon: "users",
+      when: isFlowEdgeTarget,
       run: (ctx) => ctx.editor.openInspector("group"),
     },
     {

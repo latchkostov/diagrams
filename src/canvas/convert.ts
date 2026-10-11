@@ -5,7 +5,9 @@ import {
   type DiagramFile,
   type DiagramGroup,
   type DiagramNode,
+  type EdgeRelation,
 } from "../model/types";
+import { implicitLabel, isDependency, relationOf } from "../model/relations";
 import { foregroundLayerOrder } from "../model/layers";
 import { getStencil } from "../stencils/registry";
 import { annotationAriaLabel, annotationTitle, isConnectable } from "./annotations";
@@ -35,8 +37,14 @@ export function nodeAriaLabel(d: { stencil: string; label: string }): string {
 
 export const groupAriaLabel = (label: string) => `${label || "Untitled"}, boundary`;
 
-export function edgeAriaLabel(from: string, to: string, kind: "async" | "sync" | undefined, label?: string): string {
-  return `${from} to ${to}, ${kind === "sync" ? "request" : "message"}${label ? `: ${label}` : ""}`;
+export function edgeAriaLabel(
+  from: string,
+  to: string,
+  kind: "async" | "sync" | undefined,
+  label?: string,
+  relation?: EdgeRelation,
+): string {
+  return `${from} to ${to}, ${implicitLabel(relation ?? "flow", kind)}${label ? `: ${label}` : ""}`;
 }
 
 const nodeAriaCopies = new WeakMap<object, FlowNode>();
@@ -72,12 +80,20 @@ const edgeAriaCopies = new WeakMap<object, DiagramFlowEdge>();
 export function withEdgeAria(edges: DiagramFlowEdge[], labelOf: (id: string) => string): DiagramFlowEdge[] {
   let changed = false;
   const out = edges.map((e) => {
-    const want = edgeAriaLabel(labelOf(e.source), labelOf(e.target), e.data?.kind, e.data?.label);
+    const want = edgeAriaLabel(labelOf(e.source), labelOf(e.target), e.data?.kind, e.data?.label, e.data?.relation);
     if (e.ariaLabel === want) return e;
     changed = true;
     const cached = edgeAriaCopies.get(e);
     if (cached?.ariaLabel === want) return cached;
-    const copy = { ...e, ariaLabel: want };
+    const copy = {
+      ...e,
+      ariaLabel: want,
+      domAttributes: {
+        ...e.domAttributes,
+        "data-testid": `relationship-wrapper-${e.id}`,
+        "data-dependency": isDependency(e.data) ? "true" : "false",
+      },
+    };
     edgeAriaCopies.set(e, copy);
     return copy;
   });
@@ -125,7 +141,14 @@ export const edgeToFlow = (e: DiagramEdge): DiagramFlowEdge => ({
   source: e.from,
   target: e.to,
   type: "flow",
-  data: { kind: e.kind ?? "async", label: e.label, sourceSide: e.sourceSide, targetSide: e.targetSide, props: e.props },
+  data: {
+    kind: e.kind ?? "async",
+    ...(isDependency(e) ? { relation: relationOf(e) } : {}),
+    label: e.label,
+    sourceSide: e.sourceSide,
+    targetSide: e.targetSide,
+    props: e.props,
+  },
 });
 
 /**
@@ -213,6 +236,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
     to: e.target,
     label: e.data?.label,
     kind: e.data?.kind ?? "async",
+    relation: isDependency(e.data) ? relationOf(e.data) : undefined,
     sourceSide: e.data?.sourceSide,
     targetSide: e.data?.targetSide,
     props: e.data?.props,

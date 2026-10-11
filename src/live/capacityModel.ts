@@ -3,6 +3,7 @@
 // inputs into (a) the simulation to run, (b) a planning analysis per node, (c) a bottleneck headline
 // with a one-click fix. All rates are real messages per second.
 
+import { flowEdges } from "../model/relations";
 import type { DiagramFile, DiagramNode, SimRole, Simulation, TrafficShape } from "../model/types";
 import { LIMITS } from "../interop/native";
 import { stencilRole } from "../stencils/roles";
@@ -205,7 +206,7 @@ export function entryRates(d: DiagramFile, sim: Simulation | null, inputs: LiveI
  */
 export function entryCandidates(d: DiagramFile): DiagramNode[] {
   const ids = new Set(d.nodes.map((n) => n.id));
-  const edges = d.edges.filter((e) => e.from !== e.to && ids.has(e.from) && ids.has(e.to));
+  const edges = flowEdges(d.edges).filter((e) => e.from !== e.to && ids.has(e.from) && ids.has(e.to));
   const fed = new Set(edges.map((e) => e.to));
   const feeds = new Set(edges.map((e) => e.from));
   const roots = d.nodes.filter((n) => !fed.has(n.id));

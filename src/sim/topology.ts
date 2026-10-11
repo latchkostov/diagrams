@@ -1,5 +1,6 @@
 import type { DiagramEdge, DiagramFile, DiagramNode, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
+import { flowEdges } from "../model/relations";
 export const brokerRole = (role: SimRole) => role === "queue" || role === "topic" || role === "stream";
 /** Explicit false wins; infer labels only on broker-to-broker/store paths. */
 export function isDlqEdge(edge: DiagramEdge, fromRole: SimRole, target: DiagramNode, toRole: SimRole): boolean {
@@ -86,7 +87,8 @@ export function compileTopology(diagram: DiagramFile, roleOf = stencilRole): Com
   const ids = new Set<string>(),
     restricted = new Set<string>(),
     unrestricted = new Set<string>();
-  for (const input of diagram.edges) {
+  // Dependencies (config, secret, identity...) carry no traffic: routing and capacity never see them.
+  for (const input of flowEdges(diagram.edges)) {
     const from = roles.get(input.from),
       to = roles.get(input.to),
       target = nodes.get(input.to);

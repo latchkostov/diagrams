@@ -198,3 +198,30 @@ and Event Hubs Capture (no distinct icon). Kafka Streams reuses `kafka.svg`.
 | `generic-external-api.svg`  | Lucide (ISC)                             | `cloud`                                                                                                                                    |
 | `generic-llm.svg`           | Lucide (ISC)                             | `sparkles`                                                                                                                                 |
 | `generic-vector-db.svg`     | Lucide (ISC)                             | `orbit`                                                                                                                                    |
+
+### Config, secrets and identity (relationships, phase 1)
+
+No new icon needs attribution. Parameter Store and IAM Role use AWS **resource** icons (the 2026-07-31
+package's `Resource-Icons_07312026` set): Systems Manager's and IAM's service icons don't say which
+feature it is. Azure Monitor (P2) is left for later.
+
+| Icon file                       | Source                                   | Original asset                                                                                         |
+| ------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `azure-app-config.svg`          | Azure V24                                | `integration/10219-icon-service-App-Configuration.svg`                                                 |
+| `azure-managed-identity.svg`    | Azure V24                                | `identity/10227-icon-service-Managed-Identities.svg`                                                   |
+| `aws-secrets-manager.svg`       | AWS 2026-07                              | `Arch_Security-Identity/48/Arch_AWS-Secrets-Manager_48.svg`                                            |
+| `aws-cloudwatch.svg`            | AWS 2026-07                              | `Arch_Management-Tools/48/Arch_Amazon-CloudWatch_48.svg`                                               |
+| `aws-parameter-store.svg`       | AWS 2026-07 (resource icon)              | `Res_Management-Governance/Res_AWS-Systems-Manager_Parameter-Store_48.svg`                             |
+| `aws-iam-role.svg`              | AWS 2026-07 (resource icon)              | `Res_Security-Identity/Res_AWS-Identity-Access-Management_Role_48.svg`                                 |
+| `gcp-secret-manager.svg`        | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:secret-manager`                                                                                   |
+| `k8s-configmap.svg`             | Kubernetes community                     | https://raw.githubusercontent.com/kubernetes/community/master/icons/svg/resources/unlabeled/cm.svg     |
+| `k8s-secret.svg`                | Kubernetes community                     | https://raw.githubusercontent.com/kubernetes/community/master/icons/svg/resources/unlabeled/secret.svg |
+| `generic-config-store.svg`      | Lucide (ISC)                             | `file-sliders`                                                                                         |
+| `generic-secret-store.svg`      | Lucide (ISC)                             | `vault`                                                                                                |
+| `generic-identity-provider.svg` | Lucide (ISC)                             | `fingerprint`                                                                                          |
+
+The relationship glyphs drawn on edges, in menus and in node pips (`src/components/relationGlyphs.ts`)
+are Lucide (ISC) paths, each flattened to one stroked path on the 24 px grid: `sliders-horizontal`
+(Config), `key-round` (Secret), `id-card` (Identity), `activity` (Telemetry), `rocket` (Deploys), `link-2`
+(Depends on) and `lock` (a secret setting). Message, Request and the menu's Relationship glyph are drawn
+for this app.

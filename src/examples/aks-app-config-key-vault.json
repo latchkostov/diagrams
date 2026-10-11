@@ -1,0 +1,375 @@
+{
+  "format": "diagrams/v1",
+  "title": "AKS orders API with App Configuration",
+  "description": "Bold lines carry requests and events. Dotted lines are dependencies: where the API gets its settings (two are Key Vault references), its identity, and where it reports.",
+  "direction": "LR",
+  "groups": [
+    {
+      "id": "azure",
+      "label": "Azure · prod",
+      "tone": "azure",
+      "x": 400,
+      "y": 0,
+      "width": 1600,
+      "height": 680
+    },
+    {
+      "id": "aks",
+      "label": "AKS cluster",
+      "tone": "k8s",
+      "x": 820,
+      "y": 236,
+      "width": 320,
+      "height": 172
+    }
+  ],
+  "nodes": [
+    {
+      "id": "web",
+      "stencil": "client.browser",
+      "label": "Storefront",
+      "sublabel": "Shoppers placing orders",
+      "x": 40,
+      "y": 300,
+      "props": {
+        "ratePerSec": 20,
+        "messageType": "PlaceOrder"
+      }
+    },
+    {
+      "id": "fd",
+      "stencil": "azure.front-door",
+      "label": "Front Door",
+      "sublabel": "WAF · TLS",
+      "x": 440,
+      "y": 300,
+      "group": "azure"
+    },
+    {
+      "id": "api",
+      "stencil": "service.dotnet",
+      "label": "Orders API",
+      "sublabel": "ASP.NET Core · 3 replicas",
+      "x": 860,
+      "y": 300,
+      "group": "aks",
+      "props": {
+        "replicas": 3,
+        "concurrency": 16,
+        "latencyMs": 120,
+        "emits": "OrderCreated"
+      }
+    },
+    {
+      "id": "sql",
+      "stencil": "azure.sql",
+      "label": "orders-db",
+      "sublabel": "Azure SQL",
+      "x": 1300,
+      "y": 180,
+      "group": "azure"
+    },
+    {
+      "id": "sb",
+      "stencil": "azure.service-bus.topic",
+      "label": "orders.created",
+      "sublabel": "Service Bus topic",
+      "x": 1300,
+      "y": 420,
+      "group": "azure",
+      "props": {
+        "partitions": 16
+      }
+    },
+    {
+      "id": "notify",
+      "stencil": "azure.functions",
+      "label": "Order confirmation",
+      "sublabel": "Function · sends email",
+      "x": 1720,
+      "y": 420,
+      "group": "azure",
+      "props": {
+        "concurrency": 32,
+        "latencyMs": 150
+      }
+    },
+    {
+      "id": "ai",
+      "stencil": "azure.app-insights",
+      "label": "Application Insights",
+      "sublabel": "traces · logs · metrics",
+      "x": 860,
+      "y": 60,
+      "group": "azure"
+    },
+    {
+      "id": "appcfg",
+      "stencil": "azure.app-config",
+      "label": "orders-config",
+      "sublabel": "App Configuration",
+      "x": 860,
+      "y": 560,
+      "group": "azure"
+    },
+    {
+      "id": "kv",
+      "stencil": "azure.key-vault",
+      "label": "orders-kv",
+      "sublabel": "Key Vault",
+      "x": 1300,
+      "y": 560,
+      "group": "azure"
+    },
+    {
+      "id": "mi",
+      "stencil": "azure.managed-identity",
+      "label": "orders-api-id",
+      "sublabel": "Workload identity",
+      "x": 440,
+      "y": 560,
+      "group": "azure"
+    },
+    {
+      "id": "entra",
+      "stencil": "entra-id",
+      "label": "Entra ID",
+      "sublabel": "Token issuer",
+      "x": 40,
+      "y": 560
+    }
+  ],
+  "edges": [
+    {
+      "id": "web-to-fd",
+      "from": "web",
+      "to": "fd",
+      "label": "HTTPS",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "fd-to-api",
+      "from": "fd",
+      "to": "api",
+      "label": "POST /orders",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "api-to-sql",
+      "from": "api",
+      "to": "sql",
+      "label": "EF Core",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200
+      }
+    },
+    {
+      "id": "api-to-sb",
+      "from": "api",
+      "to": "sb",
+      "label": "OrderCreated",
+      "kind": "async",
+      "props": {
+        "travelMs": 300
+      }
+    },
+    {
+      "id": "sb-to-notify",
+      "from": "sb",
+      "to": "notify",
+      "label": "Subscription",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "group": "confirmations"
+      }
+    },
+    {
+      "id": "api-to-appcfg",
+      "from": "api",
+      "to": "appcfg",
+      "kind": "async",
+      "relation": "config",
+      "sourceSide": "bottom",
+      "targetSide": "top",
+      "props": {
+        "settings": [
+          { "key": "Orders:PageSize" },
+          { "key": "Features:*" },
+          { "key": "ConnectionStrings:Orders", "secret": true },
+          { "key": "Stripe:ApiKey", "secret": true }
+        ]
+      }
+    },
+    {
+      "id": "appcfg-to-kv",
+      "from": "appcfg",
+      "to": "kv",
+      "kind": "async",
+      "relation": "secret",
+      "sourceSide": "right",
+      "targetSide": "left"
+    },
+    {
+      "id": "api-to-mi",
+      "from": "api",
+      "to": "mi",
+      "label": "runs as",
+      "kind": "async",
+      "relation": "identity",
+      "sourceSide": "bottom",
+      "targetSide": "right"
+    },
+    {
+      "id": "mi-to-entra",
+      "from": "mi",
+      "to": "entra",
+      "label": "OIDC federation",
+      "kind": "async",
+      "relation": "identity",
+      "sourceSide": "left",
+      "targetSide": "right"
+    },
+    {
+      "id": "api-to-ai",
+      "from": "api",
+      "to": "ai",
+      "kind": "async",
+      "relation": "telemetry",
+      "sourceSide": "top",
+      "targetSide": "bottom"
+    }
+  ],
+  "simulations": [
+    {
+      "id": "lunch-rush",
+      "title": "Lunch rush",
+      "description": "Steady orders: every request writes to SQL and publishes OrderCreated. Config, secrets and tokens were read at startup, so nothing moves on the dotted lines.",
+      "seed": 3,
+      "scale": 2,
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "web",
+          "messageType": "PlaceOrder",
+          "label": "400 orders over 10 seconds",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 40,
+            "durationMs": 10000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Orders flow through Front Door to the API, then to SQL and Service Bus.",
+            "focus": ["fd", "api", "sql", "sb"]
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "note",
+            "text": "No messages go to App Configuration or Key Vault: the API read them at startup and keeps them cached.",
+            "focus": ["api", "appcfg", "kv"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "written",
+          "label": "Every order is written",
+          "metric": { "node": "sql", "field": "processed" },
+          "op": "==",
+          "value": 400,
+          "when": "end"
+        },
+        {
+          "id": "confirmed",
+          "label": "Every order is confirmed",
+          "metric": { "node": "notify", "field": "processed" },
+          "op": "==",
+          "value": 400,
+          "when": "end"
+        },
+        {
+          "id": "no-drops",
+          "label": "Nothing is dropped",
+          "metric": { "node": "api", "field": "dropped" },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    },
+    {
+      "id": "flash-sale",
+      "title": "Flash sale",
+      "description": "A spike to 300 orders a second for three seconds. Three replicas absorb it; the dependencies stay quiet.",
+      "seed": 5,
+      "scale": 5,
+      "traffic": [
+        {
+          "id": "spike",
+          "node": "web",
+          "messageType": "PlaceOrder",
+          "label": "1,110 orders: steady, then a three-second sale",
+          "shape": {
+            "kind": "spike",
+            "baseRate": 30,
+            "peakRate": 300,
+            "atMs": 3000,
+            "peakMs": 3000,
+            "durationMs": 10000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "note",
+            "text": "The sale starts: 300 orders a second for three seconds.",
+            "focus": ["web", "api"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "written",
+          "label": "Every order is written",
+          "metric": { "node": "sql", "field": "processed" },
+          "op": "==",
+          "value": 1110,
+          "when": "end"
+        },
+        {
+          "id": "confirmed",
+          "label": "Every order is confirmed",
+          "metric": { "node": "notify", "field": "processed" },
+          "op": "==",
+          "value": 1110,
+          "when": "end"
+        },
+        {
+          "id": "no-drops",
+          "label": "Nothing is dropped",
+          "metric": { "node": "api", "field": "dropped" },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    }
+  ]
+}

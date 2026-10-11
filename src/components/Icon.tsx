@@ -1,4 +1,5 @@
 import { TRAFFIC_PATH } from "./glyphPaths";
+import { RELATION_GLYPHS } from "./relationGlyphs";
 
 /** Small UI glyphs (stroke icons, 16px grid). */
 const paths = {
@@ -74,22 +75,26 @@ const paths = {
   "shape-cylinder": "M3 4.5c0-1.1 2.24-2 5-2s5 .9 5 2-2.24 2-5 2-5-.9-5-2ZM3 4.5v7c0 1.1 2.24 2 5 2s5-.9 5-2v-7",
 } as const;
 
-export type IconName = keyof typeof paths;
+/** 16 px glyphs, plus the relationship glyphs drawn on Lucide's 24 px grid. */
+export type IconName = keyof typeof paths | keyof typeof RELATION_GLYPHS;
+
+const glyph24: Readonly<Record<string, string>> = RELATION_GLYPHS;
 
 export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
+  const big = glyph24[name];
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 16 16"
+      viewBox={big ? "0 0 24 24" : "0 0 16 16"}
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.4"
+      strokeWidth={big ? 2.1 : 1.4}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d={paths[name] ?? ""} />
+      <path d={big ?? (paths as Readonly<Record<string, string>>)[name] ?? ""} />
     </svg>
   );
 }

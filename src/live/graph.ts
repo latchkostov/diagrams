@@ -1,5 +1,6 @@
 // Graph walks for the live view: "Trace this path" and narration focus.
 
+import { flowEdges } from "../model/relations";
 import type { DiagramEdge } from "../model/types";
 
 export interface Reach {
@@ -8,14 +9,18 @@ export interface Reach {
 }
 
 /** Everything downstream of an edge: the edge itself, its target, and all that follows from it. */
-export function downstreamOfEdge(edges: readonly Pick<DiagramEdge, "id" | "from" | "to">[], edgeId: string): Reach {
+export function downstreamOfEdge(
+  edges: readonly Pick<DiagramEdge, "id" | "from" | "to" | "relation">[],
+  edgeId: string,
+): Reach {
   const start = edges.find((e) => e.id === edgeId);
   const reach: Reach = { nodes: new Set(), edges: new Set() };
   if (!start) return reach;
   reach.edges.add(start.id);
   reach.nodes.add(start.from);
-  const out = new Map<string, Pick<DiagramEdge, "id" | "from" | "to">[]>();
-  for (const e of edges) {
+  const out = new Map<string, Pick<DiagramEdge, "id" | "from" | "to" | "relation">[]>();
+  // Messages never travel dependencies (config, secret...), so a path doesn't continue along them.
+  for (const e of flowEdges(edges)) {
     const list = out.get(e.from);
     if (list) list.push(e);
     else out.set(e.from, [e]);

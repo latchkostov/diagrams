@@ -70,6 +70,8 @@ export interface EditorApi {
   /** Shallow-merges node props; `undefined` values delete keys. */
   setNodeProps(id: string, patch: Record<string, unknown>, opts?: EditOptions): void;
   updateEdge(id: string, patch: Partial<Omit<DiagramEdge, "id">>, opts?: EditOptions): void;
+  /** Update selected edges in one state pass and one history step. */
+  updateEdges(ids: readonly string[], patch: Partial<Omit<DiagramEdge, "id">>, opts?: EditOptions): void;
   setEdgeProps(id: string, patch: Record<string, unknown>, opts?: EditOptions): void;
   updateGroup(id: string, patch: Partial<Omit<DiagramGroup, "id">>, opts?: EditOptions): void;
   /**

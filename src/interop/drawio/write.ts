@@ -4,6 +4,20 @@ import { foregroundLayerOrder } from "../../model/layers";
 import { catalog } from "../../stencils/catalog";
 import { escapeXml } from "../xml";
 import { boxShape, groupStyle, imageShape, nativeShape, type DrawioShape } from "./mapping";
+import { isDependency, relationOf, type DependencyRelation } from "../../model/relations";
+
+/**
+ * Dependency tints for draw.io (its canvas is light): the light-theme --rel-* tokens. With the dotted
+ * pattern and open arrow they read as dependencies there too; `dfRelation` round-trips the kind.
+ */
+export const RELATION_STROKE: Record<DependencyRelation, string> = {
+  config: "#2A8A83",
+  secret: "#A6720C",
+  identity: "#5A61C4",
+  telemetry: "#7C6D98",
+  deploy: "#3B8752",
+  depends: "#556075",
+};
 
 // diagrams/v1 -> .drawio (uncompressed mxfile, which is draw.io's default for .drawio files).
 // Cells are wrapped in <object> so our own fields ride along as custom properties (draw.io keeps
@@ -140,13 +154,16 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
   const end = (id: string) => cellId(shapes.has(id) ? "a" : "n", id);
   for (const e of d.edges) {
     const kind = e.kind ?? "async";
-    let style = `edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=${kind === "async" ? "#7C8597" : "#475569"};${kind === "async" ? "dashed=1;dashPattern=6 4;" : ""}`;
+    const relation = isDependency(e) ? (relationOf(e) as DependencyRelation) : undefined;
+    let style = relation
+      ? `edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeWidth=1.25;fontSize=11;labelBackgroundColor=default;strokeColor=${RELATION_STROKE[relation]};dashed=1;dashPattern=1 4;dfRelation=${relation};`
+      : `edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=${kind === "async" ? "#7C8597" : "#475569"};${kind === "async" ? "dashed=1;dashPattern=6 4;" : ""}`;
     if (e.sourceSide)
       style += `exitX=${SIDE_POINT[e.sourceSide][0]};exitY=${SIDE_POINT[e.sourceSide][1]};exitDx=0;exitDy=0;`;
     if (e.targetSide)
       style += `entryX=${SIDE_POINT[e.targetSide][0]};entryY=${SIDE_POINT[e.targetSide][1]};entryDx=0;entryDy=0;`;
     lines.push(
-      `        <object id="${escapeXml(cellId("e", e.id))}" label="${escapeXml(escapeXml(e.label ?? "", false))}" dg_id="${escapeXml(e.id)}" dg_kind="${kind}"${attr("dg_props", json(e.props))}>`,
+      `        <object id="${escapeXml(cellId("e", e.id))}" label="${escapeXml(escapeXml(e.label ?? "", false))}" dg_id="${escapeXml(e.id)}" dg_kind="${kind}"${attr("dg_relation", relation)}${attr("dg_props", json(e.props))}>`,
       `          <mxCell style="${escapeXml(style)}" edge="1" parent="1" source="${escapeXml(end(e.from))}" target="${escapeXml(end(e.to))}">`,
       `            <mxGeometry relative="1" as="geometry" />`,
       `          </mxCell>`,

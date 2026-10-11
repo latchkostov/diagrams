@@ -79,7 +79,7 @@ test.describe("editor", () => {
 
     // Edge labels open the edge menu too (a straight edge's <g> has no height to click).
     await page.getByTestId("edge-label-shopper-to-gateway").click({ button: "right" });
-    await expect(menuItem(page, "edge.toggle-kind")).toBeVisible();
+    await expect(menuItem(page, "edge.relationship")).toBeVisible();
     await expect(menuItem(page, "edge.from-side")).toBeVisible();
 
     // The Simulation section stays hidden until the sim UI registers actions.
@@ -189,15 +189,21 @@ test.describe("editor", () => {
     await expect(page.getByTestId("node-orders-2")).toBeVisible();
   });
 
-  test("toggle an edge between async and sync", async ({ page }) => {
+  test("switch an edge between a request and a message (Relationship ▸)", async ({ page }) => {
     await page.getByTestId("edge-label-shopper-to-gateway").click({ button: "right" });
-    await expect(menuItem(page, "edge.toggle-kind")).toContainText("Make async");
-    await menuItem(page, "edge.toggle-kind").click();
-    await expect(page.getByTestId("inspector-field-kind-async")).toHaveAttribute("aria-checked", "true");
+    await menuItem(page, "edge.relationship").click();
+    await expect(menuItem(page, "relation:request")).toHaveAttribute("aria-checked", "true");
+    await menuItem(page, "relation:message").click();
     await expect(page.getByTestId("edge-shopper-to-gateway")).toHaveAttribute("class", /fe-async/);
+    await page.getByTestId("edge-label-shopper-to-gateway").click();
+    await expect(page.getByTestId("inspector-field-relation")).toHaveValue("message");
     await page.getByTestId("edge-label-shopper-to-gateway").click({ button: "right" });
-    await expect(menuItem(page, "edge.toggle-kind")).toContainText("Make sync");
+    await menuItem(page, "edge.relationship").click();
+    await expect(menuItem(page, "relation:message")).toHaveAttribute("aria-checked", "true");
+    // A pointer-opened submenu keeps focus on its parent: Escape closes that menu.
     await page.keyboard.press("Escape");
+    await expect(page.getByTestId("context-menu")).toHaveCount(0);
+    await expect(page.getByTestId("inspector-field-relation")).toHaveValue("message");
     // Pin a side from the inspector (under "Advanced") and back to auto.
     await page.getByTestId("inspector-section-edge-advanced").click();
     await page.getByTestId("inspector-field-sourceSide").selectOption("bottom");
