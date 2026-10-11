@@ -11,6 +11,8 @@ import { Glyph } from "../interop/ui/glyphs";
 export interface ExampleOption {
   slug: string;
   title: string;
+  /** "yours": your diagram (and a shared one); "examples": the built-in examples. */
+  group: "yours" | "examples";
 }
 
 interface Props {
@@ -24,6 +26,7 @@ interface Props {
   /** Set while a diagram from a share link is open: offers to keep it. */
   shared?: { onKeep: () => void; replaces?: string };
   onPresent: () => void;
+  onNewDiagram: () => void;
 }
 
 export function TopBar(p: Props) {
@@ -44,21 +47,21 @@ export function TopBar(p: Props) {
       <div className="segmented" role="tablist" aria-label="View">
         <button
           role="tab"
-          aria-selected={p.view === "gallery"}
-          className={p.view === "gallery" ? "is-on" : ""}
-          onClick={() => p.onView("gallery")}
-          data-testid="view-gallery"
-        >
-          <Icon name="grid" size={14} /> Gallery
-        </button>
-        <button
-          role="tab"
           aria-selected={canvas}
           className={canvas ? "is-on" : ""}
           onClick={() => p.onView("canvas")}
           data-testid="view-canvas"
         >
-          <Icon name="canvas" size={14} /> Canvas
+          <Icon name="canvas" size={14} /> Diagram
+        </button>
+        <button
+          role="tab"
+          aria-selected={p.view === "gallery"}
+          className={p.view === "gallery" ? "is-on" : ""}
+          onClick={() => p.onView("gallery")}
+          data-testid="view-gallery"
+        >
+          <Icon name="grid" size={14} /> Stencils
         </button>
         {showLab && (
           <button
@@ -83,10 +86,16 @@ export function TopBar(p: Props) {
             name="example"
             data-testid="example-picker"
           >
-            {p.exampleOptions.map((o) => (
-              <option key={o.slug} value={o.slug}>
-                {o.title}
-              </option>
+            {(["yours", "examples"] as const).map((group) => (
+              <optgroup key={group} label={group === "yours" ? "Your diagram" : "Examples"}>
+                {p.exampleOptions
+                  .filter((o) => o.group === group)
+                  .map((o) => (
+                    <option key={o.slug} value={o.slug}>
+                      {o.title}
+                    </option>
+                  ))}
+              </optgroup>
             ))}
           </select>
         </label>
@@ -98,13 +107,13 @@ export function TopBar(p: Props) {
 
       <div className="topbar-group" data-testid="topbar-actions">
         <ViewMenu edges={canvas || lab} />
-        <FileMenu api={p.interop} canvas={canvas} />
+        <FileMenu api={p.interop} canvas={canvas} onNewDiagram={p.onNewDiagram} />
         {canvas && (
           <button
             className="btn btn-primary"
             onClick={p.onPresent}
             data-testid="present-toggle"
-            title="Hide the chrome for meetings"
+            title="Present: full screen for meetings (Esc to leave)"
           >
             <Icon name="present" size={14} /> <span className="label-optional">Present</span>
           </button>

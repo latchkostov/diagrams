@@ -15,7 +15,8 @@ function read(): UrlState {
   const p = new URLSearchParams(window.location.search);
   const view = p.get("view") as View | null;
   return {
-    view: view && VIEWS.includes(view) ? view : "gallery",
+    // The diagram is the product: a bare URL opens the canvas (the stencil library is a tab).
+    view: view && VIEWS.includes(view) ? view : "canvas",
     example: p.get("example") ?? undefined,
     present: p.get("present") === "1",
   };

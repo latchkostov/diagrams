@@ -13,6 +13,7 @@ import { parseEmits } from "../editor/emits";
 import type { DiagramMeta } from "./convert";
 import { toneColor, toneLabel } from "./groupTones";
 import type { DiagramFlowEdge, DiagramFlowNode, GroupFlowNode, GroupTone } from "./types";
+import { safeStorage } from "../lib/storage";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.
@@ -31,7 +32,8 @@ interface SimField {
   hint: string;
 }
 
-const SIM_FIELDS: Record<SimKey, SimField> = {
+// Partial on purpose: engine knobs without a designed field yet stay editable under "Custom properties".
+const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
   ratePerSec: {
     label: "Rate",
     unit: "msg/s",
@@ -265,7 +267,7 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
             data-testid="inspector-field-label"
           />
         </Field>
-        <Field label="Sublabel">
+        <Field label="Subtitle">
           <input
             className="insp-input mono"
             value={node.data.sublabel ?? ""}
@@ -291,12 +293,11 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
             ))}
           </select>
         </Field>
-        <div className="insp-meta mono" title="Node id">
-          <Icon name="hash" size={12} /> {node.id}
-        </div>
+        <CopyId id={node.id} />
       </Section>
 
-      <Section
+      <Disclosure
+        id="node-simulation"
         title="Simulation"
         aside={
           <span
@@ -313,7 +314,7 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
             <SimInput
               key={k}
               name={k}
-              field={SIM_FIELDS[k]}
+              field={SIM_FIELDS[k]!}
               value={props[k]}
               onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
             />
@@ -321,16 +322,16 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
         ) : (
           <p className="insp-note">This stencil is decorative and doesn't take part in the simulation.</p>
         )}
-      </Section>
+      </Disclosure>
 
-      <Section title="Properties">
+      <Disclosure id="node-properties" title="Custom properties" count={customCount(props, SIM_KEYS)}>
         <PropsEditor
           props={props}
           hidden={SIM_KEYS}
           onSet={(patch) => editor.setNodeProps(node.id, patch)}
           onSetMerged={(patch, key) => editor.setNodeProps(node.id, patch, merge(`prop:${key}`))}
         />
-      </Section>
+      </Disclosure>
 
       {picker && (
         <ContextMenu
@@ -393,24 +394,6 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
             onChange={(kind) => editor.updateEdge(edge.id, { kind })}
           />
         </Field>
-        <div className="insp-row2">
-          <Field label="From side">
-            <SideSelect
-              testId="inspector-field-sourceSide"
-              value={data.sourceSide}
-              onChange={(v) => editor.updateEdge(edge.id, { sourceSide: v })}
-            />
-          </Field>
-          <Field label="To side">
-            <SideSelect
-              testId="inspector-field-targetSide"
-              value={data.targetSide}
-              onChange={(v) => editor.updateEdge(edge.id, { targetSide: v })}
-            />
-          </Field>
-        </div>
-      </Section>
-      <Section title="Simulation">
         <Field label="Consumer group" hint="Edges from a topic sharing a group compete for messages">
           <input
             className="insp-input mono"
@@ -434,6 +417,24 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
             <small>Failed messages from the source broker go here</small>
           </span>
         </label>
+      </Section>
+      <Disclosure id="edge-advanced" title="Advanced">
+        <div className="insp-row2">
+          <Field label="From side">
+            <SideSelect
+              testId="inspector-field-sourceSide"
+              value={data.sourceSide}
+              onChange={(v) => editor.updateEdge(edge.id, { sourceSide: v })}
+            />
+          </Field>
+          <Field label="To side">
+            <SideSelect
+              testId="inspector-field-targetSide"
+              value={data.targetSide}
+              onChange={(v) => editor.updateEdge(edge.id, { targetSide: v })}
+            />
+          </Field>
+        </div>
         <SimInput
           name="travelMs"
           field={{
@@ -470,15 +471,14 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
           value={props.emits}
           onChange={(v) => editor.setEdgeProps(edge.id, { emits: v }, merge("emits"))}
         />
-      </Section>
-      <Section title="Properties">
+        <span className="insp-label">Custom properties</span>
         <PropsEditor
           props={props}
           hidden={EDGE_KEYS}
           onSet={(patch) => editor.setEdgeProps(edge.id, patch)}
           onSetMerged={(patch, key) => editor.setEdgeProps(edge.id, patch, merge(`prop:${key}`))}
         />
-      </Section>
+      </Disclosure>
     </>
   );
 }
@@ -496,8 +496,8 @@ function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }
           data-testid="inspector-field-label"
         />
       </Field>
-      <Field label="Tone" group>
-        <div className="insp-tones" data-testid="inspector-field-tone" role="radiogroup" aria-label="Tone">
+      <Field label="Colour" group>
+        <div className="insp-tones" data-testid="inspector-field-tone" role="radiogroup" aria-label="Colour">
           {(Object.keys(toneColor) as GroupTone[]).map((t) => (
             <button
               key={t}
@@ -518,7 +518,7 @@ function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }
           <Icon name="fit" size={14} /> Fit to contents
         </button>
         <button className="btn" onClick={() => editor.ungroup(id)} data-testid="inspector-group-ungroup">
-          <Icon name="ungroup" size={14} /> Ungroup
+          <Icon name="ungroup" size={14} /> Remove boundary
         </button>
       </div>
     </Section>
@@ -538,9 +538,7 @@ function MultiPanel({ editor, selectedNodes, selectedEdges, selectedGroups }: In
   const ids = selectedNodes.map((n) => n.id);
   return (
     <Section>
-      <p className="insp-note">
-        {selectedNodes.length} nodes, {selectedEdges.length} edges, {selectedGroups.length} boundaries
-      </p>
+      <p className="insp-note">{countText(selectedNodes.length, selectedEdges.length, selectedGroups.length)}</p>
       {ids.length > 1 && (
         <Field label="Align" group>
           <div className="insp-toolbar">
@@ -586,7 +584,7 @@ function MultiPanel({ editor, selectedNodes, selectedEdges, selectedGroups }: In
       <div className="insp-actions">
         {ids.length > 0 && (
           <button className="btn" onClick={() => editor.groupNodes(ids)} data-testid="inspector-group-selection">
-            <Icon name="boundary" size={14} /> Group
+            <Icon name="boundary" size={14} /> Add boundary
           </button>
         )}
         <button
@@ -646,10 +644,8 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
         </Field>
       </Section>
       <Section>
-        <p className="insp-note">
-          {counts.nodes} nodes · {counts.edges} edges · {counts.groups} boundaries
-        </p>
-        <p className="insp-note">Select a node, edge or boundary to edit it. Right-click anything for more actions.</p>
+        <p className="insp-note">{countText(counts.nodes, counts.edges, counts.groups)}</p>
+        <p className="insp-note">Select a node, edge or boundary to edit it. Right-click anything for its actions.</p>
         <button className="link-btn" onClick={() => editor.showShortcuts()} data-testid="inspector-shortcuts">
           <Icon name="keyboard" size={13} /> Keyboard shortcuts
         </button>
@@ -659,6 +655,96 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
 }
 
 // ---------------------------------------------------------------- controls
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** "15 nodes, 15 edges, 1 boundary" (zero boundaries are left out). */
+function countText(nodes: number, edges: number, boundaries: number): string {
+  return [plural(nodes, "node", "nodes"), plural(edges, "edge", "edges")]
+    .concat(boundaries ? [plural(boundaries, "boundary", "boundaries")] : [])
+    .join(", ");
+}
+
+const customCount = (props: Record<string, unknown>, hidden: Set<string>) =>
+  Object.keys(props).filter((k) => !hidden.has(k)).length;
+
+/** The node id as a copy chip: click copies it. */
+function CopyId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1200);
+    return () => clearTimeout(t);
+  }, [copied]);
+  return (
+    <button
+      type="button"
+      className="copy-chip insp-id"
+      onClick={() =>
+        void navigator.clipboard
+          ?.writeText(id)
+          .then(() => setCopied(true))
+          .catch(() => {})
+      }
+      title="Copy id"
+      aria-label={`Copy id ${id}`}
+      data-testid="inspector-copy-id"
+    >
+      <Icon name={copied ? "check" : "hash"} size={12} />
+      <span className="mono">{copied ? "Copied" : id}</span>
+    </button>
+  );
+}
+
+const OPEN_KEY = "diagrams.inspector.open.v1";
+function readOpen(): Record<string, boolean> {
+  try {
+    const v = JSON.parse(safeStorage.getItem(OPEN_KEY) ?? "{}") as unknown;
+    return v && typeof v === "object" ? (v as Record<string, boolean>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** A collapsed-by-default section; it stays open once you've opened it (per browser). */
+function Disclosure({
+  id,
+  title,
+  aside,
+  count,
+  children,
+}: {
+  id: string;
+  title: string;
+  aside?: ReactNode;
+  count?: number;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(() => readOpen()[id] === true);
+  const toggle = () => {
+    setOpen(!open);
+    safeStorage.setItem(OPEN_KEY, JSON.stringify({ ...readOpen(), [id]: !open }));
+  };
+  return (
+    <section className={`insp-section insp-disclosure${open ? " is-open" : ""}`}>
+      <h3>
+        <button
+          type="button"
+          className="insp-disclosure-head"
+          aria-expanded={open}
+          onClick={toggle}
+          data-testid={`inspector-section-${id}`}
+        >
+          <Icon name="chevron-right" size={12} />
+          {title}
+          {!!count && <span className="insp-count">{count}</span>}
+        </button>
+        {aside}
+      </h3>
+      {open && children}
+    </section>
+  );
+}
 
 function Section({ title, aside, children }: { title?: string; aside?: ReactNode; children: ReactNode }) {
   return (

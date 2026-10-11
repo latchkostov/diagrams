@@ -122,8 +122,8 @@ function NodeEditor({
         value={s}
         onChange={(e) => setS(e.target.value)}
         onKeyDown={onKey}
-        placeholder="Sublabel, e.g. orders.created"
-        aria-label="Sublabel"
+        placeholder="Subtitle, e.g. orders.created"
+        aria-label="Subtitle"
         className="mono"
         name="sublabel"
         data-testid="node-editor-sublabel"

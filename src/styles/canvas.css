@@ -1108,10 +1108,8 @@
 
 .cm-header {
   padding: 6px 8px 3px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--text-3);
 }
 
@@ -1166,8 +1164,8 @@
 .insp-section {
   display: flex;
   flex-direction: column;
-  gap: 11px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1201,7 +1199,7 @@
 .insp-input {
   width: 100%;
   min-width: 0;
-  height: 32px;
+  height: 28px;
   padding: 0 9px;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -1585,4 +1583,310 @@ select.insp-input {
 
 .fe-label.is-editing {
   cursor: auto;
+}
+
+/* ---------- start card (blank diagram / first visit) ---------- */
+
+.start-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(468px, calc(100% - 48px));
+  max-height: calc(100% - 48px);
+  overflow: auto;
+  padding: 22px 22px 18px;
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-3);
+  z-index: 6;
+  animation: start-in var(--dur-3) var(--ease-out);
+}
+
+@keyframes start-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 6px));
+  }
+}
+
+.start-card h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  font-stretch: 110%;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.start-lede {
+  margin: 6px 0 14px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.start-examples {
+  list-style: none;
+  margin: 0 -8px;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.start-example {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.start-example:hover {
+  background: var(--hover);
+}
+
+.start-example:active {
+  background: var(--press);
+}
+
+.start-example > svg {
+  flex: none;
+  color: var(--text-4);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+.start-example:hover > svg {
+  color: var(--text-3);
+  transform: translateX(2px);
+}
+
+/* Three stencils from the diagram: a glimpse of what's inside. */
+.start-tiles {
+  flex: none;
+  display: flex;
+  gap: 3px;
+}
+
+.start-tiles .palette-tile {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.start-tiles .palette-tile .stencil-icon {
+  width: 16px;
+  height: 14px;
+}
+
+.start-example-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.start-example-text strong {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.start-example-text span {
+  color: var(--text-3);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.start-note {
+  margin: 8px 0 0;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* ---------- node tooltip (replaces the native title) ---------- */
+
+.node-tip {
+  position: fixed;
+  z-index: 60;
+  max-width: 280px;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius-m);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-2);
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  animation: tip-in var(--dur-2) var(--ease-out);
+}
+
+.node-tip.is-above {
+  transform: translate(-50%, -100%);
+}
+
+.node-tip.is-below {
+  transform: translate(-50%, 0);
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.node-tip strong {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.node-tip-sub {
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.node-tip-kind {
+  margin-top: 2px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.node-tip-desc {
+  color: var(--text-3);
+}
+
+/* ---------- first-run hint ---------- */
+
+.first-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100% - 260px);
+  padding: 5px 6px 5px 14px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface) 90%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-1);
+  color: var(--text-2);
+  font-size: 12.5px;
+  white-space: nowrap;
+  animation: start-hint-in var(--dur-3) var(--ease-out) 400ms both;
+}
+
+@keyframes start-hint-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
+.first-hint > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.first-hint > span svg {
+  color: var(--text-3);
+}
+
+.first-hint kbd {
+  font-size: 11px;
+}
+
+/* ---------- inspector disclosures ("Simulation", "Advanced", "Custom properties") ---------- */
+
+.insp-disclosure:not(.is-open) {
+  padding-bottom: 12px;
+}
+
+.insp-disclosure-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.insp-disclosure-head:hover {
+  background: var(--hover);
+  color: var(--text-2);
+}
+
+.insp-disclosure-head svg {
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+.insp-disclosure.is-open .insp-disclosure-head svg {
+  transform: rotate(90deg);
+}
+
+.insp-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.insp-id {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 11.5px;
+}
+
+.insp-id:hover {
+  color: var(--text);
+}
+
+.insp-id span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

@@ -27,6 +27,19 @@ path wins by default and the power path stays one step away.
     overlap audit (`tests/e2e/layout.spec.ts`) guards every example.
 11. **Presentation is a first-class mode.** Anything shown in a meeting reads at a distance and hides editing chrome.
 
+## Vocabulary
+
+One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
+
+- **Live** is the mode where messages flow (toggle, L). A **simulation** is a saved, scripted run you
+  replay in it. "Free play" is live without one.
+- **Boundary** (never "group") for the box around nodes: Add boundary, Remove boundary, Colour.
+- **Subtitle** for a node's second line. **Properties** opens the inspector for the thing.
+- **Your diagram** is the user's own slot; the built-in ones are **Examples**; the **Stencils** tab
+  is the catalogue.
+- Same action, same name in the File menu and the right-click (e.g. Export PNG, Copy share link).
+- Esc backs out one level: menu, dialog, selection, trace, presentation, then live view.
+
 ## Process
 
 Every feature batch ends with a **UX review gate** before new work starts: a designer agent walks the

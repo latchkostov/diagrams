@@ -167,10 +167,8 @@
   border-radius: 999px;
   background: var(--live-backlog);
   color: #3b2300;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 /* A red count at the top-right corner when messages failed, were dead-lettered or dropped. */
@@ -331,11 +329,9 @@
 }
 
 .lv-lag-title {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 650;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .lv-lag-row {
@@ -1094,10 +1090,8 @@
   align-items: center;
   gap: 6px;
   color: var(--accent);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .lv-note-time {
@@ -1347,9 +1341,10 @@
 
 /* ---------- authoring panel ---------- */
 
+/* Starts below the Live toggle so the way out of live view is never covered. */
 .lv-panel {
   position: absolute;
-  top: 12px;
+  top: 62px;
   right: 12px;
   bottom: 12px;
   width: 384px;
@@ -1439,11 +1434,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
 }
 
 .lv-section h4 span {

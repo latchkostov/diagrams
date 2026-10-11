@@ -59,9 +59,13 @@ import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts
 import type { Selection } from "../editor/types";
 import type { DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { LiveView } from "../live/LiveView";
-import { compactLiveNodeMenu } from "../live/liveActions";
+import { compactLiveMenu } from "../live/liveActions";
 import { LIVE_BAR_SPACE } from "../live/layout";
 import { safeStorage } from "../lib/storage";
+import { StartCard, type StartOptions } from "./StartCard";
+import { NodeTooltip } from "./NodeTooltip";
+import { useNodeTooltip } from "./useNodeTooltip";
+import { FirstRunHint } from "./FirstRunHint";
 
 const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -73,6 +77,9 @@ const FIT_PRESENT: FitViewOptions = {
 };
 
 const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
+const HINT_KEY = "diagrams.firstRunHint.v1";
+/** Below this width the inspector waits for a selection: two open side panels leave too little canvas. */
+const ROOMY = 1680;
 
 export interface CanvasHandle {
   /** Current canvas as a diagrams/v1 file. */
@@ -88,6 +95,8 @@ interface Props {
   readOnly?: boolean;
   /** Show this diagram instead of the slug's stored one (embeds, share-link viewers). */
   initial?: DiagramFile;
+  /** Ways in for a blank diagram (the start card). Absent: a plain hint. */
+  start?: StartOptions;
 }
 
 export function CanvasView(props: Props) {
@@ -112,7 +121,7 @@ type MenuState = { x: number; y: number; items: MenuNode[]; label: string; searc
 // Built-in actions live for the app's lifetime; HMR re-registers them by id.
 actionRegistry.register(builtinActions());
 
-function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, initial }: Props) {
+function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, initial, start }: Props) {
   const { theme, nodeVariant, edgeStyle } = useSettings();
   const { screenToFlowPosition, fitView } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
@@ -141,9 +150,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const [livePanelOpen, setLivePanelOpen] = useState(false);
   const [openedByHand, setOpenedByHand] = useState({ live, palette: false, inspector: false });
   if (openedByHand.live !== live) setOpenedByHand({ live, palette: false, inspector: false });
-  const [narrow, setNarrow] = useState(() => window.innerWidth < 1440);
+  const [narrow, setNarrow] = useState(() => window.innerWidth < ROOMY);
   useEffect(() => {
-    const onResize = () => setNarrow(window.innerWidth < 1440);
+    const onResize = () => setNarrow(window.innerWidth < ROOMY);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -151,6 +160,21 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [inspectorFocus, setInspectorFocus] = useState<{ name: string; seq: number } | undefined>();
+  const [startDismissed, setStartDismissed] = useState(false);
+  const [hintSeen, setHintSeen] = useState(() => readOnly || safeStorage.getItem(HINT_KEY) === "1");
+  const dismissHint = useCallback(() => {
+    setHintSeen(true);
+    safeStorage.setItem(HINT_KEY, "1");
+  }, []);
+  // Going live counts as having found the live view (so the first-run hint retires).
+  const onLiveChange = useCallback(
+    (on: boolean) => {
+      setLive(on);
+      if (on) dismissHint();
+    },
+    [dismissHint],
+  );
+  const nodeTip = useNodeTooltip(!live && !readOnly && !presenting);
 
   const snapshot = useMemo<CanvasSnapshot>(() => ({ meta, nodes, edges }), [meta, nodes, edges]);
   const history = useHistory(snapshot, (s) => {
@@ -255,13 +279,14 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
     (_e, node) => {
       setMenu(null);
+      nodeTip.hide();
       if (node.type !== "boundary") return;
       const members = new Map<string, { x: number; y: number }>();
       for (const n of nodes)
         if (n.type === "diagram" && n.data.group === node.data.groupId) members.set(n.id, { ...n.position });
       dragOrigin.current = { x: node.position.x, y: node.position.y, members };
     },
-    [nodes],
+    [nodes, nodeTip],
   );
   const onNodeDrag: OnNodeDrag<FlowNode> = useCallback(
     (_e, node) => {
@@ -304,11 +329,13 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       if (readOnly) return;
       const full: ActionContext = { ...ctx, editor, point: screenToFlowPosition({ x: e.clientX, y: e.clientY }) };
       const built = actionRegistry.build(full);
-      const items = live && ctx.target === "node" ? compactLiveNodeMenu(built) : built;
+      const items = live ? compactLiveMenu(built, ctx.target) : built;
       setEditing(null);
+      nodeTip.hide();
+      if (!hintSeen) dismissHint();
       setMenu(items.length ? { x: e.clientX, y: e.clientY, items, label: `${ctx.target} menu` } : null);
     },
-    [editor, screenToFlowPosition, readOnly, live],
+    [editor, screenToFlowPosition, readOnly, live, nodeTip, hintSeen, dismissHint],
   );
 
   const onPaneContextMenu = useCallback(
@@ -448,7 +475,19 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             onEdgeContextMenu={onEdgeContextMenu}
             onSelectionContextMenu={onSelectionContextMenu}
             onDoubleClick={onPaneDoubleClick}
-            onMoveStart={() => setMenu(null)}
+            onMoveStart={() => {
+              setMenu(null);
+              nodeTip.hide();
+            }}
+            onNodeMouseEnter={(e, node) => {
+              if (node.type === "diagram" && !editing)
+                nodeTip.show(e.currentTarget as Element, {
+                  label: node.data.label || node.id,
+                  sublabel: node.data.sublabel,
+                  stencil: node.data.stencil,
+                });
+            }}
+            onNodeMouseLeave={nodeTip.hide}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             colorMode={theme}
@@ -516,7 +555,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                 </ControlButton>
               </Controls>
             )}
-            {!hideChrome && prefs.minimap && (
+            {!hideChrome && prefs.minimap && nodeCount > 0 && (
               <MiniMap
                 position="bottom-right"
                 style={{ width: 168, height: 112 }}
@@ -532,24 +571,27 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                 }
               />
             )}
-            <LiveView
-              readOnly={readOnly}
-              editor={readOnly ? undefined : editor}
-              diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
-              presenting={presenting}
-              simulations={meta.simulations}
-              onLiveChange={setLive}
-              onPanelChange={setLivePanelOpen}
-              onSaveDiagram={
-                readOnly
-                  ? undefined
-                  : (diagram) => {
-                      const mod = JSON.stringify(diagram) !== originalJson;
-                      writeAutosave(slug, mod ? diagram : null);
-                      setModified(mod);
-                    }
-              }
-            />
+            {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
+            {(nodeCount > 0 || live) && (
+              <LiveView
+                readOnly={readOnly}
+                editor={readOnly ? undefined : editor}
+                diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
+                presenting={presenting}
+                simulations={meta.simulations}
+                onLiveChange={onLiveChange}
+                onPanelChange={setLivePanelOpen}
+                onSaveDiagram={
+                  readOnly
+                    ? undefined
+                    : (diagram) => {
+                        const mod = JSON.stringify(diagram) !== originalJson;
+                        writeAutosave(slug, mod ? diagram : null);
+                        setModified(mod);
+                      }
+                }
+              />
+            )}
           </ReactFlow>
 
           <div
@@ -561,10 +603,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           >
             <h1 data-testid="diagram-title">{meta.title}</h1>
             {meta.description && <p>{meta.description}</p>}
-            {!hideChrome && (
+            {!hideChrome && (nodeCount > 0 || modified) && (
               <div className="diagram-card-meta">
                 <span>
-                  {nodeCount} nodes, {edges.length} edges
+                  {nodeCount} {nodeCount === 1 ? "node" : "nodes"}, {edges.length}{" "}
+                  {edges.length === 1 ? "edge" : "edges"}
                 </span>
                 {modified && (
                   <button
@@ -586,11 +629,37 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             </button>
           )}
 
-          {nodeCount === 0 && !hideChrome && (
-            <div className="canvas-empty">
-              <strong>This diagram is empty</strong>
-              <span>Drag a stencil from the left, or double-click the canvas to add one.</span>
-            </div>
+          {nodeCount === 0 && !hideChrome && !live && start && !startDismissed ? (
+            <StartCard
+              start={start}
+              onBlank={() => {
+                setStartDismissed(true);
+                // A blank canvas starts from the stencil list: open it and put the cursor in its search.
+                setPaletteCollapsed(false);
+                setOpenedByHand((o) => ({ ...o, palette: true }));
+                requestAnimationFrame(() =>
+                  wrapper.current?.parentElement
+                    ?.querySelector<HTMLInputElement>('[data-testid="palette-search"]')
+                    ?.focus(),
+                );
+              }}
+            />
+          ) : (
+            nodeCount === 0 &&
+            !hideChrome && (
+              <div className="canvas-empty" data-testid="canvas-empty">
+                <strong>This diagram is empty</strong>
+                <span>
+                  {paletteHidden
+                    ? "Double-click the canvas to add a node, or open the stencil panel on the left."
+                    : "Drag a stencil from the left, or double-click the canvas to add one."}
+                </span>
+              </div>
+            )
+          )}
+
+          {nodeCount > 0 && !hideChrome && !live && !hintSeen && (
+            <FirstRunHint simulations={meta.simulations?.length ?? 0} onDismiss={dismissHint} />
           )}
         </div>
         {!hideChrome && (
@@ -624,6 +693,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         />
       )}
       {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
+      {nodeTip.tip && !menu && <NodeTooltip tip={nodeTip.tip} />}
     </DiagramContext.Provider>
   );
 }

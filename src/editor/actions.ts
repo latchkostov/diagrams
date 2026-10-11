@@ -13,7 +13,7 @@ import type { EditorApi, Selection, XY } from "./types";
  *   useEffect(() => actionRegistry.register([
  *     {
  *       id: "sim.inject-10",
- *       section: "simulation",           // shown under a "Simulation" header
+ *       section: "simulation",           // shown under a "Live" header
  *       targets: ["node"],
  *       label: "Inject 10 messages",
  *       icon: "bolt",
@@ -105,7 +105,7 @@ export const builtinSections: readonly MenuSection[] = [
   { id: "edge", order: 25 },
   { id: "clipboard", order: 30 },
   { id: "arrange", order: 40 },
-  { id: "simulation", order: 50, title: "Simulation" },
+  { id: "simulation", order: 50, title: "Live" },
   { id: "view", order: 60 },
   { id: "history", order: 70 },
   { id: "file", order: 80 },
