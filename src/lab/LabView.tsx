@@ -287,6 +287,10 @@ export function LabView({ onOpen }: Props) {
 
         <div
           className={`lab-stage lab-stage-${preset.kind}`}
+          role="region"
+          aria-label={`${preset.title} preview`}
+          // Render presets scroll (overflow: auto): focusable so the keyboard can scroll them too.
+          tabIndex={preset.kind === "render" ? 0 : undefined}
           data-testid="lab-stage"
           data-preset={preset.id}
           data-kind={preset.kind}
