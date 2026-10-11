@@ -50,7 +50,10 @@ function Stage({ diagram, initial, presenting = false }: LiveLabStageProps) {
   const [edges, , onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const base = useContext(DiagramContext);
   const [editing, setEditing] = useState<unknown>(null);
-  const ui = useMemo(() => ({ ...base, direction: flow.meta.direction ?? "LR", editing, setEditing }) as Ui, [base, flow.meta.direction, editing]);
+  const ui = useMemo(
+    () => ({ ...base, direction: flow.meta.direction ?? "LR", editing, setEditing }) as Ui,
+    [base, flow.meta.direction, editing],
+  );
 
   return (
     <DiagramContext.Provider value={ui}>

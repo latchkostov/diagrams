@@ -10,7 +10,12 @@ export function parseEmits(raw: string): string | Record<string, string> | undef
   if (t.startsWith("{")) {
     try {
       const obj = JSON.parse(t) as unknown;
-      if (obj && typeof obj === "object" && !Array.isArray(obj) && Object.values(obj).every((v) => typeof v === "string"))
+      if (
+        obj &&
+        typeof obj === "object" &&
+        !Array.isArray(obj) &&
+        Object.values(obj).every((v) => typeof v === "string")
+      )
         return obj as Record<string, string>;
     } catch {
       // fall through

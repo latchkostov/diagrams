@@ -124,7 +124,14 @@ function indexed(s: Stencil): Indexed {
   ].map((f) => f.toLowerCase());
   const hay = fields.join(" ");
   const label = s.label.toLowerCase();
-  hit = { stencil: s, label, labelWords: label.split(/[^a-z0-9#+]+/).filter(Boolean), words: hay.split(/[^a-z0-9#+]+/).filter(Boolean), hay, aliases };
+  hit = {
+    stencil: s,
+    label,
+    labelWords: label.split(/[^a-z0-9#+]+/).filter(Boolean),
+    words: hay.split(/[^a-z0-9#+]+/).filter(Boolean),
+    hay,
+    aliases,
+  };
   index.set(s, hit);
   return hit;
 }

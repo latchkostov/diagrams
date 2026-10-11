@@ -1,12 +1,12 @@
-import { DIAGRAM_FORMAT, type DiagramEdge, type DiagramFile, type DiagramGroup, type DiagramNode } from "../model/types";
-import { getStencil } from "../stencils/registry";
 import {
-  GROUP_PREFIX,
-  type DiagramFlowEdge,
-  type DiagramFlowNode,
-  type FlowNode,
-  type GroupFlowNode,
-} from "./types";
+  DIAGRAM_FORMAT,
+  type DiagramEdge,
+  type DiagramFile,
+  type DiagramGroup,
+  type DiagramNode,
+} from "../model/types";
+import { getStencil } from "../stencils/registry";
+import { GROUP_PREFIX, type DiagramFlowEdge, type DiagramFlowNode, type FlowNode, type GroupFlowNode } from "./types";
 
 /**
  * Everything in the file that isn't a node, edge or group, carried alongside the canvas state so

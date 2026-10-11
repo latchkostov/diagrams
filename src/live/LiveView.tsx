@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ViewportPortal, useNodesInitialized, useReactFlow, useStore, useStoreApi, type FitViewOptions } from "@xyflow/react";
+import {
+  ViewportPortal,
+  useNodesInitialized,
+  useReactFlow,
+  useStore,
+  useStoreApi,
+  type FitViewOptions,
+} from "@xyflow/react";
 import "../styles/live.css";
 import type { DiagramFile, Simulation } from "../model/types";
 import type { EditorApi } from "../editor/types";
@@ -43,14 +50,21 @@ export interface LiveViewProps {
 const UI_MS = 125;
 const NOTE_PADDING = { top: "170px", right: "80px", bottom: "230px", left: "80px" } as const;
 const NOTE_FIT: FitViewOptions = { padding: NOTE_PADDING, maxZoom: 1, duration: 900 };
-const FULL_FIT: FitViewOptions = { padding: { top: "110px", right: "48px", bottom: `${48 + LIVE_BAR_SPACE}px`, left: "48px" }, maxZoom: 1.25, duration: 700 };
+const FULL_FIT: FitViewOptions = {
+  padding: { top: "110px", right: "48px", bottom: `${48 + LIVE_BAR_SPACE}px`, left: "48px" },
+  maxZoom: 1.25,
+  duration: 700,
+};
 
 /**
  * The live view: a "Live" toggle on the canvas, and while it's on, the simulation session
  * (particles, badges, controls, notes, authoring). Rendered as a child of <ReactFlow>.
  */
 export function LiveView(props: LiveViewProps) {
-  const [params] = useState(() => ({ ...(props.alwaysOn ? { live: true, sim: null, speed: null, paused: false } : readLiveParams()), ...props.initial }));
+  const [params] = useState(() => ({
+    ...(props.alwaysOn ? { live: true, sim: null, speed: null, paused: false } : readLiveParams()),
+    ...props.initial,
+  }));
   const [live, setLive] = useState(params.live || !!props.alwaysOn);
   const firstSession = useRef(true);
   const toggle = useCallback(() => setLive((l) => !l), []);
@@ -104,7 +118,13 @@ export function LiveView(props: LiveViewProps) {
           <kbd>L</kbd>
         </button>
       )}
-      {live && ready && <LiveSession {...props} params={firstSession.current ? params : { ...params, live: true, sim: null, speed: null, paused: false }} onExit={() => setLive(false)} />}
+      {live && ready && (
+        <LiveSession
+          {...props}
+          params={firstSession.current ? params : { ...params, live: true, sim: null, speed: null, paused: false }}
+          onExit={() => setLive(false)}
+        />
+      )}
     </>
   );
 }
@@ -213,16 +233,24 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
   useEffect(() => {
     const focus = note?.focus ?? [];
     // Wait out the canvas's own refit (presentation mode toggles refit after ~80 ms).
-    const t = window.setTimeout(() => {
-      if (focus.length) {
-        zoomedForNote.current = true;
-        const padding = panelOpenRef.current ? { ...NOTE_PADDING, right: "440px" as const } : NOTE_PADDING;
-        void fitView({ ...NOTE_FIT, padding, nodes: focus.map((id) => ({ id })), duration: reducedMotion ? 0 : NOTE_FIT.duration });
-      } else if (zoomedForNote.current) {
-        zoomedForNote.current = false;
-        void fitView({ ...FULL_FIT, duration: reducedMotion ? 0 : FULL_FIT.duration });
-      }
-    }, panelOpenRef.current ? 320 : 160);
+    const t = window.setTimeout(
+      () => {
+        if (focus.length) {
+          zoomedForNote.current = true;
+          const padding = panelOpenRef.current ? { ...NOTE_PADDING, right: "440px" as const } : NOTE_PADDING;
+          void fitView({
+            ...NOTE_FIT,
+            padding,
+            nodes: focus.map((id) => ({ id })),
+            duration: reducedMotion ? 0 : NOTE_FIT.duration,
+          });
+        } else if (zoomedForNote.current) {
+          zoomedForNote.current = false;
+          void fitView({ ...FULL_FIT, duration: reducedMotion ? 0 : FULL_FIT.duration });
+        }
+      },
+      panelOpenRef.current ? 320 : 160,
+    );
     return () => window.clearTimeout(t);
   }, [noteKey, fitView, reducedMotion]);
 
@@ -234,7 +262,9 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
     panelFitted.current = panel.open;
     const t = window.setTimeout(() => {
       if (zoomedForNote.current) return;
-      const padding = panel.open ? { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const } : FULL_FIT.padding;
+      const padding = panel.open
+        ? { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const }
+        : FULL_FIT.padding;
       void fitView({ ...FULL_FIT, padding, duration: reducedMotion ? 0 : FULL_FIT.duration });
     }, 320);
     return () => window.clearTimeout(t);
@@ -250,7 +280,10 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
     const id = requestAnimationFrame(() => setTokens(readParticleTokens()));
     return () => cancelAnimationFrame(id);
   }, [theme]);
-  const renderOpts = useMemo(() => ({ theme, reducedMotion, scale: presenting ? 1.35 : 1, tokens }), [theme, reducedMotion, presenting, tokens]);
+  const renderOpts = useMemo(
+    () => ({ theme, reducedMotion, scale: presenting ? 1.35 : 1, tokens }),
+    [theme, reducedMotion, presenting, tokens],
+  );
   const rendererRef = useRef<ParticleRenderer | null>(null);
   useEffect(() => rendererRef.current?.setOptions(renderOpts), [renderOpts]);
 
@@ -260,11 +293,17 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
     const env: RenderEnv = {
       transform: () => store.getState().transform,
       size: () => ({ width: store.getState().width, height: store.getState().height }),
-      edgePath: (id) => root.querySelector<SVGPathElement>(`.react-flow__edge[data-id="${CSS.escape(id)}"] path.react-flow__edge-path`),
+      edgePath: (id) =>
+        root.querySelector<SVGPathElement>(`.react-flow__edge[data-id="${CSS.escape(id)}"] path.react-flow__edge-path`),
       nodeRect: (id) => {
         const n = store.getState().nodeLookup.get(id);
         if (!n) return null;
-        return { x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: n.measured.width ?? 0, height: n.measured.height ?? 0 };
+        return {
+          x: n.internals.positionAbsolute.x,
+          y: n.internals.positionAbsolute.y,
+          width: n.measured.width ?? 0,
+          height: n.measured.height ?? 0,
+        };
       },
     };
     // Fit-view padding elsewhere can reserve room for the control bar.
@@ -310,7 +349,11 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
 
   const selectSimulation = useCallback(
     (id: string | null) => {
-      const sim = id ? (draftRef.current?.id === id ? draftRef.current : simsRef.current.find((s) => s.id === id)) : null;
+      const sim = id
+        ? draftRef.current?.id === id
+          ? draftRef.current
+          : simsRef.current.find((s) => s.id === id)
+        : null;
       setTrace(null);
       controller.selectSimulation(sim ?? null);
       if (sim) controller.setTraffic(false);
@@ -430,7 +473,8 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
       const t = e.target;
-      if (isEditableTarget(t) || (t instanceof Element && t.closest("button, select, a, [data-editor-overlay]"))) return;
+      if (isEditableTarget(t) || (t instanceof Element && t.closest("button, select, a, [data-editor-overlay]")))
+        return;
       const waiting = controller.getState().run?.waiting;
       if (e.key === " " || e.code === "Space") {
         e.preventDefault();
@@ -465,7 +509,21 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
       notice,
       exit: alwaysOn ? null : onExit,
     }),
-    [controller, presenting, editor, getDiagram, simulations, draft, selectSimulation, panel.open, events, showEvents, notice, onExit, alwaysOn],
+    [
+      controller,
+      presenting,
+      editor,
+      getDiagram,
+      simulations,
+      draft,
+      selectSimulation,
+      panel.open,
+      events,
+      showEvents,
+      notice,
+      onExit,
+      alwaysOn,
+    ],
   );
 
   return (
@@ -474,7 +532,10 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
         <canvas ref={setCanvas} className="lv-canvas" data-testid="live-canvas" aria-hidden />
         <NodeBadges state={state} presenting={presenting} />
       </ViewportPortal>
-      <div className={`lv-hud${presenting ? " is-presenting" : ""}${panel.open ? " has-panel" : ""}`} data-testid="live-hud">
+      <div
+        className={`lv-hud${presenting ? " is-presenting" : ""}${panel.open ? " has-panel" : ""}`}
+        data-testid="live-hud"
+      >
         {trace && (
           <div className="lv-trace-chip" data-testid="live-trace">
             <LiveIcon name="target" size={13} /> Tracing downstream of this edge
@@ -504,7 +565,9 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
 }
 
 function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+  const [reduced, setReduced] = useState(
+    () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
+  );
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     if (!mq) return;

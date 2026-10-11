@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { catalog } from "../stencils/catalog";
-import { FAMILIES, familyCounts, familyOf, familyOfVendor, getFamily, isFamilyId, vendorsByFamily } from "./vendorFamilies";
+import {
+  FAMILIES,
+  familyCounts,
+  familyOf,
+  familyOfVendor,
+  getFamily,
+  isFamilyId,
+  vendorsByFamily,
+} from "./vendorFamilies";
 
 describe("vendor families", () => {
   it("maps every catalog vendor to a real family (none fall through to 'other')", () => {

@@ -3,7 +3,14 @@ import { DIAGRAM_FORMAT, type DiagramFile, type Simulation } from "../model/type
 import { formatClock, formatCount, formatRate, formatSpeed, heatOf } from "./format";
 import { PathCache, pointOnSamples, sampleIndex, samplePath, type PathLike } from "./pathSampler";
 import { fractionToTime, placeMarkers, timeToFraction, trackLength, trafficBands } from "./timelineMath";
-import { blankSimulation, createStormSimulation, defaultShape, knownMessageTypes, suggestedMessageType, uniqueSimId } from "./storm";
+import {
+  blankSimulation,
+  createStormSimulation,
+  defaultShape,
+  knownMessageTypes,
+  suggestedMessageType,
+  uniqueSimId,
+} from "./storm";
 import { simulationWarnings } from "./validate";
 import { downstreamOfEdge, edgesWithin } from "./graph";
 
@@ -12,7 +19,14 @@ const diagram = (extra: Partial<DiagramFile> = {}): DiagramFile => ({
   title: "t",
   nodes: [
     { id: "api", stencil: "aws.api-gateway", label: "Signup API", x: 0, y: 0 },
-    { id: "topic", stencil: "kafka.topic", label: "members", x: 0, y: 0, props: { emits: { MemberJoined: "WelcomeEmailRequested" } } },
+    {
+      id: "topic",
+      stencil: "kafka.topic",
+      label: "members",
+      x: 0,
+      y: 0,
+      props: { emits: { MemberJoined: "WelcomeEmailRequested" } },
+    },
     { id: "svc", stencil: "service.node", label: "welcome", x: 0, y: 0 },
     { id: "db", stencil: "postgres", label: "db", x: 0, y: 0 },
   ],
@@ -26,7 +40,17 @@ const diagram = (extra: Partial<DiagramFile> = {}): DiagramFile => ({
 
 describe("format", () => {
   it("keeps counts short", () => {
-    expect([0, 7, 999, 1000, 1234, 9999, 15_300, 999_499, 2_500_000].map(formatCount)).toEqual(["0", "7", "999", "1k", "1.2k", "10k", "15k", "999k", "2.5M"]);
+    expect([0, 7, 999, 1000, 1234, 9999, 15_300, 999_499, 2_500_000].map(formatCount)).toEqual([
+      "0",
+      "7",
+      "999",
+      "1k",
+      "1.2k",
+      "10k",
+      "15k",
+      "999k",
+      "2.5M",
+    ]);
     expect(formatCount(NaN)).toBe("–");
   });
   it("formats rates, clocks and speeds", () => {
@@ -136,7 +160,12 @@ describe("timeline mapping", () => {
       title: "s",
       traffic: [
         { id: "b", node: "api", shape: { kind: "burst", count: 10, atMs: 1000, spreadMs: 1000 } },
-        { id: "c", node: "api", label: "steady", shape: { kind: "constant", ratePerSec: 5, fromMs: 2000, durationMs: 4000 } },
+        {
+          id: "c",
+          node: "api",
+          label: "steady",
+          shape: { kind: "constant", ratePerSec: 5, fromMs: 2000, durationMs: 4000 },
+        },
       ],
     };
     const bands = trafficBands(sim, 10_000);
@@ -151,10 +180,19 @@ describe("storm creation", () => {
     const sim = createStormSimulation(d, "api");
     expect(sim.id).toBe("storm-signup-api-2");
     expect(sim.traffic).toEqual([
-      { id: "storm", node: "api", messageType: "MemberJoined", label: "100 × MemberJoined", shape: { kind: "burst", count: 100, spreadMs: 3000 } },
+      {
+        id: "storm",
+        node: "api",
+        messageType: "MemberJoined",
+        label: "100 × MemberJoined",
+        shape: { kind: "burst", count: 100, spreadMs: 3000 },
+      },
     ]);
     expect(sim.title).toBe("100 MemberJoined at Signup API");
-    expect(sim.timeline?.[0].action).toMatchObject({ do: "note", text: "100 MemberJoined messages arrive at Signup API." });
+    expect(sim.timeline?.[0].action).toMatchObject({
+      do: "note",
+      text: "100 MemberJoined messages arrive at Signup API.",
+    });
     expect(simulationWarnings(sim, d)).toEqual([]);
   });
 
@@ -162,9 +200,20 @@ describe("storm creation", () => {
     const d = diagram();
     d.nodes[0].props = { messageType: "SignupRequested" };
     expect(suggestedMessageType(d, "api")).toBe("SignupRequested");
-    const d2 = diagram({ simulations: [{ id: "s", title: "s", traffic: [{ id: "t", node: "svc", messageType: "Hello", shape: { kind: "burst", count: 1 } }] }] });
+    const d2 = diagram({
+      simulations: [
+        {
+          id: "s",
+          title: "s",
+          traffic: [{ id: "t", node: "svc", messageType: "Hello", shape: { kind: "burst", count: 1 } }],
+        },
+      ],
+    });
     expect(suggestedMessageType(d2, "svc")).toBe("Hello");
-    expect(createStormSimulation(d2, "svc", { count: 5, messageType: "Custom" }).traffic[0]).toMatchObject({ messageType: "Custom", shape: { count: 5 } });
+    expect(createStormSimulation(d2, "svc", { count: 5, messageType: "Custom" }).traffic[0]).toMatchObject({
+      messageType: "Custom",
+      shape: { count: 5 },
+    });
   });
 
   it("collects known message types without wildcards", () => {

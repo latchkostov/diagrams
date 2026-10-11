@@ -23,7 +23,8 @@ const doneLabel: Record<SimRole, string> = {
   none: "Passed",
 };
 
-const backlogLabel = (role: SimRole) => (role === "queue" ? "queued" : role === "topic" || role === "stream" ? "lag" : "waiting");
+const backlogLabel = (role: SimRole) =>
+  role === "queue" ? "queued" : role === "topic" || role === "stream" ? "lag" : "waiting";
 
 /**
  * Per-node live readouts in React Flow's viewport (they pan and zoom with the diagram). Each node
@@ -41,7 +42,10 @@ export function NodeBadges({ state, presenting }: { state: LiveState; presenting
   const zoom = useStore((s) => s.transform[2]);
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
   return (
-    <div className={`lv-badges${presenting ? " is-presenting" : ""}`} style={{ "--inv": inv.toFixed(3) } as CSSProperties}>
+    <div
+      className={`lv-badges${presenting ? " is-presenting" : ""}`}
+      style={{ "--inv": inv.toFixed(3) } as CSSProperties}
+    >
       {nodes.map((n) => {
         if (n.type !== "diagram") return null;
         const s = state.snapshot.nodes[n.id];
@@ -55,8 +59,14 @@ export function NodeBadges({ state, presenting }: { state: LiveState; presenting
             s={s}
             peak={peak}
             hovered={hovered === n.id}
-            concurrency={s.role === "processor" ? resolveProps(s.role, n.data.label, ui.controller.effectiveProps(n.id)).concurrency : 0}
-            groups={hovered === n.id && (s.role === "topic" || s.role === "stream") ? groupNames(diagram, n.id) : undefined}
+            concurrency={
+              s.role === "processor"
+                ? resolveProps(s.role, n.data.label, ui.controller.effectiveProps(n.id)).concurrency
+                : 0
+            }
+            groups={
+              hovered === n.id && (s.role === "topic" || s.role === "stream") ? groupNames(diagram, n.id) : undefined
+            }
           />
         );
       })}
@@ -71,7 +81,8 @@ function useHoveredNode(): string | null {
   useEffect(() => {
     if (!domNode) return;
     const over = (e: PointerEvent) => {
-      const el = e.target instanceof Element ? e.target.closest<HTMLElement>(".react-flow__node-diagram[data-id]") : null;
+      const el =
+        e.target instanceof Element ? e.target.closest<HTMLElement>(".react-flow__node-diagram[data-id]") : null;
       setId(el?.dataset.id ?? null);
     };
     const leave = () => setId(null);
@@ -114,7 +125,11 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
   const heat = heatOf(s.backlog);
   const problems = s.failed + s.deadLettered + s.dropped;
   const active = s.processed > 0 || s.inFlight > 0 || s.backlog > 0 || problems > 0;
-  const style = { transform: `translate(${node.position.x}px, ${node.position.y}px)`, width: w, height: h } as CSSProperties;
+  const style = {
+    transform: `translate(${node.position.x}px, ${node.position.y}px)`,
+    width: w,
+    height: h,
+  } as CSSProperties;
 
   return (
     <div
@@ -140,7 +155,11 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
         </div>
       )}
       {problems > 0 && s.status !== "down" && (
-        <div className="lv-alert mono" title={`${problems} failed, dead-lettered or dropped`} data-testid={`node-alert-${node.id}`}>
+        <div
+          className="lv-alert mono"
+          title={`${problems} failed, dead-lettered or dropped`}
+          data-testid={`node-alert-${node.id}`}
+        >
           {formatCount(problems)}
         </div>
       )}
@@ -154,11 +173,18 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
       {active && (
         <div className="lv-strip">
           {broker ? (
-            <span className={`lv-metric is-backlog${s.backlog > 0 ? " is-hot" : ""}`} style={{ "--heat": heat.toFixed(3) } as CSSProperties} data-testid={`node-metric-${node.id}`}>
+            <span
+              className={`lv-metric is-backlog${s.backlog > 0 ? " is-hot" : ""}`}
+              style={{ "--heat": heat.toFixed(3) } as CSSProperties}
+              data-testid={`node-metric-${node.id}`}
+            >
               <b className="mono">{formatCount(s.backlog)}</b> {backlogLabel(s.role)}
             </span>
           ) : (
-            <span className={`lv-metric is-rate${s.throughput >= 0.05 ? " is-on" : ""}`} data-testid={`node-metric-${node.id}`}>
+            <span
+              className={`lv-metric is-rate${s.throughput >= 0.05 ? " is-on" : ""}`}
+              data-testid={`node-metric-${node.id}`}
+            >
               <LiveIcon name="bolt" size={10} />
               <b className="mono">{formatRate(s.throughput)}</b>
             </span>
@@ -170,7 +196,11 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
         <div className="lv-detail" role="tooltip" data-testid={`node-detail-${node.id}`}>
           <Row label={doneLabel[s.role]} value={formatCount(s.processed)} />
           <Row label="Throughput" value={formatRate(s.throughput)} />
-          {broker ? <Row label={s.role === "queue" ? "Queued" : "Lag (max group)"} value={formatCount(s.backlog)} /> : s.backlog > 0 && <Row label="Waiting" value={formatCount(s.backlog)} />}
+          {broker ? (
+            <Row label={s.role === "queue" ? "Queued" : "Lag (max group)"} value={formatCount(s.backlog)} />
+          ) : (
+            s.backlog > 0 && <Row label="Waiting" value={formatCount(s.backlog)} />
+          )}
           {s.role === "processor" && <Row label="In flight" value={`${s.inFlight} / ${concurrency}`} />}
           {s.failed > 0 && <Row label="Failed attempts" value={formatCount(s.failed)} bad />}
           {s.deadLettered > 0 && <Row label="Dead-lettered" value={formatCount(s.deadLettered)} bad />}

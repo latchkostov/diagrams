@@ -30,7 +30,10 @@
   font-size: 13px;
   font-weight: 650;
   letter-spacing: 0.01em;
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.2s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.2s;
 }
 
 .lv-toggle:hover {
@@ -48,17 +51,23 @@
   border-radius: 50%;
   background: var(--text-3);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--text-3) 18%, transparent);
-  transition: background 0.2s, box-shadow 0.2s;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
 }
 
 .lv-toggle.is-on {
   border-color: color-mix(in oklab, var(--status-up) 55%, var(--line));
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--status-up) 14%, transparent), var(--node-shadow);
+  box-shadow:
+    0 0 0 4px color-mix(in oklab, var(--status-up) 14%, transparent),
+    var(--node-shadow);
 }
 
 .lv-toggle.is-on .lv-toggle-dot {
   background: var(--status-up);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--status-up) 25%, transparent), 0 0 10px var(--status-up);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--status-up) 25%, transparent),
+    0 0 10px var(--status-up);
   animation: lv-breathe 1.8s ease-in-out infinite;
 }
 
@@ -74,7 +83,9 @@
 
 @keyframes lv-breathe {
   50% {
-    box-shadow: 0 0 0 6px color-mix(in oklab, var(--status-up) 8%, transparent), 0 0 14px var(--status-up);
+    box-shadow:
+      0 0 0 6px color-mix(in oklab, var(--status-up) 8%, transparent),
+      0 0 14px var(--status-up);
   }
 }
 
@@ -133,7 +144,9 @@
   border-radius: 50%;
   background: var(--status-down);
   color: #fff;
-  box-shadow: 0 0 0 3px var(--bg), 0 4px 14px -2px color-mix(in oklab, var(--status-down) 70%, transparent);
+  box-shadow:
+    0 0 0 3px var(--bg),
+    0 4px 14px -2px color-mix(in oklab, var(--status-down) 70%, transparent);
 }
 
 .lv-down svg {
@@ -175,7 +188,9 @@
   color: #fff;
   font-size: 10.5px;
   font-weight: 700;
-  box-shadow: 0 0 0 2.5px var(--bg), 0 6px 16px -6px var(--status-down);
+  box-shadow:
+    0 0 0 2.5px var(--bg),
+    0 6px 16px -6px var(--status-down);
   transform: scale(var(--inv, 1));
   transform-origin: 100% 0;
 }
@@ -225,7 +240,10 @@
   font-size: 10.5px;
   font-weight: 600;
   box-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
-  transition: color 0.3s, border-color 0.3s, background 0.3s;
+  transition:
+    color 0.3s,
+    border-color 0.3s,
+    background 0.3s;
 }
 
 .lv-metric b {
@@ -353,17 +371,26 @@
 .react-flow__node[data-live-heat] .nb {
   --heat-c: var(--live-backlog);
   transition: box-shadow 0.3s;
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--heat-c) 55%, transparent), 0 0 18px -2px color-mix(in oklab, var(--heat-c) 45%, transparent), var(--node-shadow);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--heat-c) 55%, transparent),
+    0 0 18px -2px color-mix(in oklab, var(--heat-c) 45%, transparent),
+    var(--node-shadow);
 }
 
 .react-flow__node[data-live-heat="2"] .nb {
   --heat-c: color-mix(in oklab, var(--live-backlog) 50%, var(--status-down));
-  box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--heat-c) 70%, transparent), 0 0 28px 0 color-mix(in oklab, var(--heat-c) 50%, transparent), var(--node-shadow);
+  box-shadow:
+    0 0 0 1.5px color-mix(in oklab, var(--heat-c) 70%, transparent),
+    0 0 28px 0 color-mix(in oklab, var(--heat-c) 50%, transparent),
+    var(--node-shadow);
 }
 
 .react-flow__node[data-live-heat="3"] .nb {
   --heat-c: var(--status-down);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--heat-c) 80%, transparent), 0 0 40px 4px color-mix(in oklab, var(--heat-c) 50%, transparent), var(--node-shadow);
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--heat-c) 80%, transparent),
+    0 0 40px 4px color-mix(in oklab, var(--heat-c) 50%, transparent),
+    var(--node-shadow);
 }
 
 .react-flow__node[data-live-rising] .nb {
@@ -373,14 +400,19 @@
 @keyframes lv-heat-pulse {
   50% {
     filter: brightness(1.04);
-    box-shadow: 0 0 0 2px color-mix(in oklab, var(--heat-c) 85%, transparent), 0 0 48px 8px color-mix(in oklab, var(--heat-c) 40%, transparent), var(--node-shadow);
+    box-shadow:
+      0 0 0 2px color-mix(in oklab, var(--heat-c) 85%, transparent),
+      0 0 48px 8px color-mix(in oklab, var(--heat-c) 40%, transparent),
+      var(--node-shadow);
   }
 }
 
 .react-flow[data-live] .react-flow__node,
 .react-flow[data-live] .react-flow__edge .fe-path,
 .react-flow[data-live] .fe-label {
-  transition: opacity 0.35s, filter 0.35s;
+  transition:
+    opacity 0.35s,
+    filter 0.35s;
 }
 
 /* Idle edges recede while live; edges carrying messages brighten and march. */
@@ -418,7 +450,9 @@
 }
 
 .react-flow[data-live-spotlight] .react-flow__node:not([data-live-dim]) .nb {
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 55%, transparent), 0 10px 30px -10px color-mix(in oklab, var(--accent) 55%, transparent);
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--accent) 55%, transparent),
+    0 10px 30px -10px color-mix(in oklab, var(--accent) 55%, transparent);
 }
 
 .react-flow[data-live-spotlight="trace"] .react-flow__edge[data-live-trace] .fe {
@@ -435,7 +469,9 @@
 }
 
 .react-flow[data-live-picking] .react-flow__node-diagram:hover .nb {
-  box-shadow: 0 0 0 2px var(--accent), var(--node-shadow-hover);
+  box-shadow:
+    0 0 0 2px var(--accent),
+    var(--node-shadow-hover);
 }
 
 /* Canvas chrome steps aside for the control bar while live. */
@@ -502,7 +538,9 @@
   border-radius: 8px;
   background: transparent;
   color: var(--text-2);
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 }
 
 .lv-btn:hover:not(:disabled) {
@@ -559,7 +597,9 @@
   background: transparent;
   color: var(--text);
   min-width: 0;
-  transition: background 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
 }
 
 .lv-select:hover {
@@ -872,7 +912,9 @@
   border: 1.5px dashed var(--text-3);
   color: #fff;
   outline-offset: 2px;
-  transition: background 0.25s, border-color 0.25s;
+  transition:
+    background 0.25s,
+    border-color 0.25s;
 }
 
 .lv-exp.is-pass {
@@ -991,9 +1033,13 @@
   border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--line));
   background: color-mix(in oklab, var(--surface) 94%, transparent);
   backdrop-filter: blur(12px);
-  box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow-2);
+  box-shadow:
+    0 0 0 4px var(--accent-soft),
+    var(--shadow-2);
   animation: lv-note-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
-  transition: left 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition:
+    left 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+    top 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   z-index: 2;
 }
 
@@ -1467,7 +1513,9 @@
 .lv-seg button.is-on {
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 0 0 1px var(--line);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 0 0 1px var(--line);
 }
 
 .lv-shape {

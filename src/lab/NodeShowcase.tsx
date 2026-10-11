@@ -46,12 +46,28 @@ function cellFor(base: Stencil, state: NodeState): CellSpec {
 }
 
 /** One node body inside a gallery-style stage (reuses the gallery's .tile-stage look). */
-export function NodeCell({ variant, spec, caption, testId }: { variant: NodeVariantId; spec: CellSpec; caption?: string; testId?: string }) {
+export function NodeCell({
+  variant,
+  spec,
+  caption,
+  testId,
+}: {
+  variant: NodeVariantId;
+  spec: CellSpec;
+  caption?: string;
+  testId?: string;
+}) {
   const { Component } = nodeVariants[variant];
   return (
     <figure className="lab-cell" data-testid={testId} style={{ "--accent": spec.stencil.accent } as CSSProperties}>
       <div className={`tile-stage stage-${variant} lab-cell-stage`}>
-        <Component stencil={spec.stencil} label={spec.label} sublabel={spec.sublabel} selected={spec.selected} unknown={spec.unknown} />
+        <Component
+          stencil={spec.stencil}
+          label={spec.label}
+          sublabel={spec.sublabel}
+          selected={spec.selected}
+          unknown={spec.unknown}
+        />
       </div>
       {caption && <figcaption>{caption}</figcaption>}
     </figure>
@@ -59,7 +75,15 @@ export function NodeCell({ variant, spec, caption, testId }: { variant: NodeVari
 }
 
 /** Variants × stencils × states. */
-export function NodeMatrix({ variants, stencilIds, states }: { variants: NodeVariantId[]; stencilIds: string[]; states: readonly NodeState[] }) {
+export function NodeMatrix({
+  variants,
+  stencilIds,
+  states,
+}: {
+  variants: NodeVariantId[];
+  stencilIds: string[];
+  states: readonly NodeState[];
+}) {
   return (
     <div className="lab-sections">
       {variants.map((v) => (
@@ -75,7 +99,13 @@ export function NodeMatrix({ variants, stencilIds, states }: { variants: NodeVar
                   <div className="lab-matrix-row-head mono">{id}</div>
                   <div className="lab-grid">
                     {states.map((s) => (
-                      <NodeCell key={s} variant={v} spec={cellFor(base, s)} caption={STATE_LABEL[s]} testId={`lab-node-${v}-${s}-${id}`} />
+                      <NodeCell
+                        key={s}
+                        variant={v}
+                        spec={cellFor(base, s)}
+                        caption={STATE_LABEL[s]}
+                        testId={`lab-node-${v}-${s}-${id}`}
+                      />
                     ))}
                   </div>
                 </div>
@@ -92,7 +122,9 @@ export function NodeMatrix({ variants, stencilIds, states }: { variants: NodeVar
 export function AllStencils({ variant, category, query }: { variant: NodeVariantId; category: string; query: string }) {
   const q = query.trim().toLowerCase();
   const list = stencils.filter(
-    (s) => (category === "all" || s.category === category) && (!q || `${s.id} ${s.label} ${s.vendor}`.toLowerCase().includes(q)),
+    (s) =>
+      (category === "all" || s.category === category) &&
+      (!q || `${s.id} ${s.label} ${s.vendor}`.toLowerCase().includes(q)),
   );
   return (
     <div className="lab-sections">
@@ -101,7 +133,13 @@ export function AllStencils({ variant, category, query }: { variant: NodeVariant
       </p>
       <div className="lab-grid">
         {list.map((s) => (
-          <NodeCell key={s.id} variant={variant} spec={cellFor(s, "default")} caption={s.id} testId={`lab-stencil-${s.id}`} />
+          <NodeCell
+            key={s.id}
+            variant={variant}
+            spec={cellFor(s, "default")}
+            caption={s.id}
+            testId={`lab-stencil-${s.id}`}
+          />
         ))}
       </div>
     </div>
@@ -109,9 +147,21 @@ export function AllStencils({ variant, category, query }: { variant: NodeVariant
 }
 
 /** A single configurable node: the quickest way to eyeball a label / stencil combination. */
-export function NodePlayground(p: { variant: NodeVariantId | "all"; stencil: string; label: string; sublabel: string; selected: boolean }) {
+export function NodePlayground(p: {
+  variant: NodeVariantId | "all";
+  stencil: string;
+  label: string;
+  sublabel: string;
+  selected: boolean;
+}) {
   const stencil = getStencil(p.stencil);
-  const spec: CellSpec = { stencil, label: p.label, sublabel: p.sublabel || undefined, selected: p.selected, unknown: stencil === FALLBACK_STENCIL };
+  const spec: CellSpec = {
+    stencil,
+    label: p.label,
+    sublabel: p.sublabel || undefined,
+    selected: p.selected,
+    unknown: stencil === FALLBACK_STENCIL,
+  };
   const variants = p.variant === "all" ? (Object.keys(nodeVariants) as NodeVariantId[]) : [p.variant];
   return (
     <div className="lab-grid lab-grid-lg">

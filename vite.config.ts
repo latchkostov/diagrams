@@ -11,7 +11,8 @@ function noPrivateExamples(): Plugin {
       for (const out of Object.values(bundle)) {
         if (out.type !== "chunk") continue;
         const leaked = Object.entries(out.modules).filter(([id, m]) => isPrivate(id) && m.renderedLength > 0);
-        if (leaked.length) this.error(`private example(s) bundled into ${out.fileName}: ${leaked.map(([id]) => id).join(", ")}`);
+        if (leaked.length)
+          this.error(`private example(s) bundled into ${out.fileName}: ${leaked.map(([id]) => id).join(", ")}`);
       }
     },
   };

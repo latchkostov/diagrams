@@ -7,7 +7,8 @@ const ctx = (target: ActionContext["target"]): ActionContext => ({
   selection: { nodeIds: [], edgeIds: [], groupIds: [] },
   editor: {} as EditorApi,
 });
-const ids = (items: MenuNode[]) => items.map((i) => (i.type === "item" ? i.id : i.type === "header" ? `[${i.label}]` : "---"));
+const ids = (items: MenuNode[]) =>
+  items.map((i) => (i.type === "item" ? i.id : i.type === "header" ? `[${i.label}]` : "---"));
 
 describe("action registry", () => {
   it("builds per target, ordered by section with separators", () => {
@@ -27,7 +28,9 @@ describe("action registry", () => {
     r.register([{ id: "rename", section: "edit", targets: ["node"], label: "Rename" }]);
     expect(ids(r.build(ctx("node")))).toEqual(["rename"]);
     let running = false;
-    const off = r.register([{ id: "sim.inject", section: "simulation", targets: ["node"], label: "Inject 10 messages", when: () => running }]);
+    const off = r.register([
+      { id: "sim.inject", section: "simulation", targets: ["node"], label: "Inject 10 messages", when: () => running },
+    ]);
     expect(ids(r.build(ctx("node")))).toEqual(["rename"]);
     running = true;
     expect(ids(r.build(ctx("node")))).toEqual(["rename", "---", "[Simulation]", "sim.inject"]);
@@ -78,7 +81,15 @@ describe("action registry", () => {
     const err = console.error;
     console.error = () => {};
     r.register([
-      { id: "bad", section: "edit", targets: ["node"], label: "Bad", when: () => { throw new Error("x"); } },
+      {
+        id: "bad",
+        section: "edit",
+        targets: ["node"],
+        label: "Bad",
+        when: () => {
+          throw new Error("x");
+        },
+      },
       { id: "ok", section: "edit", targets: ["node"], label: "Ok" },
     ]);
     expect(ids(r.build(ctx("node")))).toEqual(["ok"]);

@@ -22,7 +22,14 @@ const d = (title: string, description: string, nodes: DiagramNode[], edges: Diag
   nodes,
   edges,
 });
-const node = (id: string, stencil: string, label: string, col: number, row: number, extra: Partial<DiagramNode> = {}): DiagramNode => ({
+const node = (
+  id: string,
+  stencil: string,
+  label: string,
+  col: number,
+  row: number,
+  extra: Partial<DiagramNode> = {},
+): DiagramNode => ({
   id,
   stencil,
   label,
@@ -30,7 +37,13 @@ const node = (id: string, stencil: string, label: string, col: number, row: numb
   y: rowY(row),
   ...extra,
 });
-const edge = (from: string, to: string, extra: Partial<DiagramEdge> = {}): DiagramEdge => ({ id: `${from}-${to}`, from, to, kind: "async", ...extra });
+const edge = (from: string, to: string, extra: Partial<DiagramEdge> = {}): DiagramEdge => ({
+  id: `${from}-${to}`,
+  from,
+  to,
+  kind: "async",
+  ...extra,
+});
 
 const n = (s: SimSnapshot, id: string) => s.nodes[id];
 const processed = (s: SimSnapshot, id: string) => n(s, id)?.processed ?? 0;
@@ -72,7 +85,8 @@ const fanOut: ScenarioDef = {
 const competing: ScenarioDef = {
   id: "sim-competing-consumers",
   title: "Competing consumers",
-  description: "A queue (or a shared Kafka consumer group) spreads messages across workers; each message is handled once.",
+  description:
+    "A queue (or a shared Kafka consumer group) spreads messages across workers; each message is handled once.",
   controls: [
     {
       type: "select",
@@ -94,12 +108,19 @@ const competing: ScenarioDef = {
       kafka ? "Three consumers share the group 'workers'." : "Three workers pull from one queue.",
       [
         node("producer", "service.go", "Producer", 0, 1),
-        node("broker", kafka ? "kafka.topic" : "azure.service-bus.queue", kafka ? "jobs" : "jobs queue", 1, 1, { sublabel: kafka ? "jobs.v1" : "jobs" }),
+        node("broker", kafka ? "kafka.topic" : "azure.service-bus.queue", kafka ? "jobs" : "jobs queue", 1, 1, {
+          sublabel: kafka ? "jobs.v1" : "jobs",
+        }),
         node("w1", "azure.functions", "Worker 1", 2, 0),
         node("w2", "azure.functions", "Worker 2", 2, 1),
         node("w3", "azure.functions", "Worker 3", 2, 2),
       ],
-      [edge("producer", "broker"), edge("broker", "w1", { props }), edge("broker", "w2", { props }), edge("broker", "w3", { props })],
+      [
+        edge("producer", "broker"),
+        edge("broker", "w1", { props }),
+        edge("broker", "w2", { props }),
+        edge("broker", "w3", { props }),
+      ],
     );
   },
   scenario: (v) => {
@@ -109,7 +130,11 @@ const competing: ScenarioDef = {
       script: [{ at: 0, do: "inject", node: "broker", count, type: "Job" }],
       checks: [
         { at: 20000, label: `workers handled ${count} in total (each once)`, pass: (s) => total(s) === count },
-        { at: 20000, label: "every worker got some", pass: (s) => ["w1", "w2", "w3"].every((id) => processed(s, id) > 0) },
+        {
+          at: 20000,
+          label: "every worker got some",
+          pass: (s) => ["w1", "w2", "w3"].every((id) => processed(s, id) > 0),
+        },
       ],
     };
   },
@@ -118,7 +143,8 @@ const competing: ScenarioDef = {
 const slowLag: ScenarioDef = {
   id: "sim-slow-consumer",
   title: "Slow consumer lag",
-  description: "Continuous traffic; one consumer group is slow, so its lag on the topic grows while the fast one keeps up.",
+  description:
+    "Continuous traffic; one consumer group is slow, so its lag on the topic grows while the fast one keeps up.",
   controls: [
     { type: "number", key: "rate", label: "Rate (msg/s)", default: 6, min: 1, max: 100 },
     { type: "number", key: "slowms", label: "Slow latency (ms)", default: 1500, min: 50, max: 10000, step: 50 },
@@ -128,10 +154,15 @@ const slowLag: ScenarioDef = {
       "Slow consumer lag",
       "Fast and slow consumer groups on one topic.",
       [
-        node("devices", "client.iot", "Devices", 0, 1, { props: { ratePerSec: Number(v.rate), messageType: "Reading" } }),
+        node("devices", "client.iot", "Devices", 0, 1, {
+          props: { ratePerSec: Number(v.rate), messageType: "Reading" },
+        }),
         node("topic", "azure.event-hubs", "telemetry", 1, 1, { sublabel: "telemetry", props: { partitions: 8 } }),
         node("fast", "service.go", "Alerts", 2, 0, { sublabel: "fast", props: { latencyMs: 80, concurrency: 8 } }),
-        node("slow", "service.python", "Reports", 2, 2, { sublabel: "slow", props: { latencyMs: Number(v.slowms), concurrency: 1 } }),
+        node("slow", "service.python", "Reports", 2, 2, {
+          sublabel: "slow",
+          props: { latencyMs: Number(v.slowms), concurrency: 1 },
+        }),
       ],
       [edge("devices", "topic"), edge("topic", "fast"), edge("topic", "slow")],
     ),
@@ -163,7 +194,10 @@ const dlq: ScenarioDef = {
       "maxDeliveryCount 3; the DLQ edge is inferred from the target's label.",
       [
         node("api", "service.dotnet", "Orders API", 0, 1),
-        node("queue", "azure.service-bus.queue", "orders", 1, 1, { sublabel: "orders", props: { maxDeliveryCount: 3 } }),
+        node("queue", "azure.service-bus.queue", "orders", 1, 1, {
+          sublabel: "orders",
+          props: { maxDeliveryCount: 3 },
+        }),
         node("worker", "azure.functions", "Fulfilment", 2, 0, { props: { failureRate: 1, latencyMs: 200 } }),
         node("dlq", "azure.service-bus.queue", "Dead-letter queue", 2, 2, { sublabel: "orders/$deadletterqueue" }),
       ],
@@ -181,7 +215,11 @@ const dlq: ScenarioDef = {
         { at: 16000, do: "status", node: "worker", status: "up" },
       ],
       checks: [
-        { at: 9500, label: `${poison} dead-lettered after 3 attempts each`, pass: (s) => n(s, "queue")?.deadLettered === poison },
+        {
+          at: 9500,
+          label: `${poison} dead-lettered after 3 attempts each`,
+          pass: (s) => n(s, "queue")?.deadLettered === poison,
+        },
         { at: 9500, label: `worker failed ${poison * 3} attempts`, pass: (s) => n(s, "worker")?.failed === poison * 3 },
         { at: 15500, label: "backlog builds while worker is down", pass: (s) => (n(s, "queue")?.backlog ?? 0) >= good },
         { at: 26000, label: `drains after recovery (${good} processed)`, pass: (s) => processed(s, "worker") === good },
@@ -204,7 +242,11 @@ const roundRobin: ScenarioDef = {
     return d(
       "Gateway round-robin",
       `${k} backends behind one API gateway.`,
-      [node("web", "client.browser", "Browser", 0, (k - 1) / 2), node("gw", "aws.api-gateway", "API Gateway", 1, (k - 1) / 2), ...backends],
+      [
+        node("web", "client.browser", "Browser", 0, (k - 1) / 2),
+        node("gw", "aws.api-gateway", "API Gateway", 1, (k - 1) / 2),
+        ...backends,
+      ],
       [edge("web", "gw", { kind: "sync" }), ...backends.map((b) => edge("gw", b.id, { kind: "sync" }))],
     );
   },
@@ -215,7 +257,11 @@ const roundRobin: ScenarioDef = {
     return {
       script: [{ at: 0, do: "inject", node: "gw", count, type: "GET /items", spreadMs: 3000 }],
       checks: [
-        { at: 12000, label: `all ${count} requests handled`, pass: (s) => ids.reduce((a, id) => a + processed(s, id), 0) === count },
+        {
+          at: 12000,
+          label: `all ${count} requests handled`,
+          pass: (s) => ids.reduce((a, id) => a + processed(s, id), 0) === count,
+        },
         {
           at: 12000,
           label: "spread evenly (±1)",
@@ -242,10 +288,15 @@ const storm: ScenarioDef = {
       [
         node("web", "client.browser", "Web", 0, 0, { props: { ratePerSec: rate, messageType: "WebOrder" } }),
         node("mobile", "client.mobile", "Mobile", 0, 1, { props: { ratePerSec: rate, messageType: "AppOrder" } }),
-        node("partner", "generic.webhook", "Partner webhook", 0, 2, { props: { ratePerSec: rate, messageType: "PartnerOrder" } }),
+        node("partner", "generic.webhook", "Partner webhook", 0, 2, {
+          props: { ratePerSec: rate, messageType: "PartnerOrder" },
+        }),
         node("gw", "azure.front-door", "Front Door", 1, 1),
         node("orders", "service.dotnet", "Orders", 2, 1, { props: { latencyMs: 250, concurrency: 4 } }),
-        node("topic", "azure.service-bus.topic", "order-events", 3, 1, { sublabel: "orders", props: { partitions: 12 } }),
+        node("topic", "azure.service-bus.topic", "order-events", 3, 1, {
+          sublabel: "orders",
+          props: { partitions: 12 },
+        }),
         node("billing", "azure.functions", "Billing", 4, 0, { props: { concurrency: 12, latencyMs: 150 } }),
         node("search", "azure.container-apps", "Search indexer", 4, 2, { props: { concurrency: 12, latencyMs: 150 } }),
         node("db", "azure.cosmos-db", "Orders DB", 5, 1),
@@ -272,7 +323,15 @@ const storm: ScenarioDef = {
         { at: 8000, do: "traffic", on: false },
       ],
       checks: [
-        ...(overloaded ? [{ at: 7500, label: "orders backlog builds (> 20)", pass: (s: SimSnapshot) => (n(s, "orders")?.backlog ?? 0) > 20 }] : []),
+        ...(overloaded
+          ? [
+              {
+                at: 7500,
+                label: "orders backlog builds (> 20)",
+                pass: (s: SimSnapshot) => (n(s, "orders")?.backlog ?? 0) > 20,
+              },
+            ]
+          : []),
         { at: 7500, label: "messages reach the database", pass: (s) => processed(s, "db") > 0 },
         { at: 60000, label: "system drains after the storm", pass: (s) => s.inSystem === 0 },
       ],

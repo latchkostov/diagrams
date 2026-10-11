@@ -5,7 +5,14 @@ import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
 import { CATEGORY_ORDER, categoryBlurb, categoryLabel } from "../lib/categories";
 import { simRoleMeta } from "../lib/simRoles";
-import { familyCounts, familyOf, familyOfVendor, getFamily, vendorsByFamily, type FamilyId } from "../lib/vendorFamilies";
+import {
+  familyCounts,
+  familyOf,
+  familyOfVendor,
+  getFamily,
+  vendorsByFamily,
+  type FamilyId,
+} from "../lib/vendorFamilies";
 import { searchStencils } from "../lib/stencilSearch";
 import { addToCurrentDiagram, nodeJson, openNewDiagramWith, STENCIL_DND_MIME } from "../lib/canvasBridge";
 import type { MenuNode } from "../editor/actions";
@@ -13,7 +20,11 @@ import { ContextMenu } from "../components/ContextMenu";
 import { Icon } from "../components/Icon";
 import { StencilDrawer } from "./StencilDrawer";
 
-const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+const slugify = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 
 type Menu = { x: number; y: number; items: MenuNode[]; label: string; testId: string; searchable?: string };
 
@@ -95,7 +106,9 @@ export function GalleryView() {
     if (!root) return;
     const io = new IntersectionObserver(
       (entries) => {
-        const top = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        const top = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
         if (top) setActiveSection(top.target.getAttribute("data-category") as StencilCategory);
       },
       { root, rootMargin: "-140px 0px -55% 0px" },
@@ -108,7 +121,8 @@ export function GalleryView() {
 
   const copy = useCallback((text: string, what: string) => {
     const done = () => setNote(`Copied ${what}`);
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, () => setNote("Couldn't reach the clipboard"));
+    if (navigator.clipboard?.writeText)
+      navigator.clipboard.writeText(text).then(done, () => setNote("Couldn't reach the clipboard"));
     else setNote("Couldn't reach the clipboard");
   }, []);
   const copyJson = useCallback((s: Stencil) => copy(JSON.stringify(nodeJson(s), null, 2), "JSON node"), [copy]);
@@ -120,7 +134,12 @@ export function GalleryView() {
   const closeDetail = () => {
     setDetail(null);
     const id = lastTile.current;
-    if (id) requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-testid="stencil-tile-${CSS.escape(id)}"]`)?.focus({ preventScroll: true }));
+    if (id)
+      requestAnimationFrame(() =>
+        document
+          .querySelector<HTMLElement>(`[data-testid="stencil-tile-${CSS.escape(id)}"]`)
+          ?.focus({ preventScroll: true }),
+      );
   };
   const closeDetailRef = useRef(closeDetail);
   closeDetailRef.current = closeDetail;
@@ -132,7 +151,9 @@ export function GalleryView() {
     const i = detailIndex < 0 ? 0 : (detailIndex + dir + ordered.length) % ordered.length;
     lastTile.current = ordered[i].id;
     setDetail(ordered[i].id);
-    document.querySelector(`[data-testid="stencil-tile-${CSS.escape(ordered[i].id)}"]`)?.scrollIntoView({ block: "nearest" });
+    document
+      .querySelector(`[data-testid="stencil-tile-${CSS.escape(ordered[i].id)}"]`)
+      ?.scrollIntoView({ block: "nearest" });
   };
 
   const tileMenu = (s: Stencil, x: number, y: number) =>
@@ -142,7 +163,13 @@ export function GalleryView() {
       label: `${s.label} menu`,
       testId: "tile-menu",
       items: [
-        { type: "item", id: "tile-add", label: "Add to current diagram", icon: "plus", run: () => addToCurrentDiagram(s.id) },
+        {
+          type: "item",
+          id: "tile-add",
+          label: "Add to current diagram",
+          icon: "plus",
+          run: () => addToCurrentDiagram(s.id),
+        },
         { type: "item", id: "tile-details", label: "View details", icon: "info", run: () => openDetail(s.id) },
         { type: "separator" },
         { type: "item", id: "tile-copy-id", label: "Copy id", icon: "copy", hint: s.id, run: () => copy(s.id, "id") },
@@ -155,7 +182,14 @@ export function GalleryView() {
     // Families at the top level, vendors one level down: short enough to open below the button,
     // and the search box still finds any vendor directly.
     const items: MenuNode[] = [
-      { type: "item", id: "vendor:all", label: "All vendors", checked: vendor === null, hint: String(stencils.length), run: () => pickFamily("all") },
+      {
+        type: "item",
+        id: "vendor:all",
+        label: "All vendors",
+        checked: vendor === null,
+        hint: String(stencils.length),
+        run: () => pickFamily("all"),
+      },
       { type: "separator" },
     ];
     for (const g of vendorsByFamily(stencils)) {
@@ -181,7 +215,14 @@ export function GalleryView() {
       });
     }
     const width = 280;
-    setMenu({ x: Math.max(8, r.right - width), y: r.bottom + 6, items, label: "Filter by vendor", testId: "vendor-menu", searchable: "Find a vendor" });
+    setMenu({
+      x: Math.max(8, r.right - width),
+      y: r.bottom + 6,
+      items,
+      label: "Filter by vendor",
+      testId: "vendor-menu",
+      searchable: "Find a vendor",
+    });
   };
 
   const pickFamily = (f: FamilyId | "all") => {
@@ -217,7 +258,9 @@ export function GalleryView() {
               className={`rail-link${activeSection === c && n ? " is-on" : ""}`}
               disabled={!n}
               aria-current={activeSection === c && n ? "location" : undefined}
-              onClick={() => document.getElementById(`cat-${c}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              onClick={() =>
+                document.getElementById(`cat-${c}`)?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
               data-testid={`rail-${c}`}
             >
               <span>{categoryLabel[c]}</span>
@@ -267,7 +310,13 @@ export function GalleryView() {
                   data-testid="gallery-search"
                 />
                 {q ? (
-                  <button type="button" className="field-clear" onClick={() => setQ("")} aria-label="Clear search" data-testid="gallery-search-clear">
+                  <button
+                    type="button"
+                    className="field-clear"
+                    onClick={() => setQ("")}
+                    aria-label="Clear search"
+                    data-testid="gallery-search-clear"
+                  >
                     <Icon name="close" size={12} />
                   </button>
                 ) : (
@@ -311,7 +360,11 @@ export function GalleryView() {
                 <span className="token" data-testid="vendor-filter">
                   <i style={{ background: getFamily(familyOfVendor(vendor)).hue }} />
                   {vendor}
-                  <button onClick={() => pickFamily("all")} aria-label={`Remove ${vendor} filter`} data-testid="vendor-filter-clear">
+                  <button
+                    onClick={() => pickFamily("all")}
+                    aria-label={`Remove ${vendor} filter`}
+                    data-testid="vendor-filter-clear"
+                  >
                     <Icon name="close" size={11} />
                   </button>
                 </span>
@@ -330,7 +383,13 @@ export function GalleryView() {
         </header>
 
         {sections.map(({ category, items }) => (
-          <section key={category} id={`cat-${category}`} data-category={category} className="gallery-section" data-testid={`gallery-section-${category}`}>
+          <section
+            key={category}
+            id={`cat-${category}`}
+            data-category={category}
+            className="gallery-section"
+            data-testid={`gallery-section-${category}`}
+          >
             <div className="section-head">
               <h2>
                 {categoryLabel[category] ?? category}
@@ -379,10 +438,20 @@ export function GalleryView() {
         )}
 
         <footer className="gallery-credits" data-testid="icon-credits">
-          Icon credits: product logos and service icons are trademarks of their owners and are shown to identify
-          those products. Microsoft Entra ID icon by <a href="https://selfh.st/icons" target="_blank" rel="noreferrer">selfh.st</a>,{" "}
-          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>. Generic glyphs from{" "}
-          <a href="https://lucide.dev" target="_blank" rel="noreferrer">Lucide</a> (ISC). Full sources and licences are in docs/ICONS.md.
+          Icon credits: product logos and service icons are trademarks of their owners and are shown to identify those
+          products. Microsoft Entra ID icon by{" "}
+          <a href="https://selfh.st/icons" target="_blank" rel="noreferrer">
+            selfh.st
+          </a>
+          ,{" "}
+          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+            CC BY 4.0
+          </a>
+          . Generic glyphs from{" "}
+          <a href="https://lucide.dev" target="_blank" rel="noreferrer">
+            Lucide
+          </a>{" "}
+          (ISC). Full sources and licences are in docs/ICONS.md.
         </footer>
       </main>
 

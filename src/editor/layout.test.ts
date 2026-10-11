@@ -65,11 +65,22 @@ describe("layeredLayout", () => {
 
   it("widens columns for wide nodes and long edge labels, never overlapping", () => {
     const wide = { ...n("a"), width: 300, height: 72 };
-    const p = layeredLayout({ nodes: [wide, n("b"), n("c")], edges: [{ from: "a", to: "b" }, { from: "b", to: "c", label: "Upsert the latest device reading" }] });
+    const p = layeredLayout({
+      nodes: [wide, n("b"), n("c")],
+      edges: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c", label: "Upsert the latest device reading" },
+      ],
+    });
     expect(p.get("b")!.x - p.get("a")!.x).toBeGreaterThanOrEqual(300 + 140);
     const gap = p.get("c")!.x - (p.get("b")!.x + 220);
     expect(gap).toBeGreaterThan(140); // room for the wrapped label
-    const many = Array.from({ length: 6 }, (_, i) => ({ ...n(`k${i}`), label: "Notification service", sublabel: "group: customer-notifications", height: 90 }));
+    const many = Array.from({ length: 6 }, (_, i) => ({
+      ...n(`k${i}`),
+      label: "Notification service",
+      sublabel: "group: customer-notifications",
+      height: 90,
+    }));
     const q = layeredLayout({ nodes: [n("root"), ...many], edges: many.map((m) => ({ from: "root", to: m.id })) });
     const ys = many.map((m) => q.get(m.id)!.y).sort((a, b) => a - b);
     for (let i = 1; i < ys.length; i++) expect(ys[i] - ys[i - 1]).toBeGreaterThanOrEqual(90 + 24);

@@ -65,7 +65,10 @@ const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
 // Pixel padding keeps the title card (top-left) from covering the diagram.
 const FIT: FitViewOptions = { padding: { top: "110px", right: "48px", bottom: "48px", left: "48px" }, maxZoom: 1.25 };
-const FIT_PRESENT: FitViewOptions = { padding: { top: "190px", right: "64px", bottom: "64px", left: "64px" }, maxZoom: 1.6 };
+const FIT_PRESENT: FitViewOptions = {
+  padding: { top: "190px", right: "64px", bottom: "64px", left: "64px" },
+  maxZoom: 1.6,
+};
 
 const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
 
@@ -114,7 +117,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
 
   const [{ original, flow, originalJson }] = useState(() => {
     const original = initial ?? getOriginal(slug) ?? emptyDiagram();
-    return { original, flow: toFlow((initial ? undefined : getAutosave(slug)) ?? original), originalJson: normalize(original) };
+    return {
+      original,
+      flow: toFlow((initial ? undefined : getAutosave(slug)) ?? original),
+      originalJson: normalize(original),
+    };
   });
   const [meta, setMeta] = useState<DiagramMeta>(flow.meta);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
@@ -235,7 +242,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const onConnect = useCallback((c: Connection) => void editor.connect(c.source, c.target), [editor]);
   const isValidConnection: IsValidConnection<DiagramFlowEdge> = useCallback((c) => c.source !== c.target, []);
 
-  const onEdgeDoubleClick: EdgeMouseHandler<DiagramFlowEdge> = useCallback((_e, edge) => setEditing({ kind: "edge", id: edge.id }), []);
+  const onEdgeDoubleClick: EdgeMouseHandler<DiagramFlowEdge> = useCallback(
+    (_e, edge) => setEditing({ kind: "edge", id: edge.id }),
+    [],
+  );
 
   // Groups aren't React Flow parents, so carry their member nodes along manually.
   const dragOrigin = useRef<{ x: number; y: number; members: Map<string, { x: number; y: number }> } | null>(null);
@@ -244,7 +254,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       setMenu(null);
       if (node.type !== "boundary") return;
       const members = new Map<string, { x: number; y: number }>();
-      for (const n of nodes) if (n.type === "diagram" && n.data.group === node.data.groupId) members.set(n.id, { ...n.position });
+      for (const n of nodes)
+        if (n.type === "diagram" && n.data.group === node.data.groupId) members.set(n.id, { ...n.position });
       dragOrigin.current = { x: node.position.x, y: node.position.y, members };
     },
     [nodes],
@@ -324,7 +335,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     },
     [editor, openMenu],
   );
-  const onEdgeContextMenu: EdgeMouseHandler<DiagramFlowEdge> = useCallback((e, edge) => openEdgeMenu(e, edge.id), [openEdgeMenu]);
+  const onEdgeContextMenu: EdgeMouseHandler<DiagramFlowEdge> = useCallback(
+    (e, edge) => openEdgeMenu(e, edge.id),
+    [openEdgeMenu],
+  );
 
   const onSelectionContextMenu = useCallback(
     (e: ReactMouseEvent) => openMenu(e, { target: "selection", selection: editor.getSelection() }),
@@ -449,22 +463,50 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             preventScrolling={!readOnly}
             zoomOnDoubleClick={false}
             deleteKeyCode={null}
-            connectionLineType={edgeStyle === "bezier" ? ConnectionLineType.Bezier : edgeStyle === "straight" ? ConnectionLineType.Straight : ConnectionLineType.SmoothStep}
+            connectionLineType={
+              edgeStyle === "bezier"
+                ? ConnectionLineType.Bezier
+                : edgeStyle === "straight"
+                  ? ConnectionLineType.Straight
+                  : ConnectionLineType.SmoothStep
+            }
           >
             {prefs.grid && <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />}
             {!hideChrome && (
               <Controls showInteractive={false} showFitView={false} position="bottom-left">
                 {/* Our fit keeps content clear of the title card, minimap and live bar. */}
-                <ControlButton onClick={fit} title={`Fit view (${formatCombo(shortcutKeys("fit-view"))})`} aria-label="Fit view" data-testid="fit-view-button">
+                <ControlButton
+                  onClick={fit}
+                  title={`Fit view (${formatCombo(shortcutKeys("fit-view"))})`}
+                  aria-label="Fit view"
+                  data-testid="fit-view-button"
+                >
                   <Icon name="fit" size={14} />
                 </ControlButton>
-                <ControlButton onClick={editor.undo} disabled={!history.canUndo} title={undoTitle} aria-label="Undo" data-testid="undo-button">
+                <ControlButton
+                  onClick={editor.undo}
+                  disabled={!history.canUndo}
+                  title={undoTitle}
+                  aria-label="Undo"
+                  data-testid="undo-button"
+                >
                   <Icon name="undo" size={14} />
                 </ControlButton>
-                <ControlButton onClick={editor.redo} disabled={!history.canRedo} title={redoTitle} aria-label="Redo" data-testid="redo-button">
+                <ControlButton
+                  onClick={editor.redo}
+                  disabled={!history.canRedo}
+                  title={redoTitle}
+                  aria-label="Redo"
+                  data-testid="redo-button"
+                >
                   <Icon name="redo" size={14} />
                 </ControlButton>
-                <ControlButton onClick={() => setShortcutsOpen(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" data-testid="shortcuts-button">
+                <ControlButton
+                  onClick={() => setShortcutsOpen(true)}
+                  title="Keyboard shortcuts (?)"
+                  aria-label="Keyboard shortcuts"
+                  data-testid="shortcuts-button"
+                >
                   <Icon name="keyboard" size={14} />
                 </ControlButton>
               </Controls>
@@ -477,8 +519,12 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                 zoomable
                 nodeBorderRadius={6}
                 nodeStrokeWidth={2}
-                nodeColor={(n) => (n.type === "boundary" ? "transparent" : getStencil((n as DiagramFlowNode).data.stencil).accent)}
-                nodeStrokeColor={(n) => (n.type === "boundary" ? toneColor[(n as GroupFlowNode).data.tone] : "transparent")}
+                nodeColor={(n) =>
+                  n.type === "boundary" ? "transparent" : getStencil((n as DiagramFlowNode).data.stencil).accent
+                }
+                nodeStrokeColor={(n) =>
+                  n.type === "boundary" ? toneColor[(n as GroupFlowNode).data.tone] : "transparent"
+                }
               />
             )}
             <LiveView
@@ -505,7 +551,12 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                   {nodeCount} nodes, {edges.length} edges
                 </span>
                 {modified && (
-                  <button className="link-btn" onClick={reset} data-testid="reset-diagram" title="Discard your edits to this diagram (undoable)">
+                  <button
+                    className="link-btn"
+                    onClick={reset}
+                    data-testid="reset-diagram"
+                    title="Discard your edits to this diagram (undoable)"
+                  >
                     <Icon name="reset" size={13} /> Edited, reset
                   </button>
                 )}

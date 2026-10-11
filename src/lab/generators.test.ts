@@ -89,7 +89,15 @@ describe("other generators", () => {
   });
 
   it("edge, node and group showcases are valid", () => {
-    for (const d of [edgeKindsDiagram(), backEdgeDiagram(), backEdgeDiagram(false), fanEdgesDiagram(5), oddNodesDiagram(), groupsDiagram()]) expectValid(d);
+    for (const d of [
+      edgeKindsDiagram(),
+      backEdgeDiagram(),
+      backEdgeDiagram(false),
+      fanEdgesDiagram(5),
+      oddNodesDiagram(),
+      groupsDiagram(),
+    ])
+      expectValid(d);
     expect(edgeKindsDiagram().edges.map((e) => e.kind ?? "async")).toContain("sync");
     expect(backEdgeDiagram().edges.some((e) => e.from === e.to)).toBe(true);
     expect(oddNodesDiagram().nodes.some((n) => getStencil(n.stencil) === FALLBACK_STENCIL)).toBe(true);

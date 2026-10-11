@@ -238,7 +238,9 @@ export class LiveController {
   /** Injects at every node that has no incoming edges (the diagram's entry points). */
   injectAtSources(count: number): string[] {
     const targets = new Set(this.diagram.edges.map((e) => e.to));
-    const sources = this.diagram.nodes.filter((n) => !targets.has(n.id) && this.diagram.edges.some((e) => e.from === n.id)).map((n) => n.id);
+    const sources = this.diagram.nodes
+      .filter((n) => !targets.has(n.id) && this.diagram.edges.some((e) => e.from === n.id))
+      .map((n) => n.id);
     for (const id of sources) this.engine.inject(id, count);
     this.dirty = true;
     this.publish();
@@ -336,7 +338,10 @@ export class LiveController {
   private build(): void {
     const engineOpts = { roleOf: this.opts.roleOf, maxParticles: this.opts.maxParticles };
     if (this.sim) {
-      this.runner = createSimulationRun(this.diagram, this.sim, { ...engineOpts, seed: this.opts.seed ?? DEFAULT_SEED });
+      this.runner = createSimulationRun(this.diagram, this.sim, {
+        ...engineOpts,
+        seed: this.opts.seed ?? DEFAULT_SEED,
+      });
       this.engine = this.runner.engine;
     } else {
       this.runner = null;

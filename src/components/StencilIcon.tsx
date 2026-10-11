@@ -6,7 +6,15 @@ export function StencilIcon({ stencil, size = 24 }: { stencil: Stencil; size?: n
   const src = iconUrl(stencil.icon) ?? iconUrl(FALLBACK_STENCIL.icon);
   if (!src) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        aria-hidden
+      >
         <path d="M21 8 12 3 3 8v8l9 5 9-5z" />
         <path d="m3 8 9 5 9-5M12 13v8" />
       </svg>

@@ -1,7 +1,14 @@
 // Procedural diagrams for the Lab: stress tests, edge-case geometry, synthetic flows.
 // Pure functions (no React, no DOM) so they're unit-tested in generators.test.ts.
 
-import { DIAGRAM_FORMAT, type DiagramEdge, type DiagramFile, type DiagramGroup, type DiagramNode, type Side } from "../model/types";
+import {
+  DIAGRAM_FORMAT,
+  type DiagramEdge,
+  type DiagramFile,
+  type DiagramGroup,
+  type DiagramNode,
+  type Side,
+} from "../model/types";
 
 /** Grid from docs/PLAN.md: node card ~220x72, columns 360 apart, rows 120 apart. */
 export const COL = 360;
@@ -22,7 +29,13 @@ export function prng(seed: number) {
   };
 }
 
-const file = (title: string, description: string, nodes: DiagramNode[], edges: DiagramEdge[], extra: Partial<DiagramFile> = {}): DiagramFile => ({
+const file = (
+  title: string,
+  description: string,
+  nodes: DiagramNode[],
+  edges: DiagramEdge[],
+  extra: Partial<DiagramFile> = {},
+): DiagramFile => ({
   format: DIAGRAM_FORMAT,
   title,
   description,
@@ -35,10 +48,17 @@ const file = (title: string, description: string, nodes: DiagramNode[], edges: D
 
 /** Stencils per pipeline stage, left to right. */
 const STAGES: { stencils: string[]; label: string; sub?: string }[] = [
-  { stencils: ["client.browser", "client.mobile", "client.iot", "generic.scheduler", "client.partner"], label: "Client" },
+  {
+    stencils: ["client.browser", "client.mobile", "client.iot", "generic.scheduler", "client.partner"],
+    label: "Client",
+  },
   { stencils: ["aws.api-gateway", "azure.api-management", "nginx", "load-balancer"], label: "Gateway" },
   { stencils: ["service.node", "service.dotnet", "service.java", "service.go", "service.python"], label: "Service" },
-  { stencils: ["kafka.topic", "azure.service-bus.topic", "aws.sns", "azure.event-hubs"], label: "Topic", sub: "events.v1" },
+  {
+    stencils: ["kafka.topic", "azure.service-bus.topic", "aws.sns", "azure.event-hubs"],
+    label: "Topic",
+    sub: "events.v1",
+  },
   { stencils: ["azure.functions", "aws.lambda", "k8s.deployment", "azure.container-apps"], label: "Worker" },
   { stencils: ["azure.service-bus.queue", "aws.sqs", "rabbitmq.queue"], label: "Queue", sub: "work" },
   { stencils: ["service.go", "service.java", "aws.ecs"], label: "Handler" },
@@ -59,7 +79,13 @@ export interface StressOptions {
  * A layered pipeline with exactly `nodes` nodes: columns follow STAGES (wrapping), each node feeds
  * 1–2 nodes in the next column, plus some random skip-links. Deterministic for a given seed.
  */
-export function stressDiagram({ nodes: count, seed = 1, groups = false, density = 0.25, direction = "LR" }: StressOptions): DiagramFile {
+export function stressDiagram({
+  nodes: count,
+  seed = 1,
+  groups = false,
+  density = 0.25,
+  direction = "LR",
+}: StressOptions): DiagramFile {
   const n = Math.max(1, Math.floor(count));
   const rand = prng(seed);
   // Aim for a wide-ish grid: columns ≈ 1.6 × rows.
@@ -93,7 +119,11 @@ export function stressDiagram({ nodes: count, seed = 1, groups = false, density 
     if (!next.length) continue;
     const kind = c % STAGES.length < 2 ? "sync" : "async";
     here.forEach((node, r) => {
-      link(node, next[Math.min(next.length - 1, Math.round((r * (next.length - 1)) / Math.max(1, here.length - 1)))], kind);
+      link(
+        node,
+        next[Math.min(next.length - 1, Math.round((r * (next.length - 1)) / Math.max(1, here.length - 1)))],
+        kind,
+      );
       if (rand() < density) link(node, next[Math.floor(rand() * next.length)], kind);
     });
     // Nobody in the next column is left without an input.
@@ -152,7 +182,12 @@ export function fanOutDiagram(depth: number, breadth: number, max = 400): Diagra
       const id = `${path}-${i + 1}`;
       const kid = isTopicLevel
         ? place(id, level, "kafka.topic", `Topic ${id.slice(2)}`, `events.${id.slice(2)}`)
-        : place(id, level, level === d * 2 ? "postgres" : "service.go", `${level === d * 2 ? "Store" : "Service"} ${id.slice(2)}`);
+        : place(
+            id,
+            level,
+            level === d * 2 ? "postgres" : "service.go",
+            `${level === d * 2 ? "Store" : "Service"} ${id.slice(2)}`,
+          );
       edges.push({ id: `e-${id}`, from: parent.id, to: kid.id, kind: "async" });
       kids.push(kid);
       grow(kid, level + 1, id);
@@ -208,8 +243,23 @@ export function edgeSidesDiagram(spacing = 1): DiagramFile {
       const x = ORIGIN + c * 640 * s;
       const y = ORIGIN + r * 300 * s;
       nodes.push({ id: `${id}-a`, stencil: "service.node", label: `${src} →`, sublabel: `from ${src}`, x, y });
-      nodes.push({ id: `${id}-b`, stencil: "kafka.topic", label: `→ ${dst}`, sublabel: `to ${dst}`, x: x + 300 * s, y: y + 110 * s });
-      edges.push({ id: `side-${id}`, from: `${id}-a`, to: `${id}-b`, sourceSide: src, targetSide: dst, label: `${src}→${dst}`, kind: "async" });
+      nodes.push({
+        id: `${id}-b`,
+        stencil: "kafka.topic",
+        label: `→ ${dst}`,
+        sublabel: `to ${dst}`,
+        x: x + 300 * s,
+        y: y + 110 * s,
+      });
+      edges.push({
+        id: `side-${id}`,
+        from: `${id}-a`,
+        to: `${id}-b`,
+        sourceSide: src,
+        targetSide: dst,
+        label: `${src}→${dst}`,
+        kind: "async",
+      });
     }),
   );
   return file("Edge sides", "sourceSide × targetSide: all 16 combinations.", nodes, edges);
@@ -217,7 +267,13 @@ export function edgeSidesDiagram(spacing = 1): DiagramFile {
 
 /** async, sync, labelled, long label, bidirectional pair. */
 export function edgeKindsDiagram(): DiagramFile {
-  const row = (r: number, a: string, b: string, edge: Omit<DiagramEdge, "id" | "from" | "to">, name: string): [DiagramNode[], DiagramEdge] => [
+  const row = (
+    r: number,
+    a: string,
+    b: string,
+    edge: Omit<DiagramEdge, "id" | "from" | "to">,
+    name: string,
+  ): [DiagramNode[], DiagramEdge] => [
     [
       { id: `${name}-a`, stencil: a, label: `${name} source`, x: colX(0), y: rowY(r * 1.5) },
       { id: `${name}-b`, stencil: b, label: `${name} target`, x: colX(1.4), y: rowY(r * 1.5) },
@@ -228,7 +284,13 @@ export function edgeKindsDiagram(): DiagramFile {
     row(0, "service.node", "kafka.topic", { kind: "async" }, "async"),
     row(1, "aws.api-gateway", "service.java", { kind: "sync" }, "sync"),
     row(2, "service.go", "aws.sqs", { kind: "async", label: "OrderPlaced" }, "labelled"),
-    row(3, "azure.api-management", "azure.functions", { kind: "sync", label: "POST /orders/{id}/payments (idempotent, retries ×3)" }, "long-label"),
+    row(
+      3,
+      "azure.api-management",
+      "azure.functions",
+      { kind: "sync", label: "POST /orders/{id}/payments (idempotent, retries ×3)" },
+      "long-label",
+    ),
   ];
   const nodes = rows.flatMap(([ns]) => ns);
   const edges = rows.map(([, e]) => e);
@@ -270,7 +332,9 @@ export function backEdgeDiagram(selfLoop = true): DiagramFile {
 export function fanEdgesDiagram(count: number): DiagramFile {
   const n = Math.max(1, Math.floor(count));
   const mid = (n - 1) / 2;
-  const nodes: DiagramNode[] = [{ id: "hub", stencil: "kafka.topic", label: "Hub", sublabel: "events", x: colX(1), y: rowY(mid) }];
+  const nodes: DiagramNode[] = [
+    { id: "hub", stencil: "kafka.topic", label: "Hub", sublabel: "events", x: colX(1), y: rowY(mid) },
+  ];
   const edges: DiagramEdge[] = [];
   for (let i = 0; i < n; i++) {
     nodes.push({ id: `in${i + 1}`, stencil: "service.java", label: `Producer ${i + 1}`, x: colX(0), y: rowY(i) });
@@ -287,7 +351,14 @@ export function fanEdgesDiagram(count: number): DiagramFile {
 export function oddNodesDiagram(): DiagramFile {
   const nodes: DiagramNode[] = [
     { id: "normal", stencil: "kafka.topic", label: "orders", sublabel: "orders.created.v1", x: colX(0), y: rowY(0) },
-    { id: "unknown", stencil: "acme.quantum-bus", label: "Unknown stencil", sublabel: "acme.quantum-bus", x: colX(1), y: rowY(0) },
+    {
+      id: "unknown",
+      stencil: "acme.quantum-bus",
+      label: "Unknown stencil",
+      sublabel: "acme.quantum-bus",
+      x: colX(1),
+      y: rowY(0),
+    },
     {
       id: "long-label",
       stencil: "service.dotnet",
@@ -323,9 +394,32 @@ export function groupsDiagram(): DiagramFile {
   tones.forEach((tone, i) => {
     const c = (i % 3) * 1.15;
     const r = Math.floor(i / 3) * 3;
-    groups.push({ id: tone, label: `${tone} boundary`, tone, x: colX(c) - 30, y: rowY(r) - 50, width: 290, height: 72 + 120 + 90 });
-    nodes.push({ id: `${tone}-1`, stencil: "service.node", label: `${tone} service`, x: colX(c), y: rowY(r), group: tone });
-    nodes.push({ id: `${tone}-2`, stencil: "kafka.topic", label: `${tone} topic`, sublabel: `${tone}.events`, x: colX(c), y: rowY(r + 1), group: tone });
+    groups.push({
+      id: tone,
+      label: `${tone} boundary`,
+      tone,
+      x: colX(c) - 30,
+      y: rowY(r) - 50,
+      width: 290,
+      height: 72 + 120 + 90,
+    });
+    nodes.push({
+      id: `${tone}-1`,
+      stencil: "service.node",
+      label: `${tone} service`,
+      x: colX(c),
+      y: rowY(r),
+      group: tone,
+    });
+    nodes.push({
+      id: `${tone}-2`,
+      stencil: "kafka.topic",
+      label: `${tone} topic`,
+      sublabel: `${tone}.events`,
+      x: colX(c),
+      y: rowY(r + 1),
+      group: tone,
+    });
     edges.push({ id: `${tone}-in`, from: `${tone}-1`, to: `${tone}-2`, kind: "async" });
     if (i > 0) edges.push({ id: `${tone}-cross`, from: `${tones[i - 1]}-2`, to: `${tone}-1`, kind: "async" });
   });
@@ -343,7 +437,8 @@ export function diagramProblems(d: DiagramFile): string[] {
     if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) problems.push(`node ${n.id} has a non-numeric position`);
   }
   const groupIds = new Set((d.groups ?? []).map((g) => g.id));
-  for (const n of d.nodes) if (n.group && !groupIds.has(n.group)) problems.push(`node ${n.id} is in missing group ${n.group}`);
+  for (const n of d.nodes)
+    if (n.group && !groupIds.has(n.group)) problems.push(`node ${n.id} is in missing group ${n.group}`);
   const edgeIds = new Set<string>();
   for (const e of d.edges) {
     if (edgeIds.has(e.id)) problems.push(`duplicate edge id ${e.id}`);

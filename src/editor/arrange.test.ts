@@ -43,6 +43,11 @@ describe("arrange", () => {
   });
 
   it("boundary leaves padding and room for the label", () => {
-    expect(boundaryAround([{ id: "a", x: 100, y: 100, width: 200, height: 80 }])).toEqual({ x: 60, y: 36, width: 280, height: 184 });
+    expect(boundaryAround([{ id: "a", x: 100, y: 100, width: 200, height: 80 }])).toEqual({
+      x: 60,
+      y: 36,
+      width: 280,
+      height: 184,
+    });
   });
 });
