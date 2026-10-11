@@ -527,6 +527,7 @@ function NodeSelect({
   onPick,
   testId,
   allowEmpty,
+  label,
 }: {
   value: string;
   diagram: DiagramFile;
@@ -534,12 +535,14 @@ function NodeSelect({
   onPick?: () => void;
   testId: string;
   allowEmpty?: boolean;
+  label?: string;
 }) {
   const missing = !!value && !diagram.nodes.some((n) => n.id === value);
   return (
     <div className="lv-node-select">
       <select
         value={value}
+        aria-label={label}
         onChange={(e) => onChange(e.target.value)}
         data-testid={testId}
         name={testId}
@@ -935,6 +938,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
         <small>s</small>
         <select
           value={a.do}
+          aria-label="Action"
           onChange={(e) => switchTo(e.target.value as TimelineAction["do"])}
           data-testid={`${t}-action`}
           name={`${t}-action`}
@@ -1014,6 +1018,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
         <div className="lv-step-body">
           <NodeSelect
             value={a.node}
+            label="Target node"
             diagram={diagram}
             testId={`${t}-node`}
             onChange={(node) => setAction({ ...a, node })}
@@ -1022,6 +1027,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
           {a.do === "status" && (
             <select
               value={a.status}
+              aria-label="Status"
               onChange={(e) => setAction({ ...a, status: e.target.value as "up" | "paused" | "down" })}
               data-testid={`${t}-status`}
               name={`${t}-status`}
@@ -1035,6 +1041,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
             <div className="lv-inline">
               <select
                 value={propKey}
+                aria-label="Property"
                 onChange={(e) => {
                   const v = a.props[propKey];
                   const rest = Object.fromEntries(Object.entries(a.props).filter(([key]) => key !== propKey));

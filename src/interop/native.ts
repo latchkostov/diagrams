@@ -1,4 +1,4 @@
-import { DIAGRAM_FORMAT, type DiagramFile } from "../model/types";
+import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -21,6 +21,16 @@ export const LIMITS = {
   maxEdges: 20_000,
   maxGroups: 1_000,
   maxSimulations: 200,
+  maxTimelineSteps: 10_000,
+  maxTrafficProfiles: 2_000,
+  maxRampStages: 10_000,
+  maxExpectations: 10_000,
+  maxMessageCount: 100_000,
+  maxRatePerSec: 10_000,
+  maxTrafficVolume: 200_000,
+  maxSimulationMs: 600_000,
+  maxPages: 100,
+  maxCoordinate: 1_000_000,
 } as const;
 
 /** Iterative depth check (no recursion, so it can't overflow on hostile input). */
@@ -89,8 +99,6 @@ export function validateDiagram(data: unknown): NativeResult {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
   if (!Array.isArray(raw.nodes)) return { ok: false, error: "The diagram needs both a nodes and an edges list." };
-  if (exceedsDepth(raw))
-    return { ok: false, error: `It's nested too deeply to be a diagram (more than ${LIMITS.maxDepth} levels).` };
   const counts: [unknown, number, string][] = [
     [raw.nodes, LIMITS.maxNodes, "nodes"],
     [raw.edges, LIMITS.maxEdges, "edges"],
@@ -101,6 +109,12 @@ export function validateDiagram(data: unknown): NativeResult {
     if (Array.isArray(list) && list.length > max)
       return { ok: false, error: `It has ${list.length} ${what}; the limit is ${max}.` };
   }
+  if (Array.isArray(raw.simulations)) {
+    const budget = simulationListBudget(raw.simulations);
+    if (budget) return { ok: false, error: budget };
+  }
+  if (exceedsDepth(raw))
+    return { ok: false, error: `It's nested too deeply to be a diagram (more than ${LIMITS.maxDepth} levels).` };
   const warnings: string[] = [];
   // Shallow copies: repairs never mutate the caller's object.
   const d: Record<string, unknown> = { ...raw };
@@ -125,7 +139,8 @@ export function validateDiagram(data: unknown): NativeResult {
           !g.id ||
           ![g.x, g.y, g.width, g.height].every(isNum) ||
           (g.width as number) < 0 ||
-          (g.height as number) < 0
+          (g.height as number) < 0 ||
+          [g.x, g.y, g.width, g.height].some((v) => isNum(v) && Math.abs(v) > LIMITS.maxCoordinate)
         ) {
           warnings.push(
             `${describe("Group", i, isObj(g) ? g.id : undefined)} was skipped: it needs an id, x, y, width and height.`,
@@ -157,6 +172,8 @@ export function validateDiagram(data: unknown): NativeResult {
         error: `Every node needs an id, a stencil, and numeric x and y. ${describe("Node", i, isObj(n) ? n.id : undefined)} doesn't.`,
       };
     }
+    if (Math.abs(n.x) > LIMITS.maxCoordinate || Math.abs(n.y) > LIMITS.maxCoordinate)
+      return { ok: false, error: `Node "${n.id}" exceeds the coordinate budget.` };
     if (ids.has(n.id)) return { ok: false, error: `Two nodes share the id "${n.id}". Node ids must be unique.` };
     ids.add(n.id);
     const out = { ...n };
@@ -167,6 +184,8 @@ export function validateDiagram(data: unknown): NativeResult {
       delete out.group;
     }
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
+    if (out.props !== undefined && propsProblem(out.props))
+      return { ok: false, error: `Node "${n.id}" has invalid or excessive simulation properties.` };
     nodes.push(out);
   }
   d.nodes = nodes;
@@ -211,13 +230,18 @@ export function validateDiagram(data: unknown): NativeResult {
     } else {
       const sims: Record<string, unknown>[] = [];
       d.simulations.forEach((sim, i) => {
-        const problem = simulationProblem(sim, ids);
+        const problem = simulationProblem(sim);
         if (problem)
           warnings.push(
             `${describe("Simulation", i, isObj(sim) ? (sim.title ?? sim.id) : undefined)} was skipped: ${problem}.`,
           );
-        else sims.push(sim as Record<string, unknown>);
+        else {
+          sims.push(sim as Record<string, unknown>);
+          warnings.push(...simulationReferenceWarnings(sim as Simulation, ids));
+        }
       });
+      const budget = simulationBudgetProblem(sims);
+      if (budget) return { ok: false, error: budget };
       if (sims.length) d.simulations = sims;
       else delete d.simulations;
     }
@@ -225,56 +249,233 @@ export function validateDiagram(data: unknown): NativeResult {
   return { ok: true, diagram: d as unknown as DiagramFile, warnings };
 }
 
-const SHAPES = new Set(["burst", "constant", "ramp", "spike"]);
-const ACTIONS = new Set(["status", "props", "inject", "note"]);
 const OPS = new Set(["<", "<=", "==", ">=", ">"]);
 const WHEN = new Set(["always", "eventually", "end", "at"]);
 const STATUS = new Set(["up", "paused", "down"]);
-const optNum = (v: unknown) => v === undefined || isNum(v);
+const METRICS = new Set(["processed", "backlog", "inFlight", "failed", "deadLettered", "dropped", "throughput", "lag"]);
+const optString = (v: unknown) => v === undefined || typeof v === "string";
+const nonnegative = (v: unknown, max = Number.MAX_SAFE_INTEGER): v is number => isNum(v) && v >= 0 && v <= max;
+const time = (v: unknown) => nonnegative(v, LIMITS.maxSimulationMs);
+const optTime = (v: unknown) => v === undefined || time(v);
+const count = (v: unknown) => nonnegative(v, LIMITS.maxMessageCount) && Number.isSafeInteger(v);
+const rate = (v: unknown) => nonnegative(v, LIMITS.maxRatePerSec);
+const strings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string");
 
-/** Why a saved simulation can't be played (its shape; deeper semantics are the runner's job). */
-function simulationProblem(sim: unknown, nodeIds: Set<string>): string | undefined {
+/** Known engine properties are typed and bounded; unrelated extension properties remain lossless. */
+function propsProblem(v: unknown): boolean {
+  if (!isObj(v)) return true;
+  for (const key of ["ratePerSec", "concurrency", "replicas", "maxDeliveryCount", "partitions"]) {
+    if (v[key] !== undefined && !nonnegative(v[key], LIMITS.maxRatePerSec)) return true;
+  }
+  for (const key of ["latencyMs"]) if (v[key] !== undefined && !time(v[key])) return true;
+  for (const key of ["failureRate", "jitter"]) if (v[key] !== undefined && !nonnegative(v[key], 1)) return true;
+  if (!optString(v.messageType)) return true;
+  return (
+    v.emits !== undefined &&
+    typeof v.emits !== "string" &&
+    (!isObj(v.emits) || !Object.values(v.emits).every((x) => typeof x === "string"))
+  );
+}
+
+/** Structural validation only: unresolved references remain repairable editor metadata. */
+export function simulationProblem(sim: unknown): string | undefined {
   if (!isObj(sim)) return "it isn't an object";
-  if (typeof sim.id !== "string" || !sim.id) return "it needs an id";
-  if (typeof sim.title !== "string") return "it needs a title";
-  if (!optNum(sim.seed) || !optNum(sim.durationMs)) return "seed and durationMs must be numbers";
+  if (typeof sim.id !== "string" || !sim.id || typeof sim.title !== "string") return "it needs an id and title";
+  if (!optString(sim.description) || (sim.seed !== undefined && !isNum(sim.seed)) || !optTime(sim.durationMs))
+    return "description, seed or durationMs is invalid";
+  if (sim.scale !== undefined && (!isNum(sim.scale) || sim.scale < 1)) return "scale must be at least 1";
+  if (
+    sim.multipliers !== undefined &&
+    (!isObj(sim.multipliers) ||
+      [sim.multipliers.traffic, sim.multipliers.capacity].some((v) => v !== undefined && !nonnegative(v, 100)))
+  )
+    return "multipliers must be bounded nonnegative numbers";
   if (!Array.isArray(sim.traffic)) return "it needs a traffic list";
   for (const t of sim.traffic) {
-    if (!isObj(t) || typeof t.id !== "string" || typeof t.node !== "string")
-      return "every traffic entry needs an id and a node";
-    if (!nodeIds.has(t.node)) return `traffic starts at "${t.node}", which isn't in the diagram`;
-    const sh = t.shape;
-    if (!isObj(sh) || !SHAPES.has(sh.kind as string))
-      return "every traffic entry needs a shape (burst, constant, ramp or spike)";
-    if (!Object.entries(sh).every(([k, v]) => k === "kind" || k === "stages" || isNum(v)))
-      return "traffic numbers must be finite";
     if (
-      sh.kind === "ramp" &&
-      (!Array.isArray(sh.stages) || !sh.stages.every((st) => isObj(st) && isNum(st.durationMs) && isNum(st.targetRate)))
-    ) {
-      return "ramp stages need durationMs and targetRate";
+      !isObj(t) ||
+      typeof t.id !== "string" ||
+      typeof t.node !== "string" ||
+      !optString(t.label) ||
+      !optString(t.messageType)
+    )
+      return "every traffic entry needs string id, node, label and messageType fields";
+    const sh = t.shape;
+    if (!isObj(sh)) return "every traffic entry needs a shape";
+    switch (sh.kind) {
+      case "burst":
+        if (!count(sh.count) || !optTime(sh.atMs) || !optTime(sh.spreadMs))
+          return "burst count or timing is invalid or exceeds its budget";
+        break;
+      case "constant":
+        if (!rate(sh.ratePerSec) || !optTime(sh.fromMs) || !time(sh.durationMs))
+          return "constant rate or timing is invalid or exceeds its budget";
+        break;
+      case "ramp":
+        if (
+          !optTime(sh.fromMs) ||
+          (sh.startRate !== undefined && !rate(sh.startRate)) ||
+          !Array.isArray(sh.stages) ||
+          !sh.stages.every((st) => isObj(st) && time(st.durationMs) && rate(st.targetRate))
+        )
+          return "ramp stages need bounded durationMs and targetRate";
+        break;
+      case "spike":
+        if (!rate(sh.baseRate) || !rate(sh.peakRate) || !time(sh.atMs) || !time(sh.peakMs) || !time(sh.durationMs))
+          return "spike rates or timing are invalid or exceed their budget";
+        break;
+      default:
+        return "every traffic entry needs a shape (burst, constant, ramp or spike)";
     }
   }
   if (sim.timeline !== undefined) {
     if (!Array.isArray(sim.timeline)) return "the timeline must be a list";
     for (const step of sim.timeline) {
-      if (!isObj(step) || !isNum(step.atMs) || !isObj(step.action) || !ACTIONS.has(step.action.do as string))
-        return "every timeline step needs atMs and an action";
+      if (!isObj(step) || !time(step.atMs) || !isObj(step.action))
+        return "every timeline step needs bounded atMs and an action";
       const a = step.action;
-      if (a.do === "note" ? typeof a.text !== "string" : typeof a.node !== "string")
-        return "a timeline action is missing its node or text";
-      if (a.do === "status" && !STATUS.has(a.status as string)) return "a status action needs up, paused or down";
+      if (a.do !== "note" && typeof a.node !== "string") return "a timeline action needs a node";
+      switch (a.do) {
+        case "note":
+          if (
+            typeof a.text !== "string" ||
+            (a.focus !== undefined && !strings(a.focus)) ||
+            (a.pause !== undefined && typeof a.pause !== "boolean")
+          )
+            return "notes need text, a string-array focus and a boolean pause";
+          break;
+        case "status":
+          if (!STATUS.has(a.status as string)) return "a status action needs up, paused or down";
+          break;
+        case "props":
+          if (propsProblem(a.props)) return "a props action needs valid engine properties";
+          break;
+        case "inject":
+          if (!count(a.count) || !optString(a.messageType) || !optTime(a.spreadMs))
+            return "an inject action needs a bounded count, messageType and spreadMs";
+          break;
+        default:
+          return "unknown timeline action";
+      }
     }
   }
   if (sim.expectations !== undefined) {
     if (!Array.isArray(sim.expectations)) return "expectations must be a list";
     for (const x of sim.expectations) {
-      if (!isObj(x) || typeof x.id !== "string" || !isObj(x.metric) || !OPS.has(x.op as string) || !isNum(x.value))
-        return "every expectation needs an id, a metric, an operator and a value";
-      if (x.when !== undefined && !WHEN.has(x.when as string)) return "an expectation has an unknown when";
+      if (
+        !isObj(x) ||
+        typeof x.id !== "string" ||
+        typeof x.label !== "string" ||
+        !isObj(x.metric) ||
+        !OPS.has(x.op as string) ||
+        !isNum(x.value)
+      )
+        return "every expectation needs an id, label, metric, operator and value";
+      const m = x.metric;
+      if (
+        m.system !== undefined
+          ? m.system !== "inSystem" || m.node !== undefined || m.field !== undefined || m.group !== undefined
+          : typeof m.node !== "string" || !METRICS.has(m.field as string) || !optString(m.group)
+      )
+        return "invalid expectation metric";
+      if (
+        (x.when !== undefined && !WHEN.has(x.when as string)) ||
+        !optTime(x.atMs) ||
+        (x.when === "at" && !time(x.atMs))
+      )
+        return "invalid expectation when or atMs";
     }
   }
-  if (sim.setup !== undefined && !isObj(sim.setup)) return "setup must be an object";
+  if (sim.setup !== undefined) {
+    if (!isObj(sim.setup)) return "setup must be an object";
+    if (
+      sim.setup.status !== undefined &&
+      (!isObj(sim.setup.status) || !Object.values(sim.setup.status).every((v) => STATUS.has(v as string)))
+    )
+      return "setup status must map node ids to up, paused or down";
+    if (sim.setup.props !== undefined && (!isObj(sim.setup.props) || Object.values(sim.setup.props).some(propsProblem)))
+      return "setup props must map node ids to valid engine properties";
+  }
+  return undefined;
+}
+
+export function simulationReferenceWarnings(sim: Simulation, nodeIds: Set<string>): string[] {
+  const refs = new Set([
+    ...sim.traffic.map((t) => t.node),
+    ...(sim.timeline ?? []).flatMap(({ action }) => (action.do === "note" ? (action.focus ?? []) : [action.node])),
+    ...Object.keys(sim.setup?.props ?? {}),
+    ...Object.keys(sim.setup?.status ?? {}),
+    ...(sim.expectations ?? []).flatMap((x) => ("node" in x.metric ? [x.metric.node] : [])),
+  ]);
+  return [...refs]
+    .filter((id) => !nodeIds.has(id))
+    .map(
+      (id) =>
+        `Simulation "${sim.title}" refers to missing node "${id}"; repair the reference in the simulation editor.`,
+    );
+}
+
+function simulationListBudget(raw: unknown[]): string | undefined {
+  let profiles = 0,
+    steps = 0,
+    stages = 0,
+    expectations = 0;
+  for (const sim of raw) {
+    if (!isObj(sim)) continue;
+    profiles += Array.isArray(sim.traffic) ? sim.traffic.length : 0;
+    steps += Array.isArray(sim.timeline) ? sim.timeline.length : 0;
+    expectations += Array.isArray(sim.expectations) ? sim.expectations.length : 0;
+    if (
+      profiles > LIMITS.maxTrafficProfiles ||
+      steps > LIMITS.maxTimelineSteps ||
+      expectations > LIMITS.maxExpectations
+    )
+      return "The simulations exceed the document's traffic, timeline or expectation budget.";
+    for (const t of Array.isArray(sim.traffic) ? sim.traffic : []) {
+      if (isObj(t) && isObj(t.shape) && Array.isArray(t.shape.stages)) stages += t.shape.stages.length;
+      if (stages > LIMITS.maxRampStages) return "The simulations exceed the document's ramp-stage budget.";
+    }
+  }
+  return undefined;
+}
+
+/** Document-wide budgets bound initialization and traffic even across many small simulations. */
+function simulationBudgetProblem(raw: Record<string, unknown>[]): string | undefined {
+  let profiles = 0,
+    steps = 0,
+    stages = 0,
+    expectations = 0,
+    volume = 0;
+  for (const sim of raw as unknown as Simulation[]) {
+    profiles += sim.traffic.length;
+    steps += sim.timeline?.length ?? 0;
+    expectations += sim.expectations?.length ?? 0;
+    let messages = 0;
+    for (const { shape: sh } of sim.traffic) {
+      if (sh.kind === "burst") messages += sh.count;
+      else if (sh.kind === "constant") messages += (sh.ratePerSec * sh.durationMs) / 1000;
+      else if (sh.kind === "spike") messages += (Math.max(sh.baseRate, sh.peakRate) * sh.durationMs) / 1000;
+      else {
+        stages += sh.stages.length;
+        let previous = sh.startRate ?? 0;
+        for (const stage of sh.stages) {
+          messages += (Math.max(previous, stage.targetRate) * stage.durationMs) / 1000;
+          previous = stage.targetRate;
+        }
+      }
+    }
+    for (const { action } of sim.timeline ?? []) if (action.do === "inject") messages += action.count;
+    volume += messages * Math.max(1, sim.multipliers?.traffic ?? 1);
+  }
+  if (
+    profiles > LIMITS.maxTrafficProfiles ||
+    steps > LIMITS.maxTimelineSteps ||
+    stages > LIMITS.maxRampStages ||
+    expectations > LIMITS.maxExpectations
+  )
+    return "The simulations exceed the document's traffic, timeline, ramp-stage or expectation budget.";
+  if (!Number.isFinite(volume) || volume > LIMITS.maxTrafficVolume)
+    return "The simulations exceed the document's total traffic volume budget.";
   return undefined;
 }
 

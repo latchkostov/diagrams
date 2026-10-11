@@ -7,6 +7,7 @@
 // group border, so the search prefers few bends, short paths and clear channels, in that order.
 
 import { inflate, type Point, type Rect, right, bottom, simplify } from "./rect";
+import { obstacleGrid } from "./obstacleGrid";
 
 export interface SoftLine {
   /** "x": a vertical line at x = at spanning y in [from, to]; "y": horizontal. */
@@ -126,25 +127,36 @@ function search(
   const ys = withMidlines([region.y, bottom(region), s1.y, t1.y, ...obs.flatMap((r) => [r.y, bottom(r)])]);
   const nx = xs.length,
     ny = ys.length;
-  const inside = (x: number, y: number) => {
-    for (const r of obs)
-      if (x > r.x + 0.01 && x < right(r) - 0.01 && y > r.y + 0.01 && y < bottom(r) - 0.01) return true;
-    return false;
+  // Cap the dense search's allocation/work. The caller retains the existing elbow fallback.
+  if (nx * ny > 2_000_000) return null;
+  const interleave = (a: number[]) => a.flatMap((v, i) => (i + 1 < a.length ? [v, (v + a[i + 1]) / 2] : [v]));
+  const gridY = 2 * ny - 1;
+  // Include link midpoints; cached occupancy queries preserve identical border semantics.
+  const occupancy = obstacleGrid(interleave(xs), interleave(ys), obs);
+  const occupancyCache = new Uint8Array((2 * nx - 1) * gridY);
+  const inside = (i: number, j: number) => {
+    const k = i * gridY + j;
+    if (!occupancyCache[k]) occupancyCache[k] = occupancy.has(i, j) ? 2 : 1;
+    return occupancyCache[k] === 2;
   };
   const find = (arr: number[], v: number) => {
-    let best = 0;
-    for (let i = 1; i < arr.length; i++) if (Math.abs(arr[i] - v) < Math.abs(arr[best] - v)) best = i;
-    return best;
+    let lo = 0,
+      hi = arr.length;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (arr[mid] < v) lo = mid + 1;
+      else hi = mid;
+    }
+    if (lo === arr.length) return lo - 1;
+    // Prefer the earlier ruler on a tie, as the original linear scan did.
+    return lo > 0 && Math.abs(arr[lo - 1] - v) <= Math.abs(arr[lo] - v) ? lo - 1 : lo;
   };
   const si = find(xs, s1.x),
     sj = find(ys, s1.y),
     ti = find(xs, t1.x),
     tj = find(ys, t1.y);
 
-  const blocked = new Uint8Array(nx * ny);
-  for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) if (inside(xs[i], ys[j])) blocked[i * ny + j] = 1;
-  blocked[si * ny + sj] = 0;
-  blocked[ti * ny + tj] = 0;
+  const blocked = (i: number, j: number) => !((i === si && j === sj) || (i === ti && j === tj)) && inside(2 * i, 2 * j);
 
   // Rulers lying on a padded obstacle border, for the "hugging" penalty.
   const hugX = new Map<number, Rect[]>();
@@ -169,12 +181,12 @@ function search(
     const i2 = i + DIRS[d].x,
       j2 = j + DIRS[d].y;
     let cost = -1;
-    if (i2 >= 0 && i2 < nx && j2 >= 0 && j2 < ny && !blocked[i2 * ny + j2]) {
+    if (i2 >= 0 && i2 < nx && j2 >= 0 && j2 < ny && !blocked(i2, j2)) {
       const x1 = xs[i],
         y1 = ys[j],
         x2 = xs[i2],
         y2 = ys[j2];
-      if (!inside((x1 + x2) / 2, (y1 + y2) / 2)) {
+      if (!inside(i + i2, j + j2)) {
         const len = Math.abs(x2 - x1) + Math.abs(y2 - y1);
         let extra = 0;
         const vertical = d === 1 || d === 3;

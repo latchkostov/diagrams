@@ -124,6 +124,41 @@ describe("LiveController", () => {
     expect(c.getState().tweaks.size).toBe(0);
   });
 
+  it("patches only changed diagram props, preserving setup and live overrides", () => {
+    const d = diagram();
+    d.nodes[2].props = { latencyMs: 100, concurrency: 4, emits: { Created: "Done", "*": "Other" } };
+    const c = new LiveController(d, { roleOf });
+    c.selectSimulation({ ...storm, traffic: [], timeline: [], setup: { props: { worker: { latencyMs: 5000 } } } });
+    c.setNodeProps("worker", { failureRate: 0.25, emits: "Overridden" });
+    const next = structuredClone(d);
+    next.nodes[2].props!.concurrency = 1;
+    next.nodes[2].props!.emits = { "*": "Other", Created: "Done" };
+    expect(c.updateDiagram(next)).toBe("patched");
+    expect(c.effectiveProps("worker")).toMatchObject({
+      latencyMs: 5000,
+      concurrency: 1,
+      failureRate: 0.25,
+      emits: "Overridden",
+    });
+    c.inject("worker", 1);
+    c.step(500);
+    expect(c.snapshot().nodes.worker.processed).toBe(0);
+  });
+
+  it("reads timeline prop changes from the engine without recording them as live tweaks", () => {
+    const c = new LiveController(diagram(), { roleOf });
+    c.selectSimulation({
+      ...storm,
+      timeline: [{ atMs: 100, action: { do: "props", node: "worker", props: { concurrency: 1 } } }],
+    });
+    c.step(200);
+    expect(c.effectiveProps("worker").concurrency).toBe(1);
+    expect(c.getState().tweaks.size).toBe(0);
+    const props = c.effectiveProps("worker");
+    props.concurrency = 99;
+    expect(c.effectiveProps("worker").concurrency).toBe(1);
+  });
+
   it("ignores moves, patches props and rebuilds on structural edits", () => {
     const d = diagram();
     const c = new LiveController(d, { roleOf });
@@ -142,8 +177,10 @@ describe("LiveController", () => {
       ...slowed,
       nodes: slowed.nodes.map((n) => (n.id === "worker" ? { ...n, props: undefined } : n)),
     };
-    expect(c.updateDiagram(unslowed)).toBe("reloaded");
-    expect(c.snapshot().inSystem).toBe(0);
+    expect(c.updateDiagram(unslowed)).toBe("patched");
+    expect(c.snapshot().inSystem).toBe(5);
+    expect(c.effectiveProps("worker")).not.toHaveProperty("latencyMs");
+    expect(c.snapshot().nodes.worker.status).toBe("up");
     const rewired = { ...unslowed, edges: unslowed.edges.slice(0, 2) };
     expect(c.updateDiagram(rewired)).toBe("reloaded");
   });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
+import { LIMITS } from "../native";
 import { parseMermaid, looksLikeMermaid } from "./read";
 import { diagramToMermaid } from "./write";
 
@@ -143,4 +144,35 @@ describe("round-trip: every public example through Mermaid", () => {
       expect(plain.edges.map((e) => e.kind)).toEqual(ex.edges.map((e) => e.kind ?? "async"));
     });
   }
+});
+
+describe("Mermaid pre-expansion budgets", () => {
+  it("rejects a compact Cartesian product before allocating or laying out edges", () => {
+    const left = Array.from({ length: 160 }, (_, i) => `a${i}`).join(" & ");
+    const right = Array.from({ length: 160 }, (_, i) => `b${i}`).join(" & ");
+    expect(() => parseMermaid(`flowchart LR\n${left} --> ${right}`)).toThrow(/edge budget.*before link expansion/);
+  });
+  it("charges chained products against one cumulative edge budget", () => {
+    const ids = Array.from({ length: 101 }, (_, i) => `a${i}`).join(" & ");
+    expect(() => parseMermaid(`flowchart LR\n${ids} --> ${ids} --> ${ids}`)).toThrow(/edge budget/);
+  });
+  it("bounds nodes and groups while parsing", () => {
+    expect(() =>
+      parseMermaid("flowchart LR\n" + Array.from({ length: LIMITS.maxNodes + 1 }, (_, i) => `a${i}`).join("\n")),
+    ).toThrow(/node budget/);
+    expect(() =>
+      parseMermaid(
+        "flowchart LR\n" + Array.from({ length: LIMITS.maxGroups + 1 }, (_, i) => `subgraph g${i}\nend`).join("\n"),
+      ),
+    ).toThrow(/group budget/);
+  });
+});
+
+it("charges unsupported subgraph-link products against the parsing budget too", () => {
+  const groups = Array.from({ length: 160 }, (_, i) => `subgraph g${i}\nend`).join("\n");
+  const refs = Array.from({ length: 160 }, (_, i) => `g${i}`).join(" & ");
+  expect(() => parseMermaid(`flowchart LR\nn\n${groups}\n${refs} --> ${refs}`)).toThrow(/edge budget/);
+  expect(() => parseMermaid(`flowchart LR\nn\nsubgraph g\nend\ng${" --> g".repeat(LIMITS.maxEdges + 1)}`)).toThrow(
+    /edge budget/,
+  );
 });

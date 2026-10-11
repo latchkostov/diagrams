@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    "noEmit": true
+  },
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "vite.config.ts", "playwright.config.ts"],
+  "exclude": []
+}

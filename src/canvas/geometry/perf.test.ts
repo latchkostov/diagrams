@@ -1,10 +1,53 @@
 // Routing benchmark over the public examples, the obstacle course and the 150-node stress preset.
-import { it } from "vitest";
+import { expect, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import { stressDiagram } from "../../lab/generators";
 import { obstacleCourseDiagram } from "../../lab/routingDiagrams";
 import { estimateCardSize } from "../nodes/size";
 import { groupHeaderRect, Router, type RouteInput } from "./router";
+import { routeOrthogonal } from "./orthogonal";
+import { nudgeRoutes } from "./nudge";
+
+function offsetRoute(count: number) {
+  const side = Math.sqrt(count);
+  return routeOrthogonal({
+    source: { x: 220, y: 36 },
+    sourceDir: { x: 1, y: 0 },
+    target: { x: (side - 1) * 400 + count * 2, y: (side - 1) * 140 + count * 2 + 36 },
+    targetDir: { x: -1, y: 0 },
+    obstacles: Array.from({ length: count }, (_, i) => ({
+      x: (i % side) * 400 + i * 2,
+      y: Math.floor(i / side) * 140 + i * 2,
+      width: 220,
+      height: 72,
+    })),
+  });
+}
+
+function separatedRoutes(count: number) {
+  return new Map(
+    Array.from({ length: count }, (_, i) => [
+      `e${i}`,
+      [
+        { x: 0, y: i * 20 },
+        { x: 1000, y: i * 20 },
+      ],
+    ]),
+  );
+}
+
+it("routes distinct obstacle coordinates without rescanning obstacles per grid cell", () => {
+  const start = performance.now();
+  expect(offsetRoute(400).ok).toBe(true);
+  expect(performance.now() - start).toBeLessThan(1500);
+});
+
+it("nudges separated pinned routes without an all-pairs pass", () => {
+  const routes = separatedRoutes(30_000);
+  const start = performance.now();
+  expect(nudgeRoutes(routes, [])).toEqual(routes);
+  expect(performance.now() - start).toBeLessThan(1000);
+});
 
 const files = import.meta.glob<DiagramFile>("../../examples/*.json", { eager: true, import: "default" });
 const inputFor = (d: DiagramFile): RouteInput => ({
@@ -52,4 +95,15 @@ it.skipIf(!process.env.ROUTE_BENCH)("routing benchmark", () => {
   bench("obstacle course", obstacleCourseDiagram());
   bench("stress 150", stressDiagram({ nodes: 150, seed: 1, density: 0.25, groups: false, direction: "LR" }));
   bench("stress 150 groups", stressDiagram({ nodes: 150, seed: 1, density: 0.25, groups: true, direction: "LR" }));
+  for (const count of [144, 256, 400]) {
+    const start = performance.now();
+    offsetRoute(count);
+    console.log(`PERF offset ${count}: ${(performance.now() - start).toFixed(2)} ms`);
+  }
+  for (const count of [1000, 2000, 20_000]) {
+    const routes = separatedRoutes(count);
+    const start = performance.now();
+    nudgeRoutes(routes, []);
+    console.log(`PERF separated ${count}: ${(performance.now() - start).toFixed(2)} ms`);
+  }
 });
