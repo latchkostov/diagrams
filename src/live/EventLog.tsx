@@ -31,7 +31,12 @@ export function EventLog({ state }: { state: LiveState }) {
         <strong>Events</strong>
         <label className="lv-select lv-events-filter">
           <span className="sr-only">Filter by node</span>
-          <select value={nodeId ?? ""} onChange={(e) => ui.showEvents(e.target.value || null)} data-testid="live-events-filter" name="live-events-filter">
+          <select
+            value={nodeId ?? ""}
+            onChange={(e) => ui.showEvents(e.target.value || null)}
+            data-testid="live-events-filter"
+            name="live-events-filter"
+          >
             <option value="">All nodes</option>
             {d.nodes.map((n) => (
               <option key={n.id} value={n.id}>
@@ -41,12 +46,21 @@ export function EventLog({ state }: { state: LiveState }) {
           </select>
           <LiveIcon name="chevron" size={11} />
         </label>
-        <button className="lv-btn" onClick={() => ui.showEvents(nodeId, false)} aria-label="Close event log" data-testid="live-events-close">
+        <button
+          className="lv-btn"
+          onClick={() => ui.showEvents(nodeId, false)}
+          aria-label="Close event log"
+          data-testid="live-events-close"
+        >
           <LiveIcon name="close" size={13} />
         </button>
       </header>
       <ol className="mono" data-testid="live-events-list">
-        {rows.length === 0 && <li className="lv-events-empty">{nodeId ? `Nothing has happened at ${labels.get(nodeId)} yet.` : "No events yet."}</li>}
+        {rows.length === 0 && (
+          <li className="lv-events-empty">
+            {nodeId ? `Nothing has happened at ${labels.get(nodeId)} yet.` : "No events yet."}
+          </li>
+        )}
         {rows.map((e, i) => (
           <li key={`${e.time}-${e.messageId ?? ""}-${e.kind}-${i}`} className={`ev-${e.kind}`} data-node={e.nodeId}>
             <span className="lv-ev-time">{(e.time / 1000).toFixed(2)}</span>

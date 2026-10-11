@@ -14,7 +14,11 @@ describe("lab preset registry", () => {
   });
 
   it("covers every group", () => {
-    for (const g of PRESET_GROUPS) expect(presets.some((p) => p.group === g), g).toBe(true);
+    for (const g of PRESET_GROUPS)
+      expect(
+        presets.some((p) => p.group === g),
+        g,
+      ).toBe(true);
   });
 
   it("control keys are unique per preset and don't collide with reserved or look params", () => {
@@ -25,7 +29,12 @@ describe("lab preset registry", () => {
         expect(RESERVED_PARAMS.has(k), `${p.id}.${k}`).toBe(false);
         expect((LOOK_KEYS as readonly string[]).includes(k), `${p.id}.${k}`).toBe(false);
       }
-      for (const c of p.controls ?? []) if (c.type === "select") expect(c.options.some((o) => o.value === c.default), `${p.id}.${c.key}`).toBe(true);
+      for (const c of p.controls ?? [])
+        if (c.type === "select")
+          expect(
+            c.options.some((o) => o.value === c.default),
+            `${p.id}.${c.key}`,
+          ).toBe(true);
     }
   });
 

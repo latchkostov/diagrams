@@ -20,8 +20,16 @@ export interface IconSource {
 
 /** Where a stencil's icon comes from, condensed from docs/ICONS.md. */
 export function iconSource(icon: string): IconSource {
-  if (icon.startsWith("azure-")) return { source: "Microsoft Azure Architecture Icons V24", licence: "Microsoft icon terms: use in architecture diagrams, unaltered" };
-  if (icon.startsWith("aws-")) return { source: "AWS Architecture Icons (2026-07)", licence: "AWS icon terms: use in architecture diagrams, unaltered" };
+  if (icon.startsWith("azure-"))
+    return {
+      source: "Microsoft Azure Architecture Icons V24",
+      licence: "Microsoft icon terms: use in architecture diagrams, unaltered",
+    };
+  if (icon.startsWith("aws-"))
+    return {
+      source: "AWS Architecture Icons (2026-07)",
+      licence: "AWS icon terms: use in architecture diagrams, unaltered",
+    };
   if (icon.startsWith("gcp-")) return { source: "Google Cloud icons", licence: "Apache-2.0" };
   if (icon.startsWith("k8s-")) return { source: "Kubernetes community icons", licence: "Apache-2.0 or CC BY 4.0" };
   if (icon === "entra-id") return { source: "selfh.st icons", licence: "CC BY 4.0, attribution required" };

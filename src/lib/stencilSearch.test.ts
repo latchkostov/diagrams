@@ -26,9 +26,15 @@ describe("stencil search", () => {
 
   it("matches by role, vendor and id", () => {
     const queues = ids("queue");
-    expect(queues).toEqual(expect.arrayContaining(["azure.service-bus.queue", "aws.sqs", "rabbitmq.queue", "generic.queue"]));
+    expect(queues).toEqual(
+      expect.arrayContaining(["azure.service-bus.queue", "aws.sqs", "rabbitmq.queue", "generic.queue"]),
+    );
     expect(queues).not.toContain("kafka.topic");
-    expect(ids("azure").every((id) => catalog.find((s) => s.id === id)!.vendor.match(/Azure|Microsoft/) || id.startsWith("azure"))).toBe(true);
+    expect(
+      ids("azure").every(
+        (id) => catalog.find((s) => s.id === id)!.vendor.match(/Azure|Microsoft/) || id.startsWith("azure"),
+      ),
+    ).toBe(true);
     expect(ids("kafka.schema-registry")[0]).toBe("kafka.schema-registry");
   });
 

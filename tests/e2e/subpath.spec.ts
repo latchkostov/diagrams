@@ -14,7 +14,8 @@ test.describe("production build under a sub-path", () => {
     });
     page.on("request", (r) => {
       const u = new URL(r.url());
-      if (u.hostname === "localhost" && !u.pathname.startsWith(BASE)) consoleErrors.push(`Request outside ${BASE}: ${u.pathname}`);
+      if (u.hostname === "localhost" && !u.pathname.startsWith(BASE))
+        consoleErrors.push(`Request outside ${BASE}: ${u.pathname}`);
     });
   });
 
@@ -44,7 +45,9 @@ test.describe("production build under a sub-path", () => {
     const ex = publicExamples[0];
     await page.goto(`./?view=canvas&example=${ex.slug}`);
     for (const id of ex.nodeIds) await expect(page.getByTestId(`node-${id}`)).toBeVisible();
-    const options = await page.getByTestId("example-picker").evaluate((el) => [...(el as HTMLSelectElement).options].map((o) => o.value));
+    const options = await page
+      .getByTestId("example-picker")
+      .evaluate((el) => [...(el as HTMLSelectElement).options].map((o) => o.value));
     expect(options.sort()).toEqual(publicExamples.map((e) => e.slug).sort());
     expectNoErrors(consoleErrors);
   });
@@ -58,7 +61,9 @@ test.describe("production build under a sub-path", () => {
     await expect(page.getByTestId("lab-render-time")).toHaveAttribute("data-ms", /^\d+$/);
     await expect(page.getByTestId(/^node-n\d+$/)).toHaveCount(10);
     // No private example presets in production.
-    const links = await page.getByTestId(/^lab-preset-link-example-/).evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")!.slice("lab-preset-link-example-".length)));
+    const links = await page
+      .getByTestId(/^lab-preset-link-example-/)
+      .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")!.slice("lab-preset-link-example-".length)));
     expect(links.sort()).toEqual(publicExamples.map((e) => e.slug).sort());
     expectNoErrors(consoleErrors);
   });

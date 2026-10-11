@@ -18,10 +18,20 @@ for (const f of fs.readdirSync(dir).filter((f) => f.endsWith(".json"))) {
   }
 }
 all.sort((a, b) => rank[a.severity] - rank[b.severity] || conf[a.confidence] - conf[b.confidence]);
-const counts = Object.keys(rank).map((s) => `${s}: ${all.filter((x) => x.severity === s).length}`).join(" · ");
+const counts = Object.keys(rank)
+  .map((s) => `${s}: ${all.filter((x) => x.severity === s).length}`)
+  .join(" · ");
 const lines = [`# Review ${path.basename(dir)}`, "", counts, "", "## Summaries", ...summaries, "", "## Findings"];
 for (const x of all) {
-  lines.push(`### [${x.severity}/${x.confidence}] ${x.title}  _(${x.angle})_`, `\`${x.file}:${x.line}\``, "", x.detail, "", `**Fix:** ${x.suggestion}`, "");
+  lines.push(
+    `### [${x.severity}/${x.confidence}] ${x.title}  _(${x.angle})_`,
+    `\`${x.file}:${x.line}\``,
+    "",
+    x.detail,
+    "",
+    `**Fix:** ${x.suggestion}`,
+    "",
+  );
 }
 fs.writeFileSync(path.join(dir, "REPORT.md"), lines.join("\n"));
 console.log(counts);

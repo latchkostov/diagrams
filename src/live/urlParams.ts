@@ -38,5 +38,6 @@ export function writeLiveParams(live: boolean, sim: string | null): void {
   else p.delete("sim");
   if (!live) for (const k of ["speed", "paused", "traffic"]) p.delete(k);
   const url = `${window.location.pathname}?${p}${window.location.hash}`;
-  if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) window.history.replaceState(window.history.state, "", url);
+  if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`)
+    window.history.replaceState(window.history.state, "", url);
 }

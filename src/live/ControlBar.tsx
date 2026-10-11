@@ -37,13 +37,24 @@ export function ControlBar({ state }: { state: LiveState }) {
       >
         <LiveIcon name={state.playing && !waiting ? "pause" : "play"} size={15} />
       </button>
-      <button className="lv-btn" onClick={() => c.restart()} title="Restart from zero (same seed)" aria-label="Restart" data-testid="live-restart">
+      <button
+        className="lv-btn"
+        onClick={() => c.restart()}
+        title="Restart from zero (same seed)"
+        aria-label="Restart"
+        data-testid="live-restart"
+      >
         <LiveIcon name="restart" size={15} />
       </button>
 
       <label className="lv-select lv-speed" title="Playback speed">
         <span className="sr-only">Speed</span>
-        <select value={String(state.speed)} onChange={(e) => c.setSpeed(Number(e.target.value))} data-testid="live-speed" name="live-speed">
+        <select
+          value={String(state.speed)}
+          onChange={(e) => c.setSpeed(Number(e.target.value))}
+          data-testid="live-speed"
+          name="live-speed"
+        >
           {SPEEDS.map((s) => (
             <option key={s} value={String(s)}>
               {formatSpeed(s)}
@@ -54,7 +65,12 @@ export function ControlBar({ state }: { state: LiveState }) {
 
       <label className="lv-select lv-sim" title="Choose a saved simulation, or free play">
         <span className="sr-only">Simulation</span>
-        <select value={simId} onChange={(e) => ui.selectSimulation(e.target.value || null)} data-testid="live-sim-picker" name="live-sim">
+        <select
+          value={simId}
+          onChange={(e) => ui.selectSimulation(e.target.value || null)}
+          data-testid="live-sim-picker"
+          name="live-sim"
+        >
           <option value="">Free play</option>
           {options.map((s) => (
             <option key={s.id} value={s.id}>
@@ -68,19 +84,32 @@ export function ControlBar({ state }: { state: LiveState }) {
 
       {state.simulation && run ? (
         <>
-          <span className="lv-clock mono" data-testid="live-clock" data-ms={Math.round(run.time)} title={`of ${formatClock(Math.max(run.totalMs, run.time))}`}>
+          <span
+            className="lv-clock mono"
+            data-testid="live-clock"
+            data-ms={Math.round(run.time)}
+            title={`of ${formatClock(Math.max(run.totalMs, run.time))}`}
+          >
             {formatClock(run.time)}
           </span>
           <Timeline sim={state.simulation} run={run} onSeek={(ms) => c.seek(ms)} />
           {expectations.length > 0 && (
-            <div className={`lv-checks${done ? (failed ? " is-fail" : " is-pass") : ""}`} data-testid="live-expectations" title={`${passed} of ${expectations.length} expectations hold`}>
+            <div
+              className={`lv-checks${done ? (failed ? " is-fail" : " is-pass") : ""}`}
+              data-testid="live-expectations"
+              title={`${passed} of ${expectations.length} expectations hold`}
+            >
               {expectations.map((e) => (
                 <ExpectationDot key={e.id} e={e} />
               ))}
             </div>
           )}
           {done && (
-            <span className={`lv-done${failed ? " is-fail" : " is-pass"}`} data-testid="live-done" data-status={failed ? "fail" : "pass"}>
+            <span
+              className={`lv-done${failed ? " is-fail" : " is-pass"}`}
+              data-testid="live-done"
+              data-status={failed ? "fail" : "pass"}
+            >
               <LiveIcon name={failed ? "x" : "check"} size={12} />
               {expectations.length ? `${passed}/${expectations.length}` : "Done"}
             </span>
@@ -90,13 +119,24 @@ export function ControlBar({ state }: { state: LiveState }) {
         <span className="lv-grow" />
       )}
 
-      <span className="lv-stat mono" title="Messages travelling, queued or being processed" data-testid="live-in-system" data-count={state.snapshot.inSystem}>
+      <span
+        className="lv-stat mono"
+        title="Messages travelling, queued or being processed"
+        data-testid="live-in-system"
+        data-count={state.snapshot.inSystem}
+      >
         <strong>{formatCount(state.snapshot.inSystem)}</strong> in flight
       </span>
 
       <MoreMenu state={state} />
       {ui.exit && (
-        <button className="lv-btn" onClick={ui.exit} title="Leave live view (L)" aria-label="Leave live view" data-testid="live-exit">
+        <button
+          className="lv-btn"
+          onClick={ui.exit}
+          title="Leave live view (L)"
+          aria-label="Leave live view"
+          data-testid="live-exit"
+        >
           <LiveIcon name="close" size={14} />
         </button>
       )}
@@ -128,33 +168,63 @@ function MoreMenu({ state }: { state: LiveState }) {
       window.removeEventListener("keydown", esc);
     };
   }, [open]);
-  const pick = (fn: () => void, keepOpen = false) => () => {
-    fn();
-    if (!keepOpen) setOpen(false);
-  };
+  const pick =
+    (fn: () => void, keepOpen = false) =>
+    () => {
+      fn();
+      if (!keepOpen) setOpen(false);
+    };
 
   return (
     <div className="lv-more" ref={root}>
-      <button className={`lv-btn${open ? " is-on" : ""}`} onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} title="More" aria-label="More live controls" data-testid="live-more">
+      <button
+        className={`lv-btn${open ? " is-on" : ""}`}
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="More"
+        aria-label="More live controls"
+        data-testid="live-more"
+      >
         <LiveIcon name="more" size={15} />
       </button>
       {open && (
         <div className="lv-more-menu" role="menu" data-testid="live-more-menu">
-          <button role="menuitemcheckbox" aria-checked={state.traffic} onClick={pick(() => c.setTraffic(!state.traffic), true)} data-testid="live-traffic" aria-pressed={state.traffic}>
+          <button
+            role="menuitemcheckbox"
+            aria-checked={state.traffic}
+            onClick={pick(() => c.setTraffic(!state.traffic), true)}
+            data-testid="live-traffic"
+            aria-pressed={state.traffic}
+          >
             <LiveIcon name="traffic" size={14} />
             <span>Continuous traffic</span>
             <i className={`lv-switch${state.traffic ? " is-on" : ""}`} aria-hidden />
           </button>
-          <button role="menuitem" onClick={pick(() => c.step(), true)} disabled={waiting || !!state.run?.done} data-testid="live-step">
+          <button
+            role="menuitem"
+            onClick={pick(() => c.step(), true)}
+            disabled={waiting || !!state.run?.done}
+            data-testid="live-step"
+          >
             <LiveIcon name="step" size={14} />
             <span>Step ¼ second</span>
           </button>
-          <button role="menuitemcheckbox" aria-checked={ui.events.open} onClick={pick(() => ui.showEvents(ui.events.nodeId, !ui.events.open))} data-testid="live-events-toggle">
+          <button
+            role="menuitemcheckbox"
+            aria-checked={ui.events.open}
+            onClick={pick(() => ui.showEvents(ui.events.nodeId, !ui.events.open))}
+            data-testid="live-events-toggle"
+          >
             <LiveIcon name="events" size={14} />
             <span>Event log</span>
           </button>
           {ui.canEdit && !ui.presenting && (
-            <button role="menuitem" onClick={pick(() => ui.openPanel(state.simulation ?? undefined))} data-testid="live-edit-sims">
+            <button
+              role="menuitem"
+              onClick={pick(() => ui.openPanel(state.simulation ?? undefined))}
+              data-testid="live-edit-sims"
+            >
               <LiveIcon name="edit" size={14} />
               <span>{state.simulation ? "Edit this simulation" : "Simulations…"}</span>
             </button>
@@ -170,8 +240,19 @@ const ExpectationDot = memo(function ExpectationDot({ e }: { e: ExpectationState
   const value = Number.isInteger(e.value) ? formatCount(e.value) : e.value.toFixed(1);
   const word = e.status === "pass" ? "holds" : e.status === "fail" ? "failed" : "pending";
   return (
-    <span className={`lv-exp is-${e.status}`} data-testid={`expectation-${e.id}`} data-status={e.status} data-value={e.value} tabIndex={0} aria-label={`${e.label}: ${word}, now ${value}`}>
-      {e.status === "pass" ? <LiveIcon name="check" size={10} /> : e.status === "fail" ? <LiveIcon name="x" size={10} /> : null}
+    <span
+      className={`lv-exp is-${e.status}`}
+      data-testid={`expectation-${e.id}`}
+      data-status={e.status}
+      data-value={e.value}
+      tabIndex={0}
+      aria-label={`${e.label}: ${word}, now ${value}`}
+    >
+      {e.status === "pass" ? (
+        <LiveIcon name="check" size={10} />
+      ) : e.status === "fail" ? (
+        <LiveIcon name="x" size={10} />
+      ) : null}
       <span className="lv-exp-tip" role="tooltip">
         <b>{e.label}</b>
         <span>

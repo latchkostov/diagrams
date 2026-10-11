@@ -37,7 +37,11 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
   const left = Math.min(Math.max(12, request.x), window.innerWidth - 300);
   const top = Math.min(Math.max(12, request.y), window.innerHeight - 260);
   return createPortal(
-    <div className="lv-modal-layer" onPointerDown={(e) => e.target === e.currentTarget && onClose()} data-editor-overlay>
+    <div
+      className="lv-modal-layer"
+      onPointerDown={(e) => e.target === e.currentTarget && onClose()}
+      data-editor-overlay
+    >
       <form
         className="lv-inject"
         style={{ left, top }}
@@ -52,11 +56,27 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
         </div>
         <label>
           <span>Messages</span>
-          <input ref={first} type="number" min={1} max={5000} value={count} onChange={(e) => setCount(Number(e.target.value))} data-testid="live-inject-count" name="inject-count" />
+          <input
+            ref={first}
+            type="number"
+            min={1}
+            max={5000}
+            value={count}
+            onChange={(e) => setCount(Number(e.target.value))}
+            data-testid="live-inject-count"
+            name="inject-count"
+          />
         </label>
         <label>
           <span>Message type</span>
-          <input list="lv-known-types" value={type} onChange={(e) => setType(e.target.value)} className="mono" data-testid="live-inject-type" name="inject-type" />
+          <input
+            list="lv-known-types"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="mono"
+            data-testid="live-inject-type"
+            name="inject-type"
+          />
           <datalist id="lv-known-types">
             {knownMessageTypes(d).map((t) => (
               <option key={t} value={t} />
@@ -65,7 +85,16 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
         </label>
         <label>
           <span>Spread over (s)</span>
-          <input type="number" min={0} max={60} step={0.5} value={spread} onChange={(e) => setSpread(Number(e.target.value))} data-testid="live-inject-spread" name="inject-spread" />
+          <input
+            type="number"
+            min={0}
+            max={60}
+            step={0.5}
+            value={spread}
+            onChange={(e) => setSpread(Number(e.target.value))}
+            data-testid="live-inject-spread"
+            name="inject-spread"
+          />
         </label>
         <div className="lv-inject-actions">
           <button type="button" className="btn" onClick={onClose} data-testid="live-inject-cancel">

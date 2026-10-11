@@ -23,7 +23,17 @@ interface Props {
 }
 
 /** Side sheet with everything about one stencil, and ways to put it on a diagram. */
-export function StencilDrawer({ stencil: s, index, total, onStep, onClose, onAdd, onNewDiagram, onCopy, onCopyJson }: Props) {
+export function StencilDrawer({
+  stencil: s,
+  index,
+  total,
+  onStep,
+  onClose,
+  onAdd,
+  onNewDiagram,
+  onCopy,
+  onCopyJson,
+}: Props) {
   const root = useRef<HTMLElement>(null);
   const [confirmReplace, setConfirmReplace] = useState<string | null>(null);
   const role = simRoleMeta[s.simRole] ?? simRoleMeta.none;
@@ -70,16 +80,36 @@ export function StencilDrawer({ stencil: s, index, total, onStep, onClose, onAdd
           <span>{s.vendor}</span>
         </div>
         <div className="drawer-nav">
-          <button className="icon-btn icon-btn-quiet" onClick={() => onStep(-1)} disabled={total < 2} aria-label="Previous stencil" title="Previous (←)" data-testid="drawer-prev">
+          <button
+            className="icon-btn icon-btn-quiet"
+            onClick={() => onStep(-1)}
+            disabled={total < 2}
+            aria-label="Previous stencil"
+            title="Previous (←)"
+            data-testid="drawer-prev"
+          >
             <Icon name="chevron-right" size={14} />
           </button>
           <span className="drawer-pos" aria-live="polite">
             {index + 1} of {total}
           </span>
-          <button className="icon-btn icon-btn-quiet" onClick={() => onStep(1)} disabled={total < 2} aria-label="Next stencil" title="Next (→)" data-testid="drawer-next">
+          <button
+            className="icon-btn icon-btn-quiet"
+            onClick={() => onStep(1)}
+            disabled={total < 2}
+            aria-label="Next stencil"
+            title="Next (→)"
+            data-testid="drawer-next"
+          >
             <Icon name="chevron-right" size={14} />
           </button>
-          <button className="icon-btn icon-btn-quiet" onClick={onClose} aria-label="Close details" title="Close (Esc)" data-testid="drawer-close">
+          <button
+            className="icon-btn icon-btn-quiet"
+            onClick={onClose}
+            aria-label="Close details"
+            title="Close (Esc)"
+            data-testid="drawer-close"
+          >
             <Icon name="close" size={14} />
           </button>
         </div>
@@ -114,7 +144,12 @@ export function StencilDrawer({ stencil: s, index, total, onStep, onClose, onAdd
           <dl className="drawer-facts">
             <dt>Stencil id</dt>
             <dd>
-              <button className="copy-chip" onClick={() => onCopy(s.id, "id")} title="Copy stencil id" data-testid="drawer-copy-id">
+              <button
+                className="copy-chip"
+                onClick={() => onCopy(s.id, "id")}
+                title="Copy stencil id"
+                data-testid="drawer-copy-id"
+              >
                 <span>{s.id}</span>
                 <Icon name="copy" size={12} />
               </button>
@@ -128,7 +163,12 @@ export function StencilDrawer({ stencil: s, index, total, onStep, onClose, onAdd
             </dd>
             <dt>Accent</dt>
             <dd>
-              <button className="copy-chip" onClick={() => onCopy(s.accent, "colour")} title="Copy accent colour" data-testid="drawer-copy-accent">
+              <button
+                className="copy-chip"
+                onClick={() => onCopy(s.accent, "colour")}
+                title="Copy accent colour"
+                data-testid="drawer-copy-accent"
+              >
                 <i className="drawer-swatch" />
                 <span>{s.accent.toLowerCase()}</span>
               </button>
@@ -171,7 +211,13 @@ export function StencilDrawer({ stencil: s, index, total, onStep, onClose, onAdd
             <button className="btn" onClick={startNew} data-testid="drawer-new">
               New diagram with this
             </button>
-            <button className="icon-btn" onClick={onCopyJson} aria-label="Copy as JSON node" title="Copy as JSON node" data-testid="drawer-copy-json">
+            <button
+              className="icon-btn"
+              onClick={onCopyJson}
+              aria-label="Copy as JSON node"
+              title="Copy as JSON node"
+              data-testid="drawer-copy-json"
+            >
               <Icon name="copy" size={14} />
             </button>
           </>

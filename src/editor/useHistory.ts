@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import { fromFlow, type DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
-import { canRedo, canUndo, commit, createHistory, present, redo as redoH, undo as undoH, type History } from "./history";
+import {
+  canRedo,
+  canUndo,
+  commit,
+  createHistory,
+  present,
+  redo as redoH,
+  undo as undoH,
+  type History,
+} from "./history";
 
 export interface CanvasSnapshot {
   meta: DiagramMeta;
@@ -97,5 +106,11 @@ export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => 
     [flush],
   );
 
-  return { undo, redo, hint, canUndo: canUndo(hist.current) || pending.current, canRedo: canRedo(hist.current) && !pending.current };
+  return {
+    undo,
+    redo,
+    hint,
+    canUndo: canUndo(hist.current) || pending.current,
+    canRedo: canRedo(hist.current) && !pending.current,
+  };
 }

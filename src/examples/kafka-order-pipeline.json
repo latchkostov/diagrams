@@ -222,10 +222,7 @@
       "kind": "sync",
       "props": {
         "travelMs": 200,
-        "filter": [
-          "OrderPlaced",
-          "OrderUpdated"
-        ]
+        "filter": ["OrderPlaced", "OrderUpdated"]
       }
     },
     {
@@ -236,9 +233,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "OrderPlaced"
-        ]
+        "filter": ["OrderPlaced"]
       }
     },
     {
@@ -249,9 +244,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "OrderPlaced"
-        ],
+        "filter": ["OrderPlaced"],
         "group": "inventory-reservations"
       }
     },
@@ -263,9 +256,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "OrderPlaced"
-        ],
+        "filter": ["OrderPlaced"],
         "group": "payment-authorizations"
       }
     },
@@ -277,9 +268,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "OrderPlaced"
-        ],
+        "filter": ["OrderPlaced"],
         "group": "customer-notifications"
       }
     },
@@ -331,9 +320,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "PaymentCompleted"
-        ],
+        "filter": ["PaymentCompleted"],
         "group": "orders-payments"
       }
     },
@@ -345,9 +332,7 @@
       "kind": "sync",
       "props": {
         "travelMs": 200,
-        "filter": [
-          "OrderPlaced"
-        ]
+        "filter": ["OrderPlaced"]
       }
     },
     {
@@ -413,10 +398,7 @@
           "action": {
             "do": "note",
             "text": "500 checkouts. Each order fans out to inventory, payments and notifications.",
-            "focus": [
-              "shopper",
-              "order-events"
-            ]
+            "focus": ["shopper", "order-events"]
           }
         },
         {
@@ -424,11 +406,7 @@
           "action": {
             "do": "note",
             "text": "PaymentCompleted updates the order without creating another order.",
-            "focus": [
-              "payments",
-              "payment-events",
-              "orders"
-            ]
+            "focus": ["payments", "payment-events", "orders"]
           }
         }
       ],
@@ -524,9 +502,7 @@
           "action": {
             "do": "note",
             "text": "Inventory and notifications have independent consumer groups.",
-            "focus": [
-              "order-events"
-            ]
+            "focus": ["order-events"]
           }
         },
         {
@@ -542,10 +518,7 @@
           "action": {
             "do": "note",
             "text": "Payments is offline. Its group accumulates lag while the other groups continue.",
-            "focus": [
-              "payments",
-              "order-events"
-            ],
+            "focus": ["payments", "order-events"],
             "pause": true
           }
         },
@@ -562,10 +535,7 @@
           "action": {
             "do": "note",
             "text": "Payments is back. Watch its backlog drain and the ledger catch up.",
-            "focus": [
-              "payments",
-              "payment-db"
-            ]
+            "focus": ["payments", "payment-db"]
           }
         }
       ],

@@ -13,7 +13,19 @@ const UI_FPS_MS = 100;
  * Headless readout for a scenario: runs the real sim engine in a rAF loop and shows node states,
  * scripted checks and the event log. Stands in for the visual sim UI until that lands.
  */
-export function SimReadout({ diagram, scenario, speed, seed, autoplay }: { diagram: DiagramFile; scenario: Scenario; speed: number; seed: number; autoplay: boolean }) {
+export function SimReadout({
+  diagram,
+  scenario,
+  speed,
+  seed,
+  autoplay,
+}: {
+  diagram: DiagramFile;
+  scenario: Scenario;
+  speed: number;
+  seed: number;
+  autoplay: boolean;
+}) {
   const [engine, setEngine] = useState<Engine>({ state: "loading" });
   useEffect(() => {
     let alive = true;
@@ -29,13 +41,37 @@ export function SimReadout({ diagram, scenario, speed, seed, autoplay }: { diagr
   if (engine.state === "missing")
     return (
       <div className="sim-readout is-empty" data-testid="sim-unavailable">
-        The simulation engine isn't available yet (<code>src/sim/engine.ts</code> → <code>createEngine</code>). The diagram above still renders.
+        The simulation engine isn't available yet (<code>src/sim/engine.ts</code> → <code>createEngine</code>). The
+        diagram above still renders.
       </div>
     );
-  return <Runner create={engine.create} diagram={diagram} scenario={scenario} speed={speed} seed={seed} autoplay={autoplay} />;
+  return (
+    <Runner
+      create={engine.create}
+      diagram={diagram}
+      scenario={scenario}
+      speed={speed}
+      seed={seed}
+      autoplay={autoplay}
+    />
+  );
 }
 
-function Runner({ create, diagram, scenario, speed, seed, autoplay }: { create: CreateEngine; diagram: DiagramFile; scenario: Scenario; speed: number; seed: number; autoplay: boolean }) {
+function Runner({
+  create,
+  diagram,
+  scenario,
+  speed,
+  seed,
+  autoplay,
+}: {
+  create: CreateEngine;
+  diagram: DiagramFile;
+  scenario: Scenario;
+  speed: number;
+  seed: number;
+  autoplay: boolean;
+}) {
   const runRef = useRef<ScenarioRun | null>(null);
   const [run, setRun] = useState<ScenarioRun | null>(null);
   const [snap, setSnap] = useState<SimSnapshot | null>(null);
@@ -106,7 +142,11 @@ function Runner({ create, diagram, scenario, speed, seed, autoplay }: { create: 
   if (!run || !snap) return null;
 
   const checks = run.checks();
-  const summary = checks.some((c) => c.status === "fail") ? "fail" : checks.every((c) => c.status === "pass") ? "pass" : "pending";
+  const summary = checks.some((c) => c.status === "fail")
+    ? "fail"
+    : checks.every((c) => c.status === "pass")
+      ? "pass"
+      : "pending";
   const done = snap.time >= run.duration;
   const nodeIds = diagram.nodes.map((n) => n.id).filter((id) => snap.nodes[id]);
   const labelOf = new Map(diagram.nodes.map((n) => [n.id, n.label || n.id]));
@@ -114,7 +154,12 @@ function Runner({ create, diagram, scenario, speed, seed, autoplay }: { create: 
   return (
     <div className="sim-readout" data-testid="sim-readout">
       <div className="sim-toolbar">
-        <button className="btn btn-primary" onClick={() => setPlaying((p) => !p)} disabled={done && !playing} data-testid="sim-play">
+        <button
+          className="btn btn-primary"
+          onClick={() => setPlaying((p) => !p)}
+          disabled={done && !playing}
+          data-testid="sim-play"
+        >
           {playing ? "Pause" : done ? "Finished" : "Play"}
         </button>
         <button
@@ -164,11 +209,21 @@ function Runner({ create, diagram, scenario, speed, seed, autoplay }: { create: 
                 <th>Node</th>
                 <th>Status</th>
                 <th className="num">Backlog</th>
-                <th className="num" title="In flight">Busy</th>
-                <th className="num" title="Processed">Done</th>
-                <th className="num" title="Failed attempts">Fail</th>
-                <th className="num" title="Dead-lettered">DLQ</th>
-                <th className="num" title="Dropped">Drop</th>
+                <th className="num" title="In flight">
+                  Busy
+                </th>
+                <th className="num" title="Processed">
+                  Done
+                </th>
+                <th className="num" title="Failed attempts">
+                  Fail
+                </th>
+                <th className="num" title="Dead-lettered">
+                  DLQ
+                </th>
+                <th className="num" title="Dropped">
+                  Drop
+                </th>
                 <th className="num">msg/s</th>
                 <th />
               </tr>
@@ -212,7 +267,12 @@ function Runner({ create, diagram, scenario, speed, seed, autoplay }: { create: 
                     <td className={`num${n.dropped ? " is-warn" : ""}`}>{n.dropped}</td>
                     <td className="num">{n.throughput.toFixed(1)}</td>
                     <td>
-                      <button className="link-btn" onClick={() => guard(() => run.engine.inject(id, 10))} data-testid={`sim-inject-${id}`} title="Inject 10 messages here">
+                      <button
+                        className="link-btn"
+                        onClick={() => guard(() => run.engine.inject(id, 10))}
+                        data-testid={`sim-inject-${id}`}
+                        title="Inject 10 messages here"
+                      >
                         +10
                       </button>
                     </td>

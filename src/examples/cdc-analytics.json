@@ -162,9 +162,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "OrderRow*"
-        ]
+        "filter": ["OrderRow*"]
       }
     },
     {
@@ -175,9 +173,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "CustomerRow*"
-        ]
+        "filter": ["CustomerRow*"]
       }
     },
     {
@@ -291,11 +287,7 @@
           "action": {
             "do": "note",
             "text": "A SQL Server backfill produces order CDC envelopes. Customer subscriptions skip this batch.",
-            "focus": [
-              "sql",
-              "debezium",
-              "orders-topic"
-            ]
+            "focus": ["sql", "debezium", "orders-topic"]
           }
         },
         {
@@ -303,10 +295,7 @@
           "action": {
             "do": "note",
             "text": "Independent groups build search projections and retain raw rows.",
-            "focus": [
-              "processor",
-              "s3-sink"
-            ]
+            "focus": ["processor", "s3-sink"]
           }
         }
       ],
@@ -390,11 +379,7 @@
           "action": {
             "do": "note",
             "text": "Slow Elasticsearch writes remain in flight; the warehouse and raw lake continue.",
-            "focus": [
-              "search",
-              "warehouse",
-              "lake"
-            ]
+            "focus": ["search", "warehouse", "lake"]
           }
         },
         {
@@ -412,9 +397,7 @@
           "action": {
             "do": "note",
             "text": "Index latency recovers. Every projection eventually lands.",
-            "focus": [
-              "search"
-            ]
+            "focus": ["search"]
           }
         }
       ],

@@ -13,7 +13,8 @@ async function openNodeMenu(page: Page, nodeId: string) {
   await expect(page.getByTestId("context-menu")).toBeVisible();
 }
 
-const processed = async (page: Page, nodeId: string) => Number(await page.getByTestId(`node-badge-${nodeId}`).getAttribute("data-processed"));
+const processed = async (page: Page, nodeId: string) =>
+  Number(await page.getByTestId(`node-badge-${nodeId}`).getAttribute("data-processed"));
 
 test.describe("live view", () => {
   test("the Live toggle (and L) shows and hides the controls", async ({ page, consoleErrors }) => {
@@ -46,7 +47,10 @@ test.describe("live view", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("Inject 10 at a node updates its badge and processed counts appear downstream", async ({ page, consoleErrors }) => {
+  test("Inject 10 at a node updates its badge and processed counts appear downstream", async ({
+    page,
+    consoleErrors,
+  }) => {
     await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
     await expect(page.getByTestId("live-controls")).toBeVisible();
     await expect(page.getByTestId("live-in-system")).toHaveAttribute("data-count", "0");
@@ -125,7 +129,9 @@ test.describe("live view", () => {
     await expect(page.getByTestId("sim-panel-traffic-0-sparkline")).toBeVisible();
     await expect(page.getByTestId("sim-panel-add-expectation")).toBeHidden();
     // The storm is already pouring through the diagram.
-    await expect.poll(async () => Number(await page.getByTestId("live-in-system").getAttribute("data-count"))).toBeGreaterThan(0);
+    await expect
+      .poll(async () => Number(await page.getByTestId("live-in-system").getAttribute("data-count")))
+      .toBeGreaterThan(0);
 
     await page.getByTestId("sim-panel-title").fill("Month-end storm");
     await page.getByTestId("sim-panel-traffic-0-type").fill("MemberJoined");
@@ -142,7 +148,10 @@ test.describe("live view", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("presentation + live from the URL: notes, Space to pause, Esc leaves presentation only", async ({ page, consoleErrors }) => {
+  test("presentation + live from the URL: notes, Space to pause, Esc leaves presentation only", async ({
+    page,
+    consoleErrors,
+  }) => {
     await page.goto(`./?view=canvas&example=${KAFKA}&live=1&present=1&sim=black-friday`);
     await expect(page.getByTestId("present-exit")).toBeVisible();
     await expect(page.getByTestId("topbar")).toHaveCount(0);
@@ -179,11 +188,17 @@ test.describe("live view", () => {
     await expect(page.getByTestId("live-lab-stage")).toBeVisible();
     await expect(page.getByTestId("node-badge-down-svc")).toHaveAttribute("data-status", "down");
     await expect(page.getByTestId("node-badge-paused-svc")).toHaveAttribute("data-status", "paused");
-    await expect.poll(async () => Number(await page.getByTestId("node-badge-worker").getAttribute("data-failed"))).toBeGreaterThan(0);
+    await expect
+      .poll(async () => Number(await page.getByTestId("node-badge-worker").getAttribute("data-failed")))
+      .toBeGreaterThan(0);
     await expect(page.getByTestId("live-exit")).toHaveCount(0);
 
     await gotoLab(page, "live-particles-stress", { particles: 500 });
-    await expect.poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-particles")), { timeout: 10_000 }).toBeGreaterThan(100);
+    await expect
+      .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-particles")), {
+        timeout: 10_000,
+      })
+      .toBeGreaterThan(100);
 
     await gotoLab(page, "live-note-states", { note: "pause" });
     await expect(page.getByTestId("live-note-continue")).toBeVisible();

@@ -131,11 +131,17 @@ describe("LiveController", () => {
     const moved = { ...d, nodes: d.nodes.map((n) => ({ ...n, x: n.x + 50 })) };
     expect(c.updateDiagram(moved)).toBe("none");
     expect(structuralKey(moved)).toBe(structuralKey(d));
-    const slowed = { ...moved, nodes: moved.nodes.map((n) => (n.id === "worker" ? { ...n, props: { latencyMs: 900, status: "paused" } } : n)) };
+    const slowed = {
+      ...moved,
+      nodes: moved.nodes.map((n) => (n.id === "worker" ? { ...n, props: { latencyMs: 900, status: "paused" } } : n)),
+    };
     expect(c.updateDiagram(slowed)).toBe("patched");
     expect(c.snapshot().nodes.worker.status).toBe("paused");
     expect(c.snapshot().inSystem).toBe(5); // nothing was lost
-    const unslowed = { ...slowed, nodes: slowed.nodes.map((n) => (n.id === "worker" ? { ...n, props: undefined } : n)) };
+    const unslowed = {
+      ...slowed,
+      nodes: slowed.nodes.map((n) => (n.id === "worker" ? { ...n, props: undefined } : n)),
+    };
     expect(c.updateDiagram(unslowed)).toBe("reloaded");
     expect(c.snapshot().inSystem).toBe(0);
     const rewired = { ...unslowed, edges: unslowed.edges.slice(0, 2) };

@@ -3,6 +3,7 @@ TypeScript + React Flow) for distributed-systems diagrams with a live message-fl
 Read `CLAUDE.md`, `docs/PLAN.md`, `docs/UX-PRINCIPLES.md` and the relevant design docs first.
 
 Rules:
+
 - READ ONLY. Do not modify, create, or delete any file. Do not run formatters or `--fix`. You may run
   read-only commands (git, grep, tsc --noEmit, eslint without --fix, vitest run).
 - Ignore `src/examples/private/` entirely. Never read, quote, or name anything in it.

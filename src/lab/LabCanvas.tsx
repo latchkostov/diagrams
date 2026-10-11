@@ -105,7 +105,9 @@ function Stage({ diagram, minimap = true, onRendered }: Props) {
               pannable
               zoomable
               nodeBorderRadius={6}
-              nodeColor={(n) => (n.type === "boundary" ? "transparent" : getStencil((n as DiagramFlowNode).data.stencil).accent)}
+              nodeColor={(n) =>
+                n.type === "boundary" ? "transparent" : getStencil((n as DiagramFlowNode).data.stencil).accent
+              }
             />
           )}
         </ReactFlow>

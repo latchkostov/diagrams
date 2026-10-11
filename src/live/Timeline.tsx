@@ -8,7 +8,15 @@ import { fractionToTime, placeMarkers, timeToFraction, trackLength, trafficBands
  * Scrubber for a saved simulation: traffic windows as bands, notes / chaos actions as markers,
  * progress fill and a playhead. Dragging seeks (runs are seeded, so going back replays exactly).
  */
-export function Timeline({ sim, run, onSeek }: { sim: Simulation; run: SimulationRunState; onSeek: (ms: number) => void }) {
+export function Timeline({
+  sim,
+  run,
+  onSeek,
+}: {
+  sim: Simulation;
+  run: SimulationRunState;
+  onSeek: (ms: number) => void;
+}) {
   const total = trackLength(run.totalMs, run.time);
   const bands = useMemo(() => trafficBands(sim, total), [sim, total]);
   const markers = useMemo(() => placeMarkers(run.markers, total), [run.markers, total]);
@@ -20,7 +28,12 @@ export function Timeline({ sim, run, onSeek }: { sim: Simulation; run: Simulatio
     <div className="lv-timeline" data-testid="live-timeline" style={{ "--p": pct(progress) } as CSSProperties}>
       <div className="lv-track" aria-hidden>
         {bands.map((b) => (
-          <span key={b.id} className={`lv-band${b.burst ? " is-burst" : ""}`} style={{ left: pct(b.start), width: pct(b.end - b.start) }} title={b.label} />
+          <span
+            key={b.id}
+            className={`lv-band${b.burst ? " is-burst" : ""}`}
+            style={{ left: pct(b.start), width: pct(b.end - b.start) }}
+            title={b.label}
+          />
         ))}
         <span className="lv-fill" />
       </div>

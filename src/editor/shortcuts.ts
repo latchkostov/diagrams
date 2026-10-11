@@ -38,8 +38,18 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: "cut", keys: ["Mod+X"], label: "Cut", group: "Clipboard" },
   { id: "paste", keys: ["Mod+V"], label: "Paste", group: "Clipboard" },
   { id: "select-all", keys: ["Mod+A"], label: "Select all", group: "Selection" },
-  { id: "nudge", keys: ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"], label: "Nudge selection 1px", group: "Selection" },
-  { id: "nudge-far", keys: ["Shift+ArrowUp", "Shift+ArrowDown", "Shift+ArrowLeft", "Shift+ArrowRight"], label: "Nudge selection 10px", group: "Selection" },
+  {
+    id: "nudge",
+    keys: ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"],
+    label: "Nudge selection 1px",
+    group: "Selection",
+  },
+  {
+    id: "nudge-far",
+    keys: ["Shift+ArrowUp", "Shift+ArrowDown", "Shift+ArrowLeft", "Shift+ArrowRight"],
+    label: "Nudge selection 10px",
+    group: "Selection",
+  },
   { id: "escape", keys: ["Escape"], label: "Clear selection / close menus", group: "Selection" },
   { id: "fit-view", keys: ["Shift+1"], label: "Fit diagram to view", group: "View" },
   { id: "zoom-100", keys: ["Shift+0"], label: "Zoom to 100%", group: "View" },
@@ -51,7 +61,29 @@ export const shortcutKeys = (id: ShortcutId): string => SHORTCUTS.find((s) => s.
 export type KeyLike = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey"> & { code?: string };
 
 /** Keys whose printed character already implies Shift ("?" is Shift+/ on most layouts). */
-const SHIFTED_PUNCTUATION = new Set(["?", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+", "{", "}", "|", ":", '"', "<", ">", "~"]);
+const SHIFTED_PUNCTUATION = new Set([
+  "?",
+  "!",
+  "@",
+  "#",
+  "$",
+  "%",
+  "^",
+  "&",
+  "*",
+  "(",
+  ")",
+  "_",
+  "+",
+  "{",
+  "}",
+  "|",
+  ":",
+  '"',
+  "<",
+  ">",
+  "~",
+]);
 
 export function matches(e: KeyLike, combo: string): boolean {
   const parts = combo.split("+");
@@ -75,7 +107,8 @@ export function shortcutFor(e: KeyLike): ShortcutId | null {
   return null;
 }
 
-export const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+export const isMac = () =>
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 const KEY_NAMES: Record<string, [mac: string, other: string]> = {
   Mod: ["⌘", "Ctrl"],

@@ -117,7 +117,9 @@
   background: var(--node-bg);
   border: 1.5px solid color-mix(in oklab, var(--accent) 75%, var(--node-border));
   opacity: 0;
-  transition: opacity 0.15s, transform 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
 }
 
 .dn:hover .dn-handle,
@@ -569,7 +571,9 @@
   font-size: 12px;
   font-weight: 600;
   text-align: left;
-  transition: background var(--dur-1), color var(--dur-1);
+  transition:
+    background var(--dur-1),
+    color var(--dur-1);
 }
 
 .palette-sec-head:hover {
@@ -700,7 +704,9 @@
   background: color-mix(in oklab, var(--accent) var(--tile-mix), var(--tile-base));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 24%, transparent);
   cursor: grab;
-  transition: box-shadow var(--dur-1), translate var(--dur-1) var(--ease-out);
+  transition:
+    box-shadow var(--dur-1),
+    translate var(--dur-1) var(--ease-out);
 }
 
 .palette-recent-item .stencil-icon {
@@ -710,7 +716,9 @@
 }
 
 .palette-recent-item:hover {
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 50%, transparent), var(--shadow-1);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--accent) 50%, transparent),
+    var(--shadow-1);
   translate: 0 -1px;
 }
 
@@ -813,7 +821,9 @@
 
 /* Nodes under the card (zoomed / panned): fold to a title chip; hover shows the rest again. */
 .diagram-card {
-  transition: opacity 0.18s, padding 0.18s;
+  transition:
+    opacity 0.18s,
+    padding 0.18s;
 }
 
 .diagram-card.is-compact:not(:hover) {
@@ -935,7 +945,9 @@
   border: 1px solid var(--line-strong);
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 1px 2px rgb(16 24 40 / 0.06), 0 18px 40px -14px rgb(16 24 40 / 0.32);
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 0.06),
+    0 18px 40px -14px rgb(16 24 40 / 0.32);
   font-size: 13px;
   pointer-events: auto;
   outline: none;
@@ -945,7 +957,9 @@
 
 [data-theme="dark"] .cm {
   background: var(--surface-2);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 20px 48px -12px rgb(0 0 0 / 0.75);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 20px 48px -12px rgb(0 0 0 / 0.75);
 }
 
 .cm-searchable {
@@ -1195,7 +1209,9 @@
   color: var(--text);
   font-size: 13px;
   outline: 0;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
 }
 
 textarea.insp-input {
@@ -1396,7 +1412,9 @@ select.insp-input {
 }
 
 .insp-tone.is-on {
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--tone);
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--tone);
 }
 
 .insp-actions {

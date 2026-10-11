@@ -55,11 +55,18 @@ describe("accessible names", () => {
   it("keeps names in sync after a rename, with stable identities", () => {
     const f = toFlow(d);
     expect(withNodeAria(f.nodes)).toBe(f.nodes); // nothing to refresh
-    const renamed = f.nodes.map((n) => (n.id === "a" ? ({ ...n, data: { ...n.data, label: "payments" } } as FlowNode) : n));
+    const renamed = f.nodes.map((n) =>
+      n.id === "a" ? ({ ...n, data: { ...n.data, label: "payments" } } as FlowNode) : n,
+    );
     const once = withNodeAria(renamed);
     expect(once.find((n) => n.id === "a")!.ariaLabel).toMatch(/^payments,/);
     expect(withNodeAria(renamed).find((n) => n.id === "a")).toBe(once.find((n) => n.id === "a"));
-    const labels = new Map([["a", "payments"], ["b", "Worker"]]);
-    expect(withEdgeAria(f.edges, (id) => labels.get(id)!)[0].ariaLabel).toBe("payments to Worker, message: OrderPlaced");
+    const labels = new Map([
+      ["a", "payments"],
+      ["b", "Worker"],
+    ]);
+    expect(withEdgeAria(f.edges, (id) => labels.get(id)!)[0].ariaLabel).toBe(
+      "payments to Worker, message: OrderPlaced",
+    );
   });
 });

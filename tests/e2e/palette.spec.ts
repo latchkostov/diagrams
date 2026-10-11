@@ -70,7 +70,9 @@ test.describe("palette", () => {
 
     const recent = page.getByTestId("palette-recent");
     await expect(recent).toBeVisible();
-    const order = await recent.getByTestId(/^palette-recent-item-/).evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
+    const order = await recent
+      .getByTestId(/^palette-recent-item-/)
+      .evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
     expect(order).toEqual(["palette-recent-item-redis.cache", "palette-recent-item-aws.lambda"]);
 
     // A recent tile adds like any palette item, and survives a reload.

@@ -16,17 +16,47 @@ export function particleStressDiagram(target: number, consumers = 8): DiagramFil
   const edges: DiagramEdge[] = [];
   const mid = (consumers - 1) / 2;
   for (let i = 0; i < sources; i++) {
-    nodes.push({ id: `src-${i}`, stencil: "client.browser", label: `Clients ${i + 1}`, sublabel: `${rate} msg/s`, ...at(0, mid - 1.5 + i), props: { ratePerSec: rate, messageType: ["OrderPlaced", "MemberJoined", "PaymentAuthorized", "TelemetryReading"][i] } });
+    nodes.push({
+      id: `src-${i}`,
+      stencil: "client.browser",
+      label: `Clients ${i + 1}`,
+      sublabel: `${rate} msg/s`,
+      ...at(0, mid - 1.5 + i),
+      props: {
+        ratePerSec: rate,
+        messageType: ["OrderPlaced", "MemberJoined", "PaymentAuthorized", "TelemetryReading"][i],
+      },
+    });
     edges.push({ id: `e-src-${i}`, from: `src-${i}`, to: "topic" });
   }
-  nodes.push({ id: "topic", stencil: "kafka.topic", label: "events", sublabel: "all traffic", ...at(1, mid), props: { partitions: 100_000 } });
+  nodes.push({
+    id: "topic",
+    stencil: "kafka.topic",
+    label: "events",
+    sublabel: "all traffic",
+    ...at(1, mid),
+    props: { partitions: 100_000 },
+  });
   for (let i = 0; i < consumers; i++) {
-    nodes.push({ id: `svc-${i}`, stencil: "service.go", label: `consumer ${i + 1}`, sublabel: `group: g${i + 1}`, ...at(2, i), props: { concurrency: 100_000, latencyMs: 60 } });
+    nodes.push({
+      id: `svc-${i}`,
+      stencil: "service.go",
+      label: `consumer ${i + 1}`,
+      sublabel: `group: g${i + 1}`,
+      ...at(2, i),
+      props: { concurrency: 100_000, latencyMs: 60 },
+    });
     nodes.push({ id: `db-${i}`, stencil: "postgres", label: `store ${i + 1}`, ...at(3, i) });
     edges.push({ id: `e-topic-${i}`, from: "topic", to: `svc-${i}`, props: { group: `g${i + 1}` } });
     edges.push({ id: `e-db-${i}`, from: `svc-${i}`, to: `db-${i}` });
   }
-  return { format: DIAGRAM_FORMAT, title: `Particles stress: ~${target}`, description: `${sources} sources at ${rate} msg/s fanned out to ${consumers} consumer groups.`, nodes, edges };
+  return {
+    format: DIAGRAM_FORMAT,
+    title: `Particles stress: ~${target}`,
+    description: `${sources} sources at ${rate} msg/s fanned out to ${consumers} consumer groups.`,
+    nodes,
+    edges,
+  };
 }
 
 /** Every badge state at once: down, paused, backlog heat, failures with retries, dead letters, lag. */
@@ -40,11 +70,32 @@ export function badgeStatesDiagram(): DiagramFile {
       props: { "slow-svc": { latencyMs: 2500, concurrency: 1 }, worker: { failureRate: 0.45 } },
     },
     traffic: [
-      { id: "orders", node: "api", messageType: "OrderPlaced", label: "Orders", shape: { kind: "constant", ratePerSec: 18, durationMs: 12_000 } },
-      { id: "jobs", node: "jobs-api", messageType: "InvoiceRequested", label: "Jobs", shape: { kind: "constant", ratePerSec: 10, durationMs: 12_000 } },
+      {
+        id: "orders",
+        node: "api",
+        messageType: "OrderPlaced",
+        label: "Orders",
+        shape: { kind: "constant", ratePerSec: 18, durationMs: 12_000 },
+      },
+      {
+        id: "jobs",
+        node: "jobs-api",
+        messageType: "InvoiceRequested",
+        label: "Jobs",
+        shape: { kind: "constant", ratePerSec: 10, durationMs: 12_000 },
+      },
     ],
     timeline: [],
-    expectations: [{ id: "nothing-dead", label: "Nothing dead-lettered", metric: { node: "jobs", field: "deadLettered" }, op: "==", value: 0, when: "always" }],
+    expectations: [
+      {
+        id: "nothing-dead",
+        label: "Nothing dead-lettered",
+        metric: { node: "jobs", field: "deadLettered" },
+        op: "==",
+        value: 0,
+        when: "always",
+      },
+    ],
   };
   return {
     format: DIAGRAM_FORMAT,
@@ -116,7 +167,14 @@ export function noteStatesDiagram(state: NoteState): DiagramFile {
         id: "story",
         title: "Narration preview",
         seed: 7,
-        traffic: [{ id: "t", node: "shop", messageType: "OrderPlaced", shape: { kind: "constant", ratePerSec: 8, durationMs: 20_000 } }],
+        traffic: [
+          {
+            id: "t",
+            node: "shop",
+            messageType: "OrderPlaced",
+            shape: { kind: "constant", ratePerSec: 8, durationMs: 20_000 },
+          },
+        ],
         timeline: [{ atMs: 600, action: { do: "note", text, focus, pause: state === "pause" } }],
         durationMs: 30_000,
       },

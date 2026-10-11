@@ -468,9 +468,14 @@ const livePresets: Preset[] = [
 const auditSources: Record<string, { label: string; diagram: () => DiagramFile }> = {
   ...Object.fromEntries(examples.map((e) => [e.slug, { label: e.diagram.title, diagram: () => e.diagram }])),
   obstacles: { label: "Routing obstacle course", diagram: () => obstacleCourseDiagram() },
-  "stress-150": { label: "Stress: 150 nodes", diagram: () => stressDiagram({ nodes: 150, seed: 1, density: 0.25, groups: false, direction: "LR" }) },
+  "stress-150": {
+    label: "Stress: 150 nodes",
+    diagram: () => stressDiagram({ nodes: 150, seed: 1, density: 0.25, groups: false, direction: "LR" }),
+  },
 };
-const auditDefault = examples.some((e) => e.slug === "kafka-order-pipeline") ? "kafka-order-pipeline" : Object.keys(auditSources)[0];
+const auditDefault = examples.some((e) => e.slug === "kafka-order-pipeline")
+  ? "kafka-order-pipeline"
+  : Object.keys(auditSources)[0];
 
 const layoutPresets: Preset[] = [
   {
@@ -478,7 +483,8 @@ const layoutPresets: Preset[] = [
     id: "edges-obstacles",
     title: "Routing obstacle course",
     group: "Edges",
-    description: "Edges that skip columns, fan out from one side, run backwards and come in reverse pairs: routes go around cards, ports spread, parallel runs separate.",
+    description:
+      "Edges that skip columns, fan out from one side, run backwards and come in reverse pairs: routes go around cards, ports spread, parallel runs separate.",
     controls: [
       { type: "number", key: "cols", label: "Columns", default: 4, min: 3, max: 8 },
       { type: "number", key: "rows", label: "Rows", default: 3, min: 1, max: 7 },
@@ -491,8 +497,17 @@ const layoutPresets: Preset[] = [
     id: "overlap-audit",
     title: "Overlap audit",
     group: "Diagrams",
-    description: "A diagram on the real canvas with every overlap outlined: nodes, label pills, routes through cards, shared tracks and group headers. Drag nodes to watch it update.",
-    controls: [{ type: "select", key: "diagram", label: "Diagram", default: auditDefault, options: Object.entries(auditSources).map(([value, s]) => ({ value, label: s.label })) }],
+    description:
+      "A diagram on the real canvas with every overlap outlined: nodes, label pills, routes through cards, shared tracks and group headers. Drag nodes to watch it update.",
+    controls: [
+      {
+        type: "select",
+        key: "diagram",
+        label: "Diagram",
+        default: auditDefault,
+        options: Object.entries(auditSources).map(([value, s]) => ({ value, label: s.label })),
+      },
+    ],
     render: (v) => {
       const src = auditSources[String(v.diagram)] ?? auditSources[auditDefault];
       return <OverlapAudit key={String(v.diagram)} diagram={src.diagram()} />;

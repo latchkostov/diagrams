@@ -3,9 +3,15 @@ export class Deque<T> {
   private items: (T | undefined)[] = [];
   private head = 0;
 
-  get length(): number { return this.items.length - this.head; }
-  peek(): T | undefined { return this.items[this.head]; }
-  push(item: T): void { this.items.push(item); }
+  get length(): number {
+    return this.items.length - this.head;
+  }
+  peek(): T | undefined {
+    return this.items[this.head];
+  }
+  push(item: T): void {
+    this.items.push(item);
+  }
   shift(): T | undefined {
     if (!this.length) return undefined;
     const item = this.items[this.head];
@@ -16,5 +22,8 @@ export class Deque<T> {
     }
     return item;
   }
-  clear(): void { this.items = []; this.head = 0; }
+  clear(): void {
+    this.items = [];
+    this.head = 0;
+  }
 }

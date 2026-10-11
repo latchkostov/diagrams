@@ -36,7 +36,12 @@ export const publicExamples: PublicExample[] = (() => {
         nodes: { id: string }[];
         edges: { id: string }[];
       };
-      return { slug: f.slice(0, -".json".length), title: d.title, nodeIds: d.nodes.map((n) => n.id), edgeIds: d.edges.map((e) => e.id) };
+      return {
+        slug: f.slice(0, -".json".length),
+        title: d.title,
+        nodeIds: d.nodes.map((n) => n.id),
+        edgeIds: d.edges.map((e) => e.id),
+      };
     });
 })();
 
@@ -94,6 +99,8 @@ export async function labPresetIds(page: Page): Promise<string[]> {
   await gotoLab(page);
   const links = page.getByTestId(/^lab-preset-link-/);
   await expect(links.first()).toBeVisible();
-  const ids = await links.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")!.slice("lab-preset-link-".length)));
+  const ids = await links.evaluateAll((els) =>
+    els.map((el) => el.getAttribute("data-testid")!.slice("lab-preset-link-".length)),
+  );
   return ids;
 }

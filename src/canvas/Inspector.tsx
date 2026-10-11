@@ -32,15 +32,82 @@ interface SimField {
 }
 
 const SIM_FIELDS: Record<SimKey, SimField> = {
-  ratePerSec: { label: "Rate", unit: "msg/s", kind: "number", min: 0, step: 0.5, placeholder: "2", hint: "Messages per second while traffic is on" },
-  messageType: { label: "Message type", kind: "text", placeholder: "derived from label", hint: "Type emitted by this source" },
-  latencyMs: { label: "Latency", unit: "ms", kind: "number", min: 0, step: 10, placeholder: "default", hint: "Processing time per message" },
-  concurrency: { label: "Concurrency", kind: "number", min: 1, step: 1, placeholder: "4", hint: "Messages processed in parallel per replica" },
-  replicas: { label: "Replicas", kind: "number", min: 1, step: 1, placeholder: "1", hint: "Instances (pods); behind a topic, only as many as there are partitions do work" },
-  jitter: { label: "Latency jitter", unit: "0–1", kind: "number", min: 0, max: 1, step: 0.05, placeholder: "0.2", hint: "Random spread on latency (0.2 = ±20%)" },
-  failureRate: { label: "Failure rate", unit: "0–1", kind: "number", min: 0, max: 1, step: 0.05, placeholder: "0", hint: "Probability a message fails processing" },
-  maxDeliveryCount: { label: "Max deliveries", kind: "number", min: 1, step: 1, placeholder: "3", hint: "Attempts before dead-lettering" },
-  partitions: { label: "Partitions", kind: "number", min: 1, step: 1, placeholder: "3", hint: "Max in-flight deliveries per consumer group" },
+  ratePerSec: {
+    label: "Rate",
+    unit: "msg/s",
+    kind: "number",
+    min: 0,
+    step: 0.5,
+    placeholder: "2",
+    hint: "Messages per second while traffic is on",
+  },
+  messageType: {
+    label: "Message type",
+    kind: "text",
+    placeholder: "derived from label",
+    hint: "Type emitted by this source",
+  },
+  latencyMs: {
+    label: "Latency",
+    unit: "ms",
+    kind: "number",
+    min: 0,
+    step: 10,
+    placeholder: "default",
+    hint: "Processing time per message",
+  },
+  concurrency: {
+    label: "Concurrency",
+    kind: "number",
+    min: 1,
+    step: 1,
+    placeholder: "4",
+    hint: "Messages processed in parallel per replica",
+  },
+  replicas: {
+    label: "Replicas",
+    kind: "number",
+    min: 1,
+    step: 1,
+    placeholder: "1",
+    hint: "Instances (pods); behind a topic, only as many as there are partitions do work",
+  },
+  jitter: {
+    label: "Latency jitter",
+    unit: "0–1",
+    kind: "number",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    placeholder: "0.2",
+    hint: "Random spread on latency (0.2 = ±20%)",
+  },
+  failureRate: {
+    label: "Failure rate",
+    unit: "0–1",
+    kind: "number",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    placeholder: "0",
+    hint: "Probability a message fails processing",
+  },
+  maxDeliveryCount: {
+    label: "Max deliveries",
+    kind: "number",
+    min: 1,
+    step: 1,
+    placeholder: "3",
+    hint: "Attempts before dead-lettering",
+  },
+  partitions: {
+    label: "Partitions",
+    kind: "number",
+    min: 1,
+    step: 1,
+    placeholder: "3",
+    hint: "Max in-flight deliveries per consumer group",
+  },
   emits: {
     label: "Emits",
     kind: "map",
@@ -97,7 +164,13 @@ export function Inspector(p: InspectorProps) {
   if (p.collapsed) {
     return (
       <aside className="inspector is-collapsed" data-testid="inspector" aria-label="Inspector">
-        <button className="icon-btn" onClick={p.onToggle} title="Show inspector" aria-label="Show inspector" data-testid="inspector-toggle">
+        <button
+          className="icon-btn"
+          onClick={p.onToggle}
+          title="Show inspector"
+          aria-label="Show inspector"
+          data-testid="inspector-toggle"
+        >
           <Icon name="panel-right" />
         </button>
       </aside>
@@ -123,12 +196,23 @@ export function Inspector(p: InspectorProps) {
   }
 
   return (
-    <aside className="inspector" data-testid="inspector" aria-label="Inspector" data-inspector-mode={title.toLowerCase()}>
+    <aside
+      className="inspector"
+      data-testid="inspector"
+      aria-label="Inspector"
+      data-inspector-mode={title.toLowerCase()}
+    >
       <div className="insp-head">
         <span className="insp-title" data-testid="inspector-title">
           {title}
         </span>
-        <button className="icon-btn" onClick={p.onToggle} title="Hide inspector" aria-label="Hide inspector" data-testid="inspector-toggle">
+        <button
+          className="icon-btn"
+          onClick={p.onToggle}
+          title="Hide inspector"
+          aria-label="Hide inspector"
+          data-testid="inspector-toggle"
+        >
           <Icon name="panel-right" />
         </button>
       </div>
@@ -215,14 +299,24 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
       <Section
         title="Simulation"
         aside={
-          <span className="insp-role" style={{ "--role": simRoleMeta[role].hue } as CSSProperties} title={simRoleMeta[role].hint}>
+          <span
+            className="insp-role"
+            style={{ "--role": simRoleMeta[role].hue } as CSSProperties}
+            title={simRoleMeta[role].hint}
+          >
             {simRoleMeta[role].label}
           </span>
         }
       >
         {simFields.length ? (
           simFields.map((k) => (
-            <SimInput key={k} name={k} field={SIM_FIELDS[k]} value={props[k]} onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))} />
+            <SimInput
+              key={k}
+              name={k}
+              field={SIM_FIELDS[k]}
+              value={props[k]}
+              onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
+            />
           ))
         ) : (
           <p className="insp-note">This stencil is decorative and doesn't take part in the simulation.</p>
@@ -245,7 +339,11 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
           label="Change stencil"
           testId="stencil-picker"
           searchable="Search stencils"
-          items={stencilMenu("pick-stencil", (s) => ({ checked: s.id === node.data.stencil, run: () => editor.updateNode(node.id, { stencil: s.id }) }), stencil.category)}
+          items={stencilMenu(
+            "pick-stencil",
+            (s) => ({ checked: s.id === node.data.stencil, run: () => editor.updateNode(node.id, { stencil: s.id }) }),
+            stencil.category,
+          )}
           onClose={() => setPicker(null)}
         />
       )}
@@ -264,7 +362,13 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
           <span>{nodeLabel(edge.source)}</span>
           <Icon name="chevron-right" size={12} />
           <span>{nodeLabel(edge.target)}</span>
-          <button className="icon-btn insp-mini" onClick={() => editor.reverseEdge(edge.id)} title="Reverse direction" aria-label="Reverse direction" data-testid="inspector-reverse">
+          <button
+            className="icon-btn insp-mini"
+            onClick={() => editor.reverseEdge(edge.id)}
+            title="Reverse direction"
+            aria-label="Reverse direction"
+            data-testid="inspector-reverse"
+          >
             <Icon name="swap" size={14} />
           </button>
         </div>
@@ -291,10 +395,18 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
         </Field>
         <div className="insp-row2">
           <Field label="From side">
-            <SideSelect testId="inspector-field-sourceSide" value={data.sourceSide} onChange={(v) => editor.updateEdge(edge.id, { sourceSide: v })} />
+            <SideSelect
+              testId="inspector-field-sourceSide"
+              value={data.sourceSide}
+              onChange={(v) => editor.updateEdge(edge.id, { sourceSide: v })}
+            />
           </Field>
           <Field label="To side">
-            <SideSelect testId="inspector-field-targetSide" value={data.targetSide} onChange={(v) => editor.updateEdge(edge.id, { targetSide: v })} />
+            <SideSelect
+              testId="inspector-field-targetSide"
+              value={data.targetSide}
+              onChange={(v) => editor.updateEdge(edge.id, { targetSide: v })}
+            />
           </Field>
         </div>
       </Section>
@@ -324,19 +436,37 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
         </label>
         <SimInput
           name="travelMs"
-          field={{ label: "Travel time", unit: "ms", kind: "number", min: 0, step: 50, placeholder: data.kind === "sync" ? "450" : "900", hint: "Time a message spends on this edge at 1x" }}
+          field={{
+            label: "Travel time",
+            unit: "ms",
+            kind: "number",
+            min: 0,
+            step: 50,
+            placeholder: data.kind === "sync" ? "450" : "900",
+            hint: "Time a message spends on this edge at 1x",
+          }}
           value={props.travelMs}
           onChange={(v) => editor.setEdgeProps(edge.id, { travelMs: v }, merge("travelMs"))}
         />
         <SimInput
           name="filter"
-          field={{ label: "Filter", kind: "list", placeholder: "all message types", hint: 'Only these message types travel this edge; trailing * wildcard, e.g. "Order*"' }}
+          field={{
+            label: "Filter",
+            kind: "list",
+            placeholder: "all message types",
+            hint: 'Only these message types travel this edge; trailing * wildcard, e.g. "Order*"',
+          }}
           value={props.filter}
           onChange={(v) => editor.setEdgeProps(edge.id, { filter: v }, merge("filter"))}
         />
         <SimInput
           name="emits"
-          field={{ label: "Rename to", kind: "text", placeholder: "unchanged", hint: "Rename messages as they leave along this edge" }}
+          field={{
+            label: "Rename to",
+            kind: "text",
+            placeholder: "unchanged",
+            hint: "Rename messages as they leave along this edge",
+          }}
           value={props.emits}
           onChange={(v) => editor.setEdgeProps(edge.id, { emits: v }, merge("emits"))}
         />
@@ -415,7 +545,14 @@ function MultiPanel({ editor, selectedNodes, selectedEdges, selectedGroups }: In
         <Field label="Align" group>
           <div className="insp-toolbar">
             {ALIGN_BUTTONS.map((a) => (
-              <button key={a.mode} className="icon-btn" title={a.label} aria-label={a.label} onClick={() => editor.align(ids, a.mode)} data-testid={`inspector-align-${a.mode}`}>
+              <button
+                key={a.mode}
+                className="icon-btn"
+                title={a.label}
+                aria-label={a.label}
+                onClick={() => editor.align(ids, a.mode)}
+                data-testid={`inspector-align-${a.mode}`}
+              >
                 <Icon name={a.icon} />
               </button>
             ))}
@@ -425,10 +562,22 @@ function MultiPanel({ editor, selectedNodes, selectedEdges, selectedGroups }: In
       {ids.length > 2 && (
         <Field label="Distribute" group>
           <div className="insp-toolbar">
-            <button className="icon-btn" title="Distribute horizontally" aria-label="Distribute horizontally" onClick={() => editor.distribute(ids, "h")} data-testid="inspector-distribute-h">
+            <button
+              className="icon-btn"
+              title="Distribute horizontally"
+              aria-label="Distribute horizontally"
+              onClick={() => editor.distribute(ids, "h")}
+              data-testid="inspector-distribute-h"
+            >
               <Icon name="distribute-h" />
             </button>
-            <button className="icon-btn" title="Distribute vertically" aria-label="Distribute vertically" onClick={() => editor.distribute(ids, "v")} data-testid="inspector-distribute-v">
+            <button
+              className="icon-btn"
+              title="Distribute vertically"
+              aria-label="Distribute vertically"
+              onClick={() => editor.distribute(ids, "v")}
+              data-testid="inspector-distribute-v"
+            >
               <Icon name="distribute-v" />
             </button>
           </div>
@@ -442,7 +591,13 @@ function MultiPanel({ editor, selectedNodes, selectedEdges, selectedGroups }: In
         )}
         <button
           className="btn btn-danger"
-          onClick={() => editor.deleteElements({ nodeIds: ids, edgeIds: selectedEdges.map((e) => e.id), groupIds: selectedGroups.map((g) => g.data.groupId) })}
+          onClick={() =>
+            editor.deleteElements({
+              nodeIds: ids,
+              edgeIds: selectedEdges.map((e) => e.id),
+              groupIds: selectedGroups.map((g) => g.data.groupId),
+            })
+          }
           data-testid="inspector-delete-selection"
         >
           <Icon name="trash" size={14} /> Delete
@@ -471,7 +626,9 @@ function DiagramPanel({ editor, meta, counts }: InspectorProps) {
             rows={3}
             value={meta.description ?? ""}
             placeholder="What does this diagram show?"
-            onChange={(e) => editor.updateMeta({ description: e.target.value || undefined }, { merge: "inspector:meta:description" })}
+            onChange={(e) =>
+              editor.updateMeta({ description: e.target.value || undefined }, { merge: "inspector:meta:description" })
+            }
             name="description"
             data-testid="inspector-field-description"
           />
@@ -518,7 +675,17 @@ function Section({ title, aside, children }: { title?: string; aside?: ReactNode
 }
 
 /** Labelled row. `group` renders a div (for button groups — a <label> would forward clicks). */
-function Field({ label, hint, group, children }: { label: string; hint?: string; group?: boolean; children: ReactNode }) {
+function Field({
+  label,
+  hint,
+  group,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  group?: boolean;
+  children: ReactNode;
+}) {
   const Tag = group ? "div" : "label";
   return (
     <Tag className="insp-field" title={hint}>
@@ -559,9 +726,23 @@ function Segmented<T extends string>({
   );
 }
 
-function SideSelect({ value, onChange, testId }: { value?: Side; onChange: (v: Side | undefined) => void; testId: string }) {
+function SideSelect({
+  value,
+  onChange,
+  testId,
+}: {
+  value?: Side;
+  onChange: (v: Side | undefined) => void;
+  testId: string;
+}) {
   return (
-    <select className="insp-input" value={value ?? ""} onChange={(e) => onChange((e.target.value || undefined) as Side | undefined)} data-testid={testId} name={testId}>
+    <select
+      className="insp-input"
+      value={value ?? ""}
+      onChange={(e) => onChange((e.target.value || undefined) as Side | undefined)}
+      data-testid={testId}
+      name={testId}
+    >
       <option value="">Auto</option>
       {SIDES.map((s) => (
         <option key={s} value={s}>
@@ -585,7 +766,17 @@ function showSim(kind: SimField["kind"], value: unknown): string {
 
 type SimValue = number | string | string[] | Record<string, string> | undefined;
 
-function SimInput({ name, field, value, onChange }: { name: string; field: SimField; value: unknown; onChange: (v: SimValue) => void }) {
+function SimInput({
+  name,
+  field,
+  value,
+  onChange,
+}: {
+  name: string;
+  field: SimField;
+  value: unknown;
+  onChange: (v: SimValue) => void;
+}) {
   const external = showSim(field.kind, value);
   const [draft, setDraft] = useState(external);
   const focused = useRef(false);
@@ -614,7 +805,10 @@ function SimInput({ name, field, value, onChange }: { name: string; field: SimFi
             setDraft(raw);
             if (field.kind === "text") return onChange(raw || undefined);
             if (field.kind === "list") {
-              const items = raw.split(",").map((x) => x.trim()).filter(Boolean);
+              const items = raw
+                .split(",")
+                .map((x) => x.trim())
+                .filter(Boolean);
               return onChange(items.length ? items : undefined);
             }
             if (field.kind === "map") {
@@ -624,7 +818,8 @@ function SimInput({ name, field, value, onChange }: { name: string; field: SimFi
             }
             if (raw.trim() === "") return onChange(undefined);
             const v = Number(raw);
-            if (Number.isFinite(v)) onChange(field.max !== undefined ? Math.min(field.max, Math.max(field.min ?? -Infinity, v)) : v);
+            if (Number.isFinite(v))
+              onChange(field.max !== undefined ? Math.min(field.max, Math.max(field.min ?? -Infinity, v)) : v);
           }}
           name={name}
           data-testid={`inspector-field-${name}`}
@@ -704,7 +899,13 @@ function PropsEditor({
             {k}
           </span>
           <PropValue name={k} value={v} onChange={(raw) => onSetMerged({ [k]: parseValue(raw) }, k)} />
-          <button className="icon-btn insp-mini" onClick={() => onSet({ [k]: undefined })} title={`Remove ${k}`} aria-label={`Remove ${k}`} data-testid={`inspector-prop-remove-${k}`}>
+          <button
+            className="icon-btn insp-mini"
+            onClick={() => onSet({ [k]: undefined })}
+            title={`Remove ${k}`}
+            aria-label={`Remove ${k}`}
+            data-testid={`inspector-prop-remove-${k}`}
+          >
             <Icon name="close" size={12} />
           </button>
         </div>
@@ -720,7 +921,14 @@ function PropsEditor({
           name="new-prop"
           data-testid="inspector-prop-new"
         />
-        <button className="icon-btn insp-mini" onClick={add} disabled={!newKey.trim()} title="Add property" aria-label="Add property" data-testid="inspector-prop-add">
+        <button
+          className="icon-btn insp-mini"
+          onClick={add}
+          disabled={!newKey.trim()}
+          title="Add property"
+          aria-label="Add property"
+          data-testid="inspector-prop-add"
+        >
           <Icon name="plus" size={12} />
         </button>
       </div>

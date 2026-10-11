@@ -5,7 +5,16 @@ import type { ControlDef } from "./types";
 const controls: ControlDef[] = [
   { type: "number", key: "nodes", label: "Nodes", default: 50, min: 1, max: 300 },
   { type: "boolean", key: "groups", label: "Groups", default: false },
-  { type: "select", key: "dir", label: "Direction", default: "LR", options: [{ value: "LR", label: "LR" }, { value: "TB", label: "TB" }] },
+  {
+    type: "select",
+    key: "dir",
+    label: "Direction",
+    default: "LR",
+    options: [
+      { value: "LR", label: "LR" },
+      { value: "TB", label: "TB" },
+    ],
+  },
   { type: "text", key: "label", label: "Label", default: "hello" },
 ];
 

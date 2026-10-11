@@ -16,5 +16,10 @@ export interface DiagramUi {
   openEdgeMenu: (e: MouseEvent | ReactMouseEvent, edgeId: string) => void;
 }
 
-export const DiagramContext = createContext<DiagramUi>({ direction: "LR", editing: null, setEditing: () => {}, openEdgeMenu: () => {} });
+export const DiagramContext = createContext<DiagramUi>({
+  direction: "LR",
+  editing: null,
+  setEditing: () => {},
+  openEdgeMenu: () => {},
+});
 export const useDiagram = () => useContext(DiagramContext);

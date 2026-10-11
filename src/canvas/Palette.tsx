@@ -65,7 +65,10 @@ export function Palette({
   };
 
   const families = useMemo(() => familyCounts(stencils), []);
-  const inFamily = useMemo(() => (family === "all" ? stencils : stencils.filter((s) => familyOf(s) === family)), [family]);
+  const inFamily = useMemo(
+    () => (family === "all" ? stencils : stencils.filter((s) => familyOf(s) === family)),
+    [family],
+  );
   const results = useMemo(() => (q.trim() ? searchStencils(inFamily, q) : null), [inFamily, q]);
   const groups = useMemo(() => {
     const map = new Map<StencilCategory, Stencil[]>();
@@ -77,12 +80,19 @@ export function Palette({
   }, [inFamily]);
   const recent = useMemo(() => recentIds.map(getStencil).filter((s) => stencils.includes(s)), [recentIds]);
 
-  const toggleSection = (c: StencilCategory) => setClosed((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+  const toggleSection = (c: StencilCategory) =>
+    setClosed((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
 
   if (collapsed) {
     return (
       <aside className="palette is-collapsed" data-testid="palette">
-        <button className="icon-btn" onClick={onToggle} title="Show stencils" aria-label="Show stencils" data-testid="palette-toggle">
+        <button
+          className="icon-btn"
+          onClick={onToggle}
+          title="Show stencils"
+          aria-label="Show stencils"
+          data-testid="palette-toggle"
+        >
           <Icon name="panel" />
         </button>
         {recent.length > 0 && (
@@ -125,17 +135,31 @@ export function Palette({
               data-testid="palette-search"
             />
             {q && (
-              <button type="button" className="field-clear" onClick={() => setQ("")} aria-label="Clear search" data-testid="palette-search-clear">
+              <button
+                type="button"
+                className="field-clear"
+                onClick={() => setQ("")}
+                aria-label="Clear search"
+                data-testid="palette-search-clear"
+              >
                 <Icon name="close" size={12} />
               </button>
             )}
           </label>
-          <button className="icon-btn" onClick={onToggle} title="Hide stencils" aria-label="Hide stencils" data-testid="palette-toggle">
+          <button
+            className="icon-btn"
+            onClick={onToggle}
+            title="Hide stencils"
+            aria-label="Hide stencils"
+            data-testid="palette-toggle"
+          >
             <Icon name="panel" />
           </button>
         </div>
         <label className="select select-quiet palette-family" title="Show stencils from one family">
-          {family !== "all" && <i className="palette-family-dot" style={{ background: getFamily(family).hue }} aria-hidden />}
+          {family !== "all" && (
+            <i className="palette-family-dot" style={{ background: getFamily(family).hue }} aria-hidden />
+          )}
           <select
             value={family}
             onChange={(e) => setFamily(e.target.value as FamilyId | "all")}

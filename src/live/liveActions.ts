@@ -56,9 +56,17 @@ export function liveActions(host: LiveActionsHost): Action[] {
         const type = host.messageType(id);
         const rows: MenuNode[] = [{ type: "header", label: type }];
         for (const n of [1, 10, 100]) {
-          rows.push({ type: "item", id: `sim.inject:${n}`, label: n === 1 ? "1 message" : `${n} messages`, run: () => c.inject(id, n, { type, spreadMs: n > 10 ? 1500 : 0 }) });
+          rows.push({
+            type: "item",
+            id: `sim.inject:${n}`,
+            label: n === 1 ? "1 message" : `${n} messages`,
+            run: () => c.inject(id, n, { type, spreadMs: n > 10 ? 1500 : 0 }),
+          });
         }
-        rows.push({ type: "separator" }, { type: "item", id: "sim.inject:custom", label: "Custom…", run: () => host.openInject(id, ctx.point) });
+        rows.push(
+          { type: "separator" },
+          { type: "item", id: "sim.inject:custom", label: "Custom…", run: () => host.openInject(id, ctx.point) },
+        );
         return rows;
       },
     },
@@ -148,9 +156,17 @@ export function liveActions(host: LiveActionsHost): Action[] {
             })),
           });
         }
-        rows.push({ type: "separator" }, { type: "item", id: "sim.events", label: "Show events for this node", run: () => host.showEvents(id) });
+        rows.push(
+          { type: "separator" },
+          { type: "item", id: "sim.events", label: "Show events for this node", run: () => host.showEvents(id) },
+        );
         if (c.getState().tweaks.has(id)) {
-          rows.push({ type: "item", id: "sim.save-tweaks", label: "Save live changes to diagram", run: () => host.saveTweaks(id) });
+          rows.push({
+            type: "item",
+            id: "sim.save-tweaks",
+            label: "Save live changes to diagram",
+            run: () => host.saveTweaks(id),
+          });
         }
         return rows;
       },

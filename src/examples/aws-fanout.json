@@ -254,9 +254,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "OrderPlaced"
-        ],
+        "filter": ["OrderPlaced"],
         "group": "fulfillment-q"
       }
     },
@@ -268,9 +266,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "OrderPlaced"
-        ],
+        "filter": ["OrderPlaced"],
         "group": "archive-q"
       }
     },
@@ -282,9 +278,7 @@
       "kind": "async",
       "props": {
         "travelMs": 300,
-        "filter": [
-          "OrderPlaced"
-        ],
+        "filter": ["OrderPlaced"],
         "group": "receipt-q"
       }
     },
@@ -406,9 +400,7 @@
           "action": {
             "do": "note",
             "text": "SNS fans each order into isolated fulfillment, archive and receipt queues.",
-            "focus": [
-              "sns"
-            ]
+            "focus": ["sns"]
           }
         },
         {
@@ -416,12 +408,7 @@
           "action": {
             "do": "note",
             "text": "The flash sale peaks at 100 orders per second.",
-            "focus": [
-              "client",
-              "fulfillment-q",
-              "archive-q",
-              "receipt-q"
-            ]
+            "focus": ["client", "fulfillment-q", "archive-q", "receipt-q"]
           }
         }
       ],
@@ -505,10 +492,7 @@
           "action": {
             "do": "note",
             "text": "Fulfillment is throttled to one Lambda worker. The other queues remain independent.",
-            "focus": [
-              "fulfill",
-              "fulfillment-q"
-            ],
+            "focus": ["fulfill", "fulfillment-q"],
             "pause": true
           }
         },
@@ -527,10 +511,7 @@
           "action": {
             "do": "note",
             "text": "Reserved concurrency is restored; fulfillment catches up.",
-            "focus": [
-              "fulfill",
-              "ddb"
-            ]
+            "focus": ["fulfill", "ddb"]
           }
         }
       ],

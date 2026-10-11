@@ -85,7 +85,10 @@ export function createStormSimulation(diagram: DiagramFile, nodeId: string, opts
     shape: { kind: "burst", count, spreadMs: Math.max(0, opts.spreadMs ?? DEFAULT_STORM_SPREAD_MS) },
   };
   return {
-    id: uniqueSimId(`storm-${where}`, (diagram.simulations ?? []).map((s) => s.id)),
+    id: uniqueSimId(
+      `storm-${where}`,
+      (diagram.simulations ?? []).map((s) => s.id),
+    ),
     title,
     seed: DEFAULT_SEED,
     traffic: [traffic],
@@ -98,7 +101,10 @@ export function createStormSimulation(diagram: DiagramFile, nodeId: string, opts
 /** A fresh, empty simulation for "New simulation". */
 export function blankSimulation(diagram: DiagramFile): Simulation {
   return {
-    id: uniqueSimId("simulation", (diagram.simulations ?? []).map((s) => s.id)),
+    id: uniqueSimId(
+      "simulation",
+      (diagram.simulations ?? []).map((s) => s.id),
+    ),
     title: "New simulation",
     seed: DEFAULT_SEED,
     traffic: [],
@@ -116,7 +122,15 @@ export function defaultShape(kind: TrafficShape["kind"], from?: TrafficShape): T
     case "constant":
       return { kind, ratePerSec: 20, fromMs: at, durationMs: 5000 };
     case "ramp":
-      return { kind, fromMs: at, startRate: 5, stages: [{ durationMs: 4000, targetRate: 40 }, { durationMs: 3000, targetRate: 10 }] };
+      return {
+        kind,
+        fromMs: at,
+        startRate: 5,
+        stages: [
+          { durationMs: 4000, targetRate: 40 },
+          { durationMs: 3000, targetRate: 10 },
+        ],
+      };
     case "spike":
       return { kind, baseRate: 5, peakRate: 60, atMs: Math.max(at, 2000), peakMs: 1500, durationMs: 8000 };
   }

@@ -70,8 +70,18 @@ export class Decorator {
   clear(): void {
     const root = this.root;
     for (const a of ["data-live", "data-live-spotlight"]) root.removeAttribute(a);
-    for (const el of root.querySelectorAll("[data-live-status],[data-live-edge],[data-live-dim],[data-live-heat],[data-live-trace],[data-live-rising]")) {
-      for (const a of ["data-live-status", "data-live-edge", "data-live-dim", "data-live-heat", "data-live-trace", "data-live-rising"]) el.removeAttribute(a);
+    for (const el of root.querySelectorAll(
+      "[data-live-status],[data-live-edge],[data-live-dim],[data-live-heat],[data-live-trace],[data-live-rising]",
+    )) {
+      for (const a of [
+        "data-live-status",
+        "data-live-edge",
+        "data-live-dim",
+        "data-live-heat",
+        "data-live-trace",
+        "data-live-rising",
+      ])
+        el.removeAttribute(a);
     }
     this.applied.clear();
     this.history.clear();
