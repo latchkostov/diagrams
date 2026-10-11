@@ -11,7 +11,7 @@ const node = (id: string, role: SimRole, props: Record<string, unknown> = {}): D
   label: id,
   x: 0,
   y: 0,
-  props,
+  props: { jitter: 0, ...props },
 });
 const edge = (from: string, to: string, props: Record<string, unknown> = {}, id = `${from}-${to}`): DiagramEdge => ({
   id,
@@ -36,7 +36,7 @@ function run(sim: SimEngine, duration = 5000): void {
 function broker(role: SimRole = "queue", props = {}, edgeProps = {}) {
   return engine(
     [node("b", role, props), node("c", "processor", { latencyMs: 20 }), node("end", "sink"), node("dlq", "sink")],
-    [edge("b", "c", edgeProps), edge("c", "end"), edge("b", "dlq")],
+    [edge("b", "c", edgeProps), edge("c", "end"), edge("b", "dlq", { dlq: true })],
   );
 }
 
@@ -158,7 +158,7 @@ describe("typed messages", () => {
       [node("b", "queue"), node("p", "processor", { latencyMs: 0, failureRate: 1 }), node("dlq", "sink")],
       [
         edge("b", "p", { filter: ["Order*"], emits: "Command" }),
-        edge("b", "dlq", { filter: ["Order*"], emits: "PoisonOrder" }),
+        edge("b", "dlq", { dlq: true, filter: ["Order*"], emits: "PoisonOrder" }),
       ],
     );
     sim.inject("b", 2, { type: "OrderPlaced" });
@@ -172,7 +172,7 @@ describe("typed messages", () => {
   it("a rejected DLQ edge drops a failed message without sending it", () => {
     const sim = engine(
       [node("b", "queue", { maxDeliveryCount: 1 }), node("p", "processor", { failureRate: 1 }), node("dlq", "sink")],
-      [edge("b", "p"), edge("b", "dlq", { filter: [] })],
+      [edge("b", "p"), edge("b", "dlq", { dlq: true, filter: [] })],
     );
     sim.inject("b", 1);
     run(sim);
@@ -277,7 +277,7 @@ describe("message routing", () => {
         node("b", "sink"),
         node("dlq", "sink"),
       ],
-      [edge("n", "p"), edge("p", "a"), edge("p", "b"), edge("p", "dlq")],
+      [edge("n", "p"), edge("p", "a"), edge("p", "b"), edge("p", "dlq", { dlq: true })],
     );
     sim.inject("n", 5);
     run(sim);
@@ -290,8 +290,11 @@ describe("message routing", () => {
     ["store", "sync"],
     ["sink", "async"],
   ] as const)("%s is terminal even with outgoing %s edges", (role, kind) => {
-    const sim = engine([node("t", role), node("end", "sink")], [{ ...edge("t", "end"), kind }]);
-    sim.inject("t", 3);
+    const sim = engine(
+      [node("s", "source"), node("t", role), node("end", "sink")],
+      [edge("s", "t"), { ...edge("t", "end"), kind }],
+    );
+    sim.inject("s", 3);
     run(sim);
     expect(sim.snapshot().nodes.t.processed).toBe(3);
     expect(sim.snapshot().nodes.end.processed).toBe(0);
@@ -304,8 +307,8 @@ describe("pull capacity and status", () => {
     const sim = engine(
       [
         node("b", "topic", { partitions: 2 }),
-        node("a", "processor", { concurrency: 10, latencyMs: 500 }),
-        node("c", "processor", { concurrency: 10, latencyMs: 500 }),
+        node("a", "processor", { replicas: 10, concurrency: 1, latencyMs: 500 }),
+        node("c", "processor", { replicas: 10, concurrency: 1, latencyMs: 500 }),
       ],
       [edge("b", "a", { group: "one", travelMs: 100 }), edge("b", "c", { group: "two", travelMs: 100 })],
     );
@@ -505,10 +508,10 @@ describe("failures and replies", () => {
 
   it("DLQ can be explicit or inferred from sublabel", () => {
     for (const explicit of [true, false]) {
-      const target = { ...node("dead", "sink"), sublabel: explicit ? "errors" : "dead-letter mailbox" };
+      const target = { ...node("dead", "store"), sublabel: explicit ? "errors" : "dead-letter mailbox" };
       const sim = engine(
         [node("q", "queue", { maxDeliveryCount: 1 }), node("p", "processor", { failureRate: 1, latencyMs: 0 }), target],
-        [edge("q", "p"), edge("q", "dead", { dlq: explicit })],
+        [edge("q", "p"), edge("q", "dead", explicit ? { dlq: true } : {})],
       );
       sim.inject("q", 3);
       run(sim);
@@ -546,7 +549,7 @@ describe("failures and replies", () => {
         node("good", "sink"),
         node("dlq", "sink"),
       ],
-      [edge("b", "bad", { group: "bad" }), edge("b", "good", { group: "good" }), edge("b", "dlq")],
+      [edge("b", "bad", { group: "bad" }), edge("b", "good", { group: "good" }), edge("b", "dlq", { dlq: true })],
     );
     sim.inject("b", 5);
     run(sim);
@@ -916,14 +919,15 @@ describe("change feeds", () => {
   it("a store forwards copies along its async edges and stays terminal for sync ones", () => {
     const sim = engine(
       [
+        node("producer", "source"),
         node("db", "store", { latencyMs: 10 }),
         node("cdc", "processor", { latencyMs: 10 }),
         node("sink", "sink"),
         node("app", "store"),
       ],
-      [edge("db", "cdc"), edge("cdc", "sink"), { ...edge("db", "app"), kind: "sync" }],
+      [edge("producer", "db"), edge("db", "cdc"), edge("cdc", "sink"), { ...edge("db", "app"), kind: "sync" }],
     );
-    sim.inject("db", 4);
+    sim.inject("producer", 4);
     run(sim, 3000);
     const snap = sim.snapshot();
     expect(snap.nodes.sink.processed).toBe(4);

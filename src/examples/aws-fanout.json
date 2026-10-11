@@ -457,7 +457,8 @@
           "value": 0,
           "when": "always"
         }
-      ]
+      ],
+      "scale": 2
     },
     {
       "id": "throttle",
@@ -572,7 +573,8 @@
           "value": 300,
           "when": "end"
         }
-      ]
+      ],
+      "scale": 2
     }
   ]
 }
