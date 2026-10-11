@@ -49,6 +49,7 @@ describe("public examples route cleanly (estimated card sizes)", () => {
       const v = auditExample(d);
       const input = inputFor(d);
       const routes = new Router().route(input);
+      expect([...routes].map(([id, r]) => ({ id, points: r.points }))).toMatchSnapshot();
       const squeezed = [...routes.entries()]
         .filter(([, r]) => r.label && r.label.mode !== "full" && r.label.mode !== "wrap")
         .map(([id, r]) => `${id}:${r.label!.mode}`);

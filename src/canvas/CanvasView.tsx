@@ -59,6 +59,7 @@ import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts
 import type { Selection } from "../editor/types";
 import type { DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { LiveView } from "../live/LiveView";
+import { compactLiveNodeMenu } from "../live/liveActions";
 import { LIVE_BAR_SPACE } from "../live/layout";
 import { safeStorage } from "../lib/storage";
 
@@ -137,6 +138,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const [prefs, setPref] = useEditorPrefs();
   // Live mode and narrow windows fold the side panels away by default; opening one by hand wins.
   const [live, setLive] = useState(false);
+  const [livePanelOpen, setLivePanelOpen] = useState(false);
   const [openedByHand, setOpenedByHand] = useState({ live, palette: false, inspector: false });
   if (openedByHand.live !== live) setOpenedByHand({ live, palette: false, inspector: false });
   const [narrow, setNarrow] = useState(() => window.innerWidth < 1440);
@@ -301,11 +303,12 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       e.preventDefault();
       if (readOnly) return;
       const full: ActionContext = { ...ctx, editor, point: screenToFlowPosition({ x: e.clientX, y: e.clientY }) };
-      const items = actionRegistry.build(full);
+      const built = actionRegistry.build(full);
+      const items = live && ctx.target === "node" ? compactLiveNodeMenu(built) : built;
       setEditing(null);
       setMenu(items.length ? { x: e.clientX, y: e.clientY, items, label: `${ctx.target} menu` } : null);
     },
-    [editor, screenToFlowPosition, readOnly],
+    [editor, screenToFlowPosition, readOnly, live],
   );
 
   const onPaneContextMenu = useCallback(
@@ -384,7 +387,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const selectedEdges = useMemo(() => edges.filter((e) => e.selected), [edges]);
   const nothingSelected = !selectedNodes.length && !selectedGroups.length && !selectedEdges.length;
   const paletteHidden = paletteCollapsed || (live && !openedByHand.palette);
-  const inspectorHidden = !prefs.inspector || ((live || (narrow && nothingSelected)) && !openedByHand.inspector);
+  const inspectorHidden =
+    livePanelOpen || !prefs.inspector || ((live || (narrow && nothingSelected)) && !openedByHand.inspector);
   const labels = useMemo(() => new Map(diagramNodes.map((n) => [n.id, n.data.label || n.id])), [diagramNodes]);
   // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel).
   const ariaNodes = useMemo(() => withNodeAria(nodes), [nodes]);
@@ -529,11 +533,22 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
               />
             )}
             <LiveView
+              readOnly={readOnly}
               editor={readOnly ? undefined : editor}
               diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
               presenting={presenting}
               simulations={meta.simulations}
               onLiveChange={setLive}
+              onPanelChange={setLivePanelOpen}
+              onSaveDiagram={
+                readOnly
+                  ? undefined
+                  : (diagram) => {
+                      const mod = JSON.stringify(diagram) !== originalJson;
+                      writeAutosave(slug, mod ? diagram : null);
+                      setModified(mod);
+                    }
+              }
             />
           </ReactFlow>
 

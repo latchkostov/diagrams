@@ -11,6 +11,8 @@ const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item
 async function openNodeMenu(page: Page, nodeId: string) {
   await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
   await expect(page.getByTestId("context-menu")).toBeVisible();
+  const simulation = menuItem(page, "sim.node");
+  if (await simulation.count()) await simulation.click();
 }
 
 const processed = async (page: Page, nodeId: string) =>
@@ -18,6 +20,7 @@ const processed = async (page: Page, nodeId: string) =>
 
 test.describe("live view", () => {
   test("the Live toggle (and L) shows and hides the controls", async ({ page, consoleErrors }) => {
+    await page.clock.install();
     await gotoCanvas(page, KAFKA);
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
     await page.getByTestId("live-toggle").click();
@@ -41,6 +44,8 @@ test.describe("live view", () => {
     await page.getByTestId("live-exit").click();
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
 
+    // Let the exit refit finish: viewport movement closes any open context menu.
+    await page.clock.runFor(1000);
     // The Simulation menu section exists only while live.
     await openNodeMenu(page, "payments");
     await expect(page.getByTestId("context-menu")).not.toContainText("Simulation");
@@ -141,8 +146,18 @@ test.describe("live view", () => {
     await expect(page.getByTestId("sim-panel-dirty")).toHaveCount(0);
     await expect(page.getByTestId("live-sim-picker")).toContainText("Month-end storm");
 
-    // Autosave runs ~300 ms after the edit.
-    await page.waitForTimeout(700);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const saved = JSON.parse(
+            localStorage.getItem("diagrams.autosave.v1:azure-service-bus-integration") ?? "null",
+          ) as { simulations?: { title: string; traffic: { messageType: string }[] }[] } | null;
+          return saved?.simulations?.some(
+            (sim) => sim.title === "Month-end storm" && sim.traffic[0].messageType === "MemberJoined",
+          );
+        }),
+      )
+      .toBe(true);
     await page.reload();
     await expect(page.getByTestId("live-controls")).toBeVisible();
     await expect(page.getByTestId("live-sim-picker")).toContainText("Month-end storm");
@@ -179,9 +194,293 @@ test.describe("live view", () => {
     await page.getByTestId("edge-label-order-events-to-payments").click({ button: "right" });
     await menuItem(page, "sim.trace").click();
     await expect(page.getByTestId("live-trace")).toBeVisible();
+    const unrelatedNode = page.getByTestId("node-inventory");
+    const downstreamNode = page.getByTestId("node-payments");
+    const unrelatedEdge = page.getByTestId("edge-order-events-to-inventory");
+    const tracedEdge = page.getByTestId("edge-order-events-to-payments");
+    const nodeDecoration = (id: string) =>
+      page.getByTestId(id).evaluate((el) => ({
+        dim: el.closest("[data-id]")?.getAttribute("data-live-dim"),
+        opacity: getComputedStyle(el.closest("[data-id]") ?? el).opacity,
+      }));
+    const edgeDecoration = (id: string) =>
+      page.getByTestId(id).evaluate((el) => {
+        const edge = el.closest("[data-id]") ?? el;
+        return {
+          dim: edge.getAttribute("data-live-dim"),
+          trace: edge.getAttribute("data-live-trace"),
+          opacity: getComputedStyle(edge).opacity,
+        };
+      });
+    await expect(unrelatedNode).toBeVisible();
+    await expect(downstreamNode).toBeVisible();
+    await expect(unrelatedEdge).toBeVisible();
+    await expect(tracedEdge).toBeVisible();
+    await expect.poll(() => nodeDecoration("node-inventory")).toMatchObject({ dim: "1" });
+    await expect.poll(() => nodeDecoration("node-payments")).toMatchObject({ dim: null, opacity: "1" });
+    await expect.poll(() => edgeDecoration("edge-order-events-to-inventory")).toMatchObject({ dim: "1" });
+    await expect
+      .poll(() => edgeDecoration("edge-order-events-to-payments"))
+      .toMatchObject({ dim: null, trace: "1", opacity: "1" });
+    await expect
+      .poll(() => edgeDecoration("edge-payments-to-payment-db"))
+      .toMatchObject({ dim: null, trace: "1", opacity: "1" });
+    expect(Number((await nodeDecoration("node-inventory")).opacity)).toBeLessThan(1);
+    expect(Number((await edgeDecoration("edge-order-events-to-inventory")).opacity)).toBeLessThan(1);
     await page.getByTestId("live-trace-clear").click();
     await expect(page.getByTestId("live-trace")).toHaveCount(0);
+    await expect.poll(() => nodeDecoration("node-inventory")).toMatchObject({ dim: null, opacity: "1" });
+    await expect
+      .poll(() => edgeDecoration("edge-order-events-to-inventory"))
+      .toMatchObject({ dim: null, opacity: "1" });
+    await expect.poll(() => edgeDecoration("edge-order-events-to-payments")).toMatchObject({ trace: null });
+    await expect.poll(() => edgeDecoration("edge-payments-to-payment-db")).toMatchObject({ trace: null, opacity: "1" });
     expectNoErrors(consoleErrors);
+  });
+
+  test("keyboard focus exposes detailed metrics and their description", async ({ page }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    const node = page.getByTestId("node-inventory");
+    await node.evaluate((el) => el.closest<HTMLElement>("[data-id]")?.focus());
+    await expect(page.getByTestId("node-detail-inventory")).toBeVisible();
+    await expect(page.getByTestId("node-detail-inventory")).toContainText("In flight");
+    const tooltip = await page.getByTestId("node-detail-inventory").getAttribute("id");
+    expect(tooltip).toBeTruthy();
+    expect(await node.evaluate((el) => el.closest("[data-id]")?.getAttribute("aria-describedby"))).toContain(tooltip);
+    await page.getByTestId("live-play").focus();
+    await page.mouse.move(0, 0);
+    await expect(page.getByTestId("node-detail-inventory")).toHaveCount(0);
+    expect(await node.evaluate((el) => el.closest("[data-id]")?.getAttribute("aria-describedby"))).not.toContain(
+      tooltip,
+    );
+  });
+
+  test("timeline action controls have accessible names", async ({ page }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await openNodeMenu(page, "inventory");
+    await menuItem(page, "sim.storm").click();
+    await page.getByTestId("sim-panel-section-timeline-toggle").click();
+    await page.getByTestId("sim-panel-add-step").click();
+    const action = page.getByTestId("sim-panel-step-0-action");
+    await expect(action).toHaveAccessibleName("Action");
+    await action.selectOption("status");
+    await expect(page.getByTestId("sim-panel-step-0-node")).toHaveAccessibleName("Target node");
+    await expect(page.getByTestId("sim-panel-step-0-status")).toHaveAccessibleName("Status");
+    await action.selectOption("props");
+    await expect(page.getByTestId("sim-panel-step-0-prop")).toHaveAccessibleName("Property");
+  });
+
+  test("leaving live authoring restores the inspector preference", async ({ page }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await openNodeMenu(page, "inventory");
+    await menuItem(page, "sim.storm").click();
+    await expect(page.getByTestId("sim-panel")).toBeVisible();
+    await page.getByTestId("live-exit").click();
+    await expect
+      .poll(() =>
+        page.evaluate(() => JSON.parse(localStorage.getItem("diagrams.editor.v1") ?? "{}").inspector as boolean),
+      )
+      .toBe(true);
+    await page.reload();
+    await expect(page.getByTestId("inspector-title")).toBeVisible();
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await openNodeMenu(page, "inventory");
+    await menuItem(page, "sim.storm").click();
+    await page.getByTestId("example-picker").selectOption("azure-service-bus-integration");
+    await expect
+      .poll(() =>
+        page.evaluate(() => JSON.parse(localStorage.getItem("diagrams.editor.v1") ?? "{}").inspector as boolean),
+      )
+      .toBe(true);
+  });
+
+  test("read-only embeds require live=1 to expose Live", async ({ page }) => {
+    await page.goto(`./?embed=1&example=${KAFKA}`);
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await expect(page.getByTestId("live-toggle")).toHaveCount(0);
+    await page.keyboard.press("l");
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    await page.goto(`./?embed=1&example=${KAFKA}&sim=black-friday`);
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    await page.goto(`./?embed=1&example=${KAFKA}&live=1`);
+    await expect(page.getByTestId("live-toggle")).toBeVisible();
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+  });
+
+  test("custom injection is a labelled modal that traps focus and restores it on close", async ({ page }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    const open = async () => {
+      await openNodeMenu(page, "inventory");
+      await menuItem(page, "sim.inject").click();
+      await menuItem(page, "sim.inject:custom").click();
+    };
+    await open();
+    const dialog = page.getByTestId("live-inject-dialog");
+    await expect(dialog).toHaveAttribute("role", "dialog");
+    await expect(dialog).toHaveAttribute("aria-modal", "true");
+    await expect(dialog).toHaveAccessibleName(/Inject at Inventory/);
+    await expect(page.getByTestId("live-inject-count")).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByTestId("live-inject-submit")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("live-inject-count")).toBeFocused();
+    expect(await page.getByTestId("live-play").evaluate((el) => !!el.closest("[inert]"))).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    expect(
+      await page.getByTestId("node-inventory").evaluate((el) => el.closest("[data-id]") === document.activeElement),
+    ).toBe(true);
+    expect(await page.getByTestId("live-play").evaluate((el) => !!el.closest("[inert]"))).toBe(false);
+    await open();
+    await page.getByTestId("live-inject-cancel").click();
+    await expect(dialog).toHaveCount(0);
+    expect(
+      await page.getByTestId("node-inventory").evaluate((el) => el.closest("[data-id]") === document.activeElement),
+    ).toBe(true);
+  });
+
+  test("scrubbing previews without replaying until pointer or keyboard release", async ({ page }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&sim=black-friday&paused=1`);
+    const input = page.getByTestId("live-timeline-input");
+    const clock = page.getByTestId("live-clock");
+    await expect(input).toBeVisible();
+    const start = await clock.getAttribute("data-ms");
+    await input.focus();
+    for (const fraction of [300, 450, 600]) {
+      await input.evaluate((el, value) => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(el, String(value));
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      }, fraction);
+    }
+    await expect(input).toHaveValue("600");
+    if (start === null) throw new Error("Missing clock");
+    await expect(clock).toHaveAttribute("data-ms", start);
+    await input.dispatchEvent("pointerup");
+    await expect.poll(async () => Number(await clock.getAttribute("data-ms"))).toBeGreaterThan(1000);
+    const committed = await clock.getAttribute("data-ms");
+    await page.keyboard.down("ArrowLeft");
+    if (committed === null) throw new Error("Missing clock");
+    await expect(clock).toHaveAttribute("data-ms", committed);
+    await page.keyboard.up("ArrowLeft");
+    await expect.poll(() => clock.getAttribute("data-ms")).not.toBe(committed);
+  });
+
+  test("saved simulation survives immediate diagram navigation", async ({ page }) => {
+    await page.goto("./?view=canvas&example=azure-service-bus-integration&live=1&traffic=0");
+    await openNodeMenu(page, "ingest");
+    await menuItem(page, "sim.storm").click();
+    await page.getByTestId("sim-panel-title").fill("Immediate storm");
+    await page.getByTestId("sim-panel-traffic-0-type").fill("ImmediateEvent");
+    await page.getByTestId("sim-panel-traffic-0-count").fill("37");
+    await page.getByTestId("sim-panel-traffic-0-spread").fill("2.5");
+    await page.clock.install();
+    await page.clock.pauseAt(new Date());
+    await page.getByTestId("sim-panel-save").click();
+    await page.getByTestId("example-picker").selectOption(KAFKA);
+    await page.getByTestId("example-picker").selectOption("azure-service-bus-integration");
+    await page.clock.resume();
+    if (!(await page.getByTestId("live-controls").count())) await page.getByTestId("live-toggle").click();
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await page.getByTestId(/^sim-panel-edit-storm-/).click();
+    await expect(page.getByTestId("sim-panel-title")).toHaveValue("Immediate storm");
+    await expect(page.getByTestId("sim-panel-traffic-0-type")).toHaveValue("ImmediateEvent");
+    await expect(page.getByTestId("sim-panel-traffic-0-count")).toHaveValue("37");
+    await expect(page.getByTestId("sim-panel-traffic-0-spread")).toHaveValue("2.5");
+  });
+
+  test("live node menus group simulation actions and stay within the chrome budget", async ({ page }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await page.getByTestId("node-inventory").click({ button: "right" });
+    await expect(menuItem(page, "sim.node")).toBeVisible();
+    const countLevel = async () => {
+      const counts = await page
+        .getByTestId(/^context-menu(?:-sub)*$/)
+        .evaluateAll((menus) =>
+          menus.map((menu) => menu.querySelectorAll('[data-testid^="context-menu-item-"]').length),
+        );
+      expect(counts.length).toBeGreaterThan(0);
+      for (const count of counts) {
+        expect(count).toBeGreaterThan(0);
+        expect(count).toBeLessThanOrEqual(12);
+      }
+    };
+    await countLevel();
+    await menuItem(page, "sim.node").click();
+    await countLevel();
+    await menuItem(page, "sim.behaviour").click();
+    await countLevel();
+    await menuItem(page, "sim.concurrency").click();
+    await countLevel();
+  });
+
+  test("filled live badges meet AA contrast throughout the heat gradient in both themes", async ({ page }) => {
+    await gotoLab(page, "live-badge-states");
+    const metric = page.getByTestId("node-metric-orders");
+    const alert = page.getByTestId("node-alert-worker");
+    await expect(metric).toBeVisible();
+    await expect(alert).toBeVisible();
+    await page.getByTestId("live-play").click();
+    for (const theme of ["light", "dark"]) {
+      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
+        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
+      );
+      const contrasts = await metric.evaluate((el) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 1;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Missing color context");
+        const luminance = (color: string) => {
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = color;
+          ctx.fillRect(0, 0, 1, 1);
+          const channels = Array.from(ctx.getImageData(0, 0, 1, 1).data)
+            .slice(0, 3)
+            .map((channel) => {
+              const c = channel / 255;
+              return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+            });
+          return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+        };
+        const metric = el as HTMLElement;
+        metric.style.transition = "none";
+        const values = [];
+        for (let step = 0; step <= 100; step++) {
+          metric.style.setProperty("--heat", String(step / 100));
+          const bg = luminance(getComputedStyle(metric).backgroundColor);
+          for (const text of [metric, metric.firstElementChild ?? metric]) {
+            const fg = luminance(getComputedStyle(text).color);
+            values.push((Math.max(bg, fg) + 0.05) / (Math.min(bg, fg) + 0.05));
+          }
+        }
+        return values;
+      });
+      expect(Math.min(...contrasts)).toBeGreaterThanOrEqual(4.5);
+      const alertColors = await alert.evaluate((el) => {
+        const ctx = document.createElement("canvas").getContext("2d");
+        if (!ctx) throw new Error("Missing color context");
+        const luminance = (color: string) => {
+          ctx.fillStyle = color;
+          ctx.fillRect(0, 0, 1, 1);
+          const rgb = Array.from(ctx.getImageData(0, 0, 1, 1).data)
+            .slice(0, 3)
+            .map((c) => {
+              c /= 255;
+              return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+            });
+          return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+        };
+        const style = getComputedStyle(el);
+        const bg = luminance(style.backgroundColor),
+          fg = luminance(style.color);
+        return (Math.max(bg, fg) + 0.05) / (Math.min(bg, fg) + 0.05);
+      });
+      expect(alertColors).toBeGreaterThanOrEqual(4.5);
+      if (theme === "light") await page.getByTestId("theme-toggle").click();
+    }
   });
 
   test("Lab presets render the live view", async ({ page, consoleErrors }) => {

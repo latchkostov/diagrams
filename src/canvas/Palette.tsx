@@ -8,6 +8,7 @@ import { searchStencils } from "../lib/stencilSearch";
 import { pushRecentStencil, useRecentStencils } from "../lib/recentStencils";
 import { rememberCanvas, STENCIL_DND_MIME, takePendingStencils } from "../lib/canvasBridge";
 import { Icon } from "../components/Icon";
+import { safeStorage } from "../lib/storage";
 
 export { STENCIL_DND_MIME };
 
@@ -17,13 +18,13 @@ const SECTIONS_KEY = "diagrams.paletteSections.v1";
 const PENDING_DELAY = 260;
 
 function readFamily(): FamilyId | "all" {
-  const v = localStorage.getItem(FAMILY_KEY);
+  const v = safeStorage.getItem(FAMILY_KEY);
   return isFamilyId(v) ? v : "all";
 }
 
 function readClosed(): StencilCategory[] {
   try {
-    const v = JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? "[]");
+    const v = JSON.parse(safeStorage.getItem(SECTIONS_KEY) ?? "[]");
     return Array.isArray(v) ? v : [];
   } catch {
     return [];
@@ -45,8 +46,12 @@ export function Palette({
   const [closed, setClosed] = useState<StencilCategory[]>(readClosed);
   const recentIds = useRecentStencils();
 
-  useEffect(() => localStorage.setItem(FAMILY_KEY, family), [family]);
-  useEffect(() => localStorage.setItem(SECTIONS_KEY, JSON.stringify(closed)), [closed]);
+  useEffect(() => {
+    safeStorage.setItem(FAMILY_KEY, family);
+  }, [family]);
+  useEffect(() => {
+    safeStorage.setItem(SECTIONS_KEY, JSON.stringify(closed));
+  }, [closed]);
 
   const onAddRef = useRef(onAdd);
   useLayoutEffect(() => {

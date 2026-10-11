@@ -256,7 +256,7 @@ function MenuPanel({
                 disabled={entry.disabled}
                 onClick={() => {
                   if (hasSub) return isOpen ? setSub(null) : openSub(k);
-                  onCloseAll(false);
+                  onCloseAll(true);
                   entry.onSelect?.();
                 }}
                 onMouseEnter={() => {

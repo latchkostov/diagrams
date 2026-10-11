@@ -11,9 +11,19 @@ import {
 import type { DiagramFile } from "../model/types";
 import type { CanvasHandle } from "../canvas/CanvasView";
 import type { View } from "../lib/urlState";
-import { getBindings, getImported, getOriginal, IMPORTED_SLUG, setBinding, SHARED_SLUG } from "../lib/diagramIO";
+import {
+  bindSaveTarget,
+  getDiagramIdentity,
+  getSaveTarget,
+  getImported,
+  getOriginal,
+  IMPORTED_SLUG,
+  SHARED_SLUG,
+  type SaveTarget,
+} from "../lib/diagramIO";
 import { fromFlow, toFlow } from "../canvas/convert";
 import { actionRegistry, type Action, type MenuNode } from "../editor/actions";
+import { builtinActions } from "../editor/builtinActions";
 import { LIMITS, preserveUnknown, serializeNative, tooLargeMessage } from "./native";
 import { importText, OPEN_ACCEPT, type ImportOutcome } from "./formats";
 import {
@@ -57,7 +67,7 @@ interface Options {
   slug: string;
   canvas: RefObject<CanvasHandle | null>;
   /** Stores the diagram in a slot and shows it on the canvas. */
-  openSlot: (slot: Slot, d: DiagramFile) => void;
+  openSlot: (slot: Slot, d: DiagramFile, target?: SaveTarget) => void;
   /** Public examples can be embedded by name. */
   isPublicExample: (slug: string) => boolean;
 }
@@ -92,40 +102,33 @@ const normalized = (d: DiagramFile) => {
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 const loadDrive = () => import("./gdrive/google");
 
-export function useInterop({ view, slug, canvas, openSlot, isPublicExample }: Options) {
+export function useInterop({ view, slug, canvas: canvasRef, openSlot, isPublicExample }: Options) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
-  // Device file handles per slot (in memory: handles can't go to localStorage). A stable Map held in state.
-  const [handles] = useState(() => new Map<string, FileHandle>());
-  const [bindingVersion, setBindingVersion] = useState(0);
+  const [, setBindingVersion] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const fsSupported = useMemo(() => fsAccessSupported(), []);
 
-  const binding: Binding | undefined = useMemo(() => {
-    void bindingVersion;
-    const h = handles.get(slug);
-    if (h) return { kind: "device", name: h.name };
-    const d = getBindings()[slug];
-    return d && driveEnabled ? { kind: "drive", name: d.name } : undefined;
-  }, [slug, bindingVersion, handles]);
+  const target = getSaveTarget(slug);
+  const binding: Binding | undefined =
+    target?.kind === "device"
+      ? { kind: "device", name: target.handle.name }
+      : target?.kind === "drive" && driveEnabled
+        ? { kind: "drive", name: target.name }
+        : undefined;
 
-  const bind = useCallback(
-    (target: string, b: { handle?: FileHandle; drive?: { id: string; name: string } } | null) => {
-      handles.delete(target);
-      setBinding(target, null);
-      if (b?.handle) handles.set(target, b.handle);
-      if (b?.drive) setBinding(target, { kind: "drive", ...b.drive });
-      setBindingVersion((v) => v + 1);
-    },
-    [handles],
-  );
+  const bind = useCallback((target: string, destination: SaveTarget, identity: string) => {
+    const bound = bindSaveTarget(target, destination, identity);
+    if (bound) setBindingVersion((v) => v + 1);
+    return bound;
+  }, []);
 
   // ---------------------------------------------------------------- export
 
   const current = useCallback((): DiagramFile => {
-    const d = canvas.current?.getDiagram();
+    const d = canvasRef.current?.getDiagram();
     if (!d) throw new Error("Open a diagram on the canvas first.");
     return preserveUnknown(d, getOriginal(slug));
-  }, [canvas, slug]);
+  }, [canvasRef, slug]);
 
   const baseName = useCallback(
     (d: DiagramFile) => (slug === IMPORTED_SLUG || slug === SHARED_SLUG ? slugify(d.title) : slug),
@@ -211,7 +214,7 @@ export function useInterop({ view, slug, canvas, openSlot, isPublicExample }: Op
       const d = current();
       // Embed by name only when the example is public and unedited (the viewer shows the original).
       const original = getOriginal(slug);
-      const pristine = !!original && normalized(original) === JSON.stringify(canvas.current?.getDiagram());
+      const pristine = !!original && normalized(original) === JSON.stringify(canvasRef.current?.getDiagram());
       setDialog({ kind: "embed", diagram: d, example: isPublicExample(slug) && pristine ? slug : undefined });
     });
 
@@ -227,7 +230,9 @@ export function useInterop({ view, slug, canvas, openSlot, isPublicExample }: Op
         toast.success(`Downloaded ${name}. (This browser can't save over a file, so each save is a new download.)`);
         return;
       }
-      const existing = handles.get(slug);
+      const identity = getDiagramIdentity(slug);
+      const target = getSaveTarget(slug);
+      const existing = target?.kind === "device" ? target.handle : undefined;
       if (existing && !as) {
         await writeHandle(existing, text);
         toast.success(`Saved to ${existing.name}.`);
@@ -235,23 +240,28 @@ export function useInterop({ view, slug, canvas, openSlot, isPublicExample }: Op
       }
       const handle = await saveWithPicker(text, name);
       if (!handle) return;
-      bind(slug, { handle });
-      toast.success(`Saved to ${handle.name}. Ctrl+S saves here again.`);
+      const bound = bind(slug, { kind: "device", handle }, identity);
+      toast.success(
+        bound
+          ? `Saved to ${handle.name}. Ctrl+S saves here again.`
+          : `Saved “${d.title}” to ${handle.name}. The open diagram has changed; save it separately.`,
+      );
     });
 
   const saveToDrive = (asNew = false) =>
     attempt("save to Google Drive", async () => {
       const d = current();
+      const identity = getDiagramIdentity(slug);
+      const stored = getSaveTarget(slug);
       const { driveClient } = await loadDrive();
       const busy = toast.busy("Saving to Google Drive…");
-      const stored = getBindings()[slug];
       const content = serializeNative(d);
       const file =
-        stored && !asNew
+        stored?.kind === "drive" && !asNew
           ? await driveClient().update(stored.id, { content, mimeType: NATIVE_MIME })
           : await driveClient().create({ name: `${baseName(d)}.diagram.json`, mimeType: NATIVE_MIME, content });
       toast.dismiss(busy);
-      bind(slug, { drive: { id: file.id, name: file.name } });
+      bind(slug, { kind: "drive", id: file.id, name: file.name }, identity);
       toast.success(
         `Saved to Google Drive as ${file.name}.`,
         file.webViewLink
@@ -268,7 +278,7 @@ export function useInterop({ view, slug, canvas, openSlot, isPublicExample }: Op
 
   /** Ctrl+S: back to wherever this diagram came from / was last saved, else ask. */
   const save = () => {
-    if (!handles.has(slug) && driveEnabled && getBindings()[slug]) return saveToDrive();
+    if (driveEnabled && getSaveTarget(slug)?.kind === "drive") return saveToDrive();
     return saveToDevice();
   };
 
@@ -285,21 +295,27 @@ export function useInterop({ view, slug, canvas, openSlot, isPublicExample }: Op
         return;
       }
       try {
-        openSlot(IMPORTED_SLUG, outcome.diagram);
+        const target: SaveTarget | undefined =
+          outcome.format !== "native"
+            ? undefined
+            : source.handle
+              ? { kind: "device", handle: source.handle }
+              : source.drive
+                ? { kind: "drive", ...source.drive }
+                : undefined;
+        openSlot(IMPORTED_SLUG, outcome.diagram, target);
       } catch (err) {
         toast.error(`Couldn't import ${source.name}. ${message(err)}`);
         return;
       }
       setDialog(null);
-      // Only native files are saved back in place; a .drawio stays untouched (Save asks for a new file).
-      bind(IMPORTED_SLUG, outcome.format === "native" ? { handle: source.handle, drive: source.drive } : null);
       const note = outcome.warnings.length
         ? ` ${outcome.warnings[0]}${outcome.warnings.length > 1 ? ` (+${outcome.warnings.length - 1} more)` : ""}`
         : "";
       const from = outcome.format === "native" ? "" : ` from ${outcome.format === "drawio" ? "draw.io" : "Mermaid"}`;
       toast.info(`Imported “${outcome.diagram.title}”${from}.${note}`, { duration: note ? 7000 : undefined });
     },
-    [openSlot, bind],
+    [openSlot],
   );
 
   const importFile = useCallback(
@@ -357,14 +373,13 @@ export function useInterop({ view, slug, canvas, openSlot, isPublicExample }: Op
         const d = await decodeShare(payload);
         setDialog(null);
         openSlot(SHARED_SLUG, d);
-        bind(SHARED_SLUG, null);
         toast.info(`Opened the shared diagram “${d.title}”. It's kept apart from your own diagrams.`);
       } catch (err) {
         toast.dismiss(busy);
         toast.error(message(err));
       }
     },
-    [openSlot, bind],
+    [openSlot],
   );
 
   const openShareLinkInput = useCallback(
@@ -395,7 +410,6 @@ export function useInterop({ view, slug, canvas, openSlot, isPublicExample }: Op
     attempt("keep a copy", () => {
       const d = current();
       openSlot(IMPORTED_SLUG, d);
-      bind(IMPORTED_SLUG, null);
       toast.success(`Kept a copy: “${d.title}” is now your imported diagram.`);
     });
 
@@ -451,21 +465,6 @@ export function useInterop({ view, slug, canvas, openSlot, isPublicExample }: Op
     return () => window.removeEventListener("keydown", onKey);
   }, [view]);
 
-  // ---------------------------------------------------------------- canvas context menu
-
-  useEffect(() => {
-    let off: (() => void) | undefined;
-    let cancelled = false;
-    // Register after the canvas module (and its built-in actions) loaded, so ours replace "canvas.export".
-    void import("../canvas/CanvasView").then(() => {
-      if (!cancelled) off = actionRegistry.register(canvasActions(() => apiRef.current));
-    });
-    return () => {
-      cancelled = true;
-      off?.();
-    };
-  }, []);
-
   // ---------------------------------------------------------------- rendering
 
   const layer: ReactNode = (
@@ -517,6 +516,25 @@ export function useInterop({ view, slug, canvas, openSlot, isPublicExample }: Op
 
 export type Interop = ReturnType<typeof useInterop>;
 type InteropApi = Omit<Interop, "layer">;
+
+/** Registers built-ins before extensions when an editable canvas attaches, without importing its rendering module. */
+export function useInteropCanvasActions(canvasRef: RefObject<CanvasHandle | null>, api: InteropApi) {
+  const apiRef = useRef(api);
+  useLayoutEffect(() => {
+    apiRef.current = api;
+  });
+  const unregister = useRef<(() => void) | undefined>(undefined);
+  return useCallback(
+    (handle: CanvasHandle | null) => {
+      canvasRef.current = handle;
+      unregister.current?.();
+      unregister.current = handle
+        ? actionRegistry.register([...builtinActions(), ...canvasActions(() => apiRef.current)])
+        : undefined;
+    },
+    [canvasRef],
+  );
+}
 
 /** File entries for the canvas right-click menu (same names and order as the top bar's File menu). */
 function canvasActions(get: () => InteropApi): Action[] {

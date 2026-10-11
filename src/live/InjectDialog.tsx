@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLive } from "./context";
 import { knownMessageTypes, suggestedMessageType } from "./storm";
@@ -20,12 +20,54 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
   const [type, setType] = useState(() => suggestedMessageType(d, request.nodeId));
   const [spread, setSpread] = useState(1);
   const first = useRef<HTMLInputElement>(null);
-  useEffect(() => first.current?.select(), []);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+  const panel = useRef<HTMLFormElement>(null);
+  const close = useRef(onClose);
+  useLayoutEffect(() => {
+    close.current = onClose;
   }, [onClose]);
+  useEffect(() => {
+    const el = panel.current;
+    if (!el) return;
+    const prev = document.activeElement as HTMLElement | null;
+    // A context-menu item may already have been removed. Restore to the originating node then.
+    const origin = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(request.nodeId)}"]`);
+    const background = Array.from(document.body.children).filter(
+      (child): child is HTMLElement => child instanceof HTMLElement && !child.contains(el),
+    );
+    const previous = background.map((child) => child.inert);
+    for (const child of background) child.inert = true;
+    first.current?.focus();
+    first.current?.select();
+    const onKey = (e: KeyboardEvent) => {
+      e.stopPropagation();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close.current();
+      }
+      if (e.key !== "Tab") return;
+      const controls = Array.from(
+        el.querySelectorAll<HTMLElement>('button, input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+      ).filter((control) => !control.hasAttribute("disabled") && !control.hidden);
+      const start = controls[0] ?? el;
+      const end = controls.at(-1) ?? el;
+      if (e.shiftKey && (document.activeElement === start || document.activeElement === el)) {
+        e.preventDefault();
+        end.focus();
+      } else if (!e.shiftKey && (document.activeElement === end || document.activeElement === el)) {
+        e.preventDefault();
+        start.focus();
+      }
+    };
+    el.addEventListener("keydown", onKey);
+    return () => {
+      el.removeEventListener("keydown", onKey);
+      background.forEach((child, i) => {
+        child.inert = previous[i];
+      });
+      const target = prev?.isConnected && prev !== document.body ? prev : origin;
+      if (target?.isConnected) target.focus();
+    };
+  }, [request.nodeId]);
 
   const submit = () => {
     const n = Math.max(1, Math.min(5000, Math.floor(count) || 1));
@@ -40,9 +82,15 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
     <div
       className="lv-modal-layer"
       onPointerDown={(e) => e.target === e.currentTarget && onClose()}
+      onContextMenu={(e) => e.preventDefault()}
       data-editor-overlay
     >
       <form
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="live-inject-title"
+        tabIndex={-1}
         className="lv-inject"
         style={{ left, top }}
         onSubmit={(e) => {
@@ -51,7 +99,7 @@ export function InjectDialog({ request, onClose }: { request: InjectRequest; onC
         }}
         data-testid="live-inject-dialog"
       >
-        <div className="lv-inject-title">
+        <div className="lv-inject-title" id="live-inject-title">
           <LiveIcon name="bolt" size={14} /> Inject at <strong>{node?.label ?? request.nodeId}</strong>
         </div>
         <label>

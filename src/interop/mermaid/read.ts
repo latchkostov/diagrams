@@ -9,6 +9,7 @@ import { catalog } from "../../stencils/catalog";
 import { layeredLayout } from "../../editor/layout";
 import { boundaryAround } from "../../editor/arrange";
 import { FALLBACK_STENCIL_ID, inferStencil } from "../infer";
+import { LIMITS, tooLargeMessage } from "../native";
 import { META_PREFIX, type MermaidMeta } from "./write";
 
 // Mermaid flowchart -> diagrams/v1. Supports `flowchart` / `graph` with any direction, node shapes,
@@ -201,6 +202,7 @@ class Scanner {
 }
 
 export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): MermaidImportResult {
+  if (src.length > LIMITS.maxTextChars) throw new MermaidError(tooLargeMessage(src.length));
   const warnings: string[] = [];
   let text = src.replace(/^\uFEFF/, "");
   let title: string | undefined;
@@ -248,10 +250,12 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
   const groups = new Map<string, PGroup>();
   const stack: string[] = [];
   let hidden = 0;
+  let linkWork = 0;
 
   const touch = (id: string): PNode => {
     let n = nodes.get(id);
     if (!n) {
+      if (nodes.size >= LIMITS.maxNodes) throw new MermaidError("This flowchart exceeds the node budget.");
       n = { id, order: nodes.size };
       nodes.set(id, n);
     }
@@ -320,6 +324,7 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
         id = `sg-${groups.size + 1}`;
       }
       if (groups.has(id)) id = `${id}-${groups.size + 1}`;
+      if (groups.size >= LIMITS.maxGroups) throw new MermaidError("This flowchart exceeds the group budget.");
       groups.set(id, { id, label, parent: stack[stack.length - 1] });
       stack.push(id);
       continue;
@@ -351,6 +356,10 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
       if (body.startsWith("~")) {
         hidden++;
       } else {
+        const product = left.length * right.length;
+        if (product > LIMITS.maxEdges - linkWork)
+          throw new MermaidError("This flowchart exceeds the edge budget before link expansion.");
+        linkWork += product;
         const kind = body.includes(".") ? "async" : "sync";
         for (const from of left) {
           for (const to of right) {

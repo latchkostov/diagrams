@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import { catalog } from "../../stencils/catalog";
+import { LIMITS } from "../native";
+import { bytesToBase64, deflateRaw, textToBytes } from "../codec";
 import { parseXml } from "../xml";
 import { drawioPageToDiagram, readDrawio } from "./read";
 import { diagramToDrawio } from "./write";
@@ -182,4 +184,32 @@ describe("round-trip: every public example through draw.io", () => {
       );
     });
   }
+});
+
+describe("draw.io review regressions", () => {
+  it("round-trips a self-loop edge", async () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Loop",
+      nodes: [{ id: "a", stencil: "generic.service", label: "A", x: 0, y: 0 }],
+      edges: [{ id: "loop", from: "a", to: "a", label: "again", kind: "async" }],
+    };
+    const imported = await importFirst(diagramToDrawio(d));
+    expect(imported.diagram.edges).toEqual(d.edges);
+    expect(imported.warnings.join(" ")).not.toMatch(/connector/);
+  });
+  it("uses one decompression allowance across compressed pages", async () => {
+    const page = `<mxGraphModel><root><!--${"x".repeat(Math.floor(LIMITS.maxInflatedBytes / 3))}--></root></mxGraphModel>`;
+    const compressed = bytesToBase64(await deflateRaw(textToBytes(encodeURIComponent(page))));
+    await expect(
+      readDrawio(`<mxfile>${Array.from({ length: 4 }, () => `<diagram>${compressed}</diagram>`).join("")}</mxfile>`),
+    ).rejects.toThrow(/too large|budget/);
+  });
+  it("bounds page count before decoding pages", async () => {
+    await expect(
+      readDrawio(
+        `<mxfile>${"<diagram><mxGraphModel><root/></mxGraphModel></diagram>".repeat(LIMITS.maxPages + 1)}</mxfile>`,
+      ),
+    ).rejects.toThrow(/page budget/);
+  });
 });

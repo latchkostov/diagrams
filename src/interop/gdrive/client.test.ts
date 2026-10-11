@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { LIMITS } from "../native";
 import { createDriveClient, DriveError, multipartBody } from "./client";
 import { readDriveConfig } from "./config";
 
@@ -134,5 +135,62 @@ describe("Drive config", () => {
     expect(
       readDriveConfig({ VITE_GOOGLE_CLIENT_ID: "x", VITE_GOOGLE_API_KEY: "k", VITE_GOOGLE_APP_ID: "987" })?.appId,
     ).toBe("987");
+  });
+});
+
+describe("Drive download size budgets", () => {
+  it("rejects oversized metadata before requesting the content", async () => {
+    const { c, calls } = client([{ status: 200, body: { id: "f", name: "x", size: String(LIMITS.maxTextChars + 1) } }]);
+    await expect(c.download("f")).rejects.toThrow(/too large/);
+    expect(calls).toHaveLength(1);
+  });
+  it("cancels a response with excessive Content-Length without reading it", async () => {
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({ cancel });
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "f", name: "x" })))
+      .mockResolvedValueOnce(new Response(stream, { headers: { "Content-Length": String(LIMITS.maxTextChars + 1) } }));
+    const c = createDriveClient({ fetch, getToken: async () => "t" });
+    await expect(c.download("f")).rejects.toThrow(/too large/);
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+  it("cancels unknown-size streaming input as soon as the byte budget is exceeded", async () => {
+    const cancel = vi.fn();
+    let reads = 0;
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          reads++;
+          controller.enqueue(new Uint8Array(1_000_000));
+          if (reads === 12) controller.close();
+        },
+        cancel,
+      },
+      { highWaterMark: 0 },
+    );
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "f", name: "x" })))
+      .mockResolvedValueOnce(new Response(stream));
+    const c = createDriveClient({ fetch, getToken: async () => "t" });
+    await expect(c.download("f")).rejects.toThrow(/too large/);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(reads).toBe(9);
+  });
+  it("decodes multibyte characters split across streamed chunks", async () => {
+    const bytes = new TextEncoder().encode("A🙂B");
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes.slice(0, 3));
+        controller.enqueue(bytes.slice(3));
+        controller.close();
+      },
+    });
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "f", name: "x" })))
+      .mockResolvedValueOnce(new Response(stream));
+    expect((await createDriveClient({ fetch, getToken: async () => "t" }).download("f")).text).toBe("A🙂B");
   });
 });

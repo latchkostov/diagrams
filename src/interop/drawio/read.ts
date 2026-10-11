@@ -7,7 +7,7 @@ import {
   type Side,
 } from "../../model/types";
 import { catalog } from "../../stencils/catalog";
-import { base64ToBytes, bytesToText, inflateRaw, TooLargeError } from "../codec";
+import { base64ToBytes, bytesToText, inflateRaw, textToBytes, TooLargeError } from "../codec";
 import { LIMITS, tooLargeMessage } from "../native";
 import { FALLBACK_STENCIL_ID, inferStencil } from "../infer";
 import { childrenNamed, decodeEntities, findFirst, parseXml, XmlError, type XmlElement } from "../xml";
@@ -35,10 +35,20 @@ const stencilIds = new Set(catalog.map((s) => s.id));
 const stencilLabel = new Map(catalog.map((s) => [s.id, s.label]));
 
 /** Decodes one <diagram> body: base64 + raw deflate + URI encoding (draw.io's compressed form). */
-export async function decodeCompressedPage(text: string): Promise<string> {
+export async function decodeCompressedPage(
+  text: string,
+  maxBytes: number = LIMITS.maxInflatedBytes,
+  charge: (bytes: number) => void = () => {},
+): Promise<string> {
   const trimmed = text.trim();
-  if (trimmed.startsWith("<")) return trimmed;
-  if (/^%3C/i.test(trimmed)) return decodeURIComponent(trimmed);
+  if (trimmed.startsWith("<")) {
+    charge(textToBytes(trimmed).length);
+    return trimmed;
+  }
+  if (/^%3C/i.test(trimmed)) {
+    charge(textToBytes(trimmed).length);
+    return decodeURIComponent(trimmed);
+  }
   let bytes: Uint8Array;
   try {
     bytes = base64ToBytes(trimmed);
@@ -47,7 +57,9 @@ export async function decodeCompressedPage(text: string): Promise<string> {
   }
   let inflated: string;
   try {
-    inflated = bytesToText(await inflateRaw(bytes, LIMITS.maxInflatedBytes));
+    const output = await inflateRaw(bytes, maxBytes);
+    charge(output.length);
+    inflated = bytesToText(output);
   } catch (err) {
     if (err instanceof TooLargeError) throw new DrawioError(`A page in this draw.io file is too large. ${err.message}`);
     throw new DrawioError("A page in this draw.io file couldn't be decompressed. The file may be damaged.");
@@ -85,9 +97,16 @@ export async function readDrawio(text: string): Promise<DrawioDocument> {
     throw new DrawioError(`Expected a draw.io file (<mxfile>), but the document starts with <${root.name}>.`);
   const diagrams = childrenNamed(root, "diagram");
   if (!diagrams.length) throw new DrawioError("This draw.io file has no pages.");
+  if (diagrams.length > LIMITS.maxPages) throw new DrawioError("This draw.io file exceeds the page budget.");
+  // Plain XML is already bounded by the input budget. Compressed pages share the remaining allowance.
+  let remaining: number = LIMITS.maxInflatedBytes - textToBytes(text).length;
+  const charge = (bytes: number) => {
+    remaining -= bytes;
+    if (remaining < 0) throw new TooLargeError("The draw.io document exceeds its total decompression budget.");
+  };
   const pages: DrawioPage[] = [];
   for (const [i, dg] of diagrams.entries()) {
-    const model = findFirst(dg, "mxGraphModel") ?? parse(await decodeCompressedPage(dg.text));
+    const model = findFirst(dg, "mxGraphModel") ?? parse(await decodeCompressedPage(dg.text, remaining, charge));
     if (model.name !== "mxGraphModel") throw new DrawioError(`Page ${i + 1} doesn't contain a diagram model.`);
     pages.push({ id: dg.attrs.id ?? `page-${i + 1}`, name: dg.attrs.name ?? `Page-${i + 1}`, model });
   }
@@ -426,7 +445,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     if (!c.edge) continue;
     const from = nodeFor(c.source);
     const to = nodeFor(c.target);
-    if (!from || !to || from === to) {
+    if (!from || !to) {
       dangling++;
       continue;
     }

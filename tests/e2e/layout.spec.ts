@@ -1,8 +1,9 @@
-import { test, expect, expectNoErrors, publicExamples, type Page } from "./fixtures";
+import type { Page } from "@playwright/test";
+import { test, expect, expectNoErrors, publicExamples } from "./fixtures";
 
 /**
- * Overlap audit on the real canvas. For every diagram in the example picker (read from the picker
- * itself, so this never names any diagram), at the default fit view, in both themes:
+ * Overlap audit on the real canvas. Only public fixtures from src/examples/*.json,
+ * at the default fit view, in both themes:
  *  - no two nodes overlap,
  *  - no edge label pill covers a node or another label,
  *  - no node sits under floating chrome (title card, minimap, zoom controls, live toggle).
@@ -20,13 +21,6 @@ interface Box {
 const TOL = 0.5;
 const overlaps = (a: Box, b: Box) =>
   a.x + TOL < b.x + b.width && b.x + TOL < a.x + a.width && a.y + TOL < b.y + b.height && b.y + TOL < a.y + a.height;
-
-async function pickerSlugs(page: Page): Promise<string[]> {
-  await page.goto("./?view=canvas");
-  const picker = page.getByTestId("example-picker");
-  await expect(picker).toBeVisible();
-  return picker.evaluate((el) => [...(el as HTMLSelectElement).options].map((o) => o.value));
-}
 
 /** Waits until the first node stops moving (fit-view animations done). */
 async function settle(page: Page) {
@@ -72,19 +66,17 @@ for (const theme of ["light", "dark"] as const) {
   test.describe(`layout audit (${theme})`, () => {
     test.use({ colorScheme: theme });
 
-    test(`every picker diagram is overlap-free at fit view (${theme})`, async ({ page, consoleErrors }) => {
+    test(`every public fixture is overlap-free at fit view (${theme})`, async ({ page, consoleErrors }) => {
       test.setTimeout(120_000);
-      const slugs = await pickerSlugs(page);
-      expect(slugs.length).toBeGreaterThan(0);
+      expect(publicExamples.length).toBeGreaterThan(0);
       const problems: string[] = [];
-      for (const slug of slugs) {
+      for (const { slug } of publicExamples) {
         await page.goto(`./?view=canvas&example=${encodeURIComponent(slug)}`);
         await expect(page.getByTestId("canvas-view")).toBeVisible();
         if ((await page.getByTestId(/^node-(?!editor)/).count()) === 0) continue;
         await settle(page);
         const { nodes, labels, panels } = await measure(page);
-        // Index, not slug, in messages: picker values can be local-only diagrams.
-        const tag = `diagram #${slugs.indexOf(slug) + 1}`;
+        const tag = slug;
         for (let i = 0; i < nodes.length; i++)
           for (let j = i + 1; j < nodes.length; j++)
             if (overlaps(nodes[i], nodes[j])) problems.push(`${tag}: node ${nodes[i].id} overlaps node ${nodes[j].id}`);
@@ -122,8 +114,8 @@ test("edges route around cards and labels never cover them after a drag", async 
 });
 
 test("the title card folds to a chip when nodes go under it", async ({ page }) => {
-  const slugs = await pickerSlugs(page);
-  await page.goto(`./?view=canvas&example=${encodeURIComponent(slugs[slugs.length - 1])}`);
+  await page.goto("./?view=lab&preset=edges-obstacles&cols=4&rows=3&gap=400");
+  await page.getByTestId("lab-open-editor").click();
   await settle(page);
   const card = page.getByTestId("diagram-card");
   await expect(card).not.toHaveAttribute("data-collapsed", "1");
@@ -163,3 +155,40 @@ test("auto-layout never produces overlaps", async ({ page, consoleErrors }) => {
   }
   expectNoErrors(consoleErrors);
 });
+
+for (const failure of ["read", "write"] as const) {
+  test(`palette stays usable when preference storage ${failure}s fail`, async ({ page, consoleErrors }) => {
+    await page.addInitScript((failure) => {
+      const check = (key: string) => {
+        if (key.startsWith("diagrams.palette"))
+          throw new DOMException(
+            "Preference storage unavailable",
+            failure === "read" ? "SecurityError" : "QuotaExceededError",
+          );
+      };
+      if (failure === "read") {
+        const original = Storage.prototype.getItem;
+        Storage.prototype.getItem = function (key: string) {
+          check(key);
+          return original.call(this, key);
+        };
+      } else {
+        const original = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (key: string, value: string) {
+          check(key);
+          original.call(this, key, value);
+        };
+      }
+    }, failure);
+    await page.goto(`./?view=canvas&example=${publicExamples[0].slug}`);
+    await expect(page.getByTestId("palette-family")).toHaveValue("all");
+    await page.getByTestId("palette-family").selectOption("aws");
+    await expect(page.getByTestId("palette-item-aws.sqs")).toBeVisible();
+    await page.getByTestId("palette-section-messaging").click();
+    await expect(page.getByTestId("palette-section-messaging")).toHaveAttribute("aria-expanded", "false");
+    await page.getByTestId("palette-search").fill("sqs");
+    await page.getByTestId("palette-search").press("Enter");
+    await expect(page.getByTestId("node-sqs-1")).toBeVisible();
+    expectNoErrors(consoleErrors);
+  });
+}

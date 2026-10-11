@@ -1,7 +1,6 @@
-import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
+import css from "./tokens.css?raw";
 
-const css = readFileSync(new URL("./tokens.css", import.meta.url), "utf8");
 function luminance(hex: string) {
   const rgb = [1, 3, 5].map((i) => {
     const v = parseInt(hex.slice(i, i + 2), 16) / 255;

@@ -91,6 +91,7 @@ export function NodeBadges({ state, presenting }: { state: LiveState; presenting
 function useHoveredNode(): string | null {
   const domNode = useStore((s) => s.domNode);
   const [id, setId] = useState<string | null>(null);
+  const [focused, setFocused] = useState<string | null>(null);
   useEffect(() => {
     if (!domNode) return;
     const over = (e: PointerEvent) => {
@@ -99,14 +100,23 @@ function useHoveredNode(): string | null {
       setId(el?.dataset.id ?? null);
     };
     const leave = () => setId(null);
+    const focus = () => {
+      const el = document.activeElement?.closest<HTMLElement>(".react-flow__node-diagram[data-id]");
+      setFocused(el?.dataset.id ?? null);
+    };
+    focus();
     domNode.addEventListener("pointerover", over);
     domNode.addEventListener("pointerleave", leave);
+    domNode.addEventListener("focusin", focus);
+    domNode.addEventListener("focusout", focus);
     return () => {
       domNode.removeEventListener("pointerover", over);
       domNode.removeEventListener("pointerleave", leave);
+      domNode.removeEventListener("focusin", focus);
+      domNode.removeEventListener("focusout", focus);
     };
   }, [domNode]);
-  return id;
+  return focused ?? id;
 }
 
 /** Consumer-group name → who consumes it, for the lag breakdown. */
@@ -132,6 +142,19 @@ interface BadgeProps {
 }
 
 const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency, groups }: BadgeProps) {
+  const domNode = useStore((store) => store.domNode);
+  const tooltipId = `live-node-detail-${encodeURIComponent(node.id)}`;
+  useEffect(() => {
+    if (!hovered || !domNode) return;
+    const el = domNode.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(node.id)}"]`);
+    if (!el) return;
+    const previous = el.getAttribute("aria-describedby");
+    el.setAttribute("aria-describedby", [previous, tooltipId].filter(Boolean).join(" "));
+    return () => {
+      if (previous === null) el.removeAttribute("aria-describedby");
+      else el.setAttribute("aria-describedby", previous);
+    };
+  }, [hovered, domNode, node.id, tooltipId]);
   const w = node.measured?.width ?? node.width ?? 220;
   const h = node.measured?.height ?? node.height ?? 72;
   const broker = BROKERS.has(s.role);
@@ -205,8 +228,8 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
         </div>
       )}
 
-      {hovered && active && (
-        <div className="lv-detail" role="tooltip" data-testid={`node-detail-${node.id}`}>
+      {hovered && (
+        <div id={tooltipId} className="lv-detail" role="tooltip" data-testid={`node-detail-${node.id}`}>
           <Row label={doneLabel[s.role]} value={formatCount(s.processed)} />
           <Row label="Throughput" value={formatRate(s.throughput)} />
           {broker ? (

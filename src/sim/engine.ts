@@ -6,6 +6,7 @@ import { Deque } from "./deque";
 import { mulberry32 } from "./rng";
 import type {
   EngineOptions,
+  EngineCheckpoint,
   NodeSimProps,
   NodeSimState,
   NodeStatus,
@@ -117,7 +118,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let seed = opts.seed ?? Math.floor(Math.random() * 4294967296);
   const roleOf = opts.roleOf ?? stencilRole;
   const maxParticles = Number.isFinite(opts.maxParticles) ? Math.max(0, Math.floor(opts.maxParticles!)) : 1500;
-  let random = mulberry32(seed);
+  let randomState = mulberry32(seed);
+  let randomCalls = 0;
+  const random = () => {
+    randomCalls++;
+    return randomState();
+  };
   const nodes = new Map<string, Node>();
   const edges: Edge[] = [];
   let trips: Trip[] = [];
@@ -132,6 +138,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let inSystem = 0;
   const events: SimEvent[] = [];
   let eventHead = 0;
+  let topology = 0;
+  const checkpoints = new WeakMap<EngineCheckpoint, () => void>();
   // Min-heap contains one entry per spread batch, not one per future message.
   const injections: Injection[] = [];
   const before = (a: Injection, b: Injection) => a.due < b.due || (a.due === b.due && a.order < b.order);
@@ -463,7 +471,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     injections.length = 0;
     events.length = 0;
     eventHead = 0;
-    random = mulberry32(seed);
+    randomCalls = 0;
+    randomState = mulberry32(seed);
     for (const node of nodes.values()) {
       node.pending.clear();
       node.working.length = 0;
@@ -489,6 +498,63 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   const engine: SimEngine = {
+    checkpoint() {
+      // structuredClone preserves the graph's shared/cyclic references. Deque methods are
+      // reattached on restore; its queue contents and head are ordinary own properties.
+      const graph = structuredClone({ nodes, edges, trips, injections, events });
+      const clock = {
+        time,
+        accumulator,
+        speed,
+        traffic,
+        drawn,
+        nextMessage,
+        nextParticle,
+        nextInjection,
+        inSystem,
+        eventHead,
+        seed,
+        randomCalls,
+        topology,
+      };
+      const token = Object.freeze({ time });
+      checkpoints.set(token, () => {
+        if (topology !== clock.topology) throw new Error("Checkpoint belongs to a previous diagram");
+        const copy = structuredClone(graph);
+        nodes.clear();
+        for (const [id, node] of copy.nodes) {
+          Object.setPrototypeOf(node.pending, Deque.prototype);
+          for (const group of node.groups) Object.setPrototypeOf(group.pending, Deque.prototype);
+          nodes.set(id, node);
+        }
+        edges.splice(0, edges.length, ...copy.edges);
+        trips = copy.trips;
+        injections.splice(0, injections.length, ...copy.injections);
+        events.splice(0, events.length, ...copy.events);
+        ({
+          time,
+          accumulator,
+          speed,
+          traffic,
+          drawn,
+          nextMessage,
+          nextParticle,
+          nextInjection,
+          inSystem,
+          eventHead,
+          seed,
+          randomCalls,
+        } = clock);
+        randomState = mulberry32((seed + Math.imul(randomCalls, 0x6d2b79f5)) >>> 0);
+      });
+      return token;
+    },
+    restore(checkpoint) {
+      const restore = checkpoints.get(checkpoint);
+      if (!restore) throw new Error("Checkpoint belongs to another engine");
+      restore();
+    },
+    effectiveProps: (nodeId) => structuredClone(nodes.get(nodeId)?.rawProps ?? {}),
     metrics: () => ({ time, inSystem, pendingInjections: injections.length }),
     measure(metric) {
       if ("system" in metric) return inSystem;
@@ -513,6 +579,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return node[metric.field];
     },
     load(diagram: DiagramFile): void {
+      topology++;
       nodes.clear();
       edges.length = 0;
       for (const input of diagram.nodes) {
@@ -665,7 +732,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     setNodeProps(nodeId: string, patch: NodeSimProps): void {
       const node = nodes.get(nodeId);
       if (!node) return;
-      Object.assign(node.rawProps, patch);
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === undefined) Reflect.deleteProperty(node.rawProps, key);
+        else node.rawProps[key] = structuredClone(value);
+      }
       node.props = resolveProps(node.role, node.label, node.rawProps);
     },
     setTraffic(on: boolean): void {
