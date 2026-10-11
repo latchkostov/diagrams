@@ -42,14 +42,30 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
   const list = useRef<HTMLOListElement>(null);
   const pinned = useRef(true);
   const rows = journey?.rows.length ?? 0;
+  useLayoutEffect(() => {
+    pinned.current = true;
+    const el = list.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [trace.rootId]);
   useEffect(() => {
     const el = list.current;
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
-  }, [rows]);
+  }, [rows, trace.rootId]);
 
   // With a side panel open the card heads the panel's column; the panel starts below it.
   const card = useRef<HTMLElement>(null);
   const shape = journey ? "journey" : "waiting";
+  const waitingFocus = useRef<HTMLElement | null>(null);
+  const rememberFocus = (target: EventTarget) => {
+    if (shape === "waiting" && target instanceof HTMLElement) waitingFocus.current = target;
+  };
+  useLayoutEffect(() => {
+    const focused = waitingFocus.current;
+    if (shape === "journey") {
+      if (focused && !focused.isConnected && document.activeElement === document.body) list.current?.focus();
+      waitingFocus.current = null;
+    }
+  }, [shape]);
   useLayoutEffect(() => {
     const el = card.current;
     const host = el?.closest<HTMLElement>(".react-flow");
@@ -73,6 +89,11 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
         style={room ? { maxHeight: room } : undefined}
         className="tr-card is-waiting"
         data-canvas-overlay
+        data-editor-overlay
+        onFocusCapture={(e) => rememberFocus(e.target)}
+        onBlurCapture={(e) => {
+          if (e.target === waitingFocus.current) waitingFocus.current = null;
+        }}
         data-overlay-height={TRACE_CARD_FOOTPRINT}
         data-testid="trace-card"
         data-state="waiting"
@@ -94,7 +115,7 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
                     : "Waiting for the next message…"}
             </span>
           </div>
-          <CloseButton onClose={onClose} />
+          <CloseButton key="close" onClose={onClose} />
         </header>
         {where && onSendOne && (
           <footer className="tr-foot">
@@ -116,6 +137,7 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
       className={`tr-card is-${status.key}`}
       // Fit view keeps its first rows clear; below them it stops above the diagram by itself.
       data-canvas-overlay
+      data-editor-overlay
       data-overlay-height={TRACE_CARD_FOOTPRINT}
       data-testid="trace-card"
       data-state={status.key}
@@ -133,7 +155,7 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
         <span className={`tr-status is-${status.key}`} data-testid="trace-status" data-status={status.key}>
           {status.label}
         </span>
-        <CloseButton onClose={onClose} />
+        <CloseButton key="close" onClose={onClose} />
       </header>
 
       <div className="tr-stats">

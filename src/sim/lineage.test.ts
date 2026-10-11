@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DiagramEdge, DiagramFile, DiagramNode, SimRole } from "../model/types";
 import { createEngine } from "./engine";
 import { MAX_STEPS } from "./lineage";
@@ -65,6 +65,110 @@ const poison = diagram(
 );
 
 describe("message lineage: recording", () => {
+  it.each([0, 2, 3, 160])(
+    "replacing and clearing explicit traces respects history %i, including paused families",
+    (history) => {
+      const e = engine(pipeline, { traceHistory: history });
+      e.setNodeStatus("work", "paused");
+      for (let i = 0; i < history + 20; i++) {
+        e.tracer.request({ next: "message" });
+        expect(e.tracer.recent().length).toBeLessThanOrEqual(history);
+        e.inject("src", 1);
+        run(e, 100);
+        expect(e.tracer.current()?.rootId).toBe(i + 1);
+        expect(e.tracer.recent().length).toBeLessThanOrEqual(Math.max(1, history));
+      }
+      e.tracer.clear();
+      expect(e.tracer.recent().length).toBeLessThanOrEqual(history);
+      e.setNodeStatus("work", "up");
+      run(e, 30_000);
+      expect(e.tracer.recent().length).toBeLessThanOrEqual(history);
+      // Finished explicit traces must use the same budget, too.
+      for (let i = 0; i < 20; i++) {
+        e.tracer.request({ next: "message" });
+        e.inject("src", 1);
+        run(e, 1000);
+        expect(e.tracer.current()?.done).toBe(true);
+        e.tracer.clear();
+        expect(e.tracer.recent().length).toBeLessThanOrEqual(history);
+      }
+    },
+  );
+
+  it("switching by live id or recorded root, and reducing history, protects only the current trace", () => {
+    const e = engine(pipeline, { traceHistory: 2 });
+    e.setNodeStatus("work", "paused");
+    e.inject("src", 8, { spreadMs: 100 });
+    for (let i = 0; i < 8; i++) {
+      run(e, 100);
+      expect(e.tracer.follow(i + 1)).toBe(i + 1);
+      expect(e.tracer.recent().length).toBeLessThanOrEqual(2);
+    }
+    e.tracer.followRoot(7);
+    expect(e.tracer.followed()).toBe(7);
+    e.tracer.setHistory(0);
+    expect(e.tracer.recent().map((r) => r.rootId)).toEqual([7]);
+    e.tracer.followRoot(99);
+    expect(e.tracer.recent()).toEqual([]);
+    expect(e.tracer.followed()).toBe(99);
+  });
+
+  it("checkpoints share trace steps instead of passing them through structuredClone", () => {
+    const e = engine(fanout, { traceHistory: 160 });
+    e.tracer.request({ next: "message" });
+    e.inject("src", 5);
+    run(e, 100);
+    const before = e.tracer.current();
+    const originalClone = globalThis.structuredClone;
+    let clonedSteps = 0;
+    const clone = vi
+      .spyOn(globalThis, "structuredClone")
+      .mockImplementation(<T>(value: T, options?: StructuredSerializeOptions): T => {
+        const payload = value as { lineage?: { store: Map<number, { trace?: MessageTrace }> } };
+        for (const family of payload.lineage?.store.values() ?? []) clonedSteps += family.trace?.steps.length ?? 0;
+        return originalClone(value, options);
+      });
+    const checkpoint = e.checkpoint();
+    // The graph preserves family identity, and its records share immutable steps with the engine.
+    const graph = clone.mock.calls[0][0] as { lineage: { store: Map<number, { trace?: MessageTrace }> } };
+    const copied = clone.mock.results[0].value as typeof graph;
+    const saved = [...copied.lineage.store.values()].map((f) => f.trace);
+    clone.mockRestore();
+    expect(clonedSteps).toBe(0);
+    expect(saved.some((t) => t?.steps.length)).toBe(true);
+    expect(saved[0]).toBe(graph.lineage.store.get(saved[0]!.rootId)?.trace);
+    run(e, 1000);
+    const after = e.tracer.current();
+    expect(after).not.toEqual(before);
+    e.restore(checkpoint);
+    expect(e.tracer.current()).toEqual(before);
+    run(e, 1000);
+    expect(e.tracer.current()).toEqual(after);
+    e.restore(checkpoint);
+    expect(e.tracer.current()).toEqual(before);
+  });
+
+  it("measures checkpoint playback with a large retained fan-out history", () => {
+    const branches = Array.from({ length: 100 }, (_, i) => node(`sink${i}`, "sink"));
+    const e = engine(
+      diagram(
+        [node("src", "source"), node("topic", "topic"), ...branches],
+        [edge("src", "topic"), ...branches.map((b) => edge("topic", b.id))],
+      ),
+      { traceHistory: 160 },
+    );
+    e.inject("src", 160);
+    run(e, 2000);
+    expect(e.tracer.recent()).toHaveLength(160);
+    const steps = e.tracer.recent().reduce((n, r) => n + e.tracer.get(r.rootId)!.steps.length, 0);
+    const start = performance.now();
+    for (let i = 0; i < 24; i++) {
+      e.step(16);
+      e.checkpoint();
+    }
+    const perCheckpoint = (performance.now() - start) / 24;
+    console.info(`trace checkpoint playback: ${steps} steps, ${perCheckpoint.toFixed(2)} ms/checkpoint`);
+  });
   it("records a linear journey hop by hop, with times, and finishes when the message is consumed", () => {
     const e = engine(pipeline);
     e.tracer.request({ next: "message", node: "src" });

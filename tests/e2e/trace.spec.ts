@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, expectNoErrors } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLab } from "./fixtures";
 
 // Message trace: follow one message (and its fan-out copies) hop by hop, then turn its journey into
 // a sequence diagram. Selectors are data-testid only.
@@ -55,6 +55,63 @@ async function traceKafkaOrder(page: Page) {
 }
 
 test.describe("message trace", () => {
+  test("focus in the trace card never moves or deletes the selected canvas node", async ({ page }) => {
+    await traceKafkaOrder(page);
+    const node = page.getByTestId("node-shopper");
+    await page.waitForTimeout(1000); // Let the trace refit finish before measuring the node.
+    const before = await rect(node);
+    await page.getByTestId("trace-hops-list").focus();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Delete");
+    await expect(node).toBeVisible();
+    const after = await rect(node);
+    expect(after.x).toBeCloseTo(before.x, 0);
+    expect(after.y).toBeCloseTo(before.y, 0);
+  });
+
+  test("starting a waiting trace preserves keyboard focus on its close control or transfers Send to hops", async ({
+    page,
+  }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await openNodeMenu(page, "shopper", "sim.trace-next");
+    await page.getByTestId("trace-send-one").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("trace-hops-list")).toBeFocused();
+    await page.getByTestId("trace-card-close").click();
+    await openNodeMenu(page, "shopper", "sim.trace-next");
+    await page.getByTestId("trace-card-close").focus();
+    // Trigger arrival without moving focus away from Close.
+    await page.getByTestId("trace-send-one").evaluate((el: HTMLButtonElement) => el.click());
+    await expect(page.getByTestId("trace-hops-list")).toBeVisible();
+    await expect(page.getByTestId("trace-card-close")).toBeFocused();
+    await page.getByTestId("trace-card-close").click();
+    await openNodeMenu(page, "shopper", "sim.trace-next");
+    await page.getByTestId("trace-send-one").focus();
+    await page.getByTestId("trace-send-one").evaluate((el: HTMLButtonElement) => el.blur());
+    await page.getByTestId("trace-send-one").evaluate((el: HTMLButtonElement) => el.click());
+    await expect(page.getByTestId("trace-hops-list")).toBeVisible();
+    await expect(page.getByTestId("trace-hops-list")).not.toBeFocused();
+  });
+
+  test("a replacement trace resets scroll-following even when its row count is unchanged", async ({ page }) => {
+    await gotoLab(page, "trace-card-interaction");
+    const list = page.getByTestId("trace-hops-list");
+    const count = await hops(page).count();
+    await list.evaluate((el) => {
+      el.scrollTop = 0;
+      el.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+    expect(await list.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeGreaterThan(24);
+    const oldRoot = await card(page).getAttribute("data-root");
+    await page.getByTestId("trace-lab-replace").click();
+    await expect(card(page)).not.toHaveAttribute("data-root", oldRoot ?? "");
+    await expect(hops(page)).toHaveCount(count);
+    await expect.poll(() => list.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(24);
+    await page.getByTestId("trace-lab-append").click();
+    await expect(hops(page)).toHaveCount(count + 1);
+    await expect.poll(() => list.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(24);
+  });
   test("a trace from a node's menu lists every hop, its copies and the total; Esc ends it", async ({
     page,
     consoleErrors,
@@ -99,6 +156,14 @@ test.describe("message trace", () => {
     await page.getByTestId("trace-sequence").click();
     const dialog = page.getByTestId("sequence-dialog");
     await expect(dialog).toBeVisible();
+    const details = page.getByTestId("sequence-accessible");
+    await expect(details).toHaveAttribute("aria-label", "Sequence details");
+    await expect(page.getByTestId("sequence-participants")).toContainText("Storefront");
+    await expect(page.getByTestId("sequence-messages")).toContainText("Storefront → Commerce gateway");
+    await expect(page.getByTestId("sequence-messages")).toContainText("OrderRequest");
+    await expect(page.getByTestId("sequence-messages")).toContainText("reply");
+    await expect(page.getByTestId("sequence-messages")).toContainText("arrives +0.20 s. HTTPS");
+    expect(await details.ariaSnapshot()).toContain("listitem");
     const view = page.getByTestId("sequence-view");
     const participants = Number(await view.getAttribute("data-participants"));
     expect(participants).toBeGreaterThanOrEqual(10);
@@ -189,6 +254,8 @@ test.describe("message trace", () => {
     expect((await hopAttr(page, "data-node")).at(-1)).toBe("dlq");
 
     await page.getByTestId("trace-sequence").click();
+    await expect(page.getByTestId("sequence-messages")).toContainText("failed");
+    await expect(page.getByTestId("sequence-messages")).toContainText("Dead-lettered");
     await expect(
       page
         .getByTestId("sequence-dialog")
@@ -206,11 +273,24 @@ test.describe("message trace", () => {
     await expect(page.getByTestId("live-controls")).toBeVisible();
     // A node card's on-screen width tells the zoom.
     const scaleOf = async () => (await page.getByTestId("node-shopper").boundingBox())?.width ?? 0;
+    // Initial fitting animates, too. Sample only after both scheduled fits have settled.
+    await page.waitForTimeout(1200);
     const before = await scaleOf();
     await openNodeMenu(page, "shopper", "sim.trace-next");
     await expect(page.getByTestId("trace-waiting")).toBeVisible();
     // The card opened and the view refitted: the wide diagram moved down, it didn't shrink.
-    await expect.poll(scaleOf).toBeGreaterThan(before * 0.95);
+    await page.waitForTimeout(1000); // 120 ms refit delay + 700 ms animation, plus frame margin.
+    expect(await scaleOf()).toBeGreaterThan(before * 0.95);
+    const traceBox = await rect(card(page));
+    for (const id of KAFKA_NODES) {
+      const nodeBox = await rect(page.getByTestId(`node-${id}`));
+      expect(
+        traceBox.x < nodeBox.x + nodeBox.width &&
+          nodeBox.x < traceBox.x + traceBox.width &&
+          traceBox.y < nodeBox.y + nodeBox.height &&
+          nodeBox.y < traceBox.y + traceBox.height,
+      ).toBe(false);
+    }
     await page.getByTestId("trace-send-one").click();
 
     // Sample the labels (pane px, from the canvas) against every node card while the order fans out.

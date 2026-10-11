@@ -75,6 +75,8 @@ export interface LiveTrace {
   current?: MessageTrace;
 }
 
+type TraceIntent = { kind: "idle" } | { kind: "root"; rootId: number } | { kind: "pending"; request: TraceRequest };
+
 export type DiagramUpdate = "none" | "patched" | "reloaded";
 
 /** Changes to these restart the engine; anything else (positions, groups, titles) doesn't touch it. */
@@ -276,9 +278,10 @@ export class LiveController {
   }
 
   /** Scrubbing restores older engine state: keep following the same message (ids are deterministic). */
-  private keepTrace(intent: { rootId?: number; pending?: TraceRequest }): void {
-    if (intent.rootId !== undefined) this.engine.tracer.followRoot(intent.rootId);
-    else if (intent.pending) this.engine.tracer.request(intent.pending);
+  private keepTrace(intent: TraceIntent): void {
+    if (intent.kind === "root") this.engine.tracer.followRoot(intent.rootId);
+    else if (intent.kind === "pending") this.engine.tracer.request(intent.request);
+    else this.engine.tracer.clear();
   }
 
   // ---------------------------------------------------------------- playback
@@ -364,7 +367,14 @@ export class LiveController {
     const target = Math.max(0, targetMs);
     this.cancelReplay();
     if (target < this.snapshot().time - 1) {
-      const intent = { rootId: this.engine.tracer.followed(), pending: this.engine.tracer.pending() };
+      const rootId = this.engine.tracer.followed(),
+        pending = this.engine.tracer.pending();
+      const intent: TraceIntent =
+        rootId !== undefined
+          ? { kind: "root", rootId }
+          : pending
+            ? { kind: "pending", request: pending }
+            : { kind: "idle" };
       const cp = [...this.checkpoints].reverse().find((cp) => cp.time <= target);
       if (cp) {
         this.runner.restore(cp);

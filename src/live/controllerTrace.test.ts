@@ -27,6 +27,40 @@ const play = (c: LiveController, ms: number) => {
 };
 
 describe("LiveController: message trace", () => {
+  it.each([5000, 6000, 0])(
+    "an ended trace stays closed after seeking to %i, including a retained checkpoint",
+    (target) => {
+      const c = new LiveController(diagram(), { roleOf });
+      c.selectSimulation({
+        id: "s",
+        title: "s",
+        traffic: [{ id: "t", node: "api", shape: { kind: "constant", ratePerSec: 4, durationMs: 20_000 } }],
+      });
+      c.traceNext();
+      c.setPlaying(true);
+      play(c, 11_000);
+      expect(c.getState().trace?.current).toBeDefined();
+      c.endTrace();
+      c.seek(target);
+      expect(c.getState().trace).toBeNull();
+      expect(c.tracedRoot).toBeUndefined();
+      c.seek(11_000);
+      expect(c.getState().trace).toBeNull();
+    },
+  );
+
+  it("a pending request replaces the selection in a restored checkpoint", () => {
+    const c = new LiveController(diagram(), { roleOf });
+    c.selectSimulation({ id: "s", title: "s", traffic: [] });
+    c.traceNext("api");
+    c.inject("api", 1);
+    c.setPlaying(true);
+    play(c, 11_000);
+    c.traceNext("dead");
+    c.seek(5000);
+    expect(c.getState().trace?.rootId).toBeUndefined();
+    expect(c.getState().trace?.pending).toEqual({ next: "message", node: "dead" });
+  });
   it("traces the next message, publishes its journey, and ends on request", () => {
     const c = new LiveController(diagram(), { roleOf });
     expect(c.getState().trace).toBeNull();
