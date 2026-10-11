@@ -16,7 +16,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:coverage": "vitest run --coverage",
-    "review": "bash scripts/review/run.sh"
+    "review": "bash scripts/review/run.sh",
+    "build:site": "tsc --noEmit && vite build --outDir ../blog/public/tools/diagrams --emptyOutDir"
   },
   "dependencies": {
     "@fontsource-variable/geist-mono": "^5.3.0",
