@@ -29,6 +29,8 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     environment: "node",
+    // CI runners with coverage are several times slower; perf budgets scale too (src/test/perfBudget.ts).
+    testTimeout: process.env.CI ? 40_000 : 5_000,
     css: { include: [/tokens\.css/] },
     typecheck: {
       enabled: true,
@@ -38,7 +40,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.*", "src/examples/**", "src/lab/**"],
+      exclude: ["src/**/*.test.*", "src/examples/**", "src/lab/**", "src/test/**"],
       reporter: ["text-summary", "html"],
     },
   },
