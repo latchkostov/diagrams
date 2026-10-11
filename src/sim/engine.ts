@@ -15,7 +15,7 @@ const EVENT_CAP = 200;
 
 interface Message { id: number; type: string; color: string; attempts: number }
 interface Group { name: string; edges: Edge[]; pending: Deque<Message>; active: number; cursor: number }
-interface Delivery { broker: Node; group: Group; edge: Edge }
+interface Delivery { broker: Node; group: Group; edge: Edge; original: Message }
 interface Work { message: Message; via?: Edge; delivery?: Delivery; remaining: number }
 interface Node {
   id: string; label: string; role: SimRole; status: NodeStatus;
@@ -27,7 +27,7 @@ interface Node {
 }
 interface Edge {
   id: string; from: Node; to: Node; sync: boolean; dlq: boolean; travelMs: number;
-  groupName: string; delivered: number; active: number;
+  filter?: string[]; emits?: string; groupName: string; delivered: number; active: number;
 }
 interface Trip {
   id: number; edge: Edge; message: Message; kind: ParticleKind;
@@ -42,9 +42,13 @@ function isBroker(node: Node): boolean {
   return node.role === "queue" || node.role === "topic" || node.role === "stream";
 }
 
+// Runner seed configuration for reused native engines, without widening the public contract.
+const seedSetters = new WeakMap<SimEngine, (seed: number) => void>();
+export function seedEngine(engine: SimEngine, seed: number): void { seedSetters.get(engine)?.(seed); }
+
 /** Fixed-step, DOM-free engine. Drawing limits never affect message delivery. */
 export function createEngine(opts: EngineOptions = {}): SimEngine {
-  const seed = opts.seed ?? Math.floor(Math.random() * 4294967296);
+  let seed = opts.seed ?? Math.floor(Math.random() * 4294967296);
   const roleOf = opts.roleOf ?? ((id: string) => getStencil(id).simRole);
   const maxParticles = Number.isFinite(opts.maxParticles)
     ? Math.max(0, Math.floor(opts.maxParticles!)) : 1500;
@@ -118,7 +122,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     log("drop", node, message, reason);
   }
 
+  function accepts(edge: Edge, type: string): boolean {
+    return edge.filter === undefined || edge.filter.some(pattern => pattern.endsWith("*")
+      ? type.startsWith(pattern.slice(0, -1)) : type === pattern);
+  }
+
+  function rename(message: Message, type: string | undefined): Message {
+    return type === undefined || type === message.type ? message : { ...message, type, color: messageColor(type) };
+  }
+
   function travel(edge: Edge, message: Message, kind: ParticleKind, delivery?: Delivery): void {
+    if (kind === "message" || kind === "dlq") message = rename(message, edge.emits);
     const visible = drawn < maxParticles;
     if (visible) drawn++;
     edge.active++;
@@ -138,7 +152,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function forward(node: Node, message: Message): void {
-    const outgoing = node.outgoing;
+    if (node.role === "processor" || node.role === "none") {
+      const emits = node.props.emits;
+      const type = typeof emits === "string" ? emits
+        : emits && Object.hasOwn(emits, message.type) ? emits[message.type] : emits?.["*"];
+      message = rename(message, type);
+    }
+    const outgoing = node.outgoing.filter(edge => accepts(edge, message.type));
     // A node with nowhere to send (e.g. a final worker) is a terminal consumer, not a drop.
     if (!outgoing.length) { inSystem--; return; }
     if (node.role === "gateway") {
@@ -156,8 +176,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.pending.push({ message, remaining: 0 });
       return;
     }
-    inSystem += node.groups.length - 1;
-    for (const group of node.groups) group.pending.push({ ...message, attempts: 0 });
+    const accepting = node.groups.filter(group => group.edges.some(edge => accepts(edge, message.type)));
+    inSystem += accepting.length - 1;
+    for (const group of accepting) group.pending.push({ ...message, attempts: 0 });
   }
 
   function fail(node: Node, work: Work): void {
@@ -187,7 +208,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.role === "sink") inSystem--;
     else if (node.role === "store") {
       // Outgoing async edges from a store model change feeds / CDC: each gets a copy.
-      const feeds = node.outgoing.filter((edge) => !edge.sync);
+      const feeds = node.outgoing.filter((edge) => !edge.sync && accepts(edge, work.message.type));
       if (!feeds.length) { inSystem--; return; }
       inSystem += feeds.length - 1;
       for (const edge of feeds) travel(edge, { ...work.message, attempts: 0 }, "message");
@@ -214,8 +235,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function returned(trip: Trip): void {
     const { broker, group } = trip.delivery!;
     group.active--;
+    trip.message = { ...trip.delivery!.original, attempts: trip.message.attempts };
     if (trip.message.attempts >= broker.props.maxDeliveryCount) {
-      if (broker.dlq) {
+      if (broker.dlq && accepts(broker.dlq, trip.message.type)) {
         broker.deadLettered++;
         log("deadletter", broker, trip.message, `${trip.message.attempts} deliveries`);
         travel(broker.dlq, trip.message, "dlq");
@@ -228,12 +250,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const group of node.groups) {
       const limit = node.role === "queue" ? Infinity : node.props.partitions;
       while (group.pending.length && group.active < limit) {
+        const message = group.pending.peek()!;
         let ready: Edge | undefined;
         for (let offset = 0; offset < group.edges.length; offset++) {
           const index = (group.cursor + offset) % group.edges.length;
           const edge = group.edges[index];
           const target = edge.to;
-          if (target.status === "up" && target.working.length + target.incoming + target.pending.length < target.props.concurrency) {
+          if (accepts(edge, message.type) && target.status === "up" && target.working.length + target.incoming + target.pending.length < target.props.concurrency) {
             ready = edge;
             group.cursor = (index + 1) % group.edges.length;
             break;
@@ -241,7 +264,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
         if (!ready) break;
         group.active++;
-        travel(ready, group.pending.shift()!, "message", { broker: node, group, edge: ready });
+        group.pending.shift();
+        travel(ready, message, "message", { broker: node, group, edge: ready, original: message });
       }
     }
   }
@@ -324,7 +348,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const edge of edges) { edge.delivered = 0; edge.active = 0; }
   }
 
-  return {
+  const engine: SimEngine = {
     load(diagram: DiagramFile): void {
       nodes.clear(); edges.length = 0;
       for (const input of diagram.nodes) {
@@ -351,6 +375,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         const edge: Edge = {
           id: input.id, from, to, sync: input.kind === "sync", dlq,
           travelMs: typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : input.kind === "sync" ? 450 : 900,
+          filter: Array.isArray(input.props?.filter) ? input.props.filter.filter((value): value is string => typeof value === "string") : undefined,
+          emits: typeof input.props?.emits === "string" ? input.props.emits : undefined,
           groupName: typeof input.props?.group === "string" ? input.props.group : input.id,
           delivered: 0, active: 0,
         };
@@ -440,4 +466,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     setSpeed(value: number): void { if (Number.isFinite(value)) speed = Math.max(0.25, Math.min(8, value)); },
     reset,
   };
+  seedSetters.set(engine, value => { seed = value; });
+  return engine;
 }
