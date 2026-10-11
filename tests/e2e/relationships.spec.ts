@@ -61,7 +61,9 @@ test.describe("relationships", () => {
 
   test("immediate Make it a flow undoes to the inferred dependency", async ({ page, consoleErrors }) => {
     await page.clock.install();
-    await page.clock.pauseAt(new Date());
+    // Pause relative to the page's own clock: the runner's Date can lag the page and pauseAt can't go back.
+    const pageNow = await page.evaluate(() => Date.now());
+    await page.clock.pauseAt(pageNow + 1000);
     await drawEdge(page, "handle-notify-bottom", "handle-kv-right");
     const edge = page.getByTestId("edge-e-1");
     await expect(edge).toHaveAttribute("data-relation", "secret");
