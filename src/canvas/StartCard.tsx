@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Icon } from "../components/Icon";
 import { DiagramThumbnail } from "../components/DiagramThumbnail";
 import type { Thumb } from "../lib/thumbnail";
+import type { ThemeSection } from "../examples/themes";
 
 export interface StartExample {
   slug: string;
@@ -9,8 +10,6 @@ export interface StartExample {
   description?: string;
   /** A tiny rendering of the diagram (the same renderer as Your diagrams). */
   thumb: Thumb;
-  /** Theme section in "All examples", e.g. "Event streaming". */
-  theme?: string;
   /** Shown before "All examples" is opened. */
   featured?: boolean;
 }
@@ -26,7 +25,11 @@ export interface StartRecent {
 export interface StartOptions {
   /** Your diagrams, most recent first (the open one excluded). */
   recent: StartRecent[];
-  examples: StartExample[];
+  /**
+   * Examples by theme, in display order (groupByTheme, as in the picker). "All examples" shows one
+   * section per theme: its id names the section, its label is the heading.
+   */
+  examples: ThemeSection<StartExample>[];
   /** Opens a diagram (yours or an example) by slug. */
   onOpen: (slug: string) => void;
   onOpenFile: () => void;
@@ -46,9 +49,10 @@ const RECENT_MAX = 3;
 export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: () => void }) {
   const recent = start.recent.slice(0, RECENT_MAX);
   const [allExamples, setAllExamples] = useState(false);
-  const featured = start.examples.filter((ex) => ex.featured);
+  const all = start.examples.flatMap((section) => section.items);
+  const featured = all.filter((ex) => ex.featured);
   // With nothing featured (or nothing more to show), the card simply lists every example.
-  const expandable = featured.length > 0 && featured.length < start.examples.length;
+  const expandable = featured.length > 0 && featured.length < all.length;
   const expanded = !expandable || allExamples;
   const exampleRow = (ex: StartExample) => (
     <StartRow
@@ -110,11 +114,11 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
       </div>
 
       {expanded ? (
-        themeSections(start.examples).map((section) => (
-          <div key={section.label} className="start-section" data-testid={`start-theme-${section.id}`}>
-            {section.label && <h4 className="start-theme">{section.label}</h4>}
-            <ul className={`start-examples${expandable ? " is-compact" : ""}`} aria-label={section.label || "Examples"}>
-              {section.examples.map(exampleRow)}
+        start.examples.map(({ theme, items }) => (
+          <div key={theme?.id ?? ""} className="start-section" data-testid={`start-theme-${theme?.id ?? "other"}`}>
+            {theme && <h4 className="start-theme">{theme.label}</h4>}
+            <ul className={`start-examples${expandable ? " is-compact" : ""}`} aria-label={theme?.label ?? "Examples"}>
+              {items.map(exampleRow)}
             </ul>
           </div>
         ))
@@ -138,21 +142,6 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
       <p className="start-note">Opens diagram files, draw.io and Mermaid. You can also drop a file anywhere.</p>
     </section>
   );
-}
-
-/** Examples grouped by theme, in first-seen order; a single unthemed list has no heading. */
-function themeSections(list: StartExample[]) {
-  const sections: { id: string; label: string; examples: StartExample[] }[] = [];
-  for (const ex of list) {
-    const label = ex.theme ?? "";
-    let section = sections.find((s) => s.label === label);
-    if (!section) {
-      section = { id: label ? label.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "other", label, examples: [] };
-      sections.push(section);
-    }
-    section.examples.push(ex);
-  }
-  return sections;
 }
 
 function StartRow(p: { testId: string; title: string; detail?: string; thumb: Thumb; onClick: () => void }) {

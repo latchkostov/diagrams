@@ -109,8 +109,6 @@ test("synthetic local example is excluded from tools and copied prompts, includi
       { slug: "kafka-order-pipeline", diagram: publicDiagram },
       { slug: "synthetic-local", localOnly: true, diagram: { format: "diagrams/v1", title: "Synthetic local", nodes: [{ id: "secret-fixture", label: "SYNTHETIC_SENSITIVE_CONTENT", stencil: "generic.service", x: 0, y: 0 }], edges: [] } }
     ];
-    export const EXAMPLE_THEMES = [];
-    export const themeLabel = (theme) => theme;
   `,
     }),
   );

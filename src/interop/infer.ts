@@ -69,8 +69,16 @@ const RULES: [RegExp, string][] = [
   [/\belastic ?search\b|\bopen ?search\b/, "elasticsearch"],
   [/\bs3\b|\bbucket\b/, "aws.s3"],
   [/\bdynamo ?(db)?\b/, "aws.dynamodb"],
+  [/\bsnowpipe\b/, "snowflake.snowpipe"],
   [/\bsnowflake\b/, "snowflake"],
   [/\bdatabricks\b|\bspark\b/, "databricks"],
+  // Data tools that move or show data rather than store it: processors and sinks, never cylinders.
+  [/\bdata factory\b/, "azure.data-factory"],
+  [/\bdbt\b/, "dbt"],
+  [/\bairbyte\b/, "airbyte"],
+  [/\breverse etl\b|\bhightouch\b/, "generic.reverse-etl"],
+  [/\blooker\b/, "looker"],
+  [/\btableau\b/, "tableau"],
   [/\baem\b|\badobe\b/, "adobe.aem"],
   // Network
   [/\bapi management\b|\bapim\b/, "azure.api-management"],
@@ -81,6 +89,9 @@ const RULES: [RegExp, string][] = [
   [/\bnginx\b|\bingress\b/, "nginx"],
   [/\bkong\b/, "kong"],
   [/\bcloudflare\b|\bcdn\b/, "cloudflare"],
+  [/\broute ?53\b/, "aws.route53"],
+  [/\btraffic manager\b/, "azure.traffic-manager"],
+  [/\bcloud load balancing\b/, "gcp.cloud-load-balancing"],
   [/\bload ?balancer\b/, "load-balancer"],
   // Observability
   [/\bgrafana\b/, "grafana"],
@@ -93,6 +104,13 @@ const RULES: [RegExp, string][] = [
   [/\bkey ?vault\b/, "azure.key-vault"],
   [/\bentra\b|\bazure ad\b|\baad\b|\bactive directory\b/, "entra-id"],
   [/\bvault\b|\bsecrets?\b/, "vault"],
+  // Patterns, before clients and generic words: an "event store" is a log, not a database, and
+  // "Customer.io" isn't a user.
+  [/\bevent store\b/, "generic.event-store"],
+  [/\bprojections?\b/, "generic.projection"],
+  [/\bsaga( orchestrator)?\b/, "generic.saga"],
+  [/\brate limit(er|ing)?\b/, "generic.rate-limiter"],
+  [/\bmarketing automation\b|\bbraze\b|\bcustomer io\b|\biterable\b/, "generic.marketing"],
   // Clients
   [/\bbrowser\b|\bweb ?(client|ui|frontend|front end|site|spa)\b|\bfrontend\b/, "client.browser"],
   [/\bmobile\b|\bios\b|\bandroid\b/, "client.mobile"],

@@ -9,6 +9,7 @@ import { Menu } from "../interop/ui/Menu";
 import { Glyph } from "../interop/ui/glyphs";
 import { capacityOverlay } from "../live/capacityOverlay";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
+import { groupByTheme, type ExampleThemeInfo } from "../examples/themes";
 
 export interface ExampleOption {
   slug: string;
@@ -16,22 +17,18 @@ export interface ExampleOption {
   /** "yours": your diagrams (and a shared one); "examples": the built-in examples. */
   group: "yours" | "examples";
   /** An example's theme: the picker shows one group per theme ("Event streaming", "Data & AI"…). */
-  theme?: { id: string; label: string };
+  theme?: ExampleThemeInfo;
 }
 
-/** The picker's groups: Your diagrams, then examples by theme (unthemed ones under "Examples"), in first-seen order. */
+/** The picker's groups: Your diagrams, then examples by theme (unthemed ones under "Examples"). */
 function pickerGroups(options: ExampleOption[]) {
-  const groups: { id: string; label: string; options: ExampleOption[] }[] = [
+  return [
     { id: "yours", label: "Your diagrams", options: options.filter((o) => o.group === "yours") },
+    ...groupByTheme(
+      options.filter((o) => o.group === "examples"),
+      (o) => o.theme?.id,
+    ).map((s) => ({ id: s.theme?.id ?? "examples", label: s.theme?.label ?? "Examples", options: s.items })),
   ];
-  for (const o of options) {
-    if (o.group !== "examples") continue;
-    const id = o.theme?.id ?? "examples";
-    let g = groups.find((x) => x.id === id);
-    if (!g) groups.push((g = { id, label: o.theme?.label ?? "Examples", options: [] }));
-    g.options.push(o);
-  }
-  return groups;
 }
 
 interface Props {

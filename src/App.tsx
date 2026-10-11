@@ -10,7 +10,8 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
-import { examples, themeLabel } from "./examples";
+import { examples } from "./examples";
+import { groupByTheme, themeInfo } from "./examples/themes";
 import { TopBar, type ExampleOption } from "./components/TopBar";
 import type { CanvasHandle } from "./canvas/CanvasView";
 import type { OpenTarget } from "./lab/LabView";
@@ -127,7 +128,7 @@ function MainApp() {
       slug: e.slug,
       title: e.diagram.title,
       group: "examples" as const,
-      theme: e.theme && { id: e.theme, label: themeLabel(e.theme) },
+      theme: e.theme && themeInfo(e.theme),
     })),
   ];
 
@@ -296,19 +297,23 @@ function MainApp() {
   };
   const presenting = url.view === "canvas" && url.present;
   // The start card on a blank canvas: your recent diagrams, then public examples only (private ones
-  // never appear in UI copy). Thumbnails come from the same renderer as Your diagrams.
-  const exampleThumbs = useMemo(
+  // never appear in UI copy), grouped by theme like the picker. Thumbnails come from the same renderer
+  // as Your diagrams.
+  const exampleSections = useMemo(
     () =>
-      examples
-        .filter((e) => publicSlugs.has(e.slug))
-        .map((e) => ({
+      groupByTheme(
+        examples.filter((e) => publicSlugs.has(e.slug)),
+        (e) => e.theme,
+      ).map(({ theme, items }) => ({
+        theme,
+        items: items.map((e) => ({
           slug: e.slug,
           title: e.diagram.title,
           description: e.summary ?? e.diagram.description,
           thumb: diagramThumb(e.diagram),
-          theme: e.theme && themeLabel(e.theme),
           featured: e.featured,
         })),
+      })),
     [],
   );
   const start: StartOptions = {
@@ -320,7 +325,7 @@ function MainApp() {
         detail: `${e.nodes} ${e.nodes === 1 ? "node" : "nodes"} · edited ${formatAgo(e.updatedAt)}`,
         thumb: e.thumb,
       })),
-    examples: exampleThumbs,
+    examples: exampleSections,
     onOpen: (example) => setUrl({ example }),
     onOpenFile: () => void interop.openFile(),
     onPaste: interop.openPaste,

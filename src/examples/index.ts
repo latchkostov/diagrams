@@ -1,4 +1,5 @@
 import type { DiagramFile } from "../model/types";
+import type { ExampleTheme } from "./themes";
 import kafkaOrderPipeline from "./kafka-order-pipeline.json";
 import azureServiceBusIntegration from "./azure-service-bus-integration.json";
 import cdcAnalytics from "./cdc-analytics.json";
@@ -15,17 +16,6 @@ import webhookIngestion from "./webhook-ingestion.json";
 import notificationFanout from "./notification-fanout.json";
 import multiRegionActiveActive from "./multi-region-active-active.json";
 import nightlyBatchElt from "./nightly-batch-elt.json";
-
-/** The themes the example picker and the start card group examples by, in display order. */
-export const EXAMPLE_THEMES = [
-  { id: "streaming", label: "Event streaming" },
-  { id: "data", label: "Data & AI" },
-  { id: "cloud", label: "Cloud apps" },
-  { id: "integration", label: "Integration" },
-  { id: "reliability", label: "Reliability" },
-] as const;
-
-export type ExampleTheme = (typeof EXAMPLE_THEMES)[number]["id"];
 
 export interface Example {
   slug: string;
@@ -49,7 +39,7 @@ const privateExamples: Example[] = import.meta.env.DEV
 
 const d = (diagram: unknown) => diagram as DiagramFile;
 
-/** Public examples, grouped by theme in the picker; within a theme, in this order. */
+/** Public examples. The picker and start card group them by theme (see ./themes); within a theme, in this order. */
 export const examples: Example[] = [
   ...privateExamples,
   {
@@ -153,7 +143,3 @@ export const examples: Example[] = [
     summary: "Two live regions, failover, a global table",
   },
 ];
-
-export function themeLabel(theme: ExampleTheme): string {
-  return EXAMPLE_THEMES.find((t) => t.id === theme)?.label ?? theme;
-}

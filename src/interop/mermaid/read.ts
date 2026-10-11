@@ -6,6 +6,7 @@ import {
   type DiagramNode,
 } from "../../model/types";
 import { catalog } from "../../stencils/catalog";
+import { cylinderStencils } from "../../stencils/exportShape";
 import { layeredLayout } from "../../editor/layout";
 import { boundaryAround } from "../../editor/arrange";
 import { FALLBACK_STENCIL_ID, inferStencil } from "../infer";
@@ -77,7 +78,6 @@ interface PGroup {
 }
 
 const stencilIds = new Set(catalog.map((s) => s.id));
-const dataStencils = new Set(catalog.filter((s) => s.category === "data").map((s) => s.id));
 
 // Openers, longest first, with their closers.
 const SHAPES: [string, string, Shape][] = [
@@ -439,8 +439,9 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
       const known = m?.[1] && stencilIds.has(m[1]) ? m[1] : undefined;
       const inferred = inferStencil(lines.join(" ")) ?? (n.label ? undefined : inferStencil(n.id));
       const byShape = n.shape === "cylinder" ? "generic.database" : n.shape === "asym" ? "generic.queue" : undefined;
-      // A cylinder is a store (or a queue): a named product wins, a generic keyword doesn't.
-      const named = inferred && (!inferred.startsWith("generic.") || dataStencils.has(inferred)) ? inferred : undefined;
+      // A cylinder is a store: a named product wins, and so does a generic store, but not another generic keyword.
+      const named =
+        inferred && (!inferred.startsWith("generic.") || cylinderStencils.has(inferred)) ? inferred : undefined;
       const stencil =
         known ?? (byShape === "generic.database" ? (named ?? byShape) : (inferred ?? byShape ?? FALLBACK_STENCIL_ID));
       return {
