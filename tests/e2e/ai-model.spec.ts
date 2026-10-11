@@ -154,3 +154,66 @@ test.describe("Ask AI with your own key", () => {
     await expect(page.getByTestId("ai-send")).toBeVisible();
   });
 });
+
+test.describe("Ask AI with your own key, in context", () => {
+  test.beforeEach(async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    await expect(page.getByTestId("node-payments")).toBeVisible();
+    await openAskAi(page);
+  });
+
+  test("in live view the model's simulation is saved and plays from the picker", async ({ page }) => {
+    const simTurn = sse([
+      {
+        type: "content_block_start",
+        index: 0,
+        content_block: { type: "tool_use", id: "tu_s", name: "set_simulation" },
+      },
+      {
+        type: "content_block_delta",
+        index: 0,
+        delta: {
+          type: "input_json_delta",
+          partial_json: JSON.stringify({
+            title: "Model storm",
+            durationSec: 30,
+            traffic: [{ from: "shopper", pattern: "burst", count: 30 }],
+          }),
+        },
+      },
+      { type: "message_delta", delta: { stop_reason: "tool_use" } },
+    ]);
+    const seen = await mockAnthropic(page, [simTurn, TEXT_TURN]);
+    await connect(page);
+    await page.getByTestId("live-toggle").click();
+    await page.getByTestId("ai-request").fill("A storm of 30 orders");
+    await page.getByTestId("ai-send").click();
+    await expect(page.getByTestId("ai-turn-0-summary")).toHaveText("Added simulation “Model storm”");
+    const picker = page.getByTestId("live-sim-picker");
+    await expect
+      .poll(() => picker.evaluate((el: HTMLSelectElement) => el.selectedOptions[0]?.textContent ?? ""))
+      .toBe("Model storm");
+    const body = seen[0].postDataJSON() as { messages: { content: string }[] };
+    expect(body.messages[0].content).toContain("set_simulation");
+  });
+
+  test("Explain answers in the thread and changes nothing", async ({ page }) => {
+    const answer = sse([
+      { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+      { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Orders flow from the shopper." } },
+      { type: "message_delta", delta: { stop_reason: "end_turn" } },
+    ]);
+    const seen = await mockAnthropic(page, [answer]);
+    await connect(page);
+    const before = await nodeCount(page);
+    await page.getByTestId("ai-suggestion-3").click();
+    await expect(page.getByTestId("ai-intent-explain")).toHaveAttribute("aria-pressed", "true");
+    await page.getByTestId("ai-send").click();
+    await expect(page.getByTestId("ai-turn-0")).toContainText("Orders flow from the shopper.");
+    await expect(page.getByTestId("ai-turn-0")).toHaveAttribute("data-kind", "explain");
+    await expect(page.getByTestId("ai-turn-0-summary")).toHaveCount(0);
+    expect(await nodeCount(page)).toBe(before);
+    const body = seen[0].postDataJSON() as { tools: { name: string }[] };
+    expect(body.tools.map((t) => t.name)).toEqual(["describe_diagram"]);
+  });
+});

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { EditorApi } from "../editor/types";
+import type { LiveState } from "../live/controller";
 
 /**
  * What the command palette can act on. The palette is mounted by the app, outside the canvas, so
@@ -7,7 +8,7 @@ import type { EditorApi } from "../editor/types";
  *
  *   useCanvasHost(editor, { live, enabled: !readOnly });   // CanvasView (./canvasHost, needs React Flow)
  *   useLiveHost(toggle, enabled);                          // LiveView (the Live toggle)
- *   useLiveSessionHost(selectSimulation, enabled);          // LiveView's running session
+ *   useLiveSessionHost(selectSimulation, enabled, hint, getState); // LiveView's running session
  *
  * Each hook unpublishes on unmount, so the palette only offers what is on screen.
  */
@@ -35,6 +36,8 @@ export interface SessionHost {
   /** Replays a saved simulation in the running session. */
   run(simulationId: string): void;
   disabledHint?: string;
+  /** What's running now (Ask AI's "What's happening?"). */
+  state?(): LiveState;
 }
 
 interface HostState {
@@ -91,15 +94,20 @@ export function useLiveHost(toggle: () => void, enabled: boolean) {
 }
 
 /** Called by the running live session; also starts a simulation the palette asked for before going live. */
-export function useLiveSessionHost(run: (simulationId: string) => void, enabled: boolean, disabledHint?: string) {
+export function useLiveSessionHost(
+  run: (simulationId: string) => void,
+  enabled: boolean,
+  disabledHint?: string,
+  getState?: () => LiveState,
+) {
   useEffect(() => {
     if (!enabled) return;
-    const off = publish("session", { run, disabledHint });
+    const off = publish("session", { run, disabledHint, ...(getState ? { state: getState } : {}) });
     const pending = state.pendingRun;
     if (pending) {
       set({ pendingRun: null });
       run(pending);
     }
     return off;
-  }, [run, enabled, disabledHint]);
+  }, [run, enabled, disabledHint, getState]);
 }

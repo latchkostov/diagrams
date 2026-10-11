@@ -8,7 +8,7 @@ import { diagramDiff } from "../../model/diagramDiff";
 import { paletteHost } from "../../palette/host";
 import { isLocalOnly } from "../../lib/localOnly";
 import { LOCAL_ONLY_MESSAGE, describeForAi } from "../privacy";
-import { connection, providerInfo } from "../engine/settings";
+import { connection } from "../engine/settings";
 import { showApplied } from "./feedback";
 import { sameContent, type ThreadTurn } from "./thread";
 
@@ -81,7 +81,7 @@ export function useModelTurn(onDone: (done: ModelTurnDone) => void) {
         });
         const note = STOPS[result.stop];
         const reply = [result.text, note].filter(Boolean).join("\n\n") || "Done.";
-        const engineName = providerInfo(conn.provider).id;
+        const engineName = conn.provider;
         if (!result.changed || intent === "explain") {
           onDone({ turn: { kind: "explain", request, reply, changed: [], engine: engineName }, simulations: [] });
           return true;
@@ -93,9 +93,15 @@ export function useModelTurn(onDone: (done: ModelTurnDone) => void) {
         const after = now.getDiagram();
         const diff = diagramDiff(start, after);
         const changed = [...diff.added.ids, ...diff.updated.ids];
-        showApplied(diff.summary, changed, now);
+        // A scenario alone reads like the paste flow's: "Added simulation “Storm”".
+        const onlySim = diff.added.count + diff.updated.count === 1 && !diff.removed.count && !diff.metaChanged;
+        const sim =
+          onlySim &&
+          after.simulations?.find((x) => x.id === [...diff.added.simulations, ...diff.updated.simulations][0]);
+        const summary = sim ? `${diff.added.count ? "Added" : "Updated"} simulation “${sim.title}”` : diff.summary;
+        showApplied(summary, changed, now);
         onDone({
-          turn: { kind: "change", request, reply, summary: diff.summary, changed, after, engine: engineName },
+          turn: { kind: "change", request, reply, summary, changed, after, engine: engineName },
           simulations: [...diff.added.simulations, ...diff.updated.simulations],
         });
         return true;

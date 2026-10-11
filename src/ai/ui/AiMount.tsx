@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { actionRegistry } from "../../editor/actions";
 import { matches } from "../../editor/shortcuts";
 import { paletteHost } from "../../palette/host";
@@ -18,7 +18,13 @@ const hasModelContext = () =>
   typeof document !== "undefined" && ("modelContext" in document || "modelContext" in navigator);
 
 /** A request for the open panel (focus the composer, set a scope or an intent); `seq` makes each one new. */
-export type PanelRequest = OpenAiPanel & { seq: number };
+export type PanelRequest = OpenAiPanel & {
+  seq: number;
+  /** When it was made: a panel that mounts later (another diagram opened) doesn't act on an old one. */
+  at: number;
+  /** The diagram it was made on: a scope only applies there. */
+  documentId?: string;
+};
 
 const panelEl = () => document.querySelector<HTMLElement>('[data-testid="ai-panel"]');
 
@@ -34,6 +40,11 @@ export function AiMount({
   const host = useSyncExternalStore(paletteHost.subscribe, paletteHost.get);
   const canvas = view === "canvas" ? host.canvas : null;
   const dock = useAiDock();
+  // The actions register once (re-registering would rebuild an open menu under the pointer).
+  const newDiagram = useRef(onNewDiagram);
+  useLayoutEffect(() => {
+    newDiagram.current = onNewDiagram;
+  }, [onNewDiagram]);
   // The dock is part of the diagram's tooling: editor and live view, never presenting (or embeds,
   // which don't mount the app shell at all).
   const docked = view === "canvas" && !presenting;
@@ -47,7 +58,12 @@ export function AiMount({
   useEffect(() => {
     const onOpen = (e: Event) => {
       aiDock.set({ open: true });
-      setRequest((r) => ({ ...(e as CustomEvent<OpenAiPanel>).detail, seq: (r?.seq ?? 0) + 1 }));
+      setRequest((r) => ({
+        ...(e as CustomEvent<OpenAiPanel>).detail,
+        seq: (r?.seq ?? 0) + 1,
+        at: Date.now(),
+        documentId: paletteHost.get().canvas?.documentId,
+      }));
     };
     window.addEventListener(OPEN_AI_PANEL, onOpen);
     return () => window.removeEventListener(OPEN_AI_PANEL, onOpen);
@@ -76,8 +92,9 @@ export function AiMount({
     return () => void document.documentElement.style.removeProperty("--ai-dock-w");
   }, [width]);
 
-  // "Ask AI…" on the canvas right-click (and so in the palette); "Build with AI…" (a new diagram,
-  // described) in the palette and the File menu.
+  // "Ask AI…" on the canvas right-click (and so in the palette); "Change with AI…" on a node, an edge or
+  // a selection (it becomes the request's scope); "Build with AI…" (a new diagram, described) in the
+  // palette and the File menu.
   useEffect(
     () =>
       actionRegistry.register([
@@ -93,16 +110,29 @@ export function AiMount({
           run: () => openAiPanel(),
         },
         {
+          id: "item.change-with-ai",
+          section: "edit",
+          targets: ["node", "edge", "selection"],
+          order: 190,
+          label: "Change with AI…",
+          icon: "ai",
+          run: (ctx) =>
+            openAiPanel({
+              scope: [...ctx.selection.nodeIds, ...ctx.selection.edgeIds, ...ctx.selection.groupIds],
+              intent: "change",
+            }),
+        },
+        {
           id: "file.build-with-ai",
           section: "file",
           targets: ["canvas"],
           paletteOnly: true,
           label: "Build with AI…",
           icon: "ai",
-          run: () => buildWithAi(onNewDiagram),
+          run: () => buildWithAi(() => newDiagram.current()),
         },
       ]),
-    [onNewDiagram],
+    [],
   );
 
   const [mcp] = useState(hasModelContext);

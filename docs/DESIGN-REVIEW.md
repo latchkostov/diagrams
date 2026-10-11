@@ -96,6 +96,17 @@ The top bar goes one over its ~7 budget, on the owner's explicit request that AI
 screen; below 1100 px the button is an icon, and the bar is checked for overlap at 1024. If the bar grows
 again, fold the theme toggle into View.
 
+### Built, then checked
+
+Built as designed, then walked in Chrome at 1440, 1280 and 1024, light and dark: the empty canvas with the
+start card, the editor with a two-turn thread (hovering a turn outlines its nodes), a selection chip, live
+view after a pasted scenario (saved, picked and playing), Explain in live view, and Connect a model. At 1024
+the top bar keeps every control in one row with no overlap (Ask AI is an icon), and with the dock open and a
+node selected the inspector stays on its rail, leaving the canvas about 560 px. `tests/e2e/ai-context.spec.ts`
+measures both with bounding boxes. Two notes for later rounds: with something selected, opening the dock keeps
+the view (like the inspector) rather than refitting, so a wide diagram can sit partly off screen at 1024; and
+the toast still shares the bottom centre with the live bar, as before this round.
+
 ## Round 5: UX gate after message trace and sequence diagrams
 
 Reviewed 2026-10-11 against `docs/UX-PRINCIPLES.md` on a production build (`pnpm build && pnpm preview`,

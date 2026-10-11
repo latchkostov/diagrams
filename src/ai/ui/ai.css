@@ -707,3 +707,92 @@ button.ai-candidate:focus-visible {
   align-items: center;
   gap: 6px;
 }
+
+/* ---------- context: intent, selection ---------- */
+
+.ai-composer-top {
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+
+.ai-intent {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 8px;
+  background: var(--surface-3);
+}
+
+.ai-intent button {
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 560;
+  cursor: pointer;
+}
+
+.ai-intent button.is-on {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+
+.ai-intent button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ai-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  height: 24px;
+  padding: 0 4px 0 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-scope-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-scope button {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ai-scope button:hover {
+  background: color-mix(in oklab, var(--accent) 18%, transparent);
+}
+
+.ai-scope button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ai-turn-scope {
+  justify-self: end;
+  margin: -2px 0 0;
+  color: var(--text-3);
+  font-size: 11.5px;
+}

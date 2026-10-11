@@ -155,4 +155,11 @@ test("the start card offers Build with AI, and the File menu starts a new diagra
   await applyTurn(page, "A queue", JSON.stringify([{ op: "add_node", kind: "Service Bus queue", label: "jobs" }]));
   await expect.poll(() => nodeCount(page)).toBe(1);
   await expect(page.getByTestId("start-card")).toHaveCount(0);
+
+  // The command palette starts one too.
+  await page.keyboard.press(`${MOD}+k`);
+  await page.getByTestId("command-input").fill("build with ai");
+  await page.getByTestId("command-item-action:file.build-with-ai").click();
+  await expect(page.getByTestId("start-card")).toBeVisible();
+  await expect(page.getByTestId("ai-empty")).toContainText("Build with AI");
 });

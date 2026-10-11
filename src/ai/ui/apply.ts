@@ -9,7 +9,9 @@ import { diagramDiff, structuralText } from "../../model/diagramDiff";
 import { getStencil, FALLBACK_STENCIL } from "../../stencils/registry";
 import {
   applyOps,
+  buildSimulation,
   placeNew,
+  ReferenceError,
   resolveKind,
   type AiError,
   type DiagramOp,
@@ -42,6 +44,8 @@ export type TurnPlan =
       warnings: string[];
       /** The reply replaced the whole diagram (a full file). */
       replaced: boolean;
+      /** The simulation a simulation reply added or replaced. */
+      simulationId?: string;
     }
   | { ok: false; error: AiError };
 
@@ -212,6 +216,7 @@ export function planTurn(current: DiagramFile, reply: ParsedReply): TurnPlan {
       replaced: true,
     };
   }
+  if (reply.kind === "simulation") return planSimulation(current, reply.spec);
   const result = applyOps(current, reply.ops, reply.layout ? { layout: reply.layout } : {});
   if (!result.ok) return { ok: false, error: result.errors[0] ?? { i: -1, error: "The ops couldn't be applied." } };
   const diff = diffDiagrams(current, result.diagram);
@@ -227,6 +232,36 @@ export function planTurn(current: DiagramFile, reply: ParsedReply): TurnPlan {
     })),
     warnings: result.warnings,
     replaced: false,
+  };
+}
+
+/** A simulation reply (live view): added, or replacing the one it names, through the same core as WebMCP. */
+function planSimulation(current: DiagramFile, spec: Extract<ParsedReply, { kind: "simulation" }>["spec"]): TurnPlan {
+  let sim;
+  try {
+    sim = buildSimulation(current, spec);
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof ReferenceError
+          ? { i: -1, ref: error.ref, error: error.message, candidates: error.candidates, hint: error.hint }
+          : { i: -1, error: error instanceof Error ? error.message : String(error) },
+    };
+  }
+  const sims = current.simulations ?? [];
+  const replaced = sims.some((s) => s.id === sim.id);
+  const next = { ...current, simulations: replaced ? sims.map((s) => (s.id === sim.id ? sim : s)) : [...sims, sim] };
+  return {
+    ok: true,
+    next,
+    hasChanges: true,
+    summary: `${replaced ? "Updated" : "Added"} simulation “${sim.title}”`,
+    changed: [...new Set(sim.traffic.map((t) => t.node))],
+    choices: [],
+    warnings: [],
+    replaced: false,
+    simulationId: sim.id,
   };
 }
 

@@ -31,7 +31,8 @@ import {
   type TurnPlan,
 } from "./apply";
 import { markElements, showApplied } from "./feedback";
-import { buildFixPrompt, buildPrompt } from "./prompt";
+import { buildExplainPrompt, buildFixPrompt, buildPrompt, buildSimulationPrompt } from "./prompt";
+import { aiPlace, emptyHeading, liveText, resolveScope, scopeText, suggestions, type AiIntent } from "./context";
 import { parseReply, type ParsedReply } from "./reply";
 import { LOCAL_ONLY_MESSAGE, describeForAi } from "../privacy";
 import { isLocalOnly } from "../../lib/localOnly";
@@ -56,6 +57,8 @@ interface Failure {
   /** The ops that failed, when the reply had ops (a candidate click patches them). */
   ops?: DiagramOp[];
   layout?: Extract<ParsedReply, { kind: "ops" }>["layout"];
+  /** The reply was a simulation (the fix-up prompt asks for one again). */
+  simulation?: boolean;
 }
 
 const editorNow = (): EditorApi | null => paletteHost.get().canvas?.editor ?? null;
@@ -63,6 +66,7 @@ const editorNow = (): EditorApi | null => paletteHost.get().canvas?.editor ?? nu
 const MOD = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
 
 let mergeSeq = 0;
+const FRESH_MS = 5000;
 
 export default function AiPanel({ request: opened }: { request: PanelRequest | null }) {
   const host = useSyncExternalStore(paletteHost.subscribe, paletteHost.get);
@@ -87,6 +91,14 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   /** With a connected model, the user can still copy and paste (this panel session). */
   const [pasteInstead, setPasteInstead] = useState(false);
   const modelMode = !!conn && !pasteInstead;
+  // A request made just now (Build with AI opens a new diagram first, so this panel mounts after it);
+  // an old one is only the reason the dock is open.
+  const [fresh] = useState(() => !!opened && Date.now() - opened.at < FRESH_MS);
+  /** Change with AI…: the ids the request is about (a removable chip). */
+  const [scope, setScope] = useState<string[]>(() =>
+    fresh && opened?.documentId === documentId ? (opened?.scope ?? []) : [],
+  );
+  const [intent, setIntent] = useState<AiIntent>(() => (fresh && opened?.intent) || "change");
 
   // The diagram as it is now (re-read on every edit: the host republishes with each revision).
   const current = useMemo<DiagramFile | null>(() => (editor ? editor.getDiagram() : null), [editor, host]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -98,9 +110,19 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     saveThread(documentId, turns);
   }, [documentId, turns]);
 
-  // Each open request (the top bar, the rail, Ctrl+I, a menu) focuses the composer.
+  // Each open request (the top bar, the rail, Ctrl+I, a menu) focuses the composer; Change with AI…
+  // attaches its selection, and a menu can pick the intent.
+  const [seenRequest, setSeenRequest] = useState(opened?.seq);
+  if (opened && opened.seq !== seenRequest) {
+    setSeenRequest(opened.seq);
+    if (opened.scope) setScope(opened.scope);
+    if (opened.intent) setIntent(opened.intent);
+  }
+  const focusedFor = useRef(fresh ? undefined : opened?.seq);
   useEffect(() => {
-    if (opened) requestRef.current?.focus();
+    if (!opened || focusedFor.current === opened.seq) return;
+    focusedFor.current = opened.seq;
+    requestRef.current?.focus();
   }, [opened]);
 
   // Leaving the panel (it unmounts with a diagram switch) clears any highlight.
@@ -141,9 +163,34 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     setTurns((t) => [...t, { ...turn, id: turnId(), at: Date.now() }]);
   }, []);
 
+  const live = !!canvas?.live;
+  const place = aiPlace(current, live);
+  const scopeItems = useMemo(() => (current ? resolveScope(current, scope) : []), [current, scope]);
+  const explaining = intent === "explain" && place !== "create";
+
+  /** The lines after the diagram: the selection the request is about and, to explain live view, what's running. */
+  const contextFor = (forIntent: AiIntent): string => {
+    if (isLocalOnly(paletteHost.get().canvas)) return "";
+    const parts = [scopeText(scopeItems)];
+    const session = paletteHost.get().session;
+    const ed = editorNow();
+    if (live && forIntent === "explain" && session?.state && ed) parts.push(liveText(session.state(), ed.getDiagram()));
+    return parts.filter(Boolean).join("\n\n");
+  };
+
+  /** In live view, a new or replaced simulation plays at once (and shows in the live bar's picker). */
+  const playSimulation = (id: string | undefined) => {
+    if (id && paletteHost.get().canvas?.live) paletteHost.runSimulation(id);
+  };
+
+  const scopeRecord = () => (scopeItems.length ? scopeItems.map(({ id, label }) => ({ id, label })) : undefined);
+
+  /** The scope at the time a request was sent (the turn records it). */
+  const scopeRef = useRef<ThreadTurn["scope"]>(undefined);
   const onModelDone = useCallback(
-    ({ turn }: ModelTurnDone) => {
-      addTurn(turn);
+    ({ turn, simulations }: ModelTurnDone) => {
+      addTurn({ ...turn, ...(scopeRef.current ? { scope: scopeRef.current } : {}) });
+      playSimulation(simulations[0]);
       setRequest("");
       requestRef.current?.focus();
     },
@@ -163,17 +210,29 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         { role: "user" as const, text: t.request },
         { role: "assistant" as const, text: t.reply || t.summary || "Done." },
       ]);
-    void model.send({ request: text, intent: "change", history });
+    scopeRef.current = scopeRecord();
+    const liveNote =
+      live && !explaining
+        ? "The user is in live view. Unless they ask to change the diagram itself, describe their scenario as one simulation with set_simulation: it's saved and plays straight away."
+        : "";
+    const context = [contextFor(intent), liveNote].filter(Boolean).join("\n\n");
+    void model.send({ request: text, intent: explaining ? "explain" : "change", context, history });
   };
 
   const copyPrompt = async () => {
     const ed = editorNow();
     if (!ed) return;
     promptedFor.current = request.trim();
-    const ok = await copyText(buildPrompt({ request, describe: describeForAi(ed, paletteHost.get().canvas) }));
+    const input = { request, describe: describeForAi(ed, paletteHost.get().canvas), context: contextFor(intent) };
+    const prompt = explaining
+      ? buildExplainPrompt(input)
+      : place === "live"
+        ? buildSimulationPrompt(input)
+        : buildPrompt(input);
+    const ok = await copyText(prompt);
     if (!ok) return notify("The browser didn't allow copying. Try again.", { kind: "error" });
     flashCopied("prompt");
-    replyRef.current?.focus();
+    if (!explaining) replyRef.current?.focus();
   };
 
   const copyFix = async () => {
@@ -190,6 +249,8 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         describe: describeForAi(ed, paletteHost.get().canvas),
         reply: failure.reply,
         error: failure.error,
+        context: contextFor("change"),
+        simulation: failure.simulation,
       }),
     );
     if (!ok) return notify("The browser didn't allow copying. Try again.", { kind: "error" });
@@ -198,28 +259,27 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   };
 
   /** Applies a plan as one undo step and records the turn. */
-  const commit = useCallback(
-    (ed: EditorApi, plan: Extract<TurnPlan, { ok: true }>, title: string) => {
-      ed.applyDiagram(plan.next, { merge: `ai:panel:${++mergeSeq}` });
-      showApplied(plan.summary, plan.changed, ed);
-      addTurn({
-        kind: "change",
-        request: title,
-        summary: plan.summary,
-        changed: plan.changed,
-        choices: plan.choices,
-        warnings: plan.warnings,
-        after: ed.getDiagram(),
-        engine: "paste",
-      });
-      setFailure(null);
-      setReply("");
-      setRequest("");
-      promptedFor.current = "";
-      requestRef.current?.focus();
-    },
-    [addTurn],
-  );
+  const commit = (ed: EditorApi, plan: Extract<TurnPlan, { ok: true }>, title: string) => {
+    ed.applyDiagram(plan.next, { merge: `ai:panel:${++mergeSeq}` });
+    showApplied(plan.summary, plan.changed, ed);
+    addTurn({
+      kind: "change",
+      request: title,
+      ...(scopeRecord() ? { scope: scopeRecord() } : {}),
+      summary: plan.summary,
+      changed: plan.changed,
+      choices: plan.choices,
+      warnings: plan.warnings,
+      after: ed.getDiagram(),
+      engine: "paste",
+    });
+    playSimulation(plan.simulationId);
+    setFailure(null);
+    setReply("");
+    setRequest("");
+    promptedFor.current = "";
+    requestRef.current?.focus();
+  };
 
   const runPlan = (ed: EditorApi, p: ParsedReply, pastedReply: string) => {
     if (isLocalOnly(paletteHost.get().canvas)) {
@@ -232,6 +292,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         error: plan.error,
         reply: pastedReply,
         ...(p.ok && p.kind === "ops" ? { ops: p.ops, layout: p.layout } : {}),
+        ...(p.ok && p.kind === "simulation" ? { simulation: true } : {}),
       });
       return;
     }
@@ -359,7 +420,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     } else if (e.key === "Enter" && modelMode && !e.shiftKey && e.target === requestRef.current) {
       e.preventDefault();
       send();
-    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && hasReply && !modelMode) {
+    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && hasReply && !modelMode && !explaining) {
       e.preventDefault();
       apply();
     }
@@ -380,14 +441,24 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const listening = dictation.status !== "idle";
   const hasReply = !!reply.trim();
   const latest = latestTurn(turns, current);
-  const empty = !current || (!current.nodes.length && !current.annotations?.length);
+  const heading = emptyHeading(place, scopeItems.length > 0);
+  const chips = localOnly ? [] : suggestions(place, scopeItems.length > 0);
+  const placeholder = explaining
+    ? "e.g. Where could this fail under load?"
+    : place === "create"
+      ? "e.g. A Kafka topic orders.created consumed by a .NET service billing-worker that writes to Postgres"
+      : place === "live"
+        ? "e.g. A storm of 100 new members at 9am, then the payment API fails"
+        : "e.g. Add a dead-letter queue after billing-worker";
   const replyStatus = pending
     ? "Checking reply…"
     : parsed
       ? parsed.ok
         ? parsed.kind === "ops"
           ? `${parsed.ops.length} ${parsed.ops.length === 1 ? "op" : "ops"} ready`
-          : "A whole diagram: it replaces this one"
+          : parsed.kind === "simulation"
+            ? `Simulation “${parsed.spec.title}” ready`
+            : "A whole diagram: it replaces this one"
         : parsed.error
       : null;
 
@@ -478,13 +549,30 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
             <li ref={historyEnd} aria-hidden className="ai-history-end" />
           </ol>
         ) : (
-          <div className="ai-empty" data-testid="ai-empty">
-            <h3>{empty ? "Build with AI" : "Change this diagram"}</h3>
-            <p>
-              {empty
-                ? "Describe the system you want: the services, queues and databases, and how messages flow between them."
-                : "Ask for a change in plain words. Each change is one undo step, and you can revert to any earlier one."}
-            </p>
+          <div className="ai-empty" data-testid="ai-empty" data-place={place}>
+            <h3>{localOnly ? "AI is off for this diagram" : heading.title}</h3>
+            {!localOnly && <p>{heading.text}</p>}
+            {chips.length > 0 && (
+              <ul className="ai-chips" aria-label="Suggestions">
+                {chips.map((c, i) => (
+                  <li key={c.label}>
+                    <button
+                      className="ai-chip"
+                      onClick={() => {
+                        setRequest(c.request);
+                        setIntent(c.intent);
+                        requestRef.current?.focus();
+                      }}
+                      data-testid={`ai-suggestion-${i}`}
+                      data-intent={c.intent}
+                    >
+                      {c.intent === "explain" && <Icon name="info" size={12} />}
+                      {c.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
         {model.error && (
@@ -496,6 +584,44 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
       </div>
 
       <div className="ai-composer" data-testid="ai-composer">
+        {(place !== "create" || scopeItems.length > 0) && (
+          <div className="ai-composer-row ai-composer-top">
+            {place !== "create" && (
+              <div className="ai-intent" role="group" aria-label="What to do">
+                <button
+                  className={intent === "change" ? "is-on" : ""}
+                  aria-pressed={intent === "change"}
+                  onClick={() => setIntent("change")}
+                  data-testid="ai-intent-change"
+                >
+                  {place === "live" ? "Simulate" : "Change"}
+                </button>
+                <button
+                  className={intent === "explain" ? "is-on" : ""}
+                  aria-pressed={intent === "explain"}
+                  onClick={() => setIntent("explain")}
+                  data-testid="ai-intent-explain"
+                >
+                  Explain
+                </button>
+              </div>
+            )}
+            {scopeItems.length > 0 && (
+              <span className="ai-scope" data-testid="ai-scope" title={scopeItems.map((i) => i.label).join(", ")}>
+                <span className="ai-scope-label">
+                  {scopeItems.length === 1 ? scopeItems[0].label : `${scopeItems.length} selected`}
+                </span>
+                <button
+                  onClick={() => setScope([])}
+                  aria-label="Remove the selection from the request"
+                  data-testid="ai-scope-clear"
+                >
+                  <Icon name="close" size={11} />
+                </button>
+              </span>
+            )}
+          </div>
+        )}
         <div className={`ai-request${listening ? " is-listening" : ""}`}>
           <label className="sr-only" htmlFor={`${titleId}-request`}>
             Describe what you want
@@ -506,11 +632,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
             className="ix-input ai-textarea"
             value={request}
             onChange={(e) => setRequest(e.target.value)}
-            placeholder={
-              empty
-                ? "e.g. A Kafka topic orders.created consumed by a .NET service billing-worker that writes to Postgres"
-                : "e.g. Add a dead-letter queue after billing-worker"
-            }
+            placeholder={placeholder}
             rows={3}
             spellCheck
             data-testid="ai-request"
@@ -588,38 +710,46 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
                 <Icon name={copied === "prompt" ? "check" : "copy"} size={14} />
                 {copied === "prompt" ? "Copied" : "Copy prompt"}
               </button>
-              <span className="ai-hint">Paste it into your AI, then its reply below.</span>
-            </div>
-            <label className="sr-only" htmlFor={`${titleId}-reply`}>
-              Paste the reply
-            </label>
-            <textarea
-              id={`${titleId}-reply`}
-              ref={replyRef}
-              className="ix-input ix-mono ai-textarea ai-reply"
-              value={reply}
-              onChange={(e) => {
-                setReply(e.target.value);
-                setFailure(null);
-              }}
-              placeholder="Paste the reply"
-              rows={3}
-              spellCheck={false}
-              data-testid="ai-reply"
-            />
-            <div className="ai-composer-row">
-              <span className={`ai-reply-status${parsed?.ok ? " is-ok" : ""}`} data-testid="ai-reply-status">
-                {!failure && replyStatus ? replyStatus : hasReply ? "" : `${MOD}+Enter applies · one undo step`}
+              <span className="ai-hint" data-testid={explaining ? "ai-explain-note" : undefined}>
+                {explaining
+                  ? "Your AI answers in its own chat; nothing to paste back."
+                  : "Paste it into your AI, then its reply below."}
               </span>
-              <button
-                className={`btn${hasReply && !failure ? " btn-primary" : ""}`}
-                disabled={!hasReply || !editor}
-                onClick={apply}
-                data-testid="ai-apply"
-              >
-                <Icon name="ai" size={14} /> Apply
-              </button>
             </div>
+            {!explaining && (
+              <>
+                <label className="sr-only" htmlFor={`${titleId}-reply`}>
+                  Paste the reply
+                </label>
+                <textarea
+                  id={`${titleId}-reply`}
+                  ref={replyRef}
+                  className="ix-input ix-mono ai-textarea ai-reply"
+                  value={reply}
+                  onChange={(e) => {
+                    setReply(e.target.value);
+                    setFailure(null);
+                  }}
+                  placeholder="Paste the reply"
+                  rows={3}
+                  spellCheck={false}
+                  data-testid="ai-reply"
+                />
+                <div className="ai-composer-row">
+                  <span className={`ai-reply-status${parsed?.ok ? " is-ok" : ""}`} data-testid="ai-reply-status">
+                    {!failure && replyStatus ? replyStatus : hasReply ? "" : `${MOD}+Enter applies · one undo step`}
+                  </span>
+                  <button
+                    className={`btn${hasReply && !failure ? " btn-primary" : ""}`}
+                    disabled={!hasReply || !editor}
+                    onClick={apply}
+                    data-testid="ai-apply"
+                  >
+                    <Icon name="ai" size={14} /> Apply
+                  </button>
+                </div>
+              </>
+            )}
             {conn && (
               <button
                 className="link-btn ai-use-model"
@@ -719,6 +849,9 @@ function TurnItem({
       }}
     >
       {turn.request && <p className={`ai-turn-request${turn.kind === "revert" ? " is-system" : ""}`}>{turn.request}</p>}
+      {turn.scope && turn.scope.length > 0 && (
+        <p className="ai-turn-scope">About {turn.scope.map((i) => i.label).join(", ")}</p>
+      )}
       <div className="ai-turn-card">
         {turn.reply && <p className="ai-turn-reply">{turn.reply}</p>}
         {turn.summary && (
