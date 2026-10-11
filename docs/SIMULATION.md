@@ -21,7 +21,7 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
 | `topic` | appended to the log | per **consumer group** (edges grouped by `props.group`, default each edge its own group): each group gets every message, delivered to one edge of the group (round-robin among ready consumers), ≤ `partitions` in flight per group |
 | `stream` | same as `topic` | same as `topic` |
 | `queue` | enqueued | **one** consumer across all outgoing non-DLQ edges (competing consumers) |
-| `store` | written (default 40 ms) | nothing (terminal). Sync edges into a store produce a `reply` particle back. |
+| `store` | written (default 40 ms) | terminal, unless it has outgoing **async** edges: those model change feeds / CDC and each gets a copy. Sync edges into a store produce a `reply` particle back. |
 | `sink` | received | nothing (terminal) |
 | `none` | passes through like a processor with 0 latency | every outgoing edge |
 
