@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { catalog } from "../stencils/catalog";
-import { flatten, parseQuery, rank, recencyBoost, type Command } from "./rank";
+import { flatten, MAX_RESULTS, parseQuery, rank, recencyBoost, type Command } from "./rank";
 import { stencilScore } from "./sources";
 import { withRecentCommand } from "./recent";
 
@@ -22,6 +22,24 @@ const stencilCommands: Command[] = catalog.map((s) => ({
 const ids = (cs: Command[], q: string, recent: string[] = []) => flatten(rank(cs, q, recent)).map((c) => c.id);
 
 describe("palette ranking", () => {
+  it("caps empty queries across diagrams, simulations and recents", () => {
+    for (const group of ["diagrams", "simulations"] as const) {
+      const commands = Array.from({ length: 1000 }, (_, i): Command => ({
+        id: `${group}:${i}`,
+        group,
+        label: `Item ${i}`,
+      }));
+      const results = flatten(
+        rank(
+          commands,
+          "",
+          commands.slice(0, 5).map((c) => c.id),
+        ),
+      );
+      expect(results).toHaveLength(MAX_RESULTS);
+      expect(new Set(results.map((c) => c.id)).size).toBe(MAX_RESULTS);
+    }
+  });
   const actions = [
     action("canvas.auto-layout", "Auto-layout"),
     action("live", "Toggle live"),

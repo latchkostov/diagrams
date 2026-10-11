@@ -32,6 +32,15 @@ const LEGACY_KEY = "diagrams.imported.v1";
 const SHARED_KEY = "diagrams.shared.v1";
 const BINDINGS_KEY = "diagrams.bindings.v1";
 export const LIBRARY_KEY = "diagrams.library.v1";
+// Each diagram owns one index record. Publishing it is a single atomic storage write;
+// tabs never overwrite a shared snapshot containing other diagrams' entries.
+const ENTRY_PREFIX = "diagrams.library-entry.v1:";
+const entryKey = (slug: string) => ENTRY_PREFIX + slug;
+// A separate deletion marker wins over a metadata write already in flight in another tab.
+// Only Undo clears it, after restoring the backing content and index record.
+const DELETED_PREFIX = "diagrams.library-deleted.v1:";
+const deletedKey = (slug: string) => DELETED_PREFIX + slug;
+const isDeleted = (slug: string) => safeStorage.getItem(deletedKey(slug)) !== null;
 const DOC_PREFIX = "diagrams.doc.v1:";
 const LIBRARY_FORMAT = "diagrams/library/v1";
 export const UNTITLED = "Untitled diagram";
@@ -300,6 +309,7 @@ export function writeAutosave(slug: string, d: DiagramFile | null, identity?: st
     slug = entry;
   }
   if (identity !== undefined && getDiagramIdentity(slug) !== identity) return false;
+  if (isLibrarySlug(slug) && isDeleted(slug)) return false;
   const key = AUTOSAVE_PREFIX + slug;
   const ok = d
     ? safeStorage.setItem(
@@ -350,6 +360,13 @@ function changed() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(DIAGRAMS_CHANGED));
 }
 
+// useLibrary subscribes to DIAGRAMS_CHANGED. Bridge per-entry storage events in other tabs.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key?.startsWith(ENTRY_PREFIX) || event.key?.startsWith(DELETED_PREFIX)) changed();
+  });
+}
+
 const isBlank = (d: DiagramFile) =>
   !d.nodes.length &&
   !d.edges.length &&
@@ -383,13 +400,12 @@ function validEntry(v: unknown): v is StoredEntry {
 /** The single slot from before the library, as an entry (unless it's an untouched blank). */
 function legacyEntry(): StoredEntry | undefined {
   const original = readDiagram(LEGACY_KEY);
-  if (!original) return undefined;
   const current = getAutosave(LEGACY_SLUG) ?? original;
-  if (isBlank(current)) return undefined;
+  if (!current || isBlank(current)) return undefined;
   return summarize(LEGACY_SLUG, current, Date.now());
 }
 
-function readIndex(): StoredEntry[] {
+function readLegacyIndex(): StoredEntry[] {
   const raw = safeStorage.getItem(LIBRARY_KEY);
   // No index yet: the library is whatever the single legacy slot held (persisted by migrateLegacySlot).
   if (raw === null) return [legacyEntry()].filter((e): e is StoredEntry => !!e);
@@ -403,6 +419,40 @@ function readIndex(): StoredEntry[] {
   }
 }
 
+function readIndex(): StoredEntry[] {
+  const entries = new Map(readLegacyIndex().map((e) => [e.slug, e]));
+  for (const key of safeStorage.keys()) {
+    if (!key.startsWith(ENTRY_PREFIX)) continue;
+    const slug = key.slice(ENTRY_PREFIX.length);
+    const record = read<unknown>(key);
+    if (validEntry(record) && record.slug === slug) entries.set(slug, record);
+    else if ((record as { deleted?: unknown } | null)?.deleted === true) entries.delete(slug);
+  }
+  return [...entries.values()].filter((entry) => !isDeleted(entry.slug));
+}
+
+/** Publish only this diagram's entry, without a cross-tab read/modify/write race. */
+function writeEntry(entry: StoredEntry): boolean {
+  return safeStorage.setItem(entryKey(entry.slug), JSON.stringify(entry));
+}
+
+/** Required writes publish together to subscribers; restore completed writes on failure. */
+function commitWrites(writes: [string, string | null][]): void {
+  const completed: [string, string | null][] = [];
+  for (const [key, value] of writes) {
+    const previous = safeStorage.getItem(key);
+    const ok = value === null ? safeStorage.removeItem(key) : safeStorage.setItem(key, value);
+    if (!ok) {
+      for (const [written, old] of completed.reverse()) {
+        if (old === null) safeStorage.removeItem(written);
+        else safeStorage.setItem(written, old);
+      }
+      throw new Error(STORAGE_FULL);
+    }
+    completed.push([key, previous]);
+  }
+}
+
 function writeIndex(entries: StoredEntry[]): boolean {
   return safeStorage.setItem(LIBRARY_KEY, JSON.stringify({ format: LIBRARY_FORMAT, entries }));
 }
@@ -410,6 +460,11 @@ function writeIndex(entries: StoredEntry[]): boolean {
 /** Upgrades the single "Your diagram" slot into the library (in place, no copying). Idempotent; best effort. */
 export function migrateLegacySlot(): void {
   if (safeStorage.getItem(LIBRARY_KEY) !== null) return;
+  // First-run canvases in the old app wrote only an autosave. Keep its legacy identity.
+  const legacy = getAutosave(LEGACY_SLUG);
+  if (!getOriginal(LEGACY_SLUG) && legacy && !isBlank(legacy)) {
+    if (!safeStorage.setItem(LEGACY_KEY, JSON.stringify(legacy))) return;
+  }
   writeIndex(readIndex());
 }
 
@@ -426,16 +481,14 @@ export function hasLibraryEntry(slug: string): boolean {
 
 /** Keeps an entry's title, node count, thumbnail and time in step with its latest content. Best effort. */
 function touchEntry(slug: string, d: DiagramFile | undefined) {
-  if (!d) return;
+  if (!d || isDeleted(slug)) return;
   const entries = readIndex();
   const i = entries.findIndex((e) => e.slug === slug);
   const now = Date.now();
   const next = summarize(slug, d, now, i >= 0 ? entries[i].createdAt : now);
-  if (i >= 0) entries[i] = next;
   // A missing entry is re-listed only while its document exists (never a deleted one).
-  else if (safeStorage.getItem(slotKey(slug)!) !== null) entries.push(next);
-  else return;
-  writeIndex(entries);
+  if (i < 0 && safeStorage.getItem(slotKey(slug)!) === null) return;
+  if (writeEntry(next)) changed();
 }
 
 /**
@@ -449,8 +502,7 @@ export function createLibraryDiagram(d: DiagramFile, target?: SaveTarget, sessio
   while (entries.some((e) => e.slug === slug));
   replaceDocument(slug, d, target, sessionId);
   const r = validateDiagram(d);
-  entries.push(summarize(slug, r.ok ? r.diagram : d, Date.now()));
-  if (!writeIndex(entries)) {
+  if (!writeEntry(summarize(slug, r.ok ? r.diagram : d, Date.now()))) {
     safeStorage.removeItem(slotKey(slug)!);
     deviceTargets.delete(slug);
     throw new Error(STORAGE_FULL);
@@ -485,13 +537,27 @@ export function renameLibraryDiagram(slug: string, title: string): void {
   const original = getOriginal(slug);
   if (!key || !original) throw new Error("That diagram couldn't be read.");
   const edits = getAutosave(slug);
-  if (stored?.sessionFormat === SESSION_FORMAT && typeof stored.sessionId === "string") {
-    storeSession(key, { ...(stored as DocumentSession), diagram: { ...original, title: next } });
-  } else if (!safeStorage.setItem(key, JSON.stringify({ ...original, title: next }))) {
-    throw new Error(STORAGE_FULL);
-  }
-  if (edits) writeAutosave(slug, { ...edits, title: next });
-  else touchEntry(slug, { ...original, title: next });
+  const renamed = { ...original, title: next };
+  const current = { ...(edits ?? original), title: next };
+  const entry = readIndex().find((e) => e.slug === slug);
+  const writes: [string, string][] = [
+    [key, JSON.stringify(stored?.sessionFormat === SESSION_FORMAT ? { ...stored, diagram: renamed } : renamed)],
+  ];
+  if (edits)
+    writes.push([
+      AUTOSAVE_PREFIX + slug,
+      JSON.stringify(
+        getDiagramIdentity(slug).startsWith("legacy:")
+          ? current
+          : {
+              sessionFormat: SESSION_FORMAT,
+              sessionId: getDiagramIdentity(slug),
+              diagram: current,
+            },
+      ),
+    ]);
+  writes.push([entryKey(slug), JSON.stringify(summarize(slug, current, Date.now(), entry?.createdAt))]);
+  commitWrites(writes);
   changed();
 }
 
@@ -502,22 +568,31 @@ export function deleteLibraryDiagram(slug: string): () => boolean {
   const doc = safeStorage.getItem(key);
   const autosave = safeStorage.getItem(AUTOSAVE_PREFIX + slug);
   const entries = readIndex();
-  const entry = entries.find((e) => e.slug === slug);
+  const indexed = entries.find((e) => e.slug === slug);
+  const current = getCurrent(slug);
+  const entry = indexed && current ? summarize(slug, current, Date.now(), indexed.createdAt) : indexed;
   const device = deviceTargets.get(slug);
   // The index goes first: if it can't be written, nothing is deleted.
-  if (!writeIndex(entries.filter((e) => e.slug !== slug))) throw new Error(STORAGE_FULL);
+  if (!safeStorage.setItem(deletedKey(slug), JSON.stringify({ slug, deleted: true }))) throw new Error(STORAGE_FULL);
   safeStorage.removeItem(key);
   safeStorage.removeItem(AUTOSAVE_PREFIX + slug);
+  safeStorage.removeItem(entryKey(slug));
   deviceTargets.delete(slug);
   changed();
   return () => {
-    const ok =
-      (doc === null || safeStorage.setItem(key, doc)) &&
-      (autosave === null || safeStorage.setItem(AUTOSAVE_PREFIX + slug, autosave)) &&
-      (!entry || writeIndex([...readIndex().filter((e) => e.slug !== slug), entry]));
-    if (device) deviceTargets.set(slug, device);
-    changed();
-    return ok;
+    try {
+      const writes: [string, string | null][] = [];
+      if (doc !== null) writes.push([key, doc]);
+      if (autosave !== null) writes.push([AUTOSAVE_PREFIX + slug, autosave]);
+      if (entry) writes.push([entryKey(slug), JSON.stringify(entry)]);
+      writes.push([deletedKey(slug), null]);
+      commitWrites(writes);
+      if (device) deviceTargets.set(slug, device);
+      changed();
+      return true;
+    } catch {
+      return false;
+    }
   };
 }
 

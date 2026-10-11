@@ -138,6 +138,7 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
           id: `action:${item.id}`,
           group: "actions",
           label: leafLabel(label, item.label),
+          parent: `action:${node.id}`,
           icon: item.icon ?? (item.stencil || item.swatch ? undefined : node.icon),
           stencil: item.stencil,
           swatch: item.swatch,
