@@ -34,6 +34,7 @@ export interface LiveHost {
 export interface SessionHost {
   /** Replays a saved simulation in the running session. */
   run(simulationId: string): void;
+  disabledHint?: string;
 }
 
 interface HostState {
@@ -69,6 +70,7 @@ export const paletteHost = {
   /** Replays a saved simulation, going live first when needed. False when live view isn't available. */
   runSimulation(id: string): boolean {
     if (state.session) {
+      if (state.session.disabledHint) return false;
       state.session.run(id);
       return true;
     }
@@ -89,15 +91,15 @@ export function useLiveHost(toggle: () => void, enabled: boolean) {
 }
 
 /** Called by the running live session; also starts a simulation the palette asked for before going live. */
-export function useLiveSessionHost(run: (simulationId: string) => void, enabled: boolean) {
+export function useLiveSessionHost(run: (simulationId: string) => void, enabled: boolean, disabledHint?: string) {
   useEffect(() => {
     if (!enabled) return;
-    const off = publish("session", { run });
+    const off = publish("session", { run, disabledHint });
     const pending = state.pendingRun;
     if (pending) {
       set({ pendingRun: null });
       run(pending);
     }
     return off;
-  }, [run, enabled]);
+  }, [run, enabled, disabledHint]);
 }

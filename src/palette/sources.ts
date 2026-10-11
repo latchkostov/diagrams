@@ -3,7 +3,7 @@ import type { EditorApi, Selection } from "../editor/types";
 import type { Stencil } from "../model/types";
 import { scoreStencil } from "../lib/stencilSearch";
 import { tokens } from "./fuzzy";
-import type { CanvasHost, LiveHost } from "./host";
+import type { CanvasHost, LiveHost, SessionHost } from "./host";
 import type { Command } from "./rank";
 
 /*
@@ -25,6 +25,7 @@ export interface SourceInput {
   registry: Pick<ActionRegistry, "build">;
   canvas: CanvasHost | null;
   live: LiveHost | null;
+  session?: SessionHost | null;
   /** The app view: actions, nodes and simulations need the canvas. */
   view: "canvas" | "gallery" | "lab";
   stencils: readonly Stencil[];
@@ -100,14 +101,14 @@ function leafLabel(parent: string, leaf: string): string {
 function leaves(items: MenuNode[], trail: string[] = []): { item: MenuItem; trail: string[] }[] {
   const out: { item: MenuItem; trail: string[] }[] = [];
   for (const n of items) {
-    if (n.type !== "item" || n.disabled) continue;
+    if (n.type !== "item" || (n.disabled && !n.hint)) continue;
     if (n.children) out.push(...leaves(n.children, [...trail, n.label]));
     else out.push({ item: n, trail });
   }
   return out;
 }
 
-/** Every visible, enabled registry action for the contexts, submenus flattened. Disabled ones are hidden. */
+/** Registry actions, flattened. Unavailable actions with an explanation stay discoverable. */
 export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts: readonly ActionContext[]): Command[] {
   const out: Command[] = [];
   const seen = new Set<string>();
@@ -118,7 +119,7 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
   };
   for (const ctx of contexts) {
     for (const node of registry.build(ctx)) {
-      if (node.type !== "item" || node.disabled || SKIP.has(node.id)) continue;
+      if (node.type !== "item" || (node.disabled && !node.hint) || SKIP.has(node.id)) continue;
       const label = paletteLabel(node, ctx.target);
       if (!node.children) {
         add({
@@ -128,6 +129,7 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
           icon: node.icon,
           shortcut: node.shortcut,
           hint: node.hint,
+          disabled: node.disabled,
           checked: node.checked,
           danger: node.danger,
           keywords: node.keywords,
@@ -144,6 +146,8 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
         icon: node.icon,
         shortcut: node.shortcut,
         drill: label,
+        disabled: node.disabled,
+        hint: node.hint,
       });
       for (const { item, trail } of kids) {
         add({
@@ -155,7 +159,8 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
           stencil: item.stencil,
           swatch: item.swatch,
           shortcut: item.shortcut,
-          hint: item.hint,
+          hint: node.disabled ? node.hint : item.hint,
+          disabled: node.disabled || item.disabled,
           checked: item.checked,
           danger: item.danger,
           keywords: [label, ...trail.slice(1), item.keywords ?? "", item.hint ?? ""].join(" ").trim(),
@@ -222,7 +227,11 @@ export function collectCommands(input: SourceInput): Command[] {
         icon: "bolt",
         keywords: "simulation replay play",
         hint: canvas.live ? undefined : "goes live",
-        run: () => input.runSimulation(s.id),
+        disabled: !!input.session?.disabledHint,
+        ...(input.session?.disabledHint ? { hint: input.session.disabledHint } : {}),
+        run: () => {
+          if (!input.session?.disabledHint) input.runSimulation(s.id);
+        },
       });
     }
   }

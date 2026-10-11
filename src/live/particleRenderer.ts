@@ -6,6 +6,7 @@
 
 import type { Particle, ParticleKind, SimSnapshot } from "../sim/types";
 import { PathCache, pointOnSamples, sampleIndex, type PathLike, type PathSamples } from "./pathSampler";
+import type { CalmSampler } from "./slowmo/sampler";
 import { nearestOnBox, placeTraceLabels, traceLabelInk, type Box, type PlacedLabel } from "./traceLabels";
 
 /** Theme colours the canvas can't read from CSS by itself (from tokens.css, see `readParticleTokens`). */
@@ -82,6 +83,39 @@ export interface RenderOptions {
   /** Presentation mode draws everything a little larger. */
   scale: number;
   tokens: ParticleTokens;
+  /** Calmer slow speeds: below 1×, only a sample of message families is drawn (slowmo/sampler.ts). */
+  calm?: CalmSampler;
+}
+
+/** What an overlay (slow motion) draws with: the frame's transform, paths and sprites. */
+export interface OverlayView {
+  /** Under the edge label pills (lit edges, rings), and above them (dots, captions). */
+  ctx: CanvasRenderingContext2D;
+  over: CanvasRenderingContext2D;
+  dpr: number;
+  /** Flow → device px: x * k + ox. */
+  k: number;
+  ox: number;
+  oy: number;
+  /** A particle's radius in device px. */
+  size: number;
+  width: number;
+  height: number;
+  theme: "light" | "dark";
+  tokens: ParticleTokens;
+  reduced: boolean;
+  samples(edgeId: string): PathSamples | null;
+  sprite(color: string, kind: ParticleKind, r: number): HTMLCanvasElement;
+  nodeRect(nodeId: string): Rect | null;
+  obstacles(): { hard: readonly Rect[]; soft: readonly Rect[] } | undefined;
+}
+
+/** Drawn over a frozen frame: background dots stay put, faint, with no trails, pulses or flashes. */
+export interface RenderOverlay {
+  backgroundAlpha: number;
+  /** Changes whenever the next paint would differ; while it holds (a paused replay), frames are skipped. */
+  readonly revision: number;
+  paint(view: OverlayView): void;
 }
 
 interface Batch {
@@ -179,6 +213,9 @@ export class ParticleRenderer {
   private lastKey = "";
   private lastSnap: SimSnapshot | null = null;
   private lastFocus: number | undefined;
+  /** The overlay the last frame drew, and its revision (slow motion's drawings change on their own). */
+  private lastOverlay: RenderOverlay | undefined;
+  private lastRevision = -1;
   private wasEmpty = true;
   /** Particles drawn in the last frame (for the stats readout and tests). */
   drawn = 0;
@@ -279,21 +316,40 @@ export class ParticleRenderer {
     return best;
   }
 
-  /** `focus`: the traced root message id. Its particles glow and carry a label; the rest dim. */
-  draw(snap: SimSnapshot, now: number, focus?: number): void {
+  /**
+   * `focus`: the traced root message id. Its particles glow and carry a label; the rest dim.
+   * `slow` (slow motion): the snapshot is frozen background, drawn faint and still beneath it.
+   */
+  draw(snap: SimSnapshot, now: number, focus?: number, slow?: RenderOverlay): void {
     const [tx, ty, zoom] = this.layout();
     const key = `${tx}|${ty}|${zoom}|${this.w}|${this.h}`;
     const moved = key !== this.lastKey;
     // Paused (the controller hands back the same snapshot), nothing fading out, the view and the
     // edges where they were: the canvas already shows this frame, and the hit targets still hold.
-    if (!moved && snap === this.lastSnap && focus === this.lastFocus && !this.pulses.length && !this.cache.stale())
+    // Slow motion animates over a frozen snapshot: skip only while its overlay is unchanged too (a
+    // paused or finished replay), and always draw the frame after it ends.
+    const revision = slow?.revision ?? -1;
+    if (
+      slow === this.lastOverlay &&
+      revision === this.lastRevision &&
+      !moved &&
+      snap === this.lastSnap &&
+      focus === this.lastFocus &&
+      !this.pulses.length &&
+      !this.cache.stale()
+    )
       return;
     this.lastSnap = snap;
     this.lastFocus = focus;
+    this.lastOverlay = slow;
+    this.lastRevision = revision;
     this.frame++;
     this.lastKey = key;
-    this.detectFailures(snap, now);
-    const empty = snap.particles.length === 0 && this.pulses.length === 0;
+    if (slow) {
+      focus = undefined;
+      this.pulses.length = 0;
+    } else this.detectFailures(snap, now);
+    const empty = snap.particles.length === 0 && this.pulses.length === 0 && !slow;
     this.hits.length = 0;
     // Nothing to draw and nothing was drawn: skip the clear (keeps idle live mode at ~0% CPU).
     if (empty && this.wasEmpty && !moved) {
@@ -328,9 +384,12 @@ export class ParticleRenderer {
 
     const particles = snap.particles;
     const stride = reduced && particles.length > REDUCED_MAX ? Math.ceil(particles.length / REDUCED_MAX) : 1;
+    const calm = slow ? undefined : this.opts.calm;
+    calm?.begin(particles, now);
     const perEdge = this.perEdge;
     perEdge.clear();
     for (let i = 0; i < particles.length; i += stride) {
+      if (calm && !calm.keep(particles[i], focus)) continue;
       const id = particles[i].edgeId;
       perEdge.set(id, (perEdge.get(id) ?? 0) + 1);
     }
@@ -341,6 +400,7 @@ export class ParticleRenderer {
       const s = this.cache.get(p.edgeId, this.frame);
       if (!s || s.length === 0) continue;
       const focused = focus !== undefined && p.rootId === focus;
+      if (calm && !calm.keep(p, focus)) continue;
       const crowd = densityStride(perEdge.get(p.edgeId) ?? 0, s.length * k, size);
       if (!focused && crowd > 1 && p.id % crowd !== 0) continue;
       const reverse = p.kind === "reply" || p.kind === "retry";
@@ -369,7 +429,7 @@ export class ParticleRenderer {
       if (pills.length && insideAny(pills, x, y)) b.dim.push(x, y);
       else b.heads.push(x, y);
       const trail = TRAIL[p.kind];
-      if (trail > 0 && !reduced) this.pushTrail(b.trails, s, t, reverse, trail / s.length, k, ox, oy);
+      if (trail > 0 && !reduced && !slow) this.pushTrail(b.trails, s, t, reverse, trail / s.length, k, ox, oy);
       drawn++;
     }
     this.drawn = drawn;
@@ -400,19 +460,43 @@ export class ParticleRenderer {
       const r = b.kind === "reply" ? size * 0.55 : b.kind === "dlq" ? size * 1.15 : size;
       const sprite = this.sprite(b.color, b.kind, r);
       const half = sprite.width / 2;
-      ctx.globalAlpha = (b.kind === "reply" ? 0.55 : 1) * (focus !== undefined ? 0.28 : 1);
+      ctx.globalAlpha =
+        (b.kind === "reply" ? 0.55 : 1) * (slow ? slow.backgroundAlpha : focus !== undefined ? 0.28 : 1);
       const heads = b.heads;
       for (let i = 0; i < heads.length; i += 2) ctx.drawImage(sprite, heads[i] - half, heads[i + 1] - half);
       ctx.globalAlpha = 1;
     }
     ctx.globalCompositeOperation = "source-over";
-    this.drawDimmed(size, focus !== undefined);
+    this.drawDimmed(size, focus !== undefined || !!slow);
     if (this.focusHeads.length) this.drawFocus(size, dpr);
     else if (this.labels.length) {
       this.labels = [];
       this.labelSpots.clear();
     }
 
+    if (slow) {
+      // Its dots and words go on the overlay, above the edge label pills (like trace labels).
+      this.overlayDrawn = true;
+      slow.paint({
+        ctx,
+        over: octx,
+        dpr,
+        k,
+        ox,
+        oy,
+        size,
+        width: this.canvas.width,
+        height: this.canvas.height,
+        theme: this.opts.theme,
+        tokens: this.opts.tokens,
+        reduced,
+        samples: (id) => this.cache.get(id, this.frame),
+        sprite: (color, kind, r) => this.sprite(color, kind, r),
+        nodeRect: (id) => this.env.nodeRect(id),
+        obstacles: () => this.env.obstacles?.(),
+      });
+      return;
+    }
     this.trackArrivals(particles, now);
     this.drawPulses(now, k, ox, oy, size);
   }

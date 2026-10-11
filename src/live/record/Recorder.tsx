@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatch } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type Dispatch } from "react";
 import { createPortal } from "react-dom";
 import { Dialog } from "../../interop/ui/Dialog";
 import { notify } from "../../interop/ui/toast";
@@ -21,6 +21,7 @@ import {
   type RecordState,
 } from "./recordModel";
 import { fixWebmDuration } from "./webmDuration";
+import type { SlowMotion } from "../slowmo/session";
 
 /** After the run finishes, keep recording this long so the last messages land and "Done" shows. */
 const END_TAIL_MS = 1500;
@@ -32,6 +33,8 @@ const UNDO_MS = 8000;
 interface Options {
   /** Play the selected simulation from 0:00 and stop when it ends. */
   fromStart: boolean;
+  /** Play the slow motion from its first beat and stop at its end. */
+  slowmo?: boolean;
   /** Presentation view for the take (hides editing chrome, larger type); always, where it exists. */
   present: boolean;
 }
@@ -49,6 +52,8 @@ export interface RecorderProps {
   presenting: boolean;
   /** Presentation mode exists here (the canvas; not the Lab). */
   canPresent: boolean;
+  /** Slow motion: while it plays, the one option is to record it from the start. */
+  slowmo?: SlowMotion;
 }
 
 /**
@@ -56,7 +61,17 @@ export interface RecorderProps {
  * (elapsed time, Stop, Esc) and the review dialog (preview, size, Download / Discard). The state
  * machine is `recordReducer`; this component runs its side effects.
  */
-export function Recorder({ rec, dispatch, controller, state, target, title, presenting, canPresent }: RecorderProps) {
+export function Recorder({
+  rec,
+  dispatch,
+  controller,
+  state,
+  target,
+  title,
+  presenting,
+  canPresent,
+  slowmo,
+}: RecorderProps) {
   const [scopeConfirmation, setScopeConfirmation] = useState<(() => void) | null>(null);
   const stoppedDuration = useRef(0);
   const crop = useRef<CropMode>("none");
@@ -64,6 +79,11 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
   const options = useRef<Options>({ fromStart: false, present: false });
   /** This take plays the simulation from the start (auto-stop, notes hold then continue). */
   const [fromStart, setFromStart] = useState(false);
+  /** This take records the slow motion from its first beat (auto-stop at its end). */
+  const [slowTake, setSlowTake] = useState(false);
+  const noSlow = useCallback(() => () => {}, []);
+  const slow = useSyncExternalStore(slowmo?.subscribe ?? noSlow, () => slowmo?.getState() ?? null);
+  const slowOn = slow?.status === "on";
   const startedAt = useRef(0);
   const phase = useRef(rec.phase);
   useLayoutEffect(() => {
@@ -137,6 +157,7 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
       setScopeConfirmation(null);
       options.current = opts;
       setFromStart(opts.fromStart);
+      setSlowTake(!!opts.slowmo);
       dispatch({ type: "start" });
       let prompt: Promise<MediaStream>;
       try {
@@ -209,7 +230,13 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
                     url: URL.createObjectURL(blob),
                     mime: blob.type,
                     format: kind.label,
-                    filename: recordingFilename(title(), controller.getState().simulation?.title ?? null, kind.ext),
+                    filename: recordingFilename(
+                      title(),
+                      opts.slowmo && slowmo?.getState().script
+                        ? `${slowmo.getState().script!.type} slow motion`
+                        : (controller.getState().simulation?.title ?? null),
+                      kind.ext,
+                    ),
                     durationMs,
                     crop: crop.current,
                   };
@@ -219,7 +246,11 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
                 .catch(() =>
                   fail(token, "Recording failed: the video could not be saved. Start again and keep this tab open."),
                 );
-              if (opts.fromStart) {
+              if (opts.slowmo) {
+                // The journey's fit is already set, so the video never opens with a camera move.
+                slowmo?.seek(0);
+                slowmo?.pause();
+              } else if (opts.fromStart) {
                 controller.restart();
                 controller.setPlaying(false);
               }
@@ -233,7 +264,7 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
         })
         .catch((err: unknown) => fail(token, captureErrorMessage(err)));
     },
-    [dispatch, target, controller, unframe, begin, valid, fail, cancel, stream, recording, title],
+    [dispatch, target, controller, unframe, begin, valid, fail, cancel, stream, recording, title, slowmo],
   );
 
   // 3, 2, 1: one second each.
@@ -259,14 +290,24 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
           return;
         }
         startedAt.current = performance.now();
-        if (options.current.fromStart) controller.setPlaying(true);
+        if (options.current.slowmo) slowmo?.play();
+        else if (options.current.fromStart) controller.setPlaying(true);
       });
     });
     return () => {
       cancelAnimationFrame(first);
       cancelAnimationFrame(second);
     };
-  }, [rec.phase, controller, dispatch, cancel, recording]);
+  }, [rec.phase, controller, dispatch, cancel, recording, slowmo]);
+
+  // A slow-motion take stops at the end of the replay (its last beat is already a hold), or when it ends.
+  const slowAuto = rec.phase === "recording" && slowTake;
+  const slowDone = !!slow?.done || slow?.status !== "on";
+  useEffect(() => {
+    if (!slowAuto || !slowDone) return;
+    const t = window.setTimeout(() => stopRef.current(), 300);
+    return () => window.clearTimeout(t);
+  }, [slowAuto, slowDone]);
 
   // From the start: stop a moment after the run finishes, and let pausing notes hold, then continue.
   const auto = rec.phase === "recording" && fromStart;
@@ -345,6 +386,7 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
       {(rec.phase === "setup" || rec.phase === "requesting") && !scopeConfirmation && (
         <SetupDialog
           rec={rec}
+          slowmo={slowOn}
           simulation={sim?.title ?? null}
           canPresent={canPresent && !presenting}
           inPresentation={canPresent || presenting}
@@ -397,6 +439,7 @@ export function Recorder({ rec, dispatch, controller, state, target, title, pres
 
 function SetupDialog({
   rec,
+  slowmo,
   simulation,
   canPresent,
   inPresentation,
@@ -404,6 +447,8 @@ function SetupDialog({
   onClose,
 }: {
   rec: RecordState;
+  /** Slow motion is on: the one option is to record it from the start. */
+  slowmo: boolean;
   simulation: string | null;
   canPresent: boolean;
   /** The take is in presentation view (turned on for it, or already on). The Lab has none. */
@@ -413,6 +458,7 @@ function SetupDialog({
 }) {
   const [support] = useState(captureSupport);
   const [fromStart, setFromStart] = useState(!!simulation);
+  const [slowFromStart, setSlowFromStart] = useState(true);
   const reason = unsupportedReason(support);
   const asking = rec.phase === "requesting";
   const exact = canFrameToElement();
@@ -437,7 +483,13 @@ function SetupDialog({
           </button>
           <button
             className="btn btn-primary"
-            onClick={() => onStart({ fromStart: !!simulation && fromStart, present: canPresent })}
+            onClick={() =>
+              onStart({
+                fromStart: !slowmo && !!simulation && fromStart,
+                slowmo: slowmo && slowFromStart,
+                present: canPresent,
+              })
+            }
             disabled={!!reason || asking}
             data-testid="record-start"
             data-autofocus={reason ? undefined : ""}
@@ -448,19 +500,34 @@ function SetupDialog({
       }
     >
       <div className="lv-rec-setup">
-        {simulation && (
+        {slowmo ? (
           <label className="ix-check">
             <input
               type="checkbox"
-              checked={fromStart}
-              onChange={(e) => setFromStart(e.target.checked)}
-              data-testid="record-opt-from-start"
+              checked={slowFromStart}
+              onChange={(e) => setSlowFromStart(e.target.checked)}
+              data-testid="record-opt-slowmo"
             />
             <span>
-              Play “{simulation}” from the start and stop when it ends
-              <small>Pausing notes hold for {NOTE_HOLD_MS / 1000} seconds, then the story continues.</small>
+              Record this slow motion
+              <small>It plays from the start and the recording stops at its end.</small>
             </span>
           </label>
+        ) : (
+          simulation && (
+            <label className="ix-check">
+              <input
+                type="checkbox"
+                checked={fromStart}
+                onChange={(e) => setFromStart(e.target.checked)}
+                data-testid="record-opt-from-start"
+              />
+              <span>
+                Play “{simulation}” from the start and stop when it ends
+                <small>Pausing notes hold for {NOTE_HOLD_MS / 1000} seconds, then the story continues.</small>
+              </span>
+            </label>
+          )
         )}
         {reason ? (
           <p className="ix-error" role="alert" data-testid="record-unsupported">

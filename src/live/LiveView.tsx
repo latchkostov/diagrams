@@ -24,7 +24,7 @@ import { LiveController } from "./controller";
 import { LiveContext, useLiveState, type LiveUi, type TraceChoice } from "./context";
 import { Decorator } from "./decorations";
 import { downstreamOfEdge, edgesWithin } from "./graph";
-import { liveActions } from "./liveActions";
+import { liveActions, liveMutationGuard } from "./liveActions";
 import { DEFAULT_TOKENS, ParticleRenderer, readParticleTokens, type Rect, type RenderEnv } from "./particleRenderer";
 import { OVERLAY_SELECTOR } from "../canvas/useOverlayFit";
 import { createStormSimulation, suggestedMessageType } from "./storm";
@@ -59,6 +59,12 @@ import { Recorder } from "./record/Recorder";
 import { initialRecordState, isCapturing, recordReducer } from "./record/recordModel";
 import { isRecordingActive } from "./record/framing";
 import { TraceCard } from "./TraceCard";
+import { useSlowMotion, type SlowMotionView } from "./slowmo/useSlowMotion";
+import { SlowCaption } from "./slowmo/SlowBar";
+import { CalmSampler } from "./slowmo/sampler";
+import type { SlowSource } from "./slowmo/session";
+import { PACING } from "./slowmo/script";
+import { formatDuration as formatSpan } from "../trace/journey";
 import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP, roomUnderCard } from "./traceCardLayout";
 import { fitAvoiding, type Viewport } from "../canvas/geometry/fit";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
@@ -141,6 +147,7 @@ function fitBesideCard(s: ReactFlowState<FlowNode, DiagramFlowEdge>): Viewport |
   );
 }
 
+const LOOK_AHEAD_LABEL = "30 s";
 const DEAD_LETTER_WAIT = "Nothing has dead-lettered yet: the next message that does will be traced.";
 const NOTE_PADDING = { top: "170px", right: "80px", bottom: "230px", left: "80px" } as const;
 const NOTE_FIT: FitViewOptions = { padding: NOTE_PADDING, maxZoom: 1, duration: 900 };
@@ -369,8 +376,12 @@ function LiveSession({
     }
     return awaitedAt ? { nodes: new Set([awaitedAt]), edges: new Set<string>() } : null;
   }, [tracedNow, awaitedAt, tracedDiagram]);
+  // Slow motion owns the camera and the spotlight while it's on (see useSlowMotion).
+  const slowRef = useRef<SlowMotionView | null>(null);
+  const [slowPath, setSlowPath] = useState<SlowMotionView["path"]>(null);
   const spotlight = (() => {
     const d = controller.currentDiagram;
+    if (slowPath) return { ...slowPath, kind: "trace" as const };
     if (tracedPath) return { ...tracedPath, kind: "trace" as const };
     if (trace) {
       const r = downstreamOfEdge(d.edges, trace);
@@ -479,6 +490,7 @@ function LiveSession({
   useEffect(() => {
     if (cardOpen === cardFitted.current || panelOpenRef.current) return;
     cardFitted.current = cardOpen;
+    if (slowRef.current?.session.active) return;
     const t = window.setTimeout(() => {
       const duration = reducedMotion ? 0 : FULL_FIT.duration;
       const focus = noteFocusRef.current;
@@ -520,9 +532,11 @@ function LiveSession({
     const id = requestAnimationFrame(() => setTokens(readParticleTokens()));
     return () => cancelAnimationFrame(id);
   }, [theme]);
+  // Calmer slow speeds: below 1×, a sample of whole journeys is drawn (counts stay exact).
+  const [calm] = useState(() => new CalmSampler());
   const renderOpts = useMemo(
-    () => ({ theme, reducedMotion, scale: presenting ? 1.35 : 1, tokens }),
-    [theme, reducedMotion, presenting, tokens],
+    () => ({ theme, reducedMotion, scale: presenting ? 1.35 : 1, tokens, calm }),
+    [theme, reducedMotion, presenting, tokens, calm],
   );
   const rendererRef = useRef<ParticleRenderer | null>(null);
   const renderOptsRef = useRef(renderOpts);
@@ -598,10 +612,15 @@ function LiveSession({
         renderer.reset();
       }
       const snap = controller.snapshot();
-      renderer.draw(snap, now, controller.tracedRoot);
+      const speed = controller.getState().speed;
+      calm.setSpeed(speed);
+      // Slow motion: live is frozen underneath, and the replay is drawn over it.
+      const slow = slowRef.current?.frame(dt, speed);
+      renderer.draw(snap, now, slow ? undefined : controller.tracedRoot, slow);
       if (now - lastUi >= UI_MS) {
         lastUi = now;
         if (controller.isPlaying) controller.publish();
+        slowRef.current?.ui(canvas, snap);
         decorator.apply({ snapshot: snap, spotlight: spotlightRef.current });
         if (++stats % 2 === 0) canvas.dataset.particles = String(renderer.drawn);
         // The traced message's labels, for tests (pane CSS px).
@@ -621,7 +640,7 @@ function LiveSession({
       rendererRef.current = null;
     };
     // renderOpts changes are applied through setOptions above, without restarting the loop.
-  }, [controller, store, canvas, overlay]);
+  }, [controller, store, canvas, overlay, calm]);
 
   // Click a particle to trace its message; the pointer says when one is under it.
   useEffect(() => {
@@ -639,6 +658,7 @@ function LiveSession({
     };
     const onClick = (e: MouseEvent) => {
       if (e.button !== 0 || !down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+      if (slowRef.current?.session.active) return;
       const id = hit(e);
       if (id === undefined) return;
       e.stopPropagation();
@@ -665,6 +685,9 @@ function LiveSession({
   // One way in for the ⋯ menu, the right-click and the palette (same words when there's nothing yet).
   const startTrace = useCallback(
     (which: TraceChoice) => {
+      if (which === "slowmo") return slowRef.current?.start({ kind: "next" });
+      // A new trace leaves slow motion first (live comes back where it was).
+      slowRef.current?.end();
       if (which === "next") controller.traceNext();
       else if (which === "slowest") {
         if (!controller.traceSlowest()) flash("No message has finished its journey yet. Try again in a moment.");
@@ -689,6 +712,7 @@ function LiveSession({
 
   const selectSimulation = useCallback(
     (id: string | null) => {
+      if (slowRef.current?.session.active) return;
       const sim = id
         ? draftRef.current?.id === id
           ? draftRef.current
@@ -702,8 +726,6 @@ function LiveSession({
     },
     [controller],
   );
-  // "Run <simulation>" in the command palette.
-  useLiveSessionHost(selectSimulation, !!editor && !alwaysOn);
 
   /**
    * A saved simulation (or the draft) opened for editing becomes the one that runs, so the live
@@ -788,6 +810,56 @@ function LiveSession({
 
   const [rec, dispatchRec] = useReducer(recordReducer, initialRecordState);
   const capturing = isCapturing(rec.phase);
+
+  // ---------------------------------------------------------------- slow motion
+
+  const slow = useSlowMotion({
+    controller,
+    store,
+    setViewport,
+    presenting,
+    reducedMotion,
+    panelOpen: panel.open,
+    capturing,
+  });
+  useLayoutEffect(() => {
+    slowRef.current = slow;
+  });
+  if (slowPath !== slow.path) setSlowPath(slow.path);
+  const startSlow = slow.start;
+  /** The trace card's "Slow motion" (and the palette's): this message's journey, paced. */
+  const slowMotionTrace = useCallback(() => {
+    const t = controller.getState().trace;
+    const source: SlowSource = t?.rootId !== undefined ? { kind: "root", rootId: t.rootId } : { kind: "followed" };
+    startSlow(source);
+  }, [controller, startSlow]);
+  // While slow motion plays, the card is its event list: the replayed journey, the hop being told.
+  const slowState = slow.state;
+  // Simulation switching uses the same availability as the registry's engine-changing actions.
+  useLiveSessionHost(selectSimulation, !!editor && !alwaysOn, liveMutationGuard(() => slow.session.active).hint());
+  const slowCard = useMemo(() => {
+    const script = slowState.script;
+    if (slowState.status !== "on" || !script || !slowState.trace) return null;
+    const notes = [
+      script.unfinished ? `Recorded for ${LOOK_AHEAD_LABEL} of simulated time: ${script.summary.toLowerCase()}.` : "",
+      script.duration > PACING.longScript
+        ? `This slow motion runs ${formatSpan(script.duration)}: → skips to the next hop.`
+        : "",
+    ].filter(Boolean);
+    return {
+      trace: { rootId: slowState.trace.rootId, current: slowState.trace },
+      card: {
+        playing: slowState.playing,
+        row: slowState.row,
+        activeRows: slowState.activeRows,
+        onToggle: () => slow.session.toggle(),
+        onSeek: (key: string) => slow.session.seekRow(key),
+        onExit: slow.end,
+        hiddenCopies: script.hiddenCopies,
+        note: notes.join(" ") || undefined,
+      },
+    };
+  }, [slowState, slow.session, slow.end]);
   /** Opens "Record video" (the panels and the event log close: they'd be in the video). */
   const openRecord = useCallback(() => {
     setPanel((p) => (p.open ? { ...p, open: false } : p));
@@ -839,6 +911,7 @@ function LiveSession({
   /** Apply a bottleneck fix as one undoable edit: to the saved simulation, or the diagram in free play. */
   const applyFix = useCallback(
     (fix: CapacityFix) => {
+      if (slowRef.current?.session.active) return;
       const st = controller.getState();
       const base = st.simulation;
       const inputs = inputsWithoutFix(st.inputs, fix);
@@ -885,6 +958,7 @@ function LiveSession({
 
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
   const saveInputs = useCallback(() => {
+    if (slowRef.current?.session.active) return;
     if (!editor) return;
     const st = controller.getState();
     const candidate = capacitySaveCandidate(editor.getDiagram(), st.simulation, st.inputs);
@@ -970,9 +1044,10 @@ function LiveSession({
   // Context-menu actions (canvas only).
   useEffect(() => {
     if (!editor) return;
-    return actionRegistry.register(
-      liveActions({
+    return actionRegistry.register([
+      ...liveActions({
         controller,
+        slowMotionActive: () => !!slowRef.current?.session.active,
         openInject: (nodeId, at) => {
           const t = store.getState().transform;
           const rect = store.getState().domNode?.getBoundingClientRect();
@@ -984,10 +1059,19 @@ function LiveSession({
         showEvents: (id) => showEvents(id),
         trace: setTrace,
         tracing: () => traceRef.current,
-        traceNext: (nodeId) => controller.traceNext(nodeId),
+        traceNext: (nodeId) => {
+          slowRef.current?.end();
+          controller.traceNext(nodeId);
+        },
+        slowMotion: (nodeId) => slowRef.current?.start({ kind: "next", node: nodeId }),
+        slowMotionTrace,
+        canReplayTrace: () => !!controller.getState().trace?.current && !slowRef.current?.session.on,
         traceSlowest: () => startTrace("slowest"),
         traceDeadLettered: () => startTrace("deadletter"),
-        endTrace: () => controller.endTrace(),
+        endTrace: () => {
+          slowRef.current?.end();
+          controller.endTrace();
+        },
         tracingMessage: () => controller.getState().trace !== null,
         saveTweaks: (nodeId) => {
           const tweak = controller.getState().tweaks.get(nodeId);
@@ -1001,8 +1085,47 @@ function LiveSession({
         messageType: (nodeId) => suggestedMessageType(getDiagram(), nodeId),
         openRecord,
       }),
-    );
-  }, [editor, controller, store, startStorm, showEvents, getDiagram, flash, openRecord, startTrace]);
+      {
+        id: "sim.inputs",
+        section: "simulation",
+        targets: ["canvas"],
+        modes: ["live"],
+        paletteOnly: true,
+        label: "Edit Inputs & capacity",
+        icon: "sliders",
+        ...liveMutationGuard(() => !!slowRef.current?.session.active),
+        run: () => openCapacity(),
+      },
+      {
+        id: "sim.capacity-fix",
+        section: "simulation",
+        targets: ["canvas"],
+        modes: ["live"],
+        paletteOnly: true,
+        label: "Apply capacity fix",
+        icon: "check",
+        when: () => !!capacity?.fix,
+        ...liveMutationGuard(() => !!slowRef.current?.session.active),
+        run: () => {
+          if (capacity?.fix) applyFix(capacity.fix);
+        },
+      },
+    ]);
+  }, [
+    editor,
+    controller,
+    store,
+    startStorm,
+    showEvents,
+    getDiagram,
+    flash,
+    openRecord,
+    startTrace,
+    slowMotionTrace,
+    capacity,
+    applyFix,
+    openCapacity,
+  ]);
 
   // Keyboard: Space plays / pauses (or continues a pausing note), Enter continues, Esc backs out
   // one level: a selection, a message trace, a highlighted path, then live view itself. Open menus,
@@ -1010,6 +1133,9 @@ function LiveSession({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+      // Slow motion has its own keys (useSlowMotion): Space, ← →, and Esc back to live.
+      const slowing = slowRef.current?.session.active;
+      if (slowing && (e.key === " " || (e.key === "Escape" && !document.querySelector(SELECTED)))) return;
       const t = e.target;
       if (e.key === "Escape") {
         // A recording owns Esc (it stops the recording, see Recorder).
@@ -1069,8 +1195,17 @@ function LiveSession({
       exit: alwaysOn ? null : onExit,
       openRecord,
       startTrace,
+      slowmo: slow.session,
+      action: (id) => {
+        if (!editor) return undefined;
+        const row = actionRegistry
+          .build({ editor, target: "canvas", mode: "live", surface: "palette", selection: editor.getSelection() })
+          .find((row) => row.type === "item" && row.id === id);
+        return row?.type === "item" ? row : undefined;
+      },
     }),
     [
+      slow.session,
       controller,
       presenting,
       editor,
@@ -1115,21 +1250,46 @@ function LiveSession({
             view={capacity}
             floating
             onApply={applyFix}
+            disabledHint={liveMutationGuard(() => slow.session.active).hint()}
             onOpenPanel={presenting ? undefined : () => openCapacity()}
           />
         )}
-        {state.trace && !capturing && (
+        {slowCard && !capturing ? (
           <TraceCard
-            trace={state.trace}
+            trace={slowCard.trace}
             diagram={controller.currentDiagram}
-            now={state.snapshot.time}
-            onClose={() => controller.endTrace()}
-            onSequence={() => state.trace?.current && setSequence(state.trace.current)}
-            onSendOne={sendOne}
+            now={slowCard.trace.current?.endedAt ?? state.snapshot.time}
+            onClose={slow.end}
+            onSequence={() => slowCard.trace.current && setSequence(slowCard.trace.current)}
             room={cardRoom}
+            slowmo={slowCard.card}
           />
+        ) : (
+          state.trace &&
+          !capturing && (
+            <TraceCard
+              trace={state.trace}
+              diagram={controller.currentDiagram}
+              now={state.snapshot.time}
+              onClose={() => {
+                slow.end();
+                controller.endTrace();
+              }}
+              onSequence={() => state.trace?.current && setSequence(state.trace.current)}
+              onSendOne={sendOne}
+              room={cardRoom}
+              onSlowMotion={state.trace.current ? slowMotionTrace : undefined}
+              waitingText={
+                slow.state.status === "armed"
+                  ? `${slow.state.armedAt ? `Waiting for the next message at ${controller.currentDiagram.nodes.find((n) => n.id === slow.state.armedAt)?.label ?? slow.state.armedAt}` : "Waiting for the next message"}: slow motion starts when it comes…`
+                  : undefined
+              }
+            />
+          )
         )}
-        <NoteCallout state={state} />
+        <SlowCaption slow={slow.session} />
+        {/* Live's narration waits with live while slow motion plays. */}
+        {slow.state.status !== "on" && <NoteCallout state={state} />}
         {events.open && !capturing && <EventLog state={state} />}
         {/* While recording, the indicator (Stop, Esc) stands in for the bar. */}
         {!capturing && <ControlBar state={state} />}
@@ -1138,6 +1298,7 @@ function LiveSession({
         <CapacityPanel
           key={state.simulation?.id ?? "free"}
           controller={controller}
+          disabledHint={liveMutationGuard(() => slow.session.active).hint()}
           diagram={planDiagram}
           base={state.simulation}
           inputs={state.inputs}
@@ -1184,6 +1345,7 @@ function LiveSession({
         title={recordTitle}
         presenting={presenting}
         canPresent={!!editor && !alwaysOn}
+        slowmo={slow.session}
       />
     </LiveContext.Provider>
   );

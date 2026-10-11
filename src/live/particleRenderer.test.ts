@@ -140,6 +140,25 @@ describe("ParticleRenderer", () => {
     expect(main.clearRect).toBe(5);
   });
 
+  it("skips a paused slow motion's unchanged frames, and draws the one after it ends", () => {
+    const { renderer, main } = setup();
+    const frozen = snapshot([particle(1, 0.2)]);
+    let paints = 0;
+    const overlay = { backgroundAlpha: 0.12, revision: 0, paint: () => paints++ };
+    for (let i = 0; i < 3; i++) {
+      overlay.revision++; // playing: a new frame every time
+      renderer.draw(frozen, i * 16, undefined, overlay);
+    }
+    expect(paints).toBe(3);
+    for (let i = 3; i < 60; i++) renderer.draw(frozen, i * 16, undefined, overlay); // paused
+    expect(paints).toBe(3);
+    const cleared = main.clearRect;
+    renderer.draw(frozen, 1000); // back to live: its drawings are cleared
+    expect(main.clearRect).toBe(cleared + 1);
+    renderer.draw(frozen, 1016);
+    expect(main.clearRect).toBe(cleared + 1);
+  });
+
   it("draws a dot behind a label pill dimmed on the overlay, others on the particle canvas", () => {
     const { renderer, main, over } = setup();
     renderer.draw(snapshot([particle(1, 0.2)]), 0); // x = 40: clear of the pill

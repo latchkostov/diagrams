@@ -154,7 +154,8 @@ export function createSimulationRun(
   let speed = 1,
     cursor = 0,
     done = false,
-    waiting = false;
+    waiting = false,
+    traceActions = true;
   let idleSince: number | undefined;
   let note: SimulationRunState["note"];
   let metrics: ReturnType<typeof engine.metrics>;
@@ -191,7 +192,7 @@ export function createSimulationRun(
           injectReal(action.node, action.count, action.messageType, action.spreadMs);
           break;
         case "trace":
-          if (inputs.has(action.node)) engine.tracer.request({ next: "message", node: action.node });
+          if (traceActions && inputs.has(action.node)) engine.tracer.request({ next: "message", node: action.node });
           break;
         case "note":
           note = {
@@ -349,6 +350,9 @@ export function createSimulationRun(
     setSpeed(value) {
       speed = clampSpeed(value, speed);
       engine.setSpeed(speed);
+    },
+    setTraceActions(on) {
+      traceActions = on;
     },
     step(dtMs): void {
       if (waiting || done || !Number.isFinite(dtMs) || dtMs <= 0) return;

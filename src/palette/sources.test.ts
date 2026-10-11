@@ -206,6 +206,17 @@ describe("palette sources", () => {
     expect(inp.openDiagram).toHaveBeenCalledWith("mine");
   });
 
+  it("disables simulation switching with the live session's slow-motion hint", () => {
+    const inp = input({
+      canvas: host({}, true),
+      session: { run: vi.fn(), disabledHint: "Exit slow motion (Esc) first" },
+    });
+    const command = collectCommands(inp).find((c) => c.id === "sim:peak")!;
+    expect(command).toMatchObject({ disabled: true, hint: "Exit slow motion (Esc) first" });
+    command.run?.();
+    expect(inp.runSimulation).not.toHaveBeenCalled();
+  });
+
   it("says where a stencil goes when one node is selected", () => {
     const cs = collectCommands(input({ canvas: host({ nodeIds: ["api"] }) }));
     expect(cs.find((c) => c.id === "stencil:postgres")?.hint).toBe("after Orders API");

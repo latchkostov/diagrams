@@ -76,6 +76,21 @@ export interface LiveTrace {
   current?: MessageTrace;
 }
 
+/** A restorable sandbox over the running engine (see `LiveController.lookAhead`). */
+export interface LookAhead {
+  tracer: SimEngine["tracer"];
+  /** Simulation time now, ms. */
+  time(): number;
+  /** Advance `simMs` of simulated time. False when time can't move (a finished run). */
+  step(simMs: number): boolean;
+  /** Nothing more can happen (free play with no traffic and an empty system; a finished run). */
+  idle(): boolean;
+  /** A node's backlog or lag, in real messages. */
+  lag(nodeId: string): number | undefined;
+  /** Back to the checkpoint, exactly. */
+  restore(): void;
+}
+
 type TraceIntent = { kind: "idle" } | { kind: "root"; rootId: number } | { kind: "pending"; request: TraceRequest };
 
 export type DiagramUpdate = "none" | "patched" | "reloaded";
@@ -133,6 +148,8 @@ export class LiveController {
   private runState: SimulationRunState | null = null;
   private dirty = true;
   private playing = false;
+  /** Slow motion holds live still (see `hold`): play, step, continue and seek wait. */
+  private held = false;
   private speed = 1;
   private traffic = false;
   private generation = 0;
@@ -270,6 +287,68 @@ export class LiveController {
     this.publish();
   }
 
+  /**
+   * Slow motion owns the engine while it records ahead and replays (src/live/slowmo/session.ts):
+   * held, live stays paused and play, step, continue and seek do nothing, whichever control asks.
+   * Rebuilds (restart, a structural edit) still happen; slow motion drops itself then.
+   */
+  hold(on: boolean): void {
+    this.held = on;
+  }
+
+  get isHeld(): boolean {
+    return this.held;
+  }
+
+  /**
+   * Slow motion's look-ahead: checkpoint the whole run now, let the caller step simulated time and
+   * read the tracer, then `restore()` exactly. Pausing notes on the way pass, as in `seek`, and the
+   * timeline's trace actions wait, so the tracer keeps the caller's message. Call it held (`hold`);
+   * nothing is published until `restore()`.
+   */
+  lookAhead(): LookAhead {
+    const runner = this.runner,
+      engine = this.engine;
+    const cp = runner ? runner.checkpoint() : engine.checkpoint();
+    const time = () => (runner ? runner.state().time : engine.metrics().time);
+    runner?.setTraceActions(false);
+    return {
+      tracer: engine.tracer,
+      time,
+      step: (simMs) => {
+        const before = time();
+        if (runner) {
+          if (runner.state().done) return false;
+          // Several pausing notes can share a moment: pass them all before stepping.
+          for (let guard = 0; runner.state().waiting && guard < 1000; guard++) runner.resume();
+          runner.step(simMs / this.speed);
+        } else engine.step(simMs / this.speed);
+        return time() > before;
+      },
+      // Free play with no traffic and nothing in the system: no message can ever arrive.
+      idle: () => {
+        if (runner) return runner.state().done;
+        const m = engine.metrics();
+        return !this.traffic && m.inSystem === 0 && m.pendingInjections === 0;
+      },
+      lag: (nodeId) => {
+        // Read the engine directly: the published (frozen) snapshot must not move.
+        const snap = engine.snapshot();
+        const n = snap.nodes[nodeId];
+        return n ? Math.round(n.backlog * resolveScale(snap.scale)) : undefined;
+      },
+      restore: () => {
+        if (runner) {
+          runner.restore(cp as SimulationRunCheckpoint);
+          runner.setTraceActions(true);
+        } else engine.restore(cp);
+        this.applySpeed();
+        this.engine.setTraffic(this.traffic);
+        this.dirty = true;
+      },
+    };
+  }
+
   private readTrace(): LiveTrace | null {
     const tracer = this.engine.tracer;
     const rootId = tracer.followed();
@@ -289,7 +368,7 @@ export class LiveController {
 
   /** Advance by wall-clock ms (speed applies). No-op while paused, waiting on a note, or done. */
   advance(wallMs: number): void {
-    if (!this.playing || this.replayTarget !== null || !(wallMs > 0)) return;
+    if (!this.playing || this.held || this.replayTarget !== null || !(wallMs > 0)) return;
     if (this.runner) {
       this.runner.step(wallMs);
       this.captureCheckpoint();
@@ -306,6 +385,7 @@ export class LiveController {
   }
 
   setPlaying(on: boolean): void {
+    if (this.held) return;
     // A finished run plays again from the start.
     if (on && this.runState?.done) {
       this.cancelReplay();
@@ -333,7 +413,7 @@ export class LiveController {
 
   /** Advance a fixed slice of sim time, playing or not. */
   step(simMs = STEP_MS): void {
-    if (this.replayTarget !== null) return;
+    if (this.held || this.replayTarget !== null) return;
     const wall = simMs / this.speed;
     if (this.runner) {
       if (this.runState?.waiting || this.runState?.done) return;
@@ -346,6 +426,7 @@ export class LiveController {
 
   /** Continue after a pausing note. */
   resume(): void {
+    if (this.held) return;
     this.runner?.resume();
     this.dirty = true;
     this.publish();
@@ -363,7 +444,7 @@ export class LiveController {
    * Older positions fall back to the origin. Pausing notes on the way are skipped.
    */
   seek(targetMs: number): void {
-    if (!this.runner) return;
+    if (!this.runner || this.held) return;
     if (!Number.isFinite(targetMs)) return;
     const target = Math.max(0, targetMs);
     this.cancelReplay();

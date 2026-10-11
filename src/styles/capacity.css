@@ -3,6 +3,13 @@
 
 /* ---------- levels ---------- */
 
+.cap-edit-fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
 /* Green < 60%, amber 60–90%, red ≥ 90%, pulsing red above 100%. */
 .cap-ring,
 .cap-chip,

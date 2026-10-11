@@ -1,6 +1,8 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
 import type { DiagramFile, Simulation } from "../model/types";
 import type { LiveController, LiveState } from "./controller";
+import type { SlowMotion } from "./slowmo/session";
+import type { MenuItem } from "../editor/actions";
 
 /** What the live view's components share: the controller plus the session's UI commands. */
 export interface LiveUi {
@@ -27,9 +29,14 @@ export interface LiveUi {
   openRecord(): void;
   /** "Trace a message ▸" (live ⋯ menu): the next message anywhere, the slowest so far, or a dead letter. */
   startTrace(which: TraceChoice): void;
+  /** Slow motion (one message's journey, paced): its session drives the bar while it plays. */
+  slowmo: SlowMotion;
+  /** Registry rows for controls duplicated in the live overflow menu; absent in Lab stages. */
+  action(id: string): MenuItem | undefined;
 }
 
-export type TraceChoice = "next" | "slowest" | "deadletter";
+/** "slowmo": the next message, in slow motion. */
+export type TraceChoice = "slowmo" | "next" | "slowest" | "deadletter";
 
 export const LiveContext = createContext<LiveUi | null>(null);
 

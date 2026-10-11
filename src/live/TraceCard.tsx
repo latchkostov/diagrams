@@ -18,6 +18,28 @@ export interface TraceCardProps {
   onSendOne?(nodeId: string): void;
   /** How tall it may grow before it reaches the diagram, in px (see `roomUnderCard`); 0 = no limit. */
   room?: number;
+  /** "Slow motion": replay this journey paced, node by node (absent where it isn't offered). */
+  onSlowMotion?(): void;
+  /** While slow motion plays this journey: the hop being told, and replay controls. */
+  slowmo?: SlowCard | null;
+  /** Replaces the waiting line (slow motion recording ahead, or waiting for its message). */
+  waitingText?: string;
+}
+
+export interface SlowCard {
+  playing: boolean;
+  /** The hop being told (a journey row key) and every hop in progress. */
+  row?: string;
+  activeRows: readonly string[];
+  onToggle(): void;
+  /** A hop row was clicked: tell the story from there. */
+  onSeek(key: string): void;
+  /** Back to live (the close button and Esc). */
+  onExit(): void;
+  /** Copies left out of a fan-out wider than four. */
+  hiddenCopies: number;
+  /** A warning or a status line under the hops (a long replay, a journey still under way). */
+  note?: string;
 }
 
 /** "Done", "In flight", "Dead-lettered", "Dropped". */
@@ -32,7 +54,18 @@ function journeyStatus(j: Journey): { key: "flight" | "done" | "dlq" | "dropped"
  * The compact card for a traced message: its hops with timestamps and the latency of each, the
  * end-to-end total, retries (amber) and dead letters (red). One primary action: the sequence diagram.
  */
-export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne, room = 0 }: TraceCardProps) {
+export function TraceCard({
+  trace,
+  diagram,
+  now,
+  onClose,
+  onSequence,
+  onSendOne,
+  room = 0,
+  onSlowMotion,
+  slowmo,
+  waitingText,
+}: TraceCardProps) {
   const labels = useMemo(() => new Map(diagram.nodes.map((n) => [n.id, n.label || n.id])), [diagram]);
   const name = (id: string | undefined) => (id ? (labels.get(id) ?? id) : "");
   const current = trace.current;
@@ -49,8 +82,22 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
   }, [trace.rootId]);
   useEffect(() => {
     const el = list.current;
-    if (el && pinned.current) el.scrollTop = el.scrollHeight;
-  }, [rows, trace.rootId]);
+    if (el && pinned.current && !slowmo) el.scrollTop = el.scrollHeight;
+  }, [rows, trace.rootId, slowmo]);
+  // Slow motion keeps the hop being told in view (inside the list only: the page never scrolls).
+  const row = slowmo?.row;
+  useEffect(() => {
+    const el = list.current;
+    if (!el || row === undefined) return;
+    const item = el.querySelector<HTMLElement>(`[data-row="${CSS.escape(row)}"]`);
+    if (!item) return;
+    const top = item.offsetTop - el.offsetTop;
+    if (top < el.scrollTop + 8) el.scrollTop = Math.max(0, top - 24);
+    else if (top + item.offsetHeight > el.scrollTop + el.clientHeight - 8)
+      el.scrollTop = top + item.offsetHeight - el.clientHeight + 24;
+  }, [row]);
+  const activeRows = slowmo?.activeRows;
+  const active = useMemo(() => new Set(activeRows ?? []), [activeRows]);
 
   // With a side panel open the card heads the panel's column; the panel starts below it.
   const card = useRef<HTMLElement>(null);
@@ -106,16 +153,17 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
           <div className="tr-titles">
             <strong>Trace a message</strong>
             <span data-testid="trace-waiting">
-              {p?.next === "deadletter"
-                ? "Waiting for a message to dead-letter…"
-                : where
-                  ? `Waiting for the next message at ${name(where)}…`
-                  : trace.rootId !== undefined
-                    ? `Waiting for message #${trace.rootId}…`
-                    : "Waiting for the next message…"}
+              {waitingText ??
+                (p?.next === "deadletter"
+                  ? "Waiting for a message to dead-letter…"
+                  : where
+                    ? `Waiting for the next message at ${name(where)}…`
+                    : trace.rootId !== undefined
+                      ? `Waiting for message #${trace.rootId}…`
+                      : "Waiting for the next message…")}
             </span>
           </div>
-          <CloseButton key="close" onClose={onClose} />
+          <CloseButton key="close" onClose={slowmo?.onExit ?? onClose} slowmo={!!slowmo} />
         </header>
         {where && onSendOne && (
           <footer className="tr-foot">
@@ -155,7 +203,7 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
         <span className={`tr-status is-${status.key}`} data-testid="trace-status" data-status={status.key}>
           {status.label}
         </span>
-        <CloseButton key="close" onClose={onClose} />
+        <CloseButton key="close" onClose={slowmo?.onExit ?? onClose} slowmo={!!slowmo} />
       </header>
 
       <div className="tr-stats">
@@ -182,6 +230,15 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
               DLQ
             </span>
           )}
+          {!!slowmo?.hiddenCopies && (
+            <span
+              className="tr-chip"
+              data-testid="trace-slowmo-more"
+              title="Slow motion shows four copies leaving together; the list has them all"
+            >
+              +{slowmo.hiddenCopies} more
+            </span>
+          )}
         </div>
       </div>
 
@@ -199,7 +256,14 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
         }}
       >
         {journey.rows.map((row) => (
-          <Hop key={row.key} row={row} name={name} />
+          <Hop
+            key={row.key}
+            row={row}
+            name={name}
+            current={slowmo ? slowmo.row === row.key : undefined}
+            active={active.has(row.key)}
+            onSeek={slowmo?.onSeek}
+          />
         ))}
       </ol>
       {(journey.partial || journey.truncated) && (
@@ -207,12 +271,48 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
           {journey.partial ? "Joined in flight: earlier hops weren't recorded." : "Cut short: a very long journey."}
         </p>
       )}
+      {slowmo?.note && (
+        <p className="tr-note" data-testid="trace-slowmo-note">
+          {slowmo.note}
+        </p>
+      )}
 
       <footer className="tr-foot">
         <button className="btn btn-primary" onClick={onSequence} data-testid="trace-sequence">
           <LiveIcon name="sequence" size={14} /> Sequence diagram
         </button>
-        <span className="tr-hint">{journey.done ? "Esc ends the trace" : "Still travelling · Esc ends"}</span>
+        {slowmo ? (
+          <button
+            className="btn"
+            onClick={slowmo.onToggle}
+            data-testid="trace-slowmo"
+            data-state={slowmo.playing ? "playing" : "paused"}
+            title={slowmo.playing ? "Pause the slow motion (Space)" : "Play the slow motion (Space)"}
+          >
+            <LiveIcon name={slowmo.playing ? "pause" : "play"} size={12} /> {slowmo.playing ? "Pause" : "Play"}
+          </button>
+        ) : (
+          onSlowMotion && (
+            <button
+              className="btn"
+              onClick={onSlowMotion}
+              data-testid="trace-slowmo"
+              title="Watch this message node by node, in slow motion"
+            >
+              <LiveIcon name="slowmo" size={14} /> Slow motion
+            </button>
+          )
+        )}
+        {/* Two actions leave room for one short hint (the close button's title says Esc too). */}
+        {slowmo ? (
+          <span className="tr-hint" data-testid="trace-slowmo-hint" title="← → step hop by hop · Space pauses">
+            Esc returns
+          </span>
+        ) : (
+          !onSlowMotion && (
+            <span className="tr-hint">{journey.done ? "Esc ends the trace" : "Still travelling · Esc ends"}</span>
+          )
+        )}
       </footer>
     </section>
   );
@@ -221,13 +321,14 @@ export function TraceCard({ trace, diagram, now, onClose, onSequence, onSendOne,
 const hopCount = (j: Journey) =>
   j.rows.filter((r) => r.kind === "hop" || r.kind === "dlq" || r.kind === "redeliver").length;
 
-function CloseButton({ onClose }: { onClose(): void }) {
+function CloseButton({ onClose, slowmo = false }: { onClose(): void; slowmo?: boolean }) {
+  const label = slowmo ? "Back to live (Esc)" : "End trace (Esc)";
   return (
     <button
       className="lv-btn tr-close"
       onClick={onClose}
-      aria-label="End trace (Esc)"
-      title="End trace (Esc)"
+      aria-label={label}
+      title={label}
       data-testid="trace-card-close"
     >
       <LiveIcon name="close" size={13} />
@@ -235,7 +336,20 @@ function CloseButton({ onClose }: { onClose(): void }) {
   );
 }
 
-function Hop({ row, name }: { row: JourneyRow; name: (id: string | undefined) => string }) {
+function Hop({
+  row,
+  name,
+  current,
+  active,
+  onSeek,
+}: {
+  row: JourneyRow;
+  name: (id: string | undefined) => string;
+  /** Slow motion: this is the hop being told (undefined outside slow motion). */
+  current?: boolean;
+  active?: boolean;
+  onSeek?: (key: string) => void;
+}) {
   const tone =
     row.kind === "fail" || row.kind === "redeliver"
       ? "warn"
@@ -288,14 +402,8 @@ function Hop({ row, name }: { row: JourneyRow; name: (id: string | undefined) =>
           .filter(Boolean)
           .join(", ")
       : "";
-  return (
-    <li
-      className={`tr-hop is-${tone}${row.copy ? " is-copy" : ""}`}
-      data-testid={`trace-hop-${row.key}`}
-      data-kind={row.kind}
-      data-node={row.node}
-      title={breakdown ? `From ${name(row.from)}: ${breakdown}` : undefined}
-    >
+  const content = (
+    <>
       <span className="tr-time mono">{formatOffset(row.t)}</span>
       <span
         className={`tr-dot is-${row.kind}`}
@@ -312,6 +420,33 @@ function Hop({ row, name }: { row: JourneyRow; name: (id: string | undefined) =>
         <small>{sub}</small>
       </span>
       <span className="tr-lat mono">{row.latencyMs !== undefined ? formatDuration(row.latencyMs) : ""}</span>
+    </>
+  );
+  return (
+    <li
+      className={`tr-hop is-${tone}${row.copy ? " is-copy" : ""}${current ? " is-current" : ""}${active && !current ? " is-active" : ""}${onSeek ? " is-seekable" : ""}`}
+      data-testid={current ? "trace-row-current" : `trace-hop-${row.key}`}
+      data-row={row.key}
+      data-kind={row.kind}
+      data-node={row.node}
+      aria-current={current ? "step" : undefined}
+      title={breakdown ? `From ${name(row.from)}: ${breakdown}` : undefined}
+    >
+      {onSeek ? (
+        // Slow motion: a hop is a place in the replay. Its name is the row's own words (failures,
+        // attempts, reasons, latency), after what a click does.
+        <button
+          type="button"
+          className="tr-hop-seek"
+          onClick={() => onSeek(row.key)}
+          data-testid={`trace-hop-seek-${row.key}`}
+        >
+          <span className="sr-only">Play from here: </span>
+          {content}
+        </button>
+      ) : (
+        content
+      )}
     </li>
   );
 }
