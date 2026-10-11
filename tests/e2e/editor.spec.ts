@@ -9,7 +9,7 @@ const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 /** A point on the empty pane: top-centre of the canvas (fit view keeps ~150px clear there). */
 async function emptySpot(page: Page, dx = 0) {
-  const box = (await page.getByTestId("canvas-wrap").boundingBox())!;
+  const box = await requiredBox(page.getByTestId("canvas-wrap"));
   return { x: box.width / 2 + dx, y: 90 };
 }
 
@@ -23,6 +23,11 @@ async function clickEmpty(page: Page) {
 }
 
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
+const requiredBox = async (locator: import("@playwright/test").Locator) => {
+  const box = await locator.boundingBox();
+  if (!box) throw new Error("Expected a visible element");
+  return box;
+};
 
 test.describe("editor", () => {
   test.beforeEach(async ({ page }) => {
@@ -30,7 +35,10 @@ test.describe("editor", () => {
     await expect(page.getByTestId("node-payments")).toBeVisible();
   });
 
-  test("right-click shows the app menu for canvas, node and edge (browser menu suppressed)", async ({ page, consoleErrors }) => {
+  test("right-click shows the app menu for canvas, node and edge (browser menu suppressed)", async ({
+    page,
+    consoleErrors,
+  }) => {
     await page.evaluate(() => {
       const w = window as unknown as { __prevented: boolean[] };
       w.__prevented = [];
@@ -70,6 +78,10 @@ test.describe("editor", () => {
     await openCanvasMenu(page);
     await page.keyboard.press("ArrowDown");
     await expect(menuItem(page, "canvas.add-node")).toHaveAttribute("data-active", "true");
+    await expect(page.getByTestId("context-menu")).toHaveAttribute(
+      "aria-activedescendant",
+      (await menuItem(page, "canvas.add-node").getAttribute("id")) ?? "",
+    );
     await page.keyboard.press("ArrowDown");
     // "Paste here" is disabled with an empty clipboard, so it is skipped.
     await expect(menuItem(page, "canvas.paste")).toHaveAttribute("aria-disabled", "true");
@@ -80,6 +92,10 @@ test.describe("editor", () => {
     await expect(page.getByTestId("context-menu-sub-search")).toBeFocused();
     await page.keyboard.type("kafka topic");
     await expect(menuItem(page, "add-node:kafka.topic")).toHaveAttribute("data-active", "true");
+    await expect(page.getByTestId("context-menu-sub-search")).toHaveAttribute(
+      "aria-activedescendant",
+      (await menuItem(page, "add-node:kafka.topic").getAttribute("id")) ?? "",
+    );
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("context-menu")).toHaveCount(0);
     await expect(page.getByTestId("node-topic-1")).toBeVisible();
@@ -196,9 +212,9 @@ test.describe("editor", () => {
     await menuItem(page, "align:top").click();
     await expect
       .poll(async () => {
-        const a = await page.getByTestId("node-orders").boundingBox();
-        const b = await page.getByTestId("node-inventory").boundingBox();
-        return Math.abs(a!.y - b!.y);
+        const a = await requiredBox(page.getByTestId("node-orders"));
+        const b = await requiredBox(page.getByTestId("node-inventory"));
+        return Math.abs(a.y - b.y);
       })
       .toBeLessThan(1);
   });
@@ -237,12 +253,80 @@ test.describe("editor", () => {
   test("arrow keys nudge the selection", async ({ page }) => {
     const node = page.getByTestId("node-payments");
     await node.click();
-    const before = (await node.boundingBox())!;
+    const before = await requiredBox(node);
     await page.keyboard.press("Shift+ArrowRight");
     await page.keyboard.press("Shift+ArrowRight");
     // 20 flow px; on screen that is 20 × zoom.
-    await expect.poll(async () => (await node.boundingBox())!.x - before.x).toBeGreaterThan(3);
+    await expect.poll(async () => (await requiredBox(node)).x - before.x).toBeGreaterThan(3);
     await page.keyboard.press(`${MOD}+z`);
-    await expect.poll(async () => Math.abs((await node.boundingBox())!.x - before.x)).toBeLessThan(1);
+    await expect.poll(async () => Math.abs((await requiredBox(node)).x - before.x)).toBeLessThan(1);
+  });
+
+  test("selection shortcuts leave focused inspector and toolbar controls alone", async ({ page }) => {
+    const node = page.getByTestId("node-orders");
+    await node.click();
+    const before = await requiredBox(node);
+    for (const id of ["inspector-field-stencil", "inspector-field-group", "theme-toggle"]) {
+      await page.getByTestId(id).focus();
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("Delete");
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("inspector-title")).toHaveText("Node");
+      await expect(node).toBeVisible();
+      expect((await requiredBox(node)).x).toBe(before.x);
+    }
+    await page.getByTestId("node-shopper").click();
+    await page.getByTestId("node-gateway").click({ modifiers: [MOD] });
+    await page.keyboard.press(`${MOD}+g`);
+    await page.getByTestId("group-label-input").press("Enter");
+    const group = page.getByTestId("group-boundary-1");
+    const groupBefore = await requiredBox(group);
+    const tone = page.getByTestId("inspector-tone-neutral");
+    await tone.focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Delete");
+    await expect(group).toBeVisible();
+    expect((await requiredBox(group)).x).toBe(groupBefore.x);
+  });
+
+  test("closing the stencil menu restores its invoking button's focus", async ({ page }) => {
+    await page.getByTestId("node-orders").click();
+    const button = page.getByTestId("inspector-field-stencil");
+    await button.focus();
+    await button.press("Enter");
+    const search = page.getByTestId("stencil-picker-search");
+    await expect(search).toBeFocused();
+    await search.fill("kafka");
+    await page.keyboard.press("Escape");
+    await expect(search).toHaveValue("");
+    const active = page.getByTestId(/^context-menu-item-/).filter({ visible: true });
+    const descendant = await search.getAttribute("aria-activedescendant");
+    expect(descendant).toBeTruthy();
+    expect(
+      await active.evaluateAll(
+        (items, id) => items.some((item) => item.id === id && item.getAttribute("aria-disabled") !== "true"),
+        descendant,
+      ),
+    ).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(button).toBeFocused();
+  });
+
+  test("shortcuts modal contains Tab and Shift+Tab, closes with Escape and restores focus", async ({ page }) => {
+    await clickEmpty(page);
+    const button = page.getByTestId("inspector-shortcuts");
+    await button.click();
+    const dialog = page.getByTestId("shortcuts-dialog");
+    const close = page.getByTestId("shortcuts-dialog-close");
+    await expect(dialog).toHaveAttribute("aria-modal", "true");
+    await page.keyboard.press("Tab");
+    await expect(close).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(close).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(close).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(button).toBeFocused();
   });
 });

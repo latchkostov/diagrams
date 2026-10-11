@@ -1,3 +1,4 @@
+import { safeStorage } from "../lib/storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_NODE_VARIANT, isNodeVariantId, type NodeVariantId } from "./nodeVariants";
 import { DEFAULT_EDGE_STYLE, isEdgeStyle, type EdgeStyle } from "./edgeStyles";
@@ -22,15 +23,14 @@ interface SettingsApi extends Settings {
 const STORAGE_KEY = "diagrams.settings.v1";
 
 function initialSettings(): Settings {
-  const prefersDark =
-    typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+  const prefersDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches;
   const fallback: Settings = {
     nodeVariant: DEFAULT_NODE_VARIANT,
     edgeStyle: DEFAULT_EDGE_STYLE,
     theme: prefersDark ? "dark" : "light",
   };
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = safeStorage.getItem(STORAGE_KEY);
     if (!raw) return fallback;
     const saved = JSON.parse(raw) as Partial<Settings>;
     return {
@@ -49,7 +49,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(initialSettings);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    safeStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     document.documentElement.dataset.theme = settings.theme;
     document.documentElement.style.colorScheme = settings.theme;
   }, [settings]);

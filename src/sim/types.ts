@@ -2,7 +2,7 @@
 // no DOM, no React — so it can be unit-tested deterministically. The UI drives it with step(dt)
 // from requestAnimationFrame and renders snapshot() each frame. Semantics: docs/SIMULATION.md.
 
-import type { DiagramFile, SimRole } from "../model/types";
+import type { DiagramFile, Expectation, SimRole } from "../model/types";
 
 export type NodeStatus = "up" | "paused" | "down";
 
@@ -131,6 +131,10 @@ export interface InjectOptions {
 }
 
 export interface SimEngine {
+  /** Clock and completion counters without rendering allocations. */
+  metrics(): { time: number; inSystem: number; pendingInjections: number };
+  /** Read just the metric an expectation needs, without copying node or rendering state. */
+  measure(metric: Expectation["metric"]): number | undefined;
   /** Replace the diagram being simulated. Resets all state. */
   load(diagram: DiagramFile): void;
   /** Advance the simulation by dtMs of wall time (multiplied by speed). Internally fixed-step. */
@@ -197,6 +201,8 @@ export interface SimulationRun {
   readonly engine: SimEngine;
   /** Advance by dtMs of wall time (engine speed applies). No-op while waiting on a note or done. */
   step(dtMs: number): void;
+  /** Update both the runner clock and engine without replacing caller-owned methods. */
+  setSpeed(speed: number): void;
   state(): SimulationRunState;
   /** Continue after a pausing note. */
   resume(): void;

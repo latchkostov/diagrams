@@ -4,6 +4,7 @@
 import type { DiagramFile } from "../model/types";
 import type { EngineOptions, SimEngine, SimSnapshot } from "../sim/types";
 import type { Scenario, SimAction } from "./types";
+import { clampSpeed, createScheduler, SIM_TICK_MS } from "../sim/scheduler";
 import { scenarioDuration } from "./scenarios";
 
 export type CreateEngine = (opts?: EngineOptions) => SimEngine;
@@ -50,13 +51,16 @@ export function applyAction(engine: SimEngine, a: SimAction) {
   }
 }
 
-/** Largest sim-time slice between action / check evaluations, so timings are honoured closely. */
-const SLICE_MS = 50;
-
-export function createScenarioRun(createEngine: CreateEngine, diagram: DiagramFile, scenario: Scenario, opts: { seed?: number; speed?: number } = {}): ScenarioRun {
+export function createScenarioRun(
+  createEngine: CreateEngine,
+  diagram: DiagramFile,
+  scenario: Scenario,
+  opts: { seed?: number; speed?: number } = {},
+): ScenarioRun {
   const engine = createEngine({ seed: opts.seed ?? 1 });
   engine.load(diagram);
-  let speed = opts.speed ?? 1;
+  let speed = clampSpeed(opts.speed ?? 1);
+  const scheduler = createScheduler();
   engine.setSpeed(speed);
   const actions = [...scenario.script].sort((a, b) => a.at - b.at);
   let nextAction = 0;
@@ -64,10 +68,12 @@ export function createScenarioRun(createEngine: CreateEngine, diagram: DiagramFi
   let snap = engine.snapshot();
 
   const settle = () => {
-    while (nextAction < actions.length && actions[nextAction].at <= snap.time) applyAction(engine, actions[nextAction++]);
+    const time = engine.metrics().time;
+    while (nextAction < actions.length && actions[nextAction].at <= time) applyAction(engine, actions[nextAction++]);
+    snap = engine.snapshot();
     scenario.checks.forEach((c, i) => {
       if (status[i] === "pending" && snap.time >= c.at) {
-        let ok = false;
+        let ok: boolean;
         try {
           ok = c.pass(snap);
         } catch {
@@ -80,14 +86,11 @@ export function createScenarioRun(createEngine: CreateEngine, diagram: DiagramFi
   settle(); // actions at t=0
 
   const advanceSim = (simMs: number) => {
-    let left = simMs;
-    while (left > 0) {
-      const slice = Math.min(SLICE_MS, left);
-      engine.step(slice / speed);
-      left -= slice;
-      snap = engine.snapshot();
+    scheduler.advance(simMs, () => {
+      engine.step(SIM_TICK_MS / speed);
       settle();
-    }
+      return true;
+    });
   };
 
   return {
@@ -102,14 +105,14 @@ export function createScenarioRun(createEngine: CreateEngine, diagram: DiagramFi
       let guard = 0;
       while (snap.time < target && guard++ < 1_000_000) {
         const before = snap.time;
-        advanceSim(Math.min(SLICE_MS * 20, target - snap.time));
+        advanceSim(Math.max(SIM_TICK_MS, target - snap.time));
         if (snap.time <= before) break; // engine not advancing; avoid spinning forever
       }
       return snap;
     },
     setSpeed(s) {
-      speed = s;
-      engine.setSpeed(s);
+      speed = clampSpeed(s, speed);
+      engine.setSpeed(speed);
     },
     snapshot: () => snap,
     checks: () => scenario.checks.map((c, i) => ({ label: c.label, at: c.at, status: status[i] })),

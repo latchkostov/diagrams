@@ -24,9 +24,9 @@ export type NodeVariantId = keyof typeof nodeVariants;
 export const DEFAULT_NODE_VARIANT: NodeVariantId = "card";
 
 export function isNodeVariantId(v: unknown): v is NodeVariantId {
-  return typeof v === "string" && v in nodeVariants;
+  return typeof v === "string" && Object.hasOwn(nodeVariants, v);
 }
 
 export function getNodeVariant(id: NodeVariantId): NodeVariant {
-  return nodeVariants[id] ?? nodeVariants[DEFAULT_NODE_VARIANT];
+  return isNodeVariantId(id) ? nodeVariants[id] : nodeVariants[DEFAULT_NODE_VARIANT];
 }

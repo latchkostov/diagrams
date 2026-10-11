@@ -7,7 +7,7 @@ async function waitForPreset(page: import("@playwright/test").Page) {
   await expect(page.getByTestId("lab-stage-error")).toHaveCount(0);
   if (kind === "render") return;
   await expect(page.getByTestId("lab-render-time")).toHaveAttribute("data-ms", /^\d+$/, { timeout: 15_000 });
-  if (kind === "scenario") await expect(page.getByTestId("sim-readout").or(page.getByTestId("sim-unavailable"))).toBeVisible();
+  if (kind === "scenario") await expect(page.getByTestId("sim-readout")).toBeVisible();
 }
 
 test.describe("lab", () => {
@@ -73,11 +73,19 @@ test.describe("lab", () => {
   });
 
   test("look params set the theme and renderers", async ({ page }) => {
-    await gotoLab(page, "nodes-states", { theme: "dark", nodevariant: "compact", edgestyle: "bezier", variant: "card" });
+    await gotoLab(page, "nodes-states", {
+      theme: "dark",
+      nodevariant: "compact",
+      edgestyle: "bezier",
+      variant: "card",
+    });
     await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark");
     await expect(page.getByTestId("lab-look-nodevariant")).toHaveValue("compact");
     await expect(page.getByTestId("lab-look-edgestyle")).toHaveValue("bezier");
-    await expect(page.getByTestId("variant-picker")).toHaveValue("compact");
+    // The global look (top bar View menu) follows.
+    await page.getByTestId("view-button").click();
+    await expect(page.getByTestId("view-node-compact")).toHaveAttribute("aria-checked", "true");
+    await page.keyboard.press("Escape");
     // The preset's own variant control is independent of the global look.
     await expect(page.getByTestId("lab-node-variant-card")).toBeVisible();
     await expect(page.getByTestId("lab-node-variant-compact")).toHaveCount(0);
@@ -158,18 +166,61 @@ test.describe("lab", () => {
   test("scenario readout runs the engine and evaluates its checks", async ({ page }) => {
     await gotoLab(page, "sim-fan-out", { autoplay: 0 });
     const readout = page.getByTestId("sim-readout");
-    if (!(await readout.isVisible().catch(() => false))) {
-      await expect(page.getByTestId("sim-unavailable").or(readout)).toBeVisible();
-      test.skip(await page.getByTestId("sim-unavailable").isVisible(), "sim engine not available yet");
-    }
+    await expect(readout).toBeVisible();
     await expect(page.getByTestId("sim-time")).toHaveAttribute("data-ms", "0");
     await expect(page.getByTestId("sim-node-topic")).toBeVisible();
     await page.getByTestId("sim-step").click();
     await expect(page.getByTestId("sim-time")).not.toHaveAttribute("data-ms", "0");
     await page.getByTestId("sim-fast-forward").click();
-    await expect(page.getByTestId("sim-checks-summary")).not.toHaveAttribute("data-status", "pending");
-    await expect(page.getByTestId("sim-check-0")).not.toHaveAttribute("data-status", "pending");
+    await expect(page.getByTestId("sim-checks-summary")).toHaveAttribute("data-status", "pass");
+    const checks = page.getByTestId(/^sim-check-\d+$/);
+    await expect(checks).toHaveCount(4);
+    for (const check of await checks.all()) await expect(check).toHaveAttribute("data-status", "pass");
+    for (const id of ["billing", "shipping", "analytics"])
+      await expect(page.getByTestId(`sim-node-${id}`)).toHaveAttribute("data-processed", "20");
     await page.getByTestId("sim-restart").click();
     await expect(page.getByTestId("sim-time")).toHaveAttribute("data-ms", "0");
+    for (const check of await checks.all()) await expect(check).toHaveAttribute("data-status", "pending");
+    for (const id of ["billing", "shipping", "analytics"])
+      await expect(page.getByTestId(`sim-node-${id}`)).toHaveAttribute("data-processed", "0");
   });
+
+  test("changing playback speed preserves clock, checks, counters and manual status", async ({ page }) => {
+    await gotoLab(page, "sim-fan-out", { autoplay: 0 });
+    await expect(page.getByTestId("sim-readout")).toBeVisible();
+    await page.getByTestId("sim-step").click();
+    await page.getByTestId("sim-node-status-billing").selectOption("paused");
+    // Manual status changes appear in the readout on the next simulation sample.
+    await page.getByTestId("sim-step").click();
+    await expect(page.getByTestId("sim-node-status-billing")).toHaveValue("paused");
+    const before = await page.getByTestId("sim-node-topic").getAttribute("data-processed");
+    await page.getByTestId("lab-control-speed").selectOption("4");
+    await expect(page.getByTestId("sim-time")).toHaveAttribute("data-ms", "2000");
+    await expect(page.getByTestId("sim-node-topic")).toHaveAttribute("data-processed", before ?? "");
+    await expect(page.getByTestId("sim-node-status-billing")).toHaveValue("paused");
+    await expect(page.getByTestId("sim-check-0")).toHaveAttribute("data-status", "pending");
+    await page.getByTestId("sim-step").click();
+    await expect(page.getByTestId("sim-time")).toHaveAttribute("data-ms", "3000");
+  });
+
+  for (const failure of ["blocked", "full"])
+    test(`settings survive ${failure} storage`, async ({ page, consoleErrors }) => {
+      await page.addInitScript((mode) => {
+        if (mode === "blocked")
+          Object.defineProperty(window, "localStorage", {
+            get() {
+              throw new DOMException("Blocked", "SecurityError");
+            },
+          });
+        else
+          Storage.prototype.setItem = () => {
+            throw new DOMException("Full", "QuotaExceededError");
+          };
+      }, failure);
+      await gotoLab(page, "nodes-states");
+      await page.getByTestId("lab-look-theme").selectOption("dark");
+      await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark");
+      await expect(page.getByTestId("lab-view")).toBeVisible();
+      expectNoErrors(consoleErrors);
+    });
 });
