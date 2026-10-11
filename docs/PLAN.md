@@ -64,3 +64,24 @@ Every id below MUST exist in the catalog. More may be added.
 `src/examples/index.ts` exports `interface Example { slug: string; diagram: DiagramFile }` and
 `examples: Example[]`. Each diagram lives in its own `src/examples/<slug>.json` (a valid `DiagramFile`)
 imported by `index.ts`.
+
+---
+
+# Phase 2: productionize + live view (started 2026-10-10)
+
+Goal: a production-quality, free, open tool. Custom right-click menus everywhere, inspector,
+undo/redo, smarter edge routing, the **live simulation**, a **Lab** harness that previews the
+current components with presets, unit + e2e tests, and a build that embeds in latchkostov.com.
+
+## Workstreams & file ownership (parallel — stay in your lane)
+| Workstream | Owns |
+|---|---|
+| Sim engine (Codex) | `src/sim/**` except `types.ts` (contract — propose changes, don't make them) |
+| Editor UX | `src/canvas/**`, `src/components/**` except `TopBar.tsx`, `src/styles/canvas.css`, new `src/editor/**` |
+| Test infra + Lab | `src/App.tsx`, `src/components/TopBar.tsx`, `src/lab/**`, `src/styles/lab.css`, `tests/**`, `playwright.config.ts` |
+| Lead | `src/model/**`, `src/sim/types.ts`, `package.json`, configs, `docs/PLAN.md`, `docs/SIMULATION.md` |
+
+Rules: never edit outside your lane (ask the lead in your final report instead). Don't commit —
+the lead commits between phases. `pnpm exec tsc --noEmit` errors in other lanes' files are not yours.
+All interactive elements get `data-testid`. Tests: `pnpm test` (vitest, `src/**/*.test.ts`),
+`pnpm test:e2e` (Playwright, `tests/e2e/**`).
