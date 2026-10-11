@@ -30,7 +30,7 @@ test.describe("smoke", () => {
 
   test("unknown view and example fall back gracefully", async ({ page, consoleErrors }) => {
     await page.goto("./?view=nope");
-    await expect(page.getByTestId("gallery-view")).toBeVisible();
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
     await page.goto("./?view=canvas&example=does-not-exist");
     await expect(page.getByTestId("canvas-view")).toBeVisible();
     await expect(page).not.toHaveURL(/does-not-exist/);

@@ -54,6 +54,14 @@ export interface LiveViewProps {
 }
 
 const UI_MS = 125;
+/** Things that own Esc before live view does (checked before they react, in the capture phase). */
+const ESC_OWNERS = [
+  '[role="menu"]',
+  '[role="dialog"]',
+  '[data-testid="sim-panel"]',
+  ".react-flow__node.selected",
+  ".react-flow__edge.selected",
+].join(",");
 const NOTE_PADDING = { top: "170px", right: "80px", bottom: "230px", left: "80px" } as const;
 const NOTE_FIT: FitViewOptions = { padding: NOTE_PADDING, maxZoom: 1, duration: 900 };
 const FULL_FIT: FitViewOptions = {
@@ -114,7 +122,13 @@ export function LiveView(props: LiveViewProps) {
           className={`lv-toggle${live ? " is-on" : ""}${props.presenting ? " is-presenting" : ""}`}
           onClick={toggle}
           aria-pressed={live}
-          title={live ? "Leave live view (L)" : "Watch messages flow through this diagram (L)"}
+          title={
+            live
+              ? "Back to editing (L or Esc)"
+              : props.simulations?.length
+                ? `Go live: watch messages flow, or replay ${props.simulations.length === 1 ? "the saved simulation" : `${props.simulations.length} saved simulations`} (L)`
+                : "Go live: watch messages flow through this diagram (L)"
+          }
           data-testid="live-toggle"
         >
           <span className="lv-toggle-dot" aria-hidden />
@@ -492,11 +506,19 @@ function LiveSession({
     );
   }, [editor, controller, store, startStorm, showEvents, getDiagram, flash]);
 
-  // Keyboard: Space plays / pauses (or continues a pausing note), Enter continues, Esc clears a trace.
+  // Keyboard: Space plays / pauses (or continues a pausing note), Enter continues, Esc backs out
+  // one level: a trace first, then live view itself. Presentation handles its own Esc (App), and
+  // open menus, dialogs, panels, inline editors and selections get theirs first.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
       const t = e.target;
+      if (e.key === "Escape") {
+        if (presenting || isEditableTarget(t) || document.querySelector(ESC_OWNERS)) return;
+        if (traceRef.current) setTrace(null);
+        else if (!alwaysOn) onExit();
+        return;
+      }
       if (isEditableTarget(t) || (t instanceof Element && t.closest("button, select, a, [data-editor-overlay]")))
         return;
       const waiting = controller.getState().run?.waiting;
@@ -509,13 +531,11 @@ function LiveSession({
       } else if (e.key === "Enter" && waiting) {
         e.preventDefault();
         controller.resume();
-      } else if (e.key === "Escape" && traceRef.current) {
-        setTrace(null);
       }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [controller]);
+  }, [controller, presenting, alwaysOn, onExit]);
 
   const ui = useMemo<LiveUi>(
     () => ({

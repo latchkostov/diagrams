@@ -136,15 +136,6 @@ export function builtinActions(): Action[] {
       run: (ctx) => ctx.editor.fitView(),
     },
     {
-      id: "canvas.zoom-100",
-      section: "view",
-      targets: ["canvas"],
-      label: "Zoom to 100%",
-      icon: "zoom",
-      shortcut: shortcutKeys("zoom-100"),
-      run: (ctx) => ctx.editor.zoomTo100(),
-    },
-    {
       id: "canvas.view-options",
       section: "view",
       targets: ["canvas"],
@@ -166,6 +157,18 @@ export function builtinActions(): Action[] {
           toggle("minimap", "Minimap", "minimap", "minimap"),
           toggle("inspector", "Inspector", "inspector", "panel-right"),
         ];
+      },
+    },
+    {
+      id: "canvas.properties",
+      section: "view",
+      targets: ["canvas"],
+      label: "Diagram properties",
+      icon: "sliders",
+      order: 5,
+      run: (ctx) => {
+        ctx.editor.clearSelection();
+        ctx.editor.openInspector();
       },
     },
     {
@@ -222,7 +225,7 @@ export function builtinActions(): Action[] {
       id: "node.edit-sublabel",
       section: "edit",
       targets: ["node"],
-      label: "Edit sublabel",
+      label: "Edit subtitle",
       icon: "text",
       run: (ctx) => ctx.editor.startEditing({ kind: "node", id: ctx.nodeId!, field: "sublabel" }),
     },
@@ -277,15 +280,6 @@ export function builtinActions(): Action[] {
       run: (ctx) => ctx.editor.openInspector(),
     },
     {
-      id: "node.copy-id",
-      section: "edit",
-      targets: ["node"],
-      label: "Copy id",
-      icon: "hash",
-      order: 210,
-      run: (ctx) => void navigator.clipboard?.writeText(ctx.nodeId!).catch(() => {}),
-    },
-    {
       id: "item.duplicate",
       section: "clipboard",
       targets: ["node", "selection", "group"],
@@ -316,9 +310,10 @@ export function builtinActions(): Action[] {
       run: (ctx) => ctx.editor.cut(ctx.selection),
     },
     {
+      // Layering is rare in a diagram that avoids overlaps: offered for selections, not every node.
       id: "node.front",
       section: "arrange",
-      targets: ["node", "selection"],
+      targets: ["selection"],
       label: "Bring to front",
       icon: "front",
       when: (ctx) => nodeCount(ctx) > 0,
@@ -327,7 +322,7 @@ export function builtinActions(): Action[] {
     {
       id: "node.back",
       section: "arrange",
-      targets: ["node", "selection"],
+      targets: ["selection"],
       label: "Send to back",
       icon: "back",
       when: (ctx) => nodeCount(ctx) > 0,
@@ -461,7 +456,7 @@ export function builtinActions(): Action[] {
       id: "selection.group",
       section: "arrange",
       targets: ["selection", "node"],
-      label: "Group into boundary",
+      label: "Add boundary",
       icon: "boundary",
       shortcut: shortcutKeys("group"),
       order: 30,
@@ -483,7 +478,7 @@ export function builtinActions(): Action[] {
       id: "group.tone",
       section: "edit",
       targets: ["group"],
-      label: "Tone",
+      label: "Colour",
       icon: "tone",
       children: (ctx) =>
         toneMenu("tone", ctx.editor.getGroup(ctx.groupId!)?.tone ?? "neutral", (t) =>
@@ -502,7 +497,7 @@ export function builtinActions(): Action[] {
       id: "group.ungroup",
       section: "danger",
       targets: ["group"],
-      label: "Ungroup",
+      label: "Remove boundary",
       icon: "ungroup",
       run: (ctx) => ctx.editor.ungroup(ctx.groupId!),
     },
@@ -510,7 +505,7 @@ export function builtinActions(): Action[] {
       id: "group.delete",
       section: "danger",
       targets: ["group"],
-      label: "Delete with contents",
+      label: "Delete boundary and nodes",
       icon: "trash",
       danger: true,
       run: (ctx) => ctx.editor.deleteGroupWithContents(ctx.groupId!),

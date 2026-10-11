@@ -5,39 +5,32 @@ import { Glyph } from "./glyphs";
 type Api = Omit<Interop, "layer">;
 
 /**
- * The top bar's single File menu. Common actions first (Save, Open, Export PNG, Copy share link),
- * then "More formats" and "Import from" submenus. Google Drive rows exist only when configured.
- * On views without a canvas (gallery, Lab) only the opening actions show.
+ * The top bar's single File menu, grouped by intent: start or bring in a diagram, save it, share
+ * it, export it. Formats live one level down ("Export as"). Google Drive rows exist only when
+ * configured. On views without a canvas (stencils, Lab) only the starting actions show.
  */
-export function FileMenu({ api, canvas }: { api: Api; canvas: boolean }) {
+export function FileMenu({ api, canvas, onNewDiagram }: { api: Api; canvas: boolean; onNewDiagram: () => void }) {
   const entries = (): MenuEntry[] => {
     const b = api.binding;
     const drive = api.driveEnabled;
-    const out: MenuEntry[] = [];
-    if (canvas) {
-      out.push({
+    const out: MenuEntry[] = [
+      {
         type: "item",
-        testId: "file-save",
-        icon: <Glyph name="save" />,
-        title: b ? "Save" : api.fsSupported ? "Save to device…" : "Download file",
-        desc: b
-          ? `To ${b.kind === "drive" ? "Google Drive: " : ""}${b.name}`
-          : api.fsSupported
-            ? "Works in synced cloud folders"
-            : undefined,
-        shortcut: "Mod+S",
-        onSelect: () => void api.save(),
-      });
-    }
-    out.push({
-      type: "item",
-      testId: "file-open",
-      icon: <Glyph name="folder" />,
-      title: "Open…",
-      desc: ".diagram.json, .drawio, .mmd",
-      shortcut: "Mod+O",
-      onSelect: () => void api.openFile(),
-    });
+        testId: "file-new",
+        icon: <Glyph name="file" />,
+        title: "New diagram",
+        onSelect: onNewDiagram,
+      },
+      {
+        type: "item",
+        testId: "file-open",
+        icon: <Glyph name="folder" />,
+        title: "Open…",
+        desc: ".diagram.json, draw.io or Mermaid",
+        shortcut: "Mod+O",
+        onSelect: () => void api.openFile(),
+      },
+    ];
     if (drive) {
       out.push({
         type: "item",
@@ -46,104 +39,6 @@ export function FileMenu({ api, canvas }: { api: Api; canvas: boolean }) {
         title: "Open from Google Drive…",
         onSelect: () => void api.openFromDrive(),
       });
-      if (canvas) {
-        out.push({
-          type: "item",
-          testId: "file-save-drive",
-          icon: <Glyph name="drive" />,
-          title: b?.kind === "drive" ? "Save a copy to Google Drive" : "Save to Google Drive",
-          onSelect: () => void api.saveToDrive(b?.kind === "drive"),
-        });
-      }
-    }
-    if (canvas) {
-      out.push(
-        { type: "separator" },
-        {
-          type: "item",
-          testId: "export-png",
-          icon: <Glyph name="image" />,
-          title: "Export PNG",
-          hint: "2×",
-          onSelect: () => void api.exportPng({ scale: 2 }),
-        },
-        {
-          type: "item",
-          testId: "export-share-link",
-          icon: <Glyph name="link" />,
-          title: "Copy share link",
-          onSelect: () => void api.copyShareLink(),
-        },
-        { type: "separator" },
-        {
-          type: "item",
-          testId: "file-more-formats",
-          submenuTestId: "file-more-formats-menu",
-          icon: <Glyph name="download" />,
-          title: "More formats",
-          submenu: () => [
-            {
-              type: "item",
-              testId: "export-json",
-              icon: <Glyph name="json" />,
-              title: "Diagram file",
-              hint: ".diagram.json",
-              onSelect: () => void api.exportNative(),
-            },
-            {
-              type: "item",
-              testId: "export-image",
-              icon: <Glyph name="image" />,
-              title: "Image…",
-              desc: "PNG or SVG, size and background",
-              onSelect: api.openImageOptions,
-            },
-            {
-              type: "item",
-              testId: "export-drawio",
-              icon: <Glyph name="drawio" />,
-              title: "draw.io",
-              hint: ".drawio",
-              onSelect: () => void api.exportDrawio(),
-            },
-            {
-              type: "item",
-              testId: "export-mermaid",
-              icon: <Glyph name="mermaid" />,
-              title: "Copy as Mermaid",
-              onSelect: () => void api.copyMermaid(),
-            },
-            {
-              type: "item",
-              testId: "export-mermaid-download",
-              icon: <Glyph name="mermaid" />,
-              title: "Mermaid file",
-              hint: ".mmd",
-              onSelect: () => void api.downloadMermaid(),
-            },
-            { type: "separator" },
-            {
-              type: "item",
-              testId: "export-embed",
-              icon: <Glyph name="code" />,
-              title: "Embed code…",
-              onSelect: api.openEmbed,
-            },
-            ...(api.fsSupported
-              ? [
-                  {
-                    type: "item" as const,
-                    testId: "export-save-as",
-                    icon: <Glyph name="save" />,
-                    title: "Save as…",
-                    shortcut: "Mod+Shift+S",
-                    onSelect: () => void api.saveAs(),
-                  },
-                ]
-              : []),
-          ],
-        },
-      );
     }
     out.push({
       type: "item",
@@ -170,6 +65,77 @@ export function FileMenu({ api, canvas }: { api: Api; canvas: boolean }) {
         { type: "note", text: "Or drop a file anywhere on the page." },
       ],
     });
+    if (!canvas) return out;
+
+    out.push(
+      { type: "separator" },
+      {
+        type: "item",
+        testId: "file-save",
+        icon: <Glyph name="save" />,
+        title: b ? "Save" : api.fsSupported ? "Save to device…" : "Download file",
+        desc: b
+          ? `To ${b.kind === "drive" ? "Google Drive: " : ""}${b.name}`
+          : api.fsSupported
+            ? "Works in synced cloud folders"
+            : undefined,
+        shortcut: "Mod+S",
+        onSelect: () => void api.save(),
+      },
+    );
+    if (api.fsSupported) {
+      out.push({
+        type: "item",
+        testId: "export-save-as",
+        icon: <Glyph name="save" />,
+        title: "Save as…",
+        shortcut: "Mod+Shift+S",
+        onSelect: () => void api.saveAs(),
+      });
+    }
+    if (drive) {
+      out.push({
+        type: "item",
+        testId: "file-save-drive",
+        icon: <Glyph name="drive" />,
+        title: b?.kind === "drive" ? "Save a copy to Google Drive" : "Save to Google Drive",
+        onSelect: () => void api.saveToDrive(b?.kind === "drive"),
+      });
+    }
+    out.push(
+      { type: "separator" },
+      {
+        type: "item",
+        testId: "export-share-link",
+        icon: <Glyph name="link" />,
+        title: "Copy share link",
+        onSelect: () => void api.copyShareLink(),
+      },
+      {
+        type: "item",
+        testId: "export-embed",
+        icon: <Glyph name="code" />,
+        title: "Embed code…",
+        onSelect: api.openEmbed,
+      },
+      { type: "separator" },
+      {
+        type: "item",
+        testId: "export-png",
+        icon: <Glyph name="image" />,
+        title: "Export PNG",
+        hint: "2×",
+        onSelect: () => void api.exportPng({ scale: 2 }),
+      },
+      {
+        type: "item",
+        testId: "file-more-formats",
+        submenuTestId: "file-more-formats-menu",
+        icon: <Glyph name="download" />,
+        title: "Export as",
+        submenu: () => exportFormats(api),
+      },
+    );
     return out;
   };
 
@@ -212,13 +178,56 @@ export function SharedChip({ onKeep, replaces }: { onKeep: () => void; replaces?
       <button
         className="ix-shared-keep"
         onClick={onKeep}
-        title={
-          replaces ? `Keep it as your imported diagram (replaces “${replaces}”)` : "Keep it as your imported diagram"
-        }
+        title={replaces ? `Keep it as your diagram (replaces “${replaces}”)` : "Keep it as your diagram"}
         data-testid="shared-keep"
       >
         Save a copy
       </button>
     </div>
   );
+}
+
+/** "Export as" formats. The canvas right-click "Export as" (useInterop.tsx) uses the same names and order. */
+function exportFormats(api: Api): MenuEntry[] {
+  return [
+    {
+      type: "item",
+      testId: "export-json",
+      icon: <Glyph name="json" />,
+      title: "Diagram file",
+      hint: ".diagram.json",
+      onSelect: () => void api.exportNative(),
+    },
+    {
+      type: "item",
+      testId: "export-image",
+      icon: <Glyph name="image" />,
+      title: "Image…",
+      desc: "PNG or SVG, size and background",
+      onSelect: api.openImageOptions,
+    },
+    {
+      type: "item",
+      testId: "export-drawio",
+      icon: <Glyph name="drawio" />,
+      title: "draw.io",
+      hint: ".drawio",
+      onSelect: () => void api.exportDrawio(),
+    },
+    {
+      type: "item",
+      testId: "export-mermaid-download",
+      icon: <Glyph name="mermaid" />,
+      title: "Mermaid file",
+      hint: ".mmd",
+      onSelect: () => void api.downloadMermaid(),
+    },
+    {
+      type: "item",
+      testId: "export-mermaid",
+      icon: <Glyph name="mermaid" />,
+      title: "Copy as Mermaid",
+      onSelect: () => void api.copyMermaid(),
+    },
+  ];
 }

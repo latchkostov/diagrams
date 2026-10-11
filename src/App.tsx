@@ -19,6 +19,8 @@ import { useUrlState, type View } from "./lib/urlState";
 import {
   clearShared,
   DIAGRAMS_CHANGED,
+  emptyDiagram,
+  getAutosave,
   getImported,
   getDiagramIdentity,
   type SaveTarget,
@@ -30,6 +32,8 @@ import {
   writeAutosave,
 } from "./lib/diagramIO";
 import { Icon } from "./components/Icon";
+import { lastCanvas } from "./lib/canvasBridge";
+import type { StartOptions } from "./canvas/StartCard";
 import { useInterop, useInteropCanvasActions, type Slot } from "./interop/useInterop";
 import { notify } from "./interop/ui/toast";
 import { Toaster } from "./interop/ui/Toaster";
@@ -64,17 +68,22 @@ function MainApp() {
   // Refresh the picker independently of the currently open document identity.
   const [slotVersion, setSlotVersion] = useState(0);
 
+  // "Your diagram" (the one slot you own, blank until you start or import one) comes first, then a
+  // shared diagram if one is open, then the examples.
   const options: ExampleOption[] = useMemo(() => {
     void slotVersion; // the trigger to re-read the stored slots from localStorage
-    const list = examples.map((e) => ({ slug: e.slug, title: e.diagram.title }));
-    const imported = getImported();
-    if (imported) list.push({ slug: IMPORTED_SLUG, title: `Imported: ${imported.title}` });
     const shared = getShared();
-    if (shared) list.push({ slug: SHARED_SLUG, title: `Shared: ${shared.title}` });
-    return list;
+    return [
+      { slug: IMPORTED_SLUG, title: getImported()?.title ?? "Untitled diagram", group: "yours" as const },
+      ...(shared ? [{ slug: SHARED_SLUG, title: `${shared.title} (shared)`, group: "yours" as const }] : []),
+      ...examples.map((e) => ({ slug: e.slug, title: e.diagram.title, group: "examples" as const })),
+    ];
   }, [slotVersion]);
 
-  const slug = options.some((o) => o.slug === url.example) ? url.example! : (options[0]?.slug ?? IMPORTED_SLUG);
+  // No diagram in the URL: reopen the last one, else your own (a blank canvas with the start card).
+  const valid = (s: string | undefined): s is string => !!s && options.some((o) => o.slug === s);
+  const remembered = lastCanvas();
+  const slug = valid(url.example) ? url.example : valid(remembered) ? remembered : IMPORTED_SLUG;
 
   const canvasIdentity = getDiagramIdentity(slug);
 
@@ -96,6 +105,13 @@ function MainApp() {
   useEffect(() => {
     if (url.view === "canvas" && url.example !== slug) setUrl({ example: slug }, { replace: true });
   }, [url.view, url.example, slug, setUrl]);
+
+  // Once the diagram is up, fetch the stencil library in the background so the tab opens instantly.
+  useEffect(() => {
+    if (url.view !== "canvas") return;
+    const t = setTimeout(() => void import("./gallery/GalleryView").catch(() => {}), 1500);
+    return () => clearTimeout(t);
+  }, [url.view]);
 
   useEffect(() => {
     if (!url.present) return;
@@ -119,6 +135,24 @@ function MainApp() {
     [setUrl, slug],
   );
 
+  /** File > New diagram and the start card: a blank "your diagram", with Undo if it replaced work. */
+  const newDiagram = useCallback(() => {
+    const previous =
+      slug === IMPORTED_SLUG && canvasRef.current
+        ? canvasRef.current.getDiagram()
+        : (getAutosave(IMPORTED_SLUG) ?? getImported());
+    try {
+      openSlot(IMPORTED_SLUG, emptyDiagram());
+    } catch (err) {
+      notify(`Couldn't start a new diagram. ${err instanceof Error ? err.message : String(err)}`, { kind: "error" });
+      return;
+    }
+    if (previous?.nodes.length)
+      notify(`Started a new diagram. “${previous.title}” was replaced.`, {
+        action: { label: "Undo", run: () => openSlot(IMPORTED_SLUG, previous), testId: "new-diagram-undo" },
+      });
+  }, [slug, openSlot]);
+
   const interop = useInterop({
     view: url.view,
     slug,
@@ -138,6 +172,20 @@ function MainApp() {
     }
   };
   const presenting = url.view === "canvas" && url.present;
+  // The start card on a blank canvas: public examples only (private ones never appear in UI copy).
+  const start: StartOptions = {
+    examples: examples
+      .filter((e) => publicSlugs.has(e.slug))
+      .map((e) => ({
+        slug: e.slug,
+        title: e.diagram.title,
+        description: e.diagram.description,
+        stencils: [...new Set(e.diagram.nodes.map((n) => n.stencil))].slice(0, 3),
+      })),
+    onExample: (example) => setUrl({ example }),
+    onOpenFile: () => void interop.openFile(),
+    onPaste: interop.openPaste,
+  };
   const goTo = (view: View) => setUrl({ view, present: false });
 
   return (
@@ -156,6 +204,7 @@ function MainApp() {
               : undefined
           }
           onPresent={() => setUrl({ present: true })}
+          onNewDiagram={newDiagram}
         />
       )}
       <div className="app-body">
@@ -178,6 +227,7 @@ function MainApp() {
                 slug={slug}
                 presenting={presenting}
                 onExitPresent={() => setUrl({ present: false })}
+                start={start}
               />
             )}
           </Suspense>
@@ -198,7 +248,7 @@ function ViewLoading() {
 
 const centered = { position: "absolute", inset: 0, display: "grid", placeItems: "center" } as const;
 
-const viewName: Record<View, string> = { gallery: "the gallery", canvas: "the canvas", lab: "the Lab" };
+const viewName: Record<View, string> = { gallery: "the stencil library", canvas: "the diagram", lab: "the Lab" };
 
 interface BoundaryProps {
   resetKey: string;
@@ -252,7 +302,7 @@ class ViewBoundary extends Component<BoundaryProps, { error: Error | null; key: 
               ? "Part of the app couldn't be downloaded. This usually happens after an update: reloading fixes it."
               : view === "canvas"
                 ? "Your other diagrams are safe. If this one keeps failing, its saved edits may be the cause: clearing them restores the original."
-                : "Try again, or head back to the gallery."}
+                : "Try again, or open the stencil library."}
           </p>
           <code
             style={{
@@ -295,7 +345,7 @@ class ViewBoundary extends Component<BoundaryProps, { error: Error | null; key: 
             )}
             {view !== "gallery" && (
               <button className="btn" onClick={onGoGallery} data-testid="error-go-gallery">
-                <Icon name="grid" size={14} /> Go to gallery
+                <Icon name="grid" size={14} /> Open stencils
               </button>
             )}
           </div>

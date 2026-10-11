@@ -2,7 +2,7 @@
 // registry while live mode is on. They change the running engine only; "Save to diagram" is the
 // explicit way to keep a tweak.
 
-import type { Action, MenuNode } from "../editor/actions";
+import type { Action, MenuNode, MenuTarget } from "../editor/actions";
 import type { NodeStatus } from "../sim/types";
 import { resolveProps } from "../sim/defaults";
 import type { LiveController } from "./controller";
@@ -27,18 +27,28 @@ const FAILURE_RATES = [0, 0.1, 0.25, 0.5, 1];
 const SLOWDOWNS = [1, 2, 5, 10];
 const CONCURRENCY = [1, 2, 4, 8, 16, 64];
 
-/** Reserve room for the Simulation submenu without dropping editing actions. */
-export function compactLiveNodeMenu(items: MenuNode[]): MenuNode[] {
-  const clipboardIds = new Set(["item.duplicate", "item.copy", "item.cut"]);
-  const clipboard = items.filter((item) => item.type === "item" && clipboardIds.has(item.id));
-  if (clipboard.length < 2) return items;
-  let placed = false;
-  return items.flatMap((item): MenuNode[] => {
-    if (item.type !== "item" || !clipboardIds.has(item.id)) return [item];
-    if (placed) return [];
-    placed = true;
-    return [{ type: "item", id: "live.clipboard", label: "Clipboard", icon: "copy", children: clipboard }];
-  });
+/** What each menu keeps from editing while live: the live verbs lead, the rest waits for edit mode (L). */
+const LIVE_KEEP: Partial<Record<MenuTarget, ReadonlySet<string>>> = {
+  node: new Set(["node.rename", "node.properties"]),
+  edge: new Set(["edge.edit-label", "node.properties"]),
+  canvas: new Set(["canvas.properties", "canvas.fit", "canvas.view-options", "canvas.export", "canvas.shortcuts"]),
+};
+
+/**
+ * Live menus: the live actions (ids `sim.*`) lead at the top level, followed by the few editing
+ * actions that still make sense mid-run. Everything else comes back when you leave live view (L).
+ */
+export function compactLiveMenu(items: MenuNode[], target: MenuTarget): MenuNode[] {
+  const keep = LIVE_KEEP[target];
+  if (!keep) return items;
+  const live = items.filter((item) => item.type === "item" && item.id.startsWith("sim."));
+  const rest = items.filter((item) => item.type === "item" && keep.has(item.id));
+  if (!live.length) return rest;
+  return [
+    { type: "header", label: "Live" },
+    ...live,
+    ...(rest.length ? [{ type: "separator" } as const, ...rest] : []),
+  ];
 }
 
 export function liveActions(host: LiveActionsHost): Action[] {
@@ -101,7 +111,7 @@ export function liveActions(host: LiveActionsHost): Action[] {
       label: (ctx) => (status(ctx.nodeId!) === "down" ? "Revive" : "Kill"),
       icon: "close",
       danger: true,
-      order: 30,
+      order: 50,
       when: (ctx) => isNode(ctx.nodeId),
       run: (ctx) => c.setNodeStatus(ctx.nodeId!, status(ctx.nodeId!) === "down" ? "up" : "down"),
     },
@@ -228,35 +238,11 @@ export function liveActions(host: LiveActionsHost): Action[] {
       id: "sim.reset",
       section: "simulation",
       targets: ["canvas"],
-      label: "Reset simulation",
+      label: "Restart",
       icon: "reset",
       order: 40,
       run: () => c.restart(),
     },
   ];
-  const nodeActions = actions.filter((action) => action.targets.includes("node"));
-  return [
-    {
-      id: "sim.node",
-      section: "simulation",
-      targets: ["node"],
-      label: "Simulation",
-      icon: "bolt",
-      order: 10,
-      when: (ctx) => isNode(ctx.nodeId),
-      children: (ctx) =>
-        nodeActions
-          .filter((action) => !action.when || action.when(ctx))
-          .map((action) => ({
-            type: "item",
-            id: action.id,
-            label: typeof action.label === "function" ? action.label(ctx) : action.label,
-            icon: action.icon,
-            danger: action.danger,
-            children: action.children?.(ctx),
-            run: action.run ? () => action.run!(ctx) : undefined,
-          })),
-    },
-    ...actions.filter((action) => !action.targets.includes("node")),
-  ];
+  return actions;
 }

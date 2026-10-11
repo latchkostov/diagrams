@@ -14,6 +14,13 @@ const MOUSE: [string, string][] = [
   ["Drag from a handle", "Connect to another node (any side)"],
 ];
 
+/** Live view and presenting keys (handled by the live view and the app, not the editor). */
+const LIVE: [string, string][] = [
+  ["L", "Go live / back to editing"],
+  ["Space", "Play or pause; continue after a note"],
+  ["Esc", "Leave presentation, then live view"],
+];
+
 function displayKeys(s: Shortcut): string[] {
   if (s.id === "nudge") return ["← ↑ → ↓"];
   if (s.id === "nudge-far") return [`${formatCombo("Shift")} ← ↑ → ↓`];
@@ -114,6 +121,17 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
               ))}
             </section>
           ))}
+          <section>
+            <h3>Live and presenting</h3>
+            {LIVE.map(([k, v]) => (
+              <div key={k} className="sc-row">
+                <span>{v}</span>
+                <span className="sc-keys">
+                  <kbd>{k}</kbd>
+                </span>
+              </div>
+            ))}
+          </section>
           <section>
             <h3>Mouse</h3>
             {MOUSE.map(([k, v]) => (

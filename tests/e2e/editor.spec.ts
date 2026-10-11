@@ -176,7 +176,8 @@ test.describe("editor", () => {
     await page.getByTestId("edge-label-shopper-to-gateway").click({ button: "right" });
     await expect(menuItem(page, "edge.toggle-kind")).toContainText("Make sync");
     await page.keyboard.press("Escape");
-    // Pin a side from the inspector and back to auto.
+    // Pin a side from the inspector (under "Advanced") and back to auto.
+    await page.getByTestId("inspector-section-edge-advanced").click();
     await page.getByTestId("inspector-field-sourceSide").selectOption("bottom");
     await expect(page.getByTestId("inspector-field-sourceSide")).toHaveValue("bottom");
     await page.getByTestId("inspector-field-sourceSide").selectOption("");
@@ -187,18 +188,24 @@ test.describe("editor", () => {
     await expect(page.getByTestId("inspector-title")).toHaveText("Node");
     await page.getByTestId("inspector-field-label").fill("Order API");
     await expect(page.getByTestId("node-orders")).toContainText("Order API");
-    // Simulation fields follow the stencil's role (processor).
+    // Simulation fields sit in a collapsed section and follow the stencil's role (processor).
+    await expect(page.getByTestId("inspector-field-concurrency")).toHaveCount(0);
+    await page.getByTestId("inspector-section-node-simulation").click();
     await expect(page.getByTestId("inspector-field-concurrency")).toBeVisible();
     await expect(page.getByTestId("inspector-field-ratePerSec")).toHaveCount(0);
     await page.getByTestId("inspector-field-failureRate").fill("0.2");
 
+    // Below 1680px the inspector folds away with the selection, leaving the canvas room.
     await clickEmpty(page);
-    await expect(page.getByTestId("inspector-title")).toHaveText("Diagram");
+    await expect(page.getByTestId("inspector-title")).toHaveCount(0);
     await page.keyboard.press(`${MOD}+z`);
     await page.keyboard.press(`${MOD}+z`);
     await expect(page.getByTestId("node-orders")).toContainText("Order service");
 
-    // Diagram fields when nothing is selected.
+    // Diagram fields: right-click the canvas, "Diagram properties".
+    await openCanvasMenu(page);
+    await menuItem(page, "canvas.properties").click();
+    await expect(page.getByTestId("inspector-title")).toHaveText("Diagram");
     await page.getByTestId("inspector-field-title").fill("Renamed pipeline");
     await expect(page.getByTestId("diagram-title")).toHaveText("Renamed pipeline");
   });
@@ -313,7 +320,8 @@ test.describe("editor", () => {
   });
 
   test("shortcuts modal contains Tab and Shift+Tab, closes with Escape and restores focus", async ({ page }) => {
-    await clickEmpty(page);
+    await openCanvasMenu(page);
+    await menuItem(page, "canvas.properties").click();
     const button = page.getByTestId("inspector-shortcuts");
     await button.click();
     const dialog = page.getByTestId("shortcuts-dialog");
