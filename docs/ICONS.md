@@ -223,7 +223,7 @@ feature it is. Azure Monitor (P2) is left for later.
 The relationship glyphs drawn on edges, in menus and in node pips (`src/components/relationGlyphs.ts`)
 are Lucide (ISC) paths, each flattened to one stroked path on the 24 px grid: `sliders-horizontal`
 (Config), `key-round` (Secret), `id-card` (Identity), `activity` (Telemetry), `rocket` (Deploys), `link-2`
-(Depends on) and `lock` (a secret setting). Message, Request and the menu's Relationship glyph are drawn
+(Depends on), `lock` (a secret setting) and `lock-open` (a plain one, in the inspector). Message, Request and the menu's Relationship glyph are drawn
 for this app.
 
 ### Stencils batch 3 (scenario examples)

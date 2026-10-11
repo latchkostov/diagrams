@@ -591,7 +591,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const selectedEdges = useMemo(() => edges.filter((e) => e.selected), [edges]);
   const nothingSelected =
     !selectedNodes.length && !selectedGroups.length && !selectedEdges.length && !selectedAnnotations.length;
-  const paletteHidden = paletteCollapsed || (live && !openedByHand.palette);
+  // Below ROOMY an open Ask AI dock folds the stencils to their rail too, as live view does: at 1440 the
+  // dock, the stencils and the inspector's rail left the diagram 780 px.
+  const paletteHidden = paletteCollapsed || ((live || (narrow && aiDockOpen)) && !openedByHand.palette);
   const inspectorHidden =
     livePanelOpen ||
     !prefs.inspector ||
@@ -637,7 +639,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   useEffect(() => {
     if (lastDock.current === dockKey) return;
     lastDock.current = dockKey;
-    if (presenting) return;
+    // Live view refits around its own chrome (the trace card, a side panel): see LiveView.
+    if (presenting || live) return;
     // After React Flow's ResizeObserver has the new pane size, and once a drag on the dock's edge settles.
     const id = setTimeout(() => {
       if (showingAll.current) return overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
@@ -721,6 +724,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         <div
           className="canvas-wrap"
           data-testid="canvas-wrap"
+          data-toast-area
           tabIndex={-1}
           ref={wrapper}
           onPointerMove={(e) => (pointer.current = { x: e.clientX, y: e.clientY })}

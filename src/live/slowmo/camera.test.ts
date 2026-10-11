@@ -56,3 +56,40 @@ describe("slow motion camera", () => {
     expect(planCamera([], [], pane, insets)).toBeNull();
   });
 });
+
+describe("slow motion camera keeps the hop at work out from under the trace card", () => {
+  const covered = (b: FlowBox, v: { x: number; y: number; zoom: number }) => {
+    const x = b.x * v.zoom + v.x;
+    const y = b.y * v.zoom + v.y;
+    return (
+      x < card.x + card.width &&
+      card.x < x + b.width * v.zoom &&
+      y < card.y + card.height &&
+      card.y < y + b.height * v.zoom
+    );
+  };
+
+  it("follows, rather than fitting, when no fit keeps the path clear of the card", () => {
+    const small = { width: 900, height: 700 };
+    const everywhere = { x: 0, y: 0, width: 900, height: 700 };
+    const path = [node(0, 0), node(300, 0)];
+    const plan = planCamera(path, [path[0]], small, insets, [everywhere])!;
+    expect(plan.mode).toBe("follow");
+  });
+
+  it("when a fan-out is too wide to keep beside the card, keeps the next target clear", () => {
+    const view = frame(node(0, 0), pane, insets, FOLLOW_ZOOM);
+    const near = [node(0, 0), node(0, 700)];
+    const target = node(1500, 0);
+    // Too wide to sit beside the card and too tall to sit below it: without a focus the frontier is
+    // centred, and the target lands under the card.
+    const blind = followPan([...near, target], view, pane, insets, [card])!;
+    expect(covered(target, blind)).toBe(true);
+    const pan = followPan([...near, target], view, pane, insets, [card], undefined, [target])!;
+    expect(pan.zoom).toBe(FOLLOW_ZOOM);
+    expect(covered(target, pan)).toBe(false);
+    const x = target.x * pan.zoom + pan.x;
+    expect(x).toBeGreaterThanOrEqual(0);
+    expect(x + target.width * pan.zoom).toBeLessThanOrEqual(pane.width);
+  });
+});

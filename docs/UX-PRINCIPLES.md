@@ -16,8 +16,8 @@ path wins by default and the power path stays one step away.
    are visually secondary.
 5. **Budget the chrome.** Top bar: at most ~7 controls. Floating bars: one row. Menus: ≤ 12 items per
    level, grouped with separators. Adding a control means removing or folding another. An action that
-   already has an always-visible control and a shortcut (Fit view) stays out of menus; the palette
-   still finds it (`paletteOnly` in the action registry).
+   already has an always-visible control and a shortcut (Fit view, Undo, Redo, Keyboard shortcuts) stays
+   out of menus; the palette still finds it (`paletteOnly` in the action registry).
 6. **No dead ends, no surprises.** Everything is undoable; destructive actions say so; empty states
    explain what to do next; errors say how to fix them.
 7. **Consistent affordances.** Cursor, hover, focus and pressed states match behaviour everywhere
@@ -93,10 +93,11 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - **Storage**: where files live. **This device** (never "local", "computer" or "disk"; mid-sentence "this
   device"), **Google Drive**, **OneDrive** and **Dropbox** (never "Drive", "OneDrive Personal" or "Dropbox
   account"). The verbs are **Open…** (this device, Ctrl+O), **Open from ▸**, **Save** (Ctrl+S: back to where the
-  diagram came from), and **Save to ▸** (always a new file; This device… is Save as, Ctrl+Shift+S). Each
-  submenu lists This device first, then the configured providers; an unconfigured provider never appears. The
-  status beside the picker says **Saved to OneDrive · 2 min ago** or **Opened from Dropbox**. Signing out is
-  **Sign out of OneDrive**. The folder a provider sees is **Apps › Diagrams**.
+  diagram came from; with no file yet it reads **Save to this device…**), and **Save to ▸** (always a new
+  file; This device… is Save as, Ctrl+Shift+S). Each submenu lists This device first, then the configured
+  providers; an unconfigured provider never appears. The status beside the picker says **Saved to
+  OneDrive · 2 min ago** or **Opened from Dropbox**. Signing out is **Sign out of OneDrive**. The folder a
+  provider sees is **Apps › Diagrams**.
 - **Trace a message** follows one message (and its fan-out copies) hop by hop: click a moving message,
   right-click a node for **Trace next message from here**, or use **Trace a message ▸** (Next message,
   Slowest so far, One that dead-lettered) on the live right-click, in ⋯ and in Ctrl+K. The **trace
@@ -132,6 +133,8 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   control: play, Restart (Replay), speed (pace) and the timeline drive the replay while it's on, ← →
   step hop by hop, and Esc goes back to live where it left off. Record video… offers **Record this slow
   motion**. Below 1× live draws a calm sample of whole journeys; the counts never change.
+- Side panels make room rather than cover: below 1680 px, live view and an open Ask AI fold the stencils to
+  their rail until they are opened by hand. Toasts centre on the canvas pane and stack above its bars.
 - Esc backs out one level: menu, dialog, selection, slow motion, trace, highlighted path, presentation, then live view.
 
 ## Process

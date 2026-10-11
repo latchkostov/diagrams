@@ -1,5 +1,5 @@
 // Relationship glyphs on Lucide's 24 px grid (ISC; see docs/ICONS.md): sliders-horizontal, key-round,
-// id-card, activity, rocket, link-2 and lock, each flattened to one stroked path. The same picture
+// id-card, activity, rocket, link-2, lock and lock-open, each flattened to one stroked path. The same picture
 // marks a relationship everywhere: on the edge, in the Relationship ▸ menu, the inspector, the node
 // pips and the settings card. Message and Request (flows) are a dashed and a solid arrow.
 
@@ -18,6 +18,8 @@ export const RELATION_GLYPHS = {
     "M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2zM9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05",
   "rel-depends": "M9 17H7A5 5 0 0 1 7 7h2m6 0h2a5 5 0 1 1 0 10h-2m-7-5h8",
   lock: "M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4",
+  // A plain (non-secret) setting in the inspector: the same lock, open.
+  "lock-open": "M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 9.9-1",
 } as const;
 
 export type RelationGlyphName = keyof typeof RELATION_GLYPHS;

@@ -1,4 +1,4 @@
-import { memo, useCallback } from "react";
+import { memo, useCallback, type CSSProperties } from "react";
 import { useStore, type ReactFlowState } from "@xyflow/react";
 import { Icon } from "../../components/Icon";
 import { useTooltip } from "../../components/useTooltip";
@@ -6,6 +6,7 @@ import { RELATION_META, type DependencyRelation } from "../../model/relations";
 import { pipsByNode } from "./dependencyRows";
 import { relationIcon } from "../../editor/relationActions";
 import type { DiagramFlowEdge, DiagramNodeData } from "../types";
+import { useReadableScale } from "../useReadableScale";
 
 const MAX = 3;
 const EMPTY: readonly { relation: DependencyRelation; target: string }[] = [];
@@ -54,25 +55,47 @@ function DependencyPipsImpl({ id }: { id: string }) {
           </span>
         )}
       </button>
-      {tooltip.open && (
-        <div
-          className="fe-card dn-pip-card nodrag nopan"
-          {...tooltip.pointer}
-          role="tooltip"
-          id={`node-dependencies-${id}`}
-          data-testid={`node-dependencies-${id}`}
-        >
-          <div className="fe-card-head">Dependencies</div>
-          <ul>
-            {rows.map((r, i) => (
-              <li key={i}>
-                {RELATION_META[r.relation].label} · {labels[i]}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {tooltip.open && <DependencyCard id={id} rows={rows} labels={labels} pointer={tooltip.pointer} />}
     </>
+  );
+}
+
+/** The list on hover or focus: one line per dependency, readable at any zoom. */
+function DependencyCard({
+  id,
+  rows,
+  labels,
+  pointer,
+}: {
+  id: string;
+  rows: readonly { relation: DependencyRelation; target: string }[];
+  labels: readonly string[];
+  pointer: ReturnType<typeof useTooltip>["pointer"];
+}) {
+  const scale = useReadableScale();
+  return (
+    <div
+      className="fe-card dn-pip-card nodrag nopan"
+      {...pointer}
+      style={{ transform: `scale(${scale})`, "--fe-card-scale": scale } as CSSProperties}
+      role="tooltip"
+      id={`node-dependencies-${id}`}
+      data-testid={`node-dependencies-${id}`}
+    >
+      <div className="fe-card-head">Dependencies</div>
+      <ul>
+        {rows.map((r, i) => (
+          <li key={i} data-testid={`node-dependency-${id}-${i}`}>
+            <span className={`dn-pip-card-glyph fe-rel-${r.relation}`} aria-hidden>
+              <Icon name={relationIcon(r.relation)} size={11} />
+            </span>
+            <span>
+              {RELATION_META[r.relation].label} · {labels[i]}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

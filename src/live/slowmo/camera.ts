@@ -67,10 +67,22 @@ export interface CameraPlan {
   zoom: number;
 }
 
+/** True when no box in \`items\` sits under any overlay (screen px, relative to the pane) at view \`v\`. */
+function clearOf(items: readonly FlowBox[], v: View, overlays: readonly FlowBox[]): boolean {
+  return !items.some((b) => {
+    const x = b.x * v.zoom + v.x;
+    const y = b.y * v.zoom + v.y;
+    const w = b.width * v.zoom;
+    const h = b.height * v.zoom;
+    return overlays.some((o) => x < o.x + o.width && o.x < x + w && y < o.y + o.height && o.y < y + h);
+  });
+}
+
 /**
- * Fit the path, keeping clear of `overlays` (the trace card's first rows: a wide path moves down
- * rather than shrinking, as in a trace). If that's too small to read, follow from the first node
- * at a readable zoom; `still` (reduced motion) always fits, so the camera never moves after it.
+ * Fit the path, keeping clear of \`overlays\` (the trace card's first rows: a wide path moves down
+ * rather than shrinking, as in a trace). If that's too small to read, or can't keep the path clear of
+ * the card, follow from the first node at a readable zoom; \`still\` (reduced motion) always fits, so
+ * the camera never moves after it.
  */
 export function planCamera(
   path: readonly FlowBox[],
@@ -84,7 +96,9 @@ export function planCamera(
   if (!all) return null;
   const fit =
     fitAvoiding(path, pane, overlays, { margin: 0, gap: 16, maxZoom: MAX_ZOOM, insets }) ?? frame(all, pane, insets);
-  if (fit.zoom >= FOLLOW_BELOW || still) return { mode: "fit", view: fit, zoom: fit.zoom };
+  // A fit that leaves path nodes under the card is no fit: the camera would sit still with a hop hidden.
+  if (still || (fit.zoom >= FOLLOW_BELOW && clearOf(path, fit, overlays)))
+    return { mode: "fit", view: fit, zoom: fit.zoom };
   const start = union(first) ?? all;
   const view =
     fitAvoiding(first.length ? first : path, pane, overlays, {
@@ -99,7 +113,7 @@ export function planCamera(
 
 /**
  * Following: where to pan so the frontier (nodes in play and where dots are going) is in view and
- * clear of `overlays` (the trace card's first rows), or null when it already is (with a margin).
+ * clear of \`overlays\` (the trace card's first rows), or null when it already is (with a margin).
  * The zoom never changes while following.
  */
 export function followPan(
@@ -109,6 +123,8 @@ export function followPan(
   insets: Insets,
   overlays: readonly FlowBox[] = [],
   margin = 32,
+  /** The part of the frontier that matters most (the node at work, the next targets). */
+  focus: readonly FlowBox[] = [],
 ): View | null {
   const box = union(frontier);
   if (!box) return null;
@@ -127,8 +143,14 @@ export function followPan(
         o.y < screen.y + screen.height,
     );
   if (inside) return null;
-  return (
-    fitAvoiding(frontier, pane, overlays, { margin: 0, gap: 16, minZoom: z, maxZoom: z, insets }) ??
-    frame(box, pane, insets, z)
-  );
+  const fit = (items: readonly FlowBox[]) =>
+    fitAvoiding(items, pane, overlays, { margin: 0, gap: 16, minZoom: z, maxZoom: z, insets });
+  // A fan-out can be too wide to keep beside the card at this zoom: then keep \`focus\` clear of it, or
+  // failing that its first node, rather than centring the frontier with the node at work under the card.
+  for (const items of [frontier, focus, ...focus.map((f) => [f])]) {
+    if (!items.length) continue;
+    const v = fit(items);
+    if (v && clearOf(items, v, overlays)) return v;
+  }
+  return fit(frontier) ?? frame(box, pane, insets, z);
 }

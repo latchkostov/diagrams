@@ -11,6 +11,7 @@ import { useEdgeRoute, useRoutingOptions } from "./useEdgeRoute";
 import { relationInfo, type EdgeRelationInfo } from "./relationInfo";
 import { RELATION_META, isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { relationIcon } from "../../editor/relationActions";
+import { useReadableScale } from "../useReadableScale";
 
 /**
  * An edge. A flow is async (dashed) or sync (solid). A dependency (config, secret, identity,
@@ -184,7 +185,9 @@ const title = (tip: string | undefined) => (tip ? <title>{tip}</title> : null);
 /** "Secret · reads secrets", plus what a derived label summarises and how references resolve. */
 function dependencyTip(relation: DependencyRelation, dep: EdgeRelationInfo | undefined, sourceStencil?: string) {
   const meta = RELATION_META[relation];
-  const parts = [`${meta.label} · ${meta.implicit}`];
+  // "Depends on" says its verb already ("Depends on · depends on" read twice).
+  const same = meta.label.toLowerCase() === meta.implicit.toLowerCase();
+  const parts = [same ? meta.label : `${meta.label} · ${meta.implicit}`];
   const n = dep?.settings.length ?? 0;
   if (relation === "config" && n && !dep?.derived) {
     const secret = dep!.settings.filter((s) => s.secret).length;
@@ -223,11 +226,18 @@ function SettingsCard({
   y: number;
 }) {
   const heading = relation === "secret" ? "Secret references" : "Settings read";
+  const scale = useReadableScale();
   return (
     <div
       {...pointer}
       className="fe-card nodrag nopan"
-      style={{ transform: `translate(-50%, -100%) translate(${x}px, ${y - 8}px)` }}
+      style={
+        {
+          transformOrigin: "0 0",
+          transform: `translate(${x}px, ${y - 8}px) scale(${scale}) translate(-50%, -100%)`,
+          "--fe-card-scale": scale,
+        } as CSSProperties
+      }
       role="tooltip"
       id={`edge-settings-${id}`}
       data-testid={`edge-settings-${id}`}

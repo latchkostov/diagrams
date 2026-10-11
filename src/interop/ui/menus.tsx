@@ -130,7 +130,7 @@ export function FileMenu({
         type: "item",
         testId: "file-save",
         icon: <Glyph name="save" />,
-        title: b ? "Save" : api.fsSupported ? "Save to device…" : "Download file",
+        title: b ? "Save" : api.fsSupported ? "Save to this device…" : "Download file",
         desc: b
           ? `To ${b.providerId === "device" ? "" : `${b.label}: `}${b.name}`
           : api.fsSupported
@@ -169,7 +169,7 @@ export function FileMenu({
         ],
       });
     } else if (api.fsSupported && b) {
-      // Until the diagram is bound to a file, "Save to device…" already asks where: Save as… joins it after.
+      // Until the diagram is bound to a file, "Save to this device…" already asks where: Save as… joins it after.
       out.push({
         type: "item",
         testId: "export-save-as",

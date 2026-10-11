@@ -70,6 +70,7 @@ import { fitAvoiding, type Viewport } from "../canvas/geometry/fit";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
 const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
 import { buildJourney } from "../trace/journey";
+import { useAiDock } from "../ai/ui/dock";
 
 export interface LiveViewProps {
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
@@ -500,6 +501,27 @@ function LiveSession({
     }, 120);
     return () => window.clearTimeout(t);
   }, [cardOpen, fitView, reducedMotion, fitPadding, fitAll]);
+
+  // The Ask AI dock opened, closed or was resized: the pane changed width at its right edge. Refit the
+  // same way, or half the diagram stayed past the pane's edge (slow motion keeps its own camera).
+  const dock = useAiDock();
+  const dockKey = `${dock.open}:${dock.open ? Math.round(dock.width / 40) : 0}`;
+  const dockFitted = useRef(dockKey);
+  useEffect(() => {
+    if (dockKey === dockFitted.current) return;
+    dockFitted.current = dockKey;
+    if (presenting) return;
+    // After React Flow's ResizeObserver has the new pane size.
+    const t = window.setTimeout(() => {
+      if (slowRef.current?.session.active) return;
+      const duration = reducedMotion ? 0 : FULL_FIT.duration;
+      const focus = noteFocusRef.current;
+      if (zoomedForNote.current && focus.length)
+        void fitView({ ...NOTE_FIT, padding: fitPadding(NOTE_PADDING), nodes: focus.map((id) => ({ id })), duration });
+      else fitAll(duration ?? 0);
+    }, 200);
+    return () => window.clearTimeout(t);
+  }, [dockKey, presenting, fitView, reducedMotion, fitPadding, fitAll]);
 
   // ---------------------------------------------------------------- the frame loop
 

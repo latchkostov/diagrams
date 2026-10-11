@@ -252,15 +252,22 @@ export function useSlowMotion(opts: {
         const now = performance.now();
         if (now >= panUntil.current) {
           const next = new Set(f.frontier);
+          // What must never be under the trace card: the node at work now and the next targets.
+          const focus = new Set<string>();
           const edges = new Map(controller.currentDiagram.edges.map((e) => [e.id, e]));
-          // Look a hop ahead, so the next target is in view before the dot leaves.
-          for (const b of s.script.beats)
+          for (const b of s.script.beats) {
+            if (b.node && b.start <= s.t && s.t < b.start + b.duration) focus.add(b.node);
+            // Look a hop ahead, so the next target is in view before the dot leaves.
             if (b.edge && b.kind !== "reply" && b.start > s.t && b.start <= s.t + 1200) {
               const e = edges.get(b.edge);
-              if (e) next.add(b.reverse ? e.from : e.to);
+              if (e) {
+                next.add(b.reverse ? e.from : e.to);
+                focus.add(b.reverse ? e.from : e.to);
+              }
             }
+          }
           const [x, y, zoom] = store.getState().transform;
-          const pan = followPan(boxes(next), { x, y, zoom }, pane(), insets(), overlays());
+          const pan = followPan(boxes(next), { x, y, zoom }, pane(), insets(), overlays(), undefined, boxes(focus));
           if (pan) {
             const reduced = live.current.reducedMotion;
             void setViewport(pan, { duration: reduced ? 0 : PAN_MS });

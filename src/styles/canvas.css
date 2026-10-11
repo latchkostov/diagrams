@@ -1950,7 +1950,8 @@ select.insp-input {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(468px, calc(100% - 48px));
+  /* Clear of the canvas controls (bottom left) on a narrow pane, as with Ask AI open at 1024. */
+  width: min(468px, calc(100% - 128px));
   max-height: calc(100% - 48px);
   overflow: auto;
   padding: 22px 22px 18px;
@@ -2122,6 +2123,11 @@ select.insp-input {
   margin: 8px 0 0;
   color: var(--text-3);
   font-size: 12px;
+}
+
+.start-paste {
+  display: inline;
+  font-size: inherit;
 }
 
 /* ---------- node tooltip (replaces the native title) ---------- */
@@ -2770,10 +2776,24 @@ select.insp-input {
   flex: 1;
 }
 
+/* Under the pips, clear of the node's own title, scaled from that corner (DependencyPips.tsx). */
 .dn-pip-card {
+  top: calc(100% + 14px);
   right: 0;
-  bottom: 16px;
-  white-space: pre-wrap;
+  transform-origin: top right;
+  white-space: nowrap;
+}
+
+.fe-card.dn-pip-card::after {
+  top: auto;
+  bottom: 100%;
+  height: calc(16px / var(--fe-card-scale, 1));
+}
+
+.dn-pip-card-glyph {
+  display: grid;
+  place-items: center;
+  color: var(--rel);
 }
 
 .dn-pips:focus-visible {
@@ -2781,12 +2801,13 @@ select.insp-input {
   outline-offset: 2px;
 }
 
-/* Bridge the visual gap so slow pointer travel into a settings card keeps it open. */
+/* Bridge the visual gap so slow pointer travel into a settings card keeps it open. The card is scaled to
+   stay readable (useReadableScale); the bridge isn't, so it never reaches over the pill under it. */
 .fe-card::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
   top: 100%;
-  height: 12px;
+  height: calc(12px / var(--fe-card-scale, 1));
 }

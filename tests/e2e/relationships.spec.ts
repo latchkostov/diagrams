@@ -199,6 +199,9 @@ test.describe("relationships", () => {
     // The secret reference edge lists what it carries.
     await page.getByTestId("edge-label-appcfg-to-kv").hover();
     await expect(page.getByTestId("edge-settings-appcfg-to-kv")).toContainText("Stripe:ApiKey");
+    // The card is readable at any zoom now, so at this fit it reaches over the config pill: leave it first.
+    await page.mouse.move(5, 500);
+    await expect(page.getByTestId("edge-settings-appcfg-to-kv")).toHaveCount(0);
 
     // Editing in the inspector: one more secret updates both derived labels.
     await pill.click();
