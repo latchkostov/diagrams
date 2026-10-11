@@ -1,3 +1,4 @@
+import { safeStorage } from "./storage";
 import { useEffect, useState } from "react";
 
 /** Recently used stencils (newest first), pinned at the top of the canvas palette. */
@@ -7,7 +8,7 @@ const EVENT = "diagrams:recent-stencils";
 
 export function getRecentStencils(): string[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+    const raw = JSON.parse(safeStorage.getItem(RECENT_KEY) ?? "[]");
     return Array.isArray(raw) ? raw.filter((v): v is string => typeof v === "string").slice(0, RECENT_MAX) : [];
   } catch {
     return [];
@@ -21,7 +22,7 @@ export function withRecent(list: readonly string[], id: string, max = RECENT_MAX
 
 export function pushRecentStencil(id: string) {
   try {
-    localStorage.setItem(RECENT_KEY, JSON.stringify(withRecent(getRecentStencils(), id)));
+    safeStorage.setItem(RECENT_KEY, JSON.stringify(withRecent(getRecentStencils(), id)));
   } catch {
     // Storage full or blocked: recents are a nicety.
   }

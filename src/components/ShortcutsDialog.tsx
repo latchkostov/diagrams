@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { formatCombo, SHORTCUTS, type Shortcut } from "../editor/shortcuts";
 import { Icon } from "./Icon";
@@ -23,19 +23,65 @@ function displayKeys(s: Shortcut): string[] {
 /** Keyboard cheat sheet, opened with `?`. */
 export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
   const panel = useRef<HTMLDivElement>(null);
+  const backdrop = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  useLayoutEffect(() => {
+    close.current = onClose;
+  }, [onClose]);
   useEffect(() => {
+    const panelElement = panel.current;
+    const backdropElement = backdrop.current;
+    if (!panelElement || !backdropElement) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      e.stopPropagation();
+      if (e.key === "Tab") {
+        const controls = Array.from(
+          panelElement.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((el) => !el.hasAttribute("disabled") && !el.hidden);
+        const first = controls[0] ?? panelElement;
+        const last = controls.at(-1) ?? panelElement;
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === panelElement)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (document.activeElement === last || document.activeElement === panelElement)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+      if (e.key === "Escape" || e.key === "?") {
+        e.preventDefault();
+        close.current();
+      }
+    };
+    const onPointerDown = (e: MouseEvent) => {
+      if (e.target === backdropElement) close.current();
+    };
+    const preventContextMenu = (e: Event) => e.preventDefault();
+    panelElement.addEventListener("keydown", onKeyDown);
+    backdropElement.addEventListener("mousedown", onPointerDown);
+    backdropElement.addEventListener("contextmenu", preventContextMenu);
     const prev = document.activeElement as HTMLElement | null;
     panel.current?.focus();
-    return () => prev?.focus?.();
+    const background = Array.from(document.body.children).filter(
+      (el): el is HTMLElement => el instanceof HTMLElement && !el.contains(panel.current),
+    );
+    const previous = background.map((el) => el.inert);
+    for (const el of background) el.inert = true;
+    return () => {
+      panelElement.removeEventListener("keydown", onKeyDown);
+      backdropElement.removeEventListener("mousedown", onPointerDown);
+      backdropElement.removeEventListener("contextmenu", preventContextMenu);
+      background.forEach((el, i) => {
+        el.inert = previous[i];
+      });
+      if (prev?.isConnected) prev.focus();
+    };
   }, []);
 
   return createPortal(
-    <div
-      className="dlg-backdrop"
-      data-editor-overlay
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-      onContextMenu={(e) => e.preventDefault()}
-    >
+    <div ref={backdrop} className="dlg-backdrop" data-editor-overlay>
       <div
         ref={panel}
         className="dlg"
@@ -44,13 +90,6 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
         aria-labelledby="shortcuts-title"
         tabIndex={-1}
         data-testid="shortcuts-dialog"
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === "Escape" || e.key === "?") {
-            e.preventDefault();
-            onClose();
-          }
-        }}
       >
         <header className="dlg-head">
           <Icon name="keyboard" />

@@ -1,14 +1,29 @@
 // Cheap layered auto-layout (no deps): longest-path layering with back-edges ignored, a few
-// barycenter sweeps to reduce crossings, then a column grid matching the examples' convention.
+// barycenter sweeps to reduce crossings, then a size-aware grid: each column is as wide as its
+// widest node plus a gap wide enough for the labels of the edges crossing it, and rows are spaced
+// by the tallest node, so nodes never overlap and labels have room between them.
+
+import { estimateCardSize } from "../canvas/nodes/size";
+import { pillHeight, pillWidth, wrapLines } from "../canvas/geometry/labels";
 
 export interface LayoutInput {
-  nodes: { id: string; x: number; y: number }[];
-  edges: { from: string; to: string }[];
+  /** Size defaults to the card estimate for the label (220 x 72 without one). */
+  nodes: { id: string; x: number; y: number; width?: number; height?: number; label?: string; sublabel?: string }[];
+  edges: { from: string; to: string; label?: string }[];
   direction?: "LR" | "TB";
 }
 
-/** Spacing per direction: `along` between layers, `across` between siblings in a layer. */
+/** Minimum pitch per direction: `along` between layers, `across` between siblings in a layer. */
 export const LAYOUT_GRID = { origin: 40, LR: { along: 360, across: 120 }, TB: { along: 160, across: 280 } } as const;
+
+/** Clear space a label needs between two layers: its pill (wrapped to two lines if long) plus routing room. */
+function labelRoom(label: string | undefined, direction: "LR" | "TB"): number {
+  const text = label?.trim();
+  if (!text) return 0;
+  const lines = text.length > 14 ? (wrapLines(text, 2) ?? [text]) : [text];
+  const chars = Math.min(24, Math.max(...lines.map((l) => l.length)));
+  return direction === "LR" ? pillWidth(chars) + 48 : pillHeight(lines.length) + 48;
+}
 
 export function layeredLayout({ nodes, edges, direction = "LR" }: LayoutInput): Map<string, { x: number; y: number }> {
   const ids = nodes.map((n) => n.id);
@@ -60,7 +75,8 @@ export function layeredLayout({ nodes, edges, direction = "LR" }: LayoutInput): 
   const index = new Map<string, number>();
   const reindex = () => layers.forEach((l) => l?.forEach((id, i) => index.set(id, i)));
   reindex();
-  const bary = (id: string, nbrs: string[]) => (nbrs.length ? nbrs.reduce((s, n) => s + index.get(n)!, 0) / nbrs.length : index.get(id)!);
+  const bary = (id: string, nbrs: string[]) =>
+    nbrs.length ? nbrs.reduce((s, n) => s + index.get(n)!, 0) / nbrs.length : index.get(id)!;
   for (let sweep = 0; sweep < 4; sweep++) {
     const down = sweep % 2 === 0;
     const order = down ? layers.slice(1) : layers.slice(0, -1).reverse();
@@ -68,19 +84,52 @@ export function layeredLayout({ nodes, edges, direction = "LR" }: LayoutInput): 
       if (!l) continue;
       const score = new Map(l.map((id) => [id, bary(id, down ? preds.get(id)! : forward.get(id)!)]));
       l.sort((a, b) => score.get(a)! - score.get(b)!);
-      reindex();
+      l.forEach((id, i) => index.set(id, i));
     }
   }
 
   const tallest = Math.max(...layers.map((l) => l?.length ?? 0));
   const result = new Map<string, { x: number; y: number }>();
   const { origin } = LAYOUT_GRID;
-  const gap = LAYOUT_GRID[direction];
+  const grid = LAYOUT_GRID[direction];
+  const lr = direction === "LR";
+  const size = new Map(
+    nodes.map((n) => {
+      const est = estimateCardSize(n.label ?? "", n.sublabel);
+      return [n.id, { width: n.width ?? est.width, height: n.height ?? est.height }];
+    }),
+  );
+  const alongSize = (id: string) => (lr ? size.get(id)!.width : size.get(id)!.height);
+  const acrossSize = (id: string) => (lr ? size.get(id)!.height : size.get(id)!.width);
+  // The default 220 x 72 card leaves exactly the classic grid gap; bigger cards and labels widen it.
+  const minGap = grid.along - (lr ? 220 : 72);
+  const gapAfter = layers.map(() => minGap);
+  for (const e of edges) {
+    if (!known.has(e.from) || !known.has(e.to)) continue;
+    const a = Math.min(layer.get(e.from)!, layer.get(e.to)!);
+    const b = Math.max(layer.get(e.from)!, layer.get(e.to)!);
+    const room = labelRoom(e.label, direction);
+    // A label sits in one of the gaps the edge crosses; reserve it in the first one.
+    if (b > a) gapAfter[a] = Math.max(gapAfter[a], room);
+  }
+  const starts: number[] = [];
+  let cursor = origin;
+  layers.forEach((l, li) => {
+    starts[li] = cursor;
+    const thick = Math.max(0, ...(l ?? []).map(alongSize));
+    cursor += Math.max(grid.along, thick + gapAfter[li]);
+  });
+  const pitch = Math.max(grid.across, ...nodes.map((n) => acrossSize(n.id) + (lr ? 48 : 60)));
   layers.forEach((l, li) => {
     l?.forEach((id, i) => {
-      const along = origin + li * gap.along;
-      const across = origin + ((tallest - l.length) * gap.across) / 2 + i * gap.across;
-      result.set(id, direction === "LR" ? { x: along, y: Math.round(across / 10) * 10 } : { x: Math.round(across / 10) * 10, y: along });
+      const along = starts[li];
+      const across = origin + ((tallest - l.length) * pitch) / 2 + i * pitch;
+      result.set(
+        id,
+        direction === "LR"
+          ? { x: along, y: Math.round(across / 10) * 10 }
+          : { x: Math.round(across / 10) * 10, y: along },
+      );
     });
   });
   return result;

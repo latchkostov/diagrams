@@ -1,5 +1,36 @@
 import { readFileSync } from "node:fs";
-import { test, expect, gotoCanvas, publicExamples, expectNoErrors } from "./fixtures";
+import type { Page } from "@playwright/test";
+import { test, expect, gotoCanvas, gotoLab, publicExamples, expectNoErrors } from "./fixtures";
+import type { DiagramFile } from "../../src/model/types";
+import { exportFixture } from "../../src/lab/exportFixture";
+
+// File export documents integer geometry and explicit default edge kinds / group tones.
+function normalized(diagram: DiagramFile): DiagramFile {
+  return {
+    ...diagram,
+    nodes: diagram.nodes.map((n) => ({ ...n, x: Math.round(n.x), y: Math.round(n.y) })),
+    edges: diagram.edges.map((e) => ({ ...e, kind: e.kind ?? "async" })),
+    ...(diagram.groups?.length
+      ? {
+          groups: diagram.groups.map((g) => ({
+            ...g,
+            tone: g.tone ?? "neutral",
+            x: Math.round(g.x),
+            y: Math.round(g.y),
+            width: Math.round(g.width),
+            height: Math.round(g.height),
+          })),
+        }
+      : {}),
+  };
+}
+
+/** File ▸ More formats ▸ Diagram file. */
+async function exportJson(page: Page) {
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-json").click();
+}
 
 test.describe("canvas", () => {
   for (const ex of publicExamples) {
@@ -26,11 +57,13 @@ test.describe("canvas", () => {
   test("export downloads valid diagrams/v1 JSON and import round-trips it", async ({ page }, info) => {
     const ex = publicExamples[0];
     await gotoCanvas(page, ex.slug);
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-button").click()]);
-    expect(download.suggestedFilename()).toBe(`${ex.slug}.json`);
+    const [download] = await Promise.all([page.waitForEvent("download"), exportJson(page)]);
+    expect(download.suggestedFilename()).toBe(`${ex.slug}.diagram.json`);
     const file = info.outputPath("exported.json");
     await download.saveAs(file);
     const json = JSON.parse(readFileSync(file, "utf8"));
+    const source = JSON.parse(readFileSync(`src/examples/${ex.slug}.json`, "utf8")) as DiagramFile;
+    expect(json).toEqual(normalized(source));
     expect(json.format).toBe("diagrams/v1");
     expect(json.title).toBe(ex.title);
     expect(json.nodes.map((n: { id: string }) => n.id).sort()).toEqual([...ex.nodeIds].sort());
@@ -46,16 +79,37 @@ test.describe("canvas", () => {
     for (const id of ex.nodeIds) await expect(page.getByTestId(`node-${id}`)).toBeVisible();
 
     // The re-exported import is identical to the first export.
-    const [again] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-button").click()]);
+    const [again] = await Promise.all([page.waitForEvent("download"), exportJson(page)]);
     const file2 = info.outputPath("re-exported.json");
     await again.saveAs(file2);
     expect(JSON.parse(readFileSync(file2, "utf8"))).toEqual(json);
   });
 
+  test("export preserves the complete diagram contract before and after import and reload", async ({ page }, info) => {
+    await gotoLab(page, "export-contract");
+    await page.getByTestId("lab-open-editor").click();
+    await expect(page.getByTestId("node-worker")).toBeVisible();
+    for (const phase of ["first", "imported", "reloaded"]) {
+      const [download] = await Promise.all([page.waitForEvent("download"), exportJson(page)]);
+      const file = info.outputPath(`${phase}.json`);
+      await download.saveAs(file);
+      expect(JSON.parse(readFileSync(file, "utf8"))).toEqual(normalized(exportFixture));
+      if (phase === "first") {
+        await page.getByTestId("import-input").setInputFiles(file);
+        await expect(page.getByTestId("toast")).toContainText("Imported");
+      } else if (phase === "imported") {
+        await page.reload();
+        await expect(page.getByTestId("node-worker")).toBeVisible();
+      }
+    }
+  });
+
   test("invalid imports show a friendly error and keep the current diagram", async ({ page }) => {
     const ex = publicExamples[0];
     await gotoCanvas(page, ex.slug);
-    await page.getByTestId("import-input").setInputFiles({ name: "broken.json", mimeType: "application/json", buffer: Buffer.from("{ nope") });
+    await page
+      .getByTestId("import-input")
+      .setInputFiles({ name: "broken.json", mimeType: "application/json", buffer: Buffer.from("{ nope") });
     await expect(page.getByTestId("toast")).toContainText("isn't valid JSON");
     await expect(page.getByTestId("diagram-title")).toHaveText(ex.title);
 
@@ -70,7 +124,12 @@ test.describe("canvas", () => {
       name: "dangling.json",
       mimeType: "application/json",
       buffer: Buffer.from(
-        JSON.stringify({ format: "diagrams/v1", title: "x", nodes: [{ id: "a", stencil: "kafka.topic", label: "a", x: 0, y: 0 }], edges: [{ id: "e", from: "a", to: "ghost" }] }),
+        JSON.stringify({
+          format: "diagrams/v1",
+          title: "x",
+          nodes: [{ id: "a", stencil: "kafka.topic", label: "a", x: 0, y: 0 }],
+          edges: [{ id: "e", from: "a", to: "ghost" }],
+        }),
       ),
     });
     await expect(page.getByTestId("toast")).toContainText("points at a node");

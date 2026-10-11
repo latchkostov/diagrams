@@ -1,4 +1,15 @@
-import { Component, useCallback, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from "react";
+import { safeStorage } from "../lib/storage";
+import {
+  Component,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ErrorInfo,
+  type ReactNode,
+} from "react";
 import "../styles/lab.css";
 import type { DiagramFile } from "../model/types";
 import { useSettings, type Settings } from "../harness/settings";
@@ -56,7 +67,9 @@ export function LabView({ onOpen }: Props) {
     [settings],
   );
   const applyLookRef = useRef(applyLookFromUrl);
-  applyLookRef.current = applyLookFromUrl;
+  useLayoutEffect(() => {
+    applyLookRef.current = applyLookFromUrl;
+  }, [applyLookFromUrl]);
 
   useEffect(() => {
     const sync = () => {
@@ -110,18 +123,25 @@ export function LabView({ onOpen }: Props) {
   const search = useRef<HTMLInputElement>(null);
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return presets.filter((p) => !needle || `${p.title} ${p.id} ${p.group} ${p.description ?? ""}`.toLowerCase().includes(needle));
+    return presets.filter(
+      (p) => !needle || `${p.title} ${p.id} ${p.group} ${p.description ?? ""}`.toLowerCase().includes(needle),
+    );
   }, [q]);
 
   // "/" focuses search; "[" and "]" step through presets.
   const presetRef = useRef(preset);
-  presetRef.current = preset;
+  useLayoutEffect(() => {
+    presetRef.current = preset;
+  }, [preset]);
   const visibleRef = useRef(visible);
-  visibleRef.current = visible;
+  useLayoutEffect(() => {
+    visibleRef.current = visible;
+  }, [visible]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable))
+        return;
       if (e.key === "/") {
         e.preventDefault();
         search.current?.focus();
@@ -136,7 +156,12 @@ export function LabView({ onOpen }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [selectPreset]);
 
-  const stageKey = `${preset.id}:${JSON.stringify(values)}:${preset.id === CUSTOM_PRESET_ID ? customVersion : 0}`;
+  // Speed controls playback, not the diagram or scenario identity.
+  const stageValuesKey = JSON.stringify(
+    Object.fromEntries(Object.entries(values).filter(([key]) => preset.kind !== "scenario" || key !== "speed")),
+  );
+  const stageValues = useMemo(() => JSON.parse(stageValuesKey) as ControlValues, [stageValuesKey]);
+  const stageKey = `${preset.id}:${stageValuesKey}:${preset.id === CUSTOM_PRESET_ID ? customVersion : 0}`;
   const onRendered = useCallback((ms: number) => setRender({ key: stageKey, ms }), [stageKey]);
 
   const currentDiagram = (): DiagramFile | null => {
@@ -166,7 +191,8 @@ export function LabView({ onOpen }: Props) {
   };
 
   const loadJson = (d: DiagramFile) => {
-    localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(d));
+    if (!safeStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(d)))
+      return "Storage is unavailable or full. Export your diagram or free browser storage and try again.";
     setCustomVersion((n) => n + 1);
     selectPreset(CUSTOM_PRESET_ID);
   };
@@ -239,19 +265,40 @@ export function LabView({ onOpen }: Props) {
           </div>
           <div className="lab-stage-actions">
             {preset.kind !== "render" && (
-              <button className="btn" onClick={openInEditor} data-testid="lab-open-editor" title="Open this diagram in the full Canvas editor">
+              <button
+                className="btn"
+                onClick={openInEditor}
+                data-testid="lab-open-editor"
+                title="Open this diagram in the full Canvas editor"
+              >
                 <Icon name="canvas" size={14} /> Open in editor
               </button>
             )}
-            <button className="btn" onClick={copyLink} data-testid="lab-copy-link" title="Copy a link to this preset with these controls">
+            <button
+              className="btn"
+              onClick={copyLink}
+              data-testid="lab-copy-link"
+              title="Copy a link to this preset with these controls"
+            >
               {copied ? "Copied" : "Copy link"}
             </button>
           </div>
         </header>
 
-        <div className={`lab-stage lab-stage-${preset.kind}`} data-testid="lab-stage" data-preset={preset.id} data-kind={preset.kind}>
+        <div
+          className={`lab-stage lab-stage-${preset.kind}`}
+          data-testid="lab-stage"
+          data-preset={preset.id}
+          data-kind={preset.kind}
+        >
           <PresetBoundary resetKey={stageKey}>
-            <PresetStage key={stageKey} preset={preset} values={values} onRendered={onRendered} />
+            <PresetStage
+              key={stageKey}
+              preset={preset}
+              values={stageValues}
+              speed={Number(values.speed) || 1}
+              onRendered={onRendered}
+            />
           </PresetBoundary>
         </div>
 
@@ -274,7 +321,13 @@ export function LabView({ onOpen }: Props) {
               )}
             </div>
             {preset.controls.map((c) => (
-              <ControlField key={`${preset.id}:${c.key}`} def={c} value={values[c.key]} onChange={(v) => setValue(c.key, v)} testId={`lab-control-${c.key}`} />
+              <ControlField
+                key={`${preset.id}:${c.key}`}
+                def={c}
+                value={values[c.key]}
+                onChange={(v) => setValue(c.key, v)}
+                testId={`lab-control-${c.key}`}
+              />
             ))}
           </section>
         )}
@@ -312,7 +365,17 @@ export function LabView({ onOpen }: Props) {
   );
 }
 
-function PresetStage({ preset, values, onRendered }: { preset: Preset; values: ControlValues; onRendered: (ms: number) => void }) {
+function PresetStage({
+  preset,
+  values,
+  speed,
+  onRendered,
+}: {
+  preset: Preset;
+  values: ControlValues;
+  speed: number;
+  onRendered: (ms: number) => void;
+}) {
   const diagram = useMemo(() => (preset.kind === "render" ? null : preset.diagram(values)), [preset, values]);
   const scenario = useMemo(() => (preset.kind === "scenario" ? preset.scenario(values) : null), [preset, values]);
 
@@ -322,7 +385,8 @@ function PresetStage({ preset, values, onRendered }: { preset: Preset; values: C
     <div className="lab-canvas-wrap">
       <LabCanvas diagram={diagram} onRendered={onRendered} minimap={preset.kind === "diagram"} />
       <div className="lab-canvas-badge mono" data-testid="lab-diagram-stats">
-        {diagram.nodes.length} nodes · {diagram.edges.length} edges{diagram.groups?.length ? ` · ${diagram.groups.length} groups` : ""}
+        {diagram.nodes.length} nodes · {diagram.edges.length} edges
+        {diagram.groups?.length ? ` · ${diagram.groups.length} groups` : ""}
       </div>
       {!diagram.nodes.length && (
         <div className="lab-canvas-empty" data-testid="lab-canvas-empty">
@@ -336,12 +400,24 @@ function PresetStage({ preset, values, onRendered }: { preset: Preset; values: C
   return (
     <div className="lab-split">
       {canvas}
-      <SimReadout diagram={diagram} scenario={scenario} speed={Number(values.speed) || 1} seed={Number(values.seed) || 1} autoplay={values.autoplay !== false} />
+      <SimReadout
+        diagram={diagram}
+        scenario={scenario}
+        speed={speed}
+        seed={Number(values.seed) || 1}
+        autoplay={values.autoplay !== false}
+      />
     </div>
   );
 }
 
-function JsonLoader({ onLoad, current }: { onLoad: (d: DiagramFile) => void; current: () => DiagramFile | null }) {
+function JsonLoader({
+  onLoad,
+  current,
+}: {
+  onLoad: (d: DiagramFile) => string | undefined;
+  current: () => DiagramFile | null;
+}) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -350,16 +426,21 @@ function JsonLoader({ onLoad, current }: { onLoad: (d: DiagramFile) => void; cur
     const r = parseDiagram(text);
     if (!r.ok) return setError(r.error);
     const problems = diagramProblems(r.diagram);
-    if (problems.length) return setError(`That diagram has problems: ${problems.slice(0, 3).join("; ")}${problems.length > 3 ? "…" : ""}`);
-    setError(null);
-    onLoad(r.diagram);
+    if (problems.length)
+      return setError(`That diagram has problems: ${problems.slice(0, 3).join("; ")}${problems.length > 3 ? "…" : ""}`);
+    setError(onLoad(r.diagram) ?? null);
   };
 
   return (
     <section className="lab-panel-section">
       <div className="lab-panel-title">
         <h4>Load JSON</h4>
-        <button className="link-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} data-testid="lab-json-toggle">
+        <button
+          className="link-btn"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          data-testid="lab-json-toggle"
+        >
           {open ? "Hide" : "Show"}
         </button>
       </div>
@@ -405,16 +486,35 @@ function JsonLoader({ onLoad, current }: { onLoad: (d: DiagramFile) => void; cur
 }
 
 function KindGlyph({ kind }: { kind: Preset["kind"] }) {
-  const d = kind === "render" ? "M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z" : kind === "diagram" ? "M2.5 4h4v3h-4zM9.5 9h4v3h-4zM6.5 5.5h1.5a1.5 1.5 0 0 1 1.5 1.5v3" : "M3 8h2l1.5-4 3 8L11 8h2";
+  const d =
+    kind === "render"
+      ? "M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z"
+      : kind === "diagram"
+        ? "M2.5 4h4v3h-4zM9.5 9h4v3h-4zM6.5 5.5h1.5a1.5 1.5 0 0 1 1.5 1.5v3"
+        : "M3 8h2l1.5-4 3 8L11 8h2";
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={`lab-kind lab-kind-${kind}`}>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={`lab-kind lab-kind-${kind}`}
+    >
       <path d={d} />
     </svg>
   );
 }
 
 /** Keeps one broken preset from taking down the Lab. */
-class PresetBoundary extends Component<{ resetKey: string; children: ReactNode }, { error: Error | null; key: string }> {
+class PresetBoundary extends Component<
+  { resetKey: string; children: ReactNode },
+  { error: Error | null; key: string }
+> {
   state = { error: null as Error | null, key: this.props.resetKey };
 
   static getDerivedStateFromError(error: Error) {
