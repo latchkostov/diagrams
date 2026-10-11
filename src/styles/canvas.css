@@ -248,7 +248,7 @@
   color: color-mix(in oklab, var(--tone) 70%, var(--text));
   background: color-mix(in oklab, var(--tone) 12%, var(--bg));
   pointer-events: all;
-  cursor: grab;
+  cursor: move;
   white-space: nowrap;
 }
 
@@ -418,13 +418,48 @@
 
 .palette-head {
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  padding: 10px;
+  padding: 10px 10px 8px;
   border-bottom: 1px solid var(--line);
+}
+
+.palette-head-row {
+  display: flex;
+  gap: 6px;
 }
 
 .palette-head .field {
   flex: 1;
+}
+
+.palette-family {
+  width: 100%;
+  height: 28px;
+  border-color: transparent;
+  color: var(--text-2);
+}
+
+.palette-family:hover {
+  border-color: var(--line);
+  background: var(--hover);
+}
+
+.palette-family select {
+  flex: 1;
+  max-width: none;
+  padding-left: 8px;
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.palette-family-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-left: 9px;
+  margin-right: -2px;
+  border-radius: 50%;
 }
 
 .palette-list {
@@ -434,16 +469,77 @@
 }
 
 .palette-list h3 {
-  margin: 14px 4px 6px;
+  margin: 10px 0 2px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-3);
+}
+
+.palette-sec-static,
+.palette-results-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 4px 4px;
+}
+
+.palette-results-head span {
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--text-4);
+}
+
+/* Category headers fold their section. */
+.palette-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 28px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+
+.palette-sec-head:hover {
+  background: var(--hover);
+  color: var(--text-2);
+}
+
+.palette-sec-head:active {
+  background: var(--press);
+}
+
+.palette-sec-head svg {
+  flex: none;
+  rotate: 90deg;
+  transition: rotate var(--dur-1) var(--ease-out);
+}
+
+.palette-sec.is-closed .palette-sec-head svg {
+  rotate: 0deg;
+}
+
+.palette-sec-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-4);
 }
 
 .palette-grid {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  padding-bottom: 4px;
 }
 
 .palette-item {
@@ -460,6 +556,7 @@
   font-weight: 520;
   color: var(--text);
   cursor: grab;
+  transition: background var(--dur-1);
 }
 
 .palette-item:hover {
@@ -468,6 +565,7 @@
 
 .palette-item:active {
   cursor: grabbing;
+  background: var(--press);
 }
 
 .palette-tile {
@@ -488,15 +586,92 @@
 }
 
 .palette-name {
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Hint that a click adds it, without competing with the label. */
+.palette-add {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: var(--text-3);
+  opacity: 0;
+  transition: opacity var(--dur-1);
+}
+
+.palette-item:hover .palette-add,
+.palette-item:focus-visible .palette-add {
+  opacity: 1;
+}
+
+/* Recently used: a row of icon tiles, same drag + click behaviour as the list. */
+.palette-recent {
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--line);
+}
+
+.palette-recent-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 4px 6px;
+}
+
+.palette-recent-item {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--accent) var(--tile-mix), var(--tile-base));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 24%, transparent);
+  cursor: grab;
+  transition: box-shadow var(--dur-1), translate var(--dur-1) var(--ease-out);
+}
+
+.palette-recent-item .stencil-icon {
+  width: 22px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.palette-recent-item:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 50%, transparent), var(--shadow-1);
+  translate: 0 -1px;
+}
+
+.palette-recent-item:active {
+  cursor: grabbing;
+  translate: 0 0;
+}
+
+.palette-rail-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
 .palette-empty {
   color: var(--text-3);
   font-size: 13px;
-  padding: 12px 4px;
+  padding: 8px 4px;
+}
+
+.palette-empty p {
+  margin: 0 0 8px;
 }
 
 .palette-foot {
@@ -634,7 +809,7 @@
 
 .react-flow__controls-button:disabled {
   opacity: 0.38;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 /* Our stroke icons inside React Flow's (fill-based) control buttons. */
@@ -1107,7 +1282,7 @@ select.insp-input {
 
 .icon-btn.insp-mini:disabled {
   opacity: 0.4;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .insp-tones {
@@ -1270,4 +1445,30 @@ select.insp-input {
 .palette-foot kbd {
   padding: 1px 4px;
   font-size: 10px;
+}
+
+/* ---------- cursors (design pass) ----------
+   Nodes and boundaries move, the empty pane pans (grab), handles connect (crosshair),
+   edges and their labels are clickable (pointer), the minimap pans. */
+.react-flow__node-diagram.draggable,
+.react-flow__node-diagram.draggable.dragging,
+.react-flow__nodesselection-rect,
+.react-flow__node.dragging .grp-label {
+  cursor: move;
+}
+
+.react-flow__minimap svg:active {
+  cursor: grabbing;
+}
+
+.react-flow__minimap svg {
+  cursor: grab;
+}
+
+.fe-label {
+  cursor: pointer;
+}
+
+.fe-label.is-editing {
+  cursor: auto;
 }

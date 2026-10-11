@@ -1,9 +1,11 @@
 .gallery {
   height: 100%;
   display: grid;
-  grid-template-columns: 208px 1fr;
+  grid-template-columns: 216px 1fr;
   min-height: 0;
 }
+
+/* ---------- rail ---------- */
 
 .gallery-rail {
   border-right: 1px solid var(--line);
@@ -23,6 +25,7 @@
 }
 
 .rail-link {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -35,22 +38,33 @@
   font-weight: 550;
   font-size: 13.5px;
   text-align: left;
+  transition: background var(--dur-1), color var(--dur-1);
 }
 
 .rail-link:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.rail-link:active:not(:disabled) {
+  background: var(--press);
+}
+
+/* The section currently at the top of the list. */
+.rail-link.is-on {
   background: var(--surface-3);
   color: var(--text);
 }
 
 .rail-link:disabled {
   opacity: 0.4;
-  cursor: default;
 }
 
 .rail-count {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-3);
+  font-variant-numeric: tabular-nums;
 }
 
 .rail-legend {
@@ -66,6 +80,7 @@
   padding: 4px 10px;
   font-size: 12.5px;
   color: var(--text-2);
+  cursor: help;
 }
 
 .legend-row i {
@@ -74,11 +89,12 @@
   border-radius: 50%;
 }
 
+/* ---------- header ---------- */
+
 .gallery-main {
   overflow-y: auto;
   min-height: 0;
   padding: 0 32px 48px;
-  scroll-padding-top: 150px;
 }
 
 .gallery-head {
@@ -86,7 +102,7 @@
   top: 0;
   z-index: 5;
   margin: 0 -32px;
-  padding: 26px 32px 16px;
+  padding: 24px 32px 14px;
   background: color-mix(in oklab, var(--bg) 88%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
@@ -97,9 +113,10 @@
 
 .gallery-heading {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
+  align-items: center;
+  gap: 8px 14px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .gallery-heading h1 {
@@ -112,9 +129,10 @@
 }
 
 .gallery-heading p {
-  margin: 0;
+  margin: 4px 0 0;
   color: var(--text-2);
   font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .gallery-heading .warn {
@@ -122,67 +140,153 @@
   font-weight: 600;
 }
 
-.gallery-tools {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+.gallery-search {
+  margin-left: auto;
   min-width: 0;
 }
 
 .field-lg {
-  width: 320px;
-  flex: none;
+  width: 340px;
+  max-width: 100%;
   height: 36px;
+  border-radius: 9px;
 }
 
-.chips {
+.gallery-filters {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Families: one quiet segmented track instead of a chip per vendor. */
+.families {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
-  padding: 2px;
-  mask-image: linear-gradient(90deg, #000 92%, transparent);
 }
 
-.chip {
+.family {
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
+  gap: 7px;
+  height: 28px;
   padding: 0 11px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
   color: var(--text-2);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 550;
+  white-space: nowrap;
+  transition: background var(--dur-1), color var(--dur-1), box-shadow var(--dur-1);
 }
 
-.chip span {
+.family i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--family);
+}
+
+.family-count {
   font-family: var(--font-mono);
   font-size: 10.5px;
   color: var(--text-3);
+  font-variant-numeric: tabular-nums;
 }
 
-.chip:hover {
-  border-color: var(--line-strong);
+.family:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.family:active:not(.is-on) {
+  background: var(--press);
+}
+
+.family.is-on {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 0 0 1px var(--line);
+}
+
+[data-theme="dark"] .family.is-on {
+  background: var(--surface-2);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px var(--line-strong);
+}
+
+.family.is-empty:not(.is-on) {
+  color: var(--text-3);
+}
+
+.family.is-empty i {
+  opacity: 0.45;
+}
+
+.gallery-filter-end {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.token {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 550;
+  animation: pop-in var(--dur-2) var(--ease-out);
+}
+
+.token i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.token button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-3);
+}
+
+.token button:hover {
+  background: var(--hover);
   color: var(--text);
 }
 
-.chip.is-on {
-  background: var(--text);
-  border-color: var(--text);
-  color: var(--bg);
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
 }
 
-.chip.is-on span {
-  color: inherit;
-  opacity: 0.6;
-}
+/* ---------- sections + tiles ---------- */
 
 .gallery-section {
   padding-top: 36px;
+  scroll-margin-top: 128px;
 }
 
 .section-head {
@@ -223,18 +327,49 @@
   gap: 14px;
 }
 
+/* A tile is an object: drag it, click it for details, right-click for actions. */
 .tile {
+  position: relative;
   display: flex;
   flex-direction: column;
   border-radius: 12px;
   border: 1px solid var(--line);
   background: var(--surface);
   overflow: hidden;
-  transition: border-color 0.15s;
+  cursor: grab;
+  transition:
+    border-color var(--dur-2),
+    box-shadow var(--dur-2),
+    translate var(--dur-2) var(--ease-out);
 }
 
 .tile:hover {
   border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
+  box-shadow: var(--shadow-1);
+  translate: 0 -2px;
+}
+
+.tile:active {
+  cursor: grabbing;
+  translate: 0 0;
+  box-shadow: none;
+}
+
+.tile:focus-visible {
+  outline: none;
+  border-color: color-mix(in oklab, var(--accent) 60%, var(--line));
+  box-shadow: var(--focus-ring);
+}
+
+.tile.is-open {
+  border-color: color-mix(in oklab, var(--accent) 70%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile:hover {
+    translate: none;
+  }
 }
 
 .tile-stage {
@@ -247,6 +382,11 @@
   background-size: 16px 16px;
   background-position: 8px 8px;
   border-bottom: 1px solid var(--line);
+}
+
+/* Node bodies are previews here, not tooltips. */
+.tile-stage .nb {
+  pointer-events: none;
 }
 
 .tile-stage.stage-iconOnly {
@@ -265,7 +405,7 @@
 .tile-missing {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
   font-family: var(--font-mono);
   font-size: 10.5px;
   padding: 2px 6px;
@@ -274,8 +414,50 @@
   color: #fff;
 }
 
+.tile-add {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text-2);
+  box-shadow: var(--shadow-1);
+  opacity: 0;
+  scale: 0.92;
+  transition: opacity var(--dur-1), scale var(--dur-1), background var(--dur-1), color var(--dur-1);
+}
+
+.tile:hover .tile-add,
+.tile:focus-within .tile-add {
+  opacity: 1;
+  scale: 1;
+}
+
+.tile-add:hover {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+.tile-add:active {
+  scale: 0.94;
+}
+
+@media (hover: none) {
+  .tile-add {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
 .tile-body {
-  padding: 12px 14px 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -309,7 +491,7 @@
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
-  color: color-mix(in oklab, var(--role) 78%, var(--text));
+  color: color-mix(in oklab, var(--role) 72%, var(--text));
   background: color-mix(in oklab, var(--role) 13%, transparent);
 }
 
@@ -322,8 +504,19 @@
 }
 
 .tile-vendor {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 12.5px;
   color: var(--text-2);
+}
+
+.tile-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2.5px;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
 }
 
 .tile-desc {
@@ -341,11 +534,16 @@
   margin-top: auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
+  min-width: 0;
 }
 
 .tile-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-2);
@@ -353,42 +551,78 @@
   border: 0;
   border-radius: 5px;
   padding: 3px 6px;
-  min-width: 0;
+  cursor: copy;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+
+.tile-id span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.tile-id svg {
+  flex: none;
+  color: var(--text-3);
+  opacity: 0.55;
+  transition: opacity var(--dur-1);
+}
+
 .tile-id:hover {
   color: var(--text);
+  background: color-mix(in oklab, var(--text) 9%, var(--surface));
 }
 
-.swatch {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--text-3);
-  text-transform: lowercase;
+.tile-id:hover svg,
+.tile-id:focus-visible svg {
+  opacity: 1;
 }
 
-.swatch i {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--accent);
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+.tile-id:active {
+  background: color-mix(in oklab, var(--text) 14%, var(--surface));
 }
+
+/* ---------- empty state ---------- */
 
 .gallery-empty {
-  padding: 80px 0;
+  padding: 72px 0 48px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 14px;
+  gap: 10px;
   color: var(--text-2);
+  max-width: 56ch;
+  animation: view-in var(--dur-2) var(--ease-out);
+}
+
+.gallery-empty-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  background: var(--surface-3);
+  color: var(--text-3);
+}
+
+.gallery-empty strong {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.gallery-empty p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-3);
+}
+
+.gallery-empty-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .gallery-credits {
@@ -404,6 +638,397 @@
   color: var(--text-2);
 }
 
+/* ---------- details drawer ---------- */
+
+.drawer-scrim {
+  position: fixed;
+  inset: var(--topbar-h) 0 0 0;
+  z-index: 55;
+  background: var(--scrim);
+  animation: view-in var(--dur-2) var(--ease-out);
+}
+
+.drawer {
+  position: fixed;
+  top: var(--topbar-h);
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  width: min(460px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-raised);
+  border-left: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-3);
+  animation: drawer-in var(--dur-3) var(--ease-out);
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    translate: 24px 0;
+  }
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.drawer-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: color-mix(in oklab, var(--accent) var(--tile-mix), var(--tile-base));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 26%, transparent);
+}
+
+.drawer-icon .stencil-icon {
+  width: 34px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.drawer-heading {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.drawer-heading h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  font-stretch: 106%;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawer-heading span {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.drawer-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.drawer-nav .icon-btn {
+  width: 30px;
+  height: 30px;
+}
+
+.drawer-nav .icon-btn:first-child svg {
+  rotate: 180deg;
+}
+
+.drawer-pos {
+  min-width: 52px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 20px 28px;
+}
+
+.drawer-stage {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 28px 36px;
+  padding: 32px 20px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background-color: var(--stage-bg);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
+  background-size: 16px 16px;
+  background-position: 8px 8px;
+}
+
+.drawer-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--accent);
+}
+
+.drawer-variant {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.drawer-variant.variant-card {
+  flex-basis: 100%;
+}
+
+.drawer-variant-node {
+  position: relative;
+}
+
+.drawer-variant.variant-iconOnly .drawer-variant-node {
+  padding-bottom: 40px;
+}
+
+.drawer-variant figcaption {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.drawer-desc {
+  margin: 20px 0 22px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-2);
+  max-width: 60ch;
+}
+
+.drawer-section {
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.drawer-desc + .drawer-section {
+  margin-top: 0;
+}
+
+.drawer-section h3 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.drawer-role {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.drawer-role .role {
+  margin-top: 1px;
+}
+
+.drawer-role p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.drawer-facts {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 11px 16px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.drawer-facts dt {
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 24px;
+}
+
+.drawer-facts dd {
+  margin: 0;
+  min-width: 0;
+  line-height: 24px;
+}
+
+.drawer-facts dd small {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+
+.drawer-facts .mono {
+  font-size: 12px;
+}
+
+.drawer-family {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawer-family i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.copy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: background var(--dur-1);
+}
+
+.copy-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-chip svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.copy-chip:hover {
+  background: color-mix(in oklab, var(--text) 10%, var(--surface));
+}
+
+.copy-chip:active {
+  background: color-mix(in oklab, var(--text) 15%, var(--surface));
+}
+
+.drawer-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+}
+
+.drawer-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.drawer-foot > .icon-btn {
+  margin-left: auto;
+}
+
+.drawer-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  font-size: 13px;
+  color: var(--text-2);
+  animation: view-in var(--dur-2) var(--ease-out);
+}
+
+.drawer-confirm > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- drag dock + note ---------- */
+
+.gallery-dock {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 24px;
+  translate: -50% 0;
+  border-radius: 14px;
+  border: 1.5px dashed color-mix(in oklab, var(--accent) 55%, var(--line-strong));
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-2);
+  color: var(--text-2);
+  font-size: 13.5px;
+  font-weight: 600;
+  animation: dock-in var(--dur-2) var(--ease-out);
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1), scale var(--dur-1);
+}
+
+.gallery-dock.is-over {
+  border-style: solid;
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface-raised));
+  color: var(--accent);
+  scale: 1.03;
+}
+
+@keyframes dock-in {
+  from {
+    opacity: 0;
+    translate: -50% 10px;
+  }
+}
+
+.gallery-note {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px 0 12px;
+  translate: -50% 0;
+  border-radius: 10px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 550;
+  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.35);
+  animation: dock-in var(--dur-2) var(--ease-out);
+  pointer-events: none;
+}
+
+/* ---------- narrow ---------- */
+
+@media (max-width: 1180px) {
+  .gallery {
+    grid-template-columns: 184px 1fr;
+  }
+  /* Families scroll sideways (with a fade) rather than pushing the vendor menu to a new row. */
+  .families {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    padding-right: 24px;
+  }
+}
+
 @media (max-width: 860px) {
   .gallery {
     grid-template-columns: 1fr;
@@ -411,9 +1036,9 @@
   .gallery-rail {
     display: none;
   }
-  .gallery-tools {
-    flex-direction: column;
-    align-items: stretch;
+  .gallery-search {
+    margin-left: 0;
+    flex-basis: 100%;
   }
   .field-lg {
     width: 100%;
@@ -425,4 +1050,8 @@
     margin: 0 -16px;
     padding: 18px 16px 14px;
   }
+}
+
+.drawer:focus {
+  outline: none;
 }
