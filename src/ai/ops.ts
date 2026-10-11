@@ -2,12 +2,12 @@ import type { DiagramFile, DiagramNode } from "../model/types";
 import { uniqueId, stencilIdBase } from "../editor/ids";
 import { estimateCardSize } from "../canvas/nodes/size";
 import { placeFree, overlaps } from "../canvas/placement";
-import { resolveRef, ReferenceError } from "./refs";
+import { resolveRef, ReferenceError, RefIndex } from "./refs";
 import { resolveKind } from "./stencils";
 import { placeNew } from "./place";
 import { checkBudget, checkSchema, validated } from "./validation";
 import { edit_diagramSchema } from "./schemas";
-import { diagramDiff } from "../editor/diagramDiff";
+import { diagramDiff } from "../model/diagramDiff";
 import { simulationReferenceWarnings } from "../interop/native";
 import type { ApplyOpsOptions, ApplyOpsResult, DiagramOp, OpResult } from "./index";
 
@@ -20,6 +20,8 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
   const warnings: string[] = [];
   try {
     checkBudget({ diagram, ops });
+    if (Array.isArray(ops) && !ops.length && opts.layout !== "full")
+      throw new Error("An empty operation batch needs layout: full.");
     const properties = edit_diagramSchema.properties as Record<string, Record<string, unknown>>;
     const opSchema = properties.ops.items as Record<string, unknown>;
     checkSchema(
@@ -29,15 +31,16 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
     // Validate the original before cloning; all writes below belong to the proposal.
     let next = structuredClone(validated(diagram));
     const keys = new Map<string, string>();
+    const index = new RefIndex(next);
     const fresh: string[] = [];
+    const keepOutside = new Set<string>();
     const newNotes: { id: string; near?: string }[] = [];
     const touched = new Set<string>();
-    const allIds = () =>
-      new Set([...next.nodes, ...next.edges, ...(next.groups ?? []), ...(next.annotations ?? [])].map((e) => e.id));
-    const ref = (r: string) => resolveRef(next, r, keys);
+    const allIds = () => new Set(index.elements.keys());
+    const ref = (r: string) => resolveRef(next, r, keys, index);
     const node = (r: string): DiagramNode => {
       const id = ref(r);
-      const n = next.nodes.find((n) => n.id === id);
+      const n = index.nodes.get(id);
       if (!n) throw new Error(`${JSON.stringify(r)} must refer to a node.`);
       return n;
     };
@@ -47,7 +50,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
       return id;
     };
     const noteAnchor = (id?: string) => {
-      const n = next.nodes.find((n) => n.id === id);
+      const n = id ? next.nodes.find((n) => n.id === id) : undefined;
       const a = next.annotations?.find((a) => a.id === id);
       const g = next.groups?.find((g) => g.id === id);
       if (n) return { x: n.x + 120, y: n.y + 200 };
@@ -121,8 +124,10 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
               n.stencil = result.stencil.id;
             }
             if (op.props) n.props = mergeProps(n.props, op.props);
-            if (op.in === null) delete n.group;
-            else if (op.in !== undefined) n.group = boundary(op.in);
+            if (op.in === null) {
+              delete n.group;
+              keepOutside.add(n.id);
+            } else if (op.in !== undefined) n.group = boundary(op.in);
             if (n.group) touched.add(n.group);
           } else if (e) {
             if (op.in !== undefined || op.sublabel !== undefined || op.members || op.tone)
@@ -231,6 +236,8 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
           throw new Error(`Duplicate or empty batch key ${JSON.stringify(op.key)}.`);
         keys.set(op.key, result.id!);
       }
+      if (result.ids) for (const id of result.ids) index.remove(id);
+      if (result.id) index.refresh(next, result.id);
       results.push(result);
     }
     i = ops.length - 1;
@@ -239,6 +246,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
       fresh.filter((id) => next.nodes.some((n) => n.id === id)),
       opts.layout,
       [...touched],
+      [...keepOutside],
     );
     // Notes follow the final card positions, including full/TB layouts in this same batch.
     for (const note of newNotes) {
@@ -276,7 +284,9 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
         {
           i,
           error: error instanceof Error ? error.message : String(error),
-          ...(error instanceof ReferenceError ? { candidates: error.candidates, hint: error.hint } : {}),
+          ...(error instanceof ReferenceError
+            ? { ref: error.ref, candidates: error.candidates, hint: error.hint }
+            : {}),
         },
       ],
       warnings: [],

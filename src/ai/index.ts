@@ -32,6 +32,7 @@ export interface Candidate {
   stencil?: string;
 }
 export interface AiError {
+  ref?: string;
   i: number;
   error: string;
   candidates?: Candidate[];

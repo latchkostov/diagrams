@@ -1,4 +1,5 @@
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
+import { propsProblem } from "../model/simProps";
 import { ANNOTATION_LIMITS, normalizeAnnotation } from "../model/annotations";
 import type { DiagramAnnotation } from "../model/types";
 import { isDependency, isEdgeRelation, sanitizeSettings } from "../model/relations";
@@ -339,22 +340,6 @@ const optTime = (v: unknown) => v === undefined || time(v);
 const count = (v: unknown) => nonnegative(v, LIMITS.maxMessageCount) && Number.isSafeInteger(v);
 const rate = (v: unknown) => nonnegative(v, LIMITS.maxRatePerSec);
 const strings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string");
-
-/** Known engine properties are typed and bounded; unrelated extension properties remain lossless. */
-function propsProblem(v: unknown): boolean {
-  if (!isObj(v)) return true;
-  for (const key of ["ratePerSec", "concurrency", "replicas", "maxDeliveryCount", "partitions"]) {
-    if (v[key] !== undefined && !nonnegative(v[key], LIMITS.maxRatePerSec)) return true;
-  }
-  for (const key of ["latencyMs"]) if (v[key] !== undefined && !time(v[key])) return true;
-  for (const key of ["failureRate", "jitter"]) if (v[key] !== undefined && !nonnegative(v[key], 1)) return true;
-  if (!optString(v.messageType)) return true;
-  return (
-    v.emits !== undefined &&
-    typeof v.emits !== "string" &&
-    (!isObj(v.emits) || !Object.values(v.emits).every((x) => typeof x === "string"))
-  );
-}
 
 /** Structural validation only: unresolved references remain repairable editor metadata. */
 export function simulationProblem(sim: unknown): string | undefined {

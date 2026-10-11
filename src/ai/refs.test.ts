@@ -44,7 +44,9 @@ describe("resolveRef", () => {
   it("returns useful candidates for unknown references without claiming a match", () => {
     try {
       resolveRef(diagram, "zzzzz");
+      throw new Error("Expected an unknown reference to throw");
     } catch (error) {
+      expect(error).toBeInstanceOf(ReferenceError);
       expect((error as Error).message).toContain("Unknown reference");
       expect((error as ReferenceError).candidates.map((c) => c.id)).toContain("a");
     }

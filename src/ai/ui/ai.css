@@ -480,3 +480,13 @@ button.ai-candidate:focus-visible {
   border-radius: 5px;
   background: color-mix(in oklab, var(--tile-accent, var(--accent)) 11%, var(--tile-base));
 }
+
+/* Status colour remains readable on the panel's light backgrounds. */
+[data-theme="light"] .ai-panel {
+  --success: #126640;
+  --warning: #865000;
+}
+.ai-alt:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

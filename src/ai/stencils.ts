@@ -31,14 +31,34 @@ export function resolveKind(kind: string, label?: string): StencilResolution {
     matches[0] ??
     catalog.find((s) => s.id === inferred) ??
     catalog.find((s) => s.id === "generic.service")!;
+  const confidence = exact || named || matches.length === 1 ? "high" : matches.length || inferred ? "medium" : "low";
+  const alternatives = [
+    ...new Map(
+      [
+        ...matches,
+        ...(confidence === "high"
+          ? []
+          : kind
+              .trim()
+              .split(/\s+/)
+              .flatMap((word) => searchStencils(catalog, word))),
+        ...(confidence === "high"
+          ? []
+          : searchStencils(
+              catalog.filter((s) => s.category === selected.category),
+              selected.simRole,
+            )),
+      ]
+        .filter((s) => s.id !== selected.id)
+        .map((s) => [s.id, s]),
+    ).values(),
+  ]
+    .slice(0, 3)
+    .map((s) => s.id);
   return {
     id: selected.id,
     label: selected.label,
-    confidence:
-      exact || named || matches.length === 1 ? "high" : matches.length ? "medium" : inferred ? "medium" : "low",
-    alternatives: matches
-      .filter((s) => s.id !== selected.id)
-      .slice(0, 3)
-      .map((s) => s.id),
+    confidence,
+    alternatives,
   };
 }

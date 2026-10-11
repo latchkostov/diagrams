@@ -10,20 +10,24 @@ import {
   findStencils,
   toolDescriptions,
   toolSchemas,
+  toolAnnotations,
   type DescribeOptions,
   type DiagramOp,
   type LayoutMode,
   type SimulationSpec,
 } from "../index";
 import { checkSchema } from "../validation";
-import { diffDiagrams, summarize } from "../ui/apply";
-import type { ToolAnnotations, ToolDef } from "./adapter";
+import { diagramDiff } from "../../model/diagramDiff";
+import { LOCAL_ONLY_MESSAGE } from "../privacy";
+import type { ToolDef } from "./adapter";
 
 export type ToolName = keyof typeof toolSchemas;
 
 /** What the tools need from the app; read at call time, so a remounted canvas is picked up. */
 export interface WebMcpHost {
   getEditor(): EditorApi | null;
+  /** Rechecked per call, including callbacks retained across document switches. */
+  canUseAi?(): boolean;
   /** Shows the change (toast with Undo, a brief highlight). */
   onApplied(summary: string, changed: readonly string[], editor: EditorApi): void;
   newDiagram(opts: { title?: string; direction?: "LR" | "TB" }): Promise<EditorApi | null>;
@@ -37,16 +41,6 @@ const TITLES: Record<ToolName, string> = {
   set_simulation: "Set a simulation",
   new_diagram: "New diagram",
   get_share_link: "Get a share link",
-};
-
-/** Decision 8: labels are user-authored, so anything echoing them is untrusted content. */
-const ANNOTATIONS: Record<ToolName, ToolAnnotations> = {
-  describe_diagram: { readOnlyHint: true, untrustedContentHint: true },
-  find_stencils: { readOnlyHint: true },
-  edit_diagram: { untrustedContentHint: true },
-  set_simulation: {},
-  new_diagram: { consequentialHint: true },
-  get_share_link: { readOnlyHint: true },
 };
 
 /** Live view (and presenting) offers reading and sharing only. */
@@ -64,6 +58,7 @@ export const EDIT_TOOLS: readonly ToolName[] = [
 const OUTPUT_BUDGET = 1500;
 
 function needEditor(host: WebMcpHost): EditorApi {
+  if (host.canUseAi?.() === false) throw new Error(LOCAL_ONLY_MESSAGE);
   const editor = host.getEditor();
   if (!editor) throw new Error("The diagram is still loading. Try again in a moment.");
   return editor;
@@ -109,11 +104,15 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
           hint: e.hint ?? "Nothing was applied. Fix this op and send the whole batch again.",
         };
       }
-      const summary = summarize(diffDiagrams(before, result.diagram));
+      const summary = result.summary;
       if (dryRun)
         return compact({ ok: true, dryRun: true, summary, results: result.results, warnings: result.warnings });
       editor.applyDiagram(result.diagram, { merge: `ai:webmcp:${++callSeq}` });
-      host.onApplied(summary, diffDiagrams(before, result.diagram).changed, editor);
+      host.onApplied(
+        summary,
+        [...diagramDiff(before, result.diagram).added.ids, ...diagramDiff(before, result.diagram).updated.ids],
+        editor,
+      );
       return compact({
         ok: true,
         summary,
@@ -147,6 +146,7 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       const { title, direction } = input as { title?: string; direction?: "LR" | "TB" };
       const editor = await host.newDiagram({ title, direction });
       if (!editor) throw new Error("The new diagram didn't open. Try again.");
+      if (host.canUseAi?.() === false) throw new Error(LOCAL_ONLY_MESSAGE);
       const d = editor.getDiagram();
       return {
         ok: true,
@@ -166,7 +166,7 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
     title: TITLES[name],
     description: toolDescriptions[name],
     inputSchema: toolSchemas[name],
-    annotations: ANNOTATIONS[name],
+    annotations: toolAnnotations[name],
     run: run[name],
   }));
 }

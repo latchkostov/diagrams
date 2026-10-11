@@ -96,11 +96,23 @@ export const callTool = (page: Page, name: string, input: object = {}) =>
  * `result([...])`, `error(code)`, `silence()` (the browser's own end), and `starts` / `instances`.
  * `deny` makes start() fail with "not-allowed" like a blocked microphone.
  */
-export function installFakeSpeech(page: Page, opts: { deny?: boolean; onDevice?: boolean } = {}) {
+export function installFakeSpeech(
+  page: Page,
+  opts: { deny?: boolean; onDevice?: boolean; deferredAvailability?: boolean } = {},
+) {
   return page.addInitScript((o) => {
     type Ev = { resultIndex: number; results: unknown };
+    const pending: ((value: string) => void)[] = [];
+    const instances: FakeRecognition[] = [];
     class FakeRecognition {
-      static available = o.onDevice ? () => Promise.resolve("available") : undefined;
+      static available = o.deferredAvailability
+        ? () => new Promise<string>((resolve) => pending.push(resolve))
+        : o.onDevice
+          ? () => Promise.resolve("available")
+          : undefined;
+      constructor() {
+        instances.push(this);
+      }
       lang = "";
       continuous = false;
       interimResults = false;
@@ -148,6 +160,12 @@ export function installFakeSpeech(page: Page, opts: { deny?: boolean; onDevice?:
       }
     }
     const state = {
+      resolveAvailability() {
+        pending.splice(0).forEach((resolve) => resolve("available"));
+      },
+      get active() {
+        return instances.filter((r) => r.running).length;
+      },
       starts: 0,
       stops: 0,
       current: null as FakeRecognition | null,
@@ -182,6 +200,7 @@ export const speech = (page: Page, fn: string, ...args: unknown[]) =>
 
 export const speechState = (page: Page) =>
   page.evaluate(() => {
-    const s = (window as unknown as { __speech: { starts: number; stops: number; config: unknown } }).__speech;
-    return { starts: s.starts, stops: s.stops, config: s.config };
+    const s = (window as unknown as { __speech: { starts: number; stops: number; config: unknown; active: number } })
+      .__speech;
+    return { starts: s.starts, stops: s.stops, config: s.config, active: s.active };
   });

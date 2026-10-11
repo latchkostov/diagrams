@@ -218,14 +218,12 @@ export const diagramEvals: DiagramEval[] = flows.map(([description, nodes]) => (
     {
       ops: [
         ...nodes.map(([kind, label], i): DiagramOp => ({ op: "add_node", kind, label, key: `n${i}` })),
-        ...nodes
-          .slice(1)
-          .map((_, i): DiagramOp => ({
-            op: "connect",
-            from: `n${i}`,
-            to: `n${i + 1}`,
-            kind: i === nodes.length - 2 && nodes[nodes.length - 1][2] === "postgres" ? "sync" : "async",
-          })),
+        ...nodes.slice(1).map((_, i): DiagramOp => ({
+          op: "connect",
+          from: `n${i}`,
+          to: `n${i + 1}`,
+          kind: i === nodes.length - 2 && nodes[nodes.length - 1][2] === "postgres" ? "sync" : "async",
+        })),
       ],
       expected: {
         nodes: nodes.map(([, label, stencil]) => ({ label, stencil })),

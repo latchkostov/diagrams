@@ -9,12 +9,14 @@ import aksAppConfigKeyVault from "./aks-app-config-key-vault.json";
 export interface Example {
   slug: string;
   diagram: DiagramFile;
+  /** Local-only examples are never eligible for AI tools or prompts. */
+  localOnly?: boolean;
 }
 
 // Work diagrams live in ./private (gitignored) and only load in dev, so they never ship in the public build.
 const privateExamples: Example[] = import.meta.env.DEV
   ? Object.entries(import.meta.glob<DiagramFile>("./private/*.json", { eager: true, import: "default" })).map(
-      ([path, diagram]) => ({ slug: path.slice("./private/".length, -".json".length), diagram }),
+      ([path, diagram]) => ({ slug: path.slice("./private/".length, -".json".length), diagram, localOnly: true }),
     )
   : [];
 

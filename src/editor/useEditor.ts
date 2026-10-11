@@ -198,14 +198,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       if (!checked.ok) throw new Error(checked.error);
       const before = api.getDiagram();
       const diff = diagramDiff(before, checked.diagram);
-      if (
-        !diff.added.count &&
-        !diff.updated.count &&
-        !diff.removed.count &&
-        !diff.metaChanged &&
-        JSON.stringify(before) === JSON.stringify(checked.diagram)
-      )
-        return diff;
+      if (!diff.hasChanges) return diff;
       flushSync(() => deps().history.replace(toFlow(checked.diagram), opts?.merge, toFlow(before)));
       return diff;
     },

@@ -765,3 +765,9 @@ New global classes: `.btn-ghost`, `.icon-btn-quiet`, `.btn-danger-solid`, `.btn.
   re-exports it.
 - Cursor-only rule edits in `canvas.css` (controls/inspector disabled buttons, group label, an
   appended "cursors" block) and `lab.css` (disabled buttons, share URL).
+
+## AI panel — 2026-10-11
+
+The panel stays inside the canvas beside the inspector, restores keyboard focus on close, and uses readable status ink in the light theme. Local-only diagrams show an exclusion note and cannot be sent through AI prompts or tools. Choices from earlier turns disable when their node changes or disappears and explain how to continue. Full-layout replies can apply without edit operations. Existing contextual entry points and the chrome budget remain sufficient. Geometry, focus, contrast, provenance and stale-choice browser regressions cover these interactions.
+
+The privacy follow-up preserves the existing Duplicate, Save a copy, Import and Paste flows without adding controls. Library provenance and development content matching use the same AI exclusion decision; the existing inline note explains it. The source review found no blocking UX issues, and synthetic browser regressions verify blocked prompts and tool registration after copying, importing and reloading.

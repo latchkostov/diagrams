@@ -1,5 +1,7 @@
 // JSON Schema draft 2020-12. Shared by paste, WebMCP and static schema generation.
-export type JsonSchema = Record<string, unknown>;
+import { aiNodePropsSchema, simPropsPatchSchema } from "../model/simProps";
+export type { JsonSchema } from "../model/jsonSchema";
+import type { JsonSchema } from "../model/jsonSchema";
 export const sharedDefs = {
   Ref: {
     type: "string",
@@ -8,110 +10,12 @@ export const sharedDefs = {
     description:
       "An element: id from describe_diagram (preferred), a key set earlier in this call, an exact label, 'label (sublabel)', or for a connection 'From -> To'.",
   },
-  NodeProps: {
-    type: "object",
-    additionalProperties: true,
-    description: "Simulation settings. Unknown keys are kept.",
-    properties: {
-      ratePerSec: {
-        type: "number",
-        minimum: 0,
-        description: "Sources: messages per second.",
-      },
-      latencyMs: {
-        type: "number",
-        minimum: 0,
-      },
-      concurrency: {
-        type: "integer",
-        minimum: 1,
-        description: "Processors: messages handled at once per replica.",
-      },
-      replicas: {
-        type: "integer",
-        minimum: 1,
-      },
-      partitions: {
-        type: "integer",
-        minimum: 1,
-        description: "Topics/streams.",
-      },
-      failureRate: {
-        type: "number",
-        minimum: 0,
-        maximum: 1,
-      },
-      maxDeliveryCount: {
-        type: "integer",
-        minimum: 1,
-      },
-      retry: {
-        type: "string",
-        enum: ["requeue", "inplace"],
-      },
-      messageType: {
-        type: "string",
-      },
-      emits: {
-        type: "string",
-        description: "Message type this node emits downstream.",
-      },
-    },
-  },
+  NodeProps: aiNodePropsSchema,
   Tone: {
     type: "string",
     enum: ["azure", "aws", "gcp", "k8s", "onprem", "neutral"],
   },
-  PropsPatch: {
-    type: "object",
-    additionalProperties: true,
-    description: "Simulation settings. Unknown keys are kept.",
-    properties: {
-      ratePerSec: {
-        type: ["number", "null"],
-        minimum: 0,
-        description: "Sources: messages per second.",
-      },
-      latencyMs: {
-        type: ["number", "null"],
-        minimum: 0,
-      },
-      concurrency: {
-        type: ["integer", "null"],
-        minimum: 1,
-        description: "Processors: messages handled at once per replica.",
-      },
-      replicas: {
-        type: ["integer", "null"],
-        minimum: 1,
-      },
-      partitions: {
-        type: ["integer", "null"],
-        minimum: 1,
-        description: "Topics/streams.",
-      },
-      failureRate: {
-        type: ["number", "null"],
-        minimum: 0,
-        maximum: 1,
-      },
-      maxDeliveryCount: {
-        type: ["integer", "null"],
-        minimum: 1,
-      },
-      retry: {
-        type: ["string", "null"],
-        enum: ["requeue", "inplace", null],
-      },
-      messageType: {
-        type: ["string", "null"],
-      },
-      emits: {
-        type: ["string", "null"],
-        description: "Message type this node emits downstream.",
-      },
-    },
-  },
+  PropsPatch: simPropsPatchSchema,
 };
 export const describe_diagramSchema: JsonSchema = {
   ...{
@@ -173,7 +77,8 @@ export const edit_diagramSchema: JsonSchema = {
     properties: {
       ops: {
         type: "array",
-        minItems: 1,
+        minItems: 0,
+        description: "Use an empty list only with layout: full to rearrange the existing diagram.",
         maxItems: 100,
         items: {
           oneOf: [
@@ -624,3 +529,20 @@ export const flatOpsSchema: JsonSchema = {
     },
   },
 };
+
+export interface ToolAnnotations {
+  readOnlyHint?: boolean;
+  untrustedContentHint?: boolean;
+  consequentialHint?: boolean;
+}
+/** Decision 8: labels are user-authored, so anything echoing them is untrusted content. */
+export const toolAnnotations: Record<keyof typeof toolSchemas, ToolAnnotations> = {
+  describe_diagram: { readOnlyHint: true, untrustedContentHint: true },
+  find_stencils: { readOnlyHint: true },
+  edit_diagram: { untrustedContentHint: true },
+  set_simulation: {},
+  new_diagram: { consequentialHint: true },
+  get_share_link: { readOnlyHint: true },
+};
+
+export { diagramV1Schema } from "../model/diagramSchema";

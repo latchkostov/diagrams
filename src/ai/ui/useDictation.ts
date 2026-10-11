@@ -79,6 +79,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui) {
   let rec: Recognition | null = null;
   /** The person wants to be listening (we restart on the browser's silence timeout). */
   let wanted = false;
+  let generation = 0;
   let local = false;
   let committed = 0;
   let restarts: number[] = [];
@@ -156,6 +157,10 @@ function createSession(Ctor: RecognitionCtor, ui: Ui) {
   return {
     start() {
       if (wanted) return;
+      const token = ++generation;
+      const previous = rec;
+      rec = null;
+      previous?.abort();
       wanted = true;
       restarts = [];
       ui.status("starting");
@@ -164,6 +169,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui) {
       const check = Ctor.available
         ? Ctor.available({ langs: [lang], processLocally: true }).then(
             (a) => {
+              if (token !== generation || !wanted) return false;
               if (a === "available") return true;
               // Fetch the on-device pack for next time; this time the browser's service listens.
               if ((a === "downloadable" || a === "downloading") && Ctor.install)
@@ -174,7 +180,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui) {
           )
         : Promise.resolve(false);
       void check.then((isLocal) => {
-        if (!wanted) return;
+        if (!wanted || token !== generation) return;
         local = isLocal;
         ui.onDevice(isLocal);
         if (!isLocal && firstCloudUse()) ui.message({ tone: "info", text: CLOUD_NOTE });
@@ -182,6 +188,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui) {
       });
     },
     stop() {
+      generation++;
       wanted = false;
       // Show it stopped now; the browser's end event follows (and may still flush final words).
       ui.status("idle");
@@ -195,6 +202,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui) {
       }
     },
     dispose() {
+      generation++;
       wanted = false;
       const r = rec;
       rec = null;

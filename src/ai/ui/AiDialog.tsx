@@ -2,9 +2,9 @@ import {
   useCallback,
   useEffect,
   useId,
-  useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
@@ -17,11 +17,22 @@ import { copyText } from "../../interop/ui/copyText";
 import { notify } from "../../interop/ui/toast";
 import { paletteHost } from "../../palette/host";
 import { getStencil } from "../../stencils/registry";
-import { describeDiagram, type AiError, type DiagramOp } from "../index";
-import { failedRef, pickCandidate, planTurn, swapStencil, type StencilChoice, type TurnPlan } from "./apply";
+import { type AiError, type DiagramOp } from "../index";
+import {
+  choiceIsCurrent,
+  failedRef,
+  pickCandidate,
+  planTurn,
+  swapStencil,
+  type StencilChoice,
+  type TurnPlan,
+} from "./apply";
 import { shadowOverlay, showApplied } from "./feedback";
 import { buildFixPrompt, buildPrompt } from "./prompt";
 import { parseReply, type ParsedReply } from "./reply";
+import { LOCAL_ONLY_MESSAGE, describeForAi } from "../privacy";
+import { isLocalOnly } from "../../lib/localOnly";
+import { useParsedReply } from "./useParsedReply";
 import { useDictation } from "./useDictation";
 import "./ai.css";
 
@@ -35,6 +46,7 @@ interface Turn {
   summary: string;
   choices: StencilChoice[];
   warnings: string[];
+  documentId?: string;
 }
 
 interface Failure {
@@ -48,17 +60,13 @@ interface Failure {
 
 const editorNow = (): EditorApi | null => paletteHost.get().canvas?.editor ?? null;
 
-/** describe_diagram text, or "" for an empty diagram (the prompt then says "build it from scratch"). */
-function describeNow(editor: EditorApi): string {
-  const d = editor.getDiagram();
-  return d.nodes.length || d.annotations?.length ? describeDiagram(d) : "";
-}
-
 const MOD = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
 
 let turnSeq = 0;
 
 export default function AiDialog({ onClose }: { onClose: () => void }) {
+  const host = useSyncExternalStore(paletteHost.subscribe, paletteHost.get);
+  const localOnly = isLocalOnly(host.canvas);
   const titleId = useId();
   const [request, setRequest] = useState("");
   const [reply, setReply] = useState("");
@@ -94,11 +102,48 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
     }
   }, [request]);
 
-  const parsed = useMemo(() => (reply.trim() ? parseReply(reply) : null), [reply]);
+  const { parsed, pending } = useParsedReply(reply);
 
   useEffect(() => {
+    const target = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const panel = panelRef.current;
     requestRef.current?.focus();
+    return () => {
+      if (panel?.contains(document.activeElement) || document.activeElement === document.body) {
+        const fallback =
+          document.querySelector<HTMLElement>('[data-testid="file-button"]') ??
+          document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]');
+        (target?.isConnected && target !== document.body ? target : fallback)?.focus({ preventScroll: true });
+      }
+    };
   }, []);
+
+  useEffect(
+    () =>
+      paletteHost.subscribe(() => {
+        const currentHost = paletteHost.get();
+        const editor = currentHost.canvas?.editor;
+        if (!editor) return;
+        const current = editor.getDiagram();
+        setTurns((all) => {
+          let changed = false;
+          const next = all.map((turn) => ({
+            ...turn,
+            choices: turn.choices.map((choice) => {
+              if (
+                choice.stale ||
+                (turn.documentId === currentHost.canvas?.documentId && choiceIsCurrent(current, choice))
+              )
+                return choice;
+              changed = true;
+              return { ...choice, stale: true };
+            }),
+          }));
+          return changed ? next : all;
+        });
+      }),
+    [],
+  );
 
   useEffect(() => {
     historyEnd.current?.scrollIntoView({ block: "nearest" });
@@ -113,7 +158,7 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
     const editor = editorNow();
     if (!editor) return;
     promptedFor.current = request.trim();
-    const ok = await copyText(buildPrompt({ request, describe: describeNow(editor) }));
+    const ok = await copyText(buildPrompt({ request, describe: describeForAi(editor, paletteHost.get().canvas) }));
     if (!ok) return notify("The browser didn't allow copying. Try again.", { kind: "error" });
     flashCopied("prompt");
     replyRef.current?.focus();
@@ -122,10 +167,15 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
   const copyFix = async () => {
     const editor = editorNow();
     if (!editor || !failure) return;
+    if (isLocalOnly(paletteHost.get().canvas)) {
+      const ok = await copyText(buildPrompt({ request, describe: LOCAL_ONLY_MESSAGE }));
+      if (ok) flashCopied("fix");
+      return;
+    }
     const ok = await copyText(
       buildFixPrompt({
         request: request || promptedFor.current,
-        describe: describeNow(editor),
+        describe: describeForAi(editor, paletteHost.get().canvas),
         reply: failure.reply,
         error: failure.error,
       }),
@@ -141,7 +191,14 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
     showApplied(plan.summary, plan.changed, editor);
     setTurns((t) => [
       ...t,
-      { id: turnSeq, request: title, summary: plan.summary, choices: plan.choices, warnings: plan.warnings },
+      {
+        id: turnSeq,
+        request: title,
+        summary: plan.summary,
+        choices: plan.choices,
+        warnings: plan.warnings,
+        documentId: paletteHost.get().canvas?.documentId,
+      },
     ]);
     setFailure(null);
     setReply("");
@@ -151,6 +208,10 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
   }, []);
 
   const runPlan = (editor: EditorApi, p: ParsedReply, pastedReply: string) => {
+    if (isLocalOnly(paletteHost.get().canvas)) {
+      setFailure({ error: { i: -1, error: LOCAL_ONLY_MESSAGE }, reply: pastedReply });
+      return;
+    }
     const plan = planTurn(editor.getDiagram(), p);
     if (!plan.ok) {
       setFailure({
@@ -160,7 +221,7 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
       });
       return;
     }
-    if (!plan.changed.length && plan.summary === "no changes") {
+    if (!plan.hasChanges) {
       setFailure({
         error: { i: -1, error: "The reply didn't change anything.", hint: "Check the request, or ask your AI again." },
         reply: pastedReply,
@@ -180,14 +241,14 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
   const apply = () => {
     dictation.stop();
     const editor = editorNow();
-    if (!editor || !parsed) return;
-    runPlan(editor, parsed, reply);
+    if (!editor || !reply.trim()) return;
+    runPlan(editor, parseReply(reply), reply);
   };
 
   const choose = (candidateId: string) => {
     const editor = editorNow();
     if (!editor || !failure?.ops) return;
-    const ref = failedRef(failure.error.error);
+    const ref = failure.error.ref ?? failedRef(failure.error.error);
     const ops = ref ? pickCandidate(failure.ops, failure.error.i, ref, candidateId) : null;
     if (!ops) return;
     const fixed = `\`\`\`json\n${JSON.stringify(ops, null, 2)}\n\`\`\``;
@@ -197,8 +258,17 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
 
   const swap = (turnId: number, choice: StencilChoice, stencilId: string) => {
     const editor = editorNow();
-    if (!editor) return;
-    const plan = swapStencil(editor.getDiagram(), choice.nodeId, stencilId);
+    const turn = turns.find((t) => t.id === turnId);
+    if (
+      !editor ||
+      localOnly ||
+      !turn ||
+      choice.stale ||
+      turn.documentId !== host.canvas?.documentId ||
+      !choiceIsCurrent(editor.getDiagram(), choice)
+    )
+      return notify("This stencil choice is stale. Ask for a new turn.", { kind: "error" });
+    const plan = swapStencil(editor.getDiagram(), choice.nodeId, stencilId, choice.node);
     if (!plan.ok) return notify(plan.error.error, { kind: "error" });
     editor.applyDiagram(plan.next, { merge: `ai:swap:${++turnSeq}` });
     const s = getStencil(stencilId);
@@ -215,6 +285,8 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
                   ? c
                   : {
                       ...c,
+                      stale: false,
+                      node: plan.next.nodes.find((n) => n.id === c.nodeId),
                       stencil: {
                         ...c.stencil,
                         id: s.id,
@@ -236,7 +308,7 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
       e.stopPropagation();
       if (dictation.status !== "idle") dictation.stop();
       else onClose();
-    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && parsed?.ok) {
+    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && hasReply) {
       e.preventDefault();
       apply();
     }
@@ -256,13 +328,15 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
 
   const listening = dictation.status !== "idle";
   const hasReply = !!reply.trim();
-  const replyStatus = parsed
-    ? parsed.ok
-      ? parsed.kind === "ops"
-        ? `${parsed.ops.length} ${parsed.ops.length === 1 ? "op" : "ops"} ready`
-        : "A whole diagram: it replaces this one"
-      : parsed.error
-    : null;
+  const replyStatus = pending
+    ? "Checking reply…"
+    : parsed
+      ? parsed.ok
+        ? parsed.kind === "ops"
+          ? `${parsed.ops.length} ${parsed.ops.length === 1 ? "op" : "ops"} ready`
+          : "A whole diagram: it replaces this one"
+        : parsed.error
+      : null;
 
   return createPortal(
     <aside
@@ -292,6 +366,11 @@ export default function AiDialog({ onClose }: { onClose: () => void }) {
       </header>
 
       <div className="ai-body">
+        {localOnly && (
+          <p className="ai-note" role="status" data-testid="ai-privacy-note">
+            {LOCAL_ONLY_MESSAGE}
+          </p>
+        )}
         {turns.length > 0 && (
           <ol className="ai-history" aria-label="Applied changes" data-testid="ai-history">
             {turns.map((t, n) => (
@@ -477,6 +556,11 @@ function ChoiceRow({ choice, onSwap }: { choice: StencilChoice; onSwap: (stencil
           )}
         </span>
       </span>
+      {choice.stale && (
+        <span className="ai-hint" data-testid={`ai-choice-stale-${choice.nodeId}`}>
+          This node changed or was removed. Ask for a new turn.
+        </span>
+      )}
       {choice.stencil.alternatives.length > 0 && (
         <span className="ai-choice-alts" role="group" aria-label={`Other stencils for ${choice.kind}`}>
           {choice.stencil.alternatives.slice(0, 3).map((id) => {
@@ -486,11 +570,16 @@ function ChoiceRow({ choice, onSwap }: { choice: StencilChoice; onSwap: (stencil
                 key={id}
                 className="ai-alt"
                 onClick={() => onSwap(id)}
-                title={`Use ${alt.label} (${alt.vendor})`}
+                title={
+                  choice.stale
+                    ? "This node changed or was removed. Ask for a new turn."
+                    : `Use ${alt.label} (${alt.vendor})`
+                }
                 aria-label={`Use ${alt.label}`}
                 data-testid={`ai-swap-${choice.nodeId}-${id}`}
                 data-node={choice.nodeId}
                 data-stencil={id}
+                disabled={choice.stale}
               >
                 <Tile stencil={alt} size={13} />
                 {alt.label}
@@ -515,7 +604,7 @@ function FailureBox({
   onChoose: (id: string) => void;
 }) {
   const { error } = failure;
-  const canPick = !!failure.ops && !!failedRef(error.error);
+  const canPick = !!failure.ops && !!(error.ref ?? failedRef(error.error));
   const candidates = error.candidates?.slice(0, 8) ?? [];
   return (
     <section className="ai-failure" role="alert" data-testid="ai-error">

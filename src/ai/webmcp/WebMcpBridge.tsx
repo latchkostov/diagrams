@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import type { EditorApi } from "../../editor/types";
 import { paletteHost } from "../../palette/host";
 import { encodeShare, shareUrl, SHARE_WARN_LENGTH } from "../../interop/share";
 import { showApplied } from "../ui/feedback";
 import { useWebMcp } from "./useWebMcp";
 import type { WebMcpHost } from "./tools";
+import { isLocalOnly } from "../../lib/localOnly";
 
 // Lazy-loaded by AiMount, only in the editor view and only when the browser has WebMCP. Renders nothing.
 
@@ -37,9 +38,11 @@ export default function WebMcpBridge({
   live: boolean;
   onNewDiagram: () => void;
 }) {
+  const canvas = useSyncExternalStore(paletteHost.subscribe, paletteHost.get).canvas;
   const host = useMemo<WebMcpHost>(
     () => ({
       getEditor: currentEditor,
+      canUseAi: () => !isLocalOnly(paletteHost.get().canvas),
       onApplied: showApplied,
       async newDiagram({ title, direction }) {
         const before = currentEditor();
@@ -65,6 +68,6 @@ export default function WebMcpBridge({
     }),
     [onNewDiagram],
   );
-  useWebMcp(host, { enabled: true, live });
+  useWebMcp(host, { enabled: !!canvas && !isLocalOnly(canvas), live });
   return null;
 }

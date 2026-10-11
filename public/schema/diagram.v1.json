@@ -116,39 +116,36 @@
     "NodeProps": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Simulation settings. Unknown keys are kept.",
       "properties": {
         "ratePerSec": {
           "type": "number",
           "minimum": 0,
-          "description": "Sources: messages per second."
+          "maximum": 10000
         },
         "latencyMs": {
           "type": "number",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 600000
         },
         "concurrency": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Processors: messages handled at once per replica."
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000
         },
         "replicas": {
-          "type": "integer",
-          "minimum": 1
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000
         },
-        "partitions": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Topics/streams."
+        "jitter": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         },
         "failureRate": {
           "type": "number",
           "minimum": 0,
           "maximum": 1
-        },
-        "maxDeliveryCount": {
-          "type": "integer",
-          "minimum": 1
         },
         "retry": {
           "type": "string",
@@ -157,12 +154,36 @@
             "inplace"
           ]
         },
+        "retryBackoffMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600000
+        },
+        "maxDeliveryCount": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "partitions": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000
+        },
         "messageType": {
           "type": "string"
         },
         "emits": {
-          "type": "string",
-          "description": "Message type this node emits downstream."
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          ]
         }
       }
     },
@@ -217,7 +238,38 @@
           ]
         },
         "props": {
-          "type": "object"
+          "$ref": "#/$defs/EdgeProps"
+        }
+      }
+    },
+    "EdgeProps": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "share": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dlq": {
+          "type": "boolean"
+        },
+        "travelMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600000
+        },
+        "emits": {
+          "type": "string"
+        },
+        "filter": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -405,7 +457,7 @@
             "props": {
               "type": "object",
               "additionalProperties": {
-                "type": "object"
+                "$ref": "#/$defs/NodeProps"
               }
             }
           }
@@ -634,7 +686,7 @@
                         "type": "string"
                       },
                       "props": {
-                        "type": "object"
+                        "$ref": "#/$defs/NodeProps"
                       }
                     }
                   },

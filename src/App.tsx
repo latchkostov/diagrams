@@ -164,9 +164,9 @@ function MainApp() {
 
   /** Open, Import, Paste, the Lab and "Save a copy": a new entry in Your diagrams, never a replacement. */
   const openDiagram = useCallback(
-    (d: DiagramFile, target?: SaveTarget) => {
+    (d: DiagramFile, target?: SaveTarget, sourceSlug?: string) => {
       // Validates and stores first; on failure the current diagram stays (and the caller reports why).
-      const created = createLibraryDiagram(d, target);
+      const created = createLibraryDiagram(d, target, undefined, { sourceSlug });
       if (slug === SHARED_SLUG) clearShared();
       setUrl({ view: "canvas", example: created, present: false });
     },

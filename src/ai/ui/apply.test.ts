@@ -81,7 +81,7 @@ describe("diff and summary", () => {
     };
     const d = diffDiagrams(a, b);
     expect(summarize(d)).toBe("+1 boundary, −1 node, −1 connection, 1 changed");
-    expect(d.changed).toEqual(["billing-worker", "g1"]);
+    expect(d.changed.sort()).toEqual(["billing-worker", "g1"]);
     const moved: DiagramFile = { ...a, nodes: a.nodes.map((n) => ({ ...n, x: n.x + 40 })) };
     expect(summarize(diffDiagrams(a, moved))).toBe("no changes");
   });

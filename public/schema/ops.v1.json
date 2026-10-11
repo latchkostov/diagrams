@@ -10,7 +10,8 @@
   "properties": {
     "ops": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
+      "description": "Use an empty list only with layout: full to rearrange the existing diagram.",
       "maxItems": 100,
       "items": {
         "oneOf": [
@@ -285,39 +286,36 @@
     "NodeProps": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Simulation settings. Unknown keys are kept.",
       "properties": {
         "ratePerSec": {
           "type": "number",
           "minimum": 0,
-          "description": "Sources: messages per second."
+          "maximum": 10000
         },
         "latencyMs": {
           "type": "number",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 600000
         },
         "concurrency": {
           "type": "integer",
           "minimum": 1,
-          "description": "Processors: messages handled at once per replica."
+          "maximum": 10000
         },
         "replicas": {
           "type": "integer",
-          "minimum": 1
-        },
-        "partitions": {
-          "type": "integer",
           "minimum": 1,
-          "description": "Topics/streams."
+          "maximum": 10000
+        },
+        "jitter": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         },
         "failureRate": {
           "type": "number",
           "minimum": 0,
           "maximum": 1
-        },
-        "maxDeliveryCount": {
-          "type": "integer",
-          "minimum": 1
         },
         "retry": {
           "type": "string",
@@ -326,12 +324,36 @@
             "inplace"
           ]
         },
+        "retryBackoffMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600000
+        },
+        "maxDeliveryCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "partitions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
         "messageType": {
           "type": "string"
         },
         "emits": {
-          "type": "string",
-          "description": "Message type this node emits downstream."
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          ]
         }
       }
     },
@@ -349,22 +371,75 @@
     "PropsPatch": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Simulation settings. Unknown keys are kept.",
       "properties": {
+        "group": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "share": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dlq": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "travelMs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 600000
+        },
+        "emits": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filter": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
         "ratePerSec": {
           "type": [
             "number",
             "null"
           ],
           "minimum": 0,
-          "description": "Sources: messages per second."
+          "maximum": 10000
         },
         "latencyMs": {
           "type": [
             "number",
             "null"
           ],
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 600000
         },
         "concurrency": {
           "type": [
@@ -372,22 +447,23 @@
             "null"
           ],
           "minimum": 1,
-          "description": "Processors: messages handled at once per replica."
+          "maximum": 10000
         },
         "replicas": {
           "type": [
             "integer",
             "null"
           ],
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 10000
         },
-        "partitions": {
+        "jitter": {
           "type": [
-            "integer",
+            "number",
             "null"
           ],
-          "minimum": 1,
-          "description": "Topics/streams."
+          "minimum": 0,
+          "maximum": 1
         },
         "failureRate": {
           "type": [
@@ -396,13 +472,6 @@
           ],
           "minimum": 0,
           "maximum": 1
-        },
-        "maxDeliveryCount": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 1
         },
         "retry": {
           "type": [
@@ -415,18 +484,35 @@
             null
           ]
         },
+        "retryBackoffMs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 600000
+        },
+        "maxDeliveryCount": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "partitions": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 10000
+        },
         "messageType": {
           "type": [
             "string",
             "null"
           ]
-        },
-        "emits": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Message type this node emits downstream."
         }
       }
     }
@@ -472,39 +558,36 @@
           "NodeProps": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": "integer",
-                "minimum": 1
-              },
-              "partitions": {
-                "type": "integer",
                 "minimum": 1,
-                "description": "Topics/streams."
+                "maximum": 10000
+              },
+              "jitter": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": "number",
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": "integer",
-                "minimum": 1
               },
               "retry": {
                 "type": "string",
@@ -513,12 +596,36 @@
                   "inplace"
                 ]
               },
+              "retryBackoffMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": "string"
               },
               "emits": {
-                "type": "string",
-                "description": "Message type this node emits downstream."
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                ]
               }
             }
           },
@@ -536,22 +643,75 @@
           "PropsPatch": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
+              "group": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "dlq": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "emits": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "filter": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
               "ratePerSec": {
                 "type": [
                   "number",
                   "null"
                 ],
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": [
                   "number",
                   "null"
                 ],
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": [
@@ -559,22 +719,23 @@
                   "null"
                 ],
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": [
                   "integer",
                   "null"
                 ],
-                "minimum": 1
+                "minimum": 1,
+                "maximum": 10000
               },
-              "partitions": {
+              "jitter": {
                 "type": [
-                  "integer",
+                  "number",
                   "null"
                 ],
-                "minimum": 1,
-                "description": "Topics/streams."
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": [
@@ -583,13 +744,6 @@
                 ],
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1
               },
               "retry": {
                 "type": [
@@ -602,22 +756,43 @@
                   null
                 ]
               },
+              "retryBackoffMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": [
                   "string",
                   "null"
                 ]
-              },
-              "emits": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "description": "Message type this node emits downstream."
               }
             }
           }
         }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "untrustedContentHint": true
       }
     },
     "find_stencils": {
@@ -664,39 +839,36 @@
           "NodeProps": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": "integer",
-                "minimum": 1
-              },
-              "partitions": {
-                "type": "integer",
                 "minimum": 1,
-                "description": "Topics/streams."
+                "maximum": 10000
+              },
+              "jitter": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": "number",
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": "integer",
-                "minimum": 1
               },
               "retry": {
                 "type": "string",
@@ -705,12 +877,36 @@
                   "inplace"
                 ]
               },
+              "retryBackoffMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": "string"
               },
               "emits": {
-                "type": "string",
-                "description": "Message type this node emits downstream."
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                ]
               }
             }
           },
@@ -728,22 +924,75 @@
           "PropsPatch": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
+              "group": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "dlq": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "emits": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "filter": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
               "ratePerSec": {
                 "type": [
                   "number",
                   "null"
                 ],
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": [
                   "number",
                   "null"
                 ],
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": [
@@ -751,22 +1000,23 @@
                   "null"
                 ],
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": [
                   "integer",
                   "null"
                 ],
-                "minimum": 1
+                "minimum": 1,
+                "maximum": 10000
               },
-              "partitions": {
+              "jitter": {
                 "type": [
-                  "integer",
+                  "number",
                   "null"
                 ],
-                "minimum": 1,
-                "description": "Topics/streams."
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": [
@@ -775,13 +1025,6 @@
                 ],
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1
               },
               "retry": {
                 "type": [
@@ -794,22 +1037,42 @@
                   null
                 ]
               },
+              "retryBackoffMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": [
                   "string",
                   "null"
                 ]
-              },
-              "emits": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "description": "Message type this node emits downstream."
               }
             }
           }
         }
+      },
+      "annotations": {
+        "readOnlyHint": true
       }
     },
     "edit_diagram": {
@@ -822,7 +1085,8 @@
         "properties": {
           "ops": {
             "type": "array",
-            "minItems": 1,
+            "minItems": 0,
+            "description": "Use an empty list only with layout: full to rearrange the existing diagram.",
             "maxItems": 100,
             "items": {
               "oneOf": [
@@ -1097,39 +1361,36 @@
           "NodeProps": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": "integer",
-                "minimum": 1
-              },
-              "partitions": {
-                "type": "integer",
                 "minimum": 1,
-                "description": "Topics/streams."
+                "maximum": 10000
+              },
+              "jitter": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": "number",
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": "integer",
-                "minimum": 1
               },
               "retry": {
                 "type": "string",
@@ -1138,12 +1399,36 @@
                   "inplace"
                 ]
               },
+              "retryBackoffMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": "string"
               },
               "emits": {
-                "type": "string",
-                "description": "Message type this node emits downstream."
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                ]
               }
             }
           },
@@ -1161,22 +1446,75 @@
           "PropsPatch": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
+              "group": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "dlq": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "emits": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "filter": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
               "ratePerSec": {
                 "type": [
                   "number",
                   "null"
                 ],
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": [
                   "number",
                   "null"
                 ],
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": [
@@ -1184,22 +1522,23 @@
                   "null"
                 ],
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": [
                   "integer",
                   "null"
                 ],
-                "minimum": 1
+                "minimum": 1,
+                "maximum": 10000
               },
-              "partitions": {
+              "jitter": {
                 "type": [
-                  "integer",
+                  "number",
                   "null"
                 ],
-                "minimum": 1,
-                "description": "Topics/streams."
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": [
@@ -1208,13 +1547,6 @@
                 ],
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1
               },
               "retry": {
                 "type": [
@@ -1227,22 +1559,42 @@
                   null
                 ]
               },
+              "retryBackoffMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": [
                   "string",
                   "null"
                 ]
-              },
-              "emits": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "description": "Message type this node emits downstream."
               }
             }
           }
         }
+      },
+      "annotations": {
+        "untrustedContentHint": true
       }
     },
     "set_simulation": {
@@ -1446,39 +1798,36 @@
           "NodeProps": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": "integer",
-                "minimum": 1
-              },
-              "partitions": {
-                "type": "integer",
                 "minimum": 1,
-                "description": "Topics/streams."
+                "maximum": 10000
+              },
+              "jitter": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": "number",
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": "integer",
-                "minimum": 1
               },
               "retry": {
                 "type": "string",
@@ -1487,12 +1836,36 @@
                   "inplace"
                 ]
               },
+              "retryBackoffMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": "string"
               },
               "emits": {
-                "type": "string",
-                "description": "Message type this node emits downstream."
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                ]
               }
             }
           },
@@ -1510,22 +1883,75 @@
           "PropsPatch": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
+              "group": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "dlq": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "emits": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "filter": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
               "ratePerSec": {
                 "type": [
                   "number",
                   "null"
                 ],
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": [
                   "number",
                   "null"
                 ],
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": [
@@ -1533,22 +1959,23 @@
                   "null"
                 ],
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": [
                   "integer",
                   "null"
                 ],
-                "minimum": 1
+                "minimum": 1,
+                "maximum": 10000
               },
-              "partitions": {
+              "jitter": {
                 "type": [
-                  "integer",
+                  "number",
                   "null"
                 ],
-                "minimum": 1,
-                "description": "Topics/streams."
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": [
@@ -1557,13 +1984,6 @@
                 ],
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1
               },
               "retry": {
                 "type": [
@@ -1576,23 +1996,41 @@
                   null
                 ]
               },
+              "retryBackoffMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": [
                   "string",
                   "null"
                 ]
-              },
-              "emits": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "description": "Message type this node emits downstream."
               }
             }
           }
         }
-      }
+      },
+      "annotations": {}
     },
     "new_diagram": {
       "description": "Start a new, empty diagram. The current one stays in the library.",
@@ -1622,39 +2060,36 @@
           "NodeProps": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": "integer",
-                "minimum": 1
-              },
-              "partitions": {
-                "type": "integer",
                 "minimum": 1,
-                "description": "Topics/streams."
+                "maximum": 10000
+              },
+              "jitter": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": "number",
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": "integer",
-                "minimum": 1
               },
               "retry": {
                 "type": "string",
@@ -1663,12 +2098,36 @@
                   "inplace"
                 ]
               },
+              "retryBackoffMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": "string"
               },
               "emits": {
-                "type": "string",
-                "description": "Message type this node emits downstream."
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                ]
               }
             }
           },
@@ -1686,22 +2145,75 @@
           "PropsPatch": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
+              "group": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "dlq": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "emits": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "filter": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
               "ratePerSec": {
                 "type": [
                   "number",
                   "null"
                 ],
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": [
                   "number",
                   "null"
                 ],
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": [
@@ -1709,22 +2221,23 @@
                   "null"
                 ],
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": [
                   "integer",
                   "null"
                 ],
-                "minimum": 1
+                "minimum": 1,
+                "maximum": 10000
               },
-              "partitions": {
+              "jitter": {
                 "type": [
-                  "integer",
+                  "number",
                   "null"
                 ],
-                "minimum": 1,
-                "description": "Topics/streams."
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": [
@@ -1733,13 +2246,6 @@
                 ],
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1
               },
               "retry": {
                 "type": [
@@ -1752,22 +2258,42 @@
                   null
                 ]
               },
+              "retryBackoffMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": [
                   "string",
                   "null"
                 ]
-              },
-              "emits": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "description": "Message type this node emits downstream."
               }
             }
           }
         }
+      },
+      "annotations": {
+        "consequentialHint": true
       }
     },
     "get_share_link": {
@@ -1785,39 +2311,36 @@
           "NodeProps": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": "integer",
-                "minimum": 1
-              },
-              "partitions": {
-                "type": "integer",
                 "minimum": 1,
-                "description": "Topics/streams."
+                "maximum": 10000
+              },
+              "jitter": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": "number",
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": "integer",
-                "minimum": 1
               },
               "retry": {
                 "type": "string",
@@ -1826,12 +2349,36 @@
                   "inplace"
                 ]
               },
+              "retryBackoffMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": "string"
               },
               "emits": {
-                "type": "string",
-                "description": "Message type this node emits downstream."
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                ]
               }
             }
           },
@@ -1849,22 +2396,75 @@
           "PropsPatch": {
             "type": "object",
             "additionalProperties": true,
-            "description": "Simulation settings. Unknown keys are kept.",
             "properties": {
+              "group": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "dlq": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "emits": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "filter": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
               "ratePerSec": {
                 "type": [
                   "number",
                   "null"
                 ],
                 "minimum": 0,
-                "description": "Sources: messages per second."
+                "maximum": 10000
               },
               "latencyMs": {
                 "type": [
                   "number",
                   "null"
                 ],
-                "minimum": 0
+                "minimum": 0,
+                "maximum": 600000
               },
               "concurrency": {
                 "type": [
@@ -1872,22 +2472,23 @@
                   "null"
                 ],
                 "minimum": 1,
-                "description": "Processors: messages handled at once per replica."
+                "maximum": 10000
               },
               "replicas": {
                 "type": [
                   "integer",
                   "null"
                 ],
-                "minimum": 1
+                "minimum": 1,
+                "maximum": 10000
               },
-              "partitions": {
+              "jitter": {
                 "type": [
-                  "integer",
+                  "number",
                   "null"
                 ],
-                "minimum": 1,
-                "description": "Topics/streams."
+                "minimum": 0,
+                "maximum": 1
               },
               "failureRate": {
                 "type": [
@@ -1896,13 +2497,6 @@
                 ],
                 "minimum": 0,
                 "maximum": 1
-              },
-              "maxDeliveryCount": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1
               },
               "retry": {
                 "type": [
@@ -1915,22 +2509,42 @@
                   null
                 ]
               },
+              "retryBackoffMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
               "messageType": {
                 "type": [
                   "string",
                   "null"
                 ]
-              },
-              "emits": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "description": "Message type this node emits downstream."
               }
             }
           }
         }
+      },
+      "annotations": {
+        "readOnlyHint": true
       }
     }
   }

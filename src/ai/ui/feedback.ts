@@ -74,6 +74,8 @@ export function shadowOverlay(panel: HTMLElement): () => void {
     if (!wrap) return stand.remove();
     if (stand.parentElement !== wrap) wrap.appendChild(stand);
     const w = wrap.getBoundingClientRect();
+    panel.style.right = `${Math.max(12, window.innerWidth - w.right + 12)}px`;
+    panel.style.maxWidth = `${Math.max(0, w.width - 24)}px`;
     const p = panel.getBoundingClientRect();
     Object.assign(stand.style, {
       left: `${p.left - w.left}px`,
@@ -85,6 +87,8 @@ export function shadowOverlay(panel: HTMLElement): () => void {
   update();
   const ro = new ResizeObserver(update);
   ro.observe(panel);
+  const wrap = canvasWrap();
+  if (wrap) ro.observe(wrap);
   window.addEventListener("resize", update);
   // The canvas remounts when another diagram opens: follow it.
   const timer = setInterval(update, 1000);

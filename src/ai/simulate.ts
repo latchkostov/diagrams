@@ -28,7 +28,6 @@ export function buildSimulation(diagram: DiagramFile, spec: SimulationSpec): Sim
       );
     id = matches[0].id;
   }
-  const durationMs = (spec.durationSec ?? 60) * 1000;
   const traffic = spec.traffic.map((t, i) => {
     const start = (t.startSec ?? 0) * 1000,
       duration = (t.durationSec ?? spec.durationSec ?? 60) * 1000;
@@ -88,7 +87,7 @@ export function buildSimulation(diagram: DiagramFile, spec: SimulationSpec): Sim
   const simulation: Simulation = {
     id,
     title: spec.title,
-    durationMs,
+    ...(spec.durationSec !== undefined ? { durationMs: spec.durationSec * 1000 } : {}),
     traffic,
     ...(timeline.length ? { timeline: timeline.sort((a, b) => a.atMs - b.atMs) } : {}),
     ...(spec.expectations

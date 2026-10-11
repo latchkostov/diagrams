@@ -1,8 +1,11 @@
 // One "Build with AI" turn: a parsed reply becomes the next diagram (or an error to show), plus what
 // changed. Pure, so the dialog, its tests and any later front-end share it.
 
-import type { DiagramFile } from "../../model/types";
-import { validateDiagram } from "../../interop/native";
+import type { DiagramFile, DiagramNode } from "../../model/types";
+import { migrate, validateDiagram } from "../../interop/native";
+import { DIAGRAM_FORMAT } from "../../model/types";
+import { checkBudget } from "../validation";
+import { diagramDiff, structuralText } from "../../model/diagramDiff";
 import { getStencil, FALLBACK_STENCIL } from "../../stencils/registry";
 import {
   applyOps,
@@ -21,12 +24,16 @@ export interface StencilChoice {
   /** What the model asked for ("Postgres writer"). */
   kind: string;
   stencil: StencilResolution;
+  /** Snapshot from this turn; a stale choice must never retarget a changed node. */
+  node?: DiagramNode;
+  stale?: boolean;
 }
 
 export type TurnPlan =
   | {
       ok: true;
       next: DiagramFile;
+      hasChanges: boolean;
       summary: string;
       /** Ids of nodes, connections, boundaries and annotations that were added or changed. */
       changed: string[];
@@ -38,12 +45,6 @@ export type TurnPlan =
     }
   | { ok: false; error: AiError };
 
-type Keyed = { id: string };
-
-function byId<T extends Keyed>(list: readonly T[] | undefined): Map<string, T> {
-  return new Map((list ?? []).map((x) => [x.id, x]));
-}
-
 export interface DiagramDiff {
   added: { nodes: number; edges: number; groups: number; annotations: number };
   removed: { nodes: number; edges: number; groups: number; annotations: number };
@@ -52,46 +53,22 @@ export interface DiagramDiff {
   changed: string[];
 }
 
-/** What differs between two diagrams, by id (positions of untouched nodes don't count). */
+/** Presentation projection; structural application decisions use the model's hasChanges. */
 export function diffDiagrams(before: DiagramFile, after: DiagramFile): DiagramDiff {
-  const diff: DiagramDiff = {
-    added: { nodes: 0, edges: 0, groups: 0, annotations: 0 },
-    removed: { nodes: 0, edges: 0, groups: 0, annotations: 0 },
-    updated: 0,
-    meta:
-      before.title !== after.title || before.description !== after.description || before.direction !== after.direction,
-    changed: [],
+  const d = diagramDiff(before, after);
+  const counts = (change: typeof d.added) => ({
+    nodes: change.nodes.length,
+    edges: change.edges.length,
+    groups: change.groups.length,
+    annotations: change.annotations.length,
+  });
+  return {
+    added: counts(d.added),
+    removed: counts(d.removed),
+    updated: d.updated.count,
+    meta: d.metaChanged,
+    changed: [...d.added.ids, ...d.updated.ids],
   };
-  const lists = ["nodes", "edges", "groups", "annotations"] as const;
-  for (const key of lists) {
-    const a = byId<Keyed>(before[key]);
-    const b = byId<Keyed>(after[key]);
-    for (const [id, item] of b) {
-      const old = a.get(id);
-      if (!old) {
-        diff.added[key]++;
-        diff.changed.push(id);
-      } else if (key !== "groups" && JSON.stringify(strip(old)) !== JSON.stringify(strip(item))) {
-        diff.updated++;
-        diff.changed.push(id);
-      } else if (key === "groups" && JSON.stringify(stripGroup(old)) !== JSON.stringify(stripGroup(item))) {
-        diff.updated++;
-        diff.changed.push(id);
-      }
-    }
-    for (const id of a.keys()) if (!b.has(id)) diff.removed[key]++;
-  }
-  return diff;
-}
-
-/** Moves alone (a re-layout) aren't a change worth reporting. */
-function strip(x: Keyed): unknown {
-  const { x: _x, y: _y, ...rest } = x as Keyed & Record<string, unknown>;
-  return rest;
-}
-function stripGroup(x: Keyed): unknown {
-  const { x: _x, y: _y, width: _w, height: _h, ...rest } = x as Keyed & Record<string, unknown>;
-  return rest;
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -138,6 +115,12 @@ const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFin
 export function fileToDiagram(
   file: Record<string, unknown>,
 ): { ok: true; diagram: DiagramFile; choices: StencilChoice[]; warnings: string[] } | { ok: false; error: string } {
+  try {
+    checkBudget(file);
+    file = migrate({ ...file, ...(!Object.hasOwn(file, "format") ? { format: DIAGRAM_FORMAT } : {}) });
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
   const choices: StencilChoice[] = [];
   let needsLayout = false;
   const nodes = Array.isArray(file.nodes) ? file.nodes : [];
@@ -176,19 +159,28 @@ export function fileToDiagram(
     : undefined;
   const result = validateDiagram({
     ...file,
-    format: "diagrams/v1",
     nodes: fixedNodes,
     edges,
     ...(groups ? { groups } : {}),
   });
   if (!result.ok) return { ok: false, error: result.error };
   let diagram = result.diagram;
+  try {
+    checkBudget(diagram);
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
   if (needsLayout || groups?.length)
     diagram = placeNew(
       diagram,
       diagram.nodes.map((n) => n.id),
       needsLayout ? "full" : "none",
     );
+  try {
+    checkBudget(diagram);
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
   return { ok: true, diagram, choices, warnings: result.warnings };
 }
 
@@ -212,9 +204,10 @@ export function planTurn(current: DiagramFile, reply: ParsedReply): TurnPlan {
     return {
       ok: true,
       next,
+      hasChanges: diagramDiff(current, next).hasChanges,
       summary: `Replaced the diagram: ${plural(next.nodes.length, "node")}, ${plural(next.edges.length, "connection")}`,
       changed: diff.changed,
-      choices: f.choices,
+      choices: f.choices.map((c) => ({ ...c, node: next.nodes.find((n) => n.id === c.nodeId) })),
       warnings: f.warnings,
       replaced: true,
     };
@@ -225,16 +218,31 @@ export function planTurn(current: DiagramFile, reply: ParsedReply): TurnPlan {
   return {
     ok: true,
     next: result.diagram,
-    summary: summarize(diff),
+    hasChanges: diagramDiff(current, result.diagram).hasChanges,
+    summary: result.summary,
     changed: diff.changed,
-    choices: choicesFrom(result.results, reply.ops),
+    choices: choicesFrom(result.results, reply.ops).map((c) => ({
+      ...c,
+      node: result.diagram.nodes.find((n) => n.id === c.nodeId),
+    })),
     warnings: result.warnings,
     replaced: false,
   };
 }
 
 /** One click on an alternative: the node takes that stencil (as its own undo step). */
-export function swapStencil(current: DiagramFile, nodeId: string, stencilId: string): TurnPlan {
+export function choiceIsCurrent(current: DiagramFile, choice: StencilChoice): boolean {
+  const node = current.nodes.find((n) => n.id === choice.nodeId);
+  return !!node && !!choice.node && structuralText(node) === structuralText(choice.node);
+}
+
+export function swapStencil(current: DiagramFile, nodeId: string, stencilId: string, expected?: DiagramNode): TurnPlan {
+  const node = current.nodes.find((n) => n.id === nodeId);
+  if (!node || (expected && structuralText(node) !== structuralText(expected)))
+    return {
+      ok: false,
+      error: { i: -1, error: "This stencil choice is stale: its node changed or was removed. Ask for a new turn." },
+    };
   return planTurn(current, { ok: true, kind: "ops", ops: [{ op: "update", target: nodeId, kind: stencilId }] });
 }
 

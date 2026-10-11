@@ -14,6 +14,8 @@ import type { EditorApi } from "../editor/types";
 
 export interface CanvasHost {
   editor: EditorApi;
+  localOnly?: boolean;
+  documentId?: string;
   /** The canvas is in live view. */
   live: boolean;
   /** Selects a node and centres the viewport on it. */

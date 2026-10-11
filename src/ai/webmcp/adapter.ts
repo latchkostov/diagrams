@@ -7,11 +7,8 @@
 // `navigator.modelContext` is the deprecated alias (Chrome 150 logs a warning); it's read only when
 // `document.modelContext` is missing.
 
-export interface ToolAnnotations {
-  readOnlyHint?: boolean;
-  untrustedContentHint?: boolean;
-  consequentialHint?: boolean;
-}
+import type { ToolAnnotations } from "../schemas";
+export type { ToolAnnotations } from "../schemas";
 
 /** What `execute` hands back to the agent. MCP-style content; switch the format here only. */
 export interface ToolResult {

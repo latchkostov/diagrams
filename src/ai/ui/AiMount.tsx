@@ -64,7 +64,7 @@ export function AiMount({
     <>
       {open && editable && (
         <Suspense fallback={null}>
-          <AiDialog onClose={() => setOpen(false)} />
+          <AiDialog key={canvas?.documentId} onClose={() => setOpen(false)} />
         </Suspense>
       )}
       {mcp && editorSeen && (

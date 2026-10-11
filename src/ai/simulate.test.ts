@@ -28,7 +28,7 @@ describe("buildSimulation", () => {
       shape: { kind: "constant", ratePerSec: 1000, fromMs: 0, durationMs: 60000 },
     });
     expect(sim.scale).toBe(20);
-    expect(sim.durationMs).toBe(60000);
+    expect(sim.durationMs).toBeUndefined();
     expect(d).toEqual(saved);
     expect(simulationProblem(sim)).toBeUndefined();
     expect(validateDiagram({ ...d, simulations: [sim] }).ok).toBe(true);

@@ -15,6 +15,24 @@ const original = (): DiagramFile => ({
 });
 
 describe("immediate AI document replacement", () => {
+  it("uses structural no-op detection without writing history for reordered JSON keys", () => {
+    const flow = toFlow(original()),
+      replace = vi.fn();
+    const rf = { getNodes: () => flow.nodes, getEdges: () => flow.edges } as ReactFlowInstance<
+      FlowNode,
+      DiagramFlowEdge
+    >;
+    const editor = createEditor(rf, { meta: flow.meta, history: { replace } } as unknown as EditorDeps);
+    const d = editor.api.getDiagram();
+    const reordered = {
+      edges: d.edges,
+      nodes: d.nodes.map((n) => ({ y: n.y, x: n.x, label: n.label, stencil: n.stencil, id: n.id })),
+      title: d.title,
+      format: d.format,
+    };
+    expect(editor.api.applyDiagram(reordered).hasChanges).toBe(false);
+    expect(replace).not.toHaveBeenCalled();
+  });
   it("replaces one snapshot, returns diff ids/counts, and round-trips all document kinds", () => {
     let flow = toFlow(original());
     const rf = { getNodes: () => flow.nodes, getEdges: () => flow.edges } as ReactFlowInstance<
