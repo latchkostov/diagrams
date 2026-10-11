@@ -103,6 +103,13 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   card** lists its hops; **Sequence diagram** turns the journey into one (Copy as Mermaid, SVG, PNG).
   The edge's **Highlight this path** is a different idea (a static path, no message), so it never
   says "trace".
+- **Build with AI…** (File menu, canvas right-click, Ctrl+K) opens the AI panel: **Describe what you want**,
+  **Copy prompt for your AI**, **Paste the reply**, **Apply** (one undo step per change; the toast says
+  "AI: +3 nodes, +2 connections" with **Undo**). A failed reply shows **Nothing was applied**, the elements
+  it could mean (pick one to apply) and **Copy fix-up prompt**. A stencil the app wasn't sure of says
+  **not sure** (or **a guess**) with its alternatives as one-click chips.
+- **Dictate** is the mic in the describe box (Ctrl+Shift+M): **Listening…** while on, interim words shown
+  lighter; **Stop dictating** to end. It's hidden where the browser has no speech recognition.
 - Esc backs out one level: menu, dialog, selection, trace, highlighted path, presentation, then live view.
 
 ## Process

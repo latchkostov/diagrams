@@ -7,3 +7,4 @@ src/examples/private/
 coverage/
 *.local
 .env.local
+.vitest/

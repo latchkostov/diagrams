@@ -51,6 +51,17 @@ export function commit<T>(h: History<T>, entry: HistoryEntry<T>, cap = HISTORY_C
   return { entries: overflow ? entries.slice(overflow) : entries, index: entries.length - 1 - overflow };
 }
 
+/** Pending edits keep their normal tag; a document replacement starts and ends a sequence. */
+export function commitReplacement<T>(
+  h: History<T>,
+  pending: HistoryEntry<T>,
+  replacement: HistoryEntry<T>,
+): History<T> {
+  const flushed = commit(h, pending);
+  const committed = commit({ ...flushed, coalescingBroken: true }, replacement);
+  return { ...committed, coalescingBroken: true };
+}
+
 export function undo<T>(h: History<T>): History<T> {
   return canUndo(h) ? { ...h, index: h.index - 1, coalescingBroken: true } : h;
 }

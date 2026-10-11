@@ -13,13 +13,16 @@ import type { AnnotationKind } from "../model/types";
 export { placeNextTo };
 
 /** Called by the canvas (inside its ReactFlowProvider) to publish itself to the palette. */
-export function useCanvasHost(editor: EditorApi, opts: { live: boolean; enabled: boolean }) {
+export function useCanvasHost(
+  editor: EditorApi,
+  opts: { live: boolean; enabled: boolean; localOnly?: boolean; documentId?: string; revision?: unknown },
+) {
   const rf = useReactFlow();
   const rfRef = useRef(rf);
   useLayoutEffect(() => {
     rfRef.current = rf;
   });
-  const { live, enabled } = opts;
+  const { live, enabled, localOnly, documentId, revision } = opts;
   useEffect(() => {
     if (!enabled) return;
     const boxOf = (id: string): Box | null => {
@@ -35,6 +38,8 @@ export function useCanvasHost(editor: EditorApi, opts: { live: boolean; enabled:
     return publish("canvas", {
       editor,
       live,
+      localOnly,
+      documentId,
       focusNode(id) {
         const box = boxOf(id);
         editor.select({ nodeIds: [id] });
@@ -70,5 +75,5 @@ export function useCanvasHost(editor: EditorApi, opts: { live: boolean; enabled:
         return id;
       },
     });
-  }, [editor, live, enabled]);
+  }, [editor, live, enabled, localOnly, documentId, revision]);
 }

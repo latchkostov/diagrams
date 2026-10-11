@@ -8,8 +8,9 @@ import react from "@vitejs/plugin-react";
 const E2E_BUILD = process.env.VITE_E2E === "1";
 
 /** Fails a production build if anything from src/examples/private (local-only work diagrams) ships. */
-function noPrivateExamples(): Plugin {
-  const isPrivate = (id: string) => /[/\\]examples[/\\]private[/\\]/.test(id);
+export function noPrivateExamples(): Plugin {
+  const isPrivate = (id: string) =>
+    /[/\\]examples[/\\]private[/\\]/.test(id) || /[/\\]localOnly\.dev\.ts(?:\?|$)/.test(id);
   return {
     name: "no-private-examples",
     apply: "build",
@@ -17,8 +18,7 @@ function noPrivateExamples(): Plugin {
       for (const out of Object.values(bundle)) {
         if (out.type !== "chunk") continue;
         const leaked = Object.entries(out.modules).filter(([id, m]) => isPrivate(id) && m.renderedLength > 0);
-        if (leaked.length)
-          this.error(`private example(s) bundled into ${out.fileName}: ${leaked.map(([id]) => id).join(", ")}`);
+        if (leaked.length) this.error(`Local-only example or fingerprint data bundled into ${out.fileName}`);
       }
     },
   };

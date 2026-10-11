@@ -46,6 +46,7 @@ import {
   getDiagramIdentity,
   getOriginal,
   isLibrarySlug,
+  isLocalOnlySource,
   UNTITLED,
   writeAutosave,
 } from "../lib/diagramIO";
@@ -279,7 +280,14 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
 
   useCanvasShortcuts(editor, { enabled: !shortcutsOpen && !readOnly, onEscape: () => setMenu(null), live });
   // The command palette (Ctrl/Cmd+K) acts on this canvas while it's mounted and editable.
-  useCanvasHost(editor, { live, enabled: !readOnly });
+  const hostRevision = useMemo(() => ({ nodes, edges, meta }), [nodes, edges, meta]);
+  useCanvasHost(editor, {
+    live,
+    enabled: !readOnly,
+    localOnly: isLocalOnlySource(slug, fromFlow(meta, nodes, edges)),
+    documentId: getDiagramIdentity(slug),
+    revision: hostRevision,
+  });
 
   // ---------------------------------------------------------------- autosave
   // Debounced while editing, and flushed whenever the canvas could go away before the timer fires:

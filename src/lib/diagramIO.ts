@@ -4,6 +4,7 @@ import { LIMITS, parseNative, preserveUnknown, serializeNative, validateDiagram 
 import { notify } from "../interop/ui/toast";
 import { safeStorage } from "./storage";
 import { diagramThumb, isThumb, type Thumb } from "./thumbnail";
+import { isLocalOnly } from "./localOnly";
 
 // Where diagrams live in the browser.
 //
@@ -381,6 +382,8 @@ interface StoredEntry {
   updatedAt: number;
   nodes: number;
   thumb?: Thumb;
+  /** Sticky provenance, kept in the library index and never in exported diagram JSON. */
+  localOnly?: boolean;
 }
 
 export interface LibraryEntry extends StoredEntry {
@@ -411,13 +414,14 @@ const isBlank = (d: DiagramFile) =>
   !d.description &&
   (d.title || UNTITLED) === UNTITLED;
 
-const summarize = (slug: string, d: DiagramFile, at: number, createdAt = at): StoredEntry => ({
+const summarize = (slug: string, d: DiagramFile, at: number, createdAt = at, localOnly = false): StoredEntry => ({
   slug,
   title: d.title.trim() || UNTITLED,
   createdAt,
   updatedAt: at,
   nodes: d.nodes.length,
   thumb: diagramThumb(d),
+  ...(isLocalOnly({ localOnly, diagram: d }) ? { localOnly: true } : {}),
 });
 
 function validEntry(v: unknown): v is StoredEntry {
@@ -515,13 +519,24 @@ export function hasLibraryEntry(slug: string): boolean {
   return readIndex().some((e) => e.slug === slug);
 }
 
+/** Resolve draft promotion as well as example/library provenance. Content is checked by isLocalOnly. */
+export function isLocalOnlySource(slug: string, diagram?: DiagramFile): boolean {
+  const resolved = resolveSlug(slug);
+  return isLocalOnly({
+    localOnly:
+      examples.some((e) => e.slug === resolved && e.localOnly) ||
+      readIndex().some((e) => e.slug === resolved && e.localOnly),
+    diagram,
+  });
+}
+
 /** Keeps an entry's title, node count, thumbnail and time in step with its latest content. Best effort. */
 function touchEntry(slug: string, d: DiagramFile | undefined) {
   if (!d || isDeleted(slug)) return;
   const entries = readIndex();
   const i = entries.findIndex((e) => e.slug === slug);
   const now = Date.now();
-  const next = summarize(slug, d, now, i >= 0 ? entries[i].createdAt : now);
+  const next = summarize(slug, d, now, i >= 0 ? entries[i].createdAt : now, entries[i]?.localOnly);
   // A missing entry is re-listed only while its document exists (never a deleted one).
   if (i < 0 && safeStorage.getItem(slotKey(slug)!) === null) return;
   if (writeEntry(next)) changed();
@@ -531,14 +546,21 @@ function touchEntry(slug: string, d: DiagramFile | undefined) {
  * Adds a diagram to Your diagrams and returns its slug. Throws a readable error when the diagram is
  * invalid or storage is full (nothing is left half-written). `target` binds where Save writes.
  */
-export function createLibraryDiagram(d: DiagramFile, target?: SaveTarget, sessionId?: string): string {
+export function createLibraryDiagram(
+  d: DiagramFile,
+  target?: SaveTarget,
+  sessionId?: string,
+  provenance: { localOnly?: boolean; sourceSlug?: string } = {},
+): string {
   const entries = readIndex();
   let slug: string;
   do slug = LIBRARY_SLUG_PREFIX + randomHex(2).slice(0, 12);
   while (entries.some((e) => e.slug === slug));
   replaceDocument(slug, d, target, sessionId);
   const r = validateDiagram(d);
-  if (!writeEntry(summarize(slug, r.ok ? r.diagram : d, Date.now()))) {
+  const localOnly =
+    provenance.localOnly || (provenance.sourceSlug !== undefined && isLocalOnlySource(provenance.sourceSlug, d));
+  if (!writeEntry(summarize(slug, r.ok ? r.diagram : d, Date.now(), undefined, localOnly))) {
     safeStorage.removeItem(slotKey(slug)!);
     memoryTargets.delete(slug);
     throw new Error(STORAGE_FULL);
@@ -562,7 +584,9 @@ export function duplicateLibraryDiagram(slug: string): string {
   const current = getCurrent(slug);
   if (!current) throw new Error("That diagram couldn't be read.");
   const taken = readIndex().map((e) => e.title);
-  return createLibraryDiagram({ ...current, title: copyTitle(current.title, taken) });
+  return createLibraryDiagram({ ...current, title: copyTitle(current.title, taken) }, undefined, undefined, {
+    sourceSlug: slug,
+  });
 }
 
 /** Renames an entry that isn't open (an open diagram is renamed through its canvas, as an undoable edit). */
@@ -592,7 +616,10 @@ export function renameLibraryDiagram(slug: string, title: string): void {
             },
       ),
     ]);
-  writes.push([entryKey(slug), JSON.stringify(summarize(slug, current, Date.now(), entry?.createdAt))]);
+  writes.push([
+    entryKey(slug),
+    JSON.stringify(summarize(slug, current, Date.now(), entry?.createdAt, entry?.localOnly)),
+  ]);
   commitWrites(writes);
   changed();
 }
@@ -606,7 +633,8 @@ export function deleteLibraryDiagram(slug: string): () => boolean {
   const entries = readIndex();
   const indexed = entries.find((e) => e.slug === slug);
   const current = getCurrent(slug);
-  const entry = indexed && current ? summarize(slug, current, Date.now(), indexed.createdAt) : indexed;
+  const entry =
+    indexed && current ? summarize(slug, current, Date.now(), indexed.createdAt, indexed.localOnly) : indexed;
   const memory = memoryTargets.get(slug);
   // The index goes first: if it can't be written, nothing is deleted.
   if (!safeStorage.setItem(deletedKey(slug), JSON.stringify({ slug, deleted: true }))) throw new Error(STORAGE_FULL);

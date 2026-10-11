@@ -45,6 +45,7 @@ import { notify } from "./interop/ui/toast";
 import { Toaster } from "./interop/ui/Toaster";
 import { EmbedView } from "./interop/embed/EmbedView";
 import { CommandPalette } from "./palette/CommandPalette";
+import { AiMount } from "./ai/ui/AiMount";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -163,9 +164,9 @@ function MainApp() {
 
   /** Open, Import, Paste, the Lab and "Save a copy": a new entry in Your diagrams, never a replacement. */
   const openDiagram = useCallback(
-    (d: DiagramFile, target?: SaveTarget) => {
+    (d: DiagramFile, target?: SaveTarget, sourceSlug?: string) => {
       // Validates and stores first; on failure the current diagram stays (and the caller reports why).
-      const created = createLibraryDiagram(d, target);
+      const created = createLibraryDiagram(d, target, undefined, { sourceSlug });
       if (slug === SHARED_SLUG) clearShared();
       setUrl({ view: "canvas", example: created, present: false });
     },
@@ -383,6 +384,7 @@ function MainApp() {
         currentSlug={slug}
         onOpenDiagram={(example) => setUrl({ view: "canvas", example, present: false })}
       />
+      <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />
     </div>
   );
 }

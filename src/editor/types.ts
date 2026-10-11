@@ -11,6 +11,8 @@ import type { EditTarget } from "../canvas/DiagramContext";
 import type { AlignMode, Axis } from "./arrange";
 import type { GroupTone } from "../canvas/types";
 import type { ClipboardPayload } from "./clipboard";
+import type { DiagramDiff } from "./diagramDiff";
+export type { DiagramDiff, ChangeSet } from "./diagramDiff";
 
 export type XY = { x: number; y: number };
 /** A box in flow coordinates. */
@@ -64,6 +66,8 @@ export interface EditorApi {
   clearSelection(): void;
 
   // ---- create / update ----
+  /** One replacement and one immediate undo step, isolated from user edits. */
+  applyDiagram(next: DiagramFile, opts?: EditOptions): DiagramDiff;
   /** Adds a node centred on `at` (flow coords; default = view centre). Returns its id. */
   addNode(stencilId: string, at?: XY): string;
   updateNode(id: string, patch: Partial<Omit<DiagramNode, "id">>, opts?: EditOptions): void;

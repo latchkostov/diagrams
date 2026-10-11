@@ -276,6 +276,8 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
           <button
             className="insp-stencil"
             data-testid="inspector-field-stencil"
+            aria-label={`Stencil: ${stencil.label} (${stencil.vendor}). Change stencil`}
+            aria-haspopup="menu"
             style={{ "--accent": stencil.accent } as CSSProperties}
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();

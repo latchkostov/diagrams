@@ -1,5 +1,6 @@
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
+import { flushSync } from "react-dom";
 import {
   annotationToFlow,
   edgeToFlow,
@@ -7,6 +8,7 @@ import {
   groupAt,
   groupToFlow,
   nodeToFlow,
+  toFlow,
   type DiagramMeta,
 } from "../canvas/convert";
 import { annotationIdBase, defaultSize, defaultText, isConnectable, textSizePx } from "../canvas/annotations";
@@ -40,6 +42,8 @@ import { stencilIdBase, uniqueId } from "./ids";
 import { layeredLayout } from "./layout";
 import type { HistoryApi } from "./useHistory";
 import type { EditorApi, EditorPrefs, Selection, XY } from "./types";
+import { diagramDiff } from "./diagramDiff";
+import { validateDiagram } from "../interop/native";
 
 // The EditorApi implementation over React Flow state. Built once per canvas; reads the latest
 // committed props so menus / shortcuts never see stale state.
@@ -189,6 +193,15 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
 
   const api: EditorApi = {
     getDiagram: diagram,
+    applyDiagram: (next, opts) => {
+      const checked = validateDiagram(next);
+      if (!checked.ok) throw new Error(checked.error);
+      const before = api.getDiagram();
+      const diff = diagramDiff(before, checked.diagram);
+      if (!diff.hasChanges) return diff;
+      flushSync(() => deps().history.replace(toFlow(checked.diagram), opts?.merge, toFlow(before)));
+      return diff;
+    },
     getNode: (id) => diagram().nodes.find((n) => n.id === id),
     getEdge: (id) => diagram().edges.find((e) => e.id === id),
     getGroup: (id) => diagram().groups?.find((g) => g.id === id),

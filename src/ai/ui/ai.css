@@ -1,0 +1,492 @@
+/* "Build with AI": a floating panel over the right of the canvas (like the live side panels), so the
+   diagram stays in view while you iterate. Lazy-loaded with the dialog. */
+
+.ai-panel {
+  position: fixed;
+  top: calc(var(--topbar-h) + 12px);
+  right: 12px;
+  z-index: 60;
+  width: min(408px, calc(100vw - 24px));
+  max-height: calc(100vh - var(--topbar-h) - 24px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface) 97%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-3);
+  color: var(--text);
+  font-size: 13px;
+  animation: ai-in var(--dur-3) var(--ease-out);
+}
+
+[data-theme="dark"] .ai-panel {
+  background: color-mix(in oklab, var(--surface-2) 97%, transparent);
+}
+
+@keyframes ai-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+.ai-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px 12px 10px 16px;
+}
+
+.ai-head-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ai-head-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-head-titles h2 {
+  margin: 1px 0 1px;
+  font-size: 14.5px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.ai-head-titles p {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.ai-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 16px 14px;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+/* ---------- steps ---------- */
+
+.ai-step {
+  display: grid;
+  gap: 7px;
+}
+
+.ai-step-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ai-step-num {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 10.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-textarea {
+  display: block;
+  font-family: var(--font-ui);
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 76px;
+  max-height: 40vh;
+}
+
+.ai-reply {
+  min-height: 92px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.ai-request {
+  position: relative;
+}
+
+.ai-request .ai-textarea {
+  padding-right: 44px;
+}
+
+.ai-request.is-listening .ai-textarea {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ---------- dictation ---------- */
+
+.ai-mic {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-3);
+  transition:
+    background var(--dur-1),
+    color var(--dur-1),
+    box-shadow var(--dur-2);
+}
+
+.ai-mic:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.ai-mic:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ai-mic.is-on {
+  background: var(--accent);
+  color: var(--accent-ink);
+  animation: ai-pulse 1.6s ease-out infinite;
+}
+
+/* Louder while sound is coming in: the "level". */
+.ai-mic.is-on.is-hearing {
+  animation-duration: 0.9s;
+}
+
+@keyframes ai-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 9px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-mic.is-on {
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .ai-mic.is-on.is-hearing {
+    box-shadow: 0 0 0 5px var(--accent-soft);
+  }
+}
+
+.ai-interim {
+  margin: 0;
+  min-height: 18px;
+  color: var(--text-3);
+  font-style: italic;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.ai-listening {
+  font-style: normal;
+  color: var(--accent);
+  font-weight: 560;
+}
+
+.ai-note {
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ai-note.is-error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ---------- copy, reply ---------- */
+
+.ai-copy-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.ai-hint {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.ai-reply-status {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.ai-reply-status.is-ok {
+  color: var(--success);
+  font-weight: 560;
+}
+
+/* ---------- failure ---------- */
+
+.ai-failure {
+  display: grid;
+  gap: 9px;
+  padding: 11px 12px 12px;
+  border-radius: 11px;
+  border: 1px solid color-mix(in oklab, var(--danger) 28%, transparent);
+  background: var(--danger-soft);
+}
+
+.ai-failure-title {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.ai-failure-title svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--danger);
+}
+
+.ai-failure-hint,
+.ai-candidates-label {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.ai-candidates {
+  display: grid;
+  gap: 6px;
+}
+
+.ai-candidates ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.ai-candidate {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+button.ai-candidate:hover {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface));
+}
+
+button.ai-candidate:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ai-candidate-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-candidate code {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* ---------- history ---------- */
+
+.ai-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.ai-turn {
+  display: grid;
+  gap: 5px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: var(--surface-3);
+}
+
+.ai-turn-request {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ai-turn-summary {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ai-turn-warnings {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--warning);
+  font-size: 11.5px;
+}
+
+.ai-history-end {
+  height: 0;
+  padding: 0;
+  background: none;
+}
+
+.ai-choice {
+  display: grid;
+  gap: 5px;
+  padding-top: 4px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.ai-choice-pick {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ai-choice-pick strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ai-confidence {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 17px;
+}
+
+.ai-choice-alts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-left: 23px;
+}
+
+.ai-alt {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 550;
+}
+
+.ai-alt:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ai-alt:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------- footer ---------- */
+
+.ai-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px 12px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.ai-foot-hint {
+  flex: 1;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+@media (max-width: 640px) {
+  .ai-panel {
+    top: auto;
+    bottom: 12px;
+    max-height: 70vh;
+  }
+}
+
+.ai-tile {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  padding: 2px;
+  border-radius: 5px;
+  background: color-mix(in oklab, var(--tile-accent, var(--accent)) 11%, var(--tile-base));
+}
+
+/* Status colour remains readable on the panel's light backgrounds. */
+[data-theme="light"] .ai-panel {
+  --success: #126640;
+  --warning: #865000;
+}
+.ai-alt:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

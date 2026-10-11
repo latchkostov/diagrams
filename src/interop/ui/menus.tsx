@@ -4,6 +4,8 @@ import { formatAgo } from "../../lib/time";
 import type { Binding, Interop } from "../useInterop";
 import { Menu, type MenuEntry } from "./Menu";
 import { Glyph } from "./glyphs";
+import { Icon } from "../../components/Icon";
+import { openAiDialog } from "../../ai/ui/events";
 
 type Api = Omit<Interop, "layer">;
 
@@ -115,6 +117,14 @@ export function FileMenu({
     if (!canvas) return out;
 
     out.push(
+      {
+        type: "item",
+        testId: "file-build-with-ai",
+        icon: <Icon name="ai" size={15} />,
+        title: "Build with AI…",
+        desc: "Describe it; ChatGPT, Claude or Gemini drafts it",
+        onSelect: openAiDialog,
+      },
       { type: "separator" },
       {
         type: "item",

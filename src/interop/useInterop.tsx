@@ -69,7 +69,7 @@ interface Options {
   slug: string;
   canvas: RefObject<CanvasHandle | null>;
   /** Adds the diagram to Your diagrams (bound to `target` for Save) and shows it. Throws if it can't be kept. */
-  openDiagram: (d: DiagramFile, target?: SaveTarget) => void;
+  openDiagram: (d: DiagramFile, target?: SaveTarget, sourceSlug?: string) => void;
   /** Shows a diagram from a share link in the shared slot, apart from the user's own. */
   openShared: (d: DiagramFile) => void;
   /** Public examples can be embedded by name. */
@@ -471,7 +471,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   const keepSharedCopy = () =>
     attempt("keep a copy", () => {
       const d = current();
-      openDiagram(d);
+      openDiagram(d, undefined, slug);
       toast.success(`Saved a copy of “${d.title}” to Your diagrams.`);
     });
 

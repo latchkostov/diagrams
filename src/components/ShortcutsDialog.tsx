@@ -22,6 +22,13 @@ const LIVE: [string, string][] = [
   ["Esc", "Leave presentation, then live view"],
 ];
 
+/** Keys inside the "Build with AI" panel (handled there). */
+const AI: [string, string][] = [
+  ["Mod+Shift+M", "Dictate, or stop dictating"],
+  ["Mod+Enter", "Apply the pasted reply"],
+  ["Esc", "Stop dictating, then close"],
+];
+
 function displayKeys(s: Shortcut): string[] {
   if (s.id === "nudge") return ["← ↑ → ↓"];
   if (s.id === "nudge-far") return [`${formatCombo("Shift")} ← ↑ → ↓`];
@@ -128,6 +135,17 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
                 <span>{v}</span>
                 <span className="sc-keys">
                   <kbd>{k}</kbd>
+                </span>
+              </div>
+            ))}
+          </section>
+          <section>
+            <h3>Build with AI</h3>
+            {AI.map(([k, v]) => (
+              <div key={k} className="sc-row">
+                <span>{v}</span>
+                <span className="sc-keys">
+                  <kbd>{formatCombo(k)}</kbd>
                 </span>
               </div>
             ))}
