@@ -95,3 +95,21 @@ All interactive elements get `data-testid`. Tests: `pnpm test` (vitest, `src/**/
 | Design review | `src/gallery/**`, `src/styles/gallery.css`, `src/canvas/Palette.tsx`, `src/styles/tokens.css`, `src/styles/app.css`, `docs/DESIGN-REVIEW.md`; palette rules in `canvas.css` |
 Shared-file rule: `CanvasView.tsx` and `canvas.css` may be touched by two lanes. Make small, isolated
 edits, re-read before editing, and never reformat or reorder code you didn't write.
+
+
+## Phase 4 (queued): Inputs & capacity (real-world what-if)
+Owner ask: "here's my architecture, here's how many Kafka messages per second, how many APIs…"
+customizable but not too granular.
+- **Real units, sampled dots:** `Simulation.scale` (1 dot = N messages). Users enter real rates; counters,
+  lag and throughput display real numbers; the engine simulates rate ÷ scale. Auto-pick a scale so
+  ≤ ~60 dots/s are drawn.
+- **Human knobs:** rate per entry point, `replicas` per service (× concurrency), latency (+ `jitter`),
+  failure %, partitions per topic. Global **Traffic ×** and **Capacity ×** sliders (`Simulation.multipliers`).
+- **Kafka truth:** consumers per group beyond partitions sit idle; badge "3/6 replicas idle".
+- **Bottleneck analysis (no run needed):** analytic max throughput per node
+  (replicas × concurrency ÷ latency, capped by partitions; brokers by partitions × consumer rate),
+  utilization = offered ÷ capacity propagated from entry rates through the graph (fan-out copies,
+  queue splits, filters), heat overlay + "bottleneck" callout + suggested fix.
+- **One "Inputs & capacity" panel**: auto-generated, grouped (Entry points / Services / Topics & queues),
+  sliders with real units, saved into the simulation (`setup.props`, `multipliers`, `scale`).
+- UX gate after.

@@ -87,8 +87,13 @@ export interface NodeSimProps {
   ratePerSec?: number;
   /** Processors / gateways / stores: processing time per message in ms. Defaults by role. */
   latencyMs?: number;
-  /** Processors: parallel messages. Default 4. */
+  /** Processors: parallel messages per replica. Default 4. */
   concurrency?: number;
+  /** Processors: instances (pods). Effective parallelism = replicas × concurrency. Behind a topic or
+   *  stream, at most `partitions` replicas per consumer group do work; the rest are idle. Default 1. */
+  replicas?: number;
+  /** 0..1 random spread applied to latencyMs (0.3 ⇒ ±30%). Default 0.2. */
+  jitter?: number;
   /** Processors: probability 0..1 that processing a message fails. Default 0. */
   failureRate?: number;
   /** Brokers (topic/queue/stream): deliveries before dead-lettering. Default 3. */

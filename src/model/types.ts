@@ -68,6 +68,11 @@ export interface Simulation {
   description?: string;
   /** PRNG seed so a simulation replays identically. */
   seed?: number;
+  /** Real messages represented by each simulated message ("1 dot = N"). Rates, counters and throughput
+   *  are entered and shown in real units; the engine simulates rate ÷ scale. Default 1. */
+  scale?: number;
+  /** Global what-if multipliers: traffic rates × traffic, replicas × capacity. Default 1. */
+  multipliers?: { traffic?: number; capacity?: number };
   /** Auto-stop after this many ms. Default: when traffic and timeline are done and the system drains. */
   durationMs?: number;
   /** Node status / prop overrides applied before t=0 (e.g. a consumer already slow). */
