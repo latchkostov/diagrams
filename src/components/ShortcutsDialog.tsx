@@ -48,15 +48,14 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
           ),
         ).filter((el) => !el.hasAttribute("disabled") && !el.hidden);
-        const first = controls[0] ?? panelElement;
-        const last = controls.at(-1) ?? panelElement;
-        if (e.shiftKey && (document.activeElement === first || document.activeElement === panelElement)) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && (document.activeElement === last || document.activeElement === panelElement)) {
-          e.preventDefault();
-          first.focus();
-        }
+        // Move between the controls ourselves: the scrolling body is not a stop.
+        e.preventDefault();
+        if (!controls.length) return panelElement.focus();
+        const i = controls.indexOf(document.activeElement as HTMLElement);
+        const next = e.shiftKey
+          ? controls[i <= 0 ? controls.length - 1 : i - 1]
+          : controls[i < 0 || i === controls.length - 1 ? 0 : i + 1];
+        next.focus();
       }
       if (e.key === "Escape" || e.key === "?") {
         e.preventDefault();
@@ -145,6 +144,12 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             ))}
           </section>
         </div>
+        <footer className="dlg-foot">
+          Diagrams is free and open source, and your diagrams stay in your browser.{" "}
+          <a href="privacy.html" target="_blank" rel="noopener" data-testid="privacy-link">
+            Privacy
+          </a>
+        </footer>
       </div>
     </div>,
     document.body,

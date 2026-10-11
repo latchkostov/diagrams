@@ -1564,6 +1564,18 @@ select.insp-input {
   padding: 6px 18px 18px;
 }
 
+.dlg-foot {
+  padding: 10px 18px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.dlg-foot a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .sc-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

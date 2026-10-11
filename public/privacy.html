@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Privacy policy for Diagrams (livediagrams.dev)." />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>Privacy · Diagrams</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --text: #1f2937;
+        --muted: #4b5563;
+        --bg: #ffffff;
+        --line: #e5e7eb;
+        --accent: #2563eb;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --text: #e5e7eb;
+          --muted: #9ca3af;
+          --bg: #0f172a;
+          --line: #1f2937;
+          --accent: #60a5fa;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 48px 24px 64px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 17px;
+        margin: 32px 0 6px;
+      }
+      p,
+      li {
+        color: var(--muted);
+      }
+      .updated {
+        margin-top: 0;
+      }
+      a {
+        color: var(--accent);
+      }
+      code {
+        font-size: 13px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 8px 8px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      td {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 data-testid="privacy-title">Privacy</h1>
+      <p class="updated">Diagrams at livediagrams.dev · last updated 11 October 2026</p>
+
+      <p>
+        Diagrams is a free, open-source tool that runs entirely in your browser. There is no Diagrams server, no
+        account and no database. The short version: your diagrams stay in your browser unless you choose to save
+        them somewhere else.
+      </p>
+
+      <h2>Your diagrams</h2>
+      <ul>
+        <li>
+          Diagrams you make or open are kept in your browser's local storage on your device. They're never uploaded
+          to us. Clearing the site's data in your browser deletes them.
+        </li>
+        <li>
+          <strong>Save</strong> and <strong>Open</strong> use files on your device, which only your browser touches.
+        </li>
+        <li>
+          <strong>Share links</strong> carry the diagram inside the link, after the <code>#</code>. Browsers never send
+          that part to a server, so the diagram travels only to whoever you send the link to.
+        </li>
+      </ul>
+
+      <h2>No analytics, no tracking</h2>
+      <p>
+        Diagrams has no analytics, no tracking pixels, no ads and no cookies of its own. Fonts and icons are served
+        from this site, not from a third party.
+      </p>
+      <p>
+        The site is static files hosted on <a href="https://vercel.com/legal/privacy-policy">Vercel</a>. Like any
+        web host, Vercel handles the requests your browser makes for those files (including your IP address) to
+        deliver and protect the site. Diagrams doesn't receive or keep those logs for any other purpose.
+      </p>
+
+      <h2>Cloud storage (only if you choose it)</h2>
+      <p>
+        Where the File menu offers Google Drive, OneDrive or Dropbox, you can save to and open from your own
+        account there. Nothing is contacted until you pick one. Then:
+      </p>
+      <ul>
+        <li>You sign in on the provider's own page, in a pop-up. Diagrams never sees your password.</li>
+        <li>
+          Your browser talks to the provider directly. Your files and the access token never pass through any
+          Diagrams server (there isn't one).
+        </li>
+        <li>
+          The access token is kept only in the open tab's memory and is gone when you close or reload it. Diagrams
+          remembers which file a diagram was saved to (its id and name, in your browser), so Save goes back there.
+        </li>
+        <li>Diagrams asks for the smallest access each provider offers:</li>
+      </ul>
+      <table>
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th>Access requested</th>
+            <th>What that means</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Google Drive</td>
+            <td><code>drive.file</code></td>
+            <td>Only files you pick in Google's file picker or that Diagrams created. Nothing else in your Drive.</td>
+          </tr>
+          <tr>
+            <td>OneDrive</td>
+            <td><code>Files.ReadWrite.AppFolder</code>, <code>offline_access</code></td>
+            <td>
+              Only Diagrams' own folder (<em>Apps › Diagrams</em>) in your OneDrive. <code>offline_access</code> lets
+              the open tab renew its sign-in for up to a day without asking again.
+            </td>
+          </tr>
+          <tr>
+            <td>Dropbox</td>
+            <td>
+              App folder: <code>files.metadata.read</code>, <code>files.content.read</code>,
+              <code>files.content.write</code>
+            </td>
+            <td>Only Diagrams' own folder (<em>Apps › Diagrams</em>) in your Dropbox.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Opening the File menu where Google Drive is offered loads Google's sign-in and picker scripts from Google, so
+        a click can open them straight away. When no provider is offered, nothing is loaded from any of them.
+      </p>
+      <p>
+        You can remove Diagrams' access at any time: Google (<a href="https://myaccount.google.com/permissions"
+          >myaccount.google.com/permissions</a
+        >), Microsoft (<a href="https://account.live.com/consent/Manage">account.live.com/consent/Manage</a>, or
+        <a href="https://myapps.microsoft.com">myapps.microsoft.com</a> for work accounts) and Dropbox (Settings →
+        Connected apps). Files Diagrams saved stay in your account until you delete them.
+      </p>
+
+      <h2>Changes and contact</h2>
+      <p>
+        Any change to this page shows in the site's public source code. Questions:
+        <a href="https://github.com/latchkostov/diagrams/issues">open an issue on GitHub</a>.
+      </p>
+      <p><a href="./">← Back to Diagrams</a></p>
+    </main>
+  </body>
+</html>

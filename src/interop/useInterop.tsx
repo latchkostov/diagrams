@@ -1,4 +1,5 @@
 import {
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -13,6 +14,7 @@ import type { CanvasHandle } from "../canvas/CanvasView";
 import type { View } from "../lib/urlState";
 import {
   bindSaveTarget,
+  DEVICE_PROVIDER,
   getDiagramIdentity,
   getSaveTarget,
   getOriginal,
@@ -35,28 +37,31 @@ import {
 } from "./share";
 import { diagramToDrawio } from "./drawio/write";
 import { diagramToMermaid } from "./mermaid/write";
-import {
-  downloadDataUrl,
-  downloadText,
-  fsAccessSupported,
-  openWithPicker,
-  saveWithPicker,
-  slugify,
-  writeHandle,
-  type FileHandle,
-} from "./files";
-import { driveEnabled, NATIVE_MIME } from "./gdrive/config";
+import { downloadDataUrl, downloadText, fsAccessSupported, slugify, type FileHandle } from "./files";
+import { deviceProvider } from "./storage/device";
+import { CLOUD_PROVIDERS, DEVICE as DEVICE_INFO, providerInfo, type ProviderInfo } from "./storage/registry";
+import { StorageError, type OpenContext, type StorageEntry, type StorageProvider } from "./storage/types";
 import { toast } from "./ui/toast";
 import { copyText } from "./ui/copyText";
 import { EmbedDialog, ImageDialog, OpenLinkDialog, PagesDialog, PasteDialog, ShareDialog } from "./ui/dialogs";
 import { DropOverlay } from "./ui/DropOverlay";
 
+import { StorageFilesDialog } from "./ui/storageDialogLazy";
+
 // The import / export controller: every way a diagram enters or leaves the app goes through here
 // (top-bar menus, the canvas context menu, keyboard shortcuts, drag-and-drop, share links).
+// Files move through storage providers (./storage): This device always, cloud ones when configured.
 
+/** Where Save writes the open diagram (shown in the File menu and the "Saved to" status). */
 export interface Binding {
-  kind: "device" | "drive";
+  providerId: string;
+  /** The provider's name ("OneDrive") and its mid-sentence form ("this device"). */
+  label: string;
+  inSentence: string;
+  /** The file's name. */
   name: string;
+  /** When Save last wrote it; missing for a file that was only opened. */
+  savedAt?: number;
 }
 
 interface Options {
@@ -91,13 +96,19 @@ type DialogState =
       pages: { name: string; index: number }[];
       pick: (i: number) => ImportOutcome;
       source: Source;
+    }
+  | {
+      kind: "storage";
+      info: ProviderInfo;
+      provider: StorageProvider;
+      load: () => Promise<StorageEntry[]>;
+      resolve: (entry: StorageEntry | undefined) => void;
     };
 
 /** Where an import came from, so "Save" can go back there (native files only). */
 interface Source {
   name: string;
-  handle?: FileHandle;
-  drive?: { id: string; name: string };
+  target?: SaveTarget;
 }
 
 /** The canvas's canonical form of a file (same as CanvasView's "edited" check). */
@@ -107,7 +118,12 @@ const normalized = (d: DiagramFile) => {
 };
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
-const loadDrive = () => import("./gdrive/google");
+const deviceTarget = (handle: FileHandle, savedAt?: number): SaveTarget => ({
+  providerId: DEVICE_PROVIDER,
+  ref: handle,
+  name: handle.name,
+  ...(savedAt ? { savedAt } : {}),
+});
 
 export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openShared, isPublicExample }: Options) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
@@ -120,13 +136,19 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   const fileInput = useRef<HTMLInputElement>(null);
   const fsSupported = useMemo(() => fsAccessSupported(), []);
 
+  // A destination whose provider this build doesn't offer (e.g. OneDrive, then unconfigured) is ignored.
   const target = getSaveTarget(slug);
+  const targetInfo = providerInfo(target?.providerId);
   const binding: Binding | undefined =
-    target?.kind === "device"
-      ? { kind: "device", name: target.handle.name }
-      : target?.kind === "drive" && driveEnabled
-        ? { kind: "drive", name: target.name }
-        : undefined;
+    target && targetInfo
+      ? {
+          providerId: targetInfo.id,
+          label: targetInfo.label,
+          inSentence: targetInfo.inSentence,
+          name: target.name,
+          savedAt: target.savedAt,
+        }
+      : undefined;
 
   const bind = useCallback((target: string, destination: SaveTarget, identity: string) => {
     const bound = bindSaveTarget(target, destination, identity);
@@ -149,7 +171,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     try {
       await fn();
     } catch (err) {
-      toast.error(`Couldn't ${what}. ${message(err)}`);
+      toast.error(err instanceof StorageError && err.standalone ? err.message : `Couldn't ${what}. ${message(err)}`);
     }
   };
 
@@ -247,48 +269,54 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       }
       const identity = getDiagramIdentity(slug);
       const target = getSaveTarget(slug);
-      const existing = target?.kind === "device" ? target.handle : undefined;
+      const existing = target?.providerId === DEVICE_PROVIDER ? (target.ref as FileHandle) : undefined;
       if (existing && !as) {
-        await writeHandle(existing, text);
-        toast.success(`Saved to ${existing.name}.`);
+        const file = await deviceProvider.save(existing, text);
+        bind(slug, deviceTarget(file.ref, Date.now()), identity);
+        toast.success(`Saved to ${file.name}.`);
         return;
       }
-      const handle = await saveWithPicker(text, name);
-      if (!handle) return;
+      const file = await deviceProvider.saveAs(name, text);
+      if (!file) return;
       // The destination binds to the diagram that started the save, even if another one is open now.
-      const bound = bind(slug, { kind: "device", handle }, identity);
+      const bound = bind(slug, deviceTarget(file.ref, Date.now()), identity);
       const stillOpen = openSlug.current === slug;
       toast.success(
         bound && stillOpen
-          ? `Saved to ${handle.name}. Ctrl+S saves here again.`
+          ? `Saved to ${file.name}. Ctrl+S saves here again.`
           : bound
-            ? `Saved “${d.title}” to ${handle.name}. Ctrl+S saves it there again when it's open.`
-            : `Saved “${d.title}” to ${handle.name}. The open diagram has changed; save it separately.`,
+            ? `Saved “${d.title}” to ${file.name}. Ctrl+S saves it there again when it's open.`
+            : `Saved “${d.title}” to ${file.name}. The open diagram has changed; save it separately.`,
       );
     });
 
-  const saveToDrive = (asNew = false) =>
-    attempt("save to Google Drive", async () => {
+  /** Save to a cloud provider: over the file this diagram is bound to there, or (`asNew`) a new file. */
+  const saveToCloud = (info: ProviderInfo, asNew = false) =>
+    attempt(`save to ${info.label}`, async () => {
       const d = current();
       const identity = getDiagramIdentity(slug);
       const stored = getSaveTarget(slug);
-      const { driveClient } = await loadDrive();
-      const busy = toast.busy("Saving to Google Drive…");
+      const provider = await info.load();
+      const busy = toast.busy(`Saving to ${info.label}…`);
       const content = serializeNative(d);
       const file =
-        stored?.kind === "drive" && !asNew
-          ? await driveClient().update(stored.id, { content, mimeType: NATIVE_MIME })
-          : await driveClient().create({ name: `${baseName(d)}.diagram.json`, mimeType: NATIVE_MIME, content });
+        stored?.providerId === info.id && !asNew
+          ? await provider.save(stored.ref, content)
+          : await provider.saveAs(`${baseName(d)}.diagram.json`, content);
       toast.dismiss(busy);
-      bind(slug, { kind: "drive", id: file.id, name: file.name }, identity);
+      if (!file) return;
+      const bound = bind(slug, { providerId: info.id, ref: file.ref, name: file.name, savedAt: Date.now() }, identity);
+      const url = file.url;
       toast.success(
-        `Saved to Google Drive as ${file.name}.`,
-        file.webViewLink
+        bound
+          ? `Saved to ${info.label} as ${file.name}.`
+          : `Saved “${d.title}” to ${info.label} as ${file.name}. The open diagram has changed; save it separately.`,
+        url && /^https:\/\//.test(url)
           ? {
               action: {
-                label: "Open in Drive",
-                run: () => window.open(file.webViewLink, "_blank", "noopener"),
-                testId: "toast-open-drive",
+                label: `Open in ${info.label}`,
+                run: () => window.open(url, "_blank", "noopener"),
+                testId: `toast-open-${info.id}`,
               },
             }
           : undefined,
@@ -297,8 +325,16 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
 
   /** Ctrl+S: back to wherever this diagram came from / was last saved, else ask. */
   const save = () => {
-    if (driveEnabled && getSaveTarget(slug)?.kind === "drive") return saveToDrive();
-    return saveToDevice();
+    const t = getSaveTarget(slug);
+    const cloud = t && t.providerId !== DEVICE_PROVIDER ? providerInfo(t.providerId) : undefined;
+    return cloud ? saveToCloud(cloud) : saveToDevice();
+  };
+
+  /** File > Save to ▸: This device asks where (Save as); a cloud provider always makes a new file. */
+  const saveTo = (id: string) => {
+    if (id === DEVICE_PROVIDER) return saveToDevice(true);
+    const info = providerInfo(id);
+    return info ? saveToCloud(info, true) : Promise.resolve();
   };
 
   // ---------------------------------------------------------------- import
@@ -314,15 +350,8 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         return;
       }
       try {
-        const target: SaveTarget | undefined =
-          outcome.format !== "native"
-            ? undefined
-            : source.handle
-              ? { kind: "device", handle: source.handle }
-              : source.drive
-                ? { kind: "drive", ...source.drive }
-                : undefined;
-        openDiagram(outcome.diagram, target);
+        // Only our own format saves back to where it came from (a .drawio file is converted).
+        openDiagram(outcome.diagram, outcome.format === "native" ? source.target : undefined);
       } catch (err) {
         toast.error(`Couldn't import ${source.name}. ${message(err)}`);
         return;
@@ -338,7 +367,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   );
 
   const importFile = useCallback(
-    async (file: File, handle?: FileHandle) => {
+    async (file: File) => {
       // Check the size before reading anything into memory.
       if (file.size > LIMITS.maxTextChars) {
         toast.error(`Couldn't import ${file.name}. ${tooLargeMessage(file.size)}`);
@@ -351,34 +380,48 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         toast.error(`Couldn't read ${file.name}.`);
         return;
       }
-      handleOutcome(await importText(text, file.name), { name: file.name, handle });
+      handleOutcome(await importText(text, file.name), { name: file.name });
     },
     [handleOutcome],
   );
 
+  /** What a provider borrows while opening: the in-app file list and progress toasts. */
+  const openContext = (info: ProviderInfo, provider: StorageProvider): OpenContext => ({
+    choose: ({ load }) => new Promise((resolve) => setDialog({ kind: "storage", info, provider, load, resolve })),
+    progress: (text) => {
+      const id = toast.busy(text);
+      return () => toast.dismiss(id);
+    },
+  });
+
+  /** Opens a file from a provider; Save goes back to it (native files). */
+  const openFromProvider = async (info: ProviderInfo, provider: StorageProvider) => {
+    const file = await provider.open(openContext(info, provider));
+    if (!file) return;
+    const target: SaveTarget =
+      info.id === DEVICE_PROVIDER
+        ? deviceTarget(file.ref as FileHandle)
+        : { providerId: info.id, ref: file.ref, name: file.name };
+    handleOutcome(await importText(file.text, file.name), { name: file.name, target });
+  };
+
+  /** Open… (Ctrl+O): this device's file picker, or the file input where the browser has none. */
   const openFile = () =>
     attempt("open the file", async () => {
       if (!fsSupported) {
         fileInput.current?.click();
         return;
       }
-      const picked = await openWithPicker();
-      if (picked) await importFile(picked.file, picked.handle);
+      await openFromProvider(DEVICE_INFO, deviceProvider);
     });
 
-  const openFromDrive = () =>
-    attempt("open from Google Drive", async () => {
-      const { pickDriveFile, driveClient } = await loadDrive();
-      const picked = await pickDriveFile();
-      if (!picked) return;
-      const busy = toast.busy(`Opening ${picked.name}…`);
-      const file = await driveClient().download(picked.id);
-      toast.dismiss(busy);
-      handleOutcome(await importText(file.text, file.name), {
-        name: file.name,
-        drive: { id: file.id, name: file.name },
-      });
-    });
+  /** File > Open from ▸ <provider>. */
+  const openFrom = (id: string) => {
+    if (id === DEVICE_PROVIDER) return openFile();
+    const info = providerInfo(id);
+    if (!info) return Promise.resolve();
+    return attempt(`open from ${info.label}`, async () => openFromProvider(info, await info.load()));
+  };
 
   const importPasted = useCallback(
     async (text: string) => handleOutcome(await importText(text), { name: "the pasted text" }),
@@ -448,18 +491,24 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     openEmbed,
     save,
     saveAs: () => saveToDevice(true),
-    saveToDrive: (asNew = false) => saveToDrive(asNew),
+    saveTo,
     openFile,
-    openFromDrive,
+    openFrom,
     openPaste: () => setDialog({ kind: "paste" }),
     openShareLink: () => setDialog({ kind: "link" }),
     keepSharedCopy,
-    preloadDrive: () => {
-      if (driveEnabled) void loadDrive().then((m) => m.preloadDrive());
+    /** Loads the configured providers' code and scripts (the File menu calls it as it opens). Nothing configured: nothing loads. */
+    preloadStorage: () => {
+      for (const info of CLOUD_PROVIDERS)
+        void info.load().then(
+          (p) => p.preload?.(),
+          () => {},
+        );
     },
     binding,
     fsSupported,
-    driveEnabled,
+    /** The configured cloud providers (none by default: then every cloud entry is hidden). */
+    cloudProviders: CLOUD_PROVIDERS,
   };
   const apiRef = useRef(api);
   useLayoutEffect(() => {
@@ -501,6 +550,30 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         data-testid="import-input"
       />
       <DropOverlay onFile={(f) => void importFile(f)} />
+      {dialog?.kind === "storage" && (
+        <Suspense fallback={null}>
+          <StorageFilesDialog
+            label={dialog.info.label}
+            icon={dialog.info.icon}
+            folder={dialog.provider.folder}
+            load={dialog.load}
+            onPick={(entry) => {
+              setDialog(null);
+              dialog.resolve(entry);
+            }}
+            onSignOut={() => {
+              setDialog(null);
+              dialog.resolve(undefined);
+              void dialog.provider.signOut();
+              toast.info(`Signed out of ${dialog.info.label}.`);
+            }}
+            onClose={() => {
+              setDialog(null);
+              dialog.resolve(undefined);
+            }}
+          />
+        </Suspense>
+      )}
       {dialog?.kind === "image" && (
         <ImageDialog
           onExport={(kind, opts) => {

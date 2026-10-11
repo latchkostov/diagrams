@@ -765,6 +765,53 @@
   opacity: 0.9;
 }
 
+/* ---------- "Saved to OneDrive · 2 min ago" (top bar, beside the picker) ---------- */
+
+.ix-save-status {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-3);
+  animation: ix-fade 0.2s ease-out;
+}
+
+@media (max-width: 1100px) {
+  .ix-save-status {
+    display: none;
+  }
+}
+
+/* ---------- storage file list (Open from ▸ OneDrive / Dropbox) ---------- */
+
+.ix-storage-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+p.ix-storage-state {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.ix-storage-state p {
+  margin: 0;
+}
+
+.ix-storage-when {
+  flex: none;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 /* ---------- embed viewer ---------- */
 
 .ix-embed {

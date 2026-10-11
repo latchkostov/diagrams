@@ -349,11 +349,16 @@ test.describe("editor", () => {
     await button.click();
     const dialog = page.getByTestId("shortcuts-dialog");
     const close = page.getByTestId("shortcuts-dialog-close");
+    const privacy = page.getByTestId("privacy-link");
     await expect(dialog).toHaveAttribute("aria-modal", "true");
     await page.keyboard.press("Tab");
     await expect(close).toBeFocused();
     await page.keyboard.press("Tab");
+    await expect(privacy).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(close).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(privacy).toBeFocused();
     await page.keyboard.press("Shift+Tab");
     await expect(close).toBeFocused();
     await page.keyboard.press("Escape");

@@ -12,6 +12,7 @@ const strokes = {
   device: "M2.5 3h11v7.5h-11zM1 13h14M6.5 10.5v2.5M9.5 10.5v2.5",
   save: "M2.75 2.75h8.5l2 2v8.5H2.75zM5 2.75v3.5h5v-3.5M4.75 13.25v-4h6.5v4",
   folder: "M1.75 4.25v8.5h12.5V5.75H8L6.5 3.75H1.75zM1.75 7.25h12.5",
+  cloud: "M4.6 12.75h6.9a2.75 2.75 0 0 0 .35-5.48 3.9 3.9 0 0 0-7.45-.97 3.25 3.25 0 0 0 .2 6.45Z",
   clipboard: "M5.5 3H3.5v10.5h9V3h-2M6 2h4v2.25H6zM5.5 8h5M5.5 10.5h3",
   info: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM8 7.5V11M8 5h.01",
   "check-circle": "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM5.5 8.25l1.75 1.75L10.75 6.5",
@@ -31,7 +32,7 @@ const strokes = {
   stack: "M5.25 4.25h7v9.5h-7zM3.75 11.75V2.25h6.5M7.25 7.25h3M7.25 9.75h3",
 } as const;
 
-export type GlyphName = keyof typeof strokes | "spinner" | "drive" | "drawio" | "mermaid";
+export type GlyphName = keyof typeof strokes | "spinner" | "drive" | "onedrive" | "dropbox" | "drawio" | "mermaid";
 
 export function Glyph({ name, size = 16 }: { name: GlyphName; size?: number }) {
   if (name === "spinner") {
@@ -58,6 +59,26 @@ export function Glyph({ name, size = 16 }: { name: GlyphName; size?: number }) {
           d="M73.4 26.5 60.7 4.5c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z"
           fill="#ffba00"
         />
+      </svg>
+    );
+  }
+  if (name === "onedrive") {
+    // A simple blue cloud: recognisable at 16px without copying Microsoft's artwork.
+    return (
+      <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden>
+        <path
+          d="M4.4 12.75h7.85a2.9 2.9 0 0 0 .35-5.78 4.1 4.1 0 0 0-7.73-1.06A3.45 3.45 0 0 0 4.4 12.75Z"
+          fill="#0f6cbd"
+        />
+        <path d="M6.6 12.75h5.65a2.9 2.9 0 0 0 .35-5.78A3.6 3.6 0 0 0 6.6 12.75Z" fill="#28a8ea" />
+      </svg>
+    );
+  }
+  if (name === "dropbox") {
+    // Dropbox's open box of four diamonds, simplified.
+    return (
+      <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden fill="#0061fe">
+        <path d="M4.5 1.75 1 4l3.5 2.25L8 4zM11.5 1.75 8 4l3.5 2.25L15 4zM1 8.5l3.5 2.25L8 8.5 4.5 6.25zM11.5 6.25 8 8.5l3.5 2.25L15 8.5zM4.5 11.5 8 13.75l3.5-2.25L8 9.25z" />
       </svg>
     );
   }
