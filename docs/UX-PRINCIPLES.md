@@ -21,7 +21,10 @@ path wins by default and the power path stays one step away.
    (pointer = click, grab = drag, text = editable). Same action, same name, same shortcut in every place.
 8. **App, not page.** No browser context menu, no stray text selection, no layout jumps. Keyboard first-class.
 9. **Teach in place.** Hints, shortcut labels and placeholders over docs. Discoverable from the right-click.
-10. **Presentation is a first-class mode.** Anything shown in a meeting reads at a distance and hides editing chrome.
+10. **Nothing overlaps by default.** Labels never cover nodes, parallel edges stay distinguishable,
+   edges route around nodes, and floating panels never hide content after fit-view. An automated
+   overlap audit (`tests/e2e/layout.spec.ts`) guards every example.
+11. **Presentation is a first-class mode.** Anything shown in a meeting reads at a distance and hides editing chrome.
 
 ## Process
 Every feature batch ends with a **UX review gate** before new work starts: a designer agent walks the
