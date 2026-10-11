@@ -85,3 +85,13 @@ Rules: never edit outside your lane (ask the lead in your final report instead).
 the lead commits between phases. `pnpm exec tsc --noEmit` errors in other lanes' files are not yours.
 All interactive elements get `data-testid`. Tests: `pnpm test` (vitest, `src/**/*.test.ts`),
 `pnpm test:e2e` (Playwright, `tests/e2e/**`).
+
+## Phase 3 lanes (started 2026-10-11)
+| Workstream | Owns |
+|---|---|
+| Sim runner + typed routing (Codex, in progress) | `src/sim/**` except `types.ts`, `src/examples/**/*.json`, `src/lab/scenario*.ts` |
+| Live view UI | `src/live/**`, `src/styles/live.css`; surgical integration edits in `src/canvas/CanvasView.tsx` |
+| Import / export / storage | `src/interop/**`, `src/styles/interop.css`, `src/lib/diagramIO.ts`, `src/components/TopBar.tsx`, `src/App.tsx`, `docs/INTEROP.md`, `.env.example`; surgical edits in `CanvasView.tsx` for read-only/embed |
+| Design review | `src/gallery/**`, `src/styles/gallery.css`, `src/canvas/Palette.tsx`, `src/styles/tokens.css`, `src/styles/app.css`, `docs/DESIGN-REVIEW.md`; palette rules in `canvas.css` |
+Shared-file rule: `CanvasView.tsx` and `canvas.css` may be touched by two lanes. Make small, isolated
+edits, re-read before editing, and never reformat or reorder code you didn't write.
