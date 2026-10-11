@@ -29,8 +29,9 @@ import {
 } from "./lib/diagramIO";
 import { Icon } from "./components/Icon";
 import { useInterop, type Slot } from "./interop/useInterop";
-import { notify, Toaster } from "./interop/ui/toast";
-import { EmbedView, isEmbed } from "./interop/embed/EmbedView";
+import { notify } from "./interop/ui/toast";
+import { Toaster } from "./interop/ui/Toaster";
+import { EmbedView } from "./interop/embed/EmbedView";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -46,7 +47,7 @@ const publicSlugs = new Set(
 
 export function App() {
   // ?embed=1 renders the read-only viewer only: no top bar, no editor.
-  const embed = useMemo(() => isEmbed(), []);
+  const embed = useMemo(() => new URLSearchParams(window.location.search).get("embed") === "1", []);
   return (
     <>
       {embed ? <EmbedView /> : <MainApp />}

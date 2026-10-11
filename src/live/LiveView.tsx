@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ViewportPortal,
   useNodesInitialized,
@@ -66,18 +66,16 @@ export function LiveView(props: LiveViewProps) {
     ...props.initial,
   }));
   const [live, setLive] = useState(params.live || !!props.alwaysOn);
-  const firstSession = useRef(true);
+  const [firstSession, setFirstSession] = useState(true);
   const toggle = useCallback(() => setLive((l) => !l), []);
   // React Flow fills its store in an effect; start the session once nodes are there and measured.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useStore((s) => s.domNode !== null);
   const initialized = useNodesInitialized();
   const empty = useStore((s) => s.nodes.length === 0);
   // Latched: adding a node briefly un-initializes React Flow, which mustn't end the session.
   const [ready, setReady] = useState(false);
-  useEffect(() => {
-    if (!ready && mounted && (initialized || empty)) setReady(true);
-  }, [ready, mounted, initialized, empty]);
+  if (!ready && mounted && (initialized || empty)) setReady(true);
+  if (!live && firstSession) setFirstSession(false);
 
   // "L" toggles live mode anywhere on the canvas.
   useEffect(() => {
@@ -98,7 +96,6 @@ export function LiveView(props: LiveViewProps) {
 
   useEffect(() => {
     if (!live) {
-      firstSession.current = false;
       if (props.editor) writeLiveParams(false, null);
     }
   }, [live, props.editor]);
@@ -121,7 +118,7 @@ export function LiveView(props: LiveViewProps) {
       {live && ready && (
         <LiveSession
           {...props}
-          params={firstSession.current ? params : { ...params, live: true, sim: null, speed: null, paused: false }}
+          params={firstSession ? params : { ...params, live: true, sim: null, speed: null, paused: false }}
           onExit={() => setLive(false)}
         />
       )}
@@ -141,11 +138,15 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
   const getDiagram = useCallback((): DiagramFile => (editor ? editor.getDiagram() : diagram!), [editor, diagram]);
   const simulations = useMemo(() => simsProp ?? diagram?.simulations ?? [], [simsProp, diagram]);
   const simsRef = useRef(simulations);
-  simsRef.current = simulations;
+  useLayoutEffect(() => {
+    simsRef.current = simulations;
+  }, [simulations]);
 
   const [draft, setDraft] = useState<Simulation | null>(null);
   const draftRef = useRef(draft);
-  draftRef.current = draft;
+  useLayoutEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   const [controller] = useState(() => {
     const c = new LiveController(getDiagram());
@@ -165,7 +166,9 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
   const [events, setEvents] = useState<{ open: boolean; nodeId: string | null }>({ open: false, nodeId: null });
   const [trace, setTrace] = useState<string | null>(null);
   const traceRef = useRef(trace);
-  traceRef.current = trace;
+  useLayoutEffect(() => {
+    traceRef.current = trace;
+  }, [trace]);
   const [inject, setInject] = useState<InjectRequest | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<number | undefined>(undefined);
@@ -208,30 +211,36 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
 
   const note = state.run?.note;
   const noteKey = note ? `${state.generation}:${note.atMs}:${note.text}` : "";
-  const spotlight = useMemo(() => {
+  // The controller publishes fresh note objects each tick; keep the focus stable for camera effects.
+  const focusKey = JSON.stringify(note?.focus ?? []);
+  const noteFocus = useMemo(() => JSON.parse(focusKey) as string[], [focusKey]);
+  const spotlight = (() => {
     const d = controller.currentDiagram;
     if (trace) {
       const r = downstreamOfEdge(d.edges, trace);
       return { nodes: r.nodes, edges: r.edges, kind: "trace" as const };
     }
-    if (note && note.focus.length) {
-      const focus = new Set(note.focus);
+    if (noteFocus.length) {
+      const focus = new Set(noteFocus);
       return { nodes: focus, edges: edgesWithin(d.edges, focus), kind: "focus" as const };
     }
     return null;
-    // noteKey identifies the note; `note` itself is a fresh object every UI tick.
-  }, [trace, noteKey, controller, state.generation]);
+  })();
   const spotlightRef = useRef(spotlight);
-  spotlightRef.current = spotlight;
+  useLayoutEffect(() => {
+    spotlightRef.current = spotlight;
+  }, [spotlight]);
 
   const panelOpenRef = useRef(false);
-  panelOpenRef.current = panel.open;
+  useLayoutEffect(() => {
+    panelOpenRef.current = panel.open;
+  }, [panel.open]);
 
   // Pan / zoom to a note's focus, and back out to the whole diagram when the story moves on.
   const zoomedForNote = useRef(false);
   const reducedMotion = useReducedMotion();
   useEffect(() => {
-    const focus = note?.focus ?? [];
+    const focus = noteFocus;
     // Wait out the canvas's own refit (presentation mode toggles refit after ~80 ms).
     const t = window.setTimeout(
       () => {
@@ -252,7 +261,7 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
       panelOpenRef.current ? 320 : 160,
     );
     return () => window.clearTimeout(t);
-  }, [noteKey, fitView, reducedMotion]);
+  }, [noteKey, noteFocus, fitView, reducedMotion]);
 
   // The authoring panel covers the right of the pane: fit the diagram into what's left (unless a
   // note is steering the camera).
@@ -285,7 +294,11 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
     [theme, reducedMotion, presenting, tokens],
   );
   const rendererRef = useRef<ParticleRenderer | null>(null);
-  useEffect(() => rendererRef.current?.setOptions(renderOpts), [renderOpts]);
+  const renderOptsRef = useRef(renderOpts);
+  useLayoutEffect(() => {
+    renderOptsRef.current = renderOpts;
+    rendererRef.current?.setOptions(renderOpts);
+  }, [renderOpts]);
 
   useEffect(() => {
     const root = store.getState().domNode;
@@ -308,7 +321,7 @@ function LiveSession({ editor, presenting, simulations: simsProp, diagram, param
     };
     // Fit-view padding elsewhere can reserve room for the control bar.
     root.style.setProperty(LIVE_BAR_VAR, `${LIVE_BAR_SPACE}px`);
-    const renderer = new ParticleRenderer(canvas, env, renderOpts);
+    const renderer = new ParticleRenderer(canvas, env, renderOptsRef.current);
     rendererRef.current = renderer;
     const decorator = new Decorator(root);
     let raf = 0;

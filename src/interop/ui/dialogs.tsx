@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { DiagramFile } from "../../model/types";
 import { embedSnippet, embedUrl, encodeShare, SHARE_WARN_LENGTH, shareUrl } from "../share";
 import { detectFormat, FORMAT_LABEL } from "../formats";
-import { copyText, Dialog } from "./Dialog";
+import { Dialog } from "./Dialog";
+import { copyText } from "./copyText";
 import { Glyph } from "./glyphs";
 import { toast } from "./toast";
 

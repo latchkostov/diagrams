@@ -41,7 +41,8 @@ import { fromFlow, groupAt, toFlow, withEdgeAria, withNodeAria, type DiagramMeta
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
 import { useCovered, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
 import { DiagramNode } from "./nodes/DiagramNode";
-import { GroupNode, toneColor } from "./nodes/GroupNode";
+import { GroupNode } from "./nodes/GroupNode";
+import { toneColor } from "./groupTones";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
 import { Palette, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
@@ -136,8 +137,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const [prefs, setPref] = useEditorPrefs();
   // Live mode and narrow windows fold the side panels away by default; opening one by hand wins.
   const [live, setLive] = useState(false);
-  const [openedByHand, setOpenedByHand] = useState({ palette: false, inspector: false });
-  useEffect(() => setOpenedByHand({ palette: false, inspector: false }), [live]);
+  const [openedByHand, setOpenedByHand] = useState({ live, palette: false, inspector: false });
+  if (openedByHand.live !== live) setOpenedByHand({ live, palette: false, inspector: false });
   const [narrow, setNarrow] = useState(() => window.innerWidth < 1440);
   useEffect(() => {
     const onResize = () => setNarrow(window.innerWidth < 1440);

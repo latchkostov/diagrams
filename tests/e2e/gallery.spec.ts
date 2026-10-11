@@ -4,8 +4,11 @@ import { test, expect, gotoGallery, expectNoErrors } from "./fixtures";
 const tiles = (page: Page) => page.getByTestId(/^stencil-tile-/);
 /** Which diagram "Add to current diagram" targets (written by the canvas, read by the gallery). */
 const LAST_CANVAS_KEY = "diagrams.lastCanvas.v1";
-const chipCount = async (page: Page, testId: string) =>
-  Number((await page.getByTestId(testId).textContent())!.match(/(\d+)\s*$/)![1]);
+const chipCount = async (page: Page, testId: string) => {
+  const match = (await page.getByTestId(testId).textContent())?.match(/(\d+)\s*$/);
+  if (!match) throw new Error(`No count on ${testId}`);
+  return Number(match[1]);
+};
 
 test.describe("gallery", () => {
   test("loads every stencil and reports the count", async ({ page, consoleErrors }) => {
@@ -195,13 +198,15 @@ test.describe("gallery", () => {
     await expect(page.getByTestId("gallery-drop-target")).toHaveCount(0);
     const tile = page.getByTestId("stencil-tile-redis.cache");
     await tile.scrollIntoViewIfNeeded();
-    const box = (await tile.boundingBox())!;
+    const box = await tile.boundingBox();
+    if (!box) throw new Error("Tile has no bounding box");
     await page.mouse.move(box.x + box.width / 2, box.y + 60);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 + 10, box.y + 80);
     const dock = page.getByTestId("gallery-drop-target");
     await expect(dock).toBeVisible();
-    const target = (await dock.boundingBox())!;
+    const target = await dock.boundingBox();
+    if (!target) throw new Error("Drop dock has no bounding box");
     await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 5 });
     await page.mouse.up();
     await expect(page.getByTestId("canvas-view")).toBeVisible();

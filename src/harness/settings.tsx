@@ -1,5 +1,5 @@
 import { safeStorage } from "../lib/storage";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext } from "react";
 import { DEFAULT_NODE_VARIANT, isNodeVariantId, type NodeVariantId } from "./nodeVariants";
 import { DEFAULT_EDGE_STYLE, isEdgeStyle, type EdgeStyle } from "./edgeStyles";
 
@@ -20,9 +20,9 @@ interface SettingsApi extends Settings {
   set: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
 
-const STORAGE_KEY = "diagrams.settings.v1";
+export const STORAGE_KEY = "diagrams.settings.v1";
 
-function initialSettings(): Settings {
+export function initialSettings(): Settings {
   const prefersDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches;
   const fallback: Settings = {
     nodeVariant: DEFAULT_NODE_VARIANT,
@@ -43,24 +43,7 @@ function initialSettings(): Settings {
   }
 }
 
-const SettingsContext = createContext<SettingsApi | null>(null);
-
-export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<Settings>(initialSettings);
-
-  useEffect(() => {
-    safeStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    document.documentElement.dataset.theme = settings.theme;
-    document.documentElement.style.colorScheme = settings.theme;
-  }, [settings]);
-
-  const set = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
-    setSettings((s) => ({ ...s, [key]: value }));
-  }, []);
-
-  const api = useMemo(() => ({ ...settings, set }), [settings, set]);
-  return <SettingsContext.Provider value={api}>{children}</SettingsContext.Provider>;
-}
+export const SettingsContext = createContext<SettingsApi | null>(null);
 
 export function useSettings(): SettingsApi {
   const ctx = useContext(SettingsContext);

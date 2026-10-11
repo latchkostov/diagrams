@@ -38,7 +38,7 @@ import {
 } from "./files";
 import { driveEnabled, NATIVE_MIME } from "./gdrive/config";
 import { toast } from "./ui/toast";
-import { copyText } from "./ui/Dialog";
+import { copyText } from "./ui/copyText";
 import { EmbedDialog, ImageDialog, OpenLinkDialog, PagesDialog, PasteDialog, ShareDialog } from "./ui/dialogs";
 import { DropOverlay } from "./ui/DropOverlay";
 

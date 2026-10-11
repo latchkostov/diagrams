@@ -3,9 +3,7 @@ import type { Stencil } from "../model/types";
 import { FALLBACK_STENCIL, getStencil, stencils } from "../stencils/registry";
 import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
 
-/** Node body states the matrix can show. */
-export const NODE_STATES = ["default", "selected", "long-label", "no-sublabel", "unknown", "missing-icon"] as const;
-export type NodeState = (typeof NODE_STATES)[number];
+import type { NodeState } from "./nodeStates";
 
 const STATE_LABEL: Record<NodeState, string> = {
   default: "Default",

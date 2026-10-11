@@ -8,10 +8,7 @@ const H = 54;
 const N = 120;
 
 /** Samples a traffic shape's rate curve; also integrates it for the "≈ N messages" readout. */
-export function sampleRate(
-  shape: TrafficShape,
-  points = N,
-): { tMax: number; rates: number[]; peak: number; total: number } {
+function sampleRate(shape: TrafficShape, points = N): { tMax: number; rates: number[]; peak: number; total: number } {
   const w = trafficWindow(shape);
   const tMax = Math.max(1000, w.endMs * 1.08 + 200);
   const rates: number[] = [];
