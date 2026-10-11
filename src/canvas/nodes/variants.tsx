@@ -16,13 +16,18 @@ function accentStyle(stencil: Stencil): CSSProperties {
   return { "--accent": stencil.accent } as CSSProperties;
 }
 
+/** Tooltip with the full text: labels truncate with an ellipsis once a card reaches its max width. */
+function fullText(p: NodeBodyProps) {
+  return [p.label, p.sublabel, p.stencil.description].filter(Boolean).join("\n");
+}
+
 function cls(base: string, p: NodeBodyProps) {
   return [base, p.selected && "is-selected", p.unknown && "is-unknown"].filter(Boolean).join(" ");
 }
 
 export function CardNode(p: NodeBodyProps) {
   return (
-    <div className={cls("nb nb-card", p)} style={accentStyle(p.stencil)} title={p.stencil.description}>
+    <div className={cls("nb nb-card", p)} style={accentStyle(p.stencil)} title={fullText(p)}>
       <div className="nb-tile">
         <StencilIcon stencil={p.stencil} size={26} />
       </div>
@@ -36,7 +41,7 @@ export function CardNode(p: NodeBodyProps) {
 
 export function CompactNode(p: NodeBodyProps) {
   return (
-    <div className={cls("nb nb-compact", p)} style={accentStyle(p.stencil)} title={p.sublabel ?? p.stencil.description}>
+    <div className={cls("nb nb-compact", p)} style={accentStyle(p.stencil)} title={fullText(p)}>
       <div className="nb-tile">
         <StencilIcon stencil={p.stencil} size={18} />
       </div>
@@ -47,7 +52,7 @@ export function CompactNode(p: NodeBodyProps) {
 
 export function IconOnlyNode(p: NodeBodyProps) {
   return (
-    <div className={cls("nb nb-icon", p)} style={accentStyle(p.stencil)} title={p.stencil.description}>
+    <div className={cls("nb nb-icon", p)} style={accentStyle(p.stencil)} title={fullText(p)}>
       <div className="nb-tile">
         <StencilIcon stencil={p.stencil} size={34} />
       </div>

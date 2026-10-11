@@ -1,9 +1,12 @@
-import { useRef } from "react";
 import { useSettings } from "../harness/settings";
 import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
 import { edgeStyles, type EdgeStyle } from "../harness/edgeStyles";
 import { Icon } from "./Icon";
 import type { View } from "../lib/urlState";
+import type { Interop } from "../interop/useInterop";
+import { FileMenu, SharedChip } from "../interop/ui/menus";
+import { Menu } from "../interop/ui/Menu";
+import { Glyph } from "../interop/ui/glyphs";
 
 export interface ExampleOption {
   slug: string;
@@ -16,14 +19,15 @@ interface Props {
   exampleOptions: ExampleOption[];
   example?: string;
   onExample: (slug: string) => void;
-  onImport: (file: File) => void;
-  onExport: () => void;
+  /** Import / export / storage controller (src/interop). */
+  interop: Omit<Interop, "layer">;
+  /** Set while a diagram from a share link is open: offers to keep it. */
+  shared?: { onKeep: () => void; replaces?: string };
   onPresent: () => void;
 }
 
 export function TopBar(p: Props) {
   const s = useSettings();
-  const file = useRef<HTMLInputElement>(null);
   const canvas = p.view === "canvas";
   const lab = p.view === "lab";
   // The Lab is a dev harness: linked from the top bar in dev builds only. Production keeps it
@@ -38,14 +42,33 @@ export function TopBar(p: Props) {
       </div>
 
       <div className="segmented" role="tablist" aria-label="View">
-        <button role="tab" aria-selected={p.view === "gallery"} className={p.view === "gallery" ? "is-on" : ""} onClick={() => p.onView("gallery")} data-testid="view-gallery">
+        <button
+          role="tab"
+          aria-selected={p.view === "gallery"}
+          className={p.view === "gallery" ? "is-on" : ""}
+          onClick={() => p.onView("gallery")}
+          data-testid="view-gallery"
+        >
           <Icon name="grid" size={14} /> Gallery
         </button>
-        <button role="tab" aria-selected={canvas} className={canvas ? "is-on" : ""} onClick={() => p.onView("canvas")} data-testid="view-canvas">
+        <button
+          role="tab"
+          aria-selected={canvas}
+          className={canvas ? "is-on" : ""}
+          onClick={() => p.onView("canvas")}
+          data-testid="view-canvas"
+        >
           <Icon name="canvas" size={14} /> Canvas
         </button>
         {showLab && (
-          <button role="tab" aria-selected={lab} className={lab ? "is-on" : ""} onClick={() => p.onView("lab")} data-testid="view-lab" title="Component lab: presets of the current code">
+          <button
+            role="tab"
+            aria-selected={lab}
+            className={lab ? "is-on" : ""}
+            onClick={() => p.onView("lab")}
+            data-testid="view-lab"
+            title="Component lab: presets of the current code"
+          >
             <LabGlyph /> Lab
           </button>
         )}
@@ -54,7 +77,12 @@ export function TopBar(p: Props) {
       {canvas && (
         <label className="select">
           <span className="sr-only">Diagram</span>
-          <select value={p.example} onChange={(e) => p.onExample(e.target.value)} name="example" data-testid="example-picker">
+          <select
+            value={p.example}
+            onChange={(e) => p.onExample(e.target.value)}
+            name="example"
+            data-testid="example-picker"
+          >
             {p.exampleOptions.map((o) => (
               <option key={o.slug} value={o.slug}>
                 {o.title}
@@ -64,58 +92,21 @@ export function TopBar(p: Props) {
         </label>
       )}
 
+      {canvas && p.shared && <SharedChip {...p.shared} />}
+
       <div className="topbar-spacer" />
 
-      <div className="topbar-group" aria-label="Look" data-testid="topbar-look">
-        <label className="select select-quiet" title="Node renderer">
-          <span className="select-prefix">Node</span>
-          <select value={s.nodeVariant} onChange={(e) => s.set("nodeVariant", e.target.value as NodeVariantId)} name="node-variant" data-testid="variant-picker">
-            {Object.entries(nodeVariants).map(([id, v]) => (
-              <option key={id} value={id}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        {(canvas || lab) && (
-          <label className="select select-quiet" title="Edge path style">
-            <span className="select-prefix">Edge</span>
-            <select value={s.edgeStyle} onChange={(e) => s.set("edgeStyle", e.target.value as EdgeStyle)} name="edge-style" data-testid="edge-style-picker">
-              {edgeStyles.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </div>
-
       <div className="topbar-group" data-testid="topbar-actions">
-        <input
-          ref={file}
-          type="file"
-          accept=".json,application/json"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) p.onImport(f);
-            e.target.value = "";
-          }}
-          name="import-file"
-          data-testid="import-input"
-        />
-        <button className="btn" onClick={() => file.current?.click()} data-testid="import-button" title="Open a diagrams/v1 JSON file">
-          <Icon name="upload" size={14} /> Import
-        </button>
+        <ViewMenu edges={canvas || lab} />
+        <FileMenu api={p.interop} canvas={canvas} />
         {canvas && (
-          <button className="btn" onClick={p.onExport} data-testid="export-button" title="Download this diagram as JSON">
-            <Icon name="download" size={14} /> Export
-          </button>
-        )}
-        {canvas && (
-          <button className="btn btn-primary" onClick={p.onPresent} data-testid="present-toggle" title="Hide the chrome for meetings">
-            <Icon name="present" size={14} /> Present
+          <button
+            className="btn btn-primary"
+            onClick={p.onPresent}
+            data-testid="present-toggle"
+            title="Hide the chrome for meetings"
+          >
+            <Icon name="present" size={14} /> <span className="label-optional">Present</span>
           </button>
         )}
         <button
@@ -132,9 +123,67 @@ export function TopBar(p: Props) {
   );
 }
 
+/** Look options (node renderer, edge style): one menu button instead of two selects in the bar. */
+function ViewMenu({ edges }: { edges: boolean }) {
+  const s = useSettings();
+  return (
+    <Menu
+      label="View options"
+      testId="view-menu"
+      width={240}
+      entries={() => [
+        { type: "section", label: "Nodes" },
+        ...Object.entries(nodeVariants).map(([id, v]) => ({
+          type: "item" as const,
+          testId: `view-node-${id}`,
+          title: v.label,
+          checked: s.nodeVariant === id,
+          onSelect: () => s.set("nodeVariant", id as NodeVariantId),
+        })),
+        ...(edges
+          ? [
+              { type: "section" as const, label: "Edges" },
+              ...edgeStyles.map((e) => ({
+                type: "item" as const,
+                testId: `view-edge-${e.id}`,
+                title: e.label,
+                checked: s.edgeStyle === e.id,
+                onSelect: () => s.set("edgeStyle", e.id as EdgeStyle),
+              })),
+            ]
+          : []),
+      ]}
+      trigger={(props) => (
+        <button
+          className="btn"
+          {...props}
+          aria-label="View options"
+          title="Node and edge style"
+          data-testid="view-button"
+        >
+          <Glyph name="sliders" size={14} /> <span className="label-optional">View</span>
+          <span className="ix-caret">
+            <Glyph name="chevron-down" size={12} />
+          </span>
+        </button>
+      )}
+    />
+  );
+}
+
 function LabGlyph() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <path d="M6 2h4M6.75 2v4.25L3 12.75A1 1 0 0 0 3.9 14.25h8.2a1 1 0 0 0 .9-1.5L9.25 6.25V2M4.75 10h6.5" />
     </svg>
   );

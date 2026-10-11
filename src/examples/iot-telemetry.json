@@ -8,9 +8,9 @@
       "id": "azure",
       "label": "Azure · industrial telemetry",
       "tone": "azure",
-      "x": 360,
+      "x": 380,
       "y": 0,
-      "width": 1380,
+      "width": 1480,
       "height": 632
     }
   ],
@@ -32,7 +32,7 @@
       "stencil": "azure.event-hubs",
       "label": "plant.telemetry.v1",
       "sublabel": "Partition key: deviceId · retention: 7d",
-      "x": 400,
+      "x": 420,
       "y": 280,
       "group": "azure",
       "props": {
@@ -45,7 +45,7 @@
       "stencil": "azure.functions",
       "label": "Device state projector",
       "sublabel": "Consumer group: hot-state",
-      "x": 760,
+      "x": 800,
       "y": 160,
       "group": "azure",
       "props": {
@@ -64,7 +64,7 @@
       "stencil": "databricks",
       "label": "Telemetry streaming",
       "sublabel": "Consumer group: lake-stream",
-      "x": 760,
+      "x": 800,
       "y": 400,
       "group": "azure",
       "props": {
@@ -79,7 +79,7 @@
       "stencil": "azure.cosmos-db",
       "label": "Latest device state",
       "sublabel": "Partition key: /deviceId · TTL 7d",
-      "x": 1120,
+      "x": 1180,
       "y": 160,
       "group": "azure",
       "props": {
@@ -91,7 +91,7 @@
       "stencil": "azure.blob-storage",
       "label": "Telemetry lake",
       "sublabel": "Delta · plant/date/hour partitions",
-      "x": 1120,
+      "x": 1180,
       "y": 400,
       "group": "azure",
       "props": {}
@@ -101,7 +101,7 @@
       "stencil": "azure.event-grid",
       "label": "plant.alerts",
       "sublabel": "TemperatureExceeded · DeviceOffline",
-      "x": 1120,
+      "x": 1180,
       "y": 40,
       "group": "azure",
       "props": {
@@ -114,7 +114,7 @@
       "stencil": "azure.logic-apps",
       "label": "Alert delivery",
       "sublabel": "Severity filter · on-call routing",
-      "x": 1480,
+      "x": 1560,
       "y": 40,
       "group": "azure",
       "props": {
@@ -128,7 +128,7 @@
       "stencil": "generic.email",
       "label": "Plant operations",
       "sublabel": "On-call mailbox · incident details",
-      "x": 1840,
+      "x": 1940,
       "y": 40,
       "props": {}
     },
@@ -137,7 +137,7 @@
       "stencil": "grafana",
       "label": "Plant health dashboard",
       "sublabel": "Fleet health · live temperature",
-      "x": 1480,
+      "x": 1560,
       "y": 160,
       "group": "azure",
       "props": {}
@@ -147,7 +147,7 @@
       "stencil": "prometheus",
       "label": "Streaming metrics",
       "sublabel": "Consumer lag · processing latency",
-      "x": 1120,
+      "x": 1180,
       "y": 520,
       "group": "azure",
       "props": {}

@@ -1,0 +1,948 @@
+/* Import / export / storage UI: top-bar menus, dialogs, toasts, drop overlay, shared banner, embed viewer.
+   Everything is prefixed ix- and built from the tokens in tokens.css. */
+
+/* ---------- top-bar triggers ---------- */
+
+.ix-caret {
+  display: inline-grid;
+  margin: 0 -3px 0 -1px;
+  color: var(--text-3);
+  transition: transform 0.15s;
+}
+
+.btn[aria-expanded="true"] {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+
+.btn[aria-expanded="true"] .ix-caret {
+  transform: rotate(180deg);
+}
+
+/* ---------- dropdown menu ---------- */
+
+.ix-menu {
+  position: fixed;
+  z-index: 220;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border-radius: 13px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-2);
+  animation: ix-pop var(--dur-1) var(--ease-out);
+  transform-origin: top right;
+  outline: none;
+}
+
+[data-theme="dark"] .ix-menu {
+  background: var(--surface-2);
+}
+
+@keyframes ix-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+}
+
+.ix-menu-section:first-child {
+  padding-top: 4px;
+}
+
+.ix-menu-note {
+  margin: 4px 2px 0;
+  padding: 9px 10px 4px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.ix-menu-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 9px;
+}
+
+.ix-menu-row:hover,
+.ix-menu-row:focus-within {
+  background: var(--accent-soft);
+}
+
+.ix-menu-row.is-disabled {
+  opacity: 0.45;
+}
+
+.ix-menu-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  text-align: left;
+}
+
+.ix-menu-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+.ix-menu-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+[data-theme="dark"] .ix-menu-icon {
+  background: var(--surface-3);
+}
+
+.ix-menu-row:hover .ix-menu-icon,
+.ix-menu-row:focus-within .ix-menu-icon {
+  color: var(--accent);
+  background: var(--surface);
+}
+
+.ix-menu-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ix-menu-title {
+  font-size: 13px;
+  font-weight: 580;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ix-menu-desc {
+  font-size: 11.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ix-menu-kbd {
+  margin-left: auto;
+  padding-left: 10px;
+  border: 0;
+  background: none;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.ix-menu-chips {
+  display: flex;
+  gap: 4px;
+  padding-right: 6px;
+}
+
+.ix-chip {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 560;
+  white-space: nowrap;
+}
+
+.ix-chip:hover,
+.ix-chip:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- toasts ---------- */
+
+.ix-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 300;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(680px, calc(100vw - 32px));
+  padding: 8px 8px 8px 12px;
+  border-radius: 12px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  box-shadow: var(--shadow-3);
+  animation: ix-toast-in var(--dur-2) var(--ease-out);
+}
+
+@keyframes ix-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+.ix-toast-icon {
+  display: grid;
+  flex: none;
+  opacity: 0.85;
+}
+
+/* The toast is inverted (dark on light, light on dark), so use the other theme's success tone. */
+.ix-toast-success .ix-toast-icon {
+  color: #4ad295;
+}
+
+[data-theme="dark"] .ix-toast-success .ix-toast-icon {
+  color: #17895a;
+}
+
+.ix-toast-error {
+  background: var(--danger);
+  color: #fff;
+}
+
+.ix-toast-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.ix-toast-action {
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in oklab, currentColor 30%, transparent);
+  background: transparent;
+  color: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ix-toast-action:hover {
+  background: color-mix(in oklab, currentColor 12%, transparent);
+}
+
+.ix-toast-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.65;
+}
+
+.ix-toast-close:hover {
+  opacity: 1;
+  background: color-mix(in oklab, currentColor 12%, transparent);
+}
+
+.ix-spin {
+  animation: ix-spin 0.8s linear infinite;
+}
+
+@keyframes ix-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- dialogs ---------- */
+
+.ix-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--scrim);
+  backdrop-filter: blur(3px);
+  animation: ix-fade var(--dur-1) var(--ease-out);
+}
+
+@keyframes ix-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.ix-dialog {
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-3);
+  outline: none;
+  animation: ix-rise var(--dur-2) var(--ease-out);
+}
+
+[data-theme="dark"] .ix-dialog {
+  background: var(--surface-2);
+}
+
+@keyframes ix-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+
+.ix-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 18px 6px 20px;
+}
+
+.ix-dialog-icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ix-dialog-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.ix-dialog-titles h2 {
+  margin: 1px 0 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.ix-dialog-titles p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.ix-dialog-close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.ix-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 20px 18px;
+  overflow: auto;
+}
+
+.ix-dialog-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 0 0 16px 16px;
+}
+
+[data-theme="dark"] .ix-dialog-foot {
+  background: var(--surface);
+}
+
+.ix-dialog-foot a.btn {
+  text-decoration: none;
+}
+
+.ix-dialog .btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ix-grow {
+  flex: 1;
+}
+
+.ix-input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  resize: vertical;
+}
+
+[data-theme="dark"] .ix-input {
+  background: var(--bg);
+}
+
+.ix-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.ix-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.ix-code {
+  min-height: 84px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.ix-paste {
+  min-height: 220px;
+  line-height: 1.5;
+}
+
+.ix-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.ix-warn-text {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.ix-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.ix-callout svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.ix-callout-warn {
+  background: var(--warning-soft);
+  color: var(--text);
+}
+
+.ix-callout-warn svg {
+  color: var(--warning);
+}
+
+.ix-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.ix-muted {
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+.ix-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-weight: 560;
+}
+
+.ix-badge.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ix-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ix-seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 9px;
+  background: var(--surface-3);
+}
+
+.ix-seg button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 560;
+}
+
+.ix-seg button.is-on {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 0 0 1px var(--line);
+}
+
+.ix-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 4px 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.ix-select select {
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-weight: 560;
+  outline: none;
+}
+
+.ix-select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.ix-preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.ix-preview iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.ix-page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ix-page {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 560;
+  text-align: left;
+}
+
+.ix-page:hover,
+.ix-page:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.ix-page-num {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.ix-page-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ix-page svg {
+  color: var(--text-3);
+}
+
+/* ---------- drop overlay ---------- */
+
+.ix-drop {
+  position: fixed;
+  inset: 0;
+  z-index: 280;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in oklab, var(--bg) 70%, transparent);
+  backdrop-filter: blur(6px) saturate(1.1);
+  animation: ix-fade 0.12s ease-out;
+}
+
+.ix-drop::before {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border-radius: 22px;
+  border: 2px dashed color-mix(in oklab, var(--accent) 60%, transparent);
+  background: color-mix(in oklab, var(--accent) 5%, transparent);
+  pointer-events: none;
+  animation: ix-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes ix-breathe {
+  50% {
+    inset: 18px;
+    border-color: var(--accent);
+  }
+}
+
+.ix-drop-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 40px 26px;
+  border-radius: 20px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+  text-align: center;
+  pointer-events: none;
+}
+
+.ix-drop-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  animation: ix-bob 1.2s ease-in-out infinite;
+}
+
+@keyframes ix-bob {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.ix-drop-card strong {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.ix-drop-formats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ix-drop-formats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.ix-drop-hint {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* ---------- shared chip (top bar) ---------- */
+
+.ix-shared {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 4px 0 10px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--line));
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: ix-fade 0.2s ease-out;
+}
+
+.ix-shared-keep {
+  height: 24px;
+  margin-left: 2px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ix-shared-keep:hover {
+  opacity: 0.9;
+}
+
+/* ---------- embed viewer ---------- */
+
+.ix-embed {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+}
+
+.ix-embed .diagram-card {
+  top: 12px;
+  left: 12px;
+  padding: 9px 12px;
+}
+
+.ix-embed .diagram-card h1 {
+  font-size: 14px;
+}
+
+.ix-embed .diagram-card p {
+  display: none;
+}
+
+.ix-embed-open {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 560;
+  text-decoration: none;
+  opacity: 0.8;
+  transition:
+    opacity 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.ix-embed-open:hover {
+  opacity: 1;
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+}
+
+.ix-embed-msg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--text-2);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Hide the React Flow attribution in small embeds' bottom-right corner, where our link sits. */
+.ix-embed .react-flow__attribution {
+  left: 10px;
+  right: auto;
+  transform: none;
+}
+
+/* ---------- menu extras: separators, hints, submenu chevrons ---------- */
+
+.ix-menu-sep {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--line);
+}
+
+.ix-menu-row.is-open {
+  background: var(--accent-soft);
+}
+
+.ix-menu-hint {
+  margin-left: auto;
+  padding-left: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.ix-menu-chevron {
+  display: grid;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--text-3);
+}
+
+.ix-menu-hint + .ix-menu-kbd,
+.ix-menu-hint + .ix-menu-chevron {
+  margin-left: 0;
+}
+
+/* ---------- disclosure + small forms ---------- */
+
+.ix-disclosure-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 580;
+}
+
+.ix-disclosure-btn:hover {
+  color: var(--text);
+}
+
+.ix-disclosure-btn svg {
+  transition: transform 0.15s;
+}
+
+.ix-disclosure.is-open .ix-disclosure-btn svg {
+  transform: rotate(90deg);
+}
+
+.ix-disclosure-body {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  animation: ix-fade 0.12s ease-out;
+}
+
+.ix-form {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  justify-items: start;
+  gap: 10px 14px;
+}
+
+.ix-form-label {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.ix-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.ix-check input {
+  accent-color: var(--accent);
+}
+
+.ix-menu-section {
+  padding: 8px 10px 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.ix-menu-check {
+  display: grid;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--accent);
+}
+
+/* Choice rows (View menu): compact, no icon tile. */
+.ix-menu-row:has([role="menuitemradio"]) .ix-menu-item {
+  min-height: 32px;
+  padding: 5px 10px;
+}

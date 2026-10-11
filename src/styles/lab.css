@@ -833,3 +833,57 @@
     display: none;
   }
 }
+
+/* ---------- overlap audit (Lab preset "overlap-audit", src/lab/OverlapAudit.tsx) ---------- */
+.lab-audit-box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 2px solid #e5484d;
+  border-radius: 6px;
+  background: color-mix(in oklab, #e5484d 16%, transparent);
+  pointer-events: none;
+  z-index: 1002;
+}
+
+.lab-audit-box.is-edge-overlap {
+  border-color: #f5a524;
+  background: color-mix(in oklab, #f5a524 18%, transparent);
+}
+
+.lab-audit-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+  min-width: 220px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  box-shadow: var(--node-shadow);
+  font-size: 12px;
+}
+
+.lab-audit-panel ul {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lab-audit-panel li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-3);
+}
+
+.lab-audit-panel li.is-bad {
+  color: #e5484d;
+}
+
+.lab-audit-foot {
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--text-3);
+}

@@ -8,9 +8,9 @@
       "id": "aks",
       "label": "AKS · commerce workloads + Kafka",
       "tone": "k8s",
-      "x": 720,
+      "x": 760,
       "y": 120,
-      "width": 1020,
+      "width": 1100,
       "height": 392
     }
   ],
@@ -32,7 +32,7 @@
       "stencil": "nginx",
       "label": "Commerce gateway",
       "sublabel": "TLS termination · /api/orders",
-      "x": 400,
+      "x": 420,
       "y": 280,
       "props": {}
     },
@@ -41,7 +41,7 @@
       "stencil": "service.dotnet",
       "label": "Order service",
       "sublabel": ".NET 10 · group: orders-payments",
-      "x": 760,
+      "x": 800,
       "y": 280,
       "group": "aks",
       "props": {
@@ -60,7 +60,7 @@
       "stencil": "kafka.topic",
       "label": "orders.created.v1",
       "sublabel": "OrderPlaced · keyed by orderId",
-      "x": 1120,
+      "x": 1180,
       "y": 280,
       "group": "aks",
       "props": {
@@ -73,7 +73,7 @@
       "stencil": "service.java",
       "label": "Inventory service",
       "sublabel": "group: inventory-reservations",
-      "x": 1480,
+      "x": 1560,
       "y": 160,
       "group": "aks",
       "props": {
@@ -88,7 +88,7 @@
       "stencil": "service.go",
       "label": "Payments service",
       "sublabel": "group: payment-authorizations",
-      "x": 1480,
+      "x": 1560,
       "y": 280,
       "group": "aks",
       "props": {
@@ -103,7 +103,7 @@
       "stencil": "service.node",
       "label": "Notification service",
       "sublabel": "group: customer-notifications",
-      "x": 1480,
+      "x": 1560,
       "y": 400,
       "group": "aks",
       "props": {
@@ -118,7 +118,7 @@
       "stencil": "postgres",
       "label": "Inventory database",
       "sublabel": "Reservations · SKU availability",
-      "x": 1840,
+      "x": 1940,
       "y": 160,
       "props": {}
     },
@@ -127,7 +127,7 @@
       "stencil": "postgres",
       "label": "Payment ledger",
       "sublabel": "Idempotency keys · authorizations",
-      "x": 1840,
+      "x": 1940,
       "y": 280,
       "props": {}
     },
@@ -136,7 +136,7 @@
       "stencil": "redis.cache",
       "label": "Notification dedupe",
       "sublabel": "Order / template key · TTL 24h",
-      "x": 1840,
+      "x": 1940,
       "y": 400,
       "props": {}
     },
@@ -145,7 +145,7 @@
       "stencil": "kafka.topic",
       "label": "payments.completed.v1",
       "sublabel": "PaymentCompleted · keyed by orderId",
-      "x": 1120,
+      "x": 1180,
       "y": 520,
       "props": {
         "partitions": 64,
@@ -157,7 +157,7 @@
       "stencil": "postgres",
       "label": "Orders database",
       "sublabel": "Order state · transactional outbox",
-      "x": 760,
+      "x": 800,
       "y": 520,
       "props": {}
     },
@@ -166,7 +166,7 @@
       "stencil": "kafka.schema-registry",
       "label": "Schema registry",
       "sublabel": "Avro · backward compatible",
-      "x": 1120,
+      "x": 1180,
       "y": 40,
       "props": {
         "compatibility": "BACKWARD"
@@ -177,7 +177,7 @@
       "stencil": "prometheus",
       "label": "Commerce metrics",
       "sublabel": "Scrape interval: 15s",
-      "x": 1480,
+      "x": 1560,
       "y": 640,
       "props": {
         "scrapeIntervalSec": 15
@@ -188,7 +188,7 @@
       "stencil": "grafana",
       "label": "Order operations",
       "sublabel": "Lag · checkout latency · failures",
-      "x": 1840,
+      "x": 1940,
       "y": 640,
       "props": {}
     }

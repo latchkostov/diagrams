@@ -633,10 +633,11 @@ kbd {
 
 /* card */
 .nb-card {
-  /* Grows for long repo / topic names; the 360px column grid leaves room up to 300px. */
+  /* Grows with its text from 220 to 260px (CARD in src/canvas/nodes/size.ts); longer labels
+     truncate and sublabels wrap to two lines, so cards never crowd the column gaps edges use. */
   width: max-content;
   min-width: 220px;
-  max-width: 300px;
+  max-width: 260px;
   height: 72px;
   display: flex;
   align-items: center;
