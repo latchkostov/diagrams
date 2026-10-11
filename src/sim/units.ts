@@ -1,4 +1,4 @@
-import type { NodeSimState, SimSnapshot } from "./types";
+import type { NodeSimState, RealNodeMetrics, RealSimFrame, RealSimSnapshot, SimFrame, SimSnapshot } from "./types";
 export function resolveScale(value: number | undefined): number {
   return value !== undefined && Number.isFinite(value) && value >= 1 ? value : 1;
 }
@@ -12,10 +12,12 @@ export function toRealUnits(value: number, scale = 1): number {
 export function toSimulatedUnits(value: number, scale = 1): number {
   return value / resolveScale(scale);
 }
-export function realNodeMetrics(node: NodeSimState, scale = 1): NodeSimState {
+export function realNodeMetrics(node: NodeSimState, scale = 1): RealNodeMetrics {
+  if ("units" in node && node.units === "real") return node as RealNodeMetrics;
   const real = (n: number) => toRealUnits(n, scale);
   return {
     ...node,
+    units: "real",
     backlog: real(node.backlog),
     inFlight: real(node.inFlight),
     processed: real(node.processed),
@@ -26,13 +28,23 @@ export function realNodeMetrics(node: NodeSimState, scale = 1): NodeSimState {
     lag: Object.fromEntries(Object.entries(node.lag).map(([id, n]) => [id, real(n)])),
   };
 }
-/** Keeps particles, time and replica counts in native units. */
-export function realSnapshot(snapshot: SimSnapshot): SimSnapshot {
+/** Keeps particles, time and replica counts in native units. Converted views are tagged and idempotent. */
+export function realFrame(frame: SimFrame): RealSimFrame {
+  if ("units" in frame && frame.units === "real") return frame as RealSimFrame;
+  const scale = resolveScale(frame.scale);
+  return {
+    ...frame,
+    units: "real",
+    inSystem: toRealUnits(frame.inSystem, scale),
+    nodes: Object.fromEntries(Object.entries(frame.nodes).map(([id, node]) => [id, realNodeMetrics(node, scale)])),
+  };
+}
+export function realSnapshot(snapshot: SimSnapshot): RealSimSnapshot {
+  if ("units" in snapshot && snapshot.units === "real") return snapshot as RealSimSnapshot;
   const scale = resolveScale(snapshot.scale);
   return {
     ...snapshot,
-    inSystem: toRealUnits(snapshot.inSystem, scale),
-    nodes: Object.fromEntries(Object.entries(snapshot.nodes).map(([id, node]) => [id, realNodeMetrics(node, scale)])),
+    ...realFrame(snapshot),
     edges: Object.fromEntries(
       Object.entries(snapshot.edges).map(([id, edge]) => [
         id,
