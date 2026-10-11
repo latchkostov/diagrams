@@ -165,7 +165,7 @@ export function Inspector(p: InspectorProps) {
 
   if (p.collapsed) {
     return (
-      <aside className="inspector is-collapsed" data-testid="inspector" aria-label="Inspector">
+      <aside className="inspector is-collapsed" data-testid="inspector" data-collapsed="1" aria-label="Inspector">
         <button
           className="icon-btn"
           onClick={p.onToggle}

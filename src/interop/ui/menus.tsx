@@ -9,7 +9,20 @@ type Api = Omit<Interop, "layer">;
  * it, export it. Formats live one level down ("Export as"). Google Drive rows exist only when
  * configured. On views without a canvas (stencils, Lab) only the starting actions show.
  */
-export function FileMenu({ api, canvas, onNewDiagram }: { api: Api; canvas: boolean; onNewDiagram: () => void }) {
+export function FileMenu({
+  api,
+  canvas,
+  onNewDiagram,
+  onLibrary,
+  libraryCount = 0,
+}: {
+  api: Api;
+  canvas: boolean;
+  onNewDiagram: () => void;
+  /** Opens "Your diagrams" (the local library). */
+  onLibrary?: () => void;
+  libraryCount?: number;
+}) {
   const entries = (): MenuEntry[] => {
     const b = api.binding;
     const drive = api.driveEnabled;
@@ -21,6 +34,18 @@ export function FileMenu({ api, canvas, onNewDiagram }: { api: Api; canvas: bool
         title: "New diagram",
         onSelect: onNewDiagram,
       },
+      ...(onLibrary
+        ? [
+            {
+              type: "item" as const,
+              testId: "file-library",
+              icon: <Glyph name="stack" />,
+              title: "Your diagrams…",
+              desc: libraryCount ? `${libraryCount} kept in this browser` : "Rename, duplicate or delete your diagrams",
+              onSelect: onLibrary,
+            },
+          ]
+        : []),
       {
         type: "item",
         testId: "file-open",
@@ -165,7 +190,7 @@ export function FileMenu({ api, canvas, onNewDiagram }: { api: Api; canvas: bool
 }
 
 /** Top-bar chip while a shared diagram is open: it's kept apart from the user's own until saved. */
-export function SharedChip({ onKeep, replaces }: { onKeep: () => void; replaces?: string }) {
+export function SharedChip({ onKeep }: { onKeep: () => void }) {
   return (
     <div
       className="ix-shared"
@@ -178,7 +203,7 @@ export function SharedChip({ onKeep, replaces }: { onKeep: () => void; replaces?
       <button
         className="ix-shared-keep"
         onClick={onKeep}
-        title={replaces ? `Keep it as your diagram (replaces “${replaces}”)` : "Keep it as your diagram"}
+        title="Keep a copy in Your diagrams"
         data-testid="shared-keep"
       >
         Save a copy

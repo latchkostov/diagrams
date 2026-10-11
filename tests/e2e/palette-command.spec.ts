@@ -1,0 +1,276 @@
+import type { Page } from "@playwright/test";
+import { test, expect, gotoCanvas, gotoGallery, expectNoErrors } from "./fixtures";
+
+// Command palette (Ctrl/Cmd+K). Selectors are data-testid only. Uses the public Kafka example
+// (ids from src/examples/kafka-order-pipeline.json).
+
+const SLUG = "kafka-order-pipeline";
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
+
+const palette = (page: Page) => page.getByTestId("command-palette");
+const input = (page: Page) => page.getByTestId("command-input");
+const items = (page: Page) => page.getByTestId(/^command-item-/);
+const item = (page: Page, id: string) => page.getByTestId(`command-item-${id}`);
+
+async function openPalette(page: Page) {
+  await page.keyboard.press(`${MOD}+k`);
+  await expect(palette(page)).toBeVisible();
+  await expect(input(page)).toBeFocused();
+}
+
+async function counts(page: Page): Promise<{ nodes: number; edges: number }> {
+  const text = (await page.getByTestId("diagram-card").textContent()) ?? "";
+  const m = /(\d+) nodes?, (\d+) edges?/.exec(text);
+  if (!m) throw new Error(`No counts in "${text}"`);
+  return { nodes: Number(m[1]), edges: Number(m[2]) };
+}
+
+async function firstItemId(page: Page): Promise<string> {
+  const id = await items(page).first().getAttribute("data-testid");
+  return id?.slice("command-item-".length) ?? "";
+}
+
+test.describe("command palette", () => {
+  test.beforeEach(async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    await expect(page.getByTestId("node-payments")).toBeVisible();
+  });
+
+  test("Ctrl+K opens it as a modal combobox, Esc closes it and focus goes back", async ({ page, consoleErrors }) => {
+    const fit = page.getByTestId("fit-view-button");
+    await fit.focus();
+    await expect(fit).toBeFocused();
+
+    await openPalette(page);
+    await expect(palette(page)).toHaveAttribute("role", "dialog");
+    await expect(palette(page)).toHaveAttribute("aria-modal", "true");
+    await expect(input(page)).toHaveAttribute("role", "combobox");
+    await expect(page.getByTestId("command-list")).toHaveAttribute("role", "listbox");
+    await expect(input(page)).toHaveAttribute("placeholder", /> actions\s+@ nodes\s+\+ add/);
+
+    // The highlighted option is announced through aria-activedescendant and moves with the arrows.
+    const activeId = async () => (await input(page).getAttribute("aria-activedescendant")) ?? "";
+    const first = await activeId();
+    expect(first).not.toBe("");
+    await expect(items(page).first()).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowDown");
+    expect(await activeId()).not.toBe(first);
+    await expect(items(page).nth(1)).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowUp");
+    expect(await activeId()).toBe(first);
+
+    // Tab stays inside the dialog.
+    for (let i = 0; i < 5; i++) await page.keyboard.press("Tab");
+    expect(await palette(page).evaluate((el) => el.contains(document.activeElement))).toBe(true);
+    await input(page).focus();
+
+    await page.keyboard.press("Escape");
+    await expect(palette(page)).toHaveCount(0);
+    await expect(fit).toBeFocused();
+    // Esc in the palette doesn't also clear the canvas or leave anything.
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+
+    // Ctrl+K toggles, and a click on the scrim closes.
+    await openPalette(page);
+    await page.keyboard.press(`${MOD}+k`);
+    await expect(palette(page)).toHaveCount(0);
+    await openPalette(page);
+    await page.mouse.click(10, 300);
+    await expect(palette(page)).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
+  test('typing "sb" and Enter adds a Service Bus stencil', async ({ page, consoleErrors }) => {
+    const before = await counts(page);
+    await openPalette(page);
+    await input(page).fill("sb");
+    expect(await firstItemId(page)).toMatch(/^stencil:azure\.service-bus\.(queue|topic)$/);
+    await page.keyboard.press("Enter");
+    await expect(palette(page)).toHaveCount(0);
+    await expect.poll(() => counts(page)).toEqual({ nodes: before.nodes + 1, edges: before.edges });
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue(/Service Bus (Queue|Topic)/);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("with one node selected, a stencil is added next to it and connected, as one undo step", async ({
+    page,
+    consoleErrors,
+  }) => {
+    const before = await counts(page);
+    await page.getByTestId("node-payments").click();
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("Payments service");
+    await openPalette(page);
+    await input(page).fill("pg");
+    await expect(item(page, "stencil:postgres")).toContainText("after Payments service");
+    expect(await firstItemId(page)).toBe("stencil:postgres");
+    await page.keyboard.press("Enter");
+    await expect.poll(() => counts(page)).toEqual({ nodes: before.nodes + 1, edges: before.edges + 1 });
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("PostgreSQL");
+
+    // It lands to the right of the source node.
+    const source = await page.getByTestId("node-payments").boundingBox();
+    const added = await page.getByTestId(/^node-postgres/).boundingBox();
+    if (!source || !added) throw new Error("Expected both nodes on screen");
+    expect(added.x).toBeGreaterThan(source.x + source.width);
+
+    // Node and edge undo together.
+    await page.getByTestId("undo-button").click();
+    await expect.poll(() => counts(page)).toEqual(before);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("goes to a node by label, selecting it", async ({ page, consoleErrors }) => {
+    await openPalette(page);
+    await input(page).fill("@inventory");
+    expect(await firstItemId(page)).toBe("node:inventory");
+    await page.keyboard.press("Enter");
+    await expect(palette(page)).toHaveCount(0);
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("Inventory service");
+    await expect(page.getByTestId("node-inventory")).toBeInViewport();
+
+    // With a node selected, its actions are offered with their noun.
+    await openPalette(page);
+    await input(page).fill("rename");
+    await expect(item(page, "action:node.rename")).toHaveText(/Rename node/);
+    await page.keyboard.press("Escape");
+    expectNoErrors(consoleErrors);
+  });
+
+  test('runs "Toggle live", then offers live actions and saved simulations', async ({ page, consoleErrors }) => {
+    const toggle = page.getByTestId("live-toggle");
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await openPalette(page);
+    await input(page).fill("toggle live");
+    expect(await firstItemId(page)).toBe("live:toggle");
+    await page.keyboard.press("Enter");
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+    // Live mode: live verbs appear, edit-only ones (and stencils) don't.
+    await openPalette(page);
+    await input(page).fill(">");
+    await expect(item(page, "action:sim.reset")).toBeVisible();
+    await expect(item(page, "action:canvas.auto-layout")).toHaveCount(0);
+    await input(page).fill("+");
+    await expect(items(page)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+
+    // A saved simulation runs in the session.
+    await openPalette(page);
+    await input(page).fill("payments goes down");
+    expect(await firstItemId(page)).toBe("sim:payments-outage");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("payments-outage");
+
+    // And back to editing.
+    await openPalette(page);
+    await input(page).fill("toggle live");
+    await page.keyboard.press("Enter");
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a simulation from edit mode goes live and runs it", async ({ page, consoleErrors }) => {
+    await openPalette(page);
+    await input(page).fill("black friday");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("prefixes narrow to actions, nodes or stencils, and the footer buttons type them", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await openPalette(page);
+    const groups = async () =>
+      new Set(await items(page).evaluateAll((els) => els.map((el) => el.getAttribute("data-group"))));
+
+    await input(page).fill(">");
+    expect(await groups()).toEqual(new Set(["actions"]));
+    await input(page).fill("@");
+    expect(await groups()).toEqual(new Set(["nodes"]));
+    await input(page).fill("@payments s");
+    expect(await firstItemId(page)).toBe("node:payments");
+    await input(page).fill("+");
+    expect(await groups()).toEqual(new Set(["stencils"]));
+    await input(page).fill("+kafka topic");
+    expect(await firstItemId(page)).toBe("stencil:kafka.topic");
+
+    await input(page).fill("fit");
+    await page.getByTestId("command-prefix-actions").click();
+    await expect(input(page)).toHaveValue(">fit");
+    await expect(input(page)).toBeFocused();
+    await page.getByTestId("command-prefix-nodes").click();
+    await expect(input(page)).toHaveValue("@fit");
+
+    // Submenus drill in: Enter on "Export" lists its entries.
+    await input(page).fill(">export");
+    await expect(items(page).first()).toHaveAttribute("data-testid", "command-item-action:canvas.export");
+    await page.keyboard.press("Enter");
+    await expect(palette(page)).toBeVisible();
+    await expect(item(page, "action:export:drawio")).toBeVisible();
+
+    await input(page).fill("zzzzqqq");
+    await expect(page.getByTestId("command-empty")).toBeVisible();
+    expectNoErrors(consoleErrors);
+  });
+
+  test("recently used commands float to the top", async ({ page, consoleErrors }) => {
+    const run = async (query: string, id: string) => {
+      await openPalette(page);
+      await input(page).fill(query);
+      await item(page, id).click();
+      await expect(palette(page)).toHaveCount(0);
+    };
+    await run("fit view", "action:canvas.fit");
+    await openPalette(page);
+    await expect(page.getByTestId("command-group-recent")).toBeVisible();
+    expect(await firstItemId(page)).toBe("action:canvas.fit");
+    await page.keyboard.press("Escape");
+
+    await run("select all", "action:canvas.select-all");
+    await page.getByTestId("canvas-wrap").click({ position: { x: 600, y: 90 } });
+    await openPalette(page);
+    const recent = page.getByTestId("command-group-recent").getByTestId(/^command-item-/);
+    await expect(recent).toHaveCount(2);
+    await expect(recent.nth(0)).toHaveAttribute("data-testid", "command-item-action:canvas.select-all");
+    await expect(recent.nth(1)).toHaveAttribute("data-testid", "command-item-action:canvas.fit");
+
+    // Remembered across reloads; a recent command also wins a tie while typing.
+    await page.keyboard.press("Escape");
+    await page.reload();
+    await expect(page.getByTestId("node-payments")).toBeVisible();
+    await openPalette(page);
+    expect(await firstItemId(page)).toBe("action:canvas.select-all");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("fits a 1024px window without overlap, and works from the gallery", async ({ page, consoleErrors }) => {
+    await page.setViewportSize({ width: 1024, height: 700 });
+    await page.getByTestId("node-payments").click();
+    await openPalette(page);
+    await input(page).fill("a");
+    const box = await palette(page).boundingBox();
+    if (!box) throw new Error("Expected a visible palette");
+    expect(box.width).toBeLessThanOrEqual(640);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(1024);
+    expect(box.y + box.height).toBeLessThanOrEqual(700);
+    // No row spills out of its box (labels ellipsize, hints shrink).
+    const overflowing = await items(page).evaluateAll((els) =>
+      els.filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.getAttribute("data-testid")),
+    );
+    expect(overflowing).toEqual([]);
+    await page.keyboard.press("Escape");
+
+    await gotoGallery(page);
+    await openPalette(page);
+    await input(page).fill("aws fanout");
+    expect(await firstItemId(page)).toBe("diagram:aws-fanout");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await expect(page).toHaveURL(/example=aws-fanout/);
+    expectNoErrors(consoleErrors);
+  });
+});

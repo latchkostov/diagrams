@@ -160,7 +160,8 @@ test.describe("lab", () => {
     await gotoLab(page, "stress-10");
     await page.getByTestId("lab-open-editor").click();
     await expect(page.getByTestId("canvas-view")).toBeVisible();
-    await expect(page.getByTestId("example-picker")).toHaveValue("imported");
+    // A generated diagram becomes a new entry in Your diagrams.
+    await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
     await expect(page.getByTestId("node-n1")).toBeVisible();
   });
 

@@ -101,3 +101,24 @@ const clipTop = (a: Rect, y: number): Rect => (y <= a.y ? a : { ...a, y, height:
 const clipBottom = (a: Rect, y: number): Rect => (y >= a.y + a.height ? a : { ...a, height: y - a.y });
 const clipLeft = (a: Rect, x: number): Rect => (x <= a.x ? a : { ...a, x, width: a.width - (x - a.x) });
 const clipRight = (a: Rect, x: number): Rect => (x >= a.x + a.width ? a : { ...a, width: x - a.x });
+
+/**
+ * The smallest pan (zoom unchanged) that brings flow-space `want` inside `view` (screen px, relative
+ * to the pane). When `want` is too big to fit, `must` (a part of it, e.g. the selection without its
+ * edges) is kept in view instead, and centred if even that is too big. Null when nothing needs to move.
+ */
+export function panIntoView(want: Rect, must: Rect, viewport: Viewport, view: Rect): Viewport | null {
+  const { zoom: z } = viewport;
+  const axis = (lo: number, hi: number, mustLo: number, mustHi: number, start: number, size: number) => {
+    const shift = (a: number, b: number) => (a < start ? start - a : b > start + size ? start + size - b : 0);
+    if (hi - lo <= size) return shift(lo, hi);
+    if (mustHi - mustLo <= size) return shift(mustLo, mustHi);
+    return start + size / 2 - (mustLo + mustHi) / 2;
+  };
+  const sx = (x: number) => x * z + viewport.x;
+  const sy = (y: number) => y * z + viewport.y;
+  const dx = axis(sx(want.x), sx(want.x + want.width), sx(must.x), sx(must.x + must.width), view.x, view.width);
+  const dy = axis(sy(want.y), sy(want.y + want.height), sy(must.y), sy(must.y + must.height), view.y, view.height);
+  if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return null;
+  return { x: viewport.x + dx, y: viewport.y + dy, zoom: z };
+}

@@ -357,3 +357,28 @@ describe("LiveController", () => {
     });
   });
 });
+
+describe("automatic dot scale for runs", () => {
+  const dense: Simulation = {
+    id: "dense",
+    title: "dense",
+    traffic: [{ id: "t", node: "api", shape: { kind: "constant", ratePerSec: 5000, durationMs: 2000 } }],
+  };
+
+  it("a run without a saved scale picks one from its traffic, without writing it into the simulation", () => {
+    const c = new LiveController(diagram(), { roleOf });
+    c.selectSimulation(dense);
+    // 5,000 messages a second at about 60 dots a second at most: the 1/2/5 series gives 100.
+    expect(c.getState().scale).toBe(100);
+    expect(c.getState().simulation?.scale).toBeUndefined();
+    expect(c.getState().running?.scale).toBeUndefined();
+  });
+
+  it("a saved scale wins, and gentle traffic stays at one dot per message", () => {
+    const c = new LiveController(diagram(), { roleOf });
+    c.selectSimulation({ ...dense, scale: 1 });
+    expect(c.getState().scale).toBe(1);
+    c.selectSimulation(storm);
+    expect(c.getState().scale).toBe(1);
+  });
+});

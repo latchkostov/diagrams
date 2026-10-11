@@ -94,6 +94,24 @@
   color: var(--text-3);
 }
 
+/* React Flow's credit stays visible (its licence asks for it) but out of the way: bottom-right,
+   lifted above the minimap when there is one, so it never sits under the live bar or the
+   first-run hint (both bottom centre). */
+.react-flow .react-flow__panel.react-flow__attribution.bottom.right {
+  margin: 0 16px 3px 0;
+  padding: 1px 4px;
+}
+
+.react-flow:has(.react-flow__minimap) .react-flow__panel.react-flow__attribution.bottom.right {
+  margin-bottom: 132px;
+}
+
+@media (max-width: 1100px) {
+  .react-flow:has(.react-flow__minimap) .react-flow__panel.react-flow__attribution.bottom.right {
+    margin-bottom: 3px;
+  }
+}
+
 .react-flow__panel.bottom.left,
 .react-flow__panel.bottom.right {
   margin: 16px;
@@ -1669,22 +1687,39 @@ select.insp-input {
   transform: translateX(2px);
 }
 
-/* Three stencils from the diagram: a glimpse of what's inside. */
-.start-tiles {
+/* A tiny rendering of the diagram (DiagramThumbnail, shared with Your diagrams). */
+.start-thumb {
   flex: none;
+  width: 64px;
+  height: 40px;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.start-thumb .diagram-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+.start-heading {
   display: flex;
-  gap: 3px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 12px 0 4px;
 }
 
-.start-tiles .palette-tile {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+.start-heading:first-of-type {
+  margin-top: 0;
 }
 
-.start-tiles .palette-tile .stencil-icon {
-  width: 16px;
-  height: 14px;
+.start-heading h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
 }
 
 .start-example-text {

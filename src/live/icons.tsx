@@ -1,11 +1,13 @@
 // Glyphs for the live view (16px grid, 1.5 stroke) in the same style as components/Icon.tsx.
 
+import { TRAFFIC_PATH } from "../components/glyphPaths";
+
 const paths = {
   play: "M5 3.2v9.6a.5.5 0 0 0 .76.43l7.6-4.8a.5.5 0 0 0 0-.86l-7.6-4.8A.5.5 0 0 0 5 3.2Z",
   pause: "M5 3h2v10H5zM9 3h2v10H9z",
   restart: "M2.75 8a5.25 5.25 0 1 0 1.6-3.8M2.5 2.5v2.75h2.75",
   step: "M3.5 3.5 9 8l-5.5 4.5zM11.5 3.5v9",
-  traffic: "M2 5h9.5M9 2.5 11.5 5 9 7.5M14 11H4.5M7 8.5 4.5 11 7 13.5",
+  traffic: TRAFFIC_PATH,
   events: "M2.5 4h11M2.5 8h11M2.5 12h7",
   edit: "M10.5 2.75l2.75 2.75L6 12.75H3.25V10zM9 4.25 11.75 7",
   close: "M4 4l8 8M12 4l-8 8",

@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -35,11 +36,11 @@ import {
 import { getStencil } from "../stencils/registry";
 import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
-import { emptyDiagram, getAutosave, getOriginal, writeAutosave } from "../lib/diagramIO";
+import { emptyDiagram, getAutosave, getDiagramIdentity, getOriginal, writeAutosave } from "../lib/diagramIO";
 import type { DiagramFile } from "../model/types";
 import { fromFlow, groupAt, toFlow, withEdgeAria, withNodeAria, type DiagramMeta } from "./convert";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
-import { useCovered, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
+import { useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
 import { DiagramNode } from "./nodes/DiagramNode";
 import { GroupNode } from "./nodes/GroupNode";
 import { toneColor } from "./groupTones";
@@ -65,6 +66,7 @@ import { StartCard, type StartOptions } from "./StartCard";
 import { NodeTooltip } from "./NodeTooltip";
 import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { FirstRunHint } from "./FirstRunHint";
+import { useCanvasHost } from "../palette/canvasHost";
 
 const nodeTypes: NodeTypes = { diagram: DiagramNode, boundary: GroupNode };
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -83,6 +85,10 @@ const ROOMY = 1680;
 export interface CanvasHandle {
   /** Current canvas as a diagrams/v1 file. */
   getDiagram: () => DiagramFile;
+  /** Writes pending edits to storage now (before reading or replacing this diagram's stored copy). */
+  flush: () => void;
+  /** Renames the diagram as a normal, undoable edit. */
+  setTitle: (title: string) => void;
 }
 
 interface Props {
@@ -96,6 +102,8 @@ interface Props {
   initial?: DiagramFile;
   /** Ways in for a blank diagram (the start card). Absent: a plain hint. */
   start?: StartOptions;
+  /** Told the title as it's edited (the picker follows it without waiting for the autosave). */
+  onTitleChange?: (title: string) => void;
 }
 
 export function CanvasView(props: Props) {
@@ -120,23 +128,27 @@ type MenuState = { x: number; y: number; items: MenuNode[]; label: string; searc
 // Built-in actions live for the app's lifetime; HMR re-registers them by id.
 actionRegistry.register(builtinActions());
 
-function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, initial, start }: Props) {
+function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, initial, start, onTitleChange }: Props) {
   const { theme, nodeVariant, edgeStyle } = useSettings();
   const { screenToFlowPosition, fitView } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
 
-  const [{ original, flow, originalJson }] = useState(() => {
+  const [{ original, flow, originalJson, loadedJson, identity }] = useState(() => {
     const original = initial ?? getOriginal(slug) ?? emptyDiagram();
+    const flow = toFlow((initial ? undefined : getAutosave(slug)) ?? original);
     return {
       original,
-      flow: toFlow((initial ? undefined : getAutosave(slug)) ?? original),
+      flow,
       originalJson: normalize(original),
+      loadedJson: JSON.stringify(fromFlow(flow.meta, flow.nodes, flow.edges)),
+      // The document this canvas loaded: late writes (an unmount flush) never land on a replacement.
+      identity: initial ? undefined : getDiagramIdentity(slug),
     };
   });
   const [meta, setMeta] = useState<DiagramMeta>(flow.meta);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(flow.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
-  const [modified, setModified] = useState(false);
+  const [modified, setModified] = useState(loadedJson !== originalJson);
   const [paletteCollapsed, setPaletteCollapsed] = useState(() => {
     const saved = safeStorage.getItem(PALETTE_KEY);
     // Narrow windows always start with the canvas, not the stencil list.
@@ -223,20 +235,67 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   });
 
   useCanvasShortcuts(editor, { enabled: !shortcutsOpen && !readOnly, onEscape: () => setMenu(null) });
+  // The command palette (Ctrl/Cmd+K) acts on this canvas while it's mounted and editable.
+  useCanvasHost(editor, { live, enabled: !readOnly });
 
-  useImperativeHandle(ref, () => ({ getDiagram: () => fromFlow(meta, nodes, edges) }), [meta, nodes, edges]);
-
-  // Autosave per example; drop the save again once the diagram matches the original.
+  // ---------------------------------------------------------------- autosave
+  // Debounced while editing, and flushed whenever the canvas could go away before the timer fires:
+  // on unmount (switching diagrams), on page hide (reload, close, navigation) and when the tab is
+  // hidden (mobile browsers may discard it). Writes the latest state, never a stale closure, and
+  // drops the save again once the diagram matches the original.
+  const latest = useRef({ meta, nodes, edges, slug });
+  useLayoutEffect(() => {
+    latest.current = { meta, nodes, edges, slug };
+  });
+  const lastSaved = useRef(loadedJson);
+  /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
+  const flushSave = useCallback((): boolean | undefined => {
+    if (readOnly) return undefined;
+    const { meta, nodes, edges, slug } = latest.current;
+    const d = fromFlow(meta, nodes, edges);
+    const json = JSON.stringify(d);
+    if (json === lastSaved.current) return undefined;
+    const mod = json !== originalJson;
+    if (writeAutosave(slug, mod ? d : null, identity)) lastSaved.current = json;
+    return mod;
+  }, [readOnly, originalJson, identity]);
   useEffect(() => {
     if (readOnly) return;
     const t = setTimeout(() => {
-      const d = fromFlow(meta, nodes, edges);
-      const mod = JSON.stringify(d) !== originalJson;
-      writeAutosave(slug, mod ? d : null);
-      setModified(mod);
+      const mod = flushSave();
+      if (mod !== undefined) setModified(mod);
     }, 300);
     return () => clearTimeout(t);
-  }, [meta, nodes, edges, slug, originalJson, readOnly]);
+  }, [meta, nodes, edges, readOnly, flushSave]);
+  useEffect(() => {
+    if (readOnly) return;
+    const onPageHide = () => void flushSave();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flushSave();
+    };
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      flushSave();
+    };
+  }, [readOnly, flushSave]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      getDiagram: () => fromFlow(meta, nodes, edges),
+      flush: () => {
+        const mod = flushSave();
+        if (mod !== undefined) setModified(mod);
+      },
+      setTitle: (title: string) => editor.updateMeta({ title }),
+    }),
+    [meta, nodes, edges, flushSave, editor],
+  );
+
+  useEffect(() => onTitleChange?.(meta.title), [meta.title, onTitleChange]);
 
   // Refit when chrome appears / disappears (presentation mode).
   useEffect(() => {
@@ -431,6 +490,26 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const paletteHidden = paletteCollapsed || (live && !openedByHand.palette);
   const inspectorHidden =
     livePanelOpen || !prefs.inspector || ((live || (narrow && nothingSelected)) && !openedByHand.inspector);
+  // Below ROOMY the inspector opens with a selection and narrows the canvas: keep the selection
+  // and its edges in view (a pan, never a zoom), once the pane has its new size.
+  const keepSelectionInView = useKeepSelectionInView(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
+  // A right-click that selected (and so opened the inspector) waits for its menu to close: moving
+  // the view would close the menu under the pointer.
+  const inspectorWasHidden = useRef(inspectorHidden);
+  const keepPending = useRef(false);
+  useEffect(() => {
+    const opened = inspectorWasHidden.current && !inspectorHidden;
+    inspectorWasHidden.current = inspectorHidden;
+    if (opened && !readOnly && !nothingSelected) keepPending.current = true;
+    if (inspectorHidden) keepPending.current = false;
+    if (!keepPending.current || menu) return;
+    const id = requestAnimationFrame(() => {
+      keepPending.current = false;
+      keepSelectionInView();
+    });
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the inspector opens or a menu closes
+  }, [inspectorHidden, menu]);
   const labels = useMemo(() => new Map(diagramNodes.map((n) => [n.id, n.data.label || n.id])), [diagramNodes]);
   // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel).
   const ariaNodes = useMemo(() => withNodeAria(nodes), [nodes]);
@@ -507,7 +586,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             colorMode={theme}
-            attributionPosition="bottom-center"
+            // Bottom-right, lifted above the minimap (canvas.css): never under the live bar or the hint.
+            attributionPosition="bottom-right"
             fitView
             fitViewOptions={FIT}
             minZoom={0.15}
@@ -602,7 +682,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                     ? undefined
                     : (diagram) => {
                         const mod = JSON.stringify(diagram) !== originalJson;
-                        writeAutosave(slug, mod ? diagram : null);
+                        writeAutosave(slug, mod ? diagram : null, identity);
                         setModified(mod);
                       }
                 }

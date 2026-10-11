@@ -957,22 +957,6 @@
   margin-left: auto;
 }
 
-.drawer-confirm {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  font-size: 13px;
-  color: var(--text-2);
-  animation: view-in var(--dur-2) var(--ease-out);
-}
-
-.drawer-confirm > div {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
 /* ---------- drag dock + note ---------- */
 
 .gallery-dock {

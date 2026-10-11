@@ -73,8 +73,9 @@ test.describe("canvas", () => {
 
     await page.getByTestId("import-input").setInputFiles(file);
     await expect(page.getByTestId("toast")).toContainText("Imported");
-    await expect(page.getByTestId("example-picker")).toHaveValue("imported");
-    await expect(page).toHaveURL(/example=imported/);
+    // Imports land in Your diagrams as a new entry.
+    await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+    await expect(page).toHaveURL(/example=my-/);
     await expect(page.getByTestId("diagram-title")).toHaveText(ex.title);
     for (const id of ex.nodeIds) await expect(page.getByTestId(`node-${id}`)).toBeVisible();
 

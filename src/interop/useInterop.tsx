@@ -15,10 +15,8 @@ import {
   bindSaveTarget,
   getDiagramIdentity,
   getSaveTarget,
-  getImported,
   getOriginal,
-  IMPORTED_SLUG,
-  SHARED_SLUG,
+  isOwnSlug,
   type SaveTarget,
 } from "../lib/diagramIO";
 import { fromFlow, toFlow } from "../canvas/convert";
@@ -55,8 +53,6 @@ import { DropOverlay } from "./ui/DropOverlay";
 // The import / export controller: every way a diagram enters or leaves the app goes through here
 // (top-bar menus, the canvas context menu, keyboard shortcuts, drag-and-drop, share links).
 
-export type Slot = typeof IMPORTED_SLUG | typeof SHARED_SLUG;
-
 export interface Binding {
   kind: "device" | "drive";
   name: string;
@@ -66,8 +62,10 @@ interface Options {
   view: View;
   slug: string;
   canvas: RefObject<CanvasHandle | null>;
-  /** Stores the diagram in a slot and shows it on the canvas. */
-  openSlot: (slot: Slot, d: DiagramFile, target?: SaveTarget) => void;
+  /** Adds the diagram to Your diagrams (bound to `target` for Save) and shows it. Throws if it can't be kept. */
+  openDiagram: (d: DiagramFile, target?: SaveTarget) => void;
+  /** Shows a diagram from a share link in the shared slot, apart from the user's own. */
+  openShared: (d: DiagramFile) => void;
   /** Public examples can be embedded by name. */
   isPublicExample: (slug: string) => boolean;
 }
@@ -102,8 +100,13 @@ const normalized = (d: DiagramFile) => {
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 const loadDrive = () => import("./gdrive/google");
 
-export function useInterop({ view, slug, canvas: canvasRef, openSlot, isPublicExample }: Options) {
+export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openShared, isPublicExample }: Options) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  // The diagram open right now (a save that finishes later compares against it).
+  const openSlug = useRef(slug);
+  useLayoutEffect(() => {
+    openSlug.current = slug;
+  }, [slug]);
   const [, setBindingVersion] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const fsSupported = useMemo(() => fsAccessSupported(), []);
@@ -130,10 +133,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openSlot, isPublicEx
     return preserveUnknown(d, getOriginal(slug));
   }, [canvasRef, slug]);
 
-  const baseName = useCallback(
-    (d: DiagramFile) => (slug === IMPORTED_SLUG || slug === SHARED_SLUG ? slugify(d.title) : slug),
-    [slug],
-  );
+  const baseName = useCallback((d: DiagramFile) => (isOwnSlug(slug) ? slugify(d.title) : slug), [slug]);
 
   /** Runs an action, turning any failure into a friendly toast. Called from handlers, never during render. */
   const attempt = async (what: string, fn: () => Promise<void> | void) => {
@@ -240,11 +240,15 @@ export function useInterop({ view, slug, canvas: canvasRef, openSlot, isPublicEx
       }
       const handle = await saveWithPicker(text, name);
       if (!handle) return;
+      // The destination binds to the diagram that started the save, even if another one is open now.
       const bound = bind(slug, { kind: "device", handle }, identity);
+      const stillOpen = openSlug.current === slug;
       toast.success(
-        bound
+        bound && stillOpen
           ? `Saved to ${handle.name}. Ctrl+S saves here again.`
-          : `Saved “${d.title}” to ${handle.name}. The open diagram has changed; save it separately.`,
+          : bound
+            ? `Saved “${d.title}” to ${handle.name}. Ctrl+S saves it there again when it's open.`
+            : `Saved “${d.title}” to ${handle.name}. The open diagram has changed; save it separately.`,
       );
     });
 
@@ -303,7 +307,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openSlot, isPublicEx
               : source.drive
                 ? { kind: "drive", ...source.drive }
                 : undefined;
-        openSlot(IMPORTED_SLUG, outcome.diagram, target);
+        openDiagram(outcome.diagram, target);
       } catch (err) {
         toast.error(`Couldn't import ${source.name}. ${message(err)}`);
         return;
@@ -315,7 +319,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openSlot, isPublicEx
       const from = outcome.format === "native" ? "" : ` from ${outcome.format === "drawio" ? "draw.io" : "Mermaid"}`;
       toast.info(`Imported “${outcome.diagram.title}”${from}.${note}`, { duration: note ? 7000 : undefined });
     },
-    [openSlot],
+    [openDiagram],
   );
 
   const importFile = useCallback(
@@ -372,14 +376,14 @@ export function useInterop({ view, slug, canvas: canvasRef, openSlot, isPublicEx
       try {
         const d = await decodeShare(payload);
         setDialog(null);
-        openSlot(SHARED_SLUG, d);
+        openShared(d);
         toast.info(`Opened the shared diagram “${d.title}”. It's kept apart from your own diagrams.`);
       } catch (err) {
         toast.dismiss(busy);
         toast.error(message(err));
       }
     },
-    [openSlot],
+    [openShared],
   );
 
   const openShareLinkInput = useCallback(
@@ -405,12 +409,12 @@ export function useInterop({ view, slug, canvas: canvasRef, openSlot, isPublicEx
     return () => window.removeEventListener("hashchange", check);
   }, [openSharePayload]);
 
-  /** Shared banner: keep the shared diagram as the user's own (the imported slot). */
+  /** Shared banner: keep a copy of the shared diagram in Your diagrams. */
   const keepSharedCopy = () =>
     attempt("keep a copy", () => {
       const d = current();
-      openSlot(IMPORTED_SLUG, d);
-      toast.success(`Kept a copy: “${d.title}” is now your diagram.`);
+      openDiagram(d);
+      toast.success(`Saved a copy of “${d.title}” to Your diagrams.`);
     });
 
   // ---------------------------------------------------------------- keyboard
@@ -441,7 +445,6 @@ export function useInterop({ view, slug, canvas: canvasRef, openSlot, isPublicEx
     binding,
     fsSupported,
     driveEnabled,
-    replacesImported: getImported()?.title,
   };
   const apiRef = useRef(api);
   useLayoutEffect(() => {

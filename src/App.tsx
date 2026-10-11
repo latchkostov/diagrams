@@ -18,27 +18,33 @@ import type { DiagramFile } from "./model/types";
 import { useUrlState, type View } from "./lib/urlState";
 import {
   clearShared,
-  DIAGRAMS_CHANGED,
-  emptyDiagram,
-  getAutosave,
-  getImported,
+  createLibraryDiagram,
+  deleteLibraryDiagram,
+  DRAFT_SLUG,
+  duplicateLibraryDiagram,
   getDiagramIdentity,
+  newDraft,
+  OPEN_LIBRARY,
+  renameLibraryDiagram,
+  resolveSlug,
   type SaveTarget,
-  getShared,
-  IMPORTED_SLUG,
-  setImported,
   setShared,
   SHARED_SLUG,
+  UNTITLED,
   writeAutosave,
 } from "./lib/diagramIO";
+import { useLibrary } from "./lib/useLibrary";
+import { diagramThumb } from "./lib/thumbnail";
 import { Icon } from "./components/Icon";
-import { lastCanvas } from "./lib/canvasBridge";
+import { LibraryDialog } from "./components/LibraryDialog";
+import { formatAgo } from "./lib/time";
+import { lastCanvas, rememberCanvas } from "./lib/canvasBridge";
 import type { StartOptions } from "./canvas/StartCard";
-import { useInterop, useInteropCanvasActions, type Slot } from "./interop/useInterop";
+import { useInterop, useInteropCanvasActions } from "./interop/useInterop";
 import { notify } from "./interop/ui/toast";
-import { preserveUnknown } from "./interop/native";
 import { Toaster } from "./interop/ui/Toaster";
 import { EmbedView } from "./interop/embed/EmbedView";
+import { CommandPalette } from "./palette/CommandPalette";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -66,45 +72,76 @@ export function App() {
 function MainApp() {
   const [url, setUrl] = useUrlState();
   const canvasRef = useRef<CanvasHandle>(null);
-  // Refresh the picker independently of the currently open document identity.
-  const [slotVersion, setSlotVersion] = useState(0);
+  // Your diagrams and the shared slot, re-read when they change (here or in another tab).
+  const library = useLibrary();
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
-  // "Your diagram" (the one slot you own, blank until you start or import one) comes first, then a
-  // shared diagram if one is open, then the examples.
-  const options: ExampleOption[] = useMemo(() => {
-    void slotVersion; // the trigger to re-read the stored slots from localStorage
-    const shared = getShared();
-    return [
-      { slug: IMPORTED_SLUG, title: getImported()?.title ?? "Untitled diagram", group: "yours" as const },
-      ...(shared ? [{ slug: SHARED_SLUG, title: `${shared.title} (shared)`, group: "yours" as const }] : []),
-      ...examples.map((e) => ({ slug: e.slug, title: e.diagram.title, group: "examples" as const })),
-    ];
-  }, [slotVersion]);
-
-  // No diagram in the URL: reopen the last one, else your own (a blank canvas with the start card).
-  const valid = (s: string | undefined): s is string => !!s && options.some((o) => o.slug === s);
+  // No diagram in the URL: reopen the last one, else your most recent, else a blank draft (the start card).
+  const valid = (s: string | undefined): s is string =>
+    !!s &&
+    (s === DRAFT_SLUG ||
+      library.entries.some((e) => e.slug === s) ||
+      (s === SHARED_SLUG && !!library.shared) ||
+      examples.some((e) => e.slug === s));
+  const requested = url.example ? resolveSlug(url.example) : undefined;
   const remembered = lastCanvas();
-  const slug = valid(url.example) ? url.example : valid(remembered) ? remembered : IMPORTED_SLUG;
+  const slug = valid(requested)
+    ? requested
+    : remembered && valid(resolveSlug(remembered))
+      ? resolveSlug(remembered)
+      : (library.entries[0]?.slug ?? DRAFT_SLUG);
 
+  // Identity changes only when the open document is replaced. It stays put when a blank draft
+  // becomes a library entry on its first edit, so the canvas doesn't remount.
   const canvasIdentity = getDiagramIdentity(slug);
+  // The open diagram's title as it's typed: the picker follows it before the autosave lands.
+  const [openTitle, setOpenTitle] = useState<{ identity: string; title: string } | null>(null);
+  const onTitleChange = useCallback(
+    (title: string) => setOpenTitle({ identity: canvasIdentity, title }),
+    [canvasIdentity],
+  );
+  const liveTitle = (fallback: string) =>
+    openTitle?.identity === canvasIdentity ? openTitle.title.trim() || UNTITLED : fallback;
 
-  // Slot changes refresh the picker; only replacement of the open document remounts its canvas.
+  // Your diagrams (most recent first, an open blank draft on top), then a shared diagram, then the examples.
+  const options: ExampleOption[] = [
+    ...(slug === DRAFT_SLUG ? [{ slug: DRAFT_SLUG, title: liveTitle(UNTITLED), group: "yours" as const }] : []),
+    ...library.entries.map((e) => ({
+      slug: e.slug,
+      title: e.slug === slug ? liveTitle(e.title) : e.title,
+      group: "yours" as const,
+    })),
+    ...(library.shared
+      ? [
+          {
+            slug: SHARED_SLUG,
+            title: `${slug === SHARED_SLUG ? liveTitle(library.shared.title) : library.shared.title} (shared)`,
+            group: "yours" as const,
+          },
+        ]
+      : []),
+    ...examples.map((e) => ({ slug: e.slug, title: e.diagram.title, group: "examples" as const })),
+  ];
+
+  // "Your diagrams": the open diagram's pending edits are saved first, so the list is current.
+  const refreshLibrary = library.refresh;
+  const openLibrary = useCallback(() => {
+    canvasRef.current?.flush();
+    refreshLibrary();
+    setLibraryOpen(true);
+  }, [refreshLibrary]);
+  // ...from anywhere (e.g. the storage warning's button).
   useEffect(() => {
-    const bump = () => setSlotVersion((v) => v + 1);
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === null || e.key === "diagrams.imported.v1" || e.key === "diagrams.shared.v1") bump();
-    };
-    window.addEventListener(DIAGRAMS_CHANGED, bump);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener(DIAGRAMS_CHANGED, bump);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
+    window.addEventListener(OPEN_LIBRARY, openLibrary);
+    return () => window.removeEventListener(OPEN_LIBRARY, openLibrary);
+  }, [openLibrary]);
 
   // Normalise the URL once we know which example is shown.
   useEffect(() => {
-    if (url.view === "canvas" && url.example !== slug) setUrl({ example: slug }, { replace: true });
+    if (url.view !== "canvas") return;
+    if (url.example !== slug) setUrl({ example: slug }, { replace: true });
+    // A bare URL reopens this one next time (a draft that became an entry is remembered as the entry).
+    rememberCanvas(slug);
   }, [url.view, url.example, slug, setUrl]);
 
   // Once the diagram is up, fetch the stencil library in the background so the tab opens instantly.
@@ -121,75 +158,144 @@ function MainApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, [url.present, setUrl]);
 
-  const openSlot = useCallback(
-    (slot: Slot, d: DiagramFile, target?: SaveTarget) => {
-      // Validates before replacing the slot; on failure the current diagram stays (and the caller reports why).
-      if (slot === IMPORTED_SLUG) {
-        setImported(d, target);
-        if (slug === SHARED_SLUG) clearShared();
-      } else {
-        setShared(d, target);
-      }
-      setSlotVersion((v) => v + 1);
-      setUrl({ view: "canvas", example: slot, present: false });
+  /** Open, Import, Paste, the Lab and "Save a copy": a new entry in Your diagrams, never a replacement. */
+  const openDiagram = useCallback(
+    (d: DiagramFile, target?: SaveTarget) => {
+      // Validates and stores first; on failure the current diagram stays (and the caller reports why).
+      const created = createLibraryDiagram(d, target);
+      if (slug === SHARED_SLUG) clearShared();
+      setUrl({ view: "canvas", example: created, present: false });
     },
     [setUrl, slug],
   );
+  const openShared = useCallback(
+    (d: DiagramFile) => {
+      setShared(d);
+      setUrl({ view: "canvas", example: SHARED_SLUG, present: false });
+    },
+    [setUrl],
+  );
 
-  /** File > New diagram and the start card: a blank "your diagram", with Undo if it replaced work. */
+  /** File > New diagram: a blank draft. Nothing is replaced, so there's nothing to undo. */
   const newDiagram = useCallback(() => {
-    // The canvas only knows the contract's fields: merge the imported document's extension metadata
-    // back in, so Undo restores the complete file rather than a stripped copy.
-    const original = getImported();
-    const current =
-      slug === IMPORTED_SLUG && canvasRef.current
-        ? canvasRef.current.getDiagram()
-        : (getAutosave(IMPORTED_SLUG) ?? original);
-    const previous = current ? preserveUnknown(current, original) : undefined;
-    try {
-      openSlot(IMPORTED_SLUG, emptyDiagram());
-    } catch (err) {
-      notify(`Couldn't start a new diagram. ${err instanceof Error ? err.message : String(err)}`, { kind: "error" });
-      return;
-    }
-    if (previous?.nodes.length)
-      notify(`Started a new diagram. “${previous.title}” was replaced.`, {
-        action: { label: "Undo", run: () => openSlot(IMPORTED_SLUG, previous), testId: "new-diagram-undo" },
-      });
-  }, [slug, openSlot]);
+    canvasRef.current?.flush();
+    newDraft();
+    setUrl({ view: "canvas", example: DRAFT_SLUG, present: false });
+  }, [setUrl]);
 
   const interop = useInterop({
     view: url.view,
     slug,
     canvas: canvasRef,
-    openSlot,
+    openDiagram,
+    openShared,
     isPublicExample: (s) => publicSlugs.has(s),
   });
+
+  // ---------------------------------------------------------------- Your diagrams (the library)
+
+  const failed = (what: string, err: unknown) =>
+    notify(`Couldn't ${what}. ${err instanceof Error ? err.message : String(err)}`, { kind: "error" });
+  const titleOf = (target: string) => library.entries.find((e) => e.slug === target)?.title ?? UNTITLED;
+  const libraryActions = {
+    onOpen: (example: string) => setUrl({ view: "canvas", example, present: false }),
+    onNew: newDiagram,
+    onRename: (target: string, title: string) => {
+      // The open diagram is renamed through its canvas: an undoable edit that the autosave keeps.
+      if (target === slug && canvasRef.current) return canvasRef.current.setTitle(title);
+      try {
+        renameLibraryDiagram(target, title);
+      } catch (err) {
+        failed("rename it", err);
+      }
+    },
+    onDuplicate: (target: string) => {
+      if (target === slug) canvasRef.current?.flush();
+      try {
+        const copy = duplicateLibraryDiagram(target);
+        notify(`Duplicated “${titleOf(target)}”.`, {
+          kind: "success",
+          action: {
+            label: "Open",
+            run: () => {
+              setLibraryOpen(false);
+              setUrl({ view: "canvas", example: copy, present: false });
+            },
+            testId: "duplicate-open",
+          },
+        });
+      } catch (err) {
+        failed("duplicate it", err);
+      }
+    },
+    onDelete: (target: string) => {
+      const wasOpen = target === slug;
+      if (wasOpen) canvasRef.current?.flush();
+      const title = titleOf(target);
+      let undo: () => boolean;
+      try {
+        undo = deleteLibraryDiagram(target);
+      } catch (err) {
+        return failed("delete it", err);
+      }
+      if (wasOpen) {
+        // On to the most recent other diagram, or a blank one.
+        const next = library.entries.find((e) => e.slug !== target)?.slug;
+        if (!next) newDraft();
+        setUrl({ view: "canvas", example: next ?? DRAFT_SLUG, present: false }, { replace: true });
+      }
+      notify(`Deleted “${title}”.`, {
+        action: {
+          label: "Undo",
+          run: () => {
+            if (!undo()) return failed("restore it", new Error("The browser's storage is full."));
+            if (wasOpen) setUrl({ view: "canvas", example: target, present: false });
+          },
+          testId: "delete-undo",
+        },
+      });
+    },
+  };
 
   const canvasCallbackRef = useInteropCanvasActions(canvasRef, interop);
 
   const onLabOpen = (target: OpenTarget) => {
     if ("slug" in target) return setUrl({ view: "canvas", example: target.slug, present: false });
     try {
-      openSlot(IMPORTED_SLUG, target.diagram);
+      openDiagram(target.diagram);
     } catch (err) {
       notify(`Couldn't open it. ${err instanceof Error ? err.message : String(err)}`, { kind: "error" });
     }
   };
   const presenting = url.view === "canvas" && url.present;
-  // The start card on a blank canvas: public examples only (private ones never appear in UI copy).
+  // The start card on a blank canvas: your recent diagrams, then public examples only (private ones
+  // never appear in UI copy). Thumbnails come from the same renderer as Your diagrams.
+  const exampleThumbs = useMemo(
+    () =>
+      examples
+        .filter((e) => publicSlugs.has(e.slug))
+        .map((e) => ({
+          slug: e.slug,
+          title: e.diagram.title,
+          description: e.diagram.description,
+          thumb: diagramThumb(e.diagram),
+        })),
+    [],
+  );
   const start: StartOptions = {
-    examples: examples
-      .filter((e) => publicSlugs.has(e.slug))
+    recent: library.entries
+      .filter((e) => e.slug !== slug)
       .map((e) => ({
         slug: e.slug,
-        title: e.diagram.title,
-        description: e.diagram.description,
-        stencils: [...new Set(e.diagram.nodes.map((n) => n.stencil))].slice(0, 3),
+        title: e.title,
+        detail: `${e.nodes} ${e.nodes === 1 ? "node" : "nodes"} · edited ${formatAgo(e.updatedAt)}`,
+        thumb: e.thumb,
       })),
-    onExample: (example) => setUrl({ example }),
+    examples: exampleThumbs,
+    onOpen: (example) => setUrl({ example }),
     onOpenFile: () => void interop.openFile(),
     onPaste: interop.openPaste,
+    onLibrary: openLibrary,
   };
   const goTo = (view: View) => setUrl({ view, present: false });
 
@@ -204,18 +310,18 @@ function MainApp() {
           onExample={(example) => setUrl({ example })}
           interop={interop}
           shared={
-            url.view === "canvas" && slug === SHARED_SLUG
-              ? { onKeep: () => void interop.keepSharedCopy(), replaces: interop.replacesImported }
-              : undefined
+            url.view === "canvas" && slug === SHARED_SLUG ? { onKeep: () => void interop.keepSharedCopy() } : undefined
           }
           onPresent={() => setUrl({ present: true })}
           onNewDiagram={newDiagram}
+          onLibrary={openLibrary}
+          libraryCount={library.entries.length}
         />
       )}
       <div className="app-body">
         <ViewBoundary
           // Remount (and clear the error) when the user navigates elsewhere.
-          resetKey={`${url.view}:${url.view === "canvas" ? `${slug}:${canvasIdentity}` : ""}`}
+          resetKey={`${url.view}:${url.view === "canvas" ? canvasIdentity : ""}`}
           view={url.view}
           onClearAutosave={url.view === "canvas" ? () => writeAutosave(slug, null) : undefined}
           onGoGallery={() => goTo("gallery")}
@@ -227,18 +333,33 @@ function MainApp() {
               <LabView onOpen={onLabOpen} />
             ) : (
               <CanvasView
-                key={`${slug}:${canvasIdentity}`}
+                key={canvasIdentity}
                 ref={canvasCallbackRef}
                 slug={slug}
                 presenting={presenting}
                 onExitPresent={() => setUrl({ present: false })}
                 start={start}
+                onTitleChange={onTitleChange}
               />
             )}
           </Suspense>
         </ViewBoundary>
       </div>
       {interop.layer}
+      {libraryOpen && (
+        <LibraryDialog
+          entries={library.entries.map((e) => (e.slug === slug ? { ...e, title: liveTitle(e.title) } : e))}
+          current={slug}
+          onClose={() => setLibraryOpen(false)}
+          {...libraryActions}
+        />
+      )}
+      <CommandPalette
+        view={url.view}
+        diagrams={options.filter((o) => o.group !== "examples" || publicSlugs.has(o.slug))}
+        currentSlug={slug}
+        onOpenDiagram={(example) => setUrl({ view: "canvas", example, present: false })}
+      />
     </div>
   );
 }
