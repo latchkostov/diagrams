@@ -1,0 +1,808 @@
+/* Inputs & capacity: the heat map (rings, chips, idle replicas), the bottleneck callout and the
+   "Inputs & capacity" panel. Colours come from tokens.css: --success, --warning, --danger. */
+
+/* ---------- levels ---------- */
+
+/* Green < 60%, amber 60–90%, red ≥ 90%, pulsing red above 100%. */
+.cap-ring,
+.cap-chip,
+.cap-pill,
+.cap-callout,
+.cap-row {
+  --cap: var(--text-3);
+}
+
+.is-ok:is(.cap-ring, .cap-chip, .cap-pill, .cap-callout, .cap-row) {
+  --cap: var(--success);
+}
+
+.is-warn:is(.cap-ring, .cap-chip, .cap-pill, .cap-callout, .cap-row) {
+  --cap: var(--warning);
+}
+
+.is-hot:is(.cap-ring, .cap-chip, .cap-pill, .cap-callout, .cap-row),
+.is-over:is(.cap-ring, .cap-chip, .cap-pill, .cap-callout, .cap-row) {
+  --cap: var(--danger);
+}
+
+/* ---------- heat map (inside React Flow's viewport) ---------- */
+
+.cap-ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: calc(var(--radius-l) + 5px);
+  border: 2px solid color-mix(in oklab, var(--cap) 75%, transparent);
+  box-shadow: 0 0 16px -4px color-mix(in oklab, var(--cap) 55%, transparent);
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+
+.cap-ring.is-ok {
+  border-width: 1.5px;
+  border-color: color-mix(in oklab, var(--cap) 55%, transparent);
+  box-shadow: none;
+}
+
+.cap-ring.is-hot {
+  border-width: 2.5px;
+  box-shadow: 0 0 24px -2px color-mix(in oklab, var(--cap) 55%, transparent);
+}
+
+.cap-ring.is-over {
+  border-width: 2.5px;
+  animation: cap-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes cap-pulse {
+  50% {
+    border-color: var(--cap);
+    box-shadow:
+      0 0 0 5px color-mix(in oklab, var(--cap) 16%, transparent),
+      0 0 34px 2px color-mix(in oklab, var(--cap) 50%, transparent);
+  }
+}
+
+.lv-strip {
+  gap: 5px;
+}
+
+.cap-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 21px;
+  padding: 0 8px 0 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--cap) 45%, var(--line));
+  background: color-mix(in oklab, var(--cap) 10%, var(--surface));
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
+  white-space: nowrap;
+}
+
+.cap-chip i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cap);
+}
+
+.cap-chip.is-over,
+.cap-chip.is-hot {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--cap) 72%, #000);
+  color: #fff;
+}
+
+.cap-chip.is-over i,
+.cap-chip.is-hot i {
+  background: #fff;
+}
+
+.cap-idle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 21px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in oklab, var(--warning) 70%, var(--line));
+  background: color-mix(in oklab, var(--warning-soft) 100%, var(--surface));
+  color: color-mix(in oklab, var(--warning) 75%, var(--text));
+  font-size: 10.5px;
+  font-weight: 650;
+  pointer-events: auto;
+  cursor: help;
+}
+
+.cap-idle-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 250px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+  box-shadow: var(--shadow-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-1);
+  z-index: 4;
+}
+
+.cap-idle:hover .cap-idle-tip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.lv-badges.is-presenting .cap-chip,
+.lv-badges.is-presenting .cap-idle {
+  height: 26px;
+  font-size: 12.5px;
+}
+
+.lv-detail-note {
+  margin: 4px 0 0;
+  max-width: 240px;
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+/* ---------- bottleneck callout ---------- */
+
+.cap-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.cap-hud > * {
+  pointer-events: auto;
+}
+
+.cap-callout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--cap) 35%, var(--line));
+  background: color-mix(in oklab, var(--cap) 7%, var(--surface));
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.cap-callout.is-floating {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  min-width: 340px;
+  max-width: min(600px, calc(100% - 820px));
+  background: color-mix(in oklab, color-mix(in oklab, var(--cap) 7%, var(--surface)) 94%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-2);
+  animation: cap-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes cap-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+}
+
+/* Narrow canvases: drop below the title card and the Live toggle. */
+@media (max-width: 1280px) {
+  .cap-callout.is-floating {
+    top: 60px;
+    max-width: calc(100% - 32px);
+  }
+}
+
+.cap-callout-dot {
+  flex: none;
+  align-self: flex-start;
+  margin-top: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cap);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--cap) 18%, transparent);
+}
+
+.cap-callout.is-over .cap-callout-dot {
+  animation: cap-dot 1.3s ease-in-out infinite;
+}
+
+@keyframes cap-dot {
+  50% {
+    box-shadow: 0 0 0 7px color-mix(in oklab, var(--cap) 10%, transparent);
+  }
+}
+
+.cap-callout-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cap-callout-text strong {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.cap-callout-text > span {
+  color: var(--text-2);
+}
+
+.cap-callout-fix {
+  color: var(--text);
+  font-weight: 550;
+}
+
+.cap-callout-apply.is-fix {
+  border-color: color-mix(in oklab, var(--cap) 55%, var(--line));
+  background: color-mix(in oklab, var(--cap) 16%, var(--surface));
+  color: var(--text);
+  font-weight: 650;
+}
+
+.cap-callout-apply.is-fix:hover {
+  background: color-mix(in oklab, var(--cap) 24%, var(--surface));
+}
+
+.cap-callout-apply {
+  flex: none;
+  margin-left: auto;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* ---------- live bar: Inputs ---------- */
+
+.lv-btn.lv-inputs {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  gap: 6px;
+  padding: 0 10px 0 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.lv-btn.lv-inputs.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ---------- the panel ---------- */
+
+.cap-body {
+  gap: 18px;
+}
+
+.cap-context {
+  margin: -2px 0 0;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cap-context b {
+  color: var(--text-2);
+  font-weight: 650;
+}
+
+.cap-section {
+  display: grid;
+  gap: 8px;
+}
+
+.cap-section h4 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cap-count {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 10px;
+}
+
+.cap-hint {
+  margin: -5px 0 0;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.cap-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.cap-row {
+  display: grid;
+  gap: 8px;
+  padding: 9px 10px 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: inset 3px 0 0 color-mix(in oklab, var(--cap) 75%, transparent);
+}
+
+.cap-row.is-idle,
+.cap-entry {
+  box-shadow: none;
+}
+
+.cap-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cap-row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.cap-row-note {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.cap-pill {
+  margin-left: auto;
+  flex: none;
+  min-width: 42px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--cap) 14%, transparent);
+  color: color-mix(in oklab, var(--cap) 80%, var(--text));
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.cap-row-note + .cap-pill {
+  margin-left: 0;
+}
+
+.cap-pill.is-idle {
+  background: var(--surface-3);
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+
+.cap-pill.is-over {
+  background: color-mix(in srgb, var(--cap) 72%, #000);
+  color: #fff;
+}
+
+.cap-fields {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 8px;
+}
+
+.cap-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cap-field > span:first-child {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.cap-box {
+  position: relative;
+  display: flex;
+}
+
+.cap-panel .cap-box input {
+  padding-right: 30px;
+}
+
+.cap-box i {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  font-size: 11px;
+  font-style: normal;
+  pointer-events: none;
+}
+
+.cap-box input::-webkit-inner-spin-button {
+  opacity: 0;
+}
+
+.cap-stepper {
+  display: flex;
+  align-items: stretch;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.cap-stepper:focus-within {
+  border-color: var(--accent);
+}
+
+.cap-stepper button {
+  flex: none;
+  width: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+}
+
+.cap-stepper button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.cap-stepper button:disabled {
+  color: var(--text-4);
+}
+
+.cap-panel .cap-stepper input {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 2px;
+  text-align: center;
+  font-family: var(--font-mono);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.cap-stepper input::-webkit-inner-spin-button,
+.cap-stepper input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.cap-row-foot {
+  margin: -2px 0 0;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.cap-warn-text {
+  color: color-mix(in oklab, var(--warning) 80%, var(--text));
+  font-weight: 600;
+}
+
+.cap-advanced summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 2px 4px 2px 0;
+  border-radius: 6px;
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cap-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.cap-advanced summary small {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.cap-advanced[open] summary {
+  margin-bottom: 8px;
+}
+
+/* Sliders: one look for the multipliers and the rates. */
+.cap-panel input[type="range"] {
+  --fill: 50%;
+  appearance: none;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.cap-panel input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent) var(--fill), var(--surface-3) var(--fill));
+}
+
+.cap-panel input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent) var(--fill), var(--surface-3) var(--fill));
+}
+
+.cap-panel input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.cap-panel input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: var(--surface);
+}
+
+.cap-panel input[type="range"]:focus-visible {
+  outline: none;
+}
+
+.cap-panel input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--focus-ring);
+}
+
+.cap-mult {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: 10px;
+}
+
+.cap-mult-label {
+  display: grid;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.cap-mult-label b {
+  display: none;
+}
+
+.cap-mult-label small {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.cap-mult-value {
+  justify-self: end;
+  min-width: 46px;
+  padding: 3px 6px;
+  border-radius: 7px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cap-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.cap-preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cap-preset small {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.cap-preset:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.cap-preset.is-on {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--line));
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.cap-preset.is-on small {
+  color: inherit;
+}
+
+.cap-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.cap-switch-row > span {
+  display: grid;
+  flex: 1;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cap-switch-row small {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.cap-switch-row input {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  transition: background var(--dur-1);
+}
+
+.cap-switch-row input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+.cap-switch-row input:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.cap-switch-row input:checked::after {
+  transform: translateX(12px);
+}
+
+.cap-switch-row input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cap-rate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.cap-panel .cap-rate-input {
+  text-align: right;
+  font-weight: 650;
+}
+
+.cap-panel .cap-rate-input.is-invalid {
+  border-color: var(--danger);
+}
+
+.cap-unit {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.cap-empty {
+  margin: 0;
+  color: var(--text-3);
+}
+
+.cap-show-all .lv-rot180 {
+  transform: rotate(180deg);
+}
+
+.cap-scale {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.cap-scale > span:nth-child(2) {
+  display: grid;
+  flex: 1;
+  color: var(--text);
+}
+
+.cap-scale small {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.cap-scale-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow:
+    0 0 0 3px var(--accent-soft),
+    0 0 10px var(--accent);
+}
+
+.cap-panel .cap-scale-select select {
+  width: auto;
+  padding-right: 24px;
+}
+
+.cap-footnote {
+  margin: -6px 0 0;
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.4;
+}

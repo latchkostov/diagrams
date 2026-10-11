@@ -102,6 +102,14 @@ test.describe("live view", () => {
     }
     await expect(page.getByTestId("expectation-stock")).toHaveAttribute("data-value", "20000");
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "done");
+    // Each dot is 50 orders, but the badges count real messages and agree with the expectations.
+    await expect(page.getByTestId("node-badge-stock-db")).toHaveAttribute("data-processed", "20000");
+    await expect(page.getByTestId("node-badge-shopper")).toHaveAttribute("data-processed", "20000");
+    await page.getByTestId("node-stock-db").hover();
+    await expect(page.getByTestId("node-detail-stock-db")).toContainText("20k");
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-events-toggle").click();
+    await expect(page.getByTestId("live-events-scale")).toContainText("about 50 messages");
     expectNoErrors(consoleErrors);
   });
 
@@ -275,6 +283,8 @@ test.describe("live view", () => {
   });
 
   test("leaving live authoring restores the inspector preference", async ({ page }) => {
+    // Three full page loads: give it room when the whole suite shares one dev server.
+    test.setTimeout(60_000);
     await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openNodeMenu(page, "inventory");
     await menuItem(page, "sim.storm").click();
@@ -302,6 +312,8 @@ test.describe("live view", () => {
   });
 
   test("read-only embeds require live=1 to expose Live", async ({ page }) => {
+    // Three full page loads: give it room when the whole suite shares one dev server.
+    test.setTimeout(60_000);
     await page.goto(`./?embed=1&example=${KAFKA}`);
     await expect(page.getByTestId("canvas-view")).toBeVisible();
     await expect(page.getByTestId("live-toggle")).toHaveCount(0);
@@ -395,6 +407,29 @@ test.describe("live view", () => {
     await expect(page.getByTestId("sim-panel-traffic-0-type")).toHaveValue("ImmediateEvent");
     await expect(page.getByTestId("sim-panel-traffic-0-count")).toHaveValue("37");
     await expect(page.getByTestId("sim-panel-traffic-0-spread")).toHaveValue("2.5");
+  });
+
+  test("Esc backs out of the simulation panel one level at a time, then leaves live", async ({ page }) => {
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await expect(page.getByTestId("sim-panel")).toBeVisible();
+    await page.getByTestId("sim-panel-new").click();
+    // A node picker is the innermost level: Esc cancels it and keeps the panel.
+    await page.getByTestId("sim-panel-add-traffic").click();
+    await page.getByTestId("sim-panel-traffic-0-node-pick").click();
+    await expect(page.getByTestId("sim-panel-picking")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("sim-panel-picking")).toHaveCount(0);
+    await expect(page.getByTestId("sim-panel")).toBeVisible();
+    // Next, the panel closes and focus returns to the live bar; live view stays on.
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("sim-panel")).toHaveCount(0);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await expect(page.getByTestId("live-more")).toBeFocused();
+    // Then live view itself.
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
   });
 
   test("live node menus lead with live actions and stay within the chrome budget", async ({ page }) => {

@@ -1,8 +1,8 @@
 // Context-menu entries for the live view, registered in the "simulation" section of the action
-// registry while live mode is on. They change the running engine only; "Save to diagram" is the
+// registry while live mode is on (and offered only in the "live" mode). They change the running engine only; "Save to diagram" is the
 // explicit way to keep a tweak.
 
-import type { Action, MenuNode, MenuTarget } from "../editor/actions";
+import type { Action, MenuNode } from "../editor/actions";
 import type { NodeStatus } from "../sim/types";
 import { resolveProps } from "../sim/defaults";
 import type { LiveController } from "./controller";
@@ -26,30 +26,6 @@ export interface LiveActionsHost {
 const FAILURE_RATES = [0, 0.1, 0.25, 0.5, 1];
 const SLOWDOWNS = [1, 2, 5, 10];
 const CONCURRENCY = [1, 2, 4, 8, 16, 64];
-
-/** What each menu keeps from editing while live: the live verbs lead, the rest waits for edit mode (L). */
-const LIVE_KEEP: Partial<Record<MenuTarget, ReadonlySet<string>>> = {
-  node: new Set(["node.rename", "node.properties"]),
-  edge: new Set(["edge.edit-label", "node.properties"]),
-  canvas: new Set(["canvas.properties", "canvas.fit", "canvas.view-options", "canvas.export", "canvas.shortcuts"]),
-};
-
-/**
- * Live menus: the live actions (ids `sim.*`) lead at the top level, followed by the few editing
- * actions that still make sense mid-run. Everything else comes back when you leave live view (L).
- */
-export function compactLiveMenu(items: MenuNode[], target: MenuTarget): MenuNode[] {
-  const keep = LIVE_KEEP[target];
-  if (!keep) return items;
-  const live = items.filter((item) => item.type === "item" && item.id.startsWith("sim."));
-  const rest = items.filter((item) => item.type === "item" && keep.has(item.id));
-  if (!live.length) return rest;
-  return [
-    { type: "header", label: "Live" },
-    ...live,
-    ...(rest.length ? [{ type: "separator" } as const, ...rest] : []),
-  ];
-}
 
 export function liveActions(host: LiveActionsHost): Action[] {
   const c = host.controller;
@@ -244,5 +220,6 @@ export function liveActions(host: LiveActionsHost): Action[] {
       run: () => c.restart(),
     },
   ];
-  return actions;
+  // Live verbs only exist in live view; the registry offers them there and nowhere else.
+  return actions.map((action) => ({ ...action, modes: ["live"] }));
 }

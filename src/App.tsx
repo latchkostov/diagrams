@@ -36,6 +36,7 @@ import { lastCanvas } from "./lib/canvasBridge";
 import type { StartOptions } from "./canvas/StartCard";
 import { useInterop, useInteropCanvasActions, type Slot } from "./interop/useInterop";
 import { notify } from "./interop/ui/toast";
+import { preserveUnknown } from "./interop/native";
 import { Toaster } from "./interop/ui/Toaster";
 import { EmbedView } from "./interop/embed/EmbedView";
 import "./styles/interop.css";
@@ -137,10 +138,14 @@ function MainApp() {
 
   /** File > New diagram and the start card: a blank "your diagram", with Undo if it replaced work. */
   const newDiagram = useCallback(() => {
-    const previous =
+    // The canvas only knows the contract's fields: merge the imported document's extension metadata
+    // back in, so Undo restores the complete file rather than a stripped copy.
+    const original = getImported();
+    const current =
       slug === IMPORTED_SLUG && canvasRef.current
         ? canvasRef.current.getDiagram()
-        : (getAutosave(IMPORTED_SLUG) ?? getImported());
+        : (getAutosave(IMPORTED_SLUG) ?? original);
+    const previous = current ? preserveUnknown(current, original) : undefined;
     try {
       openSlot(IMPORTED_SLUG, emptyDiagram());
     } catch (err) {

@@ -17,6 +17,7 @@ const MOUSE: [string, string][] = [
 /** Live view and presenting keys (handled by the live view and the app, not the editor). */
 const LIVE: [string, string][] = [
   ["L", "Go live / back to editing"],
+  ["C", "Show capacity: colour nodes by how busy they are"],
   ["Space", "Play or pause; continue after a note"],
   ["Esc", "Leave presentation, then live view"],
 ];

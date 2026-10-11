@@ -128,6 +128,7 @@ export function builtinActions(): Action[] {
     },
     {
       id: "canvas.fit",
+      modes: ["edit", "live"],
       section: "view",
       targets: ["canvas"],
       label: "Fit view",
@@ -137,6 +138,7 @@ export function builtinActions(): Action[] {
     },
     {
       id: "canvas.view-options",
+      modes: ["edit", "live"],
       section: "view",
       targets: ["canvas"],
       label: "Show",
@@ -161,6 +163,7 @@ export function builtinActions(): Action[] {
     },
     {
       id: "canvas.properties",
+      modes: ["edit", "live"],
       section: "view",
       targets: ["canvas"],
       label: "Diagram properties",
@@ -193,6 +196,7 @@ export function builtinActions(): Action[] {
     },
     {
       id: "canvas.export",
+      modes: ["edit", "live"],
       section: "file",
       targets: ["canvas"],
       label: "Export",
@@ -203,6 +207,7 @@ export function builtinActions(): Action[] {
     },
     {
       id: "canvas.shortcuts",
+      modes: ["edit", "live"],
       section: "file",
       targets: ["canvas"],
       label: "Keyboard shortcuts",
@@ -214,6 +219,7 @@ export function builtinActions(): Action[] {
     // ---------------- node ----------------
     {
       id: "node.rename",
+      modes: ["edit", "live"],
       section: "edit",
       targets: ["node"],
       label: "Rename",
@@ -272,6 +278,7 @@ export function builtinActions(): Action[] {
     },
     {
       id: "node.properties",
+      modes: ["edit", "live"],
       section: "edit",
       targets: ["node", "edge", "group"],
       label: "Properties",
@@ -342,6 +349,7 @@ export function builtinActions(): Action[] {
     // ---------------- edge ----------------
     {
       id: "edge.edit-label",
+      modes: ["edit", "live"],
       section: "edit",
       targets: ["edge"],
       label: "Edit label",
@@ -467,6 +475,7 @@ export function builtinActions(): Action[] {
     // ---------------- group ----------------
     {
       id: "group.rename",
+      modes: ["edit", "live"],
       section: "edit",
       targets: ["group"],
       label: "Rename",

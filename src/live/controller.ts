@@ -2,6 +2,11 @@
 // the playback state around it. Pure TypeScript with no DOM or React, so it is unit-tested directly.
 // The UI drives it from requestAnimationFrame (`advance`) and reads `snapshot()` every frame;
 // React components subscribe to `getState()`, which is republished at ~8 Hz while playing.
+//
+// Units: this is the live UI's conversion boundary. The engine simulates sampled dots (one dot =
+// `scale` real messages). `snapshot()` stays sampled for particles and decorations; the published
+// `state.snapshot` is converted once to real messages for every number people read, and manual
+// injections take real counts (fractions of a dot carry over to the next injection).
 
 import type { DiagramFile, Simulation } from "../model/types";
 import { createEngine } from "../sim/engine";
@@ -11,11 +16,14 @@ import type {
   InjectOptions,
   NodeSimProps,
   NodeStatus,
+  RealSimSnapshot,
   SimEngine,
   SimSnapshot,
   SimulationRun,
   SimulationRunState,
 } from "../sim/types";
+import { realSnapshot, resolveMultiplier, resolveScale } from "../sim/units";
+import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type LiveInputs } from "./capacityModel";
 import { DEFAULT_SEED } from "./storm";
 
 export const SPEEDS = [0.25, 0.5, 1, 2, 4, 8] as const;
@@ -32,9 +40,16 @@ export interface LiveState {
   playing: boolean;
   speed: number;
   traffic: boolean;
-  /** The saved simulation being played, or null for free play. */
+  /** The selected simulation as saved (or the unsaved draft), or null for free play. */
   simulation: Simulation | null;
-  snapshot: SimSnapshot;
+  /** What actually runs: `simulation` with the Inputs & capacity panel's what-ifs applied. */
+  running: Simulation | null;
+  /** The panel's what-if inputs (unsaved until "Save"). */
+  inputs: LiveInputs;
+  /** Real units: counters, rates, backlog and in-flight are real messages, not sampled dots. */
+  snapshot: RealSimSnapshot;
+  /** Real messages per dot in the running engine. */
+  scale: number;
   run: SimulationRunState | null;
   tweaks: ReadonlyMap<string, NodeTweak>;
   /** Bumps whenever the engine is rebuilt (restart, new simulation, structural edit). */
@@ -63,14 +78,33 @@ const propsKey = (props: Record<string, unknown> | undefined) => valueKey(props 
 export interface ControllerOptions extends Pick<EngineOptions, "roleOf" | "maxParticles"> {
   /** Seed for free play; saved simulations use their own. Default 7. */
   seed?: number;
+  /** Changes that need a rebuild (entry rates, dot scale) settle for this long first. Default 250; 0 = now. */
+  replayDelayMs?: number;
+}
+
+/** Same script (traffic, timeline, scale, statuses…), ignoring what can be patched into a running run. */
+function sameScript(a: Simulation, b: Simulation): boolean {
+  const strip = (s: Simulation) => valueKey({ ...s, multipliers: undefined, setup: { ...s.setup, props: undefined } });
+  return strip(a) === strip(b);
 }
 
 export class LiveController {
   private diagram: DiagramFile;
+  /** What runs: the selected simulation with the panel's inputs applied. */
   private sim: Simulation | null = null;
+  /** The selected simulation as saved (or the unsaved draft); null in free play. */
+  private base: Simulation | null = null;
+  private inputs: LiveInputs = emptyInputs();
+  /** Free play: the engine props the inputs currently override, and the dot scale. */
+  private freeApplied: Record<string, Record<string, unknown>> = {};
+  private freeScale = 1;
+  private replayTimer: ReturnType<typeof setTimeout> | undefined;
   private engine!: SimEngine;
   private runner: SimulationRun | null = null;
   private snap!: SimSnapshot;
+  private real: RealSimSnapshot | null = null;
+  /** Free play's fractional injection credit per node and type (runs keep their own). */
+  private credits = new Map<string, number>();
   private runState: SimulationRunState | null = null;
   private dirty = true;
   private playing = false;
@@ -101,9 +135,21 @@ export class LiveController {
     if (this.dirty) {
       this.snap = this.engine.snapshot();
       this.runState = this.runner?.state() ?? null;
+      this.real = null;
       this.dirty = false;
     }
     return this.snap;
+  }
+
+  /** The latest snapshot in real units (converted once per change). */
+  realSnapshot(): RealSimSnapshot {
+    const snap = this.snapshot();
+    return (this.real ??= realSnapshot(snap));
+  }
+
+  /** Real messages represented by one sampled dot. */
+  get scale(): number {
+    return resolveScale(this.snapshot().scale);
   }
 
   getState = (): LiveState => this.state;
@@ -115,12 +161,15 @@ export class LiveController {
 
   /** Rebuilds the published state and tells subscribers. Called by actions and the UI clock. */
   publish(): void {
-    const snapshot = this.snapshot();
+    const snapshot = this.realSnapshot();
     this.state = {
+      scale: resolveScale(snapshot.scale),
       playing: this.playing,
       speed: this.speed,
       traffic: this.traffic,
-      simulation: this.sim,
+      simulation: this.base,
+      running: this.sim,
+      inputs: this.inputs,
       snapshot,
       run: this.runState,
       tweaks: new Map(this.tweaks),
@@ -227,17 +276,139 @@ export class LiveController {
     this.publish();
   }
 
-  /** Switch between free play (null) and a saved simulation. Rebuilds and keeps play / pause. */
+  /** Switch between free play (null) and a saved simulation. Rebuilds, keeps play / pause, clears inputs. */
   selectSimulation(sim: Simulation | null): void {
+    this.cancelReplay();
+    this.base = sim;
+    this.inputs = emptyInputs();
     this.sim = sim;
     this.build();
     this.publish();
   }
 
+  // ---------------------------------------------------------------- inputs & capacity
+
+  /**
+   * The selected simulation's saved definition changed (Save, undo, Apply fix). The panel's inputs
+   * stay on top. Prop and multiplier changes patch the running run; anything else replays it.
+   */
+  setBase(sim: Simulation): void {
+    this.base = sim;
+    this.applyInputs();
+  }
+
+  /**
+   * The Inputs & capacity panel's what-ifs. Multipliers and node props apply to the running engine
+   * at once (no restart); entry rates and the dot scale replay the run to the same moment shortly
+   * after the last change (or immediately with `replayDelayMs: 0`).
+   */
+  setInputs(inputs: LiveInputs): void {
+    this.inputs = inputs;
+    this.applyInputs();
+  }
+
+  /** Saved: `saved` becomes the base and the inputs are folded into it (no restart when equal). */
+  commitInputs(saved: Simulation | null, diagram?: DiagramFile): void {
+    if (diagram) {
+      this.diagram = diagram;
+      this.rememberProps(diagram);
+    }
+    this.inputs = emptyInputs();
+    if (saved) this.base = saved;
+    if (!saved && diagram) this.freeApplied = {};
+    this.applyInputs();
+  }
+
+  /** Runs a pending replay now (before saving, and in tests). */
+  flush(): void {
+    if (this.replayTimer === undefined) return;
+    this.cancelReplay();
+    this.replay();
+  }
+
+  /** Stop timers (the live view unmounted). */
+  dispose(): void {
+    this.cancelReplay();
+  }
+
+  private applyInputs(): void {
+    if (this.base) {
+      const next = effectiveSimulation(this.base, this.inputs);
+      const prev = this.sim;
+      this.sim = next;
+      if (!prev || !this.runner || !sameScript(prev, next)) this.scheduleReplay();
+      else this.patchRun(prev, next);
+    } else if (freePlayScale(this.diagram, this.inputs) !== this.freeScale) {
+      this.scheduleReplay();
+    } else {
+      this.patchFree();
+    }
+    this.dirty = true;
+    this.publish();
+  }
+
+  /** Diagram value for a prop no override covers any more. */
+  private diagramProp(id: string, key: string): unknown {
+    return this.diagram.nodes.find((n) => n.id === id)?.props?.[key];
+  }
+
+  private patchProps(
+    before: Record<string, Record<string, unknown>>,
+    after: Record<string, Record<string, unknown>>,
+  ): void {
+    for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
+      const a = before[id] ?? {},
+        b = after[id] ?? {};
+      const delta: Record<string, unknown> = {};
+      for (const key of new Set([...Object.keys(a), ...Object.keys(b)]))
+        if (valueKey(a[key]) !== valueKey(b[key])) delta[key] = key in b ? b[key] : this.diagramProp(id, key);
+      if (Object.keys(delta).length) this.engine.setNodeProps(id, delta as NodeSimProps);
+    }
+  }
+
+  private patchRun(prev: Simulation, next: Simulation): void {
+    this.patchProps(prev.setup?.props ?? {}, next.setup?.props ?? {});
+    this.runner?.setMultipliers({
+      traffic: resolveMultiplier(next.multipliers?.traffic),
+      capacity: resolveMultiplier(next.multipliers?.capacity),
+    });
+  }
+
+  private patchFree(): void {
+    const props = freePlayProps(this.diagram, this.inputs);
+    this.patchProps(this.freeApplied, props);
+    this.freeApplied = props;
+    this.engine.setCapacityMultiplier(this.inputs.capacity ?? 1);
+  }
+
+  private scheduleReplay(): void {
+    const delay = this.opts.replayDelayMs ?? 250;
+    this.cancelReplay();
+    if (delay <= 0) return this.replay();
+    this.replayTimer = setTimeout(() => {
+      this.replayTimer = undefined;
+      this.replay();
+    }, delay);
+  }
+
+  private cancelReplay(): void {
+    clearTimeout(this.replayTimer);
+    this.replayTimer = undefined;
+  }
+
+  /** Rebuild with the current inputs; a saved run fast-forwards to where it was. */
+  private replay(): void {
+    const time = this.snapshot().time;
+    this.build();
+    if (this.runner && time > 0) this.seek(time);
+    else this.publish();
+  }
+
   // ---------------------------------------------------------------- live tweaks (engine only)
 
+  /** Inject `count` real messages (sampled to dots at the current scale). */
   inject(nodeId: string, count: number, opts?: InjectOptions): void {
-    this.engine.inject(nodeId, count, opts);
+    this.injectReal(nodeId, count, opts);
     this.dirty = true;
     this.publish();
   }
@@ -248,7 +419,7 @@ export class LiveController {
     const sources = this.diagram.nodes
       .filter((n) => !targets.has(n.id) && this.diagram.edges.some((e) => e.from === n.id))
       .map((n) => n.id);
-    for (const id of sources) this.engine.inject(id, count);
+    for (const id of sources) this.injectReal(id, count);
     this.dirty = true;
     this.publish();
     return sources;
@@ -303,9 +474,11 @@ export class LiveController {
       if (this.nodeProps.get(node.id) === k) continue;
       const before = JSON.parse(this.nodeProps.get(node.id) ?? "{}") as Record<string, unknown>;
       const after = node.props ?? {};
+      // Keys a simulation's setup (or the panel) overrides keep their override.
+      const covered = (this.sim ? this.sim.setup?.props?.[node.id] : this.freeApplied[node.id]) ?? {};
       const delta = Object.fromEntries(
         [...new Set([...Object.keys(before), ...Object.keys(after)])]
-          .filter((p) => valueKey(after[p]) !== valueKey(before[p]))
+          .filter((p) => valueKey(after[p]) !== valueKey(before[p]) && !(p in covered))
           .map((p) => [p, after[p]]),
       );
       this.engine.setNodeProps(node.id, delta as NodeSimProps);
@@ -333,6 +506,15 @@ export class LiveController {
     else this.engine.setSpeed(this.speed);
   }
 
+  private injectReal(nodeId: string, count: number, opts?: InjectOptions): void {
+    if (this.runner) return this.runner.inject(nodeId, count, opts);
+    const key = JSON.stringify([nodeId, opts?.type ?? null]);
+    const credit = (this.credits.get(key) ?? 0) + Math.max(0, count) / this.scale;
+    const dots = Math.floor(credit + 1e-9);
+    this.credits.set(key, credit - dots);
+    if (dots > 0) this.engine.inject(nodeId, dots, opts);
+  }
+
   private rememberProps(d: DiagramFile): void {
     this.nodeProps = new Map(d.nodes.map((n) => [n.id, propsKey(n.props)]));
   }
@@ -349,10 +531,17 @@ export class LiveController {
       this.runner = null;
       this.engine = createEngine({ ...engineOpts, seed: this.opts.seed ?? DEFAULT_SEED });
       this.engine.load(this.diagram);
+      // Free play's inputs: overrides, rates × traffic, Capacity × and an automatic dot scale.
+      this.freeScale = freePlayScale(this.diagram, this.inputs);
+      this.engine.setScale(this.freeScale);
+      this.freeApplied = freePlayProps(this.diagram, this.inputs);
+      for (const [id, props] of Object.entries(this.freeApplied)) this.engine.setNodeProps(id, props as NodeSimProps);
+      this.engine.setCapacityMultiplier(this.inputs.capacity ?? 1);
     }
     this.applySpeed();
     this.engine.setTraffic(this.traffic);
     this.tweaks.clear();
+    this.credits.clear();
     this.generation++;
     this.dirty = true;
   }

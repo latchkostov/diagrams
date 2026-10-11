@@ -8,6 +8,8 @@ import type { LiveState } from "./controller";
 import { useLive } from "./context";
 import { formatCount, formatRate, heatOf } from "./format";
 import { LiveIcon } from "./icons";
+import type { CapacityView, NodeHeat } from "./capacityModel";
+import { CapacityChip, CapacityRing, IdleChip } from "./CapacityLayer";
 
 const BROKERS: ReadonlySet<SimRole> = new Set(["topic", "queue", "stream"]);
 
@@ -32,7 +34,16 @@ const backlogLabel = (role: SimRole) =>
  * ring when it isn't up, and a red count when something failed. Hovering a node shows the full
  * breakdown. Re-renders at the UI clock (~8 Hz), never per frame.
  */
-export function NodeBadges({ state, presenting }: { state: LiveState; presenting: boolean }) {
+export function NodeBadges({
+  state,
+  presenting,
+  capacity,
+}: {
+  state: LiveState;
+  presenting: boolean;
+  /** The capacity heat map, when "Show capacity" is on. */
+  capacity?: CapacityView | null;
+}) {
   const ui = useLive();
   const nodes = useNodes<FlowNode>();
   const diagram = ui.controller.currentDiagram;
@@ -72,6 +83,7 @@ export function NodeBadges({ state, presenting }: { state: LiveState; presenting
             s={s}
             peak={peak}
             hovered={hovered === n.id}
+            cap={capacity?.nodes[n.id]}
             concurrency={
               s.role === "processor"
                 ? resolveProps(s.role, n.data.label, ui.controller.effectiveProps(n.id)).concurrency
@@ -139,9 +151,10 @@ interface BadgeProps {
   hovered: boolean;
   concurrency: number;
   groups?: Map<string, string>;
+  cap?: NodeHeat;
 }
 
-const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency, groups }: BadgeProps) {
+const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency, groups, cap }: BadgeProps) {
   const domNode = useStore((store) => store.domNode);
   const tooltipId = `live-node-detail-${encodeURIComponent(node.id)}`;
   useEffect(() => {
@@ -161,6 +174,10 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
   const heat = heatOf(s.backlog);
   const problems = s.failed + s.deadLettered + s.dropped;
   const active = s.processed > 0 || s.inFlight > 0 || s.backlog > 0 || problems > 0;
+  // One slot under the node: with the heat map on, its label (which carries the rate) replaces the
+  // throughput readout; a broker keeps its lag only while something is waiting.
+  const capShown = !!cap && cap.level !== "idle";
+  const showMetric = active && !(capShown && (!broker || s.backlog === 0));
   const style = {
     transform: `translate(${node.position.x}px, ${node.position.y}px)`,
     width: w,
@@ -180,6 +197,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
       data-dlq={s.deadLettered}
     >
       {s.status !== "up" && <div className={`lv-ring is-${s.status}`} />}
+      {cap && s.status === "up" && <CapacityRing heat={cap} />}
       {s.status === "down" && (
         <div className="lv-down" title="Down: messages fail or are dropped">
           <LiveIcon name="x" size={18} />
@@ -206,9 +224,9 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
         </div>
       )}
 
-      {active && (
+      {(active || (cap && cap.level !== "idle") || !!s.idleReplicas) && (
         <div className="lv-strip">
-          {broker ? (
+          {!showMetric ? null : broker ? (
             <span
               className={`lv-metric is-backlog${s.backlog > 0 ? " is-hot" : ""}`}
               style={{ "--heat": heat.toFixed(3) } as CSSProperties}
@@ -225,6 +243,8 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
               <b className="mono">{formatRate(s.throughput)}</b>
             </span>
           )}
+          {cap && <CapacityChip heat={cap} />}
+          <IdleChip id={node.id} idle={s.idleReplicas ?? 0} replicas={s.replicas ?? 0} />
         </div>
       )}
 
@@ -237,7 +257,21 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
           ) : (
             s.backlog > 0 && <Row label="Waiting" value={formatCount(s.backlog)} />
           )}
-          {s.role === "processor" && <Row label="In flight" value={`${s.inFlight} / ${concurrency}`} />}
+          {s.role === "processor" && <Row label="In flight" value={formatCount(s.inFlight)} />}
+          {s.role === "processor" && s.replicas !== undefined && (
+            <Row
+              label="Replicas"
+              value={s.idleReplicas ? `${s.activeReplicas} of ${s.replicas} working` : String(s.replicas)}
+            />
+          )}
+          {s.role === "processor" && <Row label="Parallel per replica" value={String(concurrency)} />}
+          {!!s.idleReplicas && (
+            <p className="lv-detail-note" data-testid={`node-detail-idle-${node.id}`}>
+              {s.idleReplicas} of {s.replicas} replicas are idle: a consumer group can&apos;t use more consumers than
+              partitions.
+            </p>
+          )}
+          {cap && cap.level !== "idle" && <Row label="Capacity" value={cap.text} />}
           {s.failed > 0 && <Row label="Failed attempts" value={formatCount(s.failed)} bad />}
           {s.deadLettered > 0 && <Row label="Dead-lettered" value={formatCount(s.deadLettered)} bad />}
           {s.dropped > 0 && <Row label="Dropped" value={formatCount(s.dropped)} bad />}
