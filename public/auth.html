@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Signing in · Diagrams</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font: 14px/1.5 system-ui, sans-serif;
+        color: #4b5563;
+        background: #f8fafc;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          color: #cbd5e1;
+          background: #0f172a;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <p id="msg">Finishing sign-in…</p>
+    <script>
+      // OAuth redirect target for Diagrams' storage providers (OneDrive, Dropbox). It hands the
+      // redirect's query to the Diagrams tab that opened this popup and closes. Nothing is stored,
+      // nothing is sent anywhere else, and the code is removed from the address bar at once.
+      // See src/interop/storage/oauth.ts.
+      (function () {
+        var params = {};
+        new URLSearchParams(location.search).forEach(function (v, k) {
+          params[k] = v;
+        });
+        history.replaceState(null, "", location.pathname);
+        var msg = document.getElementById("msg");
+        if (!params.state) {
+          msg.textContent = "Nothing to do here. You can close this window.";
+          return;
+        }
+        var message = { type: "diagrams-oauth", params: params };
+        // A BroadcastChannel still reaches the app when the sign-in page cut this popup off from its opener.
+        try {
+          var channel = new BroadcastChannel("diagrams-oauth");
+          channel.postMessage(message);
+          channel.close();
+        } catch (e) {}
+        try {
+          if (window.opener && window.opener !== window) window.opener.postMessage(message, location.origin);
+        } catch (e) {}
+        setTimeout(function () {
+          window.close();
+          msg.textContent = params.error
+            ? "Sign-in didn't finish. You can close this window."
+            : "Signed in. You can close this window.";
+        }, 60);
+      })();
+    </script>
+  </body>
+</html>

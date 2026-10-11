@@ -1,4 +1,7 @@
-import type { Interop } from "../useInterop";
+import { useEffect, useState } from "react";
+import { formatCombo } from "../../editor/shortcuts";
+import { formatAgo } from "../../lib/time";
+import type { Binding, Interop } from "../useInterop";
 import { Menu, type MenuEntry } from "./Menu";
 import { Glyph } from "./glyphs";
 
@@ -6,8 +9,10 @@ type Api = Omit<Interop, "layer">;
 
 /**
  * The top bar's single File menu, grouped by intent: start or bring in a diagram, save it, share
- * it, export it. Formats live one level down ("Export as"). Google Drive rows exist only when
- * configured. On views without a canvas (stencils, Lab) only the starting actions show.
+ * it, export it. Formats live one level down ("Export as"). Cloud storage (Google Drive, OneDrive,
+ * Dropbox) adds one "Open from ▸" and one "Save to ▸" submenu, and only when at least one provider is
+ * configured; otherwise the menu is exactly the device-only one. On views without a canvas (stencils,
+ * Lab) only the starting actions show.
  */
 export function FileMenu({
   api,
@@ -25,7 +30,7 @@ export function FileMenu({
 }) {
   const entries = (): MenuEntry[] => {
     const b = api.binding;
-    const drive = api.driveEnabled;
+    const cloud = api.cloudProviders;
     const out: MenuEntry[] = [
       {
         type: "item",
@@ -56,13 +61,30 @@ export function FileMenu({
         onSelect: () => void api.openFile(),
       },
     ];
-    if (drive) {
+    if (cloud.length) {
       out.push({
         type: "item",
-        testId: "file-open-drive",
-        icon: <Glyph name="drive" />,
-        title: "Open from Google Drive…",
-        onSelect: () => void api.openFromDrive(),
+        testId: "file-open-from",
+        submenuTestId: "file-open-from-menu",
+        icon: <Glyph name="cloud" />,
+        title: "Open from",
+        submenu: () => [
+          {
+            type: "item",
+            testId: "open-from-device",
+            icon: <Glyph name="device" />,
+            title: "This device…",
+            shortcut: "Mod+O",
+            onSelect: () => void api.openFrom("device"),
+          },
+          ...cloud.map((p): MenuEntry => ({
+            type: "item",
+            testId: `open-from-${p.id}`,
+            icon: <Glyph name={p.icon} />,
+            title: `${p.label}…`,
+            onSelect: () => void api.openFrom(p.id),
+          })),
+        ],
       });
     }
     out.push({
@@ -100,7 +122,7 @@ export function FileMenu({
         icon: <Glyph name="save" />,
         title: b ? "Save" : api.fsSupported ? "Save to device…" : "Download file",
         desc: b
-          ? `To ${b.kind === "drive" ? "Google Drive: " : ""}${b.name}`
+          ? `To ${b.providerId === "device" ? "" : `${b.label}: `}${b.name}`
           : api.fsSupported
             ? "Works in synced cloud folders"
             : undefined,
@@ -108,8 +130,36 @@ export function FileMenu({
         onSelect: () => void api.save(),
       },
     );
-    // Until the diagram is bound to a file, "Save to device…" already asks where: Save as… joins it after.
-    if (api.fsSupported && b) {
+    if (cloud.length) {
+      // Every destination in one place: Save as on this device, or a new file in a provider.
+      out.push({
+        type: "item",
+        testId: "file-save-to",
+        submenuTestId: "file-save-to-menu",
+        icon: <Glyph name="save" />,
+        title: "Save to",
+        submenu: () => [
+          {
+            type: "item",
+            testId: "save-to-device",
+            icon: <Glyph name="device" />,
+            title: api.fsSupported ? "This device…" : "This device",
+            desc: api.fsSupported ? undefined : "Downloads the file",
+            shortcut: api.fsSupported ? "Mod+Shift+S" : undefined,
+            onSelect: () => void api.saveTo("device"),
+          },
+          ...cloud.map((p): MenuEntry => ({
+            type: "item",
+            testId: `save-to-${p.id}`,
+            icon: <Glyph name={p.icon} />,
+            title: p.label,
+            desc: b?.providerId === p.id ? "Saves a new copy" : undefined,
+            onSelect: () => void api.saveTo(p.id),
+          })),
+        ],
+      });
+    } else if (api.fsSupported && b) {
+      // Until the diagram is bound to a file, "Save to device…" already asks where: Save as… joins it after.
       out.push({
         type: "item",
         testId: "export-save-as",
@@ -117,15 +167,6 @@ export function FileMenu({
         title: "Save as…",
         shortcut: "Mod+Shift+S",
         onSelect: () => void api.saveAs(),
-      });
-    }
-    if (drive) {
-      out.push({
-        type: "item",
-        testId: "file-save-drive",
-        icon: <Glyph name="drive" />,
-        title: b?.kind === "drive" ? "Save a copy to Google Drive" : "Save to Google Drive",
-        onSelect: () => void api.saveToDrive(b?.kind === "drive"),
       });
     }
     out.push(
@@ -169,7 +210,7 @@ export function FileMenu({
     <Menu
       label="File"
       testId="file-menu"
-      onOpen={api.preloadDrive}
+      onOpen={api.preloadStorage}
       entries={entries}
       width={320}
       trigger={(props) => (
@@ -187,6 +228,34 @@ export function FileMenu({
         </button>
       )}
     />
+  );
+}
+
+/**
+ * Quiet text beside the diagram picker: where Save writes this diagram and when it last did
+ * ("Saved to OneDrive · 2 min ago"). Not a control; hidden on narrow screens. Nothing shows until
+ * the diagram has a destination (opened from or saved to a file).
+ */
+export function SaveStatus({ binding }: { binding?: Binding }) {
+  const savedAt = binding?.savedAt;
+  // Re-render now and then so "2 min ago" stays true.
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!savedAt) return;
+    const t = window.setInterval(() => tick((n) => n + 1), 30_000);
+    return () => window.clearInterval(t);
+  }, [savedAt]);
+  if (!binding) return null;
+  const text = savedAt ? `Saved to ${binding.inSentence} · ${formatAgo(savedAt)}` : `Opened from ${binding.inSentence}`;
+  return (
+    <span
+      className="ix-save-status"
+      title={`${binding.name}. ${formatCombo("Mod+S")} saves here again.`}
+      data-testid="save-status"
+      data-provider={binding.providerId}
+    >
+      {text}
+    </span>
   );
 }
 

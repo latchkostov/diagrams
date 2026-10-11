@@ -2,15 +2,14 @@ import { DIAGRAM_FORMAT, type DiagramFile } from "../model/types";
 import { examples } from "../examples";
 import { LIMITS, parseNative, preserveUnknown, serializeNative, validateDiagram } from "../interop/native";
 import { notify } from "../interop/ui/toast";
-import type { FileHandle } from "../interop/files";
 import { safeStorage } from "./storage";
 import { diagramThumb, isThumb, type Thumb } from "./thumbnail";
 
 // Where diagrams live in the browser.
 //
 // - "Your diagrams" is a small local library. Each entry is one document with its own storage key,
-//   its own save destination (a file handle or a Drive file, bound atomically to the document's
-//   session id) and its own autosave. A tiny index (title, times, node count, thumbnail) lists them
+//   its own save destination (`{ providerId, ref }`: a device file handle or a file in a storage
+//   provider, bound atomically to the document's session id) and its own autosave. A tiny index (title, times, node count, thumbnail) lists them
 //   without reading every document.
 // - A blank "new" diagram (DRAFT_SLUG) is not stored at all until its first edit, when it becomes a
 //   library entry in place: the entry takes the draft's identity, so the open canvas doesn't remount.
@@ -114,21 +113,59 @@ export function setShared(d: DiagramFile, target?: SaveTarget) {
 }
 
 export function clearShared() {
-  deviceTargets.delete(SHARED_SLUG);
+  memoryTargets.delete(SHARED_SLUG);
   safeStorage.removeItem(SHARED_KEY);
   safeStorage.removeItem(AUTOSAVE_PREFIX + SHARED_SLUG);
   changed();
 }
 
-export type SaveTarget = { kind: "device"; handle: FileHandle } | { kind: "drive"; id: string; name: string };
+/**
+ * Where Save writes a document: a storage provider (src/interop/storage) and that provider's
+ * reference to the file. A device file handle can't be serialized, so device destinations live in
+ * memory only (the browser asks for the file again after a reload). Every other provider's `ref` is
+ * plain JSON, stored in the same write as the document it belongs to.
+ */
+export interface SaveTarget {
+  providerId: string;
+  ref: unknown;
+  /** The file's name, as the provider reported it. */
+  name: string;
+  /** When Save last wrote it (ms). Missing for a file that was only opened. */
+  savedAt?: number;
+}
+/** The device provider's id. Its refs are file handles, so they never touch storage. */
+export const DEVICE_PROVIDER = "device";
+const inMemoryOnly = (t: SaveTarget) => t.providerId === DEVICE_PROVIDER;
+
 const SESSION_FORMAT = "diagrams/session/v1";
 interface DocumentSession {
   sessionFormat: typeof SESSION_FORMAT;
   sessionId: string;
   diagram: DiagramFile;
-  drive?: Extract<SaveTarget, { kind: "drive" }>;
+  target?: SaveTarget;
+  /** Before storage providers: a Google Drive destination. Still read, never written. */
+  drive?: { kind: "drive"; id: string; name: string };
 }
-const deviceTargets = new Map<string, { sessionId: string; target: SaveTarget }>();
+const memoryTargets = new Map<string, { sessionId: string; target: SaveTarget }>();
+
+/** A stored destination (or a legacy Google Drive one), checked field by field. */
+function storedTarget(raw: unknown): SaveTarget | undefined {
+  const t = raw as Partial<SaveTarget & { kind: string; id: string }> | null | undefined;
+  if (!t || typeof t !== "object") return undefined;
+  if (t.kind === "drive")
+    return typeof t.id === "string" && typeof t.name === "string"
+      ? { providerId: "gdrive", ref: { id: t.id }, name: t.name }
+      : undefined;
+  if (typeof t.providerId !== "string" || t.providerId === DEVICE_PROVIDER || typeof t.name !== "string")
+    return undefined;
+  if (t.ref === undefined || t.ref === null) return undefined;
+  return {
+    providerId: t.providerId,
+    ref: t.ref,
+    name: t.name,
+    ...(typeof t.savedAt === "number" && Number.isFinite(t.savedAt) ? { savedAt: t.savedAt } : {}),
+  };
+}
 
 /** A library entry's slug: the legacy slot, or `my-<id>`. */
 export const isLibrarySlug = (slug: string) =>
@@ -194,29 +231,27 @@ function replaceDocument(slug: string, diagram: DiagramFile, target?: SaveTarget
     sessionFormat: SESSION_FORMAT,
     sessionId,
     diagram,
-    ...(target?.kind === "drive" ? { drive: target } : {}),
+    ...(target && !inMemoryOnly(target) ? { target } : {}),
   });
-  deviceTargets.delete(slug);
-  if (target?.kind === "device") deviceTargets.set(slug, { sessionId, target });
+  memoryTargets.delete(slug);
+  if (target && inMemoryOnly(target)) memoryTargets.set(slug, { sessionId, target });
   // If this removal fails, the stale autosave still can't show: it carries the old session id.
   safeStorage.removeItem(AUTOSAVE_PREFIX + slug);
 }
 
 export function getSaveTarget(slug: string): SaveTarget | undefined {
   const sessionId = getDiagramIdentity(slug);
-  const device = deviceTargets.get(slug);
-  if (device?.sessionId === sessionId) return device.target;
+  const memory = memoryTargets.get(slug);
+  if (memory?.sessionId === sessionId) return memory.target;
   const key = slotKey(slug);
   if (key) {
     const stored = read<DocumentSession>(key);
-    const target =
-      stored?.sessionFormat === SESSION_FORMAT && stored.sessionId === sessionId ? stored.drive : undefined;
-    return target?.kind === "drive" && typeof target.id === "string" && typeof target.name === "string"
-      ? target
+    return stored?.sessionFormat === SESSION_FORMAT && stored.sessionId === sessionId
+      ? storedTarget(stored.target ?? stored.drive)
       : undefined;
   }
-  const stored = read<Record<string, { sessionId: string; target: SaveTarget }>>(BINDINGS_KEY)?.[slug];
-  return stored?.sessionId === sessionId ? stored.target : undefined;
+  const stored = read<Record<string, { sessionId: string; target: unknown }>>(BINDINGS_KEY)?.[slug];
+  return stored?.sessionId === sessionId ? storedTarget(stored.target) : undefined;
 }
 
 /** A completed asynchronous save may bind only the document that initiated it. */
@@ -243,18 +278,19 @@ export function bindSaveTarget(slug: string, target: SaveTarget, expectedIdentit
         : { sessionFormat: SESSION_FORMAT, sessionId: expectedIdentity, diagram };
     const rest = { ...session };
     delete rest.drive;
-    storeSession(key, { ...rest, ...(target.kind === "drive" ? { drive: target } : {}) });
+    delete rest.target;
+    storeSession(key, { ...rest, ...(inMemoryOnly(target) ? {} : { target }) });
   } else {
     const all = Object.fromEntries(
-      Object.entries(read<Record<string, { sessionId: string; target: SaveTarget }>>(BINDINGS_KEY) ?? {}).filter(
+      Object.entries(read<Record<string, { sessionId: string; target: unknown }>>(BINDINGS_KEY) ?? {}).filter(
         ([key]) => key !== slug,
       ),
     );
-    if (target.kind === "drive") all[slug] = { sessionId: expectedIdentity, target };
+    if (!inMemoryOnly(target)) all[slug] = { sessionId: expectedIdentity, target };
     safeStorage.setItem(BINDINGS_KEY, JSON.stringify(all)); // optional for examples
   }
-  deviceTargets.delete(slug);
-  if (target.kind === "device") deviceTargets.set(slug, { sessionId: expectedIdentity, target });
+  memoryTargets.delete(slug);
+  if (inMemoryOnly(target)) memoryTargets.set(slug, { sessionId: expectedIdentity, target });
   return true;
 }
 
@@ -504,7 +540,7 @@ export function createLibraryDiagram(d: DiagramFile, target?: SaveTarget, sessio
   const r = validateDiagram(d);
   if (!writeEntry(summarize(slug, r.ok ? r.diagram : d, Date.now()))) {
     safeStorage.removeItem(slotKey(slug)!);
-    deviceTargets.delete(slug);
+    memoryTargets.delete(slug);
     throw new Error(STORAGE_FULL);
   }
   changed();
@@ -571,13 +607,13 @@ export function deleteLibraryDiagram(slug: string): () => boolean {
   const indexed = entries.find((e) => e.slug === slug);
   const current = getCurrent(slug);
   const entry = indexed && current ? summarize(slug, current, Date.now(), indexed.createdAt) : indexed;
-  const device = deviceTargets.get(slug);
+  const memory = memoryTargets.get(slug);
   // The index goes first: if it can't be written, nothing is deleted.
   if (!safeStorage.setItem(deletedKey(slug), JSON.stringify({ slug, deleted: true }))) throw new Error(STORAGE_FULL);
   safeStorage.removeItem(key);
   safeStorage.removeItem(AUTOSAVE_PREFIX + slug);
   safeStorage.removeItem(entryKey(slug));
-  deviceTargets.delete(slug);
+  memoryTargets.delete(slug);
   changed();
   return () => {
     try {
@@ -587,7 +623,7 @@ export function deleteLibraryDiagram(slug: string): () => boolean {
       if (entry) writes.push([entryKey(slug), JSON.stringify(entry)]);
       writes.push([deletedKey(slug), null]);
       commitWrites(writes);
-      if (device) deviceTargets.set(slug, device);
+      if (memory) memoryTargets.set(slug, memory);
       changed();
       return true;
     } catch {

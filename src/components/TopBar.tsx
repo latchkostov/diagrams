@@ -4,7 +4,7 @@ import { edgeStyles, type EdgeStyle } from "../harness/edgeStyles";
 import { Icon } from "./Icon";
 import type { View } from "../lib/urlState";
 import type { Interop } from "../interop/useInterop";
-import { FileMenu, SharedChip } from "../interop/ui/menus";
+import { FileMenu, SaveStatus, SharedChip } from "../interop/ui/menus";
 import { Menu } from "../interop/ui/Menu";
 import { Glyph } from "../interop/ui/glyphs";
 import { capacityOverlay } from "../live/capacityOverlay";
@@ -110,6 +110,7 @@ export function TopBar(p: Props) {
       )}
 
       {canvas && p.shared && <SharedChip {...p.shared} />}
+      {canvas && !p.shared && <SaveStatus binding={p.interop.binding} />}
 
       <div className="topbar-spacer" />
 

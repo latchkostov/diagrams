@@ -75,6 +75,13 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   and **Discard** (undoable). With a simulation picked, the one option is to play it from the start
   and stop when it ends.
 - Same action, same name in the File menu and the right-click (e.g. Export PNG, Copy share link).
+- **Storage**: where files live. **This device** (never "local", "computer" or "disk"; mid-sentence "this
+  device"), **Google Drive**, **OneDrive** and **Dropbox** (never "Drive", "OneDrive Personal" or "Dropbox
+  account"). The verbs are **Open…** (this device, Ctrl+O), **Open from ▸**, **Save** (Ctrl+S: back to where the
+  diagram came from), and **Save to ▸** (always a new file; This device… is Save as, Ctrl+Shift+S). Each
+  submenu lists This device first, then the configured providers; an unconfigured provider never appears. The
+  status beside the picker says **Saved to OneDrive · 2 min ago** or **Opened from Dropbox**. Signing out is
+  **Sign out of OneDrive**. The folder a provider sees is **Apps › Diagrams**.
 - **Trace a message** follows one message (and its fan-out copies) hop by hop: click a moving message,
   right-click a node for **Trace next message from here**, or use **Trace a message ▸** (Next message,
   Slowest so far, One that dead-lettered) on the live right-click, in ⋯ and in Ctrl+K. The **trace

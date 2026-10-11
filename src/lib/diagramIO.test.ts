@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
+import type { SaveTarget } from "./diagramIO";
 import type { FileHandle } from "../interop/files";
 import { writeHandle } from "../interop/files";
 
@@ -40,6 +41,8 @@ const handle: FileHandle = {
   getFile: async () => new File([], "a.json"),
   createWritable: vi.fn(async () => ({ write: vi.fn(), close: vi.fn() })),
 };
+/** A device destination: the handle itself, kept in memory only. */
+const device: SaveTarget = { providerId: "device", ref: handle, name: handle.name };
 
 beforeEach(() => {
   storage.clear();
@@ -192,30 +195,72 @@ describe("Your diagrams (the library)", () => {
   });
 
   it("each entry has its own save destination: binding B never reaches A's handle", async () => {
-    const a = io.createLibraryDiagram(good, { kind: "device", handle });
+    const a = io.createLibraryDiagram(good, device);
     const b = io.createLibraryDiagram({ ...good, title: "B" });
-    expect(io.getSaveTarget(a)).toEqual({ kind: "device", handle });
+    expect(io.getSaveTarget(a)).toEqual(device);
     const target = io.getSaveTarget(b);
-    if (target?.kind === "device") await writeHandle(target.handle, "B");
+    if (target?.providerId === "device") await writeHandle(target.ref as FileHandle, "B");
     expect(target).toBeUndefined();
     expect(handle.createWritable).not.toHaveBeenCalled();
   });
 
   it("publishes a supplied Drive destination in the same stored session as its diagram", () => {
-    const slug = io.createLibraryDiagram(good, { kind: "drive", id: "a", name: "A" });
+    const slug = io.createLibraryDiagram(good, { providerId: "gdrive", ref: { id: "a" }, name: "A" });
     const raw = JSON.parse(storage.getItem(`diagrams.doc.v1:${slug.slice(3)}`)!);
     expect(raw).toMatchObject({
       diagram: { title: "Good" },
-      drive: { id: "a" },
+      target: { providerId: "gdrive", ref: { id: "a" } },
       sessionId: io.getDiagramIdentity(slug),
     });
-    expect(io.getSaveTarget(slug)).toEqual({ kind: "drive", id: "a", name: "A" });
+    expect(io.getSaveTarget(slug)).toEqual({ providerId: "gdrive", ref: { id: "a" }, name: "A" });
+  });
+
+  it("stores any provider's { providerId, ref } with its document; device handles never reach storage", () => {
+    const slug = io.createLibraryDiagram(good, {
+      providerId: "onedrive",
+      ref: { id: "item-1" },
+      name: "a.diagram.json",
+      savedAt: 5,
+    });
+    expect(io.getSaveTarget(slug)).toEqual({
+      providerId: "onedrive",
+      ref: { id: "item-1" },
+      name: "a.diagram.json",
+      savedAt: 5,
+    });
+    const identity = io.getDiagramIdentity(slug);
+    expect(io.bindSaveTarget(slug, device, identity)).toBe(true);
+    const raw = JSON.parse(storage.getItem(`diagrams.doc.v1:${slug.slice(3)}`)!);
+    expect(raw.target).toBeUndefined();
+    expect(io.getSaveTarget(slug)).toEqual(device);
+    // Binding a provider again replaces the in-memory device destination.
+    const dropbox = { providerId: "dropbox", ref: { id: "id:x" }, name: "b.diagram.json" };
+    expect(io.bindSaveTarget(slug, dropbox, identity)).toBe(true);
+    expect(io.getSaveTarget(slug)).toEqual(dropbox);
+  });
+
+  it("still reads a Google Drive destination stored before storage providers", () => {
+    const slug = io.createLibraryDiagram(good);
+    const key = `diagrams.doc.v1:${slug.slice(3)}`;
+    const raw = JSON.parse(storage.getItem(key)!);
+    storage.setItem(key, JSON.stringify({ ...raw, drive: { kind: "drive", id: "old", name: "Old.diagram.json" } }));
+    expect(io.getSaveTarget(slug)).toEqual({ providerId: "gdrive", ref: { id: "old" }, name: "Old.diagram.json" });
+  });
+
+  it("ignores malformed stored destinations", () => {
+    const slug = io.createLibraryDiagram(good);
+    const key = `diagrams.doc.v1:${slug.slice(3)}`;
+    const raw = JSON.parse(storage.getItem(key)!);
+    for (const target of [{ providerId: "device", ref: {}, name: "x" }, { providerId: "onedrive", name: "x" }, "x"]) {
+      storage.setItem(key, JSON.stringify({ ...raw, target }));
+      expect(io.getSaveTarget(slug)).toBeUndefined();
+    }
   });
 
   it("duplicates the latest content with a fresh identity and no destination", () => {
     const slug = io.createLibraryDiagram({ ...good, "x-owner": "team" } as DiagramFile, {
-      kind: "drive",
-      id: "a",
+      providerId: "gdrive",
+      ref: { id: "a" },
       name: "A",
     });
     io.writeAutosave(slug, { ...good, title: "Edited" }, io.getDiagramIdentity(slug));
@@ -238,7 +283,7 @@ describe("Your diagrams (the library)", () => {
   });
 
   it("deletes an entry, and Undo restores it exactly (edits and destination included)", () => {
-    const slug = io.createLibraryDiagram(good, { kind: "device", handle });
+    const slug = io.createLibraryDiagram(good, device);
     const identity = io.getDiagramIdentity(slug);
     io.writeAutosave(slug, { ...good, title: "Edited" }, identity);
     const undo = io.deleteLibraryDiagram(slug);
@@ -250,7 +295,7 @@ describe("Your diagrams (the library)", () => {
     expect(undo()).toBe(true);
     expect(io.listLibrary().map((e) => e.slug)).toEqual([slug]);
     expect(io.getAutosave(slug)?.title).toBe("Edited");
-    expect(io.getSaveTarget(slug)).toEqual({ kind: "device", handle });
+    expect(io.getSaveTarget(slug)).toEqual(device);
   });
 
   it("a delete that can't update the index deletes nothing", () => {
@@ -307,15 +352,15 @@ describe("the blank draft", () => {
   it("saving a blank draft keeps it, bound to the destination", () => {
     io.newDraft();
     const identity = io.getDiagramIdentity(io.DRAFT_SLUG);
-    expect(io.bindSaveTarget(io.DRAFT_SLUG, { kind: "device", handle }, identity)).toBe(true);
+    expect(io.bindSaveTarget(io.DRAFT_SLUG, device, identity)).toBe(true);
     const slug = io.resolveSlug(io.DRAFT_SLUG);
-    expect(io.getSaveTarget(slug)).toEqual({ kind: "device", handle });
+    expect(io.getSaveTarget(slug)).toEqual(device);
   });
 });
 
 describe("the shared slot", () => {
   it("replacing it drops the old destination and edits", () => {
-    io.setShared(good, { kind: "device", handle });
+    io.setShared(good, device);
     io.writeAutosave("shared", { ...good, title: "Edited" });
     io.setShared({ ...good, title: "B" });
     expect(io.getSaveTarget("shared")).toBeUndefined();
@@ -323,13 +368,13 @@ describe("the shared slot", () => {
   });
 
   it("failed replacement retains both the old document and its destination", () => {
-    io.setShared(good, { kind: "device", handle });
+    io.setShared(good, device);
     const identity = io.getDiagramIdentity("shared");
     storage.quotaBytes = 10;
     expect(() => io.setShared({ ...good, title: "B" })).toThrow(/storage/);
     storage.quotaBytes = Infinity;
     expect(io.getDiagramIdentity("shared")).toBe(identity);
-    expect(io.getSaveTarget("shared")).toEqual({ kind: "device", handle });
+    expect(io.getSaveTarget("shared")).toEqual(device);
     expect(io.getShared()?.title).toBe("Good");
   });
 
@@ -337,7 +382,7 @@ describe("the shared slot", () => {
     io.setShared(good);
     const identity = io.getDiagramIdentity("shared");
     io.setShared({ ...good, title: "B" });
-    expect(io.bindSaveTarget("shared", { kind: "device", handle }, identity)).toBe(false);
+    expect(io.bindSaveTarget("shared", device, identity)).toBe(false);
     expect(io.getSaveTarget("shared")).toBeUndefined();
   });
 
@@ -402,7 +447,10 @@ describe("upgrading the single 'Your diagram' slot", () => {
       drive: { kind: "drive", id: "wrong", name: "Wrong" },
     };
     storage.setItem("diagrams.imported.v1", JSON.stringify(extended));
-    storage.setItem("diagrams.bindings.v1", JSON.stringify({ imported: { kind: "drive", id: "a", name: "A" } }));
+    storage.setItem(
+      "diagrams.bindings.v1",
+      JSON.stringify({ imported: { providerId: "gdrive", ref: { id: "a" }, name: "A" } }),
+    );
     expect(io.getOriginal("imported")?.title).toBe("Good");
     expect(io.getSaveTarget("imported")).toBeUndefined();
   });
@@ -411,9 +459,11 @@ describe("upgrading the single 'Your diagram' slot", () => {
     storage.setItem("diagrams.imported.v1", JSON.stringify(good));
     storage.setItem("diagrams.autosave.v1:imported", JSON.stringify({ ...good, title: "Legacy edit" }));
     const identity = io.getDiagramIdentity("imported");
-    expect(io.bindSaveTarget("imported", { kind: "drive", id: "explicit", name: "Saved" }, identity)).toBe(true);
+    expect(
+      io.bindSaveTarget("imported", { providerId: "gdrive", ref: { id: "explicit" }, name: "Saved" }, identity),
+    ).toBe(true);
     expect(io.getDiagramIdentity("imported")).toBe(identity);
-    expect(io.getSaveTarget("imported")).toEqual({ kind: "drive", id: "explicit", name: "Saved" });
+    expect(io.getSaveTarget("imported")).toEqual({ providerId: "gdrive", ref: { id: "explicit" }, name: "Saved" });
     expect(io.getAutosave("imported")?.title).toBe("Legacy edit");
   });
 });

@@ -53,6 +53,46 @@ test.describe("production build under a sub-path", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("with no storage variables, no provider is offered or contacted and the console stays clean", async ({
+    page,
+    consoleErrors,
+  }) => {
+    // The production deployment runs with no VITE_GOOGLE_*, VITE_ONEDRIVE_* or VITE_DROPBOX_* set.
+    const PROVIDER_HOSTS =
+      /(^|\.)(accounts\.google\.com|apis\.google\.com|googleapis\.com|login\.microsoftonline\.com|graph\.microsoft\.com|dropbox\.com|dropboxapi\.com)$/;
+    const contacted: string[] = [];
+    const warnings: string[] = [];
+    page.on("request", (r) => {
+      const u = new URL(r.url());
+      if (PROVIDER_HOSTS.test(u.hostname)) contacted.push(r.url());
+      // Provider code is split out and loads only when that provider is configured.
+      if (/\/assets\/(gdrive|google|onedrive|dropbox|oauth|testProvider|StorageDialog)-/.test(u.pathname))
+        contacted.push(r.url());
+    });
+    page.on("console", (m) => {
+      if (m.type() === "warning") warnings.push(m.text());
+    });
+    const ex = publicExamples[0];
+    // `storage=test` turns on the fake provider in dev builds only; production must ignore it.
+    await page.goto(`./?view=canvas&example=${ex.slug}&storage=test`);
+    await expect(page.getByTestId(`node-${ex.nodeIds[0]}`)).toBeVisible();
+    await page.getByTestId("file-button").click();
+    const menu = page.getByTestId("file-menu");
+    await expect(menu.getByTestId("file-save")).toBeVisible();
+    await expect(menu.getByTestId("file-open")).toBeVisible();
+    for (const id of ["file-open-from", "file-save-to", "file-open-drive", "file-save-drive"])
+      await expect(menu.getByTestId(id)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("save-status")).toHaveCount(0);
+    // The OAuth callback and privacy pages ship with the build.
+    for (const path of ["privacy.html", "auth.html"]) expect((await page.request.get(`./${path}`)).status()).toBe(200);
+    await page.goto("./privacy.html");
+    await expect(page.getByTestId("privacy-title")).toHaveText("Privacy");
+    expect(contacted).toEqual([]);
+    expect(warnings).toEqual([]);
+    expectNoErrors(consoleErrors);
+  });
+
   test("Lab is hidden from the nav but works by URL", async ({ page, consoleErrors }) => {
     await page.goto("./?view=gallery");
     await expect(page.getByTestId("gallery-view")).toBeVisible();
