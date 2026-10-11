@@ -128,3 +128,33 @@ test("paste with regenerated ids is caught by content, while an unrelated import
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(unrelated.title);
   expectNoErrors(consoleErrors);
 });
+
+test("a connected model is never called for a local-only diagram", async ({ page, consoleErrors }) => {
+  await installSyntheticRegistry(page);
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "diagrams.ai-model.v1",
+      JSON.stringify({ provider: "anthropic", model: "claude-haiku-5-5", key: "sk-ant-test-local-only-0000" }),
+    ),
+  );
+  let calls = 0;
+  for (const host of [
+    "https://api.anthropic.com/**",
+    "https://api.openai.com/**",
+    "https://generativelanguage.googleapis.com/**",
+  ])
+    await page.route(host, (route) => {
+      calls++;
+      return route.abort();
+    });
+  await gotoCanvas(page, "synthetic-local");
+  await openAskAi(page);
+  await expect(page.getByTestId("ai-privacy-note")).toContainText("Local-only");
+  await page.getByTestId("ai-request").fill("Rename everything");
+  await expect(page.getByTestId("ai-send")).toBeDisabled();
+  await page.getByTestId("ai-request").press("Enter");
+  await expect(page.getByTestId("ai-model-error")).toContainText("Local-only");
+  await page.waitForTimeout(300);
+  expect(calls).toBe(0);
+  expectNoErrors(consoleErrors);
+});

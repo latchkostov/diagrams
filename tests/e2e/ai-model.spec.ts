@@ -1,0 +1,156 @@
+import type { Page, Request } from "@playwright/test";
+import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { SLUG, nodeCount, openAskAi } from "./ai-helpers";
+
+// Ask AI with a connected model (the user's own key), against a mocked Anthropic API: page.route answers
+// every call, so no request leaves the machine.
+
+const KEY = "sk-ant-api03-E2ESECRET0123456789abcdef";
+const MODEL_KEY = "diagrams.ai-model.v1";
+
+const sse = (events: object[]) => events.map((e) => `event: x\ndata: ${JSON.stringify(e)}\n\n`).join("");
+
+/** The model asks for edit_diagram once, then says what it did. */
+const TOOL_TURN = sse([
+  { type: "message_start", message: {} },
+  { type: "content_block_start", index: 0, content_block: { type: "tool_use", id: "tu_1", name: "edit_diagram" } },
+  {
+    type: "content_block_delta",
+    index: 0,
+    delta: {
+      type: "input_json_delta",
+      partial_json: JSON.stringify({
+        ops: [
+          { op: "add_node", kind: "Redis cache", label: "orders-cache", key: "c" },
+          { op: "connect", from: "orders", to: "c", kind: "sync" },
+        ],
+      }),
+    },
+  },
+  { type: "content_block_stop", index: 0 },
+  { type: "message_delta", delta: { stop_reason: "tool_use" } },
+]);
+const TEXT_TURN = sse([
+  { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+  { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Added orders-cache " } },
+  { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "<b>next to</b> orders-api." } },
+  { type: "message_delta", delta: { stop_reason: "end_turn" } },
+]);
+
+/** Answers Anthropic calls in order; anything else on the network to a model provider fails the test. */
+async function mockAnthropic(page: Page, bodies: (string | { status: number; body: string })[]) {
+  const seen: Request[] = [];
+  await page.route("https://api.anthropic.com/**", async (route) => {
+    seen.push(route.request());
+    const next = bodies[seen.length - 1] ?? TEXT_TURN;
+    if (typeof next === "string")
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: next, headers: CORS });
+    else await route.fulfill({ status: next.status, contentType: "application/json", body: next.body, headers: CORS });
+  });
+  for (const host of ["https://api.openai.com/**", "https://generativelanguage.googleapis.com/**"])
+    await page.route(host, (route) => route.abort());
+  return seen;
+}
+const CORS = { "access-control-allow-origin": "*" };
+
+async function connect(page: Page) {
+  await page.getByTestId("ai-connect-toggle").click();
+  await expect(page.getByTestId("ai-key-note")).toContainText("Stored only in this browser and sent only to Anthropic");
+  await page.getByTestId("ai-key").fill(KEY);
+  await page.getByTestId("ai-key-save").click();
+  await expect(page.getByTestId("ai-engine")).toHaveText("Claude Haiku 5.5 · your key");
+}
+
+test.describe("Ask AI with your own key", () => {
+  test.beforeEach(async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    await expect(page.getByTestId("node-payments")).toBeVisible();
+    await openAskAi(page);
+  });
+
+  test("connects, sends, streams the reply as text and applies the tool calls as one undo step", async ({
+    page,
+    consoleErrors,
+  }) => {
+    const seen = await mockAnthropic(page, [TOOL_TURN, TEXT_TURN]);
+    await connect(page);
+    const before = await nodeCount(page);
+    await page.getByTestId("ai-request").fill("Put a Redis cache in front of the orders API");
+    await page.getByTestId("ai-request").press("Enter");
+
+    await expect(page.getByTestId("ai-turn-0-summary")).toHaveText("+1 node, +1 connection");
+    // Model output is text, never HTML.
+    await expect(page.getByTestId("ai-turn-0")).toContainText("Added orders-cache <b>next to</b> orders-api.");
+    expect(await nodeCount(page)).toBe(before + 1);
+    await expect(page.getByTestId("ai-request")).toHaveValue("");
+
+    expect(seen).toHaveLength(2);
+    const headers = seen[0].headers();
+    expect(headers["anthropic-dangerous-direct-browser-access"]).toBe("true");
+    expect(headers["x-api-key"]).toBe(KEY);
+    const body = seen[0].postDataJSON() as {
+      model: string;
+      tools: { name: string }[];
+      messages: { content: string }[];
+    };
+    expect(body.model).toBe("claude-haiku-5-5");
+    expect(body.tools.map((t) => t.name)).toEqual([
+      "describe_diagram",
+      "find_stencils",
+      "edit_diagram",
+      "set_simulation",
+    ]);
+    expect(body.messages[0].content).toContain("payments"); // the diagram, described
+    expect(body.messages[0].content).toContain("Put a Redis cache in front of the orders API");
+
+    // One undo step takes the whole turn back.
+    await page.getByTestId("ai-turn-0-undo").click();
+    await expect.poll(() => nodeCount(page)).toBe(before);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("the key stays in this browser's model setting only, and Forget key removes it", async ({ page }) => {
+    await mockAnthropic(page, [TOOL_TURN, TEXT_TURN]);
+    await connect(page);
+    await page.getByTestId("ai-request").fill("Add a cache");
+    await page.getByTestId("ai-send").click();
+    await expect(page.getByTestId("ai-turn-0")).toBeVisible();
+    const holders = await page.evaluate(
+      (key) => Object.keys(localStorage).filter((k) => (localStorage.getItem(k) ?? "").includes(key)),
+      KEY,
+    );
+    expect(holders).toEqual([MODEL_KEY]);
+
+    await page.getByTestId("ai-connect-toggle").click();
+    await page.getByTestId("ai-key-forget").click();
+    expect(await page.evaluate((k) => localStorage.getItem(k), MODEL_KEY)).toBeNull();
+    await expect(page.getByTestId("ai-engine")).toHaveText("Copy and paste with your chatbot");
+    await expect(page.getByTestId("ai-copy-prompt")).toBeVisible();
+  });
+
+  test("an error never shows the key, and nothing is applied", async ({ page }) => {
+    await mockAnthropic(page, [
+      { status: 401, body: JSON.stringify({ type: "error", error: { message: `invalid x-api-key: ${KEY}` } }) },
+    ]);
+    await connect(page);
+    const before = await nodeCount(page);
+    await page.getByTestId("ai-request").fill("Add a cache");
+    await page.getByTestId("ai-send").click();
+    await expect(page.getByTestId("ai-model-error")).toContainText("The key was rejected");
+    await expect(page.getByTestId("ai-model-error")).not.toContainText("E2ESECRET");
+    expect(await nodeCount(page)).toBe(before);
+    await expect(page.getByTestId("ai-request")).toHaveValue("Add a cache");
+  });
+
+  test("copy and paste stays one click away with a key", async ({ page }) => {
+    await mockAnthropic(page, []);
+    await connect(page);
+    await expect(page.getByTestId("ai-send")).toBeVisible();
+    await expect(page.getByTestId("ai-reply")).toHaveCount(0);
+    await page.getByTestId("ai-use-paste").click();
+    await expect(page.getByTestId("ai-copy-prompt")).toBeVisible();
+    await expect(page.getByTestId("ai-reply")).toBeVisible();
+    await page.getByTestId("ai-use-model").click();
+    await expect(page.getByTestId("ai-send")).toBeVisible();
+  });
+});

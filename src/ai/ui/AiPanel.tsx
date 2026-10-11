@@ -40,6 +40,9 @@ import { useDictation } from "./useDictation";
 import { aiDock, clampWidth, collapseDock, useAiDock } from "./dock";
 import { latestTurn, loadThread, saveThread, sameContent, turnId, type ThreadTurn } from "./thread";
 import type { PanelRequest } from "./AiMount";
+import { useModelTurn, type ModelTurnDone } from "./useModelTurn";
+import { ConnectModel } from "./ConnectModel";
+import { modelLabel, useConnection } from "../engine/settings";
 import "./ai.css";
 
 // "Ask AI": a docked panel beside the canvas, part of the tooling. Describe a change, get it applied as
@@ -79,6 +82,11 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const panelRef = useRef<HTMLElement>(null);
   /** The last request a prompt was copied for: the turn's title once applied. */
   const promptedFor = useRef("");
+  const conn = useConnection();
+  const [showConnect, setShowConnect] = useState(false);
+  /** With a connected model, the user can still copy and paste (this panel session). */
+  const [pasteInstead, setPasteInstead] = useState(false);
+  const modelMode = !!conn && !pasteInstead;
 
   // The diagram as it is now (re-read on every edit: the host republishes with each revision).
   const current = useMemo<DiagramFile | null>(() => (editor ? editor.getDiagram() : null), [editor, host]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -132,6 +140,31 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const addTurn = useCallback((turn: Omit<ThreadTurn, "id" | "at">) => {
     setTurns((t) => [...t, { ...turn, id: turnId(), at: Date.now() }]);
   }, []);
+
+  const onModelDone = useCallback(
+    ({ turn }: ModelTurnDone) => {
+      addTurn(turn);
+      setRequest("");
+      requestRef.current?.focus();
+    },
+    [addTurn],
+  );
+  const model = useModelTurn(onModelDone);
+
+  /** Sends the request to the connected model, with the last few turns for context. */
+  const send = () => {
+    dictation.stop();
+    const text = request.trim();
+    if (!text || model.running) return;
+    const history = turns
+      .filter((t) => t.request && t.kind !== "revert")
+      .slice(-6)
+      .flatMap((t) => [
+        { role: "user" as const, text: t.request },
+        { role: "assistant" as const, text: t.reply || t.summary || "Done." },
+      ]);
+    void model.send({ request: text, intent: "change", history });
+  };
 
   const copyPrompt = async () => {
     const ed = editorNow();
@@ -323,7 +356,10 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
       e.stopPropagation();
       if (dictation.status !== "idle") dictation.stop();
       else document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
-    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && hasReply) {
+    } else if (e.key === "Enter" && modelMode && !e.shiftKey && e.target === requestRef.current) {
+      e.preventDefault();
+      send();
+    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && hasReply && !modelMode) {
       e.preventDefault();
       apply();
     }
@@ -371,8 +407,20 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         </span>
         <div className="ai-head-titles">
           <h2 id={titleId}>Ask AI</h2>
-          <p>Copy a prompt for ChatGPT, Claude or Gemini</p>
+          <p data-testid="ai-engine">
+            {modelMode ? `${modelLabel(conn.model)} · your key` : "Copy and paste with your chatbot"}
+          </p>
         </div>
+        <button
+          className={`icon-btn icon-btn-quiet${showConnect ? " is-pressed" : ""}`}
+          onClick={() => setShowConnect((v) => !v)}
+          aria-pressed={showConnect}
+          aria-label="Connect a model"
+          title="Connect a model (your own key)"
+          data-testid="ai-connect-toggle"
+        >
+          <Icon name="key" size={14} />
+        </button>
         {turns.length > 0 && (
           <button
             className="icon-btn icon-btn-quiet"
@@ -401,7 +449,8 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
             {LOCAL_ONLY_MESSAGE}
           </p>
         )}
-        {turns.length > 0 ? (
+        {showConnect && <ConnectModel onDone={() => setShowConnect(false)} />}
+        {turns.length > 0 || model.running ? (
           <ol className="ai-history" aria-label="Conversation" data-testid="ai-history">
             {turns.map((t, n) => (
               <TurnItem
@@ -416,6 +465,16 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
                 onSwap={(c, id) => swap(t, c, id)}
               />
             ))}
+            {model.running && (
+              <li className="ai-turn is-running" data-testid="ai-running" aria-busy="true">
+                <p className="ai-turn-request">{model.running.request}</p>
+                <div className="ai-turn-card">
+                  <p className="ai-turn-reply" aria-live="polite">
+                    {model.running.text || <span className="ai-thinking">Working on it…</span>}
+                  </p>
+                </div>
+              </li>
+            )}
             <li ref={historyEnd} aria-hidden className="ai-history-end" />
           </ol>
         ) : (
@@ -427,6 +486,11 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
                 : "Ask for a change in plain words. Each change is one undo step, and you can revert to any earlier one."}
             </p>
           </div>
+        )}
+        {model.error && (
+          <p className="ai-note is-error" role="alert" data-testid="ai-model-error">
+            {model.error}
+          </p>
         )}
         {failure && <FailureBox failure={failure} copied={copied === "fix"} onCopyFix={copyFix} onChoose={choose} />}
       </div>
@@ -490,48 +554,83 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
           </p>
         )}
 
-        <div className="ai-composer-row">
-          <button
-            className={`btn${hasReply ? "" : " btn-primary"}`}
-            onClick={() => void copyPrompt()}
-            disabled={!editor}
-            data-testid="ai-copy-prompt"
-          >
-            <Icon name={copied === "prompt" ? "check" : "copy"} size={14} />
-            {copied === "prompt" ? "Copied" : "Copy prompt"}
-          </button>
-          <span className="ai-hint">Paste it into your AI, then its reply below.</span>
-        </div>
-        <label className="sr-only" htmlFor={`${titleId}-reply`}>
-          Paste the reply
-        </label>
-        <textarea
-          id={`${titleId}-reply`}
-          ref={replyRef}
-          className="ix-input ix-mono ai-textarea ai-reply"
-          value={reply}
-          onChange={(e) => {
-            setReply(e.target.value);
-            setFailure(null);
-          }}
-          placeholder="Paste the reply"
-          rows={3}
-          spellCheck={false}
-          data-testid="ai-reply"
-        />
-        <div className="ai-composer-row">
-          <span className={`ai-reply-status${parsed?.ok ? " is-ok" : ""}`} data-testid="ai-reply-status">
-            {!failure && replyStatus ? replyStatus : hasReply ? "" : `${MOD}+Enter applies · one undo step`}
-          </span>
-          <button
-            className={`btn${hasReply && !failure ? " btn-primary" : ""}`}
-            disabled={!hasReply || !editor}
-            onClick={apply}
-            data-testid="ai-apply"
-          >
-            <Icon name="ai" size={14} /> Apply
-          </button>
-        </div>
+        {modelMode ? (
+          <div className="ai-composer-row">
+            <button className="link-btn" onClick={() => setPasteInstead(true)} data-testid="ai-use-paste">
+              Copy prompt instead
+            </button>
+            <span className="ai-grow" />
+            {model.running ? (
+              <button className="btn" onClick={model.stop} data-testid="ai-stop">
+                Stop
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary"
+                disabled={!request.trim() || !editor || localOnly}
+                onClick={send}
+                title="Send (Enter) · one undo step"
+                data-testid="ai-send"
+              >
+                <Icon name="send" size={14} /> Send
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="ai-composer-row">
+              <button
+                className={`btn${hasReply ? "" : " btn-primary"}`}
+                onClick={() => void copyPrompt()}
+                disabled={!editor}
+                data-testid="ai-copy-prompt"
+              >
+                <Icon name={copied === "prompt" ? "check" : "copy"} size={14} />
+                {copied === "prompt" ? "Copied" : "Copy prompt"}
+              </button>
+              <span className="ai-hint">Paste it into your AI, then its reply below.</span>
+            </div>
+            <label className="sr-only" htmlFor={`${titleId}-reply`}>
+              Paste the reply
+            </label>
+            <textarea
+              id={`${titleId}-reply`}
+              ref={replyRef}
+              className="ix-input ix-mono ai-textarea ai-reply"
+              value={reply}
+              onChange={(e) => {
+                setReply(e.target.value);
+                setFailure(null);
+              }}
+              placeholder="Paste the reply"
+              rows={3}
+              spellCheck={false}
+              data-testid="ai-reply"
+            />
+            <div className="ai-composer-row">
+              <span className={`ai-reply-status${parsed?.ok ? " is-ok" : ""}`} data-testid="ai-reply-status">
+                {!failure && replyStatus ? replyStatus : hasReply ? "" : `${MOD}+Enter applies · one undo step`}
+              </span>
+              <button
+                className={`btn${hasReply && !failure ? " btn-primary" : ""}`}
+                disabled={!hasReply || !editor}
+                onClick={apply}
+                data-testid="ai-apply"
+              >
+                <Icon name="ai" size={14} /> Apply
+              </button>
+            </div>
+            {conn && (
+              <button
+                className="link-btn ai-use-model"
+                onClick={() => setPasteInstead(false)}
+                data-testid="ai-use-model"
+              >
+                Use {modelLabel(conn.model)} instead
+              </button>
+            )}
+          </>
+        )}
       </div>
     </section>
   );
