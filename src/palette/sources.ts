@@ -38,6 +38,8 @@ export interface SourceInput {
   /** Called after a stencil is added from the canvas (shared "recent stencils"). */
   onStencilUsed?(stencilId: string): void;
   runSimulation(id: string): void;
+  /** The top bar's Present, so Ctrl+K finds it too (absent while presenting). */
+  present?(): void;
 }
 
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
@@ -202,6 +204,15 @@ export function collectCommands(input: SourceInput): Command[] {
       run: live.toggle,
     });
   }
+  if (onCanvas && input.present)
+    out.push({
+      id: "view:present",
+      group: "actions",
+      label: "Present",
+      icon: "present",
+      keywords: "presentation presenter meeting slideshow full screen",
+      run: input.present,
+    });
   if (onCanvas) out.push(...actionCommands(input.registry, contextsFor(editor!, canvas.live ? "live" : "edit")));
 
   if (onCanvas) {

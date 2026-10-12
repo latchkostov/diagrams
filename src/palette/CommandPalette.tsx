@@ -45,6 +45,8 @@ export interface CommandPaletteProps {
   diagrams: readonly DiagramOption[];
   currentSlug?: string;
   onOpenDiagram(slug: string): void;
+  /** Present the open diagram (the top bar's Present); absent while presenting. */
+  onPresent?(): void;
 }
 
 export function CommandPalette(props: CommandPaletteProps) {

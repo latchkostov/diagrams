@@ -85,6 +85,11 @@ export interface EditorApi {
   undoTarget(): string | undefined;
   /** Adds a node centred on `at` (flow coords; default = view centre). Returns its id. */
   addNode(stencilId: string, at?: XY): string;
+  /**
+   * Quick-add on empty canvas: adds a node centred on `at`, tagged so naming it joins the add's undo step (as
+   * createConnected's node is).
+   */
+  addNamed(stencilId: string, at: XY): NewNode;
   updateNode(id: string, patch: Partial<Omit<DiagramNode, "id">>, opts?: EditOptions): void;
   /** Shallow-merges node props; `undefined` values delete keys. */
   setNodeProps(id: string, patch: Record<string, unknown>, opts?: EditOptions): void;

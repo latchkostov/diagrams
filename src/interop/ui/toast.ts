@@ -8,6 +8,11 @@ export interface ToastAction {
   label: string;
   run: () => void;
   testId?: string;
+  /**
+   * The action is the editor's Undo for the change the toast reports. Such a toast goes as soon as anything else
+   * undoes or redoes (Ctrl+Z, the canvas's Undo): its button would then reverse a different change.
+   */
+  undoes?: boolean;
 }
 
 export interface ToastState {
@@ -41,6 +46,10 @@ export const toast = {
     if (!current || (id !== undefined && current.id !== id)) return;
     current = null;
     emit();
+  },
+  /** Dismisses the current toast if its action is an editor Undo (`undoes`): history just moved under it. */
+  dismissUndo() {
+    if (current?.action?.undoes) toast.dismiss(current.id);
   },
   get current() {
     return current;

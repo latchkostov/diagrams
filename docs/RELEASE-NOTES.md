@@ -2,6 +2,26 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## UX review, round 13 (2026-10)
+
+Two habits change:
+
+- **Double-click quick-add opens the new node's name.** Pick a stencil and type: the words name the node, as after
+  Alt+arrow, the "+" and a dropped connection. They used to reach the canvas, where a T added a text and an L went
+  live. One Ctrl+Z takes the node, its connection and their names, however long you take to type them (also after
+  Alt+arrow, the "+", a dropped connection, or a rail or Ctrl+K add named with Enter straight after).
+- **Shift+drag on empty canvas adds to the selection**, as Shift+click does. A plain drag still replaces it.
+
+Also:
+
+- An Undo toast ("Payments service left AKS · Undo") goes as soon as Ctrl+Z or the canvas's Undo runs, since its
+  button would then reverse a different change.
+- Esc clears the selection and keeps keyboard focus on the node, so Tab carries on from there; Esc never selects.
+- Ctrl+K finds **Present**. Presenting puts keyboard focus on the canvas.
+- In the AI panel, Advanced and the on-device box no longer squeeze the conversation: past 60% of the panel, they
+  scroll.
+- The shortcuts sheet lists the File keys (Ctrl+O, Ctrl+S, Ctrl+Shift+S) and slow motion's ← →.
+
 ## Private diagrams (2026-10)
 
 No habit changes unless you use it. New:

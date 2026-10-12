@@ -49,7 +49,7 @@ function DiagramNodeImpl({
   positionAbsoluteY,
 }: NodeProps<DiagramFlowNode>) {
   const { nodeVariant } = useSettings();
-  const { editing, setEditing, grow, hint } = useDiagram();
+  const { editing, setEditing, grow, hint, endCreation } = useDiagram();
   const { updateNodeData, updateEdgeData } = useReactFlow();
   const single = useStore(selected && grow ? (s: ReactFlowState) => soleSelectedNode(s) === id : never);
   const stencil = getStencil(data.stencil);
@@ -99,9 +99,10 @@ function DiagramNodeImpl({
             const sublabel = next.sublabel.trim() || undefined;
             const connection = (edit.edge && next.connection.trim()) || "";
             const renamed = label !== data.label || sublabel !== (data.sublabel || undefined);
+            // A node just made: its name joins the undo step that made it (and its edge), and the step closes.
+            if (edit.merge) endCreation?.(edit.merge);
             // Unchanged (Esc or Enter straight away): nothing to write, so nothing re-renders or resets.
             if (!renamed && !connection) return;
-            // A node just made: its name joins the undo step that made it (and its edge), in the same tick.
             if (edit.merge) hint?.(edit.merge);
             if (renamed) updateNodeData(id, { label, sublabel });
             if (edit.edge && connection) updateEdgeData(edit.edge, { label: connection });

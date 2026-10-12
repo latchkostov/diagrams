@@ -131,6 +131,7 @@ export function LiveView(props: LiveViewProps) {
           onPointerEnter={LiveSession.preload}
           onFocus={LiveSession.preload}
           aria-pressed={live}
+          aria-keyshortcuts="L"
           title={
             live
               ? "Back to editing (L or Esc)"
@@ -142,7 +143,8 @@ export function LiveView(props: LiveViewProps) {
         >
           <span className="lv-toggle-dot" aria-hidden />
           Live
-          <kbd>L</kbd>
+          {/* The key is aria-keyshortcuts: the toggle's name is "Live" (pressed while live), not "Live L". */}
+          <kbd aria-hidden>L</kbd>
         </button>
       )}
       {!live && ready && overlayOn && props.editor && (

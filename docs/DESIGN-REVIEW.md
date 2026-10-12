@@ -1,5 +1,241 @@
 # Design review
 
+## Round 13: UX gate after drawing, privacy and AI (2026-10-12)
+
+The gate after the biggest run of changes since round 7. It covers drawing batches 1–4 (rounds 8–11), Private
+diagrams and password links (round 12), the agents-first AI panel with the on-device box, lazy dialogs, the rename
+and the canvas that never scrolls. All of it was reviewed as one product. (The brand note below is also numbered 13;
+it came first the same day.)
+
+**How.** Dev server on port 5721, Chrome (Playwright), at 1024×768, 1280×800 and 1440×900, light and dark. Inputs
+were mouse, trackpad-style wheel and keyboard only. Public examples only: Kafka, AKS and AWS fan-out, plus a private
+copy of Kafka. The AI states used page fakes (`addInitScript`): no WebMCP and no model; then WebMCP plus an
+available `LanguageModel` with an agent edit. Measurements were bounding boxes for overlap, the accessibility tree
+and Tab order for the screen-reader pass, computed cursors over each surface, and Event Timing for hovers at 4× CPU.
+
+The flows: first run, then a diagram from scratch by each creation path (double-click, the "+", Alt+arrow, a
+dropped connection, a rail click, Ctrl+K, `T`). Then structure: leaving a boundary, box select, bulk edit, Tidy
+up and Select similar. After that live, trace, slow motion, present, private and every way to share, a password
+link round trip, the AI panel, Ctrl+K and the shortcuts sheet. Screenshots are in `docs/screenshots/round13/`.
+Besides the ones the findings cite, the walk-through shots are:
+
+- first run: `start-1024-light`, `start-1440-dark`;
+- menus: `canvas-menu-1280-light`, `live-node-menu-1280-light`;
+- the AI panel idle, without and with WebMCP and the model: `ai-idle-plain-1280-light`,
+  `ai-idle-webmcp-ondevice-1280-light`;
+- presenting: `present-1024-light`;
+- a Shift+box mid-drag: `after-shift-box-adds-mid-1440-light`.
+
+### What's great
+
+- **Drawing feels like a modern tool.** The wheel pans, a drag selects, and a dropped connection asks what comes
+  next. Alt+arrow, the "+" and the connection's label field mean a flow can be built without the mouse
+  (`connection-field-1024-light`). Copies never land on anything.
+- **Boundaries explain themselves.** The join and leave outlines and the leave toast with Undo make membership
+  visible (`leave-toast-1280-light`). Bulk edit's Mixed fields are clear, and Tidy up moves only what you picked.
+- **Private is honest and easy to find.** The lock badge sits beside the title, the File menu explains every row
+  that is off ("Private diagrams can't be shared as links. Export a file instead."), and the dialog keeps Keep
+  private as the default (`private-file-menu-1280-light`, `private-dialog-1280-light`). Ctrl+K "share" shows the
+  link as off, marked Private.
+- **Password links read safely.** There's a strength hint, the "Send the password separately" callout, and an
+  unlock prompt that fails clearly and keeps the field focused (`password-link-copied-1440-light`,
+  `password-prompt-1440-light`, `password-wrong-1440-light`).
+- **The AI panel tells the truth.** It is folded to a rail with a change count ("AI panel, 1 new change") and a
+  toast only while folded (`ai-agent-folded-badge-toast-1280-light`). "Ways to use AI here" gives three short
+  answers, and the status line never overclaims.
+- **Menus are within budget everywhere**, and right-click covers every surface. The canvas menu has 9 rows, a node
+  12, a flow edge 12, a selection up to 12, a boundary 8, the live node menu 9, the live edge 4, live ⋯ 6, File 11
+  and View 8. Submenus: Show 6, Export 9, Privacy 2.
+- **The top bar is 7 controls** in production (Diagram, Stencils, the picker, View, File, Present, theme; Lab is
+  development only), within budget for the first time since round 6.
+- **Responsive.** Hovering every node and edge label in edit and live at 4× CPU: p50 32 ms (about 8 ms unthrottled).
+  The canvas menu opens in 232 ms throttled. Nothing felt laggy.
+- **Esc layering works end to end.** It steps from slow motion to live, then closes the trace, then leaves live.
+  Space+drag in live pans without toggling play.
+
+### Findings
+
+**P1: broken, confusing or overlapping (all fixed)**
+
+1. **Double-click quick-add left the new node unnamed, and typing went to the canvas's shortcuts.** Decision 3 says
+   quick-add opens the name, and every other quick-add does. Typing "orders.created" after a double-click pick
+   added a Text at the pointer ("t"); a name starting with L went live. Seen at 1024 in
+   `before-quick-add-no-name-1024-light`.
+   - Fix: the pick goes through the same `pickNamed` as Alt+arrow, via a new `editor.addNamed`. It is tagged, so the
+     node and its name are one undo step, and keys typed before the editor mounts are kept for it
+     (`after-quick-add-names-1024-light`).
+   - Test: `round13-polish.spec.ts` › double-click quick-add.
+2. **An Undo toast outlived its change.** After a node left AKS, Ctrl+Z put it back, but "Payments service left AKS
+   · Undo" stayed for its full 6 s (`before-stale-undo-toast-1280-light`). Its Undo would then have reversed the
+   step before, a change the toast never mentioned.
+   - Fix: toasts whose action is the editor's Undo carry `undoes: true`: membership, text moved, an agent's change
+     and an applied capacity fix. Any undo or redo dismisses them. This is wired where the canvas hands history to
+     the editor, not in the history code.
+   - Test: `round13-polish.spec.ts` › an Undo toast goes once Ctrl+Z undoes.
+3. **With Advanced open under the on-device box, the AI panel's conversation shrank to 58 px at 1280×800.** One
+   turn was cut after its first line, under three text boxes and two mics (`before-ai-advanced-1280-light`).
+   - Fix: the foot (the on-device box, the status line and Advanced) is one region, `ai-foot`, capped at 60% of the
+     panel. It scrolls inside past that, so the conversation keeps the rest (`after-ai-advanced-1280-light`,
+     `after-ai-advanced-1440-dark`).
+   - Test: `round13-polish.spec.ts` › the AI panel's foot leaves the conversation its room.
+
+**P2: clutter or inconsistency**
+
+Fixed (cheap and clear):
+
+4. **Shift+box replaced the selection, though Shift+click adds.** With Schema registry selected, a Shift+drag
+   around Notification service left only the box's pick. Now a box started with Shift held adds to what was
+   selected (`after-shift-box-adds-1440-light`). The sheet's row and `UX-PRINCIPLES` say so. Test:
+   `round13-polish.spec.ts` › Shift+drag.
+5. **Ctrl+K couldn't find Present.** "present" returned nothing, though the palette's footer says it "finds
+   anything". It is now "Present" in Actions while the canvas isn't presenting (`after-palette-present-1440-light`).
+6. **Focus fell to the page.** Three cases, all fixed:
+   - **Esc on a selected node.** React Flow blurs the node it unselects a frame later, so Tab restarted from the top
+     bar. Worse, once focus stayed, a second Esc on the focused node selected it again (React Flow's Esc toggles).
+     Now focus stays on the node and Esc never selects.
+   - **Presenting.** The Present button that had focus disappears. Focus now goes to the canvas.
+   - **Copy link with password.** The Copy link button that had focus gives way to Copy again and Done, and focus now
+     goes to Done.
+
+   Tests: `round13-polish.spec.ts` (Esc, Present, the password link's Done).
+
+7. **The shortcuts sheet missed keys the menus show.** It had no Ctrl+O, Ctrl+S or Ctrl+Shift+S (the File menu
+   shows all three), and no slow motion ← →. Its Esc row didn't mention slow motion. Added: a File section, a slow
+   motion row, and "Leave slow motion, presentation, then live view" (`before-shortcuts-1280-dark`,
+   `after-shortcuts-file-live-1280-dark`).
+
+Proposals (larger):
+
+8. **Quick-add covers the node it grew from on a narrow pane.** At 1024 at 100% zoom with the stencils open, the
+   "+" menu has room on neither side of the outline, so it flips over the origin card
+   (`plus-quick-add-over-origin-1024-light`). A connection dropped in the lower half clamps the menu up over its
+   source (`drop-quick-add-over-origin-1440-dark`). Proposal: when neither side fits, pan (as Alt+arrow already
+   does) or zoom out one step before opening; failing that, open below the outline.
+9. **Selecting a node at 1440 hides the diagram's right column** (round 7's P3, still open). The inspector takes
+   296 px and the fitted Kafka loses Inventory database, Payment ledger, Notification dedupe and Order operations
+   (`inspector-hides-right-column-1440-light`). The same happens with the AI panel and inspector at 1280
+   (`private-ai-and-inspector-1280-light`). Proposal: refit a still-fitted view when a side panel opens, but only
+   after the pointer is up and not during a double-click. Or open the inspector as an overlay that the fit
+   accounts for.
+10. **Two "describe a change" boxes.** With the on-device model, the panel's foot has "Describe a change…" (sent to
+    Chrome's model). Advanced has a second box with its own mic, for copying a prompt. In live view the first stays
+    as a disabled box, "Back to editing to change the diagram", about 140 px
+    (`ai-live-disabled-box-1280-light`). Proposal: one box, whose Send says where it goes (on this device, or Copy
+    prompt). In live view it becomes a one-line note.
+11. **At 1024 in live view with the AI panel and the event log open, the log covers half the diagram.** The pane is
+    560 px, the fitted diagram is tiny, and the log sits over its left half (`panels-live-ai-1024-dark`). Proposal:
+    opening the event log folds the AI panel to its rail below 1280 px, as live view folds the stencils. Or dock the
+    log under the live bar.
+12. **Capacity and Dependencies have two homes.** They are in View ▸ Overlays ("Show capacity", "Show
+    dependencies") and in the canvas's Show ▸, which also has Grid, Snapping, Minimap and Inspector. Proposal: View
+    keeps the look (node and edge style), and Show ▸ owns every on/off. Or View lists the same six.
+13. **Enter on a disabled palette row does nothing.** "Export › Copy share link · Private" gives no feedback. Round
+    12 promised the "Private diagrams can't be shared as links…" toast for any other way in; the palette should give
+    it too.
+
+**P3: polish**
+
+14. Fixed:
+    - The Live toggle's accessible name was "Live L" (its key read as part of the name). It is "Live", with
+      `aria-keyshortcuts="L"`.
+    - The stencils sidebar was an unnamed landmark. It is "Stencils".
+    - The sheet said C colours "nodes"; the View menu says "services". Both say "services" now.
+    - The View button's tooltip said only "Node and edge style", though the menu also has the overlays.
+15. Proposals:
+    - React Flow's zoom buttons are named "Zoom In" and "Zoom Out", in title case beside "Fit view".
+    - The unlock prompt's field has no visible label (the copy dialog's says "Password").
+    - The two example requests name different nodes: "after Inventory service" in the browser assistant card,
+      "after Storefront" in Advanced.
+    - In slow motion, a focused node's breakdown card sits under the canvas controls
+      (`slowmo-breakdown-under-controls-1280-light`).
+    - Several Mouse rows of the sheet wrap to two lines at 1280.
+    - Presenting fits the diagram high, leaving the bottom quarter empty at 1440 (`present-1440-dark`).
+16. Keys that may collide (not changed; worth a note):
+    - Ctrl+Alt+arrows rotate the screen on Windows PCs with Intel's graphics hotkeys on.
+    - Ctrl+Shift+M (dictate) is Chrome's profile menu when focus isn't in the box.
+    - AltGr is Ctrl+Alt on Windows, so Ctrl+Alt+[ and ] need checking on layouts that type brackets with AltGr.
+
+**Undo (proposals only; undo itself is being changed on `fix/undo-keeps-selection`)**
+
+- An Undo toast's button reverses whatever is newest, not the change it reports. Fix 2 closes the Ctrl+Z case, but
+  an edit made while the toast shows would still be the one undone. Tie the toast to its step: show Undo only while
+  `undoTarget()` is that step's tag, as the AI panel's turns already do.
+- Re-check fix 2's dismissal and the stale-toast test once undo restores the selection.
+
+### Chrome count
+
+| Surface                                     | Count                                                                                                 | Budget    |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------- |
+| Top bar (production)                        | 7                                                                                                     | ~7        |
+| Canvas right-click, edit / live             | 9 / 9                                                                                                 | ≤ 12      |
+| Node / edge (flow) / selection / boundary   | 12 / 12 / ≤ 12 / 8                                                                                    | ≤ 12      |
+| Live node / live edge / live ⋯              | 9 / 4 / 6                                                                                             | ≤ 12      |
+| File / View / Show ▸ / Export ▸ / Privacy ▸ | 11 / 8 / 6 / 9 / 2                                                                                    | ≤ 12      |
+| Ways to open the AI panel                   | 4: rail, Ctrl+I, canvas right-click, Ctrl+K (7 in round 7)                                            |           |
+| Side panels open at once                    | 3 (stencils, inspector, AI), at most 2 unfolded below 1680 px                                         |           |
+| Surfaces at once, worst case (live, 1024)   | 9: stencil rail, inspector rail, AI panel, live bar, event log, trace card, toast, diagram card, hint |           |
+| Text boxes in the AI panel, worst case      | 3 (on-device, Advanced's describe, paste the reply), 2 mics                                           | 1 (P2.10) |
+
+### Simplify before adding
+
+| What                                          | Do                                                                            | Why                                   |
+| --------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------- |
+| The on-device box and Advanced's describe box | **Merge** into one box whose Send says where it goes (10)                     | Two boxes and two mics for one intent |
+| The disabled on-device box in live view       | **Replace** with a one-line note (10)                                         | 140 px that do nothing                |
+| View ▸ Overlays and Show ▸                    | **One home** for on/off (12)                                                  | Capacity and Dependencies are in both |
+| Inspector rail and AI rail at the right edge  | **Merge** into one rail with two buttons (round 7's A1, half done)            | 92 px of rails on a 1024 window       |
+| Live node menu's two trace rows               | **Merge** into Trace from here ▸ (round 7, still open)                        | Two long rows that differ by one idea |
+| Minimap                                       | **Default off** below 1440 px or with a side panel open (round 7, still open) | A toast obstacle that covers a corner |
+| "React Flow" attribution                      | **Move** under the canvas controls (round 7's P5, still open)                 | Floats over the canvas                |
+
+### Round 7's open proposals
+
+| Proposal                                    | Status                                                                                                          |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| A1 one way to show AI at the right edge     | **Half done.** The top-bar button is gone (7 controls); the two rails remain side by side.                      |
+| A2 no toast for a turn the panel shows      | **Done.** Shown, the panel announces the turn; folded, a toast carries Undo.                                    |
+| A3 stale chips on reverted turns            | Not re-checked this round.                                                                                      |
+| A4 placeholder names a real node            | **Done**, but the two example requests name different nodes (P3).                                               |
+| A5 nested landmarks                         | **Done.** One complementary landmark, "AI panel".                                                               |
+| P1 Tab order: nodes before edges            | **Done** (round 11): one roving stop, nodes in reading order, edges by Ctrl+Alt+[ ].                            |
+| P2 first-run hint, toast and live bar       | **Open.** They stack correctly; the hint still shows until dismissed or after going live.                       |
+| P3 refit when the inspector opens           | **Open**, now finding 9.                                                                                        |
+| P4 slow motion at 1024 with a fan-out       | Not re-checked; at 1280 the hop at work stays clear of the trace card.                                          |
+| P5 React Flow attribution                   | **Open.**                                                                                                       |
+| P6 palette noise ("slow")                   | **Half done.** No fuzzy stencils now, but "slow" in the editor finds nothing rather than pointing to live view. |
+| Merge the live node menu's trace rows       | **Open.**                                                                                                       |
+| Merge the inspector's settings box and list | Not re-checked.                                                                                                 |
+| Minimap default off below 1440 px           | **Open** (on at 1280).                                                                                          |
+
+### Checks
+
+The [round 13 section of the release notes](RELEASE-NOTES.md) has the two habit changes: double-click quick-add
+names, and Shift+box adds. The new spec is `tests/e2e/round13-polish.spec.ts`.
+
+All of these passed:
+
+- `pnpm typecheck`, `pnpm lint` and `pnpm format:check`;
+- `pnpm test`: 3404 tests;
+- `pnpm build`;
+- `pnpm size`: entry 107.5 kB gzip, 87% of budget;
+- on the production build, 301 e2e tests in 23 specs: the new one, plus editor, drawing, flow building, precision,
+  structure and bulk, the AI panel, layout, agents, on-device and how-to, password links, private diagrams, palette,
+  chrome, a11y, live, slow motion, capacity, inline editing, CSP and round 7.
+
+### Round 13 follow-up: the review of PR #58
+
+The Codex review (`.reviews/20261012-123022`) had 1 P1 and 9 P2. Each one was reproduced before it was fixed, and
+none was rejected. Five shared two root causes, so the table groups them.
+
+| #        | Finding                                                                            | Verdict   | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| -------- | ---------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1, 4, 10 | Creation and naming need a history transaction (P1, P2 ×2)                         | Confirmed | Naming more than 1.85 s after a quick-add (debounce plus merge window) made two steps. Undo then restored the default name and left the node. Built on #56's `HistoryController`: `begin(tag)` opens a creation transaction when any node is made (`addNode`, `createConnected`, `insertNode`), and commits under that tag merge into its step whatever the elapsed time. The node editor's save, or Esc, calls `end(tag)`, which records its write and closes the transaction. Another edit, Undo, Redo or a replacement closes it too. An editor opened with Enter on a node still in its transaction (a rail or Ctrl+K "Add") joins it. The time window still applies everywhere else. Unit tests: `historyController.test.ts`. E2E with 2.5 s pauses: double-click quick-add, Alt+arrow with node and connection names, Ctrl+K Add then Enter, and an edit in between. All three pause tests fail without `begin`. |
+| 3, 5, 9  | Shift+box completes from the box's pick only; an empty one loses the frame (P2 ×3) | Confirmed | Reproduced: two boxed nodes, then a Shift-drag over empty canvas, and React Flow's selection frame (drag it, right-click it) disappeared. The release now decides the frame from the combined set the gesture applied. The suggested `useBoxSelection` extraction is left out: one result now drives both the flags and the frame, which was the root cause, and the hook would only move code. E2E: an empty Shift-drag keeps the frame (fails without the fix).                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 2        | The tooltip reopens when focus comes back after Esc (P2)                           | Confirmed | Reproduced by keyboard: Esc hid it, the focus restore reopened it. `useNodeTipKeyboard` remembers the node Esc dismissed it on, and doesn't reopen it when focus returns there. Focus moving anywhere else re-arms it. The Esc test reaches the node by keyboard, sees the tooltip, then checks it stays hidden (fails without the fix).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 6        | Toast expiry could satisfy the Undo-toast test (P2)                                | Confirmed | Its 7 s assertion outlasted the toast's 6 s. The toast must now close within 1.5 s of Ctrl+Z and under 4 s after it showed, so expiry can't pass the test, and the node must be back inside AKS. This uses a short bound rather than a held clock: pausing the clock would also stop the history debounce. The test fails without the dismissal.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 7        | The AI-layout test never had the on-device box (P2)                                | Confirmed | It waits for `ai-ondevice` before and after opening Advanced, polls the layout, and checks the turn stays in view while Advanced's last control (`ai-apply`) is reachable.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 8        | Shift+box tests checked counts, not identities or edges (P2)                       | Confirmed | They assert exact selected ids. "Shift box preserves a selected edge" and "Shift box selects edges between old and newly selected nodes" are new. They use the public Kafka example rather than Lab presets, since its edges cover both cases.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+
 ## Round 13: brand verification and the name Live Diagrams (2026-10-12)
 
 The OAuth providers' reviewers need the home page, without sign-in, to show the app's name exactly as on the

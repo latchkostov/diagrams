@@ -37,10 +37,16 @@ export const canRedo = <T, S>(h: History<T, S>) => h.index < h.entries.length - 
 
 /**
  * Records a new state. Drops the redo branch. Consecutive commits sharing a `mergeKey` within
- * MERGE_WINDOW_MS replace the present entry instead (so typing a label is one undo step).
- * Returns the same object when nothing changed.
+ * MERGE_WINDOW_MS replace the present entry instead (so typing a label is one undo step). A commit tagged
+ * `transaction` (an open creation: a new node, then its name) merges with the present entry of the same tag
+ * however long ago that was. Returns the same object when nothing changed.
  */
-export function commit<T, S>(h: History<T, S>, entry: HistoryEntry<T, S>, cap = HISTORY_CAP): History<T, S> {
+export function commit<T, S>(
+  h: History<T, S>,
+  entry: HistoryEntry<T, S>,
+  cap = HISTORY_CAP,
+  transaction?: string,
+): History<T, S> {
   const cur = present(h);
   if (cur.key === entry.key) return h;
   const merge =
@@ -49,7 +55,7 @@ export function commit<T, S>(h: History<T, S>, entry: HistoryEntry<T, S>, cap = 
     entry.mergeKey !== undefined &&
     cur.mergeKey === entry.mergeKey &&
     h.index > 0 &&
-    entry.at - cur.at <= MERGE_WINDOW_MS;
+    (entry.at - cur.at <= MERGE_WINDOW_MS || (transaction !== undefined && entry.mergeKey === transaction));
   const base = h.entries.slice(0, merge ? h.index : h.index + 1);
   const entries = [...base, merge && cur.start !== undefined ? { ...entry, start: cur.start } : entry];
   const overflow = Math.max(0, entries.length - cap);

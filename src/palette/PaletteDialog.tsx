@@ -41,7 +41,15 @@ export interface PaletteDialogProps extends CommandPaletteProps {
 }
 
 /** Ctrl/Cmd+K: every action, node, stencil, simulation and diagram, one search away. */
-export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onClose, typeAhead }: PaletteDialogProps) {
+export function PaletteDialog({
+  view,
+  diagrams,
+  currentSlug,
+  onOpenDiagram,
+  onPresent,
+  onClose,
+  typeAhead,
+}: PaletteDialogProps) {
   const id = useId();
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
@@ -55,7 +63,7 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
   // The context (selection, open diagram) is read when the palette opens; it follows the canvas
   // and live view as they publish themselves (Ctrl+K pressed while the canvas is still loading).
   const host = useSyncExternalStore(paletteHost.subscribe, paletteHost.get);
-  const [opened] = useState(() => ({ view, diagrams, currentSlug, onOpenDiagram }));
+  const [opened] = useState(() => ({ view, diagrams, currentSlug, onOpenDiagram, onPresent }));
   const commands = useMemo(
     () =>
       collectCommands({
@@ -69,6 +77,7 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
         diagrams: opened.diagrams,
         currentSlug: opened.currentSlug,
         openDiagram: opened.onOpenDiagram,
+        present: opened.onPresent,
         sendStencilToCanvas: addToCurrentDiagram,
         onStencilUsed: pushRecentStencil,
         runSimulation: (simId) => {

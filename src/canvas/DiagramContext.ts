@@ -27,6 +27,8 @@ export interface DiagramUi {
   grow?: (nodeId: string) => void;
   /** Tags the next change for undo (a new node's name joins the step that made it). */
   hint?: (merge: string | undefined) => void;
+  /** A new node's editor is done (saved or not): its creation transaction `merge` records the name and closes. */
+  endCreation?: (merge: string) => void;
   /** Editing only: a selected edge's end dropped on another node moves there. */
   reconnect?: (edgeId: string, end: EdgeEnd, nodeId: string) => boolean;
   /** Editing only: a boundary resized by hand adopts the nodes now inside it and releases those outside (D12). */

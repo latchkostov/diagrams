@@ -386,39 +386,43 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         )}
       </div>
 
-      {onDevice && (
-        <Suspense fallback={null}>
-          <OnDeviceInput
-            availability={model}
-            onAvailability={setModel}
-            documentId={documentId}
-            live={live}
-            localOnly={!onDeviceAllowed}
-            privateDiagram={privateDiagram}
-            scope={scope}
-            onTurn={addTurn}
-          />
-        </Suspense>
-      )}
+      {/* The foot (the on-device box, the status line and Advanced) never takes more than its share of the panel,
+          so the conversation above it stays readable; past that share, the foot scrolls. */}
+      <div className="ai-foot" data-testid="ai-foot">
+        {onDevice && (
+          <Suspense fallback={null}>
+            <OnDeviceInput
+              availability={model}
+              onAvailability={setModel}
+              documentId={documentId}
+              live={live}
+              localOnly={!onDeviceAllowed}
+              privateDiagram={privateDiagram}
+              scope={scope}
+              onTurn={addTurn}
+            />
+          </Suspense>
+        )}
 
-      <AgentStatus
-        available={mcp}
-        localOnly={localOnly}
-        privateDiagram={privateDiagram}
-        live={live}
-        typeHere={typeHere}
-      />
+        <AgentStatus
+          available={mcp}
+          localOnly={localOnly}
+          privateDiagram={privateDiagram}
+          live={live}
+          typeHere={typeHere}
+        />
 
-      <Advanced
-        open={advancedOpen}
-        onOpenChange={setAdvancedOpen}
-        focusSeq={focusSeq}
-        current={current}
-        live={live}
-        onTurn={addTurn}
-        onDevice={offerOnDevice ? { on: onDeviceOn, set: toggleOnDevice } : undefined}
-        privateDiagram={privateDiagram}
-      />
+        <Advanced
+          open={advancedOpen}
+          onOpenChange={setAdvancedOpen}
+          focusSeq={focusSeq}
+          current={current}
+          live={live}
+          onTurn={addTurn}
+          onDevice={offerOnDevice ? { on: onDeviceOn, set: toggleOnDevice } : undefined}
+          privateDiagram={privateDiagram}
+        />
+      </div>
     </section>
   );
 }
