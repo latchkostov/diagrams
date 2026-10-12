@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { keepInPane } from "../canvas/keepInPane";
 import { useSelectOnMount } from "./useSelectOnMount";
 import { editKeyAction, refocusAfterEdit } from "./editKeys";
 
@@ -36,6 +37,9 @@ export function InlineInput({
     onDone(next);
   };
   useSelectOnMount(ref);
+  // On the canvas its label (an edge's pill, a boundary's chip) is magnified when zoomed out: it stays inside
+  // the canvas while edited, and goes back to its place after.
+  useLayoutEffect(() => (dialog ? undefined : keepInPane(ref.current?.parentElement ?? null)), [dialog]);
   return (
     <input
       ref={ref}

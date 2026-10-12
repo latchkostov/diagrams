@@ -27,6 +27,26 @@ describe("snapMove: alignment", () => {
     expect(snapMove(index, card(700, 297), opts).dy).toBe(3);
   });
 
+  it("snaps when only centres are within threshold", () => {
+    // A 60 px card against a 120 px one: its edges are about 30 px off theirs, its centre 1 px (the grid
+    // would move it 4 px instead).
+    const one = guideIndex([card(103, 100, 120)]);
+    const r = snapMove(one, card(134, 300, 60), opts);
+    expect(r.dx).toBe(-1);
+    expect(r.lines).toEqual([{ axis: "x", at: 163, from: 100, to: 340 }]);
+  });
+
+  it("snaps when only trailing edges are within threshold", () => {
+    // Right edges 224 and 223 (its left edge is 19 px off, its centre 21); the grid would move it 4 px.
+    const x = snapMove(guideIndex([card(103, 100, 120, 40)]), card(144, 300, 80), opts);
+    expect(x.dx).toBe(-1);
+    expect(x.lines).toEqual([{ axis: "x", at: 223, from: 100, to: 340 }]);
+    // Bottom edges 142 and 144, on a 10 px tall card (its top is 8 px off, its middle 7); the grid: -2.
+    const y = snapMove(guideIndex([card(100, 104, 120, 40)]), card(500, 132, 120, 10), opts);
+    expect(y.dy).toBe(2);
+    expect(y.lines).toEqual([{ axis: "y", at: 144, from: 100, to: 620 }]);
+  });
+
   it("falls back to the grid when nothing is near, and rounds each axis on its own", () => {
     const r = snapMove(index, card(733, 556), opts);
     expect([r.dx, r.dy]).toEqual([-3, 4]);
@@ -80,15 +100,23 @@ describe("snapMove: equal spacing", () => {
     ]);
   });
 
-  it("repeats the gap before the first node, and in columns", () => {
+  it("repeats the gap before the first node", () => {
     const row = guideIndex([card(300, 100), card(500, 100)]);
     // Gap 80; before 300 a card ends at 220, so it starts at 100.
     expect(snapMove(row, card(103, 100), opts).dx).toBe(-3);
-    const column = guideIndex([card(100, 100), card(100, 200)]);
-    // Gap 60 (140..200); the next card starts at 300.
-    const r = snapMove(column, card(140, 296), opts);
+  });
+
+  it("repeats a column gap without an alignment guide", () => {
+    // Off the grid, so the spacing (306) and the grid (300) disagree: gap 63 (140..203), next card at 306.
+    const column = guideIndex([card(103, 100), card(103, 203)]);
+    const r = snapMove(column, card(147, 302), opts);
     expect(r.dy).toBe(4);
-    expect(r.gaps.every((g) => g.axis === "y")).toBe(true);
+    expect(r.lines).toEqual([]);
+    expect(r.gaps.filter((g) => g.axis === "y").map((g) => [g.from, g.to])).toEqual([
+      [140, 203],
+      [243, 306],
+    ]);
+    expect(r.gaps).toHaveLength(2);
   });
 
   it("shows the line and the gaps when an alignment and an equal gap agree", () => {

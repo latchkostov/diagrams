@@ -5,6 +5,7 @@ import { getNodeVariant } from "../../harness/nodeVariants";
 import { useSettings } from "../../harness/settings";
 import { useSelectOnMount } from "../../components/useSelectOnMount";
 import { editKeyAction, refocusAfterEdit } from "../../components/editKeys";
+import { keepInPane } from "../keepInPane";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { DiagramFlowNode } from "../types";
@@ -100,7 +101,8 @@ function NodeEditor({
     onDone(next);
   };
   useSelectOnMount(focus === "sublabel" ? second : first, typed ? "end" : "all");
-  useLayoutEffect(() => keepInPane(root.current), []);
+  // Zoomed out it's wider than its card: it stays inside the canvas, and opens above the card near the bottom.
+  useLayoutEffect(() => keepInPane(root.current, { above: () => root.current?.classList.add("is-above") }), []);
   // Every editor's keys (editKeys.ts): Enter and Esc save, Tab goes from Label to Subtitle and saves there.
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -152,26 +154,6 @@ function NodeEditor({
       </div>
     </div>
   );
-}
-
-/**
- * The editor reads at its CSS size at any zoom, so zoomed out it's wider than its card: it moves left to
- * stay inside the canvas pane (never under the inspector), and opens above the card near the bottom.
- */
-function keepInPane(el: HTMLElement | null) {
-  const pane = el?.closest(".react-flow")?.getBoundingClientRect();
-  if (!el || !pane) return;
-  const M = 8;
-  let r = el.getBoundingClientRect();
-  if (r.bottom > pane.bottom - M && r.top - r.height - (el.parentElement?.offsetHeight ?? 0) > pane.top + M) {
-    el.classList.add("is-above");
-    r = el.getBoundingClientRect();
-  }
-  const dx = r.right > pane.right - M ? pane.right - M - r.right : r.left < pane.left + M ? pane.left + M - r.left : 0;
-  // `translate` applies outside the editor's own scale: in the card's px, which the zoom scales.
-  const card = el.parentElement;
-  const zoom = card ? card.getBoundingClientRect().width / card.offsetWidth || 1 : 1;
-  if (dx) el.style.translate = `${dx / zoom}px 0`;
 }
 
 export const DiagramNode = memo(DiagramNodeImpl);

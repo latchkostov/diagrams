@@ -143,9 +143,6 @@ function DotGrid() {
   return <Background variant={BackgroundVariant.Dots} gap={fine ? 10 : 20} size={1.3} color="var(--dot)" />;
 }
 
-/** The modifier keys of a drag's start event (a mouse or a touch event, whatever React Flow's types say). */
-type ModifierKeys = { altKey?: boolean; ctrlKey?: boolean; metaKey?: boolean };
-
 /** Ids whose selected flag inside React Flow disagrees with the box's pick. */
 function staleBoxFlags(
   s: Pick<ReactFlowState<FlowNode, DiagramFlowEdge>, "nodeLookup">,
@@ -731,8 +728,15 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     [],
   );
 
-  const onNodeDragStart = useCallback(
-    (e: ModifierKeys, dragged: FlowNode[]) => {
+  // One lifecycle for every drag: a node, a selection (by a node or by its frame) and an Alt-drag. React
+  // Flow calls onNodeDragStart / onNodeDragStop for all of them, the selection frame included (it calls
+  // onSelectionDragStart as well, which is why that one isn't registered). `dragActive` makes a second
+  // start or stop for the same gesture a no-op, so copies are made exactly once.
+  const dragActive = useRef(false);
+  const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
+    (e, _node, dragged) => {
+      if (dragActive.current) return;
+      dragActive.current = true;
       setMenu(null);
       hideTip();
       // Alt-drag: copies take the originals' place and move with the pointer; the originals stay.
@@ -747,8 +751,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     },
     [hideTip, editGestures, editor, guides],
   );
-  const onNodeDragStop = useCallback(
-    (_e: ModifierKeys, dragged: FlowNode[]) => {
+  const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
+    (_e, _node, dragged) => {
+      if (!dragActive.current) return;
+      dragActive.current = false;
       guides.stop();
       const copies = altCopies.current;
       altCopies.current = null;
@@ -775,14 +781,6 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       );
     },
     [setNodes, editor, guides],
-  );
-  const onNodeDragStartRf: OnNodeDrag<FlowNode> = useCallback(
-    (e, _node, dragged) => onNodeDragStart(e, dragged),
-    [onNodeDragStart],
-  );
-  const onNodeDragStopRf: OnNodeDrag<FlowNode> = useCallback(
-    (e, _node, dragged) => onNodeDragStop(e, dragged),
-    [onNodeDragStop],
   );
 
   // ---------------------------------------------------------------- Space, Alt and the middle button (D4, D9)
@@ -1164,11 +1162,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             connectionMode={ConnectionMode.Loose}
             connectionRadius={28}
             onEdgeDoubleClick={readOnly ? undefined : onEdgeDoubleClick}
-            onNodeDragStart={onNodeDragStartRf}
-            onNodeDragStop={onNodeDragStopRf}
-            // Dragging the selection's frame: the same snapping, copies and boundary members.
-            onSelectionDragStart={onNodeDragStart}
-            onSelectionDragStop={onNodeDragStop}
+            // Every drag, the selection's frame included (see onNodeDragStart).
+            onNodeDragStart={onNodeDragStart}
+            onNodeDragStop={onNodeDragStop}
             onPaneContextMenu={onPaneContextMenu}
             onNodeContextMenu={onNodeContextMenu}
             onEdgeContextMenu={onEdgeContextMenu}

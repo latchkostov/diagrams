@@ -176,6 +176,42 @@ test.describe("smart guides and snapping (D6)", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("Alt-dragging a multi-selection by its frame copies it exactly once", async ({ page, consoleErrors }) => {
+    const nodes = page.getByTestId(/^node-(?!tooltip$|editor)/);
+    const before = await nodes.count();
+    const { zoom } = await view(page);
+    const a = await box(page.getByTestId("node-a"));
+    const b = await box(page.getByTestId("node-b"));
+    // The selection box over a and b (it picks what it touches), started on the empty pane above them (clear
+    // of the boundary's name chip, which would drag the boundary).
+    await page.mouse.move(a.x + a.width - 10, a.y - 15);
+    await page.mouse.down();
+    await page.mouse.move(b.x + 20, a.y + 20, { steps: 6 });
+    await page.mouse.up();
+    // Between the two cards, inside the selection's frame and on neither card.
+    const grip = { x: (a.x + a.width + b.x) / 2, y: a.y + 6 };
+    const onCard = await page.evaluate(
+      ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-testid^="node-"]'),
+      grip,
+    );
+    expect(onCard).toBe(false);
+    await page.keyboard.down("Alt");
+    await page.mouse.move(grip.x, grip.y);
+    await page.mouse.down();
+    await page.mouse.move(grip.x + 3, grip.y + 3);
+    await page.mouse.move(grip.x + 3, grip.y + 200 * zoom, { steps: 8 });
+    await page.waitForTimeout(150);
+    await page.mouse.up();
+    await page.keyboard.up("Alt");
+    // Two copies (a and b), each id once; the originals stay where they were.
+    await expect(nodes).toHaveCount(before + 2);
+    const ids = await nodes.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")));
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(await flowPos(page, "node-a")).toEqual({ x: 0, y: 0 });
+    expect(await flowPos(page, "node-b")).toEqual({ x: 400, y: 0 });
+    expectNoErrors(consoleErrors);
+  });
+
   test("arrow keys nudge onto the grid: 10 px, Shift 50 px; with Snapping off 1 px", async ({
     page,
     consoleErrors,
@@ -341,25 +377,71 @@ test.describe("one set of text-editing rules (D7)", () => {
 });
 
 test.describe("type-ahead and readable editors (D7)", () => {
-  test('Ctrl+K then typing "kafka topic" fast searches it, even while the palette loads', async ({
-    page,
-    consoleErrors,
-  }) => {
-    // Hold the palette's code back, so the keys arrive before its search exists.
+  test("Ctrl+K buffers typing while the palette chunk is pending", async ({ page, consoleErrors }) => {
+    // The palette's code is held until the test lets it go: every key below is typed before its search exists.
+    let release = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    let intercepted = false;
     await page.route(/PaletteDialog/, async (route) => {
-      await new Promise((r) => setTimeout(r, 1200));
+      intercepted = true;
+      await gate;
       await route.continue();
     });
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("node-orders")).toBeVisible();
     await page.keyboard.press(`${MOD}+k`);
+    await expect.poll(() => intercepted).toBe(true);
+    await expect(page.getByTestId("command-input")).toHaveCount(0);
     await page.keyboard.type("kafka topic", { delay: 25 });
-    await expect(page.getByTestId("command-palette")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("command-input")).toHaveCount(0);
+    release();
     await expect(page.getByTestId("command-input")).toHaveValue("kafka topic");
-    // Nothing reached the canvas: "t" would have added a text, "a" nothing, and so on.
+    // Nothing reached the canvas: "t" would have added a text.
     await expect(page.getByTestId(/^annotation-/)).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("command-palette")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("enlarged editors stay inside the canvas at its edge", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, SLUG);
+    await waitForStableViewport(page);
+    // A note to edit too (it opens its editor at once).
+    await page.getByTestId("palette-annotate-note").click();
+    await expect(page.getByTestId("annotation-editor")).toBeFocused();
+    await page.keyboard.type("Edge case");
+    await page.keyboard.press("Escape");
+    const edgeLabel =
+      (await page
+        .getByTestId(/^edge-label-/)
+        .first()
+        .getAttribute("data-testid")) ?? "";
+    const cases: { target: string; field: string }[] = [
+      { target: "annotation-note-1", field: "annotation-editor" },
+      { target: edgeLabel, field: "edge-label-input" },
+      { target: "group-label-aks", field: "group-label-input" },
+      { target: "node-shopper", field: "node-editor" },
+    ];
+    for (const c of cases) {
+      // Select it first: the inspector opens (and the canvas narrows) before the view moves.
+      await page.getByTestId(c.target).click();
+      await waitForStableViewport(page);
+      // Pan it against the canvas's right edge.
+      const pane = await box(page.getByTestId("rf__wrapper"));
+      const t = await box(page.getByTestId(c.target));
+      await page.mouse.move(pane.x + pane.width / 2, pane.y + pane.height - 30);
+      await page.mouse.wheel(t.x + t.width - (pane.x + pane.width - 6), 0);
+      await waitForStableViewport(page);
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId(c.field)).toBeVisible();
+      const r = await box(page.getByTestId(c.field));
+      const p = await box(page.getByTestId("rf__wrapper"));
+      expect(r.x, `${c.target}: left`).toBeGreaterThanOrEqual(p.x);
+      expect(r.x + r.width, `${c.target}: right`).toBeLessThanOrEqual(p.x + p.width);
+      expect(r.y + r.height, `${c.target}: bottom`).toBeLessThanOrEqual(p.y + p.height);
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId(c.field)).toHaveCount(0);
+    }
     expectNoErrors(consoleErrors);
   });
 

@@ -83,9 +83,11 @@ function draw(layer: SVGSVGElement | null, r: SnapResult | null, transform: [num
   const gaps = r?.gaps ?? [];
   // Nothing drawn and nothing to draw: no work (most moves of a drag away from other nodes).
   if (!lines.length && !gaps.length && layer.dataset.lines === "0" && layer.dataset.gaps === "0") return;
-  layer.dataset.lines = String(lines.length);
-  layer.dataset.gaps = String(gaps.length);
-  layer.dataset.axes = [...new Set([...lines, ...gaps].map((g) => g.axis))].sort().join(",");
+  const counts = { lines: String(lines.length), gaps: String(gaps.length) };
+  const axes = [...new Set([...lines, ...gaps].map((g) => g.axis))].sort().join(",");
+  if (layer.dataset.lines !== counts.lines) layer.dataset.lines = counts.lines;
+  if (layer.dataset.gaps !== counts.gaps) layer.dataset.gaps = counts.gaps;
+  if (layer.dataset.axes !== axes) layer.dataset.axes = axes;
   const [tx, ty, k] = transform;
   const sx = (v: number) => Math.round(v * k + tx) + 0.5;
   const sy = (v: number) => Math.round(v * k + ty) + 0.5;
@@ -309,11 +311,13 @@ export function useSmartGuides({
             g.samples = [];
             refresh();
           }, SETTLE_MS);
+        // The guides follow every move, even one that lands where the node already is (the pointer slowing
+        // down in the same grid cell can bring a line in).
+        if (dragging) draw(layer.current, r, store.getState().transform);
         // Snapped to where it already is: no change, so nothing re-renders or re-routes (as React Flow's
         // own grid snapping skipped such moves).
         if (dragging && same)
           return changes.filter((c) => !(c.type === "position" && (g.start.has(c.id) || g.followers.has(c.id))));
-        if (dragging) draw(layer.current, r, store.getState().transform);
       }
       const out: NodeChange<FlowNode>[] = [];
       for (const c of changes)

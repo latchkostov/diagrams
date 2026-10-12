@@ -13,6 +13,7 @@ import type { AnnotationKind, AnnotationShape } from "../../model/types";
 import { ANNOTATION_COLORS, annotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
 import { useSelectOnMount } from "../../components/useSelectOnMount";
 import { editKeyAction, refocusAfterEdit } from "../../components/editKeys";
+import { keepInPane } from "../keepInPane";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { AnnotationFlowNode, FlowNode } from "../types";
@@ -232,6 +233,8 @@ function AnnotationEditor({
     onDone(v, el ? Math.max(0, el.scrollHeight - el.clientHeight) : 0);
   };
   useSelectOnMount(ref);
+  // Magnified when zoomed out (a zone: its name chip), it stays inside the canvas.
+  useLayoutEffect(() => keepInPane(kind === "zone" ? (ref.current?.parentElement ?? null) : ref.current), [kind]);
   const onKey = (e: KeyboardEvent) => {
     e.stopPropagation();
     if (editKeyAction(e.nativeEvent, { multiline: kind !== "zone" }) !== "save") return;
