@@ -122,7 +122,7 @@ test("the Private switch: badge, library marker, and one confirmation to turn it
   expectNoErrors(consoleErrors);
 });
 
-test("share links and embeds are off, saying why, and a private example becomes a private copy", async ({
+test("share links are off, saying why, embeds are the private kind, and a private example becomes a private copy", async ({
   page,
   consoleErrors,
 }) => {
@@ -136,14 +136,25 @@ test("share links and embeds are off, saying why, and a private example becomes 
   const link = page.getByTestId("export-share-link");
   await expect(link).toBeDisabled();
   await expect(link).toContainText(PRIVATE_SHARE);
-  await expect(page.getByTestId("export-embed")).toBeDisabled();
+  // Embeds stay: the kind whose diagram the host's own page supplies (nothing of it goes in a URL).
+  await expect(page.getByTestId("export-embed")).toBeEnabled();
+  await expect(page.getByTestId("export-embed")).toContainText("Your app supplies it");
+  await page.getByTestId("export-embed").click();
+  await expect(page.getByTestId("embed-dialog")).toBeVisible();
+  await expect(page.getByTestId("embed-source-host")).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByTestId("embed-source-inline")).toBeDisabled();
+  await expect(page.getByTestId("embed-host-note")).toBeVisible();
+  await expect(page.getByTestId("embed-snippet")).toHaveValue(/<live-diagram /);
+  expect(await page.getByTestId("embed-snippet").inputValue()).not.toMatch(/#[de]=|embed=1&example/);
+  await expect(page.getByTestId("embed-open")).toHaveCount(0);
   await page.keyboard.press("Escape");
+  await expect(page.getByTestId("embed-dialog")).toHaveCount(0);
 
   // The canvas right-click's Export ▸ shows them off too.
   await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: 700, y: 60 } });
   await page.getByTestId("context-menu-item-canvas.export").hover();
   await expect(page.getByTestId("context-menu-item-export:share")).toHaveAttribute("aria-disabled", "true");
-  await expect(page.getByTestId("context-menu-item-export:embed")).toHaveAttribute("aria-disabled", "true");
+  await expect(page.getByTestId("context-menu-item-export:embed")).not.toHaveAttribute("aria-disabled", "true");
   await expect(page.getByTestId("context-menu-item-export:json")).not.toHaveAttribute("aria-disabled", "true");
   expectNoErrors(consoleErrors);
 });

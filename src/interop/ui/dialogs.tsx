@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DiagramFile } from "../../model/types";
 import { embedSnippet, embedUrl, encodeShare, SHARE_WARN_LENGTH, shareUrl } from "../share";
 import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
+import { hostEmbedUrl, iframeSnippet, SNIPPET_PROTOCOL, webComponentSnippet } from "../embed/hostSnippets";
 
 /**
  * A link dialog's actions ask the privacy gate when they act (the dialog may have been open a while).
@@ -168,35 +169,101 @@ export function ShareDialog({
   );
 }
 
-/** Embed code: an <iframe> of the read-only viewer, with a live preview. */
+/** Where an embed's diagram comes from: a public example by name, the diagram in the URL, or the host's page. */
+type EmbedSource = "example" | "inline" | "host";
+
+/**
+ * The host-supplied embed's preview: the same viewer, handed the diagram with postMessage (never in its URL),
+ * exactly as a host page does.
+ */
+function HostPreview({ diagram, simulation }: { diagram: DiagramFile; simulation: string }) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [src] = useState(() => hostEmbedUrl(window.location.origin));
+  const ready = useRef(false);
+  useEffect(() => {
+    const viewer = new URL(src).origin;
+    const send = () =>
+      frame.current?.contentWindow?.postMessage(
+        {
+          protocol: SNIPPET_PROTOCOL,
+          type: "load",
+          diagram,
+          options: simulation ? { simulation, autoplay: true } : {},
+        },
+        viewer,
+      );
+    const onMessage = (e: MessageEvent) => {
+      if (e.source !== frame.current?.contentWindow || e.origin !== viewer) return;
+      if (e.data?.protocol !== SNIPPET_PROTOCOL || e.data.type !== "ready") return;
+      ready.current = true;
+      send();
+    };
+    window.addEventListener("message", onMessage);
+    if (ready.current) send();
+    return () => window.removeEventListener("message", onMessage);
+  }, [src, diagram, simulation]);
+  return <iframe ref={frame} src={src} title="Embed preview" data-testid="embed-preview" />;
+}
+
+/** Embed code: an <iframe> of the read-only viewer, or a viewer your own app supplies, with a live preview. */
 export function EmbedDialog({
   diagram,
   example,
   allowed,
+  privateOnly = false,
+  fileName,
+  onDownload,
   onClose,
 }: {
   diagram: DiagramFile;
   example?: string;
   /** Whether its document may still be shared as a link (asked again by every action). */
   allowed?: () => boolean;
+  /** A private diagram: only the host-supplied embed (nothing of the diagram goes in a URL). */
+  privateOnly?: boolean;
+  /** The diagram file's name, as File > Diagram file saves it. */
+  fileName: string;
+  /** Saves the diagram file, for the host to serve. */
+  onDownload: () => void;
   onClose: () => void;
 }) {
   const [payload, setPayload] = useState<string>();
-  const [byName, setByName] = useState(!!example);
+  const [chosen, setChosen] = useState<EmbedSource>(privateOnly ? "host" : example ? "example" : "inline");
+  const source: EmbedSource = privateOnly ? "host" : chosen;
+  const host = source === "host";
   const [height, setHeight] = useState(480);
+  /** The host-supplied embed sizes itself to the diagram by default (0). */
+  const [hostHeight, setHostHeight] = useState(0);
   const [sim, setSim] = useState("");
+  const [format, setFormat] = useState<"component" | "iframe">("component");
+  const [srcJson, setSrcJson] = useState(`/diagrams/${fileName}`);
   useEffect(() => {
+    // A private diagram is never encoded: nothing of it goes in a URL.
+    if (privateOnly) return;
     let live = true;
     encodeShare(diagram).then((p) => live && setPayload(p));
     return () => {
       live = false;
     };
-  }, [diagram]);
+  }, [diagram, privateOnly]);
   const src = useMemo(() => {
-    if (byName && example) return embedUrl({ example, live: !!sim, sim: sim || undefined });
+    if (host) return undefined;
+    if (source === "example" && example) return embedUrl({ example, live: !!sim, sim: sim || undefined });
     return payload ? embedUrl({ payload, live: !!sim, sim: sim || undefined }) : undefined;
-  }, [byName, example, payload, sim]);
-  const snippet = src ? embedSnippet(src, { title: diagram.title, height }) : "";
+  }, [host, source, example, payload, sim]);
+  const hostOptions = {
+    srcJson: srcJson.trim() || `/diagrams/${fileName}`,
+    title: diagram.title,
+    simulation: sim || undefined,
+    height: hostHeight || undefined,
+  };
+  const snippet = host
+    ? format === "component"
+      ? webComponentSnippet(hostOptions)
+      : iframeSnippet(hostOptions)
+    : src
+      ? embedSnippet(src, { title: diagram.title, height })
+      : "";
   const [previewSrc, setPreviewSrc] = useState<string>();
   useEffect(() => {
     // Debounce so flipping options doesn't reload the preview on every click.
@@ -205,21 +272,50 @@ export function EmbedDialog({
   }, [src]);
 
   const copy = async () => {
-    if (!gate(allowed, onClose)) return;
+    // The host-supplied embed's code holds nothing of the diagram: there's no link to gate.
+    if (!host && !gate(allowed, onClose)) return;
     if (snippet && (await copyText(snippet))) toast.success("Embed code copied.");
     else toast.error("Couldn't copy automatically. Select the code and copy it.");
   };
 
+  const sourceButton = (value: EmbedSource, label: string) => (
+    <button
+      role="radio"
+      aria-checked={source === value}
+      className={source === value ? "is-on" : ""}
+      onClick={() => setChosen(value)}
+      disabled={privateOnly && value !== "host"}
+      title={privateOnly && value !== "host" ? PRIVATE_SHARE_MESSAGE : undefined}
+      data-testid={`embed-source-${value}`}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <Dialog
       title="Embed"
-      subtitle="Paste this into a blog post, wiki or docs page. Viewers can pan and zoom, not edit."
+      subtitle={
+        host
+          ? "Show this diagram inside your own app or intranet. Viewers can pan, zoom and play it, not edit it."
+          : "Paste this into a blog post, wiki or docs page. Viewers can pan and zoom, not edit."
+      }
       icon={<Glyph name="code" />}
       onClose={onClose}
       testId="embed-dialog"
       width={720}
       footer={
         <>
+          {host && (
+            <button
+              className="btn"
+              onClick={onDownload}
+              title="Save the diagram file to serve from your app"
+              data-testid="embed-host-download"
+            >
+              <Glyph name="download" size={14} /> Diagram file
+            </button>
+          )}
           <span className="ix-grow" />
           {src && (
             <a
@@ -247,17 +343,55 @@ export function EmbedDialog({
         </>
       }
     >
+      <div className="ix-seg" role="radiogroup" aria-label="Where the diagram comes from">
+        {example && sourceButton("example", "Example by name")}
+        {sourceButton("inline", "In the link")}
+        {sourceButton("host", "Your app supplies it (private)")}
+      </div>
+      {host && (
+        <div className="ix-callout" data-testid="embed-host-note">
+          <Glyph name="lock" size={15} />
+          <span>
+            <strong>The diagram never leaves your app. Live Diagrams only provides the viewer.</strong> Serve the
+            diagram file from your app, behind its own sign-in; your page fetches it and hands it to the viewer. It's
+            never in a URL and never sent to livediagrams.dev.
+          </span>
+        </div>
+      )}
+      {host && (
+        <div className="ix-seg" role="radiogroup" aria-label="Code">
+          {(
+            [
+              ["component", "Web component"],
+              ["iframe", "iframe + postMessage"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              role="radio"
+              aria-checked={format === value}
+              className={format === value ? "is-on" : ""}
+              onClick={() => setFormat(value)}
+              data-testid={`embed-host-format-${value}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
       <textarea
         className="ix-input ix-mono ix-code"
         readOnly
         value={snippet}
-        rows={4}
+        rows={host ? (format === "iframe" ? 10 : 3) : 4}
         onFocus={(e) => e.currentTarget.select()}
         aria-label="Embed code"
         data-testid="embed-snippet"
       />
-      <div className="ix-preview" style={{ height: Math.min(height, 340) }}>
-        {previewSrc ? (
+      <div className="ix-preview" style={{ height: host ? 300 : Math.min(height, 340) }}>
+        {host ? (
+          <HostPreview diagram={diagram} simulation={sim} />
+        ) : previewSrc ? (
           <iframe src={previewSrc} title="Embed preview" loading="lazy" data-testid="embed-preview" />
         ) : (
           <span className="ix-muted">Preparing preview…</span>
@@ -265,37 +399,41 @@ export function EmbedDialog({
       </div>
       <Disclosure testId="embed-options">
         <div className="ix-options">
-          {example && (
-            <div className="ix-seg" role="radiogroup" aria-label="What to embed">
-              <button
-                role="radio"
-                aria-checked={byName}
-                className={byName ? "is-on" : ""}
-                onClick={() => setByName(true)}
-                data-testid="embed-source-example"
-              >
-                Example by name
-              </button>
-              <button
-                role="radio"
-                aria-checked={!byName}
-                className={!byName ? "is-on" : ""}
-                onClick={() => setByName(false)}
-                data-testid="embed-source-inline"
-              >
-                This exact diagram
-              </button>
-            </div>
+          {host && (
+            <label className="ix-select ix-embed-src">
+              <span>File in your app</span>
+              <input
+                value={srcJson}
+                onChange={(e) => setSrcJson(e.target.value)}
+                spellCheck={false}
+                data-testid="embed-host-src"
+              />
+            </label>
           )}
           <label className="ix-select">
             <span>Height</span>
-            <select value={height} onChange={(e) => setHeight(Number(e.target.value))} data-testid="embed-height">
-              {[360, 480, 640, 800].map((h) => (
-                <option key={h} value={h}>
-                  {h}px
-                </option>
-              ))}
-            </select>
+            {host ? (
+              <select
+                value={hostHeight}
+                onChange={(e) => setHostHeight(Number(e.target.value))}
+                data-testid="embed-height"
+              >
+                <option value={0}>Fits the diagram</option>
+                {[360, 480, 640, 800].map((h) => (
+                  <option key={h} value={h}>
+                    {h}px
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select value={height} onChange={(e) => setHeight(Number(e.target.value))} data-testid="embed-height">
+                {[360, 480, 640, 800].map((h) => (
+                  <option key={h} value={h}>
+                    {h}px
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
           {!!diagram.simulations?.length && (
             <label className="ix-select">

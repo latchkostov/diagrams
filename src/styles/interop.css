@@ -578,6 +578,24 @@
   color: var(--text-3);
 }
 
+/* The embed dialog's "File in your app" path: a whole row, the same frame as the selects. */
+.ix-select.ix-embed-src {
+  flex: 1 1 100%;
+  white-space: nowrap;
+}
+.ix-select.ix-embed-src input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: 12.5px var(--font-mono);
+  outline: none;
+}
+.ix-select.ix-embed-src:focus-within {
+  border-color: var(--accent);
+}
 .ix-select select {
   height: 100%;
   border: 0;
