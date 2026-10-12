@@ -1,0 +1,15 @@
+/* The Interactive HTML dialog's extras (the rest is the import / export dialogs' ix- styles). */
+
+.ix-dialog .ix-checks {
+  display: grid;
+  gap: 6px;
+}
+
+.ix-dialog .ix-form-top {
+  align-self: start;
+  padding-top: 2px;
+}
+
+.ix-dialog .ix-form .ix-input {
+  padding: 7px 10px;
+}

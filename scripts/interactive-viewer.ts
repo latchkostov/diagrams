@@ -1,0 +1,275 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { build, type Plugin, type PluginOption, type Rollup, type ViteDevServer } from "vite";
+import react from "@vitejs/plugin-react";
+import { catalog } from "../src/stencils/catalog";
+import { PAYLOAD_BLOCK, STENCIL_ICONS_OPEN, viewerCsp } from "../src/export/inject";
+
+/**
+ * The Interactive HTML export's template (File ▸ Export as ▸ Interactive HTML…, docs/INTEROP.md): the viewer
+ * (src/export/viewerEntry.tsx) built on its own into ONE self-contained HTML page, its script and styles
+ * inline, the fonts as data URIs, and a placeholder for the diagram that src/export/inject.ts fills.
+ *
+ *  - Its own Vite build (an IIFE, no code splitting), so nothing of it lands in the app's chunks, and the app
+ *    never loads it until someone exports: the build emits it as `export/interactive-viewer-<hash>.html`, and
+ *    the app reads that name from `virtual:interactive-viewer` and fetches it same-origin. The name changes with
+ *    its content, so a cached copy is never stale.
+ *  - Deterministic: the same sources give the same bytes (no dates, no build ids, no environment variables),
+ *    so a copy kept elsewhere (the agent skill's offline export) can be checked against a fresh build.
+ *  - The page's CSP allows exactly its one inline script and one inline style, by sha256.
+ *  - No module worker (file:// can't load one) and no blob: worker either (a host's CSP may forbid it): the
+ *    live particles draw on the main thread, the renderer's fallback. The worker's `new Worker(…)` is cut out
+ *    of the build, so no worker file is emitted or referenced.
+ *  - Icons: the app's 175 icon files are left out; the viewer's iconUrls reads the few the file carries.
+ *  - Fonts: Mona Sans and Geist Mono, Latin only (what the app's text needs; other scripts fall back to the
+ *    system's fonts), inlined: font-src data:.
+ */
+
+export const VIEWER_ENTRY = "src/export/viewerEntry.tsx";
+const VIRTUAL = "virtual:interactive-viewer";
+const RESOLVED = "\0" + VIRTUAL;
+/** Where the template lives in the dev server (the build hashes the name). */
+const DEV_PATH = "export/interactive-viewer.html";
+
+const FONTS: { family: string; file: string }[] = [
+  {
+    family: "Mona Sans Variable",
+    file: "node_modules/@fontsource-variable/mona-sans/files/mona-sans-latin-wght-normal.woff2",
+  },
+  {
+    family: "Geist Mono Variable",
+    file: "node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2",
+  },
+];
+/** Fontsource's "latin" unicode-range. */
+const LATIN =
+  "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD";
+
+/** Modules that must never be in the exported file: they reach the network, AI, or the app's storage. */
+const FORBIDDEN: [string, RegExp][] = [
+  ["the stencil icon files", /[/\\]src[/\\]stencils[/\\]icons[/\\]/],
+  ["the particle worker", /[/\\]src[/\\]live[/\\]particleWorker\.ts$/],
+  ["the AI panel and agent tools", /[/\\]src[/\\]ai[/\\](ui[/\\]AiPanel|webmcp|ondevice)/],
+  ["cloud storage", /[/\\]src[/\\]interop[/\\](storage|gdrive)[/\\]/],
+  ["share links", /[/\\]src[/\\]interop[/\\](share|shareCrypto|passwordLink)\.ts$/],
+  ["the example diagrams", /[/\\]src[/\\]examples[/\\][^/\\]+\.json$/],
+  ["local-only examples", /[/\\]examples[/\\]private[/\\]|[/\\]localOnly\.dev\.ts$/],
+];
+
+const NO_LOCAL = "\0interactive-viewer:no-local-examples";
+const WORKER = 'new Worker(new URL("./particleWorker.ts", import.meta.url), { type: "module", name: "particles" })';
+
+/** The swaps that make the app's modules fit a file with no network (see the header). */
+function viewerSwaps(root: string): Plugin {
+  const own = (id: string, path: string) => id.replaceAll("\\", "/").endsWith(path);
+  return {
+    name: "interactive-viewer-swaps",
+    enforce: "pre",
+    resolveId(source, importer) {
+      if (source === "./iconUrls" && importer && own(importer, "/src/stencils/registry.ts"))
+        return resolve(root, "src/export/viewer/iconUrls.ts");
+      // Development's content check for local-only examples: never in a file (a single bundle keeps a stub of
+      // every module it reaches, used or not).
+      if (source === "./localOnly.dev" && importer && own(importer, "/src/lib/localOnly.ts")) return NO_LOCAL;
+      return null;
+    },
+    load(id) {
+      return id === NO_LOCAL ? "export const matchesLocalExample = () => false;" : null;
+    },
+    transform(code, id) {
+      if (!own(id, "/src/live/liveRenderer.ts")) return null;
+      if (!code.includes(WORKER))
+        this.error("interactive viewer: liveRenderer.ts no longer creates its worker as expected; update WORKER.");
+      return code.replace(WORKER, '(() => { throw new Error("The exported file draws on the main thread."); })()');
+    },
+    generateBundle(_options, bundle) {
+      for (const out of Object.values(bundle)) {
+        if (out.type !== "chunk") continue;
+        const ids = Object.entries(out.modules)
+          .filter(([, m]) => m.renderedLength > 0)
+          .map(([id]) => id);
+        for (const [what, pattern] of FORBIDDEN)
+          if (ids.some((id) => pattern.test(id)))
+            this.error(
+              `interactive viewer: ${what} got into the template (${ids.filter((id) => pattern.test(id)).join(", ")})`,
+            );
+      }
+    },
+  };
+}
+
+const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("base64");
+
+function fontFaces(root: string): string {
+  return FONTS.map(
+    ({ family, file }) =>
+      `@font-face{font-family:"${family}";font-style:normal;font-display:swap;font-weight:100 900;` +
+      `src:url(data:font/woff2;base64,${readFileSync(resolve(root, file)).toString("base64")}) format("woff2");` +
+      `unicode-range:${LATIN}}`,
+  ).join("");
+}
+
+/** Text that can't end the element it's inlined in. */
+function checkInline(text: string, tag: "script" | "style") {
+  if (new RegExp(`</${tag}|<!--`, "i").test(text))
+    throw new Error(`interactive viewer: the inline ${tag} contains "</${tag}" or "<!--"`);
+}
+
+/** The page around the code: `script` and `style` exactly as they go in (their hashes are of these strings). */
+export function assembleTemplate(script: string, style: string): string {
+  checkInline(script, "script");
+  checkInline(style, "style");
+  const icons = Object.fromEntries(catalog.map((s) => [s.id, s.icon]).sort(([a], [b]) => (a < b ? -1 : 1)));
+  return [
+    "<!doctype html>",
+    '<html lang="en" data-theme="light">',
+    "<head>",
+    '<meta charset="utf-8">',
+    `<meta http-equiv="Content-Security-Policy" content="${viewerCsp(sha256(script), sha256(style))}">`,
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<meta name="referrer" content="no-referrer">',
+    '<meta name="color-scheme" content="light dark">',
+    '<meta name="generator" content="Live Diagrams (livediagrams.dev): interactive HTML export">',
+    // No favicon request: an empty icon of its own.
+    '<link rel="icon" href="data:,">',
+    "<title>Live Diagrams</title>",
+    `<style>${style}</style>`,
+    "</head>",
+    "<body>",
+    '<div id="root"></div>',
+    `${STENCIL_ICONS_OPEN}${JSON.stringify(icons).replace(/</g, "\\u003c")}</script>`,
+    PAYLOAD_BLOCK,
+    `<script>${script}</script>`,
+    "</body>",
+    "</html>",
+    "",
+  ].join("\n");
+}
+
+/**
+ * Builds the template. `plugins`: extra build checks to run on the viewer's bundle too (vite.config.ts passes
+ * the private-example guard). Usable from Node on its own: `await buildViewerTemplate(process.cwd())`.
+ */
+export async function buildViewerTemplate(root: string, plugins: PluginOption[] = []): Promise<string> {
+  // Vite and the React plugin read NODE_ENV for production mode (Vitest sets "test"): always production.
+  const env = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  try {
+    return await buildTemplate(root, plugins);
+  } finally {
+    process.env.NODE_ENV = env;
+  }
+}
+
+async function buildTemplate(root: string, plugins: PluginOption[]): Promise<string> {
+  const result = await build({
+    configFile: false,
+    root,
+    base: "./",
+    mode: "production",
+    logLevel: "warn",
+    // No environment variables (a prefix none has): none belongs in a file people pass around, and the
+    // output stays fixed.
+    envPrefix: "LIVE_DIAGRAMS_VIEWER_NEVER_",
+    plugins: [viewerSwaps(root), react(), ...plugins],
+    define: {
+      // A production build whatever the process says (the e2e build, Vitest), so the output never varies.
+      "process.env.NODE_ENV": JSON.stringify("production"),
+      "import.meta.env.DEV": "false",
+      "import.meta.env.PROD": "true",
+      "import.meta.env.MODE": JSON.stringify("production"),
+      "import.meta.env.VITE_E2E": JSON.stringify(""),
+      __BUILD_SHA__: JSON.stringify(""),
+    },
+    build: {
+      write: false,
+      copyPublicDir: false,
+      modulePreload: false,
+      cssCodeSplit: false,
+      reportCompressedSize: false,
+      assetsInlineLimit: 0,
+      rolldownOptions: {
+        input: resolve(root, VIEWER_ENTRY),
+        // Vite's preload helper passes import.meta.url beside each lazy import; with every import inlined it
+        // preloads nothing, so the IIFE's `{}` in its place is harmless.
+        onwarn(warning, warn) {
+          if (warning.code !== "EMPTY_IMPORT_META") warn(warning);
+        },
+        output: {
+          format: "iife",
+          codeSplitting: false,
+          entryFileNames: "viewer.js",
+          assetFileNames: "[name][extname]",
+        },
+      },
+    },
+  });
+  const output = (Array.isArray(result) ? result : [result]).flatMap((r) => (r as Rollup.RolldownOutput).output);
+  const chunks = output.filter((o): o is Rollup.OutputChunk => o.type === "chunk");
+  const assets = output.filter((o): o is Rollup.OutputAsset => o.type === "asset");
+  if (chunks.length !== 1) throw new Error(`interactive viewer: expected one script, got ${chunks.length}`);
+  const others = assets.filter((a) => !a.fileName.endsWith(".css"));
+  if (others.length)
+    throw new Error(
+      `interactive viewer: files the page would have to fetch: ${others.map((a) => a.fileName).join(", ")}`,
+    );
+  const css = assets.map((a) => String(a.source)).join("");
+  return assembleTemplate(chunks[0].code.trim(), fontFaces(root) + css.trim());
+}
+
+/** The template's file name in a build: its content's hash in the name. */
+export const templateFileName = (template: string) =>
+  `export/interactive-viewer-${createHash("sha256").update(template).digest("hex").slice(0, 10)}.html`;
+
+/**
+ * Builds the template beside the app and tells the app where it is (`virtual:interactive-viewer`). In the dev
+ * server it's built on first request, again after a change.
+ */
+export function interactiveViewer(plugins: () => PluginOption[] = () => []): Plugin {
+  let root = process.cwd();
+  let isBuild = false;
+  let template: Promise<string> | undefined;
+  const get = () => (template ??= buildViewerTemplate(root, plugins()));
+  return {
+    name: "interactive-viewer",
+    configResolved(config) {
+      root = config.root;
+      isBuild = config.command === "build";
+    },
+    buildStart() {
+      // A fresh template per build (the watcher's rebuilds too); started now, beside the app's own build.
+      template = undefined;
+      if (isBuild) void get().catch(() => {});
+    },
+    resolveId(id) {
+      return id === VIRTUAL ? RESOLVED : null;
+    },
+    async load(id) {
+      if (id !== RESOLVED) return null;
+      const path = isBuild ? templateFileName(await get()) : DEV_PATH;
+      return `/** The Interactive HTML template, relative to the page (scripts/interactive-viewer.ts). */\nexport const templatePath = ${JSON.stringify(path)};\n`;
+    },
+    async generateBundle() {
+      if (!isBuild) return;
+      const html = await get();
+      this.emitFile({ type: "asset", fileName: templateFileName(html), source: html });
+    },
+    configureServer(server: ViteDevServer) {
+      server.watcher.on("change", () => (template = undefined));
+      server.middlewares.use(`/${DEV_PATH}`, (_req, res, next) => {
+        get().then(
+          (html) => {
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.setHeader("Cache-Control", "no-store");
+            res.end(html);
+          },
+          (error: unknown) => {
+            template = undefined;
+            next(error);
+          },
+        );
+      });
+    },
+  };
+}

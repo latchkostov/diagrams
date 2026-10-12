@@ -200,6 +200,11 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - **Copy link with password…** sits right under Copy share link (File menu, right-click Export ▸, and the share
   dialog). The password is at least 8 characters with a strength hint, and the dialog always says: send the
   password separately; anyone with the link and the password can open it.
+- **Interactive HTML…** (File ▸ Export as ▸, the right-click's Export ▸, Ctrl+K) is the one self-contained file for
+  sharing a diagram where a team already controls access; never "standalone", "offline page" or "web export". Its
+  dialog always says **Anyone who has this file can open it.**, its one action is **Download HTML**, and the title,
+  **Banner**, theme and simulations sit behind Options. A Private diagram can export it, as it can Save to this
+  device. In the file: the banner on top, and a footer that says "Exported from Live Diagrams on <date>. Read-only."
 - **Storage**: where files live. **This device** (never "local", "computer" or "disk"; mid-sentence "this
   device"), **Google Drive**, **OneDrive** and **Dropbox** (never "Drive", "OneDrive Personal" or "Dropbox
   account"). The verbs are **Open…** (this device, Ctrl+O), **Open from ▸**, **Save** (Ctrl+S: back to where the

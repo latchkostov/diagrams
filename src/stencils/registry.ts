@@ -1,11 +1,6 @@
 import type { Stencil } from "../model/types";
 import { catalog } from "./catalog";
-
-const iconUrls = import.meta.glob("./icons/*.svg", {
-  eager: true,
-  query: "?url",
-  import: "default",
-}) as Record<string, string>;
+import { iconUrls } from "./iconUrls";
 
 const byId = new Map(catalog.map((s) => [s.id, s]));
 

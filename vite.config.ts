@@ -4,6 +4,7 @@ import { execSync } from "node:child_process";
 import { exampleMetadataPlugin } from "./scripts/example-metadata";
 import { skillAssetsPlugin } from "./scripts/skill-assets";
 import { securityHeaders } from "./scripts/security-headers";
+import { interactiveViewer } from "./scripts/interactive-viewer";
 
 /**
  * `VITE_E2E=1` builds the app for the e2e suite: a production build that keeps the dev-only test hooks
@@ -131,6 +132,8 @@ export default defineConfig({
     // CSP and the other security headers on `vite preview`, exactly as vercel.json sends them. Not in dev.
     securityHeaders(),
     canvas.plugin,
+    // The Interactive HTML export's template: its own single-file build, emitted beside the app.
+    interactiveViewer(() => [noPrivateExamples()]),
   ],
   // Always defined, so `import.meta.env.VITE_E2E === "1"` folds to a constant and the hooks drop out.
   define: {
