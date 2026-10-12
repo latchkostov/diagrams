@@ -25,6 +25,7 @@ import type { TurnRecord } from "./commitTurn";
 import { Advanced } from "./Advanced";
 import { readAdvancedOpen } from "./advancedPref";
 import { ChoiceRow } from "./parts";
+import { AgentStatus, HowTo } from "./HowTo";
 import type { PanelRequest } from "./AiMount";
 import "./ai.css";
 
@@ -57,6 +58,9 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const historyEnd = useRef<HTMLLIElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const [mcp] = useState(hasModelContext);
+  const live = !!canvas?.live;
+  // With a conversation, the how-to folds to one link.
+  const [showHowTo, setShowHowTo] = useState(false);
 
   // The diagram as it is now and the step Undo would reverse, read once the canvas settles (the host
   // republishes on every drag frame and selection), and at once after the panel's own changes.
@@ -80,6 +84,11 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const [focusSeq, setFocusSeq] = useState<number | undefined>(() =>
     fresh && opened?.advanced ? opened.seq : undefined,
   );
+  /** The how-to's "Open Advanced": open it and put the keyboard in its request box. */
+  const openAdvanced = () => {
+    setAdvancedOpen(true);
+    setFocusSeq((n) => (n ?? 0) - 1);
+  };
   const [seenRequest, setSeenRequest] = useState(opened?.seq);
   if (opened && opened.seq !== seenRequest) {
     setSeenRequest(opened.seq);
@@ -298,53 +307,40 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
           <div className="ai-empty" data-testid="ai-empty">
             <h3>{localOnly ? "AI is off for this diagram" : "Change this diagram with AI"}</h3>
             {!localOnly && (
-              <p>
-                Ask your browser&apos;s AI assistant, or any agent that can use this page, to change the diagram. Its
-                changes appear here, and you can undo or revert any of them.
-              </p>
+              <p>Ask an AI agent to change it. Each change appears here, and you can undo or revert any of them.</p>
             )}
+          </div>
+        )}
+        {!localOnly && turns.length === 0 && (
+          <HowTo mcp={mcp} live={live} current={current} onOpenAdvanced={openAdvanced} />
+        )}
+        {!localOnly && turns.length > 0 && (
+          <div className="ai-howto-fold">
+            <button
+              className="ai-howto-link"
+              onClick={() => setShowHowTo((v) => !v)}
+              aria-expanded={showHowTo}
+              data-testid="ai-howto-link"
+            >
+              <Icon name={showHowTo ? "chevron-down" : "info"} size={13} />
+              How to use AI here
+            </button>
+            {showHowTo && <HowTo mcp={mcp} live={live} current={current} onOpenAdvanced={openAdvanced} />}
           </div>
         )}
       </div>
 
-      <AgentStatus available={mcp} localOnly={localOnly} />
+      <AgentStatus available={mcp} localOnly={localOnly} live={live} />
 
       <Advanced
         open={advancedOpen}
         onOpenChange={setAdvancedOpen}
         focusSeq={focusSeq}
         current={current}
-        live={!!canvas?.live}
+        live={live}
         onTurn={addTurn}
       />
     </section>
-  );
-}
-
-/** Whether agents can use this page here: the page's WebMCP tools, or /llms.txt for agents that drive pages. */
-function AgentStatus({ available, localOnly }: { available: boolean; localOnly: boolean }) {
-  const llms = `${import.meta.env.BASE_URL}llms.txt`;
-  return (
-    <p
-      className={`ai-agent-status${available && !localOnly ? " is-on" : ""}`}
-      data-testid="ai-agent-status"
-      data-available={available && !localOnly ? "1" : "0"}
-    >
-      <span className="ai-agent-dot" aria-hidden />
-      {localOnly ? (
-        "The page's tools are off for this local-only diagram."
-      ) : available ? (
-        "This browser offers the page's tools to its AI assistant (WebMCP)."
-      ) : (
-        <span>
-          No WebMCP in this browser. Agents that drive pages can read{" "}
-          <a href={llms} target="_blank" rel="noopener" data-testid="ai-llms-link">
-            llms.txt
-          </a>
-          .
-        </span>
-      )}
-    </p>
   );
 }
 

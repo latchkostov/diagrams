@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoGallery, gotoLab, waitForStableBox } from "./fixtures";
+import { installFakeModelContext } from "./ai-helpers";
 
 /**
  * Automated accessibility: axe-core (WCAG 2.0/2.1 A and AA rules) on each main view and overlay, in both
@@ -139,6 +140,27 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
       await expect(page.getByTestId("trace-card")).toHaveAttribute("data-state", "done", { timeout: 15_000 });
       await page.getByTestId("trace-sequence").click();
       await expect(page.getByTestId("sequence-view")).toBeVisible();
+    },
+  },
+  {
+    name: "AI panel, idle, with WebMCP",
+    scope: "ai-panel",
+    open: async (page) => {
+      await installFakeModelContext(page);
+      await gotoCanvas(page, KAFKA);
+      await page.getByTestId("ai-rail-open").click();
+      await expect(page.getByTestId("ai-howto")).toBeVisible({ timeout: 20_000 });
+      await page.getByTestId("ai-tools-toggle").click();
+      await expect(page.getByTestId("ai-tools-list")).toBeVisible();
+    },
+  },
+  {
+    name: "AI panel, idle, without WebMCP",
+    scope: "ai-panel",
+    open: async (page) => {
+      await gotoCanvas(page, KAFKA);
+      await page.getByTestId("ai-rail-open").click();
+      await expect(page.getByTestId("ai-howto")).toBeVisible({ timeout: 20_000 });
     },
   },
   {

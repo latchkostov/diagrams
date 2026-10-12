@@ -105,6 +105,15 @@ export function skillAssetsPlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = decodeURIComponent((req.url ?? "").split(/[?#]/)[0]);
+        // The install page (public/skill/index.html) at /skill/, as static hosts and `vite preview` serve it.
+        if (url === "/skill") {
+          res.writeHead(302, { Location: "/skill/" });
+          return res.end();
+        }
+        if (url === "/skill/") {
+          req.url = "/skill/index.html";
+          return next();
+        }
         const files = url === `/${SKILL_ZIP}` || url.startsWith("/skill/") ? readSkill() : [];
         const body = url === `/${SKILL_ZIP}` ? zipSkill(files) : files.find((f) => `/skill/${f.name}` === url)?.data;
         if (!body) return next();

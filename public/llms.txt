@@ -49,7 +49,7 @@ A share link holds the whole diagram in the URL fragment, so nothing is uploaded
 
 ## Agent Skill
 
-Agents without a browser can use the livediagrams Agent Skill: [SKILL.md](https://www.livediagrams.dev/skill/SKILL.md), or the whole folder as [livediagrams-skill.zip](https://www.livediagrams.dev/livediagrams-skill.zip). Its scripts validate a `.diagram.json` file, lay it out and print its share link, offline.
+Agents without a browser can use the livediagrams Agent Skill: [SKILL.md](https://www.livediagrams.dev/skill/SKILL.md), or the whole folder as [livediagrams-skill.zip](https://www.livediagrams.dev/livediagrams-skill.zip). Install steps for Claude Code, Codex and the Claude apps: [livediagrams.dev/skill/](https://www.livediagrams.dev/skill/). Its scripts validate a `.diagram.json` file, lay it out and print its share link, offline.
 
 ## Untrusted content
 

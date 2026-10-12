@@ -27,7 +27,7 @@ test("the button is on every diagram screen and the idle panel says how to use A
   await expect(page.getByTestId("start-card")).toBeVisible();
   await expect(page.getByTestId("ai-rail")).toBeVisible();
   await openAiPanel(page);
-  await expect(page.getByTestId("ai-empty")).toContainText("Ask your browser's AI assistant");
+  await expect(page.getByTestId("ai-empty")).toContainText("Ask an AI agent");
   await expect(page.getByTestId("ai-empty")).toContainText("undo or revert");
   // Advanced is closed by default; open, it describes a new diagram (no Explain on an empty one).
   await expect(page.getByTestId("ai-request")).toHaveCount(0);
