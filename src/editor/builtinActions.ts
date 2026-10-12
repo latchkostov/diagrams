@@ -246,7 +246,7 @@ export function builtinActions(): Action[] {
       label: "Zoom to selection",
       icon: "fit",
       shortcut: shortcutKeys("zoom-selection"),
-      enabled: (ctx) => ctx.selection.nodeIds.length + ctx.selection.groupIds.length > 0,
+      enabled: (ctx) => ctx.selection.nodeIds.length + ctx.selection.groupIds.length + ctx.selection.edgeIds.length > 0,
       hint: "Select something first",
       run: (ctx) => void ctx.editor.zoomToSelection(),
     },

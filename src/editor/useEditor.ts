@@ -33,6 +33,7 @@ import { inferRelation } from "../stencils/relations";
 import {
   boundsOf,
   clearOffset,
+  pastAll,
   COPY_MARGIN,
   isClear,
   overlaps,
@@ -50,6 +51,7 @@ import {
   type GroupFlowNode,
 } from "../canvas/types";
 import { toneLabel } from "../canvas/groupTones";
+import type { EdgeMark } from "../canvas/edgeMarks";
 import { getStencil } from "../stencils/registry";
 import { downloadDiagram, isOwnSlug } from "../lib/diagramIO";
 import { motionMs } from "../lib/motion";
@@ -68,12 +70,6 @@ import { validateDiagram } from "../interop/native";
 /** Internal clipboard, shared across diagrams in this tab. Mirrored to the system clipboard. */
 let clipboard: ClipboardPayload | null = null;
 
-/**
- * The last Ctrl+D: the box it copied (`from`), where the copy went (`at`) and the copy's selection.
- * Ctrl+D again on that copy repeats the step, or the gap the person chose by moving the copy first
- * (Figma's smart duplicate).
- */
-let lastDuplicate: { key: string; from: PlaceBox; at: PlaceBox } | null = null;
 const selectionKey = (sel: Partial<Selection>) =>
   [...(sel.nodeIds ?? []), ...(sel.groupIds ?? []).map((g) => GROUP_PREFIX + g)].sort().join(" ");
 
@@ -106,12 +102,12 @@ export interface EditorDeps {
   /** The pointer over the canvas, in flow coordinates (undefined when it's elsewhere). */
   pointer?: () => XY | undefined;
   /** Small boxes along the drawn edges (flow coordinates), so new things are placed off them. */
-  edgeMarks?: () => PlaceBox[];
+  edgeMarks?: () => EdgeMark[];
   fit: () => void;
   /** Nominal node size for the current renderer (before React Flow has measured). */
   nodeSize: { width: number; height: number };
   /** Fits these nodes (flow ids) in the view, clear of the panels. */
-  zoomTo?: (ids: ReadonlySet<string>) => void;
+  zoomTo?: (nodeIds: ReadonlySet<string>, edgeIds: ReadonlySet<string>) => void;
   /** The node under the pointer, if any (Shift+2 with nothing selected). */
   hovered?: () => string | undefined;
   /** Brings the selection into view once it's measured (a copy or a paste may land off screen). */
@@ -153,6 +149,12 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
   const members = (groupId: string) =>
     rf.getNodes().filter((n): n is DiagramFlowNode => isDiagram(n) && n.data.group === groupId);
   const hint = (merge?: string) => deps().history.hint(merge);
+  /**
+   * This editor's last Ctrl+D: the box it copied (`from`), where the copy went (`at`) and the copy's
+   * selection. Ctrl+D again on that copy repeats the step, or the gap the person chose by moving the copy
+   * first (Figma's smart duplicate). Per editor, so another diagram's ids never inherit it.
+   */
+  let lastDuplicate: { key: string; from: PlaceBox; at: PlaceBox } | null = null;
 
   const setSelected = (sel: Partial<Selection>) => {
     const nodes = new Set(sel.nodeIds ?? []);
@@ -233,15 +235,35 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
   ];
   /**
    * What a copy stays off: cards, notes and shapes (not boundaries, zones or text, which things may sit
-   * on) and the drawn edges. `skip` leaves out the copy itself.
+   * on) and the drawn edges. `skip` leaves out the copy itself: its nodes and the edges between them.
    */
-  const obstacles = (skip: ReadonlySet<string> = new Set()): PlaceBox[] => [
-    ...rf
-      .getNodes()
-      .filter((n) => !skip.has(n.id) && (isDiagram(n) || (isAnnotation(n) && isObstacle(n.data.kind))))
-      .map(box),
-    ...(deps().edgeMarks?.() ?? []),
-  ];
+  const obstacles = (skip: ReadonlySet<string> = new Set()): PlaceBox[] => {
+    const own = new Set(
+      skip.size
+        ? rf
+            .getEdges()
+            .filter((e) => skip.has(e.source) && skip.has(e.target))
+            .map((e) => e.id)
+        : [],
+    );
+    return [
+      ...rf
+        .getNodes()
+        .filter((n) => !skip.has(n.id) && (isDiagram(n) || (isAnnotation(n) && isObstacle(n.data.kind))))
+        .map(box),
+      ...(deps().edgeMarks?.() ?? []).filter((m) => !m.edge || !own.has(m.edge)),
+    ];
+  };
+  /**
+   * The grid-snapped move that puts `b` clear of `others`, starting from the wanted move `d`: checked
+   * after snapping, and past everything when it isn't clear (never on top of anything).
+   */
+  const snappedClear = (b: PlaceBox, d: XY, others: readonly PlaceBox[]): XY => {
+    const snapped = { x: snap10(d.x), y: snap10(d.y) };
+    if (isClear({ ...b, x: b.x + snapped.x, y: b.y + snapped.y }, others)) return snapped;
+    const past = pastAll(b, others);
+    return { x: Math.ceil(past.x / 10) * 10, y: snap10(past.y) };
+  };
   /** The flow ids a selection covers: a boundary brings its members along. */
   const flowIdsOf = (sel: Partial<Selection>): Set<string> => {
     const out = new Set(sel.nodeIds ?? []);
@@ -276,6 +298,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const before = api.getDiagram();
       const diff = diagramDiff(before, checked.diagram);
       if (!diff.hasChanges) return diff;
+      lastDuplicate = null;
       flushSync(() => deps().history.replace(toFlow(checked.diagram), opts?.merge, toFlow(before)));
       return diff;
     },
@@ -569,10 +592,14 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         const target = { ...from, x: snap10(from.x + step.x), y: snap10(from.y + step.y) };
         if (isClear(target, others, COPY_MARGIN)) offset = step;
       }
-      offset ??= placeCopy(from, others, deps().meta.direction === "TB" ? "TB" : "LR");
+      offset = snappedClear(
+        from,
+        offset ?? placeCopy(from, others, deps().meta.direction === "TB" ? "TB" : "LR"),
+        others,
+      );
       const ids = insert(p, offset);
       if (!ids) return;
-      const at = { ...from, x: from.x + snap10(offset.x), y: from.y + snap10(offset.y) };
+      const at = { ...from, x: from.x + offset.x, y: from.y + offset.y };
       lastDuplicate = { key: selectionKey(copiedSelection(sel, ids)), from, at };
       deps().reveal?.();
     },
@@ -589,9 +616,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           .map(box),
       );
       if (!b) return;
-      const d = clearOffset(b, obstacles(ids));
-      const dx = snap10(d.x);
-      const dy = snap10(d.y);
+      const others = obstacles(ids);
+      const { x: dx, y: dy } = snappedClear(b, clearOffset(b, others), others);
       if (!dx && !dy) return;
       deps().setNodes((cur) =>
         cur.map((n) => (ids.has(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n)),
@@ -733,14 +759,16 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     pastePayload: (p, at) => {
       const from = boundsOf(payloadBoxes(p));
-      if (!from) return;
+      if (!from || ![from.x, from.y, from.width, from.height].every(Number.isFinite)) return;
       // Paste here (a spot given) puts the top-left there; Ctrl+V centres it on the pointer over the
       // canvas, else on the view's centre. Then it moves clear of what's already there, so a second
       // paste steps to the next free place instead of stacking on the first.
       const c = at ? null : (deps().pointer?.() ?? deps().viewCenter());
       const want = at ?? { x: c!.x - from.width / 2, y: c!.y - from.height / 2 };
+      if (!Number.isFinite(want.x) || !Number.isFinite(want.y)) return;
       const placed = { ...from, x: snap10(want.x), y: snap10(want.y) };
-      const d = clearOffset(placed, obstacles());
+      const others = obstacles();
+      const d = snappedClear(placed, clearOffset(placed, others), others);
       if (insert(p, { x: placed.x + d.x - from.x, y: placed.y + d.y - from.y })) deps().reveal?.();
     },
     hasClipboard: () => clipboard !== null,
@@ -753,11 +781,14 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     fitView: () => deps().fit(),
     zoomTo100: () => void rf.zoomTo(1, { duration: motionMs(250) }),
     zoomToSelection: () => {
-      const ids = flowIdsOf(api.getSelection());
+      const sel = api.getSelection();
+      const ids = flowIdsOf(sel);
+      const edges = new Set(sel.edgeIds);
+      // The hovered node stands in only when nothing at all is selected.
       const hovered = deps().hovered?.();
-      if (!ids.size && hovered) ids.add(hovered);
-      if (!ids.size || !deps().zoomTo) return false;
-      deps().zoomTo!(ids);
+      if (!ids.size && !edges.size && hovered) ids.add(hovered);
+      if ((!ids.size && !edges.size) || !deps().zoomTo) return false;
+      deps().zoomTo!(ids, edges);
       return true;
     },
     get prefs() {

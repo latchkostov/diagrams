@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boundsOf, clearOffset, COPY_MARGIN, isClear, placeCopy, placeFree, placeNextTo } from "./placement";
+import { boundsOf, clearOffset, COPY_MARGIN, findFree, isClear, placeCopy, placeFree, placeNextTo } from "./placement";
 
 const box = (x: number, y: number, width = 220, height = 72) => ({ x, y, width, height });
 const overlaps = (c: { x: number; y: number }, b: ReturnType<typeof box>, w = 220, h = 72) =>
@@ -101,5 +101,28 @@ describe("copies never land on anything (Ctrl+D, Ctrl+V, Alt-drag)", () => {
     const first = box(0, 0);
     const second = moved(first, clearOffset(first, [first]));
     expect(isClear(second, [first])).toBe(true);
+  });
+});
+
+describe("a failed search is never a silent overlap", () => {
+  it("findFree says null when nothing within reach is free", () => {
+    const wall = { x: -5000, y: -5000, width: 10000, height: 10000 };
+    expect(findFree({ x: 0, y: 0 }, { width: 10, height: 10 }, [wall], { maxRings: 3 })).toBeNull();
+  });
+
+  it("a 2000×2000 paste over four originals at its corners lands past them, not on them", () => {
+    const big = { x: 0, y: 0, width: 2000, height: 2000 };
+    const corners = [box(0, 0, 200, 200), box(1800, 0, 200, 200), box(0, 1800, 200, 200), box(1800, 1800, 200, 200)];
+    const d = clearOffset(big, corners);
+    expect(isClear({ ...big, x: big.x + d.x, y: big.y + d.y }, corners)).toBe(true);
+  });
+
+  it("a Ctrl+D copy with no side free and no room nearby still lands clear", () => {
+    const original = box(0, 0, 200, 100);
+    const crowd = [original];
+    for (let i = -12; i <= 12; i++)
+      for (let j = -12; j <= 12; j++) if (i || j) crowd.push(box(i * 230, j * 130, 200, 100));
+    const d = placeCopy(original, crowd);
+    expect(isClear({ ...original, x: d.x, y: d.y }, crowd)).toBe(true);
   });
 });

@@ -103,6 +103,7 @@ import { useNoCanvasTextSelection } from "./useNoCanvasTextSelection";
 import { getRecentStencils, pushRecentStencil } from "../lib/recentStencils";
 import { connectHitAt, connectOver, connectTarget, edgesBetween, pickInBox, type BoxItem } from "./gestures";
 import { ConnectionLine } from "./ConnectionLine";
+import { captureTypeAhead } from "./typeAhead";
 import { GROUP_PREFIX } from "./types";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
@@ -129,6 +130,16 @@ function ZoomVar({ host }: { host: RefObject<HTMLElement | null> }) {
   const zoom = useStore((s: ReactFlowState) => Math.round(s.transform[2] * 50) / 50);
   useLayoutEffect(() => void host.current?.style.setProperty("--rf-zoom", String(zoom)), [host, zoom]);
   return null;
+}
+
+/** Ids whose selected flag inside React Flow disagrees with the box's pick. */
+function staleBoxFlags(
+  s: Pick<ReactFlowState<FlowNode, DiagramFlowEdge>, "nodeLookup">,
+  picked: ReadonlySet<string>,
+): Set<string> {
+  const out = new Set<string>();
+  for (const n of s.nodeLookup.values()) if (!!n.selected !== picked.has(n.id)) out.add(n.id);
+  return out;
 }
 
 const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
@@ -322,7 +333,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     fit,
     nodeSize: getNodeVariant(nodeVariant).size,
     // Zoom to selection: never past 125% (no huge single node), clear of the panels.
-    zoomTo: (only) => fitView_({ only, maxZoom: 1.25, margin: 64, duration: 300 }),
+    zoomTo: (only, onlyEdges) => fitView_({ only, onlyEdges, maxZoom: 1.25, margin: 64, duration: 300 }),
     hovered: () => hovered.current,
     reveal: () => revealSelection(),
   });
@@ -564,12 +575,22 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         testId: "quick-add",
         searchable: "Add a node…",
         items: quickAddMenu((s) => {
+          // Hold what's typed from now until the label editor can take it.
+          const typing = captureTypeAhead();
           const id = editor.addNode(s.id, point);
           editor.connect(from, id);
           pushRecentStencil(s.id);
           // In view, then its label editor (once the card is measured: React Flow hides it until then,
-          // and a hidden field can't take focus).
-          revealSelection(() => editor.startEditing({ kind: "node", id, field: "label" }), 90);
+          // and a hidden field can't take focus), starting from whatever was typed meanwhile.
+          revealSelection(() => {
+            const typed = typing.stop();
+            if (typed.done === "escape") return;
+            if (typed.done === "enter") {
+              if (typed.text !== null) editor.updateNode(id, { label: typed.text.trim() || s.label });
+              return;
+            }
+            editor.startEditing({ kind: "node", id, field: "label", text: typed.text ?? undefined });
+          }, 90);
         }, getRecentStencils()),
       });
     },
@@ -582,11 +603,32 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   // edges whose both ends it picked. React Flow's selection changes are dropped while a box is drawn.
   const contain = useRef(false);
   const boxPicked = useRef<string | null>(null);
+  const boxSet = useRef<Set<string> | null>(null);
+  /**
+   * Sets the box's pick on the app's nodes. React Flow's own box code flips the selected flag on its
+   * internal copies before emitting the changes we drop, and keeps an internal copy as long as the app's
+   * node object is the same. `stale` (ids whose internal flag disagrees) get a fresh object, so React
+   * Flow re-reads them from the app's state and both agree.
+   */
+  const applyBoxPick = useCallback(
+    (set: ReadonlySet<string>, stale: ReadonlySet<string>) =>
+      setNodes((ns) =>
+        ns.map((n) => (!!n.selected === set.has(n.id) && !stale.has(n.id) ? n : { ...n, selected: set.has(n.id) })),
+      ),
+    [setNodes],
+  );
   useEffect(() => {
     if (!editGestures) return;
     return store.subscribe((s, prev) => {
       if (!s.userSelectionActive || !s.userSelectionRect) {
         if (prev.userSelectionActive && !s.userSelectionActive) {
+          // React Flow's last pick may have flipped its own flags after ours: one source of truth.
+          const set = boxSet.current;
+          if (set) {
+            const stale = staleBoxFlags(s, set);
+            if (stale.size) applyBoxPick(set, stale);
+          }
+          boxSet.current = null;
           // React Flow shows its multi-selection frame (drag it, right-click it) from its own pick, which
           // it sets after this; follow ours instead.
           const any = !!boxPicked.current;
@@ -610,18 +652,31 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       }
       const picked = pickInBox(items, box, contain.current);
       const key = picked.join(" ");
-      if (key === boxPicked.current) return;
-      boxPicked.current = key;
       const set = new Set(picked);
+      const stale = staleBoxFlags(s, set);
+      if (key === boxPicked.current && !stale.size) return;
+      const pickChanged = key !== boxPicked.current;
+      boxPicked.current = key;
+      boxSet.current = set;
+      applyBoxPick(set, stale);
+      if (!pickChanged) return;
       const hiddenDeps = !dependencyVisibility.get();
       const edgeSet = edgesBetween(
         s.edges.filter((e) => !(hiddenDeps && isDependency(e.data))),
         set,
       );
-      setNodes((ns) => ns.map((n) => (!!n.selected === set.has(n.id) ? n : { ...n, selected: set.has(n.id) })));
-      setEdges((es) => es.map((e) => (!!e.selected === edgeSet.has(e.id) ? e : { ...e, selected: edgeSet.has(e.id) })));
+      // The same array when no edge's flag changes: the routes and their caches stay as they are.
+      setEdges((es) => {
+        let changed = false;
+        const next = es.map((e) => {
+          if (!!e.selected === edgeSet.has(e.id)) return e;
+          changed = true;
+          return { ...e, selected: edgeSet.has(e.id) };
+        });
+        return changed ? next : es;
+      });
     });
-  }, [editGestures, store, setNodes, setEdges]);
+  }, [editGestures, store, setNodes, setEdges, applyBoxPick]);
 
   // ---------------------------------------------------------------- Alt-drag duplicates (D9)
   /** While an Alt-drag runs: original flow id → its copy. The drag moves the copies; the originals stay. */

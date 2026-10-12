@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { makePayload, parsePayload } from "./clipboard";
 import { isEditableTarget, shortcutFor } from "./shortcuts";
+import { typeAheadActive } from "../canvas/typeAhead";
 import type { EditorApi } from "./types";
 
 /** If no `paste` event follows Ctrl+V within this time, paste the internal clipboard. */
@@ -48,6 +49,8 @@ export function useCanvasShortcuts(
     const onKeyDown = (e: KeyboardEvent) => {
       if (!optsRef.current.enabled || e.defaultPrevented || e.isComposing) return;
       if (isEditableTarget(e.target) || inOverlay(e.target)) return;
+      // Keys typed for a new node's name before its editor opens (T must not add a text).
+      if (typeAheadActive()) return;
       const id = shortcutFor(e);
       if (!id) return;
       if (SELECTION_SHORTCUTS.has(id) && !inCanvas(e.target)) return;

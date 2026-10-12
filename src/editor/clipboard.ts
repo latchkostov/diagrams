@@ -62,6 +62,9 @@ export function makePayload(
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+/** A finite number within the file format's coordinate budget (positions and sizes alike). */
+const isCoordinate = (v: unknown): v is number =>
+  typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= LIMITS.maxCoordinate;
 
 /** Accepts a clipboard payload or a whole diagrams/v1 file (pasting a file merges it in). */
 export function parsePayload(text: string): ClipboardPayload | null {
@@ -84,11 +87,7 @@ export function parsePayload(text: string): ClipboardPayload | null {
     if (Array.isArray(list) && list.length > max) return null;
   const nodes = data.nodes.filter(
     (n): n is DiagramNode =>
-      isObj(n) &&
-      typeof n.id === "string" &&
-      typeof n.stencil === "string" &&
-      typeof n.x === "number" &&
-      typeof n.y === "number",
+      isObj(n) && typeof n.id === "string" && typeof n.stencil === "string" && isCoordinate(n.x) && isCoordinate(n.y),
   );
   const used = new Set(nodes.map((n) => n.id));
   const annotations: DiagramAnnotation[] = [];
@@ -106,7 +105,14 @@ export function parsePayload(text: string): ClipboardPayload | null {
   );
   const groups = (Array.isArray(data.groups) ? data.groups : []).filter(
     (g): g is DiagramGroup =>
-      isObj(g) && typeof g.id === "string" && ["x", "y", "width", "height"].every((k) => typeof g[k] === "number"),
+      isObj(g) &&
+      typeof g.id === "string" &&
+      isCoordinate(g.x) &&
+      isCoordinate(g.y) &&
+      isCoordinate(g.width) &&
+      isCoordinate(g.height) &&
+      (g.width as number) >= 0 &&
+      (g.height as number) >= 0,
   );
   if (!nodes.length && !groups.length && !annotations.length) return null;
   return {

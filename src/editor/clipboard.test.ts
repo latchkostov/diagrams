@@ -100,6 +100,20 @@ describe("clipboard", () => {
     expect(r.nodes[0].group).toBe("g");
   });
 
+  it("drops nodes and groups whose geometry isn't finite or is out of budget", () => {
+    // 1e309 parses as Infinity: it once turned a paste's offset into -Infinity.
+    const text = `{"format":"diagrams/clip-v1","edges":[],
+      "groups":[{"id":"g","label":"G","x":0,"y":0,"width":1e309,"height":10},
+        {"id":"neg","label":"N","x":0,"y":0,"width":-5,"height":10},
+        {"id":"ok","label":"OK","x":0,"y":0,"width":300,"height":200}],
+      "nodes":[{"id":"a","stencil":"generic.service","x":10,"y":20},
+        {"id":"b","stencil":"generic.service","x":-1e309,"y":0},
+        {"id":"c","stencil":"generic.service","x":1e12,"y":0}]}`;
+    const p = parsePayload(text);
+    expect(p?.nodes.map((n) => n.id)).toEqual(["a"]);
+    expect(p?.groups.map((g) => g.id)).toEqual(["ok"]);
+  });
+
   it("deep-copies props so pastes don't share objects", () => {
     const p = makePayload(diagram, ["c"])!;
     const r = remapPayload(p, { nodes: new Set(["c"]), edges: new Set(), groups: new Set() }, { x: 0, y: 0 });

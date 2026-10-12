@@ -81,6 +81,20 @@ async function dragFromHandle(page: Page, node: string, side: string, to: { x: n
   if (release) await page.mouse.up();
 }
 
+/** The selected nodes and edges, by test id (read off the elements found by data-testid). */
+async function selectedIds(page: Page) {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>("[data-testid]")) {
+      const id = el.dataset.testid ?? "";
+      if (/^node-(?!tooltip$|editor)/.test(id) && el.closest(".react-flow__node")?.classList.contains("selected"))
+        out.push(id);
+      if (/^edge-(?!label-|glyph-|settings?-)/.test(id) && el.classList.contains("is-selected")) out.push(id);
+    }
+    return out.sort();
+  });
+}
+
 const cursorAt = (page: Page, p: { x: number; y: number }) =>
   page.evaluate(({ x, y }) => {
     const el = document.elementFromPoint(x, y);
@@ -158,9 +172,60 @@ test.describe("drawing basics", () => {
     // A box, not a pan: the view held still under the drag.
     expect(await view(page)).toEqual(v0);
     await page.mouse.up();
-    // Two nodes and the edge between them; not the edges to nodes outside the box.
+    // The two nodes and the edge between them; not the edges to nodes outside the box.
     await expect(page.getByTestId("inspector-title")).toHaveText("3 selected");
+    expect(await selectedIds(page)).toEqual(["edge-inventory-to-stock-db", "node-inventory", "node-stock-db"]);
+    await waitForStableViewport(page);
+
+    // Drawn the other way: it touches stock-db first, then holds all of inventory. React Flow's own box
+    // flips its internal flags when its whole-node pick changes; it must still agree with ours, so
+    // dragging one moves both (its drag reads its own selection).
+    await page.getByTestId("canvas-wrap").press("Escape");
+    await waitForStableViewport(page);
+    const inv0 = await box(page.getByTestId("node-inventory"));
+    const db0 = await box(page.getByTestId("node-stock-db"));
+    await page.mouse.move(db0.x + db0.width - 10, db0.y + db0.height + 20);
+    await page.mouse.down();
+    await page.mouse.move(db0.x + db0.width - 10, db0.y + db0.height / 2, { steps: 4 });
+    await page.mouse.move(inv0.x - 20, inv0.y - 20, { steps: 8 });
+    await page.mouse.up();
+    expect(await selectedIds(page)).toEqual(["edge-inventory-to-stock-db", "node-inventory", "node-stock-db"]);
+    await waitForStableViewport(page);
+    const inv1 = await box(page.getByTestId("node-inventory"));
+    const db1 = await box(page.getByTestId("node-stock-db"));
+    await page.mouse.move(inv1.x + inv1.width / 2, inv1.y + inv1.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(inv1.x + inv1.width / 2, inv1.y + inv1.height / 2 - 60, { steps: 6 });
+    await page.mouse.up();
+    const inv2 = await box(page.getByTestId("node-inventory"));
+    const db2 = await box(page.getByTestId("node-stock-db"));
+    expect(inv2.y).toBeLessThan(inv1.y - 30);
+    expect(db2.y - db1.y).toBeCloseTo(inv2.y - inv1.y, 0);
+    expect(await selectedIds(page)).toEqual(["edge-inventory-to-stock-db", "node-inventory", "node-stock-db"]);
     expectNoErrors(consoleErrors);
+  });
+
+  test("Ctrl/Cmd held: the selection box picks only what's wholly inside", async ({ page }) => {
+    const inv = await box(page.getByTestId("node-inventory"));
+    const db = await box(page.getByTestId("node-stock-db"));
+    // Around all of inventory, into the middle of stock-db.
+    await page.mouse.move(inv.x - 20, inv.y - 20);
+    await page.keyboard.down(MOD);
+    await page.mouse.down();
+    await page.mouse.move(db.x + db.width / 3, db.y + db.height + 10, { steps: 8 });
+    await page.mouse.up();
+    await page.keyboard.up(MOD);
+    expect(await selectedIds(page)).toEqual(["node-inventory"]);
+    // The same box without the key touches stock-db too, and takes the edge between them.
+    await page.getByTestId("canvas-wrap").press("Escape");
+    await waitForStableViewport(page);
+    const inv1 = await box(page.getByTestId("node-inventory"));
+    const db1 = await box(page.getByTestId("node-stock-db"));
+    await page.mouse.move(inv1.x - 20, inv1.y - 20);
+    await page.mouse.down();
+    await page.mouse.move(db1.x + db1.width / 3, db1.y + db1.height + 10, { steps: 8 });
+    await page.mouse.up();
+    expect(await selectedIds(page)).toEqual(["edge-inventory-to-stock-db", "node-inventory", "node-stock-db"]);
   });
 
   test("Shift+click adds to the selection and Shift+click again takes it out", async ({ page }) => {
@@ -246,6 +311,21 @@ test.describe("drawing basics", () => {
     await expect(node).toHaveCount(0);
     await expect(page.getByTestId("edge-e-1")).toHaveCount(0);
     expectNoErrors(consoleErrors);
+  });
+
+  test("keys typed right after the pick name the node, even before its editor opens", async ({ page }) => {
+    const from = await box(page.getByTestId("node-dashboard"));
+    await dragFromHandle(page, "dashboard", "bottom", { x: from.x + from.width / 2, y: from.y + from.height + 90 });
+    await expect(page.getByTestId("quick-add")).toBeVisible();
+    await page.keyboard.type("kafka topic");
+    await expect(page.getByTestId("context-menu-item-quick-add:kafka.topic")).toHaveAttribute("data-active", "true");
+    // Enter, then type at once: "t" is the Add text shortcut, and must not add one.
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("tx.audit", { delay: 5 });
+    await expect(page.getByTestId("node-editor-label")).toHaveValue("tx.audit");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("node-topic-1")).toContainText("tx.audit");
+    await expect(page.getByTestId(/^annotation-/)).toHaveCount(0);
   });
 
   test("Esc on the drop's quick-add adds nothing", async ({ page }) => {
@@ -376,6 +456,35 @@ test.describe("drawing basics", () => {
     await expectNoNodeOverlaps(page);
   });
 
+  test("Alt-drag moves the copy to a free drop point, following the pointer", async ({ page }) => {
+    const pay = await box(page.getByTestId("node-payments"));
+    const inv = await box(page.getByTestId("node-inventory"));
+    const from = { x: pay.x + pay.width * 0.4, y: pay.y + pay.height / 2 };
+    // Straight down, below the diagram: free space.
+    const dy = 300;
+    await page.mouse.move(from.x, from.y);
+    await page.keyboard.down("Alt");
+    await page.mouse.down();
+    // React Flow starts a drag on the first move and drops that step: make it a small one.
+    await page.mouse.move(from.x, from.y + 2);
+    await page.mouse.move(from.x, from.y + dy / 2, { steps: 4 });
+    await page.mouse.move(from.x, from.y + dy, { steps: 4 });
+    await page.mouse.up();
+    await page.keyboard.up("Alt");
+    await expect(page.getByTestId("node-payments-1")).toBeVisible();
+    // The inspector opens on the copy and the view may pan to keep it in sight: measure from the original.
+    await waitForStableViewport(page);
+    const copy = await box(page.getByTestId("node-payments-1"));
+    const original = await box(page.getByTestId("node-payments"));
+    // The copy is where the pointer took it (within the 10 px grid at this zoom).
+    const grid = 10 * (await view(page)).zoom + 1;
+    expect(Math.abs(copy.x - original.x)).toBeLessThanOrEqual(grid);
+    expect(Math.abs(copy.y - (original.y + dy))).toBeLessThanOrEqual(grid);
+    // The original stayed: same place relative to its neighbour.
+    const inv0 = await box(page.getByTestId("node-inventory"));
+    expect(original.y - inv0.y).toBeCloseTo(pay.y - inv.y, 0);
+  });
+
   test("Alt-drag drags a copy away and leaves the original; a copy dropped on a node moves clear", async ({ page }) => {
     const pay = await box(page.getByTestId("node-payments"));
     const inv = await box(page.getByTestId("node-inventory"));
@@ -429,6 +538,18 @@ test.describe("drawing basics", () => {
     await expect(page.getByTestId("command-item-action:canvas.zoom-selection")).toBeVisible();
     await page.keyboard.press("Enter");
     await expect.poll(async () => (await view(page)).zoom).toBeGreaterThan(fitted * 1.5);
+
+    // An edge alone zooms to its route.
+    await page.keyboard.press("Shift+Digit1");
+    await waitForStableViewport(page);
+    await page.getByTestId("edge-label-dashboard-to-metrics").click();
+    await page.keyboard.press("Shift+Digit2");
+    await expect.poll(async () => (await view(page)).zoom).toBeGreaterThan(fitted * 1.5);
+    await waitForStableViewport(page);
+    const label = await box(page.getByTestId("edge-label-dashboard-to-metrics"));
+    const pane = await box(page.getByTestId("canvas-wrap"));
+    expect(label.x).toBeGreaterThan(pane.x);
+    expect(label.x + label.width).toBeLessThan(pane.x + pane.width);
 
     await page.getByTestId("shortcuts-button").click();
     await expect(page.getByTestId("shortcuts-dialog")).toContainText("Zoom to selection");

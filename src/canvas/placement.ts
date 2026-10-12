@@ -55,8 +55,21 @@ export function placeFree(
   center: { x: number; y: number },
   size: { width: number; height: number },
   others: readonly Box[],
-  { margin = 32, step = 40, maxRings = 24 }: { margin?: number; step?: number; maxRings?: number } = {},
+  opts: { margin?: number; step?: number; maxRings?: number } = {},
 ): { x: number; y: number } {
+  return findFree(center, size, others, opts) ?? center;
+}
+
+/**
+ * The search behind `placeFree`, with failure made explicit: the free centre nearest `center` within
+ * `maxRings` steps, or null when every candidate is taken.
+ */
+export function findFree(
+  center: { x: number; y: number },
+  size: { width: number; height: number },
+  others: readonly Box[],
+  { margin = 32, step = 40, maxRings = 24 }: { margin?: number; step?: number; maxRings?: number } = {},
+): { x: number; y: number } | null {
   const fits = (cx: number, cy: number) => {
     const b = {
       x: cx - size.width / 2 - margin,
@@ -82,7 +95,7 @@ export function placeFree(
     const hit = spots.find((s) => fits(s.x, s.y));
     if (hit) return { x: hit.x, y: hit.y };
   }
-  return center;
+  return null;
 }
 
 /** The box around all of `boxes`, or null when there are none. */
@@ -133,21 +146,39 @@ export function placeCopy(box: Box, others: readonly Box[], direction: "LR" | "T
       ? [below, right, { x: -gx, y: 0 }, { x: 0, y: -gy }]
       : [right, below, { x: 0, y: -gy }, { x: -gx, y: 0 }];
   for (const d of order) if (isClear({ ...box, x: box.x + d.x, y: box.y + d.y }, others, COPY_MARGIN)) return d;
-  // All four taken: the free place nearest the downstream spot.
+  // All four taken: the free place nearest the downstream spot, else past everything (never on top).
   const first = order[0];
-  const c = { x: box.x + first.x + box.width / 2, y: box.y + first.y + box.height / 2 };
-  const spot = placeFree(c, box, others, { margin: COPY_MARGIN, step: 20, maxRings: 40 });
-  return { x: spot.x - box.width / 2 - box.x, y: spot.y - box.height / 2 - box.y };
+  return clearOffset({ ...box, x: box.x + first.x, y: box.y + first.y }, others, { ...first });
+}
+
+/** Search step for a box this size: finer for small boxes, coarser (so it reaches further) for big ones. */
+const stepFor = (box: Box) => Math.max(20, Math.ceil(Math.max(box.width, box.height) / 200) * 10);
+
+/**
+ * The guaranteed fallback when the search finds nothing: the box moved right of everything in `others`
+ * (by the copy margin), at the same height. Returns how far to move it.
+ */
+export function pastAll(box: Box, others: readonly Box[]): { x: number; y: number } {
+  const all = boundsOf(others);
+  if (!all) return { x: 0, y: 0 };
+  return { x: Math.max(0, all.x + all.width + COPY_MARGIN * 2 - box.x), y: 0 };
 }
 
 /**
  * Keeps a copy that has a wanted spot (the pointer for Ctrl+V, the drop of an Alt-drag) off everything
  * else: `box` already at that spot stays when it's clear, otherwise it moves to the free place nearest
- * it. Returns how far to move it from where it is (zero when it's clear).
+ * it, or past everything when the search runs out. Never returns an overlapping spot. Returns how far
+ * to move it from where it is (`base` added, zero when it's clear).
  */
-export function clearOffset(box: Box, others: readonly Box[]): { x: number; y: number } {
-  if (isClear(box, others, COPY_MARGIN)) return { x: 0, y: 0 };
+export function clearOffset(
+  box: Box,
+  others: readonly Box[],
+  base: { x: number; y: number } = { x: 0, y: 0 },
+): { x: number; y: number } {
+  if (isClear(box, others, COPY_MARGIN)) return base;
   const c = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  const spot = placeFree(c, box, others, { margin: COPY_MARGIN, step: 20, maxRings: 40 });
-  return { x: spot.x - c.x, y: spot.y - c.y };
+  const spot = findFree(c, box, others, { margin: COPY_MARGIN, step: stepFor(box), maxRings: 40 });
+  // The search ran out (a huge copy, a crowded view): past everything rather than on top of it.
+  const d = spot ? { x: spot.x - c.x, y: spot.y - c.y } : pastAll(box, others);
+  return { x: base.x + d.x, y: base.y + d.y };
 }
