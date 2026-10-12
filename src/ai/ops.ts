@@ -184,6 +184,76 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
           result.ids = [...ids];
           break;
         }
+        case "insert_between": {
+          // Against the batch so far: the ends and the connection as they are at this op.
+          let a = node(op.from).id;
+          let b = node(op.to).id;
+          let between = next.edges.filter((e) => e.from === a && e.to === b);
+          if (!between.length) {
+            // Named the other way round: follow the connection that exists.
+            const back = next.edges.filter((e) => e.from === b && e.to === a);
+            if (back.length) [a, b, between] = [b, a, back];
+          }
+          if (!between.length)
+            throw new Error(
+              `No connection from ${JSON.stringify(op.from)} to ${JSON.stringify(op.to)} to insert into.`,
+            );
+          if (between.length > 1)
+            throw new Error(
+              `${between.length} connections join ${JSON.stringify(op.from)} and ${JSON.stringify(op.to)}: remove one, or add and connect instead.`,
+            );
+          const old = between[0];
+          const stencil = resolveKind(op.kind, op.label);
+          const id = uniqueId(stencilIdBase(stencil.id), allIds());
+          const from = next.nodes.find((n) => n.id === a);
+          const to = next.nodes.find((n) => n.id === b);
+          next.nodes.push({
+            id,
+            stencil: stencil.id,
+            label: op.label,
+            x: 0,
+            y: 0,
+            ...(op.sublabel !== undefined ? { sublabel: op.sublabel } : {}),
+            // Between two nodes of one boundary, it joins that boundary.
+            ...(from?.group && from.group === to?.group ? { group: from.group } : {}),
+          });
+          if (from?.group && from.group === to?.group) touched.add(from.group);
+          fresh.push(id);
+          // The replaced connection's meaning carries over: kind, relation and props on both; its label
+          // and source side on the first, its target side on the second.
+          const carried = {
+            ...(old.kind ? { kind: old.kind } : {}),
+            ...(old.relation ? { relation: old.relation } : {}),
+          };
+          const props = () => (old.props ? { props: structuredClone(old.props) } : {});
+          next.edges = next.edges.filter((e) => e.id !== old.id);
+          index.remove(old.id);
+          const first = uniqueId("e", allIds());
+          next.edges.push({
+            id: first,
+            from: a,
+            to: id,
+            ...carried,
+            ...(old.label !== undefined ? { label: old.label } : {}),
+            ...(old.sourceSide ? { sourceSide: old.sourceSide } : {}),
+            ...props(),
+          });
+          index.refresh(next, first);
+          const second = uniqueId("e", allIds());
+          next.edges.push({
+            id: second,
+            from: id,
+            to: b,
+            ...carried,
+            ...(old.targetSide ? { targetSide: old.targetSide } : {}),
+            ...props(),
+          });
+          index.refresh(next, second);
+          Object.assign(result, { id, label: op.label, stencil, from: a, to: b });
+          if (stencil.confidence === "low")
+            warnings.push(`Kind ${JSON.stringify(op.kind)} resolved to ${stencil.id} with low confidence.`);
+          break;
+        }
         case "add_boundary": {
           const members = op.members.map(node);
           const id = uniqueId("boundary", allIds());

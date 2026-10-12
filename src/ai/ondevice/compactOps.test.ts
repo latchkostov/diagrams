@@ -3,17 +3,15 @@ import type { DiagramFile } from "../../model/types";
 import kafka from "../../examples/kafka-order-pipeline.json";
 import { applyOps } from "../index";
 import { toOps } from "./compactOps";
+import { perfBudget } from "../../test/perfBudget";
 
 const KAFKA = kafka as unknown as DiagramFile;
 const EMPTY: DiagramFile = { format: "diagrams/v1", title: "t", nodes: [], edges: [] };
 const reply = (ops: object[]) => JSON.stringify({ summary: "s", ops });
+type Scope = { id: string; label: string; kind: "node" }[];
 
 /** The reply's ops applied to `diagram`: the edges as "from label -> to label". */
-function apply(
-  diagram: DiagramFile,
-  ops: object[],
-  ctx: { request?: string; scope?: { id: string; label: string; kind: "node" }[] } = {},
-) {
+function apply(diagram: DiagramFile, ops: object[], ctx: { request?: string; scope?: Scope } = {}) {
   const r = toOps(reply(ops), { diagram, ...ctx });
   if (!r.ok) throw new Error(r.error);
   const out = applyOps(diagram, r.ops);
@@ -23,12 +21,16 @@ function apply(
     diagram: out.diagram,
     ops: r.ops,
     edges: out.diagram.edges.map((e) => `${label.get(e.from)} -> ${label.get(e.to)}`),
-    stencil: (l: string) => out.diagram.nodes.find((n) => n.label === l)?.stencil,
+    node: (l: string) => out.diagram.nodes.find((n) => n.label === l),
   };
 }
+const error = (diagram: DiagramFile, ops: object[], ctx: { request?: string; scope?: Scope } = {}) => {
+  const r = toOps(reply(ops), { diagram, ...ctx });
+  return r.ok ? null : r.error;
+};
 
 describe("toOps: the format", () => {
-  it("maps each op onto the core's ops", () => {
+  it("maps each op onto the core's ops, existing references pinned to ids", () => {
     const r = toOps(
       reply([
         { op: "add", key: "c", kind: "Redis cache", label: "cache", sublabel: "orders" },
@@ -36,6 +38,14 @@ describe("toOps: the format", () => {
         { op: "rename", target: "Order service", label: "Orders" },
         { op: "change_kind", target: "Orders database", kind: "MongoDB" },
         { op: "remove", target: "Order service -> Orders database" },
+        {
+          op: "insert_between",
+          key: "r",
+          kind: "queue",
+          label: "relay",
+          from: "Payments service",
+          to: "Payment ledger",
+        },
       ]),
       { diagram: KAFKA },
     );
@@ -43,41 +53,111 @@ describe("toOps: the format", () => {
       ok: true,
       summary: "s",
       ops: [
-        { op: "add_node", kind: "Redis cache", label: "cache", key: "c", sublabel: "orders" },
-        { op: "connect", from: "Order service", to: "c", kind: "sync" },
-        { op: "update", target: "Order service", label: "Orders" },
-        { op: "update", target: "Orders database", kind: "MongoDB" },
-        { op: "remove", targets: ["Order service -> Orders database"] },
+        { op: "add_node", kind: "Redis cache", label: "cache", key: "~c", sublabel: "orders" },
+        { op: "connect", from: "orders", to: "~c", kind: "sync" },
+        { op: "update", target: "orders", label: "Orders" },
+        { op: "update", target: "order-db", kind: "MongoDB" },
+        { op: "remove", targets: ["orders -> order-db"] },
+        { op: "insert_between", from: "payments", to: "payment-db", kind: "queue", label: "relay", key: "~r" },
       ],
     });
   });
 
   it("says what's missing, op by op", () => {
-    const ctx = { diagram: EMPTY };
-    expect(toOps("not json", ctx)).toEqual({ ok: false, error: "The reply wasn't JSON." });
-    expect(toOps("{}", ctx)).toMatchObject({ error: 'The reply needs an "ops" array.' });
-    expect(toOps(reply([]), ctx)).toMatchObject({ error: "The reply has no ops." });
-    expect(toOps(reply([{ op: "add", label: "x" }]), ctx)).toMatchObject({
-      error: 'Op 1 (add) needs "kind" and "label".',
-    });
-    expect(toOps(reply([{ op: "rename", target: "x" }]), ctx)).toMatchObject({
-      error: 'Op 1 (rename) needs "target" and the new "label".',
-    });
-    expect(toOps(reply([{ op: "insert_between", kind: "x", label: "y" }]), ctx)).toMatchObject({ ok: false });
-    expect(toOps(reply([{ op: "fly" }]), ctx)).toMatchObject({ ok: false });
-    expect(toOps(reply(Array.from({ length: 17 }, () => ({ op: "remove", target: "x" }))), ctx)).toMatchObject({
-      error: "Use at most 16 ops.",
-    });
-  });
-
-  it("gives every added node a key that can't collide with an existing id", () => {
-    const r = toOps(reply([{ op: "add", kind: "Redis cache", label: "payments" }]), { diagram: KAFKA });
-    expect(r.ok && r.ops[0]).toMatchObject({ op: "add_node", key: "payments-new" });
+    expect(error(EMPTY, [])).toBe("The reply has no ops.");
+    expect(toOps("not json", { diagram: EMPTY })).toEqual({ ok: false, error: "The reply wasn't JSON." });
+    expect(toOps("{}", { diagram: EMPTY })).toMatchObject({ error: 'The reply needs an "ops" array.' });
+    expect(error(EMPTY, [{ op: "add", label: "x" }])).toBe('Op 1 (add) needs "kind" and "label".');
+    expect(error(EMPTY, [{ op: "rename", target: "x" }])).toBe('Op 1 (rename) needs "target" and the new "label".');
+    expect(error(EMPTY, [{ op: "insert_between", kind: "x", label: "y" }])).toMatch(/needs "kind", "label", "from"/);
+    expect(error(EMPTY, [{ op: "fly" }])).toMatch(/"op" must be one of/);
+    expect(
+      error(
+        EMPTY,
+        Array.from({ length: 17 }, () => ({ op: "remove", target: "x" })),
+      ),
+    ).toBe("Use at most 16 ops.");
   });
 });
 
-describe("toOps: references to nodes of the same reply", () => {
-  it("by key, by label in any case, and by kind", () => {
+describe("toOps: keys", () => {
+  it("live where no element id can, so they never collide with ids made in the same batch", () => {
+    // "cache-1" is the id the core gives the first Redis cache; as a key it must still mean the worker.
+    const { edges } = apply(EMPTY, [
+      { op: "add", key: "cache-1", kind: "Go service", label: "Worker" },
+      { op: "add", key: "c", kind: "Redis cache", label: "Cache" },
+      { op: "connect", from: "cache-1", to: "c" },
+    ]);
+    expect(edges).toEqual(["Worker -> Cache"]);
+  });
+
+  it("a key that is already an element's id or label is an error, for the retry to fix", () => {
+    const withBoundary = {
+      ...KAFKA,
+      groups: [{ id: "boundary-1", label: "Cloud", x: 0, y: 0, width: 10, height: 10 }],
+    } as DiagramFile;
+    expect(error(withBoundary, [{ op: "add", key: "boundary-1", kind: "Go service", label: "Worker" }])).toMatch(
+      /Key "boundary-1" is already an element's id or label/,
+    );
+    expect(error(KAFKA, [{ op: "add", key: "payments", kind: "queue", label: "q" }])).toMatch(/already an element/);
+    expect(error(KAFKA, [{ op: "add", key: "Order service", kind: "queue", label: "q" }])).toMatch(
+      /already an element/,
+    );
+    expect(
+      error(EMPTY, [
+        { op: "add", key: "a", kind: "queue", label: "q1" },
+        { op: "add", key: "A", kind: "queue", label: "q2" },
+      ]),
+    ).toMatch(/used twice/);
+  });
+});
+
+describe("toOps: reference precedence", () => {
+  it("existing exact labels win over identical same-reply labels", () => {
+    const { diagram } = apply(KAFKA, [
+      { op: "add", key: "copy", kind: "Go service", label: "Payments service" },
+      { op: "rename", target: "Payments service", label: "Billing service" },
+    ]);
+    expect(diagram.nodes.find((n) => n.id === "payments")?.label).toBe("Billing service");
+    expect(diagram.nodes.filter((n) => n.label === "Payments service")).toHaveLength(1);
+  });
+
+  it("a new key that names an existing label in another case is an error, not a self-loop", () => {
+    const api: DiagramFile = {
+      ...EMPTY,
+      nodes: [{ id: "svc", stencil: "service.node", label: "API", x: 0, y: 0 }],
+    };
+    expect(
+      error(api, [
+        { op: "add", key: "api", kind: "Go service", label: "API v2" },
+        { op: "connect", from: "API", to: "api" },
+      ]),
+    ).toMatch(/Key "api" is already an element's id or label/);
+    // With its own key, both ends keep their meaning.
+    const { edges } = apply(api, [
+      { op: "add", key: "v2", kind: "Go service", label: "API v2" },
+      { op: "connect", from: "API", to: "v2" },
+    ]);
+    expect(edges).toEqual(["API -> API v2"]);
+  });
+
+  it("a name both an existing node and a new node answer to (ignoring case) is an error, not a pick", () => {
+    expect(
+      error(KAFKA, [
+        { op: "add", kind: "queue", label: "payments service" },
+        { op: "connect", from: "PAYMENTS SERVICE", to: "Payment ledger" },
+      ]),
+    ).toMatch(/could be an existing element or a new node/);
+    expect(
+      error(EMPTY, [
+        { op: "add", kind: "Python service", label: "A" },
+        { op: "add", kind: "Python service", label: "B" },
+        { op: "connect", from: "Python service", to: "A" },
+      ]),
+    ).toMatch(/kind of 2 new nodes/);
+  });
+
+  it("new nodes by key, by label in any case, by kind and by a shared word", () => {
     const { edges } = apply(EMPTY, [
       { op: "add", key: "job", kind: "Python service", label: "Indexer" },
       { op: "add", key: "db", kind: "PostgreSQL", label: "Index" },
@@ -86,27 +166,15 @@ describe("toOps: references to nodes of the same reply", () => {
       { op: "connect", from: "SQS", to: "indexer" },
     ]);
     expect(edges).toEqual(["Indexer -> Index", "Inbox -> Indexer"]);
-  });
-
-  it('by a word of its label or kind: "Python job" is the node added as a Python service', () => {
-    const { edges } = apply(EMPTY, [
+    const word = apply(EMPTY, [
       { op: "add", kind: "Python service", label: "Job runner" },
       { op: "add", kind: "pg", label: "Store" },
       { op: "connect", from: "Python job", to: "pg" },
     ]);
-    expect(edges).toEqual(["Job runner -> Store"]);
-  });
-
-  it("an existing node's exact label wins over a fuzzy new one", () => {
-    const { edges } = apply(KAFKA, [
-      { op: "add", key: "inv-dlq", kind: "queue", label: "Inventory DLQ" },
-      { op: "connect", from: "Inventory service", to: "inv-dlq" },
-    ]);
-    expect(edges).toContain("Inventory service -> Inventory DLQ");
+    expect(word.edges).toEqual(["Job runner -> Store"]);
   });
 
   it("a unique new node is never swapped for an unrelated existing one", () => {
-    // "Container Apps" is the kind of the node added as "API"; the core alone would fail or guess.
     const { edges } = apply(EMPTY, [
       { op: "add", kind: "Container Apps", label: "API" },
       { op: "add", kind: "Cosmos DB", label: "State" },
@@ -117,65 +185,45 @@ describe("toOps: references to nodes of the same reply", () => {
 });
 
 describe("toOps: hard edits", () => {
-  it("insert_between removes the direct connection and goes through the new node", () => {
-    const { edges, stencil } = apply(KAFKA, [
+  it("insert_between goes through the core: the old connection's meaning carries over", () => {
+    const { edges, diagram, node } = apply(KAFKA, [
       {
         op: "insert_between",
-        key: "c",
-        kind: "Redis cache",
-        label: "Orders cache",
-        from: "Order service",
-        to: "Orders database",
+        key: "r",
+        kind: "queue",
+        label: "Relay",
+        from: "orders.created.v1",
+        to: "Inventory service",
       },
     ]);
-    expect(edges).not.toContain("Order service -> Orders database");
-    expect(edges).toEqual(expect.arrayContaining(["Order service -> Orders cache", "Orders cache -> Orders database"]));
-    expect(stencil("Orders cache")).toBe("redis.cache");
+    expect(edges).not.toContain("orders.created.v1 -> Inventory service");
+    const relay = node("Relay")!;
+    const first = diagram.edges.find((e) => e.to === relay.id)!;
+    const second = diagram.edges.find((e) => e.from === relay.id)!;
+    expect(first).toMatchObject({ kind: "async", label: "Reserve inventory" });
+    expect(first.props).toMatchObject({ filter: ["OrderPlaced"], group: "inventory-reservations" });
+    expect(second.props).toMatchObject({ filter: ["OrderPlaced"], group: "inventory-reservations" });
   });
 
-  it("insert_between follows the existing connection when the ends are named the other way round", () => {
-    const { edges, diagram } = apply(KAFKA, [
-      {
-        op: "insert_between",
-        kind: "Redis cache",
-        label: "Orders cache",
-        from: "Orders database",
-        to: "Order service",
-      },
-    ]);
-    expect(edges).toEqual(expect.arrayContaining(["Order service -> Orders cache", "Orders cache -> Orders database"]));
-    // The new connections keep the old one's kind (a request).
-    const cache = diagram.nodes.find((n) => n.label === "Orders cache")!;
-    expect(diagram.edges.filter((e) => e.from === cache.id || e.to === cache.id).map((e) => e.kind)).toEqual([
-      "sync",
-      "sync",
-    ]);
-  });
-
-  it("a rename with only a kind is a kind change; a change_kind with only a label is a rename", () => {
-    expect(
-      apply(KAFKA, [{ op: "rename", target: "Orders database", kind: "MongoDB" }]).stencil("Orders database"),
-    ).toBe("mongodb");
-    expect(
-      apply(KAFKA, [{ op: "change_kind", target: "Payments service", label: "Billing service" }]).stencil(
-        "Billing service",
-      ),
-    ).toBe("service.go");
-  });
-
-  it('"between", answered with plain connects, still drops the direct connection', () => {
-    const { edges } = apply(
+  it('a "between" answered with plain connects becomes insert_between, keeping the connection\'s kind', () => {
+    const { edges, diagram, node } = apply(
       KAFKA,
       [
         { op: "add", key: "c", kind: "Redis cache", label: "Orders cache" },
-        { op: "connect", from: "Order service", to: "c", flow: "request" },
-        { op: "connect", from: "c", to: "Orders database", flow: "request" },
+        { op: "remove", target: "Order service -> Orders database" },
+        { op: "connect", from: "Order service", to: "c", flow: "message" },
+        { op: "connect", from: "c", to: "Orders database", flow: "message" },
       ],
       { request: "Put a Redis cache between Order service and Orders database" },
     );
     expect(edges).not.toContain("Order service -> Orders database");
     expect(edges).toEqual(expect.arrayContaining(["Order service -> Orders cache", "Orders cache -> Orders database"]));
-    // Without "between", nothing is removed.
+    const cache = node("Orders cache")!;
+    expect(diagram.edges.filter((e) => e.from === cache.id || e.to === cache.id).map((e) => e.kind)).toEqual([
+      "sync",
+      "sync",
+    ]);
+    // Without "between", plain connects stay plain and nothing is removed.
     const plain = apply(KAFKA, [
       { op: "add", key: "c", kind: "Redis cache", label: "Orders cache" },
       { op: "connect", from: "Order service", to: "c" },
@@ -184,17 +232,36 @@ describe("toOps: hard edits", () => {
     expect(plain.edges).toContain("Order service -> Orders database");
   });
 
-  it("change_kind swaps the stencil, keeping the label and the connections", () => {
-    const before = KAFKA.edges.filter((e) => e.from === "order-db" || e.to === "order-db").length;
-    const { diagram } = apply(KAFKA, [{ op: "change_kind", target: "Orders database", kind: "MongoDB" }]);
-    const n = diagram.nodes.find((x) => x.id === "order-db")!;
-    expect(n).toMatchObject({ stencil: "mongodb", label: "Orders database" });
-    expect(diagram.edges.filter((e) => e.from === "order-db" || e.to === "order-db")).toHaveLength(before);
+  it("an insert_between plus a remove of the same connection: the remove is dropped", () => {
+    const { edges } = apply(KAFKA, [
+      { op: "remove", target: "Order service -> Orders database" },
+      {
+        op: "insert_between",
+        kind: "Redis cache",
+        label: "Orders cache",
+        from: "Order service",
+        to: "Orders database",
+      },
+    ]);
+    expect(edges).toEqual(expect.arrayContaining(["Order service -> Orders cache", "Orders cache -> Orders database"]));
+  });
+
+  it("a rename with only a kind is a kind change; a change_kind with only a label is a rename", () => {
+    expect(
+      apply(KAFKA, [{ op: "rename", target: "Orders database", kind: "MongoDB" }]).node("Orders database")?.stencil,
+    ).toBe("mongodb");
+    expect(
+      apply(KAFKA, [{ op: "change_kind", target: "Payments service", label: "Billing service" }]).node(
+        "Billing service",
+      )?.stencil,
+    ).toBe("service.go");
   });
 });
 
 describe("toOps: the selection", () => {
-  const scope = [{ id: "payments", label: "Payments service", kind: "node" as const }];
+  const scope: Scope = [{ id: "payments", label: "Payments service", kind: "node" }];
+  /** The connections touching the new queue. */
+  const touchingRetry = (edges: string[]) => edges.filter((e) => e.includes("payments-retry"));
 
   it('"this" names the selected node', () => {
     const { edges } = apply(
@@ -205,19 +272,23 @@ describe("toOps: the selection", () => {
       ],
       { request: "Add a retry queue after this", scope },
     );
-    expect(edges).toContain("Payments service -> payments-retry");
+    expect(touchingRetry(edges)).toEqual(["Payments service -> payments-retry"]);
   });
 
-  it('"after this" connects a new node the reply left hanging, from the selection', () => {
-    const { edges } = apply(KAFKA, [{ op: "add", kind: "queue", label: "payments-retry" }], {
-      request: "Add a retry queue after this",
-      scope,
-    });
-    expect(edges).toContain("Payments service -> payments-retry");
+  it('"after this" with a correct label-based connection adds nothing more', () => {
+    const { edges } = apply(
+      KAFKA,
+      [
+        { op: "add", key: "r", kind: "queue", label: "payments-retry" },
+        { op: "connect", from: "Payments service", to: "r" },
+      ],
+      { request: "Add a retry queue after this", scope },
+    );
+    expect(touchingRetry(edges)).toEqual(["Payments service -> payments-retry"]);
   });
 
-  it('"after this" turns a connection drawn into the selection; "before this" the other way', () => {
-    const after = apply(
+  it('"after this" replaces a reversed label-based connection, not adds a second one', () => {
+    const { edges } = apply(
       KAFKA,
       [
         { op: "add", key: "r", kind: "queue", label: "payments-retry" },
@@ -225,41 +296,95 @@ describe("toOps: the selection", () => {
       ],
       { request: "Add a retry queue after this", scope },
     );
-    expect(after.edges).toContain("Payments service -> payments-retry");
-    const before = apply(KAFKA, [{ op: "add", kind: "API gateway", label: "Pay gateway" }], {
-      request: "Put a gateway before this",
+    expect(touchingRetry(edges)).toEqual(["Payments service -> payments-retry"]);
+  });
+
+  it('"before this" turns a connection drawn out of the selection, and connects a hanging node', () => {
+    const turned = apply(
+      KAFKA,
+      [
+        { op: "add", key: "g", kind: "API gateway", label: "Pay gateway" },
+        { op: "connect", from: "Payments service", to: "g" },
+      ],
+      { request: "Put a gateway before this", scope },
+    );
+    expect(turned.edges.filter((e) => e.includes("Pay gateway"))).toEqual(["Pay gateway -> Payments service"]);
+    const hanging = apply(KAFKA, [{ op: "add", kind: "queue", label: "payments-retry" }], {
+      request: "Add a retry queue after this",
       scope,
     });
-    expect(before.edges).toContain("Pay gateway -> Payments service");
+    expect(touchingRetry(hanging.edges)).toEqual(["Payments service -> payments-retry"]);
   });
 });
 
 describe("toOps: direction", () => {
-  const consume = [
+  const nodes = [
     { op: "add", key: "j", kind: "Java service", label: "Worker" },
     { op: "add", key: "t", kind: "Kafka topic", label: "Events" },
-    { op: "connect", from: "j", to: "t" },
   ];
 
   it.each([
     "Java consumes a Kafka topic",
-    "An Azure function consumes a Service Bus queue",
     "The worker reads from a Kafka topic",
     "A Java service subscribes to the topic",
-  ])("%s: a service drawn into the topic it reads is turned round", (request) => {
-    expect(apply(EMPTY, consume, { request }).edges).toEqual(["Events -> Worker"]);
+  ])("%s: the consumed pair drawn the wrong way round is turned", (request) => {
+    expect(apply(EMPTY, [...nodes, { op: "connect", from: "j", to: "t" }], { request }).edges).toEqual([
+      "Events -> Worker",
+    ]);
   });
 
-  it("leaves mixed or produce-only requests, and other pairs, as drawn", () => {
-    expect(apply(EMPTY, consume, { request: "Java publishes to a Kafka topic" }).edges).toEqual(["Worker -> Events"]);
-    expect(apply(EMPTY, consume, { request: "Java consumes a topic and writes to it" }).edges).toEqual([
-      "Worker -> Events",
-    ]);
+  it("only that pair: the other connections of a mixed request stay as drawn", () => {
+    const withSqs = [...nodes, { op: "add", key: "q", kind: "SQS", label: "Outbox" }];
+    const request = "Java consumes a Kafka topic and forwards events to SQS";
+    // Right as it is.
+    expect(
+      apply(EMPTY, [...withSqs, { op: "connect", from: "t", to: "j" }, { op: "connect", from: "j", to: "q" }], {
+        request,
+      }).edges,
+    ).toEqual(["Events -> Worker", "Worker -> Outbox"]);
+    // The consumed pair turned, the forward left alone.
+    expect(
+      apply(EMPTY, [...withSqs, { op: "connect", from: "j", to: "t" }, { op: "connect", from: "j", to: "q" }], {
+        request,
+      }).edges,
+    ).toEqual(["Events -> Worker", "Worker -> Outbox"]);
+  });
+
+  it("nothing is turned without a consume verb, or when the consumed thing isn't a queue, topic or stream", () => {
+    const wrong = [...nodes, { op: "connect", from: "j", to: "t" }];
+    expect(apply(EMPTY, wrong, { request: "Java publishes to a Kafka topic" }).edges).toEqual(["Worker -> Events"]);
     const db = [
       { op: "add", key: "j", kind: "Java service", label: "Worker" },
       { op: "add", key: "d", kind: "PostgreSQL", label: "DB" },
       { op: "connect", from: "j", to: "d" },
     ];
     expect(apply(EMPTY, db, { request: "Java consumes data from Postgres" }).edges).toEqual(["Worker -> DB"]);
+  });
+});
+
+describe("toOps: cost", () => {
+  it("one reference index per reply: a big diagram stays fast", () => {
+    const n = 5000;
+    const big: DiagramFile = {
+      ...EMPTY,
+      nodes: Array.from({ length: n }, (_, i) => ({
+        id: `n${i}`,
+        stencil: i % 2 ? "kafka.topic" : "service.java",
+        label: `Node ${i}`,
+        x: (i % 100) * 300,
+        y: Math.floor(i / 100) * 200,
+      })),
+      edges: Array.from({ length: 20000 }, (_, i) => ({ id: `e${i}`, from: `n${i % n}`, to: `n${(i * 7 + 1) % n}` })),
+    };
+    const ops = Array.from({ length: 16 }, (_, i) => ({
+      op: "connect",
+      from: `Node ${2 * i}`,
+      to: `Node ${2 * i + 1}`,
+    }));
+    const t0 = performance.now();
+    const r = toOps(reply(ops), { diagram: big, request: "Node 0 consumes Node 1 and the rest" });
+    const ms = performance.now() - t0;
+    expect(r.ok).toBe(true);
+    expect(ms).toBeLessThan(perfBudget(400));
   });
 });

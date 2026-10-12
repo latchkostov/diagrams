@@ -70,19 +70,38 @@ read from a `VITE_` variable, so builds without it still deploy.
     selection), created once and `clone()`d per request. The examples use made-up names (Zephyr, Quill);
     a unit test checks that none of them appears in any eval request.
   - **Forgiving what a small model gets wrong** (`compactOps.ts`), each rule unit-tested:
-    - References to nodes added in the same reply resolve by key, by label in any case, by kind, then by
-      a shared word ("Python job" is the node added as a Python service). A unique new node is never
-      swapped for an unrelated existing one, and an existing node's exact label still wins.
-    - `insert_between` adds the node, removes the direct connection (following it if the ends are named
-      the other way round) and connects both sides with the old connection's kind. A "between" request
-      answered with plain connects drops the bypassed connection too.
+    - **References** resolve in one precedence order, in one place (`ReplyRefs` in `src/ai/refs.ts`):
+      1. an existing element's exact id;
+      2. an existing element's exact label;
+      3. a key the reply set;
+      4. ignoring case and spaces, an existing label or a new node's key or label;
+      5. a new node's kind;
+      6. a word shared with exactly one new node ("Python job" for the node added as a Python service);
+      7. the core's own resolution, pinned to an id.
+
+      Anything ambiguous is an error for the retry to fix, never a silent pick: a name both an existing
+      and a new node answer to, two new nodes of the same kind, or a model key that's already an
+      element's id or label. Batch keys start with `~`, which no element id can, so they can't collide
+      with ids made in the same batch. One reference index serves the whole reply: 5,000 nodes and
+      20,000 edges convert in well under 100 ms.
+
+    - **`insert_between` is a core op** (also in the published ops schema and llms.txt). It runs against
+      the batch so far, so it sees renames and connections made earlier in the same call. It follows the
+      connection if the ends are named the other way round, and fails when there isn't exactly one
+      connection to replace. Both new connections keep the old one's kind, relation and props (routing:
+      `filter`, `group`, `travelMs`, settings). Its label and source side go on the first new connection,
+      its target side on the second. Between two nodes of one boundary, the new node joins that boundary.
+      A "between" request answered with add and plain connects becomes this op. So does an
+      `insert_between` with a remove of the same connection: the remove is dropped.
     - `change_kind` swaps the stencil and keeps the label and connections. A `rename` with only a kind is a
       kind change, and a `change_kind` with only a label is a rename.
-    - "this" is the selected node. With "after this" (or "before this"), a new node the reply left
-      unconnected is connected from (or to) the selection, and one drawn the wrong way round is turned.
-    - With a consume verb ("consumes", "reads from", "subscribes to", "is fed by") and no produce verb in
-      the request, a connection drawn from a service into a queue, topic or stream is turned round. This
-      is deliberately narrow: other pairs and mixed requests rely on the prompt's rules.
+    - "this" is the selected node. With "after this" (or "before this"), a connection between the
+      selection and a new node drawn the wrong way round is turned (never doubled), and a new node left
+      unconnected is connected from (or to) the selection.
+    - **Direction:** only the pair a request describes with a consume verb ("Java consumes a Kafka topic":
+      subject and object each matched to one node), and only when the consumed object is a queue, topic
+      or stream. If the reply draws that one connection the wrong way round, it is turned. Other
+      connections, including the rest of a mixed request ("…and forwards events to SQS"), stay as drawn.
   - **Checking:** `toOps` maps the reply onto the core's ops, and `planTurn` (`applyOps`: `resolveKind`,
     `placeNew`, validation) plans it. If either fails, the error (with candidate labels) goes back to the
     model once. A second failure shows "Couldn't apply that. Try rephrasing." and nothing is applied. A
