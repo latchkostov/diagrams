@@ -2,6 +2,8 @@
 // The app's URL state (src/lib/urlState.ts) owns view / example / present; these extra params are
 // read once when the canvas mounts and mirrored with replaceState so a live link can be copied.
 
+import { updateLiveKeys } from "../lib/urlState";
+
 export interface LiveParams {
   live: boolean;
   /** Saved simulation id, or null for free play. */
@@ -28,16 +30,16 @@ export function parseLiveParams(search: string): LiveParams {
 
 export const readLiveParams = (): LiveParams => parseLiveParams(window.location.search);
 
-/** Mirrors live state into the address bar without adding history entries. */
+/**
+ * Mirrors live state into the address bar without adding history entries. The keys belong to the
+ * diagram on screen (src/lib/urlState.ts), so they stay off the URL of an example that is still loading.
+ */
 export function writeLiveParams(live: boolean, sim: string | null): void {
-  const p = new URLSearchParams(window.location.search);
-  if (p.get("view") !== "canvas") return;
-  if (live) p.set("live", "1");
-  else p.delete("live");
-  if (live && sim) p.set("sim", sim);
-  else p.delete("sim");
-  if (!live) for (const k of ["speed", "paused", "traffic"]) p.delete(k);
-  const url = `${window.location.pathname}?${p}${window.location.hash}`;
-  if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`)
-    window.history.replaceState(window.history.state, "", url);
+  updateLiveKeys((p) => {
+    if (live) p.set("live", "1");
+    else p.delete("live");
+    if (live && sim) p.set("sim", sim);
+    else p.delete("sim");
+    if (!live) for (const k of ["speed", "paused", "traffic"]) p.delete(k);
+  });
 }
