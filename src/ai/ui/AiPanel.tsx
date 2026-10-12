@@ -16,7 +16,8 @@ import type { DiagramFile } from "../../model/types";
 import { notify } from "../../interop/ui/toast";
 import { paletteHost } from "../../palette/host";
 import { getStencil } from "../../stencils/registry";
-import { canUseOnDevice, privacyOf, PRIVATE_AI_OFF } from "../../lib/localOnly";
+import { canUseAiHistory, canUseOnDevice, privacyOf, PRIVATE_AI_OFF } from "../../lib/localOnly";
+import { AI_TOOLS, ON_DEVICE } from "../../lib/deployment";
 import { LOCAL_ONLY_MESSAGE } from "../privacy";
 import { choiceIsCurrent, diffDiagrams, summarize, swapStencil, type StencilChoice } from "./apply";
 import { dismissAppliedToast, markElements, showApplied } from "./feedback";
@@ -26,7 +27,7 @@ import { threads, useThread } from "./threadStore";
 import type { TurnRecord } from "./commitTurn";
 import { Advanced } from "./Advanced";
 import { readAdvancedOpen } from "./advancedPref";
-import { ChoiceRow } from "./parts";
+import { ChoiceRow, OnDevicePreference } from "./parts";
 import { resolveScope } from "./context";
 import { AgentStatus, HowTo } from "./HowTo";
 import type { PanelRequest } from "./AiMount";
@@ -40,7 +41,8 @@ import "./ai.css";
 // copy-and-paste flow lives in Advanced, closed by default.
 
 // Chrome's built-in model: its request box loads only where the Prompt API is and it's turned on.
-const OnDeviceInput = lazy(() => import("../ondevice/OnDeviceInput"));
+// A copy deployed without it (src/lib/deployment.ts) has neither the box nor its chunk.
+const OnDeviceInput = ON_DEVICE ? lazy(() => import("../ondevice/OnDeviceInput")) : null;
 
 const editorNow = (): EditorApi | null => paletteHost.get().canvas?.editor ?? null;
 
@@ -66,16 +68,18 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const privateDiagram = privacy === "private";
   /** A private diagram may use the on-device model once the person allows it (a local-only one never). */
   const onDeviceAllowed = canUseOnDevice(canvas);
+  /** Undo this change, Revert to here and stencil choices on turns already made (whichever AI made them). */
+  const historyAllowed = canUseAiHistory(canvas);
   const titleId = useId();
   const turns = useThread(documentId);
   const historyEnd = useRef<HTMLLIElement>(null);
   const panelRef = useRef<HTMLElement>(null);
-  const [mcp] = useState(hasModelContext);
+  const [mcp] = useState(() => AI_TOOLS && hasModelContext());
   const live = !!canvas?.live;
   // The on-device model: offered (in Advanced) where Chrome has it; its box shows once turned on.
   const [model, setModel] = useModelAvailability();
   const [onDeviceOn, setOnDeviceOn] = useState(readOnDevice);
-  const offerOnDevice = !!model && model !== "unavailable";
+  const offerOnDevice = ON_DEVICE && !!model && model !== "unavailable";
   // A private diagram shows the box only once its on-device model is allowed (the note has the switch).
   const onDevice = offerOnDevice && onDeviceOn && (!privateDiagram || onDeviceAllowed);
   /** The box is there to type in (not still waiting for its download). */
@@ -162,7 +166,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
 
   const swap = (turn: ThreadTurn, choice: StencilChoice, stencilId: string) => {
     const ed = editorNow();
-    if (!ed || !onDeviceAllowed || !choiceIsCurrent(ed.getDiagram(), choice))
+    if (!ed || !historyAllowed || !choiceIsCurrent(ed.getDiagram(), choice))
       return notify("This stencil choice is stale: its node changed since.", { kind: "error" });
     const plan = swapStencil(ed.getDiagram(), choice.nodeId, stencilId, choice.node);
     if (!plan.ok) return notify(plan.error.error, { kind: "error" });
@@ -216,7 +220,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   /** Revert to here: the diagram as it was after this turn, as one undo step (and a turn of its own). */
   const revertTo = (turn: ThreadTurn) => {
     const ed = editorNow();
-    if (!ed || !turn.after || !onDeviceAllowed) return;
+    if (!ed || !turn.after || !historyAllowed) return;
     const before = ed.getDiagram();
     const historyKey = `ai:${turnId()}`;
     try {
@@ -324,7 +328,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
             <p className="ai-private-title">
               <Icon name="lock" size={13} /> {PRIVATE_AI_OFF}
             </p>
-            <p>Agents, Copy for AI and copied prompts can&apos;t read it.</p>
+            {AI_TOOLS && <p>Agents, Copy for AI and copied prompts can&apos;t read it.</p>}
             {offerOnDevice && (
               <label className="ai-ondevice-pref" data-testid="ai-private-ondevice">
                 <input
@@ -348,7 +352,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
                 current={current}
                 atThisTurn={atTurn.get(t.id) ?? false}
                 canUndo={!!t.historyKey && t.historyKey === undoTarget}
-                canChange={!!editor && onDeviceAllowed}
+                canChange={!!editor && historyAllowed}
                 onUndo={() => undoTurn(t)}
                 onRevert={() => revertTo(t)}
                 onSwap={(c, id) => swap(t, c, id)}
@@ -359,18 +363,29 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         ) : privateDiagram ? null : (
           <div className="ai-empty" data-testid="ai-empty">
             <h3>{localOnly ? "AI is off for this diagram" : "Change this diagram with AI"}</h3>
-            {!localOnly && (
+            {!localOnly && AI_TOOLS && (
               <p>
                 {typeHere ? "Type a change below, or ask an AI agent." : "Ask an AI agent to change it."} Each change
                 appears here, and you can undo or revert any of them.
               </p>
             )}
+            {/* A copy deployed without AI tools (src/lib/deployment.ts): only Chrome's built-in model, here. */}
+            {!localOnly && !AI_TOOLS && (
+              <p data-testid="ai-tools-off">
+                {onDevice
+                  ? "Type a change below: Chrome's built-in model makes it on this device, and each change appears here, with Undo. "
+                  : offerOnDevice
+                    ? "Chrome's built-in model, which runs on this device, is turned off. Turn it on below. "
+                    : "Chrome's built-in model, which runs on this device, isn't available in this browser. "}
+                AI agents and copied prompts are turned off here.
+              </p>
+            )}
           </div>
         )}
-        {!localOnly && turns.length === 0 && (
+        {AI_TOOLS && !localOnly && turns.length === 0 && (
           <HowTo mcp={mcp} live={live} current={current} onOpenAdvanced={openAdvanced} />
         )}
-        {!localOnly && turns.length > 0 && (
+        {AI_TOOLS && !localOnly && turns.length > 0 && (
           <div className="ai-howto-fold">
             <button
               className="ai-howto-link"
@@ -389,7 +404,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
       {/* The foot (the on-device box, the status line and Advanced) never takes more than its share of the panel,
           so the conversation above it stays readable; past that share, the foot scrolls. */}
       <div className="ai-foot" data-testid="ai-foot">
-        {onDevice && (
+        {onDevice && OnDeviceInput && (
           <Suspense fallback={null}>
             <OnDeviceInput
               availability={model}
@@ -404,24 +419,32 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
           </Suspense>
         )}
 
-        <AgentStatus
-          available={mcp}
-          localOnly={localOnly}
-          privateDiagram={privateDiagram}
-          live={live}
-          typeHere={typeHere}
-        />
+        {/* Without AI tools there's no Advanced, which otherwise holds this switch: it stays here instead. */}
+        {!AI_TOOLS && offerOnDevice && <OnDevicePreference on={onDeviceOn} set={toggleOnDevice} />}
 
-        <Advanced
-          open={advancedOpen}
-          onOpenChange={setAdvancedOpen}
-          focusSeq={focusSeq}
-          current={current}
-          live={live}
-          onTurn={addTurn}
-          onDevice={offerOnDevice ? { on: onDeviceOn, set: toggleOnDevice } : undefined}
-          privateDiagram={privateDiagram}
-        />
+        {/* The agents' status and Advanced's copied prompts are AI outside the app: only with AI tools. */}
+        {AI_TOOLS && (
+          <>
+            <AgentStatus
+              available={mcp}
+              localOnly={localOnly}
+              privateDiagram={privateDiagram}
+              live={live}
+              typeHere={typeHere}
+            />
+
+            <Advanced
+              open={advancedOpen}
+              onOpenChange={setAdvancedOpen}
+              focusSeq={focusSeq}
+              current={current}
+              live={live}
+              onTurn={addTurn}
+              onDevice={offerOnDevice ? { on: onDeviceOn, set: toggleOnDevice } : undefined}
+              privateDiagram={privateDiagram}
+            />
+          </>
+        )}
       </div>
     </section>
   );

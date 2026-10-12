@@ -38,6 +38,7 @@ import {
   type Privacy,
 } from "../lib/localOnly";
 import { newDiagramsPrivate } from "../lib/privacyPrefs";
+import { LINK_OPEN, LINK_OPEN_OFF_MESSAGE, LINKS_OFF_MESSAGE, SHARE_LINKS } from "../lib/deployment";
 import { PRIVACY_REQUEST } from "../lib/usePrivacy";
 import { loadedCanvasActions } from "../canvas/loadCanvasView";
 import { actionRegistry, type Action, type MenuNode } from "../editor/actions";
@@ -332,23 +333,26 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
    */
   const linkAllowed = (source: string = slug) => {
     if (canShareAsLink(privacyState(source))) return true;
-    toast.info(PRIVATE_SHARE_MESSAGE, {
+    toast.info(SHARE_LINKS ? PRIVATE_SHARE_MESSAGE : LINKS_OFF_MESSAGE, {
       action: { label: "Export file", run: () => void exportNative(), testId: "toast-private-export" },
     });
     return false;
   };
   const linkStillAllowed = (source: string) => canShareAsLink(privacyState(source));
 
+  // A copy deployed without share links (src/lib/deployment.ts) never offers these; `!SHARE_LINKS` folds at
+  // build time, so their code (and the link encoders) drops out of that bundle.
+
   /** The share dialog for `d`, from `source`: only while that document may still be shared. */
   const showShare = (d: DiagramFile, source: string) => {
-    if (linkAllowed(source)) setDialog({ kind: "share", diagram: d, source });
+    if (SHARE_LINKS && linkAllowed(source)) setDialog({ kind: "share", diagram: d, source });
   };
 
   const openShare = () => attempt("create a share link", () => showShare(current(), slug));
 
   /** Copy link with password… for `d`, from `source`: only while that document may still be shared. */
   const showPasswordLink = (d: DiagramFile, source: string) => {
-    if (linkAllowed(source)) setDialog({ kind: "password-link", diagram: d, source });
+    if (SHARE_LINKS && linkAllowed(source)) setDialog({ kind: "password-link", diagram: d, source });
   };
 
   /** Copy link with password…: the dialog picks the password, encrypts and copies (rechecking the gate). */
@@ -358,7 +362,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   const copyShareLink = () =>
     attempt("create a share link", async () => {
       const source = slug;
-      if (!linkAllowed(source)) return;
+      if (!SHARE_LINKS || !linkAllowed(source)) return;
       const d = current();
       const url = shareUrl(await encodeShare(d));
       // Encoding takes a moment: the diagram may have become private since (here or in another tab).
@@ -698,6 +702,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
 
   const openShareLinkInput = useCallback(
     (input: string) => {
+      if (!LINK_OPEN) return void toast.error(LINK_OPEN_OFF_MESSAGE);
       const token = encryptedPayloadFromInput(input);
       if (token) return void askForPassword(token);
       const payload = sharePayloadFromInput(input);
@@ -711,6 +716,16 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   // Share links: on load and when only the hash changes (a link pasted into this tab).
   useEffect(() => {
     const check = () => {
+      // A copy deployed without opening links (src/lib/deployment.ts): the diagram in the fragment is never
+      // read, and leaves the address bar.
+      if (!LINK_OPEN) {
+        const hash = window.location.hash;
+        if (encryptedPayloadFromHash(hash) || sharePayloadFromHash(hash)) {
+          clearUrlFragment();
+          toast.error(LINK_OPEN_OFF_MESSAGE);
+        }
+        return;
+      }
       // A password link keeps its fragment until it's unlocked: cancel, reload, and it asks again.
       const token = encryptedPayloadFromHash(window.location.hash);
       if (token) {
@@ -939,7 +954,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         />
       )}
       {dialog?.kind === "html" && <HtmlExportDialog diagram={dialog.diagram} onClose={() => setDialog(null)} />}
-      {dialog?.kind === "share" && (
+      {SHARE_LINKS && dialog?.kind === "share" && (
         <ShareDialog
           diagram={dialog.diagram}
           allowed={() => linkStillAllowed(dialog.source)}
@@ -950,7 +965,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       {dialog?.kind === "privacy" && (
         <PrivacyDialog onTurnOff={() => void confirmNotPrivate(dialog.source)} onClose={() => setDialog(null)} />
       )}
-      {dialog?.kind === "password-link" && (
+      {SHARE_LINKS && dialog?.kind === "password-link" && (
         <PasswordLinkDialog
           diagram={dialog.diagram}
           allowed={() => linkStillAllowed(dialog.source)}
@@ -1083,10 +1098,27 @@ function canvasActions(get: () => InteropApi): Action[] {
         const hint = privateNow ? "Private" : undefined;
         return [
           item("export:png", "Export PNG", () => get().exportPng({ scale: 2 }), "2×"),
-          item("export:share", "Copy share link", () => get().copyShareLink(), hint, privateNow),
-          item("export:share-password", "Copy link with password…", () => get().copyPasswordLink(), hint, privateNow),
-          // A private diagram's embed is the one its host's page supplies (nothing of it goes in a URL).
-          item("export:embed", "Embed code…", () => get().openEmbed(), privateNow ? "Your app supplies it" : undefined),
+          // Links gone (from the palette too) in a copy deployed without share links (src/lib/deployment.ts).
+          ...(SHARE_LINKS
+            ? [
+                item("export:share", "Copy share link", () => get().copyShareLink(), hint, privateNow),
+                item(
+                  "export:share-password",
+                  "Copy link with password…",
+                  () => get().copyPasswordLink(),
+                  hint,
+                  privateNow,
+                ),
+              ]
+            : []),
+          // A private diagram's embed is the one its host's page supplies (nothing of it goes in a URL); so is every
+          // embed in a copy without share links.
+          item(
+            "export:embed",
+            "Embed code…",
+            () => get().openEmbed(),
+            privateNow || !SHARE_LINKS ? "Your app supplies it" : undefined,
+          ),
           { type: "separator" },
           item("export:json", "Diagram file", () => get().exportNative(), ".diagram.json"),
           item("export:image", "Image…", () => get().openImageOptions(), "PNG or SVG"),

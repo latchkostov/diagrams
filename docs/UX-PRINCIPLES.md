@@ -40,7 +40,8 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 
 - The product is **Live Diagrams**, two words, wherever it names the app: the top bar, page titles, messages,
   policies and the providers' consent screens, which must match the home page exactly. Never "LiveDiagrams" or
-  plain "Diagrams" for the app; "diagrams" stays the common noun ("Your diagrams").
+  plain "Diagrams" for the app; "diagrams" stays the common noun ("Your diagrams"). A company's own copy may name
+  itself (`VITE_BRAND_NAME`, docs/SELF-HOSTING.md): the top bar and the page title then say that name.
 - **Live** is the mode where messages flow (toggle, L). A **simulation** is a saved, scripted run you
   replay in it. "Free play" is live without one.
 - **Boundary** (never "group") for the box around nodes: Add boundary, Remove boundary, Colour.

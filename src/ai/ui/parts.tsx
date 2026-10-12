@@ -156,3 +156,19 @@ export function FailureBox({
     </section>
   );
 }
+
+/**
+ * "Try the on-device model": the remembered on/off for Chrome's built-in model's request box. In Advanced, or on
+ * its own in a copy deployed without AI tools (which has no Advanced), so it can always be turned back on.
+ */
+export function OnDevicePreference({ on, set }: { on: boolean; set: (on: boolean) => void }) {
+  return (
+    <label className="ai-ondevice-pref" data-testid="ai-ondevice-pref">
+      <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} data-testid="ai-ondevice-toggle" />
+      <span>
+        Try the on-device model
+        <small>Chrome&apos;s built-in model, on this device: a request box at the panel&apos;s foot.</small>
+      </span>
+    </label>
+  );
+}

@@ -8,6 +8,7 @@ import { UnlockDialog } from "../ui/lazyDialogs";
 import { Glyph } from "../ui/glyphs";
 import { notify } from "../ui/toast";
 import { lazyComponent } from "../../lib/lazyLoad";
+import { BRAND_NAME, LINK_OPEN, LINK_OPEN_OFF_MESSAGE } from "../../lib/deployment";
 
 /** `?embed=1&host=1`: the page that embeds the viewer supplies the diagram (./HostEmbedView, its own chunk). */
 const HOST = new URLSearchParams(window.location.search).get("host") === "1";
@@ -32,6 +33,9 @@ function resolve(): Promise<State> {
   const params = new URLSearchParams(window.location.search);
   const base = `${window.location.origin}${window.location.pathname}`;
   const token = encryptedPayloadFromHash(window.location.hash);
+  // A copy deployed without opening links (src/lib/deployment.ts) shows examples only.
+  if (!LINK_OPEN && (token || sharePayloadFromHash(window.location.hash)))
+    return Promise.resolve({ status: "error", message: LINK_OPEN_OFF_MESSAGE });
   if (token) {
     try {
       parseEncrypted(token);
@@ -130,7 +134,7 @@ function UrlEmbedView() {
             target="_blank"
             rel="noopener"
             data-testid="embed-open-in-app"
-            title="Open an editable copy in Live Diagrams"
+            title={`Open an editable copy in ${BRAND_NAME}`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden>
               <rect x="1.5" y="3" width="8" height="6" rx="2" fill="currentColor" opacity=".55" />
@@ -143,7 +147,7 @@ function UrlEmbedView() {
                 strokeLinecap="round"
               />
             </svg>
-            Open in Live Diagrams
+            Open in {BRAND_NAME}
             <Glyph name="external" size={12} />
           </a>
         </>

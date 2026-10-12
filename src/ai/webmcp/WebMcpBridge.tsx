@@ -7,7 +7,8 @@ import { useWebMcp } from "./useWebMcp";
 import type { AgentChange, WebMcpHost } from "./tools";
 import { threads } from "../ui/threadStore";
 import { unseen } from "../ui/unseen";
-import { canShareAsLink, isLocalOnly, PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
+import { canShareAsLink, canUseAiTools, PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
+import { LINKS_OFF_MESSAGE, SHARE_LINKS } from "../../lib/deployment";
 
 // Lazy-loaded by AiMount, only in the editor view and only when the browser has WebMCP. Renders nothing.
 
@@ -71,7 +72,7 @@ export default function WebMcpBridge({
   const host = useMemo<WebMcpHost>(
     () => ({
       getEditor: currentEditor,
-      canUseAi: () => !isLocalOnly(paletteHost.get().canvas),
+      canUseAi: () => canUseAiTools(paletteHost.get().canvas),
       onApplied: recordChange,
       async newDiagram({ title, direction }) {
         const before = currentEditor();
@@ -85,6 +86,8 @@ export default function WebMcpBridge({
         return currentEditor() ?? editor;
       },
       async shareLink(diagram) {
+        // Never published without share links (./toolList.ts); folded at build time, so no encoder ships.
+        if (!SHARE_LINKS) throw new Error(LINKS_OFF_MESSAGE);
         const canvas = paletteHost.get().canvas;
         if (!canShareAsLink(canvas)) throw new Error(PRIVATE_SHARE_MESSAGE);
         const url = shareUrl(await encodeShare(diagram));
@@ -103,6 +106,6 @@ export default function WebMcpBridge({
     }),
     [onNewDiagram],
   );
-  useWebMcp(host, { enabled: !!canvas && !isLocalOnly(canvas), live });
+  useWebMcp(host, { enabled: !!canvas && canUseAiTools(canvas), live });
   return null;
 }

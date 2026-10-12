@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { formatCombo, SHORTCUTS, type Shortcut } from "../editor/shortcuts";
 import { Icon } from "./Icon";
+import { AI_PANEL, AI_TOOLS } from "../lib/deployment";
 
 const GROUPS: Shortcut["group"][] = ["Edit", "Clipboard", "Selection", "View", "Help"];
 
@@ -51,11 +52,15 @@ const LIVE: [string, string][] = [
   ["Esc", "Leave slow motion, presentation, then live view"],
 ];
 
-/** The AI panel (AiMount opens it; Advanced handles the rest). */
+/** The AI panel (AiMount opens it; Advanced handles the rest). Advanced only with AI tools (src/lib/deployment.ts). */
 const AI: [string, string][] = [
   ["Mod+I", "Show the AI panel and focus it; from inside it, hide it"],
-  ["Mod+Shift+M", "Dictate in Advanced, or stop dictating"],
-  ["Mod+Enter", "Apply the reply pasted in Advanced"],
+  ...(AI_TOOLS
+    ? ([
+        ["Mod+Shift+M", "Dictate in Advanced, or stop dictating"],
+        ["Mod+Enter", "Apply the reply pasted in Advanced"],
+      ] as [string, string][])
+    : []),
   ["Esc", "Stop dictating, then back to the canvas"],
 ];
 
@@ -194,17 +199,19 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
               </div>
             ))}
           </section>
-          <section>
-            <h3>AI panel</h3>
-            {AI.map(([k, v]) => (
-              <div key={k} className="sc-row">
-                <span>{v}</span>
-                <span className="sc-keys">
-                  <kbd>{formatCombo(k)}</kbd>
-                </span>
-              </div>
-            ))}
-          </section>
+          {AI_PANEL && (
+            <section>
+              <h3>AI panel</h3>
+              {AI.map(([k, v]) => (
+                <div key={k} className="sc-row">
+                  <span>{v}</span>
+                  <span className="sc-keys">
+                    <kbd>{formatCombo(k)}</kbd>
+                  </span>
+                </div>
+              ))}
+            </section>
+          )}
           <section>
             <h3>Mouse</h3>
             {MOUSE.map(([k, v]) => (

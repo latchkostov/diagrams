@@ -306,6 +306,8 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
 - Every link (share, password, inline embed, the agents' `get_share_link`) asks `canShareAsLink(state)` in
   `src/lib/localOnly.ts` first, and again at the moment it acts (after encrypting, before copying): a local-only or
   Private diagram gets no link, and a password-link dialog left open closes when its diagram turns private.
+- A self-hosted copy can be built without links (`VITE_DISABLE_SHARE_LINKS`: nothing makes one, `canShareAsLink` is false
+  for every diagram) or without opening them (`VITE_DISABLE_LINK_OPEN`); see [SELF-HOSTING.md](SELF-HOSTING.md).
 - `?embed=1&example=<slug>` (public examples only), `?embed=1#d=…` or `?embed=1#e=…` renders a read-only viewer: no top bar,
   fitted, pan and pinch-zoom only (the wheel scrolls the host page), no menus, shortcuts or autosave, and a
   subtle "Open in Diagrams" link. `live=1&sim=<id>` pass through for the live view.
@@ -470,6 +472,10 @@ violation. The dev server sends none (React Refresh's preamble is an inline scri
   microphone (dictation) and display capture (Record video) and turns off location, payment, USB and serial (only
   features every desktop Chromium recognises: an unknown one logs "Unrecognized feature" on every page), and `Cross-Origin-Opener-Policy: same-origin-allow-popups` (sign-in pop-ups keep their opener; not sent with
   `auth.html`).
+
+A self-hosted copy uses the same policy without the outside origins, with frame-ancestors limited to the company's own
+domains: `scripts/self-host-headers.ts` writes it for nginx and `_headers` hosts (`deploy/self-host/`,
+`pnpm headers:self-host`; see [SELF-HOSTING.md](SELF-HOSTING.md#headers)).
 
 ### Local folders: Google Drive for desktop, OneDrive, Dropbox (no setup)
 

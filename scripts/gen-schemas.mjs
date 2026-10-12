@@ -1,6 +1,7 @@
 // Writes the static agent docs (public/schema/diagram.v1.json, ops.v1.json, stencils.json), the
-// generated parts of the agent skill (skills/livediagrams/, see scripts/skill-gen.ts) and vercel.json's
-// security headers (scripts/security-headers.ts) from the code, so they never drift from the app. Runs
+// generated parts of the agent skill (skills/livediagrams/, see scripts/skill-gen.ts), vercel.json's
+// security headers (scripts/security-headers.ts) and the self-hosting samples in deploy/self-host/
+// (scripts/self-host-headers.ts) from the code, so they never drift from the app. Runs
 // before every build (`prebuild`); run it by hand with `pnpm schemas`. The sources are
 // src/ai/webmcp/publicSchemas.ts, scripts/skill-gen.ts and scripts/security-headers.ts, loaded through
 // Vite so TypeScript and the app's imports work unchanged.
@@ -44,5 +45,13 @@ report(
 // vercel.json: the security headers (scripts/security-headers.ts) for the production site.
 const headers = await load("scripts/security-headers.ts");
 report("vercel.json", writeAll(root, { "vercel.json": headers.vercelJson() }), 1, "the repository root");
+// deploy/self-host/: the same headers for a self-hosted copy (scripts/self-host-headers.ts, docs/SELF-HOSTING.md).
+const selfHost = (await load("scripts/self-host-headers.ts")).selfHostSamples();
+report(
+  "self-host headers",
+  writeAll(path.join(root, "deploy", "self-host"), selfHost),
+  Object.keys(selfHost).length,
+  "deploy/self-host/",
+);
 
 process.exit(0);

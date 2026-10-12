@@ -55,8 +55,17 @@ runs:
       env:
         CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
         TARGET: ${{ inputs.target }}
+        SHARD: ${{ inputs.shard }}
+        TOTAL: ${{ inputs.total }}
       run: |
         case "$TARGET" in build|dev) ;; *) echo "::error::target must be build or dev, got $TARGET"; exit 1 ;; esac
+        # The self-hosting builds only where this shard runs their specs (E2E_SELF_HOST, playwright.config.ts).
+        list=" $(node scripts/e2e-shard.mjs "$SHARD" "$TOTAL" 2>/dev/null) "
+        self_host=""
+        case "$list" in *" tests/e2e/self-host.spec.ts "*) self_host="internal" ;; esac
+        case "$list" in *" tests/e2e/self-host-locked.spec.ts "*) self_host="${self_host:+$self_host,}locked" ;; esac
+        echo "E2E_SELF_HOST=$self_host" >> "$GITHUB_ENV"
+        echo "Self-hosting builds for this shard: ${self_host:-none}"
         e2e=""
         if [ "$TARGET" = "build" ]; then
           VITE_E2E=1 pnpm exec vite build --outDir tests/.output/e2e-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/e2e-build.log" 2>&1 &
@@ -64,12 +73,33 @@ runs:
         fi
         VITE_E2E='' pnpm exec vite build --outDir tests/.output/preview-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/prod-build.log" 2>&1 &
         prod=$!
+        # The self-hosting builds this shard needs (playwright.config.ts's INTERNAL_ENV and LOCKED_ENV).
+        internal=""
+        locked=""
+        case ",$self_host," in *,internal,*)
+          VITE_E2E='' VITE_DISABLE_SHARE_LINKS=1 VITE_DISABLE_AI_TOOLS=1 VITE_PRIVATE_BY_DEFAULT=1 \
+            VITE_BRAND_NAME='Acme Diagrams (internal)' \
+            pnpm exec vite build --outDir tests/.output/internal-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/internal-build.log" 2>&1 &
+          internal=$! ;;
+        esac
+        case ",$self_host," in *,locked,*)
+          VITE_E2E='' VITE_DISABLE_SHARE_LINKS=1 VITE_DISABLE_LINK_OPEN=1 VITE_DISABLE_AI_TOOLS=1 VITE_DISABLE_ONDEVICE=1 \
+            VITE_PRIVATE_BY_DEFAULT=1 \
+            pnpm exec vite build --outDir tests/.output/locked-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/locked-build.log" 2>&1 &
+          locked=$! ;;
+        esac
         if [ "$CACHE_HIT" = "true" ]; then pnpm exec playwright install-deps chromium; fi
         status=0
         if [ -n "$e2e" ]; then
           wait "$e2e" || { echo "::error::e2e build failed"; cat "$RUNNER_TEMP/e2e-build.log"; status=1; }
         fi
         wait "$prod" || { echo "::error::production build failed"; cat "$RUNNER_TEMP/prod-build.log"; status=1; }
+        if [ -n "$internal" ]; then
+          wait "$internal" || { echo "::error::internal build failed"; cat "$RUNNER_TEMP/internal-build.log"; status=1; }
+        fi
+        if [ -n "$locked" ]; then
+          wait "$locked" || { echo "::error::locked build failed"; cat "$RUNNER_TEMP/locked-build.log"; status=1; }
+        fi
         exit "$status"
     - name: Playwright
       shell: bash

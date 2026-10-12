@@ -2293,3 +2293,16 @@ the first deep-link load shows the existing loading status. A failed download ke
 and uses a toast explaining how to recover. Lab previews load only their selected examples inside the
 stage. Source review and browser coverage of delayed loads, failures, thumbnails and navigation found no
 blocking UX issues.
+
+## Self-hosting switches — 2026-10-12
+
+No controls added. In a self-hosted copy built without share links, the link rows go entirely (the File menu, the
+canvas right-click's Export ▸ and Ctrl+K), rather than staying disabled: there's nothing to explain, and Privacy and
+the exports keep their places. **Embed code…** stays, with the private embed as its one source (the URL ones aren't
+shown, rather than shown off), and the menu hint "Your app supplies it" says which. File ▸ Import from ▸ Share link…
+stays while links people send can still open. Without
+AI tools, the AI panel keeps only the on-device model: no how-to, status line or Advanced, and its empty state says in
+one line that agents and copied prompts are off here. With the on-device model off too, there's no rail, Ctrl+I or
+menu entry at all. The brand name replaces "Live Diagrams" in the top bar and the page title only; the start card
+still says what the software is. A screenshot pass on the internal build (File menu, AI panel, a new Private diagram)
+found no clutter or dead ends; `tests/e2e/self-host.spec.ts` and `self-host-locked.spec.ts` cover each state.
