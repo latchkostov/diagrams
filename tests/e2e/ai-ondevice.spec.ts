@@ -55,18 +55,20 @@ test("an unavailable model offers nothing; the how-to shows instead", async ({ p
   await expect(page.getByTestId("ai-ondevice")).toHaveCount(0);
 });
 
-test("available: off by default, turned on in Advanced, remembered; honest label", async ({ page }) => {
+test("available: on by default (round 3), honest label; Advanced turns it off, remembered", async ({ page }) => {
   await installFakeLanguageModel(page);
   await gotoCanvas(page, SLUG);
   await openAiPanel(page);
-  await expect(page.getByTestId("ai-ondevice")).toHaveCount(0);
-  await turnOn(page);
   await expect(page.getByTestId("ai-ondevice")).toHaveAttribute("data-state", "available");
   await expect(page.getByTestId("ai-ondevice-status")).toHaveText("Runs on this device with Chrome's built-in model");
   await expect(page.getByTestId("ai-empty")).toContainText("Type a change below");
-  await page.reload();
-  await expect(page.getByTestId("ai-ondevice-input")).toBeVisible({ timeout: 20_000 });
+  await openAdvanced(page);
+  await expect(page.getByTestId("ai-ondevice-toggle")).toBeChecked();
   await page.getByTestId("ai-ondevice-toggle").uncheck();
+  await expect(page.getByTestId("ai-ondevice")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId("ai-panel")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("ai-howto")).toBeVisible();
   await expect(page.getByTestId("ai-ondevice")).toHaveCount(0);
 });
 

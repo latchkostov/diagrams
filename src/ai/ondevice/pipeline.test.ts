@@ -5,11 +5,16 @@ import { applyOps } from "../index";
 import { diagramEvals } from "../evals/corpus";
 import { onDeviceCases } from "../evals/onDevice";
 import { EXAMPLE_NAMES } from "./examples";
+import { completeFromRequest } from "./replyChecks";
+import { elementNames, replySchema } from "./replySchema";
+import type { DiagramOp } from "../index";
 import {
   diagramContext,
   INITIAL_PROMPTS,
   isTransient,
   planError,
+  resetSchemaTier,
+  currentSchemaTier,
   REPLY_SCHEMA,
   requestPrompt,
   runOnDevice,
@@ -77,7 +82,7 @@ describe("the prompt", () => {
     expect(answers).toHaveLength(4);
     // Each answer, checked against its own request and the examples' diagram.
     const sample = applyOps(EMPTY, [
-      { op: "add_node", kind: "API gateway", label: "sample-gateway", key: "g" },
+      { op: "add_node", kind: "Batch Job", label: "sample-batch", key: "g" },
       { op: "add_node", kind: "Kafka topic", label: "sample.jobs", key: "j" },
       { op: "add_node", kind: ".NET service", label: "sample-worker", key: "w" },
       { op: "add_node", kind: "PostgreSQL", label: "sample-store", key: "s" },
@@ -116,7 +121,7 @@ describe("leakage guard", () => {
   const kafkaLabels = diagram.nodes.map((n) => n.label);
 
   it("the placeholder names appear in no eval request and no example diagram label", () => {
-    expect(EXAMPLE_NAMES).toEqual(expect.arrayContaining(["sample-gateway", "sample.jobs", "sample-worker"]));
+    expect(EXAMPLE_NAMES).toEqual(expect.arrayContaining(["sample-batch", "sample.jobs", "sample-worker"]));
     for (const name of EXAMPLE_NAMES) {
       expect(name.startsWith("sample")).toBe(true);
       for (const text of [...requests, ...kafkaLabels])
@@ -131,6 +136,10 @@ describe("leakage guard", () => {
       for (const o of JSON.parse(p.content).ops as { op: string; label?: string }[])
         if (o.label) expect(request.includes(o.label.toLowerCase()), o.label).toBe(true);
     }
+  });
+
+  it('leave no gateway, API or ingress to copy (run 3 reused "sample-gateway")', () => {
+    for (const name of EXAMPLE_NAMES) expect(name).not.toMatch(/gateway|api|ingress|front/i);
   });
 
   it("nor do they reuse the old examples' names", () => {
@@ -151,7 +160,10 @@ describe("runOnDevice", () => {
     expect(r.plan.summary).toBe("+1 node, +1 connection");
     expect(r.plan.next.nodes.find((n) => n.label === "inventory-dlq")?.stencil).toBe("generic.queue");
     expect(statuses).toEqual(["thinking", "applying"]);
-    expect(s.prompt.mock.calls[0][1]).toMatchObject({ responseConstraint: REPLY_SCHEMA });
+    // The reply's shape for this request: its targets are the diagram's own names.
+    expect(
+      JSON.stringify((s.prompt.mock.calls[0][1] as { responseConstraint?: object } | undefined)?.responseConstraint),
+    ).toContain('"Inventory service"');
     expect(r.output.raw).toBe(DLQ);
   });
 
@@ -287,7 +299,7 @@ describe("round 2: runaways", () => {
       for (const [k, v] of Object.entries(n)) walk(v, `${path}.${k}`);
     };
     walk(REPLY_SCHEMA, "reply");
-    expect(REPLY_SCHEMA.properties.ops.maxItems).toBe(8);
+    expect(REPLY_SCHEMA.properties.ops.maxItems).toBe(6);
     expect(REPLY_SCHEMA.properties.summary.maxLength).toBe(160);
   });
 
@@ -365,5 +377,212 @@ describe("round 2: runaways", () => {
         diagram,
       ),
     ).toMatch(/Labels it could mean: "Inventory service"/);
+  });
+});
+
+describe("round 3: schema tiers and the completion after the retry", () => {
+  it("a NotSupportedError moves to the next schema tier, remembered for the page", async () => {
+    resetSchemaTier();
+    const tiers: string[] = [];
+    const s = {
+      prompt: vi.fn(async (_input: string, opts?: { responseConstraint?: object }) => {
+        const text = JSON.stringify(opts?.responseConstraint);
+        const tier = text.includes("anyOf")
+          ? "rich"
+          : text.includes('"enum":["Storefront') || text.includes('"Inventory service"')
+            ? "enums"
+            : "plain";
+        tiers.push(tier);
+        if (tier !== "plain") throw new DOMException("unsupported keyword", "NotSupportedError");
+        return DLQ;
+      }),
+    };
+    const r = await runOnDevice({ session: s, diagram, request: "Add a DLQ" });
+    expect(r).toMatchObject({ ok: true, attempts: 1 });
+    expect(tiers).toEqual(["rich", "enums", "plain"]);
+    expect(currentSchemaTier()).toBe("plain");
+    resetSchemaTier();
+  });
+
+  it("a simple request still incomplete after the retry is completed from its words (create-11, create-21)", async () => {
+    const empty: DiagramFile = { ...EMPTY };
+    const onlyApi = reply("", [{ op: "add", key: "api", kind: ".NET API", label: "API" }]);
+    const r = await runOnDevice({
+      session: session(onlyApi, onlyApi),
+      diagram: empty,
+      request: "A .NET API stores documents in MongoDB",
+    });
+    expect(r).toMatchObject({ ok: true, attempts: 2, completed: true });
+    if (!r.ok) return;
+    const label = new Map(r.plan.next.nodes.map((n) => [n.id, `${n.label}:${n.stencil}`]));
+    expect(r.plan.next.edges.map((e) => `${label.get(e.from)} -> ${label.get(e.to)}`)).toEqual([
+      "API:service.dotnet -> MongoDB:mongodb",
+    ]);
+    const onlyHub = reply("", [{ op: "add", key: "hub", kind: "Event Hubs", label: "IoT Events" }]);
+    const iot = await runOnDevice({
+      session: session(onlyHub, onlyHub),
+      diagram: empty,
+      request: "IoT devices publish into Event Hubs",
+    });
+    expect(iot).toMatchObject({ ok: true, completed: true });
+    if (!iot.ok) return;
+    const names = new Map(iot.plan.next.nodes.map((n) => [n.id, n.stencil]));
+    expect(iot.plan.next.edges.map((e) => `${names.get(e.from)} -> ${names.get(e.to)}`)).toEqual([
+      "client.iot -> azure.event-hubs",
+    ]);
+  });
+
+  it("completion keeps out of anything but a simple request into an empty diagram", () => {
+    const partial = [{ op: "add_node" as const, kind: "Go service", label: "API", key: "~api" }];
+    expect(completeFromRequest(partial, "A Go service uses Redis cache", diagram)).toBeNull();
+    expect(completeFromRequest(partial, "Add a Go service and a Redis cache", EMPTY)).toBeNull();
+    expect(
+      completeFromRequest(
+        partial,
+        "A Go service uses Redis cache, writes to Postgres, calls Stripe and sends to SQS",
+        EMPTY,
+      ),
+    ).toBeNull();
+    // "consumes" flows back; "consumed by" forward.
+    const consumes = completeFromRequest([], "Java consumes a Kafka topic", EMPTY)!;
+    expect(consumes.filter((o) => o.op === "connect")).toEqual([
+      { op: "connect", from: "~req-2", to: "~req-1", kind: "async" },
+    ]);
+    const passive = completeFromRequest([], "A Kafka topic consumed by a Java worker", EMPTY)!;
+    expect(passive.filter((o) => o.op === "connect")).toEqual([
+      { op: "connect", from: "~req-1", to: "~req-2", kind: "async" },
+    ]);
+  });
+});
+
+describe("round 3 review: completion only when it can't guess wrong", () => {
+  const go = [{ op: "add_node" as const, kind: "Go service", label: "API", key: "~api" }];
+  const connects = (ops: DiagramOp[] | null) => {
+    const label = new Map<string, string>([["~api", "API"]]);
+    for (const o of ops ?? []) if (o.op === "add_node") label.set(o.key!, o.label);
+    return (ops ?? [])
+      .filter((o): o is Extract<DiagramOp, { op: "connect" }> => o.op === "connect")
+      .map((o) => `${label.get(o.from)} -> ${label.get(o.to)} ${o.kind}`);
+  };
+
+  it.each([
+    "Add a Go service; do not connect it to Redis cache yet",
+    "A Go service calls MongoDB, but do not connect them yet",
+    "A Go service must not connect to Redis cache",
+    "A Go service uses Redis cache, but leave it unconnected",
+    "A Go service calls a Java service, but do not connect PostgreSQL",
+    "A Go service uses Redis cache without a connection",
+  ])("declines a negated or prohibited relationship: %s", (request) => {
+    expect(completeFromRequest(go, request, EMPTY)).toBeNull();
+  });
+
+  it("declines without an explicit relating verb for every pair (order alone isn't a relation)", () => {
+    expect(completeFromRequest(go, "Add a Go service and a Redis cache", EMPTY)).toBeNull();
+    expect(completeFromRequest(go, "A Go service, a Redis cache and MongoDB", EMPTY)).toBeNull();
+  });
+
+  it("a shared subject is a star, not a chain", () => {
+    expect(connects(completeFromRequest(go, "A Go service uses Redis cache and writes to MongoDB", EMPTY))).toEqual([
+      "API -> Redis cache sync",
+      "API -> MongoDB sync",
+    ]);
+  });
+
+  it("keeps database calls service -> database, and sets the flow kind", () => {
+    expect(connects(completeFromRequest(go, "A Go service reads from PostgreSQL", EMPTY))).toEqual([
+      "API -> PostgreSQL sync",
+    ]);
+    expect(connects(completeFromRequest([], "IoT devices publish into Event Hubs", EMPTY))).toEqual([
+      "IoT devices -> Event Hubs async",
+    ]);
+    expect(connects(completeFromRequest([], "Java consumes a Kafka topic", EMPTY))).toEqual([
+      "Kafka topic -> Java async",
+    ]);
+  });
+
+  it("keeps two components of one technology apart by their words; declines when it can't", () => {
+    const request = "A billing Go service calls a shipping Go service which uses PostgreSQL";
+    const partial: DiagramOp[] = [
+      { op: "add_node", kind: "Go service", label: "shipping", key: "~ship" },
+      { op: "add_node", kind: "Go service", label: "billing", key: "~bill" },
+      { op: "connect", from: "~bill", to: "~ship", kind: "sync" },
+    ];
+    const done = completeFromRequest(partial, request, EMPTY)!;
+    expect(done.filter((o) => o.op === "connect")).toContainEqual({
+      op: "connect",
+      from: "~ship",
+      to: "~req-3",
+      kind: "sync",
+    });
+    const anonymous: DiagramOp[] = [
+      { op: "add_node", kind: "Go service", label: "Service A", key: "~a" },
+      { op: "add_node", kind: "Go service", label: "Service B", key: "~b" },
+    ];
+    expect(completeFromRequest(anonymous, request, EMPTY)).toBeNull();
+  });
+
+  it("through runOnDevice: a prohibited relation is never completed into a connection", async () => {
+    const onlyGo = reply("", [{ op: "add", key: "api", kind: "Go service", label: "API" }]);
+    const r = await runOnDevice({
+      session: session(onlyGo, onlyGo),
+      diagram: EMPTY,
+      request: "A Go service uses Redis cache, but leave it unconnected",
+    });
+    expect(r.ok && r.plan.next.edges.length).toBeFalsy();
+  });
+});
+
+describe("round 3 review: constrained targets keep identity", () => {
+  const two: DiagramFile = {
+    ...EMPTY,
+    nodes: [
+      { id: "api", stencil: "service.go", label: "API", x: 0, y: 0 },
+      { id: "db", stencil: "postgres", label: "DB", x: 300, y: 0 },
+    ],
+    edges: [
+      { id: "write", from: "api", to: "db", kind: "sync" },
+      { id: "audit", from: "api", to: "db", kind: "sync" },
+    ],
+    groups: [{ id: "g1", label: "Azure", x: 0, y: 0, width: 10, height: 10 }],
+  };
+
+  it("parallel connections are named by id, never by an ambiguous pair; boundaries are named too", () => {
+    const { edges, boundaries } = elementNames(two, "Remove the audit connection");
+    expect(edges).toEqual(["write", "audit"]);
+    expect(boundaries).toEqual(["Azure"]);
+    const schema = JSON.stringify(replySchema(two, "x"));
+    expect(schema).not.toContain('"API -> DB"');
+    expect(schema).toContain('"Azure"');
+  });
+
+  it('"this" is the selected connection or boundary as a target', () => {
+    for (const scope of [
+      [{ id: "audit", label: "API → DB", kind: "connection" as const }],
+      [{ id: "g1", label: "Azure", kind: "boundary" as const }],
+    ]) {
+      const r = toOps(reply("", [{ op: "remove", target: "this" }]), { diagram: two, scope, request: "Remove this" });
+      expect(r).toMatchObject({ ok: true, ops: [{ op: "remove", targets: [scope[0].id] }] });
+      expect(JSON.stringify(replySchema(two, "Remove this", scope))).toContain('"this"');
+    }
+  });
+
+  it("a giant imported label can't break a normal request", async () => {
+    const giant: DiagramFile = {
+      ...EMPTY,
+      nodes: [
+        { id: "huge", stencil: "service.go", label: "x".repeat(100_000), x: 0, y: 0 },
+        { id: "pay", stencil: "service.go", label: "Payments", x: 300, y: 0 },
+      ],
+      edges: [],
+    };
+    const names = elementNames(giant, "Rename Payments to Billing");
+    expect(names.nodes).toEqual(["Payments", "huge"]);
+    expect(JSON.stringify(replySchema(giant, "Rename Payments to Billing")).length).toBeLessThan(5000);
+    const r = await runOnDevice({
+      session: session(reply("Renamed", [{ op: "rename", target: "Payments", label: "Billing" }])),
+      diagram: giant,
+      request: "Rename Payments to Billing",
+    });
+    expect(r).toMatchObject({ ok: true });
   });
 });

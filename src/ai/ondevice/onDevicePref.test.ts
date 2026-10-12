@@ -9,9 +9,9 @@ describe("Try the on-device model", () => {
   });
   afterEach(() => store.clear());
 
-  it("is off by default until the evals clear the bar, then remembered", () => {
-    expect(ON_DEVICE_DEFAULT).toBe(false);
-    expect(readOnDevice()).toBe(false);
+  it("is on by default (round 3), and turning it off is remembered", () => {
+    expect(ON_DEVICE_DEFAULT).toBe(true);
+    expect(readOnDevice()).toBe(true);
     rememberOnDevice(true);
     expect(readOnDevice()).toBe(true);
     rememberOnDevice(false);

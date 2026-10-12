@@ -9,7 +9,9 @@ import type { AiError, DiagramOp } from "../index";
 import { getStencil } from "../../stencils/registry";
 import { planTurn, type TurnPlan } from "../ui/apply";
 import type { ScopeItem } from "../ui/context";
-import { COMPACT_OPS, MAX_OPS, toOps } from "./compactOps";
+import { MAX_OPS, toOps } from "./compactOps";
+import { completeFromRequest, incompleteness } from "./replyChecks";
+import { nodeNames, replySchema, SCHEMA_TIERS, type SchemaTier } from "./replySchema";
 import type { ModelSession } from "./promptApi";
 import { INITIAL_PROMPTS, SYSTEM_PROMPT } from "./examples";
 
@@ -20,46 +22,45 @@ export { MAX_OPS, toOps } from "./compactOps";
 /** The diagram's description stays under this many characters (a small model's context is a few K tokens). */
 export const CONTEXT_CHARS = 2400;
 
-/** Bounds in the reply schema. Unbounded strings let the model generate until its context ran out. */
-export const NAME_CHARS = 60;
-export const SUMMARY_CHARS = 160;
 /** A whole reply never needs more: past this it's a runaway, cut off and retried (see askModel). */
 export const MAX_REPLY_CHARS = 2400;
 
-/**
- * The reply's shape, as `responseConstraint`: one flat op object (Chrome's subset may reject `oneOf`),
- * per-op required fields checked in code.
- */
-export const REPLY_SCHEMA = {
-  type: "object",
+export { NAME_CHARS, SUMMARY_CHARS } from "./replySchema";
+
+/** The plain tier of the reply schema: bounded strings, no enums (the fallback, and what tests check). */
+export const REPLY_SCHEMA = replySchema(
+  { format: "diagrams/v1", title: "", nodes: [], edges: [] },
+  "",
+  [],
+  "plain",
+) as {
   properties: {
-    summary: { type: "string", maxLength: SUMMARY_CHARS },
-    ops: {
-      type: "array",
-      minItems: 1,
-      maxItems: MAX_OPS,
-      items: {
-        type: "object",
-        properties: {
-          op: { type: "string", enum: [...COMPACT_OPS] },
-          key: { type: "string", maxLength: NAME_CHARS },
-          kind: { type: "string", maxLength: NAME_CHARS },
-          label: { type: "string", maxLength: NAME_CHARS },
-          sublabel: { type: "string", maxLength: NAME_CHARS },
-          from: { type: "string", maxLength: NAME_CHARS },
-          to: { type: "string", maxLength: NAME_CHARS },
-          flow: { type: "string", enum: ["message", "request"] },
-          // "A -> B" names a connection: two labels.
-          target: { type: "string", maxLength: 2 * NAME_CHARS + 4 },
-        },
-        required: ["op"],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ["summary", "ops"],
-  additionalProperties: false,
-} as const;
+    summary: { maxLength: number };
+    ops: { maxItems: number; items: { properties: { op: { enum: string[] } } } };
+  };
+};
+
+/**
+ * The schema tier this browser accepts, learned per page: "rich" (enums, anyOf, patterns) until a
+ * NotSupportedError says otherwise, then "enums", then "plain".
+ */
+let schemaTier: SchemaTier = "rich";
+/** For tests: start again from the richest tier. */
+export function resetSchemaTier(tier: SchemaTier = "rich") {
+  schemaTier = tier;
+}
+export const currentSchemaTier = () => schemaTier;
+/** This request's schema at the page's tier; if building it fails, the plain one (never a broken request). */
+function schemaFor(diagram: DiagramFile, request: string, scope: readonly ScopeItem[]): object {
+  try {
+    return replySchema(diagram, request, scope, schemaTier);
+  } catch {
+    return replySchema(diagram, request, scope, "plain");
+  }
+}
+
+/** A schema this large isn't put into the model's context too (the prompt lists the names already). */
+const OMIT_SCHEMA_CHARS = 2500;
 
 /**
  * The diagram in a few lines a small model can read: each node by the name it should use (its label,
@@ -72,11 +73,7 @@ export function diagramContext(
   maxChars = CONTEXT_CHARS,
 ): string {
   if (!diagram.nodes.length) return "Empty diagram.";
-  const counts = new Map<string, number>();
-  for (const n of diagram.nodes) counts.set(n.label.trim(), (counts.get(n.label.trim()) ?? 0) + 1);
-  const name = new Map(
-    diagram.nodes.map((n) => [n.id, n.label.trim() && counts.get(n.label.trim()) === 1 ? n.label.trim() : n.id]),
-  );
+  const name = nodeNames(diagram);
   const focus = new Set(focusIds);
   const near = new Set(focus);
   for (const e of diagram.edges) if (focus.has(e.from) || focus.has(e.to)) near.add(e.from).add(e.to);
@@ -146,6 +143,8 @@ export type OnDeviceResult =
       attempts: number;
       ops: DiagramOp[];
       output: ModelOutput;
+      /** Completed from the request's words after the retry (completeFromRequest). */
+      completed?: boolean;
     }
   | { ok: false; error: string; attempts: number; tooBig?: boolean; output?: ModelOutput };
 
@@ -224,11 +223,15 @@ export class RunawayError extends Error {
  * One reply. Streamed where the session can, so a runaway (the model generating under the constraint
  * until its context runs out) is cut off at MAX_REPLY_CHARS instead of minutes later.
  */
-async function askModel(session: Session, input: string, signal: AbortSignal): Promise<string> {
-  if (!session.promptStreaming) return session.prompt(input, { signal, responseConstraint: REPLY_SCHEMA });
+async function askModel(session: Session, input: string, signal: AbortSignal, schema: object): Promise<string> {
+  const constraint = {
+    responseConstraint: schema,
+    ...(JSON.stringify(schema).length > OMIT_SCHEMA_CHARS ? { omitResponseConstraintInput: true } : {}),
+  };
+  if (!session.promptStreaming) return session.prompt(input, { signal, ...constraint });
   const cut = new AbortController();
   const both = AbortSignal.any([signal, cut.signal]);
-  const reader = session.promptStreaming(input, { signal: both, responseConstraint: REPLY_SCHEMA }).getReader();
+  const reader = session.promptStreaming(input, { signal: both, ...constraint }).getReader();
   let text = "";
   try {
     for (;;) {
@@ -282,6 +285,8 @@ export async function runOnDevice({
   // Assigned in swapToFresh too, so typed wide (not narrowed to null).
   let replaced = null as Session | null;
   let freshUsed = !freshSession;
+  /** The last reply's ops when it was only incomplete (for the completion after the retry). */
+  let partial: DiagramOp[] | undefined;
   /** Goes on in a fresh session (once per request); false when none arrived in time. */
   const swapToFresh = async (): Promise<boolean> => {
     freshUsed = true;
@@ -300,11 +305,12 @@ export async function runOnDevice({
   try {
     for (let attempt = 1; attempt <= 2; attempt++) {
       onStatus?.(attempt === 1 ? "thinking" : "retrying");
+      partial = undefined;
       let reply: string;
       try {
         const limit = AbortSignal.timeout(replyTimeoutMs);
         const both = signal ? AbortSignal.any([signal, limit]) : limit;
-        reply = await withTimeout(askModel(current, input, both), replyTimeoutMs);
+        reply = await withTimeout(askModel(current, input, both, schemaFor(diagram, request, scope)), replyTimeoutMs);
       } catch (err) {
         if (signal?.aborted) throw err instanceof Error ? err : new DOMException("Aborted", "AbortError");
         if (err instanceof RunawayError) {
@@ -324,6 +330,12 @@ export async function runOnDevice({
             if (!(await swapToFresh())) return { ok: false, error: TIMED_OUT, attempts: attempt };
             attempt--;
           }
+          continue;
+        }
+        if (err instanceof DOMException && err.name === "NotSupportedError" && schemaTier !== "plain") {
+          // This browser doesn't take a keyword of the richer schema: the next tier, same attempt.
+          schemaTier = SCHEMA_TIERS[SCHEMA_TIERS.indexOf(schemaTier) + 1];
+          attempt--;
           continue;
         }
         if (err instanceof DOMException && err.name === "QuotaExceededError")
@@ -352,8 +364,26 @@ export async function runOnDevice({
         if (plan.ok && plan.hasChanges)
           return { ok: true, plan, summary: parsed.summary, attempts: attempt, ops: parsed.ops, output };
         error = plan.ok ? "The ops didn't change anything." : planError(plan.error, diagram);
-      } else error = parsed.error;
+      } else {
+        error = parsed.error;
+        partial = parsed.partial;
+      }
       input = `That failed: ${error}\nReply again with the whole corrected JSON, using exact labels from the diagram and keys for new nodes.`;
+    }
+    // The retry still left a simple request incomplete: complete it from the request's own words.
+    const completed = partial ? completeFromRequest(partial, request, diagram) : null;
+    if (completed && !incompleteness(completed, request, diagram)) {
+      const plan = planTurn(diagram, { ok: true, kind: "ops", ops: completed });
+      if (plan.ok && plan.hasChanges)
+        return {
+          ok: true,
+          plan,
+          summary: "Completed from the request",
+          attempts: 2,
+          ops: completed,
+          output: output ?? { raw: "" },
+          completed: true,
+        };
     }
     return { ok: false, error, attempts: 2, ...(output ? { output } : {}) };
   } finally {

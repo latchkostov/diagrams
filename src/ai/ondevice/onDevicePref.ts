@@ -1,10 +1,11 @@
 // "Try the on-device model" (Advanced): whether the AI panel shows its request box for Chrome's built-in
-// model. Off by default until the evals (docs/research/on-device-model.md) clear the bar; remembered.
+// model. On by default since round 3, at the owner's direction (the 80% bar reached by projection, not a
+// measured run yet: docs/research/on-device-model.md); turning it off is remembered.
 
 const KEY = "diagrams.ai-ondevice.v1";
 
-/** Flip once the eval pass rate is good enough to offer the box without asking. */
-export const ON_DEVICE_DEFAULT = false;
+/** On where the model can run; Advanced turns it off. */
+export const ON_DEVICE_DEFAULT = true;
 
 export function readOnDevice(): boolean {
   try {
