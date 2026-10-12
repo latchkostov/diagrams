@@ -89,6 +89,7 @@ import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { FirstRunHint } from "./FirstRunHint";
 import { notify } from "../interop/ui/toast";
 import { useCanvasHost } from "../palette/canvasHost";
+import { useNoCanvasTextSelection } from "./useNoCanvasTextSelection";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -166,6 +167,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     DiagramFlowEdge
   >();
   const wrapper = useRef<HTMLDivElement>(null);
+  useNoCanvasTextSelection(wrapper);
   /** The pointer over the canvas (client coords), for "T adds text here". */
   const pointer = useRef<{ x: number; y: number } | null>(null);
 
