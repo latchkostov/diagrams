@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { perfBudget } from "../../src/test/perfBudget";
-import { test, expect, expectNoErrors, livePaint } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLive, livePaint } from "./fixtures";
 
 // The live view draws its particles, the overlay above the edge label pills, the marching edges and
 // the Live dot's breath in a worker, on OffscreenCanvas (src/live/liveRenderer.ts); where that isn't
@@ -17,8 +17,7 @@ const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item
 type Renderer = "worker" | "main";
 
 async function goLive(page: Page, renderer: Renderer, query = "") {
-  await page.goto(`./?view=canvas&example=${KAFKA}&live=1${renderer === "main" ? "&renderer=main" : ""}${query}`);
-  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1${renderer === "main" ? "&renderer=main" : ""}${query}`);
   await expect(canvas(page)).toHaveAttribute("data-renderer", renderer);
 }
 
@@ -130,13 +129,17 @@ for (const renderer of ["worker", "main"] as const) {
       await goLive(page, renderer, "&traffic=0&speed=0.5");
       await page.waitForTimeout(1200);
       await openNodeMenu(page, "shopper", "sim.trace-next");
+      // Pause before sending, so the label stays put: the message waits at the start of its first hop,
+      // labelled. (Pausing once a label showed raced that hop: Storefront → Commerce gateway is 200 ms of
+      // sim time, 0.4 s at 0.5×, and a pause that landed after it, at work in the gateway, had no label.)
+      await page.getByTestId("live-play").click();
+      await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
       await page.getByTestId("trace-send-one").click();
       await expect
         .poll(async () => (await canvas(page).getAttribute("data-trace-labels")) ?? "", { timeout: 10_000 })
         .not.toBe("");
-      // Pause so the label stays put, then find its pill on the overlay where the hook says it is (the
-      // hook is refreshed at the UI clock, so give it a beat).
-      await page.getByTestId("live-play").click();
+      // Find its pill on the overlay where the hook says it is (the hook is refreshed at the UI clock, so
+      // give it a beat).
       await expect
         .poll(
           async () => {

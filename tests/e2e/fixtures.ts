@@ -162,26 +162,46 @@ export function expectNoErrors(errors: string[]) {
   expect(errors, errors.join("\n")).toEqual([]);
 }
 
+/**
+ * How long a lazily loaded view may take to appear after `page.goto`: the navigation timeout. The views
+ * (canvas with the live view, Lab, stencils) and the examples load after the page's load event, so
+ * waiting for them is still loading the page, not the app reacting. On the dev server that's ~150 more
+ * unbundled modules, which a busy CI runner once took 13 s to serve (nightly #40).
+ */
+export const pageLoadTimeout = () => base.info().project.use.navigationTimeout ?? 20_000;
+
 export async function gotoGallery(page: Page) {
   await page.goto("./?view=gallery");
-  await expect(page.getByTestId("gallery-view")).toBeVisible();
+  await expect(page.getByTestId("gallery-view")).toBeVisible({ timeout: pageLoadTimeout() });
 }
 
 export async function gotoCanvas(page: Page, slug: string) {
   await page.goto(`./?view=canvas&example=${encodeURIComponent(slug)}`);
-  await expect(page.getByTestId("canvas-view")).toBeVisible();
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+}
+
+/** Opens `url` (a live view: `live=1`) and waits for the live controls. */
+export async function gotoLive(page: Page, url: string) {
+  await page.goto(url);
+  await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
 }
 
 export type LabControls = Record<string, string | number | boolean>;
 
-/** Opens the Lab on a preset, with optional control overrides (applied from the URL). */
+/**
+ * Opens the Lab on a preset, with optional control overrides (applied from the URL), and waits until the
+ * preset has rendered: the stage names its preset while a preview that needs an example still shows
+ * "Loading example…" (the example downloads on demand).
+ */
 export async function gotoLab(page: Page, preset?: string, controls: LabControls = {}) {
   const p = new URLSearchParams({ view: "lab" });
   if (preset) p.set("preset", preset);
   for (const [k, v] of Object.entries(controls)) p.set(k, String(v));
   await page.goto(`./?${p}`);
-  await expect(page.getByTestId("lab-view")).toBeVisible();
-  if (preset) await expect(page.getByTestId("lab-stage")).toHaveAttribute("data-preset", preset);
+  await expect(page.getByTestId("lab-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  if (!preset) return;
+  await expect(page.getByTestId("lab-stage")).toHaveAttribute("data-preset", preset);
+  await expect(page.getByTestId("lab-example-loading")).toHaveCount(0, { timeout: pageLoadTimeout() });
 }
 
 /** All preset ids, read from the Lab's sidebar (data-testid="lab-preset-link-<id>"). */
