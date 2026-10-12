@@ -12,10 +12,9 @@ import { buildJourney } from "../../trace/journey";
 import type { LiveController } from "../controller";
 import { LIVE_BAR_SPACE } from "../layout";
 import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP } from "../traceCardLayout";
-import type { RenderOverlay } from "../particleRenderer";
 import { isRecordingActive } from "../record/framing";
 import { FIT_MS, PAN_MS, followPan, planCamera, type CameraPlan, type FlowBox, type Insets, type View } from "./camera";
-import { SlowPainter } from "./painter";
+import { SlowPainter, type PaintedLabel } from "./painter";
 import { buildScript } from "./script";
 import { SlowMotion, type SlowSource, type SlowState } from "./session";
 
@@ -33,10 +32,13 @@ export interface SlowMotionView {
   start(source: SlowSource): void;
   /** Back to live: the view and play state from before. */
   end(): void;
-  /** Called every animation frame: advances the replay and returns what to draw over live. */
-  frame(wallMs: number, speed: number): RenderOverlay | undefined;
-  /** Called at the UI clock (~8 Hz): state for React, test hooks on the canvas. */
-  ui(canvas: HTMLCanvasElement, snap: SimSnapshot): void;
+  /** Called every animation frame: advances the replay and returns the painter to draw over live. */
+  frame(wallMs: number, speed: number): SlowPainter | undefined;
+  /**
+   * Called at the UI clock (~8 Hz): state for React, test hooks on the canvas. `labels`: the captions
+   * the renderer painted last (in the worker or here).
+   */
+  ui(canvas: HTMLCanvasElement, snap: SimSnapshot, labels: readonly PaintedLabel[]): void;
   /** The nodes and edges the replay visits (they stay lit; the rest dims). */
   path: { nodes: ReadonlySet<string>; edges: ReadonlySet<string> } | null;
 }
@@ -237,7 +239,7 @@ export function useSlowMotion(opts: {
   }, [session, end]);
 
   const frame = useCallback(
-    (wallMs: number, speed: number): RenderOverlay | undefined => {
+    (wallMs: number, speed: number): SlowPainter | undefined => {
       if (!session.on) {
         painter.show(null);
         return undefined;
@@ -281,7 +283,7 @@ export function useSlowMotion(opts: {
   );
 
   const ui = useCallback(
-    (canvas: HTMLCanvasElement, snap: SimSnapshot) => {
+    (canvas: HTMLCanvasElement, snap: SimSnapshot, labels: readonly PaintedLabel[]) => {
       // Test hooks: the frozen clock and a checksum of the background dots, and slow motion's state.
       canvas.dataset.simTime = String(snap.time);
       let sum = 0;
@@ -298,7 +300,7 @@ export function useSlowMotion(opts: {
         );
         canvas.dataset.slowmoBeat = String(f?.beat ?? -1);
         canvas.dataset.slowmoDots = String(f?.moving ?? 0);
-        canvas.dataset.slowmoCaptions = JSON.stringify(painter.labels);
+        canvas.dataset.slowmoCaptions = JSON.stringify(labels);
         root?.setAttribute("data-live-slowmo", "on");
         // Badges off the path step back with their nodes.
         const path = new Set(s.script?.nodes ?? []);

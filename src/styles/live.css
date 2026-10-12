@@ -89,6 +89,22 @@
   }
 }
 
+/* Where the particle worker runs, it draws the breath on a canvas inside the dot instead
+   (toggleGlow.ts, the same two shadows): any animation here, CSS or compositor, holds input a frame
+   deeper while live. The canvas paints with the dot, before the label, as the shadow did. */
+.lv-toggle-glow {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: -28px;
+  pointer-events: none;
+}
+
+.react-flow[data-live-glow="canvas"] .lv-toggle.is-on .lv-toggle-dot {
+  animation: none;
+  box-shadow: none;
+}
+
 /* ---------- canvas + badges (inside React Flow's viewport) ---------- */
 
 .lv-canvas {
@@ -452,6 +468,20 @@
   to {
     stroke-dashoffset: -10;
   }
+}
+
+/* The march stops where it is while the simulation stands still (paused, a note waiting), like the
+   particles: a running animation restyles and repaints the edge layer every frame for nothing. */
+.react-flow[data-live][data-live-still] .react-flow__edge[data-live-edge="active"] .fe-async .fe-path {
+  animation-play-state: paused;
+}
+
+/* Normally a canvas in the edge layer draws the march instead (marchRenderer.ts: the same path,
+   colour, width and dash, read from these very styles), so input isn't held behind a main-thread
+   repaint every frame. The SVG keeps its stroke styles but draws none of it. */
+.react-flow[data-live][data-live-march="canvas"] .react-flow__edge[data-live-edge="active"] .fe-async .fe-path {
+  animation: none;
+  stroke-opacity: 0;
 }
 
 /* Dependencies carry no messages: they recede to about 35% so particles own the stage, and come back

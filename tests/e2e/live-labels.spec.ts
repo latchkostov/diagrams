@@ -1,36 +1,21 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors } from "./fixtures";
+import { test, expect, expectNoErrors, livePaint } from "./fixtures";
 
 // While live, edge label pills sit above the particles: busy edges stay readable. A dot passing
 // behind a pill is drawn dimmed on the overlay canvas, never at full strength over the text.
 //
 // The particle canvas ignores the pointer, so elementFromPoint can't see it; instead this compares
 // pixels. With the simulation paused while the particle canvas has paint under a pill, the pill
-// must look exactly the same with that canvas hidden.
+// must look exactly the same with that canvas hidden. (The canvas is usually drawn in a worker, so
+// its pixels are read through the renderer: `livePaint`.)
 
 const SLUG = "kafka-order-pipeline";
 const EDGE = "shopper-to-gateway"; // "HTTPS": the entry edge, always busy
 
-/** Opaque particle-canvas pixels under the pill's rect (the canvas covers the pane, in device px). */
+/** Opaque particle-canvas pixels under the pill's rect. */
 async function paintUnderPill(page: Page): Promise<number> {
-  return page.evaluate((edge) => {
-    const label = document.querySelector(`[data-testid="edge-label-${edge}"]`);
-    const canvas = document.querySelector<HTMLCanvasElement>('[data-testid="live-canvas"]');
-    const ctx = canvas?.getContext("2d");
-    if (!label || !canvas || !ctx) return 0;
-    const pill = label.getBoundingClientRect();
-    const box = canvas.getBoundingClientRect();
-    const sx = canvas.width / box.width;
-    const sy = canvas.height / box.height;
-    const x = Math.max(0, Math.floor((pill.left - box.left) * sx));
-    const y = Math.max(0, Math.floor((pill.top - box.top) * sy));
-    const w = Math.max(1, Math.floor(pill.width * sx));
-    const h = Math.max(1, Math.floor(pill.height * sy));
-    const data = ctx.getImageData(x, y, w, h).data;
-    let n = 0;
-    for (let i = 3; i < data.length; i += 4) if (data[i] > 40) n++;
-    return n;
-  }, EDGE);
+  const pill = await page.getByTestId(`edge-label-${EDGE}`).boundingBox();
+  return pill ? livePaint(page, "base", pill) : 0;
 }
 
 /** The pill's inside (clear of its anti-aliased border and shadow), as PNG bytes. */

@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Particle, SimSnapshot } from "../sim/types";
-import type { PathLike } from "./pathSampler";
-import { DEFAULT_TOKENS, ParticleRenderer, deviceRects, insideAny, type RenderEnv } from "./particleRenderer";
+import { samplePath, type PathSamples } from "./pathSampler";
+import {
+  DEFAULT_TOKENS,
+  ParticleRenderer,
+  deviceRects,
+  hitTestPoints,
+  insideAny,
+  type RenderEnv,
+} from "./particleRenderer";
 
 describe("dots behind edge label pills", () => {
   it("maps label rects from flow to device px for the current view", () => {
@@ -83,20 +90,17 @@ const snapshot = (particles: Particle[]): SimSnapshot => ({
 });
 
 function setup() {
-  vi.stubGlobal("window", { devicePixelRatio: 1 });
   vi.stubGlobal("document", { createElement: () => fakeCanvas({}) });
-  let d = "M0 0 L200 0";
-  const path: PathLike = {
-    getAttribute: () => d,
-    getTotalLength: () => 200,
-    getPointAtLength: (l) => ({ x: l, y: 0 }),
-    isConnected: true,
-  };
+  // The scene hands the renderer sampled paths and a version that bumps when one changes.
+  let samples: PathSamples = samplePath(200, (l) => ({ x: l, y: 0 }));
+  let version = 1;
   let transform: [number, number, number] = [0, 100, 1];
   const env: RenderEnv = {
     transform: () => transform,
     size: () => ({ width: 400, height: 300 }),
-    edgePath: () => path,
+    dpr: () => 1,
+    samples: () => samples,
+    pathsVersion: () => version,
     nodeRect: () => null,
     // One pill in the middle of the edge: x 90..110.
     labelRects: () => [{ x: 90, y: -7, width: 20, height: 14 }],
@@ -110,7 +114,10 @@ function setup() {
     main,
     over,
     pan: () => (transform = [10, 100, 1]),
-    movePath: () => (d = "M0 0 L200 10"),
+    movePath: () => {
+      samples = samplePath(200, (l) => ({ x: l, y: l / 20 }));
+      version++;
+    },
   };
 }
 
@@ -167,5 +174,69 @@ describe("ParticleRenderer", () => {
     renderer.draw(snapshot([particle(1, 0.5)]), 16); // x = 100: behind the pill
     expect(main.drawImage).toBe(1);
     expect(over.arc).toBe(1);
+  });
+});
+
+describe("hit targets", () => {
+  it("finds the nearest message within the radius, from x, y, id triples", () => {
+    const hits = [10, 10, 1, 30, 10, 2, 100, 100, 3];
+    expect(hitTestPoints(hits, 12, 10)).toBe(1);
+    expect(hitTestPoints(hits, 24, 10)).toBe(2);
+    expect(hitTestPoints(hits, 60, 60)).toBeUndefined();
+    expect(hitTestPoints(Float64Array.from(hits), 99, 101)).toBe(3);
+    expect(hitTestPoints([], 0, 0)).toBeUndefined();
+  });
+
+  it("are the drawn particles' positions in pane CSS px", () => {
+    const { renderer } = setup();
+    renderer.draw(snapshot([particle(7, 0.2)]), 0);
+    // x = 40 along the edge, y = 0 + the viewport offset 100.
+    expect([...renderer.hitPoints]).toEqual([expect.closeTo(40, 3), expect.closeTo(100, 3), 7]);
+    expect(renderer.hitTest(41, 101)).toBe(7);
+  });
+});
+
+describe("calm sampler and frame counts", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("thins slow speeds by message family, and draws everything at 1x", () => {
+    const { renderer } = setup();
+    const many = snapshot(Array.from({ length: 200 }, (_, i) => particle(i + 1, (i % 100) / 100)));
+    renderer.draw(many, 0, undefined, undefined, 1);
+    const full = renderer.drawn;
+    renderer.draw(snapshot([...many.particles]), 16, undefined, undefined, 0.25);
+    expect(renderer.drawn).toBeLessThan(full);
+    renderer.draw(snapshot([...many.particles]), 32, undefined, undefined, 1);
+    expect(renderer.drawn).toBe(full);
+  });
+
+  it("repaints the same paused snapshot when the speed changes", () => {
+    // Paused, the controller hands back one snapshot for good: only the speed changes.
+    const { renderer, main } = setup();
+    const paused = snapshot(Array.from({ length: 200 }, (_, i) => particle(i + 1, (i % 100) / 100)));
+    renderer.draw(paused, 0, undefined, undefined, 1);
+    const full = renderer.drawn;
+    const fullHits = renderer.hitPoints.length;
+    renderer.draw(paused, 16, undefined, undefined, 0.25);
+    expect(renderer.drawn).toBeLessThan(full);
+    expect(renderer.hitPoints.length).toBeLessThan(fullHits);
+    renderer.draw(paused, 32, undefined, undefined, 1);
+    expect(renderer.drawn).toBe(full);
+    expect(renderer.hitPoints.length).toBe(fullHits);
+    // Nothing else changes: the next frame is skipped.
+    const clears = main.clearRect;
+    renderer.draw(paused, 48, undefined, undefined, 1);
+    expect(main.clearRect).toBe(clears);
+  });
+
+  it("counts painted frames only", () => {
+    const { renderer } = setup();
+    const paused = snapshot([particle(1, 0.2)]);
+    renderer.draw(paused, 0);
+    renderer.draw(paused, 16);
+    renderer.draw(paused, 32);
+    expect(renderer.frames).toBe(1);
+    renderer.draw(snapshot([particle(1, 0.3)]), 48);
+    expect(renderer.frames).toBe(2);
   });
 });

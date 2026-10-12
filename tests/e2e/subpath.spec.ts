@@ -93,6 +93,41 @@ test.describe("production build under a sub-path", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("live view draws in its worker under the sub-path, in the app and in an embed", async ({
+    page,
+    consoleErrors,
+  }) => {
+    // The particle worker is a separate chunk found relative to the bundle (base "./"): a wrong
+    // path would 404 (outside BASE, which beforeEach reports) and the fallback would take over.
+    const workers: string[] = [];
+    page.on("worker", (w) => workers.push(w.url()));
+    await page.goto("./?view=canvas&example=kafka-order-pipeline&live=1");
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    const canvas = page.getByTestId("live-canvas");
+    await expect(canvas).toHaveAttribute("data-renderer", "worker");
+    await expect
+      .poll(async () => Number(await canvas.getAttribute("data-particles")), { timeout: 10_000 })
+      .toBeGreaterThan(10);
+    await expect.poll(async () => Number(await canvas.getAttribute("data-frames"))).toBeGreaterThan(20);
+    await expect(canvas).toHaveAttribute("data-renderer", "worker");
+    expect(workers.some((u) => new URL(u).pathname.startsWith(`${BASE}assets/particleWorker-`))).toBe(true);
+
+    // The same build framed by another page, as an embed.
+    const embed = new URL("./?embed=1&example=kafka-order-pipeline&live=1", page.url()).href;
+    await page.setContent(
+      `<iframe data-testid="embed-frame" src="${embed}" style="width:1000px;height:640px;border:0"></iframe>`,
+    );
+    const frame = page.frameLocator('[data-testid="embed-frame"]');
+    const embedded = frame.getByTestId("live-canvas");
+    await expect(embedded).toHaveAttribute("data-renderer", "worker", { timeout: 15_000 });
+    await expect
+      .poll(async () => Number(await embedded.getAttribute("data-particles")), { timeout: 10_000 })
+      .toBeGreaterThan(10);
+    await expect.poll(async () => Number(await embedded.getAttribute("data-frames"))).toBeGreaterThan(20);
+    await expect(embedded).toHaveAttribute("data-renderer", "worker");
+    expectNoErrors(consoleErrors);
+  });
+
   test("Lab is hidden from the nav but works by URL", async ({ page, consoleErrors }) => {
     await page.goto("./?view=gallery");
     await expect(page.getByTestId("gallery-view")).toBeVisible();
