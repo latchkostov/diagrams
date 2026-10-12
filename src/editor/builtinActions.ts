@@ -14,6 +14,7 @@ import {
 import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";
 import type { AlignMode } from "./arrange";
 import { shortcutKeys } from "./shortcuts";
+import { checksPanel } from "../canvas/checks/checksPanel";
 import { capacityOverlay } from "../live/capacityOverlay";
 import { isFlowEdgeTarget, relationshipAction } from "./relationActions";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
@@ -267,6 +268,17 @@ export function builtinActions(): Action[] {
       icon: "layout",
       enabled: (ctx) => ctx.editor.getDiagram().nodes.length > 1,
       run: (ctx) => ctx.editor.autoLayout(),
+    },
+    {
+      // The Checks card (likely design problems, with fixes): here, Ctrl+K, View and the count under the title.
+      id: "canvas.check-diagram",
+      section: "arrange",
+      targets: ["canvas"],
+      label: "Check diagram",
+      icon: "checklist",
+      enabled: (ctx) => !!ctx.editor.getDiagram?.().nodes.length,
+      hint: (ctx) => (ctx.editor.getDiagram?.().nodes.length ? undefined : "Add something to check first"),
+      run: () => checksPanel.open(),
     },
     {
       id: "canvas.fit",

@@ -86,7 +86,12 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { id: "select-edge-out", keys: ["Ctrl+Alt+]"], label: "The node's next outgoing edge", group: "Selection" },
   { id: "select-edge-in", keys: ["Ctrl+Alt+["], label: "The node's next incoming edge", group: "Selection" },
-  { id: "escape", keys: ["Escape"], label: "Close menus, clear selection, then leave live view", group: "Selection" },
+  {
+    id: "escape",
+    keys: ["Escape"],
+    label: "Close menus, clear selection, close Checks, then leave live view",
+    group: "Selection",
+  },
   { id: "fit-view", keys: ["Shift+1"], label: "Fit diagram to view", group: "View" },
   { id: "zoom-selection", keys: ["Shift+2"], label: "Zoom to selection", group: "View" },
   { id: "zoom-100", keys: ["Shift+0"], label: "Zoom to 100%", group: "View" },

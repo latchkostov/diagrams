@@ -1,0 +1,48 @@
+import { useSyncExternalStore } from "react";
+
+// Whether the Checks card is open, as one tiny store: the canvas right-click, Ctrl+K, the top bar's View menu
+// and the count under the title all open it, and the canvas shows it. `available` is false where checks don't
+// apply (live view, presenting, embeds, the gallery): opening is then a no-op and the View menu greys it out.
+
+let open = false;
+let available = false;
+const listeners = new Set<() => void>();
+const emit = () => listeners.forEach((l) => l());
+
+export const checksPanel = {
+  isOpen: () => open && available,
+  isAvailable: () => available,
+  open() {
+    if (!available || open) return;
+    open = true;
+    emit();
+  },
+  close() {
+    if (!open) return;
+    open = false;
+    emit();
+  },
+  toggle() {
+    if (open) checksPanel.close();
+    else checksPanel.open();
+  },
+  /** The canvas says where checks apply. Leaving (live, presenting, another view) closes the card. */
+  setAvailable(on: boolean) {
+    if (on === available) return;
+    available = on;
+    if (!on) open = false;
+    emit();
+  },
+  subscribe(listener: () => void): () => void {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
+};
+
+const snapshot = () => (available ? (open ? 2 : 1) : 0);
+
+/** `{ open, available }`, re-rendering when either changes. */
+export function useChecksPanel(): { open: boolean; available: boolean } {
+  const s = useSyncExternalStore(checksPanel.subscribe, snapshot, snapshot);
+  return { open: s === 2, available: s > 0 };
+}

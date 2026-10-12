@@ -1,0 +1,329 @@
+/* The Checks card (src/checks/ui/ChecksCard.tsx) and a selection's findings in the inspector. Loaded with
+   the card. The count under the title and the canvas markers are in canvas.css (they ship with the canvas). */
+
+.checks-card {
+  position: absolute;
+  left: 16px;
+  z-index: 5;
+  width: min(340px, calc(100% - 32px));
+  /* Clear of the canvas controls (bottom-left) and the hints and toasts along the bottom. */
+  max-height: calc(100% - var(--checks-top, 96px) - 84px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface) 94%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-2);
+  pointer-events: auto;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.checks-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 0 14px;
+}
+
+.checks-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.checks-head .icon-btn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: none;
+}
+
+.checks-note {
+  margin: 2px 14px 8px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.checks-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 14px 10px;
+  color: var(--text-2);
+}
+
+.checks-empty svg {
+  color: var(--success);
+}
+
+.checks-list {
+  overflow-y: auto;
+  min-height: 0;
+  border-top: 1px solid var(--line);
+}
+
+.checks-more {
+  margin: 4px 0 10px 36px;
+}
+
+.checks-group + .checks-group {
+  border-top: 1px solid var(--line);
+}
+
+/* ---- a finding ---- */
+
+.check-row {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px 10px 10px;
+}
+
+.check-row + .check-row {
+  border-top: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
+}
+
+.check-row:hover {
+  background: var(--hover);
+}
+
+.check-row-head {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  width: 100%;
+  margin: 0;
+  padding: 2px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.check-row-head:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.check-sev {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+}
+
+.check-sev.is-warning {
+  color: var(--warning);
+}
+
+.check-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.check-row-text {
+  display: grid;
+  gap: 2px;
+}
+
+.check-row-text strong {
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.check-msg {
+  color: var(--text-2);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.check-why,
+.check-chips,
+.check-actions,
+.check-menu,
+.check-ignore,
+.check-about {
+  margin-left: 26px;
+}
+
+.check-why summary {
+  width: fit-content;
+  color: var(--text-3);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.check-why p,
+.check-about {
+  margin: 4px 0 0;
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.check-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.check-chip {
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.check-chip:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.check-chip.is-more {
+  cursor: default;
+}
+
+.check-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.check-actions .btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.check-actions .check-more {
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border-color: transparent;
+  background: none;
+  letter-spacing: 1px;
+}
+
+.check-choice {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.check-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.check-menu button {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.check-menu button:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.check-ignore {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.check-ignore .insp-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- the foot: what's ignored and turned off ---- */
+
+.checks-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 14px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.checks-foot .link-btn.is-quiet {
+  margin-left: auto;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.checks-aside {
+  display: grid;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 14px 12px;
+  list-style: none;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.checks-aside li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.checks-aside em {
+  color: var(--text-3);
+}
+
+.checks-aside.is-about li {
+  display: block;
+  line-height: 1.45;
+}
+
+/* ---- the inspector's version ---- */
+
+.insp-findings {
+  display: grid;
+  gap: 4px;
+  margin: -4px -4px 12px;
+  padding: 4px 4px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.insp-findings .check-row {
+  padding: 6px 4px;
+  border-radius: 8px;
+}
+
+.insp-findings > .link-btn {
+  justify-self: start;
+  margin-left: 30px;
+  font-size: 11.5px;
+}

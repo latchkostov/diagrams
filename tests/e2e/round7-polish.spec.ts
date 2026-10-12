@@ -125,7 +125,8 @@ test("the canvas right-click leaves out what the canvas controls already do", as
   await expect(page.getByTestId("context-menu-item-canvas.add-node")).toBeVisible();
   for (const id of ["canvas.undo", "canvas.redo", "canvas.shortcuts", "canvas.fit"])
     await expect(page.getByTestId(`context-menu-item-${id}`)).toHaveCount(0);
-  await expect(page.getByTestId("context-menu").getByRole("menuitem")).toHaveCount(9);
+  // Check diagram joined Auto-layout's section: 10 of the 12-row budget.
+  await expect(page.getByTestId("context-menu").getByRole("menuitem")).toHaveCount(10);
 });
 
 test("the start card keeps one row of actions, clear of the canvas controls with the AI panel open", async ({
