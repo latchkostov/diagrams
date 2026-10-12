@@ -1,3 +1,8 @@
 * text=auto eol=lf
 *.png binary
 *.svg text eol=lf
+# Generated into the agent skill by `pnpm schemas` (scripts/skill-gen.ts). The template is one 1.2 MB page:
+# no line diffs.
+skills/livediagrams/scripts/lib/viewer-template.html linguist-generated=true -diff
+skills/livediagrams/scripts/lib/icons.json linguist-generated=true
+skills/livediagrams/scripts/lib/inject.mjs linguist-generated=true

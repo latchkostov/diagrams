@@ -1,13 +1,15 @@
 // The agent skill (skills/livediagrams/): its generated files are current, its scripts agree with the app
 // (layout, share-link encoding, what the app will open), and validate.mjs explains what's wrong.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { generateSkillFiles, publicExamples, SKILL_DIR } from "../../../scripts/skill-gen";
+import { generateSkillFiles, iconMap, publicExamples, SKILL_DIR } from "../../../scripts/skill-gen";
 import { readSkill, zipSkill } from "../../../scripts/skill-assets";
+import { buildViewerTemplate } from "../../../scripts/interactive-viewer";
+import { exportHtml, htmlFileName, type ExportInput } from "../../export/inject";
 import { decodeShare, encodeShare, sharePayloadFromInput } from "../../interop/share";
 import { parseNative } from "../../interop/native";
 import { layoutDiagram } from "./layout";
@@ -60,10 +62,16 @@ describe("generated skill files", () => {
       "reference/simulation.md",
       "reference/stencils.md",
       "scripts/lib/app.mjs",
+      "scripts/lib/icons.json",
+      "scripts/lib/inject.mjs",
       "scripts/lib/spec.json",
+      "scripts/lib/viewer-template.html",
     ]);
-    for (const [name, text] of Object.entries(files))
-      expect(readFileSync(path.join(skill, name), "utf8").replace(/\r\n/g, "\n"), name).toBe(text);
+    for (const [name, text] of Object.entries(files)) {
+      const committed = readFileSync(path.join(skill, name), "utf8").replace(/\r\n/g, "\n");
+      // A plain comparison: a diff of the 1.2 MB template would bury which file is stale.
+      expect(committed === text, `${name} is stale: run pnpm schemas`).toBe(true);
+    }
   }, 60_000);
 
   it("SKILL.md has the frontmatter Agent Skills require, and every relative link resolves", () => {
@@ -74,7 +82,13 @@ describe("generated skill files", () => {
     expect(field("name")).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
     expect(field("description").length).toBeGreaterThan(50);
     expect(field("description").length).toBeLessThanOrEqual(1024);
-    for (const doc of ["SKILL.md", "reference/format.md", "reference/simulation.md", "reference/stencils.md"]) {
+    for (const doc of [
+      "SKILL.md",
+      "reference/format.md",
+      "reference/outputs.md",
+      "reference/simulation.md",
+      "reference/stencils.md",
+    ]) {
       const body = readFileSync(path.join(skill, doc), "utf8");
       for (const [, href] of body.matchAll(/\]\(([^)#:]+)(?:#[^)]*)?\)/g))
         expect(existsSync(path.join(skill, path.dirname(doc), href)), `${doc} -> ${href}`).toBe(true);
@@ -154,6 +168,7 @@ describe("validate.mjs", () => {
     ["the wrong format", (d) => ({ ...d, format: "drawio" }), /"format" must be "diagrams\/v1", not "drawio"/],
     ["no title", (d) => ({ ...d, title: "" }), /Add a "title"/],
     ["no edges list", ({ edges: _, ...d }) => d, /"edges" must be a list/],
+    ["a private that isn't true", (d) => ({ ...d, private: "yes" }), /"private" must be true/],
     [
       "an unknown stencil",
       (d) => ({ ...d, nodes: [{ ...d.nodes[0], stencil: "kafka-topic" }, ...d.nodes.slice(1)] }),
@@ -539,8 +554,18 @@ describe("the downloadable skill", () => {
   it("zips the skill folder deterministically, under livediagrams/", () => {
     const files = readSkill();
     const names = files.map((f) => f.name);
-    expect(names).toEqual(expect.arrayContaining(["SKILL.md", "scripts/validate.mjs", "scripts/lib/spec.json"]));
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "SKILL.md",
+        "scripts/validate.mjs",
+        "scripts/export-html.mjs",
+        "scripts/lib/spec.json",
+        "scripts/lib/viewer-template.html",
+      ]),
+    );
     const zip = zipSkill(files);
+    // The viewer template is most of it (about 415 kB of the zip): keep the download in check.
+    expect(zip.length).toBeLessThan(800_000);
     expect(zipSkill(readSkill()).equals(zip)).toBe(true);
     // Read the local file entries back.
     const out = new Map<string, string>();
@@ -554,5 +579,101 @@ describe("the downloadable skill", () => {
     }
     expect([...out.keys()]).toEqual(names.map((name) => `livediagrams/${name}`));
     expect(out.get("livediagrams/SKILL.md")).toBe(readFileSync(path.join(skill, "SKILL.md"), "utf8"));
+  });
+});
+
+describe("export-html.mjs", () => {
+  const kafka = path.join(root, "src", "examples", "kafka-order-pipeline.json");
+  const out = (...parts: string[]) => path.join(tmp, "html", ...parts);
+  /** The icon files the app serves, as it fetches them. */
+  const appIcons = () => {
+    const dir = path.join(root, "src", "stencils", "icons");
+    return Object.fromEntries(
+      readdirSync(dir)
+        .filter((f) => f.endsWith(".svg"))
+        .map((f) => [f.slice(0, -".svg".length), readFileSync(path.join(dir, f), "utf8")]),
+    );
+  };
+
+  it("writes the app's own file for the same diagram and options", async () => {
+    // The app's export: a fresh template, as the build emits it, and the app's icon files.
+    const template = await buildViewerTemplate(root);
+    const diagram = read(kafka);
+    const app = (input: Partial<ExportInput>) =>
+      exportHtml(template, { diagram, iconSvgs: appIcons(), theme: "light", exportedOn: "2026-10-12", ...input });
+    const cases: [string[], Partial<ExportInput>, string][] = [
+      [[], { startSimulation: "black-friday" }, 'plays "Black Friday'],
+      [
+        ["--theme", "dark", "--banner", "Confidential: internal use only", "--sim", "payments-outage"],
+        { theme: "dark", banner: "Confidential: internal use only", startSimulation: "payments-outage" },
+        'plays "Payments',
+      ],
+      [
+        ["--title", "Orders (team copy)", "--no-autoplay"],
+        { title: "Orders (team copy)", startSimulation: null },
+        "kB)",
+      ],
+    ];
+    for (const [i, [args, input, says]] of cases.entries()) {
+      const dir = out(`case${i}`);
+      const r = run("export-html.mjs", kafka, "--out", dir, "--exported-on", "2026-10-12", ...args);
+      expect(r.code, r.err).toBe(0);
+      const file = path.join(dir, htmlFileName(input.title ?? diagram.title));
+      const [first, note] = r.out.trim().split("\n");
+      expect(first.startsWith(`${file} (1,2`), first).toBe(true);
+      expect(first).toContain(says);
+      expect(note).toMatch(/^Private: .*no network requests.*only people who have the file can open it/);
+      expect(readFileSync(file, "utf8") === app(input), args.join(" ") || "defaults").toBe(true);
+    }
+  }, 60_000);
+
+  it("carries every icon the catalog uses, offline", () => {
+    const map = iconMap(root);
+    expect(Object.keys(map).length).toBeGreaterThan(100);
+    expect(map["generic-box"]).toMatch(/^<svg/);
+    expect(read(path.join(skill, "scripts", "lib", "icons.json"))).toEqual(map);
+  });
+
+  it("exports a private diagram, which share-link.mjs refuses", () => {
+    const file = write({ ...read(kafka), title: "Ledger flow", private: true });
+    const valid = run("validate.mjs", file);
+    expect(valid.code, valid.out).toBe(0);
+    expect(valid.out).not.toMatch(/warning:/);
+    const link = run("share-link.mjs", file);
+    expect(link.code).toBe(1);
+    expect(link.out).toBe("");
+    expect(link.err).toMatch(/private diagram.*export-html.mjs/);
+    const r = run("export-html.mjs", file, "--out", out("private.html"));
+    expect(r.code, r.err).toBe(0);
+    expect(readFileSync(out("private.html"), "utf8")).toContain('"private":true');
+  });
+
+  it("refuses an invalid diagram and bad options, and writes nothing", () => {
+    const broken = run(
+      "export-html.mjs",
+      write({ format: "diagrams/v1", title: "x", nodes: [{ id: "a" }], edges: [] }),
+    );
+    expect(broken.code).toBe(1);
+    expect(broken.err).toMatch(/fix them first/);
+    const unplaced = write({
+      format: "diagrams/v1",
+      title: "x",
+      nodes: [{ id: "a", stencil: "postgres", label: "A" }],
+      edges: [],
+    });
+    expect(run("export-html.mjs", unplaced).err).toMatch(/layout\.mjs/);
+    expect(run("export-html.mjs", kafka, "--theme", "blue").code).toBe(2);
+    expect(run("export-html.mjs", kafka, "--sim", "nope").err).toMatch(/isn't one of this diagram's simulations/);
+    expect(run("export-html.mjs", kafka, "--colour", "red").code).toBe(2);
+    expect(run("export-html.mjs").code).toBe(2);
+    expect(existsSync(path.join(root, "src", "examples", "Kafka order pipeline.html"))).toBe(false);
+    expect(readdirSync(tmp).filter((f) => f.endsWith(".html"))).toEqual([]);
+  });
+
+  it("uses nothing that could reach the network", () => {
+    for (const f of ["export-html.mjs", "lib/inject.mjs", "lib/check.mjs"]) {
+      const code = readFileSync(path.join(skill, "scripts", f), "utf8");
+      expect(code, f).not.toMatch(/node:(http|https|net|dgram|tls|dns)\b|\bfetch\(|XMLHttpRequest|WebSocket/);
+    }
   });
 });

@@ -32,9 +32,16 @@ in the browser. There is no account and no server.
 ## Use with your AI agent
 
 The **livediagrams** [Agent Skill](skills/livediagrams/SKILL.md) lets an agent draw diagrams for you. Ask "diagram
-our order pipeline" and it writes a `.diagram.json` file, checks it, and hands back a livediagrams.dev link. No
-browser is needed and nothing is uploaded: the diagram travels inside the link. The skill needs Node.js 20 or later
-and no keys.
+our order pipeline" and it writes a `.diagram.json` file, checks it, and asks what you want back:
+
+- an **interactive HTML file** (recommended for work and company diagrams): the app's Interactive HTML export, made
+  offline by the skill's `export-html.mjs`. It plays the simulations, works offline, makes no network requests, and
+  only people who have the file can open it;
+- the **diagram file**, to keep editing at livediagrams.dev;
+- an **image**, which it tells you how to export from the app;
+- a **share link**, where anyone who has the link can open the diagram. Private diagrams never get one.
+
+No browser is needed and nothing is uploaded. The skill needs Node.js 20 or later and no keys. To install it:
 
 - **Claude Code**: `/plugin marketplace add latchkostov/diagrams`, then `/plugin install livediagrams@livediagrams`
   (or, on Claude Code 2.1.275 or later, `/plugin install livediagrams --marketplace latchkostov/diagrams`).
@@ -47,8 +54,9 @@ and no keys.
 
 The same steps, with copyable commands, are at [livediagrams.dev/skill/](https://www.livediagrams.dev/skill/) (linked from
 the AI panel). The skill is also published at [livediagrams.dev/skill/SKILL.md](https://www.livediagrams.dev/skill/SKILL.md). Its
-stencil list, validator, layout and parts of its reference are generated from the app by `pnpm schemas`, and a unit test fails
-when they're stale.
+stencil list, validator, layout, parts of its reference and its HTML export (the viewer template, the injection and the
+stencil icons) are generated from the app by `pnpm schemas`, and a unit test fails when they're stale. When the skill
+changes, bump `version` in `.claude-plugin/marketplace.json` so Claude Code users get the update.
 
 ## Development
 

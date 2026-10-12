@@ -388,6 +388,21 @@ const html = exportHtml(template, {
 writeFileSync(htmlFileName(diagram.title), html);
 ```
 
+**From the agent skill, offline.** `skills/livediagrams/scripts/export-html.mjs <file> [--out path] [--theme light|dark]
+[--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay]` makes the same file on plain Node (20 or later,
+standard library only, no network): it validates the diagram with `validate.mjs`'s checks, then runs the bundled
+injection on the bundled template with the bundled icons. `pnpm schemas` (`scripts/skill-gen.ts`) generates the three
+into `skills/livediagrams/scripts/lib/`: `inject.mjs` (this module as plain JavaScript), `viewer-template.html`
+(`buildViewerTemplate`, the same bytes the app's build emits; the build takes under a second, so it's part of
+`pnpm schemas` and `prebuild`) and `icons.json` (the SVG text of every icon the catalog uses, 387 kB). `--exported-on
+YYYY-MM-DD` fixes the footer's date. The skill grows from 50 kB to about 600 kB zipped (the template is 415 kB of
+it). Kept raw rather than gzipped: the zip deflates it to the same size either way, and a raw file is compared
+byte for byte by the staleness test with no dependence on the zlib version. Tests: `src/ai/skill/skill.test.ts`
+(the generated files are current; the script's file equals `exportHtml` on a fresh template and the app's icon files
+for several option sets; a private diagram exports but gets no link; bad input writes nothing) and
+`tests/e2e/skill-html.spec.ts` (byte-identical to the production build's download for the same diagram, options and
+day; opens from `file://`, renders and plays with zero requests; a private diagram).
+
 The JSON is escaped for a `<script>` element (every `<` as a JSON unicode escape, so no `</script>` or `<!--`, and
 U+2028 and U+2029 too). Both ends hold the whole diagrams/v1 contract: the app runs `validateDiagram` before it
 writes a file, and the viewer bounds the payload before parsing it (12 MB in all, the diagram within the app's own

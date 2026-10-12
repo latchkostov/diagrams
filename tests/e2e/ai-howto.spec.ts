@@ -142,6 +142,9 @@ test.describe("without WebMCP", () => {
     await skill.waitForLoadState();
     expect(new URL(skill.url()).pathname).toBe("/skill/");
     await expect(skill.getByTestId("skill-title")).toHaveText("Use Live Diagrams with your AI agent");
+    // What the skill hands back, the private file first.
+    await expect(skill.getByTestId("skill-outputs")).toContainText("Interactive HTML file");
+    await expect(skill.getByTestId("skill-outputs")).toContainText("anyone who has the link can open the diagram");
     await expect(skill.getByTestId("skill-cmd-marketplace")).toHaveText("/plugin marketplace add latchkostov/diagrams");
     await expect(skill.getByTestId("skill-cmd-install")).toHaveText("/plugin install livediagrams@livediagrams");
     await skill.getByTestId("skill-copy-install").click();
