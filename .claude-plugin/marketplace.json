@@ -1,0 +1,24 @@
+{
+  "name": "livediagrams",
+  "description": "Live Diagrams: architecture and event-driven system diagrams, with live message-flow simulations, as livediagrams.dev share links.",
+  "owner": {
+    "name": "Latch Kostov",
+    "url": "https://github.com/latchkostov"
+  },
+  "plugins": [
+    {
+      "name": "livediagrams",
+      "source": "./skills/livediagrams",
+      "description": "Diagram architectures, messaging and data flows (Kafka, Service Bus, SQS, Pub/Sub…) as .diagram.json files and livediagrams.dev share links. No browser, account or API key.",
+      "author": {
+        "name": "Latch Kostov",
+        "url": "https://github.com/latchkostov"
+      },
+      "homepage": "https://www.livediagrams.dev",
+      "repository": "https://github.com/latchkostov/diagrams",
+      "license": "MIT",
+      "keywords": ["diagrams", "architecture", "kafka", "event-driven", "simulation"],
+      "category": "productivity"
+    }
+  ]
+}

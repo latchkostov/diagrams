@@ -1,0 +1,558 @@
+// The agent skill (skills/livediagrams/): its generated files are current, its scripts agree with the app
+// (layout, share-link encoding, what the app will open), and validate.mjs explains what's wrong.
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { inflateRawSync } from "node:zlib";
+import { describe, expect, it } from "vitest";
+import { generateSkillFiles, publicExamples, SKILL_DIR } from "../../../scripts/skill-gen";
+import { readSkill, zipSkill } from "../../../scripts/skill-assets";
+import { decodeShare, encodeShare, sharePayloadFromInput } from "../../interop/share";
+import { parseNative } from "../../interop/native";
+import { layoutDiagram } from "./layout";
+
+const root = process.cwd();
+const skill = path.join(root, SKILL_DIR);
+const tmp = mkdtempSync(path.join(tmpdir(), "livediagrams-skill-"));
+const examples = publicExamples(root);
+let n = 0;
+
+function run(script: string, ...args: string[]) {
+  const r = spawnSync(process.execPath, [path.join(skill, "scripts", script), ...args], { encoding: "utf8" });
+  return { code: r.status, out: r.stdout, err: r.stderr };
+}
+function write(value: unknown): string {
+  const file = path.join(tmp, `d${++n}.diagram.json`);
+  writeFileSync(file, typeof value === "string" ? value : JSON.stringify(value, null, 2));
+  return file;
+}
+const read = (file: string) => JSON.parse(readFileSync(file, "utf8"));
+
+/** Complete diagrams shown in the skill's docs (as an agent writes them: without coordinates). */
+function docExamples(): { name: string; diagram: Record<string, unknown> }[] {
+  return ["SKILL.md", "reference/format.md"].flatMap((doc) =>
+    [...readFileSync(path.join(skill, doc), "utf8").matchAll(/```json\n([\s\S]*?)```/g)]
+      .map((m) => m[1])
+      .filter((text) => text.includes('"format": "diagrams/v1"'))
+      .map((text) => ({ name: doc, diagram: JSON.parse(text) })),
+  );
+}
+
+/** Strips what layout.mjs fills in. */
+function unplaced(d: object): Record<string, unknown> {
+  const c = structuredClone(d) as Record<string, unknown> & {
+    nodes: Record<string, unknown>[];
+    groups?: Record<string, unknown>[];
+  };
+  return {
+    ...c,
+    nodes: c.nodes.map(({ x: _x, y: _y, ...node }) => node),
+    ...(c.groups ? { groups: c.groups.map(({ x: _x, y: _y, width: _w, height: _h, ...g }) => g) } : {}),
+  };
+}
+
+describe("generated skill files", () => {
+  it("are current (run `pnpm schemas` after changing the catalog, the format or the layout)", async () => {
+    const files = await generateSkillFiles(root);
+    expect(Object.keys(files).sort()).toEqual([
+      "reference/format.md",
+      "reference/simulation.md",
+      "reference/stencils.md",
+      "scripts/lib/app.mjs",
+      "scripts/lib/spec.json",
+    ]);
+    for (const [name, text] of Object.entries(files))
+      expect(readFileSync(path.join(skill, name), "utf8").replace(/\r\n/g, "\n"), name).toBe(text);
+  }, 60_000);
+
+  it("SKILL.md has the frontmatter Agent Skills require, and every relative link resolves", () => {
+    const text = readFileSync(path.join(skill, "SKILL.md"), "utf8");
+    const front = /^---\n([\s\S]*?)\n---\n/.exec(text.replace(/\r\n/g, "\n"))?.[1] ?? "";
+    const field = (k: string) => new RegExp(`^${k}: (.+)$`, "m").exec(front)?.[1] ?? "";
+    expect(field("name")).toBe(path.basename(skill));
+    expect(field("name")).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+    expect(field("description").length).toBeGreaterThan(50);
+    expect(field("description").length).toBeLessThanOrEqual(1024);
+    for (const doc of ["SKILL.md", "reference/format.md", "reference/simulation.md", "reference/stencils.md"]) {
+      const body = readFileSync(path.join(skill, doc), "utf8");
+      for (const [, href] of body.matchAll(/\]\(([^)#:]+)(?:#[^)]*)?\)/g))
+        expect(existsSync(path.join(skill, path.dirname(doc), href)), `${doc} -> ${href}`).toBe(true);
+    }
+  });
+});
+
+describe("layout.mjs", () => {
+  it.each(examples.map((e) => [e.slug, e.diagram] as const))("lays out %s like the app", (_slug, diagram) => {
+    const file = write(unplaced(diagram));
+    const r = run("layout.mjs", file);
+    expect(r.code, r.err).toBe(0);
+    const out = read(file);
+    const direct = layoutDiagram(unplaced(diagram));
+    expect(direct.ok).toBe(true);
+    expect(out).toEqual(JSON.parse(JSON.stringify(direct.ok && direct.diagram)));
+    expect(parseNative(JSON.stringify(out)).ok).toBe(true);
+    expect(run("validate.mjs", file).code).toBe(0);
+  });
+
+  it("keeps boundary membership as written and leaves placed diagrams alone", () => {
+    const [{ diagram }] = docExamples().filter((e) => e.name === "reference/format.md");
+    const file = write(diagram);
+    expect(run("layout.mjs", file).code).toBe(0);
+    const placed = read(file);
+    expect(placed.nodes.find((x: { id: string }) => x.id === "web").group).toBeUndefined();
+    const aks = placed.groups[0];
+    for (const node of placed.nodes.filter((x: { group?: string }) => x.group === "aks")) {
+      expect(node.x).toBeGreaterThanOrEqual(aks.x);
+      expect(node.y + 72).toBeLessThanOrEqual(aks.y + aks.height);
+    }
+    const again = run("layout.mjs", file);
+    expect(again.out).toMatch(/nothing to lay out/);
+    expect(read(file)).toEqual(placed);
+  });
+});
+
+describe("validate.mjs", () => {
+  it("accepts every public example", () => {
+    const r = run("validate.mjs", ...examples.map((e) => path.join(root, "src", "examples", `${e.slug}.json`)));
+    expect(r.out).not.toMatch(/error:/);
+    expect(r.code, r.out).toBe(0);
+  });
+
+  it("accepts the examples in the skill's docs once they're laid out, and the app opens them", () => {
+    const docs = docExamples();
+    expect(docs.length).toBeGreaterThanOrEqual(2);
+    for (const { name, diagram } of docs) {
+      const file = write(diagram);
+      expect(run("validate.mjs", file).out, name).toMatch(/no x and y.*layout\.mjs/);
+      expect(run("layout.mjs", file).code).toBe(0);
+      const r = run("validate.mjs", file);
+      expect(r.code, `${name}: ${r.out}`).toBe(0);
+      expect(r.out, name).not.toMatch(/warning:/);
+      const app = parseNative(readFileSync(file, "utf8"));
+      expect(app.ok && app.warnings, name).toEqual([]);
+    }
+  });
+
+  const base = {
+    format: "diagrams/v1",
+    title: "Fixture",
+    groups: [{ id: "vpc", label: "VPC", x: 0, y: 0, width: 800, height: 300 }],
+    nodes: [
+      { id: "api", stencil: "service.node", label: "API", x: 40, y: 100, group: "vpc" },
+      { id: "topic", stencil: "kafka.topic", label: "Kafka", x: 400, y: 100, group: "vpc" },
+      { id: "worker", stencil: "service.go", label: "Worker", x: 760, y: 100 },
+    ],
+    edges: [
+      { id: "e1", from: "api", to: "topic", kind: "async" },
+      { id: "e2", from: "topic", to: "worker", kind: "async" },
+    ],
+  };
+  type Fixture = typeof base & Record<string, unknown>;
+  const broken: [string, (d: Fixture) => unknown, RegExp][] = [
+    ["invalid JSON", () => '{ "format": "diagrams/v1", ', /isn't valid JSON/],
+    ["the wrong format", (d) => ({ ...d, format: "drawio" }), /"format" must be "diagrams\/v1", not "drawio"/],
+    ["no title", (d) => ({ ...d, title: "" }), /Add a "title"/],
+    ["no edges list", ({ edges: _, ...d }) => d, /"edges" must be a list/],
+    [
+      "an unknown stencil",
+      (d) => ({ ...d, nodes: [{ ...d.nodes[0], stencil: "kafka-topic" }, ...d.nodes.slice(1)] }),
+      /nodes\[0\] "api": unknown stencil "kafka-topic"\. Did you mean kafka\.topic \(Kafka Topic\)/,
+    ],
+    [
+      "a duplicate node id",
+      (d) => ({ ...d, nodes: [...d.nodes, { ...d.nodes[2], x: 900 }] }),
+      /nodes\[3\] "worker": the id "worker" is already used by node "worker"/,
+    ],
+    [
+      "an edge to a missing node",
+      (d) => ({ ...d, edges: [...d.edges, { id: "e3", from: "worker", to: "db", kind: "sync" }] }),
+      /edges\[2\] "e3": "to" is "db", which isn't a node id/,
+    ],
+    [
+      "a duplicate edge id",
+      (d) => ({ ...d, edges: [...d.edges, { id: "e1", from: "worker", to: "api" }] }),
+      /edges\[2\] "e1": another edge already has the id "e1"/,
+    ],
+    [
+      "a node without coordinates",
+      (d) => ({ ...d, nodes: [{ id: "api", stencil: "service.node", label: "API" }, ...d.nodes.slice(1)] }),
+      /1 of 3 nodes have no x and y\. Run: node scripts\/layout\.mjs/,
+    ],
+    [
+      "an unknown edge kind",
+      (d) => ({ ...d, edges: [{ ...d.edges[0], kind: "message" }, d.edges[1]] }),
+      /edges\[0\] "e1": "kind" must be "async", "sync"/,
+    ],
+    [
+      "a missing boundary",
+      (d) => ({ ...d, nodes: [{ ...d.nodes[0], group: "vnet" }, ...d.nodes.slice(1)] }),
+      /"group" is "vnet", but there's no boundary with that id/,
+    ],
+    [
+      "an out-of-range property",
+      (d) => ({ ...d, nodes: [{ ...d.nodes[0], props: { failureRate: 2 } }, ...d.nodes.slice(1)] }),
+      /nodes\[0\] "api": props\.failureRate must be at most 1/,
+    ],
+    [
+      "a simulation naming a missing node",
+      (d) => ({
+        ...d,
+        simulations: [
+          {
+            id: "s",
+            title: "Storm",
+            traffic: [{ id: "t", node: "checkout", shape: { kind: "burst", count: 10 } }],
+          },
+        ],
+      }),
+      /simulations\[0\] "Storm": traffic\[0\]\.node refers to "checkout", which isn't a node id/,
+    ],
+    [
+      "a simulation with an unknown traffic shape",
+      (d) => ({
+        ...d,
+        simulations: [{ id: "s", title: "Storm", traffic: [{ id: "t", node: "api", shape: { kind: "wave" } }] }],
+      }),
+      /simulations\[0\] "Storm": every traffic entry needs a shape \(burst, constant, ramp or spike\)\. The app would drop/,
+    ],
+  ];
+
+  it("accepts the valid fixture", () => {
+    const r = run("validate.mjs", write(base));
+    expect(r.code, r.out).toBe(0);
+    expect(r.out).toMatch(/^VALID .*: 3 nodes, 2 edges, 1 boundary/);
+  });
+
+  it.each(broken)("rejects %s with a useful message", (_name, breakIt, message) => {
+    const r = run("validate.mjs", write(breakIt(structuredClone(base) as Fixture) as object));
+    expect(r.code).toBe(1);
+    expect(r.out).toMatch(/^INVALID /);
+    expect(r.out).toMatch(message);
+  });
+
+  it("warns about things that work but read badly", () => {
+    const d = structuredClone(base) as Fixture;
+    d.nodes[2].label = "Worker that handles every single order event";
+    d.edges.pop();
+    const r = run("validate.mjs", write(d));
+    expect(r.code).toBe(0);
+    expect(r.out).toMatch(/warning: nodes\[2\] "worker": the label is \d+ characters/);
+    expect(r.out).toMatch(/warning: Node "topic" \(topic\) has no consumer/);
+  });
+
+  const sim = (
+    extra: Record<string, unknown> = {},
+    traffic: unknown = [{ id: "t", node: "api", shape: { kind: "constant", ratePerSec: 10, durationMs: 5000 } }],
+  ) => ({ id: "s", title: "Run", traffic, ...extra });
+  const note = { id: "n1", kind: "note", text: "Retries", x: 0, y: 400, width: 240, height: 160 };
+  const discarded: [string, (d: Fixture) => unknown, RegExp][] = [
+    ["a non-numeric seed", (d) => ({ ...d, simulations: [sim({ seed: "oops" })] }), /seed or durationMs is invalid/],
+    [
+      "a negative capacity multiplier",
+      (d) => ({ ...d, simulations: [sim({ multipliers: { capacity: -1 } })] }),
+      /multipliers must be bounded/,
+    ],
+    [
+      "a capacity multiplier over 100",
+      (d) => ({ ...d, simulations: [sim({ multipliers: { capacity: 101 } })] }),
+      /multipliers must be bounded/,
+    ],
+    ["a setup status list", (d) => ({ ...d, simulations: [sim({ setup: { status: [] } })] }), /setup status must map/],
+    [
+      "a numeric message type",
+      (d) => ({
+        ...d,
+        simulations: [sim({}, [{ id: "t", node: "api", messageType: 7, shape: { kind: "burst", count: 5 } }])],
+      }),
+      /every traffic entry needs string id, node, label and messageType/,
+    ],
+    [
+      "more traffic profiles than the document allows",
+      (d) => ({
+        ...d,
+        simulations: [
+          sim(
+            {},
+            Array.from({ length: 2001 }, (_, i) => ({ id: `t${i}`, node: "api", shape: { kind: "burst", count: 0 } })),
+          ),
+        ],
+      }),
+      /The app would refuse this file: The simulations exceed the document's traffic/,
+    ],
+    [
+      "a note with a negative width",
+      (d) => ({ ...d, annotations: [{ ...note, width: -1 }] }),
+      /annotations\[0\] "n1": its size must be between 1 and 20000 pixels\. The app would drop it/,
+    ],
+    [
+      "a note outside the coordinate budget",
+      (d) => ({ ...d, annotations: [{ ...note, x: 2_000_000 }] }),
+      /annotations\[0\] "n1": it's outside the coordinate budget\. The app would drop it/,
+    ],
+    [
+      "an edge to a shape with an invalid size",
+      (d) => ({
+        ...d,
+        annotations: [{ id: "box", kind: "shape", text: "Legacy", x: 0, y: 400, width: 0, height: 80 }],
+        edges: [...d.edges, { id: "e3", from: "worker", to: "box", kind: "sync" }],
+      }),
+      /annotations\[0\] "box": its size must be between 1.*\n.*edges\[2\] "e3": "to" is annotation "box"/,
+    ],
+    [
+      "a shape outline on a note",
+      (d) => ({ ...d, annotations: [{ ...note, shape: "ellipse" }] }),
+      /only a "shape" annotation takes "shape"/,
+    ],
+  ];
+
+  it.each(discarded)("rejects %s, which the app would discard", (_name, breakIt, message) => {
+    const d = breakIt(structuredClone(base) as Fixture) as object;
+    // The app really would lose something: it refuses the file, warns, or opens something else.
+    const app = parseNative(JSON.stringify(d));
+    expect(app.ok && !app.warnings.length && JSON.stringify(app.diagram) === JSON.stringify(d)).toBe(false);
+    const file = write(d);
+    const r = run("validate.mjs", file);
+    expect(r.code).toBe(1);
+    expect(r.out).toMatch(message);
+    const link = run("share-link.mjs", file);
+    expect(link.code).toBe(1);
+    expect(link.out).toBe("");
+  });
+
+  const malformed: [string, unknown][] = [
+    ["traffic: [null]", sim({}, [null])],
+    ["traffic: {}", sim({}, {})],
+    ["timeline: {}", sim({ timeline: {} })],
+    ["ramp stages: {}", sim({}, [{ id: "t", node: "api", shape: { kind: "ramp", stages: {} } }])],
+    ["a null simulation", null],
+  ];
+
+  it.each(malformed)("reports %s without throwing, and checks the next file", (_name, simulation) => {
+    const bad = write({ ...structuredClone(base), simulations: [simulation] });
+    const good = write(base);
+    const r = run("validate.mjs", bad, good);
+    expect(r.code).toBe(1);
+    expect(r.out).toMatch(/^INVALID .*\n {2}error: simulations\[0\].*The app would drop this simulation/);
+    expect(r.out).toMatch(/\nVALID .*: 3 nodes/);
+    expect(r.out + r.err).not.toMatch(/TypeError|checker failed|at .*\.mjs:\d+/);
+  });
+
+  it("warns when a traffic multiplier makes live view animate too many dots", () => {
+    const d = { ...structuredClone(base), simulations: [sim({ scale: 1, multipliers: { traffic: 100 } })] };
+    const r = run("validate.mjs", write(d));
+    expect(r.code).toBe(0);
+    expect(r.out).toMatch(
+      /warning: simulations\[0\] "Run": at "scale": 1 with a traffic multiplier of 100.*"scale": 20/,
+    );
+  });
+});
+
+describe("layout.mjs with unusual input", () => {
+  it.each([
+    ["an unknown direction", { direction: "left-to-right" }],
+    ["a null boundary", { groups: [null] }],
+    ["a numeric edge label", { edges: [{ id: "e1", from: "a", to: "b", label: 42 }] }],
+  ])("lays out a file with %s without crashing, and leaves the problem for validate.mjs", (_name, extra) => {
+    const d = {
+      format: "diagrams/v1",
+      title: "Odd",
+      nodes: [
+        { id: "a", stencil: "service.node", label: "A" },
+        { id: "b", stencil: "postgres", label: "B" },
+      ],
+      edges: [{ id: "e1", from: "a", to: "b", kind: "sync" }],
+      ...extra,
+    };
+    const file = write(d);
+    const r = run("layout.mjs", file);
+    expect(r.code, r.err).toBe(0);
+    expect(r.err).not.toMatch(/TypeError/);
+    const out = read(file);
+    for (const [key, value] of Object.entries(extra)) expect(out[key]).toEqual(value);
+    expect(out.nodes.every((n: { x?: number }) => typeof n.x === "number")).toBe(true);
+    expect(run("validate.mjs", file).code).toBe(1);
+  });
+
+  it("explains a file it can't lay out", () => {
+    const r = run("layout.mjs", write({ format: "diagrams/v1", title: "x", nodes: [{ id: "a" }], edges: [] }));
+    expect(r.code).toBe(1);
+    expect(r.err).toMatch(/Can't lay out .*Every node needs an id, a stencil/);
+  });
+
+  it("places a new note clear of the annotations already there", () => {
+    const d = {
+      format: "diagrams/v1",
+      title: "Notes",
+      nodes: [{ id: "a", stencil: "service.node", label: "A", x: 40, y: 40 }],
+      edges: [],
+      annotations: [
+        { id: "old", kind: "note", text: "Existing", x: 40, y: 172, width: 240, height: 160 },
+        { id: "new", kind: "note", text: "Added" },
+        { id: "caption", kind: "text", text: "Caption" },
+      ],
+    };
+    const file = write(d);
+    expect(run("layout.mjs", file).code).toBe(0);
+    const boxes = read(file).annotations as { x: number; y: number; width: number; height: number }[];
+    const overlaps = (a: (typeof boxes)[number], b: (typeof boxes)[number]) =>
+      a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+    expect(boxes[0]).toEqual(d.annotations[0]);
+    for (let i = 0; i < boxes.length; i++)
+      for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i], boxes[j]), `${i} / ${j}`).toBe(false);
+    expect(run("validate.mjs", file).code).toBe(0);
+  });
+});
+
+describe("sharing keeps everything the author wrote", () => {
+  it("round-trips simulations and every kind of annotation", async () => {
+    const d = {
+      format: "diagrams/v1",
+      title: "Everything",
+      description: "Nodes, a boundary, annotations, dependencies and a simulation.",
+      direction: "LR",
+      groups: [{ id: "vpc", label: "VPC", tone: "aws", x: 0, y: 0, width: 800, height: 300 }],
+      nodes: [
+        { id: "api", stencil: "service.node", label: "API", x: 40, y: 100, group: "vpc", props: { ratePerSec: 5 } },
+        { id: "q", stencil: "aws.sqs", label: "SQS", sublabel: "orders", x: 400, y: 100, group: "vpc" },
+        { id: "worker", stencil: "service.go", label: "Worker", x: 900, y: 100, props: { failureRate: 0.1 } },
+        { id: "dlq", stencil: "aws.sqs", label: "Orders DLQ", x: 900, y: 260 },
+        { id: "kv", stencil: "vault", label: "Vault", x: 40, y: 400 },
+      ],
+      edges: [
+        { id: "e1", from: "api", to: "q", kind: "async", label: "OrderPlaced" },
+        { id: "e2", from: "q", to: "worker", kind: "async" },
+        { id: "e3", from: "q", to: "dlq", kind: "async", props: { dlq: true } },
+        { id: "e4", from: "api", to: "kv", relation: "secret" },
+        { id: "e5", from: "worker", to: "legacy", kind: "sync" },
+      ],
+      annotations: [
+        { id: "title", kind: "text", text: "Orders", x: 0, y: -120, width: 240, height: 80, textSize: "xl" },
+        { id: "tip", kind: "note", text: "Retried 3 times", x: 400, y: 400, width: 240, height: 160, color: "yellow" },
+        { id: "zone", kind: "zone", text: "Async", x: 360, y: 60, width: 320, height: 160 },
+        { id: "legacy", kind: "shape", text: "Mainframe", x: 1300, y: 100, width: 200, height: 80, shape: "cylinder" },
+      ],
+      simulations: [
+        {
+          id: "outage",
+          title: "Worker outage",
+          seed: 3,
+          scale: 1,
+          multipliers: { traffic: 1, capacity: 1 },
+          durationMs: 20000,
+          setup: { status: { worker: "up" }, props: { worker: { replicas: 2 } } },
+          traffic: [
+            {
+              id: "t",
+              node: "api",
+              label: "Orders",
+              messageType: "OrderPlaced",
+              shape: { kind: "constant", ratePerSec: 10, durationMs: 15000 },
+            },
+          ],
+          timeline: [
+            { atMs: 0, action: { do: "note", text: "Steady", focus: ["api"] } },
+            { atMs: 5000, action: { do: "status", node: "worker", status: "down" } },
+            { atMs: 10000, action: { do: "status", node: "worker", status: "up" } },
+          ],
+          expectations: [
+            {
+              id: "x",
+              label: "Some dead-lettered",
+              metric: { node: "q", field: "deadLettered" },
+              op: ">",
+              value: 0,
+              when: "end",
+            },
+          ],
+        },
+      ],
+    };
+    const file = write(d);
+    const v = run("validate.mjs", file);
+    expect(v.code, v.out).toBe(0);
+    const r = run("share-link.mjs", file);
+    expect(r.code, r.err).toBe(0);
+    const opened = await decodeShare(sharePayloadFromInput(r.out.trim())!);
+    expect(opened).toEqual(d);
+    const app = parseNative(JSON.stringify(d));
+    expect(app.ok && app.warnings).toEqual([]);
+  });
+});
+
+describe("share-link.mjs", () => {
+  const cases = [
+    ...examples.map((e) => [e.slug, path.join(root, "src", "examples", `${e.slug}.json`)] as const),
+    ...docExamples().map((e, i) => {
+      const file = write(e.diagram);
+      run("layout.mjs", file);
+      return [`${e.name} example ${i + 1}`, file] as const;
+    }),
+  ];
+
+  it.each(cases)("encodes %s exactly as the app does", async (_name, file) => {
+    const r = run("share-link.mjs", file);
+    expect(r.code, r.err).toBe(0);
+    const url = r.out.trim();
+    expect(url.startsWith("https://www.livediagrams.dev/#d=")).toBe(true);
+    const payload = sharePayloadFromInput(url)!;
+    expect(payload).toMatch(/^[A-Za-z0-9_-]+$/);
+    const original = read(file);
+    // The payload is the minified JSON, raw-deflated, base64url without padding...
+    expect(JSON.parse(inflateRawSync(Buffer.from(payload, "base64url")).toString("utf8"))).toEqual(original);
+    expect(inflateRawSync(Buffer.from(payload, "base64url")).toString("utf8")).toBe(JSON.stringify(original));
+    // ...the app's own encoder produces the same link, and its decoder opens it as the same diagram.
+    expect(payload).toBe(await encodeShare(original));
+    // Nothing the author wrote is lost: the opened diagram is the authored file, with no repairs.
+    expect(await decodeShare(payload)).toEqual(original);
+    const parsed = parseNative(readFileSync(file, "utf8"));
+    expect(parsed.ok && parsed.warnings).toEqual([]);
+  });
+
+  it("uses --base for another host, refuses an invalid diagram, and warns when the link is long", () => {
+    const ok = write(read(cases[0][1]));
+    expect(run("share-link.mjs", ok, "--base", "http://localhost:5521/").out).toMatch(/^http:\/\/localhost:5521\/#d=/);
+
+    const bad = run("share-link.mjs", write({ format: "diagrams/v1", title: "x", nodes: [{ id: "a" }], edges: [] }));
+    expect(bad.code).toBe(1);
+    expect(bad.out).toBe("");
+    expect(bad.err).toMatch(/fix them first/);
+
+    let seed = 7;
+    const noise = () => (seed = (seed * 48271) % 2147483647).toString(36);
+    const nodes = Array.from({ length: 400 }, (_, i) => ({
+      id: `n${i}-${noise()}`,
+      stencil: "service.node",
+      label: `svc ${noise()}`,
+      sublabel: `${noise()} ${noise()}`,
+      x: (i % 20) * 360,
+      y: Math.floor(i / 20) * 120,
+    }));
+    const long = run("share-link.mjs", write({ format: "diagrams/v1", title: "Big", nodes, edges: [] }));
+    expect(long.code).toBe(0);
+    expect(long.out.trim().length).toBeGreaterThan(8000);
+    expect(long.err).toMatch(/warning: the link is [\d,]+ characters.*\.diagram\.json file instead/);
+  });
+});
+
+describe("the downloadable skill", () => {
+  it("zips the skill folder deterministically, under livediagrams/", () => {
+    const files = readSkill();
+    const names = files.map((f) => f.name);
+    expect(names).toEqual(expect.arrayContaining(["SKILL.md", "scripts/validate.mjs", "scripts/lib/spec.json"]));
+    const zip = zipSkill(files);
+    expect(zipSkill(readSkill()).equals(zip)).toBe(true);
+    // Read the local file entries back.
+    const out = new Map<string, string>();
+    for (let at = 0; zip.readUInt32LE(at) === 0x04034b50;) {
+      const size = zip.readUInt32LE(at + 18);
+      const nameLength = zip.readUInt16LE(at + 26);
+      const name = zip.subarray(at + 30, at + 30 + nameLength).toString("utf8");
+      const start = at + 30 + nameLength + zip.readUInt16LE(at + 28);
+      out.set(name, inflateRawSync(zip.subarray(start, start + size)).toString("utf8"));
+      at = start + size;
+    }
+    expect([...out.keys()]).toEqual(names.map((name) => `livediagrams/${name}`));
+    expect(out.get("livediagrams/SKILL.md")).toBe(readFileSync(path.join(skill, "SKILL.md"), "utf8"));
+  });
+});
