@@ -1,39 +1,46 @@
 import type { DiagramFile } from "../model/types";
 import { LIMITS, parseNative, tooLargeMessage, validateDiagram } from "./native";
 import type { DrawioDocument } from "./drawio/read";
-import { looksLikeDrawio, looksLikeMermaid } from "./sniff";
+import type { ImportReport } from "./infra/graph";
+import { looksLikeDrawio, looksLikeMermaid, sniffInfra } from "./sniff";
 import { loadOnce } from "../lib/lazyLoad";
 
 // One entry point for "here is some text (and maybe a file name): what is it, and what diagram
 // does it hold?" Used by Open file, drag-and-drop, paste and Google Drive. The draw.io and Mermaid
-// converters load when a file needs them (or when the File menu opens: preloadFormats).
+// converters load when a file needs them (or when the File menu opens: preloadFormats), and so do the
+// infrastructure importers (docker-compose) with their YAML reader.
 
 const drawioReader = loadOnce(() => import("./drawio/read"));
 const mermaidReader = loadOnce(() => import("./mermaid/read"));
+const infraReader = loadOnce(() => import("./infra/pipeline"));
 export const drawioWriter = loadOnce(() => import("./drawio/write"));
 export const mermaidWriter = loadOnce(() => import("./mermaid/write"));
 
 /** Warms the converters, so an import or export that follows doesn't wait for them. */
 export function preloadFormats() {
-  for (const load of [drawioReader, mermaidReader, drawioWriter, mermaidWriter]) void load().catch(() => {});
+  for (const load of [drawioReader, mermaidReader, drawioWriter, mermaidWriter, infraReader])
+    void load().catch(() => {});
 }
 
-export type FormatId = "native" | "drawio" | "mermaid";
+export type FormatId = "native" | "drawio" | "mermaid" | "compose";
 
 export const FORMAT_LABEL: Record<FormatId, string> = {
   native: "Live Diagrams file",
   drawio: "draw.io diagram",
   mermaid: "Mermaid flowchart",
+  compose: "docker-compose file",
 };
 
 /** File-picker accept list. */
 export const OPEN_ACCEPT =
-  ".json,.diagram.json,.drawio,.xml,.mmd,.mermaid,.svg,application/json,application/xml,text/xml,text/plain";
+  ".json,.diagram.json,.drawio,.xml,.mmd,.mermaid,.svg,.yaml,.yml,.env,application/json,application/xml,text/xml,text/plain,application/yaml,text/yaml";
 
 export function detectFormat(text: string, fileName = ""): FormatId | undefined {
   const name = fileName.toLowerCase();
   const head = text.replace(/^\uFEFF/, "").trimStart();
-  if (head.startsWith("{")) return "native";
+  const infra = sniffInfra(head);
+  if (infra === "compose") return "compose";
+  if (head.startsWith("{")) return infra ? undefined : "native";
   if (looksLikeDrawio(head)) return "drawio";
   if (looksLikeMermaid(head)) return "mermaid";
   if (/\.(drawio|xml)$/.test(name) && head.startsWith("<")) return "drawio";
@@ -52,7 +59,8 @@ export function titleFromFileName(name: string): string {
 }
 
 export type ImportOutcome =
-  | { ok: true; format: FormatId; diagram: DiagramFile; warnings: string[] }
+  /** `report`: an infrastructure import's Import report, kept in memory (never in the file). */
+  | { ok: true; format: FormatId; diagram: DiagramFile; warnings: string[]; report?: ImportReport }
   /** A draw.io file with several pages: the caller asks which one, then calls `pick`. */
   | { ok: "pages"; format: "drawio"; pages: { name: string; index: number }[]; pick: (index: number) => ImportOutcome }
   | { ok: false; error: string };
@@ -84,6 +92,8 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
   if (!text.trim()) return { ok: false, error: "There's nothing to import: the text is empty." };
   if (text.length > LIMITS.maxTextChars) return { ok: false, error: tooLargeMessage(text.length) };
   const format = detectFormat(text, fileName);
+  /** Recognised, but not imported yet (Kubernetes, AsyncAPI…): the infrastructure reader says so plainly. */
+  const later = format ? undefined : sniffInfra(text);
   const fallbackTitle = fileName ? titleFromFileName(fileName) : "Imported diagram";
   /** The loaded reader's own error type: its message is meant for the user. */
   let readerErrors: (new (message?: string) => Error)[] = [];
@@ -112,6 +122,11 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
       const { diagram, warnings } = reader.parseMermaid(text, fallbackTitle);
       return validated(format, diagram, warnings);
     }
+    if (format === "compose" || later) {
+      const reader = await infraReader();
+      readerErrors = [reader.ImportError];
+      return reader.importInfra(text, fileName, later);
+    }
   } catch (err) {
     if (readerErrors.some((type) => err instanceof type)) return { ok: false, error: (err as Error).message };
     return { ok: false, error: `Something went wrong reading it: ${err instanceof Error ? err.message : String(err)}` };
@@ -119,6 +134,20 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
   return {
     ok: false,
     error:
-      "That doesn't look like a diagram we can read. Supported: Live Diagrams files (.diagram.json), draw.io (.drawio / .xml) and Mermaid flowcharts (.mmd).",
+      "That doesn't look like a diagram we can read. Supported: Live Diagrams files (.diagram.json), draw.io (.drawio / .xml), Mermaid flowcharts (.mmd) and docker-compose files.",
   };
+}
+
+export interface ImportFile {
+  name: string;
+  text: string;
+}
+
+/**
+ * Several files at once (Open… or a drop): grouped by format, and the largest group imports. A compose file
+ * with its overrides is one diagram. One file is plain importText.
+ */
+export async function importFiles(files: readonly ImportFile[]): Promise<ImportOutcome> {
+  if (files.length < 2) return importText(files[0]?.text ?? "", files[0]?.name);
+  return (await infraReader()).importMany(files, detectFormat, importText);
 }

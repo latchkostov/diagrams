@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Page, Response } from "@playwright/test";
 import { test, expect, E2E_TARGET, gotoLab, pageLoadTimeout } from "./fixtures";
 import { installFakeSpeech, openAdvanced } from "./ai-helpers";
@@ -230,6 +232,24 @@ test.describe("Content-Security-Policy", () => {
     await page.getByTestId("skill-copy-install").click();
     await expect(page.getByTestId("skill-copy-install")).toHaveText("Copied");
 
+    expect(await csp.violations()).toEqual([]);
+  });
+
+  test("a docker-compose import (the YAML reader's chunk) and its Import report", async ({ page }) => {
+    const csp = await watch(page);
+    const res = await page.goto(`./?view=canvas&example=${KAFKA}`);
+    expectPolicy(res);
+    await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+    await page.getByTestId("import-input").setInputFiles({
+      name: "docker-compose.yml",
+      mimeType: "application/yaml",
+      buffer: readFileSync(join(process.cwd(), "tests", "fixtures", "imports", "compose", "docker-compose.yml")),
+    });
+    await expect(page.getByTestId("diagram-title")).toHaveText("shop");
+    await page.getByTestId("toast-import-details").click();
+    await expect(page.getByTestId("import-report")).toBeVisible();
+    await page.getByTestId("import-report-chip-1-generic.external-api").click();
+    await page.getByTestId("import-report-done").click();
     expect(await csp.violations()).toEqual([]);
   });
 

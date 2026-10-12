@@ -18,8 +18,8 @@ export const deviceProvider: StorageProvider<FileHandle> = {
   async open() {
     if (!fsAccessSupported()) throw new StorageError("This browser can't open files from here.");
     const picked = await openWithPicker();
-    if (!picked) return undefined;
-    const { file, handle } = picked;
+    if (!picked?.[0]) return undefined;
+    const { file, handle } = picked[0];
     // Check the size before reading anything into memory.
     if (file.size > LIMITS.maxTextChars)
       throw new StorageError(`Couldn't import ${file.name}. ${tooLargeMessage(file.size)}`, undefined, true);

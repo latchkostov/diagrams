@@ -2,6 +2,23 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Import docker-compose files (2026-10)
+
+One habit changes: **Open…** and a drop take several files at once. Opening one file works as before. New:
+
+- **Open…**, a drop and **Import from ▸ Paste text…** read a **docker-compose** file. Drop it with its
+  `docker-compose.override.yml` (and a `.env` file it names) to merge them the way Compose does. Each import
+  makes a new diagram in Your diagrams: services on their stencils (PostgreSQL, Kafka, NGINX…), the networks
+  as boundaries, and connections found in the files, including settings such as `DATABASE_URL` or `INPUT_TOPIC`.
+- The toast's **Details** opens the **Import report**: which stencils are guesses (one click picks another),
+  which setting each connection came from, and what wasn't drawn or couldn't be read, and why. Ctrl+K "Import
+  report" opens it again while the diagram is open.
+- Everything is read on this device. Setting values are used only to find host names and are never kept. With
+  **New diagrams are private** on, the import is private; otherwise the report offers **Make it private**.
+- Kubernetes manifests, AsyncAPI documents and Terraform plans are recognised, and say they can't be imported
+  yet.
+- New stencil: **MySQL** (MariaDB too).
+
 ## UX review, round 13 (2026-10)
 
 Two habits change:

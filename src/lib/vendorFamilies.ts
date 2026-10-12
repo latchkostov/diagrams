@@ -65,6 +65,7 @@ const VENDOR_FAMILY: Record<string, FamilyId> = {
   "Apache Flink": "streaming",
   Debezium: "streaming",
   PostgreSQL: "oss",
+  MySQL: "oss",
   Redis: "oss",
   MongoDB: "oss",
   Elastic: "oss",

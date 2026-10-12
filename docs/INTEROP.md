@@ -43,15 +43,15 @@ View, File and Present become icon-only, so the bar fits at 1024px without scrol
 | File menu                    | Notes                                                                                                                                                                                                                                                                   |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Save** (Ctrl+S)            | Goes back to wherever the diagram came from or was last saved: the same device file (File System Access) or the same file in Google Drive, OneDrive or Dropbox. Otherwise it asks where to save (or downloads, in browsers without the API). Ctrl+Shift+S is "Save as". |
-| **Open…** (Ctrl+O)           | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`. A draw.io file with several pages asks which page to open.                                                                                                                                                   |
+| **Open…** (Ctrl+O)           | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`, and docker-compose `.yml` / `.yaml`, several files at once. A draw.io file with several pages asks which page to open.                                                                                       |
 | Open from ▸ / Save to ▸      | Only when at least one cloud provider is configured (see "Storage providers" below); otherwise hidden completely, and **Save as…** stays a plain row. Each lists **This device** first, then the configured providers. Save to ▸ always makes a new file.               |
 | **Export PNG**               | 2×, whole diagram, independent of pan and zoom.                                                                                                                                                                                                                         |
 | **Copy share link**          | One click; the toast's **Details** opens the dialog (length, warning above 8k characters, native Share).                                                                                                                                                                |
 | **Copy link with password…** | Encrypts the diagram into a `#e=` link with a password (8+ characters, strength hint); see "Share links and embeds" below.                                                                                                                                              |
 | More formats ▸               | Diagram file (`.diagram.json`, lossless, simulations included) · Image… (PNG or SVG; scale and transparent background behind **Options**) · draw.io · Copy as Mermaid · Mermaid file (`.mmd`) · Embed code… · Save as…                                                  |
-| Import from ▸                | Paste text… (JSON, draw.io XML or Mermaid, auto-detected) · Share link…                                                                                                                                                                                                 |
+| Import from ▸                | Paste text… (JSON, draw.io XML, Mermaid or docker-compose, auto-detected) · Share link…                                                                                                                                                                                 |
 
-You can also drop a file anywhere on the page to open it.
+You can also drop files anywhere on the page to open them (several at once: a compose file with its overrides).
 
 **Where imports go.** Files open into the single "Imported" slot (examples are never overwritten).
 Share links open into a separate **Shared** slot, so a link someone sends you never replaces your own
@@ -75,7 +75,7 @@ reload is needed.
 - Unknown fields are kept. The canvas only carries known fields, so every export re-attaches unknown
   top-level, node, edge and group fields from the original file (`preserveUnknown`).
 - **One validator** (`validateDiagram`) for every way in: file open, drag-and-drop, paste, share links, Google
-  Drive, draw.io and Mermaid converter output, and storage reads (`getImported` / `getShared` / `getAutosave`).
+  Drive, draw.io, Mermaid and docker-compose converter output, and storage reads (`getImported` / `getShared` / `getAutosave`).
   Writes are validated too: `setImported` / `setShared` throw a readable error _before_ replacing a slot, so a bad
   file can't overwrite good work or crash the canvas. It checks every field the UI renders: string ids, stencils
   and labels; finite coordinates; edges pointing at real nodes; groups with finite, non-negative geometry; side
@@ -89,6 +89,54 @@ reload is needed.
   zone (only shapes take edges).
 - Storage failures never crash anything: autosave writes return `false`, and the user gets one toast that says to
   export. Imports report "storage is full or blocked" and keep the previous copy.
+
+### Infrastructure imports: docker-compose (`src/interop/infra/`)
+
+Batch 1 of the plan in `docs/research/imports.md` (which has the full mapping tables). Everything is read in the tab.
+
+- **One pipeline.** `sniff.ts` (in the entry, a few regexes on the first 4,000 characters) recognises compose,
+  Kubernetes, AsyncAPI, Terraform JSON and Helm templates. Compose goes to the lazy `infra/pipeline.ts` chunk with
+  the `yaml` package: reader (`compose.ts`) → `ImportGraph` (`graph.ts`: components, links with their
+  evidence, groups, report lines) → stencils and relationships (`map.ts`, `stencils.ts`) → the three-step layout
+  (`layout.ts`) → `validateDiagram`. The other recognised formats get "isn't supported yet" from the same chunk.
+- **Several files.** Open… (`multiple`), a drop and the file input take every file. Files are grouped by format and
+  the largest group imports: compose files merge the way Compose merges (base first, then `*.override.yml`);
+  `.env` files beside them feed `env_file`. A group of diagram, draw.io or Mermaid files opens the first and says
+  so. 8 MB for all files together (by `File.size`, before reading), 100 files, 2,000 YAML documents.
+- **Stencils.** `resolveStencil`: the image table (any registry, tag ignored), then settings that name a language,
+  then the catalogue by name (`namedStencil`), then Service. A framework's own prefix (`SPRING_`, `ASPNETCORE_`,
+  `DJANGO_`) is sure; `NODE_ENV`, `JAVA_OPTS` and `DOTNET_` are guesses, and so is anything named only by the
+  catalogue. A name ending in a role word ("payments-worker") is a Service, not a guess.
+- **Connections from settings** (`settings.ts`): URLs and `*_HOST`/`*_URL`/… values that name another service,
+  Kafka brokers, `*_TOPIC(S)` (read, written or a guess, with the consumer group), `*_FILE=/run/secrets/…`, and
+  known outside hosts (Key Vault, Service Bus, Stripe…). A broker with no topic named gets **Depends on**. A flow
+  wins over `depends_on` for the same pair, including a flow through one of the cluster's topics. **Values are read
+  in memory only**: what reaches the diagram or the report is names (services, topics, variables, secrets) and the
+  host names of outside services. URL userinfo is cut first, values over 2,048 characters are skipped, every
+  pattern is linear, and interpolation uses the file's own `${VAR:-default}` only.
+- **Boundaries** are the networks when they divide the services (two or more, and 80% of services on exactly one);
+  a service on several goes where most of its connections are, and the report says so.
+- **The Import report** (`ui/ImportReportDialog.tsx`, lazy) opens from the toast's **Details** ("Imported “shop”
+  from docker-compose: 15 nodes, 17 connections. 2 guesses.", 7 s when there's something to check) and from Ctrl+K
+  "Import report" while that diagram stays open. Sections: guesses with stencil chips (one undo step each, through
+  the AI panel's `swapStencil`) and **Other…** (a catalogue search); connections found in settings with the
+  variable; not drawn, with a fixed reason; couldn't read. A name selects its node. The report is kept in memory
+  (`useInterop`), never in the file, a share link or an export.
+- **Privacy.** An import is opened like any file from this device, so **New diagrams are private** applies. The
+  report's foot says "Read on this device. Nothing was uploaded." and, when the diagram isn't private, offers
+  **Make it private**.
+- **Security.** `yaml` with `maxAliasCount: 100` (it counts expansion: the alias bomb fails in milliseconds),
+  merge keys on, the core schema with no custom tags, unique keys; then an iterative walk with the validator's
+  depth limit (48) and a 200,000-value budget. Parsed maps are read with `Object.hasOwn` and merged into
+  prototype-free objects. Nothing is fetched (`include`, remote `env_file` and `extends` files are listed as not
+  read), nothing is evaluated, and the CSP is unchanged.
+- **Tests.** `infra/*.test.ts` (the fixture end to end, Compose features, settings, the hostile fixtures, ReDoS,
+  no values in the output), `tests/e2e/imports.spec.ts`, the CSP walk, the bundle-split guard
+  (`src/interop/infra/`, `yaml` and the report are never startup JavaScript) and the Lab's "Imported: compose"
+  overlap audit. The sniffers and the wiring add 0.8 kB gzip to the entry.
+- **Copy for this batch.** The drop overlay lists `docker-compose.yml`, the paste dialog names docker-compose, and
+  the start card has one line, "Have a docker-compose file? Drop it here." The plan's wider wording (Kubernetes,
+  AsyncAPI, Terraform) waits for the batches that import them.
 
 ### draw.io (`src/interop/drawio/`)
 
@@ -494,6 +542,8 @@ again.
 | `src/interop/formats.ts`                                   | Format detection, `importText` (one entry point for every import)                                   |
 | `src/interop/codec.ts`, `xml.ts`                           | DEFLATE / base64url codecs; a dependency-free XML reader (Node has no DOMParser)                    |
 | `src/interop/infer.ts`                                     | Label keywords → stencil                                                                            |
+| `src/interop/infra/*`                                      | Infrastructure imports: YAML, the compose reader, stencils, settings, mapping, layout (lazy)        |
+| `src/interop/ui/ImportReportDialog.tsx`                    | The Import report (lazy)                                                                            |
 | `src/interop/drawio/{read,write,mapping}.ts`               | draw.io converter plus fixtures in `drawio/fixtures/`                                               |
 | `src/interop/mermaid/{read,write}.ts`                      | Mermaid converter                                                                                   |
 | `src/interop/share.ts`                                     | Share-link and embed URL helpers                                                                    |

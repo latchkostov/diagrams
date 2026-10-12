@@ -874,6 +874,17 @@
       ]
     },
     {
+      "id": "mysql",
+      "label": "MySQL",
+      "vendor": "MySQL",
+      "role": "store",
+      "aliases": [
+        "mariadb",
+        "rds",
+        "sql"
+      ]
+    },
+    {
       "id": "sqlserver",
       "label": "SQL Server",
       "vendor": "Microsoft",

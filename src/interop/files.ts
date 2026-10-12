@@ -44,11 +44,12 @@ export function fsAccessSupported(): boolean {
 export const NATIVE_TYPE: PickerType = { description: "Live Diagrams file", accept: { "application/json": [".json"] } };
 const OPEN_TYPES: PickerType[] = [
   {
-    description: "Live Diagrams, draw.io and Mermaid files",
+    description: "Live Diagrams, draw.io, Mermaid and docker-compose files",
     accept: {
       "application/json": [".json"],
       "application/xml": [".drawio", ".xml", ".svg"],
-      "text/plain": [".mmd", ".mermaid"],
+      "text/plain": [".mmd", ".mermaid", ".env"],
+      "application/yaml": [".yaml", ".yml"],
     },
   },
 ];
@@ -56,11 +57,11 @@ const OPEN_TYPES: PickerType[] = [
 const isAbort = (err: unknown) =>
   err instanceof DOMException && (err.name === "AbortError" || err.name === "NotAllowedError");
 
-/** Opens a file with the system picker. Undefined if the user cancelled. */
-export async function openWithPicker(): Promise<{ file: File; handle: FileHandle } | undefined> {
+/** Opens files with the system picker (one, or several with `multiple`). Undefined if the user cancelled. */
+export async function openWithPicker(multiple = false): Promise<{ file: File; handle: FileHandle }[] | undefined> {
   try {
-    const [handle] = await w().showOpenFilePicker!({ types: OPEN_TYPES, id: "diagrams" });
-    return { file: await handle.getFile(), handle };
+    const handles = await w().showOpenFilePicker!({ types: OPEN_TYPES, id: "diagrams", multiple });
+    return Promise.all(handles.map(async (handle) => ({ file: await handle.getFile(), handle })));
   } catch (err) {
     if (isAbort(err)) return undefined;
     throw err;

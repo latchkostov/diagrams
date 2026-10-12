@@ -48,6 +48,7 @@ export const STENCIL_ALIASES: Record<string, readonly string[]> = {
   "service.python": ["fastapi", "django", "flask", "py", "microservice"],
   "service.go": ["golang", "microservice"],
   postgres: ["pg", "postgresql", "psql", "rds", "sql"],
+  mysql: ["mariadb", "rds", "sql"],
   sqlserver: ["mssql", "sql server", "tsql", "sql"],
   "azure.sql": ["mssql", "sql database", "sql"],
   "azure.cosmos-db": ["cosmos", "nosql", "documentdb"],

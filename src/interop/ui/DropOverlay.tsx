@@ -5,15 +5,15 @@ import { Glyph } from "./glyphs";
 const hasFiles = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes("Files");
 
 /**
- * Drop a file anywhere on the app to open it. Only reacts to OS file drags (not the palette's
+ * Drop files anywhere on the app to open them (several at once: a compose file with its overrides). Only reacts to OS file drags (not the palette's
  * stencil drags), and shows a full-window target while a file is over the page.
  */
-export function DropOverlay({ onFile }: { onFile: (f: File) => void }) {
+export function DropOverlay({ onFiles }: { onFiles: (files: File[]) => void }) {
   const [active, setActive] = useState(false);
   const depth = useRef(0);
-  const onFileRef = useRef(onFile);
+  const onFilesRef = useRef(onFiles);
   useLayoutEffect(() => {
-    onFileRef.current = onFile;
+    onFilesRef.current = onFiles;
   });
 
   useEffect(() => {
@@ -38,8 +38,8 @@ export function DropOverlay({ onFile }: { onFile: (f: File) => void }) {
       e.preventDefault();
       depth.current = 0;
       setActive(false);
-      const file = e.dataTransfer?.files?.[0];
-      if (file) onFileRef.current(file);
+      const files = [...(e.dataTransfer?.files ?? [])];
+      if (files.length) onFilesRef.current(files);
     };
     window.addEventListener("dragenter", enter);
     window.addEventListener("dragover", over);
@@ -70,6 +70,9 @@ export function DropOverlay({ onFile }: { onFile: (f: File) => void }) {
           </span>
           <span>
             <Glyph name="mermaid" size={14} /> .mmd
+          </span>
+          <span>
+            <Glyph name="file" size={14} /> docker-compose.yml
           </span>
         </span>
         <span className="ix-drop-hint">Opens as your diagram. Examples are never overwritten.</span>

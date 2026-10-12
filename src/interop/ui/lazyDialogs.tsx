@@ -66,6 +66,11 @@ export const UnlockDialog = lazyComponent(
   () => passwordDialogs().then((m) => m.UnlockDialog),
   loadingDialog("This diagram is password-protected"),
 );
+/** The Import report: with the first infrastructure import (it brings the stencil search and the AI swap). */
+export const ImportReportDialog = lazyComponent(
+  () => import("./ImportReportDialog").then((m) => m.ImportReportDialog),
+  loadingDialog("Import report"),
+);
 /** Only cloud providers use the in-app file list, so it loads with the first one opened. */
 export const StorageFilesDialog = lazyComponent(
   () => import("./StorageDialog").then((m) => m.StorageFilesDialog),
