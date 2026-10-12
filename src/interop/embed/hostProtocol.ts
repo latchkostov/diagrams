@@ -228,17 +228,67 @@ export function parseHostMessage(data: unknown): Parsed {
 }
 
 /**
+ * Walks a structured-cloned value the way JSON.stringify would, adding up its JSON length (closely: an undefined counts like null), and
+ * stops as soon as that passes `budget` or the nesting passes `maxDepth`. Memory stays bounded by the depth and the
+ * work by the budget, so a clone whose shared references would expand into gigabytes of JSON (21 objects referring
+ * to each other twice can) is refused before anything is serialised. A cycle reads as too deep.
+ */
+export function jsonBudget(
+  value: unknown,
+  budget: number,
+  maxDepth: number = LIMITS.maxDepth,
+): "ok" | "too_large" | "too_deep" {
+  let size = 0;
+  const frames: { items: unknown[]; i: number; depth: number }[] = [];
+  const visit = (v: unknown, depth: number): "ok" | "too_large" | "too_deep" => {
+    if (typeof v === "string") size += v.length + 2;
+    else if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") size += String(v).length;
+    else if (v === null || v === undefined) size += 4;
+    else if (typeof v === "object") {
+      if (depth >= maxDepth) return "too_deep";
+      if (Array.isArray(v)) {
+        size += v.length ? 1 + v.length : 2;
+        if (size > budget) return "too_large";
+        frames.push({ items: v, i: 0, depth: depth + 1 });
+      } else {
+        const keys = Object.keys(v);
+        size += keys.length ? 1 + keys.length : 2;
+        for (const k of keys) size += k.length + 3;
+        if (size > budget) return "too_large";
+        const record = v as Record<string, unknown>;
+        frames.push({ items: keys.map((k) => record[k]), i: 0, depth: depth + 1 });
+      }
+    }
+    return size > budget ? "too_large" : "ok";
+  };
+  const first = visit(value, 0);
+  if (first !== "ok") return first;
+  while (frames.length) {
+    const top = frames[frames.length - 1];
+    if (top.i >= top.items.length) {
+      frames.pop();
+      continue;
+    }
+    const result = visit(top.items[top.i++], top.depth);
+    if (result !== "ok") return result;
+  }
+  return "ok";
+}
+
+/**
  * The diagram's JSON text, or why it's refused: checked for size before anything parses it. A string is
- * measured as it is; an object (structured-cloned by postMessage) by its JSON form.
+ * measured as it is; an object (structured-cloned by postMessage) is measured by walking it (jsonBudget) before
+ * it's serialised, then by its JSON form.
  */
 export function diagramText(diagram: unknown): { ok: true; text: string } | { ok: false; tooLarge: boolean } {
   if (typeof diagram === "string")
     return diagram.length > MAX_DIAGRAM_CHARS ? { ok: false, tooLarge: true } : { ok: true, text: diagram };
+  const budget = jsonBudget(diagram, MAX_DIAGRAM_CHARS);
+  if (budget !== "ok") return { ok: false, tooLarge: budget === "too_large" };
   let text: string | undefined;
   try {
     text = JSON.stringify(diagram);
   } catch {
-    // A cycle can't be cloned by postMessage, but a very deep object can overflow JSON.stringify.
     return { ok: false, tooLarge: false };
   }
   if (typeof text !== "string") return { ok: false, tooLarge: false };

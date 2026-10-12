@@ -39,31 +39,31 @@ await el.load(diagram, { theme: "dark", simulation: "black-friday", autoplay: tr
 
 ### Attributes
 
-| Attribute     | Meaning                                                                                 |
-| ------------- | --------------------------------------------------------------------------------------- |
-| `src-json`    | URL of the diagram file, fetched by your page. Changing it loads the new one.           |
-| `credentials` | `include` to send cookies to a cross-origin `src-json`. Default `same-origin`.          |
-| `theme`       | `light` or `dark`. Default: the viewer's system setting. Changing it applies at once.   |
-| `simulation`  | A saved simulation's id to show in live view. Changing it switches (and plays).         |
-| `autoplay`    | Start playing at once (the simulation, or free-play traffic).                           |
-| `speed`       | `0.25`, `0.5`, `1`, `2`, `4` or `8`.                                                    |
-| `fit`         | `false` keeps the view where the reader left it when the frame resizes. Default: refit. |
-| `height`      | A fixed height in px. Without it the element sizes itself to the diagram (auto-height). |
-| `title`       | The iframe's accessible name. Default "Diagram".                                        |
-| `loading`     | `lazy` to load the viewer only when it nears the screen.                                |
+| Attribute     | Meaning                                                                                                         |
+| ------------- | --------------------------------------------------------------------------------------------------------------- |
+| `src-json`    | URL of the diagram file, fetched by your page (read up to 8 MB, then cancelled). Changing it loads the new one. |
+| `credentials` | `include` to send cookies to a cross-origin `src-json`. Default `same-origin`.                                  |
+| `theme`       | `light` or `dark`. Default: the viewer's system setting. Changing it applies at once.                           |
+| `simulation`  | A saved simulation's id to show in live view. Changing it switches (and plays).                                 |
+| `autoplay`    | Start playing at once (the simulation, or free-play traffic).                                                   |
+| `speed`       | `0.25`, `0.5`, `1`, `2`, `4` or `8`.                                                                            |
+| `fit`         | `false` keeps the view where the reader left it when the frame resizes. Default: refit.                         |
+| `height`      | A fixed height in px. Without it the element sizes itself to the diagram (auto-height).                         |
+| `title`       | The iframe's accessible name. Default "Diagram".                                                                |
+| `loading`     | `lazy` to load the viewer only when it nears the screen.                                                        |
 
 ### Methods and properties
 
-| Member                    | Does                                                                                      |
-| ------------------------- | ----------------------------------------------------------------------------------------- |
-| `diagram` (get / set)     | The diagram shown (object or JSON text). Setting it loads it.                             |
-| `load(diagram, options?)` | Loads a diagram; resolves with the `loaded` details, rejects with an `Error` with `code`. |
-| `play()`, `pause()`       | Play or pause live view (going live first if needed).                                     |
-| `setSpeed(speed)`         | One of the speeds above.                                                                  |
-| `selectSimulation(id)`    | A saved simulation's id, or `null` for free play. It starts playing.                      |
-| `fit()`                   | The whole diagram in view.                                                                |
-| `setTheme(theme)`         | `"light"` or `"dark"`.                                                                    |
-| `highlight(nodeIds)`      | Rings these nodes (unknown ids are ignored); `[]` clears.                                 |
+| Member                    | Does                                                                                                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `diagram` (get / set)     | The diagram shown (object or JSON text). Setting it loads it.                                                                                                            |
+| `load(diagram, options?)` | Loads a diagram, replacing any still loading (a `src-json` fetch included); resolves with the `loaded` details, rejects with an `Error` with `code`. Every call settles. |
+| `play()`, `pause()`       | Play or pause live view (going live first if needed).                                                                                                                    |
+| `setSpeed(speed)`         | One of the speeds above.                                                                                                                                                 |
+| `selectSimulation(id)`    | A saved simulation's id, or `null` for free play. It starts playing.                                                                                                     |
+| `fit()`                   | The whole diagram in view.                                                                                                                                               |
+| `setTheme(theme)`         | `"light"` or `"dark"`.                                                                                                                                                   |
+| `highlight(nodeIds)`      | Rings these nodes (unknown ids are ignored); `[]` clears.                                                                                                                |
 
 ### Events
 
@@ -204,8 +204,12 @@ type HostMessage = { protocol: "livediagrams.embed.v1"; id?: string } & (
 );
 ```
 
-`id` (1 to 200 characters) is echoed in the reply to that message: `loaded` or `error`. Every command except
-`setTheme` needs a diagram first (`not_loaded`). `play` and `selectSimulation` turn live view on when it's off.
+`id` (1 to 200 characters) is echoed in the reply to that message: `loaded` or `error`. Every message with an `id`
+gets one of the two, even when it's refused by the rate limit. Every command except `setTheme` needs a diagram first
+(`not_loaded`). Commands may come right after `loaded`, before live view is up (its code may still be downloading):
+they wait and run in order. `play` and `selectSimulation` turn live view on when it's off; a `pause` waits too
+when a session is on its way (after `play`, a switch or an autoplay load), so "autoplay, then pause" ends paused.
+With live view off and nothing starting it, `pause` does nothing.
 
 ### Viewer → page
 
@@ -226,12 +230,23 @@ type ErrorCode =
   | "invalid_diagram" // not JSON, or not a diagrams/v1 file (the validator's reason)
   | "not_loaded" // a command before the first good load
   | "unknown_simulation" // no simulation with that id
-  | "rate_limited"; // too many messages (said at most once a second)
+  | "rate_limited"; // too many messages (always to a message with an id, else at most once a second)
 ```
 
-A failed `load` leaves the diagram on screen as it was. The web component adds two codes of its own to its `error`
-event: `fetch_failed` (`src-json` couldn't be fetched) and `no_origin` (a `file://` or sandboxed page has no origin
-to name).
+A failed `load` leaves the diagram on screen as it was. The web component adds codes of its own, on its `error`
+event or a `load()` rejection:
+
+- `fetch_failed`: `src-json` couldn't be fetched;
+- `too_large` and `invalid_diagram` before anything is sent: a string over 8 MB, an object whose JSON would be (it's
+  measured by walking it, so shared references that JSON would repeat can't blow up memory), a `src-json` response
+  past 8 MB (the download is cancelled there), or nesting deeper than the validator allows;
+- `superseded`: a newer `load()` (or diagram) replaced this one before it was sent;
+- `timeout`: the viewer didn't answer within a minute of the load being sent;
+- `disconnected`: the element was removed from the page;
+- `no_origin`: a `file://` or sandboxed page has no origin to name.
+
+`nodeClick` fires for a click on a node (not the end of a drag) and for Enter or Space on a focused node: nodes are
+Tab stops in the viewer, so whatever your page does with it works from the keyboard too.
 
 ### Auto-height
 
@@ -244,12 +259,14 @@ refits the whole diagram (unless `fit: false`).
 
 ### Limits
 
-- The diagram: 8,000,000 characters of JSON (measured before parsing; an object is measured as its JSON), then the
+- The diagram: 8,000,000 characters of JSON (measured before parsing; an object is walked and measured before it's
+  serialised, so a clone whose shared references would expand into a huge JSON is refused early), then the
   app's own validator, with the same limits as opening a file (5,000 nodes, 20,000 edges, nesting depth and the
   simulation budgets).
 - Ids (`id`, simulation ids, node ids): 1 to 200 characters; `highlight` takes at most 5,000 ids.
-- Rate: 60 messages at once, then 30 a second; `load`, 5 at once, then one every 2 seconds. Over the limit,
-  messages are dropped, with one `rate_limited` error a second at most.
+- Rate: 60 messages at once, then 30 a second; `load`, 5 at once, then one every 2 seconds. Over the limit, a
+  message with an `id` is answered `rate_limited` (so a `load()` promise always settles); others are dropped, with one
+  `rate_limited` error a second at most.
 
 ## Security model
 

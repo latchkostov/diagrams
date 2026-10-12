@@ -30,6 +30,8 @@ export interface LiveSessionHandle {
 /** Live view, driven from outside: how to go live, and the running session (null until it's up). */
 export interface LiveHandle {
   goLive(): void;
+  /** Live view is on: its session is running, or still starting (`session` null until it's up). */
+  live: boolean;
   session: LiveSessionHandle | null;
 }
 
@@ -96,7 +98,7 @@ export function LiveView(props: LiveViewProps) {
   // The running session reports itself (LiveSession's onSession) for a page that drives live view.
   const [session, setSession] = useState<LiveSessionHandle | null>(null);
   const onHandle = props.onHandle;
-  useEffect(() => onHandle?.({ goLive, session: live ? session : null }), [onHandle, goLive, live, session]);
+  useEffect(() => onHandle?.({ goLive, live, session: live ? session : null }), [onHandle, goLive, live, session]);
 
   // "L" toggles live mode anywhere on the canvas.
   useEffect(() => {

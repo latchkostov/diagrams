@@ -1,7 +1,8 @@
 <!doctype html>
 <!--
   A host app's page for tests/e2e/host-embed.spec.ts, served by a test server on another origin than the
-  app. The test fills in the app's base URL and the <live-diagram> attributes. The page sends a strict CSP
+  app. Not an .html file: Vite's dev server scans every .html in the project for dependencies, and this page's
+  placeholders can't resolve (they made the scan fail and the dev server skip pre-bundling). The test fills in the app's base URL and the <live-diagram> attributes. The page sends a strict CSP
   (no inline scripts or styles), like a careful host would: the web component must work under it.
 -->
 <html lang="en">

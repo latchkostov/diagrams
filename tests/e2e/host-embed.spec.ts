@@ -81,7 +81,7 @@ async function serveHost(
   { appBase }: { appBase: string },
 ) {
   const appOrigin = new URL(appBase).origin;
-  const html = fixture("index.html").replaceAll("__APP__", appBase).replace("__ATTRS__", attrs);
+  const html = fixture("host-page.template").replaceAll("__APP__", appBase).replace("__ATTRS__", attrs);
   // A careful host's policy: no inline scripts or styles, the viewer's origin allowed for its script and frame.
   const csp = [
     "default-src 'self'",
@@ -93,6 +93,11 @@ async function serveHost(
     "base-uri 'self'",
   ].join("; ");
   const diagramRequests: { cookie: string }[] = [];
+  /** /api/diagrams/slow.json answers only once the test calls release(). */
+  let release = () => {};
+  const released = new Promise<void>((resolve) => (release = resolve));
+  /** /api/diagrams/huge.json: how much it got to send before the page hung up. */
+  const huge = { sent: 0, closedEarly: false };
   const send = (res: ServerResponse, status: number, type: string, body: string, headers = {}) => {
     res.writeHead(status, { "Content-Type": type, ...headers });
     res.end(body);
@@ -104,6 +109,25 @@ async function serveHost(
     if (path === "/host.css") return send(res, 200, "text/css", fixture("host.css"));
     if (path === "/sibling.html") return send(res, 200, "text/html", `<script src="/sibling.js"></script>`);
     if (path === "/sibling.js") return send(res, 200, "text/javascript", SIBLING_JS);
+    if (path === "/api/diagrams/slow.json") {
+      void released.then(() => send(res, 200, "application/json", JSON.stringify(hostDiagram())));
+      return;
+    }
+    if (path === "/api/diagrams/huge.json") {
+      // 40 MB of JSON text, streamed with no Content-Length: the page must stop reading at its 8 MB limit.
+      res.writeHead(200, { "Content-Type": "application/json" });
+      const chunk = "x".repeat(1_000_000);
+      res.on("close", () => (huge.closedEarly = !res.writableFinished));
+      const pump = () => {
+        while (huge.sent < 40) {
+          if (res.destroyed) return;
+          huge.sent++;
+          if (!res.write(chunk)) return void res.once("drain", pump);
+        }
+        res.end();
+      };
+      return pump();
+    }
     if (path === DIAGRAM_PATH) {
       const cookie = req.headers.cookie ?? "";
       diagramRequests.push({ cookie });
@@ -114,7 +138,7 @@ async function serveHost(
     send(res, 404, "text/plain", "");
   });
   await page.context().addCookies([{ name: "host_session", value: "signed-in", url: origin }]);
-  return { origin, diagramRequests };
+  return { origin, diagramRequests, release, huge };
 }
 
 /** Every request the page (and its frames and workers) makes to the app's origin, with its body. */
@@ -435,6 +459,178 @@ test.describe("host-supplied embeds", () => {
   });
 });
 
+test.describe("host-supplied embeds: timing and requests", () => {
+  /** A host page with an empty <live-diagram> (or `attrs`); the test drives it. */
+  async function emptyHost(page: Page, servers: { start(h: Handler): Promise<string> }, baseURL: string, attrs = "") {
+    const appBase = new URL("./", baseURL).href;
+    const host = await serveHost(page, servers, attrs, { appBase });
+    await page.goto(`${host.origin}/`);
+    await page.evaluate(() => customElements.whenDefined("live-diagram"));
+    return host;
+  }
+  const view = (page: Page) => page.getByTestId("live-diagram-frame").contentFrame();
+  /** load() through the element, all at once: "loaded:<title>" or each rejection's code. */
+  const loadVia = (page: Page, diagrams: unknown[], options: Record<string, unknown> = {}) =>
+    el(page).evaluate(
+      (node, [list, o]) =>
+        Promise.all(
+          (list as unknown[]).map((d) =>
+            (node as unknown as { load(d: unknown, o: unknown): Promise<{ title: string }> }).load(d, o).then(
+              (r) => `loaded:${r.title}`,
+              (e: Error & { code?: string }) => e.code ?? "no code",
+            ),
+          ),
+        ),
+      [diagrams, options] as const,
+    );
+  const titled = (title: string) => ({ ...hostDiagram(), title });
+
+  test("commands sent right after loaded, before the live session is up, still apply", async ({
+    page,
+    baseURL,
+    servers,
+    consoleErrors,
+  }) => {
+    test.slow();
+    await emptyHost(page, servers, baseURL ?? "");
+    // A static load, then play at once: live view isn't on yet (and may still be downloading).
+    await el(page).evaluate(async (node, d) => {
+      const n = node as unknown as { load(d: unknown): Promise<unknown>; play(): void };
+      await n.load(d);
+      n.play();
+    }, titled("First"));
+    await expect(view(page).getByTestId("live-play")).toHaveAttribute("data-state", "playing", {
+      timeout: pageLoadTimeout(),
+    });
+
+    // An autoplay load, then pause at once: it ends paused.
+    await el(page).evaluate(async (node, d) => {
+      const n = node as unknown as { load(d: unknown, o: unknown): Promise<unknown>; pause(): void };
+      await n.load(d, { simulation: "black-friday", autoplay: true });
+      n.pause();
+    }, titled("Second"));
+    await expect(view(page).getByTestId("diagram-title")).toHaveText("Second");
+    await expect(view(page).getByTestId("live-play")).toHaveAttribute("data-state", "paused", {
+      timeout: pageLoadTimeout(),
+    });
+    await expect.poll(() => lastEvent(page, "playstate")).toMatchObject({ playing: false });
+
+    // A static load, then a simulation switch at once: live view starts on it.
+    await el(page).evaluate(async (node, d) => {
+      const n = node as unknown as { load(d: unknown): Promise<unknown>; selectSimulation(id: string): void };
+      await n.load(d);
+      n.selectSimulation("payments-outage");
+    }, titled("Third"));
+    await expect(view(page).getByTestId("live-sim-picker")).toHaveValue("payments-outage", {
+      timeout: pageLoadTimeout(),
+    });
+    await expect.poll(() => lastEvent(page, "simulationchanged")).toEqual({ simulation: "payments-outage" });
+    expectNoErrors(consoleErrors);
+  });
+
+  test("every load settles: superseded before ready, refused by the rate limit, or too large to send", async ({
+    page,
+    baseURL,
+    servers,
+    consoleErrors,
+  }) => {
+    test.slow();
+    await emptyHost(page, servers, baseURL ?? "");
+    // Two loads before the viewer is ready (a fresh element: one before it's even in the page, one while its
+    // frame is still loading): the first is superseded, the second shown.
+    const early = await page.evaluate(
+      ([a, b]) => {
+        document.querySelector('[data-testid="host-diagram"]')?.remove();
+        const fresh = document.createElement("live-diagram") as HTMLElement & {
+          load(d: unknown): Promise<{ title: string }>;
+        };
+        fresh.dataset.testid = "host-diagram";
+        const settle = (p: Promise<{ title: string }>) =>
+          p.then(
+            (r) => `loaded:${r.title}`,
+            (e: Error & { code?: string }) => e.code ?? "no code",
+          );
+        const first = settle(fresh.load(a));
+        document.querySelector('[data-testid="host-main"]')?.append(fresh);
+        const second = settle(fresh.load(b));
+        return Promise.all([first, second]);
+      },
+      [titled("A"), titled("B")],
+    );
+    expect(early).toEqual(["superseded", "loaded:B"]);
+    await expect(view(page).getByTestId("diagram-title")).toHaveText("B");
+
+    // A burst past the load limit (5 at once, then one every 2 s): every promise settles.
+    await page.waitForTimeout(2500);
+    const burst = await loadVia(
+      page,
+      Array.from({ length: 8 }, (_, i) => titled(`Burst ${i + 1}`)),
+    );
+    expect(burst).toHaveLength(8);
+    const accepted = burst.filter((r) => r.startsWith("loaded:"));
+    expect(accepted.length).toBeGreaterThanOrEqual(4);
+    expect(accepted.length).toBeLessThan(8);
+    expect(burst.filter((r) => r === "rate_limited")).toHaveLength(8 - accepted.length);
+    const shown = accepted[accepted.length - 1].slice("loaded:".length);
+    await expect(view(page).getByTestId("diagram-title")).toHaveText(shown);
+
+    // An object whose JSON would be huge (shared references) is refused before it's copied to the frame.
+    const refused = await el(page).evaluate((node) => {
+      let leaf: Record<string, unknown> = { s: "x".repeat(10) };
+      for (let i = 0; i < 25; i++) leaf = { a: leaf, b: leaf };
+      return (node as unknown as { load(d: unknown): Promise<unknown> })
+        .load({ format: "diagrams/v1", nodes: [], edges: [], extra: leaf })
+        .then(
+          () => "loaded",
+          (e: Error & { code?: string }) => e.code,
+        );
+    });
+    expect(refused).toBe("too_large");
+    await expect(view(page).getByTestId("diagram-title")).toHaveText(shown);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a pending src-json response can't replace a newer diagram, and an oversized one stops downloading", async ({
+    page,
+    baseURL,
+    servers,
+    consoleErrors,
+  }) => {
+    test.slow();
+    const host = await emptyHost(page, servers, baseURL ?? "", `src-json="/api/diagrams/slow.json"`);
+    // The fetch is held; the host supplies a newer diagram meanwhile.
+    expect(await loadVia(page, [titled("Newer")])).toEqual(["loaded:Newer"]);
+    host.release();
+    await page.waitForTimeout(1500);
+    await expect(view(page).getByTestId("diagram-title")).toHaveText("Newer");
+    expect((await events(page, "loaded")).map((e) => e.detail.title)).toEqual(["Newer"]);
+
+    // 40 MB streamed: the page gives up past 8 MB and hangs up, long before the end.
+    await el(page).evaluate((node) => node.setAttribute("src-json", "/api/diagrams/huge.json"));
+    await expect.poll(() => lastEvent(page, "error")).toMatchObject({ code: "too_large" });
+    await expect.poll(() => host.huge.closedEarly).toBe(true);
+    expect(host.huge.sent).toBeLessThan(30);
+    await expect(view(page).getByTestId("diagram-title")).toHaveText("Newer");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("Enter or Space on a focused node reports it, like a click", async ({ page, baseURL, servers }) => {
+    await emptyHost(page, servers, baseURL ?? "");
+    expect(await loadVia(page, [titled("Keys")])).toEqual(["loaded:Keys"]);
+    // The node itself is the Tab stop (React Flow's wrapper round the test id).
+    await view(page)
+      .getByTestId("node-orders")
+      .evaluate((n) => n.closest<HTMLElement>("[data-id]")?.focus());
+    await page.keyboard.press("Enter");
+    await expect.poll(() => lastEvent(page, "nodeclick")).toEqual({ nodeId: "orders", label: "Order service" });
+    await view(page)
+      .getByTestId("node-payments")
+      .evaluate((n) => n.closest<HTMLElement>("[data-id]")?.focus());
+    await page.keyboard.press("Space");
+    await expect.poll(() => lastEvent(page, "nodeclick")).toMatchObject({ nodeId: "payments" });
+  });
+});
+
 test.describe("embed dialog: your app supplies the diagram", () => {
   test("offers the private embed with copyable code and a preview fed by postMessage", async ({
     page,
@@ -463,6 +659,20 @@ test.describe("embed dialog: your app supplies the diagram", () => {
     await expect(preview.contentFrame().getByTestId("host-embed-view")).toHaveAttribute("data-status", "ready");
     await expect(preview.contentFrame().getByTestId("node-payments")).toBeVisible();
 
+    // The radio groups are one Tab stop each; arrows move and select.
+    await expect(page.getByTestId("embed-source-host")).toHaveAttribute("tabindex", "0");
+    await expect(page.getByTestId("embed-source-inline")).toHaveAttribute("tabindex", "-1");
+    await page.getByTestId("embed-host-format-component").focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByTestId("embed-host-format-iframe")).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByTestId("embed-host-format-iframe")).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await expect(page.getByTestId("embed-host-format-component")).toHaveAttribute("aria-checked", "true");
+    await page.getByTestId("embed-source-host").focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(page.getByTestId("embed-source-inline")).toHaveAttribute("aria-checked", "true");
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByTestId("embed-source-host")).toHaveAttribute("aria-checked", "true");
     await page.getByTestId("embed-host-format-iframe").click();
     await expect(snippet).toHaveValue(/hostOrigin=" \+ encodeURIComponent\(location\.origin\)/);
     await expect(snippet).toHaveValue(/postMessage\(\{ protocol: PROTOCOL, type: "load", diagram/);

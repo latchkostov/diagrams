@@ -1,10 +1,18 @@
 // Drives live view for the host-supplied embed: the host's play, pause, speed and simulation commands go to
 // the running session, or wait for it (going live first when they need to); the session's changes go back
-// to the host as `playState` and `simulationChanged`. No React here: hostLive.test.ts drives it with a fake.
+// to the host as `playState` and `simulationChanged`. No React here: hostReducer.test.ts drives it with a fake.
+//
+// Commands can arrive before there's anything to run them on: right after `loaded`, the canvas (and so live
+// view) may still be downloading, and a session takes a moment to start once live view is on. They wait, in
+// order, and run when the session is up. Play and a simulation switch go live as soon as there's a canvas to
+// ask; a pause waits too whenever a session may be on its way (live view starting, an autoplay load, a waiting
+// play), so "play, then pause" or "autoplay, then pause" ends paused.
 
 import type { LiveHandle, LiveSessionHandle } from "../../live/LiveView";
 import type { FrameMessage } from "./hostProtocol";
 import type { LiveOp } from "./hostReducer";
+
+const activates = (op: LiveOp) => op.kind === "play" || op.kind === "simulation";
 
 export class LiveDriver {
   private handle: LiveHandle | null = null;
@@ -15,32 +23,43 @@ export class LiveDriver {
 
   constructor(private readonly post: (message: FrameMessage) => void) {}
 
-  /** Live view told us how to drive it (again): going live, and the session once it's up. */
+  /** Live view told us how to drive it (again): whether it's on, how to go live, and the session once it's up. */
   setHandle(handle: LiveHandle | null): void {
     this.handle = handle;
     const session = handle?.session ?? null;
-    if (session === this.session) return;
-    this.unsubscribe?.();
-    this.unsubscribe = undefined;
-    this.session = session;
-    if (!session) {
+    if (session !== this.session) {
+      this.unsubscribe?.();
+      this.unsubscribe = undefined;
+      this.session = session;
+      if (session) {
+        for (const op of this.pending.splice(0)) this.apply(session, op);
+        this.unsubscribe = session.controller.subscribe(() => this.report(session));
+        this.report(session);
+        return;
+      }
       this.report(null);
-      return;
     }
-    for (const op of this.pending.splice(0)) this.apply(session, op);
-    this.unsubscribe = session.controller.subscribe(() => this.report(session));
-    this.report(session);
+    if (!handle || session) return;
+    // A canvas, no session yet: commands that waited for one start live view now.
+    if (this.pending.some(activates)) {
+      if (!handle.live) handle.goLive();
+    } else if (!handle.live) {
+      // Live view is off and nothing will turn it on: a waiting pause has nothing to pause.
+      this.pending = this.pending.filter((p) => p.kind !== "pause");
+    }
   }
 
   run(op: LiveOp): void {
     if (this.session) return this.apply(this.session, op);
     if (op.kind === "pause") {
-      // Not live, so nothing plays: a pause only cancels a play still waiting for the session.
-      this.pending = this.pending.filter((p) => p.kind !== "play");
+      // Only worth keeping if a session may be coming: no canvas yet (an autoplay load), live view starting,
+      // or a play or switch waiting for it.
+      const coming = !this.handle || this.handle.live || this.pending.some(activates);
+      if (coming) this.pending.push(op);
       return;
     }
     this.pending.push(op);
-    if (op.kind === "play" || op.kind === "simulation") this.handle?.goLive();
+    if (activates(op) && this.handle && !this.handle.live) this.handle.goLive();
   }
 
   /** A new diagram: the old canvas (and its session) is going away; the new one reports itself. */

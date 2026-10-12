@@ -178,34 +178,94 @@ describe("host embed: the live driver", () => {
     const sent: unknown[] = [];
     const d = new LiveDriver((m) => sent.push(m));
     const goLive = vi.fn();
-    d.setHandle({ goLive, session: null });
+    d.setHandle({ goLive, live: false, session: null });
     d.run({ kind: "speed", speed: 4 });
     expect(goLive).not.toHaveBeenCalled();
     d.run({ kind: "simulation", id: "s1" });
     expect(goLive).toHaveBeenCalledTimes(1);
     const { session, controller } = fakeSession();
-    d.setHandle({ goLive, session });
+    d.setHandle({ goLive, live: true, session });
     expect(controller.setSpeed).toHaveBeenCalledWith(4);
     expect(session.selectSimulation).toHaveBeenCalledWith("s1");
     expect(sent).toContainEqual({ type: "simulationChanged", simulation: "s1" });
     expect(sent).toContainEqual({ type: "playState", playing: true, speed: 4 });
   });
 
-  it("a pause while not live cancels a waiting play", () => {
+  it("starts playback queued before the first handle attaches", () => {
+    // Right after `loaded` the canvas may still be downloading: there's no handle to go live with yet.
     const d = new LiveDriver(() => {});
-    d.setHandle({ goLive: () => {}, session: null });
+    d.run({ kind: "play" });
+    const goLive = vi.fn();
+    d.setHandle({ goLive, live: false, session: null });
+    expect(goLive).toHaveBeenCalledTimes(1);
+    // Live view turned on; its session is still starting: no second goLive.
+    d.setHandle({ goLive, live: true, session: null });
+    expect(goLive).toHaveBeenCalledTimes(1);
+    const { session, controller } = fakeSession();
+    d.setHandle({ goLive, live: true, session });
+    expect(controller.setPlaying).toHaveBeenCalledWith(true);
+
+    const d2 = new LiveDriver(() => {});
+    d2.run({ kind: "simulation", id: "s2" });
+    const goLive2 = vi.fn();
+    d2.setHandle({ goLive: goLive2, live: false, session: null });
+    expect(goLive2).toHaveBeenCalledTimes(1);
+    const s2 = fakeSession();
+    d2.setHandle({ goLive: goLive2, live: true, session: s2.session });
+    expect(s2.session.selectSimulation).toHaveBeenCalledWith("s2");
+  });
+
+  it("keeps a pause while a session is on its way, in order", () => {
+    // play, then pause, before the session is up: it ends paused.
+    const d = new LiveDriver(() => {});
+    d.setHandle({ goLive: () => {}, live: false, session: null });
     d.run({ kind: "play" });
     d.run({ kind: "pause" });
-    const { controller, session } = fakeSession();
-    d.setHandle({ goLive: () => {}, session });
-    expect(controller.setPlaying).not.toHaveBeenCalled();
+    const a = fakeSession();
+    d.setHandle({ goLive: () => {}, live: true, session: a.session });
+    expect(vi.mocked(a.controller.setPlaying).mock.calls).toEqual([[true], [false]]);
+    expect(a.controller.getState().playing).toBe(false);
+
+    // An autoplay load, then pause, before the canvas exists: the session starts playing, then pauses.
+    const auto = new LiveDriver(() => {});
+    auto.run({ kind: "pause" });
+    auto.setHandle({ goLive: () => {}, live: true, session: null });
+    const b = fakeSession({ playing: true });
+    auto.setHandle({ goLive: () => {}, live: true, session: b.session });
+    expect(b.controller.getState().playing).toBe(false);
+
+    // A simulation switch (which plays), then pause: paused on the new simulation.
+    const sw = new LiveDriver(() => {});
+    sw.setHandle({ goLive: () => {}, live: false, session: null });
+    sw.run({ kind: "simulation", id: "s1" });
+    sw.run({ kind: "pause" });
+    const c = fakeSession();
+    sw.setHandle({ goLive: () => {}, live: true, session: c.session });
+    expect(c.controller.getState()).toMatchObject({ playing: false, simulation: { id: "s1" } });
+  });
+
+  it("drops a pause when live view is off and nothing turns it on", () => {
+    const d = new LiveDriver(() => {});
+    d.run({ kind: "pause" });
+    // The canvas arrives with live view off (a static load): nothing to pause, nothing kept for later.
+    d.setHandle({ goLive: () => {}, live: false, session: null });
+    const s = fakeSession({ playing: true });
+    d.setHandle({ goLive: () => {}, live: true, session: s.session });
+    expect(s.controller.setPlaying).not.toHaveBeenCalled();
+    // And while off, a pause alone is ignored.
+    const off = new LiveDriver(() => {});
+    off.setHandle({ goLive: () => {}, live: false, session: null });
+    off.run({ kind: "pause" });
+    const t = fakeSession({ playing: true });
+    off.setHandle({ goLive: () => {}, live: true, session: t.session });
+    expect(t.controller.setPlaying).not.toHaveBeenCalled();
   });
 
   it("reports play state and simulation changes once each, and stops listening when the session ends", () => {
     const sent: unknown[] = [];
     const d = new LiveDriver((m) => sent.push(m));
     const { session, controller, listeners } = fakeSession({ playing: true });
-    d.setHandle({ goLive: () => {}, session });
+    d.setHandle({ goLive: () => {}, live: true, session });
     expect(sent).toEqual([
       { type: "playState", playing: true, speed: 1 },
       { type: "simulationChanged", simulation: null },
@@ -215,7 +275,7 @@ describe("host embed: the live driver", () => {
     controller.setSpeed(1); // no change: nothing new to say
     expect(sent).toEqual([{ type: "playState", playing: false, speed: 1 }]);
     d.run({ kind: "play" });
-    d.setHandle({ goLive: () => {}, session: null });
+    d.setHandle({ goLive: () => {}, live: false, session: null });
     expect(listeners.size).toBe(0);
     expect(sent.at(-1)).toEqual({ type: "playState", playing: false, speed: 1 });
   });

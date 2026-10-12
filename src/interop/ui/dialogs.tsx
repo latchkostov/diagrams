@@ -169,8 +169,45 @@ export function ShareDialog({
   );
 }
 
+/**
+ * A segmented radio group's keys, as a ref callback: arrows (and Home, End) move to the next enabled choice and
+ * select it. With `tabIndex` 0 on the checked radio only, the group is one Tab stop. A native listener, because
+ * the dialog keeps keys from bubbling past its panel (Dialog.tsx), so React's onKeyDown never sees them (the same
+ * pattern as the Interactive HTML dialog's Theme).
+ */
+function radioKeys<T extends string>(
+  values: readonly T[],
+  current: T,
+  select: (value: T) => void,
+  testId: (value: T) => string,
+  enabled: (value: T) => boolean = () => true,
+) {
+  return (group: HTMLDivElement | null) => {
+    if (!group) return;
+    const onKey = (e: KeyboardEvent) => {
+      const step = ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 } as Record<string, number>)[e.key];
+      if (step === undefined && e.key !== "Home" && e.key !== "End") return;
+      const usable = values.filter(enabled);
+      if (!usable.length) return;
+      e.preventDefault();
+      const at = usable.indexOf(current);
+      const next =
+        e.key === "Home"
+          ? usable[0]
+          : e.key === "End"
+            ? usable[usable.length - 1]
+            : usable[(Math.max(at, 0) + step + usable.length) % usable.length];
+      select(next);
+      group.querySelector<HTMLElement>(`[data-testid="${testId(next)}"]`)?.focus();
+    };
+    group.addEventListener("keydown", onKey);
+    return () => group.removeEventListener("keydown", onKey);
+  };
+}
+
 /** Where an embed's diagram comes from: a public example by name, the diagram in the URL, or the host's page. */
 type EmbedSource = "example" | "inline" | "host";
+const FORMATS = ["component", "iframe"] as const;
 
 /**
  * The host-supplied embed's preview: the same viewer, handed the diagram with postMessage (never in its URL),
@@ -278,10 +315,12 @@ export function EmbedDialog({
     else toast.error("Couldn't copy automatically. Select the code and copy it.");
   };
 
+  const sources: EmbedSource[] = example ? ["example", "inline", "host"] : ["inline", "host"];
   const sourceButton = (value: EmbedSource, label: string) => (
     <button
       role="radio"
       aria-checked={source === value}
+      tabIndex={source === value ? 0 : -1}
       className={source === value ? "is-on" : ""}
       onClick={() => setChosen(value)}
       disabled={privateOnly && value !== "host"}
@@ -343,7 +382,18 @@ export function EmbedDialog({
         </>
       }
     >
-      <div className="ix-seg" role="radiogroup" aria-label="Where the diagram comes from">
+      <div
+        ref={radioKeys(
+          sources,
+          source,
+          setChosen,
+          (v) => `embed-source-${v}`,
+          (v) => !privateOnly || v === "host",
+        )}
+        className="ix-seg"
+        role="radiogroup"
+        aria-label="Where the diagram comes from"
+      >
         {example && sourceButton("example", "Example by name")}
         {sourceButton("inline", "In the link")}
         {sourceButton("host", "Your app supplies it (private)")}
@@ -359,22 +409,23 @@ export function EmbedDialog({
         </div>
       )}
       {host && (
-        <div className="ix-seg" role="radiogroup" aria-label="Code">
-          {(
-            [
-              ["component", "Web component"],
-              ["iframe", "iframe + postMessage"],
-            ] as const
-          ).map(([value, label]) => (
+        <div
+          ref={radioKeys(FORMATS, format, setFormat, (v) => `embed-host-format-${v}`)}
+          className="ix-seg"
+          role="radiogroup"
+          aria-label="Code"
+        >
+          {FORMATS.map((value) => (
             <button
               key={value}
               role="radio"
               aria-checked={format === value}
+              tabIndex={format === value ? 0 : -1}
               className={format === value ? "is-on" : ""}
               onClick={() => setFormat(value)}
               data-testid={`embed-host-format-${value}`}
             >
-              {label}
+              {value === "component" ? "Web component" : "iframe + postMessage"}
             </button>
           ))}
         </div>

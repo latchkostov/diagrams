@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SPEEDS as LIVE_SPEEDS } from "../../live/controller";
+import { exceedsDepth } from "../native";
 import {
   diagramText,
   envelope,
@@ -10,6 +11,7 @@ import {
   HostRateLimiter,
   hostOriginFromSearch,
   isFromHost,
+  jsonBudget,
   MAX_DIAGRAM_CHARS,
   MAX_HIGHLIGHT,
   parseHostMessage,
@@ -187,6 +189,33 @@ describe("host embed: size bounds", () => {
     for (let i = 0; i < 200_000; i++) deep = { d: deep };
     expect(diagramText(deep)).toEqual({ ok: false, tooLarge: false });
     expect(diagramText(undefined)).toEqual({ ok: false, tooLarge: false });
+  });
+
+  it("refuses shared references that would expand into a huge JSON before serialising them", () => {
+    // 25 objects, each referring to the next twice: a tiny clone whose JSON would be 2^25 copies of the leaf.
+    let node: Record<string, unknown> = { leaf: "x".repeat(10) };
+    for (let i = 0; i < 25; i++) node = { a: node, b: node };
+    const started = performance.now();
+    expect(diagramText({ format: "diagrams/v1", nodes: [], edges: [], extra: node })).toEqual({
+      ok: false,
+      tooLarge: true,
+    });
+    // Stopped at the budget, not after building the JSON (which would take seconds and gigabytes).
+    expect(performance.now() - started).toBeLessThan(3000);
+  });
+
+  it("measures JSON size closely, and depth like the validator", () => {
+    const d = { format: "diagrams/v1", title: "T", nodes: [{ id: "a", x: 1, y: 2, label: "A" }], edges: [] };
+    const json = JSON.stringify(d).length;
+    expect(jsonBudget(d, json)).toBe("ok");
+    expect(jsonBudget(d, json - 10)).toBe("too_large");
+    expect(jsonBudget([[[[[1]]]]], 100, 4)).toBe("too_deep");
+    expect(jsonBudget([[[[1]]]], 100, 4)).toBe("ok");
+    expect(exceedsDepth([[[[[1]]]]], 4)).toBe(true);
+    expect(exceedsDepth([[[[1]]]], 4)).toBe(false);
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    expect(jsonBudget(cycle, MAX_DIAGRAM_CHARS)).toBe("too_deep");
   });
 });
 
