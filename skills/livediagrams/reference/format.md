@@ -171,5 +171,8 @@ payload = base64.urlsafe_b64encode(deflate.compress(text) + deflate.flush()).dec
 print("https://www.livediagrams.dev/#d=" + payload)
 ```
 
+A link with a password (`#e=…`, encrypted in the browser) is made only in the app, with **File > Copy link with
+password…**. Don't build one, and never put a password in a link or in the same message as the link.
+
 Chat apps may cut off links longer than about 8,000 characters. For those, hand over the `.diagram.json` file:
 it opens at livediagrams.dev with **File > Open…**.

@@ -25,11 +25,14 @@ const kb = (n: number) => (n < 1024 ? `${n} characters` : `${(n / 1024).toFixed(
 export function ShareDialog({
   diagram,
   allowed,
+  onPasswordLink,
   onClose,
 }: {
   diagram: DiagramFile;
   /** Whether its document may still be shared as a link (asked again by every action). */
   allowed?: () => boolean;
+  /** Copy link with password… (the same diagram, encrypted). */
+  onPasswordLink?: () => void;
   onClose: () => void;
 }) {
   const [url, setUrl] = useState<string>();
@@ -127,6 +130,20 @@ export function ShareDialog({
                 ? `, ${diagram.simulations.length} simulation${diagram.simulations.length === 1 ? "" : "s"}`
                 : ""}
             </span>
+            {onPasswordLink && (
+              <>
+                <span className="ix-grow" />
+                <button
+                  className="link-btn"
+                  onClick={() => {
+                    if (gate(allowed, onClose)) onPasswordLink();
+                  }}
+                  data-testid="share-link-password"
+                >
+                  <Glyph name="lock" size={13} /> Copy link with password…
+                </button>
+              </>
+            )}
           </div>
           {long && (
             <div className="ix-callout ix-callout-warn" data-testid="share-link-warning">

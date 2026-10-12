@@ -29,6 +29,9 @@ check the chrome budget and prefer context menus and the inspector. Every featur
 
 - UI tests select only by `data-testid`; give every interactive element one.
 - The browser context menu is never shown; use the action registry in `src/editor/actions.ts`.
+- The production build runs under a strict Content-Security-Policy (`scripts/security-headers.ts`, which generates
+  `vercel.json` and is served by `vite preview`): no inline scripts or `eval`, and a new outside endpoint goes in
+  its connect-src. `tests/e2e/csp.spec.ts` fails on any violation.
 - New previews and test fixtures go in the Lab (`src/lab/presets.tsx`, `?view=lab`).
 - The agent skill (`skills/livediagrams/`) is partly generated: run `pnpm schemas` after changing the catalog,
   the file format or the layout (`scripts/skill-gen.ts`; `src/ai/skill/skill.test.ts` fails when it is stale).

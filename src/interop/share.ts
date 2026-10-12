@@ -12,28 +12,33 @@ import { LIMITS, parseNative } from "./native";
 
 // Share links carry the whole diagram in the URL *fragment* (#d=...), which browsers never send
 // to the server: nothing is uploaded and nothing lands in server logs. Encoding: minified JSON ->
-// raw DEFLATE -> base64url.
+// raw DEFLATE -> base64url. Password links (#e=..., ./shareCrypto.ts) encrypt the same compressed bytes.
 
 export const SHARE_PARAM = "d";
 /** Links longer than this may be truncated by chat apps, email clients and some browsers. */
 export const SHARE_WARN_LENGTH = 8000;
 
-export async function encodeShare(d: DiagramFile): Promise<string> {
-  return bytesToBase64Url(await deflateRaw(textToBytes(JSON.stringify(d))));
+/** The diagram as minified JSON, raw-DEFLATE compressed: what a link carries, plain or encrypted. */
+export function compressDiagram(d: DiagramFile): Promise<Uint8Array> {
+  return deflateRaw(textToBytes(JSON.stringify(d)));
 }
 
-export async function decodeShare(payload: string): Promise<DiagramFile> {
-  if (payload.length > LIMITS.maxTextChars) throw new Error("This share link is too long to open.");
+export async function encodeShare(d: DiagramFile): Promise<string> {
+  return bytesToBase64Url(await compressDiagram(d));
+}
+
+const DAMAGED =
+  "This share link is damaged or incomplete. Ask for the link again, and make sure it was copied in full.";
+
+/** Inflates and validates what `compressDiagram` made (a plain payload, or a decrypted one). */
+export async function diagramFromCompressed(bytes: Uint8Array): Promise<DiagramFile> {
   let json: string;
   try {
-    json = bytesToText(await inflateRaw(base64UrlToBytes(payload.trim()), LIMITS.maxTextChars));
+    json = bytesToText(await inflateRaw(bytes, LIMITS.maxTextChars));
   } catch (err) {
     if (err instanceof TooLargeError)
       throw new Error(`This share link's diagram is too large. ${err.message}`, { cause: err });
-    throw new Error(
-      "This share link is damaged or incomplete. Ask for the link again, and make sure it was copied in full.",
-      { cause: err },
-    );
+    throw new Error(DAMAGED, { cause: err });
   }
   // The same validator as every other way in (files, paste, Drive, storage).
   const result = parseNative(json);
@@ -42,6 +47,17 @@ export async function decodeShare(payload: string): Promise<DiagramFile> {
     throw new Error(`This share link's diagram can't be opened: ${result.error}`);
   }
   return result.diagram;
+}
+
+export async function decodeShare(payload: string): Promise<DiagramFile> {
+  if (payload.length > LIMITS.maxTextChars) throw new Error("This share link is too long to open.");
+  let bytes: Uint8Array;
+  try {
+    bytes = base64UrlToBytes(payload.trim());
+  } catch (err) {
+    throw new Error(DAMAGED, { cause: err });
+  }
+  return diagramFromCompressed(bytes);
 }
 
 /** The `d` payload from a hash like "#d=...", or undefined. */

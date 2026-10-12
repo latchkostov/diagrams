@@ -382,6 +382,7 @@
 
 .ix-dialog-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 12px 16px 14px;
@@ -447,6 +448,7 @@
 
 .ix-meta-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 7px;
   font-size: 12px;
@@ -1008,4 +1010,53 @@ p.ix-storage-state {
 .ix-menu-row:has([role="menuitemradio"]) .ix-menu-item {
   min-height: 32px;
   padding: 5px 10px;
+}
+
+/* ---------- password links (src/interop/ui/passwordDialogs.tsx) ---------- */
+
+.ix-password {
+  display: grid;
+  gap: 8px;
+}
+
+.ix-password-field {
+  display: grid;
+  gap: 5px;
+}
+
+/* The hint reads in the theme's text colour (contrast in both themes); a dot carries the level's colour. */
+.ix-strength {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.ix-strength::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+
+.ix-strength.is-short::before,
+.ix-strength.is-weak::before {
+  background: var(--danger);
+}
+
+.ix-strength.is-fair::before {
+  background: var(--warning);
+}
+
+.ix-strength.is-strong::before {
+  background: var(--success);
+}
+
+.ix-embed-locked {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
 }

@@ -176,6 +176,9 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   and **Discard** (undoable). With a simulation picked, the one option is to play it from the start
   and stop when it ends.
 - Same action, same name in the File menu and the right-click (e.g. Export PNG, Copy share link).
+- **Copy link with password…** sits right under Copy share link (File menu, right-click Export ▸, and the share
+  dialog). The password is at least 8 characters with a strength hint, and the dialog always says: send the
+  password separately; anyone with the link and the password can open it.
 - **Storage**: where files live. **This device** (never "local", "computer" or "disk"; mid-sentence "this
   device"), **Google Drive**, **OneDrive** and **Dropbox** (never "Drive", "OneDrive Personal" or "Dropbox
   account"). The verbs are **Open…** (this device, Ctrl+O), **Open from ▸**, **Save** (Ctrl+S: back to where the

@@ -40,15 +40,16 @@ level). The canvas right-click menu has the same actions. The top bar is: view t
 **View** (node and edge style; it replaced the two selects), **File**, **Present** and theme. Below 1100px,
 View, File and Present become icon-only, so the bar fits at 1024px without scrolling.
 
-| File menu               | Notes                                                                                                                                                                                                                                                                   |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Save** (Ctrl+S)       | Goes back to wherever the diagram came from or was last saved: the same device file (File System Access) or the same file in Google Drive, OneDrive or Dropbox. Otherwise it asks where to save (or downloads, in browsers without the API). Ctrl+Shift+S is "Save as". |
-| **Open…** (Ctrl+O)      | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`. A draw.io file with several pages asks which page to open.                                                                                                                                                   |
-| Open from ▸ / Save to ▸ | Only when at least one cloud provider is configured (see "Storage providers" below); otherwise hidden completely, and **Save as…** stays a plain row. Each lists **This device** first, then the configured providers. Save to ▸ always makes a new file.               |
-| **Export PNG**          | 2×, whole diagram, independent of pan and zoom.                                                                                                                                                                                                                         |
-| **Copy share link**     | One click; the toast's **Details** opens the dialog (length, warning above 8k characters, native Share).                                                                                                                                                                |
-| More formats ▸          | Diagram file (`.diagram.json`, lossless, simulations included) · Image… (PNG or SVG; scale and transparent background behind **Options**) · draw.io · Copy as Mermaid · Mermaid file (`.mmd`) · Embed code… · Save as…                                                  |
-| Import from ▸           | Paste text… (JSON, draw.io XML or Mermaid, auto-detected) · Share link…                                                                                                                                                                                                 |
+| File menu                    | Notes                                                                                                                                                                                                                                                                   |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Save** (Ctrl+S)            | Goes back to wherever the diagram came from or was last saved: the same device file (File System Access) or the same file in Google Drive, OneDrive or Dropbox. Otherwise it asks where to save (or downloads, in browsers without the API). Ctrl+Shift+S is "Save as". |
+| **Open…** (Ctrl+O)           | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`. A draw.io file with several pages asks which page to open.                                                                                                                                                   |
+| Open from ▸ / Save to ▸      | Only when at least one cloud provider is configured (see "Storage providers" below); otherwise hidden completely, and **Save as…** stays a plain row. Each lists **This device** first, then the configured providers. Save to ▸ always makes a new file.               |
+| **Export PNG**               | 2×, whole diagram, independent of pan and zoom.                                                                                                                                                                                                                         |
+| **Copy share link**          | One click; the toast's **Details** opens the dialog (length, warning above 8k characters, native Share).                                                                                                                                                                |
+| **Copy link with password…** | Encrypts the diagram into a `#e=` link with a password (8+ characters, strength hint); see "Share links and embeds" below.                                                                                                                                              |
+| More formats ▸               | Diagram file (`.diagram.json`, lossless, simulations included) · Image… (PNG or SVG; scale and transparent background behind **Options**) · draw.io · Copy as Mermaid · Mermaid file (`.mmd`) · Embed code… · Save as…                                                  |
+| Import from ▸                | Paste text… (JSON, draw.io XML or Mermaid, auto-detected) · Share link…                                                                                                                                                                                                 |
 
 You can also drop a file anywhere on the page to open it.
 
@@ -134,10 +135,44 @@ reload is needed.
 - `#d=<base64url(deflate-raw(JSON))>` lives in the URL _fragment_, which browsers never send to the server.
   So it never reaches server logs. A full example with two simulations is about 3k characters. The dialog
   warns above 8k.
-- `?embed=1&example=<slug>` (public examples only) or `?embed=1#d=…` renders a read-only viewer: no top bar,
+- `#e=v1.<salt>.<iv>.<ciphertext>` (`src/interop/passwordLink.ts`, WebCrypto in `shareCrypto.ts`, loaded on use) is a **password link**: the same compressed
+  bytes, encrypted with AES-256-GCM (random 12-byte IV, additional data `livediagrams:e:v1`) under a key from
+  PBKDF2-HMAC-SHA-256 (600,000 iterations, OWASP's recommendation; random 16-byte salt) of the NFC-normalized
+  password. The version picks every parameter, so a later version can raise the count and old links still open.
+  Opening one asks for the password (`password-prompt`); a GCM authentication failure reads as a wrong password
+  and the prompt stays for another try. The fragment is cleared once the link is decrypted (not before, so
+  Cancel and a reload ask again). Plain `#d=` links were already cleared on open: the diagram stays in the
+  Shared slot, so a reload still shows it. Embeds (`?embed=1#e=…`) ask inside the frame and keep the fragment.
+- Every link (share, password, inline embed, the agents' `get_share_link`) asks `canShareAsLink(state)` in
+  `src/lib/localOnly.ts` first, and again at the moment it acts (after encrypting, before copying): a local-only or
+  Private diagram gets no link, and a password-link dialog left open closes when its diagram turns private.
+- `?embed=1&example=<slug>` (public examples only), `?embed=1#d=…` or `?embed=1#e=…` renders a read-only viewer: no top bar,
   fitted, pan and pinch-zoom only (the wheel scrolls the host page), no menus, shortcuts or autosave, and a
   subtle "Open in Diagrams" link. `live=1&sim=<id>` pass through for the live view.
 - The embed dialog previews the iframe, and its options (source, height, simulation) sit behind **Options**.
+
+### Security headers (`scripts/security-headers.ts`)
+
+One source for the Content-Security-Policy and the other headers. `pnpm schemas` writes `vercel.json` from it
+(`src/lib/securityHeaders.test.ts` fails when it's stale) and `vite preview` sends the same headers, so the e2e
+suite on a build (CI's default) runs under the real policy; `tests/e2e/csp.spec.ts` walks the app and fails on any
+violation. The dev server sends none (React Refresh's preamble is an inline script).
+
+- `script-src 'self'` plus Google's two loaders (Identity Services, the Picker's `api.js`). No `'unsafe-inline'`,
+  no `'unsafe-eval'`: the static pages' scripts are files (`public/theme.js`, `auth.js`, `skill/copy.js`).
+- `style-src 'self' 'unsafe-inline'`: the static pages' `<style>` blocks and the styles Google's Picker and
+  Identity Services add. React's `style` props don't need it (they go through the CSSOM).
+- `connect-src 'self'` plus exactly the providers' endpoints: Google (`accounts.google.com/gsi/`,
+  `www.googleapis.com`, `oauth2.googleapis.com`), Microsoft (`login.microsoftonline.com`, `graph.microsoft.com` and
+  the download hosts `*.1drv.com`, `*.microsoftpersonalcontent.com`, `*.sharepoint.com`) and Dropbox
+  (`api.dropboxapi.com`, `content.dropboxapi.com`). No `data:`: exports decode their data URLs without fetch.
+- `frame-ancestors *` only for `?embed=1` (Vercel routes on the query with `has`/`missing`); the app itself
+  allows only this site to frame it.
+- `Referrer-Policy: strict-origin-when-cross-origin` (other sites see only the origin; a referrer-restricted
+  Google API key still works), `X-Content-Type-Options: nosniff`, a `Permissions-Policy` that keeps the
+  microphone (dictation) and display capture (Record video) and turns off location, payment, USB and serial (only
+  features every desktop Chromium recognises: an unknown one logs "Unrecognized feature" on every page), and `Cross-Origin-Opener-Policy: same-origin-allow-popups` (sign-in pop-ups keep their opener; not sent with
+  `auth.html`).
 
 ### Local folders: Google Drive for desktop, OneDrive, Dropbox (no setup)
 

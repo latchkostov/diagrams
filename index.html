@@ -18,14 +18,8 @@
         <meta http-equiv="origin-trial" content="PASTE_EDGE_TOKEN" />
       Note the expiry date in the commit message, and remove the tags once WebMCP ships (Chrome 157?).
     -->
-    <script>
-      // Apply the saved theme before first paint to avoid a flash.
-      try {
-        var s = JSON.parse(localStorage.getItem("diagrams.settings.v1") || "{}");
-        var t = s.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-        document.documentElement.dataset.theme = t;
-      } catch (e) {}
-    </script>
+    <!-- Applies the saved theme before first paint (a file, so the CSP needs no inline script). -->
+    <script src="/theme.js"></script>
   </head>
   <body>
     <div id="root"></div>

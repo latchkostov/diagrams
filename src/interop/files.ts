@@ -109,9 +109,23 @@ export function downloadBlob(blob: Blob, name: string): void {
 export const downloadText = (text: string, name: string, mime: string) =>
   downloadBlob(new Blob([text], { type: mime }), name);
 
+/**
+ * A data: URL's bytes as a Blob, decoded here rather than with fetch(), which the Content-Security-Policy's
+ * connect-src (this site and the storage providers only) doesn't allow for data: URLs.
+ */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const m = /^data:([^,]*?)(;base64)?,(.*)$/s.exec(dataUrl);
+  if (!m) throw new Error("Not a data: URL.");
+  const [, type, base64, payload] = m;
+  if (!base64) return new Blob([decodeURIComponent(payload)], { type: type || "text/plain" });
+  const bin = atob(payload);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type });
+}
+
 export async function downloadDataUrl(dataUrl: string, name: string): Promise<void> {
-  const blob = await (await fetch(dataUrl)).blob();
-  downloadBlob(blob, name);
+  downloadBlob(dataUrlToBlob(dataUrl), name);
 }
 
 /** "Kafka order pipeline" -> "kafka-order-pipeline". */

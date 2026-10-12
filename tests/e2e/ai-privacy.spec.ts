@@ -203,3 +203,14 @@ test("a request in flight when the diagram switches to a local-only one never co
   await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
   expect((await fakeModel(page)).prompts).toHaveLength(1);
 });
+
+test("a local-only diagram gets no link: plain, with a password, or embed", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await installSyntheticRegistry(page);
+  await gotoCanvas(page, "synthetic-local");
+  await page.getByTestId("file-button").click();
+  for (const item of ["export-share-link", "export-share-link-password", "export-embed"])
+    await expect(page.getByTestId(item)).toBeDisabled();
+  await page.keyboard.press("Escape");
+  expect(await page.evaluate(() => navigator.clipboard.readText().catch(() => ""))).not.toMatch(/#[de]=/);
+});

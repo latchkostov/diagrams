@@ -98,6 +98,14 @@
           <strong>Share links</strong> carry the diagram inside the link, after the <code>#</code>. Browsers never send
           that part to a server, so the diagram travels only to whoever you send the link to.
         </li>
+        <li>
+          <strong>Links with a password</strong> (File → Copy link with password…) carry the diagram encrypted
+          (AES-256-GCM, with a key derived from your password by PBKDF2-SHA-256 at 600,000 iterations). The encryption
+          and decryption happen in your browser; the password and the readable diagram are never sent anywhere.
+          Anyone with both the link and the password can open it, so send the password separately. Once opened, the
+          encrypted part is cleared from the address bar, though your browser's history may still list the address
+          as it was first visited.
+        </li>
       </ul>
 
       <h2 id="private-diagrams">Private diagrams</h2>
@@ -139,6 +147,12 @@
       <p>
         Diagrams has no analytics, no tracking pixels, no ads and no cookies of its own. Fonts and icons are served
         from this site, not from a third party.
+      </p>
+      <p>
+        A strict Content-Security-Policy means the page can only talk to this site and the storage providers you
+        connect (Google Drive, OneDrive, Dropbox). Your browser enforces it: no other site's scripts can run here,
+        and the page can't send anything anywhere else. Links you follow tell other sites only that you came from
+        livediagrams.dev, never which diagram or page.
       </p>
       <p>
         The site is static files hosted on <a href="https://vercel.com/legal/privacy-policy">Vercel</a>. Like any

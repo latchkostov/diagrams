@@ -54,6 +54,12 @@ import {
   sharePayloadFromHash,
   sharePayloadFromInput,
 } from "./share";
+import {
+  BadEncryptedLinkError,
+  encryptedPayloadFromHash,
+  encryptedPayloadFromInput,
+  parseEncrypted,
+} from "./passwordLink";
 import { diagramToDrawio } from "./drawio/write";
 import { diagramToMermaid } from "./mermaid/write";
 import { downloadDataUrl, downloadText, fsAccessSupported, slugify, type FileHandle } from "./files";
@@ -72,6 +78,7 @@ import {
   ShareDialog,
 } from "./ui/dialogs";
 import { DropOverlay } from "./ui/DropOverlay";
+import { PasswordLinkDialog, UnlockDialog } from "./ui/passwordDialogsLazy";
 
 import { StorageFilesDialog } from "./ui/storageDialogLazy";
 
@@ -114,6 +121,9 @@ export interface ImageExportOptions {
 type DialogState =
   /** `source`: the document the link is for; the dialog closes if it becomes private. */
   | { kind: "share"; diagram: DiagramFile; source: string }
+  | { kind: "password-link"; diagram: DiagramFile; source: string }
+  /** A password link (#e=…) waiting for its password. */
+  | { kind: "unlock"; token: string; session: number }
   | { kind: "embed"; diagram: DiagramFile; source: string; example?: string }
   | { kind: "image" }
   | { kind: "privacy" }
@@ -302,6 +312,14 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   };
 
   const openShare = () => attempt("create a share link", () => showShare(current(), slug));
+
+  /** Copy link with password… for `d`, from `source`: only while that document may still be shared. */
+  const showPasswordLink = (d: DiagramFile, source: string) => {
+    if (linkAllowed(source)) setDialog({ kind: "password-link", diagram: d, source });
+  };
+
+  /** Copy link with password…: the dialog picks the password, encrypts and copies (rechecking the gate). */
+  const copyPasswordLink = () => attempt("create a link with password", () => showPasswordLink(current(), slug));
 
   /** One click: copy the link. The dialog (details, warnings, native share) is one step away. */
   const copyShareLink = () =>
@@ -567,28 +585,86 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     [openShared],
   );
 
+  /**
+   * The password prompt's session: one number per prompt. Cancel or Esc, a newer link, another dialog,
+   * success and unmounting all end it, and a decryption that finishes after its session ended is dropped
+   * (it never opens the diagram, clears the link or closes a newer prompt).
+   */
+  const unlockSession = useRef(0);
+  useEffect(() => {
+    if (dialog?.kind !== "unlock") unlockSession.current++;
+  }, [dialog]);
+  useEffect(
+    () => () => {
+      unlockSession.current++;
+    },
+    [],
+  );
+
+  /** A password link: check its format and version first, then ask for the password. */
+  const askForPassword = useCallback((token: string): boolean => {
+    try {
+      parseEncrypted(token);
+    } catch (err) {
+      toast.error(err instanceof BadEncryptedLinkError ? err.message : message(err));
+      return false;
+    }
+    setDialog({ kind: "unlock", token, session: ++unlockSession.current });
+    return true;
+  }, []);
+
+  const unlockShared = useCallback(
+    async (session: number, token: string, password: string) => {
+      const from = openSlug.current;
+      // The WebCrypto part loads on use (./passwordLink.ts is all the app carries up front).
+      const { decodeEncryptedShare } = await import("./shareCrypto");
+      const d = await decodeEncryptedShare(token, password);
+      if (session !== unlockSession.current) return;
+      if (openSlug.current !== from)
+        throw new Error("Another diagram opened while this one was unlocking. Enter the password again to open it.");
+      // Stored first: if that fails (storage full or blocked), the prompt shows why and the link stays.
+      openShared(d);
+      unlockSession.current++;
+      // Opened: take the ciphertext out of the address bar and this tab's history entry.
+      if (encryptedPayloadFromHash(window.location.hash) === token) clearUrlFragment();
+      setDialog(null);
+      toast.info(`Opened the shared diagram “${d.title}”. It's kept apart from your own diagrams.`);
+    },
+    [openShared],
+  );
+
   const openShareLinkInput = useCallback(
     (input: string) => {
+      const token = encryptedPayloadFromInput(input);
+      if (token) return void askForPassword(token);
       const payload = sharePayloadFromInput(input);
-      if (!payload) return void toast.error("That doesn't look like a Diagrams share link (it should contain #d=…).");
+      if (!payload)
+        return void toast.error("That doesn't look like a Diagrams share link (it should contain #d=… or #e=…).");
       void openSharePayload(payload);
     },
-    [openSharePayload],
+    [openSharePayload, askForPassword],
   );
 
   // Share links: on load and when only the hash changes (a link pasted into this tab).
   useEffect(() => {
     const check = () => {
+      // A password link keeps its fragment until it's unlocked: cancel, reload, and it asks again.
+      const token = encryptedPayloadFromHash(window.location.hash);
+      if (token) {
+        if (!askForPassword(token)) clearUrlFragment();
+        return;
+      }
       const payload = sharePayloadFromHash(window.location.hash);
       if (!payload) return;
-      // Drop the fragment first so a reload doesn't re-import over edits made since.
-      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+      // Drop the fragment first so a reload doesn't re-import over edits made since. The diagram stays in
+      // the Shared slot, so a reload still shows it.
+      clearUrlFragment();
       void openSharePayload(payload);
     };
     check();
     window.addEventListener("hashchange", check);
     return () => window.removeEventListener("hashchange", check);
-  }, [openSharePayload]);
+  }, [openSharePayload, askForPassword]);
 
   /** Shared banner: keep a copy of the shared diagram in Your diagrams. */
   const keepSharedCopy = () =>
@@ -637,7 +713,10 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     });
 
   // A share or embed dialog left open closes when its document becomes private (here or in another tab).
-  const linkDialogSource = dialog?.kind === "share" || dialog?.kind === "embed" ? dialog.source : undefined;
+  const linkDialogSource =
+    dialog?.kind === "share" || dialog?.kind === "embed" || dialog?.kind === "password-link"
+      ? dialog.source
+      : undefined;
   useEffect(() => {
     if (linkDialogSource === undefined) return;
     const check = () => {
@@ -667,6 +746,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     exportImage: (kind: "png" | "svg", opts: ImageExportOptions = {}) => exportImage(kind, opts),
     openImageOptions: () => setDialog({ kind: "image" }),
     copyShareLink,
+    copyPasswordLink,
     exportDrawio,
     copyMermaid,
     downloadMermaid,
@@ -774,10 +854,33 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         <ShareDialog
           diagram={dialog.diagram}
           allowed={() => linkStillAllowed(dialog.source)}
+          onPasswordLink={() => showPasswordLink(dialog.diagram, dialog.source)}
           onClose={() => setDialog(null)}
         />
       )}
       {dialog?.kind === "privacy" && <PrivacyDialog onTurnOff={confirmNotPrivate} onClose={() => setDialog(null)} />}
+      {dialog?.kind === "password-link" && (
+        <Suspense fallback={null}>
+          <PasswordLinkDialog
+            diagram={dialog.diagram}
+            allowed={() => linkStillAllowed(dialog.source)}
+            onClose={() => setDialog(null)}
+          />
+        </Suspense>
+      )}
+      {dialog?.kind === "unlock" && (
+        <Suspense fallback={null}>
+          <UnlockDialog
+            key={dialog.session}
+            unlock={(password) => unlockShared(dialog.session, dialog.token, password)}
+            onClose={() => {
+              unlockSession.current++;
+              setDialog(null);
+              toast.info("The password-protected diagram wasn't opened. Reload the page to enter the password.");
+            }}
+          />
+        </Suspense>
+      )}
       {dialog?.kind === "embed" && (
         <EmbedDialog
           diagram={dialog.diagram}
@@ -869,6 +972,7 @@ function canvasActions(get: () => InteropApi): Action[] {
         return [
           item("export:png", "Export PNG", () => get().exportPng({ scale: 2 }), "2×"),
           item("export:share", "Copy share link", () => get().copyShareLink(), hint, privateNow),
+          item("export:share-password", "Copy link with password…", () => get().copyPasswordLink(), hint, privateNow),
           item("export:embed", "Embed code…", () => get().openEmbed(), hint, privateNow),
           { type: "separator" },
           item("export:json", "Diagram file", () => get().exportNative(), ".diagram.json"),

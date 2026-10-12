@@ -1,25 +1,39 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import { examples, loadExample } from "../../examples";
 import { LazyCanvasView as CanvasView, preloadCanvasView } from "../../canvas/loadCanvasView";
 import { decodeShare, sharePayloadFromHash } from "../share";
+import { encryptedPayloadFromHash, parseEncrypted } from "../passwordLink";
+import { UnlockDialog } from "../ui/passwordDialogsLazy";
 import { Glyph } from "../ui/glyphs";
 import { notify } from "../ui/toast";
 
 // ?embed=1 — a clean, read-only viewer for <iframe> embeds: no top bar, fitted to the frame, pan and
 // zoom only, plus a subtle "Open in Diagrams" link. The diagram comes from `example=<slug>` or a
 // share payload in the fragment (`#d=...`). `live=1&sim=<id>` are passed through untouched for the
-// live view.
+// live view. A password link's fragment (`#e=...`) asks for the password inside the frame and keeps its
+// fragment (the host page's <iframe src> holds it anyway, and the frame must stay reloadable).
 
 type State =
   | { status: "loading" }
   | { status: "ready"; diagram: DiagramFile; key: string; openHref: string }
+  /** A password link: `asking` while the prompt is open; `session` numbers that prompt. */
+  | { status: "locked"; token: string; asking: boolean; session?: number }
   /** `toast`: also announce the error (a failed download, not a bad link). */
   | { status: "error"; message: string; toast?: boolean };
 
 function resolve(): Promise<State> {
   const params = new URLSearchParams(window.location.search);
   const base = `${window.location.origin}${window.location.pathname}`;
+  const token = encryptedPayloadFromHash(window.location.hash);
+  if (token) {
+    try {
+      parseEncrypted(token);
+    } catch (err) {
+      return Promise.resolve({ status: "error", message: err instanceof Error ? err.message : String(err) });
+    }
+    return Promise.resolve({ status: "locked", token, asking: true });
+  }
   const payload = sharePayloadFromHash(window.location.hash);
   if (payload) {
     return decodeShare(payload).then(
@@ -58,24 +72,29 @@ function resolve(): Promise<State> {
 
 export function EmbedView() {
   const [state, setState] = useState<State>({ status: "loading" });
+  // Only the latest navigation may apply: a slow example download (or a password unlock) that finishes
+  // after a newer hash change, or after unmounting, is dropped, toast included.
+  const navigation = useRef(0);
+  // The password prompt's session: closing it (Cancel, Esc) or a new prompt drops an unlock in flight.
+  const unlockSession = useRef(0);
   useEffect(() => {
     // The diagram is always shown on the canvas: fetch its code while the diagram resolves.
     preloadCanvasView();
-    // Only the latest navigation may apply: a slow example download that finishes after a newer
-    // hash change (or after unmounting) is dropped, toast included.
-    let latest = 0;
+    const nav = navigation;
+    const prompt = unlockSession;
     const load = () => {
-      const request = ++latest;
+      const request = ++navigation.current;
       void resolve().then((s) => {
-        if (request !== latest) return;
+        if (request !== navigation.current) return;
         if (s.status === "error" && s.toast) notify(s.message, { kind: "error" });
-        setState(s);
+        setState(s.status === "locked" ? { ...s, session: ++unlockSession.current } : s);
       });
     };
     load();
     window.addEventListener("hashchange", load);
     return () => {
-      latest++;
+      nav.current++;
+      prompt.current++;
       window.removeEventListener("hashchange", load);
     };
   }, []);
@@ -117,6 +136,45 @@ export function EmbedView() {
             <Glyph name="external" size={12} />
           </a>
         </>
+      ) : state.status === "locked" ? (
+        <div className="ix-embed-msg" data-testid="embed-locked">
+          <div className="ix-embed-locked">
+            <span>This diagram is password-protected.</span>
+            <button
+              className="btn btn-primary"
+              onClick={() => setState({ ...state, asking: true, session: ++unlockSession.current })}
+              data-testid="embed-unlock"
+            >
+              <Glyph name="lock" size={14} /> Enter password
+            </button>
+          </div>
+          {state.asking && (
+            <Suspense fallback={null}>
+              <UnlockDialog
+                key={state.session}
+                unlock={async (password) => {
+                  const request = navigation.current;
+                  const session = state.session;
+                  const { decodeEncryptedShare } = await import("../shareCrypto");
+                  const diagram = await decodeEncryptedShare(state.token, password);
+                  if (request !== navigation.current || session !== unlockSession.current) return;
+                  const base = `${window.location.origin}${window.location.pathname}`;
+                  setState({
+                    status: "ready",
+                    diagram,
+                    key: `e:${state.token.length}:${state.token.slice(-16)}`,
+                    // Still encrypted: opening it in the app asks for the password again.
+                    openHref: `${base}#e=${state.token}`,
+                  });
+                }}
+                onClose={() => {
+                  unlockSession.current++;
+                  setState({ ...state, asking: false });
+                }}
+              />
+            </Suspense>
+          )}
+        </div>
       ) : (
         <div
           className="ix-embed-msg"

@@ -196,6 +196,14 @@ export function FileMenu({
       },
       {
         type: "item",
+        testId: "export-share-link-password",
+        icon: <Glyph name="lock" />,
+        title: "Copy link with password…",
+        disabled: !!privacy,
+        onSelect: () => void api.copyPasswordLink(),
+      },
+      {
+        type: "item",
         testId: "export-embed",
         icon: <Glyph name="code" />,
         title: "Embed code…",
