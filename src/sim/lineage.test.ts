@@ -319,6 +319,46 @@ describe("message lineage: choosing what to follow", () => {
     expect(trace.partial).toBe(false);
   });
 
+  it("summarises when each journey dead-lettered, which creation order doesn't tell", () => {
+    // The older message gets five deliveries, the newer one a single delivery: the newer dead-letters first.
+    const e = engine(
+      diagram(
+        [
+          node("slow", "queue", { maxDeliveryCount: 5 }),
+          node("fast", "queue", { maxDeliveryCount: 1 }),
+          node("worker", "processor", { latencyMs: 30, failureRate: 1 }),
+          node("dlq", "queue"),
+        ],
+        [
+          edge("slow", "worker"),
+          edge("fast", "worker"),
+          edge("slow", "dlq", { dlq: true }),
+          edge("fast", "dlq", { dlq: true }),
+        ],
+      ),
+    );
+    e.tracer.setHistory(10);
+    e.inject("slow", 1);
+    e.inject("fast", 1);
+    run(e, 4000);
+    const recent = e.tracer.recent();
+    expect(recent.map((r) => [r.rootId, r.deadLettered])).toEqual([
+      [1, true],
+      [2, true],
+    ]);
+    for (const r of recent) expect(r.deadLetteredAt).toBe(where(e.tracer.get(r.rootId), "deadletter").at(-1)?.t);
+    expect(recent[0].deadLetteredAt).toBeGreaterThan(recent[1].deadLetteredAt!);
+  });
+
+  it("leaves deadLetteredAt unset on a journey that didn't dead-letter", () => {
+    const e = engine(pipeline);
+    e.tracer.setHistory(10);
+    e.inject("src", 1);
+    run(e, 1000);
+    expect(e.tracer.recent()[0]).toMatchObject({ done: true, deadLettered: false });
+    expect(e.tracer.recent()[0]).not.toHaveProperty("deadLetteredAt");
+  });
+
   it("follows a root that doesn't exist yet as soon as it's created", () => {
     const e = engine(pipeline);
     e.tracer.followRoot(3);

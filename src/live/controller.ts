@@ -262,12 +262,17 @@ export class LiveController {
     return !!best;
   }
 
-  /** Follow the latest message that dead-lettered, or wait for the next one. */
+  /**
+   * Follow the message that dead-lettered most recently, or wait for the next one. By dead-letter time,
+   * not creation order: an older message can dead-letter after a newer one (more deliveries, a longer path).
+   */
   traceDeadLettered(): "now" | "waiting" {
-    const hit = this.engine.tracer
-      .recent()
-      .filter((s) => s.deadLettered)
-      .at(-1);
+    let hit: { rootId: number; at: number } | undefined;
+    for (const s of this.engine.tracer.recent()) {
+      // Ties go to the later record, as a newer message would have won before.
+      if (s.deadLetteredAt !== undefined && (!hit || s.deadLetteredAt >= hit.at))
+        hit = { rootId: s.rootId, at: s.deadLetteredAt };
+    }
     if (hit) this.engine.tracer.followRoot(hit.rootId);
     else this.engine.tracer.request({ next: "deadletter" });
     this.publish();

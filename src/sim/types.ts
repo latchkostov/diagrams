@@ -232,6 +232,8 @@ export interface TraceSummary {
   partial: boolean;
   retries: number;
   deadLettered: boolean;
+  /** When it (or its latest copy to do so) was dead-lettered, simulation ms. Set when `deadLettered`. */
+  deadLetteredAt?: number;
   dropped: boolean;
 }
 

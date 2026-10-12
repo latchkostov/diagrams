@@ -135,15 +135,28 @@ export function createLineage(host: LineageHost): Lineage {
 
   function summary(trace: MessageTrace): TraceSummary {
     let retries = 0,
-      deadLettered = false,
+      deadLetteredAt: number | undefined,
       dropped = false;
     for (const step of trace.steps) {
       if (step.kind === "retry") retries++;
-      else if (step.kind === "deadletter") deadLettered = true;
+      else if (step.kind === "deadletter") deadLetteredAt = step.t;
       else if (step.kind === "drop") dropped = true;
     }
     const { rootId, type, origin, startedAt, endedAt, done, partial } = trace;
-    return { rootId, type, origin, startedAt, endedAt, done, partial, retries, deadLettered, dropped };
+    const deadLettered = deadLetteredAt !== undefined;
+    return {
+      rootId,
+      type,
+      origin,
+      startedAt,
+      endedAt,
+      done,
+      partial,
+      retries,
+      deadLettered,
+      ...(deadLettered ? { deadLetteredAt } : {}),
+      dropped,
+    };
   }
 
   return {
