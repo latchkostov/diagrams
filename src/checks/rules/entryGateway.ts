@@ -123,11 +123,8 @@ export const entryGateway: CheckRule = {
       const preferred = [...new Set([...theirs, ...byPreference])];
       // A one-click fix only when it keeps every flow as it is. Each direct connection becomes a connection to the
       // gateway, one for one (a client sends a copy down each of its connections), and the gateway sends all of it
-      // on to the service. So the connections must be plain and of one kind (requests or messages), and their ids
-      // their own (they're removed by id, and edit ops resolve an id to a node first).
+      // on to the service. So the connections must be plain and of one kind (requests or messages).
       const keeps = edges.every((e) => plain(e.id) && kindOf(e) === kind);
-      const own = edges.every((e) => ctx.edgeRef(e.id));
-      const lossless = keeps && own;
       // An existing gateway keeps its own traffic only when its one route out is a plain one to this service, of
       // the same kind: a gateway shares its traffic round-robin among its routes, so a new route would take some.
       const usable = (door: string) => {
@@ -166,7 +163,7 @@ export const entryGateway: CheckRule = {
           ...(rest.length ? [{ op: "remove" as const, targets: rest.map((e) => e.id) }] : []),
         ];
       };
-      const options: CheckFixOption[] = lossless
+      const options: CheckFixOption[] = keeps
         ? [
             ...preferred
               .filter(usable)
@@ -204,9 +201,7 @@ export const entryGateway: CheckRule = {
             ? ""
             : !keeps
               ? " Its direct connections carry settings (a filter, a message type, timing) or mix requests and messages, which a gateway in between would change: put one in front by hand."
-              : !own
-                ? " Its direct connections share their ids with other elements, so a fix can't change them safely: put a gateway in front by hand."
-                : " Each gateway here also routes elsewhere, so this traffic would be shared out among its routes: put one in front by hand."),
+              : " Each gateway here also routes elsewhere, so this traffic would be shared out among its routes: put one in front by hand."),
         rationale:
           "Traffic from the internet should pass a gateway or web application firewall before it reaches a service: it terminates TLS, filters attacks, checks who's calling and limits the rate, in one place.",
         ...(fix ? { fix } : {}),

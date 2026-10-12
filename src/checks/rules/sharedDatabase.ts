@@ -82,7 +82,6 @@ export const sharedDatabase: CheckRule = {
             if (props) ops.push({ op: "update", target: key, props: structuredClone(props) });
           });
           ops.push({ op: "remove", targets: into.map((e) => e.id) });
-          const fix = into.every((e) => ctx.edgeRef(e.id)) ? { label: `Ask ${ownerName} instead`, ops } : undefined;
           findings.push({
             id: `shared-database:${into[0].id}`,
             rule: "shared-database",
@@ -92,7 +91,7 @@ export const sharedDatabase: CheckRule = {
             title: `${user} uses ${ownerName}'s database`,
             message: `${store} sits in ${where} with ${ownerName}, which uses it. ${user}, outside ${where}, goes to it directly: a change to its tables now has to ship in both.`,
             rationale,
-            ...(fix ? { fix } : {}),
+            fix: { label: `Ask ${ownerName} instead`, ops },
           });
         } else {
           findings.push({

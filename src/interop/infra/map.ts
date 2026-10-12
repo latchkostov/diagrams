@@ -121,7 +121,7 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
     const props = { ...l.props, ...(settings ? { settings } : {}) };
     if (!settings) delete props.settings;
     edges.push({
-      id: `e${edges.length + 1}`,
+      id: unique(`e${edges.length + 1}`),
       from,
       to,
       ...(l.relation === "flow" ? { kind: l.kind ?? "async" } : { relation: l.relation }),

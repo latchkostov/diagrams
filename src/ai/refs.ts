@@ -20,8 +20,16 @@ export class ReferenceError extends Error {
 }
 export const normalizeRef = (s: string) => s.toLowerCase().replace(/\s+/g, "");
 
-type Element = Candidate & { sublabel?: string; endpoint: boolean; from?: string; to?: string };
+/** What an element is. Ids are unique across all four (validateDiagram), but each op only takes some. */
+export type ElementKind = "node" | "edge" | "group" | "note";
+type Element = Candidate & { kind: ElementKind; sublabel?: string; endpoint: boolean; from?: string; to?: string };
 const EMPTY_KEYS: ReadonlyMap<string, string> = new Map();
+const note = (a: NonNullable<DiagramFile["annotations"]>[number]): Element => ({
+  id: a.id,
+  label: a.text,
+  kind: "note",
+  endpoint: a.kind === "shape",
+});
 
 /** Batch-owned indexes; candidates are copied so renamed labels can be removed from old buckets. */
 export class RefIndex {
@@ -33,11 +41,11 @@ export class RefIndex {
   constructor(diagram: DiagramFile) {
     for (const n of diagram.nodes) {
       this.nodes.set(n.id, n);
-      this.upsert({ ...n, endpoint: true });
+      this.upsert({ ...n, kind: "node", endpoint: true });
     }
-    for (const e of diagram.edges) this.upsert({ ...e, label: e.label ?? "", endpoint: false });
-    for (const g of diagram.groups ?? []) this.upsert({ ...g, endpoint: false });
-    for (const a of diagram.annotations ?? []) this.upsert({ ...a, label: a.text, endpoint: a.kind === "shape" });
+    for (const e of diagram.edges) this.upsert({ ...e, kind: "edge", label: e.label ?? "", endpoint: false });
+    for (const g of diagram.groups ?? []) this.upsert({ ...g, kind: "group", endpoint: false });
+    for (const a of diagram.annotations ?? []) this.upsert(note(a));
   }
   private bucket(map: Map<string, Set<string>>, key: string, id: string) {
     const ids = map.get(key) ?? new Set<string>();
@@ -73,35 +81,41 @@ export class RefIndex {
   refresh(diagram: DiagramFile, id: string) {
     const n = diagram.nodes.find((n) => n.id === id);
     if (n) {
-      this.upsert({ ...n, endpoint: true });
+      this.upsert({ ...n, kind: "node", endpoint: true });
       this.nodes.set(id, n);
       return;
     }
     const e = diagram.edges.find((e) => e.id === id);
     if (e) {
-      this.upsert({ ...e, label: e.label ?? "", endpoint: false });
+      this.upsert({ ...e, kind: "edge", label: e.label ?? "", endpoint: false });
       return;
     }
     const g = diagram.groups?.find((g) => g.id === id);
     if (g) {
-      this.upsert({ ...g, endpoint: false });
+      this.upsert({ ...g, kind: "group", endpoint: false });
       return;
     }
     const a = diagram.annotations?.find((a) => a.id === id);
-    if (a) this.upsert({ ...a, label: a.text, endpoint: a.kind === "shape" });
+    if (a) this.upsert(note(a));
     else this.remove(id);
   }
 }
 
-/** Returns real ids; never picks arbitrarily from multiple fuzzy matches. */
+/**
+ * Returns real ids; never picks arbitrarily from multiple fuzzy matches. `kinds` narrows what a label, a
+ * connection ("A -> B") or a fuzzy match may name: a node op never resolves a name to a connection. An exact id or
+ * batch key is returned whatever it names (ids are unique across kinds), so the op can say it's the wrong kind.
+ */
 export function resolveRef(
   diagram: DiagramFile,
   ref: Ref,
   keys: ReadonlyMap<string, string> = EMPTY_KEYS,
   index = new RefIndex(diagram),
+  kinds?: readonly ElementKind[],
 ): string {
   const resolve = (query: string, endpointsOnly = false): string => {
-    const permitted = (e: Element | undefined): e is Element => !!e && (!endpointsOnly || e.endpoint);
+    const permitted = (e: Element | undefined): e is Element =>
+      !!e && (endpointsOnly ? e.endpoint : !kinds || kinds.includes(e.kind));
     const candidates = (ids: Iterable<string> = []) => [...ids].map((id) => index.elements.get(id)).filter(permitted);
     const choose = (matches: Candidate[]) => {
       if (matches.length === 1) return matches[0].id;
@@ -111,10 +125,11 @@ export function resolveRef(
         matches.length > 1,
       );
     };
+    const exact = (e: Element | undefined): e is Element => !!e && (!endpointsOnly || e.endpoint);
     const exactId = index.elements.get(query);
-    if (permitted(exactId)) return exactId.id;
+    if (exact(exactId)) return exactId.id;
     const key = keys.get(query);
-    if (key) return choose(candidates([key]));
+    if (key) return choose([index.elements.get(key)].filter(exact));
     const normalized = normalizeRef(query);
     const labels = candidates(index.labels.get(normalized));
     if (labels.length) return choose(labels);

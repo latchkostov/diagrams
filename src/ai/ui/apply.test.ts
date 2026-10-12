@@ -146,11 +146,17 @@ describe("prompts", () => {
 
 describe("fileToDiagram", () => {
   it("rejects files that aren't diagrams", () => {
-    const twice = { id: "a", stencil: "kafka.topic", label: "a" };
-    expect(fileToDiagram({ nodes: [twice, twice], edges: [] })).toMatchObject({
+    const a = { id: "a", stencil: "kafka.topic", label: "a" };
+    expect(fileToDiagram({ nodes: [a], edges: [{ id: "e", from: "a", to: "ghost" }] })).toMatchObject({
       ok: false,
-      error: expect.stringMatching(/share the id/),
+      error: expect.stringMatching(/isn't in the file/),
     });
+  });
+
+  it("keeps both of two nodes that share an id: the second is renamed", () => {
+    const twice = { id: "a", stencil: "kafka.topic", label: "a" };
+    const r = fileToDiagram({ nodes: [twice, twice], edges: [] });
+    expect(r.ok && r.diagram.nodes.map((n) => n.id)).toEqual(["a", "a-2"]);
   });
 });
 

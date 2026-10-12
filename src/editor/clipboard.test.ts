@@ -94,6 +94,22 @@ describe("clipboard", () => {
     expect(r.edges).toEqual([{ id: "e1-1", from: "a-1", to: "b-1", kind: "async" }]);
   });
 
+  it("never gives a pasted element an id a connection, boundary or node already has", () => {
+    const p = makePayload(diagram, ["a", "b"], ["g"])!;
+    // The ids a paste would take for each kind, held by elements of other kinds.
+    const r = remapPayload(
+      p,
+      { nodes: new Set(["g-1", "e1-1"]), edges: new Set(["a-1"]), groups: new Set(["b-1"]) },
+      { x: 0, y: 0 },
+    );
+    expect([r.groups[0].id, ...r.nodes.map((n) => n.id), ...r.edges.map((e) => e.id)]).toEqual([
+      "g-2",
+      "a-2",
+      "b-2",
+      "e1-2",
+    ]);
+  });
+
   it("keeps references to groups outside the payload", () => {
     const p = makePayload(diagram, ["a"])!;
     const r = remapPayload(p, { nodes: new Set(["a"]), edges: new Set(), groups: new Set(["g"]) }, { x: 0, y: 0 });

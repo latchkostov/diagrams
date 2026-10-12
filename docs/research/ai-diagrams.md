@@ -163,6 +163,8 @@ The spec's mitigations are input-length limits, `untrustedContentHint` on output
 
    Edges are named `"From -> To"`. If a reference is ambiguous or unknown, the batch fails with `candidates: [{ id, label, stencil }]`. Results always return the real ids, and the tool descriptions say to prefer ids once they're known.
 
+   Ids are one namespace: no node, connection, boundary or note shares one (`validateDiagram` renames a repeated id when a file comes in, and new ids never collide). An op acts on the kind its target is, so removing or updating a connection never touches a node. Ops that take only some kinds (a node for `members`, `insert_between` and `add_boundary`; a node or shape for `connect`; a boundary for `in`) match labels and fuzzy names among those kinds only; an exact id of another kind is an error. A diagram whose ids still collide is refused, not guessed at.
+
 4. **Stencil resolution belongs to us, and we report it back.** The pipeline tries, in order:
    1. an exact stencil id
    2. `searchStencils` on `kind` (aliases cover ".NET", "pg", "sb" and so on)

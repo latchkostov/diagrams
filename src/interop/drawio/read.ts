@@ -340,7 +340,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     nodeCells.push(c);
   }
 
-  // ---- nodes
+  // ---- nodes (one id space for nodes, boundaries, notes and connections)
   const used = new Set<string>();
   const uniqueId = (want: string) => {
     let id = want.trim() || "node";
@@ -430,13 +430,10 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
   // ---- groups
   const groups: DiagramGroup[] = [];
   const groupIdByCell = new Map<string, string>();
-  const groupUsed = new Set<string>();
   for (const c of groupCells) {
     const o = absOrigin(c.id);
     const label = htmlToLines(c.value, c.style.html === "1").join(" ");
-    let id = (c.data.dg_id ?? c.id).trim() || "group";
-    if (groupUsed.has(id)) id = `${id}-${groupUsed.size + 1}`;
-    groupUsed.add(id);
+    const id = uniqueId((c.data.dg_id ?? c.id).trim() || "group");
     groupIdByCell.set(c.id, id);
     const tone =
       (["azure", "aws", "gcp", "k8s", "onprem", "neutral"] as const).find((t) => t === c.data.dg_tone) ??
@@ -539,7 +536,6 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     if (text) labelChildren.set(c.parent, [...(labelChildren.get(c.parent) ?? []), text]);
   }
   const edges: DiagramEdge[] = [];
-  const edgeUsed = new Set<string>();
   let dangling = 0;
   for (const c of cells) {
     if (!c.edge) continue;
@@ -551,9 +547,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     }
     const label =
       [...htmlToLines(c.value, c.style.html === "1"), ...(labelChildren.get(c.id) ?? [])].join(" ") || undefined;
-    let id = (c.data.dg_id ?? c.id).trim() || `e-${from}-${to}`;
-    if (edgeUsed.has(id)) id = `${id}-${edgeUsed.size + 1}`;
-    edgeUsed.add(id);
+    const id = uniqueId((c.data.dg_id ?? c.id).trim() || `e-${from}-${to}`);
     const dashed = c.style.dashed === "1";
     // Ours: dg_relation (or the dfRelation style key, which survives draw.io editing the object away).
     const relation = [c.data.dg_relation, c.style.dfRelation].find((r) => isEdgeRelation(r) && r !== "flow") as

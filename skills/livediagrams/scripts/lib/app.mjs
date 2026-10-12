@@ -459,6 +459,31 @@ function validateDiagram(data) {
 	};
 	const warnings = [];
 	const d = { ...raw };
+	const original = new Set([
+		raw.nodes,
+		raw.edges,
+		d.groups,
+		d.annotations
+	].flatMap((l) => Array.isArray(l) ? l.map((x) => x?.id) : []));
+	const taken = /* @__PURE__ */ new Set();
+	const renamed = /* @__PURE__ */ new Map();
+	/** Each id's next suffix to try: linear, however often a hostile file repeats an id. */
+	const suffix = /* @__PURE__ */ new Map();
+	const claim = (id) => {
+		let out = id;
+		for (let k = suffix.get(id) ?? 2; taken.has(out) || out !== id && original.has(out); k++) {
+			out = `${id}-${k}`;
+			suffix.set(id, k + 1);
+		}
+		taken.add(out);
+		if (out !== id) {
+			const to = renamed.get(id);
+			if (to) to.push(out);
+			else renamed.set(id, [out]);
+			warnings.push(`Two elements shared the id "${id}"; one was renamed to "${out}".`);
+		}
+		return out;
+	};
 	if (typeof d.title !== "string" || !d.title.trim()) d.title = typeof d.title === "number" ? String(d.title) : "Untitled diagram";
 	if (d.description !== void 0 && typeof d.description !== "string") delete d.description;
 	if (d.private === false) delete d.private;
@@ -488,10 +513,6 @@ function validateDiagram(data) {
 				warnings.push(`${describe("Group", i, isObj$1(g) ? g.id : void 0)} was skipped: it needs an id, x, y, width and height.`);
 				return;
 			}
-			if (groups.some((x) => x.id === g.id)) {
-				warnings.push(`A second group with the id "${g.id}" was skipped.`);
-				return;
-			}
 			const out = { ...g };
 			if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
 			if (out.tone !== void 0 && !TONES.has(out.tone)) delete out.tone;
@@ -513,12 +534,12 @@ function validateDiagram(data) {
 			ok: false,
 			error: `Node "${n.id}" exceeds the coordinate budget.`
 		};
-		if (ids.has(n.id)) return {
-			ok: false,
-			error: `Two nodes share the id "${n.id}". Node ids must be unique.`
+		const id = claim(n.id);
+		const out = {
+			...n,
+			id
 		};
-		ids.add(n.id);
-		const out = { ...n };
+		ids.add(id);
 		if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
 		if (out.sublabel !== void 0 && typeof out.sublabel !== "string") delete out.sublabel;
 		if (out.group !== void 0 && !groupIds.has(out.group)) {
@@ -535,28 +556,33 @@ function validateDiagram(data) {
 	d.nodes = nodes;
 	const annotations = [];
 	const rejectedAnnotationIds = /* @__PURE__ */ new Set();
-	const annotationUsedIds = new Set(ids);
 	const shapeIds = /* @__PURE__ */ new Set();
 	const annotationIds = /* @__PURE__ */ new Set();
 	if (d.annotations !== void 0) {
 		if (!Array.isArray(d.annotations)) warnings.push("The annotations field wasn't a list and was ignored.");
 		else d.annotations.forEach((a, i) => {
 			const what = describe("Annotation", i, isObj$1(a) ? a.id : void 0);
-			const out = normalizeAnnotation(a, annotationUsedIds, (message) => warnings.push(`${what} ${message}`));
+			const out = normalizeAnnotation(a, void 0, (message) => warnings.push(`${what} ${message}`));
 			if (!out) {
 				if (isObj$1(a) && typeof a.id === "string") rejectedAnnotationIds.add(a.id);
 				return;
 			}
+			out.id = claim(out.id);
 			annotationIds.add(out.id);
-			annotationUsedIds.add(out.id);
 			if (out.kind === "shape") shapeIds.add(out.id);
 			annotations.push(out);
 		});
 	}
 	if (annotations.length) d.annotations = annotations;
 	else delete d.annotations;
+	const groupIdFor = /* @__PURE__ */ new Map();
+	for (const g of groups) {
+		const id = claim(g.id);
+		if (!groupIdFor.has(g.id)) groupIdFor.set(g.id, id);
+		g.id = id;
+	}
+	for (const n of nodes) if (n.group !== void 0) n.group = groupIdFor.get(n.group);
 	const edges = [];
-	const edgeIds = /* @__PURE__ */ new Set();
 	const rawEdges = raw.edges === void 0 ? [] : raw.edges;
 	if (!Array.isArray(rawEdges)) return {
 		ok: false,
@@ -584,14 +610,10 @@ function validateDiagram(data) {
 				error: `Edge "${e.id}" points at a node that isn't in the file ("${missing}").`
 			};
 		}
-		const out = { ...e };
-		if (edgeIds.has(e.id)) {
-			let k = 2;
-			while (edgeIds.has(`${e.id}-${k}`)) k++;
-			out.id = `${e.id}-${k}`;
-			warnings.push(`Two edges shared the id "${e.id}"; one was renamed to "${out.id}".`);
-		}
-		edgeIds.add(out.id);
+		const out = {
+			...e,
+			id: claim(e.id)
+		};
 		if (out.label !== void 0 && typeof out.label !== "string") delete out.label;
 		if (out.kind !== void 0 && out.kind !== "async" && out.kind !== "sync") delete out.kind;
 		if (out.sourceSide !== void 0 && !SIDES.has(out.sourceSide)) delete out.sourceSide;
@@ -635,12 +657,11 @@ function validateDiagram(data) {
 		}
 	}
 	if (d.checks !== void 0) {
-		const checks = sanitizeChecks(d.checks, /* @__PURE__ */ new Set([
-			...ids,
-			...edgeIds,
-			...groupIds,
-			...annotationIds
-		]), warnings);
+		const checks = sanitizeChecks(d.checks, taken, warnings);
+		for (const i of checks?.ignore ?? []) for (const target of renamed.get(i.target) ?? []) checks.ignore.push({
+			...i,
+			target
+		});
 		if (checks) d.checks = checks;
 		else delete d.checks;
 	}
