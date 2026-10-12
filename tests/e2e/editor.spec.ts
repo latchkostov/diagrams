@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox, waitForStableViewport } from "./fixtures";
 
 // Editor UX: context menus, keyboard, undo / redo, clipboard, inspector, arrange.
 // Selectors are data-testid only. Uses the Kafka example (ids from src/examples/kafka-order-pipeline.json).
@@ -14,6 +14,8 @@ async function emptySpot(page: Page, dx = 0) {
 }
 
 async function openCanvasMenu(page: Page, dx = 0) {
+  // A refit still under way (a side panel just folded) would close the menu as it moves the view.
+  await waitForStableViewport(page);
   await page.getByTestId("canvas-wrap").click({ button: "right", position: await emptySpot(page, dx) });
   await expect(page.getByTestId("context-menu")).toBeVisible();
 }

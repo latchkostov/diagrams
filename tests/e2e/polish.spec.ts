@@ -39,10 +39,11 @@ async function panAway(page: Page) {
   const fitted = await viewportTransform(page);
   const wrap = await box(page.getByTestId("canvas-wrap"));
   // The top strip of the pane is empty after a fit (it keeps clear of the title card).
+  // Middle-drag: a plain drag on the empty canvas draws a selection box.
   await page.mouse.move(wrap.x + wrap.width / 2, wrap.y + 70);
-  await page.mouse.down();
+  await page.mouse.down({ button: "middle" });
   await page.mouse.move(wrap.x + wrap.width / 2 - 260, wrap.y + 140, { steps: 6 });
-  await page.mouse.up();
+  await page.mouse.up({ button: "middle" });
   await expect.poll(() => viewportTransform(page)).not.toBe(fitted);
   await waitForStableViewport(page);
 }

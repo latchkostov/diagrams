@@ -138,6 +138,9 @@ export function useCanvasShortcuts(
           handled();
           editor.zoomTo100();
           break;
+        case "zoom-selection":
+          if (editor.zoomToSelection()) handled();
+          break;
         case "shortcuts":
           handled();
           editor.showShortcuts();

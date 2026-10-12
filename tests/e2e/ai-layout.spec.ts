@@ -102,12 +102,12 @@ test("after a pan by hand, opening the dock keeps the selection in view instead 
   await page.setViewportSize({ width: 1024, height: 768 });
   await gotoCanvas(page, SLUG);
   await settle(page);
-  // Pan the view (drag the empty pane) so the right of the diagram sits near the right edge.
+  // Pan the view (middle-drag the empty pane) so the right of the diagram sits near the right edge.
   const wrap = await box(page, "canvas-wrap");
   await page.mouse.move(wrap.x + 200, wrap.y + wrap.height - 120);
-  await page.mouse.down();
+  await page.mouse.down({ button: "middle" });
   await page.mouse.move(wrap.x + 330, wrap.y + wrap.height - 120, { steps: 6 });
-  await page.mouse.up();
+  await page.mouse.up({ button: "middle" });
   await settle(page);
   const before = await box(page, "node-payments");
   await page.getByTestId("node-notifications").click();

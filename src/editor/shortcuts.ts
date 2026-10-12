@@ -18,6 +18,7 @@ export type ShortcutId =
   | "escape"
   | "fit-view"
   | "zoom-100"
+  | "zoom-selection"
   | "command-palette"
   | "shortcuts";
 
@@ -55,6 +56,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { id: "escape", keys: ["Escape"], label: "Close menus, clear selection, then leave live view", group: "Selection" },
   { id: "fit-view", keys: ["Shift+1"], label: "Fit diagram to view", group: "View" },
+  { id: "zoom-selection", keys: ["Shift+2"], label: "Zoom to selection", group: "View" },
   { id: "zoom-100", keys: ["Shift+0"], label: "Zoom to 100%", group: "View" },
   {
     id: "command-palette",

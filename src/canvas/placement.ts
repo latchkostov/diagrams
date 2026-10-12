@@ -84,3 +84,70 @@ export function placeFree(
   }
   return center;
 }
+
+/** The box around all of `boxes`, or null when there are none. */
+export function boundsOf(boxes: readonly Box[]): Box | null {
+  if (!boxes.length) return null;
+  let x1 = Infinity;
+  let y1 = Infinity;
+  let x2 = -Infinity;
+  let y2 = -Infinity;
+  for (const b of boxes) {
+    x1 = Math.min(x1, b.x);
+    y1 = Math.min(y1, b.y);
+    x2 = Math.max(x2, b.x + b.width);
+    y2 = Math.max(y2, b.y + b.height);
+  }
+  return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+}
+
+/** True when `box`, grown by `margin` on every side, touches none of `others`. */
+export function isClear(box: Box, others: readonly Box[], margin = 0): boolean {
+  const grown = {
+    x: box.x - margin,
+    y: box.y - margin,
+    width: box.width + margin * 2,
+    height: box.height + margin * 2,
+  };
+  return !others.some((o) => overlaps(grown, o));
+}
+
+/** Room kept between a copy and anything else (flow px): the copy reads as its own thing. */
+export const COPY_MARGIN = 16;
+
+/**
+ * Where a copy of `box` goes when it has no spot of its own (Ctrl+D): one gap beside it, in the flow
+ * direction first, then across it, then the other two sides; if all four are taken, the free place
+ * nearest the first. Returns how far to move the copy from `box`. `others` must include the
+ * originals, so the copy never lands on them.
+ */
+export function placeCopy(box: Box, others: readonly Box[], direction: "LR" | "TB" = "LR"): { x: number; y: number } {
+  // One gap away: downstream first, then across the flow (a sibling, the usual "another one like
+  // this"), then the other side and upstream. The first spot that's clear wins.
+  const gx = GAP_X / 2 + box.width;
+  const gy = GAP_Y + box.height;
+  const right = { x: gx, y: 0 };
+  const below = { x: 0, y: gy };
+  const order =
+    direction === "TB"
+      ? [below, right, { x: -gx, y: 0 }, { x: 0, y: -gy }]
+      : [right, below, { x: 0, y: -gy }, { x: -gx, y: 0 }];
+  for (const d of order) if (isClear({ ...box, x: box.x + d.x, y: box.y + d.y }, others, COPY_MARGIN)) return d;
+  // All four taken: the free place nearest the downstream spot.
+  const first = order[0];
+  const c = { x: box.x + first.x + box.width / 2, y: box.y + first.y + box.height / 2 };
+  const spot = placeFree(c, box, others, { margin: COPY_MARGIN, step: 20, maxRings: 40 });
+  return { x: spot.x - box.width / 2 - box.x, y: spot.y - box.height / 2 - box.y };
+}
+
+/**
+ * Keeps a copy that has a wanted spot (the pointer for Ctrl+V, the drop of an Alt-drag) off everything
+ * else: `box` already at that spot stays when it's clear, otherwise it moves to the free place nearest
+ * it. Returns how far to move it from where it is (zero when it's clear).
+ */
+export function clearOffset(box: Box, others: readonly Box[]): { x: number; y: number } {
+  if (isClear(box, others, COPY_MARGIN)) return { x: 0, y: 0 };
+  const c = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const spot = placeFree(c, box, others, { margin: COPY_MARGIN, step: 20, maxRings: 40 });
+  return { x: spot.x - c.x, y: spot.y - c.y };
+}

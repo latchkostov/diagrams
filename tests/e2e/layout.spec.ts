@@ -121,14 +121,16 @@ test("the title card folds to a chip when nodes go under it", async ({ page }) =
   await settle(page);
   const card = page.getByTestId("diagram-card");
   await expect(card).not.toHaveAttribute("data-collapsed", "1");
-  // Zoom in around the middle: the diagram spreads out under the card.
+  // Zoom in around the middle (Ctrl+wheel; the wheel alone pans): the diagram spreads out under the card.
   const wrap = await page.getByTestId("canvas-wrap").boundingBox();
   if (!wrap) throw new Error("canvas not visible");
   await page.mouse.move(wrap.x + wrap.width / 2, wrap.y + wrap.height / 2);
+  await page.keyboard.down(process.platform === "darwin" ? "Meta" : "Control");
   for (let i = 0; i < 5; i++) {
     await page.mouse.wheel(0, -300);
     await page.waitForTimeout(80);
   }
+  await page.keyboard.up(process.platform === "darwin" ? "Meta" : "Control");
   await expect(card).toHaveAttribute("data-collapsed", "1");
   // Fit again: the card has room and unfolds.
   await page.getByTestId("fit-view-button").click();
