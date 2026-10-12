@@ -39,8 +39,13 @@ import {
   overlaps,
   placeCopy,
   placeFree,
+  placeToward,
+  FLOW_GAP,
+  isDownstream,
+  towardOf,
   type Box as PlaceBox,
 } from "../canvas/placement";
+import { reconnectEdge, splitEdge } from "./edgeEdits";
 import type { EditTarget } from "../canvas/DiagramContext";
 import {
   GROUP_PREFIX,
@@ -129,6 +134,8 @@ const isGroup = (n: FlowNode): n is GroupFlowNode => n.type === "boundary";
 const isAnnotation = (n: FlowNode): n is AnnotationFlowNode => n.type === "annotation";
 /** Things that sit at a place and can be arranged: nodes and annotations (not boundaries). */
 const isPlaced = (n: FlowNode): n is DiagramFlowNode | AnnotationFlowNode => n.type !== "boundary";
+/** Nodes and shapes take edges; texts, notes, zones and boundaries don't. */
+const takesEdges = (n: FlowNode) => isDiagram(n) || (isAnnotation(n) && isConnectable(n.data.kind));
 const snap10 = (v: number) => Math.round(v / 10) * 10;
 
 function withoutUndefined<T extends Record<string, unknown>>(o: T): T | undefined {
@@ -561,6 +568,69 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
             : e,
         ),
       );
+    },
+    nextSpot: (fromId, toward, clone = false) => {
+      const n = rf.getNode(fromId);
+      if (!n || !takesEdges(n)) return null;
+      const from = box(n);
+      const size = clone ? { width: from.width, height: from.height } : deps().nodeSize;
+      const others = obstacles();
+      const dir = toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
+      const c = placeToward(from, size, others, dir, COPY_MARGIN, FLOW_GAP);
+      // Then never on anything (a crowded side): the nearest free place, on the grid.
+      const at = { x: snap10(c.x - size.width / 2), y: snap10(c.y - size.height / 2), ...size };
+      const d = snappedClear(at, clearOffset(at, others), others);
+      return { ...at, x: at.x + d.x, y: at.y + d.y };
+    },
+    addConnected: (fromId, stencilId, toward) => {
+      const dir = toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
+      const spot = api.nextSpot(fromId, dir);
+      if (!spot) return null;
+      // Same tick: the history debounce records the node and its edge as one undo step.
+      const id = api.addNode(stencilId, { x: spot.x + spot.width / 2, y: spot.y + spot.height / 2 });
+      const edge = isDownstream(dir) ? api.connect(fromId, id) : api.connect(id, fromId);
+      return { id, edge };
+    },
+    cloneConnected: (fromId, toward) => {
+      const n = rf.getNode(fromId);
+      const spot = n && isDiagram(n) ? api.nextSpot(fromId, toward, true) : null;
+      const p = spot && makePayload(diagram(), [fromId], []);
+      if (!n || !spot || !p) return null;
+      const ids = insert(p, { x: spot.x - n.position.x, y: spot.y - n.position.y });
+      const id = ids?.get(fromId);
+      if (!id) return null;
+      const edge = isDownstream(toward) ? api.connect(fromId, id) : api.connect(id, fromId);
+      return { id, edge };
+    },
+    stencilAnchor: () => {
+      const sel = api.getSelection();
+      if (sel.nodeIds.length !== 1 || sel.edgeIds.length || sel.groupIds.length) return undefined;
+      const n = rf.getNode(sel.nodeIds[0]);
+      return n && takesEdges(n) ? n.id : undefined;
+    },
+    addStencil: (stencilId) => {
+      const from = api.stencilAnchor();
+      const made = from ? api.addConnected(from, stencilId) : null;
+      const id = made?.id ?? api.addNode(stencilId);
+      deps().reveal?.();
+      return id;
+    },
+    reconnectEdge: (edgeId, end, nodeId) => {
+      const target = rf.getNode(nodeId);
+      if (!target || !takesEdges(target)) return false;
+      const next = reconnectEdge(rf.getEdges(), edgeId, end, nodeId);
+      if (!next) return false;
+      deps().setEdges(next);
+      return true;
+    },
+    insertIntoEdge: (edgeId, nodeId) => {
+      // A node added in this same tick isn't in React Flow's store yet: only a known one is checked.
+      const n = rf.getNode(nodeId);
+      if (n && !takesEdges(n)) return false;
+      const r = splitEdge(rf.getEdges(), edgeId, nodeId);
+      if (!r) return false;
+      deps().setEdges(r.edges);
+      return true;
     },
 
     deleteElements: (sel) => {

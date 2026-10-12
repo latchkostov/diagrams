@@ -1,5 +1,162 @@
 # Design review
 
+## Round 10: flow building (batch 3) (2026-10-12)
+
+Batch 3 of `docs/research/drawing-ux.md`: D3 the "+" and Alt+arrow quick-add with Alt+Shift+arrow
+clone-and-connect, D8 reconnecting an edge's end and inserting a node by dropping it on an edge, and D13 the
+stencil rail's drag preview and selection-aware clicks. Decision 3 applies (nodes made by Alt+arrow and the "+"
+open their name; rail and palette clicks don't), and decision 4 (a rail click with exactly one node selected
+adds after it, connected). The one habit change, the rail click, is in `docs/RELEASE-NOTES.md`.
+
+**What changed**
+
+- **The "+" (D3).** A single selected node shows one "+" chip, 20 px on screen at any zoom, 16 px off its
+  downstream side (right, or below in a top-to-bottom diagram). Never on hover, never on two selected nodes,
+  never in live view, presentation, embeds or exports. When a neighbour or an edge label is on that side it
+  moves to the first free side (below, above, then upstream); in a dense diagram where all four are taken it
+  sits on the card's own top-right corner. A click opens quick-add for the next node; a drag from it is a connect
+  gesture, like any handle (it is one), so a drop on empty canvas opens quick-add there and a drop on a node
+  connects.
+- **Alt+arrow (D3).** With one node selected (or a shape, which takes edges), Alt+→ and Alt+↓ open quick-add for
+  a node downstream that way, Alt+← and Alt+↑ for one upstream (it connects into the selected node). Quick-add
+  opens beside a faint outline of where the node will land (left of it when growing left, so it never covers
+  the node), and the view pans first if it must, to show the node, the outline and the menu. The pick arrives
+  there, connected, with its name selected for typing; keys typed meanwhile are kept. Alt+arrow never nudges,
+  and on the canvas it never goes back or forward in the browser.
+- **Alt+Shift+arrow (D3).** Skips the menu: a copy of the node (stencil, name, subtitle, settings) lands there,
+  connected the same way, its name selected.
+- **Where the next node lands.** One gap that way: 160 px along the flow (room for the connection's label, as in
+  the examples) and 80 px across it. A fan-out steps into a column (or a row), and the spot is then checked
+  against every node, note, shape and drawn edge with the copy margin, as batch 1's copies are, so it never
+  lands on anything. Ctrl+K's "Add … after" and a rail click after a selected node use the same placement.
+- **Naming the connection.** A node just made connected (a dropped connection's quick-add, Alt+arrow, the "+"
+  and Alt+Shift+arrow) opens its editor with a third field, the connection's label, one Tab after the
+  subtitle. Naming the node and its connection is one undo step after the add.
+- **Reconnect (D8).** A selected edge shows a round end on each side (accent ring, 12 px on screen). Dragging
+  one draws a dashed line from the end that stays, lights up the node a drop would move it to (anywhere on it),
+  and keeps the crosshair; `not-allowed` over a text, note, zone or the other end's node. Dropped on a node, that
+  end moves there and the edge keeps its id, label, relationship, kind and settings (the side pinned for that
+  end belonged to the old node, so it's cleared). Dropped anywhere else, or Esc, it snaps back. One undo step.
+- **Insert on drop (D8).** A single node with no edges of its own, held over an edge for 300 ms, lights the
+  edge's line up; dropped there, the edge splits into A→N and N→B. A→N keeps the edge's id, label and source
+  side; both keep its kind, relationship and settings (each its own copy); N→B takes the target side. That's
+  the AI's `insert_between`, with the id kept. Passing over an edge, or dropping with Ctrl/⌘ held, never splits;
+  the drag and the split are one undo step.
+- **The rail (D13).** Dragging a stencil shows the node card it makes, at the canvas's zoom
+  (`setDragImage`), not the browser's picture of the row. Over empty canvas a faint outline shows where it will
+  land (snapped); over a node, the node lights up and the drop goes after it, connected; held over an edge, the
+  edge lights up and the drop goes in between. A rail click (or Enter in its search) with exactly one node
+  selected adds after it, connected, and the footer says so: "A click adds after **Payments service**,
+  connected. Drag to place it anywhere." In live view the rail keeps adding a node by itself.
+- **Quick-add search** ranks stencils the way the rail's search does, aliases included: "pg" finds PostgreSQL,
+  "go" the Go service, "nod" Node.js. It used to list matches in catalogue order ("go" found Google Pub/Sub
+  first).
+- **Docs.** The shortcuts sheet has Alt+arrow and Alt+Shift+arrow under Edit, and three Mouse rows (the "+", a
+  selected edge's end, holding a node on an edge). `docs/UX-PRINCIPLES.md` has Quick-add, The next node,
+  Reconnect and Insert in the vocabulary, the connection field under Editing text, three Mouse rows and rule
+  10's "one gap beside it".
+
+**The gate: the right half of the Kafka example, keyboard only, in 58 keys** (target: under 60)
+
+From a bare URL (a blank diagram), with nothing clicked: orders.created.v1 feeding Inventory, Payments and
+Notification services, each writing to its store. That's the topic plus six nodes and six named edges, all
+of the example's stencils and names. Every key counts, searches included; the names themselves are content,
+the same in any tool, so they aren't counted:
+
+| Step                                      | Keys                                                                             | Count               |
+| ----------------------------------------- | -------------------------------------------------------------------------------- | ------------------- |
+| Inventory database (PostgreSQL)           | Ctrl+K `p` `g` Enter · Enter “Inventory database” Enter                          | 6                   |
+| Inventory service (Java), upstream        | Alt+← `j` `a` `v` Enter “Inventory service” Tab Tab “Reserve SKUs” Enter         | 8                   |
+| orders.created.v1 (Kafka topic), upstream | Alt+← `k` `a` `f` Enter “orders.created.v1” Tab Tab “Reserve inventory” Enter    | 8                   |
+| Payments service (Go), from the topic     | Alt+→ `g` `o` Enter “Payments service” Tab Tab “Authorize payment” Enter         | 7                   |
+| Payment ledger (PostgreSQL)               | Alt+→ `p` `g` Enter “Payment ledger” Tab Tab “Record authorization” Enter        | 7                   |
+| Back to the topic                         | Ctrl+K `o` `r` `d` Enter                                                         | 5                   |
+| Notification service (Node.js)            | Alt+→ `n` `o` `d` Enter “Notification service” Tab Tab “Send confirmation” Enter | 8                   |
+| Notification dedupe (Redis Cache)         | Alt+→ `r` `e` `d` ↓ Enter “Notification dedupe” Tab Tab “SET NX · dedupe” Enter  | 9                   |
+| **Total**                                 |                                                                                  | **58** (+ 13 names) |
+
+Building upstream first (store, service, topic) leaves the topic selected for its fan-out, so only one trip
+back to it is needed. The fan-out lands as a column, the stores beside their services, nothing overlapping
+(`gate-result-1440-light`). The sequence is a test (`tests/e2e/flow-building.spec.ts`, "gate"), which fails
+at 60 keys or more. Before this batch each connected node from the keyboard was Ctrl+K "Add … after" (13 keys
+for "kafka topic", F1), the fan-out needed a trip back per branch, and an edge couldn't be named from the
+keyboard at all.
+
+**What I checked** (production build, public Kafka example, 1280×800 and 1440×900, light and dark):
+
+- **The "+".** On Payments service at the fitted 1280 view, every side has a neighbour or a label, so the chip
+  sits on the card's corner (`plus-chip-1280-light`); on Order operations, with room on its right, it's 16 px
+  off the card (`plus-chip-side-1440-dark`).
+- **Alt+arrow.** Alt+↓ on Order operations at the bottom of the view: the view pans up, the outline shows below
+  the node and quick-add opens beside it, covering neither (`alt-arrow-quick-add-1440-light`). Alt+↓ on
+  Notification service, "pg", then Tab, Tab into the connection's field (`new-node-connection-1280-dark`).
+  Alt+Shift+↑ on Inventory service (`clone-and-connect-1440-dark`).
+- **Edges.** The ends of a selected edge (`edge-ends-1280-light`); dragging one onto Commerce metrics, lit up,
+  with the dashed line from the end that stays (`reconnect-drag-1440-light`). A new Redis cache held over the
+  "Commit order + outbox" edge (`insert-on-edge-1280-dark`) and dropped (`insert-on-edge-done-1280-dark`).
+- **The rail.** The footer with Payments service selected (`rail-after-footer-1440-light`); a stencil dragged
+  over empty canvas, its outline and (placed by hand, since a headless browser can't capture a drag image) the
+  card it drags (`rail-drag-outline-1440-dark`).
+- **The sheet.** Edit rows (`shortcuts-flow-1280-dark`) and Mouse rows (`shortcuts-mouse-1440-light`).
+- **Live, presentation, embeds and exports.** No "+", no edge ends and no Alt+arrow in live view (tested); the
+  chip is a handle, which image exports already leave out, and the edge ends, the outline and the insert line
+  are left out by class. The AI panel's turns, relationships (an edge into Key Vault added by Alt+arrow is
+  still inferred as a dependency) and batch 1 and 2 (drop to create, copies, guides, editing keys) pass their
+  specs unchanged.
+- **Responsiveness.** Selecting renders the "+" for the selected node only; other nodes' selector is a constant.
+  The stencil rail doesn't re-render on select, drag or undo (its footer follows the selection by itself:
+  `perf.spec.ts` checks it). The insert check runs only while a single unconnected node is dragged, against the
+  routes as drawn when the drag began (no layout reads per move).
+
+**Findings, fixed in this batch**
+
+1. **The "+" hid under edge labels in a dense diagram.** Labels draw above nodes, and at the fitted Kafka view
+   every side of Payments service has a neighbour or a label. Now, with no free side, the chip sits on the card's
+   own corner, where nothing else ever is. It is placed again whenever edges change (an insert moves labels).
+2. **Quick-add covered the node it grew from** near the bottom of the view (it was clamped up over the outline
+   and the node). It now opens beside the outline, and the view pans first when the node, the outline and the
+   menu don't fit.
+3. **The edge to insert into lit up away from the node.** Edges route around nodes, so the moment a node covers
+   an edge, the edge steps aside, and the highlight (and the hit test) followed the detour. The hit test now
+   uses the routes as they were when the drag began, and the line it will split is drawn lit through the node.
+4. **Quick-add closed itself after fast naming.** The new node's reveal pans a moment later, and any viewport
+   move closed menus. Moves the app makes no longer close menus; a pan by hand still does.
+5. **The first key after a quick-add pick could be lost.** Between the type-ahead handing over and the editor
+   mounting, a key reached the canvas. The editor now mounts in the same task.
+6. **Ctrl+K "Add …" left focus on the page,** so Enter didn't name the new node and Alt+arrow didn't grow from
+   it. The new node takes focus once drawn.
+7. **The rail re-rendered on every selection** (its new footer was a prop). The footer now follows the
+   selection by itself (`perf.spec.ts`).
+8. **Named edges between hand-added nodes truncated their labels** ("Reserv…") at the 80 px gap Ctrl+K used.
+   Nodes added beside a node now leave 160 px along the flow, as the examples do.
+9. **Two Edit rows wrapped in the sheet**; their labels are shorter. The connection field's hint says what it
+   is ("The connection's label · Enter saves").
+
+**Deviations from the plan**
+
+- **The connection's label in the new node's editor.** D7 has Tab go from label to subtitle; a node just made
+  connected gets a third field. Without it an edge can't be named from the keyboard until D14 (batch 4), and
+  the gate asks for named edges.
+- **Insert only for a node with no edges of its own.** Moving an already wired node and pausing over a line
+  shouldn't rewire the diagram. New nodes and rail stencils (the common case) insert as specified.
+- **A stencil dropped anywhere on a node goes after it**, not only on its handle (D13): as D2 made a drop
+  anywhere on a node connect.
+- **A stencil dropped on empty canvas that lands on something moves to the nearest free place** (batch 1's
+  rule for copies), so the outline shows the drop spot and a crowded drop steps clear.
+- **Alt+Shift+arrow copies only the node**, connected to it the same way as Alt+arrow. "Duplicate with
+  connections" (the copy taking the original's other edges) isn't in; a copy beside its original reads as a
+  fan-out from it.
+- **Quick-add's search ranking** and the **wider gap** are new here (findings 8 and the gate); AI placement and
+  live view's entry points keep their 80 px gap.
+
+**Left for later batches**
+
+- D14 keyboard selection between nodes (Tab, Ctrl+Alt+arrows, edges by Ctrl+Alt+[ ]): the gate's one trip back
+  to the topic goes through Ctrl+K's node search today.
+- Quick-add ranking "downstream" stencils after the recents (from round 8).
+- Boundaries that grow to take a node added next to a member (D12): a copy placed above a boundary's top row
+  lands outside it.
+
 ## Round 9: drawing precision (batch 2) (2026-10-12)
 
 Batch 2 of `docs/research/drawing-ux.md`: D6 smart guides, equal spacing and grid-true nudges, and D7 one set

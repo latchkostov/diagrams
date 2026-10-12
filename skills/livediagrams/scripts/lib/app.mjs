@@ -974,30 +974,39 @@ var GAP_X = 80;
 var GAP_Y = 40;
 var MAX_TRIES = 12;
 var overlaps = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+/** The side downstream (or upstream) lies on in a diagram of this direction. */
+var towardOf = (direction = "LR", side = "downstream") => direction === "TB" ? side === "upstream" ? "up" : "down" : side === "upstream" ? "left" : "right";
+/**
+* One gap from `from` on its `toward` side (`gap` to the left or right, 80 above or below), centred on it
+* across that axis. When the spot is taken (it overlaps one of `others`, grown by `margin`) it steps across:
+* down for a left or right spot, right for one above or below, so a fan-out reads as a column (or a row).
+* Returns the new box's centre.
+*/
+function placeToward(from, size, others, toward, margin = 0, gap = GAP_X) {
+	const across = toward === "right" || toward === "left";
+	let x = across ? toward === "left" ? from.x - gap - size.width : from.x + from.width + gap : from.x + from.width / 2 - size.width / 2;
+	let y = across ? from.y + from.height / 2 - size.height / 2 : toward === "up" ? from.y - 80 - size.height : from.y + from.height + 80;
+	for (let i = 0; i < MAX_TRIES; i++) {
+		if (isClear({
+			x,
+			y,
+			...size
+		}, others, margin)) break;
+		if (across) y += size.height + GAP_Y;
+		else x += size.width + GAP_X / 2;
+	}
+	return {
+		x: x + size.width / 2,
+		y: y + size.height / 2
+	};
+}
 /**
 * Downstream is right of `from` (LR) or below it (TB); upstream is left of it or above it. The spot
 * steps across the flow (down for LR, right for TB) past any of `others` it would overlap.
 * Returns the new node's centre (what `editor.addNode` takes).
 */
 function placeNextTo(from, size, others, direction = "LR", side = "downstream") {
-	const down = direction === "TB";
-	const before = side === "upstream";
-	let x = down ? from.x + from.width / 2 - size.width / 2 : before ? from.x - GAP_X - size.width : from.x + from.width + GAP_X;
-	let y = down ? before ? from.y - 80 - size.height : from.y + from.height + 80 : from.y + from.height / 2 - size.height / 2;
-	for (let i = 0; i < MAX_TRIES; i++) {
-		const box = {
-			x,
-			y,
-			...size
-		};
-		if (!others.some((o) => overlaps(box, o))) break;
-		if (down) x += size.width + GAP_X / 2;
-		else y += size.height + GAP_Y;
-	}
-	return {
-		x: x + size.width / 2,
-		y: y + size.height / 2
-	};
+	return placeToward(from, size, others, towardOf(direction, side));
 }
 /**
 * Where something added without a spot (a click in the stencil rail, the command palette) goes:
@@ -1044,6 +1053,16 @@ function findFree(center, size, others, { margin = 32, step = 40, maxRings = 24 
 		};
 	}
 	return null;
+}
+/** True when `box`, grown by `margin` on every side, touches none of `others`. */
+function isClear(box, others, margin = 0) {
+	const grown = {
+		x: box.x - margin,
+		y: box.y - margin,
+		width: box.width + margin * 2,
+		height: box.height + margin * 2
+	};
+	return !others.some((o) => overlaps(grown, o));
 }
 //#endregion
 //#region src/ai/place.ts

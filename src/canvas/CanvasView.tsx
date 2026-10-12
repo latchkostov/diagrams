@@ -62,7 +62,7 @@ import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/type
 import { fromFlow, groupAt, toFlow, withEdgeAria, withEditingOnTop, withNodeAria, type DiagramMeta } from "./convert";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
 import { overlayRects, useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
-import { panClearOf } from "./geometry/fit";
+import { panClearOf, panIntoView } from "./geometry/fit";
 import { union } from "./geometry/rect";
 import { canvasNodeTypes } from "./nodes/nodeTypes";
 import {
@@ -88,6 +88,7 @@ import { inCanvas, useCanvasShortcuts } from "../editor/useCanvasShortcuts";
 import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
 import type { Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
+import { flushSync } from "react-dom";
 import { LiveView } from "../live/LiveView";
 import { LIVE_BAR_SPACE } from "../live/layout";
 import { safeStorage } from "../lib/storage";
@@ -106,6 +107,13 @@ import { ConnectionLine } from "./ConnectionLine";
 import { captureTypeAhead } from "./typeAhead";
 import { useSmartGuides } from "./useSmartGuides";
 import { GROUP_PREFIX } from "./types";
+import { towardOf, type Toward } from "./placement";
+import { insertLine, landing } from "./landing";
+import { LandingOutline } from "./LandingOutline";
+import { edgeHover, nearestEdge, type EdgeHover } from "./edgeHover";
+import { selectRoutes } from "./edges/useEdgeRoute";
+import { isConnectable } from "./annotations";
+import { railAnchor } from "./railAnchor";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -206,7 +214,17 @@ const isGroupNode = (n: FlowNode): n is GroupFlowNode => n.type === "boundary";
 const isAnnotationNode = (n: FlowNode): n is AnnotationFlowNode => n.type === "annotation";
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
 
-type MenuState = { x: number; y: number; items: MenuNode[]; label: string; searchable?: string; testId?: string };
+type MenuState = {
+  x: number;
+  y: number;
+  flipX?: number;
+  items: MenuNode[];
+  label: string;
+  searchable?: string;
+  testId?: string;
+};
+/** About how wide quick-add is (its CSS keeps it 224–320 px): room kept for it beside the outline. */
+const QUICK_ADD_W = 300;
 
 // Built-in actions live for the app's lifetime; HMR re-registers them by id.
 actionRegistry.register(builtinActions());
@@ -349,7 +367,14 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     reveal: () => revealSelection(),
   });
 
-  useCanvasShortcuts(editor, { enabled: !shortcutsOpen && !readOnly, onEscape: () => setMenu(null), live });
+  /** Alt+arrow and Alt+Shift+arrow (set below, once the flows they open are defined). */
+  const grow = useRef<(from: string, toward: Toward, clone: boolean) => void>(() => {});
+  useCanvasShortcuts(editor, {
+    enabled: !shortcutsOpen && !readOnly,
+    onEscape: () => setMenu(null),
+    live,
+    onGrow: (from, toward, clone) => grow.current(from, toward, clone),
+  });
   // The command palette (Ctrl/Cmd+K) acts on this canvas while it's mounted and editable.
   const hostRevision = useMemo(() => ({ nodes, edges, meta }), [nodes, edges, meta]);
   useCanvasHost(editor, {
@@ -512,6 +537,110 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     [getNodes, setViewport, store],
   );
 
+  /**
+   * A node made connected by quick-add (a dropped connection, Alt+arrow, the "+") or Alt+Shift+arrow: in view,
+   * then its label editor with the name selected (decision 3), whose last field names the connection. Keys
+   * typed meanwhile are kept for it (React Flow measures the card before showing it, and a hidden field can't
+   * take focus).
+   */
+  const pickNamed = useCallback(
+    (make: () => { id: string; edge: string | null } | null, fallback: string) => {
+      // Hold what's typed from now until the label editor can take it.
+      const typing = captureTypeAhead();
+      const made = make();
+      if (!made) return void typing.stop();
+      revealSelection(() => {
+        const typed = typing.stop();
+        if (typed.done === "escape") return;
+        if (typed.done === "enter") {
+          if (typed.text !== null) editor.updateNode(made.id, { label: typed.text.trim() || fallback });
+          return;
+        }
+        // In this same task: a key arriving before the editor had mounted would reach the canvas instead.
+        flushSync(() =>
+          editor.startEditing({
+            kind: "node",
+            id: made.id,
+            field: "label",
+            text: typed.text ?? undefined,
+            edge: made.edge ?? undefined,
+          }),
+        );
+      }, 90);
+    },
+    [editor, revealSelection],
+  );
+
+  // ---------------------------------------------------------------- the next node (D3)
+  // Alt+arrow and the "+" on a selected node: quick-add opens under an outline of where the node will land,
+  // and the pick arrives there, connected (→ and ↓ from the node, ← and ↑ into it), ready to name.
+  // Alt+Shift+arrow skips the menu: a copy of the node lands there, connected the same way.
+  const growTo = useCallback(
+    (fromId: string, toward?: Toward) => {
+      if (readOnly || live || presenting) return;
+      const dir = toward ?? towardOf(meta.direction === "TB" ? "TB" : "LR");
+      const spot = editor.nextSpot(fromId, dir);
+      const from = getNode(fromId);
+      const wrap = wrapper.current;
+      if (!spot || !from || !wrap) return;
+      hideTip();
+      setEditing(null);
+      // Quick-add opens beside the outline of where the node will land (left of it when growing left, so it
+      // never covers the node it grows from). First the view pans, if it must, to show the node, the outline
+      // and the menu's room; the menu opens where the outline will be.
+      const [tx, ty, k] = store.getState().transform;
+      const r = wrap.getBoundingClientRect();
+      const room = (QUICK_ADD_W + 16) / k;
+      const menuLeft = dir === "left";
+      const card = {
+        x: from.position.x,
+        y: from.position.y,
+        width: from.measured?.width ?? spot.width,
+        height: from.measured?.height ?? spot.height,
+      };
+      const want = union([card, { ...spot, x: menuLeft ? spot.x - room : spot.x, width: spot.width + room }]) ?? spot;
+      const view = { x: 24, y: 24, width: r.width - 48, height: r.height - 48 };
+      const next = panIntoView(want, spot, { x: tx, y: ty, zoom: k }, view);
+      if (next) void setViewport(next, { duration: motionMs(200) });
+      const v = next ?? { x: tx, y: ty, zoom: k };
+      const sx = r.left + spot.x * k + v.x;
+      const sy = r.top + spot.y * k + v.y;
+      const right = sx + spot.width * k + 8;
+      landing.set(spot);
+      setMenu({
+        x: menuLeft ? sx - 8 - QUICK_ADD_W : right,
+        flipX: sx - 8,
+        y: sy,
+        label: "Add a connected node",
+        testId: "quick-add",
+        searchable: "Add a node…",
+        items: quickAddMenu((s) => {
+          pickNamed(() => editor.addConnected(fromId, s.id, dir), s.label);
+          pushRecentStencil(s.id);
+        }, getRecentStencils()),
+      });
+    },
+    [readOnly, live, presenting, meta.direction, editor, getNode, hideTip, store, setViewport, pickNamed],
+  );
+  const cloneTo = useCallback(
+    (fromId: string, toward: Toward) => {
+      if (readOnly || live || presenting) return;
+      setMenu(null);
+      hideTip();
+      pickNamed(() => editor.cloneConnected(fromId, toward), editor.getNode(fromId)?.label ?? "");
+    },
+    [readOnly, live, presenting, editor, hideTip, pickNamed],
+  );
+  // The outline goes with its menu.
+  useEffect(() => {
+    if (!menu) landing.set(null);
+  }, [menu]);
+  useEffect(() => () => landing.set(null), []);
+  const growFromChip = useCallback((id: string) => growTo(id), [growTo]);
+  useLayoutEffect(() => {
+    grow.current = (from, toward, clone) => (clone ? cloneTo(from, toward) : growTo(from, toward));
+  });
+
   // ---------------------------------------------------------------- connecting (D1, D2)
   // While a connection is drawn: a crosshair throughout, the node a drop would connect to lit up (a
   // drop anywhere on it connects), not-allowed over things that take no edges, and a "+" at the end
@@ -587,26 +716,15 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         testId: "quick-add",
         searchable: "Add a node…",
         items: quickAddMenu((s) => {
-          // Hold what's typed from now until the label editor can take it.
-          const typing = captureTypeAhead();
-          const id = editor.addNode(s.id, point);
-          editor.connect(from, id);
+          pickNamed(() => {
+            const id = editor.addNode(s.id, point);
+            return { id, edge: editor.connect(from, id) };
+          }, s.label);
           pushRecentStencil(s.id);
-          // In view, then its label editor (once the card is measured: React Flow hides it until then,
-          // and a hidden field can't take focus), starting from whatever was typed meanwhile.
-          revealSelection(() => {
-            const typed = typing.stop();
-            if (typed.done === "escape") return;
-            if (typed.done === "enter") {
-              if (typed.text !== null) editor.updateNode(id, { label: typed.text.trim() || s.label });
-              return;
-            }
-            editor.startEditing({ kind: "node", id, field: "label", text: typed.text ?? undefined });
-          }, 90);
         }, getRecentStencils()),
       });
     },
-    [endConnecting, readOnly, annotationKindOf, editor, live, screenToFlowPosition, revealSelection],
+    [endConnecting, readOnly, annotationKindOf, editor, live, screenToFlowPosition, pickNamed],
   );
 
   // ---------------------------------------------------------------- selection box (D5)
@@ -733,12 +851,58 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   // onSelectionDragStart as well, which is why that one isn't registered). `dragActive` makes a second
   // start or stop for the same gesture a no-op, so copies are made exactly once.
   const dragActive = useRef(false);
+  /**
+   * Insert on drop (D8): a single node with no edges, held over an edge for a moment, lights the edge up;
+   * dropped there (without Ctrl/Cmd) it goes in between: A→B becomes A→N→B, in the drag's undo step.
+   */
+  const insertWatch = useRef<{ node: string; hover: EdgeHover; stop: () => void } | null>(null);
+  /** Edge hover for an insert, against the routes as drawn now (edges step aside from a node over them). */
+  const insertHover = useCallback(() => {
+    const s = store.getState();
+    const routes = selectRoutes(s, {
+      style: edgeStyle,
+      direction: meta.direction ?? "LR",
+      captions: nodeVariant === "iconOnly",
+      hideDependencies: !dependencyVisibility.get(),
+    });
+    const lines = [...routes].map(([id, r]) => ({ id, points: r.points }));
+    return edgeHover(
+      // Within 10 px on screen of the line.
+      (x, y) => nearestEdge(lines, screenToFlowPosition({ x, y }), 10 / store.getState().transform[2]),
+      (id) => wrapper.current?.querySelector(`[data-testid="edge-${CSS.escape(id)}"]`) ?? null,
+      undefined,
+      // The line it will split, where it ran before the node came over it.
+      (id) => insertLine.set(lines.find((l) => l.id === id)?.points ?? null),
+    );
+  }, [store, edgeStyle, meta.direction, nodeVariant, screenToFlowPosition]);
+  const watchInsert = useCallback(
+    (nodeId: string) => {
+      const hover = insertHover();
+      const onMove = (e: PointerEvent) => hover.at(e.clientX, e.clientY, e.ctrlKey || e.metaKey);
+      document.addEventListener("pointermove", onMove, true);
+      insertWatch.current = {
+        node: nodeId,
+        hover,
+        stop: () => {
+          document.removeEventListener("pointermove", onMove, true);
+          hover.clear();
+        },
+      };
+    },
+    [insertHover],
+  );
+  useEffect(() => () => insertWatch.current?.stop(), []);
   const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
     (e, _node, dragged) => {
       if (dragActive.current) return;
       dragActive.current = true;
       setMenu(null);
       hideTip();
+      const only = dragged.length === 1 ? dragged[0] : undefined;
+      if (editGestures && !e.altKey && only?.type === "diagram") {
+        const linked = store.getState().edges.some((x) => x.source === only.id || x.target === only.id);
+        if (!linked) watchInsert(only.id);
+      }
       // Alt-drag: copies take the originals' place and move with the pointer; the originals stay.
       if (editGestures && e.altKey) {
         const made = editor.duplicateInPlace({
@@ -749,13 +913,18 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       }
       guides.start(e, dragged, altCopies.current);
     },
-    [hideTip, editGestures, editor, guides],
+    [hideTip, editGestures, editor, guides, store, watchInsert],
   );
   const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
-    (_e, _node, dragged) => {
+    (e, _node, dragged) => {
       if (!dragActive.current) return;
       dragActive.current = false;
       guides.stop();
+      const watch = insertWatch.current;
+      insertWatch.current = null;
+      const into = watch?.hover.lit();
+      watch?.stop();
+      if (watch && into && !(e.ctrlKey || e.metaKey)) editor.insertIntoEdge(into, watch.node);
       const copies = altCopies.current;
       altCopies.current = null;
       const ids = new Set(dragged.filter((n) => n.type === "diagram").map((n) => copies?.get(n.id) ?? n.id));
@@ -910,7 +1079,49 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     });
   };
 
+  // ---------------------------------------------------------------- dropping a stencil (D13)
+  // While a stencil is dragged over the canvas: over empty canvas, a faint outline where it will land; over
+  // a node, the node lights up (the drop goes after it, connected); held over an edge, the edge lights up
+  // (the drop goes in between, D8).
+  const railDrop = useRef<{ hover: EdgeHover; node: Element | null } | null>(null);
+  const endRailDrop = useCallback(() => {
+    const r = railDrop.current;
+    railDrop.current = null;
+    r?.hover.clear();
+    r?.node?.classList.remove("is-connect-target");
+    landing.set(null);
+  }, []);
+  useEffect(() => endRailDrop, [endRailDrop]);
+  /** The node a stencil dropped here would follow (one that takes edges), if any. */
+  const dropNodeAt = (x: number, y: number) => {
+    const el = document.elementFromPoint(x, y);
+    const t = connectTarget(connectHitAt(el, annotationKindOf), "");
+    return t.kind === "node" ? { id: t.id, el: el?.closest(".react-flow__node") ?? null } : null;
+  };
+  const onRailDragOver = (e: DragEvent) => {
+    if (!editGestures) return;
+    const r = (railDrop.current ??= { hover: insertHover(), node: null });
+    const over = dropNodeAt(e.clientX, e.clientY);
+    if (over?.el !== r.node) {
+      r.node?.classList.remove("is-connect-target");
+      over?.el?.classList.add("is-connect-target");
+      r.node = over?.el ?? null;
+    }
+    r.hover.at(e.clientX, e.clientY, !!over || e.ctrlKey || e.metaKey);
+    if (over) return landing.set(null);
+    const p = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    const { width, height } = getNodeVariant(nodeVariant).size;
+    landing.set({
+      x: Math.round((p.x - width / 2) / 10) * 10,
+      y: Math.round((p.y - height / 2) / 10) * 10,
+      width,
+      height,
+    });
+  };
+
   const onDrop = (e: DragEvent) => {
+    const into = railDrop.current?.hover.lit() ?? null;
+    endRailDrop();
     const note = parseAnnotationDrag(e.dataTransfer.getData(ANNOTATION_DND_MIME));
     if (note) {
       e.preventDefault();
@@ -924,7 +1135,13 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     const id = e.dataTransfer.getData(STENCIL_DND_MIME);
     if (!id) return;
     e.preventDefault();
-    editor.addNode(id, screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+    const after = editGestures ? dropNodeAt(e.clientX, e.clientY) : null;
+    // Onto a node: after it, connected (as a rail click does with it selected).
+    if (after && editor.addConnected(after.id, id)) return revealSelection();
+    const made = editor.addNode(id, screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+    // Held over an edge: in between. Anywhere else: where it was dropped, moved clear if it landed on something.
+    if (into && !(e.ctrlKey || e.metaKey) && editor.insertIntoEdge(into, made)) return;
+    requestAnimationFrame(() => editor.keepClear({ nodeIds: [made] }));
   };
 
   // ---------------------------------------------------------------- derived
@@ -951,8 +1168,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       setEditing: readOnly ? () => {} : setEditing,
       openEdgeMenu,
       settleText: readOnly ? undefined : settleText,
+      grow: editGestures ? growFromChip : undefined,
+      reconnect: editGestures ? editor.reconnectEdge : undefined,
     }),
-    [direction, editing, openEdgeMenu, readOnly, settleText],
+    [direction, editing, openEdgeMenu, readOnly, settleText, editGestures, growFromChip, editor],
   );
   // Read-only (embed) hides the same chrome as presenting, without the presentation sizing.
   const hideChrome = presenting || readOnly;
@@ -1070,7 +1289,22 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     setPaletteCollapsed(!paletteHidden);
     setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
   }, [paletteHidden]);
-  const addFromPalette = useCallback((id: string) => void editor.addNode(id), [editor]);
+  // With exactly one node selected, a rail click adds after it, connected, as Ctrl+K does (decision 4).
+  // Live view adds a node by itself, as before: nothing gets wired mid-run.
+  const addFromPalette = useCallback(
+    (id: string) => void (live ? editor.addNode(id) : editor.addStencil(id)),
+    [editor, live],
+  );
+  const anchorLabel = useMemo(() => {
+    if (selectedNodes.length + selectedAnnotations.length + selectedGroups.length + selectedEdges.length !== 1)
+      return undefined;
+    const n = selectedNodes[0];
+    if (n) return n.data.label || n.id;
+    const a = selectedAnnotations[0];
+    return a && isConnectable(a.data.kind) ? annotationTitle(a.data) : undefined;
+  }, [selectedNodes, selectedAnnotations, selectedGroups, selectedEdges]);
+  useEffect(() => railAnchor.set(live || hideChrome ? undefined : anchorLabel), [live, hideChrome, anchorLabel]);
+  useEffect(() => () => railAnchor.set(undefined), []);
   const annotateFromPalette = useCallback(
     (kind: AnnotationKind, shape?: AnnotationShape) => void editor.addAnnotation(kind, { shape }),
     [editor],
@@ -1126,6 +1360,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             onToggle={togglePalette}
             onAdd={addFromPalette}
             onAnnotate={annotateFromPalette}
+            nodeVariant={nodeVariant}
           />
         )}
         <div
@@ -1145,6 +1380,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
               e.preventDefault();
               e.dataTransfer.dropEffect = "copy";
             }
+            if (e.dataTransfer.types.includes(STENCIL_DND_MIME)) onRailDragOver(e);
+          }}
+          onDragLeave={(e) => {
+            if (!wrapper.current?.contains(e.relatedTarget as Node | null)) endRailDrop();
           }}
           onDrop={onDrop}
         >
@@ -1171,7 +1410,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             onSelectionContextMenu={onSelectionContextMenu}
             onDoubleClick={onPaneDoubleClick}
             onMoveStart={(e) => {
-              setMenu(null);
+              // A pan by hand closes menus; the app's own (a new node brought into view) doesn't: quick-add
+              // opened right after naming the last node must stay open while the view settles.
+              if (e) setMenu(null);
               hideTip();
               // A pan or zoom by hand (an event), or by a command such as Shift+0 (no event, and not
               // our own fit starting), means the view is the user's now, not a fit.
@@ -1232,6 +1473,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             <ZoomVar host={wrapper} />
             {prefs.grid && <DotGrid />}
             {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}
+            {editGestures && <LandingOutline />}
             {!hideChrome && (
               <Controls
                 showInteractive={false}
@@ -1414,6 +1656,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         <ContextMenu
           x={menu.x}
           y={menu.y}
+          flipX={menu.flipX}
           items={menu.items}
           label={menu.label}
           searchable={menu.searchable}

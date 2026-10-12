@@ -12,6 +12,8 @@ import type { AlignMode, Axis } from "./arrange";
 import type { GroupTone } from "../canvas/types";
 import type { ClipboardPayload } from "./clipboard";
 import type { DiagramDiff } from "./diagramDiff";
+import type { Toward } from "../canvas/placement";
+import type { EdgeEnd } from "./edgeEdits";
 export type { DiagramDiff, ChangeSet } from "./diagramDiff";
 
 export type XY = { x: number; y: number };
@@ -97,6 +99,30 @@ export interface EditorApi {
   updateMeta(patch: DiagramMetaPatch, opts?: EditOptions): void;
   connect(from: string, to: string): string | null;
   reverseEdge(id: string): void;
+  /**
+   * Where a node added on `toward` side of `fromId` lands (a box, top-left): one gap that way, stepping
+   * across past what's there, and always clear of nodes and edges. Default side: downstream. `clone`: the
+   * size of a copy of `fromId` rather than a new node. Null when `fromId` takes no edges.
+   */
+  nextSpot(fromId: string, toward?: Toward, clone?: boolean): XYBox | null;
+  /**
+   * Adds a stencil at `nextSpot`, connected (→ and ↓: from `fromId`; ← and ↑: into it), selected, as one
+   * undo step. Returns the new node and its edge.
+   */
+  addConnected(fromId: string, stencilId: string, toward?: Toward): { id: string; edge: string | null } | null;
+  /** Copies `fromId` (stencil, label, subtitle, settings) to `nextSpot`, connected the same way. */
+  cloneConnected(fromId: string, toward: Toward): { id: string; edge: string | null } | null;
+  /**
+   * The stencil rail and Ctrl+K: with exactly one node selected (one that takes edges), the stencil goes
+   * after it, connected; otherwise it goes to the free place nearest the view's centre. Returns its id.
+   */
+  addStencil(stencilId: string): string;
+  /** The single selected node a new stencil would follow (rail and Ctrl+K), if any. */
+  stencilAnchor(): string | undefined;
+  /** Moves one end of an edge onto another node, keeping its label, relationship and settings. */
+  reconnectEdge(edgeId: string, end: EdgeEnd, nodeId: string): boolean;
+  /** Splits an edge around a node: A→B becomes A→N→B, both keeping the edge's meaning. */
+  insertIntoEdge(edgeId: string, nodeId: string): boolean;
 
   // ---- structure ----
   deleteElements(sel: Partial<Selection>): void;

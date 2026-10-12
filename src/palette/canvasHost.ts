@@ -4,8 +4,6 @@ import type { EditorApi } from "../editor/types";
 import { publish } from "./host";
 import { motionMs } from "../lib/motion";
 import { placeNextTo, type Box } from "../canvas/placement";
-import { isConnectable, isObstacle } from "../canvas/annotations";
-import type { AnnotationKind } from "../model/types";
 
 // The canvas half of the palette host. Kept apart from ./host so the palette itself never pulls in
 // React Flow: only the canvas (which already has it) imports this file.
@@ -50,28 +48,18 @@ export function useCanvasHost(
           .querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
           ?.focus({ preventScroll: true });
       },
-      addStencil(stencilId) {
-        const sel = editor.getSelection();
-        const one = sel.nodeIds.length === 1 && !sel.edgeIds.length ? sel.nodeIds[0] : undefined;
-        // Texts, notes and zones take no edges: a new stencil just lands in view.
-        const note = one ? editor.getAnnotation(one) : undefined;
-        const fromId = note && !isConnectable(note.kind) ? undefined : one;
-        const from = fromId ? boxOf(fromId) : null;
-        if (!fromId || !from) return editor.addNode(stencilId);
-        const others = rfRef.current
-          .getNodes()
-          .filter(
-            (n) =>
-              n.type !== "boundary" &&
-              (n.type !== "annotation" || isObstacle((n.data as { kind: AnnotationKind }).kind)),
-          )
-          .map((n) => boxOf(n.id))
-          .filter((b): b is Box => !!b);
-        const direction = editor.getDiagram().direction === "TB" ? "TB" : "LR";
-        const at = placeNextTo(from, { width: from.width, height: from.height }, others, direction);
-        // Same tick: the history debounce records the node and its edge as one undo step.
-        const id = editor.addNode(stencilId, at);
-        editor.connect(fromId, id);
+      // With one node selected the stencil goes after it, connected (the rail does the same). Keyboard first:
+      // the new node takes focus once drawn, so Enter names it and Alt+arrow grows the flow from it.
+      addStencil: (stencilId) => {
+        const id = editor.addStencil(stencilId);
+        let frames = 30;
+        // React Flow shows a card once it's measured, and a hidden one can't take focus: try each frame.
+        const focus = () => {
+          const el = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`);
+          el?.focus({ preventScroll: true });
+          if ((!el || document.activeElement !== el) && --frames > 0) requestAnimationFrame(focus);
+        };
+        requestAnimationFrame(focus);
         return id;
       },
     });

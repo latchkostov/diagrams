@@ -16,6 +16,9 @@ const MOUSE: [string, string][] = [
   ["Ctrl / ⌘ + scroll, pinch", "Zoom"],
   ["Space + drag, middle-drag", "Pan from anywhere"],
   ["Drag from a handle", "Connect; on empty canvas, add a node"],
+  ["Click a selected node's +", "Add the next node, connected"],
+  ["Drag a selected edge's end", "Move that end to another node"],
+  ["Hold a node or stencil on an edge", "Drop to insert it there"],
   ["Drag a node", "Lines up with others and equal gaps"],
   ["Ctrl / ⌘ while dragging", "Move freely, no snapping"],
   ["Alt + drag", "Duplicate"],
@@ -49,6 +52,8 @@ const AI: [string, string][] = [
 function displayKeys(s: Shortcut): string[] {
   if (s.id === "nudge") return ["← ↑ → ↓"];
   if (s.id === "nudge-far") return [`${formatCombo("Shift")} ← ↑ → ↓`];
+  if (s.id === "add-next") return [`${formatCombo("Alt")} ← ↑ → ↓`];
+  if (s.id === "clone-next") return [`${formatCombo("Alt+Shift")} ← ↑ → ↓`];
   return s.keys.map((k) => formatCombo(k));
 }
 

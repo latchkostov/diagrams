@@ -12,6 +12,7 @@ import { relationInfo, type EdgeRelationInfo } from "./relationInfo";
 import { RELATION_META, isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { relationIcon } from "../../editor/relationActions";
 import { useReadableScale } from "../useReadableScale";
+import { EdgeEnds } from "./EdgeEnds";
 
 /**
  * An edge. A flow is async (dashed) or sync (solid). A dependency (config, secret, identity,
@@ -24,8 +25,8 @@ import { useReadableScale } from "../useReadableScale";
  * view places particles along it with getPointAtLength, so it always matches what's drawn.
  */
 function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
-  const { id, data, selected, source } = props;
-  const { editing, setEditing, openEdgeMenu } = useDiagram();
+  const { id, data, selected, source, target } = props;
+  const { editing, setEditing, openEdgeMenu, reconnect } = useDiagram();
   const { updateEdgeData } = useReactFlow();
   const route = useEdgeRoute(id, useRoutingOptions());
   const dep = useStore(useCallback((s: ReactFlowState) => relationInfo(s.edges as DiagramFlowEdge[]).get(id), [id]));
@@ -161,6 +162,15 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       <path d={path} className="fe-path react-flow__edge-path" markerEnd={`url(#${marker})`} />
       <path d={path} className="react-flow__edge-interaction" fill="none" strokeOpacity={0} strokeWidth={22} />
       {title(tip)}
+      {selected && reconnect && !isEditing && route.points.length > 1 && (
+        <EdgeEnds
+          id={id}
+          source={source}
+          target={target}
+          start={route.points[0]}
+          end={route.points[route.points.length - 1]}
+        />
+      )}
       {body && (
         <EdgeLabelRenderer>
           {body}

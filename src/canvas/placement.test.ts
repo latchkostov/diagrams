@@ -1,9 +1,86 @@
 import { describe, expect, it } from "vitest";
-import { boundsOf, clearOffset, COPY_MARGIN, findFree, isClear, placeCopy, placeFree, placeNextTo } from "./placement";
+import {
+  boundsOf,
+  clearOffset,
+  COPY_MARGIN,
+  findFree,
+  isClear,
+  isDownstream,
+  placeCopy,
+  placeFree,
+  placeNextTo,
+  placeToward,
+  towardOf,
+} from "./placement";
 
 const box = (x: number, y: number, width = 220, height = 72) => ({ x, y, width, height });
 const overlaps = (c: { x: number; y: number }, b: ReturnType<typeof box>, w = 220, h = 72) =>
   c.x - w / 2 < b.x + b.width && b.x < c.x + w / 2 && c.y - h / 2 < b.y + b.height && b.y < c.y + h / 2;
+
+describe("placeToward (Alt+arrow, the + chip)", () => {
+  const size = { width: 220, height: 72 };
+  const from = box(1000, 400);
+  const at = (c: { x: number; y: number }) => box(c.x - 110, c.y - 36);
+
+  it("goes one gap that way, centred on the node across that axis", () => {
+    expect(placeToward(from, size, [from], "right")).toEqual({ x: 1000 + 220 + 80 + 110, y: 436 });
+    expect(placeToward(from, size, [from], "left")).toEqual({ x: 1000 - 80 - 110, y: 436 });
+    expect(placeToward(from, size, [from], "down")).toEqual({ x: 1110, y: 400 + 72 + 80 + 36 });
+    expect(placeToward(from, size, [from], "up")).toEqual({ x: 1110, y: 400 - 80 - 36 });
+  });
+
+  it("a fan-out to the right steps down into a column, clear of every sibling", () => {
+    const placed = [from];
+    for (let i = 0; i < 3; i++) placed.push(at(placeToward(from, size, placed, "right", COPY_MARGIN)));
+    const kids = placed.slice(1);
+    expect(new Set(kids.map((k) => k.x)).size).toBe(1);
+    expect(kids.map((k) => k.y)).toEqual([400, 512, 624]);
+    for (const k of kids)
+      expect(
+        isClear(
+          k,
+          placed.filter((p) => p !== k),
+          COPY_MARGIN,
+        ),
+      ).toBe(true);
+  });
+
+  it("a row below steps right past what's there", () => {
+    const blocker = box(1000, 552);
+    const c = placeToward(from, size, [from, blocker], "down");
+    expect(c.y).toBe(588);
+    expect(isClear(at(c), [from, blocker])).toBe(true);
+    expect(c.x).toBeGreaterThan(1110);
+  });
+
+  it("a wider gap along the flow leaves room for a named edge", () => {
+    expect(placeToward(from, size, [from], "right", 0, 160).x).toBe(1000 + 220 + 160 + 110);
+    expect(placeToward(from, size, [from], "left", 0, 160).x).toBe(1000 - 160 - 110);
+    expect(placeToward(from, size, [from], "down", 0, 160).y).toBe(400 + 72 + 80 + 36);
+  });
+
+  it("the margin keeps a spot that only grazes a node from counting as free", () => {
+    const grazing = box(1300, 480);
+    expect(placeToward(from, size, [from, grazing], "right").y).toBe(436);
+    expect(placeToward(from, size, [from, grazing], "right", COPY_MARGIN).y).toBeGreaterThan(436);
+  });
+
+  it("→ and ↓ are downstream; ← and ↑ upstream; the flow's direction names its sides", () => {
+    expect((["right", "down", "left", "up"] as const).map(isDownstream)).toEqual([true, true, false, false]);
+    expect([towardOf("LR"), towardOf("TB"), towardOf("LR", "upstream"), towardOf("TB", "upstream")]).toEqual([
+      "right",
+      "down",
+      "left",
+      "up",
+    ]);
+  });
+
+  it("placeNextTo is the flow-direction case", () => {
+    const others = [from, box(1300, 400)];
+    expect(placeNextTo(from, size, others, "LR")).toEqual(placeToward(from, size, others, "right"));
+    expect(placeNextTo(from, size, others, "TB", "upstream")).toEqual(placeToward(from, size, others, "up"));
+  });
+});
 
 describe("placeNextTo upstream", () => {
   it("goes one gap to the left (LR), vertically centred on the target", () => {
