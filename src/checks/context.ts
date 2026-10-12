@@ -45,12 +45,6 @@ export interface CheckContext {
    * "dlq" in a diagram with a node "dlq" would point at that node.
    */
   freshKey(base: string): string;
-  /**
-   * Whether a connection's id names it alone. Edit ops resolve an id to a node before a connection, and a file may
-   * reuse one id for both: a fix that updates or removes a connection by such an id would change or delete the node
-   * (and its connections) instead, so it offers no ops.
-   */
-  edgeRef(id: string): boolean;
   /** Free play as capacity planning sees it, as live view's Show capacity does (src/sim/capacityPlanning.ts). */
   planning(): Simulation;
   /** analyzeCapacity of `planning()`: the diagram's own (free-play) rates. Computed on first use. */
@@ -80,17 +74,8 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   let capacity: CapacityAnalysis | undefined;
   let types: Map<string, Set<string>> | undefined;
   let requests: Map<string, CompiledEdge[]> | undefined;
-  /** Boundary and annotation ids, for freshKey and edgeRef. */
+  /** Boundary and annotation ids, for freshKey. */
   let others: Set<string> | undefined;
-  /** Connection ids the file uses more than once. */
-  let twice: Set<string> | undefined;
-  const repeated = () => {
-    if (twice) return twice;
-    const seen = new Set<string>();
-    twice = new Set();
-    for (const e of diagram.edges) (seen.has(e.id) ? twice : seen).add(e.id);
-    return twice;
-  };
   const otherIds = () =>
     (others ??= new Set([...(diagram.groups ?? []), ...(diagram.annotations ?? [])].map((x) => x.id)));
   const plan = () =>
@@ -139,7 +124,6 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     // A connection reads where it starts.
     rank: (id) => order.get(id) ?? order.get(edges.get(id)?.from ?? "") ?? Infinity,
     name: (id) => nodes.get(id)?.label.trim() || id,
-    edgeRef: (id) => edges.has(id) && !nodes.has(id) && !otherIds().has(id) && !repeated().has(id),
     freshKey(base) {
       const taken = (key: string) => nodes.has(key) || edges.has(key) || otherIds().has(key);
       let key = base;

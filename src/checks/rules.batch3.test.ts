@@ -8,6 +8,7 @@ import { dominators, stronglyConnected } from "./graph";
 import { SYNC_CHAIN_MIN } from "./rules/syncChain";
 import { MAX_COUNT } from "../sim/capacityPlanning";
 import { nodeSimPropsSchema } from "../model/simProps";
+import { validateDiagram } from "../interop/native";
 
 // The four batch 3 rules (sync-chain, shared-database, entry-gateway, single-point) on tiny diagrams: what
 // fires, what doesn't, the edge cases (loops, self-loops, disconnected parts), and that each fix clears its
@@ -59,6 +60,12 @@ const diagram = (nodes: DiagramNode[], edges: DiagramEdge[], extra: Partial<Diag
   edges,
   ...extra,
 });
+/** The diagram as the app opens it: ids made unique across nodes and connections (validateDiagram). */
+function opened(d: DiagramFile): DiagramFile {
+  const r = validateDiagram(d);
+  if (!r.ok) throw new Error(r.error);
+  return r.diagram;
+}
 const of = (d: DiagramFile, rule: string) => runChecks(d, { rules: [rule as never] }).findings;
 const ids = (d: DiagramFile, rule: string) => of(d, rule).map((f) => `${f.severity}:${f.id}`);
 /** Applies a finding's fix (or one of its options) and returns the diagram after it. */
@@ -273,17 +280,26 @@ describe("shared-database", () => {
     expect(after.nodes.map((n) => n.id).sort()).toEqual(d.nodes.map((n) => n.id).sort());
   });
 
-  it("never removes a node that shares its id with the flow: no fix then", () => {
-    // A file may use one id for a node and a connection; edit ops resolve it to the node, and removing that would
-    // delete an unrelated service and its connections.
-    const d = shared({
+  it("a fix on a flow that once shared a node's id removes the flow, never the node", () => {
+    // A file may give a node and a connection one id. Edit ops once resolved it to the node: this fix deleted an
+    // unrelated service and its connections. Opening the file renames the connection, so the fix acts on it alone.
+    const raw = shared({
       nodes: [node("billing-db", "service.go", undefined, "Ledger")],
       edges: [req("ledger-in", "billing-db")],
     });
-    d.nodes.push(node("ledger-in", "client.team"));
+    raw.nodes.push(node("ledger-in", "client.team"));
+    const d = opened(raw);
     const [finding] = of(d, "shared-database");
-    expect(finding.id).toBe("shared-database:billing-db");
-    expect(finding.fix).toBeUndefined();
+    expect(finding.id).toBe("shared-database:billing-db-2");
+    expect(finding.fix?.ops).toContainEqual({ op: "remove", targets: ["billing-db-2"] });
+    const after = fixed(d, "shared-database");
+    expect(after.nodes).toEqual(d.nodes);
+    expect(after.edges.map((e) => e.id)).toContain("ledger-in-billing-db");
+    expect(after.edges.some((e) => e.from === "billing" && e.to === "db")).toBe(false);
+    // Unopened, the ids still collide: the edit is refused rather than guessed.
+    const unopened = applyOps(raw, of(raw, "shared-database")[0].fix!.ops!);
+    expect(unopened.ok).toBe(false);
+    expect(unopened.diagram).toBe(raw);
   });
 
   it("the fix only removes the flow when the service already asks the owner", () => {
@@ -516,12 +532,16 @@ describe("entry-gateway", () => {
     expect(of(mixed, "entry-gateway")[0].fix).toBeUndefined();
   });
 
-  it("no fix when a direct connection's id is also a node's: removing it would remove that node", () => {
-    const d = bypass();
-    d.nodes.push(node("mobile-orders", "service.go", undefined, "Unrelated"));
+  it("a direct connection whose id a node also had: its fix reroutes the connection and keeps the node", () => {
+    const raw = bypass();
+    raw.nodes.push(node("mobile-orders", "service.go", undefined, "Unrelated"));
+    const d = opened(raw);
     const [finding] = of(d, "entry-gateway");
-    expect(finding.fix).toBeUndefined();
-    expect(finding.message).toContain("share their ids with other elements");
+    expect(finding.fix?.label).toBe("Go through Commerce gateway");
+    const after = fixed(d, "entry-gateway");
+    expect(after.nodes.find((n) => n.id === "mobile-orders")).toEqual(d.nodes.find((n) => n.id === "mobile-orders"));
+    expect(after.edges.some((e) => e.from === "mobile" && e.to === "orders")).toBe(false);
+    expect(ids(after, "entry-gateway")).toEqual([]);
   });
 
   it("behind DNS: the load balancer routes only to its own service, so a new gateway is offered", () => {
@@ -661,19 +681,26 @@ describe("fixes never change what they don't own", () => {
     expect(schema.replicas.maximum).toBe(MAX_COUNT);
   });
 
-  it("no update by a connection id another element shares: it would change that element", () => {
+  it("an update by a connection id that a node once shared changes the connection, never the node", () => {
+    // Each case: a node that had the id of the connection the fix changes. Opened, the connection is renamed.
     const chain = diagram(
       ["a", "b", "c", "d", "e"].map((id) => node(id, "service.go")),
       [req("a", "b"), req("b", "c"), req("c", "d"), req("d", "e")],
     );
-    expect(of(chain, "sync-chain")[0].fix?.ops).toBeDefined();
     chain.nodes.push(node("d-e", "postgres"));
-    expect(of(chain, "sync-chain")[0].fix).toBeUndefined();
-
     const loop = diagram([node("a", "service.go"), node("b", "service.go")], [req("a", "b"), req("b", "a")]);
-    expect(of(loop, "sync-cycle")[0].fix?.ops).toBeDefined();
     loop.nodes.push(node("b-a", "postgres"));
-    expect(of(loop, "sync-cycle")[0].fix).toBeUndefined();
+    for (const [raw, rule, shared] of [
+      [chain, "sync-chain", "d-e"],
+      [loop, "sync-cycle", "b-a"],
+    ] as const) {
+      const d = opened(raw);
+      expect(of(d, rule)[0].fix?.ops).toEqual([{ op: "update", target: `${shared}-2`, kind: "async" }]);
+      const after = fixed(d, rule);
+      expect(after.nodes).toEqual(d.nodes);
+      expect(after.edges.find((e) => e.id === `${shared}-2`)?.kind).toBe("async");
+      expect(applyOps(raw, of(raw, rule)[0].fix!.ops!).ok).toBe(false);
+    }
 
     const dlq = diagram(
       [
@@ -684,10 +711,13 @@ describe("fixes never change what they don't own", () => {
       ],
       [msg("api", "q"), msg("q", "w"), { ...msg("q", "parked"), props: { dlq: true, filter: [] } }],
     );
-    expect(of(dlq, "dead-letter")[0].fix?.ops).toBeDefined();
     dlq.nodes.push(node("q-parked", "service.java"));
-    const [finding] = of(dlq, "dead-letter");
+    const d = opened(dlq);
+    const [finding] = of(d, "dead-letter");
     expect(finding.severity).toBe("warning");
-    expect(finding.fix).toBeUndefined();
+    expect(finding.fix?.ops).toEqual([{ op: "update", target: "q-parked-2", props: { filter: null } }]);
+    const after = fixed(d, "dead-letter");
+    expect(after.nodes).toEqual(d.nodes);
+    expect(after.edges.find((e) => e.id === "q-parked-2")?.props).toEqual({ dlq: true });
   });
 });

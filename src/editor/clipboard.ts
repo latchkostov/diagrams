@@ -146,27 +146,26 @@ export function payloadOrigin(p: ClipboardPayload): { x: number; y: number } {
  * everything by `offset`. Node `group` references to groups outside the payload are kept as-is.
  */
 export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: number; y: number }): ClipboardPayload {
-  const nodeIds = new Set(taken.nodes);
-  const edgeIds = new Set(taken.edges);
-  const groupIds = new Set(taken.groups);
+  // One id space for every kind: a pasted node never takes a connection's or a boundary's id.
+  const used = new Set([...taken.nodes, ...taken.edges, ...taken.groups]);
   const gmap = new Map<string, string>();
   const nmap = new Map<string, string>();
   const groups = p.groups.map((g) => {
-    const id = uniqueId(g.id, groupIds);
-    groupIds.add(id);
+    const id = uniqueId(g.id, used);
+    used.add(id);
     gmap.set(g.id, id);
     return { ...g, id, x: g.x + offset.x, y: g.y + offset.y };
   });
   const nodes = p.nodes.map((n) => {
-    const id = uniqueId(n.id, nodeIds);
-    nodeIds.add(id);
+    const id = uniqueId(n.id, used);
+    used.add(id);
     nmap.set(n.id, id);
     const group = n.group ? (gmap.get(n.group) ?? n.group) : undefined;
     return { ...structuredClone(n), id, group, x: n.x + offset.x, y: n.y + offset.y };
   });
   const annotations = (p.annotations ?? []).map((a) => {
-    const id = uniqueId(a.id, nodeIds);
-    nodeIds.add(id);
+    const id = uniqueId(a.id, used);
+    used.add(id);
     nmap.set(a.id, id);
     return {
       ...structuredClone(a),
@@ -176,8 +175,8 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
     };
   });
   const edges = p.edges.map((e) => {
-    const id = uniqueId(e.id, edgeIds);
-    edgeIds.add(id);
+    const id = uniqueId(e.id, used);
+    used.add(id);
     return { ...structuredClone(e), id, from: nmap.get(e.from) ?? e.from, to: nmap.get(e.to) ?? e.to };
   });
   return {

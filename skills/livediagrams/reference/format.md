@@ -24,7 +24,9 @@ are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file
 { "id": "orders", "stencil": "kafka.topic", "label": "Kafka", "sublabel": "orders.created", "group": "aks" }
 ```
 
-- `id`: unique and stable, short kebab-case. Edges and simulations refer to it.
+- `id`: unique and stable, short kebab-case. Edges and simulations refer to it. Nodes, edges, boundaries and
+  annotations share one id space: never give an edge a node's id (the app renames a repeated id when it opens
+  the file).
 - `stencil`: an id from [stencils.md](stencils.md). `validate.mjs` rejects unknown ids.
 - `label`: the name people use. About 24 characters fit on the card; longer labels are cut off.
 - `sublabel` (optional): the second line, such as a topic or queue name, a consumer group or the technology.

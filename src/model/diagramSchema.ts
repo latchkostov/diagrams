@@ -25,6 +25,11 @@ const METRICS = ["processed", "backlog", "inFlight", "failed", "deadLettered", "
 const OPS = ["<", "<=", "==", ">=", ">"];
 
 const num = { type: "number" };
+const ID = {
+  type: "string",
+  minLength: 1,
+  description: "Unique across nodes, edges, boundaries and annotations: they share one id space.",
+};
 const ms = (description: string) => ({ type: "number", minimum: 0, description });
 const str = (maxLength: number, description?: string) => ({
   type: "string",
@@ -100,7 +105,7 @@ function diagramSchema() {
         type: "object",
         required: ["id", "stencil", "label", "x", "y"],
         properties: {
-          id: { type: "string", minLength: 1 },
+          id: ID,
           stencil: {
             type: "string",
             description: `A stencil id from ${SITE}/schema/stencils.json, e.g. 'kafka.topic'. Unknown ids render as a generic box.`,
@@ -118,7 +123,7 @@ function diagramSchema() {
         type: "object",
         required: ["id", "from", "to"],
         properties: {
-          id: { type: "string", minLength: 1 },
+          id: ID,
           from: { type: "string", description: "Node id (or a shape annotation's id)." },
           to: { type: "string" },
           label: str(200),
@@ -166,7 +171,7 @@ function diagramSchema() {
         type: "object",
         required: ["id", "label", "x", "y", "width", "height"],
         properties: {
-          id: { type: "string", minLength: 1 },
+          id: ID,
           label: str(200),
           tone: { type: "string", enum: TONES },
           x: num,
@@ -180,7 +185,7 @@ function diagramSchema() {
         required: ["id", "kind", "text", "x", "y", "width", "height"],
         description: "Documentation only: never part of the simulation.",
         properties: {
-          id: { type: "string", minLength: 1 },
+          id: ID,
           kind: { type: "string", enum: ["text", "note", "zone", "shape"] },
           text: str(2000),
           x: num,

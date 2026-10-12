@@ -135,15 +135,12 @@ export const deadLetter: CheckRule = {
       const what = route
         ? `${name}'s dead-letter route doesn't take ${gap.missed.length ? listNames(gap.missed.map((t) => `“${t}”`)) : "any message"}`
         : `${name} has no dead-letter queue`;
-      // A route whose id another element shares can't be updated by id (edit ops would change that element).
-      const fix: CheckFix | undefined = !route
-        ? addDeadLetterQueue(ctx, broker)
-        : ctx.edgeRef(route.id)
-          ? {
-              label: `Send every failed message to ${ctx.name(route.to)}`,
-              ops: [{ op: "update", target: route.id, props: { filter: null } }],
-            }
-          : undefined;
+      const fix: CheckFix = route
+        ? {
+            label: `Send every failed message to ${ctx.name(route.to)}`,
+            ops: [{ op: "update", target: route.id, props: { filter: null } }],
+          }
+        : addDeadLetterQueue(ctx, broker);
       if (failing.length) {
         const first = failing[0];
         out.push({
@@ -155,7 +152,7 @@ export const deadLetter: CheckRule = {
           title: "Failed messages are dropped",
           message: `${ctx.name(first.id)} ${first.why}${failing.length > 1 ? ` (and ${failing.length - 1} more consumer${failing.length > 2 ? "s" : ""} can fail)` : ""}, and ${what}: messages that run out of deliveries (${deliveries}) are lost.`,
           rationale,
-          ...(fix ? { fix } : {}),
+          fix,
         });
       } else if (ctx.role(id) === "queue") {
         out.push({
@@ -167,7 +164,7 @@ export const deadLetter: CheckRule = {
           title: route ? `Some failed messages in ${name} are dropped` : `${name} has no dead-letter queue`,
           message: `If ${listNames(consumers.map(ctx.name))} can't handle a message, it's dropped after ${deliveries} deliveries${route ? `: ${what}` : ""}. A command queue is where losing messages hurts most.`,
           rationale,
-          ...(fix ? { fix } : {}),
+          fix,
         });
       }
     }

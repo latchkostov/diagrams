@@ -2,6 +2,20 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Ids: one per element, so edits never hit the wrong thing (2026-10)
+
+No habit changes. A fix for files that give two elements one id, usually a node and a connection (hand- or
+agent-written files, some imports):
+
+- **Opening such a file renames the later one** ("billing-db" becomes "billing-db-2"; nodes keep theirs), and the
+  import toast says so. Nothing is dropped: two nodes, two boundaries or a note with a node's id used to stop the
+  file opening or lose the second one; both are kept now. A boundary's members follow it, and an ignored finding
+  stays ignored for each.
+- **Edits act on the kind they name.** Removing or updating a connection through the AI panel, an agent
+  (`edit_diagram`) or a Checks fix never removes or changes a node, and new nodes, connections, boundaries and notes
+  never take an id something else has (pasting and duplicating too).
+- **Checks offer their fixes again** on those connections: they were held back while an id could name a node too.
+
 ## Checks: four more (2026-10)
 
 No habit changes: the count under the title still shows warnings only, and a diagram that was clean before stays

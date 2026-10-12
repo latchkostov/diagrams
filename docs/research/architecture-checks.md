@@ -675,10 +675,12 @@ building:
     is a plain route to this service, of the same kind: a new route would take a share of its traffic, and a
     filtered one would drop the new callers'. Unit tests play a seeded simulation before and after every option
     and assert each node (gateways aside) handles the same messages.
-  - Edit ops resolve an id to a node before a connection, and a file can use one id for both. Every fix that
-    updates or removes a connection by id (`sync-cycle`, `sync-chain`, `shared-database`, `entry-gateway`, and
-    `dead-letter`'s "Send every failed message") is withheld when that id isn't the connection's alone
-    (`ctx.edgeRef`): before, it could delete an unrelated service and its connections.
+  - Edit ops once resolved an id to a node before a connection, and a file could use one id for both, so a fix
+    that removed a connection by id could delete an unrelated service and its connections. Batch 3 withheld those
+    fixes (`ctx.edgeRef`). The root cause is fixed since: ids are unique across nodes, connections, boundaries and
+    notes (`validateDiagram` renames the connection when a file comes in), and edit ops act on the kind their
+    target is. The fixes are offered again; regression tests open such a file and check the fix acts on the
+    connection only.
   - `shared-database`'s request to the owner keeps each replaced flow's settings (a keyed connect, then its props).
   - `single-point` sizes a busy node with capacity planning's own `redundancyFix` (`src/sim/capacityPlanning.ts`),
     bounded by the props schema's 10,000 (`MAX_COUNT`, shared with the capacity fix). When no count within the

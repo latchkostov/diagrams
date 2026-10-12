@@ -4,6 +4,7 @@ import { ANNOTATION_LIMITS, normalizeAnnotation } from "../model/annotations";
 import type { DiagramAnnotation } from "../model/types";
 import { isDependency, isEdgeRelation, sanitizeSettings } from "../model/relations";
 import { sanitizeChecks } from "../model/checks";
+import { idClaimer } from "../model/ids";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -124,6 +125,26 @@ export function validateDiagram(data: unknown): NativeResult {
   const warnings: string[] = [];
   // Shallow copies: repairs never mutate the caller's object.
   const d: Record<string, unknown> = { ...raw };
+  // One id space for every element: edit ops, checks and the canvas look an id up across nodes, notes, boundaries
+  // and connections. A repeated id stays with the first node (then note, boundary, connection) that has it; the
+  // others become "id-2" (a suffix no element in the file uses), so references, which can't tell them apart, keep
+  // their meaning. A boundary's members follow it (`group` only ever names a boundary); check ignores are copied.
+  const original = new Set(
+    [raw.nodes, raw.edges, d.groups, d.annotations].flatMap((l) => (Array.isArray(l) ? l.map((x) => x?.id) : [])),
+  );
+  const taken = new Set<string>();
+  const renamed = new Map<string, string[]>();
+  const claimId = idClaimer(taken, original);
+  const claim = (id: string) => {
+    const out = claimId(id);
+    if (out !== id) {
+      const to = renamed.get(id);
+      if (to) to.push(out);
+      else renamed.set(id, [out]);
+      warnings.push(`Two elements shared the id "${id}"; one was renamed to "${out}".`);
+    }
+    return out;
+  };
   if (typeof d.title !== "string" || !d.title.trim())
     d.title = typeof d.title === "number" ? String(d.title) : "Untitled diagram";
   if (d.description !== undefined && typeof d.description !== "string") delete d.description;
@@ -159,10 +180,6 @@ export function validateDiagram(data: unknown): NativeResult {
           );
           return;
         }
-        if (groups.some((x) => x.id === g.id)) {
-          warnings.push(`A second group with the id "${g.id}" was skipped.`);
-          return;
-        }
         const out = { ...g };
         if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
         if (out.tone !== undefined && !TONES.has(out.tone as string)) delete out.tone;
@@ -186,9 +203,9 @@ export function validateDiagram(data: unknown): NativeResult {
     }
     if (Math.abs(n.x) > LIMITS.maxCoordinate || Math.abs(n.y) > LIMITS.maxCoordinate)
       return { ok: false, error: `Node "${n.id}" exceeds the coordinate budget.` };
-    if (ids.has(n.id)) return { ok: false, error: `Two nodes share the id "${n.id}". Node ids must be unique.` };
-    ids.add(n.id);
-    const out = { ...n };
+    const id = claim(n.id);
+    const out: Record<string, unknown> = { ...n, id };
+    ids.add(id);
     if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
     if (out.sublabel !== undefined && typeof out.sublabel !== "string") delete out.sublabel;
     if (out.group !== undefined && !groupIds.has(out.group as string)) {
@@ -206,7 +223,6 @@ export function validateDiagram(data: unknown): NativeResult {
   // Ids share the node namespace; only shapes may be edge ends.
   const annotations: DiagramAnnotation[] = [];
   const rejectedAnnotationIds = new Set<string>();
-  const annotationUsedIds = new Set(ids);
   const shapeIds = new Set<string>();
   const annotationIds = new Set<string>();
   if (d.annotations !== undefined) {
@@ -215,13 +231,13 @@ export function validateDiagram(data: unknown): NativeResult {
     } else {
       d.annotations.forEach((a, i) => {
         const what = describe("Annotation", i, isObj(a) ? a.id : undefined);
-        const out = normalizeAnnotation(a, annotationUsedIds, (message) => warnings.push(`${what} ${message}`));
+        const out = normalizeAnnotation(a, undefined, (message) => warnings.push(`${what} ${message}`));
         if (!out) {
           if (isObj(a) && typeof a.id === "string") rejectedAnnotationIds.add(a.id);
           return;
         }
+        out.id = claim(out.id);
         annotationIds.add(out.id);
-        annotationUsedIds.add(out.id);
         if (out.kind === "shape") shapeIds.add(out.id);
         annotations.push(out);
       });
@@ -229,9 +245,15 @@ export function validateDiagram(data: unknown): NativeResult {
   }
   if (annotations.length) d.annotations = annotations;
   else delete d.annotations;
+  const groupIdFor = new Map<unknown, string>();
+  for (const g of groups) {
+    const id = claim(g.id as string);
+    if (!groupIdFor.has(g.id)) groupIdFor.set(g.id, id);
+    g.id = id;
+  }
+  for (const n of nodes) if (n.group !== undefined) n.group = groupIdFor.get(n.group);
 
   const edges: Record<string, unknown>[] = [];
-  const edgeIds = new Set<string>();
   const rawEdges = raw.edges === undefined ? [] : raw.edges;
   if (!Array.isArray(rawEdges)) return { ok: false, error: "The diagram needs both a nodes and an edges list." };
   for (let i = 0; i < rawEdges.length; i++) {
@@ -256,14 +278,7 @@ export function validateDiagram(data: unknown): NativeResult {
       }
       return { ok: false, error: `Edge "${e.id}" points at a node that isn't in the file ("${missing}").` };
     }
-    const out = { ...e };
-    if (edgeIds.has(e.id)) {
-      let k = 2;
-      while (edgeIds.has(`${e.id}-${k}`)) k++;
-      out.id = `${e.id}-${k}`;
-      warnings.push(`Two edges shared the id "${e.id}"; one was renamed to "${out.id}".`);
-    }
-    edgeIds.add(out.id as string);
+    const out: Record<string, unknown> = { ...e, id: claim(e.id) };
     if (out.label !== undefined && typeof out.label !== "string") delete out.label;
     if (out.kind !== undefined && out.kind !== "async" && out.kind !== "sync") delete out.kind;
     if (out.sourceSide !== undefined && !SIDES.has(out.sourceSide as string)) delete out.sourceSide;
@@ -308,11 +323,8 @@ export function validateDiagram(data: unknown): NativeResult {
     }
   }
   if (d.checks !== undefined) {
-    const checks = sanitizeChecks(
-      d.checks,
-      new Set([...ids, ...edgeIds, ...groupIds, ...annotationIds] as string[]),
-      warnings,
-    );
+    // An ignore names its element by id: when elements shared one, each keeps it, within the sanitizer's bounds.
+    const checks = sanitizeChecks(d.checks, taken, warnings, renamed);
     if (checks) d.checks = checks;
     else delete d.checks;
   }

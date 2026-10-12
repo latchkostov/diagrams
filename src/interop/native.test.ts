@@ -28,7 +28,6 @@ describe("native format validation", () => {
     expect(err({ ...base, format: undefined })).toMatch(/it was missing/);
     expect(err({ ...base, format: "diagrams/v9" })).toMatch(/newer than this version/);
     expect(err({ ...base, nodes: [{ id: "a", stencil: "x", x: "1", y: 0 }] })).toMatch(/Node #1 \("a"\)/);
-    expect(err({ ...base, nodes: [...base.nodes, ...base.nodes] })).toMatch(/share the id "a"/);
     expect(err({ ...base, edges: [{ id: "e", from: "a", to: "ghost" }] })).toMatch(/points at a node.*"ghost"/);
   });
 

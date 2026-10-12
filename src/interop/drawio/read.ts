@@ -19,6 +19,8 @@ import { childrenNamed, decodeEntities, findFirst, parseXml, XmlError, type XmlE
 import { parseStyle, stencilFromStyle, toneFromStyle } from "./mapping";
 import { filterLayerOrder } from "../../model/layers";
 import { isEdgeRelation } from "../../model/relations";
+import { idClaimer } from "../../model/ids";
+import { sanitizeChecks } from "../../model/checks";
 import { CARD, textHtml } from "./write";
 import {
   ANNOTATION_COLORS,
@@ -341,17 +343,26 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
   }
 
   // ---- nodes
-  const used = new Set<string>();
-  const uniqueId = (want: string) => {
-    let id = want.trim() || "node";
-    if (used.has(id)) {
-      let k = 2;
-      while (used.has(`${id}-${k}`)) k++;
-      id = `${id}-${k}`;
-    }
-    used.add(id);
-    return id;
+  // Ids the page repeats: shapes and notes (which connections end on) need their own, and so do boundaries (which
+  // cards sit in). The second gets "id-2" (one counter per id: linear however often it repeats), and the check
+  // ignores that named the id are kept for it too (`aliases`). Connections keep theirs: validateDiagram makes every
+  // id unique across kinds and copies ignores the same way.
+  const aliases = new Map<string, string[]>();
+  const claimer = (fallback: string) => {
+    const claim = idClaimer();
+    return (want: string) => {
+      const base = want.trim() || fallback;
+      const id = claim(base);
+      if (id !== base) {
+        const to = aliases.get(base);
+        if (to) to.push(id);
+        else aliases.set(base, [id]);
+      }
+      return id;
+    };
   };
+  const uniqueId = claimer("node");
+  const groupId = claimer("group");
 
   interface Placed {
     cell: Cell;
@@ -430,13 +441,10 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
   // ---- groups
   const groups: DiagramGroup[] = [];
   const groupIdByCell = new Map<string, string>();
-  const groupUsed = new Set<string>();
   for (const c of groupCells) {
     const o = absOrigin(c.id);
     const label = htmlToLines(c.value, c.style.html === "1").join(" ");
-    let id = (c.data.dg_id ?? c.id).trim() || "group";
-    if (groupUsed.has(id)) id = `${id}-${groupUsed.size + 1}`;
-    groupUsed.add(id);
+    const id = groupId(c.data.dg_id ?? c.id);
     groupIdByCell.set(c.id, id);
     const tone =
       (["azure", "aws", "gcp", "k8s", "onprem", "neutral"] as const).find((t) => t === c.data.dg_tone) ??
@@ -539,7 +547,6 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     if (text) labelChildren.set(c.parent, [...(labelChildren.get(c.parent) ?? []), text]);
   }
   const edges: DiagramEdge[] = [];
-  const edgeUsed = new Set<string>();
   let dangling = 0;
   for (const c of cells) {
     if (!c.edge) continue;
@@ -551,9 +558,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     }
     const label =
       [...htmlToLines(c.value, c.style.html === "1"), ...(labelChildren.get(c.id) ?? [])].join(" ") || undefined;
-    let id = (c.data.dg_id ?? c.id).trim() || `e-${from}-${to}`;
-    if (edgeUsed.has(id)) id = `${id}-${edgeUsed.size + 1}`;
-    edgeUsed.add(id);
+    const id = (c.data.dg_id ?? c.id).trim() || `e-${from}-${to}`;
     const dashed = c.style.dashed === "1";
     // Ours: dg_relation (or the dfRelation style key, which survives draw.io editing the object away).
     const relation = [c.data.dg_relation, c.style.dfRelation].find((r) => isEdgeRelation(r) && r !== "flow") as
@@ -615,9 +620,12 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     ...(annotations.length ? { annotations } : {}),
   };
   if (meta.dg_checks) {
-    // Validated with the rest of the file (validateDiagram): unknown targets are dropped there.
+    // Validated with the rest of the file (validateDiagram): unknown targets are dropped there. Bounded here too,
+    // with the ignores of any id this reader gave a second element copied to it.
     try {
-      diagram.checks = JSON.parse(meta.dg_checks);
+      const ids = new Set([...diagram.nodes, ...edges, ...groups, ...annotations].map((x) => x.id));
+      const checks = sanitizeChecks(JSON.parse(meta.dg_checks), ids, warnings, aliases);
+      if (checks) diagram.checks = checks;
     } catch {
       warnings.push("Check settings in this file couldn't be read and were dropped.");
     }

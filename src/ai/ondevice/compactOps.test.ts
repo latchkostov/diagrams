@@ -1172,3 +1172,38 @@ describe("round 5: names from the examples, after the retry", () => {
     ]);
   });
 });
+
+describe("toOps: names shared across kinds", () => {
+  // A node and a connection both named "Orders": a connection's ends and insert_between's are nodes, so the name
+  // means the node there, as it does in the core's ops. Ops that take any element still find both.
+  const shared: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Shared names",
+    nodes: [
+      { id: "orders", stencil: "service.go", label: "Orders", x: 0, y: 0 },
+      { id: "api", stencil: "service.go", label: "API", x: 300, y: 0 },
+      { id: "db", stencil: "postgres", label: "Ledger", x: 600, y: 0 },
+    ],
+    edges: [
+      { id: "e1", from: "api", to: "orders", label: "Orders", kind: "sync" },
+      { id: "e2", from: "orders", to: "db", kind: "sync" },
+    ],
+  };
+
+  it("connects and inserts by a name a connection also has", () => {
+    const connected = apply(shared, [{ op: "connect", from: "Orders", to: "Ledger", flow: "message" }], {
+      request: "Connect Orders to Ledger",
+    });
+    expect(connected.ops).toEqual([{ op: "connect", from: "orders", to: "db", kind: "async" }]);
+    const inserted = apply(
+      shared,
+      [{ op: "insert_between", kind: "Redis cache", label: "Cache", from: "Orders", to: "Ledger" }],
+      { request: "Put a Redis cache between Orders and Ledger" },
+    );
+    expect(inserted.edges).toEqual(expect.arrayContaining(["Orders -> Cache", "Cache -> Ledger"]));
+  });
+
+  it("still refuses the name where an op takes any element", () => {
+    expect(error(shared, [{ op: "rename", target: "Orders", label: "Order service" }])).toMatch(/names 2 elements/);
+  });
+});

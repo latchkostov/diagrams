@@ -12,7 +12,10 @@ import type { DiagramFile, SimRole } from "../../model/types";
 import { getStencil } from "../../stencils/registry";
 import { confidentStencil, namedStencil, resolveKind } from "../stencils";
 import type { DiagramOp } from "../index";
-import { RefIndex, ReplyRefs, refWords, type NewNodeAlias } from "../refs";
+import { RefIndex, ReplyRefs, refWords, type ElementKind, type NewNodeAlias } from "../refs";
+
+/** What a connection may end on: a node or a shape (refs.ts resolves names among these only). */
+const ENDS: readonly ElementKind[] = ["node", "note"];
 import type { ScopeItem } from "../ui/context";
 import { incompleteness, inRequest, kindFor, leakedName, reconcileKinds, salvageable } from "./replyChecks";
 import { withoutLeaked } from "./leaks";
@@ -205,9 +208,9 @@ function convert(reply: CompactOp[], ctx: ReplyContext, dropped: string[] = []):
   }
 
   /** A reference, looked up: never creates anything. Unresolved text goes on to the core's error. */
-  const ref = (r: string): string => {
+  const ref = (r: string, kinds?: readonly ElementKind[]): string => {
     if (THIS.test(r) && selectedAny) return selectedAny.id;
-    const out = refs.resolve(r);
+    const out = refs.resolve(r, kinds);
     if ("error" in out) throw new ReplyError(out.error);
     return out.ref;
   };
@@ -221,17 +224,17 @@ function convert(reply: CompactOp[], ctx: ReplyContext, dropped: string[] = []):
    */
   const endpoint = (r: string): string => {
     if (THIS.test(r) && selected) return selected.id;
-    const exact = refs.strict(r);
+    const exact = refs.strict(r, ENDS);
     if (exact && "error" in exact) throw new ReplyError(exact.error);
     if (exact) return exact.ref;
     const repaired = repairMissingEndpoint(r);
-    return repaired ?? ref(r);
+    return repaired ?? ref(r, ENDS);
   };
   const repairMissingEndpoint = (r: string): string | undefined => {
-    if (!inRequest(r, request) || refs.existingId(r)) return undefined;
+    if (!inRequest(r, request) || refs.existingId(r, ENDS)) return undefined;
     const stencil = confidentStencil(r);
     if (!stencil || stencil === "generic.service") return undefined;
-    const near = refs.resolve(r);
+    const near = refs.resolve(r, ENDS);
     const mine = "ref" in near ? refs.newNode(near.ref) : undefined;
     if (mine && resolveKind(mine.kind, mine.label).id === stencil) return mine.key;
     let key = `${KEY_PREFIX}${slug(r)}`;
@@ -290,8 +293,8 @@ function convert(reply: CompactOp[], ctx: ReplyContext, dropped: string[] = []):
         if (!kind || !label || !from || !to) throw new ReplyError(`${at} needs "kind", "label", "from" and "to".`);
         ops.push({
           op: "insert_between",
-          from: ref(from),
-          to: ref(to),
+          from: ref(from, ["node"]),
+          to: ref(to, ["node"]),
           kind: nodeOf.get(op)!.kind,
           label,
           key: nodeOf.get(op)!.key,

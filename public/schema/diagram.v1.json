@@ -133,7 +133,8 @@
       "properties": {
         "id": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "description": "Unique across nodes, edges, boundaries and annotations: they share one id space."
         },
         "stencil": {
           "type": "string",
@@ -247,7 +248,8 @@
       "properties": {
         "id": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "description": "Unique across nodes, edges, boundaries and annotations: they share one id space."
         },
         "from": {
           "type": "string",
@@ -372,7 +374,8 @@
       "properties": {
         "id": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "description": "Unique across nodes, edges, boundaries and annotations: they share one id space."
         },
         "label": {
           "type": "string",
@@ -420,7 +423,8 @@
       "properties": {
         "id": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "description": "Unique across nodes, edges, boundaries and annotations: they share one id space."
         },
         "kind": {
           "type": "string",

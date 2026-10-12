@@ -313,3 +313,123 @@ describe("applyOps", () => {
     });
   });
 });
+
+describe("applyOps: ids and kinds", () => {
+  const n = (id: string, label = id.toUpperCase(), stencil = "service.go") => ({ id, stencil, label, x: 0, y: 0 });
+  /** A file that gives a node and a connection one id ("ledger"), as some hand- and agent-written files do. */
+  const shared = (): DiagramFile => ({
+    format: "diagrams/v1",
+    title: "Shared",
+    nodes: [n("api"), n("db", "DB", "postgres"), n("ledger", "Ledger")],
+    edges: [
+      { id: "ledger", from: "api", to: "db", kind: "sync" },
+      { id: "e1", from: "ledger", to: "api", kind: "sync" },
+    ],
+  });
+  const opened = () => {
+    const r = validateDiagram(shared());
+    if (!r.ok) throw new Error(r.error);
+    return r.diagram;
+  };
+
+  it("removes a connection that once shared a node's id without touching the node", () => {
+    const d = opened();
+    expect(d.edges[0].id).toBe("ledger-2");
+    const { diagram } = run(d, [{ op: "remove", targets: ["ledger-2"] }]);
+    expect(diagram.nodes.map((x) => x.id)).toEqual(["api", "db", "ledger"]);
+    expect(diagram.edges.map((x) => x.id)).toEqual(["e1"]);
+  });
+
+  it("updates that connection, not the node", () => {
+    const d = opened();
+    const { diagram } = run(d, [{ op: "update", target: "ledger-2", kind: "async", label: "writes" }]);
+    expect(diagram.edges[0]).toMatchObject({ id: "ledger-2", kind: "async", label: "writes" });
+    expect(diagram.nodes).toEqual(d.nodes);
+  });
+
+  it("refuses a diagram whose ids collide instead of guessing which element is meant", () => {
+    const d = shared(),
+      saved = structuredClone(d);
+    for (const ops of [
+      [{ op: "remove", targets: ["ledger"] }],
+      [{ op: "update", target: "ledger", kind: "async" }],
+    ] as DiagramOp[][]) {
+      const result = applyOps(d, ops);
+      expect(result.ok).toBe(false);
+      expect(result.errors[0].error).toMatch(/shared the id "ledger"/);
+      expect(result.diagram).toBe(d);
+    }
+    expect(d).toEqual(saved);
+  });
+
+  it("acts on the kind its target is: removing a connection never removes a node", () => {
+    const d = graph();
+    const write = d.edges[0].id;
+    const { diagram, results } = run(d, [{ op: "remove", targets: [write] }]);
+    expect(diagram.nodes).toHaveLength(2);
+    expect(diagram.edges).toEqual([]);
+    expect(results[0].ids).toEqual([write]);
+  });
+
+  it("resolves a name only to the kinds an op takes", () => {
+    // A node and a connection both named "Orders": node ops find the node, where both used to be a tie.
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Names",
+      nodes: [n("orders", "Orders"), n("api", "API")],
+      edges: [{ id: "e1", from: "api", to: "orders", label: "Orders" }],
+    };
+    const { diagram, results } = run(d, [
+      { op: "add_node", kind: "pg", label: "DB", key: "db" },
+      { op: "connect", from: "Orders", to: "db" },
+      { op: "add_boundary", label: "Shop", members: ["Orders"] },
+      { op: "update", target: "Shop", label: "Store" },
+    ]);
+    expect(results[1]).toMatchObject({ from: "orders" });
+    expect(diagram.nodes.find((x) => x.id === "orders")?.group).toBe(results[2].id);
+    expect(diagram.groups?.[0].label).toBe("Store");
+    // Ops that take any kind still refuse a tie.
+    expect(applyOps(d, [{ op: "remove", targets: ["Orders"] }]).errors[0].error).toMatch(/matches 2 elements/);
+    // An exact id of the wrong kind is an error, never a different element.
+    expect(applyOps(d, [{ op: "add_boundary", label: "B", members: ["e1"] }]).errors[0].error).toMatch(
+      /must refer to a node/,
+    );
+  });
+
+  it("never mints an id another node, connection, boundary or note has", () => {
+    // Every id the ops would mint on an empty diagram is already taken here, by an element of another kind.
+    const fresh = run(empty(), [
+      { op: "add_node", kind: ".NET", label: "A", key: "a" },
+      { op: "add_node", kind: ".NET", label: "B", key: "b" },
+      { op: "connect", from: "a", to: "b" },
+      { op: "add_boundary", label: "G", members: ["a"] },
+      { op: "add_note", text: "N" },
+    ]).results.map((r) => r.id!);
+    expect(fresh).toEqual(["dotnet-1", "dotnet-2", "e-1", "boundary-1", "note-1"]);
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Taken",
+      nodes: [n("e-1"), n("boundary-1"), n("e-2"), n("e-3")],
+      edges: [
+        { id: "dotnet-1", from: "e-1", to: "boundary-1" },
+        { id: "note-1", from: "boundary-1", to: "e-1" },
+      ],
+      groups: [{ id: "dotnet-2", label: "Taken", x: 0, y: 0, width: 400, height: 300 }],
+      annotations: [{ id: "boundary-2", kind: "note", text: "x", x: 0, y: 600, width: 240, height: 160 }],
+    };
+    const before = new Set([...d.nodes, ...d.edges, ...d.groups!, ...d.annotations!].map((x) => x.id));
+    const { diagram, results } = run(d, [
+      { op: "add_node", kind: ".NET", label: "A", key: "a" },
+      { op: "add_node", kind: ".NET", label: "B", key: "b" },
+      { op: "connect", from: "a", to: "b" },
+      { op: "add_boundary", label: "G", members: ["a"] },
+      { op: "add_note", text: "N" },
+      { op: "insert_between", from: "a", to: "b", kind: "Redis cache", label: "C" },
+    ]);
+    for (const r of results) expect(before.has(r.id!)).toBe(false);
+    const ids = [diagram.nodes, diagram.edges, diagram.groups ?? [], diagram.annotations ?? []].flat().map((x) => x.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const again = validateDiagram(diagram);
+    expect(again.ok && again.warnings).toEqual([]);
+  });
+});

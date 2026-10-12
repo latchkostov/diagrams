@@ -109,14 +109,10 @@ export const syncChain: CheckRule = {
         message: `${path.map(ctx.name).join(" → ")}: each waits for the next, so all ${new Set(path).size} must be up, and their latencies add up. Making the last call a message means ${head} no longer waits for ${tail}.`,
         rationale:
           "Each synchronous hop multiplies availability and adds latency: a request succeeds only when every service it waits on does. Turning a call into a message lets the caller finish without waiting.",
-        ...(ctx.edgeRef(last.id)
-          ? {
-              fix: {
-                label: `Make ${edgeName(ctx, last)} a message`,
-                ops: [{ op: "update", target: last.id, kind: "async" }],
-              },
-            }
-          : {}),
+        fix: {
+          label: `Make ${edgeName(ctx, last)} a message`,
+          ops: [{ op: "update", target: last.id, kind: "async" }],
+        },
       });
     }
     return findings;

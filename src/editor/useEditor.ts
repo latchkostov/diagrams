@@ -279,6 +279,9 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     ...(p.annotations ?? []).map((a) => ({ x: a.x, y: a.y, width: a.width, height: a.height })),
     ...p.groups.map((g) => ({ x: g.x, y: g.y, width: g.width, height: g.height })),
   ];
+  /** Ids in use: nodes, notes, boundaries and connections share one id space (validateDiagram). */
+  const takenIds = () =>
+    new Set([...rf.getNodes().map((n) => (isGroup(n) ? n.data.groupId : n.id)), ...rf.getEdges().map((e) => e.id)]);
   /**
    * What a copy stays off: cards, notes and shapes (not boundaries, zones or text, which things may sit
    * on) and the drawn edges. `skip` leaves out the copy itself: its nodes and the edges between them.
@@ -442,7 +445,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
   ): DiagramFlowEdge => {
     const relation = inferRelation(a.stencil, b.stencil);
     return {
-      id: uniqueId("e", new Set(existing.map((e) => e.id))),
+      // Its ends too: a node not yet in React Flow's store is in no other list.
+      id: uniqueId("e", new Set([...takenIds(), a.id, b.id, ...existing.map((e) => e.id)])),
       source: a.id,
       target: b.id,
       type: "flow",
@@ -536,7 +540,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       // No spot given (a click in the rail or the palette): the free place nearest the view's centre.
       const c =
         at ?? placeFree(deps().viewCenter(), { width, height }, [...ns.map(box), ...(deps().edgeMarks?.() ?? [])]);
-      const id = uniqueId(stencilIdBase(s.id), new Set(ns.map((n) => n.id)));
+      const id = uniqueId(stencilIdBase(s.id), takenIds());
       // Its name, typed in the editor that may open next (quick-add, or Enter on it), joins the step that made it.
       beginCreation(`new:${id}`);
       const node: DiagramFlowNode = {
@@ -575,7 +579,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         notify(`Couldn't add ${kind}: ${geometryError}`, { kind: "error" });
         return null;
       }
-      const id = uniqueId(annotationIdBase(kind), new Set(ns.map((n) => n.id)));
+      const id = uniqueId(annotationIdBase(kind), takenIds());
       const node: AnnotationFlowNode = {
         ...annotationToFlow({
           id,
@@ -780,7 +784,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         ? { x: req.at.x - size.width / 2, y: req.at.y - size.height / 2 }
         : spotBeside(box(src), toward, size);
       const position = { x: snap10(spot.x), y: snap10(spot.y) };
-      const id = uniqueId(stencilIdBase(data.stencil), new Set(ns.map((n) => n.id)));
+      const id = uniqueId(stencilIdBase(data.stencil), takenIds());
       const node: DiagramFlowNode = {
         id,
         type: "diagram",
@@ -821,7 +825,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       };
       const others = obstacles().filter((o) => (o as { edge?: string }).edge !== edgeId);
       const c = at ?? placeFree(mid, size, others, { margin: COPY_MARGIN, step: 20, maxRings: 40 });
-      const id = uniqueId(stencilIdBase(s.id), new Set(ns.map((n) => n.id)));
+      const id = uniqueId(stencilIdBase(s.id), takenIds());
       const node: DiagramFlowNode = {
         id,
         type: "diagram",
@@ -829,7 +833,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         selected: true,
         data: { stencil: s.id, label: s.label, sublabel: s.defaultSublabel, group: groupAt(ns, c.x, c.y) },
       };
-      const r = splitFlowEdge(es, edgeId, id);
+      const r = splitFlowEdge(es, edgeId, id, takenIds().add(id));
       if (!r) return null;
       const merge = `new:${id}`;
       beginCreation(merge);
@@ -866,7 +870,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     insertIntoEdge: (edgeId, nodeId) => {
       const n = rf.getNode(nodeId);
       if (!n || !takesEdges(n)) return false;
-      const r = splitFlowEdge(rf.getEdges(), edgeId, nodeId);
+      const r = splitFlowEdge(rf.getEdges(), edgeId, nodeId, takenIds());
       if (!r) return false;
       deps().setEdges(r.edges);
       return true;
@@ -1020,8 +1024,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const set = new Set(ids);
       const nodes = rf.getNodes().filter((n) => set.has(n.id) && isDiagram(n));
       if (!nodes.length) return null;
-      const ns = rf.getNodes();
-      const id = uniqueId("boundary", new Set(ns.filter(isGroup).map((n) => n.data.groupId)));
+      const id = uniqueId("boundary", takenIds());
       const group = groupToFlow({ id, label: toneLabel[tone], tone, ...boundaryAround(nodes.map(box)) });
       deps().setNodes((cur) => [
         { ...group, selected: true },

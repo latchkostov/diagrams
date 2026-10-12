@@ -3,7 +3,7 @@ import type { DiagramFile, DiagramNode } from "../model/types";
 import { uniqueId, stencilIdBase } from "../editor/ids";
 import { estimateCardSize } from "../canvas/nodes/size";
 import { placeFree, overlaps } from "../canvas/placement";
-import { resolveRef, ReferenceError, RefIndex } from "./refs";
+import { resolveRef, ReferenceError, RefIndex, type ElementKind } from "./refs";
 import { resolveKind } from "./stencils";
 import { placeNew } from "./place";
 import { checkBudget, checkSchema, validated } from "./validation";
@@ -38,15 +38,17 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
     const newNotes: { id: string; near?: string }[] = [];
     const touched = new Set<string>();
     const allIds = () => new Set(index.elements.keys());
-    const ref = (r: string) => resolveRef(next, r, keys, index);
+    // Kind-aware: each op resolves a name only to the kinds it acts on, and acts on the kind its target is.
+    const ref = (r: string, kinds?: readonly ElementKind[]) => resolveRef(next, r, keys, index, kinds);
+    const kindOf = (id: string) => index.elements.get(id)?.kind;
     const node = (r: string): DiagramNode => {
-      const id = ref(r);
+      const id = ref(r, ["node"]);
       const n = index.nodes.get(id);
       if (!n) throw new Error(`${JSON.stringify(r)} must refer to a node.`);
       return n;
     };
     const boundary = (r: string) => {
-      const id = ref(r);
+      const id = ref(r, ["group"]);
       if (!next.groups?.some((g) => g.id === id)) throw new Error(`${JSON.stringify(r)} must refer to a boundary.`);
       return id;
     };
@@ -88,8 +90,8 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
           break;
         }
         case "connect": {
-          const from = ref(op.from),
-            to = ref(op.to);
+          const from = ref(op.from, ["node", "note"]),
+            to = ref(op.to, ["node", "note"]);
           for (const id of [from, to])
             if (
               !next.nodes.some((n) => n.id === id) &&
@@ -110,10 +112,11 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
         case "update": {
           const id = ref(op.target);
           result.id = id;
-          const n = next.nodes.find((n) => n.id === id),
-            e = next.edges.find((e) => e.id === id),
-            g = next.groups?.find((g) => g.id === id),
-            a = next.annotations?.find((a) => a.id === id);
+          const kind = kindOf(id);
+          const n = kind === "node" && next.nodes.find((n) => n.id === id),
+            e = kind === "edge" && next.edges.find((e) => e.id === id),
+            g = kind === "group" && next.groups?.find((g) => g.id === id),
+            a = kind === "note" && next.annotations?.find((a) => a.id === id);
           if (n) {
             if (n.group) touched.add(n.group);
             if (op.members || op.tone) throw new Error("members and tone require a boundary.");
@@ -168,21 +171,24 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
           break;
         }
         case "remove": {
-          const ids = new Set(op.targets.map(ref));
-          for (const n of next.nodes) if (ids.has(n.id) && n.group) touched.add(n.group);
-          const incident = next.edges.filter((e) => ids.has(e.from) || ids.has(e.to)).map((e) => e.id);
-          incident.forEach((id) => ids.add(id));
+          // Each target removes only the element of its own kind: removing a connection never takes a node with it.
+          const targets = op.targets.map((r) => ref(r));
+          const of = (kind: ElementKind) => new Set(targets.filter((id) => kindOf(id) === kind));
+          const [nodes, edges, groups, notes] = (["node", "edge", "group", "note"] as const).map(of);
+          for (const n of next.nodes) if (nodes.has(n.id) && n.group) touched.add(n.group);
+          const ends = (id: string) => nodes.has(id) || notes.has(id);
+          for (const e of next.edges) if (ends(e.from) || ends(e.to)) edges.add(e.id);
           next.nodes = next.nodes
-            .filter((n) => !ids.has(n.id))
+            .filter((n) => !nodes.has(n.id))
             .map((n) => {
-              if (n.group && ids.has(n.group)) delete n.group;
+              if (n.group && groups.has(n.group)) delete n.group;
               return n;
             });
-          next.edges = next.edges.filter((e) => !ids.has(e.id));
-          next.groups = next.groups?.filter((g) => !ids.has(g.id));
-          next.annotations = next.annotations?.filter((a) => !ids.has(a.id));
-          next.layerOrder = next.layerOrder?.filter((id) => !ids.has(id));
-          result.ids = [...ids];
+          next.edges = next.edges.filter((e) => !edges.has(e.id));
+          next.groups = next.groups?.filter((g) => !groups.has(g.id));
+          next.annotations = next.annotations?.filter((a) => !notes.has(a.id));
+          next.layerOrder = next.layerOrder?.filter((id) => !ends(id));
+          result.ids = [...new Set([...targets, ...edges])];
           break;
         }
         case "insert_between": {

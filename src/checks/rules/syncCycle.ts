@@ -77,9 +77,7 @@ export const syncCycle: CheckRule = {
         message: `${names}: each waits for the next${more}. A slow call holds all of them, and timeouts and retries multiply around the loop.`,
         rationale:
           "A loop of synchronous requests is a distributed-monolith trait: none of the services can be deployed, scaled or fail on its own. Making one call a message breaks the loop.",
-        ...(ctx.edgeRef(closing.id)
-          ? { fix: { label: `Make ${edge} a message`, ops: [{ op: "update", target: closing.id, kind: "async" }] } }
-          : {}),
+        fix: { label: `Make ${edge} a message`, ops: [{ op: "update", target: closing.id, kind: "async" }] },
       });
     }
     return findings;
