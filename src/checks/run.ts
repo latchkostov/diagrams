@@ -10,6 +10,8 @@ import { sharedDatabase } from "./rules/sharedDatabase";
 import { entryGateway } from "./rules/entryGateway";
 import { capacity } from "./rules/capacity";
 import { singlePoint } from "./rules/singlePoint";
+import { secretIdentity } from "./rules/secretIdentity";
+import { schemaRegistry } from "./rules/schemaRegistry";
 
 /** Every rule, in CHECK_RULES order (the order findings list them). */
 export const RULES: readonly CheckRule[] = [
@@ -21,6 +23,8 @@ export const RULES: readonly CheckRule[] = [
   entryGateway,
   capacity,
   singlePoint,
+  secretIdentity,
+  schemaRegistry,
 ];
 
 export interface RunOptions {

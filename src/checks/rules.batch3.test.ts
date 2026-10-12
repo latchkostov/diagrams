@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DiagramEdge, DiagramFile, DiagramGroup, DiagramNode, Simulation } from "../model/types";
-import { createSimulationRun } from "../sim/simulation";
+import type { DiagramEdge, DiagramFile, DiagramGroup, DiagramNode } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { applyOps } from "../ai";
 import { runChecks } from "./run";
@@ -9,6 +8,7 @@ import { SYNC_CHAIN_MIN } from "./rules/syncChain";
 import { MAX_COUNT } from "../sim/capacityPlanning";
 import { nodeSimPropsSchema } from "../model/simProps";
 import { validateDiagram } from "../interop/native";
+import { preservesDelivery as sameDelivery } from "../test/delivery";
 
 // The four batch 3 rules (sync-chain, shared-database, entry-gateway, single-point) on tiny diagrams: what
 // fires, what doesn't, the edge cases (loops, self-loops, disconnected parts), and that each fix clears its
@@ -79,41 +79,13 @@ function fixed(d: DiagramFile, rule: string, option?: string): DiagramFile {
   return result.diagram;
 }
 
-/** Messages each node handles in a seeded run, every outside client sending a burst of 12. */
-function delivered(d: DiagramFile): Record<string, number> {
-  const sim: Simulation = {
-    id: "t",
-    title: "Delivery",
-    seed: 7,
-    traffic: d.nodes
-      .filter((n) => n.stencil.startsWith("client.") || n.stencil === "generic.webhook")
-      .map((n) => ({ id: `t-${n.id}`, node: n.id, shape: { kind: "burst" as const, count: 12 } })),
-  };
-  const run = createSimulationRun(d, sim);
-  run.setSpeed(8);
-  for (let i = 0; i < 4000 && !run.state().done; i++) run.step(25);
-  const nodes = run.engine.snapshot().nodes;
-  // Gateways aside: a reused one handles more by design (that's the fix); where its traffic lands is what counts.
-  return Object.fromEntries(
-    d.nodes.filter((n) => stencilRole(n.stencil) !== "gateway").map((n) => [n.id, nodes[n.id].processed]),
-  );
-}
-
 /**
  * Every way the entry-gateway finding offers to fix it delivers what the diagram delivered: each node the diagram
- * had handles as many messages afterwards (gateways aside: a fix adds or reuses one on purpose).
+ * had handles as many messages afterwards (gateways aside: a fix adds or reuses one on purpose, and where its
+ * traffic lands is what counts).
  */
-function preservesDelivery(d: DiagramFile) {
-  const [finding] = of(d, "entry-gateway");
-  const before = delivered(d);
-  expect(Object.values(before).some((n) => n > 0)).toBe(true);
-  for (const option of [{ label: finding.fix!.label, ops: finding.fix!.ops! }, ...(finding.fix!.options ?? [])]) {
-    const result = applyOps(d, option.ops);
-    expect(result.errors, option.label).toEqual([]);
-    const after = delivered(result.diagram);
-    expect(Object.fromEntries(Object.keys(before).map((id) => [id, after[id]])), option.label).toEqual(before);
-  }
-}
+const preservesDelivery = (d: DiagramFile) =>
+  sameDelivery(d, "entry-gateway", (n) => stencilRole(n.stencil) !== "gateway");
 
 describe("graph", () => {
   it("dominators: a diamond's join is dominated by its fork, a loop by where it's entered", () => {

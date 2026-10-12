@@ -1,9 +1,10 @@
 # Architecture checks: warnings with one-click fixes
 
-Research and plan, October 2026. Batches 1 to 3 are built: the engine, four rules and `check_diagram`, then the
-count, the Checks card, markers, the inspector row, fixes, Ignore and Turn off, then the other four starter rules.
-Batch 1's precision gate, judged finding by finding on the examples, is in "Batch 1: precision gate" below; batch 2's
-notes are in "Batch 2: as built"; batch 3's gate and notes are in "Batch 3: precision gate" and "Batch 3: as built".
+Research and plan, October 2026. Batches 1 to 4 are built: the engine, four rules and `check_diagram`, then the
+count, the Checks card, markers, the inspector row, fixes, Ignore and Turn off, then the other four starter rules,
+then `secret-identity` and `schema-registry`. Batch 1's precision gate, judged finding by finding on the examples, is
+in "Batch 1: precision gate" below; batch 2's notes are in "Batch 2: as built"; batch 3's and batch 4's gates and
+notes are in "Batch 3: precision gate", "Batch 3: as built", "Batch 4: precision gate" and "Batch 4: as built".
 
 ## Summary
 
@@ -188,7 +189,7 @@ when several services in the boundary share the store, `entry-gateway` fires onl
 (and its fix goes through it first), and `single-point` needs the diagram to say one replica (or capacity to say
 it's busy).
 
-Next batch (both asked for, and both need a little more model first):
+Batch 4 (both asked for; they needed a little more model first, see "Batch 4: as built"):
 
 | #   | Id                | Title                                             | Default    | Fix                                       |
 | --- | ----------------- | ------------------------------------------------- | ---------- | ----------------------------------------- |
@@ -361,7 +362,7 @@ Next batch (both asked for, and both need a little more model first):
   with its own first hop into one large graph) reaches. A busy node's fix sizes to capacity planning's 55%
   ("Set replicas to 3"), as the capacity fix does.
 
-#### 9. `secret-identity` (next): {n} services read secrets without an identity
+#### 9. `secret-identity`: {n} services read secrets without an identity
 
 - **Why.** Azure: managed identities "eliminate the need to store credentials" ([WAF][az-secrets]). AWS SEC02-BP02:
   use temporary credentials and roles ([AWS][aws-sec02]). The diagram should say how a service signs in to the
@@ -378,7 +379,19 @@ Next batch (both asked for, and both need a little more model first):
 
   The catalog has no GCP service account stencil; add one in the same batch.
 
-#### 10. `schema-registry` (next): Avro on {topic}, but no schema registry
+- **As built (batch 4).** The gate (see "Batch 4: precision gate") cut the plan's 5 findings to 1. It fires only where
+  the identity has a name: the service's cloud (its stencil, or its boundary's tone), else the store's. Key Vault,
+  Secrets Manager and Secret Manager always have one; a HashiCorp Vault or generic store read by a service on no cloud
+  doesn't fire (it signs in with Vault's own methods, which the diagram has no node for). Words that already say it
+  ("managed identity", "workload identity", "IAM role", "service account", "IRSA" on the vault, the service or the
+  Secret dependency) keep it quiet. People (`client.*`) don't count, nor does anything a dependency points at. The
+  finding's target is the first vault in the file, so moving nodes keeps an ignore. Its elements are the vaults and
+  the services, not their Secret dependencies (as chips they only repeated them). The fix adds one identity per
+  cloud ("Add a managed identity"), in the services' boundary when they share one, and a chip gives each service its
+  own ("One for each service"). The GCP stencil was already in the catalogue (imports batch 3), so it's the Google
+  Cloud identity.
+
+#### 10. `schema-registry`: Avro on {topic}, but no schema registry
 
 - **Why.** Confluent's Avro serializer writes a magic byte and a 4-byte schema id from the registry
   ([Confluent][cf-avro]). "Starting a project with Schema Registry is a best practice" ([Confluent][cf-sr]). It's
@@ -388,6 +401,12 @@ Next batch (both asked for, and both need a little more model first):
   ships with the AsyncAPI import.
 - **Fix: Add Schema Registry.** One node, with a **Depends on** dependency from each producer and consumer of those
   topics (the stencil's inferred relation).
+- **As built (batch 4).** One Warning per diagram, naming every such topic (a registry serves them all). The Kafka
+  family is `kafka.topic`, Amazon MSK and Confluent Cloud; Event Hubs is left out (Azure has its own schema registry
+  there). A registry drawn any way keeps it quiet: the stencil, or a node named as one (Apicurio, Glue Schema
+  Registry), connected or not. Producers and consumers are the topics' direct flow neighbours that aren't brokers.
+  The AsyncAPI import already wrote `props.contentType` (imports batch 2), and adds a registry itself when it sees
+  Avro or Protobuf, so an imported diagram warns only if the registry is taken out.
 
 ### Evidence: the prototype on the 16 public examples
 
@@ -521,6 +540,47 @@ warehouse and connector exclusions would each remove the Snowflake ones again.
   several-owners Suggestion tier.
 - No Warning fires on the examples, so every Warning is still at 100%.
 
+### Batch 4: precision gate
+
+The same judgment for `secret-identity` and `schema-registry`, on the same 16 public examples (top level only): would
+I change the diagram as the finding asks? First as the plan described them, then as built.
+`src/checks/examples.test.ts` pins the built rules' findings, so a change to that list is a change to this table.
+
+| #   | Example                       | Finding (rule: target)                                        | Severity   | Verdict      | Why                                                                                                                                                                                                                                                                                        |
+| --- | ----------------------------- | ------------------------------------------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 13  | notification-fanout           | `secret-identity`: key-vault (Email sender, SMS rate limiter) | Suggestion | Would fix    | Both run on Azure and read provider API keys from notify-kv. The diagram draws its secrets on purpose, and what opens the vault is the one thing missing: on Azure that's a managed identity (Key Vault references need one). The AKS example draws exactly this. Kept, as built.          |
+| –   | azure-service-bus-integration | `secret-identity`: vault (Invoice intake)                     | Suggestion | **Wouldn't** | The vault's sublabel already says "ERP credentials · managed identity": the owner wrote the answer, as with batch 1's #10. A node would repeat it. Removed by tightening: words that say how a service signs in count.                                                                     |
+| –   | outbox-saga-checkout          | `secret-identity`: vault (Payment service)                    | Suggestion | **Wouldn't** | HashiCorp Vault, and nothing says where the service runs. It signs in with one of Vault's own methods (Kubernetes, AppRole), which has no node; the plan's fallback, a generic identity provider, would be a box that says nothing true. Removed: Vault needs the service's cloud to fire. |
+| –   | rag-assistant                 | `secret-identity`: vault (RAG API, Chunk and embed)           | Suggestion | **Wouldn't** | Same: Vault, and no platform drawn. The story is retrieval and evals.                                                                                                                                                                                                                      |
+| –   | webhook-ingestion             | `secret-identity`: vault (Webhook receiver)                   | Suggestion | **Wouldn't** | Vault sits in the Kubernetes boundary with the receiver, which signs in with its pod's service account (Vault's Kubernetes auth): the platform gives every pod one. An identity provider box would be wrong. Removed by the same condition.                                                |
+
+`schema-registry` raised nothing in either version. No Kafka topic in the examples says Avro or Protobuf, in its
+label or `contentType`. The three examples that use Avro on Kafka (cdc-analytics, event-driven-data-platform,
+kafka-order-pipeline) draw a registry, and say "Avro" only on it. The one other Avro is gcp-streaming-analytics' raw
+archive in Cloud Storage ("Avro · by hour"): Avro files carry their own schema, which is why only Kafka-family topics
+count. Its precision is unmeasured on the examples; unit tests and the AsyncAPI round trip cover it.
+
+**Numbers**
+
+| Rule              | As planned     | Would fix | Precision | As built | Would fix | Outcome                                                                                      |
+| ----------------- | -------------- | --------- | --------- | -------- | --------- | -------------------------------------------------------------------------------------------- |
+| `secret-identity` | 5 (7 services) | 1         | 20%       | 1        | 1 (100%)  | A Suggestion, once per diagram. Fires only where the identity has a name and isn't said yet. |
+| `schema-registry` | 0              | –         | –         | 0        | –         | A Warning, as planned. No example has Avro or Protobuf on Kafka without a registry.          |
+| **Both**          | **5**          | **1**     | **20%**   | **1**    | **1**     | The count under the title still shows 2 warnings across the 16 examples.                     |
+
+**What the gate changed**
+
+- `secret-identity`: the plan's version fired on 5 of the 16 examples, and only one was worth fixing. The misses were
+  of two kinds. Three read HashiCorp Vault from services on no cloud, where the identity has no node to draw (the
+  plan's generic identity provider would be a wrong box, not a missing one). One already said "managed identity" in
+  words. So it now needs the service's cloud (its stencil or its boundary), or a cloud store's, and stays quiet when
+  the vault, the service or the dependency says how it signs in. The trade: a hand-drawn Vault on AWS with no
+  boundary goes unflagged, in return for silence on every Vault sketch.
+- `schema-registry`: the plan's thresholds hold. Only Kafka-family topics count (the Cloud Storage archive would
+  otherwise fire on Avro files, which carry their schema), and a registry drawn any way, named or unconnected,
+  counts as present.
+- Every Warning is still at 100%: the only new Warning, `schema-registry`, doesn't fire on the examples.
+
 ### Agents: `check_diagram` (WebMCP)
 
 One read-only tool. It's published in editing and live view, like `describe_diagram`. It's unavailable for private
@@ -593,8 +653,9 @@ schemas`). _UX gate: chrome budget, keyboard, Esc order, dark theme, 1280×800, 
 3. **The other four starter rules.** _(Built; see "Batch 3: precision gate" and "Batch 3: as built".)_
    `sync-chain`, `shared-database`, `entry-gateway` (with stencil chips) and `single-point` (dominators, plus the
    capacity escalation), each with its fix. _Gate: the examples snapshot again._
-4. **Rules that need more model.** `secret-identity` (aggregated, plus a GCP service account stencil) and
-   `schema-registry` (with the AsyncAPI import's `contentType`, see `imports.md`).
+4. **Rules that need more model.** _(Built; see "Batch 4: precision gate" and "Batch 4: as built".)_
+   `secret-identity` (aggregated, plus a GCP service account stencil) and `schema-registry` (with the AsyncAPI
+   import's `contentType`, see `imports.md`).
 5. **Simulation evidence (on demand).** In the Checks card, **Run simulations** plays each saved simulation
    headless in a worker (deterministic, seeded, capped at 60 s simulated time) and attaches counts to findings
    ("312 dropped in _Payments goes down_"). It also adds `dropped` findings that the static rules can't see. Only
@@ -696,6 +757,56 @@ building:
   one, so an imported one-replica Deployment reads as "not said" and `single-point` stays quiet on it, though it's
   exactly kube-linter's `minimum-three-replicas` case. Writing `replicas: 1` there would let the rule see it; it
   changes the imports' output, so it isn't in this batch.
+
+## Batch 4: as built
+
+`secret-identity` and `schema-registry`, through the engine and the UI that batches 1 to 3 built. What was decided
+while building:
+
+- **Order.** `CHECK_RULES` gains `secret-identity` and `schema-registry` after `single-point`, as in the rule table.
+  Both raise one finding per diagram: the fix serves every service or topic at once, so one row per service would
+  offer the same fix several times, and applying one would clear the rest.
+- **Edit ops can draw a dependency.** `connect` takes an optional `relation` (`secret`, `identity`, `config`,
+  `telemetry`, `deploy` or `depends`; left out, it's a flow as before), in the operation schema, `ops.v1.json` and one
+  line of `applyOps`. Before this, an op could only draw a flow, and a flow into an identity or a registry takes a
+  copy of every message the service sends. Agents can now draw dependencies too ("the API reads secrets from Key
+  Vault"). The connection's ends resolve to nodes or shapes only, as every `connect` does since ids became unique
+  (#71).
+- **No traffic changes.** Both fixes only add a node and dependencies. The seeded-simulation helper batch 3 wrote for
+  `entry-gateway` is shared now (`src/test/delivery.ts`), and it also asserts that a node a fix adds handles nothing:
+  without that, a fix that drew flows would still pass, since a copy down a new route reaches only the new node.
+  Turning the new `relation` off makes both rules' traffic tests fail.
+- **Only what they create.** The fixes connect to existing services by id and never update or remove anything. A
+  new node goes in the boundary its services (or the topics) share, and that boundary refits around its members, as
+  any add into a boundary does. No id-sharing guard: ids are unique on load and ops resolve by kind (#71). The fixes
+  allocate no ids themselves (`applyOps` does, for what they add); they name only batch keys. A fix is offered
+  only while it fits the operation schema: at most 100 ops in the batch and ids of 200 characters or less; past that
+  the row says it's too big a change for one step (unit tests: 60 services get the shared identity but no per-service
+  chip, 120 get no fix).
+- **Agents.** The per-service identities are a chip, so agents get them as `fix.others` while they fit beside the
+  default's ops, else named in `fix.elsewhere`, within the reply's 1.5K-character budget (`agentReport` as in batch 3).
+- **The stencil.** The brief asked for a Google Cloud service account stencil; the catalogue has had one,
+  `gcp.service-account`, since imports batch 3 (Kubernetes manifests). Its icon is Google Cloud's IAM icon from the
+  Iconify `gcp` set (`gcp:identity-and-access-management`, Apache-2.0, listed in `docs/ICONS.md`), like every GCP
+  icon here. Nothing was added; a unit test pins it as what Google Cloud services get, with its icon and its Identity
+  relation.
+- **The AsyncAPI import.** It already wrote `props.contentType` on a channel (imports batch 2) from a message's
+  content type, its schema format or its payload's, and it adds a registry itself when it sees Avro or Protobuf on
+  Kafka. New tests cover Protobuf by content type, Avro by the payload's schema format, JSON (no `contentType`), and the
+  round trip: the import's registry keeps the check quiet, and with it taken out, the check warns from `contentType`
+  alone and its fix clears it.
+- **Performance.** Both rules are one pass over the edges and nodes. `src/checks/examples.test.ts` times them on 375
+  and 1,500 nodes and asserts the ratio stays under 8, on a context built beforehand (the shared context is linear and
+  would hide a rule's own cost), once on a mixed diagram and once per rule on a diagram made mostly of what it reads.
+  Two deliberately quadratic mutations fail it, then were reverted: a scan of every edge per service for an identity
+  (ratio about 12.5) and a scan of every compiled edge per topic for producers (about 12).
+- **What ships when.** Startup JavaScript: unchanged (within a few bytes gzip). The checks worker +2.4 kB gzip, the
+  main-thread fallback chunk +2.1 kB, the ops chunk +0.1 kB (the `relation` field). `stencils/relations`, which the
+  rules now share with the canvas, moved from the canvas chunk into the canvas's shared chunk (+0.4 kB there, −0.4 kB
+  in the canvas). The entry is 110.4 kB of its 123.5 kB budget.
+- **Not done.** Event Hubs with Avro (Azure Schema Registry is part of Event Hubs, and the catalogue has no stencil
+  for it). Vault's Kubernetes auth as a drawn identity: the catalogue has no Kubernetes service account stencil, which
+  is why Vault on no cloud stays quiet.
 
 ## Explicitly not doing
 

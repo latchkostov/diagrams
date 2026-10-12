@@ -410,6 +410,8 @@ describe("runChecks", () => {
       "entry-gateway",
       "capacity",
       "single-point",
+      "secret-identity",
+      "schema-registry",
     ]);
   });
 

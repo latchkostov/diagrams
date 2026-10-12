@@ -35,6 +35,21 @@ describe("applyOps", () => {
     expect(result.results).toEqual([]);
     expect(result.errors[0]).toMatchObject({ i: 1, hint: expect.any(String), candidates: expect.any(Array) });
   });
+  it("connects with a dependency when asked: dotted, no traffic; a flow otherwise; nothing else is a relation", () => {
+    const result = run(graph(), [
+      { op: "add_node", kind: "azure.key-vault", label: "Vault", key: "kv" },
+      { op: "connect", from: "API", to: "kv", relation: "secret", key: "reads" },
+      { op: "connect", from: "API", to: "kv" },
+    ]);
+    const [secret, plain] = result.diagram.edges.slice(-2);
+    expect(secret).toMatchObject({ from: result.results[1].from, relation: "secret" });
+    expect(plain.relation).toBeUndefined();
+    for (const relation of ["flow", "secrets"])
+      expect(
+        applyOps(graph(), [{ op: "connect", from: "API", to: "DB", relation } as unknown as DiagramOp]).ok,
+        relation,
+      ).toBe(false);
+  });
   it("dry-runs the same proposed result without mutating input", () => {
     const d = empty(),
       ops: DiagramOp[] = [{ op: "add_node", kind: "Kafka topic", label: "Orders" }];

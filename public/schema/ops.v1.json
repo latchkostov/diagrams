@@ -86,6 +86,18 @@
                 "default": "async",
                 "description": "async = messages/events; sync = request/response, writes to a database."
               },
+              "relation": {
+                "type": "string",
+                "enum": [
+                  "config",
+                  "secret",
+                  "identity",
+                  "telemetry",
+                  "deploy",
+                  "depends"
+                ],
+                "description": "Leave out for a flow. A dependency instead (dotted, carries no traffic): secret, identity, config, telemetry, deploy or depends, e.g. a service -> Key Vault is secret."
+              },
               "key": {
                 "type": "string",
                 "minLength": 1,
@@ -858,11 +870,13 @@
                 "shared-database",
                 "entry-gateway",
                 "capacity",
-                "single-point"
+                "single-point",
+                "secret-identity",
+                "schema-registry"
               ]
             },
-            "maxItems": 8,
-            "description": "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), sync-chain (requests chained too deep), shared-database (a service uses another's database), entry-gateway (a client goes around the gateway), capacity (a service can't keep up at the diagram's rates), single-point (every request goes through one replica)."
+            "maxItems": 10,
+            "description": "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), sync-chain (requests chained too deep), shared-database (a service uses another's database), entry-gateway (a client goes around the gateway), capacity (a service can't keep up at the diagram's rates), single-point (every request goes through one replica), secret-identity (services read secrets without an identity), schema-registry (Avro or Protobuf on Kafka without a schema registry)."
           },
           "include": {
             "type": "string",
@@ -1486,6 +1500,18 @@
                       ],
                       "default": "async",
                       "description": "async = messages/events; sync = request/response, writes to a database."
+                    },
+                    "relation": {
+                      "type": "string",
+                      "enum": [
+                        "config",
+                        "secret",
+                        "identity",
+                        "telemetry",
+                        "deploy",
+                        "depends"
+                      ],
+                      "description": "Leave out for a flow. A dependency instead (dotted, carries no traffic): secret, identity, config, telemetry, deploy or depends, e.g. a service -> Key Vault is secret."
                     },
                     "key": {
                       "type": "string",

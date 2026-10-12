@@ -1,5 +1,62 @@
 # Design review
 
+## Round 23: checks, batch 4 (2026-10-12)
+
+The gate for architecture checks batch 4: `secret-identity` and `schema-registry`, each with its fix
+(`docs/research/architecture-checks.md`, "Batch 4"). Self-review against `docs/UX-PRINCIPLES.md` on the production
+build at 1024 × 768, 1280 × 800 and 1440 × 900, light and dark, mouse and keyboard. Of the 16 public examples, only
+notification-fanout raises a new finding (the identity suggestion), so it's the main subject; the schema registry
+warning fires on no example, so it's shown on the test fixture `tests/fixtures/checks/payments-ledger.diagram.json`
+(a payments API writing Avro to Kafka, a ledger function reading it, both reading Key Vault).
+
+- **No new chrome.** No control, menu row or palette entry: both rules show in the same count, card, markers and
+  inspector row, and the identity fix's alternative uses batch 3's chips ("or One for each service",
+  `card-identity-hover-1280-light`).
+- **Quiet by default holds.** Across the 16 examples the count is unchanged (2 warnings): the new finding there is a
+  suggestion, one row for the whole diagram rather than one per service. The Azure invoice example, whose vault says
+  "managed identity", stays clean of it (`card-azure-invoice-said-1280-light`). On the fixture the count says
+  "1 warning" (`count-ledger-1280-light`), the registry; the identity suggestion waits in the card
+  (`card-ledger-1280-light`).
+- **Words.** Titles name the count or the thing ("2 services read secrets without an identity", "Avro on
+  payments.v1, but no schema registry"); the message says who reads what ("Email sender and SMS rate limiter read
+  secrets from notify-kv"), and the button names the change in the cloud's own words ("Add a managed identity"; an
+  IAM role on AWS, a service account on Google Cloud).
+- **Fixes land where they belong.** The shared identity goes into the Azure boundary beside its services
+  (`fix-identity-toast-1280-light`: "Added Managed Identity · Undo"); the chip adds one per service, named for it
+  (`chip-identity-toast-1280-light`: "Added Email sender identity, SMS rate limiter identity"). The registry lands
+  between the services it serves, with dotted Depends on lines (`fix-registry-toast-1280-light`). Each is one undo step.
+- **Widths and themes.** At 1024 the 290 px card wraps the row and its chip cleanly
+  (`card-notification-1024-light`); dark reads as light does (`card-notification-1440-dark`), and selecting the row
+  selects the vault and both services (`card-identity-selected-1440-dark`). The inspector carries both findings for a
+  selected service, warning first (`inspector-ledger-1440-dark`).
+
+### What was off (fixed in this round)
+
+- **The element chips repeated the Secret connections.** The identity row listed "Email sender → notify-kv" and "SMS
+  rate limiter → notify-kv" after the vault and both services: five chips for three things. The finding's elements are
+  now the vaults and the services, and the markers sit on those nodes only.
+- **The shared identity landed on the boundary's edge.** Added outside any boundary, it was placed beside its
+  services and straddled the Azure box's border. A new identity now goes in the boundary its services share (the
+  registry in its topics' one), which grows to hold it.
+- **New nodes read "Schema Registry / Schema Registry".** With no sublabel, a card shows the stencil's name under its
+  label, which repeated it. The registry's sublabel is "schemas" and an identity's "workload identity".
+
+### Still open (owner's call)
+
+- The precision gate trades a Vault-on-AWS sketch with no boundary (no finding) for silence on every Vault sketch; see
+  "Batch 4: precision gate".
+- The shared identity is the default and one per service is the chip, as the plan had it. Least privilege argues for
+  the reverse; the default keeps a diagram with many services to one new box.
+
+![The identity suggestion, hovered: one row, chips for the vault and its services, the per-service chip](screenshots/round23/card-identity-hover-1280-light.png)
+![The fix: one managed identity, inside the Azure boundary, with Undo](screenshots/round23/fix-identity-toast-1280-light.png)
+![The schema registry warning on the fixture](screenshots/round23/card-ledger-1280-light.png)
+![Schema Registry added, Depends on from both services](screenshots/round23/fix-registry-toast-1280-light.png)
+
+Also: `screenshots/round23/card-notification-1280-light.png`, `card-notification-1024-light.png`,
+`card-notification-1440-dark.png`, `card-identity-selected-1440-dark.png`, `chip-identity-toast-1280-light.png`,
+`card-azure-invoice-said-1280-light.png`, `count-ledger-1280-light.png` and `inspector-ledger-1440-dark.png`.
+
 ## Round 22: checks, batch 3 (2026-10-12)
 
 The gate for architecture checks batch 3: four more rules (`sync-chain`, `shared-database`, `entry-gateway`,

@@ -100,6 +100,8 @@ export const CHECK_RULES = [
   "entry-gateway",
   "capacity",
   "single-point",
+  "secret-identity",
+  "schema-registry",
 ] as const;
 export type CheckRuleId = (typeof CHECK_RULES)[number];
 export const isCheckRule = (v: unknown): v is CheckRuleId =>
