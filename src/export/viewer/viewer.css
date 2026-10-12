@@ -1,0 +1,117 @@
+/* The exported HTML file's own chrome (prefixed xv-): the banner above the canvas, the footer below and the
+   zoom buttons. Everything else is the app's (tokens, canvas, live view). */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.xv {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+
+.xv-banner {
+  flex: none;
+  padding: 7px 16px;
+  background: var(--warning-soft);
+  border-bottom: 1px solid color-mix(in oklab, var(--warning) 35%, var(--line));
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* The canvas fills what's left; .ix-embed's own position: fixed gives way to the column. */
+.xv-canvas.ix-embed {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.xv-foot {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 5px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* --text-3, not --text-4 (placeholders): the keys are instructions, at 4.5:1 on --surface in both themes. */
+.xv-keys {
+  color: var(--text-3);
+}
+
+@media (max-width: 640px) {
+  .xv-keys {
+    display: none;
+  }
+}
+
+.xv-zoom {
+  position: absolute;
+  left: 12px;
+  /* Above the live bar while it shows (LiveSession sets the variable on the canvas). */
+  bottom: calc(12px + var(--live-bar-space, 0px));
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+
+.xv-zoom-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.xv-zoom-btn + .xv-zoom-btn {
+  border-top: 1px solid var(--line);
+}
+
+.xv-zoom-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.xv-zoom-btn:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+.xv-error {
+  margin: auto;
+  max-width: 420px;
+  padding: 24px;
+  color: var(--text-2);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* React Flow's credit stays in its corner (the embed moves it left, where the zoom buttons are here). */
+.xv-canvas.ix-embed .react-flow__attribution {
+  left: auto;
+  right: 0;
+}

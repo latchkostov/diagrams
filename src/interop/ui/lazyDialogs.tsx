@@ -57,6 +57,11 @@ export const PrivacyDialog = lazyComponent(
   () => dialogs().then((m) => m.PrivacyDialog),
   loadingDialog("Private diagram"),
 );
+/** File ▸ Export as ▸ Interactive HTML… (src/export): the template itself downloads only when it opens. */
+export const HtmlExportDialog = lazyComponent(
+  () => import("../../export/HtmlExportDialog").then((m) => m.HtmlExportDialog),
+  loadingDialog("Interactive HTML"),
+);
 /** Password links: the dialogs and the strength hint. */
 export const PasswordLinkDialog = lazyComponent(
   () => passwordDialogs().then((m) => m.PasswordLinkDialog),
@@ -88,6 +93,7 @@ export function preloadDialogs() {
     PagesDialog,
     PrivacyDialog,
     PasswordLinkDialog,
+    HtmlExportDialog,
   ])
     dialog.preload();
 }

@@ -48,7 +48,7 @@ View, File and Present become icon-only, so the bar fits at 1024px without scrol
 | **Export PNG**               | 2×, whole diagram, independent of pan and zoom.                                                                                                                                                                                                                         |
 | **Copy share link**          | One click; the toast's **Details** opens the dialog (length, warning above 8k characters, native Share).                                                                                                                                                                |
 | **Copy link with password…** | Encrypts the diagram into a `#e=` link with a password (8+ characters, strength hint); see "Share links and embeds" below.                                                                                                                                              |
-| More formats ▸               | Diagram file (`.diagram.json`, lossless, simulations included) · Image… (PNG or SVG; scale and transparent background behind **Options**) · draw.io · Copy as Mermaid · Mermaid file (`.mmd`) · Embed code… · Save as…                                                  |
+| More formats ▸               | Diagram file (`.diagram.json`, lossless, simulations included) · Image… (PNG or SVG; scale and transparent background behind **Options**) · **Interactive HTML…** (one self-contained file, below) · draw.io · Mermaid file (`.mmd`) · Copy as Mermaid                  |
 | Import from ▸                | Paste text… (JSON, draw.io XML, Mermaid, docker-compose or AsyncAPI, auto-detected) · Share link…                                                                                                                                                                       |
 
 You can also drop files anywhere on the page to open them (several at once: a compose file with its overrides).
@@ -232,6 +232,95 @@ Batch 2. Our own reader (about 4 kB gzip in the same lazy chunk): `@asyncapi/par
   fitted, pan and pinch-zoom only (the wheel scrolls the host page), no menus, shortcuts or autosave, and a
   subtle "Open in Diagrams" link. `live=1&sim=<id>` pass through for the live view.
 - The embed dialog previews the iframe, and its options (source, height, simulation) sit behind **Options**.
+
+### Interactive HTML (`src/export/`, `scripts/interactive-viewer.ts`)
+
+For diagrams that mustn't be on a public URL (a company's systems, a Private diagram): **File ▸ Export as ▸
+Interactive HTML…** (also the canvas right-click's Export ▸ and Ctrl+K) downloads **one self-contained `.html`
+file**, `<title>.html`. Host it where the team already controls access (SharePoint, Confluence, an intranet, a
+private repository) or open it from disk. It shows the diagram read-only (pan, zoom, fit) with live playback: the
+simulation picker, play and pause, speed, slow motion, trace and the rest of the live bar.
+
+- **The dialog** is simple by default: a summary line ("Light theme · 2 simulations · plays “Black Friday” when
+  opened"), the one line **"Anyone who has this file can open it."** and **Download HTML**. **Options** holds the
+  title, a banner ("Confidential: internal use only"), Light or Dark (the app's theme by default), which
+  simulations go in and which plays when the file opens (the first, or none).
+- **Privacy.** Allowed for every diagram, Private ones and the development-only local-only examples included, exactly
+  like Diagram file: it's the person's explicit action, like saving to this device. The file is made in the page;
+  nothing is uploaded.
+- **What's in it.** The viewer (React, React Flow, the canvas and the live session, about 0.98 MB minified), its CSS,
+  Mona Sans and Geist Mono (Latin, as data URIs; other scripts fall back to system fonts), the diagram JSON and
+  only the icons it uses (SVG data URIs). Template 1,220 kB raw / 415 kB gzip; the Kafka example exported with both
+  simulations and a banner 1,261 kB / 430 kB. The editing-only panels (inspector, stencil rail, start card,
+  first-run hint, shortcuts sheet, simulation editor) are stubbed out of it: the read-only canvas never shows them.
+- **Zero requests.** A strict policy in a `<meta http-equiv="Content-Security-Policy">`: `default-src 'none'`,
+  `script-src` and `style-src` each one `'sha256-…'` hash of the page's single inline script and style (no
+  `'unsafe-inline'`), `img-src data: blob:`, `font-src data:`, `media-src blob:` (Record video's preview),
+  `connect-src 'none'`, `base-uri`, `form-action` and `object-src 'none'`, and no `worker-src`. Also
+  `<meta name="referrer" content="no-referrer">` and an empty `data:` favicon, so even an http host gets no
+  `/favicon.ico` request. `frame-ancestors` can't be set from a meta tag: who may frame the file is the host's call.
+- **Main-thread particles, no worker.** A module worker can't start from `file://`, and a `blob:` worker needs
+  `worker-src blob:`, which a host's own CSP header (SharePoint's, say) may refuse on top of ours. The live renderer
+  already has a main-thread fallback (`src/live/liveRenderer.ts`): the viewer marks workers unsupported at startup,
+  and the build cuts the `new Worker(…)` out, so there's no worker file to fetch. It works everywhere the page does.
+- **No storage, no AI, no links out.** Every `file://` page shares one `localStorage`, and a sandboxed frame throws on
+  any access, so the viewer swaps `localStorage` and `sessionStorage` for in-memory stores before any app module is
+  even evaluated (`src/export/viewer/storage.ts`, imported first and importing nothing; some modules read storage as
+  they load): nothing is written, and the reader's own preferences (hidden dependencies, a theme) don't leak in. No editing, autosave, AI panel, WebMCP or share links
+  (the build fails if their modules get in). There's no "Open in Live Diagrams" link either: one carrying the
+  diagram would put it on a public URL, and even a plain one would tell livediagrams.dev (by its Referer) where
+  the file is hosted. The footer says "Exported from Live Diagrams on 12 October 2026. Read-only." and the keys.
+  React Flow's small credit link stays, as in the app; with `no-referrer` it reveals nothing.
+- **Anywhere.** `file://`, any host, sub-paths and iframes. Framed, the wheel scrolls the host page (as an embed's
+  does); on a page of its own it pans, as in the app. Keyboard: arrows pan (Shift: further), + and − zoom, Shift+1
+  fits, Shift+0 is 100%; the zoom buttons and the live bar have names.
+
+**How it's built.** `scripts/interactive-viewer.ts` runs a second Vite build of `src/export/viewerEntry.tsx` (IIFE, no
+code splitting) beside the app's, inlines its script, CSS and fonts into one page, hashes them into the CSP and emits
+it as `export/interactive-viewer-<content hash>.html` (a new name per change, so a cached copy is never stale). It
+swaps modules for the viewer: the stencil icon URLs (`src/stencils/iconUrls.ts` → the payload's data URIs), the
+dev-only local-example check, and the editing-only panels (`EDITOR_ONLY`, stubs with the same exports; the build
+and `src/export/template.build.test.ts` fail if one comes back). The viewer's zoom buttons use the canvas's own
+overlay-aware Fit view (`src/canvas/canvasFit.ts`), and every viewport move honours reduced motion. The app reads the file's name from `virtual:interactive-viewer` and fetches it
+same-origin (`connect-src 'self'`) only when the dialog opens; none of it is in the startup JavaScript (the menu
+item adds 0.19 kB gzip; `src/lib/bundleSplit.build.test.ts` checks). In `pnpm dev` the template is built on the
+first request for `/export/interactive-viewer.html`.
+
+The template is deterministic (no dates, build ids or environment variables), and the injection is
+`src/export/inject.ts`: pure string work with no imports, so the app and a Node script make byte-identical files.
+The template carries two JSON data blocks: `#ld-stencil-icons` (stencil id → icon name, to subset icons without the
+catalog) and `#diagram` (the placeholder). Data blocks never run, so the payload doesn't change the CSP hashes.
+From Node:
+
+```ts
+import { writeFileSync } from "node:fs";
+import { buildViewerTemplate } from "./scripts/interactive-viewer"; // or read a built or committed template
+import { exportHtml, htmlFileName } from "./src/export/inject";
+
+const template = await buildViewerTemplate(process.cwd());
+const html = exportHtml(template, {
+  diagram, // a diagrams/v1 object
+  iconSvgs, // icon name → SVG text, e.g. every src/stencils/icons/*.svg; only the used ones go in
+  theme: "light",
+  banner: "Confidential: internal use only", // optional
+  simulations: ["black-friday"], // optional: which to keep (default: all)
+  startSimulation: "black-friday", // optional: plays when the file opens
+  exportedOn: "2026-10-12", // optional: fixes the footer's date, for reproducible output
+});
+writeFileSync(htmlFileName(diagram.title), html);
+```
+
+The JSON is escaped for a `<script>` element (every `<` as a JSON unicode escape, so no `</script>` or `<!--`, and
+U+2028 and U+2029 too). Both ends hold the whole diagrams/v1 contract: the app runs `validateDiagram` before it
+writes a file, and the viewer bounds the payload before parsing it (12 MB in all, the diagram within the app's own
+8 MB file budget, at most 400 icons of 200 kB), checks it with `validateDiagram`, takes only `data:image/` icons,
+and shows a plain message for a damaged, oversized or newer file. Tests: `src/export/inject.test.ts` (injection, escaping,
+subsetting, file names, the policy), `src/export/template.build.test.ts` (the real template: the hashes match,
+nothing external, deterministic, the Kafka export) and `tests/e2e/html-export.spec.ts` (export from the build, open
+from `file://`, in an iframe and in a sandboxed one (`allow-scripts`, storage denied), render, play, switch
+simulations (the new one's narration, node status and clock), banner, zero requests, zero CSP violations, the
+reader's storage untouched and their preferences kept out,
+Private, Ctrl+K).
 
 ### Security headers (`scripts/security-headers.ts`)
 
@@ -591,4 +680,8 @@ again.
 | `src/interop/useInterop.tsx`                               | Controller: File menu actions, shortcuts, drag-and-drop, share-hash handling, canvas menu actions   |
 | `src/interop/ui/*`                                         | File menu, dialogs, toasts (`notify`), drop overlay, glyphs                                         |
 | `src/interop/embed/EmbedView.tsx`                          | `?embed=1` viewer                                                                                   |
+| `src/export/inject.ts`                                     | Interactive HTML: payload injection, escaping, icon subsetting, file name, the file's CSP           |
+| `src/export/exportHtml.ts`, `HtmlExportDialog.tsx`         | Interactive HTML: fetch the template, gather icons, download; the dialog (lazy)                     |
+| `src/export/viewerEntry.tsx`, `src/export/viewer/*`        | The exported file's viewer: storage sandbox, payload reader, icon map, page                         |
+| `scripts/interactive-viewer.ts`                            | Builds the viewer template (its own Vite build) and emits it beside the app                         |
 | `src/styles/interop.css`                                   | Styles (prefixed `ix-`)                                                                             |

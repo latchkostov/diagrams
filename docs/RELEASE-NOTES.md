@@ -2,6 +2,21 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Interactive HTML export (2026-10)
+
+Nothing you do today changes. New:
+
+- **File ▸ Export as ▸ Interactive HTML…** (also the canvas right-click's Export ▸ and Ctrl+K) downloads one
+  `.html` file with the diagram and its simulations. Open it in any browser, or put it where your team already
+  controls access (SharePoint, Confluence, an internal site, a repository): no public link, no account, no internet.
+- In the file, people pan, zoom and play the simulations (pick one, pause, change the speed, trace a message, slow
+  motion). They can't edit it, and it opens nothing else: it makes no network requests and saves nothing in the
+  browser.
+- **Options** sets the title, a banner across the top (say "Confidential: internal use only"), light or dark, which
+  simulations go in and which one plays when the file opens.
+- Private diagrams can be exported this way too, like saving them to this device. Anyone who has the file can open
+  it, and the dialog says so.
+
 ## Import AsyncAPI documents (2026-10)
 
 No habit changes. New:

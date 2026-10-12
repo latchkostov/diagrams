@@ -1,5 +1,41 @@
 # Design review
 
+## Round 17: Interactive HTML export (2026-10-12)
+
+File ▸ Export as ▸ **Interactive HTML…**: one self-contained file for sharing a diagram inside a company, with no
+public URL (docs/INTEROP.md, "Interactive HTML"). Self-review against `docs/UX-PRINCIPLES.md` on the production
+build at 1280 × 800 (the dialog) and 1440 × 900 and 900 × 560 (the file), light and dark, on the Kafka example.
+
+- **No new chrome.** It's one row in Export as ▸ (now six), one in the right-click's Export ▸ (eleven with the
+  separator) and Ctrl+K ("Interactive HTML…"). The File menu's top level is unchanged.
+- **The dialog** has one primary action, **Download HTML**, a summary line that says what you'll get ("Light theme ·
+  2 simulations · plays “Black Friday: 2,000 orders/s” when opened") and one callout: **Anyone who has this file can
+  open it.** with where to keep it. Title, Banner, Theme, Simulations and When opened sit behind **Options**. The
+  defaults need no change: the app's theme, every simulation, the first one playing.
+- **Private diagrams** export like Save to this device; the callout is the same line for every diagram, so nothing
+  reads as a warning that only some diagrams get.
+- **The file** is the embed's read-only canvas with the live bar, plus a banner strip (amber, centred) and a muted
+  one-line footer: "Exported from Live Diagrams on October 12, 2026. Read-only." and the keys. No link out (see
+  INTEROP for why). Zoom in, Zoom out and Fit view sit bottom-left and rise above the live bar while it shows:
+  at 900 px they first sat on the play button, which this round fixed.
+- **Keyboard.** Arrows pan, + and − zoom, Shift+1 fits, Shift+0 is 100%; Space, the speed and simulation selects
+  and ⋯ work as in the app. Tab visits every node (each read as "Order service, .NET Service, processor"), then
+  the Live toggle and the bar, as in an embed.
+- **Dark** reads well: the banner keeps its amber tint, the footer its muted text.
+- **After the code review:** the editing-only panels are stubbed out of the template (1,305 → 1,220 kB raw, 438 →
+  415 kB gzip; the stencil search stays, since quick-add's code still names it), Fit view is the canvas's own,
+  viewport moves honour reduced motion, the keys line uses `--text-3` (4.5:1), and the Theme radios are one Tab
+  stop with arrow keys.
+- **Open:** Tab through 15 nodes before the controls is long; a "skip to controls"
+  link, or the app's one-Tab-stop canvas in read-only mode, would help embeds too.
+
+![The dialog, light](screenshots/round17/dialog-1280-light.png)
+![Options, light](screenshots/round17/dialog-options-1280-light.png)
+![The dialog, dark](screenshots/round17/dialog-1280-dark.png)
+![The file playing, light](screenshots/round17/file-1440-light.png)
+![The file playing, dark](screenshots/round17/file-1440-dark.png)
+![The file at 900 px, dark](screenshots/round17/file-900-dark.png)
+
 ## Round 16: imports (batch 2, AsyncAPI) (2026-10-12)
 
 AsyncAPI 2.x and 3.x import on the shared pipeline and the batch 1 report. Self-review against

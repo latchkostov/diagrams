@@ -12,6 +12,7 @@ import {
   useState,
   type DragEvent,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
   type Ref,
   type RefObject,
 } from "react";
@@ -107,7 +108,8 @@ import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts
 import type { NewNode, Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { flushSync } from "react-dom";
-import { LiveView } from "../live/LiveView";
+import { LiveView, type LiveViewProps } from "../live/LiveView";
+import { CanvasFitContext } from "./canvasFit";
 import { LIVE_BAR_SPACE } from "../live/layout";
 import { safeStorage } from "../lib/storage";
 import { StartCard, type StartOptions } from "./StartCard";
@@ -207,6 +209,21 @@ interface Props {
   start?: StartOptions;
   /** Told the title as it's edited (the picker follows it without waiting for the autosave). */
   onTitleChange?: (title: string) => void;
+  /** The exported HTML viewer (src/export/viewer): read-only, plus the options below. */
+  viewer?: CanvasViewerOptions;
+}
+
+/** What the exported HTML viewer adds to a read-only canvas. */
+export interface CanvasViewerOptions {
+  /** Live view is offered (the Live toggle), starting as given: a simulation playing, or off. */
+  live: NonNullable<LiveViewProps["initial"]>;
+  /** The wheel pans and Ctrl+wheel zooms, as in the app (a page of its own, not a frame in someone's page). */
+  wheel: boolean;
+  /**
+   * Its own controls, rendered inside the canvas, so they can use React Flow's hooks and the canvas's own
+   * overlay-aware Fit view (useCanvasFit).
+   */
+  controls?: ReactNode;
 }
 
 /** Minimap: notes show their tint; zones, text and shapes are outlines. */
@@ -247,7 +264,17 @@ const QUICK_ADD_W = 300;
 // Built-in actions live for the app's lifetime; HMR re-registers them by id.
 actionRegistry.register(builtinActions());
 
-function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, initial, start, onTitleChange }: Props) {
+function CanvasInner({
+  slug,
+  presenting,
+  onExitPresent,
+  ref,
+  readOnly = false,
+  initial,
+  start,
+  onTitleChange,
+  viewer,
+}: Props) {
   const { theme, nodeVariant, edgeStyle } = useSettings();
   const { screenToFlowPosition, fitView, getNode, getNodes, getNodesBounds, getViewport, setCenter, setViewport } =
     useReactFlow<FlowNode, DiagramFlowEdge>();
@@ -1984,10 +2011,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             elementsSelectable={!readOnly}
             // The wheel and a two-finger swipe pan (Shift+wheel sideways); Ctrl/Cmd+wheel and pinch zoom
             // at the pointer. Embedded in a page, the wheel scrolls the page (pinch / Ctrl+wheel zoom).
-            panOnScroll={!readOnly}
+            panOnScroll={!readOnly || !!viewer?.wheel}
             panOnScrollSpeed={1}
             zoomOnScroll={false}
-            preventScrolling={!readOnly}
+            preventScrolling={!readOnly || !!viewer?.wheel}
             // Editing: a drag on empty canvas draws the selection box (it picks what it touches), the
             // middle button and Space+drag pan, Shift/Ctrl/Cmd+click toggle. Elsewhere a drag pans.
             panOnDrag={editGestures ? PAN_MIDDLE : true}
@@ -2081,6 +2108,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             {(nodeCount > 0 || live) && (
               <LiveView
                 readOnly={readOnly}
+                initial={viewer?.live}
                 editor={readOnly ? undefined : editor}
                 diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
                 presenting={presenting}
@@ -2098,6 +2126,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                 }
               />
             )}
+            {viewer?.controls && <CanvasFitContext.Provider value={fit}>{viewer.controls}</CanvasFitContext.Provider>}
           </ReactFlow>
 
           <div

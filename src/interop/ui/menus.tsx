@@ -358,6 +358,14 @@ function exportFormats(api: Api): MenuEntry[] {
     },
     {
       type: "item",
+      testId: "export-html",
+      icon: <Glyph name="play" />,
+      title: "Interactive HTML…",
+      hint: ".html",
+      onSelect: api.openHtmlExport,
+    },
+    {
+      type: "item",
       testId: "export-drawio",
       icon: <Glyph name="drawio" />,
       title: "draw.io",

@@ -42,7 +42,10 @@ export interface LiveViewProps {
   };
   /** Lab stages are always live and hide the toggle. */
   alwaysOn?: boolean;
-  /** Read-only embeds expose live playback only when explicitly requested in the URL. */
+  /**
+   * Read-only embeds expose live playback only when explicitly requested in the URL; the exported HTML viewer
+   * passes `initial` instead (its file has no URL of its own to read).
+   */
   readOnly?: boolean;
   /** Tells the canvas when live mode turns on or off (it folds the side panels away). */
   onLiveChange?: (live: boolean) => void;
@@ -53,9 +56,11 @@ export interface LiveViewProps {
 }
 
 export function LiveView(props: LiveViewProps) {
-  const enabled = !props.readOnly || new URLSearchParams(window.location.search).get("live") === "1";
+  const enabled = !props.readOnly || !!props.initial || new URLSearchParams(window.location.search).get("live") === "1";
   const [params] = useState(() => ({
-    ...(props.alwaysOn ? { live: true, sim: null, speed: null, paused: false } : readLiveParams()),
+    ...(props.alwaysOn || (props.readOnly && props.initial)
+      ? { live: !!props.alwaysOn, sim: null, speed: null, paused: false }
+      : readLiveParams()),
     ...props.initial,
   }));
   const [live, setLive] = useState(enabled && (params.live || !!props.alwaysOn));

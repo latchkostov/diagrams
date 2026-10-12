@@ -21,6 +21,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["the import and export dialogs", /[/\\]src[/\\]interop[/\\]ui[/\\]dialogs\.tsx$/],
   ["Your diagrams", /[/\\]src[/\\]components[/\\]LibraryDialog\.tsx$/],
   ["the embed viewer", /[/\\]src[/\\]interop[/\\]embed[/\\]/],
+  ["the Interactive HTML export", /[/\\]src[/\\]export[/\\]/],
   ["the Lab", /[/\\]src[/\\]lab[/\\]/],
   ["the live session", /[/\\]src[/\\]live[/\\]LiveSession\.tsx$/],
   ["recording", /[/\\]src[/\\]live[/\\]record[/\\]Recorder\.tsx$/],
@@ -40,6 +41,7 @@ const NOT_WITH_CANVAS = NOT_AT_STARTUP.filter(
 );
 
 let chunks: Rollup.OutputChunk[];
+let assets: Rollup.OutputAsset[];
 let html: string;
 
 beforeAll(async () => {
@@ -54,6 +56,7 @@ beforeAll(async () => {
   }
   const output = (Array.isArray(result) ? result : [result]).flatMap((r) => (r as Rollup.RolldownOutput).output);
   chunks = output.filter((out): out is Rollup.OutputChunk => out.type === "chunk");
+  assets = output.filter((out): out is Rollup.OutputAsset => out.type === "asset");
   const page = output.find((out): out is Rollup.OutputAsset => out.type === "asset" && out.fileName === "index.html");
   html = String(page?.source ?? "");
 }, 120_000);
@@ -111,6 +114,19 @@ describe("production bundle split", () => {
     // not a dozen small ones that the first view queues for.
     const loading = [...canvas].filter((c) => !startup().has(c));
     expect(loading.map((c) => c.name).sort()).toEqual(["CanvasView", "canvas-shared"]);
+  });
+
+  it("builds the Interactive HTML viewer apart: a file of its own, fetched only by the export", () => {
+    const template = assets.filter((a) => /^export\/interactive-viewer-[0-9a-f]{10}\.html$/.test(a.fileName));
+    expect(template).toHaveLength(1);
+    // Only the export's own lazy chunk names the file; the startup JavaScript doesn't.
+    const naming = chunks.filter((c) => c.code.includes(template[0].fileName));
+    expect(naming).toHaveLength(1);
+    expect(startup().has(naming[0])).toBe(false);
+    expect(bundled([naming[0]]).some((id) => /[/\\]src[/\\]export[/\\]exportHtml\.ts$/.test(id))).toBe(true);
+    // None of the viewer's own modules (its entry, its sandbox, its icon map) is in the app's chunks.
+    const viewerOnly = /[/\\]src[/\\]export[/\\](viewerEntry|viewer[/\\])/;
+    expect(bundled(chunks).filter((id) => viewerOnly.test(id))).toEqual([]);
   });
 
   it("opens the stencil library, the command palette and Your diagrams without the canvas", () => {

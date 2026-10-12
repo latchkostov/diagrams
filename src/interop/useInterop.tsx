@@ -75,6 +75,7 @@ import { toast } from "./ui/toast";
 import { copyText } from "./ui/copyText";
 import {
   EmbedDialog,
+  HtmlExportDialog,
   ImageDialog,
   ImportReportDialog,
   OpenLinkDialog,
@@ -136,6 +137,8 @@ type DialogState =
   | { kind: "unlock"; token: string; session: number }
   | { kind: "embed"; diagram: DiagramFile; source: string; example?: string }
   | { kind: "image" }
+  /** Interactive HTML: the diagram as it was when the dialog opened. */
+  | { kind: "html"; diagram: DiagramFile }
   /** Turning Private off for `source`, the document it was opened for (it closes if another one opens). */
   | { kind: "privacy"; source: string }
   | { kind: "paste" }
@@ -805,6 +808,8 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     exportSvg: () => exportImage("svg"),
     exportImage: (kind: "png" | "svg", opts: ImageExportOptions = {}) => exportImage(kind, opts),
     openImageOptions: () => setDialog({ kind: "image" }),
+    /** Interactive HTML (src/export): every diagram, Private ones too, like a file saved to this device. */
+    openHtmlExport: () => attempt("export the interactive HTML", () => setDialog({ kind: "html", diagram: current() })),
     copyShareLink,
     copyPasswordLink,
     exportDrawio,
@@ -921,6 +926,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === "html" && <HtmlExportDialog diagram={dialog.diagram} onClose={() => setDialog(null)} />}
       {dialog?.kind === "share" && (
         <ShareDialog
           diagram={dialog.diagram}
@@ -1068,6 +1074,7 @@ function canvasActions(get: () => InteropApi): Action[] {
           { type: "separator" },
           item("export:json", "Diagram file", () => get().exportNative(), ".diagram.json"),
           item("export:image", "Image…", () => get().openImageOptions(), "PNG or SVG"),
+          item("export:html", "Interactive HTML…", () => get().openHtmlExport(), ".html"),
           item("export:drawio", "draw.io", () => get().exportDrawio(), ".drawio"),
           item("export:mermaid-download", "Mermaid file", () => get().downloadMermaid(), ".mmd"),
           item("export:mermaid", "Copy as Mermaid", () => get().copyMermaid()),
