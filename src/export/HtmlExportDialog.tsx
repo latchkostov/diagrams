@@ -6,6 +6,8 @@ import { Glyph } from "../interop/ui/glyphs";
 import { exportInteractiveHtml, preloadTemplate } from "./exportHtml";
 import "./htmlExport.css";
 
+const THEMES = ["light", "dark"] as const;
+
 /** The one line every Interactive HTML export shows (docs/UX-PRINCIPLES.md, Vocabulary). */
 export const ANYONE_WITH_FILE = "Anyone who has this file can open it.";
 
@@ -37,6 +39,23 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
   ]
     .filter(Boolean)
     .join(" · ");
+  // The theme radio group's keys: arrows (and Home, End) move and select. A native listener, because the dialog
+  // keeps keys from bubbling past its panel (src/interop/ui/Dialog.tsx), so React's onKeyDown never sees them.
+  // (A ref callback: the group mounts only when Options opens. React 19 runs its cleanup on change.)
+  const themeKeys = (group: HTMLDivElement | null) => {
+    if (!group) return;
+    const onKey = (e: KeyboardEvent) => {
+      const step = ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 } as Record<string, number>)[e.key];
+      if (step === undefined && e.key !== "Home" && e.key !== "End") return;
+      e.preventDefault();
+      const at = e.key === "Home" ? 0 : e.key === "End" ? THEMES.length - 1 : THEMES.indexOf(theme) + step;
+      const next = THEMES[(at + THEMES.length) % THEMES.length];
+      setTheme(next);
+      group.querySelector<HTMLElement>(`[data-testid="html-export-theme-${next}"]`)?.focus();
+    };
+    group.addEventListener("keydown", onKey);
+    return () => group.removeEventListener("keydown", onKey);
+  };
   const toggle = (id: string, on: boolean) =>
     setKept((k) => (on ? sims.map((s) => s.id).filter((x) => x === id || k.includes(x)) : k.filter((x) => x !== id)));
 
@@ -110,12 +129,14 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
             data-testid="html-export-banner"
           />
           <span className="ix-form-label">Theme</span>
-          <div className="ix-seg" role="radiogroup" aria-label="Theme">
-            {(["light", "dark"] as const).map((t) => (
+          {/* A radio group: one Tab stop (the checked one), arrow keys move and select. */}
+          <div ref={themeKeys} className="ix-seg" role="radiogroup" aria-label="Theme">
+            {THEMES.map((t) => (
               <button
                 key={t}
                 role="radio"
                 aria-checked={theme === t}
+                tabIndex={theme === t ? 0 : -1}
                 className={theme === t ? "is-on" : ""}
                 onClick={() => setTheme(t)}
                 data-testid={`html-export-theme-${t}`}

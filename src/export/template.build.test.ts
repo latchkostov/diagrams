@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { buildViewerTemplate } from "../../scripts/interactive-viewer";
+import { buildViewer, buildViewerTemplate, EDITOR_ONLY } from "../../scripts/interactive-viewer";
 import { exportHtml, PAYLOAD_BLOCK, templateStencilIcons } from "./inject";
 
 // The Interactive HTML template, built for real (scripts/interactive-viewer.ts): one page whose CSP allows
@@ -10,9 +10,10 @@ import { exportHtml, PAYLOAD_BLOCK, templateStencilIcons } from "./inject";
 // every time (a copy kept elsewhere, like the agent skill's, can be checked against a fresh build).
 
 let template: string;
+let modules: string[];
 
 beforeAll(async () => {
-  template = await buildViewerTemplate(resolve("."));
+  ({ html: template, modules } = await buildViewer(resolve(".")));
 }, 120_000);
 
 const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("base64");
@@ -53,6 +54,23 @@ describe("interactive viewer template", () => {
     expect(urls.filter((u) => !/^(data:|#|$)/.test(u))).toEqual([]);
     // No worker, no icon files, no bundled assets.
     expect(template).not.toMatch(/particleWorker|assets\/[\w.-]+\.(svg|js|css|woff2)/);
+  });
+
+  it("leaves the editing-only panels out (stubs in their place)", () => {
+    const real = (path: string) => modules.some((id) => id.endsWith(path));
+    expect(EDITOR_ONLY.filter((p) => real(p.path)).map((p) => p.name)).toEqual([]);
+    // The canvas and the live session themselves are there.
+    expect(real("/src/canvas/CanvasView.tsx")).toBe(true);
+    expect(real("/src/live/LiveSession.tsx")).toBe(true);
+  });
+
+  it("isolates storage before any other code names it", () => {
+    // ./viewer/storage imports nothing and is imported first: in the script, the first mention of either
+    // store is its list of what to replace, so no app module can read the browser's storage before it runs.
+    const [script] = blocks(template, "script");
+    const first = script.search(/localStorage|sessionStorage/);
+    expect(script.slice(first - 1, first + 31)).toMatch(/^.localStorage.,\s*.sessionStorage./);
+    expect(modules.find((id) => !id.startsWith("\0"))).toMatch(/src\/export\/viewer\/storage\.ts$/);
   });
 
   it("carries the placeholder once and every stencil's icon name", () => {

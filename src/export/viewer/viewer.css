@@ -50,8 +50,9 @@ body,
   font-size: 12px;
 }
 
+/* --text-3, not --text-4 (placeholders): the keys are instructions, at 4.5:1 on --surface in both themes. */
 .xv-keys {
-  color: var(--text-4);
+  color: var(--text-3);
 }
 
 @media (max-width: 640px) {

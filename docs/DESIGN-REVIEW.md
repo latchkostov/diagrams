@@ -22,9 +22,11 @@ build at 1280 × 800 (the dialog) and 1440 × 900 and 900 × 560 (the file), lig
   and ⋯ work as in the app. Tab visits every node (each read as "Order service, .NET Service, processor"), then
   the Live toggle and the bar, as in an embed.
 - **Dark** reads well: the banner keeps its amber tint, the footer its muted text.
-- **Open:** the viewer is 1.3 MB (438 kB gzip), mostly React, React Flow and the live session. Stubbing the editor's
-  panels (Inspector, stencil rail, simulation editor) out of the template would save about 150 kB; not done, since
-  each stub must track the canvas's imports. Tab through 15 nodes before the controls is long; a "skip to controls"
+- **After the code review:** the editing-only panels are stubbed out of the template (1,305 → 1,220 kB raw, 438 →
+  415 kB gzip; the stencil search stays, since quick-add's code still names it), Fit view is the canvas's own,
+  viewport moves honour reduced motion, the keys line uses `--text-3` (4.5:1), and the Theme radios are one Tab
+  stop with arrow keys.
+- **Open:** Tab through 15 nodes before the controls is long; a "skip to controls"
   link, or the app's one-Tab-stop canvas in read-only mode, would help embeds too.
 
 ![The dialog, light](screenshots/round17/dialog-1280-light.png)

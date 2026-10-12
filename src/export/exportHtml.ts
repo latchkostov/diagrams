@@ -3,6 +3,7 @@ import type { DiagramFile } from "../model/types";
 import { iconUrl } from "../stencils/registry";
 import { loadOnce } from "../lib/lazyLoad";
 import { downloadText } from "../interop/files";
+import { validateDiagram } from "../interop/native";
 import { toast } from "../interop/ui/toast";
 import { exportHtml, FALLBACK_ICON, htmlFileName, templateStencilIcons, type ExportInput } from "./inject";
 
@@ -43,6 +44,9 @@ async function iconSvgs(diagram: DiagramFile, stencilIcons: Record<string, strin
 
 /** The file's text. */
 export async function buildInteractiveHtml(diagram: DiagramFile, options: HtmlExportOptions): Promise<string> {
+  // The same contract the viewer checks when it opens the file: never write one it would refuse.
+  const checked = validateDiagram(diagram);
+  if (!checked.ok) throw new Error(checked.error);
   const template = await loadTemplate();
   const iconsBySvg = await iconSvgs(diagram, templateStencilIcons(template));
   return exportHtml(template, { ...options, diagram, iconSvgs: iconsBySvg });

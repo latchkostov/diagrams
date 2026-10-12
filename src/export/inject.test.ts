@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { DiagramFile, Simulation } from "../model/types";
+import { validateDiagram } from "../interop/native";
 import {
   buildPayload,
   escapeHtml,
@@ -36,18 +38,21 @@ const SVGS = {
   redis: "<svg><g/></svg>",
 };
 
-const diagram = (extra: object = {}) => ({
+/** A valid diagrams/v1 file (the viewer accepts it whole), with two simulations. */
+const sim = (id: string, title: string): Simulation => ({
+  id,
+  title,
+  traffic: [{ id: `${id}-in`, node: "t", shape: { kind: "constant", ratePerSec: 5, durationMs: 1000 } }],
+});
+const diagram = (extra: Partial<DiagramFile> = {}): DiagramFile => ({
   format: "diagrams/v1",
   title: "Orders",
   nodes: [
     { id: "t", stencil: "kafka.topic", label: "Topic", x: 0, y: 0 },
     { id: "d", stencil: "postgres", label: "DB", x: 200, y: 0 },
   ],
-  edges: [],
-  simulations: [
-    { id: "a", title: "Normal day" },
-    { id: "b", title: "Outage" },
-  ],
+  edges: [{ id: "t-d", from: "t", to: "d" }],
+  simulations: [sim("a", "Normal day"), sim("b", "Outage")],
   ...extra,
 });
 
@@ -139,6 +144,16 @@ describe("buildPayload", () => {
     expect(buildPayload(TEMPLATE, { ...base, simulations: [] }).diagram.simulations).toEqual([]);
     expect(buildPayload(TEMPLATE, { ...base, title: "  " }).diagram.title).toBe("Orders");
     expect(buildPayload(TEMPLATE, { ...base, title: "Team copy" }).diagram.title).toBe("Team copy");
+  });
+
+  it("needs a whole diagram, and what it writes is one the viewer accepts", () => {
+    const base = { iconSvgs: SVGS, theme: "light" as const, exportedOn: "2026-10-12" };
+    expect(() =>
+      buildPayload(TEMPLATE, { ...base, diagram: { title: "x", nodes: [] } as unknown as DiagramFile }),
+    ).toThrow(/isn't a diagram/);
+    const p = buildPayload(TEMPLATE, { ...base, diagram: diagram(), simulations: ["a"] });
+    const checked = validateDiagram(p.diagram);
+    expect(checked.ok && checked.diagram.simulations?.map((s) => s.id)).toEqual(["a"]);
   });
 
   it("is deterministic: the same inputs give the same file", () => {

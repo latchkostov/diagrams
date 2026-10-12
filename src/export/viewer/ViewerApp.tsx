@@ -1,8 +1,9 @@
 import { useEffect, useId, useMemo } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { CanvasView, type CanvasViewerOptions } from "../../canvas/CanvasView";
+import { useCanvasFit } from "../../canvas/canvasFit";
 import { isEditableTarget } from "../../editor/shortcuts";
-import { LIVE_BAR_SPACE } from "../../live/layout";
+import { motionMs } from "../../lib/motion";
 import { Icon } from "../../components/Icon";
 import { Toaster } from "../../interop/ui/Toaster";
 import { readPayload } from "./payload";
@@ -10,13 +11,9 @@ import { readPayload } from "./payload";
 // The exported file's page: the diagram on a read-only canvas (the embed's, with live playback), an optional
 // banner above it and a one-line footer below. Nothing here leaves the page: no links out, no storage, no AI.
 
-/** Room around the diagram when fitting it: the title card above, the live bar below. */
-const FIT = {
-  padding: { top: "96px", right: "40px", bottom: `${40 + LIVE_BAR_SPACE}px`, left: "40px" },
-  maxZoom: 1.25,
-  duration: 300,
-} as const;
 const PAN_STEP = 80;
+/** Viewport moves, collapsing to a jump under reduced motion. */
+const ZOOM = () => ({ duration: motionMs(150) });
 
 /** "12 October 2026" in the reader's locale, from "2026-10-12". */
 function formatDay(iso: string): string {
@@ -26,9 +23,13 @@ function formatDay(iso: string): string {
   return date.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 }
 
-/** Zoom and fit, as buttons and keys: arrows pan, + and − zoom, Shift+1 fits, Shift+0 is 100%. */
+/**
+ * Zoom and fit, as buttons and keys: arrows pan, + and − zoom, Shift+1 fits, Shift+0 is 100%. `fit` is the
+ * canvas's own Fit view (overlay-aware), never a second one.
+ */
 function ViewerControls({ hintId }: { hintId: string }) {
   const rf = useReactFlow();
+  const fit = useCanvasFit();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -37,18 +38,18 @@ function ViewerControls({ hintId }: { hintId: string }) {
       const step = e.shiftKey ? PAN_STEP * 3 : PAN_STEP;
       const pan = (dx: number, dy: number) => {
         const v = rf.getViewport();
-        void rf.setViewport({ x: v.x + dx, y: v.y + dy, zoom: v.zoom }, { duration: 120 });
+        void rf.setViewport({ x: v.x + dx, y: v.y + dy, zoom: v.zoom }, { duration: motionMs(120) });
       };
       const actions: Record<string, () => void> = {
         ArrowLeft: () => pan(step, 0),
         ArrowRight: () => pan(-step, 0),
         ArrowUp: () => pan(0, step),
         ArrowDown: () => pan(0, -step),
-        "+": () => void rf.zoomIn({ duration: 150 }),
-        "=": () => void rf.zoomIn({ duration: 150 }),
-        "-": () => void rf.zoomOut({ duration: 150 }),
-        "!": () => void rf.fitView(FIT),
-        ")": () => void rf.zoomTo(1, { duration: 150 }),
+        "+": () => void rf.zoomIn(ZOOM()),
+        "=": () => void rf.zoomIn(ZOOM()),
+        "-": () => void rf.zoomOut(ZOOM()),
+        "!": fit,
+        ")": () => void rf.zoomTo(1, ZOOM()),
       };
       // Shift+1 and Shift+0 by key code too, whatever the keyboard layout prints there.
       const action =
@@ -63,13 +64,21 @@ function ViewerControls({ hintId }: { hintId: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [rf]);
+  }, [rf, fit]);
 
   return (
-    <div className="xv-zoom" role="group" aria-label="Zoom" aria-describedby={hintId} data-testid="viewer-zoom">
+    <div
+      className="xv-zoom"
+      role="group"
+      aria-label="Zoom"
+      aria-describedby={hintId}
+      data-testid="viewer-zoom"
+      // Fit view keeps the diagram clear of it, as of the app's own overlays.
+      data-canvas-overlay
+    >
       <button
         className="xv-zoom-btn"
-        onClick={() => void rf.zoomIn({ duration: 150 })}
+        onClick={() => void rf.zoomIn(ZOOM())}
         aria-label="Zoom in"
         title="Zoom in (+)"
         data-testid="viewer-zoom-in"
@@ -78,7 +87,7 @@ function ViewerControls({ hintId }: { hintId: string }) {
       </button>
       <button
         className="xv-zoom-btn"
-        onClick={() => void rf.zoomOut({ duration: 150 })}
+        onClick={() => void rf.zoomOut(ZOOM())}
         aria-label="Zoom out"
         title="Zoom out (−)"
         data-testid="viewer-zoom-out"
@@ -89,7 +98,7 @@ function ViewerControls({ hintId }: { hintId: string }) {
       </button>
       <button
         className="xv-zoom-btn"
-        onClick={() => void rf.fitView(FIT)}
+        onClick={fit}
         aria-label="Fit view"
         title="Fit view (Shift+1)"
         data-testid="viewer-fit"
@@ -110,7 +119,7 @@ export function ViewerApp() {
       live: { live: !!sim, sim, speed: null, paused: false },
       // A page of its own: the wheel pans, as in the app. Framed inside someone's page, it scrolls that page.
       wheel: window.self === window.top,
-      children: <ViewerControls hintId={hintId} />,
+      controls: <ViewerControls hintId={hintId} />,
     };
   }, [payload, hintId]);
 

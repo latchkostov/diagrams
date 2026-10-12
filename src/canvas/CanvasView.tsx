@@ -109,6 +109,7 @@ import type { NewNode, Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { flushSync } from "react-dom";
 import { LiveView, type LiveViewProps } from "../live/LiveView";
+import { CanvasFitContext } from "./canvasFit";
 import { LIVE_BAR_SPACE } from "../live/layout";
 import { safeStorage } from "../lib/storage";
 import { StartCard, type StartOptions } from "./StartCard";
@@ -218,8 +219,11 @@ export interface CanvasViewerOptions {
   live: NonNullable<LiveViewProps["initial"]>;
   /** The wheel pans and Ctrl+wheel zooms, as in the app (a page of its own, not a frame in someone's page). */
   wheel: boolean;
-  /** Its own controls, rendered inside the canvas (so they can use React Flow's hooks). */
-  children?: ReactNode;
+  /**
+   * Its own controls, rendered inside the canvas, so they can use React Flow's hooks and the canvas's own
+   * overlay-aware Fit view (useCanvasFit).
+   */
+  controls?: ReactNode;
 }
 
 /** Minimap: notes show their tint; zones, text and shapes are outlines. */
@@ -2122,7 +2126,7 @@ function CanvasInner({
                 }
               />
             )}
-            {viewer?.children}
+            {viewer?.controls && <CanvasFitContext.Provider value={fit}>{viewer.controls}</CanvasFitContext.Provider>}
           </ReactFlow>
 
           <div

@@ -57,6 +57,39 @@ const FORBIDDEN: [string, RegExp][] = [
   ["local-only examples", /[/\\]examples[/\\]private[/\\]|[/\\]localOnly\.dev\.ts$/],
 ];
 
+/**
+ * Editing-only panels the read-only canvas never shows (CanvasView renders them only with its editing chrome,
+ * LiveSession's simulation editor only with an editor), each swapped for a stub with the same exports. A single
+ * bundle would otherwise carry all of them (about 150 kB). A new export one of them gains fails the build
+ * ("missing export"), and the module itself coming back fails it too (FORBIDDEN, below).
+ */
+export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => string }[] = [
+  { name: "the inspector", path: "/src/canvas/Inspector.tsx", stub: () => "export const Inspector = () => null;" },
+  {
+    name: "the stencil rail",
+    path: "/src/canvas/Palette.tsx",
+    stub: (root) =>
+      `export const Palette = () => null;\nexport { STENCIL_DND_MIME } from ${JSON.stringify(
+        resolve(root, "src/lib/canvasBridge.ts").replaceAll("\\", "/"),
+      )};`,
+  },
+  { name: "the start card", path: "/src/canvas/StartCard.tsx", stub: () => "export const StartCard = () => null;" },
+  {
+    name: "the first-run hint",
+    path: "/src/canvas/FirstRunHint.tsx",
+    stub: () => "export const FirstRunHint = () => null;",
+  },
+  {
+    name: "the shortcuts sheet",
+    path: "/src/components/ShortcutsDialog.tsx",
+    stub: () => "export const ShortcutsDialog = () => null;",
+  },
+  { name: "the simulation editor", path: "/src/live/SimPanel.tsx", stub: () => "export const SimPanel = () => null;" },
+];
+const STUB = "\0interactive-viewer:editor-only:";
+const pathPattern = (path: string) => new RegExp(`${path.replace(/[.]/g, "\\.").replace(/\//g, "[/\\\\]")}$`);
+FORBIDDEN.push(...EDITOR_ONLY.map(({ name, path }): [string, RegExp] => [name, pathPattern(path)]));
+
 const NO_LOCAL = "\0interactive-viewer:no-local-examples";
 const WORKER = 'new Worker(new URL("./particleWorker.ts", import.meta.url), { type: "module", name: "particles" })';
 
@@ -66,16 +99,27 @@ function viewerSwaps(root: string): Plugin {
   return {
     name: "interactive-viewer-swaps",
     enforce: "pre",
-    resolveId(source, importer) {
+    async resolveId(source, importer, options) {
       if (source === "./iconUrls" && importer && own(importer, "/src/stencils/registry.ts"))
         return resolve(root, "src/export/viewer/iconUrls.ts");
       // Development's content check for local-only examples: never in a file (a single bundle keeps a stub of
       // every module it reaches, used or not).
       if (source === "./localOnly.dev" && importer && own(importer, "/src/lib/localOnly.ts")) return NO_LOCAL;
-      return null;
+      // The editing-only panels, whoever imports them.
+      if (
+        !importer ||
+        importer.startsWith("\0") ||
+        !/(Inspector|Palette|StartCard|FirstRunHint|ShortcutsDialog|SimPanel)$/.test(source)
+      )
+        return null;
+      const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+      const panel = resolved && EDITOR_ONLY.find((p) => own(resolved.id, p.path));
+      return panel ? `${STUB}${panel.path}:stub` : null;
     },
     load(id) {
-      return id === NO_LOCAL ? "export const matchesLocalExample = () => false;" : null;
+      if (id === NO_LOCAL) return "export const matchesLocalExample = () => false;";
+      const panel = id.startsWith(STUB) && EDITOR_ONLY.find((p) => id === `${STUB}${p.path}:stub`);
+      return panel ? panel.stub(root) : null;
     },
     transform(code, id) {
       if (!own(id, "/src/live/liveRenderer.ts")) return null;
@@ -152,6 +196,14 @@ export function assembleTemplate(script: string, style: string): string {
  * the private-example guard). Usable from Node on its own: `await buildViewerTemplate(process.cwd())`.
  */
 export async function buildViewerTemplate(root: string, plugins: PluginOption[] = []): Promise<string> {
+  return (await buildViewer(root, plugins)).html;
+}
+
+/** The template and the modules its script is made of (the tests check what's in and what isn't). */
+export async function buildViewer(
+  root: string,
+  plugins: PluginOption[] = [],
+): Promise<{ html: string; modules: string[] }> {
   // Vite and the React plugin read NODE_ENV for production mode (Vitest sets "test"): always production.
   const env = process.env.NODE_ENV;
   process.env.NODE_ENV = "production";
@@ -162,7 +214,7 @@ export async function buildViewerTemplate(root: string, plugins: PluginOption[] 
   }
 }
 
-async function buildTemplate(root: string, plugins: PluginOption[]): Promise<string> {
+async function buildTemplate(root: string, plugins: PluginOption[]): Promise<{ html: string; modules: string[] }> {
   const result = await build({
     configFile: false,
     root,
@@ -215,7 +267,10 @@ async function buildTemplate(root: string, plugins: PluginOption[]): Promise<str
       `interactive viewer: files the page would have to fetch: ${others.map((a) => a.fileName).join(", ")}`,
     );
   const css = assets.map((a) => String(a.source)).join("");
-  return assembleTemplate(chunks[0].code.trim(), fontFaces(root) + css.trim());
+  const modules = Object.entries(chunks[0].modules)
+    .filter(([, m]) => m.renderedLength > 0)
+    .map(([id]) => id.replaceAll("\\", "/"));
+  return { html: assembleTemplate(chunks[0].code.trim(), fontFaces(root) + css.trim()), modules };
 }
 
 /** The template's file name in a build: its content's hash in the name. */

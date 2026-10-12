@@ -248,10 +248,11 @@ simulation picker, play and pause, speed, slow motion, trace and the rest of the
 - **Privacy.** Allowed for every diagram, Private ones and the development-only local-only examples included, exactly
   like Diagram file: it's the person's explicit action, like saving to this device. The file is made in the page;
   nothing is uploaded.
-- **What's in it.** The viewer (React, React Flow, the canvas and the live session, about 1.07 MB minified), its CSS,
+- **What's in it.** The viewer (React, React Flow, the canvas and the live session, about 0.98 MB minified), its CSS,
   Mona Sans and Geist Mono (Latin, as data URIs; other scripts fall back to system fonts), the diagram JSON and
-  only the icons it uses (SVG data URIs). Template 1,305 kB raw / 438 kB gzip; the Kafka example exported with both
-  simulations 1,346 kB / 453 kB.
+  only the icons it uses (SVG data URIs). Template 1,220 kB raw / 415 kB gzip; the Kafka example exported with both
+  simulations and a banner 1,261 kB / 430 kB. The editing-only panels (inspector, stencil rail, start card,
+  first-run hint, shortcuts sheet, simulation editor) are stubbed out of it: the read-only canvas never shows them.
 - **Zero requests.** A strict policy in a `<meta http-equiv="Content-Security-Policy">`: `default-src 'none'`,
   `script-src` and `style-src` each one `'sha256-…'` hash of the page's single inline script and style (no
   `'unsafe-inline'`), `img-src data: blob:`, `font-src data:`, `media-src blob:` (Record video's preview),
@@ -263,8 +264,9 @@ simulation picker, play and pause, speed, slow motion, trace and the rest of the
   already has a main-thread fallback (`src/live/liveRenderer.ts`): the viewer marks workers unsupported at startup,
   and the build cuts the `new Worker(…)` out, so there's no worker file to fetch. It works everywhere the page does.
 - **No storage, no AI, no links out.** Every `file://` page shares one `localStorage`, and a sandboxed frame throws on
-  any access, so the viewer swaps `localStorage` and `sessionStorage` for in-memory stores before the app's modules
-  run (`src/export/viewer/sandbox.ts`): nothing is written. No editing, autosave, AI panel, WebMCP or share links
+  any access, so the viewer swaps `localStorage` and `sessionStorage` for in-memory stores before any app module is
+  even evaluated (`src/export/viewer/storage.ts`, imported first and importing nothing; some modules read storage as
+  they load): nothing is written, and the reader's own preferences (hidden dependencies, a theme) don't leak in. No editing, autosave, AI panel, WebMCP or share links
   (the build fails if their modules get in). There's no "Open in Live Diagrams" link either: one carrying the
   diagram would put it on a public URL, and even a plain one would tell livediagrams.dev (by its Referer) where
   the file is hosted. The footer says "Exported from Live Diagrams on 12 October 2026. Read-only." and the keys.
@@ -276,8 +278,10 @@ simulation picker, play and pause, speed, slow motion, trace and the rest of the
 **How it's built.** `scripts/interactive-viewer.ts` runs a second Vite build of `src/export/viewerEntry.tsx` (IIFE, no
 code splitting) beside the app's, inlines its script, CSS and fonts into one page, hashes them into the CSP and emits
 it as `export/interactive-viewer-<content hash>.html` (a new name per change, so a cached copy is never stale). It
-swaps two modules for the viewer: the stencil icon URLs (`src/stencils/iconUrls.ts` → the payload's data URIs) and
-the dev-only local-example check. The app reads the file's name from `virtual:interactive-viewer` and fetches it
+swaps modules for the viewer: the stencil icon URLs (`src/stencils/iconUrls.ts` → the payload's data URIs), the
+dev-only local-example check, and the editing-only panels (`EDITOR_ONLY`, stubs with the same exports; the build
+and `src/export/template.build.test.ts` fail if one comes back). The viewer's zoom buttons use the canvas's own
+overlay-aware Fit view (`src/canvas/canvasFit.ts`), and every viewport move honours reduced motion. The app reads the file's name from `virtual:interactive-viewer` and fetches it
 same-origin (`connect-src 'self'`) only when the dialog opens; none of it is in the startup JavaScript (the menu
 item adds 0.19 kB gzip; `src/lib/bundleSplit.build.test.ts` checks). In `pnpm dev` the template is built on the
 first request for `/export/interactive-viewer.html`.
@@ -307,11 +311,15 @@ writeFileSync(htmlFileName(diagram.title), html);
 ```
 
 The JSON is escaped for a `<script>` element (every `<` as a JSON unicode escape, so no `</script>` or `<!--`, and
-U+2028 and U+2029 too). The viewer checks the payload with `validateDiagram`, takes only `data:image/` icons, and
-shows a plain message for a damaged or newer file. Tests: `src/export/inject.test.ts` (injection, escaping,
+U+2028 and U+2029 too). Both ends hold the whole diagrams/v1 contract: the app runs `validateDiagram` before it
+writes a file, and the viewer bounds the payload before parsing it (12 MB in all, the diagram within the app's own
+8 MB file budget, at most 400 icons of 200 kB), checks it with `validateDiagram`, takes only `data:image/` icons,
+and shows a plain message for a damaged, oversized or newer file. Tests: `src/export/inject.test.ts` (injection, escaping,
 subsetting, file names, the policy), `src/export/template.build.test.ts` (the real template: the hashes match,
 nothing external, deterministic, the Kafka export) and `tests/e2e/html-export.spec.ts` (export from the build, open
-from `file://` and in an iframe, render, play, switch simulations, banner, zero requests, zero CSP violations,
+from `file://`, in an iframe and in a sandboxed one (`allow-scripts`, storage denied), render, play, switch
+simulations (the new one's narration, node status and clock), banner, zero requests, zero CSP violations, the
+reader's storage untouched and their preferences kept out,
 Private, Ctrl+K).
 
 ### Security headers (`scripts/security-headers.ts`)

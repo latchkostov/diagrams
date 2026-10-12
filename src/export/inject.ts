@@ -1,5 +1,5 @@
 // Interactive HTML export: turning the viewer template into one diagram's file. Pure string work with no
-// imports and no browser or Node APIs, so the app (src/export/exportHtml.ts) and an offline Node script
+// runtime imports (types only) and no browser or Node APIs, so the app (src/export/exportHtml.ts) and an offline Node script
 // (the agent skill's export) produce byte-identical files from the same template and inputs.
 //
 // The template (built by scripts/interactive-viewer.ts, served as export/interactive-viewer-<hash>.html) is a
@@ -10,6 +10,8 @@
 //   <script type="application/json" id="diagram">__LIVE_DIAGRAMS_PAYLOAD__</script>
 //       the placeholder this module fills.
 // Data blocks never run, so neither the payload nor the icons change the CSP: the hashes stay valid.
+
+import type { DiagramFile } from "../model/types";
 
 /** The placeholder inside the template's `#diagram` data block. */
 export const PAYLOAD_PLACEHOLDER = "__LIVE_DIAGRAMS_PAYLOAD__";
@@ -22,12 +24,8 @@ export const FALLBACK_ICON = "generic-box";
 /** The payload's format; the viewer refuses others. */
 export const PAYLOAD_VERSION = 1;
 
-/** A diagram (diagrams/v1) as the file carries it, whole: only what this module reads is typed here. */
-export interface PayloadDiagram {
-  title: string;
-  nodes: readonly { stencil: string }[];
-  simulations?: readonly { id: string; title: string }[];
-}
+/** What icon subsetting reads of a diagram. */
+type WithStencils = { nodes: readonly { stencil: string }[] };
 
 export interface ViewerOptions {
   theme: "light" | "dark";
@@ -41,14 +39,14 @@ export interface ViewerOptions {
 
 export interface ExportPayload {
   version: typeof PAYLOAD_VERSION;
-  diagram: PayloadDiagram;
+  diagram: DiagramFile;
   /** Icon name → data: URI, only the icons the diagram uses. */
   icons: Record<string, string>;
   options: ViewerOptions;
 }
 
 export interface ExportInput {
-  diagram: PayloadDiagram;
+  diagram: DiagramFile;
   /** Icon name → SVG text (all of them or just the used ones: only the used ones go in). */
   iconSvgs: Readonly<Record<string, string>>;
   theme: "light" | "dark";
@@ -96,7 +94,7 @@ export function templateStencilIcons(template: string): Record<string, string> {
  * unknown or its icon isn't in `iconSvgs`. Sorted by name, so the output doesn't depend on node order.
  */
 export function subsetIcons(
-  diagram: PayloadDiagram,
+  diagram: WithStencils,
   stencilIcons: Readonly<Record<string, string>>,
   iconSvgs: Readonly<Record<string, string>>,
 ): Record<string, string> {
@@ -118,10 +116,14 @@ export function today(now = new Date()): string {
 
 /** What the file carries: the diagram (with its title and chosen simulations), the used icons and the options. */
 export function buildPayload(template: string, input: ExportInput): ExportPayload {
+  // The whole diagrams/v1 contract is the caller's (the app validates first); this catches a plain mistake.
+  const d: Partial<DiagramFile> | undefined = input.diagram;
+  if (d?.format !== "diagrams/v1" || !Array.isArray(d.nodes) || !Array.isArray(d.edges))
+    throw new Error("That isn't a diagram (diagrams/v1 with nodes and edges).");
   const keep = input.simulations ? new Set(input.simulations) : undefined;
   const simulations = (input.diagram.simulations ?? []).filter((s) => !keep || keep.has(s.id));
   const title = (input.title ?? input.diagram.title).trim() || input.diagram.title;
-  const diagram: PayloadDiagram = { ...input.diagram, title };
+  const diagram: DiagramFile = { ...input.diagram, title };
   if (input.diagram.simulations || simulations.length) diagram.simulations = simulations;
   const start = input.startSimulation ?? null;
   const banner = input.banner?.trim();
