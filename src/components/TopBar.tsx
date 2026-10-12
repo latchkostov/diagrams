@@ -9,6 +9,7 @@ import { Menu } from "../interop/ui/Menu";
 import { Glyph } from "../interop/ui/glyphs";
 import { capacityOverlay } from "../live/capacityOverlay";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
+import { checksPanel } from "../canvas/checks/checksPanel";
 import { groupByTheme, type ExampleThemeInfo } from "../examples/themes";
 
 export interface ExampleOption {
@@ -205,6 +206,15 @@ function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
                 desc: "Config, secret, identity and other dotted edges",
                 checked: dependencyVisibility.get(),
                 onSelect: () => dependencyVisibility.toggle(),
+              },
+              {
+                type: "item" as const,
+                testId: "view-checks",
+                title: "Checks",
+                desc: "Likely design problems, with fixes",
+                checked: checksPanel.isOpen(),
+                disabled: !checksPanel.isAvailable(),
+                onSelect: () => checksPanel.toggle(),
               },
             ]
           : []),

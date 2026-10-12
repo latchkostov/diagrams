@@ -282,7 +282,25 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   motion**. Below 1× live draws a calm sample of whole journeys; the counts never change.
 - Side panels make room rather than cover: below 1680 px, live view and an open AI panel fold the stencils to
   their rail until they are opened by hand. Toasts centre on the canvas pane and stack above its bars.
-- Esc backs out one level: menu, dialog, selection, slow motion, trace, highlighted path, presentation, then live view.
+- **Checks** find likely design problems (failed messages that are dropped, a topic nobody reads, requests that go
+  round in a circle, a service that can't keep up) and offer a **fix** for each. Never "lint", "issues" or "errors":
+  a **finding** is a **Warning** or a **Suggestion**, and nothing blocks saving, sharing or going live.
+  - **The count**: "⚠ 2 warnings" under the diagram's title, muted, only when there's a warning (suggestions alone show
+    nothing, and with none there's no "0 issues"). Editing only: no count in live view, presenting, embeds or exports.
+  - **Check diagram** (the count, the canvas right-click next to Auto-layout, Ctrl+K, View ▸ Checks) opens the
+    **Checks card** under the diagram card: warnings, then suggestions. A row's head selects what the finding names
+    and brings it into view (as a new selection is shown); its chips select one thing each; **Why** says why it
+    matters. The row's one button is the fix, named for the change ("Add dead-letter queue"), applied as one undo
+    step with a toast that says what it added and offers **Undo**. A fix that needs a choice ("Add a consumer…")
+    opens quick-add downstream. **⋯** has **Ignore here…** (an optional reason), **Turn off this check** and **About
+    this check**; the foot's "1 ignored · 1 check off" brings them back. Both are kept in the file (`checks`).
+  - **Markers** (an amber triangle for a warning, a blue dot for a suggestion) show on the nodes and connections a
+    finding names, only while the card is open. A single selected node or connection with findings shows them at the
+    top of its inspector, with the fix.
+  - Checks run by themselves after edits pause, in idle time and off the main thread, so typing and dragging never
+    wait. A diagram over 1,500 nodes is checked when the card opens. Private diagrams are checked too: it all stays
+    on this device. Only the agents' `check_diagram` follows the AI rules.
+- Esc backs out one level: menu, dialog, selection, the Checks card, slow motion, trace, highlighted path, presentation, then live view.
   In a text field on the canvas it saves and leaves the field (Editing text, above). Esc never selects, and clearing a
   selection leaves keyboard focus where it was (on the node), never on the page.
 - **Undo toasts** ("Payments service left AKS · Undo", an agent's change, an applied fix) offer to reverse one change.

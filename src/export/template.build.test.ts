@@ -64,6 +64,13 @@ describe("interactive viewer template", () => {
     expect(real("/src/live/LiveSession.tsx")).toBe(true);
   });
 
+  it("runs no architecture checks: no engine, card, markers or checks worker", () => {
+    expect(
+      modules.filter((id) => /[/\\]src[/\\](checks|canvas[/\\]checks[/\\](ChecksMarkers|runner))/.test(id)),
+    ).toEqual([]);
+    expect(template).not.toMatch(/name:\s*"checks"|checks\/worker/);
+  });
+
   it("isolates storage before any other code names it", () => {
     // ./viewer/storage imports nothing and is imported first: in the script, the first mention of either
     // store is its list of what to replace, so no app module can read the browser's storage before it runs.

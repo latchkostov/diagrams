@@ -3334,3 +3334,62 @@ select.insp-input {
   top: 0;
   pointer-events: none;
 }
+
+/* ---- architecture checks: the count under the title, and the markers while the Checks card is open ---- */
+
+.diagram-card-meta .checks-count {
+  color: var(--warning);
+  font-weight: 550;
+}
+
+.diagram-card-meta .checks-count:hover {
+  text-decoration: underline;
+}
+
+.check-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Above nodes and edge labels, below menus. */
+  z-index: 1001;
+}
+
+.check-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  pointer-events: auto;
+  transition: scale var(--dur-1) var(--ease-out);
+}
+
+.check-marker.is-warning svg path:first-child {
+  fill: var(--warning);
+  stroke: var(--surface);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+.check-marker-ink {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.check-marker.is-suggestion::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.check-marker.is-hot {
+  scale: 1.35;
+}

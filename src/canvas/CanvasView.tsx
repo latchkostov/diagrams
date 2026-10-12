@@ -134,6 +134,10 @@ import { edgeHover, nearestEdge, type EdgeHover } from "./edgeHover";
 import { selectRoutes } from "./edges/useEdgeRoute";
 import { isConnectable } from "./annotations";
 import { railAnchor } from "./railAnchor";
+import { checksPanel, useChecksPanel } from "./checks/checksPanel";
+import { useChecks } from "./checks/useChecks";
+import { ChecksCardView, ChecksMarkersView, DiagramCardMeta, SelectionFindings } from "./checks/ChecksViews";
+import { useBelow } from "./checks/useBelow";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -457,13 +461,50 @@ function CanvasInner({
   const stepping = useRef<string | undefined>(undefined);
   useCanvasShortcuts(editor, {
     enabled: !shortcutsOpen && !readOnly,
-    onEscape: () => setMenu(null),
+    onEscape: () => {
+      // Esc backs out one level: a menu, the selection, then the Checks card.
+      const sel = editor.getSelection();
+      // Inside the card, the card handles Esc itself (a finding's options first, then the card).
+      const inCard = !!document.activeElement?.closest('[data-testid="checks-card"]');
+      if (
+        !inCard &&
+        !menuOpen.current &&
+        checksPanel.isOpen() &&
+        !sel.nodeIds.length &&
+        !sel.edgeIds.length &&
+        !sel.groupIds.length
+      )
+        checksPanel.close();
+      setMenu(null);
+    },
     live,
     onGrow: (from, toward, clone) => grow.current(from, toward, clone),
     onNavigate: (step, from) => navigate.current(step, from),
   });
   // The command palette (Ctrl/Cmd+K) acts on this canvas while it's mounted and editable.
   const hostRevision = useMemo(() => ({ nodes, edges, meta }), [nodes, edges, meta]);
+
+  // ---------------------------------------------------------------- architecture checks
+  // They run after edits pause, in idle time, off the main thread (checks/useChecks.ts). Editing only: no count
+  // and no card in live view, presenting, an embed or the exported HTML viewer (read-only, and its build stubs the
+  // checks out: scripts/interactive-viewer.ts). Private diagrams are checked like any other (it's local).
+  const checksOn = !readOnly && !viewer && !presenting && !live;
+  useEffect(() => {
+    checksPanel.setAvailable(checksOn);
+    return () => checksPanel.setAvailable(false);
+  }, [checksOn]);
+  const checksCard = useChecksPanel().open;
+  const checks = useChecks({
+    enabled: checksOn,
+    revision: hostRevision,
+    read: () => editor.getDiagram(),
+    nodeCount: nodes.length,
+    cardOpen: checksCard,
+  });
+  const menuOpen = useRef(false);
+  useEffect(() => {
+    menuOpen.current = !!menu;
+  });
   const allowOnDevice = useCallback((on: boolean) => void setOnDeviceAllowed(slug, on), [slug]);
   // Only development builds read content for privacy (privacyOf); production reads provenance alone.
   const privacy = privacyOf({
@@ -575,6 +616,7 @@ function CanvasInner({
   // The title card folds to a chip while nodes sit under it, so it never hides the diagram.
   const card = useRef<HTMLDivElement>(null);
   const cardCovers = useCovered(card, wrapper);
+  const checksTop = useBelow(card, checksOn && checksCard);
   useOverlayTestIds(wrapper);
 
   // Your own diagrams have no "original" worth going back to: the edits are the diagram (and undo
@@ -763,6 +805,55 @@ function CanvasInner({
   }, [menu]);
   useEffect(() => () => landing.set(null), []);
   const growFromChip = useCallback((id: string) => growTo(id), [growTo]);
+  /**
+   * A check's row or chip: selects the nodes and connections it names and brings them into view with the one
+   * reveal (revealPan), clear of the Checks card and the other floating chrome.
+   */
+  const revealIds = useCallback(
+    (ids: readonly string[]) => {
+      // From React Flow's lookups: one finding may name thousands of things, and the editor's getNode/getEdge
+      // each rebuild the file.
+      const st = store.getState();
+      const nodeIds = ids.filter((id) => st.nodeLookup.get(id)?.type === "diagram");
+      const edgeIds = ids.filter((id) => st.edgeLookup.has(id));
+      editor.select({ nodeIds, edgeIds, groupIds: [] });
+      requestAnimationFrame(() => {
+        const el = wrapper.current;
+        if (!el) return;
+        const now = store.getState();
+        const ends = edgeIds.flatMap((id) => {
+          const e = now.edgeLookup.get(id);
+          return e ? [e.source, e.target] : [];
+        });
+        const boxes = [...nodeIds, ...ends]
+          .map((id) => now.nodeLookup.get(id))
+          .filter((n) => !!n && !n.hidden && n.measured?.width)
+          .map((n) => ({
+            x: n!.internals.positionAbsolute.x,
+            y: n!.internals.positionAbsolute.y,
+            width: n!.measured!.width!,
+            height: n!.measured!.height ?? 0,
+          }));
+        const want = union(boxes);
+        if (!want) return;
+        const [x, y, zoom] = now.transform;
+        const next = revealPan(el, { x, y, zoom }, want);
+        if (next) void setViewport(next, { duration: motionMs(250) });
+      });
+    },
+    [editor, store, setViewport],
+  );
+  const checksHost = useMemo(
+    () => ({
+      editor,
+      reveal: revealIds,
+      choose: growFromChip,
+      hover: checks.setHot,
+      open: () => checksPanel.open(),
+      returnFocus: () => (checksPanel.opener() ?? wrapper.current)?.focus(),
+    }),
+    [editor, revealIds, growFromChip, checks],
+  );
   useLayoutEffect(() => {
     grow.current = (from, toward, clone) => (clone ? cloneTo(from, toward) : growTo(from, toward));
   });
@@ -1459,6 +1550,13 @@ function CanvasInner({
   const selectedEdges = useMemo(() => edges.filter((e) => e.selected), [edges]);
   const nothingSelected =
     !selectedNodes.length && !selectedGroups.length && !selectedEdges.length && !selectedAnnotations.length;
+  // A single selected node or connection with findings shows them at the top of its inspector, with the fix.
+  const soleId =
+    selectedNodes.length + selectedGroups.length + selectedEdges.length + selectedAnnotations.length === 1
+      ? (selectedNodes[0]?.id ?? selectedEdges[0]?.id)
+      : undefined;
+  const inspectorFindings =
+    soleId && checksOn ? <SelectionFindings store={checks} id={soleId} host={checksHost} /> : undefined;
   // Below ROOMY an open AI panel folds the stencils to their rail too, as live view does: at 1440 the
   // dock, the stencils and the inspector's rail left the diagram 780 px.
   const paletteHidden = paletteCollapsed || ((live || (narrow && aiDockOpen)) && !openedByHand.palette);
@@ -1532,6 +1630,21 @@ function CanvasInner({
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when a side panel opens or closes
   }, [panelsKey]);
+  // The Checks card opened over a diagram that was all in view: refit it clear of the card (the card is floating
+  // chrome, data-canvas-overlay), once the card has drawn. A view the user panned or zoomed stays put.
+  useEffect(() => {
+    if (!checksCard || !showingAll.current || live || presenting) return;
+    let frames = 60;
+    let id = 0;
+    const step = () => {
+      const drawn = wrapper.current?.querySelector('[data-testid="checks-card"]');
+      if (!drawn && --frames > 0) id = requestAnimationFrame(step);
+      else if (drawn) overlayFit({ maxZoom: FIT.maxZoom, margin: 40, duration: 250 });
+    };
+    id = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the card opens
+  }, [checksCard]);
   // The AI panel opened, closed or was resized by more than a little: the pane changed size at its
   // right edge. A fit is refitted to the new pane; a view the user panned or zoomed keeps the selection
   // (or, with none, the diagram's centre) in view with a pan.
@@ -2127,6 +2240,7 @@ function CanvasInner({
               />
             )}
             {viewer?.controls && <CanvasFitContext.Provider value={fit}>{viewer.controls}</CanvasFitContext.Provider>}
+            {checksOn && checksCard && <ChecksMarkersView store={checks} />}
           </ReactFlow>
 
           <div
@@ -2149,19 +2263,28 @@ function CanvasInner({
             {privacy && !hideChrome && <PrivateBadge kind={privacy} />}
             {meta.description && <p>{meta.description}</p>}
             {/* Node and edge counts live in the inspector's diagram panel, not here too. */}
-            {!hideChrome && modified && !ownDiagram && (
-              <div className="diagram-card-meta">
-                <button
-                  className="link-btn"
-                  onClick={reset}
-                  data-testid="reset-diagram"
-                  title="Discard your edits to this diagram (undoable)"
-                >
-                  <Icon name="reset" size={13} /> Edited, reset
-                </button>
-              </div>
+            {!hideChrome && (
+              <DiagramCardMeta
+                store={checks}
+                open={checksCard}
+                reset={
+                  modified &&
+                  !ownDiagram && (
+                    <button
+                      className="link-btn"
+                      onClick={reset}
+                      data-testid="reset-diagram"
+                      title="Discard your edits to this diagram (undoable)"
+                    >
+                      <Icon name="reset" size={13} /> Edited, reset
+                    </button>
+                  )
+                }
+              />
             )}
           </div>
+
+          {checksOn && checksCard && <ChecksCardView store={checks} host={checksHost} top={checksTop} />}
 
           {presenting && (
             <button className="present-exit" onClick={onExitPresent} data-testid="present-exit">
@@ -2220,6 +2343,7 @@ function CanvasInner({
               setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));
             }}
             focus={inspectorFocus}
+            findings={inspectorFindings}
           />
         )}
       </div>

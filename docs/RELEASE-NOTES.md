@@ -2,6 +2,23 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Checks (2026-10)
+
+No habit changes. New:
+
+- **Checks** find likely design problems as you edit: failed messages that are dropped (no dead-letter queue), a topic
+  or queue nobody reads, requests that go round in a circle, and a service that can't keep up at the diagram's own
+  rates. When there's a warning, a muted **⚠ 1 warning** appears under the diagram's title; suggestions alone show
+  nothing.
+- **Check diagram** (that count, the canvas right-click, Ctrl+K or View ▸ Checks) opens the **Checks card**. Each
+  finding names what it involves (click to select it), says why it matters, and offers a fix ("Add dead-letter
+  queue") as one undo step. **⋯ ▸ Ignore here** (with an optional reason) and **Turn off this check** are kept in the
+  file, so whoever opens it sees the same; the card's foot brings them back.
+- While the card is open, small markers show on the nodes and connections it names. Select one and its finding is at
+  the top of the inspector.
+- Checks run in the background after you pause, so typing and dragging don't wait. Live view and presenting show no
+  count; private diagrams are checked like any other, on this device.
+
 ## Interactive HTML export (2026-10)
 
 Nothing you do today changes. New:

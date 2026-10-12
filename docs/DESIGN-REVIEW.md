@@ -1,5 +1,48 @@
 # Design review
 
+## Round 15: checks UI (2026-10-12)
+
+The gate for architecture checks batch 2: the count under the title, the Checks card, markers, the inspector's
+finding, fixes, Ignore and Turn off (`docs/research/architecture-checks.md`, "Batch 2: as built").
+
+**How.** Dev server, Chrome (Playwright), at 1024×768, 1280×800 and 1440×900, light and dark; mouse and keyboard.
+Public examples only: Azure invoice integration (one warning, two suggestions), AKS (clean), Outbox and saga
+(one suggestion). Overlap measured from bounding boxes at 1024; responsiveness with Event Timing on a generated
+1,500-node diagram on the production build. Screenshots are in `docs/screenshots/round15/`.
+
+### What's great
+
+- **Quiet by default.** A clean diagram shows nothing; one with only suggestions shows nothing either
+  (`card-suggestions-only-1280-dark` is opened by hand). The count is one muted amber line under the title
+  (`count-1280-light`), and it's gone in live view and presenting.
+- **The fix is the row's one button**, named for the change, and its toast says what it added with Undo
+  (`fix-toast-1280-light`). One Ctrl+Z takes the queue and its route back, and the warning returns.
+- **You meet the finding where you work.** Selecting the queue shows its finding at the top of the inspector, with
+  the same fix (`inspector-finding-1280-light`).
+- **Typing doesn't wait on checks.** In a 1,500-node diagram a keystroke costs the same with checks running between
+  keys in the worker as with them held (the e2e test compares the two in one run).
+
+### What was off (fixed in this round)
+
+- **The card ran over the canvas controls** in the bottom-left corner, and at 1280 it reached the hint along the
+  bottom. It now stops above the controls, measured, at any height (`card-open-1024-light`).
+- **The card hid part of a fitted diagram.** Opening it over a diagram that was all in view now refits the diagram
+  clear of it, as opening a side panel does (rule 10). A view you panned or zoomed stays put.
+- **Ctrl+K showed "Add something to check first"** beside Check diagram even when there was something to check. The
+  hint now shows only when the action is off (`palette-check-diagram-1280-light`).
+- **A big diagram drew every finding.** Hundreds of rows made the card slow to open; rows now draw 40 per group with
+  **Show more**, and a row names only the chips it draws, from one index per check.
+- **At 1024 the refit left the diagram small** (`card-open-1024-light`). The card is 290 px wide in windows up to
+  1,100 px (the owner's call after the first review).
+- **Keyboard (after the code review).** Home and End in the Ignore reason box move the caret; Esc closes a finding's
+  options before the card; closing the card puts focus back on what opened it (the count, else the canvas).
+
+### Still open (owner's call)
+
+- Markers are deliberately small (14 px); on a zoomed-out dark diagram they're easy to miss
+  (`card-open-1440-dark`). The rows' heads are the way in; a marker is a hint.
+- The Ignore reason box is one line in a 290–340 px card (`card-ignore-reason-1280-light`): long reasons scroll.
+
 ## Round 17: Interactive HTML export (2026-10-12)
 
 File ▸ Export as ▸ **Interactive HTML…**: one self-contained file for sharing a diagram inside a company, with no

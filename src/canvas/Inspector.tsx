@@ -176,6 +176,8 @@ export interface InspectorProps {
   onToggle: () => void;
   /** Focus request: `inspector-field-<name>`; `seq` re-triggers for the same name. */
   focus?: { name: string; seq: number };
+  /** The selection's architecture-check findings, shown above its fields (a single node or connection). */
+  findings?: ReactNode;
   /** A text's edit is done (see DiagramUi.settleText): it moves clear if it grew over something. */
   onTextSettled?: (id: string, before: { x: number; y: number; width: number; height: number }) => void;
 }
@@ -253,6 +255,7 @@ export function Inspector(p: InspectorProps) {
         </button>
       </div>
       <div className="insp-body" ref={body} data-testid="inspector-body">
+        {n === 1 && p.findings}
         {content}
       </div>
     </aside>
