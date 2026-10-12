@@ -301,6 +301,8 @@ test.describe("password links", () => {
       window.dispatchEvent(new PopStateEvent("popstate"));
     }, target.slug);
     await expect(other.getByTestId("example-picker")).toHaveValue(target.slug);
+    // The picker shows a pending choice at once; the diagram opens once its example has downloaded (slow under load).
+    await expect(other.getByTestId("diagram-title")).toHaveText(target.title, { timeout: pageLoadTimeout() });
     await release(other, "decrypt");
     await expect(other.getByTestId("password-prompt-error")).toContainText("Another diagram opened", {
       timeout: 15_000,

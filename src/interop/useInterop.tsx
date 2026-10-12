@@ -343,7 +343,11 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   const linkAllowed = (source: string = slug) => {
     if (canShareAsLink(privacyState(source))) return true;
     toast.info(SHARE_LINKS ? PRIVATE_SHARE_MESSAGE : LINKS_OFF_MESSAGE, {
-      action: { label: "Export file", run: () => void exportNative(), testId: "toast-private-export" },
+      action: {
+        label: "Interactive HTML…",
+        run: () => setDialog({ kind: "html", diagram: current() }),
+        testId: "toast-private-export",
+      },
     });
     return false;
   };
@@ -384,11 +388,11 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       if (!(await copyText(url))) return showShare(d, source);
       if (url.length > SHARE_WARN_LENGTH) {
         toast.info(
-          `Share link copied, but it's long (${Math.round(url.length / 1000)}k characters). Some apps cut long links off.`,
+          `Share link copied. Anyone with the link can open the diagram. It's long (${Math.round(url.length / 1000)}k characters): some apps cut long links off.`,
           { action: details, duration: 9000 },
         );
       } else {
-        toast.success("Share link copied. The diagram travels inside the link.", { action: details });
+        toast.success("Share link copied. Anyone with the link can open the diagram.", { action: details });
       }
     });
   const openEmbed = () =>

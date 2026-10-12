@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { DiagramFile } from "../../model/types";
 import { embedSnippet, embedUrl, encodeShare, SHARE_WARN_LENGTH, shareUrl } from "../share";
 import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
@@ -22,6 +22,17 @@ import { Glyph } from "./glyphs";
 import { toast } from "./toast";
 
 const kb = (n: number) => (n < 1024 ? `${n} characters` : `${(n / 1024).toFixed(1)}k characters`);
+
+/**
+ * Moves focus to `target` once `ready`, if the dialog's panel still holds it (its autofocus target was disabled
+ * when it opened, so the panel took focus). Focus the person moved elsewhere stays put.
+ */
+function useFocusWhenReady(target: RefObject<HTMLElement | null>, ready: boolean) {
+  useEffect(() => {
+    const el = target.current;
+    if (ready && el && document.activeElement === el.closest("[role=dialog]")) el.focus();
+  }, [target, ready]);
+}
 
 /** Share link: the diagram compressed into the URL fragment. */
 export function ShareDialog({
@@ -51,6 +62,8 @@ export function ShareDialog({
   }, [diagram]);
   const long = !!url && url.length > SHARE_WARN_LENGTH;
   const canShare = typeof navigator.share === "function";
+  const copyButton = useRef<HTMLButtonElement>(null);
+  useFocusWhenReady(copyButton, !!url);
 
   const copy = async () => {
     if (!gate(allowed, onClose)) return;
@@ -61,7 +74,7 @@ export function ShareDialog({
   return (
     <Dialog
       title="Share link"
-      subtitle="Anyone with the link gets their own editable copy."
+      subtitle="Anyone with the link can open it and keep an editable copy."
       icon={<Glyph name="link" />}
       onClose={onClose}
       testId="share-link-dialog"
@@ -94,6 +107,7 @@ export function ShareDialog({
             </a>
           )}
           <button
+            ref={copyButton}
             className="btn btn-primary"
             onClick={copy}
             disabled={!url}
@@ -240,7 +254,7 @@ function HostPreview({ diagram, simulation }: { diagram: DiagramFile; simulation
     if (ready.current) send();
     return () => window.removeEventListener("message", onMessage);
   }, [src, diagram, simulation]);
-  return <iframe ref={frame} src={src} title="Embed preview" data-testid="embed-preview" />;
+  return <iframe ref={frame} src={src} title="Embed preview" tabIndex={-1} data-testid="embed-preview" />;
 }
 
 /** Embed code: an <iframe> of the read-only viewer, or a viewer your own app supplies, with a live preview. */
@@ -305,6 +319,8 @@ export function EmbedDialog({
     : src
       ? embedSnippet(src, { title: diagram.title, height })
       : "";
+  const copyButton = useRef<HTMLButtonElement>(null);
+  useFocusWhenReady(copyButton, !!snippet);
   const [previewSrc, setPreviewSrc] = useState<string>();
   useEffect(() => {
     // Debounce so flipping options doesn't reload the preview on every click.
@@ -337,11 +353,13 @@ export function EmbedDialog({
 
   return (
     <Dialog
-      title="Embed"
+      title="Embed code"
       subtitle={
-        host
-          ? "Show this diagram inside your own app or intranet. Viewers can pan, zoom and play it, not edit it."
-          : "Paste this into a blog post, wiki or docs page. Viewers can pan and zoom, not edit."
+        privateDiagram
+          ? "A private diagram embeds only where your own app supplies it. Viewers can pan, zoom and play it."
+          : host
+            ? "Show this diagram inside your own app or intranet. Viewers can pan, zoom and play it, not edit it."
+            : "Paste this into a blog post, wiki or docs page. Viewers can pan and zoom, not edit."
       }
       icon={<Glyph name="code" />}
       onClose={onClose}
@@ -375,6 +393,7 @@ export function EmbedDialog({
             </a>
           )}
           <button
+            ref={copyButton}
             className="btn btn-primary"
             onClick={copy}
             disabled={!snippet}
@@ -402,6 +421,15 @@ export function EmbedDialog({
         {SHARE_LINKS && sourceButton("inline", "In the link")}
         {sourceButton("host", "Your app supplies it (private)")}
       </div>
+      {source === "inline" && (
+        <div className="ix-callout" data-testid="embed-inline-note">
+          <Glyph name="info" size={15} />
+          <span>
+            <strong>Anyone who can see the page can open this diagram.</strong> It&apos;s inside the code. For a work
+            diagram, choose Your app supplies it (private).
+          </span>
+        </div>
+      )}
       {host && (
         <div className="ix-callout" data-testid="embed-host-note">
           <Glyph name="lock" size={15} />
@@ -443,11 +471,12 @@ export function EmbedDialog({
         aria-label="Embed code"
         data-testid="embed-snippet"
       />
-      <div className="ix-preview" style={{ height: host ? 300 : Math.min(height, 340) }}>
+      <div className="ix-preview" style={{ height: host ? 300 : Math.min(height, source === "inline" ? 290 : 340) }}>
         {host ? (
           <HostPreview diagram={diagram} simulation={sim} />
         ) : previewSrc ? (
-          <iframe src={previewSrc} title="Embed preview" loading="lazy" data-testid="embed-preview" />
+          // A look, not a stop: Tab would otherwise walk every node in it, where Esc can't close the dialog.
+          <iframe src={previewSrc} title="Embed preview" loading="lazy" tabIndex={-1} data-testid="embed-preview" />
         ) : (
           <span className="ix-muted">Preparing preview…</span>
         )}
@@ -631,7 +660,7 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
   return (
     <Dialog
       title="Private diagram"
-      subtitle="It stays on this device. Export a file when you want to share it."
+      subtitle="It stays on this device. To share it, export Interactive HTML or the diagram file."
       icon={<Glyph name="lock" />}
       onClose={onClose}
       testId="privacy-dialog"
@@ -652,7 +681,7 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
       }
     >
       <ul className="ix-privacy-list" data-testid="privacy-dialog-list">
-        <li>No share links or embed codes</li>
+        <li>No share links; embeds only where your own app supplies it</li>
         <li>No saves to cloud storage</li>
         <li>No AI: agents, Copy for AI and copied prompts can&apos;t read it</li>
       </ul>

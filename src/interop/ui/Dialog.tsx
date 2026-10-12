@@ -47,7 +47,7 @@ export function Dialog({
           panelEl.querySelectorAll<HTMLElement>(
             'button, [href], input, select, textarea, iframe, [tabindex]:not([tabindex="-1"])',
           ),
-        ).filter((el) => !el.hasAttribute("disabled") && !el.hidden);
+        ).filter((el) => !el.hasAttribute("disabled") && !el.hidden && el.tabIndex >= 0);
         const first = controls[0] ?? panelEl;
         const last = controls.at(-1) ?? panelEl;
         if (e.shiftKey && (document.activeElement === first || document.activeElement === panelEl)) {
@@ -67,7 +67,10 @@ export function Dialog({
     backdropEl.addEventListener("mousedown", onMouseDown);
     backdropEl.addEventListener("contextmenu", onContextMenu);
     const prev = document.activeElement as HTMLElement | null;
-    (panelEl.querySelector<HTMLElement>("[data-autofocus]") ?? panelEl).focus();
+    // A primary action that's still getting ready (Copy link while the link is made) can't take focus: the panel
+    // does, so Esc and Tab work at once, and the dialog hands focus on when it's ready (dialogs.tsx, useFocusWhenReady).
+    const auto = panelEl.querySelector<HTMLElement>("[data-autofocus]");
+    (auto && !auto.matches(":disabled") ? auto : panelEl).focus();
     const background = Array.from(document.body.children).filter(
       (el): el is HTMLElement => el instanceof HTMLElement && !el.contains(backdropEl),
     );
@@ -78,7 +81,9 @@ export function Dialog({
       backdropEl.removeEventListener("mousedown", onMouseDown);
       backdropEl.removeEventListener("contextmenu", onContextMenu);
       background.forEach((el, i) => (el.inert = wasInert[i]));
+      // What opened it may be gone (a toast's Details): the canvas, not the page, gets the keyboard back.
       if (prev?.isConnected) prev.focus();
+      else document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
     };
   }, []);
 

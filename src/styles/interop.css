@@ -75,8 +75,15 @@
   background: var(--accent-soft);
 }
 
-.ix-menu-row.is-disabled {
+/* Off: the name and icon fade, the reason under them stays readable (AA in both themes). */
+.ix-menu-row.is-disabled .ix-menu-icon,
+.ix-menu-row.is-disabled .ix-menu-title,
+.ix-menu-row.is-disabled .ix-menu-hint {
   opacity: 0.45;
+}
+
+.ix-menu-row.is-disabled .ix-menu-item {
+  cursor: default;
 }
 
 .ix-menu-item {
@@ -556,6 +563,12 @@
   color: var(--text-2);
   font-size: 12.5px;
   font-weight: 560;
+}
+
+/* A source a private diagram can't use: visibly off, not just unresponsive. */
+.ix-seg button:disabled {
+  color: var(--text-4);
+  cursor: not-allowed;
 }
 
 .ix-seg button.is-on {
