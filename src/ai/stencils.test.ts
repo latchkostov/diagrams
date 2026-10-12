@@ -10,6 +10,20 @@ describe("stencil resolution", () => {
     ["sb queue", "azure.service-bus.queue"],
     ["Key Vault", "azure.key-vault"],
   ])("resolves %s", (kind, id) => expect(resolveKind(kind, "worker").id).toBe(id));
+  it.each([
+    ["API", "generic.service"],
+    ["a processor", "generic.service"],
+    ["Processor", "generic.service"],
+    ["an unspecified component", "generic.service"],
+    ["worker", "generic.service"],
+    ["PubSub", "gcp.pubsub"],
+    ["Pub/Sub", "gcp.pubsub"],
+    ["Redis", "redis.cache"],
+    ["Redis cache", "redis.cache"],
+    ["the Go service", "service.go"],
+    ["IoT devices", "client.iot"],
+    ["RabbitMQ queue", "rabbitmq.queue"],
+  ])("plain words: %s is %s", (kind, id) => expect(resolveKind(kind).id).toBe(id));
   it("reports exact ids as high confidence", () => expect(resolveKind("service.dotnet").confidence).toBe("high"));
   it("uses inference on label after kind search misses", () =>
     expect(resolveKind("Custom frobnicator", "Postgres writer").id).toBe("postgres"));

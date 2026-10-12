@@ -58,17 +58,36 @@ read from a `VITE_` variable, so builds without it still deploy.
 - **Pipeline** (`src/ai/ondevice/pipeline.ts`). The model's job is kept small:
   - **Input:** a compact description of the diagram within 2,400 characters. Each node is listed by
     label (or id where labels repeat) and stencil name, then the connections; a big diagram keeps the
-    selection and its neighbours first and says how much it left out. Then the selection as Copy for AI
-    names it, then the request.
-  - **Output:** `responseConstraint` is a flat op object with an `op` enum (`add`, `connect`, `rename`,
-    `change`, `remove`) and optional `kind`, `label`, `sublabel`, `from`, `to`, `flow` (message or
-    request) and `target`. Kinds are plain words, refs are labels, and there are no ids or coordinates.
-    Per-op required fields and the 16-op cap are checked in code, not in the schema.
-  - **Priming:** a system prompt plus three worked examples (a create, an edit by label, an insert
-    between two nodes), created once and `clone()`d per request.
+    selection and its neighbours first and says how much it left out. Then the selection, spelled out as
+    `this = <id> "<label>"`, then the request.
+  - **Output:** `responseConstraint` is a flat op object with an `op` enum (`add`, `connect`,
+    `insert_between`, `rename`, `change_kind`, `remove`) and optional `key`, `kind`, `label`, `sublabel`,
+    `from`, `to`, `flow` (message or request) and `target`. Kinds are plain words, new nodes have short
+    keys, existing nodes are named by label, and there are no ids or coordinates. Per-op required fields
+    and the 16-op cap are checked in code, not in the schema.
+  - **Priming:** a system prompt with explicit direction rules, plus four worked examples (a create with
+    "reads from", an edit by label, `insert_between` with `change_kind`, and "after this" with a
+    selection), created once and `clone()`d per request. The examples use made-up names (Zephyr, Quill);
+    a unit test checks that none of them appears in any eval request.
+  - **Forgiving what a small model gets wrong** (`compactOps.ts`), each rule unit-tested:
+    - References to nodes added in the same reply resolve by key, by label in any case, by kind, then by
+      a shared word ("Python job" is the node added as a Python service). A unique new node is never
+      swapped for an unrelated existing one, and an existing node's exact label still wins.
+    - `insert_between` adds the node, removes the direct connection (following it if the ends are named
+      the other way round) and connects both sides with the old connection's kind. A "between" request
+      answered with plain connects drops the bypassed connection too.
+    - `change_kind` swaps the stencil and keeps the label and connections. A `rename` with only a kind is a
+      kind change, and a `change_kind` with only a label is a rename.
+    - "this" is the selected node. With "after this" (or "before this"), a new node the reply left
+      unconnected is connected from (or to) the selection, and one drawn the wrong way round is turned.
+    - With a consume verb ("consumes", "reads from", "subscribes to", "is fed by") and no produce verb in
+      the request, a connection drawn from a service into a queue, topic or stream is turned round. This
+      is deliberately narrow: other pairs and mixed requests rely on the prompt's rules.
   - **Checking:** `toOps` maps the reply onto the core's ops, and `planTurn` (`applyOps`: `resolveKind`,
     `placeNew`, validation) plans it. If either fails, the error (with candidate labels) goes back to the
-    model once. A second failure shows "Couldn't apply that. Try rephrasing." and nothing is applied.
+    model once. A second failure shows "Couldn't apply that. Try rephrasing." and nothing is applied. A
+    transient Prompt API error ("An unknown error occurred: kErrorUnknown") is first retried on a fresh
+    session, without using up that retry.
   - **Committing:** the plan is made again on the diagram as it is at that moment (the person may have
     edited it meanwhile) and committed with `commitPlan`. That's one turn ("On this device · Chrome's
     built-in model") with Undo this change and Revert to here, like an agent's change.
@@ -95,9 +114,9 @@ read from a `VITE_` variable, so builds without it still deploy.
 
 ## Eval gate
 
-- **Harness.** `src/ai/evals/onDevice.ts` has 36 cases: 8 edits on the Kafka example (a dead-letter
+- **Harness.** `src/ai/evals/onDevice.ts` has 37 cases: 8 edits on the Kafka example (a dead-letter
   queue after a service, rename, remove, a cache between two nodes, connect, change a kind, add an email
-  sink, and a request with a selection), plus the 28 one-turn descriptions from the eval corpus, drawn
+  sink, and a request with a selection), plus the 29 one-turn descriptions from the eval corpus, drawn
   from empty. Each case is scored on the diagram afterwards, and must be a valid diagram. The creation
   cases use `checkGraph` (`src/ai/evals/graphCheck.ts`, shared with the corpus test): expected nodes
   are matched one to one by stencil, and every expected connection must join them in the right
@@ -108,12 +127,59 @@ read from a `VITE_` variable, so builds without it still deploy.
   model (check `await LanguageModel.availability()` in DevTools, or `chrome://on-device-internals`).
   Press **Run evals** (the first run may download the model), then **Copy results as Markdown** and paste
   the table below.
+- **Report.** Each failed row has a **Category** (reference, direction, stencil, structure, format, model
+  error) and every row has the **Model output**: the model's last reply and the stencil each added node
+  resolved to. A summary line counts failures by category.
 - **Bar:** at least 80% of cases pass before `ON_DEVICE_DEFAULT` (`src/ai/ondevice/onDevicePref.ts`)
   turns the box on without asking.
 
 ### Results
 
-**Not run yet.** On the development machine (Windows 11, RTX 4070 Ti, 32 GB), the Chrome 154 that
-DevTools automation drives reports `LanguageModel.availability()` as `"unavailable"`. That's probably
-its automation profile, which can't open `chrome://on-device-internals`. Until the rate is recorded
-here, the box stays behind **Try the on-device model**.
+**Baseline, 12 October 2026, Chrome 154 (the owner's own Chrome): 20/37 passed (54%), 19 on the first
+try.** Most requests took 1.5–2.5 s. The failures, and the fix each got in `feat/ondevice-accuracy`:
+
+| Case               | Failure                                                   | Category    | Fix                                                                                                 |
+| ------------------ | --------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------- |
+| edit-rename        | `An unknown error occurred: kErrorUnknown`, twice         | model error | Retry once on a fresh session                                                                       |
+| edit-between       | The direct connection was left in place                   | structure   | `insert_between`; a "between" request's bypassed connection is dropped                              |
+| edit-change        | `rename` with a kind and no label                         | format      | `change_kind`; a kind-only `rename` is a kind change                                                |
+| edit-selection     | New queue not connected to the selection                  | structure   | `this = <id> "<label>"`; "after this" connects it                                                   |
+| create-4           | `Unknown reference "Python job"`                          | reference   | Same-reply references by key, label, kind and word                                                  |
+| create-5, create-6 | Connection reversed ("consumes")                          | direction   | Direction rules in the prompt; the consume-verb flip                                                |
+| create-9           | Missing `service.go` for "a processor"                    | stencil     | Expectation made fair (below); "a processor" resolves to a generic service                          |
+| create-10          | Missing `service.python`                                  | stencil     | Unknown: the next run's Model output will show what the model wrote                                 |
+| create-12          | Missing `service.go`                                      | stencil     | "Redis" alone now resolves to the cache; the Go side needs the Model output                         |
+| create-15          | `Unknown reference "Container Apps"`                      | reference   | References by kind                                                                                  |
+| create-18          | Missing `rabbitmq.queue`                                  | stencil     | Expectation made fair (below): bare "RabbitMQ" resolves to the exchange                             |
+| create-21          | Missing `client.iot`                                      | stencil     | "IoT devices" already resolves to `client.iot`, so the model wrote something else: see Model output |
+| create-23, 24, 29  | `Unknown reference "Orders API"` (and "Partner Whispers") | reference   | Example leakage: the examples now use made-up names                                                 |
+| create-28          | Missing `generic.service`                                 | stencil     | Expectation made fair (below); "component" resolves to a generic service                            |
+
+A unit test replays these failures with replies shaped like the model's mistakes, and each now passes
+(`src/ai/evals/onDevice.test.ts`). That proves the pipeline handles them, not that the model will make
+the same mistakes again.
+
+**Resolver changes** (`resolveKind`, unit-tested): a leading "a", "an" or "the" is ignored, and a few
+plain words now pick the stencil an agent means. "API", "service", "processor", "component", "worker",
+"consumer", "app" and "server" are a generic service ("API" used to resolve to GraphQL). "PubSub" is
+Google Pub/Sub (it was a Service Bus topic). "Redis" alone is the Redis cache (it was a Redis stream).
+
+**Expectation changes.** The requests keep their wording. Only what a model may fairly pick widened
+(`accept` in `src/ai/evals/corpus.ts`, used by the on-device evals only; the corpus test still pins the
+original stencil):
+
+- create-9, "Kinesis feeds a processor": any processor passes. "A processor" names no technology, and Go
+  was only what the corpus ops chose.
+- create-18, "RabbitMQ routes to a Java worker": a RabbitMQ exchange passes as well as a queue. Bare
+  "RabbitMQ" fits both, and routing is what an exchange does.
+- create-28, "An unspecified component connects to a generic database": any generic or processing stencil
+  passes for the component. "Unspecified" means the model can't pick a wrong one.
+
+**Likely still to fail:**
+
+- create-10, create-12 and create-21, if the model writes kinds the resolver can't map. Their Model
+  output column will show which words, and those can be added the same way.
+- Reversed connections in requests without a consume verb ("SNS fans out toward SQS"). These rely on the
+  prompt alone.
+
+Next: re-run the evals in the Lab and paste the table here.

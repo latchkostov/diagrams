@@ -1,4 +1,5 @@
 import type { DiagramFile, DiagramNode } from "../../model/types";
+import { getStencil } from "../../stencils/registry";
 import type { ExpectedGraph } from "./corpus";
 
 // Does a diagram contain an expected graph? Shared by the eval corpus (exact labels) and the on-device
@@ -16,8 +17,19 @@ export function checkGraph(
   expected: ExpectedGraph,
   { labels = "any" }: GraphCheckOptions = {},
 ): string | null {
+  // With labels "any" (a model's own words), a node's `accept` list counts too.
+  const accepts = (want: ExpectedGraph["nodes"][number], stencil: string) =>
+    stencil === want.stencil ||
+    (labels === "any" &&
+      !!want.accept?.some((a) =>
+        a.startsWith("role:")
+          ? getStencil(stencil).simRole === a.slice(5)
+          : a.startsWith("category:")
+            ? getStencil(stencil).category === a.slice(9)
+            : a === stencil,
+      ));
   const fits = (want: ExpectedGraph["nodes"][number], n: DiagramNode) =>
-    n.stencil === want.stencil && (labels === "any" || n.label === want.label);
+    accepts(want, n.stencil) && (labels === "any" || n.label === want.label);
   const candidates = expected.nodes.map((want) => diagram.nodes.filter((n) => fits(want, n)));
   const missing = expected.nodes.filter((_, i) => !candidates[i].length);
   if (missing.length)

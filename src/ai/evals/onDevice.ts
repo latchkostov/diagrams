@@ -8,6 +8,8 @@ import { validateDiagram } from "../../interop/native";
 import { getStencil } from "../../stencils/registry";
 import kafka from "../../examples/kafka-order-pipeline.json";
 import { runOnDevice } from "../ondevice/pipeline";
+import type { DiagramOp } from "../index";
+import { resolveKind } from "../stencils";
 import type { ModelSession } from "../ondevice/promptApi";
 import type { ScopeItem } from "../ui/context";
 import { diagramEvals } from "./corpus";
@@ -131,6 +133,24 @@ const createCases: OnDeviceCase[] = diagramEvals
 
 export const onDeviceCases: OnDeviceCase[] = [...editCases, ...createCases];
 
+/** Which part of the pipeline a failure points at, so the next round is quick to triage. */
+export type FailureCategory = "reference" | "direction" | "stencil" | "structure" | "format" | "model error" | "other";
+
+export function failureCategory(note: string): FailureCategory {
+  if (/Unknown reference|matches \d+ elements|must refer to/.test(note)) return "reference";
+  if (/^reversed connection/.test(note)) return "direction";
+  if (/^missing |no new node of the right kind/.test(note)) return "stencil";
+  if (
+    /still there|isn't connected|no such connection|^no connection|removed more than|^it's |^payments is|didn't change/.test(
+      note,
+    )
+  )
+    return "structure";
+  if (/needs "|wasn't JSON|must be one of|has no ops|at most \d+ ops|"ops" array/.test(note)) return "format";
+  if (/kError|error occurred|Error\b|too big/.test(note)) return "model error";
+  return "other";
+}
+
 export interface CaseResult {
   id: string;
   request: string;
@@ -139,6 +159,24 @@ export interface CaseResult {
   /** Why it failed; the model's summary when it passed. */
   note: string;
   ms: number;
+  /** Where a failure points (see failureCategory). */
+  category?: FailureCategory;
+  /** The model's last reply, and the stencil each added node resolved to. */
+  output?: string;
+}
+
+/** The reply (shortened) and what each added node became: "billing-worker → service.dotnet". */
+function describeOutput(
+  start: DiagramFile,
+  after: DiagramFile | undefined,
+  out: { raw: string; ops?: DiagramOp[] } | undefined,
+): string | undefined {
+  if (!out) return undefined;
+  const raw = out.raw.length > 600 ? `${out.raw.slice(0, 600)}…` : out.raw;
+  const added = after
+    ? after.nodes.filter((n) => !start.nodes.some((s) => s.id === n.id)).map((n) => `${n.label} → ${n.stencil}`)
+    : (out.ops ?? []).flatMap((o) => (o.op === "add_node" ? [`${o.label} → ${resolveKind(o.kind, o.label).id}`] : []));
+  return added.length ? `${raw} · stencils: ${added.join(", ")}` : raw;
 }
 
 /**
@@ -158,11 +196,35 @@ export async function runOnDeviceEvals(
     const session = await newSession();
     let r: CaseResult;
     try {
-      const out = await runOnDevice({ session, diagram: c.start, request: c.request, scope: c.scope, signal });
-      if (!out.ok) r = { id: c.id, request: c.request, pass: false, attempts: out.attempts, note: out.error, ms: 0 };
+      const out = await runOnDevice({
+        session,
+        freshSession: newSession,
+        diagram: c.start,
+        request: c.request,
+        scope: c.scope,
+        signal,
+      });
+      if (!out.ok)
+        r = {
+          id: c.id,
+          request: c.request,
+          pass: false,
+          attempts: out.attempts,
+          note: out.error,
+          ms: 0,
+          output: describeOutput(c.start, undefined, out.output),
+        };
       else {
         const why = c.check(c.start, out.plan.next) ?? (validateDiagram(out.plan.next).ok ? null : "invalid diagram");
-        r = { id: c.id, request: c.request, pass: !why, attempts: out.attempts, note: why ?? out.summary, ms: 0 };
+        r = {
+          id: c.id,
+          request: c.request,
+          pass: !why,
+          attempts: out.attempts,
+          note: why ?? out.summary,
+          ms: 0,
+          output: describeOutput(c.start, out.plan.next, out.output),
+        };
       }
     } catch (err) {
       if (signal?.aborted) throw err;
@@ -171,6 +233,7 @@ export async function runOnDeviceEvals(
       session.destroy?.();
     }
     r.ms = Math.round(performance.now() - t0);
+    if (!r.pass) r.category = failureCategory(r.note);
     results.push(r);
     onResult?.(r, results.length);
   }
@@ -182,14 +245,24 @@ export function resultsMarkdown(results: readonly CaseResult[], meta = ""): stri
   const passed = results.filter((r) => r.pass).length;
   const firstTry = results.filter((r) => r.pass && r.attempts === 1).length;
   const pct = (n: number) => `${results.length ? Math.round((n / results.length) * 100) : 0}%`;
+  const counts = new Map<string, number>();
+  for (const r of results) if (!r.pass) counts.set(r.category ?? "other", (counts.get(r.category ?? "other") ?? 0) + 1);
+  const cell = (s: string | undefined) => (s ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ");
   return [
     `Pass rate: **${passed}/${results.length} (${pct(passed)})**, ${firstTry} on the first try (${pct(firstTry)}).${meta ? ` ${meta}` : ""}`,
     "",
-    "| Case | Request | Result | Tries | ms | Note |",
-    "| --- | --- | --- | --- | --- | --- |",
+    counts.size
+      ? `Failures by category: ${[...counts]
+          .sort((a, b) => b[1] - a[1])
+          .map(([c, n]) => `${c} ${n}`)
+          .join(" · ")}.`
+      : "No failures.",
+    "",
+    "| Case | Request | Result | Tries | ms | Category | Note | Model output |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ...results.map(
       (r) =>
-        `| ${r.id} | ${r.request.replace(/\|/g, "\\|")} | ${r.pass ? "pass" : "FAIL"} | ${r.attempts} | ${r.ms} | ${r.note.replace(/\|/g, "\\|").replace(/\n/g, " ")} |`,
+        `| ${r.id} | ${cell(r.request)} | ${r.pass ? "pass" : "FAIL"} | ${r.attempts} | ${r.ms} | ${r.category ?? ""} | ${cell(r.note)} | ${cell(r.output)} |`,
     ),
   ].join("\n");
 }

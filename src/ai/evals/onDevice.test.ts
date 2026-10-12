@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getStencil } from "../../stencils/registry";
-import { onDeviceCases, resultsMarkdown, runOnDeviceEvals } from "./onDevice";
+import { failureCategory, onDeviceCases, resultsMarkdown, runOnDeviceEvals } from "./onDevice";
 import { diagramEvals } from "./corpus";
 
 // The harness itself, with a fake model that answers perfectly (and one that answers badly): every case
@@ -114,5 +114,103 @@ describe("on-device evals", () => {
     );
     expect(r.pass).toBe(false);
     expect(r.note).toMatch(/^no connection /);
+  });
+
+  it("sorts failures into categories, with a summary line and the model's output", async () => {
+    expect(failureCategory('Unknown reference "Orders API". Use an id from candidates.')).toBe("reference");
+    expect(
+      failureCategory("reversed connection: service.java -> kafka.topic instead of kafka.topic -> service.java"),
+    ).toBe("direction");
+    expect(failureCategory("missing service.go")).toBe("stencil");
+    expect(failureCategory("the direct connection is still there")).toBe("structure");
+    expect(failureCategory("the new node isn't connected where asked")).toBe("structure");
+    expect(failureCategory('Op 1 (rename) needs "target" and the new "label".')).toBe("format");
+    expect(failureCategory("An unknown error occurred: kErrorUnknown")).toBe("model error");
+    const cases = onDeviceCases.filter((c) => c.id === "edit-dlq" || c.id === "create-1");
+    const results = await runOnDeviceEvals(
+      answering(() => reply([{ op: "add", kind: "Grafana", label: "Dashboards" }])),
+      cases,
+    );
+    expect(results.map((r) => r.category)).toEqual(["stencil", "stencil"]);
+    expect(results[0].output).toContain("Dashboards → grafana");
+    const md = resultsMarkdown(results);
+    expect(md).toContain("Failures by category: stencil 2.");
+    expect(md).toContain("| Case | Request | Result | Tries | ms | Category | Note | Model output |");
+  });
+
+  it("replays the 2026-10-12 failures (Chrome 154) with replies shaped like the model's: they pass now", async () => {
+    // Each reply makes the mistake the run recorded; the pipeline (not the model) now gets it right.
+    const replies: Record<string, object[]> = {
+      // Answered a kind change with "rename".
+      "edit-change": [{ op: "rename", target: "Orders database", kind: "MongoDB" }],
+      // Plain connects for "between", the direct connection left in place.
+      "edit-between": [
+        { op: "add", key: "cache", kind: "Redis cache", label: "Orders cache" },
+        { op: "connect", from: "Order service", to: "cache", flow: "request" },
+        { op: "connect", from: "cache", to: "Orders database", flow: "request" },
+      ],
+      // The new queue left unconnected.
+      "edit-selection": [{ op: "add", kind: "queue", label: "payments-retry" }],
+      // "Python job" names the new node by words of its kind.
+      "create-4": [
+        { op: "add", kind: "Python", label: "Job" },
+        { op: "add", kind: "pg", label: "pg" },
+        { op: "connect", from: "Python job", to: "pg", flow: "request" },
+      ],
+      // Drawn against "consumes".
+      "create-5": [
+        { op: "add", kind: "Kafka topic", label: "Events" },
+        { op: "add", kind: "Java", label: "Consumer" },
+        { op: "connect", from: "Consumer", to: "Events", flow: "message" },
+      ],
+      "create-6": [
+        { op: "add", kind: "Service Bus queue", label: "Jobs" },
+        { op: "add", kind: "Azure function", label: "Runner" },
+        { op: "connect", from: "Runner", to: "Jobs", flow: "message" },
+      ],
+      // Kinds the resolver missed: "a processor", "PubSub", "Redis".
+      "create-9": [
+        { op: "add", kind: "Kinesis", label: "Stream" },
+        { op: "add", kind: "a processor", label: "Processor" },
+        { op: "connect", from: "Stream", to: "Processor", flow: "message" },
+      ],
+      "create-12": [
+        { op: "add", kind: "Go service", label: "API" },
+        { op: "add", kind: "Redis", label: "Cache" },
+        { op: "connect", from: "API", to: "Cache", flow: "request" },
+      ],
+      // Named by kind, not label.
+      "create-15": [
+        { op: "add", kind: "Container Apps", label: "Orders" },
+        { op: "add", kind: "Cosmos DB", label: "State" },
+        { op: "connect", from: "Container Apps", to: "Cosmos DB", flow: "request" },
+      ],
+      // Bare "RabbitMQ" is an exchange: fair for "routes".
+      "create-18": [
+        { op: "add", kind: "RabbitMQ", label: "Tasks" },
+        { op: "add", kind: "Java worker", label: "Worker" },
+        { op: "connect", from: "Tasks", to: "Worker", flow: "message" },
+      ],
+    };
+    const transientFor = new Set(["edit-rename"]);
+    const rename = [{ op: "rename", target: "Payments service", label: "Billing service" }];
+    const thrown = new Set<string>();
+    const cases = onDeviceCases.filter((c) => c.id in replies || transientFor.has(c.id));
+    const results = await runOnDeviceEvals(
+      async () => ({
+        prompt: async (input: string) => {
+          const c = cases.find((x) => input.endsWith(`Request: ${x.request}`))!;
+          // edit-rename's first prompt fails as Chrome's did; the fresh session's answers.
+          if (transientFor.has(c.id) && !thrown.has(c.id)) {
+            thrown.add(c.id);
+            throw new DOMException("An unknown error occurred: kErrorUnknown", "UnknownError");
+          }
+          return reply(replies[c.id] ?? rename);
+        },
+      }),
+      cases,
+    );
+    expect(results.filter((r) => !r.pass).map((r) => `${r.id}: ${r.note}`)).toEqual([]);
+    expect(results).toHaveLength(Object.keys(replies).length + 1);
   });
 });
