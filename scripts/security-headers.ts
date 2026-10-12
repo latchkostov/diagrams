@@ -141,10 +141,18 @@ export function securityHeadersFor(url: string): Record<string, string> {
 const EMBED_QUERY = [{ type: "query", key: "embed" }];
 const pairs = (h: Record<string, string>) => Object.entries(h).map(([key, value]) => ({ key, value }));
 
+/**
+ * Only master deploys. Pull requests are tested by CI, not by preview deployments, and preview builds for
+ * every branch push used up the plan's daily deployment limit. A branch deploys if any matching rule is
+ * true; `**` (not `*`) also matches branch names with slashes, like `feat/x`.
+ */
+export const DEPLOY_BRANCHES = { "**": false, master: true };
+
 /** vercel.json. Vercel routes on query parameters (`has` / `missing`), so embeds get their own CSP. */
 export function vercelConfig() {
   return {
     $schema: "https://openapi.vercel.sh/vercel.json",
+    git: { deploymentEnabled: DEPLOY_BRANCHES },
     headers: [
       { source: "/(.*)", headers: pairs(COMMON_HEADERS) },
       {
