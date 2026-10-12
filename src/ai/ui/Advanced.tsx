@@ -16,6 +16,7 @@ import { useDictation } from "./useDictation";
 import { useParsedReply } from "./useParsedReply";
 import { FailureBox, type Failure } from "./parts";
 import { rememberAdvancedOpen } from "./advancedPref";
+import { DictationField } from "./DictationField";
 
 // The AI panel's Advanced section: the manual flow for people without a browser agent. Copy a prompt for
 // any chatbot, paste its reply, apply it as one undo step (or, for Explain, only copy). Closed by
@@ -224,7 +225,6 @@ export function Advanced({
     }
   };
 
-  const listening = dictation.status !== "idle";
   const hasReply = !!reply.trim();
   const placeholder = explaining
     ? "e.g. Where could this fail under load?"
@@ -295,59 +295,18 @@ export function Advanced({
               </button>
             </div>
           )}
-          <div className={`ai-request${listening ? " is-listening" : ""}`}>
-            <label className="sr-only" htmlFor={`${id}-request`}>
-              {place === "create" ? "Describe the diagram" : "Describe what you want"}
-            </label>
-            <textarea
-              id={`${id}-request`}
-              ref={requestRef}
-              className="ix-input ai-textarea"
-              value={request}
-              onChange={(e) => setRequest(e.target.value)}
-              placeholder={placeholder}
-              rows={3}
-              spellCheck
-              data-testid="ai-request"
-            />
-            {dictation.supported && (
-              <button
-                type="button"
-                className={`ai-mic${listening ? " is-on" : ""}${dictation.hearing ? " is-hearing" : ""}`}
-                onClick={() => {
-                  if (!listening) requestRef.current?.focus();
-                  dictation.toggle();
-                }}
-                aria-pressed={listening}
-                aria-label={listening ? "Stop dictating" : "Dictate"}
-                title={`${listening ? "Stop dictating" : "Dictate"} (${MOD}+Shift+M)`}
-                data-testid="ai-mic"
-                data-status={dictation.status}
-              >
-                <Icon name="mic" size={15} />
-              </button>
-            )}
-          </div>
-          {(listening || dictation.interim) && (
-            <p className="ai-interim" aria-live="polite" data-testid="ai-interim">
-              {dictation.status === "starting" ? (
-                <span className="ai-listening">Allow the microphone if your browser asks…</span>
-              ) : dictation.interim ? (
-                dictation.interim
-              ) : (
-                <span className="ai-listening">Listening{dictation.onDevice ? " on this device" : ""}…</span>
-              )}
-            </p>
-          )}
-          {dictation.message && (
-            <p
-              className={`ai-note${dictation.message.tone === "error" ? " is-error" : ""}`}
-              role={dictation.message.tone === "error" ? "alert" : "status"}
-              data-testid="ai-dictation-message"
-            >
-              {dictation.message.text}
-            </p>
-          )}
+          <DictationField
+            id={`${id}-request`}
+            label={place === "create" ? "Describe the diagram" : "Describe what you want"}
+            inputRef={requestRef}
+            value={request}
+            onChange={setRequest}
+            placeholder={placeholder}
+            rows={3}
+            dictation={dictation}
+            shortcut
+            testIds={{ input: "ai-request", mic: "ai-mic", interim: "ai-interim", message: "ai-dictation-message" }}
+          />
           <div className="ai-composer-row">
             <button
               className={`btn${hasReply ? "" : " btn-primary"}`}

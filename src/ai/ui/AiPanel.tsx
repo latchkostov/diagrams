@@ -27,6 +27,7 @@ import type { TurnRecord } from "./commitTurn";
 import { Advanced } from "./Advanced";
 import { readAdvancedOpen } from "./advancedPref";
 import { ChoiceRow } from "./parts";
+import { resolveScope } from "./context";
 import { AgentStatus, HowTo } from "./HowTo";
 import type { PanelRequest } from "./AiMount";
 import { useModelAvailability } from "../ondevice/useModelAvailability";
@@ -84,7 +85,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   // republishes on every drag frame and selection), and at once after the panel's own changes.
   const readSnap = useCallback(() => {
     const ed = editorNow();
-    return ed ? { diagram: ed.getDiagram(), undoTarget: ed.undoTarget() } : null;
+    return ed ? { diagram: ed.getDiagram(), undoTarget: ed.undoTarget(), selection: ed.getSelection() } : null;
   }, []);
   const [snap, setSnap] = useState(readSnap);
   const refresh = useCallback(() => setSnap(readSnap()), [readSnap]);
@@ -93,6 +94,15 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     return () => clearTimeout(t);
   }, [editor, host, turns, refresh]);
   const current: DiagramFile | null = snap?.diagram ?? null;
+  // The selection the on-device box names, from the settled snapshot (never per drag frame).
+  const selection = snap?.selection;
+  const scope = useMemo(
+    () =>
+      current && selection
+        ? resolveScope(current, [...selection.nodeIds, ...selection.edgeIds, ...selection.groupIds])
+        : [],
+    [current, selection],
+  );
 
   // Each open request (the rail, Ctrl+I, a menu) brings the keyboard here; Build with AI
   // opens Advanced, ready to describe the diagram. A request made just now still counts when this panel
@@ -353,7 +363,15 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
 
       {onDevice && (
         <Suspense fallback={null}>
-          <OnDeviceInput availability={model} onAvailability={setModel} live={live} onTurn={addTurn} />
+          <OnDeviceInput
+            availability={model}
+            onAvailability={setModel}
+            documentId={documentId}
+            live={live}
+            localOnly={localOnly}
+            scope={scope}
+            onTurn={addTurn}
+          />
         </Suspense>
       )}
 

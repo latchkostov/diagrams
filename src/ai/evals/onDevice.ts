@@ -11,6 +11,7 @@ import { runOnDevice } from "../ondevice/pipeline";
 import type { ModelSession } from "../ondevice/promptApi";
 import type { ScopeItem } from "../ui/context";
 import { diagramEvals } from "./corpus";
+import { checkGraph } from "./graphCheck";
 
 export interface OnDeviceCase {
   id: string;
@@ -114,7 +115,7 @@ const editCases: OnDeviceCase[] = [
   },
 ];
 
-/** The corpus's one-turn descriptions, each drawn from an empty diagram: its stencils and connections. */
+/** The corpus's one-turn descriptions, each drawn from an empty diagram, scored as a directed graph. */
 const createCases: OnDeviceCase[] = diagramEvals
   .filter((e) => e.turns.length === 1)
   .map((e, i) => {
@@ -123,18 +124,8 @@ const createCases: OnDeviceCase[] = diagramEvals
       id: `create-${i + 1}`,
       request: e.description,
       start: EMPTY,
-      check: (_b, a) => {
-        const have = a.nodes.map((n) => n.stencil);
-        const missing = expected.nodes.filter((n) => {
-          const at = have.indexOf(n.stencil);
-          if (at < 0) return true;
-          have.splice(at, 1);
-          return false;
-        });
-        if (missing.length) return `missing ${missing.map((n) => n.stencil).join(", ")}`;
-        if (a.edges.length < expected.edges.length) return `${a.edges.length} of ${expected.edges.length} connections`;
-        return null;
-      },
+      // Stencils matched one to one, and every connection between the right nodes, the right way round.
+      check: (_b, a) => checkGraph(a, expected),
     };
   });
 

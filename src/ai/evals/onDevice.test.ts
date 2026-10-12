@@ -83,4 +83,36 @@ describe("on-device evals", () => {
     expect(results[1].note).toMatch(/^missing /);
     expect(resultsMarkdown(results)).toContain("| edit-dlq |");
   });
+
+  it("rejects reversed connections", async () => {
+    const [c] = onDeviceCases.filter((x) => x.id === "create-1");
+    const ops = perfectCreate(c.request).map((op) => {
+      const o = op as { op: string; from?: string; to?: string };
+      return o.op === "connect" ? { ...o, from: o.to, to: o.from } : o;
+    });
+    const [r] = await runOnDeviceEvals(
+      answering(() => reply(ops)),
+      [c],
+    );
+    expect(r.pass).toBe(false);
+    expect(r.note).toMatch(/^reversed connection/);
+  });
+
+  it("rejects wrong endpoints with the correct edge count", async () => {
+    const [c] = onDeviceCases.filter((x) => x.id === "create-1");
+    // Same nodes and as many connections, but both leave the first node.
+    const ops = perfectCreate(c.request);
+    const adds = ops.filter((o) => (o as { op: string }).op === "add") as { label: string }[];
+    const wrong = [
+      ...adds.map((a) => ({ op: "add", kind: (a as { kind?: string }).kind, label: a.label })),
+      { op: "connect", from: adds[0].label, to: adds[1].label },
+      { op: "connect", from: adds[0].label, to: adds[2].label },
+    ];
+    const [r] = await runOnDeviceEvals(
+      answering(() => reply(wrong)),
+      [c],
+    );
+    expect(r.pass).toBe(false);
+    expect(r.note).toMatch(/^no connection /);
+  });
 });

@@ -73,7 +73,19 @@ read from a `VITE_` variable, so builds without it still deploy.
     edited it meanwhile) and committed with `commitPlan`. That's one turn ("On this device · Chrome's
     built-in model") with Undo this change and Revert to here, like an agent's change.
   - **Status and cancel:** the status reads "Thinking…", "Checking and trying again…" or "Applying…".
-    **Stop** (or Esc) aborts through an `AbortController`.
+    **Stop** (or Esc, caught before the panel's own Esc) aborts through an `AbortController`, during
+    session start-up too.
+  - **Context changes** (`useOnDeviceRequest`): the diagram is read only after the privacy check, and
+    provenance is checked again just before inference. Going live, another diagram or a local-only
+    switch cancels a request in flight. Before committing, the request checks again that it's the same
+    diagram, in the editor, allowed to reach AI, and with the same content (a move meanwhile is fine). If
+    the content changed, it says "The diagram changed while the model was thinking. Send it again."
+  - **Dictation** uses the panel's shared `DictationField`, so it gives the same feedback as Advanced:
+    "Listening…", interim words, errors and the speech-service note. Recognition runs on this device
+    where the browser can (`processLocally`). Until a session confirms that, the box says "Dictation may
+    use your browser's speech service (in Chrome, Google)." The app doesn't call
+    `SpeechRecognition.available()` up front: it crashes Playwright's Chromium renderer, so it runs only
+    when the mic starts. Going live stops dictation.
 - **Live view:** v1 is editing only. In live view the box is disabled ("Back to editing to change the
   diagram"). Simulations would need their own prompt and evals.
 - **Privacy:** a local-only diagram never reaches the model. The box is disabled with the panel's
@@ -86,8 +98,10 @@ read from a `VITE_` variable, so builds without it still deploy.
 - **Harness.** `src/ai/evals/onDevice.ts` has 36 cases: 8 edits on the Kafka example (a dead-letter
   queue after a service, rename, remove, a cache between two nodes, connect, change a kind, add an email
   sink, and a request with a selection), plus the 28 one-turn descriptions from the eval corpus, drawn
-  from empty. Each case is scored on the diagram afterwards: the right stencils, connected where asked,
-  and a valid diagram. A unit test proves a perfect model scores 100% and a wrong one fails with a
+  from empty. Each case is scored on the diagram afterwards, and must be a valid diagram. The creation
+  cases use `checkGraph` (`src/ai/evals/graphCheck.ts`, shared with the corpus test): expected nodes
+  are matched one to one by stencil, and every expected connection must join them in the right
+  direction, so reversed or misplaced connections fail. A unit test proves a perfect model scores 100% and a wrong one fails with a
   reason.
 - **How to run it** (by hand, never in CI): `pnpm dev`, then open
   `http://localhost:5173/?view=lab&preset=ondevice-evals` in a desktop Google Chrome 148+ that has the

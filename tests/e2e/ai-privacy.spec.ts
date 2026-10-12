@@ -9,6 +9,8 @@ import {
   fakeModel,
   installFakeLanguageModel,
   installFakeModelContext,
+  modelReply,
+  releaseModel,
   toolNames,
   openAdvanced,
   openAiPanel,
@@ -174,4 +176,30 @@ test("a local-only diagram never reaches the on-device model: its box is off", a
   await expect(input).toHaveAttribute("placeholder", "AI is off for this local-only diagram");
   await expect(page.getByTestId("ai-ondevice-send")).toBeDisabled();
   expect((await fakeModel(page)).prompts).toEqual([]);
+});
+
+test("a request in flight when the diagram switches to a local-only one never commits", async ({ page }) => {
+  const reply = modelReply("Added a queue", [
+    { op: "add", kind: "queue", label: "late-queue" },
+    { op: "connect", from: "Inventory service", to: "late-queue", flow: "message" },
+  ]);
+  await installSyntheticRegistry(page);
+  await installFakeLanguageModel(page, { replies: [`hold:${reply}`] });
+  await page.addInitScript(() => localStorage.setItem("diagrams.ai-ondevice.v1", "1"));
+  await gotoCanvas(page, SLUG);
+  await openAiPanel(page);
+  await page.getByTestId("ai-ondevice-input").fill("Add a queue after Inventory service");
+  await page.getByTestId("ai-ondevice-input").press("Enter");
+  await expect(page.getByTestId("ai-ondevice-status")).toHaveText("Thinking…");
+  await page.getByTestId("example-picker").selectOption("synthetic-local");
+  await expect(page.getByTestId("ai-privacy-note")).toContainText("Local-only");
+  await expect.poll(async () => (await fakeModel(page)).aborted).toBe(1);
+  await releaseModel(page);
+  await page.waitForTimeout(300);
+  await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
+  await expect(page.getByTestId("node-late-queue")).toHaveCount(0);
+  await page.getByTestId("example-picker").selectOption(SLUG);
+  await expect(page.getByTestId("node-inventory")).toBeVisible();
+  await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
+  expect((await fakeModel(page)).prompts).toHaveLength(1);
 });

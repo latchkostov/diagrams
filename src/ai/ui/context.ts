@@ -21,20 +21,25 @@ export interface ScopeItem {
 
 /** The ids that still exist, with their labels and kinds. */
 export function resolveScope(diagram: DiagramFile, ids: readonly string[]): ScopeItem[] {
+  if (!ids.length) return [];
+  // Maps, not a search per id: a big selection on a big diagram stays linear.
+  const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
+  const edges = new Map(diagram.edges.map((e) => [e.id, e]));
+  const groups = new Map((diagram.groups ?? []).map((g) => [g.id, g]));
+  const name = (nid: string) => nodes.get(nid)?.label || nid;
   const out: ScopeItem[] = [];
   for (const id of ids) {
-    const node = diagram.nodes.find((n) => n.id === id);
+    const node = nodes.get(id);
     if (node) {
       out.push({ id, label: node.label || id, kind: "node" });
       continue;
     }
-    const edge = diagram.edges.find((e) => e.id === id);
+    const edge = edges.get(id);
     if (edge) {
-      const name = (nid: string) => diagram.nodes.find((n) => n.id === nid)?.label || nid;
       out.push({ id, label: edge.label || `${name(edge.from)} → ${name(edge.to)}`, kind: "connection" });
       continue;
     }
-    const group = diagram.groups?.find((g) => g.id === id);
+    const group = groups.get(id);
     if (group) out.push({ id, label: group.label || id, kind: "boundary" });
   }
   return out;

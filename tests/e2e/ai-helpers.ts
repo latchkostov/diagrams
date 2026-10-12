@@ -233,8 +233,13 @@ export const speechState = (page: Page) =>
 
 export interface FakeModelOptions {
   availability?: "unavailable" | "downloadable" | "downloading" | "available";
-  /** Replies in order (JSON strings); "hang" waits until the request is cancelled. */
+  /**
+   * Replies in order (JSON strings). "hang" waits until the request is cancelled; "hold:<json>" waits
+   * for `releaseModel(page)`, then answers <json> (unless cancelled first).
+   */
   replies?: string[];
+  /** create() waits for `releaseModel(page, "create")`, like a slow first session. */
+  deferCreate?: boolean;
   /** A download reports 0, 0.5, 1 this many ms apart. */
   downloadStepMs?: number;
 }
@@ -254,13 +259,31 @@ export function installFakeLanguageModel(page: Page, opts: FakeModelOptions = {}
       constraints: 0,
       destroyed: 0,
       aborted: 0,
+      held: [] as (() => void)[],
+      createHeld: [] as (() => void)[],
+      release(which: "reply" | "create" = "reply") {
+        (which === "create" ? state.createHeld : state.held).splice(0).forEach((go) => go());
+      },
     };
     type Listener = (e: { loaded: number }) => void;
     const session = (): object => ({
       async prompt(input: string, options?: { signal?: AbortSignal; responseConstraint?: object }) {
         state.prompts.push(input);
         if (options?.responseConstraint) state.constraints++;
-        const reply = state.replies.shift() ?? '{"summary":"","ops":[]}';
+        let reply = state.replies.shift() ?? '{"summary":"","ops":[]}';
+        if (reply.startsWith("hold:")) {
+          const body = reply.slice(5);
+          await new Promise<void>((resolve, reject) => {
+            const fail = () => {
+              state.aborted++;
+              reject(new DOMException("The request was aborted.", "AbortError"));
+            };
+            if (options?.signal?.aborted) return fail();
+            options?.signal?.addEventListener("abort", fail);
+            state.held.push(resolve);
+          });
+          reply = body;
+        }
         if (reply === "hang")
           return new Promise<string>((_, reject) => {
             const fail = () => {
@@ -288,6 +311,7 @@ export function installFakeLanguageModel(page: Page, opts: FakeModelOptions = {}
       },
       async create(options?: { monitor?: (m: { addEventListener(t: string, l: Listener): void }) => void }) {
         state.creates++;
+        if (o.deferCreate) await new Promise<void>((resolve) => state.createHeld.push(resolve));
         const listeners: Listener[] = [];
         options?.monitor?.({
           addEventListener: (_t: string, l: Listener) => {
@@ -310,11 +334,16 @@ export function installFakeLanguageModel(page: Page, opts: FakeModelOptions = {}
   }, opts);
 }
 
+/** Lets held replies (or a deferred create()) of the fake model go on. */
+export const releaseModel = (page: Page, which: "reply" | "create" = "reply") =>
+  page.evaluate((w) => (window as unknown as { __lm: { release(w: string): void } }).__lm.release(w), which);
+
 /** The fake model's record: prompts sent, sessions created, and so on. */
 export const fakeModel = (page: Page) =>
   page.evaluate(() => {
     const s = (window as unknown as { __lm: Record<string, unknown> }).__lm;
-    return JSON.parse(JSON.stringify(s)) as {
+    // The held callbacks aren't data.
+    return JSON.parse(JSON.stringify(s, (k, v: unknown) => (k === "held" || k === "createHeld" ? undefined : v))) as {
       availability: string;
       prompts: string[];
       creates: number;

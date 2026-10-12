@@ -8,7 +8,10 @@ import {
   nodeCount,
   openAdvanced,
   openAiPanel,
+  releaseModel,
   savedDiagram,
+  installFakeSpeech,
+  speechState,
 } from "./ai-helpers";
 
 // Chrome's built-in model (the Prompt API), faked with an init script: CI has no model. The request box
@@ -178,4 +181,92 @@ test("the Lab's eval runner scores the cases through the model and copies a tabl
   await expect(page.getByTestId("ondevice-evals-rate")).toContainText(/^\d+\/\d+ passed/);
   await page.getByTestId("ondevice-evals-copy").click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^Pass rate: \*\*/);
+});
+
+test.describe("a request in flight", () => {
+  test("entering Live cancels it: nothing commits, even when the reply comes", async ({ page }) => {
+    await installFakeLanguageModel(page, { replies: [`hold:${DLQ}`] });
+    await gotoCanvas(page, SLUG);
+    await turnOn(page);
+    const before = await nodeCount(page);
+    await ask(page, "Add a dead-letter queue after Inventory service");
+    await expect(page.getByTestId("ai-ondevice-status")).toHaveText("Thinking…");
+    await page.getByTestId("live-toggle").click();
+    await expect.poll(async () => (await fakeModel(page)).aborted).toBe(1);
+    await releaseModel(page);
+    await page.waitForTimeout(300);
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("ai-ondevice-send")).toBeVisible();
+    await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
+    expect(await nodeCount(page)).toBe(before);
+    expect((await savedDiagram(page))?.nodes.some((n) => n.label === "inventory-dlq") ?? false).toBe(false);
+  });
+
+  test("Esc cancels it first, before the panel's own Esc", async ({ page }) => {
+    await installFakeLanguageModel(page, { replies: ["hang"] });
+    await gotoCanvas(page, SLUG);
+    await turnOn(page);
+    await ask(page, "Add a cache");
+    await expect(page.getByTestId("ai-ondevice-status")).toHaveText("Thinking…");
+    await page.getByTestId("ai-ondevice-input").press("Escape");
+    await expect(page.getByTestId("ai-ondevice-send")).toBeVisible();
+    expect((await fakeModel(page)).aborted).toBe(1);
+    // The keyboard stays in the box; a second Esc goes back to the canvas as usual.
+    await expect(page.getByTestId("ai-ondevice-input")).toBeFocused();
+    await page.getByTestId("ai-ondevice-input").press("Escape");
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+  });
+
+  test("Stop cancels during session start-up: idle at once, no prompt, no turn", async ({ page }) => {
+    await installFakeLanguageModel(page, { replies: [DLQ], deferCreate: true });
+    await gotoCanvas(page, SLUG);
+    await turnOn(page);
+    const before = await nodeCount(page);
+    await ask(page, "Add a dead-letter queue after Inventory service");
+    await expect(page.getByTestId("ai-ondevice-status")).toHaveText("Thinking…");
+    await page.getByTestId("ai-ondevice-stop").click();
+    await expect(page.getByTestId("ai-ondevice-send")).toBeVisible();
+    await releaseModel(page, "create");
+    await page.waitForTimeout(300);
+    const lm = await fakeModel(page);
+    expect(lm.prompts).toEqual([]);
+    await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
+    expect(await nodeCount(page)).toBe(before);
+  });
+});
+
+test.describe("dictation in the box", () => {
+  test("says before use when speech leaves the device, and shows errors", async ({ page }) => {
+    await installFakeLanguageModel(page);
+    await installFakeSpeech(page, { deny: true });
+    await gotoCanvas(page, SLUG);
+    await turnOn(page);
+    await expect(page.getByTestId("ai-ondevice-speech-note")).toHaveText(
+      "Dictation may use your browser's speech service (in Chrome, Google).",
+    );
+    await page.getByTestId("ai-ondevice-mic").click();
+    await expect(page.getByTestId("ai-ondevice-dictation-message")).toHaveAttribute("role", "alert");
+  });
+
+  test("on-device speech needs no note; Listening on this device…", async ({ page }) => {
+    await installFakeLanguageModel(page);
+    await installFakeSpeech(page, { onDevice: true });
+    await gotoCanvas(page, SLUG);
+    await turnOn(page);
+    await page.getByTestId("ai-ondevice-mic").click();
+    await expect(page.getByTestId("ai-ondevice-interim")).toHaveText("Listening on this device…");
+    await expect(page.getByTestId("ai-ondevice-speech-note")).toHaveCount(0);
+  });
+
+  test("entering Live stops it", async ({ page }) => {
+    await installFakeLanguageModel(page);
+    await installFakeSpeech(page, { onDevice: true });
+    await gotoCanvas(page, SLUG);
+    await turnOn(page);
+    await page.getByTestId("ai-ondevice-mic").click();
+    await expect(page.getByTestId("ai-ondevice-mic")).toHaveAttribute("data-status", "listening");
+    await page.getByTestId("live-toggle").click();
+    await expect.poll(async () => (await speechState(page)).active).toBe(0);
+    await expect(page.getByTestId("ai-ondevice-mic")).toHaveCount(0);
+  });
 });
