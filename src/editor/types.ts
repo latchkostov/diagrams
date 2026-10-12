@@ -163,9 +163,11 @@ export interface EditorApi {
   distribute(nodeIds: string[], axis: Axis): void;
   /**
    * Tidy up (D15): the layered layout on just these nodes and the edges between them, inside their bounding
-   * box where it fits (its top-left kept), clear of everything else. Nothing else moves; one undo step.
+   * box where it fits (its top-left kept), clear of everything else, members kept in their boundaries (which
+   * grow to hold them). Nothing else moves; one undo step. When no such place is within reach, nothing moves
+   * and a toast says so: false.
    */
-  tidy(nodeIds: string[]): void;
+  tidy(nodeIds: string[]): boolean;
   /**
    * Boundaries that keep up (D12): nodes `ids`, just dropped, join the boundary around their centre (or leave
    * theirs), and a boundary grows to hold a member that pokes out. Joins the drop's undo step. Returns the

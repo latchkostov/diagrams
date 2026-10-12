@@ -118,7 +118,9 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - **Tidy up** (the selection's right-click, the inspector's Arrange, Ctrl+K; three or more nodes): the layered
   layout on just those nodes and the edges between them, inside their box where it fits, its top-left kept.
   Nothing else moves, and if the result would cover anything the tidied nodes move together to the nearest free
-  place. Members stay in their boundaries, which grow to hold them. **Align** and **Distribute** never stack
+  place. Members stay in their boundaries, which grow to hold them. When no place within reach is clear (or
+  a boundary can't grow to hold its members), nothing moves and a toast says "Couldn't find room. Nothing
+  moved." **Align** and **Distribute** never stack
   things either: what would land on another steps along the line. **Auto-layout** (the canvas right-click) is
   the whole diagram.
 - **Moving between nodes** from the keyboard: the canvas is one Tab stop. Inside it **Tab** and **Shift+Tab** step
@@ -127,7 +129,10 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   (⌃⌥ on a Mac) go to the nearest node that way, and **Ctrl+Alt+]** and **[** to the node's outgoing and incoming
   edges (again: the next one). Selection and focus move together, the view follows, and a screen reader hears
   the node, its boundary, its place in the order and its edges ("Payments service, Go Service, processor, in AKS.
-  6 of 16. 2 out, 1 in."). The arrow keys still nudge and Alt+arrow still adds the next node.
+  6 of 16. 2 out, 1 in."). Controls on a node or an edge (a node's dependency pips, an edge's settings) aren't Tab
+  stops of their own: their list opens when the node or edge is reached from the keyboard, and the announcement
+  reads it. A diagram of boundaries only starts at its first boundary. The arrow keys still nudge and Alt+arrow
+  still adds the next node.
 - **Pan** and **zoom**: the wheel and a two-finger swipe pan (Shift+wheel sideways); Ctrl/⌘+wheel and a pinch
   zoom at the pointer; Space+drag and the middle button pan from anywhere, even a node. Live view,
   presentation and embeds keep drag-to-pan, and an embed lets the wheel scroll its page. The keys: **Fit

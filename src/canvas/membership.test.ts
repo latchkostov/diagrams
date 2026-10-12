@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { perfBudget } from "../test/perfBudget";
 import {
   BOUNDARY_LABEL_ROOM,
   BOUNDARY_PAD,
@@ -6,6 +7,7 @@ import {
   growToHold,
   growthBlocked,
   membershipAfterResize,
+  planKeep,
   previewMembership,
   settleMembership,
   type GroupRect,
@@ -172,5 +174,69 @@ describe("resizing a boundary adopts and releases nodes", () => {
     const outer: GroupRect = { id: "outer", x: -100, y: -100, width: 1200, height: 800 };
     const r = membershipAfterResize("pay", [card("out", 700, 100, "pay")], [pay, outer]);
     expect(r.group.get("out")).toBe("outer");
+  });
+});
+
+describe("boundaries growing at once never grow into each other", () => {
+  const overlap = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+  it("checks each growth against the other's growth, not just its old size", () => {
+    // 600 × 400 boundaries at x = 0 and x = 800; members poking out of their facing edges.
+    const left: GroupRect = { id: "a", x: 0, y: 0, width: 600, height: 400 };
+    const right: GroupRect = { id: "b", x: 800, y: 0, width: 600, height: 400 };
+    const s = settleMembership([card("m1", 480, 100, "a"), card("m2", 750, 250, "b")], [left, right], []);
+    const rects = [left, right].map((g) => s.grow.get(g.id) ?? g);
+    expect(overlap(rects[0], rects[1])).toBe(false);
+    // The first (by id) grows; the other would reach it, so it's blocked, and the preview shows it dashed.
+    expect(s.grow.has("a")).toBe(true);
+    expect(s.blocked.has("b")).toBe(true);
+    const p = previewMembership([card("m1", 480, 100, "a"), card("m2", 750, 250, "b")], [left, right], []);
+    expect(p.get("b")).toBe("blocked");
+  });
+
+  it("the same plan whatever order the nodes come in", () => {
+    const a: GroupRect = { id: "a", x: 0, y: 0, width: 300, height: 400 };
+    const b: GroupRect = { id: "b", x: 500, y: 0, width: 300, height: 400 };
+    const m = [card("x", 180, 100, "a"), card("y", 450, 250, "b")];
+    const one = settleMembership(m, [a, b], []);
+    const two = settleMembership([...m].reverse(), [b, a], []);
+    expect([...one.grow.keys()]).toEqual([...two.grow.keys()]);
+    expect([...one.blocked]).toEqual([...two.blocked]);
+    const rects = [a, b].map((g) => one.grow.get(g.id) ?? g);
+    expect(overlap(rects[0], rects[1])).toBe(false);
+  });
+});
+
+describe("Tidy up's boundary check (planKeep)", () => {
+  it("grows a boundary to hold its tidied members", () => {
+    const g = planKeep([card("a", 40, 80, "pay"), card("b", 700, 80, "pay")], [pay], []);
+    expect(g?.get("pay")).toMatchObject({ x: 0, width: 700 + 220 + BOUNDARY_PAD });
+  });
+
+  it("refuses when growing would reach another boundary, or a member would land in another", () => {
+    // Three members in a row; the last one's centre lands in a neighbouring boundary at x = 500.
+    const narrow: GroupRect = { id: "pay", x: 0, y: 0, width: 300, height: 450 };
+    const next: GroupRect = { id: "ship", x: 500, y: 0, width: 600, height: 450 };
+    const row = [card("a", 40, 80, "pay"), card("b", 340, 80, "pay"), card("c", 640, 80, "pay")];
+    expect(planKeep(row, [narrow, next], [])).toBeNull();
+  });
+
+  it("refuses a node in no boundary landing inside one", () => {
+    expect(planKeep([card("free", 100, 100)], [pay], [])).toBeNull();
+    expect(planKeep([card("free", 900, 100)], [pay], [])?.size).toBe(0);
+  });
+});
+
+describe("the drag's preview stays within a frame on a big diagram", () => {
+  it("5,000 members of one boundary, moved together", () => {
+    const big: GroupRect = { id: "big", x: 0, y: 0, width: 100_000, height: 100_000 };
+    const moving = Array.from({ length: 5000 }, (_, i) =>
+      card(`n${i}`, (i % 100) * 300, Math.floor(i / 100) * 200, "big"),
+    );
+    const t = performance.now();
+    const p = previewMembership(moving, [big], []);
+    expect(performance.now() - t).toBeLessThan(perfBudget(16));
+    expect(p.get("big")).toBe("hold");
   });
 });

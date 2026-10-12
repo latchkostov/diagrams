@@ -1,10 +1,12 @@
 // Tidy the selection (D15): the layered layout on just the selected nodes and the edges between them, inside
 // their current bounding box where it fits, keeping its top-left. Nothing else moves, and the result lands
 // clear of everything else (nothing overlaps by default): when the tidied nodes would cover something, they
-// move together to the nearest free place. Pure geometry.
+// move together to the nearest free place (the shared search in placement.ts). When there's none, or the
+// caller's constraints (boundaries) refuse every place within reach, nothing moves. Pure geometry.
 
 import { layeredLayout } from "./layout";
 import type { Positions } from "./arrange";
+import { COPY_MARGIN, findClearTranslation } from "../canvas/placement";
 
 export type TidyBox = { id: string; x: number; y: number; width: number; height: number; label?: string };
 type Rect = { x: number; y: number; width: number; height: number };
@@ -14,12 +16,6 @@ type Rect = { x: number; y: number; width: number; height: number };
  * layered layout gave its label.
  */
 export const TIDY_GAP = { along: 80, across: 40 } as const;
-/** Room kept between the tidied nodes and anything else. */
-const CLEAR = 16;
-
-const overlaps = (a: Rect, b: Rect) =>
-  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-
 function bounds(boxes: readonly Rect[]): Rect {
   const x = Math.min(...boxes.map((b) => b.x));
   const y = Math.min(...boxes.map((b) => b.y));
@@ -103,50 +99,26 @@ export function scaleAcross(
   return out;
 }
 
-/** The smallest move (on a `step` grid, nearest first) that puts every box clear of `others`; null if none. */
-function clearMove(
-  boxes: readonly Rect[],
-  others: readonly Rect[],
-  step = 20,
-  rings = 40,
-): { x: number; y: number } | null {
-  const grown = others.map((o) => ({
-    x: o.x - CLEAR,
-    y: o.y - CLEAR,
-    width: o.width + CLEAR * 2,
-    height: o.height + CLEAR * 2,
-  }));
-  const clear = (dx: number, dy: number) =>
-    boxes.every((b) => !grown.some((o) => overlaps({ ...b, x: b.x + dx, y: b.y + dy }, o)));
-  if (clear(0, 0)) return { x: 0, y: 0 };
-  for (let ring = 1; ring <= rings; ring++) {
-    const spots: { x: number; y: number; d: number }[] = [];
-    for (let i = -ring; i <= ring; i++)
-      for (let j = -ring; j <= ring; j++)
-        if (Math.max(Math.abs(i), Math.abs(j)) === ring) spots.push({ x: i * step, y: j * step, d: Math.hypot(i, j) });
-    spots.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x);
-    const hit = spots.find((s) => clear(s.x, s.y));
-    if (hit) return hit;
-  }
-  return null;
-}
-
 /**
  * New top-left positions for `nodes` (the selection, with their sizes): laid out in layers along `direction`
  * by the edges between them, closed up to fit their current bounding box where the minimum gaps allow, its
  * top-left kept, then moved clear of `others` (everything that isn't being tidied) if they'd cover any of it.
+ * `accept` vets each place (the editor's boundaries: members must stay in theirs). Null when no place within
+ * reach is clear and accepted: the caller keeps the nodes where they are.
  */
 export function tidyLayout({
   nodes,
   edges,
   direction = "LR",
   others = [],
+  accept,
 }: {
   nodes: readonly TidyBox[];
   edges: readonly { from: string; to: string; label?: string }[];
   direction?: "LR" | "TB";
   others?: readonly Rect[];
-}): Positions {
+  accept?: (positions: Positions) => boolean;
+}): Positions | null {
   const out: Positions = new Map();
   if (nodes.length < 2) return out;
   const ids = new Set(nodes.map((n) => n.id));
@@ -180,8 +152,14 @@ export function tidyLayout({
   const shift = { x: Math.round((before.x - after.x) / 10) * 10, y: Math.round((before.y - after.y) / 10) * 10 };
   boxes = boxes.map((b) => ({ ...b, x: b.x + shift.x, y: b.y + shift.y }));
 
-  // Clear of everything else: the nearest free place for the whole tidied group.
-  const move = clearMove(boxes, others) ?? { x: 0, y: 0 };
-  for (const b of boxes) out.set(b.id, { x: Math.round(b.x + move.x), y: Math.round(b.y + move.y) });
-  return out;
+  // Clear of everything else: the nearest free place for the whole tidied group, as one move.
+  const at = (d: { x: number; y: number }): Positions =>
+    new Map(boxes.map((b) => [b.id, { x: Math.round(b.x + d.x), y: Math.round(b.y + d.y) }]));
+  const move = findClearTranslation(boxes, others, {
+    margin: COPY_MARGIN,
+    step: 20,
+    maxRings: 40,
+    accept: accept && ((d) => accept(at(d))),
+  });
+  return move && at(move);
 }

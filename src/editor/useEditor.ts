@@ -71,7 +71,13 @@ import { diagramDiff } from "./diagramDiff";
 import { nudgeOnGrid } from "../canvas/guides";
 import { validateDiagram } from "../interop/native";
 import type { DiagramAnnotation } from "../model/types";
-import { membershipAfterResize, settleMembership, type GroupRect, type MemberBox } from "../canvas/membership";
+import {
+  membershipAfterResize,
+  planKeep,
+  settleMembership,
+  type GroupRect,
+  type MemberBox,
+} from "../canvas/membership";
 import { tidyLayout } from "./tidy";
 import { choiceOf } from "./relationActions";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
@@ -327,7 +333,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
    * centre, and that boundary grown to hold it when it pokes out (never onto another boundary or a node that
    * isn't a member). Returns the nodes as they should be, and the members each boundary lost.
    */
-  const settled = (ns: FlowNode[], ids: ReadonlySet<string>, keep = false) => {
+  const settled = (ns: FlowNode[], ids: ReadonlySet<string>) => {
     const all = memberBoxes(ns);
     const moving = all.filter((m) => ids.has(m.id));
     if (!moving.length) return { nodes: ns, left: new Map<string, string[]>() };
@@ -335,7 +341,6 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       moving,
       groupRects(ns),
       all.filter((m) => !ids.has(m.id)),
-      keep,
     );
     let changed = false;
     const nodes = ns.map((n): FlowNode => {
@@ -934,25 +939,49 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const set = new Set(ids);
       const ns = rf.getNodes();
       const picked = ns.filter((n): n is DiagramFlowNode => set.has(n.id) && isDiagram(n));
-      if (picked.length < 2) return;
+      if (picked.length < 2) return false;
+      // Only the nodes move: anything else selected (a note, a shape) stays put, so it's an obstacle too.
+      const moving = new Set(picked.map((n) => n.id));
+      const groups = groupRects(ns);
+      const members = memberBoxes(ns);
+      const stay = members.filter((m) => !moving.has(m.id));
+      const own = new Map(members.map((m) => [m.id, m.group]));
+      /** The boundaries' growth that keeps every tidied node in its own boundary there, or null. */
+      const fit = (pos: Positions) =>
+        planKeep(
+          picked.map((n) => ({ ...box(n), ...pos.get(n.id)!, group: own.get(n.id) })),
+          groups,
+          stay,
+        );
       const pos = tidyLayout({
         nodes: picked.map((n) => ({ ...box(n), label: n.data.label })),
         edges: rf.getEdges().map((e) => ({ from: e.source, to: e.target, label: e.data?.label })),
         direction: deps().meta.direction === "TB" ? "TB" : "LR",
         // Everything else stays put, so the tidied nodes land clear of it (boundaries and zones are backdrops).
         others: ns
-          .filter((n) => !set.has(n.id) && (isDiagram(n) || (isAnnotation(n) && isObstacle(n.data.kind))))
+          .filter((n) => !moving.has(n.id) && (isDiagram(n) || (isAnnotation(n) && isObstacle(n.data.kind))))
           .map(box),
+        // Members stay in their boundaries, which must be able to grow to hold them there.
+        accept: (p) => fit(p) !== null,
       });
+      const grow = pos && fit(pos);
+      if (!pos || !grow) {
+        notify("Couldn't find room. Nothing moved.");
+        return false;
+      }
+      // The positions and the boundaries' growth together, as planned: one undo step.
       hint(`tidy:${Date.now()}`);
-      deps().setNodes((cur) => {
-        const moved = cur.map((n) => {
-          const p = pos.get(n.id);
-          return p && (p.x !== n.position.x || p.y !== n.position.y) ? { ...n, position: p } : n;
-        });
-        // They stay in their boundaries, which grow to hold them where they landed.
-        return settled(moved, set, true).nodes;
-      });
+      deps().setNodes((cur) =>
+        cur.map((n) => {
+          if (isGroup(n)) {
+            const r = grow.get(n.data.groupId);
+            return r ? { ...n, position: { x: r.x, y: r.y }, width: r.width, height: r.height } : n;
+          }
+          const at = pos.get(n.id);
+          return at && (at.x !== n.position.x || at.y !== n.position.y) ? { ...n, position: at } : n;
+        }),
+      );
+      return true;
     },
     settleMembership: (ids) => {
       const set = new Set(ids);

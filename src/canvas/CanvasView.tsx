@@ -1,4 +1,5 @@
-import { isDependency } from "../model/relations";
+import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
+import { pipsByNode } from "./nodes/dependencyRows";
 import { dependencyVisibility, projectDependencies, useShowDependencies } from "./dependencyVisibility";
 import { edgeMarks } from "./edgeMarks";
 import {
@@ -952,32 +953,57 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
    * the boundaries' elements once a frame, so a drag re-renders nothing.
    */
   const membershipWatch = useRef<{ stop: () => void } | null>(null);
+  /**
+   * The dragged nodes whose membership a drop decides (their copies' ids, for an Alt-drag): all of them but the
+   * members of a boundary dragged with them, which it carries.
+   */
+  const droppedNodes = useCallback((dragged: FlowNode[], copies: Map<string, string> | null) => {
+    const carriers = new Set(dragged.filter(isGroupNode).map((g) => g.data.groupId));
+    const carried = (n: DiagramFlowNode) => {
+      // An Alt-drag's copy belongs to the copy of its boundary, the original's to the original.
+      const g = n.data.group;
+      return !!g && carriers.has(g);
+    };
+    return dragged
+      .filter((n): n is DiagramFlowNode => isDiagramNode(n) && !carried(n))
+      .map((n) => copies?.get(n.id) ?? n.id);
+  }, []);
   const watchMembership = useCallback(
     (dragged: FlowNode[], copies: Map<string, string> | null) => {
       const s = store.getState();
-      if (dragged.some(isGroupNode)) return;
-      const ids = dragged.filter(isDiagramNode).map((n) => copies?.get(n.id) ?? n.id);
-      const groups: GroupRect[] = s.nodes.filter(isGroupNode).map((g) => ({
-        id: g.data.groupId,
-        x: g.position.x,
-        y: g.position.y,
-        width: g.width ?? g.measured?.width ?? 0,
-        height: g.height ?? g.measured?.height ?? 0,
-      }));
-      if (!ids.length || !groups.length) return;
-      const moving = new Set([...ids, ...dragged.map((n) => n.id)]);
+      const ids = droppedNodes(dragged, copies);
+      const groupsOf = (ns: readonly FlowNode[]): GroupRect[] =>
+        ns.filter(isGroupNode).map((g) => ({
+          id: g.data.groupId,
+          x: g.position.x,
+          y: g.position.y,
+          width: g.width ?? g.measured?.width ?? 0,
+          height: g.height ?? g.measured?.height ?? 0,
+        }));
       const sizeOf = (n: FlowNode) => ({
         width: n.measured?.width ?? n.width ?? 0,
         height: n.measured?.height ?? n.height ?? 0,
       });
-      const others: MemberBox[] = s.nodes
-        .filter((n): n is DiagramFlowNode => isDiagramNode(n) && !moving.has(n.id))
-        .map((n) => ({ id: n.id, ...n.position, ...sizeOf(n), group: n.data.group }));
+      const moving = new Set([...ids, ...dragged.map((n) => n.id)]);
+      const othersOf = (ns: readonly FlowNode[]): MemberBox[] =>
+        ns
+          .filter((n): n is DiagramFlowNode => isDiagramNode(n) && !moving.has(n.id))
+          .map((n) => ({ id: n.id, ...n.position, ...sizeOf(n), group: n.data.group }));
+      // Boundaries dragged along (with their members) move under the nodes: read them each frame then. Otherwise
+      // the rest holds still, so it's read once.
+      const live = dragged.some(isGroupNode);
+      let groups = groupsOf(s.nodes);
+      let others = othersOf(s.nodes);
+      if (!ids.length || !groups.length) return;
       const marked = new Map<string, Element>();
       let frame = 0;
       const paint = () => {
         frame = 0;
         const st = store.getState();
+        if (live) {
+          groups = groupsOf(st.nodes);
+          others = othersOf(st.nodes);
+        }
         const now: MemberBox[] = [];
         for (const id of ids) {
           const n = st.nodeLookup.get(id);
@@ -1011,7 +1037,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         },
       };
     },
-    [store],
+    [store, droppedNodes],
   );
   useEffect(() => () => membershipWatch.current?.stop(), []);
   /** Members dropped outside their boundary left it: say so, with Undo (D12: leaving is never silent). */
@@ -1068,9 +1094,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       membershipWatch.current = null;
       const copies = altCopies.current;
       altCopies.current = null;
-      // A boundary dragged takes its members along: they stay in it.
-      const boundary = dragged.some(isGroupNode);
-      const ids = boundary ? [] : dragged.filter((n) => n.type === "diagram").map((n) => copies?.get(n.id) ?? n.id);
+      // Members a dragged boundary carries stay in it; every other dropped node settles where it landed.
+      const ids = droppedNodes(dragged, copies);
       // Once the drop has rendered: a copy dropped onto something moves to the nearest free place (nothing
       // overlaps by default), then the dropped nodes settle into the boundaries around them, which grow to hold
       // a member poking out (D12), in the drop's undo step. A member that left its boundary says so.
@@ -1087,7 +1112,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         if (!copies && editGestures) sayLeft(left);
       });
     },
-    [editor, guides, editGestures, sayLeft],
+    [editor, guides, editGestures, sayLeft, droppedNodes],
   );
 
   // ---------------------------------------------------------------- Space, Alt and the middle button (D4, D9)
@@ -1515,11 +1540,25 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     }),
     [nominalW, nominalH],
   );
+  /** Tab's order: reading order, each boundary just before its first member, an empty one where it reads. */
+  const navOrder = useCallback(
+    (ns: readonly FlowNode[]) =>
+      tabOrder(
+        ns.filter((n) => !isGroupNode(n)).map(navBox),
+        ns.filter(isGroupNode).map((g) => ({
+          ...navBox(g),
+          members: ns.filter((m) => isDiagramNode(m) && m.data.group === g.data.groupId).map((m) => m.id),
+        })),
+        direction,
+      ),
+    [navBox, direction],
+  );
   const rovingId = useMemo(() => {
     if (readOnly) return undefined;
     if (focusId && nodes.some((n) => n.id === focusId && !n.hidden)) return focusId;
-    return readingOrder(nodes.filter((n) => !n.hidden && !isGroupNode(n)).map(navBox), direction)[0]?.id;
-  }, [readOnly, focusId, nodes, navBox, direction]);
+    // The first thing Tab would meet, a boundary included: a diagram of boundaries only is still reachable.
+    return navOrder(nodes.filter((n) => !n.hidden))[0];
+  }, [readOnly, focusId, nodes, navOrder]);
   // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel), and a
   // card being edited inline draws above everything else (its editor hangs below the card).
   // Only one node is in the page's Tab order (see above).
@@ -1550,15 +1589,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         if (isAnnotationNode(n)) return annotationTitle(n.data);
         return (n as GroupFlowNode).data.label || "Untitled boundary";
       };
-      // Reading order, each boundary just before its first member.
-      const order = tabOrder(
-        ns.filter((n) => !isGroupNode(n)).map(navBox),
-        ns.filter(isGroupNode).map((g) => ({
-          ...navBox(g),
-          members: ns.filter((m) => isDiagramNode(m) && m.data.group === g.data.groupId).map((m) => m.id),
-        })),
-        direction,
-      );
+      const order = navOrder(ns);
 
       const goNode = (id: string) => {
         const n = ns.find((x) => x.id === id);
@@ -1578,7 +1609,12 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           const ins = es.filter((e) => e.target === id).length;
           const inGroup = n.data.group ? editor.getGroup(n.data.group)?.label : undefined;
           const edges = outs + ins ? `${outs} out, ${ins} in` : "no connections";
-          announce(`${nodeAriaLabel(n.data)}${inGroup ? `, in ${inGroup}` : ""}. ${at}. ${edges}.`);
+          // Hidden dependencies show as pips, whose list opens on the focused node: say it too.
+          const pips = dependencyVisibility.get() ? [] : (pipsByNode(store.getState().edges).get(id) ?? []);
+          const deps = pips.length
+            ? ` Dependencies: ${pips.map((r) => `${RELATION_META[r.relation].label} · ${labelOf(r.target)}`).join(", ")}.`
+            : "";
+          announce(`${nodeAriaLabel(n.data)}${inGroup ? `, in ${inGroup}` : ""}. ${at}. ${edges}.${deps}`);
         } else if (isAnnotationNode(n)) announce(`${annotationAriaLabel(n.data)}. ${at}.`);
         else {
           const members = ns.filter((m) => isDiagramNode(m) && m.data.group === (n as GroupFlowNode).data.groupId);
@@ -1619,7 +1655,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         );
         revealSelection();
         const said = edgeAriaLabel(labelOf(e.source), labelOf(e.target), e.data?.kind, e.data?.label, e.data?.relation);
-        announce(`${said}. ${out ? "Outgoing" : "Incoming"} ${list.indexOf(e) + 1} of ${list.length}.`);
+        const settings = settingsSummary(edgeSettings(e.data));
+        announce(
+          `${said}.${settings ? ` ${settings}.` : ""} ${out ? "Outgoing" : "Incoming"} ${list.indexOf(e) + 1} of ${list.length}.`,
+        );
         return true;
       }
 
@@ -1641,8 +1680,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           };
       }
       if (!fromBox) {
-        const first = readingOrder(stops, direction)[0];
-        return first ? goNode(first.id) : false;
+        // Nothing selected: the first thing in Tab's order (a boundary, when there are only boundaries).
+        const first = readingOrder(stops, direction)[0]?.id ?? order[0];
+        return first ? goNode(first) : false;
       }
       const to = nearestInDirection(fromBox, stops, step);
       if (!to) {

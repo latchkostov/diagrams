@@ -76,8 +76,11 @@ export function growthBlocked(
   grown: Rect,
   groups: readonly GroupRect[],
   others: readonly MemberBox[],
+  planned: ReadonlyMap<string, Rect> = new Map(),
 ): boolean {
-  for (const g of groups) if (g.id !== group.id && overlaps(grown, g) && !overlaps(group, g)) return true;
+  // Against each other boundary as it will be (grown, if its growth was accepted first).
+  for (const g of groups)
+    if (g.id !== group.id && overlaps(grown, planned.get(g.id) ?? g) && !overlaps(group, g)) return true;
   for (const o of others) if (o.group !== group.id && overlaps(grown, o) && !overlaps(group, o)) return true;
   return false;
 }
@@ -101,28 +104,61 @@ export function settleMembership(
   blocked: Set<string>;
   left: Map<string, string[]>;
 } {
+  const byId = new Map(groups.map((g) => [g.id, g]));
   const group = new Map<string, string | undefined>();
   const left = new Map<string, string[]>();
+  // Buckets made once per call and appended to (a drag's preview runs this every frame).
   const byGroup = new Map<string, MemberBox[]>();
+  const landed: MemberBox[] = [];
   for (const m of moving) {
-    const g = keep && groups.some((x) => x.id === m.group) ? m.group : groupOf(groups, m);
+    const g = keep && m.group && byId.has(m.group) ? m.group : groupOf(groups, m);
     group.set(m.id, g);
-    if (m.group && m.group !== g) left.set(m.group, [...(left.get(m.group) ?? []), m.id]);
-    if (g) byGroup.set(g, [...(byGroup.get(g) ?? []), { ...m, group: g }]);
+    landed.push(g === m.group ? m : { ...m, group: g });
+    if (m.group && m.group !== g) {
+      const l = left.get(m.group);
+      if (l) l.push(m.id);
+      else left.set(m.group, [m.id]);
+    }
+    if (g) {
+      const b = byGroup.get(g);
+      if (b) b.push(m);
+      else byGroup.set(g, [m]);
+    }
   }
+  // One plan for every boundary that grows: each proposal (in id order, so the result never depends on the
+  // order nodes were dragged in) is checked against the others as they will be, accepted growth included, so
+  // two boundaries never grow into each other. The nodes a grown boundary must stay off: the ones that stay
+  // put and the moving ones landing elsewhere.
   const grow = new Map<string, Rect>();
   const blocked = new Set<string>();
-  // The nodes a grown boundary must stay off: the ones that stay put and the moving ones landing elsewhere.
-  const landed = moving.map((m) => ({ ...m, group: group.get(m.id) }));
-  for (const [id, members] of byGroup) {
-    const g = groups.find((x) => x.id === id)!;
+  const nodes = [...others, ...landed];
+  for (const id of [...byGroup.keys()].sort()) {
+    const g = byId.get(id)!;
     let rect: Rect = g;
-    for (const m of members) rect = growToHold(rect, m) ?? rect;
+    for (const m of byGroup.get(id)!) rect = growToHold(rect, m) ?? rect;
     if (rect === g) continue;
-    if (growthBlocked(g, rect, groups, [...others, ...landed])) blocked.add(id);
+    if (growthBlocked(g, rect, groups, nodes, grow)) blocked.add(id);
     else grow.set(id, rect);
   }
   return { group, grow, blocked, left };
+}
+
+/**
+ * Tidy up's check: with every node of `moving` kept in its boundary, can each boundary grow to hold its members
+ * where they'd land, without reaching another boundary or a node that isn't its own, and does each node's centre
+ * then sit in its own boundary (a node in none, in none)? Returns the growth when it can, null when it can't.
+ */
+export function planKeep(
+  moving: readonly MemberBox[],
+  groups: readonly GroupRect[],
+  others: readonly MemberBox[],
+): Map<string, Rect> | null {
+  const s = settleMembership(moving, groups, others, true);
+  if (s.blocked.size) return null;
+  const after = groups.map((g) => ({ ...g, ...(s.grow.get(g.id) ?? {}) }));
+  const ids = new Set(groups.map((g) => g.id));
+  for (const m of moving) if (groupOf(after, m) !== (m.group && ids.has(m.group) ? m.group : undefined)) return null;
+  return s.grow;
 }
 
 /** What a drag shows on each boundary it touches (see `Membership`). */

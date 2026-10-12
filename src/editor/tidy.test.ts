@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fitAxis, scaleAcross, tidyLayout, TIDY_GAP, type TidyBox } from "./tidy";
 import { spreadOverlaps } from "./arrange";
+import { perfBudget } from "../test/perfBudget";
 
 const card = (id: string, x: number, y: number, label?: string): TidyBox => ({
   id,
@@ -13,8 +14,10 @@ const card = (id: string, x: number, y: number, label?: string): TidyBox => ({
 type Rect = { x: number; y: number; width: number; height: number };
 const overlaps = (a: Rect, b: Rect) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-const placed = (boxes: readonly TidyBox[], pos: Map<string, { x: number; y: number }>) =>
-  boxes.map((b) => ({ ...b, ...pos.get(b.id)! }));
+const placed = (boxes: readonly TidyBox[], pos: Map<string, { x: number; y: number }> | null) => {
+  if (!pos) throw new Error("Expected a tidy layout");
+  return boxes.map((b) => ({ ...b, ...pos.get(b.id)! }));
+};
 const noOverlaps = (boxes: readonly Rect[]) => {
   for (let i = 0; i < boxes.length; i++)
     for (let j = i + 1; j < boxes.length; j++) if (overlaps(boxes[i], boxes[j])) return false;
@@ -79,7 +82,66 @@ describe("tidyLayout", () => {
   });
 
   it("does nothing with fewer than two nodes", () => {
-    expect(tidyLayout({ nodes: [card("a", 0, 0)], edges: [] }).size).toBe(0);
+    expect(tidyLayout({ nodes: [card("a", 0, 0)], edges: [] })?.size).toBe(0);
+  });
+
+  it("when no place within reach is clear, gives up instead of landing on something", () => {
+    // Three clear cards around a huge shape the tidied row would land on, with no free place within reach.
+    const nodes = [card("a", 0, 4000), card("b", 4000, 0), card("c", 4000, 4000)];
+    const shape = { x: -1000, y: -1000, width: 4000, height: 4000 };
+    expect(nodes.every((n) => !overlaps(n, shape))).toBe(true);
+    const r = tidyLayout({
+      nodes,
+      edges: [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" },
+      ],
+      others: [shape],
+    });
+    expect(r).toBeNull();
+    // Ten stacked cards beside a tall shape: the row would cross it everywhere within reach.
+    const column = Array.from({ length: 10 }, (_, i) => card(`n${i}`, 0, i * 100));
+    const tall = { x: 250, y: -1000, width: 3000, height: 5000 };
+    const chain10 = column.slice(1).map((n, i) => ({ from: column[i].id, to: n.id }));
+    const res = tidyLayout({ nodes: column, edges: chain10, others: [tall] });
+    if (res) for (const b of placed(column, res)) expect(overlaps(b, tall)).toBe(false);
+  });
+
+  it("asks `accept` about each place, and gives up when it refuses them all", () => {
+    let asked = 0;
+    const none = tidyLayout({
+      nodes: messy,
+      edges: chain,
+      accept: () => {
+        asked++;
+        return false;
+      },
+    });
+    expect(none).toBeNull();
+    // Bounded: it stops asking once the budget is spent.
+    expect(asked).toBeLessThanOrEqual(200);
+    // A place the caller accepts is taken: here, only ones moved down.
+    const down = tidyLayout({ nodes: messy, edges: chain, accept: (p) => (p.get("a")?.y ?? 0) > 400 });
+    expect(placed(messy, down)[0].y).toBeGreaterThan(400);
+  });
+
+  it("stays fast on a large selection among many obstacles, even when it can't find room", () => {
+    // 200 selected nodes in a chain, 600 others, and a note covering where the tidied layout would go.
+    const nodes = Array.from({ length: 200 }, (_, i) => card(`s${i}`, (i % 20) * 300, Math.floor(i / 20) * 200));
+    const edges = nodes.slice(1).map((n, i) => ({ from: nodes[i].id, to: n.id }));
+    const others = [
+      ...Array.from({ length: 600 }, (_, i) => ({
+        x: 20000 + (i % 30) * 300,
+        y: (i / 30) * 200,
+        width: 220,
+        height: 72,
+      })),
+      { x: -500, y: -500, width: 80000, height: 3000 },
+    ];
+    const t = performance.now();
+    const r = tidyLayout({ nodes, edges, others });
+    expect(performance.now() - t).toBeLessThan(perfBudget(1500));
+    if (r) expect(placed(nodes, r).some((b) => others.some((o) => overlaps(b, o)))).toBe(false);
   });
 });
 
@@ -114,6 +176,18 @@ describe("align and distribute never stack nodes", () => {
     expect(boxes.every((b) => b.y === 0)).toBe(true);
     expect(noOverlaps(boxes)).toBe(true);
     expect(out.get("b")!.x).toBe(260);
+  });
+
+  it("a thousand boxes aligned onto one spot spread in a few milliseconds", () => {
+    const row = Array.from({ length: 1000 }, (_, i) => ({ id: `b${i}`, x: i * 300, y: 0, width: 220, height: 72 }));
+    const aligned = new Map(row.map((b) => [b.id, { x: 0, y: 0 }]));
+    const t = performance.now();
+    const out = spreadOverlaps(row, aligned, "h");
+    expect(performance.now() - t).toBeLessThan(perfBudget(60));
+    const xs = row.map((b) => out.get(b.id)!.x);
+    // In their order, each one gap past the one before.
+    expect(xs.slice(0, 3)).toEqual([0, 260, 520]);
+    expect(xs.every((x, i) => i === 0 || x === xs[i - 1] + 260)).toBe(true);
   });
 
   it("leaves boxes that don't overlap where they are", () => {

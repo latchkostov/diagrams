@@ -75,27 +75,42 @@ export function boundaryAround(boxes: readonly Box[], pad = 40, labelRoom = 24) 
 
 /**
  * Keeps an arrangement overlap-free: aligning a column's tops (or distributing nodes that don't fit their span)
- * would stack them. Boxes that overlap after `positions` are moved apart along `axis` ("h": sideways, "v":
- * down), in their order on it, `gap` apart; boxes that don't overlap stay where `positions` put them.
+ * would stack them. In their order along `axis` ("h": sideways, "v": down), a box that overlaps one placed
+ * before it moves just past the furthest of those that share its band across the axis, `gap` apart; boxes that
+ * don't overlap stay where `positions` put them. One pass, each box looked at against the ones before it
+ * once: a thousand boxes lined up on one spot take a few milliseconds, not seconds.
  */
 export function spreadOverlaps(boxes: readonly Box[], positions: Positions, axis: Axis, gap = 40): Positions {
   const out: Positions = new Map(positions);
-  const at = (b: Box) => ({ ...b, ...(out.get(b.id) ?? { x: b.x, y: b.y }) });
   const h = axis === "h";
-  const sorted = [...boxes].sort((a, b) => (h ? a.x - b.x || a.y - b.y : a.y - b.y || a.x - b.x));
-  const placed: Box[] = [];
-  for (const b0 of sorted) {
-    const b = at(b0);
-    for (let i = 0; i < placed.length * 2 + 1; i++) {
-      const hit = placed.find(
-        (p) => b.x < p.x + p.width && p.x < b.x + b.width && b.y < p.y + p.height && p.y < b.y + b.height,
-      );
-      if (!hit) break;
-      if (h) b.x = hit.x + hit.width + gap;
-      else b.y = hit.y + hit.height + gap;
+  const placed = boxes.map((b) => {
+    const p = positions.get(b.id) ?? b;
+    return { id: b.id, x: p.x, y: p.y, width: b.width, height: b.height };
+  });
+  placed.sort((a, b) => (h ? a.x - b.x || a.y - b.y : a.y - b.y || a.x - b.x));
+  // Along the axis: start and end; across it: start and end. Flat arrays, no allocation in the loop.
+  const n = placed.length;
+  const s1 = new Float64Array(n);
+  const s2 = new Float64Array(n);
+  const c1 = new Float64Array(n);
+  const c2 = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const b = placed[i];
+    let start = h ? b.x : b.y;
+    const size = h ? b.width : b.height;
+    c1[i] = h ? b.y : b.x;
+    c2[i] = c1[i] + (h ? b.height : b.width);
+    let hit = false;
+    let past = -Infinity;
+    for (let j = 0; j < i; j++) {
+      if (c1[i] >= c2[j] || c1[j] >= c2[i]) continue;
+      if (s2[j] > start) past = Math.max(past, s2[j]);
+      if (start < s2[j] && s1[j] < start + size) hit = true;
     }
-    out.set(b.id, { x: Math.round(b.x), y: Math.round(b.y) });
-    placed.push(b);
+    if (hit) start = past + gap;
+    s1[i] = start;
+    s2[i] = start + size;
+    out.set(b.id, h ? { x: Math.round(start), y: Math.round(b.y) } : { x: Math.round(b.x), y: Math.round(start) });
   }
   return out;
 }

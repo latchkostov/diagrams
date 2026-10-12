@@ -36,7 +36,10 @@ const SEED = {
     { id: "w-l", from: "worker", to: "ledger", kind: "sync" },
     { id: "a-c", from: "api", to: "carrier", label: "Ship order" },
   ],
-  annotations: [{ id: "n1", kind: "note", text: "Retry budget", x: 300, y: 560, width: 160, height: 100 }],
+  annotations: [
+    { id: "n1", kind: "note", text: "Retry budget", x: 300, y: 560, width: 160, height: 100 },
+    { id: "n2", kind: "note", text: "Carrier SLA", x: 1400, y: 560, width: 160, height: 100, color: "blue" },
+  ],
 };
 
 type Saved = {
@@ -46,7 +49,7 @@ type Saved = {
   annotations?: { id: string; color?: string }[];
 };
 
-async function seed(page: Page, viewport = { width: 1440, height: 900 }) {
+async function seed(page: Page, viewport = { width: 1440, height: 900 }, diagram: object = SEED) {
   await page.setViewportSize(viewport);
   await page.addInitScript(
     ([key, value]) => {
@@ -55,10 +58,10 @@ async function seed(page: Page, viewport = { width: 1440, height: 900 }) {
         sessionStorage.setItem("seeded", "1");
       }
     },
-    [KEY, JSON.stringify(SEED)] as const,
+    [KEY, JSON.stringify(diagram)] as const,
   );
   await gotoCanvas(page, SLUG);
-  await expect(page.getByTestId("node-billing")).toBeVisible();
+  if (diagram === SEED) await expect(page.getByTestId("node-billing")).toBeVisible();
   await waitForStableViewport(page);
 }
 
@@ -421,13 +424,15 @@ test.describe("tidy the selection (D15)", () => {
       for (let j = i + 1; j < boxes.length; j++)
         if (overlap(boxes[i][1], boxes[j][1])) hits.push(`${boxes[i][0]} × ${boxes[j][0]}`);
     expect(hits).toEqual([]);
-    // Payments grew to hold its tidied members.
+    // Payments grew to hold its tidied members, which are all still in it, and nothing else changed boundary.
     expect(group(d, "pay").x + group(d, "pay").width).toBeGreaterThanOrEqual(node(d, "ledger").x + 220);
-    // One undo puts all three back.
+    for (const id of ["api", "worker", "ledger"]) expect(node(d, id).group).toBe("pay");
+    expect(group(d, "ship")).toEqual(group(start as Saved, "ship"));
+    // One undo puts all three back, and Payments' size with them.
     await page.getByTestId("undo-button").click();
     const back = await savedWhen(page, (s) => node(s, "ledger").y === 260);
-    expect(node(back, "worker")).toMatchObject({ x: 380, y: 80 });
-    expect(node(back, "api")).toMatchObject({ x: 40, y: 80 });
+    for (const n of (start as Saved).nodes) expect(node(back, n.id)).toEqual(n);
+    expect(back.groups).toEqual((start as Saved).groups);
     expectNoErrors(consoleErrors);
   });
 
@@ -479,7 +484,8 @@ test.describe("keyboard selection between nodes (D14)", () => {
 
   test("Tab past the last node leaves the canvas", async ({ page }) => {
     await seed(page);
-    await page.getByTestId("node-billing").click();
+    // The Carrier SLA note is last in reading order.
+    await page.getByTestId("annotation-n2").click();
     await page.keyboard.press("Tab");
     await expect.poll(() => focusedNode(page)).toBeNull();
   });
@@ -519,4 +525,140 @@ test.describe("keyboard selection between nodes (D14)", () => {
     await page.keyboard.press("Control+Alt+BracketLeft");
     await expect(announced(page)).toHaveText("Orders API has no incoming edges.");
   });
+});
+
+test.describe("review follow-ups", () => {
+  test("bulk colours update every selected item, show Mixed, and undo together", async ({ page, consoleErrors }) => {
+    await seed(page);
+    await page.getByTestId("annotation-n1").click();
+    await page.getByTestId("annotation-n2").click({ modifiers: [MOD] });
+    await page.getByTestId("group-label-pay").click({ modifiers: [MOD] });
+    await page.getByTestId("group-label-ship").click({ modifiers: [MOD] });
+    await expect(page.getByTestId("inspector-title")).toHaveText("4 selected");
+    // Yellow (the default) and blue; azure and AWS.
+    await expect(page.getByTestId("inspector-field-color-mixed")).toBeVisible();
+    await expect(page.getByTestId("inspector-field-tone-mixed")).toBeVisible();
+    await page.getByTestId("inspector-color-green").click();
+    await page.getByTestId("inspector-tone-gcp").click();
+    let d = await savedWhen(
+      page,
+      (s) =>
+        s.annotations?.every((a) => a.color === "green") === true && s.groups?.every((g) => g.tone === "gcp") === true,
+    );
+    expect(d.annotations?.map((a) => a.color)).toEqual(["green", "green"]);
+    await expect(page.getByTestId("inspector-field-color-mixed")).toHaveCount(0);
+    // One undo per edit: the tones first, then the colours.
+    await page.getByTestId("undo-button").click();
+    d = await savedWhen(page, (s) => group(s, "pay").tone === "azure");
+    expect(group(d, "ship").tone).toBe("aws");
+    expect(d.annotations?.map((a) => a.color)).toEqual(["green", "green"]);
+    await page.getByTestId("undo-button").click();
+    d = await savedWhen(page, (s) => s.annotations?.find((a) => a.id === "n2")?.color === "blue");
+    expect(d.annotations?.find((a) => a.id === "n1")?.color).toBeUndefined();
+    expectNoErrors(consoleErrors);
+  });
+
+  test("dragging a boundary with a node that isn't its member still settles that node", async ({ page }) => {
+    await seed(page);
+    await page.getByTestId("group-label-ship").click();
+    await page.getByTestId("node-cache").click({ modifiers: [MOD] });
+    // Cache (700, 560) into Payments, Shipping along with it.
+    const v = await view(page);
+    const at = centre(await box(page.getByTestId("node-cache")));
+    await dragTo(page, "cache", { x: at.x - 400 * v.k, y: at.y - 360 * v.k });
+    const d = await savedWhen(page, (s) => node(s, "cache").group === "pay");
+    // Shipping's own member went with it and stays in it.
+    expect(node(d, "carrier").group).toBe("ship");
+  });
+
+  test("a diagram of boundaries only can be reached and walked from the keyboard", async ({ page }) => {
+    await seed(page, undefined, {
+      format: "diagrams/v1",
+      title: "Boundaries only",
+      groups: [
+        { id: "a", label: "Alpha", x: 0, y: 0, width: 400, height: 300 },
+        { id: "b", label: "Beta", x: 600, y: 0, width: 400, height: 300 },
+      ],
+      nodes: [],
+      edges: [],
+    });
+    await expect(page.getByTestId("group-a")).toBeVisible();
+    // One of them is in the page's Tab order.
+    const stops = await page
+      .getByTestId(/^group-[ab]$/)
+      .evaluateAll(
+        (els) => els.filter((el) => el.closest(".react-flow__node")?.getAttribute("tabindex") === "0").length,
+      );
+    expect(stops).toBe(1);
+    await page.keyboard.press("Control+Alt+ArrowRight");
+    await expect(page.getByTestId("canvas-announce")).toContainText("Alpha, boundary, 0 nodes");
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("canvas-announce")).toContainText("Beta, boundary");
+  });
+
+  test("with dependencies hidden, a node's pips aren't a Tab stop; its list opens on the node", async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("diagrams.showDependencies.v1", "0"));
+    await gotoCanvas(page, "aks-app-config-key-vault");
+    const pips = page.getByTestId("node-pips-api");
+    await expect(pips).toBeVisible();
+    await expect(pips).toHaveAttribute("tabindex", "-1");
+    // Tab through the whole canvas: focus is only ever on a node, then leaves it.
+    await page.getByTestId("node-web").click();
+    const seen: string[] = [];
+    for (let i = 0; i < 20; i++) {
+      await page.keyboard.press("Tab");
+      const at = await page.evaluate(() => {
+        const el = document.activeElement;
+        // Past the diagram: the canvas's own controls, or the rest of the page.
+        if (!el?.closest(".react-flow__viewport, .react-flow__edgelabel-renderer")) return "outside";
+        return el.closest(".react-flow__node") === el ? "node" : (el.getAttribute("data-testid") ?? el.tagName);
+      });
+      seen.push(at);
+      if (at === "outside") break;
+    }
+    expect(seen.at(-1)).toBe("outside");
+    expect(seen.filter((s) => s !== "node" && s !== "outside")).toEqual([]);
+    // Reaching the API from the keyboard opens its dependency list, and the announcement reads it.
+    // Back into the canvas (Shift+Tab lands on the node last visited), then back through the nodes.
+    const focused = () =>
+      page.evaluate(() => document.activeElement?.closest(".react-flow__node")?.getAttribute("data-id") ?? null);
+    for (let i = 0; i < 14; i++) {
+      const before = await focused();
+      await page.keyboard.press("Shift+Tab");
+      // Each step lands before the next.
+      await expect.poll(focused).not.toBe(before);
+      if ((await focused()) === "api") break;
+    }
+    expect(await focused()).toBe("api");
+    await expect(page.getByTestId("node-dependencies-api")).toBeVisible();
+    await expect(page.getByTestId("canvas-announce")).toContainText("Dependencies:");
+  });
+});
+
+test("Tidy up with no room says so and moves nothing", async ({ page }) => {
+  // Three clear cards around a big shape: wherever the tidied row could go within reach, it would cover it.
+  const diagram = {
+    format: "diagrams/v1",
+    title: "No room",
+    nodes: [
+      { id: "a", stencil: "service.node", label: "A", x: 0, y: 4000 },
+      { id: "b", stencil: "service.node", label: "B", x: 4000, y: 0 },
+      { id: "c", stencil: "service.node", label: "C", x: 4000, y: 4000 },
+    ],
+    edges: [
+      { id: "a-b", from: "a", to: "b" },
+      { id: "b-c", from: "b", to: "c" },
+    ],
+    annotations: [{ id: "wall", kind: "shape", text: "", x: -1000, y: -1000, width: 4000, height: 4000 }],
+  };
+  await seed(page, undefined, diagram);
+  // Everything, the shape too: a selected shape stays put, so it still counts.
+  await page.getByTestId("node-a").click();
+  await page.keyboard.press(`${MOD}+a`);
+  await page.getByTestId("inspector-tidy").click();
+  await expect(page.getByTestId("toast")).toContainText("Couldn't find room. Nothing moved.");
+  await page.waitForTimeout(500);
+  const d = await saved(page);
+  // Nothing was written (no change), or the nodes are where they were.
+  if (d) for (const n of diagram.nodes) expect(node(d, n.id)).toMatchObject({ x: n.x, y: n.y });
 });
