@@ -77,8 +77,8 @@ import {
 import { previewMembership, type GroupRect, type MemberBox } from "./membership";
 import { nearestInDirection, readingOrder, stepInOrder, tabOrder, type NavBox } from "./keyboardNav";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
-import { overlayRects, useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
-import { panClearOf, panIntoView } from "./geometry/fit";
+import { revealPan, useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
+import { panIntoView, type Viewport } from "./geometry/fit";
 import { union } from "./geometry/rect";
 import { canvasNodeTypes } from "./nodes/nodeTypes";
 import {
@@ -551,37 +551,47 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
    * minimap. `roomBelow` keeps space for what hangs under the card (its label editor): screen px up to 100%
    * zoom (the editor never reads smaller than its CSS size), growing with the zoom above it.
    */
-  const keepInView = useRef<() => boolean>(() => false);
+  const keepInView = useRef<() => Viewport | null>(() => null);
   const revealSelection = useCallback(
     (then?: () => void, roomBelow = 0) => {
-      const clearOfChrome = () => {
+      /** The reveal from `from` (where keep-in-view's pan lands, else the view now), or null. */
+      const clearOfChrome = (from: Viewport | null): Viewport | null => {
         const el = wrapper.current;
-        if (!el) return;
-        const [tx, ty, k] = store.getState().transform;
+        if (!el) return null;
+        const s = store.getState();
+        const [tx, ty] = s.transform;
+        const base = from ?? { x: tx, y: ty, zoom: s.transform[2] };
+        const k = base.zoom;
+        // What hangs below, in flow px.
+        const below = (roomBelow * Math.max(1, k)) / k;
         const sel = union(
-          getNodes()
-            .filter((n) => n.selected && n.measured?.width)
+          [...s.nodeLookup.values()]
+            .filter((n) => n.selected && !n.hidden && n.measured?.width)
             .map((n) => ({
-              x: n.position.x * k + tx,
-              y: n.position.y * k + ty,
-              width: (n.measured?.width ?? 0) * k,
-              height: (n.measured?.height ?? 0) * k + roomBelow * Math.max(1, k),
+              x: n.internals.positionAbsolute.x,
+              y: n.internals.positionAbsolute.y,
+              width: n.measured?.width ?? 0,
+              height: (n.measured?.height ?? 0) + below,
             })),
         );
-        if (!sel) return;
-        const pane = el.getBoundingClientRect();
-        const d = panClearOf(sel, overlayRects(el), { width: pane.width, height: pane.height });
-        if (d.dx || d.dy) void setViewport({ x: tx + d.dx, y: ty + d.dy, zoom: k }, { duration: motionMs(200) });
+        if (!sel) return null;
+        // The same reveal as keyboard focus (revealFocused).
+        return revealPan(el, base, sel);
       };
       let frames = 30;
       const step = () => {
         const waiting = getNodes().some((n) => n.selected && !n.measured?.width);
         if (waiting && --frames > 0) return void requestAnimationFrame(step);
         // The editor opens at once (keys typed next belong to it); the view follows meanwhile, clearing
-        // the chrome once keep-in-view's own pan has landed.
+        // the chrome once keep-in-view's own pan has landed. Worked out from where that pan lands, not
+        // from the view mid-way (a busy frame can still be animating it then).
         then?.();
-        if (keepInView.current()) setTimeout(clearOfChrome, motionMs(250) + 30);
-        else clearOfChrome();
+        const kept = keepInView.current();
+        const next = clearOfChrome(kept);
+        if (!next) return;
+        const go = () => void setViewport(next, { duration: motionMs(200) });
+        if (kept) setTimeout(go, motionMs(250) + 30);
+        else go();
       };
       requestAnimationFrame(step);
     },
@@ -1527,13 +1537,14 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   /** The node keyboard selection is focusing: it brings it into view itself (revealSelection). */
   const navFocus = useRef<string | undefined>(undefined);
   /**
-   * Keyboard focus that lands on a node cut off by the pane's edge (Tab into the canvas, a screen reader's
-   * focus) brings it into view with a pan, clear of the chrome over the pane. The canvas can't scroll (overflow: clip in
-   * canvas.css), and React Flow's own pan on focus only moves for a node wholly outside the pane.
+   * Keyboard focus that lands on a node out of view or under the chrome (Tab into the canvas, a screen reader's
+   * focus) brings it into view with a pan: the same reveal as a new selection (revealPan). The canvas can't
+   * scroll (overflow: clip in canvas.css), and React Flow's own pan on focus only moves for a node wholly
+   * outside the pane. A boundary too big for the pane keeps its name in view.
    */
-  const revealFocused = useRef((_id: string) => {});
+  const revealFocused = useRef((_id: string, _target: HTMLElement) => {});
   useLayoutEffect(() => {
-    revealFocused.current = (id) => {
+    revealFocused.current = (id, target) => {
       const el = wrapper.current;
       const s = store.getState();
       const n = s.nodeLookup.get(id);
@@ -1544,15 +1555,18 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       const card = { x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width, height };
       const [tx, ty, k] = s.transform;
       const pane = el.getBoundingClientRect();
-      // A node wholly in the pane stays put (focus returning to it after an edit never moves the view).
-      const [left, top] = [card.x * k + tx, card.y * k + ty];
-      if (left >= 0 && top >= 0 && left + width * k <= pane.width && top + height * k <= pane.height) return;
-      const view = { x: 24, y: 24, width: pane.width - 48, height: pane.height - 48 };
-      const v = panIntoView(card, card, { x: tx, y: ty, zoom: k }, view) ?? { x: tx, y: ty, zoom: k };
-      const onScreen = { x: card.x * k + v.x, y: card.y * k + v.y, width: width * k, height: height * k };
-      const d = panClearOf(onScreen, overlayRects(el), { width: pane.width, height: pane.height });
-      const next = { x: v.x + d.dx, y: v.y + d.dy, zoom: k };
-      if (Math.abs(next.x - tx) >= 1 || Math.abs(next.y - ty) >= 1) void setViewport(next, { duration: motionMs(200) });
+      // A boundary's name, else the card's top-left corner: what has to show when the whole can't.
+      const label = target.querySelector('[data-testid^="group-label-"]')?.getBoundingClientRect();
+      const must = label
+        ? {
+            x: (label.left - pane.left - tx) / k,
+            y: (label.top - pane.top - ty) / k,
+            width: label.width / k,
+            height: label.height / k,
+          }
+        : { ...card, width: Math.min(width, 240), height: Math.min(height, 48) };
+      const next = revealPan(el, { x: tx, y: ty, zoom: k }, card, must);
+      if (next) void setViewport(next, { duration: motionMs(200) });
     };
   });
   useEffect(() => {
@@ -1565,7 +1579,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       const own = navFocus.current === id;
       // The node itself, by keyboard (a click is on a node in view; an editor inside it isn't the node).
       const node = e.target instanceof HTMLElement && e.target.classList.contains("react-flow__node");
-      if (!own && node && (e.target as HTMLElement).matches(":focus-visible")) revealFocused.current(id);
+      if (!own && node && (e.target as HTMLElement).matches(":focus-visible"))
+        revealFocused.current(id, e.target as HTMLElement);
     };
     wrap.addEventListener("focusin", onFocus);
     return () => wrap.removeEventListener("focusin", onFocus);
