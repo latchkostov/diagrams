@@ -1,14 +1,16 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { inflateRawSync } from "node:zlib";
 import { pathToFileURL } from "node:url";
-import { test, expect, gotoCanvas } from "./fixtures";
+import { test, expect, gotoCanvas, E2E_TARGET } from "./fixtures";
 import { expectPlaying, filePayload, KAFKA, watchedPage } from "./html-viewer";
 
-// The agent skill's offline Interactive HTML export (skills/livediagrams/scripts/export-html.mjs): it writes the
-// app's own file, byte for byte, from the viewer template and icons bundled in the skill; the file opens from
-// disk, renders and plays with zero requests; and a private diagram gets a file but never a share link.
-// Selectors are data-testid only.
+// The agent skill's offline Interactive HTML export (skills/livediagrams/scripts/export-html.mjs): it carries what
+// the app's file carries, from the viewer and icons released in the skill; the file opens from disk, renders and
+// plays with zero requests; a private diagram gets a file but never a share link; and the site's /skill/ download
+// carries the current viewer. Selectors are data-testid only.
 
 const SCRIPTS = join(process.cwd(), "skills", "livediagrams", "scripts");
 const BANNER = "Confidential: internal use only";
@@ -16,6 +18,19 @@ const BANNER = "Confidential: internal use only";
 function run(script: string, ...args: string[]) {
   const r = spawnSync(process.execPath, [join(SCRIPTS, script), ...args], { encoding: "utf8" });
   return { code: r.status, out: r.stdout, err: r.stderr };
+}
+
+/** One entry of a zip (local headers, DEFLATE), as text. */
+function zipEntry(zip: Buffer, name: string): string | undefined {
+  for (let at = 0; zip.readUInt32LE(at) === 0x04034b50;) {
+    const size = zip.readUInt32LE(at + 18);
+    const nameLength = zip.readUInt16LE(at + 26);
+    const start = at + 30 + nameLength + zip.readUInt16LE(at + 28);
+    if (zip.subarray(at + 30, at + 30 + nameLength).toString("utf8") === name)
+      return inflateRawSync(zip.subarray(start, start + size)).toString("utf8");
+    at = start + size;
+  }
+  return undefined;
 }
 
 /** Runs export-html.mjs into this test's output folder; returns the file's path and text. */
@@ -28,7 +43,7 @@ function exportHtml(diagramFile: string, ...args: string[]) {
 }
 
 test.describe("The agent skill's Interactive HTML export", () => {
-  test("writes the app's own file, byte for byte", async ({ page }) => {
+  test("carries the diagram and options the app's file does", async ({ page }) => {
     test.setTimeout(60_000);
     await gotoCanvas(page, KAFKA);
     await page.getByTestId("file-button").click();
@@ -45,14 +60,19 @@ test.describe("The agent skill's Interactive HTML export", () => {
     await download.saveAs(appPath);
     const app = readFileSync(appPath, "utf8");
 
-    // The same diagram as the app had it, and the same options (and day), through the skill.
+    // The same diagram as the app had it, and the same options (and day), through the skill. The viewer itself
+    // is the skill's released copy, which may be older than the app's (`pnpm skill:check`), so only the payload's
+    // diagram and options, the file name, the title and the theme are compared.
     const { diagram, options } = filePayload(app);
     const file = test.info().outputPath("kafka.diagram.json");
     writeFileSync(file, JSON.stringify(diagram, null, 2));
     const skill = exportHtml(file, "--banner", BANNER, "--theme", "dark", "--exported-on", options.exportedOn);
     expect(skill.path.endsWith(download.suggestedFilename())).toBe(true);
-    expect(skill.html.length).toBe(app.length);
-    expect(skill.html === app, "the skill's file differs from the app's").toBe(true);
+    expect(filePayload(skill.html).diagram).toEqual(diagram);
+    expect(filePayload(skill.html).options).toEqual(options);
+    const head = (html: string) =>
+      html.slice(0, html.indexOf("<meta http-equiv")) + /<title>.*<\/title>/.exec(html)?.[0];
+    expect(head(skill.html)).toBe(head(app));
   });
 
   test("opens from disk, renders and plays, with zero requests", async ({ context }) => {
@@ -105,5 +125,20 @@ test.describe("The agent skill's Interactive HTML export", () => {
     expect(viewer.requests.filter((r) => !r.startsWith("data:"))).toEqual([url]);
     expect(viewer.errors).toEqual([]);
     await viewer.page.close();
+  });
+
+  test("the site's /skill/ folder and zip carry this build's viewer", async ({ page }) => {
+    test.skip(E2E_TARGET !== "build", "the dev server builds the template under another name");
+    const res = await page.request.get("/skill/scripts/lib/viewer-template.html");
+    expect(res.status()).toBe(200);
+    const template = await res.text();
+    // The app's own template is emitted as export/interactive-viewer-<its sha256>.html.
+    const hash = createHash("sha256").update(template).digest("hex").slice(0, 10);
+    const app = await page.request.get(`/export/interactive-viewer-${hash}.html`);
+    expect(app.status(), "the skill's template isn't this build's").toBe(200);
+    expect((await app.text()) === template).toBe(true);
+    // The zip's copy too.
+    const zip = await (await page.request.get("/livediagrams-skill.zip")).body();
+    expect(zipEntry(zip, "livediagrams/scripts/lib/viewer-template.html") === template).toBe(true);
   });
 });

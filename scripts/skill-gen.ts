@@ -1,16 +1,15 @@
 // The generated parts of the agent skill (skills/livediagrams/), built from the same sources as
 // public/llms.txt and public/schema/: the stencil catalog, the file format, the app's own validator and
-// layout code, and the Interactive HTML export (the viewer template, its injection and the stencil icons).
+// layout code, and the Interactive HTML export's injection. The export's viewer template and icons are refreshed
+// only on release (`pnpm skill:release`, see scripts/skill-viewer.ts).
 // scripts/gen-schemas.mjs writes them (`pnpm schemas`); src/ai/skill/skill.test.ts fails when they're stale.
 //
 // Privacy: the only diagrams read here are the public examples, the *.json files directly in
 // src/examples/. Never recurse: src/examples/private/ holds local-only diagrams that must not ship.
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { build } from "vite";
-import { buildViewerTemplate } from "./interactive-viewer";
-import { FALLBACK_ICON } from "../src/export/inject";
+import { bundleModule, INJECT, injectModule } from "./skill-viewer";
 import type { DiagramFile } from "../src/model/types";
 import { catalog } from "../src/stencils/catalog";
 import { STENCIL_ALIASES } from "../src/lib/stencilSearch";
@@ -208,73 +207,20 @@ export function fillRegions(text: string, file: string): string {
 /** Hand-written files with generated regions. */
 export const REGION_FILES = ["reference/format.md", "reference/simulation.md"];
 
-/** One of the app's modules (`entry`, and what it imports) as one plain ES module, headed by `what`. */
-async function bundleModule(root: string, entry: string, what: string): Promise<string> {
-  const out = await build({
-    root,
-    configFile: false,
-    logLevel: "error",
-    publicDir: false,
-    build: {
-      write: false,
-      minify: false,
-      copyPublicDir: false,
-      reportCompressedSize: false,
-      lib: { entry: path.join(root, entry), formats: ["es"], fileName: path.basename(entry, ".ts") },
-    },
-  });
-  const outputs = (Array.isArray(out) ? out : [out]) as { output: { type: string; code?: string }[] }[];
-  const chunk = outputs[0].output.find((o) => o.type === "chunk");
-  if (!chunk?.code) throw new Error(`skill-gen: bundling ${entry} produced no code.`);
-  return `// ${NOTICE}\n// ${what}\n${chunk.code.replace(/\r\n/g, "\n")}`;
-}
-
 /** The app's validator and layout (src/ai/skill/app.ts and what it imports) as one plain ES module. */
 export const bundleApp = (root: string) =>
-  bundleModule(
-    root,
-    "src/ai/skill/app.ts",
+  bundleModule(root, "src/ai/skill/app.ts", [
+    NOTICE,
     "The app's own validator and layout (src/ai/skill/app.ts), bundled so the skill runs on plain Node.",
-  );
-
-/**
- * The stencil icons the catalog uses (and the fallback box), name → SVG text: what export-html.mjs subsets from,
- * offline. The same text the app fetches from its own icon files, so both exports carry the same data URIs.
- */
-export function iconMap(root: string): Record<string, string> {
-  const dir = path.join(root, "src", "stencils", "icons");
-  const names = new Set([FALLBACK_ICON, ...catalog.map((s) => s.icon)]);
-  const out: Record<string, string> = {};
-  for (const name of [...names].sort()) {
-    const file = path.join(dir, `${name}.svg`);
-    if (existsSync(file)) out[name] = readFileSync(file, "utf8").replace(/\r\n/g, "\n");
-  }
-  return out;
-}
-
-/**
- * The offline Interactive HTML export (scripts/export-html.mjs): the app's injection (src/export/inject.ts) as
- * plain JavaScript, the viewer template exactly as the app's build emits it (scripts/interactive-viewer.ts, a
- * deterministic Vite build) and the icons. The template is the bulk of the skill: about 1.2 MB, 415 kB zipped.
- */
-async function exportFiles(root: string): Promise<Record<string, string>> {
-  return {
-    "scripts/lib/inject.mjs": await bundleModule(
-      root,
-      "src/export/inject.ts",
-      "The app's Interactive HTML injection (src/export/inject.ts), so export-html.mjs makes the app's own file.",
-    ),
-    "scripts/lib/viewer-template.html": await buildViewerTemplate(root),
-    "scripts/lib/icons.json": JSON.stringify(iconMap(root)) + "\n",
-  };
-}
+  ]);
 
 /** Every generated file, by path under skills/livediagrams/. */
 export async function generateSkillFiles(root: string): Promise<Record<string, string>> {
   const files: Record<string, string> = {
     "scripts/lib/spec.json": JSON.stringify(spec(), null, 2) + "\n",
     "scripts/lib/app.mjs": await bundleApp(root),
-    ...(await exportFiles(root)),
+    // The HTML export's injection. Its template and icons are released, not generated here (scripts/skill-viewer.ts).
+    [INJECT]: await injectModule(root),
     "reference/stencils.md": stencilsDoc(publicExamples(root)),
   };
   for (const rel of REGION_FILES) {

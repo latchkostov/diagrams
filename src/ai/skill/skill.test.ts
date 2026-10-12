@@ -1,15 +1,24 @@
 // The agent skill (skills/livediagrams/): its generated files are current, its scripts agree with the app
-// (layout, share-link encoding, what the app will open), and validate.mjs explains what's wrong.
+// (layout, share-link encoding, what the app will open, the HTML export's injection), its released viewer is
+// self-consistent, and validate.mjs explains what's wrong.
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { generateSkillFiles, iconMap, publicExamples, SKILL_DIR } from "../../../scripts/skill-gen";
-import { readSkill, zipSkill } from "../../../scripts/skill-assets";
-import { buildViewerTemplate } from "../../../scripts/interactive-viewer";
-import { exportHtml, htmlFileName, type ExportInput } from "../../export/inject";
+import { generateSkillFiles, publicExamples, SKILL_DIR } from "../../../scripts/skill-gen";
+import { readSkill, withFresh, zipSkill } from "../../../scripts/skill-assets";
+import { bumpVersion, iconMap, RELEASED, releasedFiles } from "../../../scripts/skill-viewer";
+import {
+  exportHtml,
+  FALLBACK_ICON,
+  htmlFileName,
+  PAYLOAD_BLOCK,
+  templateStencilIcons,
+  type ExportInput,
+} from "../../export/inject";
 import { decodeShare, encodeShare, sharePayloadFromInput } from "../../interop/share";
 import { parseNative } from "../../interop/native";
 import { layoutDiagram } from "./layout";
@@ -62,16 +71,11 @@ describe("generated skill files", () => {
       "reference/simulation.md",
       "reference/stencils.md",
       "scripts/lib/app.mjs",
-      "scripts/lib/icons.json",
       "scripts/lib/inject.mjs",
       "scripts/lib/spec.json",
-      "scripts/lib/viewer-template.html",
     ]);
-    for (const [name, text] of Object.entries(files)) {
-      const committed = readFileSync(path.join(skill, name), "utf8").replace(/\r\n/g, "\n");
-      // A plain comparison: a diff of the 1.2 MB template would bury which file is stale.
-      expect(committed === text, `${name} is stale: run pnpm schemas`).toBe(true);
-    }
+    for (const [name, text] of Object.entries(files))
+      expect(readFileSync(path.join(skill, name), "utf8").replace(/\r\n/g, "\n"), name).toBe(text);
   }, 60_000);
 
   it("SKILL.md has the frontmatter Agent Skills require, and every relative link resolves", () => {
@@ -582,25 +586,64 @@ describe("the downloadable skill", () => {
   });
 });
 
+/** The released viewer (`pnpm skill:release`, scripts/skill-viewer.ts), as committed. */
+const committedTemplate = readFileSync(path.join(skill, RELEASED.template), "utf8");
+const committedIcons = JSON.parse(readFileSync(path.join(skill, RELEASED.icons), "utf8")) as Record<string, string>;
+const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("base64");
+const csp = (html: string) => /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html)?.[1] ?? "";
+/** The contents of every <tag> element without attributes (the executable script, the style). */
+const blocks = (html: string, tag: "script" | "style") =>
+  [...html.matchAll(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, "g"))].map((m) => m[1]);
+
+// Not compared with the current app: the committed copy is refreshed only on release (`pnpm skill:check` reports a
+// stale one, nightly). It has to work on its own.
+describe("the committed viewer", () => {
+  it("allows exactly its one inline script and style by hash, and nothing else", () => {
+    const [script, ...moreScripts] = blocks(committedTemplate, "script");
+    const [style, ...moreStyles] = blocks(committedTemplate, "style");
+    expect(moreScripts).toEqual([]);
+    expect(moreStyles).toEqual([]);
+    const policy = csp(committedTemplate);
+    expect(policy).toContain(`script-src 'sha256-${sha256(script)}'`);
+    expect(policy).toContain(`style-src 'sha256-${sha256(style)}'`);
+    expect(policy).toContain("default-src 'none'");
+    expect(policy).toContain("connect-src 'none'");
+    expect(policy).not.toMatch(/unsafe-|worker-src|'self'|https?:/);
+  });
+
+  it("has the payload placeholder once, and references nothing outside itself", () => {
+    expect(committedTemplate.split(PAYLOAD_BLOCK)).toHaveLength(2);
+    expect(committedTemplate).not.toMatch(/<script[^>]+\bsrc=/);
+    expect(committedTemplate).not.toMatch(/<link\b(?![^>]*href="data:)/);
+    const urls = [...committedTemplate.matchAll(/url\(\s*["']?([^"')\s]{0,40})/g)].map((m) => m[1]);
+    expect(urls.filter((u) => !/^(data:|#|$)/.test(u))).toEqual([]);
+    expect(committedTemplate).not.toMatch(/particleWorker|assets\/[\w.-]+\.(svg|js|css|woff2)/);
+  });
+
+  it("has an icon for every stencil it names, and the fallback", () => {
+    const named = new Set(Object.values(templateStencilIcons(committedTemplate)));
+    expect(named.size).toBeGreaterThan(100);
+    expect(Object.keys(committedIcons)).toContain(FALLBACK_ICON);
+    expect([...named].filter((icon) => !Object.hasOwn(committedIcons, icon))).toEqual([]);
+    for (const [name, svg] of Object.entries(committedIcons)) expect(svg, name).toMatch(/^<svg[\s>]/);
+  });
+});
+
 describe("export-html.mjs", () => {
   const kafka = path.join(root, "src", "examples", "kafka-order-pipeline.json");
   const out = (...parts: string[]) => path.join(tmp, "html", ...parts);
-  /** The icon files the app serves, as it fetches them. */
-  const appIcons = () => {
-    const dir = path.join(root, "src", "stencils", "icons");
-    return Object.fromEntries(
-      readdirSync(dir)
-        .filter((f) => f.endsWith(".svg"))
-        .map((f) => [f.slice(0, -".svg".length), readFileSync(path.join(dir, f), "utf8")]),
-    );
-  };
 
-  it("writes the app's own file for the same diagram and options", async () => {
-    // The app's export: a fresh template, as the build emits it, and the app's icon files.
-    const template = await buildViewerTemplate(root);
+  it("makes the file src/export/inject.ts makes from the committed viewer, for every option", () => {
+    // inject.mjs (byte-identical to a fresh build of inject.ts, above) behaves as inject.ts does.
     const diagram = read(kafka);
-    const app = (input: Partial<ExportInput>) =>
-      exportHtml(template, { diagram, iconSvgs: appIcons(), theme: "light", exportedOn: "2026-10-12", ...input });
+    const expected = (input: Partial<ExportInput>) =>
+      exportHtml(committedTemplate, {
+        diagram,
+        iconSvgs: committedIcons,
+        theme: "light",
+        exportedOn: "2026-10-12",
+        ...input,
+      });
     const cases: [string[], Partial<ExportInput>, string][] = [
       [[], { startSimulation: "black-friday" }, 'plays "Black Friday'],
       [
@@ -623,15 +666,12 @@ describe("export-html.mjs", () => {
       expect(first.startsWith(`${file} (1,2`), first).toBe(true);
       expect(first).toContain(says);
       expect(note).toMatch(/^Private: .*no network requests.*only people who have the file can open it/);
-      expect(readFileSync(file, "utf8") === app(input), args.join(" ") || "defaults").toBe(true);
+      const html = readFileSync(file, "utf8");
+      expect(html === expected(input), args.join(" ") || "defaults").toBe(true);
+      // The payload is a data block: the policy still matches the untouched script and style.
+      expect(csp(html)).toBe(csp(committedTemplate));
+      expect(blocks(html, "script")).toEqual(blocks(committedTemplate, "script"));
     }
-  }, 60_000);
-
-  it("carries every icon the catalog uses, offline", () => {
-    const map = iconMap(root);
-    expect(Object.keys(map).length).toBeGreaterThan(100);
-    expect(map["generic-box"]).toMatch(/^<svg/);
-    expect(read(path.join(skill, "scripts", "lib", "icons.json"))).toEqual(map);
   });
 
   it("exports a private diagram, which share-link.mjs refuses", () => {
@@ -675,5 +715,30 @@ describe("export-html.mjs", () => {
       const code = readFileSync(path.join(skill, "scripts", f), "utf8");
       expect(code, f).not.toMatch(/node:(http|https|net|dgram|tls|dns)\b|\bfetch\(|XMLHttpRequest|WebSocket/);
     }
+  });
+});
+
+describe("releasing the viewer", () => {
+  it("bumps the plugin's version, patch by default, and keeps the rest of the manifest as it is", () => {
+    const text = readFileSync(path.join(root, ".claude-plugin", "marketplace.json"), "utf8");
+    const version = JSON.parse(text).plugins[0].version as string;
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+    const [major, minor, patch] = version.split(".").map(Number);
+    const p = bumpVersion(text, "patch");
+    expect([p.from, p.to]).toEqual([version, `${major}.${minor}.${patch + 1}`]);
+    expect(p.text).toBe(text.replace(`"version": "${version}"`, `"version": "${p.to}"`));
+    expect(bumpVersion(text, "minor").to).toBe(`${major}.${minor + 1}.0`);
+    expect(() => bumpVersion("{}", "patch")).toThrow(/no "version"/);
+  });
+
+  it("the site serves a fresh template and icons in place of the committed ones", () => {
+    const files = readSkill();
+    const fresh = releasedFiles(root, "<!doctype html><title>fresh</title>\n");
+    const served = withFresh(files, fresh);
+    expect(served.map((f) => f.name)).toEqual(files.map((f) => f.name));
+    expect(served.find((f) => f.name === RELEASED.template)?.data.toString("utf8")).toBe(fresh[RELEASED.template]);
+    expect(JSON.parse(served.find((f) => f.name === RELEASED.icons)!.data.toString("utf8"))).toEqual(iconMap(root));
+    expect(served.find((f) => f.name === "SKILL.md")).toBe(files.find((f) => f.name === "SKILL.md"));
+    expect(() => withFresh(files, { "scripts/lib/nope.html": "" })).toThrow(/no scripts\/lib\/nope\.html/);
   });
 });

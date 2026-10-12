@@ -1,8 +1,9 @@
 * text=auto eol=lf
 *.png binary
 *.svg text eol=lf
-# Generated into the agent skill by `pnpm schemas` (scripts/skill-gen.ts). The template is one 1.2 MB page:
-# no line diffs.
-skills/livediagrams/scripts/lib/viewer-template.html linguist-generated=true -diff
-skills/livediagrams/scripts/lib/icons.json linguist-generated=true
-skills/livediagrams/scripts/lib/inject.mjs linguist-generated=true
+# The agent skill's Interactive HTML viewer, refreshed only by `pnpm skill:release` (scripts/skill-viewer.ts):
+# generated, no line diffs, and a merge keeps this branch's copy (run `pnpm skill:release` again if it matters).
+# merge=ours needs, once per clone: git config merge.ours.driver true (without it Git merges as usual).
+skills/livediagrams/scripts/lib/viewer-template.html -diff linguist-generated=true merge=ours
+skills/livediagrams/scripts/lib/icons.json -diff linguist-generated=true merge=ours
+skills/livediagrams/scripts/lib/inject.mjs -diff linguist-generated=true

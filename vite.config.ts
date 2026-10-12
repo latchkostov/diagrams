@@ -119,6 +119,8 @@ function canvasChunks() {
   };
 }
 const canvas = canvasChunks();
+// The Interactive HTML export's template: its own single-file build, emitted beside the app.
+const viewer = interactiveViewer(() => [noPrivateExamples()]);
 
 export default defineConfig({
   // Relative base so the build can be served from any sub-path (e.g. latchkostov.com/tools/diagrams/).
@@ -128,12 +130,12 @@ export default defineConfig({
     react(),
     noPrivateExamples(),
     noTestHooks(),
-    skillAssetsPlugin(),
+    // The agent skill's /skill/ folder and zip, with the current viewer template.
+    skillAssetsPlugin(viewer.api.template),
     // CSP and the other security headers on `vite preview`, exactly as vercel.json sends them. Not in dev.
     securityHeaders(),
     canvas.plugin,
-    // The Interactive HTML export's template: its own single-file build, emitted beside the app.
-    interactiveViewer(() => [noPrivateExamples()]),
+    viewer,
   ],
   // Always defined, so `import.meta.env.VITE_E2E === "1"` folds to a constant and the hooks drop out.
   define: {

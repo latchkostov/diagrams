@@ -54,9 +54,15 @@ No browser is needed and nothing is uploaded. The skill needs Node.js 20 or late
 
 The same steps, with copyable commands, are at [livediagrams.dev/skill/](https://www.livediagrams.dev/skill/) (linked from
 the AI panel). The skill is also published at [livediagrams.dev/skill/SKILL.md](https://www.livediagrams.dev/skill/SKILL.md). Its
-stencil list, validator, layout, parts of its reference and its HTML export (the viewer template, the injection and the
-stencil icons) are generated from the app by `pnpm schemas`, and a unit test fails when they're stale. When the skill
-changes, bump `version` in `.claude-plugin/marketplace.json` so Claude Code users get the update.
+stencil list, validator, layout, parts of its reference and its HTML export's injection are generated from the app by
+`pnpm schemas`, and a unit test fails when they're stale.
+
+**Releasing the skill.** Its HTML export's viewer (`scripts/lib/viewer-template.html` and `icons.json`) is refreshed only
+on release: run `pnpm skill:release` (`--minor` for a minor version) when you want Claude Code users to get the latest
+viewer. It rebuilds them and bumps the plugin's version in `.claude-plugin/marketplace.json`; commit what it changes.
+Bump the version the same way (`pnpm skill:release --force`) after other skill changes. The site's `/skill/` folder and
+zip always carry the current viewer, and `pnpm skill:check` (nightly) reports a stale committed copy. Once per clone,
+`git config merge.ours.driver true` lets merges keep your copy of the viewer files.
 
 ## Development
 
