@@ -100,6 +100,7 @@ import { actionRegistry, type ActionContext, type MenuNode } from "../editor/act
 import { builtinActions, quickAddMenu } from "../editor/builtinActions";
 import { useEditorPrefs } from "../editor/prefs";
 import { useHistory, type CanvasSnapshot } from "../editor/useHistory";
+import type { FlowSelection } from "../editor/historySelection";
 import { useEditor } from "../editor/useEditor";
 import { inCanvas, useCanvasShortcuts, type NavStep } from "../editor/useCanvasShortcuts";
 import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
@@ -332,12 +333,18 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   );
 
   const snapshot = useMemo<CanvasSnapshot>(() => ({ meta, nodes, edges }), [meta, nodes, edges]);
-  const history = useHistory(snapshot, (s) => {
-    setEditing(null);
-    setMeta(s.meta);
-    setNodes(s.nodes);
-    setEdges(s.edges);
-  });
+  /** Undo and Redo chose a selection: keyboard focus follows it (set up with the keyboard selection, below). */
+  const onHistoryStep = useRef((_direction: "undo" | "redo", _selection: FlowSelection) => {});
+  const history = useHistory(
+    snapshot,
+    (s) => {
+      setEditing(null);
+      setMeta(s.meta);
+      setNodes(s.nodes);
+      setEdges(s.edges);
+    },
+    (direction, selection) => onHistoryStep.current(direction, selection),
+  );
 
   // Fit-view keeps content out from under the title card, minimap, controls and live bar.
   const fitView_ = useOverlayFit(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
@@ -1753,6 +1760,56 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         return false;
       }
       return goNode(to);
+    };
+  });
+  // Undo and Redo select what the step changed (historySelection.ts). From the canvas (focus on a node, an
+  // edge or the canvas itself), focus goes with it: onto the first selected node in Tab's order (else the
+  // first selected edge, else the canvas, never a node that's gone or no longer selected), revealed and
+  // announced. From the toolbar, the inspector or a panel, focus stays put; Tab into the canvas still lands on
+  // the selection.
+  useLayoutEffect(() => {
+    onHistoryStep.current = (direction, selection) => {
+      const wrap = wrapper.current;
+      const active = document.activeElement;
+      const fromCanvas =
+        !!wrap &&
+        !!active &&
+        wrap.contains(active) &&
+        (active === wrap || !!active.closest(".react-flow__node, .react-flow__edge"));
+      // After React has drawn the restored canvas.
+      requestAnimationFrame(() => {
+        const ns = getNodes().filter((n) => !n.hidden);
+        const picked = new Set(selection.nodes);
+        const target = navOrder(ns).find((id) => picked.has(id));
+        if (target) setFocusId(target);
+        if (!fromCanvas || !wrap) return;
+        // Once what's selected is measured (React Flow hides a node until then, and a hidden one can't take
+        // focus), and while the view pans to it.
+        revealSelection(() => {
+          const edge = target ? undefined : selection.edges[0];
+          const el = target
+            ? wrap.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(target)}"]`)
+            : edge
+              ? wrap.querySelector<HTMLElement>(`.react-flow__edge[data-id="${CSS.escape(edge)}"]`)
+              : null;
+          navFocus.current = target;
+          el?.focus({ preventScroll: true });
+          // An edge that isn't a Tab stop, or nothing to focus: the canvas, not the page.
+          if (!el || document.activeElement !== el) wrap.focus({ preventScroll: true });
+          navFocus.current = undefined;
+          const count = selection.nodes.length + selection.edges.length;
+          const only = count === 1 && target ? ns.find((n) => n.id === target) : undefined;
+          const name = !only
+            ? undefined
+            : isDiagramNode(only)
+              ? only.data.label || only.id
+              : isAnnotationNode(only)
+                ? annotationTitle(only.data)
+                : (only as GroupFlowNode).data.label || "Untitled boundary";
+          const what = !count ? "Nothing selected" : name ? `${name} selected` : `${count} selected`;
+          announce(`${direction === "undo" ? "Undone" : "Redone"}. ${what}.`);
+        });
+      });
     };
   });
   const showDependencies = useShowDependencies();

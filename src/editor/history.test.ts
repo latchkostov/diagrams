@@ -60,6 +60,17 @@ describe("history", () => {
     expect(present(undo(h)).key).toBe("Orde");
   });
 
+  it("a merged commit keeps the start of the step it joins", () => {
+    let h = createHistory<string, string>("", "");
+    h = commit(h, { ...entry("node", 1000, "add:n"), start: "before the add" });
+    h = commit(h, { ...entry("node named", 1500, "add:n"), start: "the new node" });
+    expect(h.entries).toHaveLength(2);
+    expect(present(h)).toMatchObject({ key: "node named", start: "before the add" });
+    // A new step starts from its own.
+    h = commit(h, { ...entry("moved", 1600), start: "the new node" });
+    expect(present(h).start).toBe("the new node");
+  });
+
   it("never merges into the initial entry", () => {
     let h = createHistory("a", "a", 0);
     h = { ...h, entries: [{ ...h.entries[0], mergeKey: "x" }] };

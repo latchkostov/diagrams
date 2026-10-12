@@ -272,7 +272,8 @@ test.describe("bulk edit and Select similar (D11)", () => {
     await page.getByTestId("undo-button").click();
     let d = await savedWhen(page, (s) => node(s, "api").stencil === "service.node");
     expect([node(d, "worker").stencil, node(d, "carrier").stencil]).toEqual(["service.go", "service.node"]);
-    await selectThree();
+    // Undo keeps the three selected, and their panel open.
+    await expect(page.getByTestId("inspector-title")).toHaveText("3 selected");
     await expect(stencil).toContainText("Mixed");
 
     await boundary.selectOption("ship");
@@ -281,7 +282,8 @@ test.describe("bulk edit and Select similar (D11)", () => {
     await page.getByTestId("undo-button").click();
     d = await savedWhen(page, (s) => node(s, "api").group === "pay");
     expect([node(d, "worker").group, node(d, "carrier").group]).toEqual(["pay", "ship"]);
-    await selectThree();
+    // Undo keeps the three selected, and their panel open.
+    await expect(page.getByTestId("inspector-title")).toHaveText("3 selected");
     await expect(boundary).toHaveValue("__mixed");
     expectNoErrors(consoleErrors);
   });

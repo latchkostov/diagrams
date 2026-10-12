@@ -207,7 +207,8 @@ edge menu's Route row).
 
 - **Undo forgets the selection.** History restores the selection each step was saved with, so after undoing a bulk
   change the multi-selection is gone and the panel with it. Keeping the current selection across undo is a
-  history-wide change for its own batch.
+  history-wide change for its own batch. Done since: Undo selects what the step changed, as it was
+  (UX-PRINCIPLES, "Undo and the selection"; `src/editor/historySelection.ts`, `undo-selection.spec.ts`).
 - Nudging a member out with the arrow keys doesn't change membership (only a drop does).
 - Guides while resizing a boundary (from round 9).
 
