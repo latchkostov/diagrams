@@ -14,7 +14,7 @@ import { buildExplainPrompt, buildFixPrompt, buildPrompt, buildSimulationPrompt 
 import { parseReply, type ParsedReply } from "./reply";
 import { useDictation } from "./useDictation";
 import { useParsedReply } from "./useParsedReply";
-import { FailureBox, type Failure } from "./parts";
+import { FailureBox, OnDevicePreference, type Failure } from "./parts";
 import { rememberAdvancedOpen } from "./advancedPref";
 import { DictationField } from "./DictationField";
 
@@ -265,20 +265,7 @@ export function Advanced({
       </button>
       {open && (
         <div id={`${id}-body`} className="ai-composer" data-testid="ai-composer" onKeyDownCapture={onKeyDownCapture}>
-          {onDevice && (
-            <label className="ai-ondevice-pref" data-testid="ai-ondevice-pref">
-              <input
-                type="checkbox"
-                checked={onDevice.on}
-                onChange={(e) => onDevice.set(e.target.checked)}
-                data-testid="ai-ondevice-toggle"
-              />
-              <span>
-                Try the on-device model
-                <small>Chrome&apos;s built-in model, on this device: a request box at the panel&apos;s foot.</small>
-              </span>
-            </label>
-          )}
+          {onDevice && <OnDevicePreference on={onDevice.on} set={onDevice.set} />}
           {failure && (
             <FailureBox
               failure={failure}

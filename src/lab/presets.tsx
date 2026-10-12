@@ -1,6 +1,7 @@
 import { OnDeviceEvalsLab } from "./OnDeviceEvalsLab";
 import { relationshipFixture } from "./relationshipFixture";
 import { safeStorage } from "../lib/storage";
+import { ON_DEVICE } from "../lib/deployment";
 import { layersFixture, headerOverflowFixture } from "./layersFixture";
 import { exportFixture } from "./exportFixture";
 // The Lab's preset registry. Every entry renders the *current* components with fixed data, so
@@ -343,15 +344,20 @@ export function readCustomDiagram(): DiagramFile | null {
 }
 
 const playgroundPresets: Preset[] = [
-  {
-    kind: "render",
-    id: "ondevice-evals",
-    title: "On-device model: evals",
-    group: "Playground",
-    description:
-      "Runs the eval cases through Chrome's built-in model with the AI panel's prompt and schema. Needs the model; never in CI.",
-    render: () => <OnDeviceEvalsLab />,
-  },
+  // Not in a copy deployed without the on-device model (src/lib/deployment.ts): it would run the model.
+  ...(ON_DEVICE
+    ? ([
+        {
+          kind: "render",
+          id: "ondevice-evals",
+          title: "On-device model: evals",
+          group: "Playground",
+          description:
+            "Runs the eval cases through Chrome's built-in model with the AI panel's prompt and schema. Needs the model; never in CI.",
+          render: () => <OnDeviceEvalsLab />,
+        },
+      ] satisfies Preset[])
+    : []),
   {
     kind: "diagram",
     id: "relationship-regressions",

@@ -22,7 +22,9 @@ import { defineConfig, devices } from "@playwright/test";
  * a CI run never silently tests a server it didn't start.
  * E2E_PREBUILT=1 serves tests/.output/{e2e,preview,internal,locked}-dist as they are (CI builds them in an earlier
  * step, .github/actions/e2e, with the envs below); otherwise each run builds what it serves.
- * Skip the production-build servers (subpath, internal, locked) locally with E2E_SKIP_PREVIEW=1 (saves the builds).
+ * Skip the production-build servers (subpath, internal, locked) locally with E2E_SKIP_PREVIEW=1 (saves the builds);
+ * E2E_SELF_HOST picks the self-hosting ones ("internal", "locked", both by default, "" for none). Those two are
+ * served with a self-hosted copy's headers (PREVIEW_HEADERS=self-host), not the public site's.
  * Every test gets a fresh browser context, so localStorage (settings, autosave) starts empty.
  * All outputs live in tests/.output (gitignored by tests/.gitignore).
  */
@@ -84,6 +86,15 @@ const E2E_DIST = "tests/.output/e2e-dist";
 const PREVIEW_DIST = "tests/.output/preview-dist";
 const INTERNAL_DIST = "tests/.output/internal-dist";
 const LOCKED_DIST = "tests/.output/locked-dist";
+/**
+ * The self-hosting builds this run serves: E2E_SELF_HOST lists them ("internal,locked", the default; "" for none).
+ * CI serves (and builds) only those its shard's spec files need.
+ */
+const SELF_HOST_WANTED = (process.env.E2E_SELF_HOST ?? "internal,locked").split(",").map((v) => v.trim());
+const selfHost = [
+  { name: "internal", spec: /self-host\.spec\.ts/, at: internal, dist: INTERNAL_DIST, env: INTERNAL_ENV },
+  { name: "locked", spec: /self-host-locked\.spec\.ts/, at: locked, dist: LOCKED_DIST, env: LOCKED_ENV },
+].filter((v) => SELF_HOST_WANTED.includes(v.name));
 /** Specs with a build of their own (their projects below); the app's projects skip them. */
 const OWN_BUILD = /(subpath|self-host|self-host-locked)\.spec\.ts/;
 
@@ -152,16 +163,11 @@ export default defineConfig({
             use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${preview.port}${PREVIEW_BASE}` },
             testMatch: /subpath\.spec\.ts/,
           },
-          {
-            name: "internal",
-            use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${internal.port}/` },
-            testMatch: /self-host\.spec\.ts/,
-          },
-          {
-            name: "locked",
-            use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${locked.port}/` },
-            testMatch: /self-host-locked\.spec\.ts/,
-          },
+          ...selfHost.map(({ name, at, spec }) => ({
+            name,
+            use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${at.port}/` },
+            testMatch: spec,
+          })),
         ]),
   ],
   webServer: [
@@ -194,13 +200,11 @@ export default defineConfig({
             stderr: "pipe" as const,
           },
           // The self-hosting builds: production as it ships (no VITE_E2E), with the switches set.
-          ...[
-            { dist: INTERNAL_DIST, at: internal, env: INTERNAL_ENV },
-            { dist: LOCKED_DIST, at: locked, env: LOCKED_ENV },
-          ].map(({ dist, at, env }) => ({
+          // Served with a self-hosted copy's headers (scripts/self-host-headers.ts), not the public site's.
+          ...selfHost.map(({ dist, at, env }) => ({
             command: serve(dist, `--port ${at.port} --strictPort`),
             url: `http://localhost:${at.port}/`,
-            env: { VITE_E2E: "", ...env },
+            env: { VITE_E2E: "", PREVIEW_HEADERS: "self-host", ...env },
             reuseExistingServer: at.explicit || !CI,
             timeout: 180_000,
             stdout: "ignore" as const,

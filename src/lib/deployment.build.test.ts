@@ -1,7 +1,9 @@
-import { resolve } from "node:path";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { build, type Rollup } from "vite";
 import { beforeAll, describe, expect, it } from "vitest";
-import { INTERNAL_DEFAULTS } from "../../scripts/deployment-env";
+import { DEPLOYMENT_VARIABLES, INTERNAL_DEFAULTS } from "../../scripts/deployment-env";
 
 // The self-hosting switches (src/lib/deployment.ts) remove code, not just menu rows: real builds of the app with
 // and without them. A copy built without share links carries no code that makes a link (the dialogs, the
@@ -15,13 +17,23 @@ interface Output {
   files: string[];
 }
 
+/** No .env files: a fixture is exactly its variables, whatever the checkout's .env.local says. */
+const noEnvFiles = mkdtempSync(join(tmpdir(), "deployment-build-"));
+
 async function buildWith(env: Record<string, string>): Promise<Output> {
-  // A production build, as `pnpm build` makes it (Vitest runs with NODE_ENV=test, which Vite reads as development).
+  // A production build, as `pnpm build` makes it (Vitest runs with NODE_ENV=test, which Vite reads as development),
+  // with exactly the fixture's deployment variables: none from the shell (a developer's or CI's) or a .env file.
   const saved = { ...process.env };
+  for (const key of DEPLOYMENT_VARIABLES) Reflect.deleteProperty(process.env, key);
   Object.assign(process.env, { NODE_ENV: "production", ...env });
   let result: Awaited<ReturnType<typeof build>>;
   try {
-    result = await build({ configFile: resolve("vite.config.ts"), logLevel: "silent", build: { write: false } });
+    result = await build({
+      configFile: resolve("vite.config.ts"),
+      envDir: noEnvFiles,
+      logLevel: "silent",
+      build: { write: false },
+    });
   } finally {
     for (const key of Object.keys(process.env)) if (!(key in saved)) Reflect.deleteProperty(process.env, key);
     Object.assign(process.env, saved);
@@ -64,10 +76,14 @@ const AI_TOOLING = {
   modules: [/\/ai\/webmcp\/(WebMcpBridge\.tsx|useWebMcp\.ts|adapter\.ts|tools\.ts)$/, /\/ai\/ui\/copyForAi\.ts$/],
   code: [] as RegExp[],
 };
-/** The on-device model's request box. (The Lab's model evals, a development page, keep their own copy.) */
+/** The on-device model: the AI panel's request box, and the Lab's evals that run it. */
 const ON_DEVICE = {
   strings: [] as string[],
-  modules: [/\/ai\/ondevice\/OnDeviceInput\.tsx$/],
+  modules: [
+    /\/ai\/ondevice\/(OnDeviceInput|OnDeviceEvals)\.tsx$/,
+    /\/ai\/ondevice\/(session|pipeline)\.ts$/,
+    /\/ai\/evals\/onDevice\.ts$/,
+  ],
   code: [] as RegExp[],
 };
 
@@ -85,21 +101,39 @@ let publicBuild: Output;
 let internal: Output;
 let locked: Output;
 
+/** What a developer's shell or CI might have set: the fixtures must not see it. */
+const AMBIENT = { VITE_BRAND_NAME: "Ambient Brand", VITE_DISABLE_SHARE_LINKS: "1", VITE_DISABLE_ONDEVICE: "1" };
+
 beforeAll(async () => {
-  publicBuild = await buildWith({});
-  internal = await buildWith({ ...INTERNAL_DEFAULTS, VITE_BRAND_NAME: "Acme Diagrams (internal)" } as Record<
-    string,
-    string
-  >);
-  locked = await buildWith({
-    VITE_DISABLE_SHARE_LINKS: "1",
-    VITE_DISABLE_LINK_OPEN: "1",
-    VITE_DISABLE_AI_TOOLS: "1",
-    VITE_DISABLE_ONDEVICE: "1",
-  });
+  const saved = { ...process.env };
+  Object.assign(process.env, AMBIENT);
+  try {
+    publicBuild = await buildWith({});
+    internal = await buildWith({ ...INTERNAL_DEFAULTS, VITE_BRAND_NAME: "Acme Diagrams (internal)" } as Record<
+      string,
+      string
+    >);
+    locked = await buildWith({
+      VITE_DISABLE_SHARE_LINKS: "1",
+      VITE_DISABLE_LINK_OPEN: "1",
+      VITE_DISABLE_AI_TOOLS: "1",
+      VITE_DISABLE_ONDEVICE: "1",
+    });
+  } finally {
+    for (const key of Object.keys(AMBIENT)) if (!(key in saved)) Reflect.deleteProperty(process.env, key);
+    Object.assign(process.env, saved);
+  }
 }, 240_000);
 
 describe("self-hosting switches in the production build", () => {
+  it("build fixtures ignore ambient deployment settings (the shell's, .env files)", () => {
+    // Built while AMBIENT was set: the public fixture is still the public site.
+    expect(publicBuild.html).toContain("<title>Live Diagrams</title>");
+    expect(publicBuild.code.includes("Ambient Brand")).toBe(false);
+    expect(found(publicBuild, LINK_MAKING)).toHaveLength(all(LINK_MAKING).length);
+    expect(found(publicBuild, ON_DEVICE)).toHaveLength(all(ON_DEVICE).length);
+  });
+
   it("the public build carries links, AI tools and the on-device model", () => {
     expect(found(publicBuild, LINK_MAKING).sort()).toEqual(all(LINK_MAKING));
     expect(found(publicBuild, AI_TOOLING).sort()).toEqual(all(AI_TOOLING));

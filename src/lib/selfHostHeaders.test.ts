@@ -9,6 +9,7 @@ import {
   headersFile,
   nginxHeaders,
   selfHostCsp,
+  selfHostHeadersFor,
   selfHostSamples,
 } from "../../scripts/self-host-headers";
 
@@ -107,5 +108,18 @@ describe("self-hosting headers", () => {
       `  Content-Security-Policy: ${selfHostCsp({ embed: true, frameAncestors: EXAMPLE_FRAME_ANCESTORS })}\n`,
     );
     expect(framed).toContain("  X-Content-Type-Options: nosniff\n");
+  });
+
+  it("per request, as nginx sends them: the embed policy for embeds, no opener policy on auth.html", () => {
+    const list = { frameAncestors: ["https://wiki.acme.com"] };
+    expect(selfHostHeadersFor("/?view=canvas", list)["Content-Security-Policy"]).toBe(
+      selfHostCsp({ embed: false, ...list }),
+    );
+    expect(selfHostHeadersFor("/?embed=1&example=x", list)["Content-Security-Policy"]).toBe(
+      selfHostCsp({ embed: true, ...list }),
+    );
+    expect(selfHostHeadersFor("/")["Cross-Origin-Opener-Policy"]).toBe("same-origin-allow-popups");
+    expect(selfHostHeadersFor("/auth.html?code=x")["Cross-Origin-Opener-Policy"]).toBeUndefined();
+    expect(selfHostHeadersFor("/")["X-Content-Type-Options"]).toBe("nosniff");
   });
 });

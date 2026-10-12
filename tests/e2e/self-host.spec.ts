@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, publicExamples } from "./fixtures";
-import { installFakeModelContext, must, toolNames } from "./ai-helpers";
+import { installFakeLanguageModel, installFakeModelContext, must, toolNames } from "./ai-helpers";
 
 /**
  * A self-hosted copy (docs/SELF-HOSTING.md), built as `pnpm build:internal` builds it, with a brand name: project
@@ -49,6 +49,52 @@ async function paletteCount(page: Page, query: string, text: string) {
 }
 
 test.describe("self-hosted build", () => {
+  test("internal build uses self-host security headers", async ({ page, consoleErrors }) => {
+    // Served as deploy/self-host/ says (PREVIEW_HEADERS=self-host): no outside origin anywhere in the policy.
+    const violations = await watchCsp(page);
+    const origin = new URL(must(test.info().project.use.baseURL, "the project's base URL")).origin;
+    const outside: string[] = [];
+    page.on("request", (r) => {
+      const u = new URL(r.url());
+      if (["http:", "https:"].includes(u.protocol) && u.origin !== origin) outside.push(r.url());
+    });
+    const app = await page.goto(`./?view=canvas&example=${SLUG}`);
+    const csp = (await app?.headerValue("content-security-policy")) ?? "";
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("connect-src 'self';");
+    expect(csp).toContain("frame-ancestors 'self';");
+    expect(csp).not.toMatch(/https?:/);
+    await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
+
+    const embed = await page.goto(`./?embed=1&example=${SLUG}`);
+    const embedCsp = (await embed?.headerValue("content-security-policy")) ?? "";
+    expect(embedCsp).toContain("frame-ancestors 'self';");
+    expect(embedCsp).not.toMatch(/https?:/);
+    await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
+
+    expect(await violations()).toEqual([]);
+    expect(outside).toEqual([]);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("internal on-device model can be re-enabled after a remembered opt-out", async ({ page, consoleErrors }) => {
+    // Without AI tools there's no Advanced, which holds this switch elsewhere: it stays in the panel instead.
+    await installFakeLanguageModel(page);
+    await page.addInitScript(() => localStorage.setItem("diagrams.ai-ondevice.v1", "0"));
+    await gotoCanvas(page, SLUG);
+    await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
+    await page.getByTestId("ai-rail-open").click();
+    await expect(page.getByTestId("ai-panel")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("ai-ondevice")).toHaveCount(0);
+    await expect(page.getByTestId("ai-tools-off")).toContainText("is turned off. Turn it on below.");
+    await expect(page.getByTestId("ai-advanced")).toHaveCount(0);
+
+    await page.getByTestId("ai-ondevice-toggle").check();
+    await expect(page.getByTestId("ai-ondevice")).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem("diagrams.ai-ondevice.v1"))).toBe("1");
+    expectNoErrors(consoleErrors);
+  });
+
   test("the brand names the page and the top bar", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
     await expect(page).toHaveTitle(BRAND);

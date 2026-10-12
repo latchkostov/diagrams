@@ -201,6 +201,19 @@ describe("the gates under each switch", () => {
     expect(gates.canUseOnDevice({})).toBe(false);
     expect(gates.canUseOnDevice({ private: true, onDevice: true })).toBe(false);
     expect(gates.canUseAiTools({})).toBe(true);
+    // Agents' turns keep Undo this change, Revert to here and their stencil choices: that's history, not inference.
+    expect(gates.canUseAiHistory({})).toBe(true);
+    expect(gates.canUseAiHistory({ private: true, onDevice: true })).toBe(true);
+    expect(gates.canUseAiHistory({ private: true })).toBe(false);
+    expect(gates.canUseAiHistory({ localOnly: true })).toBe(false);
+  });
+
+  it("the AI panel's history follows privacy alone, under every switch", async () => {
+    for (const overrides of [{}, { AI_TOOLS: false }, { ON_DEVICE: false }, { AI_TOOLS: false, ON_DEVICE: false }]) {
+      const { gates } = await withDeployment(overrides);
+      expect(gates.canUseAiHistory({}), JSON.stringify(overrides)).toBe(true);
+      expect(gates.canUseAiHistory({ private: true }), JSON.stringify(overrides)).toBe(false);
+    }
   });
 
   it("VITE_PRIVATE_BY_DEFAULT: New diagrams are private starts on, and turning it off is remembered", async () => {

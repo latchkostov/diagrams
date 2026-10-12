@@ -1,3 +1,4 @@
+import type { Plugin } from "vite";
 import { COMMON_HEADERS, cspDirectives, OPENER_POLICY } from "./security-headers";
 
 /**
@@ -119,5 +120,32 @@ export function selfHostSamples(): Record<string, string> {
     _headers: headersFile(),
     "framed/nginx.conf": nginxHeaders({ frameAncestors: EXAMPLE_FRAME_ANCESTORS }),
     "framed/_headers": headersFile({ frameAncestors: EXAMPLE_FRAME_ANCESTORS }),
+  };
+}
+
+/** The headers for one request to a self-hosted copy, as the nginx sample sends them. */
+export function selfHostHeadersFor(url: string, o: SelfHostOptions = {}): Record<string, string> {
+  const u = new URL(url, "http://localhost");
+  return {
+    ...COMMON_HEADERS,
+    "Content-Security-Policy": selfHostCsp({ ...o, embed: new URLSearchParams(u.search).has("embed") }),
+    ...(/\/auth\.html$/.test(u.pathname) ? {} : { "Cross-Origin-Opener-Policy": OPENER_POLICY }),
+  };
+}
+
+/**
+ * `vite preview` with a self-hosted copy's headers instead of the public site's, when PREVIEW_HEADERS=self-host
+ * (the e2e suite's self-hosting projects). Runs after ./security-headers.ts's plugin, so its headers win.
+ */
+export function selfHostPreviewHeaders(): Plugin {
+  return {
+    name: "self-host-preview-headers",
+    configurePreviewServer(server) {
+      if (process.env.PREVIEW_HEADERS !== "self-host") return;
+      server.middlewares.use((req, res, next) => {
+        for (const [k, v] of Object.entries(selfHostHeadersFor(req.originalUrl ?? req.url ?? "/"))) res.setHeader(k, v);
+        next();
+      });
+    },
   };
 }

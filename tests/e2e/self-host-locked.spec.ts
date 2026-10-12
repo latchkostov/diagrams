@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
-import { test, expect, gotoCanvas, expectNoErrors, publicExamples } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLab, expectNoErrors, publicExamples } from "./fixtures";
 import { installFakeModelContext, must, toolNames } from "./ai-helpers";
 
 /**
@@ -23,6 +23,17 @@ const kafka = must(
 const payload = deflateRawSync(readFileSync(`src/examples/${other.slug}.json`)).toString("base64url");
 
 test.describe("self-hosted build with link opening off", () => {
+  test("the Lab has no on-device model evals: nothing there can run the model", async ({ page, consoleErrors }) => {
+    await gotoLab(page);
+    await expect(page.getByTestId(/^lab-preset-link-/).first()).toBeVisible();
+    await expect(page.getByTestId("lab-preset-link-ondevice-evals")).toHaveCount(0);
+    await page.goto("./?view=lab&preset=ondevice-evals");
+    await expect(page.getByTestId("lab-view")).toBeVisible();
+    await expect(page.getByTestId("ondevice-evals")).toHaveCount(0);
+    await expect(page.getByTestId("ondevice-evals-run")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
   test("a link someone sent doesn't open, and leaves the address bar", async ({ page, consoleErrors }) => {
     await page.goto(`./?view=canvas&example=${SLUG}#d=${payload}`);
     await expect(page.getByTestId("toast").filter({ hasText: OFF })).toBeVisible({ timeout: 20_000 });

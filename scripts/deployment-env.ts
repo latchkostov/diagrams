@@ -18,6 +18,7 @@ export const DEPLOYMENT_SWITCHES = [
 ] as const;
 
 export type DeploymentVariable = (typeof DEPLOYMENT_SWITCHES)[number] | "VITE_BRAND_NAME";
+export const DEPLOYMENT_VARIABLES: DeploymentVariable[] = [...DEPLOYMENT_SWITCHES, "VITE_BRAND_NAME"];
 
 /** `pnpm build:internal`'s defaults: no links made here, no AI tools, new diagrams Private. */
 export const INTERNAL_DEFAULTS: Partial<Record<DeploymentVariable, string>> = {
@@ -48,6 +49,25 @@ const on = (value: string | undefined) => /^(1|true|yes|on)$/i.test((value ?? ""
 export function brandName(value: string | undefined): string {
   const name = (value ?? "").replace(/\s+/g, " ").trim();
   return (name.length > BRAND_MAX ? name.slice(0, BRAND_MAX).trim() : name) || DEFAULT_BRAND;
+}
+
+/**
+ * The deployment variables a build sees, in Vite's order: the shell's environment first, then the .env files for
+ * `mode` in `dir` (`.env.<mode>.local`, `.env.<mode>`, `.env.local`, `.env`), then `defaults` for any still
+ * unset. `pnpm build:internal` passes its defaults here, so a value in `.env.local` wins over them.
+ */
+export function resolveDeploymentEnv(
+  mode: string,
+  dir: string,
+  defaults: Partial<Record<DeploymentVariable, string>> = {},
+): Partial<Record<DeploymentVariable, string>> {
+  const env = loadEnv(mode, dir, "VITE_");
+  const out: Partial<Record<DeploymentVariable, string>> = {};
+  for (const key of DEPLOYMENT_VARIABLES) {
+    const value = env[key] ?? defaults[key];
+    if (value !== undefined) out[key] = value;
+  }
+  return out;
 }
 
 /** The deployment the variables describe. No variables: the public site's. */
@@ -110,7 +130,7 @@ export function deploymentSwitches(): Plugin {
   return {
     name: "deployment-switches",
     config(config, { mode }) {
-      const env = { ...loadEnv(mode, config.envDir || config.root || process.cwd(), "VITE_") };
+      const env = resolveDeploymentEnv(mode, config.envDir || config.root || process.cwd());
       brand = readDeployment(env).brandName;
       return { define: deploymentDefines(env) };
     },

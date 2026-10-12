@@ -16,7 +16,7 @@ import type { DiagramFile } from "../../model/types";
 import { notify } from "../../interop/ui/toast";
 import { paletteHost } from "../../palette/host";
 import { getStencil } from "../../stencils/registry";
-import { canUseOnDevice, privacyOf, PRIVATE_AI_OFF } from "../../lib/localOnly";
+import { canUseAiHistory, canUseOnDevice, privacyOf, PRIVATE_AI_OFF } from "../../lib/localOnly";
 import { AI_TOOLS, ON_DEVICE } from "../../lib/deployment";
 import { LOCAL_ONLY_MESSAGE } from "../privacy";
 import { choiceIsCurrent, diffDiagrams, summarize, swapStencil, type StencilChoice } from "./apply";
@@ -27,7 +27,7 @@ import { threads, useThread } from "./threadStore";
 import type { TurnRecord } from "./commitTurn";
 import { Advanced } from "./Advanced";
 import { readAdvancedOpen } from "./advancedPref";
-import { ChoiceRow } from "./parts";
+import { ChoiceRow, OnDevicePreference } from "./parts";
 import { resolveScope } from "./context";
 import { AgentStatus, HowTo } from "./HowTo";
 import type { PanelRequest } from "./AiMount";
@@ -68,6 +68,8 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const privateDiagram = privacy === "private";
   /** A private diagram may use the on-device model once the person allows it (a local-only one never). */
   const onDeviceAllowed = canUseOnDevice(canvas);
+  /** Undo this change, Revert to here and stencil choices on turns already made (whichever AI made them). */
+  const historyAllowed = canUseAiHistory(canvas);
   const titleId = useId();
   const turns = useThread(documentId);
   const historyEnd = useRef<HTMLLIElement>(null);
@@ -164,7 +166,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
 
   const swap = (turn: ThreadTurn, choice: StencilChoice, stencilId: string) => {
     const ed = editorNow();
-    if (!ed || !onDeviceAllowed || !choiceIsCurrent(ed.getDiagram(), choice))
+    if (!ed || !historyAllowed || !choiceIsCurrent(ed.getDiagram(), choice))
       return notify("This stencil choice is stale: its node changed since.", { kind: "error" });
     const plan = swapStencil(ed.getDiagram(), choice.nodeId, stencilId, choice.node);
     if (!plan.ok) return notify(plan.error.error, { kind: "error" });
@@ -218,7 +220,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   /** Revert to here: the diagram as it was after this turn, as one undo step (and a turn of its own). */
   const revertTo = (turn: ThreadTurn) => {
     const ed = editorNow();
-    if (!ed || !turn.after || !onDeviceAllowed) return;
+    if (!ed || !turn.after || !historyAllowed) return;
     const before = ed.getDiagram();
     const historyKey = `ai:${turnId()}`;
     try {
@@ -350,7 +352,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
                 current={current}
                 atThisTurn={atTurn.get(t.id) ?? false}
                 canUndo={!!t.historyKey && t.historyKey === undoTarget}
-                canChange={!!editor && onDeviceAllowed}
+                canChange={!!editor && historyAllowed}
                 onUndo={() => undoTurn(t)}
                 onRevert={() => revertTo(t)}
                 onSwap={(c, id) => swap(t, c, id)}
@@ -372,7 +374,9 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
               <p data-testid="ai-tools-off">
                 {onDevice
                   ? "Type a change below: Chrome's built-in model makes it on this device, and each change appears here, with Undo. "
-                  : "Chrome's built-in model, which runs on this device, isn't available in this browser. "}
+                  : offerOnDevice
+                    ? "Chrome's built-in model, which runs on this device, is turned off. Turn it on below. "
+                    : "Chrome's built-in model, which runs on this device, isn't available in this browser. "}
                 AI agents and copied prompts are turned off here.
               </p>
             )}
@@ -414,6 +418,9 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
             />
           </Suspense>
         )}
+
+        {/* Without AI tools there's no Advanced, which otherwise holds this switch: it stays here instead. */}
+        {!AI_TOOLS && offerOnDevice && <OnDevicePreference on={onDeviceOn} set={toggleOnDevice} />}
 
         {/* The agents' status and Advanced's copied prompts are AI outside the app: only with AI tools. */}
         {AI_TOOLS && (

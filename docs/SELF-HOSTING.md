@@ -25,7 +25,7 @@ What's left is up to you and your browsers:
   ([INTEROP.md](INTEROP.md#storage-providers)). Leave them unset and no provider code loads.
 - **Chrome's built-in model** (the AI panel's on-device box) runs on the device. Chrome itself downloads that model
   from Google once, and its dictation may use Chrome's online speech service. `VITE_DISABLE_ONDEVICE=1` removes the
-  box, its microphone and the AI panel with it.
+  box, its microphone and the Lab's model evals (and, with AI tools off too, the AI panel).
 - **Links people send** (`#d=…`, from the public site, say) still open, because the diagram is inside the link and
   nothing is fetched. `VITE_DISABLE_LINK_OPEN=1` turns that off too.
 - **Browser extensions** can read any page they're allowed on. That's a browser-policy question, not an app one.
@@ -66,9 +66,13 @@ build. Changing one means building again. `src/lib/deployment.ts` is the one pla
 | `VITE_PRIVATE_BY_DEFAULT`  | off           | **1**                 | **New diagrams are private** starts on: diagrams people start, open from their device, import or paste start Private (no links, cloud saves or AI). People can turn the setting off; it's kept. |
 | `VITE_BRAND_NAME`          | Live Diagrams | Live Diagrams         | The name in the top bar, the page title and the start-up page, e.g. `Acme Diagrams (internal)`. One line, up to 60 characters.                                                                  |
 
-A switch is on with `1` (or `true`, `yes`, `on`); anything else is off. `pnpm build:internal` sets its three only when
-they aren't set already, so `VITE_DISABLE_AI_TOOLS=0 pnpm build:internal` keeps the AI tools and
-`VITE_DISABLE_LINK_OPEN=1 pnpm build:internal` adds that switch.
+A switch is on with `1` (or `true`, `yes`, `on`); anything else is off. Values come from the shell first, then Vite's
+`.env` files (`.env.production.local`, `.env.production`, `.env.local`, `.env`). `pnpm build:internal` sets its three
+only when neither has them, so `VITE_DISABLE_AI_TOOLS=0` (in the shell or `.env.local`) keeps the AI tools and
+`VITE_DISABLE_LINK_OPEN=1` adds that switch; it prints what it used.
+
+With AI tools off, the AI panel keeps the on-device model's on/off switch (otherwise in Advanced), and a turn's Undo
+this change and Revert to here stay whichever switches are set: they belong to the panel's history, not to a model.
 
 **Cloud storage** has no switch: Google Drive, OneDrive and Dropbox are off unless their variables are set
 (`VITE_GOOGLE_CLIENT_ID` and `VITE_GOOGLE_API_KEY`, `VITE_ONEDRIVE_CLIENT_ID`, `VITE_DROPBOX_APP_KEY`; see
@@ -240,6 +244,7 @@ open it at the new address.
 
 - `pnpm test` builds the app with and without the switches and checks what each one removes
   (`src/lib/deployment.build.test.ts`).
-- The e2e suite runs two self-hosting builds (`tests/e2e/self-host.spec.ts`, `self-host-locked.spec.ts`): no link,
+- The e2e suite runs two self-hosting builds (`tests/e2e/self-host.spec.ts`, `self-host-locked.spec.ts`), served with
+  these headers (no CSP violations, no request outside the origin): no link,
   embed or AI-tool entry anywhere, agents get no tools, new diagrams are Private, the brand name shows, links people
   send open (or don't, with `VITE_DISABLE_LINK_OPEN`), and the Interactive HTML and diagram file exports work.

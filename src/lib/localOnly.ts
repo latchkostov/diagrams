@@ -65,7 +65,20 @@ export function canSaveToCloud(state: CanvasPrivacyState | null | undefined): bo
  * for that diagram. A local-only one never does, and nothing does in a copy deployed without it.
  */
 export function canUseOnDevice(state: CanvasPrivacyState | null | undefined): boolean {
-  if (!ON_DEVICE) return false;
+  return ON_DEVICE && aiMayChange(state);
+}
+
+/**
+ * The AI panel's history for this diagram: Undo this change, Revert to here and a turn's stencil choices. They
+ * act on turns already made (by an agent, a pasted reply or the on-device model), so they follow the diagram's
+ * privacy, not which models this copy offers: a copy without the on-device model keeps them for agents' turns.
+ */
+export function canUseAiHistory(state: CanvasPrivacyState | null | undefined): boolean {
+  return aiMayChange(state);
+}
+
+/** Any diagram that isn't kept on this device; a Private one only once it allows the on-device model. */
+function aiMayChange(state: CanvasPrivacyState | null | undefined): boolean {
   const privacy = privacyOf(state);
   return privacy === null || (privacy === "private" && !!state?.onDevice);
 }

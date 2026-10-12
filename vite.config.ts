@@ -6,6 +6,7 @@ import { skillAssetsPlugin } from "./scripts/skill-assets";
 import { securityHeaders } from "./scripts/security-headers";
 import { interactiveViewer } from "./scripts/interactive-viewer";
 import { deploymentSwitches } from "./scripts/deployment-env";
+import { selfHostPreviewHeaders } from "./scripts/self-host-headers";
 
 /**
  * `VITE_E2E=1` builds the app for the e2e suite: a production build that keeps the dev-only test hooks
@@ -139,6 +140,8 @@ export default defineConfig({
     viewer,
     // Self-hosting switches (src/lib/deployment.ts, docs/SELF-HOSTING.md), folded to constants; the brand name.
     deploymentSwitches(),
+    // `vite preview` with a self-hosted copy's headers, for PREVIEW_HEADERS=self-host (the e2e suite).
+    selfHostPreviewHeaders(),
   ],
   // Always defined, so `import.meta.env.VITE_E2E === "1"` folds to a constant and the hooks drop out.
   define: {
