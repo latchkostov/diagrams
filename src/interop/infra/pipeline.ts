@@ -1,8 +1,9 @@
 import { validateDiagram } from "../native";
 import type { FormatId, ImportFile, ImportOutcome } from "../formats";
-import type { InfraSniff } from "../sniff";
+import { sniffInfra, type InfraSniff } from "../sniff";
 import { readCompose, type SourceFile } from "./compose";
 import { readAsyncApi } from "./asyncapi";
+import { HELM_TEMPLATE, readKubernetes } from "./kubernetes";
 import type { ImportGraph } from "./graph";
 import { graphToDiagram } from "./map";
 import { ImportError } from "./yaml";
@@ -31,25 +32,25 @@ export function importAsyncApi(files: readonly SourceFile[]): ImportOutcome {
   return outcomeOf("asyncapi", readAsyncApi(files));
 }
 
-/** Recognised, but not imported yet: said plainly rather than "not a diagram". */
-const LATER: Record<InfraSniff, string> = {
-  compose: "a docker-compose file",
-  asyncapi: "an AsyncAPI document",
-  helm: "a Helm template",
-  kubernetes: "Kubernetes manifests",
-  terraform: "a Terraform plan",
-};
+/** Kubernetes manifests: several files (and multi-document files) are one diagram. */
+export function importKubernetes(files: readonly SourceFile[]): ImportOutcome {
+  return outcomeOf("kubernetes", readKubernetes(files));
+}
 
 /**
- * One text: a compose file, an AsyncAPI document, or a format that's recognised but not imported yet (`later`).
+ * One text: a compose file, Kubernetes manifests, an AsyncAPI document, or a format that's recognised but not
+ * imported (`later`): a Helm template says how to render it; Terraform isn't supported yet.
  */
 export function importInfra(text: string, fileName: string, later?: InfraSniff, format?: FormatId): ImportOutcome {
+  if (later === "helm") return { ok: false, error: HELM_TEMPLATE };
   if (later)
     return {
       ok: false,
-      error: `This looks like ${LATER[later]}. Importing those isn't supported yet; docker-compose files and AsyncAPI documents are.`,
+      error:
+        "This looks like a Terraform plan. Importing those isn't supported yet; docker-compose files, Kubernetes manifests and AsyncAPI documents are.",
     };
   if (format === "asyncapi") return importAsyncApi([{ name: fileName || "asyncapi.yaml", text }]);
+  if (format === "kubernetes") return importKubernetes([{ name: fileName || "manifests.yaml", text }]);
   return importCompose([{ name: fileName || "docker-compose.yml", text }]);
 }
 
@@ -58,8 +59,9 @@ const isEnvFile = (name: string) => /(^|[\\/])\.env(\.[\w.-]+)?$|\.env$/i.test(n
 
 /**
  * Several files at once. They're grouped by format, and the largest group imports: a compose file with its
- * overrides (and any .env files) is one diagram, and so are several AsyncAPI documents (joined on their channels). A diagram file, draw.io or Mermaid group opens its first
- * file. The rest are listed as not read.
+ * overrides (and any .env files) is one diagram, and so is a set of Kubernetes manifests, and so are several
+ * AsyncAPI documents (joined on their channels). A diagram file, draw.io or Mermaid group opens its first file.
+ * The rest are listed as not read.
  */
 export async function importMany(
   files: readonly ImportFile[],
@@ -78,10 +80,21 @@ export async function importMany(
   const [format, group] = [...groups].sort((a, b) => b[1].length - a[1].length)[0] ?? [];
   if (!format || !group) return importOne(files[0].text, files[0].name);
   const rest = files.filter((f) => !group.includes(f) && !(format === "compose" && envFiles.includes(f)));
-  const restLines = rest.map((f) => ({ name: f.name, reason: "not read: a different kind of file" }));
-  if (format === "compose" || format === "asyncapi") {
+  const restLines = rest.map((f) => ({
+    name: f.name,
+    reason:
+      sniffInfra(f.text) === "helm"
+        ? "a Helm template: import “helm template” output instead"
+        : "not read: a different kind of file",
+  }));
+  if (format === "compose" || format === "asyncapi" || format === "kubernetes") {
     try {
-      const outcome = format === "compose" ? importCompose(group, envFiles) : importAsyncApi(group);
+      const outcome =
+        format === "compose"
+          ? importCompose(group, envFiles)
+          : format === "kubernetes"
+            ? importKubernetes(group)
+            : importAsyncApi(group);
       if (outcome.ok === true && outcome.report) outcome.report.unread.push(...restLines);
       return outcome;
     } catch (err) {

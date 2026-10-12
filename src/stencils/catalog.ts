@@ -1255,6 +1255,16 @@ const security = group("security", [
     "execution role",
   ],
   [
+    "gcp.service-account",
+    "Service Account",
+    "Google Cloud",
+    "gcp-service-account",
+    GCP,
+    "none",
+    "A Google Cloud identity a workload runs as (GKE Workload Identity), granted IAM roles.",
+    "service account",
+  ],
+  [
     "gcp.secret-manager",
     "Secret Manager",
     "Google Cloud",

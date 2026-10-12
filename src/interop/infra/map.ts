@@ -58,8 +58,8 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
     return id;
   };
   const ids = new Map<string, string>();
-  const idFor = (key: string, label: string) => {
-    const base = slug(label);
+  const idFor = (key: string, label: string, prefix = "") => {
+    const base = prefix + slug(label);
     const id = unique(key.startsWith("\u0004") ? `topic-${base}` : key.startsWith("\u0003") ? `ext-${base}` : base);
     ids.set(key, id);
     return id;
@@ -67,7 +67,7 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
   const groupIds = new Map(g.groups.map((gr) => [gr.key, unique(`boundary-${slug(gr.label)}`)]));
   const guesses: ReportGuess[] = [];
   const nodes: DiagramNode[] = g.components.map((c) => {
-    const id = idFor(c.key, c.label);
+    const id = idFor(c.key, c.label, c.idPrefix);
     // Subtitles carry evidence (an image, a build context), never anything credential-shaped.
     const sublabel = c.sublabel && sanitizeSettings([{ key: withoutCredentials(c.sublabel) }])?.[0]?.key;
     let stencil = c.stencil;

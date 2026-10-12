@@ -264,3 +264,11 @@ No new icon needs attribution. The MQTT Broker stencil also stands for Mosquitto
 | Icon file  | Source             | Original asset                      |
 | ---------- | ------------------ | ----------------------------------- |
 | `mqtt.svg` | Simple Icons (CC0) | `simple-icons:mqtt`, fill `#660066` |
+
+### Imports batch 3 (Kubernetes)
+
+The Service Account stencil (GKE workload identity) uses Google Cloud's IAM icon.
+
+| Icon file                 | Source                                   | Original asset                       |
+| ------------------------- | ---------------------------------------- | ------------------------------------ |
+| `gcp-service-account.svg` | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:identity-and-access-management` |

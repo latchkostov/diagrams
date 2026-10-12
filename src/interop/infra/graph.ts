@@ -12,6 +12,8 @@ export interface StencilHint {
   image?: string;
   /** Setting names (never values) that hint at a language: SPRING_*, NODE_ENV… */
   env?: readonly string[];
+  /** The stencil when nothing else says what it is (a Kubernetes workload: Kubernetes Deployment). */
+  fallback?: string;
 }
 
 export interface ImportComponent {
@@ -25,6 +27,8 @@ export interface ImportComponent {
   guess?: { evidence?: string; alternatives: string[] };
   /** An ImportGroup's key. */
   group?: string;
+  /** Starts the node's id ("configmap-", "secret-"), so a ConfigMap named like its workload keeps a readable id. */
+  idPrefix?: string;
   props?: Record<string, unknown>;
 }
 

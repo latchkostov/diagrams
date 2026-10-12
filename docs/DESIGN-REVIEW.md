@@ -1,5 +1,37 @@
 # Design review
 
+## Round 18: imports (batch 3, Kubernetes) (2026-10-12)
+
+Kubernetes manifests on the shared pipeline and the batch 1 report. Self-review against `docs/UX-PRINCIPLES.md`
+at 1024 × 768, 1280 × 800 dark and 1440 × 900, with the five fixture files dropped together.
+
+- **No new chrome.** The start-card line now reads "Have a docker-compose, Kubernetes or AsyncAPI file? Drop it
+  here.", the drop overlay gains a Kubernetes chip, and the paste dialog and Open…'s file type name it. Only
+  Terraform still says it can't be imported yet. A Helm chart's templates get one sentence that says what to do
+  ("Run “helm template” and import its output."), not a YAML error.
+- **The canvas** reads Users → the NGINX Ingress → the shop namespace → the kafka namespace: two Kubernetes-toned
+  boundaries, with the ConfigMap and both Secrets in one row under the shop lane and the Managed Identity below the
+  boundary, outside it, as the plan says. Ids stay readable when names repeat (`orders-api`,
+  `configmap-orders-api-config`, `secret-orders-db`, `identity-orders-api`, `ingress-shop`). The Lab's overlap audit
+  on "Imported: Kubernetes" counts no node or label overlaps.
+- **The report** has no guesses for the fixture (every workload's stencil is sure), five connections found in
+  settings, and two not-drawn rows that say why ("Kafka shop-kafka · shown through its topics", "ServiceMonitor
+  orders-api · unknown kind (monitoring.coreos.com)"). Two notes carry what isn't on the canvas: the Service with
+  no workload, and KEDA's replica range. Not-drawn rows are grouped by kind ("PersistentVolumeClaim ×4"), so a
+  `kubectl get all` dump stays short.
+- **Secrets** show their key names only, as lock-marked settings on the Secret relationship; values never reach
+  the canvas, the report or the file.
+- **Open:** payments-worker sits in the shop block's first column, because its only input (the KEDA topic) is in
+  the kafka block to the right, so that dashed edge crosses the block. Tidy up fixes it in one step; placing a
+  boundary's members by flows from other blocks is a candidate for the layout work. The 300-node picker from the
+  plan isn't built: imports up to 5,000 nodes draw, and beyond that fail with the budget message.
+
+![Import report, Kubernetes, 1440](screenshots/round18/import-report-kubernetes-1440.png)
+![Kubernetes import on the canvas, 1440](screenshots/round18/kubernetes-canvas-1440.png)
+
+Also: `screenshots/round18/import-report-kubernetes-1024.png`, `import-report-kubernetes-1280-dark.png`,
+`drop-overlay-1440.png` and `start-card-1280.png`.
+
 ## Round 15: checks UI (2026-10-12)
 
 The gate for architecture checks batch 2: the count under the title, the Checks card, markers, the inspector's

@@ -34,12 +34,15 @@ export function sniffInfra(text: string): InfraSniff | undefined {
       ? "asyncapi"
       : /"format_version"/.test(head) && /"terraform_version"/.test(head)
         ? "terraform"
-        : undefined;
+        : // kubectl's JSON output starts with its apiVersion.
+          /^\s*\{\s*"apiVersion"\s*:/.test(head) && /"kind"\s*:/.test(head)
+          ? "kubernetes"
+          : undefined;
   }
   if (/^asyncapi:\s*['"]?[23]\./m.test(head)) return "asyncapi";
   if (/^apiVersion:/m.test(head) && /^kind:/m.test(head))
     // Only a Kubernetes manifest can be a Helm template.
-    return /\{\{-?\s*(\.Values|include ")/.test(head) ? "helm" : "kubernetes";
+    return /\{\{-?\s*(\.Values|\.Release|\.Chart|include ")/.test(head) ? "helm" : "kubernetes";
   if (/^services:/m.test(head)) return "compose";
   return undefined;
 }

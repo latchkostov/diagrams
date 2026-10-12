@@ -20,6 +20,7 @@ const IDENTITIES = [
   "keycloak",
   "azure.managed-identity",
   "aws.iam-role",
+  "gcp.service-account",
   "generic.identity-provider",
 ];
 // Every observability stencil except the OpenTelemetry Collector, which is often a real pipeline hop.

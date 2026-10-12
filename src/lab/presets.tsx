@@ -35,7 +35,7 @@ import type { ControlDef, Preset } from "./types";
 import { LiveLabStage } from "../live/LiveLabStage";
 import { badgeStatesDiagram, noteStatesDiagram, particleStressDiagram, type NoteState } from "../live/labDiagrams";
 import { OverlapAudit } from "./OverlapAudit";
-import { importedAsyncApi, importedCompose } from "./importFixtures";
+import { importedAsyncApi, importedCompose, importedKubernetes } from "./importFixtures";
 import { annotationCourseDiagram, obstacleCourseDiagram } from "./routingDiagrams";
 import { TraceCardInteraction, TraceCardStates, TraceSequencePreview, type TraceFlow } from "../live/TraceLab";
 
@@ -615,6 +615,7 @@ const auditSources: Record<string, { label: string; diagram: () => DiagramFile }
   obstacles: { label: "Routing obstacle course", diagram: () => obstacleCourseDiagram() },
   "imported-compose": { label: "Imported: compose", diagram: importedCompose },
   "imported-asyncapi": { label: "Imported: AsyncAPI", diagram: importedAsyncApi },
+  "imported-kubernetes": { label: "Imported: Kubernetes", diagram: importedKubernetes },
   annotations: { label: "Annotations among routes", diagram: () => annotationCourseDiagram() },
   "stress-150": {
     label: "Stress: 150 nodes",
@@ -643,6 +644,15 @@ const layoutPresets: Preset[] = [
     description:
       "The three AsyncAPI fixtures (tests/fixtures/imports/asyncapi) joined on their channels: apps, Kafka and RabbitMQ boundaries, typed flows and the Imported traffic simulation.",
     diagram: importedAsyncApi,
+  },
+  {
+    kind: "diagram",
+    id: "imported-kubernetes",
+    title: "Imported: Kubernetes",
+    group: "Diagrams",
+    description:
+      "The five Kubernetes fixtures (tests/fixtures/imports/k8s): namespaces as boundaries, the Ingress entry, ConfigMap, Secrets and workload identity, and the KEDA consumer on a Strimzi topic.",
+    diagram: importedKubernetes,
   },
   {
     kind: "diagram",

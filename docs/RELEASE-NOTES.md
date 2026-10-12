@@ -2,6 +2,22 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Import Kubernetes manifests (2026-10)
+
+No habit changes. New:
+
+- **Open…**, a drop and **Paste text** read **Kubernetes** manifests, several files and documents at once
+  (`kubectl get … -o yaml` or `-o json` too). Namespaces become boundaries, workloads get stencils from their
+  images, Services lead to the workloads they select, and an Ingress, a Gateway or a LoadBalancer Service is the
+  entry from Users.
+- ConfigMaps and Secrets become **Config** and **Secret** relationships named by their keys. A Secret's values are
+  never read. Workload identity (Azure, AWS IRSA, GKE) becomes an **Identity** relationship.
+- Connections come from settings as in docker-compose, and from **KEDA** triggers (Kafka, RabbitMQ, SQS, Service
+  Bus): the topic or queue sends to the workload it scales. **Strimzi** topics join with them on their cluster.
+- The Import report lists what wasn't drawn by kind ("ServiceMonitor orders-api: unknown kind") and each scaler's
+  replica range. A Helm chart's templates say to run `helm template` and import its output.
+- New stencil: **Service Account** (Google Cloud).
+
 ## Checks (2026-10)
 
 No habit changes. New:

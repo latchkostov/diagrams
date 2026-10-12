@@ -1804,6 +1804,22 @@
       ]
     },
     {
+      "id": "gcp.service-account",
+      "label": "Service Account",
+      "vendor": "Google Cloud",
+      "category": "security",
+      "simRole": "none",
+      "description": "A Google Cloud identity a workload runs as (GKE Workload Identity), granted IAM roles.",
+      "aliases": [
+        "gsa",
+        "iam",
+        "workload identity",
+        "gke",
+        "google",
+        "identity"
+      ]
+    },
+    {
       "id": "gcp.secret-manager",
       "label": "Secret Manager",
       "vendor": "Google Cloud",

@@ -75,6 +75,9 @@ export function DropOverlay({ onFiles }: { onFiles: (files: File[]) => void }) {
             <Glyph name="file" size={14} /> docker-compose.yml
           </span>
           <span>
+            <Glyph name="file" size={14} /> Kubernetes
+          </span>
+          <span>
             <Glyph name="file" size={14} /> AsyncAPI
           </span>
         </span>
