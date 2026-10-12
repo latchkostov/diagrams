@@ -633,6 +633,12 @@
   background: var(--bg);
 }
 
+/* Esc inside the preview backs out to here (the dialog's next Esc closes it). */
+.ix-preview:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .ix-preview iframe {
   position: absolute;
   inset: 0;

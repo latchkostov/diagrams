@@ -120,9 +120,11 @@ every diagram Private. The skill offers the same order (`skills/livediagrams/ref
    the link is made, so focus stayed on the toast and then the page, outside the dialog's keys. The Embed dialog did
    the same for your own diagrams. **Fixed:** a dialog whose first action isn't ready focuses itself, then hands focus
    to the action when it is, so Esc and Tab work at once.
-6. **Tab walked into the embed preview** (every node of the diagram, one by one), where Esc can't close the dialog.
-   **Fixed:** the preview is a look, not a Tab stop (`tabindex="-1"`, still clickable), and the dialog's Tab wrap
-   ignores such elements.
+6. **Esc in the embed preview didn't close anything.** Tab goes into the preview (the real viewer, every node in turn),
+   where the dialog's Esc never arrives. **Fixed:** the preview stays a Tab stop, so keyboard users can try it (the
+   private embed has no Open viewer), and Esc inside it backs out one level, to the preview's frame in the dialog;
+   the next Esc closes the dialog, and Tab carries on from the frame. (The first fix took the preview out of the Tab
+   order; the code review rightly said that left keyboard users unable to try it.)
 7. **"Export a file instead" didn't say which file, and the safe way to share was never named.** Interactive HTML, the
    option the skill recommends for work, sits two levels down (File ▸ Export as ▸), and nothing in the sharing rows,
    the Privacy submenu or the Private dialog pointed to it (`before-privacy-dialog-1280-light`). **Fixed by
@@ -145,8 +147,18 @@ every diagram Private. The skill offers the same order (`skills/livediagrams/ref
 11. **The skill never mentioned links with a password**, so "I want a link" for a work diagram had only the open link.
     **Fixed:** SKILL.md and outputs.md point to **File > Copy link with password…** in the app (no script makes one)
     and say a Private diagram gets no link at all.
-12. **Open:** after the Share link dialog opened from a toast closes, focus goes back to the toast's Details button and
-    is lost when the toast fades. When the opener is already gone, focus now goes to the canvas rather than the page.
+12. **Focus fell to the page** after the Share link dialog opened from a toast's Details closed: the toast goes as its
+    button acts. **Fixed:** a dialog opened from a toast, or from nothing, gives the keyboard back to the canvas.
+13. **A password link could replace the diagram you moved to.** Moving to an example while its password was being
+    checked cancelled the result only once the example had downloaded; if the check finished first, the shared diagram
+    opened over the one you'd asked for. **Fixed:** the result is dropped (the prompt says "Another diagram opened…")
+    whenever another diagram is open _or asked for_. Found while chasing a flaky test, which now waits for the diagram
+    rather than the picker.
+
+After the code review (five findings, all fixed): the refusal toast's **Interactive HTML…** runs the same guarded
+command as the menu, so with no diagram on the canvas it says "Open a diagram on the canvas first." instead of failing
+silently, and the tests hold link making to check Esc while a link is pending and the refusal toast's action end to
+end.
 
 ### Proposals (not built)
 

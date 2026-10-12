@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import type { DiagramFile } from "../../model/types";
 import { embedSnippet, embedUrl, encodeShare, SHARE_WARN_LENGTH, shareUrl } from "../share";
 import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
@@ -32,6 +41,38 @@ function useFocusWhenReady(target: RefObject<HTMLElement | null>, ready: boolean
     const el = target.current;
     if (ready && el && document.activeElement === el.closest("[role=dialog]")) el.focus();
   }, [target, ready]);
+}
+
+/**
+ * The embed preview is the real viewer, so it stays a Tab stop. Esc inside it (the viewer is this site's own page)
+ * backs out one level, to the preview's frame in the dialog, so the dialog's own Esc works next and Tab carries on
+ * from there. A ref callback for the iframe; `back` moves focus out.
+ */
+function useEscapeBackOut(back: () => void) {
+  const backRef = useRef(back);
+  useLayoutEffect(() => {
+    backRef.current = back;
+  });
+  return useCallback((frame: HTMLIFrameElement | null) => {
+    if (!frame) return;
+    const seen = new WeakSet<Document>();
+    const attach = () => {
+      // Each page the frame loads gets its own listener; another origin's page (never ours) returns null.
+      const doc = frame.contentDocument;
+      if (!doc?.defaultView || seen.has(doc)) return;
+      seen.add(doc);
+      doc.defaultView.addEventListener(
+        "keydown",
+        (e) => {
+          if (e.key === "Escape") backRef.current();
+        },
+        true,
+      );
+    };
+    attach();
+    frame.addEventListener("load", attach);
+    return () => frame.removeEventListener("load", attach);
+  }, []);
 }
 
 /** Share link: the diagram compressed into the URL fragment. */
@@ -228,8 +269,24 @@ const FORMATS = ["component", "iframe"] as const;
  * The host-supplied embed's preview: the same viewer, handed the diagram with postMessage (never in its URL),
  * exactly as a host page does.
  */
-function HostPreview({ diagram, simulation }: { diagram: DiagramFile; simulation: string }) {
+function HostPreview({
+  diagram,
+  simulation,
+  frameRef,
+}: {
+  diagram: DiagramFile;
+  simulation: string;
+  /** The dialog's (Esc backs out of the preview). */
+  frameRef: ReturnType<typeof useEscapeBackOut>;
+}) {
   const frame = useRef<HTMLIFrameElement>(null);
+  const refs = useCallback(
+    (el: HTMLIFrameElement | null) => {
+      frame.current = el;
+      return frameRef(el);
+    },
+    [frameRef],
+  );
   const [src] = useState(() => hostEmbedUrl(window.location.origin));
   const ready = useRef(false);
   useEffect(() => {
@@ -254,7 +311,7 @@ function HostPreview({ diagram, simulation }: { diagram: DiagramFile; simulation
     if (ready.current) send();
     return () => window.removeEventListener("message", onMessage);
   }, [src, diagram, simulation]);
-  return <iframe ref={frame} src={src} title="Embed preview" tabIndex={-1} data-testid="embed-preview" />;
+  return <iframe ref={refs} src={src} title="Embed preview" data-testid="embed-preview" />;
 }
 
 /** Embed code: an <iframe> of the read-only viewer, or a viewer your own app supplies, with a live preview. */
@@ -321,6 +378,8 @@ export function EmbedDialog({
       : "";
   const copyButton = useRef<HTMLButtonElement>(null);
   useFocusWhenReady(copyButton, !!snippet);
+  const previewArea = useRef<HTMLDivElement>(null);
+  const previewFrame = useEscapeBackOut(() => previewArea.current?.focus());
   const [previewSrc, setPreviewSrc] = useState<string>();
   useEffect(() => {
     // Debounce so flipping options doesn't reload the preview on every click.
@@ -471,12 +530,24 @@ export function EmbedDialog({
         aria-label="Embed code"
         data-testid="embed-snippet"
       />
-      <div className="ix-preview" style={{ height: host ? 300 : Math.min(height, source === "inline" ? 290 : 340) }}>
+      <div
+        ref={previewArea}
+        className="ix-preview"
+        tabIndex={-1}
+        aria-label="Embed preview"
+        style={{ height: host ? 300 : Math.min(height, source === "inline" ? 290 : 340) }}
+        data-testid="embed-preview-area"
+      >
         {host ? (
-          <HostPreview diagram={diagram} simulation={sim} />
+          <HostPreview diagram={diagram} simulation={sim} frameRef={previewFrame} />
         ) : previewSrc ? (
-          // A look, not a stop: Tab would otherwise walk every node in it, where Esc can't close the dialog.
-          <iframe src={previewSrc} title="Embed preview" loading="lazy" tabIndex={-1} data-testid="embed-preview" />
+          <iframe
+            ref={previewFrame}
+            src={previewSrc}
+            title="Embed preview"
+            loading="lazy"
+            data-testid="embed-preview"
+          />
         ) : (
           <span className="ix-muted">Preparing preview…</span>
         )}

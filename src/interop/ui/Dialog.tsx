@@ -81,8 +81,9 @@ export function Dialog({
       backdropEl.removeEventListener("mousedown", onMouseDown);
       backdropEl.removeEventListener("contextmenu", onContextMenu);
       background.forEach((el, i) => (el.inert = wasInert[i]));
-      // What opened it may be gone (a toast's Details): the canvas, not the page, gets the keyboard back.
-      if (prev?.isConnected) prev.focus();
+      // What opened it may be gone (a toast's button: the toast closes as it acts, or fades): the canvas, not the
+      // page, gets the keyboard back.
+      if (prev && prev !== document.body && prev.isConnected && !prev.closest("[data-toast]")) prev.focus();
       else document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
     };
   }, []);

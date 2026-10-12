@@ -281,6 +281,56 @@ test.describe("password links", () => {
     await expect(embed.getByTestId(`node-${publicExamples[0].nodeIds[0]}`)).toHaveCount(0);
   });
 
+  test("an unlock that finishes while the diagram asked for still downloads never replaces it", async ({
+    page,
+    context,
+  }) => {
+    test.slow();
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await controlCrypto(context);
+    const link = await makePasswordLink(page, publicExamples[0].slug);
+    const target = publicExamples[2];
+
+    const other = await context.newPage();
+    // Hold the target example's download: the picker shows it at once, the canvas only once it arrives.
+    let requested = false;
+    let arrive!: () => void;
+    const arrived = new Promise<void>((resolve) => (arrive = resolve));
+    await other.route(
+      new RegExp(String.raw`/(?:assets/${target.slug}-[A-Za-z0-9_-]+\.js|src/examples/${target.slug}\.json)(?:\?.*)?$`),
+      async (route) => {
+        requested = true;
+        await arrived;
+        await route.continue();
+      },
+    );
+    await other.goto(link);
+    await expect(other.getByTestId("password-prompt")).toBeVisible({ timeout: pageLoadTimeout() });
+    await hold(other, "decrypt");
+    await other.getByTestId("password-prompt-input").fill(PASSWORD);
+    await other.getByTestId("password-prompt-submit").click();
+    await expect.poll(() => held(other, "decrypt"), { timeout: 15_000 }).toBeGreaterThan(0);
+    await other.evaluate((slug) => {
+      history.pushState(null, "", `?view=canvas&example=${slug}${location.hash}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }, target.slug);
+    await expect(other.getByTestId("example-picker")).toHaveValue(target.slug);
+    await expect.poll(() => requested).toBe(true);
+
+    // The unlock finishes first: it says so and opens nothing.
+    await release(other, "decrypt");
+    await expect(other.getByTestId("password-prompt-error")).toContainText("Another diagram opened", {
+      timeout: 15_000,
+    });
+    await expect(other.getByTestId("shared-banner")).toHaveCount(0);
+    await expect(other.getByTestId("example-picker")).toHaveValue(target.slug);
+
+    // Then the diagram asked for arrives, and stays.
+    arrive();
+    await expect(other.getByTestId("diagram-title")).toHaveText(target.title, { timeout: pageLoadTimeout() });
+    await expect(other.getByTestId("shared-banner")).toHaveCount(0);
+  });
+
   test("moving to another diagram during an unlock drops its result", async ({ page, context }) => {
     test.slow();
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);

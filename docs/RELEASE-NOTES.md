@@ -42,7 +42,8 @@ New:
 - A Private diagram's off rows, the Privacy submenu and the Private dialog name the way to share it: **Interactive
   HTML** (or the diagram file). The reason under an off row stays readable in both themes.
 - The Embed dialog is titled **Embed code**, like its menu row, and Esc closes the Share link and Embed dialogs as soon
-  as they open. The embed preview is no longer a Tab stop.
+  as they open. In the embed preview, Esc goes back to the dialog (the next Esc closes it).
+- A password link whose password is still being checked never opens over a diagram you moved to meanwhile.
 - The Agent Skill mentions **File > Copy link with password…** for a link only some people can open.
 
 ## Import Terraform plans and state (2026-10)

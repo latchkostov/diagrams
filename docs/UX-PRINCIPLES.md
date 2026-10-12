@@ -317,7 +317,7 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   - Checks run by themselves after edits pause, in idle time and off the main thread, so typing and dragging never
     wait. A diagram over 1,500 nodes is checked when the card opens. Private diagrams are checked too: it all stays
     on this device. Only the agents' `check_diagram` follows the AI rules.
-- Esc backs out one level: menu, dialog, selection, the Checks card, slow motion, trace, highlighted path, presentation, then live view.
+- Esc backs out one level: menu, the Embed dialog's preview (back to the dialog), dialog, selection, the Checks card, slow motion, trace, highlighted path, presentation, then live view.
   In a text field on the canvas it saves and leaves the field (Editing text, above). Esc never selects, and clearing a
   selection leaves keyboard focus where it was (on the node), never on the page.
 - **Undo toasts** ("Payments service left AKS · Undo", an agent's change, an applied fix) offer to reverse one change.

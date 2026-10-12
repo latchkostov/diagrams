@@ -110,6 +110,8 @@ export interface Binding {
 interface Options {
   view: View;
   slug: string;
+  /** The diagram asked for (the picker's choice): ahead of `slug` while an example downloads. Defaults to `slug`. */
+  requestedSlug?: string;
   canvas: RefObject<CanvasHandle | null>;
   /**
    * Adds the diagram to Your diagrams (bound to `target` for Save) and shows it; returns its slug. Throws if it
@@ -185,7 +187,15 @@ const deviceTarget = (handle: FileHandle, savedAt?: number): SaveTarget => ({
   ...(savedAt ? { savedAt } : {}),
 });
 
-export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openShared, isPublicExample }: Options) {
+export function useInterop({
+  view,
+  slug,
+  requestedSlug = slug,
+  canvas: canvasRef,
+  openDiagram,
+  openShared,
+  isPublicExample,
+}: Options) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   /**
    * The last import's report, for the diagram it made: in memory only, until another diagram opens. `seen`:
@@ -209,9 +219,12 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   if (dialog?.kind === "report" && !report) setDialog(null);
   // The diagram open right now (a save that finishes later compares against it).
   const openSlug = useRef(slug);
+  // The diagram asked for: ahead of `slug` while an example still downloads.
+  const requested = useRef(requestedSlug);
   useLayoutEffect(() => {
     openSlug.current = slug;
-  }, [slug]);
+    requested.current = requestedSlug;
+  }, [slug, requestedSlug]);
   const [, setBindingVersion] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const fsSupported = useMemo(() => fsAccessSupported(), []);
@@ -336,6 +349,10 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       toast.success("Exported a Mermaid .mmd file.");
     });
 
+  /** Interactive HTML (src/export): every diagram, Private ones too, like a file saved to this device. */
+  const openHtmlExport = () =>
+    attempt("export the interactive HTML", () => setDialog({ kind: "html", diagram: current() }));
+
   /**
    * Share links and embeds: the one gate, asked every time a link is about to be made, copied, shown or
    * shared (never only when the command started). A private diagram gets no link, and says why.
@@ -343,11 +360,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   const linkAllowed = (source: string = slug) => {
     if (canShareAsLink(privacyState(source))) return true;
     toast.info(SHARE_LINKS ? PRIVATE_SHARE_MESSAGE : LINKS_OFF_MESSAGE, {
-      action: {
-        label: "Interactive HTML…",
-        run: () => setDialog({ kind: "html", diagram: current() }),
-        testId: "toast-private-export",
-      },
+      action: { label: "Interactive HTML…", run: () => void openHtmlExport(), testId: "toast-private-export" },
     });
     return false;
   };
@@ -700,11 +713,13 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   const unlockShared = useCallback(
     async (session: number, token: string, password: string) => {
       const from = openSlug.current;
+      const asked = requested.current;
       // The WebCrypto part loads on use (./passwordLink.ts is all the app carries up front).
       const { decodeEncryptedShare } = await import("./shareCrypto");
       const d = await decodeEncryptedShare(token, password);
       if (session !== unlockSession.current) return;
-      if (openSlug.current !== from)
+      // Another diagram opened, or was asked for and is still downloading: the result never replaces it.
+      if (openSlug.current !== from || requested.current !== asked)
         throw new Error("Another diagram opened while this one was unlocking. Enter the password again to open it.");
       // Stored first: if that fails (storage full or blocked), the prompt shows why and the link stays.
       openShared(d);
@@ -852,8 +867,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     exportSvg: () => exportImage("svg"),
     exportImage: (kind: "png" | "svg", opts: ImageExportOptions = {}) => exportImage(kind, opts),
     openImageOptions: () => setDialog({ kind: "image" }),
-    /** Interactive HTML (src/export): every diagram, Private ones too, like a file saved to this device. */
-    openHtmlExport: () => attempt("export the interactive HTML", () => setDialog({ kind: "html", diagram: current() })),
+    openHtmlExport,
     copyShareLink,
     copyPasswordLink,
     exportDrawio,
