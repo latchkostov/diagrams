@@ -173,6 +173,7 @@ export const STENCIL_ALIASES: Record<string, readonly string[]> = {
   "aws.secrets-manager": ["asm", "secrets", "rotation", "credentials"],
   "aws.parameter-store": ["ssm", "systems manager", "parameters", "config", "securestring"],
   "aws.iam-role": ["iam", "role", "irsa", "execution role", "task role", "identity"],
+  "gcp.service-account": ["gsa", "iam", "workload identity", "gke", "google", "identity"],
   "gcp.secret-manager": ["secrets", "google"],
   "k8s.configmap": ["configmap", "config map", "cm", "kubernetes", "k8s", "config"],
   "k8s.secret": ["secret", "kubernetes", "k8s", "csi", "external secrets"],

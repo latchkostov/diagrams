@@ -1717,6 +1717,20 @@
       ]
     },
     {
+      "id": "gcp.service-account",
+      "label": "Service Account",
+      "vendor": "Google Cloud",
+      "role": "none",
+      "aliases": [
+        "gsa",
+        "iam",
+        "workload identity",
+        "gke",
+        "google",
+        "identity"
+      ]
+    },
+    {
       "id": "gcp.secret-manager",
       "label": "Secret Manager",
       "vendor": "Google Cloud",

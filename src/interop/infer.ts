@@ -13,6 +13,7 @@ const RULES: [RegExp, string][] = [
   [/\bsecret manager\b/, "gcp.secret-manager"],
   [/\bparameter store\b|\bssm\b/, "aws.parameter-store"],
   [/\biam roles?\b|\birsa\b|\bexecution role\b|\btask role\b/, "aws.iam-role"],
+  [/\b(gcp|google|gke) service accounts?\b|\bgsa\b/, "gcp.service-account"],
   [/\bconfig ?maps?\b/, "k8s.configmap"],
   [/\b(kubernetes|k8s) secrets?\b/, "k8s.secret"],
   [/\bcloud ?watch\b/, "aws.cloudwatch"],

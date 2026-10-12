@@ -1,10 +1,7 @@
-import { getStencil } from "../../stencils/registry";
-import { inferRelation } from "../../stencils/relations";
-import type { EdgeRelation } from "../../model/types";
-import type { Evidence, ImportComponent, ImportGraph, ImportLink } from "./graph";
-import { imageStencil, pickFor, shortImage, withoutCredentials } from "./stencils";
-import { LIMITS } from "../native";
-import { isOutsideHost, MAX_VALUE, productOf, readSetting } from "./settings";
+import type { ImportGraph } from "./graph";
+import { imageStencil, shortImage, withoutCredentials } from "./stencils";
+import { MAX_VALUE } from "./settings";
+import { Components, linkSettings, Links } from "./links";
 import { bare, ImportError, isMap, list, own, readYaml, str } from "./yaml";
 
 // docker-compose → ImportGraph (docs/research/imports.md § Mapping: docker-compose). Several files merge the
@@ -225,23 +222,12 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
     g.notDrawn.push({ name, reason: "volume" });
 
   // ------------------------------------------------ pass 1: what gets drawn
-  const byKey = new Map<string, ImportComponent>();
+  const components = new Components(g.components);
+  const { byKey } = components;
+  const stencilOf = (key: string) => components.stencilOf(key);
+  const add = (c: Parameters<Components["add"]>[0]) => components.add(c);
   const infos: ServiceInfo[] = [];
   const hosts = new Map<string, string>();
-  const stencilOf = (key: string): string => {
-    const c = byKey.get(key);
-    if (!c) return "generic.service";
-    if (c.stencil) return c.stencil;
-    const pick = pickFor(c);
-    return "id" in pick ? pick.id : "generic.service";
-  };
-  const add = (c: ImportComponent) => {
-    if (!byKey.has(c.key)) {
-      byKey.set(c.key, c);
-      g.components.push(c);
-    }
-    return c.key;
-  };
 
   for (const name of Object.keys(services)) {
     const svc = resolve(name);
@@ -317,51 +303,11 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
     throw new ImportError("There's nothing to draw: every service is in a profile or isn't a component.");
 
   // ------------------------------------------------ pass 2: connections
-  const flows = new Map<string, ImportLink>();
-  const deps = new Map<string, ImportLink>();
-  const topicCluster = new Map<string, string>();
-  const role = (key: string) => getStencil(stencilOf(key)).simRole;
-  const isBroker = (key: string) =>
-    ["topic", "queue", "stream"].includes(role(key)) || stencilOf(key) === "kafka.cluster";
-  const isGateway = (key: string) => role(key) === "gateway";
-
-  /** The validator's edge budget, enforced while the graph is built (before any layout runs). */
-  const budget = () => {
-    if (flows.size + deps.size >= LIMITS.maxEdges)
-      throw new ImportError(
-        `It would draw more than ${LIMITS.maxEdges.toLocaleString("en")} connections, the most a diagram holds.`,
-      );
-  };
-  const flow = (
-    from: string,
-    to: string,
-    kind: "async" | "sync",
-    evidence: Evidence,
-    props?: Record<string, unknown>,
-  ) => {
-    budget();
-    const id = `${from}\u0001${to}`;
-    if (from !== to && !flows.has(id))
-      flows.set(id, { from, to, relation: "flow", kind, evidence, ...(props ? { props } : {}) });
-  };
-  const dep = (
-    from: string,
-    to: string,
-    relation: EdgeRelation,
-    evidence: Evidence,
-    props?: Record<string, unknown>,
-  ) => {
-    budget();
-    const id = `${from}\u0001${to}\u0001${relation}`;
-    if (from !== to && !deps.has(id)) deps.set(id, { from, to, relation, evidence, ...(props ? { props } : {}) });
-  };
-  /** A connection to `to`, as its stencil suggests: a dependency for typed stencils and brokers, else a Request. */
-  const connect = (from: string, to: string, evidence: Evidence) => {
-    const relation = inferRelation(stencilOf(from), stencilOf(to));
-    if (relation !== "flow") dep(from, to, relation, evidence);
-    else if (isBroker(to)) dep(from, to, "depends", evidence);
-    else flow(from, to, "sync", evidence);
-  };
+  const links = new Links(components);
+  const flow = links.flow.bind(links);
+  const dep = links.dep.bind(links);
+  const isBroker = (key: string) => links.isBroker(key);
+  const isGateway = (key: string) => links.isGateway(key);
   const secretNames: string[] = [];
   const secrets = (name: string) => {
     if (!secretNames.includes(name)) secretNames.push(name);
@@ -376,62 +322,28 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
   const clusters = g.components.filter((c) => stencilOf(c.key) === "kafka.cluster").map((c) => c.key);
 
   for (const { key, svc, env } of infos) {
-    const brokers: { cluster: string; name: string }[] = [];
-    const topics: { topics: string[]; dir: "read" | "write" | "guess"; name: string }[] = [];
-    let group: string | undefined;
-    for (const [name, raw] of env) {
+    linkSettings(
+      components,
+      links,
+      key,
       // Long values are skipped before anything (interpolation included) looks at them.
-      if (raw.length > MAX_VALUE) continue;
-      for (const hit of readSetting(name, interpolate(raw))) {
-        const evidence: Evidence = { source: "setting", name };
-        if (hit.type === "host") {
-          const target = hosts.get(hit.host);
-          if (target) {
-            if (byKey.has(target)) connect(key, target, evidence);
-          } else if (isOutsideHost(hit.host)) {
-            const product = productOf(hit.host, hit.scheme);
-            if (!product && hit.scheme && !/^https?$/.test(hit.scheme)) continue;
-            const ext = add({
-              key: `\u0003${hit.host}`,
-              label: hit.host,
-              hint: { name: hit.host },
-              stencil: product ?? "generic.external-api",
-            });
-            connect(key, ext, evidence);
-          }
-        } else if (hit.type === "brokers") {
-          const target = hit.hosts.map((h) => hosts.get(h)).find((t) => t && byKey.has(t));
-          if (target) brokers.push({ cluster: target, name });
-        } else if (hit.type === "topics") topics.push(hit);
-        else if (hit.type === "group") group = hit.group;
-        else if (hit.type === "secret") dep(key, secrets(hit.secret), "secret", evidence);
-      }
-    }
-    const cluster = brokers[0]?.cluster ?? (topics.length && clusters.length === 1 ? clusters[0] : undefined);
-    if (topics.length) {
-      const kafka = !cluster || stencilOf(cluster) === "kafka.cluster";
-      for (const t of topics)
-        for (const name of t.topics) {
-          // A topic belongs to its cluster: the same name on two clusters is two topics (no invented path).
-          const topic = add({
+      [...env].filter(([, raw]) => raw.length <= MAX_VALUE).map(([name, raw]) => [name, interpolate(raw)] as const),
+      {
+        host: (host) => hosts.get(host),
+        outside: () => true,
+        cluster: (brokers) => brokers.map((h) => hosts.get(h)).find((t) => t !== undefined && byKey.has(t)),
+        onlyCluster: clusters.length === 1 ? clusters[0] : undefined,
+        topic: (cluster, name) =>
+          add({
             key: `\u0004${cluster ?? ""}\u0001${name}`,
             label: name.slice(0, 120),
             hint: { name },
-            stencil: kafka ? "kafka.topic" : "generic.topic",
-          });
-          if (cluster) topicCluster.set(topic, cluster);
-          const evidence: Evidence = { source: "setting", name: t.name };
-          if (t.dir === "read")
-            flow(topic, key, "async", { ...evidence, note: "reads" }, group ? { group } : undefined);
-          else
-            flow(key, topic, "async", { ...evidence, note: "writes", ...(t.dir === "guess" ? { guess: true } : {}) });
-        }
-    } else if (brokers.length)
-      dep(key, brokers[0].cluster, "depends", {
-        source: "setting",
-        name: brokers[0].name,
-        note: "couldn't tell what it reads or writes",
-      });
+            stencil: !cluster || stencilOf(cluster) === "kafka.cluster" ? "kafka.topic" : "generic.topic",
+          }),
+        clusterNode: (cluster) => cluster,
+        secretFile: (name, evidence) => dep(key, secrets(name), "secret", evidence),
+      },
+    );
 
     // The file's own structure: depends_on, links, network_mode, volumes_from.
     const targets = [
@@ -477,25 +389,11 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
       secretNames.join(", ").length <= 32 ? secretNames.join(", ") : `${secretNames.length} secrets`;
 
   // A flow wins over a dependency for the same pair, including a flow through one of a cluster's topics.
-  const pairs = new Set<string>();
-  for (const f of flows.values())
-    for (const [a, b] of [
-      [f.from, f.to],
-      [f.to, f.from],
-      [f.from, topicCluster.get(f.to)],
-      [f.to, topicCluster.get(f.from)],
-    ])
-      if (b !== undefined) pairs.add(`${a}\u0001${b}`);
-  const joined = (a: string, b: string) => pairs.has(`${a}\u0001${b}`);
-  g.links = [
-    ...flows.values(),
-    ...[...deps.values()]
-      .filter((d) => d.relation !== "depends" || !joined(d.from, d.to))
-      .map((d) => {
-        const names = d.relation === "config" ? configNames.get(d.from) : undefined;
-        return names ? { ...d, props: { settings: [...names].map((key) => ({ key })) } } : d;
-      }),
-  ];
+  const { topicCluster } = links;
+  g.links = links.list().map((d) => {
+    const names = d.relation === "config" ? configNames.get(d.from) : undefined;
+    return names ? { ...d, props: { settings: [...names].map((key) => ({ key })) } } : d;
+  });
 
   // ------------------------------------------------ boundaries: networks, when they divide the services
   const drawn = infos.filter((i) => byKey.has(i.key));

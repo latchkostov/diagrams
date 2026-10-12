@@ -130,7 +130,7 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
 
       {/* Teaches the infrastructure import in place (docs/research/imports.md): the one line it adds. */}
       <p className="start-note" data-testid="start-import-hint">
-        Have a docker-compose or AsyncAPI file? Drop it here.
+        Have a docker-compose, Kubernetes or AsyncAPI file? Drop it here.
       </p>
 
       <div className="start-actions">

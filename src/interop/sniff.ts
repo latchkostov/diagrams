@@ -34,12 +34,16 @@ export function sniffInfra(text: string): InfraSniff | undefined {
       ? "asyncapi"
       : /"format_version"/.test(head) && /"terraform_version"/.test(head)
         ? "terraform"
-        : undefined;
+        : // Kubernetes JSON: apiVersion and kind in any order, anywhere (a ConfigMap's data may come first).
+          // Only a JSON object that is none of the above gets this one linear scan of the whole text.
+          /"apiVersion"\s*:\s*"/.test(text) && /"kind"\s*:\s*"/.test(text)
+          ? "kubernetes"
+          : undefined;
   }
   if (/^asyncapi:\s*['"]?[23]\./m.test(head)) return "asyncapi";
   if (/^apiVersion:/m.test(head) && /^kind:/m.test(head))
     // Only a Kubernetes manifest can be a Helm template.
-    return /\{\{-?\s*(\.Values|include ")/.test(head) ? "helm" : "kubernetes";
+    return /\{\{-?\s*(\.Values|\.Release|\.Chart|include ")/.test(head) ? "helm" : "kubernetes";
   if (/^services:/m.test(head)) return "compose";
   return undefined;
 }

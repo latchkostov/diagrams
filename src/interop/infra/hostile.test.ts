@@ -150,17 +150,23 @@ services:
 });
 
 describe("format detection", () => {
-  it("recognises compose and AsyncAPI, and names the formats that aren't imported yet", async () => {
+  it("recognises compose, Kubernetes and AsyncAPI, and names the formats that aren't imported yet", async () => {
     expect(detectFormat("services:\n  a: {}\n")).toBe("compose");
     expect(detectFormat("version: '3'\nservices:\n  a: {}\n")).toBe("compose");
     expect(detectFormat('{"format":"diagrams/v1","nodes":[],"edges":[]}')).toBe("native");
     expect(detectFormat(read("asyncapi/orders-service.asyncapi.yaml"))).toBe("asyncapi");
     expect(detectFormat('{"asyncapi": "2.6.0", "info": {}}')).toBe("asyncapi");
-    const outcome = await importText(read("k8s/orders-api.yaml"), "orders-api.yaml");
+    expect(detectFormat(read("k8s/orders-api.yaml"))).toBe("kubernetes");
+    expect(detectFormat('{\n  "apiVersion": "v1",\n  "items": [],\n  "kind": "List"\n}')).toBe("kubernetes");
+    const outcome = await importText('{"format_version":"1.2","terraform_version":"1.9.0"}', "plan.json");
     expect(outcome).toEqual({
       ok: false,
       error:
-        "This looks like Kubernetes manifests. Importing those isn't supported yet; docker-compose files and AsyncAPI documents are.",
+        "This looks like a Terraform plan. Importing those isn't supported yet; docker-compose files, Kubernetes manifests and AsyncAPI documents are.",
+    });
+    expect(await importText('apiVersion: v1\nkind: ConfigMap\ndata:\n  x: "{{ .Release.Name }}"\n')).toEqual({
+      ok: false,
+      error: "This looks like a Helm template ({{ .Values… }}). Run “helm template” and import its output.",
     });
     expect(sniffInfra('apiVersion: v1\nkind: ConfigMap\ndata:\n  x: "{{ .Values.x }}"\n')).toBe("helm");
     expect(sniffInfra('{"format_version":"1.2","terraform_version":"1.9.0"}')).toBe("terraform");

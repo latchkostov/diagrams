@@ -43,13 +43,13 @@ View, File and Present become icon-only, so the bar fits at 1024px without scrol
 | File menu                    | Notes                                                                                                                                                                                                                                                                   |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Save** (Ctrl+S)            | Goes back to wherever the diagram came from or was last saved: the same device file (File System Access) or the same file in Google Drive, OneDrive or Dropbox. Otherwise it asks where to save (or downloads, in browsers without the API). Ctrl+Shift+S is "Save as". |
-| **Open…** (Ctrl+O)           | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`, docker-compose and AsyncAPI `.yml` / `.yaml` / `.json`, several files at once. A draw.io file with several pages asks which page to open.                                                                    |
+| **Open…** (Ctrl+O)           | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`, docker-compose, Kubernetes and AsyncAPI `.yml` / `.yaml` / `.json`, several files at once. A draw.io file with several pages asks which page to open.                                                        |
 | Open from ▸ / Save to ▸      | Only when at least one cloud provider is configured (see "Storage providers" below); otherwise hidden completely, and **Save as…** stays a plain row. Each lists **This device** first, then the configured providers. Save to ▸ always makes a new file.               |
 | **Export PNG**               | 2×, whole diagram, independent of pan and zoom.                                                                                                                                                                                                                         |
 | **Copy share link**          | One click; the toast's **Details** opens the dialog (length, warning above 8k characters, native Share).                                                                                                                                                                |
 | **Copy link with password…** | Encrypts the diagram into a `#e=` link with a password (8+ characters, strength hint); see "Share links and embeds" below.                                                                                                                                              |
 | More formats ▸               | Diagram file (`.diagram.json`, lossless, simulations included) · Image… (PNG or SVG; scale and transparent background behind **Options**) · **Interactive HTML…** (one self-contained file, below) · draw.io · Mermaid file (`.mmd`) · Copy as Mermaid                  |
-| Import from ▸                | Paste text… (JSON, draw.io XML, Mermaid, docker-compose or AsyncAPI, auto-detected) · Share link…                                                                                                                                                                       |
+| Import from ▸                | Paste text… (JSON, draw.io XML, Mermaid, docker-compose, Kubernetes or AsyncAPI, auto-detected) · Share link…                                                                                                                                                           |
 
 You can also drop files anywhere on the page to open them (several at once: a compose file with its overrides).
 
@@ -75,7 +75,7 @@ reload is needed.
 - Unknown fields are kept. The canvas only carries known fields, so every export re-attaches unknown
   top-level, node, edge and group fields from the original file (`preserveUnknown`).
 - **One validator** (`validateDiagram`) for every way in: file open, drag-and-drop, paste, share links, Google
-  Drive, draw.io, Mermaid and docker-compose converter output, and storage reads (`getImported` / `getShared` / `getAutosave`).
+  Drive, draw.io, Mermaid and infrastructure (compose, Kubernetes, AsyncAPI) converter output, and storage reads (`getImported` / `getShared` / `getAutosave`).
   Writes are validated too: `setImported` / `setShared` throw a readable error _before_ replacing a slot, so a bad
   file can't overwrite good work or crash the canvas. It checks every field the UI renders: string ids, stencils
   and labels; finite coordinates; edges pointing at real nodes; groups with finite, non-negative geometry; side
@@ -98,7 +98,8 @@ Batch 1 of the plan in `docs/research/imports.md` (which has the full mapping ta
   Kubernetes, AsyncAPI, Terraform JSON and Helm templates. Compose goes to the lazy `infra/pipeline.ts` chunk with
   the `yaml` package: reader (`compose.ts`) → `ImportGraph` (`graph.ts`: components, links with their
   evidence, groups, report lines) → stencils and relationships (`map.ts`, `stencils.ts`) → the three-step layout
-  (`layout.ts`) → `validateDiagram`. The other recognised formats get "isn't supported yet" from the same chunk.
+  (`layout.ts`) → `validateDiagram`. Kubernetes and AsyncAPI have their own readers on the same chunk; a Helm
+  template says to run `helm template`, and Terraform gets "isn't supported yet".
 - **Several files.** Open… (`multiple`), a drop and the file input take every file. Files are grouped by format and
   the largest group imports: compose files merge the way Compose merges (base first, then `*.override.yml`);
   `.env` files beside them feed `env_file`. A group of diagram, draw.io or Mermaid files opens the first and says
@@ -134,9 +135,9 @@ Batch 1 of the plan in `docs/research/imports.md` (which has the full mapping ta
   no values in the output), `tests/e2e/imports.spec.ts`, the CSP walk, the bundle-split guard
   (`src/interop/infra/`, `yaml` and the report are never startup JavaScript) and the Lab's "Imported: compose"
   overlap audit. The sniffers and the wiring add 0.8 kB gzip to the entry.
-- **Copy.** The drop overlay lists `docker-compose.yml` and AsyncAPI, the paste dialog names both, and the start
-  card has one line, "Have a docker-compose or AsyncAPI file? Drop it here." Kubernetes and Terraform join the
-  wording with the batches that import them.
+- **Copy.** The drop overlay lists `docker-compose.yml`, Kubernetes and AsyncAPI, the paste dialog names all three,
+  and the start card has one line, "Have a docker-compose, Kubernetes or AsyncAPI file? Drop it here." Terraform
+  joins the wording with the batch that imports it.
 
 ### Infrastructure imports: AsyncAPI 2.x and 3.x (`src/interop/infra/asyncapi.ts`)
 
@@ -171,6 +172,83 @@ Batch 2. Our own reader (about 4 kB gzip in the same lazy chunk): `@asyncapi/par
 - **Tests.** `infra/asyncapi.test.ts` (the three fixtures together and alone, protocols, replies, clusters, the
   hostile refs), the AsyncAPI part of `tests/e2e/imports.spec.ts` (join, Go live with Imported traffic, 2.6
   direction, remote `$ref`, no network) and the Lab's "Imported: AsyncAPI" overlap audit. The entry grows by 48 B.
+
+### Infrastructure imports: Kubernetes manifests (`src/interop/infra/kubernetes.ts`, `k8sHosts.ts`, `k8sSettings.ts`)
+
+Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the shared settings code it now uses, in
+`links.ts`). The entry grows by about 70 B (the kubectl JSON sniff and the wiring). JSON is recognised by its
+`apiVersion` and `kind` in any order, anywhere in the text (a ConfigMap's data may come first).
+
+- **Reading.** Several files, each with several documents, are one diagram; `kind: List` (and `*List`) items are
+  read too, so `kubectl get all -o yaml` or `-o json` output works. 2,000 YAML documents and 10,000 resources per
+  import at most. Pods, ReplicaSets and Jobs fold into an owner in the files that runs pods itself; anything else
+  an owner makes (a Deployment an operator's custom resource manages) is drawn.
+- **Workloads** are found by their pod template, not their kind: Deployment, StatefulSet, DaemonSet, Pod, Argo
+  Rollout, Knative Service, KEDA ScaledJob. The main container (not a known sidecar such as `istio-proxy`) gives
+  the stencil through the compose image table, then its settings' names, then its name, then **Kubernetes
+  Deployment** as a guess with chips. `spec.replicas` gives `replicas`. A CronJob is a **Scheduler** subtitled with
+  its schedule, so it sends in Live; a Job is a **Batch Job**. ZooKeeper and developer-tool images aren't drawn,
+  as in compose.
+- **Services** aren't nodes: a request to one goes to every workload its selector matches. One with no matching
+  workload is a Service node, "no workload in these files", and the report says so. `ExternalName` is an outside
+  node (a product when the host is known); `LoadBalancer` adds **Users** → its workloads.
+- **Entry points.** An Ingress is a gateway node of its class (`ingressClassName` or the old annotation: NGINX,
+  Traefik, HAProxy, Kong, Istio, AWS ALB, GCE, Application Gateway, else Load Balancer), with Users → Ingress →
+  each backend. Gateway API `Gateway` and its `*Route`s (`parentRefs`, `backendRefs`) work the same way; a parent
+  Gateway that isn't in the files is drawn and says so.
+- **Namespaces** are boundaries (tone Kubernetes) when the files name a namespace; Users, outside services and
+  identities stay outside. The title names the namespaces ("shop and kafka").
+- **ConfigMaps and Secrets** from `envFrom`, `configMapKeyRef`/`secretKeyRef` and (projected) volumes are nodes with
+  a **Config** or **Secret** dependency whose settings are the keys used, Secret keys marked secret. ConfigMap
+  values are read in memory like inline settings, to find hosts. **Secret `data` and `stringData` values are never
+  read**: only their key names. A referenced one that isn't in the files is drawn, "not in these files". TLS,
+  image-pull and service-account-token Secrets aren't drawn.
+- **Workload identity.** A ServiceAccount annotated for Azure (`azure.workload.identity/client-id`), AWS IRSA
+  (`eks.amazonaws.com/role-arn`) or GKE (`iam.gke.io/gcp-service-account`) gives a Managed Identity, an IAM Role
+  (named by the role) or the new **Service Account** (Google Cloud, named by the account), with an **Identity**
+  dependency from each workload running as it. Client ids, account numbers and projects aren't shown.
+- **Connections from settings** use the compose rules (`linkSettings` in `links.ts`, shared with compose).
+  - **Each container's environment is its own** (`k8sSettings.ts`), built as the kubelet builds it: `envFrom`
+    sources in order, a later one overriding an earlier one, then `env`, which beats them all. A Secret's keys
+    override with a value that's never read, so a ConfigMap setting a later Secret replaces connects nothing; so
+    does `env` from a Secret or a field. A workload's connections are the union of its containers'.
+  - **`$(VAR)`** expands once, from the same container's earlier variables. Values are bounded while they're built:
+    past 2,048 characters, 64 references, or with an unknown part, a value is unknown and connects nothing. One
+    import materializes at most 100,000 settings across all containers (a ConfigMap shared by many workloads
+    counts each time); past that the report says settings weren't read.
+  - **Host names** (`k8sHosts.ts`) are parsed before anything is looked up: `svc`, `svc.ns`,
+    `svc.ns.svc[.cluster.local]`, and StatefulSet pods by their ordinal (`db-0.db`, `db-0.db.data`). An explicit
+    namespace that isn't in the files stays unresolved; it's never read as a local name. Names that look
+    in-cluster are never taken for outside APIs.
+- **KEDA.** A ScaledObject's `kafka`, `rabbitmq`, `aws-sqs-queue` and `azure-servicebus` triggers draw the topic or
+  queue with a **Message** to the workload it scales (`group` from `consumerGroup` or the subscription). The replica
+  range goes in the report, and `minReplicaCount` above the Deployment's replicas becomes `replicas`. Other
+  triggers (CPU, cron…) are listed as "scaling only". An HPA's range is a report note too.
+- **Strimzi.** `Kafka` and `KafkaTopic` in `v1beta2` and `v1`: the cluster is shown through its topics (in its
+  namespace, with `partitions`), scoped to the cluster, and listed as "shown through its topics". A cluster is its
+  namespace and name, from a topic's `strimzi.io/cluster` label or a bootstrap host, whether or not its `Kafka`
+  manifest was opened; a topic with no label is scoped to its namespace. A cluster with no
+  topics is a Kafka Cluster node. Bootstrap hosts (`<cluster>-kafka-bootstrap.<ns>.svc`) name the cluster, so a
+  KEDA trigger and an `INPUT_TOPIC` meet on the same topic. KafkaConnect is drawn; KafkaUser, KafkaNodePool and
+  the rest are "part of Kafka". KafkaUser ACLs aren't read yet.
+- **Report rows** name the namespace when there's more than one ("orders (staging)"), in the row and in its chips'
+  accessible names, so two workloads with one name can be told apart. The canvas label stays short.
+- **Not drawn**, grouped by kind and reason: "ServiceMonitor orders-api · unknown kind (monitoring.coreos.com)",
+  "PersistentVolumeClaim ×4 · not a component", "Pod ×12 · folded into its owner", ConfigMaps and Secrets no
+  workload uses.
+- **Helm.** A chart's templates (`{{ .Values… }}`, `.Release`, `.Chart`, `include`) are refused with "This looks
+  like a Helm template ({{ .Values… }}). Run “helm template” and import its output.", wherever the template is in
+  the file. Among other files, it's listed as not read with the same hint.
+- **Not yet:** the 300-node picker of the plan (imports over 5,000 nodes still fail with the budget message) and
+  KafkaUser ACLs.
+- **Tests.** `infra/kubernetes.test.ts` (the fixture set end to end, the Secret-values leak test, KEDA, Strimzi in
+  both versions, entry points, identities, host forms, not-drawn grouping, kubectl JSON and Lists, Helm, alias
+  bomb, nesting, 2,000 documents under `perfBudget`, the resource cap, prototype keys, linear patterns, and the
+  review's cases: per-container environments, `envFrom` precedence, bounded expansion and the settings budget, DNS
+  parsing, Kafka identity without manifests, owners that aren't drawn, JSON in any key order), the
+  Kubernetes part of `tests/e2e/imports.spec.ts` (Open… and drop, boundaries, the Ingress entry, config, secret
+  and identity relationships, the KEDA consumer, report rows, Helm, no network) and the Lab's "Imported:
+  Kubernetes" overlap audit. `bundleSplit.build.test.ts` names the Kubernetes reader.
 
 ### draw.io (`src/interop/drawio/`)
 
@@ -659,29 +737,29 @@ again.
 
 ## Files
 
-| Path                                                       | Purpose                                                                                             |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `src/interop/native.ts`                                    | Validation, `migrate`, `preserveUnknown`, `serializeNative`                                         |
-| `src/interop/formats.ts`                                   | Format detection, `importText` (one entry point for every import)                                   |
-| `src/interop/codec.ts`, `xml.ts`                           | DEFLATE / base64url codecs; a dependency-free XML reader (Node has no DOMParser)                    |
-| `src/interop/infer.ts`                                     | Label keywords → stencil                                                                            |
-| `src/interop/infra/*`                                      | Infrastructure imports: YAML, the compose and AsyncAPI readers, stencils, settings, mapping, layout |
-| `src/interop/ui/ImportReportDialog.tsx`                    | The Import report (lazy)                                                                            |
-| `src/interop/drawio/{read,write,mapping}.ts`               | draw.io converter plus fixtures in `drawio/fixtures/`                                               |
-| `src/interop/mermaid/{read,write}.ts`                      | Mermaid converter                                                                                   |
-| `src/interop/share.ts`                                     | Share-link and embed URL helpers                                                                    |
-| `src/interop/gdrive/{config,client,google}.ts`             | Env gating, pure REST client, GIS / Picker glue                                                     |
-| `src/interop/storage/types.ts`, `registry.ts`, `config.ts` | The `StorageProvider` interface; which providers this build offers (env-gated, lazy)                |
-| `src/interop/storage/{device,gdrive,onedrive,dropbox}.ts`  | The providers; OneDrive and Dropbox include their REST clients                                      |
-| `src/interop/storage/oauth.ts`, `http.ts`                  | PKCE popup sign-in, in-memory tokens; authorised fetch, capped reads                                |
-| `src/interop/storage/testProvider.ts`                      | Dev-only fake provider for e2e (`?storage=test`)                                                    |
-| `public/auth.html`, `privacy.html`, `terms.html`, `brand/` | OAuth redirect page; the privacy policy and terms; the logo PNGs for the providers' consent screens |
-| `src/interop/files.ts`, `image.ts`, `icons.ts`             | File System Access and downloads, PNG/SVG rendering, icon inlining                                  |
-| `src/interop/useInterop.tsx`                               | Controller: File menu actions, shortcuts, drag-and-drop, share-hash handling, canvas menu actions   |
-| `src/interop/ui/*`                                         | File menu, dialogs, toasts (`notify`), drop overlay, glyphs                                         |
-| `src/interop/embed/EmbedView.tsx`                          | `?embed=1` viewer                                                                                   |
-| `src/export/inject.ts`                                     | Interactive HTML: payload injection, escaping, icon subsetting, file name, the file's CSP           |
-| `src/export/exportHtml.ts`, `HtmlExportDialog.tsx`         | Interactive HTML: fetch the template, gather icons, download; the dialog (lazy)                     |
-| `src/export/viewerEntry.tsx`, `src/export/viewer/*`        | The exported file's viewer: storage sandbox, payload reader, icon map, page                         |
-| `scripts/interactive-viewer.ts`                            | Builds the viewer template (its own Vite build) and emits it beside the app                         |
-| `src/styles/interop.css`                                   | Styles (prefixed `ix-`)                                                                             |
+| Path                                                       | Purpose                                                                                                         |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `src/interop/native.ts`                                    | Validation, `migrate`, `preserveUnknown`, `serializeNative`                                                     |
+| `src/interop/formats.ts`                                   | Format detection, `importText` (one entry point for every import)                                               |
+| `src/interop/codec.ts`, `xml.ts`                           | DEFLATE / base64url codecs; a dependency-free XML reader (Node has no DOMParser)                                |
+| `src/interop/infer.ts`                                     | Label keywords → stencil                                                                                        |
+| `src/interop/infra/*`                                      | Infrastructure imports: YAML, the compose, Kubernetes and AsyncAPI readers, stencils, settings, mapping, layout |
+| `src/interop/ui/ImportReportDialog.tsx`                    | The Import report (lazy)                                                                                        |
+| `src/interop/drawio/{read,write,mapping}.ts`               | draw.io converter plus fixtures in `drawio/fixtures/`                                                           |
+| `src/interop/mermaid/{read,write}.ts`                      | Mermaid converter                                                                                               |
+| `src/interop/share.ts`                                     | Share-link and embed URL helpers                                                                                |
+| `src/interop/gdrive/{config,client,google}.ts`             | Env gating, pure REST client, GIS / Picker glue                                                                 |
+| `src/interop/storage/types.ts`, `registry.ts`, `config.ts` | The `StorageProvider` interface; which providers this build offers (env-gated, lazy)                            |
+| `src/interop/storage/{device,gdrive,onedrive,dropbox}.ts`  | The providers; OneDrive and Dropbox include their REST clients                                                  |
+| `src/interop/storage/oauth.ts`, `http.ts`                  | PKCE popup sign-in, in-memory tokens; authorised fetch, capped reads                                            |
+| `src/interop/storage/testProvider.ts`                      | Dev-only fake provider for e2e (`?storage=test`)                                                                |
+| `public/auth.html`, `privacy.html`, `terms.html`, `brand/` | OAuth redirect page; the privacy policy and terms; the logo PNGs for the providers' consent screens             |
+| `src/interop/files.ts`, `image.ts`, `icons.ts`             | File System Access and downloads, PNG/SVG rendering, icon inlining                                              |
+| `src/interop/useInterop.tsx`                               | Controller: File menu actions, shortcuts, drag-and-drop, share-hash handling, canvas menu actions               |
+| `src/interop/ui/*`                                         | File menu, dialogs, toasts (`notify`), drop overlay, glyphs                                                     |
+| `src/interop/embed/EmbedView.tsx`                          | `?embed=1` viewer                                                                                               |
+| `src/export/inject.ts`                                     | Interactive HTML: payload injection, escaping, icon subsetting, file name, the file's CSP                       |
+| `src/export/exportHtml.ts`, `HtmlExportDialog.tsx`         | Interactive HTML: fetch the template, gather icons, download; the dialog (lazy)                                 |
+| `src/export/viewerEntry.tsx`, `src/export/viewer/*`        | The exported file's viewer: storage sandbox, payload reader, icon map, page                                     |
+| `scripts/interactive-viewer.ts`                            | Builds the viewer template (its own Vite build) and emits it beside the app                                     |
+| `src/styles/interop.css`                                   | Styles (prefixed `ix-`)                                                                                         |

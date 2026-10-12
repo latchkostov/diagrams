@@ -248,6 +248,8 @@ function GuessRow({
     <button
       key={testId}
       className="ix-report-chip"
+      // The visible name first, then which node it changes: two rows may show the same stencil.
+      aria-label={`${getStencil(id).label} for ${guess.label}`}
       onClick={() => {
         onSwap(guess.nodeId, id);
         setSearching(false);
@@ -285,6 +287,7 @@ function GuessRow({
           <button
             ref={other}
             className="ix-report-chip is-other"
+            aria-label={`Other stencil for ${guess.label}`}
             onClick={() => setSearching(true)}
             data-testid={`import-report-other-${index}`}
           >

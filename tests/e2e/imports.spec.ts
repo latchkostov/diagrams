@@ -412,3 +412,151 @@ test.describe("imports: AsyncAPI", () => {
       await expect(page.getByTestId(`audit-count-${kind}`)).toHaveAttribute("data-count", "0");
   });
 });
+
+// ---------------------------------------------------------------- Kubernetes (batch 3)
+
+const K8S_DIR = join(FIXTURES, "k8s");
+const K8S = ["00-namespaces.yaml", "data.yaml", "ingress.yaml", "orders-api.yaml", "payments-worker.yaml"].map(
+  (name) => ({ name, text: readFileSync(join(K8S_DIR, name), "utf8") }),
+);
+const K8S_SUMMARY = "Imported “shop and kafka” from Kubernetes: 14 nodes, 13 connections.";
+
+interface StoredK8s {
+  nodes: { id: string; group?: string }[];
+  edges: { from: string; to: string; relation?: string; kind?: string; props?: Record<string, unknown> }[];
+  groups?: { id: string; label: string }[];
+}
+
+async function expectK8s(page: Page) {
+  await expect(page.getByTestId("diagram-title")).toHaveText("shop and kafka");
+  for (const id of [
+    "orders-api",
+    "payments-worker",
+    "settlement-report",
+    "postgres",
+    "redis",
+    "storefront",
+    "ingress-shop",
+    "users",
+    "topic-orders.placed.v1",
+    "topic-payments.completed.v1",
+    "configmap-orders-api-config",
+    "secret-orders-db",
+    "secret-payment-provider",
+    "identity-orders-api",
+  ])
+    await expect(page.getByTestId(`node-${id}`)).toBeVisible();
+  await expect(page.getByTestId(/^node-(?!tooltip$|editor-|pips-|pip-|dependencies-|dependency-)/)).toHaveCount(14);
+  // One boundary per namespace.
+  await expect(page.getByTestId("group-boundary-shop")).toBeVisible();
+  await expect(page.getByTestId("group-boundary-kafka")).toBeVisible();
+  await expect(page.getByTestId(/^edge-e\d+$/)).toHaveCount(13);
+}
+
+test.describe("imports: Kubernetes", () => {
+  test("Open… imports the manifest set: namespaces, the Ingress entry, config, secrets and the KEDA consumer", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await fakePicker(page, K8S);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await openViaMenu(page);
+    await expect(page.getByTestId("toast")).toContainText(K8S_SUMMARY);
+    await expectK8s(page);
+    const d = (await stored(page, "shop and kafka")) as unknown as StoredK8s;
+    const groupOf = (id: string) => d.groups?.find((g) => g.id === d.nodes.find((n) => n.id === id)?.group)?.label;
+    for (const id of ["orders-api", "payments-worker", "postgres", "ingress-shop", "configmap-orders-api-config"])
+      expect(groupOf(id), id).toBe("shop");
+    for (const id of ["topic-orders.placed.v1", "topic-payments.completed.v1"]) expect(groupOf(id), id).toBe("kafka");
+    const e = (from: string, to: string) => d.edges.find((x) => x.from === from && x.to === to);
+    // The Ingress is the entry: Users → Ingress → the workloads behind its Services.
+    expect(e("users", "ingress-shop")?.kind).toBe("sync");
+    expect(e("ingress-shop", "orders-api")?.kind).toBe("sync");
+    expect(e("ingress-shop", "storefront")?.kind).toBe("sync");
+    // Config and secret relationships, named by keys only.
+    expect(e("orders-api", "configmap-orders-api-config")?.relation).toBe("config");
+    expect(e("orders-api", "secret-orders-db")?.relation).toBe("secret");
+    expect(e("payments-worker", "secret-payment-provider")?.relation).toBe("secret");
+    expect(e("orders-api", "identity-orders-api")?.relation).toBe("identity");
+    // KEDA: the Kafka topic → its consumer, with the consumer group.
+    expect(e("topic-orders.placed.v1", "payments-worker")).toMatchObject({
+      kind: "async",
+      props: { group: "payments" },
+    });
+    expect(JSON.stringify(d)).not.toContain("cGxhY2Vob2xkZXI");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("dropping the set imports it, and the report lists settings, what wasn't drawn and the KEDA range", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const dt = await page.evaluateHandle((files) => {
+      const d = new DataTransfer();
+      for (const f of files) d.items.add(new File([f.text], f.name, { type: "application/yaml" }));
+      return d;
+    }, K8S);
+    await page.getByTestId("canvas-view").dispatchEvent("dragenter", { dataTransfer: dt });
+    await expect(page.getByTestId("drop-overlay")).toContainText("Kubernetes");
+    await page.getByTestId("drop-overlay").dispatchEvent("drop", { dataTransfer: dt });
+    await expect(page.getByTestId("toast")).toContainText(K8S_SUMMARY);
+    await expectK8s(page);
+    await page.getByTestId("toast-import-details").click();
+    await expect(page.getByTestId("import-report")).toBeVisible();
+    await expect(page.getByTestId("import-report-summary")).toHaveText(
+      "Drew 14 nodes, 13 connections and 2 boundaries.",
+    );
+    const settings = page.getByTestId("import-report-settings");
+    await expect(settings).toContainText("DATABASE_HOST");
+    await expect(settings).toContainText("REDIS_URL");
+    await expect(settings).toContainText("ORDERS_TOPIC");
+    await expect(settings).not.toContainText("redis://");
+    await expect(page.getByTestId("import-report-not-drawn-0")).toContainText("Kafka shop-kafka");
+    await expect(page.getByTestId("import-report-not-drawn-0")).toContainText("shown through its topics");
+    await expect(page.getByTestId("import-report-not-drawn-1")).toContainText("ServiceMonitor orders-api");
+    await expect(page.getByTestId("import-report-not-drawn-1")).toContainText("unknown kind (monitoring.coreos.com)");
+    await expect(page.getByTestId("import-report-note").filter({ hasText: "payments-worker scales" })).toHaveText(
+      "payments-worker scales from 1 to 12 replicas (KEDA).",
+    );
+    await expect(page.getByTestId("import-report-guesses")).toHaveCount(0);
+    await expect(page.getByTestId("import-report")).not.toContainText("cGxhY2Vob2xkZXI");
+    await page.getByTestId("import-report-done").click();
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a Helm template says to run helm template, and nothing is replaced", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const title = await page.getByTestId("diagram-title").textContent();
+    await page.getByTestId("import-input").setInputFiles({
+      name: "deployment.yaml",
+      mimeType: "application/yaml",
+      buffer: Buffer.from("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {{ .Values.name }}\n"),
+    });
+    const toast = page.getByTestId("toast");
+    await expect(toast).toHaveAttribute("data-kind", "error");
+    await expect(toast).toHaveText(
+      "Couldn't import deployment.yaml. This looks like a Helm template ({{ .Values… }}). Run “helm template” and import its output.",
+    );
+    await expect(page.getByTestId("diagram-title")).toHaveText(title ?? "");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a Kubernetes import makes no network requests", async ({ page }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const origin = new URL(page.url()).origin;
+    const requests: { url: string; type: string }[] = [];
+    page.on("request", (r) => requests.push({ url: r.url(), type: r.resourceType() }));
+    await drop(page, K8S);
+    await expectK8s(page);
+    expect(requests.filter((r) => !r.url.startsWith(origin) && !r.url.startsWith("data:"))).toEqual([]);
+    expect(requests.filter((r) => r.type === "fetch" || r.type === "xhr")).toEqual([]);
+  });
+
+  test("the Kubernetes import is overlap-free in the Lab's audit", async ({ page }) => {
+    await page.goto("./?view=lab&preset=overlap-audit&diagram=imported-kubernetes");
+    await expect(page.getByTestId("audit-summary")).toBeVisible();
+    for (const kind of ["label-node", "label-label", "node-node"])
+      await expect(page.getByTestId(`audit-count-${kind}`)).toHaveAttribute("data-count", "0");
+  });
+});

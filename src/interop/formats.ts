@@ -8,7 +8,7 @@ import { loadOnce } from "../lib/lazyLoad";
 // One entry point for "here is some text (and maybe a file name): what is it, and what diagram
 // does it hold?" Used by Open file, drag-and-drop, paste and Google Drive. The draw.io and Mermaid
 // converters load when a file needs them (or when the File menu opens: preloadFormats), and so do the
-// infrastructure importers (docker-compose) with their YAML reader.
+// infrastructure importers (docker-compose, Kubernetes, AsyncAPI) with their YAML reader.
 
 const drawioReader = loadOnce(() => import("./drawio/read"));
 const mermaidReader = loadOnce(() => import("./mermaid/read"));
@@ -22,7 +22,7 @@ export function preloadFormats() {
     void load().catch(() => {});
 }
 
-export type FormatId = "native" | "drawio" | "mermaid" | "compose" | "asyncapi";
+export type FormatId = "native" | "drawio" | "mermaid" | "compose" | "asyncapi" | "kubernetes";
 
 export const FORMAT_LABEL: Record<FormatId, string> = {
   native: "Live Diagrams file",
@@ -30,6 +30,7 @@ export const FORMAT_LABEL: Record<FormatId, string> = {
   mermaid: "Mermaid flowchart",
   compose: "docker-compose file",
   asyncapi: "AsyncAPI document",
+  kubernetes: "Kubernetes manifests",
 };
 
 /** File-picker accept list. */
@@ -40,7 +41,7 @@ export function detectFormat(text: string, fileName = ""): FormatId | undefined 
   const name = fileName.toLowerCase();
   const head = text.replace(/^\uFEFF/, "").trimStart();
   const infra = sniffInfra(head);
-  if (infra === "compose" || infra === "asyncapi") return infra;
+  if (infra === "compose" || infra === "asyncapi" || infra === "kubernetes") return infra;
   if (head.startsWith("{")) return infra ? undefined : "native";
   if (looksLikeDrawio(head)) return "drawio";
   if (looksLikeMermaid(head)) return "mermaid";
@@ -93,7 +94,7 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
   if (!text.trim()) return { ok: false, error: "There's nothing to import: the text is empty." };
   if (text.length > LIMITS.maxTextChars) return { ok: false, error: tooLargeMessage(text.length) };
   const format = detectFormat(text, fileName);
-  /** Recognised, but not imported yet (Kubernetes, AsyncAPI…): the infrastructure reader says so plainly. */
+  /** Recognised, but not imported (a Helm template, Terraform): the infrastructure reader says so plainly. */
   const later = format ? undefined : sniffInfra(text);
   const fallbackTitle = fileName ? titleFromFileName(fileName) : "Imported diagram";
   /** The loaded reader's own error type: its message is meant for the user. */
@@ -123,7 +124,7 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
       const { diagram, warnings } = reader.parseMermaid(text, fallbackTitle);
       return validated(format, diagram, warnings);
     }
-    if (format === "compose" || format === "asyncapi" || later) {
+    if (format === "compose" || format === "asyncapi" || format === "kubernetes" || later) {
       const reader = await infraReader();
       readerErrors = [reader.ImportError];
       return reader.importInfra(text, fileName, later, format);
@@ -135,7 +136,7 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
   return {
     ok: false,
     error:
-      "That doesn't look like a diagram we can read. Supported: Live Diagrams files (.diagram.json), draw.io (.drawio / .xml), Mermaid flowcharts (.mmd), docker-compose files and AsyncAPI documents.",
+      "That doesn't look like a diagram we can read. Supported: Live Diagrams files (.diagram.json), draw.io (.drawio / .xml), Mermaid flowcharts (.mmd), docker-compose files, Kubernetes manifests and AsyncAPI documents.",
   };
 }
 

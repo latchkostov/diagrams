@@ -58,16 +58,19 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
     return id;
   };
   const ids = new Map<string, string>();
-  const idFor = (key: string, label: string) => {
-    const base = slug(label);
+  const idFor = (key: string, label: string, prefix = "") => {
+    const base = prefix + slug(label);
     const id = unique(key.startsWith("\u0004") ? `topic-${base}` : key.startsWith("\u0003") ? `ext-${base}` : base);
     ids.set(key, id);
     return id;
   };
+  // Report rows name where a node lives when there's more than one place: "orders (shop)" and "orders (staging)".
+  const rowLabel = (c: { label: string; context?: string }) =>
+    c.context && g.groups.length > 1 ? `${c.label} (${c.context})` : c.label;
   const groupIds = new Map(g.groups.map((gr) => [gr.key, unique(`boundary-${slug(gr.label)}`)]));
   const guesses: ReportGuess[] = [];
   const nodes: DiagramNode[] = g.components.map((c) => {
-    const id = idFor(c.key, c.label);
+    const id = idFor(c.key, c.label, c.idPrefix);
     // Subtitles carry evidence (an image, a build context), never anything credential-shaped.
     const sublabel = c.sublabel && sanitizeSettings([{ key: withoutCredentials(c.sublabel) }])?.[0]?.key;
     let stencil = c.stencil;
@@ -77,7 +80,7 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
       if ("id" in pick && pick.confidence !== "high")
         guesses.push({
           nodeId: id,
-          label: c.label,
+          label: rowLabel(c),
           stencil,
           evidence: [sublabel, pick.evidence].filter(Boolean).join(" · ") || undefined,
           alternatives: pick.alternatives,
@@ -86,7 +89,7 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
       // The reader drew it on its best stencil, but isn't sure (a protocol with no stencil of its own).
       guesses.push({
         nodeId: id,
-        label: c.label,
+        label: rowLabel(c),
         stencil,
         evidence: c.guess.evidence,
         alternatives: c.guess.alternatives,
@@ -103,7 +106,7 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
       ...(c.props ? { props: { ...c.props } } : {}),
     };
   });
-  const labelOf = new Map(g.components.map((c) => [c.key, c.label]));
+  const labelOf = new Map(g.components.map((c) => [c.key, rowLabel(c)]));
   const inferred: ReportConnection[] = [];
   const edges: DiagramEdge[] = [];
   for (const l of g.links) {

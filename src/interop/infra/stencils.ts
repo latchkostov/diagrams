@@ -185,15 +185,16 @@ export function resolveStencil(hint: StencilHint): StencilPick | Skip {
       step: "name",
       alternatives: unique([...kind.alternatives, "generic.service"], named),
     };
+  const fallback = hint.fallback && known.has(hint.fallback) ? hint.fallback : "generic.service";
   return {
-    id: "generic.service",
+    id: fallback,
     confidence: "low",
     step: "fallback",
     // An unknown container is often a wrapper around something outside; the catalogue's own suggestions
     // only when it found something.
     alternatives: unique(
-      ["generic.external-api", ...(kind.confidence === "low" ? [] : kind.alternatives)],
-      "generic.service",
+      ["generic.service", "generic.external-api", ...(kind.confidence === "low" ? [] : kind.alternatives)],
+      fallback,
     ),
   };
 }
