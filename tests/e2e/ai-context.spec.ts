@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, fitDiagram } from "./fixtures";
 import { MOD, SLUG, must, openAdvanced, openAiPanel } from "./ai-helpers";
 
 // The AI panel on every diagram screen: the idle state that says how to use AI here, Copy for AI for a
@@ -70,6 +70,8 @@ test("embeds have no AI panel", async ({ page }) => {
 test("Copy for AI puts the selection's ids and labels on the clipboard, for the person's agent", async ({ page }) => {
   await gotoCanvas(page, SLUG);
   await page.getByTestId("node-payments").click();
+  // The inspector opened and narrowed the canvas, keeping Payments in view: its database can be past the edge.
+  await fitDiagram(page);
   await page.getByTestId("node-payment-db").click({ modifiers: [MOD === "Meta" ? "Meta" : "Control"] });
   await page.getByTestId("node-payment-db").click({ button: "right" });
   await page.getByTestId("context-menu-item-item.copy-for-ai").click();

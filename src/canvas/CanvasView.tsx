@@ -1524,12 +1524,48 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   // node that way, and Ctrl+Alt+] / [ to a node's outgoing and incoming edges. Selection and focus move
   // together, the view follows, and a polite live region names what's selected.
   const [focusId, setFocusId] = useState<string | undefined>();
+  /** The node keyboard selection is focusing: it brings it into view itself (revealSelection). */
+  const navFocus = useRef<string | undefined>(undefined);
+  /**
+   * Keyboard focus that lands on a node cut off by the pane's edge (Tab into the canvas, a screen reader's
+   * focus) brings it into view with a pan, clear of the chrome over the pane. The canvas can't scroll (overflow: clip in
+   * canvas.css), and React Flow's own pan on focus only moves for a node wholly outside the pane.
+   */
+  const revealFocused = useRef((_id: string) => {});
+  useLayoutEffect(() => {
+    revealFocused.current = (id) => {
+      const el = wrapper.current;
+      const s = store.getState();
+      const n = s.nodeLookup.get(id);
+      if (!el || !n) return;
+      const width = n.measured?.width ?? n.width ?? 0;
+      const height = n.measured?.height ?? n.height ?? 0;
+      if (!width || !height) return;
+      const card = { x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width, height };
+      const [tx, ty, k] = s.transform;
+      const pane = el.getBoundingClientRect();
+      // A node wholly in the pane stays put (focus returning to it after an edit never moves the view).
+      const [left, top] = [card.x * k + tx, card.y * k + ty];
+      if (left >= 0 && top >= 0 && left + width * k <= pane.width && top + height * k <= pane.height) return;
+      const view = { x: 24, y: 24, width: pane.width - 48, height: pane.height - 48 };
+      const v = panIntoView(card, card, { x: tx, y: ty, zoom: k }, view) ?? { x: tx, y: ty, zoom: k };
+      const onScreen = { x: card.x * k + v.x, y: card.y * k + v.y, width: width * k, height: height * k };
+      const d = panClearOf(onScreen, overlayRects(el), { width: pane.width, height: pane.height });
+      const next = { x: v.x + d.dx, y: v.y + d.dy, zoom: k };
+      if (Math.abs(next.x - tx) >= 1 || Math.abs(next.y - ty) >= 1) void setViewport(next, { duration: motionMs(200) });
+    };
+  });
   useEffect(() => {
     const wrap = wrapper.current;
     if (!wrap) return;
     const onFocus = (e: FocusEvent) => {
       const id = e.target instanceof Element ? e.target.closest(".react-flow__node")?.getAttribute("data-id") : null;
-      if (id) setFocusId(id);
+      if (!id) return;
+      setFocusId(id);
+      const own = navFocus.current === id;
+      // The node itself, by keyboard (a click is on a node in view; an editor inside it isn't the node).
+      const node = e.target instanceof HTMLElement && e.target.classList.contains("react-flow__node");
+      if (!own && node && (e.target as HTMLElement).matches(":focus-visible")) revealFocused.current(id);
     };
     wrap.addEventListener("focusin", onFocus);
     return () => wrap.removeEventListener("focusin", onFocus);
@@ -1605,9 +1641,12 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         stepping.current = id;
         requestAnimationFrame(() => {
           if (stepping.current === id) stepping.current = undefined;
+          // Focus events fire inside focus(): the flag covers exactly this one.
+          navFocus.current = id;
           wrapper.current
             ?.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
             ?.focus({ preventScroll: true });
+          navFocus.current = undefined;
         });
         revealSelection();
         const at = `${order.indexOf(id) + 1} of ${order.length}`;
@@ -1771,6 +1810,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           <EdgeMarkers />
           <ReactFlow<FlowNode, DiagramFlowEdge>
             nodes={ariaNodes}
+            // Focus brings a node into view clear of the chrome (revealFocused above).
+            autoPanOnNodeFocus={false}
             edges={ariaEdges}
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}

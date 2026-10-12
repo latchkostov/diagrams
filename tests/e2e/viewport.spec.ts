@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLive, waitForStableViewport } from "./fixtures";
 
 // Opening or closing a side panel refits the diagram only while the whole of it is in view (a fit).
 // A view the person zoomed or panned, by hand or by command (Shift+0), stays where they put it.
@@ -74,5 +74,97 @@ test.describe("side panels and the camera", () => {
     expect(zoomed[0].height).not.toBe(fitted[0].height);
     await toggleInspector(page);
     expect(await boxes(page)).toEqual(zoomed);
+  });
+});
+
+test.describe("the canvas never scrolls", () => {
+  // React Flow's wrapper used to be a scrollable box (overflow: hidden): with the diagram spilling past its
+  // edge, focus or scrollIntoView on a node out of view scrolled it, and React Flow snapped it back a frame
+  // later. The whole canvas and its chrome (the live bar, the trace card) jumped for that frame, so a click
+  // could miss, and the node stayed hidden. Now the canvas can't scroll, and keyboard focus pans instead.
+
+  /** Pans the canvas by hand: the wheel pans it (scroll-zoom is off). */
+  async function panBy(page: Page, dx: number, dy: number) {
+    await waitForStableViewport(page);
+    const wrap = await boxOf(page, "canvas-wrap");
+    await page.mouse.move(wrap.x + wrap.width / 2, wrap.y + wrap.height / 2);
+    await page.mouse.wheel(dx, dy);
+    await waitForStableViewport(page);
+  }
+
+  test("focus or scrollIntoView on a node out of view moves neither the canvas nor the live bar", async ({ page }) => {
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
+    // The diagram spills past the bottom and right of the canvas.
+    await panBy(page, -400, -800);
+    const before = await boxOf(page, "live-more");
+    const after = await page.evaluate(() => {
+      const rf = document.querySelector<HTMLElement>(".react-flow");
+      const pane = rf?.getBoundingClientRect();
+      if (!rf || !pane) throw new Error("No canvas");
+      const out = [...rf.querySelectorAll<HTMLElement>(".react-flow__node")].filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.left >= pane.right || r.top >= pane.bottom;
+      });
+      if (out.length < 2) throw new Error("Not enough of the diagram is out of view: zoom in further");
+      const read = () => [rf.scrollLeft, rf.scrollTop];
+      out[0].focus();
+      const focused = read();
+      out[1].scrollIntoView();
+      const scrolled = read();
+      const more = document.querySelector('[data-testid="live-more"]')?.getBoundingClientRect();
+      return { focused, scrolled, more: more && { x: more.x, y: more.y } };
+    });
+    expect(after.focused).toEqual([0, 0]);
+    expect(after.scrolled).toEqual([0, 0]);
+    expect(after.more).toEqual({ x: before.x, y: before.y });
+  });
+
+  test("Tab into the canvas brings a node half out of view fully into view, with a pan", async ({ page }) => {
+    await gotoCanvas(page, KAFKA);
+    await waitForStableViewport(page);
+    const stop = page.locator('.react-flow__node[tabindex="0"]');
+    await expect(stop).toHaveCount(1);
+    // Half of the canvas's Tab stop (the first node in reading order) past the pane's left edge: React Flow's
+    // own pan on focus counts it as in view.
+    const wrap0 = await boxOf(page, "canvas-wrap");
+    await expect(async () => {
+      const node0 = await stop.boundingBox();
+      if (!node0) throw new Error("No Tab stop");
+      const off = node0.x + node0.width / 2 - wrap0.x;
+      if (Math.abs(off) > node0.width / 4) await panBy(page, off, 0);
+      const now = await stop.boundingBox();
+      expect(now && now.x < wrap0.x && now.x + now.width > wrap0.x).toBe(true);
+    }).toPass({ timeout: 10_000 });
+    const inPane = async () => {
+      const wrap = await boxOf(page, "canvas-wrap");
+      const b = await stop.boundingBox();
+      return (
+        !!b &&
+        b.x >= wrap.x &&
+        b.y >= wrap.y &&
+        b.x + b.width <= wrap.x + wrap.width &&
+        b.y + b.height <= wrap.y + wrap.height
+      );
+    };
+    expect(await inPane()).toBe(false);
+    // Focus the last Tab stop before the canvas, then Tab: the browser moves focus onto the node.
+    await page.evaluate(() => {
+      const rf = document.querySelector(".react-flow");
+      const stops = [...document.querySelectorAll<HTMLElement>("a[href], button, input, select, textarea, [tabindex]")]
+        .filter((el) => el.tabIndex >= 0 && !(el as HTMLButtonElement).disabled && el.getClientRects().length)
+        .filter((el) => !rf?.contains(el) && (rf?.compareDocumentPosition(el) ?? 0) & Node.DOCUMENT_POSITION_PRECEDING);
+      const before = stops.at(-1);
+      if (!before) throw new Error("No Tab stop before the canvas");
+      before.focus();
+    });
+    await page.keyboard.press("Tab");
+    await expect(stop).toBeFocused();
+    await expect.poll(inPane).toBe(true);
+    expect(
+      await page.getByTestId("canvas-wrap").evaluate((w) => {
+        const rf = w.querySelector<HTMLElement>(".react-flow");
+        return [rf?.scrollLeft, rf?.scrollTop];
+      }),
+    ).toEqual([0, 0]);
   });
 });

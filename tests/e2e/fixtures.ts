@@ -152,6 +152,17 @@ export function waitForStableViewport(page: Page) {
   return waitForStable(() => viewportTransform(page));
 }
 
+/**
+ * Fits the whole diagram to the canvas (Fit diagram, Shift+1) and waits for the view to settle. The canvas
+ * never scrolls (overflow: clip), so a node past its edge, under the inspector or the AI rail, can't be
+ * clicked until the view brings it back: a selection that opened the inspector, or a smaller window,
+ * can leave one there.
+ */
+export async function fitDiagram(page: Page) {
+  await page.keyboard.press("Shift+Digit1");
+  await waitForStableViewport(page);
+}
+
 /** The canvas viewport's CSS transform (React Flow's pan and zoom). */
 export const viewportTransform = (page: Page) =>
   page
