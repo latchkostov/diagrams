@@ -273,8 +273,10 @@ var isObj$2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 * work: only the first 100 `off` and 2,000 `ignore` entries are read (more is a warning), and deduplication
 * is a Set, so a hostile file costs no more than a full one. Malformed entries are dropped with a warning; an
 * ignore whose target is gone is dropped silently (it's stale, not wrong); a long reason is shortened.
+* `aliases` are the ids an ignore's target was also given when elements that shared it were renamed apart
+* (validateDiagram): the ignore is kept for each, within the same 2,000, counted before each copy.
 */
-function sanitizeChecks(raw, ids, warnings) {
+function sanitizeChecks(raw, ids, warnings, aliases = /* @__PURE__ */ new Map()) {
 	if (raw === void 0) return void 0;
 	if (!isObj$2(raw)) {
 		warnings.push("The checks field wasn't an object and was ignored.");
@@ -296,19 +298,27 @@ function sanitizeChecks(raw, ids, warnings) {
 	for (const id of bounded(raw.off, CHECK_LIMITS.maxOff) ?? []) if (typeof id !== "string" || !CHECK_RULE_ID.test(id)) skipped++;
 	else off.add(id);
 	const ignore = /* @__PURE__ */ new Map();
-	for (const item of bounded(raw.ignore, CHECK_LIMITS.maxIgnores) ?? []) {
+	read: for (const item of bounded(raw.ignore, CHECK_LIMITS.maxIgnores) ?? []) {
 		if (!isObj$2(item) || typeof item.rule !== "string" || !CHECK_RULE_ID.test(item.rule) || typeof item.target !== "string" || !item.target || item.target.length > CHECK_LIMITS.maxTarget || item.reason !== void 0 && typeof item.reason !== "string") {
 			skipped++;
 			continue;
 		}
-		const key = `${item.rule}\u0000${item.target}`;
-		if (!ids.has(item.target) || ignore.has(key)) continue;
+		const key = (target) => `${item.rule}\u0000${target}`;
+		if (ignore.has(key(item.target))) continue;
 		const reason = typeof item.reason === "string" ? item.reason.slice(0, CHECK_LIMITS.maxReason * 4).trim().slice(0, CHECK_LIMITS.maxReason) : "";
-		ignore.set(key, {
-			rule: item.rule,
-			target: item.target,
-			...reason ? { reason } : {}
-		});
+		for (const target of [item.target, ...aliases.get(item.target) ?? []]) {
+			if (target.length > CHECK_LIMITS.maxTarget) break;
+			if (!ids.has(target)) continue;
+			if (ignore.size >= CHECK_LIMITS.maxIgnores) {
+				truncated = true;
+				break read;
+			}
+			ignore.set(key(target), {
+				rule: item.rule,
+				target,
+				...reason ? { reason } : {}
+			});
+		}
 	}
 	if (skipped) warnings.push(`${skipped} malformed check setting${skipped === 1 ? " was" : "s were"} ignored.`);
 	if (truncated) warnings.push(`Only the first ${CHECK_LIMITS.maxOff} turned-off checks and ${CHECK_LIMITS.maxIgnores} ignored findings were read.`);
@@ -316,6 +326,25 @@ function sanitizeChecks(raw, ids, warnings) {
 	return {
 		...off.size ? { off: [...off] } : {},
 		...ignore.size ? { ignore: [...ignore.values()] } : {}
+	};
+}
+//#endregion
+//#region src/model/ids.ts
+/**
+* Hands out ids not in `taken`, adding each: `base` while it's free, else `base-2`, `base-3`…, skipping ids in
+* `avoid` too (ids a file uses for elements not claimed yet). One counter per base: a base repeated n times costs
+* O(n), not O(n²), however a hostile file repeats it.
+*/
+function idClaimer(taken = /* @__PURE__ */ new Set(), avoid) {
+	const next = /* @__PURE__ */ new Map();
+	return (base) => {
+		let id = base;
+		for (let k = next.get(base) ?? 2; taken.has(id) || id !== base && !!avoid?.has(id); k++) {
+			id = `${base}-${k}`;
+			next.set(base, k + 1);
+		}
+		taken.add(id);
+		return id;
 	};
 }
 //#endregion
@@ -467,15 +496,9 @@ function validateDiagram(data) {
 	].flatMap((l) => Array.isArray(l) ? l.map((x) => x?.id) : []));
 	const taken = /* @__PURE__ */ new Set();
 	const renamed = /* @__PURE__ */ new Map();
-	/** Each id's next suffix to try: linear, however often a hostile file repeats an id. */
-	const suffix = /* @__PURE__ */ new Map();
+	const claimId = idClaimer(taken, original);
 	const claim = (id) => {
-		let out = id;
-		for (let k = suffix.get(id) ?? 2; taken.has(out) || out !== id && original.has(out); k++) {
-			out = `${id}-${k}`;
-			suffix.set(id, k + 1);
-		}
-		taken.add(out);
+		const out = claimId(id);
 		if (out !== id) {
 			const to = renamed.get(id);
 			if (to) to.push(out);
@@ -657,11 +680,7 @@ function validateDiagram(data) {
 		}
 	}
 	if (d.checks !== void 0) {
-		const checks = sanitizeChecks(d.checks, taken, warnings);
-		for (const i of checks?.ignore ?? []) for (const target of renamed.get(i.target) ?? []) checks.ignore.push({
-			...i,
-			target
-		});
+		const checks = sanitizeChecks(d.checks, taken, warnings, renamed);
 		if (checks) d.checks = checks;
 		else delete d.checks;
 	}

@@ -214,17 +214,19 @@ export class ReplyRefs {
   /**
    * The id of an existing element `r` names (core resolution), or undefined. A new node's key is never
    * one, so it isn't looked up; other answers are cached for the reply (the fuzzy step scans everything).
+   * `kinds` narrows names to what the op takes, as resolveRef's does.
    */
-  existingId(r: string): string | undefined {
+  existingId(r: string, kinds?: readonly ElementKind[]): string | undefined {
     if (r.startsWith("~") || this.newNode(r)) return undefined;
-    if (this.existing.has(r)) return this.existing.get(r);
+    const cached = `${kinds?.join() ?? "*"}:${r}`;
+    if (this.existing.has(cached)) return this.existing.get(cached);
     let id: string | undefined;
     try {
-      id = resolveRef(this.diagram, r, EMPTY_KEYS, this.index);
+      id = resolveRef(this.diagram, r, EMPTY_KEYS, this.index, kinds);
     } catch {
       id = undefined;
     }
-    this.existing.set(r, id);
+    this.existing.set(cached, id);
     return id;
   }
 
@@ -248,10 +250,13 @@ export class ReplyRefs {
     return top > 0 && best.length === 1 ? best[0].ref : null;
   }
 
-  /** Steps 1-5 only (exact names, keys, kinds): null when none applies. */
-  strict(r: string): { ref: string } | { error: string } | null {
+  /**
+   * Steps 1-5 only (exact names, keys, kinds): null when none applies. `kinds` narrows the names of existing
+   * elements to what the op takes (a connection's ends are nodes or shapes); an exact id is taken as it is.
+   */
+  strict(r: string, kinds?: readonly ElementKind[]): { ref: string } | { error: string } | null {
     const q = JSON.stringify(r);
-    const elements = [...this.index.elements.values()];
+    const elements = [...this.index.elements.values()].filter((e) => !kinds || kinds.includes(e.kind));
     // 1-2: exact id, exact label.
     if (this.index.elements.has(r)) return { ref: r };
     const exactLabel = elements.filter((e) => e.label === r);
@@ -277,8 +282,8 @@ export class ReplyRefs {
     return null;
   }
 
-  resolve(r: string): { ref: string } | { error: string } {
-    const exact = this.strict(r);
+  resolve(r: string, kinds?: readonly ElementKind[]): { ref: string } | { error: string } {
+    const exact = this.strict(r, kinds);
     if (exact) return exact;
     // 6: a word shared with exactly one new node, more than with any existing node.
     const words = refWords(r);
@@ -291,6 +296,6 @@ export class ReplyRefs {
       if (best.length === 1 && top > rival) return { ref: best[0].f.key };
     }
     // 7: the core's resolution (sublabels, "A -> B", fuzzy), pinned when it's unique.
-    return { ref: this.existingId(r) ?? r };
+    return { ref: this.existingId(r, kinds) ?? r };
   }
 }

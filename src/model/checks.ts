@@ -15,8 +15,15 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object
  * work: only the first 100 `off` and 2,000 `ignore` entries are read (more is a warning), and deduplication
  * is a Set, so a hostile file costs no more than a full one. Malformed entries are dropped with a warning; an
  * ignore whose target is gone is dropped silently (it's stale, not wrong); a long reason is shortened.
+ * `aliases` are the ids an ignore's target was also given when elements that shared it were renamed apart
+ * (validateDiagram): the ignore is kept for each, within the same 2,000, counted before each copy.
  */
-export function sanitizeChecks(raw: unknown, ids: ReadonlySet<string>, warnings: string[]): DiagramChecks | undefined {
+export function sanitizeChecks(
+  raw: unknown,
+  ids: ReadonlySet<string>,
+  warnings: string[],
+  aliases: ReadonlyMap<string, readonly string[]> = new Map(),
+): DiagramChecks | undefined {
   if (raw === undefined) return undefined;
   if (!isObj(raw)) {
     warnings.push("The checks field wasn't an object and was ignored.");
@@ -40,7 +47,7 @@ export function sanitizeChecks(raw: unknown, ids: ReadonlySet<string>, warnings:
     else off.add(id);
   }
   const ignore = new Map<string, CheckIgnore>();
-  for (const item of bounded(raw.ignore, CHECK_LIMITS.maxIgnores) ?? []) {
+  read: for (const item of bounded(raw.ignore, CHECK_LIMITS.maxIgnores) ?? []) {
     if (
       !isObj(item) ||
       typeof item.rule !== "string" ||
@@ -53,8 +60,8 @@ export function sanitizeChecks(raw: unknown, ids: ReadonlySet<string>, warnings:
       skipped++;
       continue;
     }
-    const key = `${item.rule}\u0000${item.target}`;
-    if (!ids.has(item.target) || ignore.has(key)) continue;
+    const key = (target: string) => `${item.rule}\u0000${target}`;
+    if (ignore.has(key(item.target))) continue;
     const reason =
       typeof item.reason === "string"
         ? item.reason
@@ -62,7 +69,17 @@ export function sanitizeChecks(raw: unknown, ids: ReadonlySet<string>, warnings:
             .trim()
             .slice(0, CHECK_LIMITS.maxReason)
         : "";
-    ignore.set(key, { rule: item.rule, target: item.target, ...(reason ? { reason } : {}) });
+    // A target's aliases are its own (renamed ids are new), so no copy repeats another ignore; they come in suffix
+    // order, so once one is too long to be a target, the rest are too.
+    for (const target of [item.target, ...(aliases.get(item.target) ?? [])]) {
+      if (target.length > CHECK_LIMITS.maxTarget) break;
+      if (!ids.has(target)) continue;
+      if (ignore.size >= CHECK_LIMITS.maxIgnores) {
+        truncated = true;
+        break read;
+      }
+      ignore.set(key(target), { rule: item.rule, target, ...(reason ? { reason } : {}) });
+    }
   }
   if (skipped) warnings.push(`${skipped} malformed check setting${skipped === 1 ? " was" : "s were"} ignored.`);
   if (truncated)

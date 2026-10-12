@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { validateDiagram } from "./native";
+import { diagramToDrawio } from "./drawio/write";
 
 // Ids are one namespace across nodes, connections, boundaries and notes: edit ops, checks and the canvas look an
 // id up across kinds. A file may still repeat one (hand- or agent-written, an old export): it opens with the
@@ -144,10 +145,59 @@ describe("ids unique across elements on load", () => {
       off: ["capacity"],
       ignore: [
         { rule: "sync-cycle", target: "a", reason: "Known" },
-        { rule: "no-reader", target: "b" },
         { rule: "sync-cycle", target: "a-2", reason: "Known" },
+        { rule: "no-reader", target: "b" },
       ],
     });
+  });
+
+  it("keeps copied ignores within the file's 2,000, and a second load keeps them all", () => {
+    // 2,200 connections share one id and two findings on it are ignored: copying to every one would make 4,400.
+    const r = load({
+      nodes: [node("a"), node("b")],
+      edges: Array.from({ length: 2_200 }, () => ({ id: "e", from: "a", to: "b" })),
+      checks: {
+        ignore: [
+          { rule: "sync-cycle", target: "e" },
+          { rule: "sync-chain", target: "e" },
+        ],
+      },
+    });
+    const ignore = r.diagram.checks?.ignore ?? [];
+    expect(ignore).toHaveLength(2_000);
+    expect(ignore.slice(0, 2)).toEqual([
+      { rule: "sync-cycle", target: "e" },
+      { rule: "sync-cycle", target: "e-2" },
+    ]);
+    expect(r.warnings).toContain("Only the first 100 turned-off checks and 2000 ignored findings were read.");
+    const again = validateDiagram(r.diagram);
+    expect(again.ok && again.warnings).toEqual([]);
+    expect(again.ok && again.diagram.checks).toEqual(r.diagram.checks);
+  });
+
+  it("never allocates more than 2,000 ignores, however many ids and ignores a hostile file repeats", () => {
+    // 1,000 connections share one id and 2,000 distinct rules ignore it: copied freely, 2,000,000 entries.
+    const r = load({
+      nodes: [node("a"), node("b")],
+      edges: Array.from({ length: 1_000 }, () => ({ id: "e", from: "a", to: "b" })),
+      checks: { ignore: Array.from({ length: 2_000 }, (_, i) => ({ rule: `r${i}`, target: "e" })) },
+    });
+    expect(r.diagram.checks?.ignore).toHaveLength(2_000);
+    // The first rule is kept for every connection before the cap stops the copying.
+    expect(r.diagram.checks?.ignore?.slice(0, 1_000).every((i) => i.rule === "r0")).toBe(true);
+  });
+
+  it("copies an ignore only to ids short enough to be a target, so a second load keeps the same", () => {
+    const long = "x".repeat(199);
+    const r = load({
+      nodes: [node(long), node("b")],
+      edges: [{ id: long, from: long, to: "b" }],
+      checks: { ignore: [{ rule: "sync-cycle", target: long }] },
+    });
+    expect(r.diagram.edges[0].id).toBe(`${long}-2`);
+    expect(r.diagram.checks?.ignore).toEqual([{ rule: "sync-cycle", target: long }]);
+    const again = validateDiagram(r.diagram);
+    expect(again.ok && again.diagram.checks).toEqual(r.diagram.checks);
   });
 
   it("leaves every id unique across kinds, and a second load changes nothing", () => {
@@ -251,4 +301,67 @@ describe("imports never give two elements one id", () => {
     const ids = allIds(d);
     expect(new Set(ids).size).toBe(ids.length);
   });
+});
+
+describe("draw.io: repeated ids", () => {
+  const page = (d: Record<string, unknown>) => diagramToDrawio(file(d) as unknown as DiagramFile);
+
+  it("keeps an ignored finding when an older export gave a shape and a connection one id", async () => {
+    const { importText } = await import("./formats");
+    const outcome = await importText(
+      page({
+        nodes: [node("api"), node("db"), node("ledger")],
+        edges: [{ id: "ledger", from: "api", to: "db", kind: "sync" }],
+        checks: { ignore: [{ rule: "shared-database", target: "ledger", reason: "Owned by both" }] },
+      }),
+      "old.drawio",
+    );
+    if (outcome.ok !== true) throw new Error(JSON.stringify(outcome));
+    expect(outcome.diagram.edges.map((e) => e.id)).toEqual(["ledger-2"]);
+    expect(outcome.diagram.checks?.ignore).toEqual([
+      { rule: "shared-database", target: "ledger", reason: "Owned by both" },
+      { rule: "shared-database", target: "ledger-2", reason: "Owned by both" },
+    ]);
+  });
+
+  it("keeps an ignored finding for both of two shapes the page gave one id", async () => {
+    const { importText } = await import("./formats");
+    const outcome = await importText(
+      page({
+        nodes: [node("api"), node("api", { label: "Second", x: 400 })],
+        checks: { ignore: [{ rule: "single-point", target: "api" }] },
+      }),
+      "twice.drawio",
+    );
+    if (outcome.ok !== true) throw new Error(JSON.stringify(outcome));
+    expect(outcome.diagram.nodes.map((n) => n.id)).toEqual(["api", "api-2"]);
+    expect(outcome.diagram.checks?.ignore?.map((i) => i.target)).toEqual(["api", "api-2"]);
+  });
+
+  it("stays linear when a page repeats one connection id", async () => {
+    const { importText } = await import("./formats");
+    const text = (n: number) =>
+      page({
+        nodes: [node("a"), node("b", { x: 400 })],
+        edges: Array.from({ length: n }, () => ({ id: "e", from: "a", to: "b" })),
+      });
+    const small = text(2_000),
+      big = text(16_000);
+    const outcome = await importText(big, "big.drawio");
+    if (outcome.ok !== true) throw new Error(JSON.stringify(outcome));
+    const ids = allIds(outcome.diagram);
+    expect(new Set(ids).size).toBe(16_002);
+    const fastest = async (input: string) => {
+      let best = Infinity;
+      for (let i = 0; i < 3; i++) {
+        const start = performance.now();
+        await importText(input, "page.drawio");
+        best = Math.min(best, performance.now() - start);
+      }
+      return best;
+    };
+    await fastest(small);
+    // 8 times the input: about 8 times the work when linear, 64 times when quadratic.
+    expect((await fastest(big)) / (await fastest(small))).toBeLessThan(24);
+  }, 60_000);
 });

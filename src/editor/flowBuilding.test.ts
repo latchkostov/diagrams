@@ -4,6 +4,8 @@ import { toFlow } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import type { EdgeMark } from "../canvas/edgeMarks";
 import { createEditor, type EditorDeps } from "./useEditor";
+import type { DiagramFile } from "../model/types";
+import { validateDiagram } from "../interop/native";
 
 // Flow building (batch 3): the next node one gap beside a node, connected the right way (D3), the selection-
 // aware rail and Ctrl+K (D13, decision 4), and rewiring edges through the editor (D8).
@@ -15,18 +17,20 @@ import { createEditor, type EditorDeps } from "./useEditor";
 type Box = { x: number; y: number; width: number; height: number };
 const SIZE = { width: 220, height: 72 };
 
+const BASE: DiagramFile = {
+  format: "diagrams/v1",
+  title: "t",
+  nodes: [
+    { id: "hub", stencil: "kafka.topic", label: "Hub", x: 1000, y: 400 },
+    { id: "a", stencil: "service.node", label: "A", x: 0, y: 0 },
+    { id: "b", stencil: "postgres", label: "B", x: 500, y: 0 },
+  ],
+  edges: [{ id: "ab", from: "a", to: "b", kind: "sync", label: "writes", props: { dlq: true } }],
+};
+
 /** hub alone at (1000, 400); a → b in a row far to the left, with a labelled request edge. */
-function setup(marks: EdgeMark[] = []) {
-  const flow = toFlow({
-    format: "diagrams/v1",
-    title: "t",
-    nodes: [
-      { id: "hub", stencil: "kafka.topic", label: "Hub", x: 1000, y: 400 },
-      { id: "a", stencil: "service.node", label: "A", x: 0, y: 0 },
-      { id: "b", stencil: "postgres", label: "B", x: 500, y: 0 },
-    ],
-    edges: [{ id: "ab", from: "a", to: "b", kind: "sync", label: "writes", props: { dlq: true } }],
-  });
+function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
+  const flow = toFlow(diagram);
   let nodes: FlowNode[] = flow.nodes;
   let edges: DiagramFlowEdge[] = flow.edges;
   const queue: (() => void)[] = [];
@@ -230,4 +234,44 @@ describe("rewiring edges (D8)", () => {
     expect(t.edges()[0]).toMatchObject({ id: "ab", source: "a", target: "hub", data: { label: "writes" } });
     expect(t.api.reconnectEdge("ab", "source", "hub")).toBe(false);
   });
+});
+
+describe("new ids skip ids held by other kinds", () => {
+  // The ids each action would mint on a clean diagram ("e-1", "cache-1", "boundary-1"), held by a node, a note,
+  // a boundary and a connection: ids are one space across kinds (validateDiagram).
+  const crowded: DiagramFile = {
+    ...BASE,
+    nodes: [
+      ...BASE.nodes,
+      { id: "e-1", stencil: "service.go", label: "E1", x: 0, y: 800 },
+      { id: "boundary-1", stencil: "service.go", label: "Boundary one", x: 400, y: 800 },
+    ],
+    edges: [...BASE.edges, { id: "cache-1", from: "hub", to: "a", kind: "async" }],
+    annotations: [{ id: "e-2", kind: "note", text: "Note", x: 0, y: 1200, width: 240, height: 160 }],
+    groups: [{ id: "e-3", label: "Box", x: -50, y: 750, width: 800, height: 200 }],
+  };
+  const unique = (t: ReturnType<typeof setup>) => {
+    const d = t.api.getDiagram();
+    const ids = [d.nodes, d.edges, d.groups ?? [], d.annotations ?? []].flat().map((x) => x.id);
+    expect(new Set(ids).size, ids.join()).toBe(ids.length);
+    const checked = validateDiagram(d);
+    expect(checked.ok && checked.warnings).toEqual([]);
+  };
+  const cases: [string, (t: ReturnType<typeof setup>) => unknown][] = [
+    ["connect", (t) => t.api.connect("hub", "b")],
+    ["createConnected", (t) => t.api.createConnected({ from: "hub", stencil: "redis.cache", toward: "right" })],
+    ["insertNode", (t) => t.api.insertNode("ab", "redis.cache")],
+    ["insertIntoEdge", (t) => t.api.insertIntoEdge("ab", "hub")],
+    ["addNode", (t) => t.api.addNode("redis.cache")],
+    ["groupNodes", (t) => t.api.groupNodes(["hub"])],
+  ];
+  for (const [name, act] of cases)
+    it(name, () => {
+      const t = setup([], crowded);
+      const before = new Set([...t.nodes().map((n) => n.id), ...t.edges().map((e) => e.id)]);
+      expect(act(t), name).toBeTruthy();
+      t.commit();
+      expect(t.edges().length + t.nodes().length).toBeGreaterThan(before.size);
+      unique(t);
+    });
 });

@@ -4,6 +4,7 @@ import { ANNOTATION_LIMITS, normalizeAnnotation } from "../model/annotations";
 import type { DiagramAnnotation } from "../model/types";
 import { isDependency, isEdgeRelation, sanitizeSettings } from "../model/relations";
 import { sanitizeChecks } from "../model/checks";
+import { idClaimer } from "../model/ids";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -133,15 +134,9 @@ export function validateDiagram(data: unknown): NativeResult {
   );
   const taken = new Set<string>();
   const renamed = new Map<string, string[]>();
-  /** Each id's next suffix to try: linear, however often a hostile file repeats an id. */
-  const suffix = new Map<string, number>();
+  const claimId = idClaimer(taken, original);
   const claim = (id: string) => {
-    let out = id;
-    for (let k = suffix.get(id) ?? 2; taken.has(out) || (out !== id && original.has(out)); k++) {
-      out = `${id}-${k}`;
-      suffix.set(id, k + 1);
-    }
-    taken.add(out);
+    const out = claimId(id);
     if (out !== id) {
       const to = renamed.get(id);
       if (to) to.push(out);
@@ -328,10 +323,8 @@ export function validateDiagram(data: unknown): NativeResult {
     }
   }
   if (d.checks !== undefined) {
-    const checks = sanitizeChecks(d.checks, taken, warnings);
-    // An ignore names its element by id: when elements shared one, each keeps it.
-    for (const i of checks?.ignore ?? [])
-      for (const target of renamed.get(i.target) ?? []) checks!.ignore!.push({ ...i, target });
+    // An ignore names its element by id: when elements shared one, each keeps it, within the sanitizer's bounds.
+    const checks = sanitizeChecks(d.checks, taken, warnings, renamed);
     if (checks) d.checks = checks;
     else delete d.checks;
   }
