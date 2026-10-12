@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { DiagramFile } from "../../model/types";
 import { embedSnippet, embedUrl, encodeShare, SHARE_WARN_LENGTH, shareUrl } from "../share";
+import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
+
+/**
+ * A link dialog's actions ask the privacy gate when they act (the dialog may have been open a while).
+ * Refused: the dialog closes and says why.
+ */
+function gate(allowed: (() => boolean) | undefined, onClose: () => void): boolean {
+  if (!allowed || allowed()) return true;
+  onClose();
+  toast.info(PRIVATE_SHARE_MESSAGE);
+  return false;
+}
 import { detectFormat, FORMAT_LABEL } from "../formats";
 import { Dialog } from "./Dialog";
 import { copyText } from "./copyText";
@@ -10,7 +22,16 @@ import { toast } from "./toast";
 const kb = (n: number) => (n < 1024 ? `${n} characters` : `${(n / 1024).toFixed(1)}k characters`);
 
 /** Share link: the diagram compressed into the URL fragment. */
-export function ShareDialog({ diagram, onClose }: { diagram: DiagramFile; onClose: () => void }) {
+export function ShareDialog({
+  diagram,
+  allowed,
+  onClose,
+}: {
+  diagram: DiagramFile;
+  /** Whether its document may still be shared as a link (asked again by every action). */
+  allowed?: () => boolean;
+  onClose: () => void;
+}) {
   const [url, setUrl] = useState<string>();
   const [error, setError] = useState<string>();
   useEffect(() => {
@@ -27,6 +48,7 @@ export function ShareDialog({ diagram, onClose }: { diagram: DiagramFile; onClos
   const canShare = typeof navigator.share === "function";
 
   const copy = async () => {
+    if (!gate(allowed, onClose)) return;
     if (url && (await copyText(url))) toast.success("Share link copied.");
     else toast.error("Couldn't copy automatically. Select the link and copy it.");
   };
@@ -43,7 +65,9 @@ export function ShareDialog({ diagram, onClose }: { diagram: DiagramFile; onClos
           {canShare && url && (
             <button
               className="btn"
-              onClick={() => navigator.share({ title: diagram.title, url }).catch(() => {})}
+              onClick={() => {
+                if (gate(allowed, onClose)) navigator.share({ title: diagram.title, url }).catch(() => {});
+              }}
               data-testid="share-link-native"
             >
               <Glyph name="share" size={14} /> Share…
@@ -51,7 +75,16 @@ export function ShareDialog({ diagram, onClose }: { diagram: DiagramFile; onClos
           )}
           <span className="ix-grow" />
           {url && (
-            <a className="btn" href={url} target="_blank" rel="noopener" data-testid="share-link-open">
+            <a
+              className="btn"
+              href={url}
+              target="_blank"
+              rel="noopener"
+              onClick={(e) => {
+                if (!gate(allowed, onClose)) e.preventDefault();
+              }}
+              data-testid="share-link-open"
+            >
               <Glyph name="external" size={14} /> Open
             </a>
           )}
@@ -122,10 +155,13 @@ export function ShareDialog({ diagram, onClose }: { diagram: DiagramFile; onClos
 export function EmbedDialog({
   diagram,
   example,
+  allowed,
   onClose,
 }: {
   diagram: DiagramFile;
   example?: string;
+  /** Whether its document may still be shared as a link (asked again by every action). */
+  allowed?: () => boolean;
   onClose: () => void;
 }) {
   const [payload, setPayload] = useState<string>();
@@ -152,6 +188,7 @@ export function EmbedDialog({
   }, [src]);
 
   const copy = async () => {
+    if (!gate(allowed, onClose)) return;
     if (snippet && (await copyText(snippet))) toast.success("Embed code copied.");
     else toast.error("Couldn't copy automatically. Select the code and copy it.");
   };
@@ -168,7 +205,16 @@ export function EmbedDialog({
         <>
           <span className="ix-grow" />
           {src && (
-            <a className="btn" href={src} target="_blank" rel="noopener" data-testid="embed-open">
+            <a
+              className="btn"
+              href={src}
+              target="_blank"
+              rel="noopener"
+              onClick={(e) => {
+                if (!gate(allowed, onClose)) e.preventDefault();
+              }}
+              data-testid="embed-open"
+            >
               <Glyph name="external" size={14} /> Open viewer
             </a>
           )}

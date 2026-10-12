@@ -24,13 +24,16 @@ export async function authorized(
 ): Promise<Response> {
   let token = await deps.getToken();
   for (let attempt = 0; ; attempt++) {
+    // A cancelled write stops here, after the token (which may have meant a sign-in) and before the upload.
+    init.signal?.throwIfAborted();
     let res: Response;
     try {
       res = await deps.fetch(url, {
         ...init,
         headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${token}` },
       });
-    } catch {
+    } catch (err) {
+      if (init.signal?.aborted) throw init.signal.reason ?? err;
       throw new StorageError(`Couldn't reach ${label} to ${action}. Check your connection.`);
     }
     if (res.ok) return res;

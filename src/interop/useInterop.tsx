@@ -112,8 +112,9 @@ export interface ImageExportOptions {
 }
 
 type DialogState =
-  | { kind: "share"; diagram: DiagramFile }
-  | { kind: "embed"; diagram: DiagramFile; example?: string }
+  /** `source`: the document the link is for; the dialog closes if it becomes private. */
+  | { kind: "share"; diagram: DiagramFile; source: string }
+  | { kind: "embed"; diagram: DiagramFile; source: string; example?: string }
   | { kind: "image" }
   | { kind: "privacy" }
   | { kind: "paste" }
@@ -186,9 +187,17 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
 
   // ---------------------------------------------------------------- privacy
 
-  /** The open diagram's privacy inputs: its provenance, and (in development) its content. */
+  /**
+   * A document's privacy inputs, read now: its provenance flags (one storage read), plus its content in
+   * development only (privacyOf never reads content in production, so the canvas isn't converted for it).
+   * `source` is the document an action started from: a share or a save that's still running asks about
+   * that document, whatever is open by the time it acts.
+   */
   const privacyState = useCallback(
-    (): CanvasPrivacyState => ({ ...getPrivacyFlags(slug), diagram: canvasRef.current?.getDiagram() }),
+    (source: string = slug): CanvasPrivacyState => ({
+      ...getPrivacyFlags(source),
+      ...(import.meta.env.DEV && source === openSlug.current ? { diagram: canvasRef.current?.getDiagram() } : {}),
+    }),
     [canvasRef, slug],
   );
   /** Local-only (built in), Private (the switch) or null. Read when asked, never cached. */
@@ -274,32 +283,41 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       toast.success("Exported a Mermaid .mmd file.");
     });
 
-  /** Share links and embeds: the one gate. A private diagram gets no link, and says why. */
-  const linkAllowed = () => {
-    if (canShareAsLink(privacyState())) return true;
+  /**
+   * Share links and embeds: the one gate, asked every time a link is about to be made, copied, shown or
+   * shared (never only when the command started). A private diagram gets no link, and says why.
+   */
+  const linkAllowed = (source: string = slug) => {
+    if (canShareAsLink(privacyState(source))) return true;
     toast.info(PRIVATE_SHARE_MESSAGE, {
       action: { label: "Export file", run: () => void exportNative(), testId: "toast-private-export" },
     });
     return false;
   };
+  const linkStillAllowed = (source: string) => canShareAsLink(privacyState(source));
 
-  const openShare = () =>
-    attempt("create a share link", () => {
-      if (linkAllowed()) setDialog({ kind: "share", diagram: current() });
-    });
+  /** The share dialog for `d`, from `source`: only while that document may still be shared. */
+  const showShare = (d: DiagramFile, source: string) => {
+    if (linkAllowed(source)) setDialog({ kind: "share", diagram: d, source });
+  };
+
+  const openShare = () => attempt("create a share link", () => showShare(current(), slug));
 
   /** One click: copy the link. The dialog (details, warnings, native share) is one step away. */
   const copyShareLink = () =>
     attempt("create a share link", async () => {
-      if (!linkAllowed()) return;
+      const source = slug;
+      if (!linkAllowed(source)) return;
       const d = current();
       const url = shareUrl(await encodeShare(d));
+      // Encoding takes a moment: the diagram may have become private since (here or in another tab).
+      if (!linkAllowed(source)) return;
       const details = {
         label: "Details",
-        run: () => setDialog({ kind: "share", diagram: d }),
+        run: () => showShare(d, source),
         testId: "toast-share-details",
       };
-      if (!(await copyText(url))) return setDialog({ kind: "share", diagram: d });
+      if (!(await copyText(url))) return showShare(d, source);
       if (url.length > SHARE_WARN_LENGTH) {
         toast.info(
           `Share link copied, but it's long (${Math.round(url.length / 1000)}k characters). Some apps cut long links off.`,
@@ -316,7 +334,12 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       // Embed by name only when the example is public and unedited (the viewer shows the original).
       const original = getOriginal(slug);
       const pristine = !!original && normalized(original) === JSON.stringify(canvasRef.current?.getDiagram());
-      setDialog({ kind: "embed", diagram: d, example: isPublicExample(slug) && pristine ? slug : undefined });
+      setDialog({
+        kind: "embed",
+        diagram: d,
+        source: slug,
+        example: isPublicExample(slug) && pristine ? slug : undefined,
+      });
     });
 
   // ---------------------------------------------------------------- save
@@ -357,7 +380,8 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   /** Save to a cloud provider: over the file this diagram is bound to there, or (`asNew`) a new file. */
   const saveToCloud = (info: ProviderInfo, asNew = false) =>
     attempt(`save to ${info.label}`, async () => {
-      if (!canSaveToCloud(privacyState())) {
+      const source = slug;
+      if (!canSaveToCloud(privacyState(source))) {
         toast.error(`Private diagrams aren't saved to ${info.label}. Save to this device instead.`, {
           action: {
             label: "Save to this device",
@@ -368,18 +392,43 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         return;
       }
       const d = current();
-      const identity = getDiagramIdentity(slug);
-      const stored = getSaveTarget(slug);
-      const provider = await info.load();
-      const busy = toast.busy(`Saving to ${info.label}…`);
-      const content = serializeNative(d);
-      const file =
-        stored?.providerId === info.id && !asNew
-          ? await provider.save(stored.ref, content)
-          : await provider.saveAs(`${baseName(d)}.diagram.json`, content);
-      toast.dismiss(busy);
+      const identity = getDiagramIdentity(source);
+      const stored = getSaveTarget(source);
+      // Loading the provider and signing in take time. If this document becomes private meanwhile (the
+      // switch, a paste, another tab), the write is cancelled: the provider checks the signal after every
+      // token request and the upload carries it, so the captured public copy never lands.
+      const cancel = new AbortController();
+      const blocked = new StorageError(
+        `Not saved to ${info.label}: “${d.title}” became private. Save it to this device instead.`,
+        undefined,
+        true,
+      );
+      const watch = () => {
+        if (!canSaveToCloud(privacyState(source))) cancel.abort(blocked);
+      };
+      window.addEventListener(DIAGRAMS_CHANGED, watch);
+      let busy: number | undefined;
+      let file: Awaited<ReturnType<StorageProvider["saveAs"]>>;
+      try {
+        const provider = await info.load();
+        watch();
+        cancel.signal.throwIfAborted();
+        busy = toast.busy(`Saving to ${info.label}…`);
+        const content = serializeNative(d);
+        file =
+          stored?.providerId === info.id && !asNew
+            ? await provider.save(stored.ref, content, { signal: cancel.signal })
+            : await provider.saveAs(`${baseName(d)}.diagram.json`, content, { signal: cancel.signal });
+      } finally {
+        window.removeEventListener(DIAGRAMS_CHANGED, watch);
+        if (busy !== undefined) toast.dismiss(busy);
+      }
       if (!file) return;
-      const bound = bind(slug, { providerId: info.id, ref: file.ref, name: file.name, savedAt: Date.now() }, identity);
+      const bound = bind(
+        source,
+        { providerId: info.id, ref: file.ref, name: file.name, savedAt: Date.now() },
+        identity,
+      );
       const url = file.url;
       toast.success(
         bound
@@ -579,7 +628,26 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     attempt("change its privacy", () => {
       setDialog(null);
       if (setDiagramPrivate(slug, false)) toast.success("This diagram is no longer private.");
+      // The badge that opened the dialog is gone with it: keep the keyboard on the canvas, not the page.
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (active && active !== document.body && active.isConnected) return;
+        document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
+      });
     });
+
+  // A share or embed dialog left open closes when its document becomes private (here or in another tab).
+  const linkDialogSource = dialog?.kind === "share" || dialog?.kind === "embed" ? dialog.source : undefined;
+  useEffect(() => {
+    if (linkDialogSource === undefined) return;
+    const check = () => {
+      if (canShareAsLink(privacyState(linkDialogSource))) return;
+      setDialog(null);
+      toast.info(PRIVATE_SHARE_MESSAGE);
+    };
+    window.addEventListener(DIAGRAMS_CHANGED, check);
+    return () => window.removeEventListener(DIAGRAMS_CHANGED, check);
+  }, [linkDialogSource, privacyState]);
 
   // The badge beside the title asks for the dialog: it explains, and turns Private off on confirmation.
   useEffect(() => {
@@ -702,10 +770,21 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
           onClose={() => setDialog(null)}
         />
       )}
-      {dialog?.kind === "share" && <ShareDialog diagram={dialog.diagram} onClose={() => setDialog(null)} />}
+      {dialog?.kind === "share" && (
+        <ShareDialog
+          diagram={dialog.diagram}
+          allowed={() => linkStillAllowed(dialog.source)}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === "privacy" && <PrivacyDialog onTurnOff={confirmNotPrivate} onClose={() => setDialog(null)} />}
       {dialog?.kind === "embed" && (
-        <EmbedDialog diagram={dialog.diagram} example={dialog.example} onClose={() => setDialog(null)} />
+        <EmbedDialog
+          diagram={dialog.diagram}
+          example={dialog.example}
+          allowed={() => linkStillAllowed(dialog.source)}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === "paste" && (
         <PasteDialog onImport={(t) => void importPasted(t)} onClose={() => setDialog(null)} />

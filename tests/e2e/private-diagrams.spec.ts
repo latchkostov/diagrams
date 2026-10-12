@@ -7,8 +7,13 @@ import {
   installFakeLanguageModel,
   installFakeModelContext,
   installFakeSpeech,
+  fakeModel,
+  modelReply,
+  nodeCount,
   openAdvanced,
   openAiPanel,
+  releaseModel,
+  speech,
   speechState,
   toolNames,
 } from "./ai-helpers";
@@ -70,6 +75,8 @@ test("the Private switch: badge, library marker, and one confirmation to turn it
   await expect(page.getByTestId("private-badge")).toHaveCount(0);
   await openPrivacyMenu(page);
   await expect(page.getByTestId("privacy-diagram")).toHaveAttribute("aria-checked", "false");
+  for (const id of ["privacy-diagram", "privacy-new-diagrams"])
+    await expect(page.getByTestId(id)).toHaveAttribute("role", "menuitemcheckbox");
   await page.getByTestId("privacy-diagram").click();
   await expect(page.getByTestId("private-badge")).toHaveText("Private");
   expect((await entry(page, slug)).private).toBe(true);
@@ -87,6 +94,15 @@ test("the Private switch: badge, library marker, and one confirmation to turn it
   await page.getByTestId("privacy-keep").click();
   await expect(page.getByTestId("privacy-dialog")).toHaveCount(0);
   await expect(page.getByTestId("private-badge")).toBeVisible();
+
+  // From the badge, by keyboard: the badge goes with Private, and focus lands on the canvas, not the page.
+  await page.getByTestId("private-badge").focus();
+  await page.keyboard.press("Enter");
+  await page.getByTestId("privacy-turn-off").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("private-badge")).toHaveCount(0);
+  await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+  await makePrivate(page);
 
   // Unchecking in the File menu asks the same question first.
   await togglePrivate(page);
@@ -337,6 +353,203 @@ for (const onDevice of [false, true]) {
       await expect(page.getByTestId("ai-ondevice-dictation-message")).toContainText("this diagram is private");
       expect((await speechState(page)).starts).toBe(0);
     }
+    expectNoErrors(consoleErrors);
+  });
+}
+
+const testFile = (page: Page) =>
+  page.evaluate(
+    () =>
+      (JSON.parse(localStorage.getItem("diagrams.test-storage.v1") ?? "[]") as { text: string; modified: string }[])[0],
+  );
+
+/** An imported diagram saved once to Test storage (bound: Ctrl+S goes back there). */
+async function savedToTestStorage(page: Page, title: string) {
+  await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
+  await expect(page.getByTestId("canvas-view")).toBeVisible();
+  await importDiagram(page, title);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-save-to").click();
+  await page.getByTestId("save-to-test").click();
+  await expect(page.getByTestId("save-status")).toHaveAttribute("data-provider", "test");
+}
+
+/** An edit the cloud copy doesn't have yet. */
+async function deleteIntake(page: Page) {
+  await page.getByTestId("node-intake").click();
+  await page.keyboard.press("Delete");
+  await expect(page.getByTestId("node-intake")).toHaveCount(0);
+  await page.waitForTimeout(400); // the autosave
+}
+
+test("private Ctrl+S leaves the bound cloud file unchanged", async ({ page, consoleErrors }) => {
+  await savedToTestStorage(page, "Bound plan");
+  await deleteIntake(page);
+  await makePrivate(page);
+  const before = await testFile(page);
+  expect(before.text).toContain("intake");
+  await page.getByTestId("canvas-wrap").click({ position: { x: 700, y: 420 } });
+  await page.keyboard.press(`${MOD}+s`);
+  await expect(page.getByTestId("toast-private-save-device")).toBeVisible();
+  await page.waitForTimeout(300);
+  expect(await testFile(page)).toEqual(before);
+  expectNoErrors(consoleErrors);
+});
+
+test("a cloud save still pending when the diagram becomes private never lands", async ({ page, consoleErrors }) => {
+  await savedToTestStorage(page, "Pending plan");
+  await deleteIntake(page);
+  const before = await testFile(page);
+  // A slow sign-in or upload: the save waits, and meanwhile the diagram becomes private.
+  await page.evaluate(() => localStorage.setItem("diagrams.test-storage.delay", "1500"));
+  await page.getByTestId("canvas-wrap").click({ position: { x: 700, y: 420 } });
+  await page.keyboard.press(`${MOD}+s`);
+  await makePrivate(page);
+  await expect(page.getByTestId("toast").filter({ hasText: "became private" })).toBeVisible({ timeout: 5000 });
+  await page.waitForTimeout(500);
+  expect(await testFile(page)).toEqual(before);
+  expectNoErrors(consoleErrors);
+});
+
+test("a share dialog left open closes when another tab makes the diagram private", async ({
+  page,
+  context,
+  consoleErrors,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await gotoCanvas(page, SLUG);
+  const slug = await importDiagram(page, "Shared plan");
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("export-share-link").click();
+  await page.getByTestId("toast-share-details").click();
+  await expect(page.getByTestId("share-link-dialog")).toBeVisible();
+
+  const other = await context.newPage();
+  await gotoCanvas(other, slug);
+  await expect(other.getByTestId("diagram-title")).toHaveText("Shared plan");
+  await makePrivate(other);
+
+  await expect(page.getByTestId("share-link-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("toast").filter({ hasText: PRIVATE_SHARE })).toBeVisible();
+  // ...and the File menu's link rows here are off too.
+  await page.getByTestId("file-button").click();
+  await expect(page.getByTestId("export-share-link")).toBeDisabled();
+  await other.close();
+  expectNoErrors(consoleErrors);
+});
+
+test("a fix-up prompt left from a failed reply is off once the diagram is private", async ({
+  page,
+  context,
+  consoleErrors,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await gotoCanvas(page, SLUG);
+  await importDiagram(page, "Fix-up plan");
+  await openAdvanced(page);
+  await page.getByTestId("ai-request").fill("Remove the gateway");
+  await page.getByTestId("ai-reply").fill('[{"op":"remove","targets":["no-such-node"]}]');
+  await page.getByTestId("ai-apply").click();
+  await expect(page.getByTestId("ai-copy-fix")).toBeEnabled();
+  await makePrivate(page);
+  await expect(page.getByTestId("ai-copy-fix")).toBeDisabled();
+  await page.evaluate(() => navigator.clipboard.writeText("before"));
+  await page.getByTestId("ai-copy-fix").click({ force: true });
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
+  expectNoErrors(consoleErrors);
+});
+
+const RENAME = modelReply("Added a queue after the intake", [
+  { op: "add", kind: "queue", label: "intake-queue" },
+  { op: "connect", from: "Intake service", to: "intake-queue", flow: "message" },
+]);
+
+async function privateWithModel(page: Page, replies: string[]) {
+  await installFakeLanguageModel(page, { replies });
+  await page.addInitScript(() => localStorage.setItem("diagrams.ai-ondevice.v1", "1"));
+  await gotoCanvas(page, SLUG);
+  await importDiagram(page, "Model plan");
+  await makePrivate(page);
+  await openAiPanel(page);
+  await page.getByTestId("ai-private-ondevice-toggle").check();
+  await expect(page.getByTestId("ai-ondevice-input")).toBeEnabled();
+}
+
+test("allowed, the on-device model changes a private diagram as one undoable turn", async ({ page, consoleErrors }) => {
+  await privateWithModel(page, [RENAME]);
+  await page.getByTestId("ai-ondevice-input").fill("Add a queue after Intake service");
+  await page.getByTestId("ai-ondevice-input").press("Enter");
+  await expect(page.getByTestId("ai-turn-0")).toBeVisible();
+  await expect(page.getByTestId("ai-turn-0-who")).toContainText("On this device");
+  await expect.poll(() => nodeCount(page)).toBe(3);
+  await page.getByTestId("ai-turn-0-undo").click();
+  await expect.poll(() => nodeCount(page)).toBe(2);
+  expect((await fakeModel(page)).prompts).toHaveLength(1);
+  // The page's tools stay off throughout.
+  await expect(page.getByTestId("ai-agent-status")).toContainText("off for this private diagram");
+  expectNoErrors(consoleErrors);
+});
+
+test("revoking the on-device permission cancels a pending reply", async ({ page }) => {
+  await privateWithModel(page, [`hold:${RENAME}`]);
+  await page.getByTestId("ai-ondevice-input").fill("Add a queue after Intake service");
+  await page.getByTestId("ai-ondevice-input").press("Enter");
+  await expect(page.getByTestId("ai-ondevice-status")).toHaveText("Thinking…");
+  await page.getByTestId("ai-private-ondevice-toggle").uncheck();
+  await expect(page.getByTestId("ai-ondevice")).toHaveCount(0);
+  await expect.poll(async () => (await fakeModel(page)).aborted).toBe(1);
+  await releaseModel(page);
+  await page.waitForTimeout(300);
+  await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
+  expect(await nodeCount(page)).toBe(2);
+});
+
+test("private dictation never falls back to the speech service when the local language pack fails", async ({
+  page,
+  consoleErrors,
+}) => {
+  await installFakeLanguageModel(page);
+  await installFakeSpeech(page, { onDevice: true });
+  await page.addInitScript(() => localStorage.setItem("diagrams.ai-ondevice.v1", "1"));
+  await gotoCanvas(page, SLUG);
+  await importDiagram(page, "Spoken plan");
+  await makePrivate(page);
+  await openAiPanel(page);
+  await page.getByTestId("ai-private-ondevice-toggle").check();
+  await page.getByTestId("ai-ondevice-mic").click();
+  await expect.poll(async () => (await speechState(page)).starts).toBe(1);
+  expect((await speechState(page)).config).toMatchObject({ processLocally: true });
+  // The on-device pack goes missing mid-session; a public diagram would carry on with the browser's service.
+  await speech(page, "error", "language-not-supported");
+  await speech(page, "silence");
+  await expect(page.getByTestId("ai-ondevice-dictation-message")).toContainText("this diagram is private");
+  await expect(page.getByTestId("ai-ondevice-mic")).toHaveAttribute("data-status", "idle");
+  await page.waitForTimeout(300);
+  expect((await speechState(page)).starts).toBe(1);
+  expectNoErrors(consoleErrors);
+});
+
+for (const [format, item, file] of [
+  ["draw.io", "export-drawio", "private.drawio"],
+  ["Mermaid", "export-mermaid-download", "private.mmd"],
+] as const) {
+  test(`a private diagram exported to ${format} stays private when it's imported again`, async ({
+    page,
+    consoleErrors,
+  }, info) => {
+    await gotoCanvas(page, SLUG);
+    await importDiagram(page, `${format} plan`);
+    await makePrivate(page);
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-more-formats").click();
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId(item).click()]);
+    const path = info.outputPath(file);
+    await download.saveAs(path);
+    await page.getByTestId("import-input").setInputFiles(path);
+    await expect(page.getByTestId("toast").last()).toContainText("Imported");
+    const again = await page.getByTestId("example-picker").inputValue();
+    await expect(page.getByTestId("private-badge")).toHaveAttribute("data-kind", "private");
+    expect((await entry(page, again)).private).toBe(true);
     expectNoErrors(consoleErrors);
   });
 }

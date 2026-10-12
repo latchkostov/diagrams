@@ -549,6 +549,11 @@ export function getPrivacyFlags(slug: string): PrivacyFlags {
   if (resolved === DRAFT_SLUG) return { ...draftPrivacy };
   if (examples.some((e) => e.slug === resolved && e.localOnly)) return { localOnly: true };
   if (resolved === SHARED_SLUG) return getShared()?.private === true ? { private: true } : {};
+  if (!isLibrarySlug(resolved) || isDeleted(resolved)) return {};
+  // Cheap: the entry's own record (asked by every menu, gate and render), the whole index only for an
+  // entry that predates per-entry records.
+  const own = read<unknown>(entryKey(resolved));
+  if (validEntry(own) && own.slug === resolved) return flagsOf(own);
   return flagsOf(readIndex().find((e) => e.slug === resolved));
 }
 

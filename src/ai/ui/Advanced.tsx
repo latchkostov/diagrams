@@ -5,7 +5,7 @@ import type { DiagramFile } from "../../model/types";
 import { copyText } from "../../interop/ui/copyText";
 import { notify } from "../../interop/ui/toast";
 import { paletteHost } from "../../palette/host";
-import { isLocalOnly } from "../../lib/localOnly";
+import { isLocalOnly, privacyOf } from "../../lib/localOnly";
 import { LOCAL_ONLY_MESSAGE, describeForAi } from "../privacy";
 import { failedRef, pickCandidate, planTurn } from "./apply";
 import { commitPlan, type TurnRecord } from "./commitTurn";
@@ -125,7 +125,7 @@ export function Advanced({
 
   const copyPrompt = async () => {
     const ed = editorNow();
-    if (!ed) return;
+    if (!ed || privacyOf(paletteHost.get().canvas) === "private") return;
     promptedFor.current = request.trim();
     const input = { request, describe: describeForAi(ed, paletteHost.get().canvas), context: contextFor(intent) };
     const prompt = explaining
@@ -142,6 +142,8 @@ export function Advanced({
   const copyFix = async () => {
     const ed = editorNow();
     if (!ed || !failure) return;
+    // Asked when it acts: a private diagram copies nothing, not even the request's words.
+    if (privacyOf(paletteHost.get().canvas) === "private") return;
     if (isLocalOnly(paletteHost.get().canvas)) {
       const ok = await copyText(buildPrompt({ request, describe: LOCAL_ONLY_MESSAGE }));
       if (ok) flashCopied("fix");
@@ -277,7 +279,15 @@ export function Advanced({
               </span>
             </label>
           )}
-          {failure && <FailureBox failure={failure} copied={copied === "fix"} onCopyFix={copyFix} onChoose={choose} />}
+          {failure && (
+            <FailureBox
+              failure={failure}
+              copied={copied === "fix"}
+              onCopyFix={copyFix}
+              onChoose={choose}
+              fixOff={privateDiagram}
+            />
+          )}
           {place !== "create" && (
             <div className="ai-intent" role="group" aria-label="What to do">
               <button

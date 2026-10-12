@@ -37,14 +37,14 @@ export const gdriveProvider: StorageProvider<DriveRef> = {
     return { name: file.name, text: file.text, ref: { id: file.id } };
   },
 
-  async save(ref, text) {
-    const file = await driveClient().update(ref.id, { content: text, mimeType: NATIVE_MIME });
+  async save(ref, text, opts) {
+    const file = await driveClient().update(ref.id, { content: text, mimeType: NATIVE_MIME }, opts?.signal);
     signedIn = true;
     return { name: file.name, ref: { id: file.id }, url: file.webViewLink };
   },
 
-  async saveAs(name, text) {
-    const file = await driveClient().create({ name, mimeType: NATIVE_MIME, content: text });
+  async saveAs(name, text, opts) {
+    const file = await driveClient().create({ name, mimeType: NATIVE_MIME, content: text }, opts?.signal);
     signedIn = true;
     return { name: file.name, ref: { id: file.id }, url: file.webViewLink };
   },

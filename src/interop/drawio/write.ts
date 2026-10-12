@@ -99,7 +99,7 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
 
   // Root cell carries diagram-level fields (description, direction, simulations).
   lines.push(
-    `        <object id="0"${attr("dg_format", d.format)}${attr("dg_description", d.description)}${attr("dg_direction", d.direction)}${attr("dg_simulations", json(d.simulations))}${attr("dg_layer_order", json(d.layerOrder))}>`,
+    `        <object id="0"${attr("dg_format", d.format)}${attr("dg_description", d.description)}${attr("dg_direction", d.direction)}${attr("dg_simulations", json(d.simulations))}${attr("dg_layer_order", json(d.layerOrder))}${attr("dg_private", d.private ? "true" : undefined)}>`,
     `          <mxCell />`,
     `        </object>`,
     `        <mxCell id="1" parent="0" />`,

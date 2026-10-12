@@ -145,20 +145,20 @@ export function createOneDriveClient(deps: ClientDeps) {
     },
 
     /** Creates a file in the app folder; a name that's taken gets a number, nothing is overwritten. */
-    async create(name: string, text: string): Promise<DriveItem> {
+    async create(name: string, text: string, signal?: AbortSignal): Promise<DriveItem> {
       const res = await call(
         `${GRAPH}/me/drive/special/approot:/${encodeURIComponent(name)}:/content?@microsoft.graph.conflictBehavior=rename`,
-        { method: "PUT", headers: { "Content-Type": "application/json" }, body: text },
+        { method: "PUT", headers: { "Content-Type": "application/json" }, body: text, signal },
         "save the file",
       );
       return (await res.json()) as DriveItem;
     },
 
     /** Replaces a file's content (simple upload: fine up to 250 MB, far above our 8 MB budget). */
-    async update(id: string, text: string): Promise<DriveItem> {
+    async update(id: string, text: string, signal?: AbortSignal): Promise<DriveItem> {
       const res = await call(
         `${GRAPH}/me/drive/items/${encodeURIComponent(id)}/content`,
-        { method: "PUT", headers: { "Content-Type": "application/json" }, body: text },
+        { method: "PUT", headers: { "Content-Type": "application/json" }, body: text, signal },
         "update the file",
       );
       return (await res.json()) as DriveItem;
@@ -218,12 +218,12 @@ export function oneDriveProvider(
         done();
       }
     },
-    async save(ref, text) {
-      const item = await client.update(ref.id, text);
+    async save(ref, text, opts) {
+      const item = await client.update(ref.id, text, opts?.signal);
       return { name: item.name, ref: { id: item.id }, url: item.webUrl };
     },
-    async saveAs(name, text) {
-      const item = await client.create(name, text);
+    async saveAs(name, text, opts) {
+      const item = await client.create(name, text, opts?.signal);
       return { name: item.name, ref: { id: item.id }, url: item.webUrl };
     },
   };

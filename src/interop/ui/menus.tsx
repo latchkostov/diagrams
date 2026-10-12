@@ -312,6 +312,7 @@ function privacyMenu(api: Api): MenuEntry[] {
           ? "Always private: it comes from a local-only example"
           : "No share links, cloud saves or AI",
       checked: !!privacy,
+      checkbox: true,
       disabled: privacy === "local-only",
       onSelect: () => void api.setPrivate(!privacy),
     },
@@ -321,6 +322,7 @@ function privacyMenu(api: Api): MenuEntry[] {
       title: "New diagrams are private",
       desc: "Diagrams you start or bring in from this device",
       checked: newDiagramsPrivate.get(),
+      checkbox: true,
       onSelect: () => api.setNewDiagramsPrivate(!newDiagramsPrivate.get()),
     },
     { type: "note", text: "Export a file to share a private diagram." },

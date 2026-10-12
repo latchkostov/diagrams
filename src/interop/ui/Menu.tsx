@@ -32,6 +32,8 @@ export type MenuEntry =
       disabled?: boolean;
       /** Radio-style choice: shows a check when true (the row is a menuitemradio). */
       checked?: boolean;
+      /** With `checked`: an independent on/off setting (a menuitemcheckbox), not one of a set of choices. */
+      checkbox?: boolean;
       onSelect?: () => void;
       /** Makes the row open a submenu (rendered with `data-testid={submenuTestId}`). */
       submenu?: () => MenuEntry[];
@@ -249,7 +251,7 @@ function MenuPanel({
             >
               <button
                 className="ix-menu-item"
-                role={entry.checked !== undefined ? "menuitemradio" : "menuitem"}
+                role={entry.checked === undefined ? "menuitem" : entry.checkbox ? "menuitemcheckbox" : "menuitemradio"}
                 aria-checked={entry.checked}
                 aria-haspopup={hasSub ? "menu" : undefined}
                 aria-expanded={hasSub ? isOpen : undefined}
