@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, publicExamples } from "./fixtures";
+import { test, expect, expectNoErrors, publicExamples, waitForStableBox } from "./fixtures";
 
 /**
  * Overlap audit on the real canvas. Only public fixtures from src/examples/*.json,
@@ -26,14 +26,7 @@ const overlaps = (a: Box, b: Box) =>
 async function settle(page: Page) {
   const first = page.getByTestId(/^node-(?!editor)/).first();
   await expect(first).toBeVisible();
-  let prev = "";
-  for (let i = 0; i < 30; i++) {
-    const b = await first.boundingBox();
-    const key = b ? `${b.x.toFixed(1)},${b.y.toFixed(1)},${b.width.toFixed(1)}` : "";
-    if (key && key === prev) return;
-    prev = key;
-    await page.waitForTimeout(150);
-  }
+  await waitForStableBox(first);
 }
 
 async function measure(page: Page) {

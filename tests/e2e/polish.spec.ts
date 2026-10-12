@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas } from "./fixtures";
+import { test, expect, gotoCanvas, viewportTransform, waitForStableViewport } from "./fixtures";
 
 // Polish and reliability: the selection stays in view when the inspector opens, the live bar
 // names the simulation being edited, edge labels sit under particles while live, viewport
@@ -33,30 +33,9 @@ async function transformsAfter(page: Page, testId: string) {
   }, testId);
 }
 
-const viewportTransform = (page: Page) =>
-  page
-    .getByTestId("canvas-wrap")
-    .evaluate((wrap) => wrap.querySelector<HTMLElement>(".react-flow__viewport")?.style.transform ?? "");
-
-/** Waits until the viewport holds still (an opening fit or a pan's momentum has finished). */
-async function settleViewport(page: Page) {
-  let last = "";
-  await expect
-    .poll(
-      async () => {
-        const now = await viewportTransform(page);
-        const still = now === last;
-        last = now;
-        return still;
-      },
-      { intervals: [100, 150, 150, 250] },
-    )
-    .toBe(true);
-}
-
 async function panAway(page: Page) {
   // The opening fit must land first: a fit that finishes after the drag would undo it.
-  await settleViewport(page);
+  await waitForStableViewport(page);
   const fitted = await viewportTransform(page);
   const wrap = await box(page.getByTestId("canvas-wrap"));
   // The top strip of the pane is empty after a fit (it keeps clear of the title card).
@@ -65,7 +44,7 @@ async function panAway(page: Page) {
   await page.mouse.move(wrap.x + wrap.width / 2 - 260, wrap.y + 140, { steps: 6 });
   await page.mouse.up();
   await expect.poll(() => viewportTransform(page)).not.toBe(fitted);
-  await settleViewport(page);
+  await waitForStableViewport(page);
 }
 
 test.describe("polish", () => {

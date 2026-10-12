@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, publicExamples } from "./fixtures";
+import { test, expect, expectNoErrors, publicExamples, E2E_TARGET } from "./fixtures";
 
 const kafka = publicExamples.find((e) => e.slug === "kafka-order-pipeline");
 const other = publicExamples.find((e) => e.slug === "rag-assistant");
@@ -224,7 +224,7 @@ test("a late example download cannot replace a newer embed payload", async ({ pa
 });
 
 test("production entry contains no full example JSON", () => {
-  test.skip(process.env.E2E_TARGET !== "build" && !process.env.CI, "requires the production e2e build");
+  test.skip(E2E_TARGET !== "build", "requires the production e2e build (tests/.output/e2e-dist)");
   const dir = "tests/.output/e2e-dist";
   const html = readFileSync(join(dir, "index.html"), "utf8");
   const entry = /<script\b[^>]*type="module"[^>]*\bsrc="([^"]+)"/.exec(html)?.[1];

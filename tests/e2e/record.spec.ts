@@ -312,6 +312,39 @@ test.describe("record video", () => {
     expect(await rec(page, "started")).toBeUndefined();
   });
 
+  test("Esc after the countdown but before the recorder starts cancels cleanly", async ({ page, consoleErrors }) => {
+    await stubCapture(page);
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    // A paused clock holds the two frames between the countdown's end and the recorder's start.
+    await page.clock.install();
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    await openRecord(page);
+    await page.getByTestId("record-start").click();
+    const countdown = page.getByTestId("record-countdown");
+    for (const next of ["2", "1"]) {
+      await expect(countdown).toBeVisible();
+      await page.clock.runFor(1000);
+      await expect(countdown).toContainText(next);
+    }
+    await page.clock.runFor(1000);
+    await expect(page.getByTestId("record-indicator")).toBeVisible();
+    await expect(page).toHaveURL(/present=1/);
+    expect(await rec(page, "started")).toBeUndefined();
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("record-indicator")).toHaveCount(0);
+    await expect.poll(() => rec(page, "stopped")).toBe(1);
+    await expect(page).not.toHaveURL(/present=1/);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await expect(page.getByTestId("record-error")).toHaveCount(0);
+    await expect(page.getByTestId("record-review")).toHaveCount(0);
+    // Releasing the held frames never starts the cancelled take.
+    await page.clock.runFor(500);
+    expect(await rec(page, "started")).toBeUndefined();
+    await expect(page.getByTestId("record-setup")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
   test("a refused share prompt explains itself and nothing breaks", async ({ page, consoleErrors }) => {
     await stubCapture(page, { prompt: "deny" });
     await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);

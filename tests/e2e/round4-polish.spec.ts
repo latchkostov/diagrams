@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, gotoLab } from "./fixtures";
+import { test, expect, gotoCanvas, gotoGallery, gotoLab, waitForStableBox } from "./fixtures";
 
 // UX gate 4 follow-ups (docs/DESIGN-REVIEW.md, round 4, "P2 moved to the backlog"). Selectors are
 // data-testid only.
@@ -22,22 +22,6 @@ async function openNative(page: Page, diagram: Record<string, unknown>) {
     buffer: Buffer.from(JSON.stringify({ format: "diagrams/v1", ...diagram })),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(String(diagram.title));
-}
-
-/** Waits until an element holds still (the opening fit, or a pan clear of the inspector, has finished). */
-async function holdStill(l: Locator) {
-  let last = "";
-  await expect
-    .poll(
-      async () => {
-        const now = JSON.stringify(await l.boundingBox());
-        const still = now === last;
-        last = now;
-        return still;
-      },
-      { intervals: [100, 150, 150, 250] },
-    )
-    .toBe(true);
 }
 
 /** Someone who keeps the inspector on: below 1680px it waits for a selection, then narrows the canvas. */
@@ -214,10 +198,10 @@ test.describe("round 4 polish", () => {
       annotations: [{ id: "text-1", kind: "text", x: 0, y: 300, width: 200, height: 30, text: "Caption" }],
     });
     const text = page.getByTestId("annotation-text-1");
-    await holdStill(text);
+    await waitForStableBox(text);
     await text.click();
     // Selecting opens the inspector, which may move the view: measure where the text settles.
-    await holdStill(text);
+    await waitForStableBox(text);
     const placed = await box(text);
     await page.getByTestId("inspector-field-text").fill("Caption\nwith a second line\nand a third");
     await page.getByTestId("inspector-field-text-size-xl").click();
@@ -289,7 +273,7 @@ test.describe("round 4 polish", () => {
     });
     await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
     // The opening fit closes context menus. Wait for the camera before opening one.
-    await holdStill(page.getByTestId("node-a"));
+    await waitForStableBox(page.getByTestId("node-a"));
     const wrap = await box(page.getByTestId("canvas-wrap"));
     const note = page.getByTestId("annotation-note-1");
     // Right-click 60px from the pane's right edge: a 200px note centred there pokes past it. Retried until

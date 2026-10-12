@@ -16,8 +16,6 @@ permissions:
 
 env:
   CI: "true"
-  # Serve the builds made in "System deps and builds" instead of building inside Playwright.
-  E2E_PREBUILT: "1"
 
 jobs:
   e2e:
@@ -29,72 +27,32 @@ jobs:
       matrix:
         include:
           # Dev server: every project (chromium, dev, subpath) once. E2E_TARGET=dev serves both the
-          # chromium and dev projects from `pnpm dev`; subpath still needs the production build.
-          - { suite: dev, label: Dev server, shard: 1, total: 4 }
-          - { suite: dev, label: Dev server, shard: 2, total: 4 }
-          - { suite: dev, label: Dev server, shard: 3, total: 4 }
-          - { suite: dev, label: Dev server, shard: 4, total: 4 }
+          # chromium and dev projects from `pnpm dev`; subpath still needs the production build, which
+          # the action makes. Tests that read the e2e build skip (lazy-examples.spec.ts).
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 1, total: 4 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 2, total: 4 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 3, total: 4 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 4, total: 4 }
           # Production build (as on pull requests), each test three times.
-          - { suite: repeat, label: Build ×3, shard: 1, total: 6 }
-          - { suite: repeat, label: Build ×3, shard: 2, total: 6 }
-          - { suite: repeat, label: Build ×3, shard: 3, total: 6 }
-          - { suite: repeat, label: Build ×3, shard: 4, total: 6 }
-          - { suite: repeat, label: Build ×3, shard: 5, total: 6 }
-          - { suite: repeat, label: Build ×3, shard: 6, total: 6 }
-    env:
-      E2E_TARGET: ${{ matrix.suite == 'dev' && 'dev' || 'build' }}
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 1, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 2, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 3, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 4, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 5, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 6, total: 6 }
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      # The same setup, builds and shard run as pull requests (ci.yml), with no retries: a test that fails
+      # once out of its runs is a flake to fix.
+      - name: Playwright shard
+        uses: ./.github/actions/e2e
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Playwright version
-        id: pw
-        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright browsers
-        id: pw-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      - name: Install Chromium
-        if: steps.pw-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
-      - name: System deps and builds
-        env:
-          CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
-        run: |
-          pids=()
-          if [ "$E2E_TARGET" = "build" ]; then
-            VITE_E2E=1 pnpm exec vite build --outDir tests/.output/e2e-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/e2e-build.log" 2>&1 &
-            pids+=("$!")
-          fi
-          VITE_E2E='' pnpm exec vite build --outDir tests/.output/preview-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/prod-build.log" 2>&1 &
-          pids+=("$!")
-          if [ "$CACHE_HIT" = "true" ]; then pnpm exec playwright install-deps chromium; fi
-          status=0
-          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
-          if [ "$status" != 0 ]; then
-            echo "::error::a build failed"
-            cat "$RUNNER_TEMP"/*-build.log
-          fi
-          exit "$status"
-      # No retries: a test that fails once out of its runs is a flake to fix.
-      - name: Playwright
-        env:
-          SUITE: ${{ matrix.suite }}
-          SHARD: ${{ matrix.shard }}
-          TOTAL: ${{ matrix.total }}
-          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.suite }}-${{ matrix.shard }}.zip
-        run: |
-          list="$(node scripts/e2e-shard.mjs "$SHARD" "$TOTAL")"
-          read -ra specs <<< "$list"
-          repeat=1
-          if [ "$SUITE" = "repeat" ]; then repeat=3; fi
-          pnpm exec playwright test --retries=0 --repeat-each="$repeat" "${specs[@]}"
+          target: ${{ matrix.target }}
+          shard: ${{ matrix.shard }}
+          total: ${{ matrix.total }}
+          retries: "0"
+          repeat-each: ${{ matrix.repeat }}
+          blob-name: report-${{ matrix.suite }}-${{ matrix.shard }}.zip
       - name: Durations
         if: ${{ !cancelled() }}
         run: node scripts/e2e-durations.mjs tests/.output/results.json 15 >> "$GITHUB_STEP_SUMMARY"

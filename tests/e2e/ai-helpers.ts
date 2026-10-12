@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, STORAGE_KEYS } from "./fixtures";
+import { expect, STORAGE_KEYS, waitForStableBox } from "./fixtures";
 
 // Shared by the ai-*.spec.ts files: fakes for browser APIs Playwright's Chromium doesn't have
 // (WebMCP's document.modelContext, the Web Speech API), installed with page.addInitScript.
@@ -28,19 +28,8 @@ export async function savedDiagram(page: Page, slug = SLUG) {
 export const nodeCount = (page: Page) => page.getByTestId(/^node-(?!tooltip$|editor-)/).count();
 
 /** Waits for the view to stop moving (opening or folding the dock refits the diagram; a move closes menus). */
-export async function settle(page: Page, testId = "node-payments") {
-  let last = "";
-  await expect
-    .poll(
-      async () => {
-        const now = JSON.stringify(await page.getByTestId(testId).boundingBox());
-        const still = now === last;
-        last = now;
-        return still;
-      },
-      { intervals: [100, 150, 150, 250] },
-    )
-    .toBe(true);
+export function settle(page: Page, testId = "node-payments") {
+  return waitForStableBox(page.getByTestId(testId));
 }
 
 /** Opens the AI panel from its rail. */
@@ -117,6 +106,7 @@ export const callTool = (page: Page, name: string, input: object = {}) =>
 /**
  * A fake SpeechRecognition (Chrome's webkit name), driven from the test through `window.__speech`:
  * `result([...])`, `error(code)`, `silence()` (the browser's own end), and `starts` / `instances`.
+ * `holdStarts()` keeps each later session's start event back until `releaseStart()` (results can come first).
  * `deny` makes start() fail with "not-allowed" like a blocked microphone.
  */
 export function installFakeSpeech(
@@ -156,7 +146,7 @@ export function installFakeSpeech(
           interimResults: this.interimResults,
           processLocally: this.processLocally,
         };
-        setTimeout(() => {
+        const begin = () => {
           if (o.deny) {
             this.onerror?.({ error: "not-allowed" });
             this.end();
@@ -165,7 +155,9 @@ export function installFakeSpeech(
           this.running = true;
           this.onstart?.();
           this.onsoundstart?.();
-        }, 20);
+        };
+        if (state.holding) state.heldStart = begin;
+        else setTimeout(begin, 20);
       }
       stop() {
         state.stops++;
@@ -191,6 +183,17 @@ export function installFakeSpeech(
       },
       starts: 0,
       stops: 0,
+      holding: false,
+      heldStart: null as (() => void) | null,
+      holdStarts() {
+        state.holding = true;
+      },
+      releaseStart() {
+        state.holding = false;
+        const begin = state.heldStart;
+        state.heldStart = null;
+        begin?.();
+      },
       current: null as FakeRecognition | null,
       config: null as unknown,
       /** [transcript, isFinal][] as the whole list of this session's results. */

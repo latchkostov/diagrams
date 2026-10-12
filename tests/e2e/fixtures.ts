@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { test as base, expect, type Page } from "@playwright/test";
+import { test as base, expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * Shared helpers for every e2e spec. Selectors are data-testid only (owner's rule):
@@ -70,6 +70,53 @@ export const test = base.extend<Fixtures>({
 });
 
 export { expect };
+
+/**
+ * What the app server is (the same rule as playwright.config.ts): "build" serves the production e2e build
+ * (tests/.output/e2e-dist), "dev" the Vite dev server. An explicit E2E_TARGET wins, on CI too.
+ */
+export const E2E_TARGET = process.env.E2E_TARGET ?? (process.env.CI ? "build" : "dev");
+
+/**
+ * Polls `read` until two readings in a row are equal: an animation, a fit or a pan has finished. An empty
+ * reading (nothing to measure) never counts as settled, so a missing element fails instead of passing.
+ */
+async function waitForStable(read: () => Promise<string>) {
+  let last = "";
+  await expect
+    .poll(
+      async () => {
+        const now = await read();
+        const still = now !== "" && now === last;
+        last = now;
+        return still;
+      },
+      { intervals: [100, 150, 150, 250] },
+    )
+    .toBe(true);
+}
+
+/**
+ * Waits until an element's box holds still. Viewport moves (the opening fit, a refit, a pan clear of the
+ * inspector) close menus and shift what a test measures: wait for this first.
+ */
+export function waitForStableBox(locator: Locator) {
+  return waitForStable(async () => {
+    const box = await locator.boundingBox();
+    return box ? JSON.stringify(box) : "";
+  });
+}
+
+/** Waits until the canvas viewport's transform holds still (a fit, a pan or its momentum has finished). */
+export function waitForStableViewport(page: Page) {
+  return waitForStable(() => viewportTransform(page));
+}
+
+/** The canvas viewport's CSS transform (React Flow's pan and zoom). */
+export const viewportTransform = (page: Page) =>
+  page
+    .getByTestId("canvas-wrap")
+    .evaluate((wrap) => wrap.querySelector<HTMLElement>(".react-flow__viewport")?.style.transform ?? "");
 
 export function expectNoErrors(errors: string[]) {
   expect(errors, errors.join("\n")).toEqual([]);

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLab, expectNoErrors, STORAGE_KEYS } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLab, expectNoErrors, STORAGE_KEYS, waitForStableBox } from "./fixtures";
 
 // Annotations: free text, sticky notes, zones and shapes. Documentation only, never simulated.
 // Selectors are data-testid only.
@@ -24,20 +24,8 @@ async function emptySpot(page: Page, dx = 0) {
 }
 
 /** Waits for the opening fit to finish (a viewport move closes any open menu). */
-async function settle(page: Page, nodeId = "payments") {
-  const node = page.getByTestId(`node-${nodeId}`);
-  let last = "";
-  await expect
-    .poll(
-      async () => {
-        const now = JSON.stringify(await node.boundingBox());
-        const still = now === last;
-        last = now;
-        return still;
-      },
-      { intervals: [100, 150, 150, 250] },
-    )
-    .toBe(true);
+function settle(page: Page, nodeId = "payments") {
+  return waitForStableBox(page.getByTestId(`node-${nodeId}`));
 }
 
 async function openCanvasMenu(page: Page, dx = 0) {

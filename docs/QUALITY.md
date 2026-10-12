@@ -64,8 +64,9 @@ build that bundles the test storage provider, so `pnpm build` on CI proves produ
 - **Types, lint, unit, build:** `tsc`, `pnpm lint`, `pnpm format:check`, `pnpm test:coverage`, `pnpm build`
   (with the test-hook and private-example guards), then `pnpm size`. Runs on every event, beside e2e.
 - **E2E 1/6 … 6/6** (after Detect changes): the Playwright suite in six shards of whole spec files, three
-  workers each (the runners have 4 vCPUs). Each shard builds the e2e and production bundles while apt installs
-  Chromium's system libraries, then runs with `E2E_PREBUILT=1`. The pnpm store is cached by lockfile and
+  workers each (the runners have 4 vCPUs). The local action `.github/actions/e2e` (shared with the nightly
+  workflow, so both test the same setup) builds the e2e and production bundles while apt installs Chromium's
+  system libraries, then runs the shard with `E2E_PREBUILT=1`. The pnpm store is cached by lockfile and
   Chromium by Playwright version. Each shard writes its slowest tests, slowest spec files and any test that
   needed a retry to the job summary, and uploads the JSON report (`e2e-durations-<n>`, 30 days) for
   timing analysis. On failure it uploads its HTML report and traces (`playwright-output-<n>`), and
@@ -78,8 +79,11 @@ Shards are balanced by measured time, not by test count. `scripts/e2e-shard.mjs`
 longest first, each to the least loaded shard, using the seconds per file in `tests/e2e-timings.json`.
 Inside a shard, `fullyParallel` spreads the tests over the workers. Playwright's own `--shard` splits by
 test count in file order, which put the slow specs together: two shards ran 35 to 55 s longer than the rest.
-A spec file missing from the timings counts as an average one. Refresh the timings when the shards' wall
-times drift apart, or after adding or splitting a slow spec:
+A spec file missing from the timings counts as an average one. Setup and builds cost every shard about the
+same (35 to 40 s), so only test time needs balancing. Refresh the timings from the latest pull request run
+when the shards' wall times drift apart, or after adding, speeding up or splitting a slow spec. Use runs
+of the current code: averaging in older runs left the first balanced split 54 s apart, because specs had
+since got faster or slower.
 
 ```sh
 gh run download <run-id> -p 'e2e-durations-*' -D /tmp/durations
@@ -101,7 +105,8 @@ every test that needed one: treat those as bugs.
 workflow). It covers what pull requests skip for speed, with no retries:
 
 - **Dev server 1/4 … 4/4:** the whole suite with `E2E_TARGET=dev`: the `chromium` and `dev` projects on
-  the Vite dev server, and `subpath` on the production build.
+  the Vite dev server, and `subpath` on the production build. Checks of the e2e build itself skip
+  (`E2E_TARGET` in `tests/e2e/fixtures.ts`).
 - **Build ×3 1/6 … 6/6:** the production-build suite, as on pull requests, with `--repeat-each=3`. A test
   that fails once in three runs is a flake.
 

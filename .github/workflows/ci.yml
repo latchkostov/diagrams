@@ -125,56 +125,16 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4, 5, 6]
-    env:
-      # Serve the builds made in "System deps and builds" instead of building inside Playwright.
-      E2E_PREBUILT: "1"
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      # Setup, builds and the run, shared with the nightly workflow. Each shard runs whole spec files,
+      # picked to even out the measured durations (scripts/e2e-shard.mjs).
+      - name: Playwright shard
+        uses: ./.github/actions/e2e
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Playwright version
-        id: pw
-        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright browsers
-        id: pw-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      - name: Install Chromium
-        if: steps.pw-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
-      # The two builds (the e2e build with test hooks, and the production build for the sub-path project)
-      # run while apt installs Chromium's system libraries.
-      - name: System deps and builds
-        env:
-          CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
-        run: |
-          VITE_E2E=1 pnpm exec vite build --outDir tests/.output/e2e-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/e2e-build.log" 2>&1 &
-          e2e=$!
-          VITE_E2E= pnpm exec vite build --outDir tests/.output/preview-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/prod-build.log" 2>&1 &
-          prod=$!
-          if [ "$CACHE_HIT" = "true" ]; then pnpm exec playwright install-deps chromium; fi
-          status=0
-          wait "$e2e" || { echo "::error::e2e build failed"; cat "$RUNNER_TEMP/e2e-build.log"; status=1; }
-          wait "$prod" || { echo "::error::production build failed"; cat "$RUNNER_TEMP/prod-build.log"; status=1; }
-          exit "$status"
-      # Each shard runs whole spec files, picked to even out the measured durations (scripts/e2e-shard.mjs).
-      - name: Playwright
-        env:
-          SHARD: ${{ matrix.shard }}
-          TOTAL: ${{ strategy.job-total }}
-          # Without --shard every blob report would be report.zip, and the merge would keep only one.
-          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.shard }}.zip
-        run: |
-          list="$(node scripts/e2e-shard.mjs "$SHARD" "$TOTAL")"
-          read -ra specs <<< "$list"
-          echo "Spec files: ${specs[*]}"
-          pnpm exec playwright test "${specs[@]}"
+          shard: ${{ matrix.shard }}
+          total: ${{ strategy.job-total }}
+          blob-name: report-${{ matrix.shard }}.zip
       - name: Durations
         if: ${{ !cancelled() }}
         run: node scripts/e2e-durations.mjs tests/.output/results.json 15 >> "$GITHUB_STEP_SUMMARY"

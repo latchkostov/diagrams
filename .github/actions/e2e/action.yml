@@ -1,0 +1,91 @@
+name: E2E shard
+description: >-
+  Sets up pnpm, Node and Chromium, builds what the suite serves, and runs one shard of the Playwright suite
+  (whole spec files, balanced by scripts/e2e-shard.mjs). Shared by ci.yml and nightly.yml so both test the
+  same environment. Check out the repository first.
+inputs:
+  target:
+    description: '"build" (the production e2e build with test hooks) or "dev" (the Vite dev server).'
+    default: build
+  shard:
+    description: This shard's number, one-based.
+    required: true
+  total:
+    description: The number of shards.
+    required: true
+  retries:
+    description: Playwright --retries. Empty keeps the config's (2 on CI).
+    default: ""
+  repeat-each:
+    description: Playwright --repeat-each.
+    default: "1"
+  blob-name:
+    description: >-
+      The blob report's file name, unique per job: without --shard every blob would be report.zip, and a
+      merge would keep only one.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 22
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+      shell: bash
+    - name: Playwright version
+      id: pw
+      shell: bash
+      run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+    - name: Cache Playwright browsers
+      id: pw-cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+    - name: Install Chromium
+      if: steps.pw-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm exec playwright install --with-deps chromium
+    # The builds the servers use run while apt installs Chromium's system libraries: the production build
+    # (the subpath project, every target) and, for the build target, the e2e build with test hooks.
+    - name: System deps and builds
+      shell: bash
+      env:
+        CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+        TARGET: ${{ inputs.target }}
+      run: |
+        case "$TARGET" in build|dev) ;; *) echo "::error::target must be build or dev, got $TARGET"; exit 1 ;; esac
+        e2e=""
+        if [ "$TARGET" = "build" ]; then
+          VITE_E2E=1 pnpm exec vite build --outDir tests/.output/e2e-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/e2e-build.log" 2>&1 &
+          e2e=$!
+        fi
+        VITE_E2E='' pnpm exec vite build --outDir tests/.output/preview-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/prod-build.log" 2>&1 &
+        prod=$!
+        if [ "$CACHE_HIT" = "true" ]; then pnpm exec playwright install-deps chromium; fi
+        status=0
+        if [ -n "$e2e" ]; then
+          wait "$e2e" || { echo "::error::e2e build failed"; cat "$RUNNER_TEMP/e2e-build.log"; status=1; }
+        fi
+        wait "$prod" || { echo "::error::production build failed"; cat "$RUNNER_TEMP/prod-build.log"; status=1; }
+        exit "$status"
+    - name: Playwright
+      shell: bash
+      env:
+        E2E_TARGET: ${{ inputs.target }}
+        # Serve the builds made above instead of building inside Playwright.
+        E2E_PREBUILT: "1"
+        SHARD: ${{ inputs.shard }}
+        TOTAL: ${{ inputs.total }}
+        RETRIES: ${{ inputs.retries }}
+        REPEAT: ${{ inputs.repeat-each }}
+        PLAYWRIGHT_BLOB_OUTPUT_NAME: ${{ inputs.blob-name }}
+      run: |
+        list="$(node scripts/e2e-shard.mjs "$SHARD" "$TOTAL")"
+        read -ra specs <<< "$list"
+        args=(--repeat-each="$REPEAT")
+        if [ -n "$RETRIES" ]; then args+=(--retries="$RETRIES"); fi
+        echo "Spec files: ${specs[*]}"
+        pnpm exec playwright test "${args[@]}" "${specs[@]}"

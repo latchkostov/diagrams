@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { perfBudget } from "../../src/test/perfBudget";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox } from "./fixtures";
 
 // Interaction performance guards (dev server, so React runs in development mode: tagged @dev, which
 // playwright.config.ts runs in the "dev" project).
@@ -114,19 +114,7 @@ async function openDiagram(page: Page, live = false) {
     await page.goto(`./?view=canvas&example=${SLUG}&live=1`);
     await expect(page.getByTestId("live-controls")).toBeVisible();
   } else await gotoCanvas(page, SLUG);
-  const node = page.getByTestId("node-gateway");
-  let last = "";
-  await expect
-    .poll(
-      async () => {
-        const now = JSON.stringify(await node.boundingBox());
-        const still = now === last && now !== "null";
-        last = now;
-        return still;
-      },
-      { intervals: [100, 200, 200, 300] },
-    )
-    .toBe(true);
+  await waitForStableBox(page.getByTestId("node-gateway"));
 }
 
 /** Right-clicks the empty canvas above the diagram. */
