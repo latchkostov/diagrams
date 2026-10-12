@@ -1117,3 +1117,58 @@ describe("round 4 review: negation, exact duplicates, requested responses, robus
     expect(performance.now() - t0).toBeLessThan(perfBudget(500));
   });
 });
+
+describe("round 5: names from the examples, after the retry", () => {
+  const request = "An external partner sends a webhook";
+  const partner = { op: "add", key: "partner", kind: "external partner", label: "Partner" };
+  const hook = { op: "add", key: "hook", kind: "webhook", label: "Webhook" };
+
+  it("are an error for the retry first; after it, they go with every op that uses them", () => {
+    const ops = [
+      partner,
+      { op: "add", key: "sample-app", kind: "Go service", label: "sample-app" },
+      hook,
+      { op: "connect", from: "partner", to: "sample-app" },
+      { op: "connect", from: "sample-app", to: "hook" },
+      { op: "connect", from: "partner", to: "hook" },
+    ];
+    expect(error(EMPTY, ops, { request })).toMatch(/Don't reuse names from the examples \("sample-app"\)/);
+    const r = toOps(reply(ops), { diagram: EMPTY, request, dropLeaked: true });
+    expect(r).toMatchObject({ ok: true, dropped: ["sample-app"] });
+    if (r.ok) expect(r.ops.map((o) => o.op)).toEqual(["add_node", "add_node", "connect"]);
+  });
+
+  it("drops a placeholder named only by a connection's label or an edit's key, and every one of several", () => {
+    const r = toOps(
+      reply([
+        partner,
+        hook,
+        { op: "connect", from: "partner", to: "hook", label: "sample-batch" },
+        { op: "connect", from: "partner", to: "sample.jobs" },
+      ]),
+      { diagram: EMPTY, request, dropLeaked: true },
+    );
+    // Both placeholders gone; nothing connects the two any more, so the completeness check says so.
+    expect(r).toMatchObject({ ok: false, dropped: ["sample-batch", "sample.jobs"] });
+    if (!r.ok) expect(r.error).toMatch(/nothing connects/);
+  });
+
+  it('keeps a "sample-" name the request or the diagram has', () => {
+    const named = apply(
+      EMPTY,
+      [
+        { op: "add", key: "app", kind: "Go service", label: "sample-app" },
+        { op: "add", key: "db", kind: "PostgreSQL", label: "DB" },
+        { op: "connect", from: "app", to: "db" },
+      ],
+      { request: "sample-app writes to a PostgreSQL DB" },
+    );
+    expect(named.edges).toEqual(["sample-app -> DB"]);
+  });
+
+  it('"sends" alone relates its subject to its object; "sends X to Y" still goes to Y', () => {
+    expect(apply(EMPTY, [partner, hook, { op: "connect", from: "hook", to: "partner" }], { request }).edges).toEqual([
+      "Partner -> Webhook",
+    ]);
+  });
+});

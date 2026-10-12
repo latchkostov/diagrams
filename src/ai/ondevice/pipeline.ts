@@ -357,13 +357,18 @@ export async function runOnDevice({
         continue;
       }
       signal?.throwIfAborted();
-      const parsed = toOps(reply, { diagram, scope, request });
+      // After the retry, names copied from the examples are dropped instead of failing again (run 5:
+      // "sample-app" twice, despite the feedback); completeness and completion see what's left.
+      const parsed = toOps(reply, { diagram, scope, request, dropLeaked: attempt === 2 });
       output = { raw: reply, ...(parsed.ok ? { ops: parsed.ops } : {}) };
       if (parsed.ok) {
         onStatus?.("applying");
         const plan = planTurn(diagram, { ok: true, kind: "ops", ops: parsed.ops });
-        if (plan.ok && plan.hasChanges)
-          return { ok: true, plan, summary: parsed.summary, attempts: attempt, ops: parsed.ops, output };
+        // The model's summary may name what was dropped.
+        const summary = parsed.dropped?.some((d) => parsed.summary.toLowerCase().includes(d.toLowerCase()))
+          ? "Applied the request"
+          : parsed.summary;
+        if (plan.ok && plan.hasChanges) return { ok: true, plan, summary, attempts: attempt, ops: parsed.ops, output };
         error = plan.ok ? "The ops didn't change anything." : planError(plan.error, diagram);
       } else {
         error = parsed.error;

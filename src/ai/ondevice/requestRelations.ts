@@ -13,7 +13,7 @@ export const CONSUMES =
 const CONSUMED_BY = /\b(?:is |are )?(?:consumed|read)\s+by\b/i;
 /** Produce-type verbs: the data flows from the subject to the object ("A Lambda saves objects into S3"). */
 export const PRODUCES =
-  /\b(?:writes?(?: \w+)? (?:to|into)|writes|persists?(?: \w+)? (?:to|into|in)|saves?(?: \w+)? (?:to|into|in)|stores?(?: \w+)? (?:in|into)|sends?(?: \w+)? to|publish(?:es)?(?: \w+)? (?:to|into)|routes? to|calls|invokes|feeds|exports? to|forwards?(?: \w+)? to|delivers|starts|accesses|uses|queries|connects to|fans? out (?:toward|to))\b/i;
+  /\b(?:writes?(?: \w+)? (?:to|into)|writes|persists?(?: \w+)? (?:to|into|in)|saves?(?: \w+)? (?:to|into|in)|stores?(?: \w+)? (?:in|into)|sends?(?: \w+)? to|publish(?:es)?(?: \w+)? (?:to|into)|routes? to|calls|invokes|feeds|exports? to|forwards?(?: \w+)? to|delivers|sends|starts|accesses|uses|queries|connects to|fans? out (?:toward|to))\b/i;
 /** A request call rather than a message, whatever the target: "calls", "uses", "queries", "accesses". */
 const REQUEST_VERB = /\b(?:calls|uses|queries|accesses|reads? from)\b/i;
 export { NEGATION } from "./requestClauses";

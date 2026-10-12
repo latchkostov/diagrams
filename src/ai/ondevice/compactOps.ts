@@ -41,13 +41,20 @@ export interface ReplyContext {
   diagram: DiagramFile;
   scope?: readonly ScopeItem[];
   request?: string;
+  /**
+   * After the retry: drop the ops that use names from the few-shot examples ("sample-app") instead of
+   * failing, so completeness and completion see what's left.
+   */
+  dropLeaked?: boolean;
 }
 
 /** The fields a reply op may have; each is text when present. */
 const OP_FIELDS = ["op", "key", "kind", "label", "sublabel", "from", "to", "flow", "target"] as const;
 
 type Connect = Extract<DiagramOp, { op: "connect" }>;
-type Result = { ok: true; ops: DiagramOp[]; summary: string } | { ok: false; error: string; partial?: DiagramOp[] };
+type Result =
+  | { ok: true; ops: DiagramOp[]; summary: string; dropped?: string[] }
+  | { ok: false; error: string; partial?: DiagramOp[]; dropped?: string[] };
 
 const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
 const slug = (s: string) =>
@@ -96,16 +103,45 @@ export function toOps(reply: string, ctx: ReplyContext): Result {
         return { ok: false, error: `Op ${i + 1}: "${field}" must be text.` };
     }
   }
+  const dropped: string[] = [];
   try {
-    return { ok: true, ops: convert(body.ops as CompactOp[], ctx), summary: text(body.summary)?.slice(0, 200) ?? "" };
+    const ops = convert(body.ops as CompactOp[], ctx, dropped);
+    return {
+      ok: true,
+      ops,
+      summary: text(body.summary)?.slice(0, 200) ?? "",
+      ...(dropped.length ? { dropped } : {}),
+    };
   } catch (err) {
     if (err instanceof ReplyError)
-      return { ok: false, error: err.message, ...(err.partial ? { partial: err.partial } : {}) };
+      return {
+        ok: false,
+        error: err.message,
+        ...(err.partial ? { partial: err.partial } : {}),
+        ...(dropped.length ? { dropped } : {}),
+      };
     throw err;
   }
 }
 
-function convert(reply: CompactOp[], ctx: ReplyContext): DiagramOp[] {
+/**
+ * The reply without the ops that use a name from the examples: the nodes named or keyed so, the
+ * connections to them (by key or label), and edits or removals that target it.
+ */
+function withoutLeaked(ops: CompactOp[], leaked: string): CompactOp[] {
+  const e = leaked.toLowerCase();
+  const uses = (v: unknown) => typeof v === "string" && v.toLowerCase().includes(e);
+  const gone = new Set<string>();
+  for (const o of ops)
+    if ((o?.op === "add" || o?.op === "insert_between") && (uses(o.key) || uses(o.label)))
+      for (const n of [o.key, o.label]) if (typeof n === "string") gone.add(n.trim().toLowerCase());
+  const at = (v: unknown) => uses(v) || (typeof v === "string" && gone.has(v.trim().toLowerCase()));
+  // Every field the leak check reads, so each pass removes the op it found (and the loop ends).
+  return ops.filter((o) => !o || typeof o !== "object" || ![o.label, o.key, o.from, o.to, o.target].some(at));
+}
+
+/** `dropped` collects the example names left out (ctx.dropLeaked). */
+function convert(reply: CompactOp[], ctx: ReplyContext, dropped: string[] = []): DiagramOp[] {
   const { diagram } = ctx;
   const request = ctx.request ?? "";
   const index = new RefIndex(diagram);
@@ -115,22 +151,30 @@ function convert(reply: CompactOp[], ctx: ReplyContext): DiagramOp[] {
   const selectedAny = ctx.scope?.length === 1 ? ctx.scope[0] : undefined;
   // A rename's label or a kind change's kind the reply left out, from the request's own words ("Rename X
   // to Y", "Make X a Y"), and an empty duplicate of a change dropped.
-  const raw = fillEdits(reply, request, (name) =>
+  let raw = fillEdits(reply, request, (name) =>
     typeof name !== "string" ? undefined : THIS.test(name.trim()) ? selectedAny?.id : refs.existingId(name.trim()),
   );
 
   // First pass: the nodes this reply adds. Their keys can't be an element id, and a key the model
   // wrote mustn't name an existing element or another new node.
-  // Names copied from the few-shot examples ("sample-worker") are never meant.
-  const leaked = leakedName(
-    raw.flatMap((o) => [o?.label, o?.from, o?.to, o?.target].filter((x): x is string => typeof x === "string")),
-    request,
-    diagram,
-  );
-  if (leaked)
-    throw new ReplyError(
-      `Don't reuse names from the examples (${JSON.stringify(leaked)}): name things as the request does.`,
+  // Names copied from the few-shot examples ("sample-worker") are never meant: an error for the retry,
+  // and after it (dropLeaked) the ops that use them go, so completeness and completion see the rest.
+  for (;;) {
+    const leaked = leakedName(
+      raw.flatMap((o) =>
+        [o?.label, o?.key, o?.from, o?.to, o?.target].filter((x): x is string => typeof x === "string"),
+      ),
+      request,
+      diagram,
     );
+    if (!leaked) break;
+    if (!ctx.dropLeaked)
+      throw new ReplyError(
+        `Don't reuse names from the examples (${JSON.stringify(leaked)}): name things as the request does.`,
+      );
+    raw = withoutLeaked(raw, leaked);
+    dropped.push(leaked);
+  }
 
   /** Each new node, normalized once: its key and its effective kind (after kindFor). */
   const nodeOf = new Map<CompactOp, { key: string; kind: string }>();
