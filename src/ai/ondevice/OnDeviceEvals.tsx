@@ -8,6 +8,9 @@ import { primedSession } from "./session";
 // built-in model with the AI panel's own prompt and schema. Run it by hand in a Chrome that has the
 // model, then copy the table into docs/research/on-device-model.md. Never part of CI.
 
+/** The commit this build is from (vite.config.ts `define`; "" when unknown). */
+declare const __BUILD_SHA__: string;
+
 export default function OnDeviceEvals() {
   const [availability, setAvailability] = useState<ModelAvailability | "none" | null>(null);
   const [results, setResults] = useState<CaseResult[]>([]);
@@ -46,14 +49,17 @@ export default function OnDeviceEvals() {
   };
 
   const passed = results.filter((r) => r.pass).length;
-  const meta = `Chrome ${/Chrome\/(\d+)/.exec(navigator.userAgent)?.[1] ?? "?"}, ${new Date().toISOString().slice(0, 10)}.`;
+  /** The commit this build is from: a run on a stale deploy says so. */
+  const build = __BUILD_SHA__ || "unknown";
+  const meta = `Chrome ${/Chrome\/(\d+)/.exec(navigator.userAgent)?.[1] ?? "?"}, ${new Date().toISOString().slice(0, 10)}, build ${build}.`;
 
   return (
     <div style={{ padding: 24, maxWidth: 900, display: "grid", gap: 12 }} data-testid="ondevice-evals">
       <h2 style={{ margin: 0 }}>On-device model evals</h2>
       <p style={{ margin: 0 }}>
         {onDeviceCases.length} cases through Chrome&apos;s built-in model, with the AI panel&apos;s prompt, schema and
-        ops core. Model: <strong data-testid="ondevice-evals-availability">{availability ?? "checking…"}</strong>
+        ops core. Build <strong data-testid="ondevice-evals-build">{build}</strong>. Model:{" "}
+        <strong data-testid="ondevice-evals-availability">{availability ?? "checking…"}</strong>
         {progress !== null && ` · downloading ${Math.round(progress * 100)}%`}
       </p>
       <div style={{ display: "flex", gap: 8 }}>

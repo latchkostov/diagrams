@@ -10,7 +10,7 @@ import { getStencil } from "../../stencils/registry";
 import { confidentStencil, isRoleWord, namedStencil, resolveKind } from "../stencils";
 import { EXAMPLE_NAMES } from "./examples";
 import { NEGATION, relationFlow, requestRelations } from "./requestRelations";
-import { editIntents } from "./requestEdits";
+import { editIntents, editOnlyIntents } from "./requestEdits";
 
 const lower = (s: string) => s.toLowerCase();
 
@@ -327,6 +327,37 @@ export function incompleteness(ops: readonly DiagramOp[], request: string, diagr
       loose.length || !ops.some((o) => o.op === "connect") ? ", and nothing connects them" : ""
     }. Add every component the request names and connect them.`;
   return `You added ${list(loose.map((n) => n.label))} but nothing connects ${loose.length > 1 ? "them" : "it"}. Connect every component the request names.`;
+}
+
+/**
+ * May a reply that lost ops to a placeholder (withoutLeaked) be applied? Only where what's left can be
+ * checked against the whole request:
+ * - into an empty diagram, a creation request: the completeness check (and completion, under its own
+ *   strict rules) then holds it to every component and connection the request names. A request there that
+ *   asks for renames or kind changes can't be met.
+ * - on an existing diagram, only a request that is all renames and kind changes ("Rename X to Y and make
+ *   Z a MongoDB"), when every one it asks for is in the ops and the ops do nothing else.
+ * Anything else ("…and add a Redis cache after X", "…and connect X to Y") can't be checked: the turn fails
+ * rather than apply part of it. `element` resolves the request's name for an element to its id.
+ */
+export function salvageable(
+  ops: readonly DiagramOp[],
+  request: string,
+  diagram: DiagramFile,
+  element: (name: string) => string | undefined,
+): boolean {
+  if (!diagram.nodes.length) return editIntents(request).every((i) => i.negated);
+  const asked = editOnlyIntents(request)?.filter((i) => !i.negated);
+  if (!asked?.length) return false;
+  const wanted = asked.map((i) => ({ ...i, id: element(i.target) }));
+  if (wanted.some((w) => !w.id)) return false;
+  const meets = (o: DiagramOp, w: (typeof wanted)[number]) =>
+    o.op === "update" &&
+    o.target === w.id &&
+    (w.field === "label"
+      ? o.label?.trim().toLowerCase() === w.value.trim().toLowerCase()
+      : !!o.kind && resolveKind(o.kind).id === resolveKind(w.value).id);
+  return wanted.every((w) => ops.some((o) => meets(o, w))) && ops.every((o) => wanted.some((w) => meets(o, w)));
 }
 
 /**

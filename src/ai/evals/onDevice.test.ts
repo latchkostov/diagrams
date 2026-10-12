@@ -491,3 +491,137 @@ describe("on-device evals", () => {
     expect(tries).toEqual({ "create-14": 1, "create-28": 1, "create-29": 1, "create-11": 2, "create-21": 2 });
   });
 });
+
+/**
+ * A model the way the Lab drives Chrome's: one primed session, cloned per case, replies streamed as
+ * deltas. Each case's raw replies are given in order (the last repeats); `seen` records every prompt.
+ */
+function chromeLike(raws: Record<string, string[]>, seen: { request: string; schema: string }[] = []) {
+  const requestOf = (input: string) => onDeviceCases.find((c) => input.endsWith(`Request: ${c.request}`))?.request;
+  const session = () => {
+    let id = "";
+    let n = 0;
+    const answer = (input: string, schema: unknown) => {
+      id ||= onDeviceCases.find((c) => c.request === requestOf(input))!.id;
+      seen.push({ request: requestOf(input) ?? "", schema: JSON.stringify(schema) });
+      const answers = raws[id];
+      return answers[Math.min(n++, answers.length - 1)];
+    };
+    return {
+      prompt: async (input: string, o?: { responseConstraint?: object }) => answer(input, o?.responseConstraint),
+      promptStreaming: (input: string, o?: { responseConstraint?: object }) => {
+        const text = answer(input, o?.responseConstraint);
+        return new ReadableStream<string>({
+          start(c) {
+            for (let i = 0; i < text.length; i += 7) c.enqueue(text.slice(i, i + 7));
+            c.close();
+          },
+        });
+      },
+      clone: async () => session(),
+      destroy() {},
+    };
+  };
+  const base = session();
+  return async () => base.clone();
+}
+
+describe("round 5: run 5's raw replies, through the whole pipeline as the Lab runs it", () => {
+  it("edit-rename and edit-change: the request fills what the reply left out, on the first try", async () => {
+    // Exactly as run 5 recorded them (Model output column).
+    const raws = {
+      "edit-rename": [
+        '{"summary":"Renamed Payments service to Billing service","ops":[{"op":"rename","target":"Payments service"}]}',
+      ],
+      "edit-change": [
+        '{"summary":"Changed Orders database to MongoDB.","ops":[{"op":"change_kind","target":"Orders database"}]}',
+      ],
+    };
+    const seen: { request: string; schema: string }[] = [];
+    const cases = onDeviceCases.filter((c) => c.id in raws);
+    const results = await runOnDeviceEvals(chromeLike(raws, seen), cases);
+    expect(results.map((r) => [r.id, r.pass, r.attempts, r.note])).toEqual([
+      ["edit-rename", true, 1, "Renamed Payments service to Billing service"],
+      ["edit-change", true, 1, "Changed Orders database to MongoDB."],
+    ]);
+    // The typed tier is what was asked for: a rename there requires its label.
+    expect(seen.every((s) => s.schema.includes('"enum":["rename"]'))).toBe(true);
+  });
+
+  it.each(["email service", "email_service", "email-service", "Email Service"])(
+    "create-24: a Lambda labelled %s is the service, and the SQS queue becomes the email",
+    async (label) => {
+      const raws = {
+        "create-24": [
+          JSON.stringify({
+            summary: "s",
+            ops: [
+              { op: "add", key: "email_service", kind: "Lambda", label },
+              { op: "add", key: "sqs_queue", kind: "SQS queue", label: "SQS queue" },
+              { op: "connect", from: "email_service", to: "sqs_queue" },
+            ],
+          }),
+        ],
+      };
+      const [r] = await runOnDeviceEvals(
+        chromeLike(raws),
+        onDeviceCases.filter((c) => c.id === "create-24"),
+      );
+      expect(r.pass, r.note).toBe(true);
+      expect(r.output).toContain(`${label} → aws.lambda, SQS queue → generic.email`);
+    },
+  );
+
+  it("create-23: a placeholder from the examples, twice, is dropped after the retry and the request completed", async () => {
+    const sampleApp = { op: "add", key: "sample-app", kind: "Go service", label: "sample-app" };
+    const partner = { op: "add", key: "partner", kind: "external partner", label: "Partner" };
+    const shapes: object[][] = [
+      // Only the partner and the placeholder: completion adds the webhook and connects it.
+      [partner, sampleApp, { op: "connect", from: "partner", to: "sample-app" }],
+      // The placeholder in between: dropped with both its connections, then connected from the request.
+      [
+        partner,
+        sampleApp,
+        { op: "add", key: "webhook", kind: "webhook", label: "Webhook" },
+        { op: "connect", from: "partner", to: "sample-app" },
+        { op: "connect", from: "sample-app", to: "webhook" },
+      ],
+    ];
+    for (const ops of shapes) {
+      const raw = JSON.stringify({ summary: "Partner sends to sample-app", ops });
+      const seen: { request: string; schema: string }[] = [];
+      const [r] = await runOnDeviceEvals(
+        chromeLike({ "create-23": [raw, raw] }, seen),
+        onDeviceCases.filter((c) => c.id === "create-23"),
+      );
+      expect(r.pass, r.note).toBe(true);
+      expect(r.attempts).toBe(2);
+      expect(r.note).toBe("Completed from the request");
+      expect(seen).toHaveLength(2);
+    }
+  });
+
+  it("the first reply's leak still goes to the retry with feedback; a clean retry is used as it is", async () => {
+    const leak = JSON.stringify({
+      summary: "s",
+      ops: [
+        { op: "add", key: "partner", kind: "external partner", label: "Partner" },
+        { op: "add", key: "sample-app", kind: "Go service", label: "sample-app" },
+        { op: "connect", from: "partner", to: "sample-app" },
+      ],
+    });
+    const clean = JSON.stringify({
+      summary: "Partner sends a webhook",
+      ops: [
+        { op: "add", key: "partner", kind: "external partner", label: "Partner" },
+        { op: "add", key: "hook", kind: "webhook", label: "Webhook" },
+        { op: "connect", from: "partner", to: "hook" },
+      ],
+    });
+    const [r] = await runOnDeviceEvals(
+      chromeLike({ "create-23": [leak, clean] }),
+      onDeviceCases.filter((c) => c.id === "create-23"),
+    );
+    expect([r.pass, r.attempts, r.note]).toEqual([true, 2, "Partner sends a webhook"]);
+  });
+});

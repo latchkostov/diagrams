@@ -148,7 +148,8 @@ read from a `VITE_` variable, so builds without it still deploy.
   `http://localhost:5173/?view=lab&preset=ondevice-evals` in a desktop Google Chrome 148+ that has the
   model (check `await LanguageModel.availability()` in DevTools, or `chrome://on-device-internals`).
   Press **Run evals** (the first run may download the model), then **Copy results as Markdown** and paste
-  the table below.
+  the table below. The page and the copied summary name the build's commit ("build 1a2b3c4"). Check that
+  it's the commit you meant to measure: run 5 measured a stale production deploy without knowing it.
 - **Report.** Each failed row has a **Category** (reference, direction, stencil, structure, format, model
   error) and every row has the **Model output**: the model's last reply and the stencil each added node
   resolved to. A summary line counts failures by category.
@@ -515,5 +516,90 @@ A unit test replays run 4's failures (`src/ai/evals/onDevice.test.ts`):
 
 - edit-rename, edit-change, create-17, create-23 and create-24 pass on the first try;
 - create-10's reversed reply is turned.
+
+### Round 5: run 5 measured round 3's code
+
+**Run 5, 12 October 2026, Chrome 154: 32/37 (86%), 29 on the first try.** It ran on livediagrams.dev,
+reported as round 4 (#49).
+
+| Category  | Count | Cases                                                                              |
+| --------- | ----- | ---------------------------------------------------------------------------------- |
+| format    | 2     | edit-rename, edit-change (`rename` with no `label`, `change_kind` with no `kind`)  |
+| direction | 1     | create-24 (Lambda "email service" became the email, the SQS queue the service)     |
+| leak      | 1     | create-23 (`sample-app`, a Go service, in both replies despite the feedback)       |
+| stencil   | 1     | create-29 (no broker: "missing kafka.topic")                                       |
+| **Fails** | 5     | create-11, create-17 and create-21 passed (create-11 "Completed from the request") |
+
+**Root cause: the run measured round 3, not round 4.** Vercel's production deployment of #49's merge
+commit (`804c736`) failed. The site kept serving #48 (`b3dfca0`), round 3's code, and #51 had no
+deployment yet. Two minutes earlier, Vercel had built and deployed the same code as a preview (#49's
+branch head), so the failure was in the deploy, not in the code. The evidence:
+
+- The live on-device chunk has none of round 4: no typed schema (no per-op `enum:["rename"]`, no key
+  pattern without "this"), no request fill, no field check. The live eval chunk has round 3's corpus:
+  no create-29 `role:topic`, and create-24 still pinned to the generic service.
+- The raw replies fit round 3's flat schema, where a rename's label is optional. The typed schema
+  wouldn't let a reply leave it out.
+- Round 4's code passes exactly these raw replies on the first try, through `runOnDevice`, the eval
+  harness and the Lab page in a production build with a streaming fake model.
+
+The suspected cause, the review's field check (#8) rejecting a missing field before the fill, isn't it:
+a missing or null field passes the check, and the fill applies.
+
+So run 5 is a second measurement of round 3 (run 4: 31/37). Its create-11, create-17 and create-21
+passes are run-to-run variance. Round 4's fixes haven't been measured yet.
+
+**What changed in round 5:**
+
+- **The build is named** in the Lab's eval page and in the copied summary (`build <commit>`, from
+  Vercel's `VERCEL_GIT_COMMIT_SHA` or the checkout). A run on a stale deploy now says so.
+- **Placeholders dropped after the retry** (create-23).
+  - The first reply's leak still goes back as feedback.
+  - After the retry, a placeholder the request and diagram don't have is cleaned out (`leaks.ts`):
+    - every op that writes the name goes;
+    - so does every op whose reference resolves to the dropped node. That's decided by the shared
+      reference precedence (`ReplyRefs`), by key, label or kind, ignoring case and spaces. An existing
+      element's exact label still wins, so an op on the existing "Worker" stays even when the
+      placeholder was labelled "Worker" too.
+    - A dropped insertion takes its removal of the bypassed connection with it, as an `insert_between`
+      or as an add with two connections. No half insertion is left.
+  - **What's left is applied only when it can be checked against the whole request** (`salvageable`,
+    after the review):
+    - Into an empty diagram, a creation request: the completeness check holds it to every named
+      component and connection. Completion fills in only under its own strict rules.
+    - On an existing diagram, only a request that is all renames and kind changes: every one it asks
+      for must be in the ops, and the ops must do nothing else.
+    - Anything else fails the turn rather than apply part of it. That includes "…and add a Redis cache
+      after X", a requested rename that was the placeholder, and a cache put between two nodes.
+  - With `sample-app` in both replies, create-23 ends "Completed from the request": partner → webhook.
+  - A summary that names the dropped placeholder is replaced with "Applied the request". Any other
+    summary stays.
+- **"sends" alone is a relation** ("An external partner sends a webhook": partner → webhook), so
+  completion can connect it. "sends X to Y" still relates to Y.
+- **create-24's labels.** Round 4 already handled "email service" the way it handles "email_service":
+  labels split into words at spaces, underscores and hyphens, ignoring case, everywhere they're matched.
+  A test runs all four spellings through the whole pipeline, and each passes. camelCase
+  ("emailService") isn't split, and stays one word.
+- **Full-pipeline replays.** run 5's raw replies run through `runOnDeviceEvals` with a session shaped
+  like Chrome's: a primed session cloned per case, with replies streamed as deltas. That's how the Lab
+  drives it. edit-rename and edit-change pass on the first try, and the typed schema is what was asked
+  for.
+
+**Projection** (round 4 and 5 deployed, from run 5's 32/37):
+
+- **Deterministic, if the model repeats its run-5 replies:**
+  - edit-rename and edit-change (the fill);
+  - create-24 (the pairing, and the widened expectation);
+  - create-23 (the drop and completion).
+
+  That's 36/37 (97%).
+
+- **Still failing:** create-29 (no broker).
+- **Unmeasured:** whether Chrome takes the typed schema. If it turns it down, the rich fallback and the
+  fills still apply.
+- **Likely: 35–36/37,** with the usual ±6 points between runs.
+
+**Before the next run:** redeploy production (#49 and later), and check that the eval page's build matches
+master.
 
 Next: re-run the evals in the Lab and paste the table here.

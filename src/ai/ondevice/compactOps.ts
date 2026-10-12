@@ -14,7 +14,8 @@ import { confidentStencil, namedStencil, resolveKind } from "../stencils";
 import type { DiagramOp } from "../index";
 import { RefIndex, ReplyRefs, refWords, type NewNodeAlias } from "../refs";
 import type { ScopeItem } from "../ui/context";
-import { incompleteness, inRequest, kindFor, leakedName, reconcileKinds } from "./replyChecks";
+import { incompleteness, inRequest, kindFor, leakedName, reconcileKinds, salvageable } from "./replyChecks";
+import { withoutLeaked } from "./leaks";
 import { relationFlow, relationsCoverRequest, requestRelations } from "./requestRelations";
 import { tokenize, wordOf, type Token } from "./requestClauses";
 import { fillEdits } from "./requestEdits";
@@ -41,13 +42,20 @@ export interface ReplyContext {
   diagram: DiagramFile;
   scope?: readonly ScopeItem[];
   request?: string;
+  /**
+   * After the retry: drop the ops that use names from the few-shot examples ("sample-app") instead of
+   * failing, so completeness and completion see what's left.
+   */
+  dropLeaked?: boolean;
 }
 
 /** The fields a reply op may have; each is text when present. */
 const OP_FIELDS = ["op", "key", "kind", "label", "sublabel", "from", "to", "flow", "target"] as const;
 
 type Connect = Extract<DiagramOp, { op: "connect" }>;
-type Result = { ok: true; ops: DiagramOp[]; summary: string } | { ok: false; error: string; partial?: DiagramOp[] };
+type Result =
+  | { ok: true; ops: DiagramOp[]; summary: string; dropped?: string[] }
+  | { ok: false; error: string; partial?: DiagramOp[]; dropped?: string[] };
 
 const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
 const slug = (s: string) =>
@@ -96,16 +104,33 @@ export function toOps(reply: string, ctx: ReplyContext): Result {
         return { ok: false, error: `Op ${i + 1}: "${field}" must be text.` };
     }
   }
+  const dropped: string[] = [];
   try {
-    return { ok: true, ops: convert(body.ops as CompactOp[], ctx), summary: text(body.summary)?.slice(0, 200) ?? "" };
+    const ops = convert(body.ops as CompactOp[], ctx, dropped);
+    return {
+      ok: true,
+      ops,
+      summary: text(body.summary)?.slice(0, 200) ?? "",
+      ...(dropped.length ? { dropped } : {}),
+    };
   } catch (err) {
     if (err instanceof ReplyError)
-      return { ok: false, error: err.message, ...(err.partial ? { partial: err.partial } : {}) };
+      return {
+        ok: false,
+        error: err.message,
+        ...(err.partial ? { partial: err.partial } : {}),
+        ...(dropped.length ? { dropped } : {}),
+      };
     throw err;
   }
 }
 
-function convert(reply: CompactOp[], ctx: ReplyContext): DiagramOp[] {
+/** The leak's feedback for the retry, and the error when even the retry's reply can't be cleaned. */
+const leakError = (name: string) =>
+  new ReplyError(`Don't reuse names from the examples (${JSON.stringify(name)}): name things as the request does.`);
+
+/** `dropped` collects the example names left out (ctx.dropLeaked). */
+function convert(reply: CompactOp[], ctx: ReplyContext, dropped: string[] = []): DiagramOp[] {
   const { diagram } = ctx;
   const request = ctx.request ?? "";
   const index = new RefIndex(diagram);
@@ -115,22 +140,28 @@ function convert(reply: CompactOp[], ctx: ReplyContext): DiagramOp[] {
   const selectedAny = ctx.scope?.length === 1 ? ctx.scope[0] : undefined;
   // A rename's label or a kind change's kind the reply left out, from the request's own words ("Rename X
   // to Y", "Make X a Y"), and an empty duplicate of a change dropped.
-  const raw = fillEdits(reply, request, (name) =>
-    typeof name !== "string" ? undefined : THIS.test(name.trim()) ? selectedAny?.id : refs.existingId(name.trim()),
-  );
+  /** The existing element a name means ("this" is the selection). */
+  const element = (name: string) =>
+    typeof name !== "string" ? undefined : THIS.test(name.trim()) ? selectedAny?.id : refs.existingId(name.trim());
+  let raw = fillEdits(reply, request, element);
 
   // First pass: the nodes this reply adds. Their keys can't be an element id, and a key the model
   // wrote mustn't name an existing element or another new node.
-  // Names copied from the few-shot examples ("sample-worker") are never meant.
-  const leaked = leakedName(
-    raw.flatMap((o) => [o?.label, o?.from, o?.to, o?.target].filter((x): x is string => typeof x === "string")),
-    request,
-    diagram,
-  );
-  if (leaked)
-    throw new ReplyError(
-      `Don't reuse names from the examples (${JSON.stringify(leaked)}): name things as the request does.`,
+  // Names copied from the few-shot examples ("sample-worker") are never meant: an error for the retry,
+  // and after it (dropLeaked) the ops that use them go, so completeness and completion see the rest.
+  for (;;) {
+    const leaked = leakedName(
+      raw.flatMap((o) =>
+        [o?.label, o?.key, o?.from, o?.to, o?.target].filter((x): x is string => typeof x === "string"),
+      ),
+      request,
+      diagram,
     );
+    if (!leaked) break;
+    if (!ctx.dropLeaked || dropped.length >= MAX_OPS) throw leakError(leaked);
+    raw = withoutLeaked(raw, leaked, diagram);
+    dropped.push(leaked);
+  }
 
   /** Each new node, normalized once: its key and its effective kind (after kindFor). */
   const nodeOf = new Map<CompactOp, { key: string; kind: string }>();
@@ -302,6 +333,9 @@ function convert(reply: CompactOp[], ctx: ReplyContext): DiagramOp[] {
     refs,
     [...nodeOf.values()].map((n) => n.key),
   );
+  // Cleaned of a placeholder: only when what's left can be checked against the whole request (into an
+  // empty diagram, the completeness check below; on an existing one, every edit the request asks for).
+  if (dropped.length && !salvageable(out, request, diagram, element)) throw leakError(dropped[0]);
   // Everything the request names added, and connected: else the retry says what's missing.
   const missing = incompleteness(out, request, diagram);
   if (missing) throw new ReplyError(missing, out);

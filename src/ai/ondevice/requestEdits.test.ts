@@ -165,6 +165,13 @@ describe("the shared clause tokenizer", () => {
       ["a .NET consumer", "Kafka topic orders.created", true],
       ["a .NET consumer", "Postgres", false],
     ]);
+    // "sends" alone (round 5) and "sends X to Y".
+    expect(requestRelations("An external partner sends a webhook").map((r) => [r.subject, r.object])).toEqual([
+      ["An external partner", "a webhook"],
+    ]);
+    expect(requestRelations("The API sends events to Kafka").map((r) => [r.subject, r.object])).toEqual([
+      ["The API", "Kafka"],
+    ]);
     expect(requestRelations("A writes to B and reads from C").map((r) => [r.subject, r.object])).toEqual([
       ["A", "B"],
       ["A", "C"],

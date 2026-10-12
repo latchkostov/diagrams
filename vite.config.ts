@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { execSync } from "node:child_process";
 import { exampleMetadataPlugin } from "./scripts/example-metadata";
 import { skillAssetsPlugin } from "./scripts/skill-assets";
 import { securityHeaders } from "./scripts/security-headers";
@@ -9,6 +10,21 @@ import { securityHeaders } from "./scripts/security-headers";
  * (the `?storage=test` provider, the Lab tab). Every other build must leave them out.
  */
 const E2E_BUILD = process.env.VITE_E2E === "1";
+
+/**
+ * The commit this build is from (Vercel's, else the checkout's), shown by the Lab's on-device evals so a
+ * run says which code it measured (run 5 measured a stale production deploy without knowing it).
+ */
+const BUILD_SHA = (() => {
+  if (process.env.VERCEL_GIT_COMMIT_SHA) return process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7);
+  try {
+    return execSync("git rev-parse --short=7 HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return "";
+  }
+})();
 
 /** Fails a production build if anything from src/examples/private (local-only work diagrams) ships. */
 export function noPrivateExamples(): Plugin {
@@ -117,7 +133,11 @@ export default defineConfig({
     canvas.plugin,
   ],
   // Always defined, so `import.meta.env.VITE_E2E === "1"` folds to a constant and the hooks drop out.
-  define: { "import.meta.env.VITE_E2E": JSON.stringify(E2E_BUILD ? "1" : "") },
+  define: {
+    "import.meta.env.VITE_E2E": JSON.stringify(E2E_BUILD ? "1" : ""),
+    // A plain constant, not import.meta.env: env keys land in the entry chunk's env object.
+    __BUILD_SHA__: JSON.stringify(BUILD_SHA),
+  },
   build: {
     // Icons are many small SVGs; serving them as cached files keeps them out of the main JS chunk.
     assetsInlineLimit: 0,
