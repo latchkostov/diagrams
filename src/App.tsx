@@ -4,6 +4,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -17,7 +18,7 @@ import type { CanvasHandle } from "./canvas/CanvasView";
 import { LazyCanvasView as CanvasView, preloadCanvasView } from "./canvas/loadCanvasView";
 import type { OpenTarget } from "./lab/LabView";
 import type { DiagramFile } from "./model/types";
-import { useUrlState, type View } from "./lib/urlState";
+import { showDiagram, useUrlState, type View } from "./lib/urlState";
 import {
   clearShared,
   createLibraryDiagram,
@@ -125,6 +126,13 @@ function MainApp() {
   // Identity changes only when the open document is replaced. It stays put when a blank draft
   // becomes a library entry on its first edit, so the canvas doesn't remount.
   const canvasIdentity = getDiagramIdentity(slug);
+  // The live keys in the URL (live, sim, traffic, ...) describe the diagram on screen, which can differ
+  // from the URL's example while one is loading. A layout effect, so it's current before the live
+  // view's effects write them.
+  const canvasShown = url.view === "canvas" && displayedSlug !== undefined;
+  useLayoutEffect(() => {
+    showDiagram(canvasShown ? { identity: canvasIdentity, example: slug } : null);
+  }, [canvasShown, canvasIdentity, slug]);
   // The open diagram's title as it's typed: the picker follows it before the autosave lands.
   const [openTitle, setOpenTitle] = useState<{ identity: string; title: string } | null>(null);
   const onTitleChange = useCallback(

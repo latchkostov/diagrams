@@ -14,8 +14,8 @@ const exampleChunk = (slug: string) =>
   new RegExp(String.raw`/(?:assets/${slug}-[A-Za-z0-9_-]+\.js|src/examples/${slug}\.json)(?:\?.*)?$`);
 const canvasChunk = /\/(?:assets\/CanvasView-[A-Za-z0-9_-]+\.js|src\/canvas\/CanvasView\.tsx)(?:\?.*)?$/;
 
-/** Holds every request matching `pattern` until release(). */
-async function gate(page: Page, pattern: RegExp) {
+/** Holds every request matching `pattern` until release(), then lets it through (or fails it). */
+async function gate(page: Page, pattern: RegExp, { fail = false } = {}) {
   let requested = false;
   let release!: () => void;
   const open = new Promise<void>((resolve) => {
@@ -24,7 +24,7 @@ async function gate(page: Page, pattern: RegExp) {
   await page.route(pattern, async (route) => {
     requested = true;
     await open;
-    await route.continue();
+    await (fail ? route.abort("failed") : route.continue());
   });
   return { requested: () => requested, release };
 }
@@ -220,6 +220,135 @@ test("a late example download cannot replace a newer embed payload", async ({ pa
   await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toHaveCount(0);
   await expect(page.getByTestId("diagram-title")).toHaveText(other.title);
   await expect(openLink).toHaveAttribute("href", new RegExp(`#d=${payload}$`));
+  expectNoErrors(consoleErrors);
+});
+
+// ---------------------------------------------------------------- URL state while an example is pending
+//
+// The canvas stays on the current diagram until a requested example arrives, so its live state
+// (`live`, `sim`, `traffic`, ...) still describes the screen. The address bar must say so whenever it
+// points at that diagram, and must never lend those keys to the pending one.
+
+const liveLink = `./?view=canvas&example=${kafka.slug}&live=1&traffic=0&sim=black-friday`;
+/** The address bar's query, as an object. */
+const query = (page: Page) => Object.fromEntries(new URL(page.url()).searchParams);
+const onKafka = (sim: string) => ({ view: "canvas", example: kafka.slug, live: "1", traffic: "0", sim });
+const pendingOther = { view: "canvas", example: other.slug };
+
+/** Opens the live link, then picks `other` while its download is held. */
+async function startPendingSwitch(page: Page, { fail = false } = {}) {
+  await page.goto(liveLink);
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+  await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
+  const pending = await gate(page, exampleChunk(other.slug), { fail });
+  await page.getByTestId("example-picker").selectOption(other.slug);
+  await expect.poll(pending.requested).toBe(true);
+  await expect(page.getByTestId("example-loading")).toContainText("Loading");
+  return pending;
+}
+
+test("switching back before a pending example loads keeps the live link", async ({ page, consoleErrors }) => {
+  const pending = await startPendingSwitch(page);
+  const simPicker = page.getByTestId("live-sim-picker");
+  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await expect(page.getByTestId("example-loading")).toHaveText("");
+  await expect(simPicker).toHaveValue("black-friday");
+  await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
+
+  // The abandoned download finishing later changes nothing.
+  const downloaded = page.waitForResponse((response) => exampleChunk(other.slug).test(response.url()));
+  pending.release();
+  await (await downloaded).finished();
+  await settle(page);
+  await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
+  await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
+
+  // The link reopens what was on screen.
+  await page.reload();
+  await expect(simPicker).toHaveValue("black-friday");
+  await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
+  expectNoErrors(consoleErrors);
+});
+
+test("live changes while an example is pending stay with the diagram on screen", async ({ page, consoleErrors }) => {
+  await startPendingSwitch(page);
+  const simPicker = page.getByTestId("live-sim-picker");
+  // The pending diagram doesn't borrow the open diagram's simulation id.
+  await simPicker.selectOption("payments-outage");
+  await expect(simPicker).toHaveValue("payments-outage");
+  await settle(page);
+  expect(query(page)).toEqual(pendingOther);
+
+  // Back on the open diagram, the address describes it as it is now.
+  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await expect.poll(() => query(page)).toEqual(onKafka("payments-outage"));
+
+  // Leaving live view while the switch is pending again: the switch back reflects that too.
+  await page.getByTestId("example-picker").selectOption(other.slug);
+  await expect.poll(() => query(page)).toEqual(pendingOther);
+  await page.getByTestId("live-toggle").click();
+  await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "false");
+  await settle(page);
+  expect(query(page)).toEqual(pendingOther);
+  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await expect.poll(() => query(page)).toEqual({ view: "canvas", example: kafka.slug });
+  expectNoErrors(consoleErrors);
+});
+
+test("Back during a pending example restores the open diagram's current live link", async ({ page, consoleErrors }) => {
+  await startPendingSwitch(page);
+  const simPicker = page.getByTestId("live-sim-picker");
+  await simPicker.selectOption("payments-outage");
+  await expect(simPicker).toHaveValue("payments-outage");
+  // The history entry still holds black-friday; the screen shows payments-outage.
+  await page.goBack();
+  await expect(page.getByTestId("example-picker")).toHaveValue(kafka.slug);
+  await expect.poll(() => query(page)).toEqual(onKafka("payments-outage"));
+  await expect(simPicker).toHaveValue("payments-outage");
+  await page.goForward();
+  await expect(page.getByTestId("example-picker")).toHaveValue(other.slug);
+  await expect.poll(() => query(page)).toEqual(pendingOther);
+  expectNoErrors(consoleErrors);
+});
+
+test("a pending example that loads applies its own URL state", async ({ page, consoleErrors }) => {
+  const pending = await startPendingSwitch(page);
+  pending.release();
+  await expect(page.getByTestId(`node-${other.nodeIds[0]}`)).toBeVisible();
+  await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "false");
+  await settle(page);
+  expect(query(page)).toEqual(pendingOther);
+  // Going back reopens the previous diagram with the live link its history entry kept.
+  await page.goBack();
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+  await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
+  expectNoErrors(consoleErrors);
+});
+
+test("a failed example download restores the open diagram's live link", async ({ page }) => {
+  const pending = await startPendingSwitch(page, { fail: true });
+  pending.release();
+  await expect(page.getByTestId("toast")).toContainText("Couldn't load that example");
+  await expect(page.getByTestId("example-picker")).toHaveValue(kafka.slug);
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+  await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
+});
+
+test("presentation toggled while an example is pending applies to the canvas on screen", async ({
+  page,
+  consoleErrors,
+}) => {
+  await startPendingSwitch(page);
+  await page.getByTestId("present-toggle").click();
+  await expect(page.getByTestId("present-exit")).toBeVisible();
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+  await expect.poll(() => query(page)).toEqual({ ...pendingOther, present: "1" });
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("present-exit")).toHaveCount(0);
+  await expect.poll(() => query(page)).toEqual(pendingOther);
+  await page.getByTestId("example-picker").selectOption(kafka.slug);
+  await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
   expectNoErrors(consoleErrors);
 });
 
