@@ -163,7 +163,18 @@ jobs:
           wait "$e2e" || { echo "::error::e2e build failed"; cat "$RUNNER_TEMP/e2e-build.log"; status=1; }
           wait "$prod" || { echo "::error::production build failed"; cat "$RUNNER_TEMP/prod-build.log"; status=1; }
           exit "$status"
-      - run: pnpm exec playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+      # Each shard runs whole spec files, picked to even out the measured durations (scripts/e2e-shard.mjs).
+      - name: Playwright
+        env:
+          SHARD: ${{ matrix.shard }}
+          TOTAL: ${{ strategy.job-total }}
+          # Without --shard every blob report would be report.zip, and the merge would keep only one.
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.shard }}.zip
+        run: |
+          list="$(node scripts/e2e-shard.mjs "$SHARD" "$TOTAL")"
+          read -ra specs <<< "$list"
+          echo "Spec files: ${specs[*]}"
+          pnpm exec playwright test "${specs[@]}"
       - name: Durations
         if: ${{ !cancelled() }}
         run: node scripts/e2e-durations.mjs tests/.output/results.json 15 >> "$GITHUB_STEP_SUMMARY"
