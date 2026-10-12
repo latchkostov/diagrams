@@ -31,6 +31,11 @@ export default tseslint.config(
     },
   },
   {
+    // The static pages' scripts (theme, sign-in redirect, skill page): plain browser scripts.
+    files: ["public/**/*.js"],
+    languageOptions: { globals: globals.browser, sourceType: "script" },
+  },
+  {
     files: ["tests/**/*.ts", "*.config.ts", "*.config.js", "scripts/**/*.ts", "skills/**/*.mjs"],
     languageOptions: { globals: globals.node },
   },

@@ -1,8 +1,9 @@
-// Writes the static agent docs (public/schema/diagram.v1.json, ops.v1.json, stencils.json) and the
-// generated parts of the agent skill (skills/livediagrams/, see scripts/skill-gen.ts) from the code, so
-// they never drift from the app. Runs before every build (`prebuild`); run it by hand with
-// `pnpm schemas`. The sources are src/ai/webmcp/publicSchemas.ts and scripts/skill-gen.ts, loaded
-// through Vite so TypeScript and the app's imports work unchanged.
+// Writes the static agent docs (public/schema/diagram.v1.json, ops.v1.json, stencils.json), the
+// generated parts of the agent skill (skills/livediagrams/, see scripts/skill-gen.ts) and vercel.json's
+// security headers (scripts/security-headers.ts) from the code, so they never drift from the app. Runs
+// before every build (`prebuild`); run it by hand with `pnpm schemas`. The sources are
+// src/ai/webmcp/publicSchemas.ts, scripts/skill-gen.ts and scripts/security-headers.ts, loaded through
+// Vite so TypeScript and the app's imports work unchanged.
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -40,4 +41,8 @@ report(
   Object.keys(skillFiles).length,
   `${skill.SKILL_DIR}/ (generated)`,
 );
+// vercel.json: the security headers (scripts/security-headers.ts) for the production site.
+const headers = await load("scripts/security-headers.ts");
+report("vercel.json", writeAll(root, { "vercel.json": headers.vercelJson() }), 1, "the repository root");
+
 process.exit(0);

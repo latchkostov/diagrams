@@ -159,19 +159,6 @@
 
       <p><a href="../" data-testid="skill-back">← Back to Diagrams</a></p>
     </main>
-    <script>
-      for (const button of document.querySelectorAll("[data-copy]")) {
-        button.addEventListener("click", async () => {
-          const text = button.previousElementSibling.textContent.replace(/\s+/g, " ").trim();
-          try {
-            await navigator.clipboard.writeText(text);
-            button.textContent = "Copied";
-          } catch {
-            button.textContent = "Select and copy";
-          }
-          setTimeout(() => (button.textContent = "Copy"), 2000);
-        });
-      }
-    </script>
+    <script src="copy.js"></script>
   </body>
 </html>

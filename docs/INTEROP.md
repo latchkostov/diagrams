@@ -150,6 +150,29 @@ reload is needed.
   subtle "Open in Diagrams" link. `live=1&sim=<id>` pass through for the live view.
 - The embed dialog previews the iframe, and its options (source, height, simulation) sit behind **Options**.
 
+### Security headers (`scripts/security-headers.ts`)
+
+One source for the Content-Security-Policy and the other headers. `pnpm schemas` writes `vercel.json` from it
+(`src/lib/securityHeaders.test.ts` fails when it's stale) and `vite preview` sends the same headers, so the e2e
+suite on a build (CI's default) runs under the real policy; `tests/e2e/csp.spec.ts` walks the app and fails on any
+violation. The dev server sends none (React Refresh's preamble is an inline script).
+
+- `script-src 'self'` plus Google's two loaders (Identity Services, the Picker's `api.js`). No `'unsafe-inline'`,
+  no `'unsafe-eval'`: the static pages' scripts are files (`public/theme.js`, `auth.js`, `skill/copy.js`).
+- `style-src 'self' 'unsafe-inline'`: the static pages' `<style>` blocks and the styles Google's Picker and
+  Identity Services add. React's `style` props don't need it (they go through the CSSOM).
+- `connect-src 'self'` plus exactly the providers' endpoints: Google (`accounts.google.com/gsi/`,
+  `www.googleapis.com`, `oauth2.googleapis.com`), Microsoft (`login.microsoftonline.com`, `graph.microsoft.com` and
+  the download hosts `*.1drv.com`, `*.microsoftpersonalcontent.com`, `*.sharepoint.com`) and Dropbox
+  (`api.dropboxapi.com`, `content.dropboxapi.com`). No `data:`: exports decode their data URLs without fetch.
+- `frame-ancestors *` only for `?embed=1` (Vercel routes on the query with `has`/`missing`); the app itself
+  allows only this site to frame it.
+- `Referrer-Policy: strict-origin-when-cross-origin` (other sites see only the origin; a referrer-restricted
+  Google API key still works), `X-Content-Type-Options: nosniff`, a `Permissions-Policy` that keeps the
+  microphone (dictation) and display capture (Record video) and turns off sensors, location, payment, USB and the
+  like, and `Cross-Origin-Opener-Policy: same-origin-allow-popups` (sign-in pop-ups keep their opener; not sent with
+  `auth.html`).
+
 ### Local folders: Google Drive for desktop, OneDrive, Dropbox (no setup)
 
 In Chrome or Edge, **Save** uses the File System Access API. Saving into a folder that Google Drive for desktop,

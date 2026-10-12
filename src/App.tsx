@@ -62,7 +62,9 @@ const publicSlugs = new Set(examples.filter((e) => !e.localOnly).map((e) => e.sl
 
 export function App() {
   // ?embed=1 renders the read-only viewer only: no top bar, no editor.
-  const embed = useMemo(() => new URLSearchParams(window.location.search).get("embed") === "1", []);
+  // Any `embed` parameter (the links say embed=1): the same rule as the CSP that lets other sites frame
+  // embeds and nothing else (scripts/security-headers.ts), so no URL gets the app in a frame.
+  const embed = useMemo(() => new URLSearchParams(window.location.search).has("embed"), []);
   return (
     <>
       {embed ? <EmbedView /> : <MainApp />}
