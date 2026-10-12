@@ -1,5 +1,5 @@
 import type { Plugin } from "vite";
-import { COMMON_HEADERS, cspDirectives, OPENER_POLICY } from "./security-headers";
+import { COMMON_HEADERS, cspDirectives, EMBED_SCRIPT_HEADERS, OPENER_POLICY } from "./security-headers";
 
 /**
  * Security headers for a self-hosted copy (docs/SELF-HOSTING.md), from the same policy the public site sends
@@ -23,11 +23,13 @@ export interface SelfHostOptions {
 
 /** An origin a CSP source list accepts: https, a host (optionally `*.`), an optional port; nothing else. */
 const ORIGIN = /^https:\/\/(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d{1,5})?$/i;
+/** Plain http only on this machine, for trying a host page locally (any port: `http://127.0.0.1:*`). */
+const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:(\d{1,5}|\*))?$/;
 
 /** Checks the frame-ancestors list: origins only, so nothing else can slip into the policy. */
 export function frameAncestorList(list: readonly string[] = []): string[] {
   const out = list.map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean);
-  const bad = out.filter((s) => !ORIGIN.test(s));
+  const bad = out.filter((s) => !ORIGIN.test(s) && !LOCAL_ORIGIN.test(s));
   if (bad.length)
     throw new Error(
       `frame-ancestors takes https origins such as https://wiki.example.com or https://*.example.com, not: ${bad.join(", ")}`,
@@ -64,7 +66,16 @@ const banner = (comment: string, o: SelfHostOptions) => {
  * that sets its own, so a `location` with any `add_header` needs these lines too.
  */
 export function nginxHeaders(o: SelfHostOptions = {}): string {
-  const header = (name: string, value: string) => `    add_header ${name} "${value}" always;`;
+  const header = (name: string, value: string, indent: string) => `${indent}add_header ${name} "${value}" always;`;
+  const common = (indent: string) =>
+    [
+      `${indent}add_header Content-Security-Policy $live_diagrams_csp always;`,
+      ...Object.entries(COMMON_HEADERS).map(([k, v]) => header(k, v, indent)),
+      header("Cross-Origin-Opener-Policy", OPENER_POLICY, indent),
+    ].join("\n");
+  const script = Object.entries(EMBED_SCRIPT_HEADERS)
+    .map(([k, v]) => header(k, v, "        "))
+    .join("\n");
   return `${banner("#", o)}
 
 # 1. In the http {} block: the embed policy for any URL with an "embed" parameter (?embed=1), as the app reads it.
@@ -80,11 +91,14 @@ server {
     root /srv/live-diagrams;
     index index.html;
 
-    add_header Content-Security-Policy $live_diagrams_csp always;
-${Object.entries(COMMON_HEADERS)
-  .map(([k, v]) => header(k, v))
-  .join("\n")}
-    add_header Cross-Origin-Opener-Policy "${OPENER_POLICY}" always;
+${common("    ")}
+
+    # The <live-diagram> web component (private embeds, docs/EMBEDDING.md): your other sites' pages load it as a
+    # module script, which browsers fetch with CORS. It's code, never a diagram, so it may skip your sign-in.
+    location ~ /embed/[^/]+\\.js$ {
+${common("        ")}
+${script}
+    }
 }
 `;
 }
@@ -102,12 +116,10 @@ export function headersFile(o: SelfHostOptions = {}): string {
     ...COMMON_HEADERS,
     "Cross-Origin-Opener-Policy": OPENER_POLICY,
   };
-  return `${banner("#", o)}
-/*
-${Object.entries(lines)
-  .map(([k, v]) => `  ${k}: ${v}`)
-  .join("\n")}
-`;
+  const block = (path: string, headers: Record<string, string>) =>
+    [path, ...Object.entries(headers).map(([k, v]) => `  ${k}: ${v}`)].join("\n");
+  // The <live-diagram> web component, which your other pages load as a module script (CORS): added to /*'s.
+  return `${banner("#", o)}\n${block("/*", lines)}\n${block("/embed/*", EMBED_SCRIPT_HEADERS)}\n`;
 }
 
 /** The example list the "framed" samples use. */
@@ -130,20 +142,24 @@ export function selfHostHeadersFor(url: string, o: SelfHostOptions = {}): Record
     ...COMMON_HEADERS,
     "Content-Security-Policy": selfHostCsp({ ...o, embed: new URLSearchParams(u.search).has("embed") }),
     ...(/\/auth\.html$/.test(u.pathname) ? {} : { "Cross-Origin-Opener-Policy": OPENER_POLICY }),
+    ...(/\/embed\/[^/]+\.js$/.test(u.pathname) ? EMBED_SCRIPT_HEADERS : {}),
   };
 }
 
 /**
  * `vite preview` with a self-hosted copy's headers instead of the public site's, when PREVIEW_HEADERS=self-host
- * (the e2e suite's self-hosting projects). Runs after ./security-headers.ts's plugin, so its headers win.
+ * (the e2e suite's self-hosting projects), embeds framed by PREVIEW_FRAME_ANCESTORS (space-separated origins).
+ * Runs after ./security-headers.ts's plugin, so its headers win.
  */
 export function selfHostPreviewHeaders(): Plugin {
   return {
     name: "self-host-preview-headers",
     configurePreviewServer(server) {
       if (process.env.PREVIEW_HEADERS !== "self-host") return;
+      const frameAncestors = (process.env.PREVIEW_FRAME_ANCESTORS ?? "").split(/\s+/).filter(Boolean);
       server.middlewares.use((req, res, next) => {
-        for (const [k, v] of Object.entries(selfHostHeadersFor(req.originalUrl ?? req.url ?? "/"))) res.setHeader(k, v);
+        const headers = selfHostHeadersFor(req.originalUrl ?? req.url ?? "/", { frameAncestors });
+        for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
         next();
       });
     },

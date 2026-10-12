@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import { test, expect, gotoCanvas, gotoLab, expectNoErrors, publicExamples } from "./fixtures";
 import { installFakeModelContext, must, toolNames } from "./ai-helpers";
+import { expectHostEmbed, expectOnlyPrivateEmbed, serveHostPage } from "./self-host-helpers";
 
 /**
  * A self-hosted copy with every switch off (docs/SELF-HOSTING.md): project "locked" in playwright.config.ts
@@ -23,6 +24,22 @@ const kafka = must(
 const payload = deflateRawSync(readFileSync(`src/examples/${other.slug}.json`)).toString("base64url");
 
 test.describe("self-hosted build with link opening off", () => {
+  test("a private embed still works: it opens no link", async ({ page, baseURL, consoleErrors }) => {
+    await gotoCanvas(page, SLUG);
+    await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
+    await expectOnlyPrivateEmbed(page);
+
+    // ?embed=1&host=1 from a host page: the page supplies the diagram, so link opening being off doesn't matter.
+    const diagram = JSON.parse(readFileSync(`src/examples/${other.slug}.json`, "utf8"));
+    const host = await serveHostPage(new URL("./", must(baseURL, "the app")).href, diagram);
+    try {
+      await expectHostEmbed(page, host.origin, other.nodeIds[0]);
+    } finally {
+      await host.close();
+    }
+    expectNoErrors(consoleErrors);
+  });
+
   test("the Lab has no on-device model evals: nothing there can run the model", async ({ page, consoleErrors }) => {
     await gotoLab(page);
     await expect(page.getByTestId(/^lab-preset-link-/).first()).toBeVisible();

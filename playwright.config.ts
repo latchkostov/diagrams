@@ -204,7 +204,8 @@ export default defineConfig({
           ...selfHost.map(({ dist, at, env }) => ({
             command: serve(dist, `--port ${at.port} --strictPort`),
             url: `http://localhost:${at.port}/`,
-            env: { VITE_E2E: "", PREVIEW_HEADERS: "self-host", ...env },
+            // Embeds framed by the host pages tests/e2e/self-host-helpers.ts serves on 127.0.0.1.
+            env: { VITE_E2E: "", PREVIEW_HEADERS: "self-host", PREVIEW_FRAME_ANCESTORS: "http://127.0.0.1:*", ...env },
             reuseExistingServer: at.explicit || !CI,
             timeout: 180_000,
             stdout: "ignore" as const,

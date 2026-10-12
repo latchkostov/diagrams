@@ -58,9 +58,8 @@ const LINK_MAKING = {
   strings: [
     "Share link copied", // Copy share link, and the Share link dialog
     "Link with password copied", // Copy link with password…
-    "Embed code copied", // Embed code…
+    "In the link", // Embed code…'s source that puts the diagram in its URL (the private one stays)
     "export-share-link", // the File menu's rows
-    "export-embed",
     "export:share", // the canvas right-click's (and so the palette's) commands
     "Try four or more random words", // the password's strength hint
   ],

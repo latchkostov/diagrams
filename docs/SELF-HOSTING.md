@@ -12,8 +12,10 @@ Everything. A self-hosted copy built with `pnpm build:internal`:
   each person's device. Nothing is uploaded: there's no backend to upload to, yours or ours.
 - **Talks only to your origin.** The app makes no requests to livediagrams.dev or anyone else. It has no analytics,
   no telemetry and no fonts or icons from a CDN. The Content-Security-Policy (below) makes the browser enforce this.
-- **Makes no links.** Share links, links with a password and embed codes are gone from the menus, the right-click and
-  Ctrl+K, and their code isn't in the build (`src/lib/deployment.build.test.ts` checks).
+- **Makes no links.** Share links, links with a password and embed codes that carry the diagram are gone from the
+  menus, the right-click and Ctrl+K, and their code isn't in the build (`src/lib/deployment.build.test.ts` checks).
+  **Embed code…** stays, offering only the private embed, where your own page supplies the diagram
+  ([below](#embedding-internal-diagrams)).
 - **Offers nothing to outside AI.** No tools for browser agents (WebMCP), no Copy for AI and no copied prompts.
 - **Starts new diagrams Private.** People can still turn that setting off in File ▸ Privacy.
 - **Exports stay files.** Diagram file, PNG, SVG, draw.io, Mermaid and **Interactive HTML** are made in the page and
@@ -57,14 +59,14 @@ line.
 Each one is read once, at build time, and folded into the code: what a switch turns off isn't hidden, it isn't in the
 build. Changing one means building again. `src/lib/deployment.ts` is the one place the app reads them.
 
-| Variable                   | `pnpm build`  | `pnpm build:internal` | What it does                                                                                                                                                                                    |
-| -------------------------- | ------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_DISABLE_SHARE_LINKS` | off           | **1**                 | No share links, links with a password or embed codes: not in the File menu, the right-click or Ctrl+K, and agents get no `get_share_link`.                                                      |
-| `VITE_DISABLE_LINK_OPEN`   | off           | off                   | Links people send (`#d=`, `#e=`) don't open, in the app or in an embed: the address bar is cleared and a message says so. File ▸ Import from ▸ Share link… goes too.                            |
-| `VITE_DISABLE_AI_TOOLS`    | off           | **1**                 | No tools for browser agents (WebMCP), no Copy for AI, no Advanced (copied prompts) and no Build with AI. The AI panel keeps only the on-device model.                                           |
-| `VITE_DISABLE_ONDEVICE`    | off           | off                   | No on-device model (Chrome's built-in one). With AI tools off as well, there's no AI panel at all.                                                                                              |
-| `VITE_PRIVATE_BY_DEFAULT`  | off           | **1**                 | **New diagrams are private** starts on: diagrams people start, open from their device, import or paste start Private (no links, cloud saves or AI). People can turn the setting off; it's kept. |
-| `VITE_BRAND_NAME`          | Live Diagrams | Live Diagrams         | The name in the top bar, the page title and the start-up page, e.g. `Acme Diagrams (internal)`. One line, up to 60 characters.                                                                  |
+| Variable                   | `pnpm build`  | `pnpm build:internal` | What it does                                                                                                                                                                                                                           |
+| -------------------------- | ------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_DISABLE_SHARE_LINKS` | off           | **1**                 | No share links, links with a password or embeds that carry the diagram in their URL: not in the File menu, the right-click or Ctrl+K, and agents get no `get_share_link`. Embed code… offers only the private embed.                   |
+| `VITE_DISABLE_LINK_OPEN`   | off           | off                   | Links people send (`#d=`, `#e=`) don't open, in the app or in an embed: the address bar is cleared and a message says so. File ▸ Import from ▸ Share link… goes too. Private embeds (`?embed=1&host=1`) still work: they open no link. |
+| `VITE_DISABLE_AI_TOOLS`    | off           | **1**                 | No tools for browser agents (WebMCP), no Copy for AI, no Advanced (copied prompts) and no Build with AI. The AI panel keeps only the on-device model.                                                                                  |
+| `VITE_DISABLE_ONDEVICE`    | off           | off                   | No on-device model (Chrome's built-in one). With AI tools off as well, there's no AI panel at all.                                                                                                                                     |
+| `VITE_PRIVATE_BY_DEFAULT`  | off           | **1**                 | **New diagrams are private** starts on: diagrams people start, open from their device, import or paste start Private (no links, cloud saves or AI). People can turn the setting off; it's kept.                                        |
+| `VITE_BRAND_NAME`          | Live Diagrams | Live Diagrams         | The name in the top bar, the page title and the start-up page, e.g. `Acme Diagrams (internal)`. One line, up to 60 characters.                                                                                                         |
 
 A switch is on with `1` (or `true`, `yes`, `on`); anything else is off. Values come from the shell first, then Vite's
 `.env` files (`.env.production.local`, `.env.production`, `.env.local`, `.env`). `pnpm build:internal` sets its three
@@ -199,6 +201,30 @@ disable **Anonymous Authentication**. Add the headers in a `web.config` beside `
 IIS serves only file types it knows. If a font or a JSON file answers 404, add its `mimeMap` under `staticContent`
 (`.woff2` is `font/woff2`, `.json` is `application/json`).
 
+## Embedding internal diagrams
+
+Use **private embeds** ([EMBEDDING.md](EMBEDDING.md)) to show a diagram in your wiki, intranet or internal app: your
+page fetches the diagram file from your own server, with your page's sign-in, and hands it to the viewer with
+`postMessage`. Nothing of the diagram goes in a URL, and your copy only serves the viewer. In File ▸ Embed code…, a
+copy built without share links offers just this one: **Your app supplies it (private)**.
+
+```html
+<script type="module" src="https://diagrams.example.com/embed/live-diagram.js"></script>
+<live-diagram src-json="/wiki/diagrams/orders.diagram.json"></live-diagram>
+```
+
+Three things to set on your copy:
+
+- **Let the page frame the viewer.** List the page's origin in frame-ancestors:
+  `pnpm headers:self-host --frame-ancestors "https://wiki.example.com"` ([Headers](#headers)).
+- **Let the page load the script.** `embed/live-diagram.js` is loaded as a module script, which browsers fetch with
+  CORS and without your sign-in cookie when the page is on another origin. The samples send
+  `Access-Control-Allow-Origin: *` and `Cross-Origin-Resource-Policy: cross-origin` for `/embed/*.js`. Exempt
+  `/embed/` from sign-in (it's code, never a diagram), or serve the page from the same origin.
+- **Sign-in in the frame.** The viewer frame (`?embed=1&host=1`) loads like any page of your copy, so it needs the
+  sign-in cookie: put the page and your copy on one site (subdomains of one domain, like `wiki.example.com` and
+  `diagrams.example.com`), where the browser sends it.
+
 ## Headers
 
 `deploy/self-host/` holds the security headers for a self-hosted copy, generated from the public site's policy
@@ -245,6 +271,6 @@ open it at the new address.
 - `pnpm test` builds the app with and without the switches and checks what each one removes
   (`src/lib/deployment.build.test.ts`).
 - The e2e suite runs two self-hosting builds (`tests/e2e/self-host.spec.ts`, `self-host-locked.spec.ts`), served with
-  these headers (no CSP violations, no request outside the origin): no link,
-  embed or AI-tool entry anywhere, agents get no tools, new diagrams are Private, the brand name shows, links people
+  these headers (no CSP violations, no request outside the origin): no link, URL embed or AI-tool entry anywhere, a
+  private embed from a host page through `<live-diagram>`, agents get no tools, new diagrams are Private, the brand name shows, links people
   send open (or don't, with `VITE_DISABLE_LINK_OPEN`), and the Interactive HTML and diagram file exports work.

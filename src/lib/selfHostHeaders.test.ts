@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { contentSecurityPolicy, PROVIDER_CONNECT } from "../../scripts/security-headers";
+import { contentSecurityPolicy, EMBED_SCRIPT_HEADERS, PROVIDER_CONNECT } from "../../scripts/security-headers";
 import {
   EXAMPLE_FRAME_ANCESTORS,
   frameAncestorList,
@@ -64,7 +64,11 @@ describe("self-hosting headers", () => {
     ]);
   });
 
-  it("takes https origins only, so nothing else can get into the policy", () => {
+  it("takes https origins only (plain http only on this machine), so nothing else can get into the policy", () => {
+    expect(frameAncestorList(["http://127.0.0.1:*", "http://localhost:8080"])).toEqual([
+      "http://127.0.0.1:*",
+      "http://localhost:8080",
+    ]);
     expect(
       frameAncestorList([" https://a.example.com ", "https://a.example.com", "https://b.example.com:8443"]),
     ).toEqual(["https://a.example.com", "https://b.example.com:8443"]);
@@ -74,6 +78,8 @@ describe("self-hosting headers", () => {
       "https://a.example.com/path",
       "https://a.com; script-src *",
       "'self'",
+      "http://127.0.0.1.evil.com",
+      "https://a.example.com:*",
     ])
       expect(() => frameAncestorList([bad]), bad).toThrow(/https origins/);
   });
@@ -121,5 +127,24 @@ describe("self-hosting headers", () => {
     expect(selfHostHeadersFor("/")["Cross-Origin-Opener-Policy"]).toBe("same-origin-allow-popups");
     expect(selfHostHeadersFor("/auth.html?code=x")["Cross-Origin-Opener-Policy"]).toBeUndefined();
     expect(selfHostHeadersFor("/")["X-Content-Type-Options"]).toBe("nosniff");
+  });
+
+  it("lets other pages load the <live-diagram> script (private embeds): CORS and CORP for /embed/*.js", () => {
+    for (const [k, v] of Object.entries(EMBED_SCRIPT_HEADERS)) {
+      expect(selfHostHeadersFor("/embed/live-diagram.js")[k]).toBe(v);
+      expect(selfHostHeadersFor("/tools/diagrams/embed/live-diagram.js")[k]).toBe(v);
+      expect(selfHostHeadersFor("/")[k]).toBeUndefined();
+      expect(selfHostHeadersFor("/?embed=1&host=1")[k]).toBeUndefined();
+      expect(headersFile()).toContain(`/embed/*
+`);
+      expect(headersFile()).toContain(`  ${k}: ${v}
+`);
+      expect(nginxHeaders()).toContain(`add_header ${k} "${v}" always;`);
+    }
+    // nginx: the script's location repeats the other headers (a location with add_header drops inherited ones).
+    const location = nginxHeaders().split("location ~ /embed/")[1] ?? "";
+    expect(location).toContain("add_header Content-Security-Policy $live_diagrams_csp always;");
+    expect(location).toContain("add_header X-Content-Type-Options");
+    expect(EMBED_SCRIPT_HEADERS["Access-Control-Allow-Origin"]).toBe("*");
   });
 });

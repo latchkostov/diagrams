@@ -2298,7 +2298,9 @@ blocking UX issues.
 
 No controls added. In a self-hosted copy built without share links, the link rows go entirely (the File menu, the
 canvas right-click's Export ▸ and Ctrl+K), rather than staying disabled: there's nothing to explain, and Privacy and
-the exports keep their places. File ▸ Import from ▸ Share link… stays while links people send can still open. Without
+the exports keep their places. **Embed code…** stays, with the private embed as its one source (the URL ones aren't
+shown, rather than shown off), and the menu hint "Your app supplies it" says which. File ▸ Import from ▸ Share link…
+stays while links people send can still open. Without
 AI tools, the AI panel keeps only the on-device model: no how-to, status line or Advanced, and its empty state says in
 one line that agents and copied prompts are off here. With the on-device model off too, there's no rail, Ctrl+I or
 menu entry at all. The brand name replaces "Live Diagrams" in the top bar and the page title only; the start card
