@@ -1,5 +1,41 @@
 # Design review
 
+## Round 19: private embeds (2026-10-12)
+
+**Embed ▸ Your app supplies it (private)**: the page that embeds the viewer fetches the diagram from its own server,
+behind its own sign-in, and hands it over with `postMessage`; the diagram is never in a URL and never reaches this
+site (docs/EMBEDDING.md). Self-review against `docs/UX-PRINCIPLES.md` on the production build at 1280 × 900 (the
+dialog, light and dark) and on a host page at 1280 and 760 px, on the Kafka example.
+
+- **No new chrome.** The Embed dialog's source switch gains a third segment (it now always shows: Example by name
+  for pristine public examples, **In the link**, **Your app supplies it (private)**). The menus are unchanged:
+  Embed code… simply stays enabled for Private diagrams, hinted "Your app supplies it", and opens on that source
+  with the other two disabled.
+- **The dialog, private source.** One callout says the promise first, in bold: **The diagram never leaves your app.
+  Live Diagrams only provides the viewer.**, then what to do (serve the file behind your sign-in). Under it a
+  two-way switch, **Web component** (the default: two lines) or **iframe + postMessage** (twenty lines, for pages
+  that won't load our script), the code, and a live preview that is the real viewer fed by `postMessage`, so what
+  you see is what your page gets. **Diagram file** (secondary, bottom-left) saves the file to serve; **Copy code**
+  stays the one primary action. The file's path, the height (default **Fits the diagram**) and the simulation sit
+  behind **Options** (the path got a row of its own after the first screenshots squeezed it into a select-sized
+  box).
+- **The viewer in a host page** is the read-only embed with the live bar, and one quiet link, **Made with Live
+  Diagrams**, to the site (no payload, no "Open in"). It rises above the live bar while live: in the first
+  screenshots it sat on the bar's ⋯ at both widths, which this round fixed. Auto-height fits the diagram to the
+  frame's width (477 px for Kafka at 916 px, 388 px at 696 px); a live frame never goes below 380 px, so the
+  narration and the bar leave the diagram some room.
+- **The host drives it** (play, pause, speed, simulation, highlight rings, theme) without new UI in the frame: the
+  highlight is the accent ring the app uses for focus, a little wider, and it pans and zooms with the diagram.
+- **Dark** (`theme="dark"` or `setTheme`) reads as the app's dark theme; the host page's own background frames it.
+- **Open:** at narrow widths the narration callout still covers the Live toggle (live view's own layout, the same in
+  the app at that width); a host that wants the toggle visible can set `height`.
+
+![The dialog, your app supplies it, light](screenshots/round19/dialog-host-1280-light.png)
+![The dialog, dark](screenshots/round19/dialog-host-1280-dark.png)
+![iframe + postMessage, with Options](screenshots/round19/dialog-host-iframe-options-1280-light.png)
+![A host page with the web component, playing, one node highlighted](screenshots/round19/host-page-1280-light.png)
+![A narrow host page, dark viewer](screenshots/round19/host-page-760-dark-embed.png)
+
 ## Round 18: imports (batch 3, Kubernetes) (2026-10-12)
 
 Kubernetes manifests on the shared pipeline and the batch 1 report. Self-review against `docs/UX-PRINCIPLES.md`

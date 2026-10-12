@@ -144,6 +144,14 @@
           as it was first visited.
         </li>
         <li>
+          <strong>Embeds your own app supplies</strong> (Embed → <em>Your app supplies it</em>) show a diagram inside
+          your website or intranet without putting it anywhere public. Your page fetches the diagram from your own
+          server, with your own sign-in, and hands it to the viewer frame from this site in the browser. The diagram
+          then exists only in that page and in the frame's memory while it's open: it's never put in a URL, never
+          written to the browser's storage and never sent to us. This site only serves the viewer's code; it has no
+          way to see what it draws. The viewer talks only to the page that embeds it, at the address that page names.
+        </li>
+        <li>
           <strong>AI features</strong> act only when you use them. Chrome's built-in model runs on your device. An AI
           agent in your browser, or a chatbot you paste a prompt into, sees a diagram only when you ask it to; that's
           your own tool, under its own terms. Live Diagrams never sends your diagrams to an AI service itself, and never
@@ -158,7 +166,10 @@
         on. A private diagram:
       </p>
       <ul>
-        <li>can't be shared as a link or embedded, so it never ends up in a URL, a chat or your browser history;</li>
+        <li>
+          can't be shared as a link or embedded by link, so it never ends up in a URL, a chat or your browser history.
+          It can still be embedded in your own app the private way, where your page supplies it (see above);
+        </li>
         <li>isn't saved to Google Drive, OneDrive or Dropbox;</li>
         <li>
           is off-limits to AI: the page offers no tools to AI agents while it's open, and Copy for AI and copied
