@@ -13,10 +13,23 @@ export function fitGroupToContents(diagram: DiagramFile, groupId: string): Diagr
     ? { ...diagram, groups: diagram.groups?.map((g) => (g.id === groupId ? { ...g, ...boundaryAround(members) } : g)) }
     : diagram;
 }
+
+/**
+ * How placeNew treats the existing nodes: the edit ops' layout modes, plus "incremental", which
+ * places the new nodes next to their neighbours like "auto" but never lays out the whole diagram,
+ * however many nodes are new (a pasted file's nodes without coordinates).
+ */
+export type PlaceMode = LayoutMode | "incremental";
+
+/**
+ * Gives the nodes in `newIds` positions and fits the boundaries they touch. A new node without a
+ * boundary joins its only neighbour's, unless it's in `keepOutside`: an op that took it out, or a
+ * whole file whose membership is as written.
+ */
 export function placeNew(
   diagram: DiagramFile,
   newIds: readonly string[],
-  mode: LayoutMode = "auto",
+  mode: PlaceMode = "auto",
   touchedGroups: readonly string[] = [],
   keepOutside: readonly string[] = [],
 ): DiagramFile {

@@ -10,6 +10,7 @@ import { getStencil, FALLBACK_STENCIL } from "../../stencils/registry";
 import {
   applyOps,
   buildSimulation,
+  fitGroupToContents,
   placeNew,
   ReferenceError,
   resolveKind,
@@ -114,8 +115,10 @@ const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFin
 
 /**
  * A diagrams/v1 file from a chatbot, which usually has no coordinates and may name kinds in plain
- * words ("Kafka topic") instead of stencil ids. Missing positions are laid out; unknown stencils
- * are resolved like add_node kinds.
+ * words ("Kafka topic") instead of stencil ids. Unknown stencils are resolved like add_node kinds.
+ * Positions and boundary boxes the file gives are kept exactly: a file without any coordinates is
+ * laid out, otherwise only the nodes without them are placed, and only boundaries without a box (or
+ * that receive a placed node) are fitted around their members.
  */
 export function fileToDiagram(
   file: Record<string, unknown>,
@@ -127,7 +130,7 @@ export function fileToDiagram(
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
   const choices: StencilChoice[] = [];
-  let needsLayout = false;
+  const unplaced: string[] = [];
   const nodes = Array.isArray(file.nodes) ? file.nodes : [];
   const fixedNodes = nodes.map((raw, i) => {
     if (!raw || typeof raw !== "object") return raw;
@@ -141,7 +144,7 @@ export function fileToDiagram(
       if (r.confidence !== "high") choices.push({ nodeId: n.id as string, kind: wanted || "(none)", stencil: r });
     }
     if (!isNum(n.x) || !isNum(n.y)) {
-      needsLayout = true;
+      unplaced.push(n.id as string);
       n.x = 0;
       n.y = 0;
     }
@@ -154,11 +157,14 @@ export function fileToDiagram(
     if (typeof e.id !== "string" || !e.id) e.id = `e${i + 1}`;
     return e;
   });
+  const unboxed: string[] = [];
   const groups = Array.isArray(file.groups)
     ? file.groups.map((raw) => {
         if (!raw || typeof raw !== "object") return raw;
         const g = { ...(raw as Record<string, unknown>) };
-        for (const k of ["x", "y", "width", "height"]) if (!isNum(g[k])) g[k] = 0;
+        const box = ["x", "y", "width", "height"];
+        if (typeof g.id === "string" && box.some((k) => !isNum(g[k]))) unboxed.push(g.id);
+        for (const k of box) if (!isNum(g[k])) g[k] = 0;
         return g;
       })
     : undefined;
@@ -175,12 +181,12 @@ export function fileToDiagram(
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
-  if (needsLayout || groups?.length)
-    diagram = placeNew(
-      diagram,
-      diagram.nodes.map((n) => n.id),
-      needsLayout ? "full" : "none",
-    );
+  // A file's boundary membership is deliberate: every placed node is kept outside the boundaries it
+  // doesn't name, unlike an added node, which joins its only neighbour's boundary.
+  if (unplaced.length && unplaced.length === diagram.nodes.length)
+    diagram = placeNew(diagram, unplaced, "full", [], unplaced);
+  else if (unplaced.length) diagram = placeNew(diagram, unplaced, "incremental", unboxed, unplaced);
+  else for (const id of unboxed) diagram = fitGroupToContents(diagram, id);
   try {
     checkBudget(diagram);
   } catch (error) {

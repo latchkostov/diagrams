@@ -1051,6 +1051,11 @@ function fitGroupToContents(diagram, groupId) {
 		} : g)
 	} : diagram;
 }
+/**
+* Gives the nodes in `newIds` positions and fits the boundaries they touch. A new node without a
+* boundary joins its only neighbour's, unless it's in `keepOutside`: an op that took it out, or a
+* whole file whose membership is as written.
+*/
 function placeNew(diagram, newIds, mode = "auto", touchedGroups = [], keepOutside = []) {
 	const fresh = new Set(newIds);
 	const full = mode === "full" || mode === "auto" && fresh.size > 0 && fresh.size >= diagram.nodes.length / 2;

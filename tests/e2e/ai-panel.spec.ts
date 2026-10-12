@@ -183,6 +183,33 @@ test.describe("AI panel dock", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("a pasted whole file keeps its node positions and boundary boxes exactly", async ({ page, consoleErrors }) => {
+    type Box = { id: string; x: number; y: number; width?: number; height?: number };
+    const file = JSON.parse(readFileSync(join(process.cwd(), "src/examples/kafka-order-pipeline.json"), "utf8")) as {
+      title: string;
+      nodes: Box[];
+      groups: Box[];
+    };
+    // Moved from the example as shipped, so every position on the canvas after Apply is the file's own.
+    file.title = "Kafka, moved";
+    for (const item of [...file.nodes, ...file.groups]) Object.assign(item, { x: item.x + 37, y: item.y + 23 });
+    expect(file.groups.length).toBeGreaterThan(0);
+    await openAdvanced(page);
+    await page.getByTestId("ai-reply").fill(JSON.stringify(file, null, 2));
+    await expect(page.getByTestId("ai-reply-status")).toContainText("replaces this one");
+    await page.getByTestId("ai-apply").click();
+    await expect(page.getByTestId("ai-error")).toHaveCount(0);
+    await expect(page.getByTestId("ai-turn-0-summary")).toContainText("Replaced the diagram");
+    const saved = async () =>
+      (await savedDiagram(page)) as unknown as { title: string; nodes: Box[]; groups?: Box[] } | null;
+    await expect.poll(async () => (await saved())?.title).toBe("Kafka, moved");
+    const after = must(await saved(), "saved edits");
+    const pick = ({ id, x, y, width, height }: Box) => ({ id, x, y, width, height });
+    expect(after.nodes.map(pick)).toEqual(file.nodes.map(pick));
+    expect(after.groups?.map(pick)).toEqual(file.groups.map(pick));
+    expectNoErrors(consoleErrors);
+  });
+
   test("the thread is kept per diagram in this browser, never in the file, and can be cleared", async ({ page }) => {
     await openAdvanced(page);
     await applyTurn(page, "Add a billing worker", ADD_WORKER);
