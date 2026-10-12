@@ -92,17 +92,30 @@ function clauseEdit(tokens: readonly Token[]): { target: Token[]; field: EditInt
  * an unknown Y says nothing certain).
  */
 export function editIntents(request: string): EditIntent[] {
-  const out: EditIntent[] = [];
-  for (const clause of splitClauses(request, JOINERS, startsInstruction)) {
+  return readEdits(request).flatMap((x) => (x ? [x] : []));
+}
+
+/**
+ * The request's edits when every clause is one ("Rename X to Y and make Z a MongoDB"); null when any
+ * clause asks for something else ("…and add a Redis cache"), or nothing is asked. What a reply did can be
+ * checked against these in full.
+ */
+export function editOnlyIntents(request: string): EditIntent[] | null {
+  const all = readEdits(request);
+  return all.length && all.every((x) => x) ? (all as EditIntent[]) : null;
+}
+
+/** Each clause's edit, or null for a clause that isn't one. */
+function readEdits(request: string): (EditIntent | null)[] {
+  return splitClauses(request, JOINERS, startsInstruction).map((clause) => {
     const e = clauseEdit(clause.tokens);
-    if (!e) continue;
+    if (!e) return null;
     const target = phrase(e.target);
     const value = phrase(e.value);
-    if (!target || !value) continue;
-    if (e.field === "kind" && !namedStencil(value)) continue;
-    out.push({ target, field: e.field, value, negated: clause.negated });
-  }
-  return out;
+    if (!target || !value) return null;
+    if (e.field === "kind" && !namedStencil(value)) return null;
+    return { target, field: e.field, value, negated: clause.negated };
+  });
 }
 
 /** The parts of a reply op this reads and fills (CompactOp's, structurally; already checked to be text). */

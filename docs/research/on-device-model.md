@@ -555,11 +555,25 @@ passes are run-to-run variance. Round 4's fixes haven't been measured yet.
   Vercel's `VERCEL_GIT_COMMIT_SHA` or the checkout). A run on a stale deploy now says so.
 - **Placeholders dropped after the retry** (create-23).
   - The first reply's leak still goes back as feedback.
-  - After the retry, every op that uses a placeholder the request and diagram don't have is dropped:
-    the node keyed or labelled so, its connections (by key or label), and edits that target it. The
-    rest goes on to the completeness check and completion.
+  - After the retry, a placeholder the request and diagram don't have is cleaned out (`leaks.ts`):
+    - every op that writes the name goes;
+    - so does every op whose reference resolves to the dropped node. That's decided by the shared
+      reference precedence (`ReplyRefs`), by key, label or kind, ignoring case and spaces. An existing
+      element's exact label still wins, so an op on the existing "Worker" stays even when the
+      placeholder was labelled "Worker" too.
+    - A dropped insertion takes its removal of the bypassed connection with it, as an `insert_between`
+      or as an add with two connections. No half insertion is left.
+  - **What's left is applied only when it can be checked against the whole request** (`salvageable`,
+    after the review):
+    - Into an empty diagram, a creation request: the completeness check holds it to every named
+      component and connection. Completion fills in only under its own strict rules.
+    - On an existing diagram, only a request that is all renames and kind changes: every one it asks
+      for must be in the ops, and the ops must do nothing else.
+    - Anything else fails the turn rather than apply part of it. That includes "…and add a Redis cache
+      after X", a requested rename that was the placeholder, and a cache put between two nodes.
   - With `sample-app` in both replies, create-23 ends "Completed from the request": partner → webhook.
-  - A summary that names the dropped placeholder is replaced with "Applied the request".
+  - A summary that names the dropped placeholder is replaced with "Applied the request". Any other
+    summary stays.
 - **"sends" alone is a relation** ("An external partner sends a webhook": partner → webhook), so
   completion can connect it. "sends X to Y" still relates to Y.
 - **create-24's labels.** Round 4 already handled "email service" the way it handles "email_service":
