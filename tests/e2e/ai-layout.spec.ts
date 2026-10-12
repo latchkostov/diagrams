@@ -32,8 +32,12 @@ const hintFits = (page: Page) =>
 
 /** A toast from Copy for AI on a node (a right-click, so not while the first-run hint should stay). */
 async function showToast(page: Page) {
-  await page.getByTestId("node-payments").click({ button: "right" });
-  await page.getByTestId("context-menu-item-item.copy-for-ai").click();
+  // Entering live view fits the diagram with an animation: a right-click during it can miss the moving
+  // node, or the fit can close the menu before the item is chosen. Retry the pair until the menu holds.
+  await expect(async () => {
+    await page.getByTestId("node-payments").click({ button: "right" });
+    await page.getByTestId("context-menu-item-item.copy-for-ai").click({ timeout: 1000 });
+  }).toPass({ timeout: 5000 });
   await expect(page.getByTestId("toast")).toBeVisible();
 }
 
