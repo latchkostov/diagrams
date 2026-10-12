@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoLab, gotoLive } from "./fixtures";
+import type { DiagramFile } from "../../src/model/types";
+import { createSimulationRun } from "../../src/sim/simulation";
+import { test, expect, expectNoErrors, gotoLab, gotoLive, waitForStableBox } from "./fixtures";
 
 // Message trace: follow one message (and its fan-out copies) hop by hop, then turn its journey into
 // a sequence diagram. Selectors are data-testid only.
@@ -39,9 +41,54 @@ async function rect(locator: Locator) {
   return box;
 }
 
+/**
+ * Poison invoices up to the story's pausing note at 10 s, replayed here with the same seed: the message
+ * that dead-lettered last (read from the raw trace steps), and the newest one created that dead-lettered.
+ */
+function poisonDeadLetters(): { last: number; newest: number } {
+  const diagram = JSON.parse(readFileSync(`src/examples/${AZURE}.json`, "utf8")) as DiagramFile;
+  const poison = diagram.simulations?.find((s) => s.id === "poison");
+  if (!poison) throw new Error("No Poison invoices simulation");
+  const run = createSimulationRun(diagram, poison, { traceHistory: 160 });
+  while (!run.state().waiting && !run.state().done) run.step(50);
+  let last: { root: number; t: number } | undefined;
+  let newest = 0;
+  for (const { rootId } of run.engine.tracer.recent()) {
+    const t = run.engine.tracer
+      .get(rootId)
+      ?.steps.filter((s) => s.kind === "deadletter")
+      .at(-1)?.t;
+    if (t === undefined) continue;
+    newest = Math.max(newest, rootId);
+    if (!last || t >= last.t) last = { root: rootId, t };
+  }
+  if (!last) throw new Error("Nothing dead-lettered");
+  return { last: last.root, newest };
+}
+
 /** Attribute values of every hop row, in order. */
 const hopAttr = (page: Page, name: string) =>
   hops(page).evaluateAll((els, n) => els.map((e) => e.getAttribute(n)), name);
+
+/**
+ * Clicks a control over the canvas (the live bar, its ⋯ menu, the trace card) where it is on screen.
+ * Playwright's click first scrolls its target into view, and for these controls Chrome scrolls React Flow's
+ * wrapper (overflow: hidden, but scrollable while its content spills past an edge: a fit under way, a tall
+ * trace card). React Flow scrolls it back a frame later, so the press could land ~200 px away from the control:
+ * the ⋯ menu didn't open, "Send one now" or "One that dead-lettered" did nothing. These controls never need
+ * scrolling: wait until the control holds still and is what's under its centre, then click there.
+ */
+async function clickInPlace(page: Page, control: Locator) {
+  await expect(control).toBeEnabled();
+  await waitForStableBox(control);
+  const box = await rect(control);
+  const x = box.x + box.width / 2,
+    y = box.y + box.height / 2;
+  await expect
+    .poll(() => control.evaluate((el, [x, y]) => el.contains(document.elementFromPoint(x, y)), [x, y] as const))
+    .toBe(true);
+  await page.mouse.click(x, y);
+}
 
 /** Traces the next message from the Kafka storefront and waits for its whole journey. */
 async function traceKafkaOrder(page: Page) {
@@ -49,7 +96,7 @@ async function traceKafkaOrder(page: Page) {
   await openNodeMenu(page, "shopper", "sim.trace-next");
   await expect(card(page)).toHaveAttribute("data-state", "waiting");
   await expect(page.getByTestId("trace-waiting")).toContainText("Storefront");
-  await page.getByTestId("trace-send-one").click();
+  await clickInPlace(page, page.getByTestId("trace-send-one"));
   await expect(card(page)).toHaveAttribute("data-state", "done", { timeout: 20_000 });
 }
 
@@ -206,11 +253,11 @@ test.describe("message trace", () => {
   test("the live bar's ⋯ and the command palette start a trace", async ({ page, consoleErrors }) => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&speed=2`);
     // ⋯ offers the same three ways in as the right-click's "Trace a message ▸".
-    await page.getByTestId("live-more").click();
-    await page.getByTestId("live-trace-message").click();
+    await clickInPlace(page, page.getByTestId("live-more"));
+    await clickInPlace(page, page.getByTestId("live-trace-message"));
     await expect(page.getByTestId("live-trace-slowest")).toBeVisible();
     await expect(page.getByTestId("live-trace-deadletter")).toBeVisible();
-    await page.getByTestId("live-trace-next").click();
+    await clickInPlace(page, page.getByTestId("live-trace-next"));
     await expect(page.getByTestId("live-more-menu")).toHaveCount(0);
     await expect(card(page)).toHaveAttribute("data-state", /flight|done/, { timeout: 10_000 });
     await page.getByTestId("trace-card-close").click();
@@ -258,6 +305,19 @@ test.describe("message trace", () => {
         .getByTestId(/^seq-arrow-/)
         .last(),
     ).toHaveAttribute("data-style", "dlq");
+
+    // By the pausing note at 10 s all 30 have dead-lettered, not in the order they were created: "One that
+    // dead-lettered" follows the latest to dead-letter, not the newest message.
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("sequence-dialog")).toHaveCount(0);
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting", { timeout: 20_000 });
+    const { last, newest } = poisonDeadLetters();
+    expect(last).not.toBe(newest);
+    await clickInPlace(page, page.getByTestId("live-more"));
+    await clickInPlace(page, page.getByTestId("live-trace-message"));
+    await clickInPlace(page, page.getByTestId("live-trace-deadletter"));
+    await expect(card(page)).toHaveAttribute("data-root", String(last));
+    await expect(card(page)).toHaveAttribute("data-state", "dlq");
     expectNoErrors(consoleErrors);
   });
 

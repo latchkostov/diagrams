@@ -96,6 +96,45 @@ describe("LiveController: message trace", () => {
     expect(c.traceMessage(99_999)).toBe(false);
   });
 
+  it("traces the message that dead-lettered most recently, not the most recently created one", () => {
+    // Two queues into one failing worker: the older message gets two deliveries, the newer one only one,
+    // so the newer one dead-letters first and the older one last.
+    const twoQueues: DiagramFile = {
+      format: DIAGRAM_FORMAT,
+      title: "t",
+      nodes: [
+        { id: "slow", stencil: "q", label: "Slow", x: 0, y: 0, props: { maxDeliveryCount: 2 } },
+        { id: "fast", stencil: "q", label: "Fast", x: 0, y: 0, props: { maxDeliveryCount: 1 } },
+        { id: "worker", stencil: "svc", label: "Worker", x: 0, y: 0, props: { failureRate: 1, latencyMs: 50 } },
+        { id: "dead", stencil: "dlq", label: "Dead letters", x: 0, y: 0 },
+      ],
+      edges: [
+        { id: "e1", from: "slow", to: "worker" },
+        { id: "e2", from: "fast", to: "worker" },
+        { id: "e3", from: "slow", to: "dead", props: { dlq: true } },
+        { id: "e4", from: "fast", to: "dead", props: { dlq: true } },
+      ],
+    };
+    const c = new LiveController(twoQueues, { roleOf });
+    // Follow the newer one first: it has dead-lettered by the time the older one does.
+    c.traceNext("fast");
+    c.inject("slow", 1);
+    c.inject("fast", 1);
+    c.setPlaying(true);
+    play(c, 12_000);
+    const newer = c.getState().trace!.current!;
+    expect(newer.origin).toBe("fast");
+    expect(newer.steps.some((s) => s.kind === "deadletter")).toBe(true);
+    const newerAt = newer.steps.find((s) => s.kind === "deadletter")!.t;
+    c.endTrace();
+
+    expect(c.traceDeadLettered()).toBe("now");
+    const picked = c.getState().trace!.current!;
+    expect(picked.origin).toBe("slow");
+    expect(picked.rootId).toBeLessThan(newer.rootId);
+    expect(picked.steps.find((s) => s.kind === "deadletter")!.t).toBeGreaterThan(newerAt);
+  });
+
   it("keeps following the same message when scrubbing back, and restart ends the trace", () => {
     const sim: Simulation = {
       id: "s",
