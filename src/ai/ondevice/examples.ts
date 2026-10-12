@@ -24,12 +24,12 @@ Rules:
 
 const EXAMPLE_DIAGRAM = `Diagram "Sample"
 Nodes (label: kind):
-- sample-gateway: Amazon API Gateway
+- sample-batch: Batch Job
 - sample.jobs: Kafka Topic
 - sample-worker: .NET Service
 - sample-store: PostgreSQL
 Connections:
-- sample-gateway -> sample.jobs (message)
+- sample-batch -> sample.jobs (message)
 - sample.jobs -> sample-worker (message)
 - sample-worker -> sample-store (request)`;
 

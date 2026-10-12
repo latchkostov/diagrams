@@ -49,8 +49,10 @@ read from a `VITE_` variable, so builds without it still deploy.
 
 ## Design
 
-- **Where.** Off by default. **Advanced ▸ Try the on-device model** turns it on (remembered), and only
-  where `availability()` isn't `"unavailable"`. When it's on, a request box sits at the AI panel's foot,
+- **Where.** On by default since round 3, at the owner's direction (the 80% bar reached by projection,
+  not yet by a measured run). **Advanced ▸ Try the on-device model** turns it off (remembered). It shows
+  only where `availability()` isn't `"unavailable"`, and local-only diagrams stay excluded. When it's on,
+  a request box sits at the AI panel's foot,
   above the status line: "Describe a change…", the dictation mic, **Send** (Enter), and the label "Runs
   on this device with Chrome's built-in model". For `"downloadable"`/`"downloading"`, a one-time
   **Download the on-device model** button shows progress from `monitor`. With no `LanguageModel`, or
@@ -149,8 +151,9 @@ read from a `VITE_` variable, so builds without it still deploy.
 - **Report.** Each failed row has a **Category** (reference, direction, stencil, structure, format, model
   error) and every row has the **Model output**: the model's last reply and the stencil each added node
   resolved to. A summary line counts failures by category.
-- **Bar:** at least 80% of cases pass before `ON_DEVICE_DEFAULT` (`src/ai/ondevice/onDevicePref.ts`)
-  turns the box on without asking.
+- **Bar:** at least 80% of cases. `ON_DEVICE_DEFAULT` (`src/ai/ondevice/onDevicePref.ts`) was turned on in
+  round 3 at the owner's direction ("just assume it will improve things, and make it live"), on the
+  projection below rather than a measured run.
 
 ### Results
 
@@ -298,5 +301,72 @@ because auto-add now needs a confident match, which moves create-25 to the retry
 A unit test replays both runs' failures with replies shaped like the model's (`src/ai/evals/onDevice.test.ts`).
 The deterministic ones pass on the first try; the omissions, create-25 and the leak pass on a corrected
 retry.
+
+### Round 3: after #35
+
+**Run 3, 12 October 2026, Chrome 154: 28/37 (76%), all 28 on the first try.**
+
+| Case        | Run 3 failure                                                                     | Category  | Round 3 fix                                                            | Kind of fix                           |
+| ----------- | --------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------- | ------------------------------------- |
+| edit-rename | Looped inside `target`: "Payments service apart from that connection to …" (16 s) | runaway   | Targets are an enum of the diagram's names                             | Deterministic (if Chrome takes enums) |
+| edit-change | `target` ran into the next field, then Tamil text (timeout, 32 s)                 | runaway   | As above                                                               | Deterministic (if Chrome takes enums) |
+| create-14   | ".NET service" got kind Go service (label "dotnet-service")                       | stencil   | Request–technology reconciliation                                      | Deterministic                         |
+| create-28   | "generic database" got PostgreSQL; "unspecified component" got Lambda             | stencil   | Reconciliation; "unspecified/generic" asks for the generic stencil     | Deterministic                         |
+| create-11   | Added only "API", twice                                                           | omission  | Completion from the request after the retry                            | Deterministic                         |
+| create-21   | Added only Event Hubs, twice                                                      | omission  | As above                                                               | Deterministic                         |
+| create-23   | Reused "sample-gateway", even after the leak feedback                             | leak      | No gateway, API or ingress placeholder left in the examples            | Likely                                |
+| create-29   | Service Bus queues as the "consumers"                                             | structure | Reconciliation turns the queues into consumers                         | Possible                              |
+| create-24   | A Lambda and a queue for "a service delivers email"                               | stencil   | Reconciliation may fix the email side; the service side stays a Lambda | Unlikely                              |
+
+**Harness note, create-29.** Round 2's widened expectation did take effect: any processor passes for
+billing and shipping. The run failed because the model made them Service Bus queues, which aren't
+processors. The message ("missing service.dotnet, service.python") hid that it would have accepted any
+processor. It now says "missing service.dotnet (or any processor), …", and a unit test checks that the
+on-device check accepts Lambda, Go and Azure Functions there.
+
+**What changed:**
+
+- **Constrained names** (`src/ai/ondevice/replySchema.ts`). The `responseConstraint` is built per
+  request:
+  - A rename, kind change or remove `target` is an enum of the diagram's names: labels, or ids where
+    labels repeat, plus "A -> B" for connections and "this" with a selection.
+  - A connection's `from` and `to` are `anyOf` that enum and a key pattern (`^[a-z][a-z0-9_-]{0,29}$`),
+    which new nodes' keys follow too.
+  - `ops` has `maxItems: 6` and `uniqueItems`.
+  - A big diagram's enums keep the selection, its neighbours and the names the request mentions first,
+    up to 120.
+  - A schema over 2,500 characters is sent with `omitResponseConstraintInput` (the prompt lists the
+    names already).
+  - Chrome doesn't document which keywords `responseConstraint` takes; an unsupported one raises
+    `NotSupportedError`. So there are three tiers, learned per page: rich (enums, `anyOf`, patterns), then
+    enums only, then the bounded plain schema. **Unverified on a real model:** if Chrome rejects `enum`,
+    the runaway fix falls back to round 2's bounds and the stream cut-off.
+- **Request–technology reconciliation** (`reconcileKinds`). When the request names a stencil no new node
+  has, and a new node has a stencil the request never mentions (and isn't generic), that node takes the
+  named stencil. Nodes pair by label words, then by role, then one for one by order. It never changes a
+  node whose technology the request names, never takes a component that's an existing node, and treats
+  a plural role word ("Workers") as a role. "Generic"/"unspecified" asks for the generic stencil
+  itself.
+- **Completion after the retry** (`completeFromRequest`). If the retry is still incomplete, the request
+  is simple and the diagram is empty, the missing components are added from the request's words and
+  connected the way each verb says. Simple means two or three named components, each next pair joined by
+  a relating verb. "consumes" flows back and "consumed by" forward. The turn says "Completed from the
+  request". Components count when `namedStencil` places them; ".NET API" is only medium confidence in
+  the catalogue, but its words match the .NET stencil.
+- **Leak bait removed.** The examples' diagram starts with `sample-batch` (a batch job) instead of a
+  gateway, and a test keeps gateways, APIs and ingresses out of the placeholders.
+- **On by default** (see Where, above).
+
+**Projection** (from run 3's 28/37):
+
+- **Deterministic:** create-14, create-28 (reconciliation) and create-11, create-21 (completion) → 32/37
+  (86%).
+- **If Chrome takes the enum schema:** edit-rename and edit-change can't loop in `target` → 34/37 (92%).
+- **The leak** (bait removed) → 35/37 (95%).
+- **Possible:** create-29 (reconciliation) and create-24.
+- **Range: 32–35/37 (86–95%),** with the usual ±6 points between runs.
+
+A unit test replays run 3's failures: create-14, 28 and 29 pass on the first try, and create-11 and 21
+are completed after the retry (`src/ai/evals/onDevice.test.ts`).
 
 Next: re-run the evals in the Lab and paste the table here.

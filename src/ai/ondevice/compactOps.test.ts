@@ -76,7 +76,7 @@ describe("toOps: the format", () => {
         EMPTY,
         Array.from({ length: 9 }, () => ({ op: "remove", target: "x" })),
       ),
-    ).toBe("Use at most 8 ops.");
+    ).toBe("Use at most 6 ops.");
   });
 });
 
@@ -376,7 +376,7 @@ describe("toOps: cost", () => {
       })),
       edges: Array.from({ length: 20000 }, (_, i) => ({ id: `e${i}`, from: `n${i % n}`, to: `n${(i * 7 + 1) % n}` })),
     };
-    const ops = Array.from({ length: 8 }, (_, i) => ({
+    const ops = Array.from({ length: 6 }, (_, i) => ({
       op: "connect",
       from: `Node ${2 * i}`,
       to: `Node ${2 * i + 1}`,
@@ -560,7 +560,7 @@ describe("round 2: references the model gets wrong", () => {
       { diagram: EMPTY, request: "An ECS workload persists to DynamoDB" },
     );
     // Not added for the model: the completeness check names it instead.
-    expect(r).toEqual({
+    expect(r).toMatchObject({
       ok: false,
       error: "You added Table but not the ECS workload. Add every component the request names and connect them.",
     });
@@ -587,15 +587,15 @@ describe("round 2: references the model gets wrong", () => {
         EMPTY,
         [
           { op: "add", key: "p", kind: "partner", label: "External partner" },
-          { op: "add", key: "g", kind: "API gateway", label: "sample-gateway" },
+          { op: "add", key: "g", kind: "Batch Job", label: "sample-batch" },
           { op: "connect", from: "p", to: "g" },
         ],
         { request: "An external partner sends a webhook" },
       ),
-    ).toMatch(/^Don't reuse names from the examples \("sample-gateway"\)/);
+    ).toMatch(/^Don't reuse names from the examples \("sample-batch"\)/);
     expect(
-      error(EMPTY, [{ op: "add", key: "g", kind: "API gateway", label: "sample-gateway" }], {
-        request: "Add sample-gateway",
+      error(EMPTY, [{ op: "add", key: "g", kind: "Batch Job", label: "sample-batch" }], {
+        request: "Add sample-batch",
       }),
     ).toBeNull();
   });
@@ -770,5 +770,92 @@ describe("round 2 review: one normalized node", () => {
     expect(diagram.nodes).toHaveLength(2);
     expect(edges).toEqual(["Jobs -> Azure function"]);
     expect(diagram.nodes.find((n) => n.label === "Azure function")?.stencil).toBe("azure.functions");
+  });
+});
+
+describe("round 3: the request's technologies win over unmentioned ones", () => {
+  const stencils = (diagram: DiagramFile, ops: object[], request: string) =>
+    Object.fromEntries(apply(diagram, ops, { request }).diagram.nodes.map((n) => [n.label, n.stencil]));
+
+  it("create-14: the .NET service the request names, for a Go service it never mentions", () => {
+    expect(
+      stencils(
+        EMPTY,
+        [
+          { op: "add", key: "svc", kind: "Go service", label: "dotnet-service" },
+          { op: "add", key: "db", kind: "Azure SQL", label: "Azure SQL" },
+          { op: "connect", from: "svc", to: "db" },
+        ],
+        "A .NET service writes Azure SQL",
+      ),
+    ).toEqual({ "dotnet-service": "service.dotnet", "Azure SQL": "azure.sql" });
+  });
+
+  it("create-28: a generic database and an unspecified component, for PostgreSQL and Lambda", () => {
+    expect(
+      stencils(
+        EMPTY,
+        [
+          { op: "add", key: "c", kind: "Lambda", label: "Component" },
+          { op: "add", key: "d", kind: "PostgreSQL", label: "Database" },
+          { op: "connect", from: "c", to: "d" },
+        ],
+        "An unspecified component connects to a generic database",
+      ),
+    ).toEqual({ Component: "generic.service", Database: "generic.database" });
+  });
+
+  it("create-29: billing and shipping consumers, for queues labelled billing and shipping", () => {
+    expect(
+      stencils(
+        EMPTY,
+        [
+          { op: "add", key: "t", kind: "Kafka topic", label: "Orders" },
+          { op: "add", key: "b", kind: "Service Bus queue", label: "billing" },
+          { op: "add", key: "s", kind: "Service Bus queue", label: "shipping" },
+          { op: "connect", from: "t", to: "b" },
+          { op: "connect", from: "t", to: "s" },
+        ],
+        "Publish an event to billing and shipping consumers inside an Azure boundary",
+      ),
+    ).toEqual({ Orders: "kafka.topic", billing: "generic.service", shipping: "generic.service" });
+  });
+
+  it("never changes a node whose technology the request names, an extra the request leaves open, or an existing node", () => {
+    const named = [
+      { op: "add", key: "g", kind: "Go service", label: "API" },
+      { op: "add", key: "r", kind: "Redis cache", label: "Cache" },
+      { op: "add", key: "x", kind: "Prometheus", label: "Metrics" },
+      { op: "connect", from: "g", to: "r" },
+      { op: "connect", from: "g", to: "x" },
+    ];
+    expect(stencils(EMPTY, named, "A Go service uses Redis cache")).toEqual({
+      API: "service.go",
+      Cache: "redis.cache",
+      Metrics: "prometheus",
+    });
+    // "Workers" is a role, not Cloudflare Workers: the .NET worker stays.
+    expect(
+      stencils(
+        EMPTY,
+        [
+          { op: "add", key: "w", kind: ".NET service", label: "billing-worker" },
+          { op: "add", key: "p", kind: "PostgreSQL", label: "DB" },
+          { op: "connect", from: "w", to: "p" },
+        ],
+        "Workers write to Postgres",
+      ),
+    ).toEqual({ "billing-worker": "service.dotnet", DB: "postgres" });
+    // An existing node the request names isn't a component to give away.
+    const { diagram } = apply(
+      KAFKA,
+      [
+        { op: "add", key: "q", kind: "Service Bus queue", label: "inventory-dlq" },
+        { op: "connect", from: "Inventory service", to: "q" },
+      ],
+      { request: "Add a dead-letter queue after Inventory service" },
+    );
+    expect(diagram.nodes.find((n) => n.label === "inventory-dlq")?.stencil).toBe("azure.service-bus.queue");
+    expect(diagram.nodes.find((n) => n.id === "inventory")?.stencil).toBe("service.java");
   });
 });

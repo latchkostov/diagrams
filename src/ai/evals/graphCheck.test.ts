@@ -105,7 +105,7 @@ describe("checkGraph", () => {
     expect(checkGraph(d, fair)).toBeNull();
     expect(checkGraph(d, fair, { labels: "exact" })).toMatch(/^missing Processor/);
     const byCategory = { ...fair, nodes: [fair.nodes[0], { ...fair.nodes[1], accept: ["category:generic"] }] };
-    expect(checkGraph(d, byCategory)).toBe("missing service.go");
+    expect(checkGraph(d, byCategory)).toBe("missing service.go (or any generic)");
     const byId = { ...fair, nodes: [fair.nodes[0], { ...fair.nodes[1], accept: ["aws.lambda"] }] };
     expect(checkGraph(d, byId)).toBeNull();
   });

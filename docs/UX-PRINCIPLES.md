@@ -136,8 +136,8 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   and **Copy fix-up prompt**. A stencil the app wasn't sure of says **not sure** (or **a guess**) with its
   alternatives as one-click chips.
 - The **on-device model** is Chrome's built-in model (the Prompt API): no key, nothing leaves the device.
-  Where it can run, **Advanced ▸ Try the on-device model** (off by default, remembered) adds the panel's
-  only request box, at its foot: "Describe a change…", the mic, **Send** (Enter), labelled "Runs on this
+  Where it can run, the panel's only request box sits at its foot (on by default since round 3, at the
+  owner's direction; **Advanced ▸ Try the on-device model** turns it off, remembered): "Describe a change…", the mic, **Send** (Enter), labelled "Runs on this
   device with Chrome's built-in model". A one-time **Download the on-device model** shows progress first
   where needed. Its changes are turns like an agent's ("On this device"); a reply that doesn't fit after one
   retry says **Couldn't apply that. Try rephrasing.** and applies nothing. **Stop** (or Esc) cancels, and

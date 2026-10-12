@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getStencil } from "../../stencils/registry";
+import { applyOps } from "../index";
+import type { DiagramFile } from "../../model/types";
+const EMPTY: DiagramFile = { format: "diagrams/v1", title: "t", nodes: [], edges: [] };
 import { failureCategory, onDeviceCases, resultsMarkdown, runOnDeviceEvals } from "./onDevice";
 import { diagramEvals } from "./corpus";
 
@@ -102,8 +105,8 @@ describe("on-device evals", () => {
     const cases = onDeviceCases.filter((c) => c.id === "edit-dlq" || c.id === "create-1");
     // Connected, so complete as far as the reply can tell, but the wrong stencil: the check says so.
     const wrong = [
-      { op: "add", key: "g", kind: "Grafana", label: "Dashboards" },
-      { op: "connect", from: "Inventory service", to: "g" },
+      { op: "add", key: "q", kind: "queue", label: "dlq" },
+      { op: "connect", from: "Payments service", to: "q" },
     ];
     // Into an empty diagram, the request's components are missing: the completeness check says which.
     const lone = [{ op: "add", kind: "Grafana", label: "Dashboards" }];
@@ -112,7 +115,7 @@ describe("on-device evals", () => {
       cases,
     );
     expect(results.map((r) => r.pass)).toEqual([false, false]);
-    expect(results[0].note).toMatch(/no new node of the right kind/);
+    expect(results[0].note).toMatch(/isn't connected where asked/);
     expect(results[1].note).toMatch(/^You added Dashboards but not the Kafka topic orders.created/);
     expect(resultsMarkdown(results)).toContain("| edit-dlq |");
   });
@@ -173,17 +176,17 @@ describe("on-device evals", () => {
           prompt.includes("Empty diagram.")
             ? [{ op: "add", kind: "Grafana", label: "Dashboards" }]
             : [
-                { op: "add", key: "g", kind: "Grafana", label: "Dashboards" },
-                { op: "connect", from: "Inventory service", to: "g" },
+                { op: "add", key: "q", kind: "queue", label: "dlq" },
+                { op: "connect", from: "Payments service", to: "q" },
               ],
         ),
       ),
       cases,
     );
-    expect(results.map((r) => r.category)).toEqual(["stencil", "omission"]);
-    expect(results[0].output).toContain("Dashboards → grafana");
+    expect(results.map((r) => r.category)).toEqual(["structure", "omission"]);
+    expect(results[0].output).toContain("dlq → generic.queue");
     const md = resultsMarkdown(results);
-    expect(md).toMatch(/Failures by category: (stencil 1 · omission 1|omission 1 · stencil 1)\./);
+    expect(md).toMatch(/Failures by category: (structure 1 · omission 1|omission 1 · structure 1)\./);
     expect(md).toContain("| Case | Request | Result | Tries | ms | Category | Note | Model output |");
   });
 
@@ -300,7 +303,7 @@ describe("on-device evals", () => {
         [add("c", "component", "Component"), add("d", "generic database", "Database"), link("c", "d")],
       ],
       "create-23": [
-        [add("p", "external partner", "Partner"), add("g", "API gateway", "sample-gateway"), link("p", "g")],
+        [add("p", "external partner", "Partner"), add("g", "Batch Job", "sample-batch"), link("p", "g")],
         [add("p", "external partner", "Partner"), add("w", "webhook", "Webhook"), link("p", "w")],
       ],
     };
@@ -326,5 +329,61 @@ describe("on-device evals", () => {
     expect(feedback["create-25"]).toMatch(/You added Table but not the ECS workload/);
     expect(feedback["create-12"]).toMatch(/You added Redis but not the Go service, and nothing connects them/);
     expect(feedback["create-23"]).toMatch(/Don't reuse names from the examples/);
+  });
+
+  it("create-29 accepts any processing stencil for billing and shipping, and says so when it fails", async () => {
+    const c = onDeviceCases.find((x) => x.id === "create-29")!;
+    const build = (kind: string) =>
+      applyOps(EMPTY, [
+        { op: "add_node", kind: "Kafka topic", label: "Orders", key: "t" },
+        { op: "add_node", kind, label: "billing", key: "b" },
+        { op: "add_node", kind, label: "shipping", key: "s" },
+        { op: "connect", from: "t", to: "b" },
+        { op: "connect", from: "t", to: "s" },
+      ]).diagram;
+    for (const kind of ["Lambda", "Go service", "Azure Functions"])
+      expect(c.check(EMPTY, build(kind)), kind).toBeNull();
+    expect(c.check(EMPTY, build("Service Bus queue"))).toBe(
+      "missing service.dotnet (or any processor), service.python (or any processor)",
+    );
+  });
+
+  it("replays round 3's failures (run 3, Chrome 154): reconciled outright, or completed after the retry", async () => {
+    const add = (key: string, kind: string, label: string) => ({ op: "add", key, kind, label });
+    const link = (from: string, to: string) => ({ op: "connect", from, to });
+    const replies: Record<string, object[][]> = {
+      // A technology the request never mentions, where it names another: reconciled outright.
+      "create-14": [
+        [add("svc", "Go service", "dotnet-service"), add("db", "Azure SQL", "Azure SQL"), link("svc", "db")],
+      ],
+      "create-28": [[add("c", "Lambda", "Component"), add("d", "PostgreSQL", "Database"), link("c", "d")]],
+      "create-29": [
+        [
+          add("t", "Kafka topic", "Orders"),
+          add("b", "Service Bus queue", "billing"),
+          add("s", "Service Bus queue", "shipping"),
+          link("t", "b"),
+          link("t", "s"),
+        ],
+      ],
+      // The same component only, twice: completed from the request after the retry.
+      "create-11": [[add("api", ".NET API", "API")]],
+      "create-21": [[add("hub", "Event Hubs", "IoT Events")]],
+    };
+    const cases = onDeviceCases.filter((c) => c.id in replies);
+    const results = await runOnDeviceEvals(async () => {
+      let id = "";
+      let n = 0;
+      return {
+        prompt: async (input: string) => {
+          id ||= cases.find((c) => input.endsWith(`Request: ${c.request}`))!.id;
+          const answers = replies[id];
+          return reply(answers[Math.min(n++, answers.length - 1)]);
+        },
+      };
+    }, cases);
+    expect(results.filter((r) => !r.pass).map((r) => `${r.id}: ${r.note}`)).toEqual([]);
+    const tries = Object.fromEntries(results.map((r) => [r.id, r.attempts]));
+    expect(tries).toEqual({ "create-14": 1, "create-28": 1, "create-29": 1, "create-11": 2, "create-21": 2 });
   });
 });

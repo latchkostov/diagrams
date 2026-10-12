@@ -11,6 +11,10 @@ import { isRoleWord, namedStencil, resolveKind } from "../stencils";
 import { EXAMPLE_NAMES } from "./examples";
 
 const lower = (s: string) => s.toLowerCase();
+
+/** Consume-type verbs: the data flows from the object to the subject ("Java consumes a topic"). */
+export const CONSUMES =
+  /\b(?:consumes?|consuming|reads? from|subscribes? to|listens? (?:to|on)|pulls? from|(?:is )?fed by|(?:is )?triggered by)\b/i;
 const words = (s: string) =>
   lower(s)
     .split(/[^a-z0-9#+]+/)
@@ -188,9 +192,37 @@ function covers(node: NewNode, c: NamedComponent): boolean {
     .some((w) => !GENERIC.has(w) && mine.includes(w));
 }
 
+/**
+ * Which new node is each named component: exact stencils first ("IoT Events" with kind Event Hubs is
+ * Event Hubs, not the IoT devices its label shares a word with), then any node that covers it, the
+ * most constrained components first. Undefined for a component no node is.
+ */
+function assignNodes(comps: readonly NamedComponent[], nodes: readonly NewNode[]): (NewNode | undefined)[] {
+  const out: (NewNode | undefined)[] = comps.map(() => undefined);
+  const taken = new Set<string>();
+  comps.forEach((c, i) => {
+    const exact = nodes.find((n) => !taken.has(n.key) && n.stencil === c.stencil);
+    if (exact) {
+      out[i] = exact;
+      taken.add(exact.key);
+    }
+  });
+  const options = comps.map((c) => nodes.filter((n) => covers(n, c)));
+  const order = comps.map((_, i) => i).sort((a, b) => options[a].length - options[b].length);
+  for (const i of order) {
+    if (out[i]) continue;
+    const pick = options[i].find((n) => !taken.has(n.key));
+    if (pick) {
+      out[i] = pick;
+      taken.add(pick.key);
+    }
+  }
+  return out;
+}
+
 /** A clause that relates things ("calls", "writes to", "between"): its new nodes must be connected. */
 const RELATES =
-  /\b(?:calls?|uses?|writes?|reads?|consumes?|feeds?|routes?|sends?|publish(?:es)?|invokes?|stores?|saves?|accesses|access|exports?|starts?|delivers?|persists?|forwards?|fans? out|connects?|resolves?|subscribes?|listens?|pulls?|triggers?|talks?|quer(?:y|ies)|posts?|pushes?|emits?|produces?|between|after|before|behind|in front of)\b/i;
+  /\b(?:calls?|uses?|writes?|reads?|consumes?|feeds?|routes?|sends?|publish(?:es)?|invokes?|stores?|saves?|accesses|access|exports?|starts?|delivers?|persists?|forwards?|fans? out|connects?|resolves?|subscribes?|listens?|pulls?|triggers?|talks?|quer(?:y|ies)|posts?|pushes?|emits?|produces?|consumed|written|invoked|called|triggered|fed|routed|sent|published|stored|saved|used|between|after|before|behind|in front of)\b/i;
 /** "…, but don't connect it yet", "unconnected": the person wants it left alone. */
 const LEAVE =
   /\b(?:not|n't|never|without)\s+(?:connect(?:ed|ing)?|link(?:ed|ing)?|wir(?:e|ed|ing))\b|\b(?:un|dis)connected\b|\bstand-?alone\b|\bon its own\b/i;
@@ -241,18 +273,10 @@ export function incompleteness(ops: readonly DiagramOp[], request: string, diagr
   const loose = nodes.filter((n) => !linked.has(n.key) && mustConnect(n, request));
   let missing: NamedComponent[] = [];
   if (!diagram.nodes.length) {
-    // One node per named component; the most constrained components pick first.
+    // One node per named component.
     const comps = requestComponents(request);
-    const options = comps.map((c) => nodes.filter((n) => covers(n, c)));
-    const order = comps.map((_, i) => i).sort((a, b) => options[a].length - options[b].length);
-    const taken = new Set<string>();
-    const unmet = new Set<NamedComponent>();
-    for (const i of order) {
-      const pick = options[i].find((n) => !taken.has(n.key));
-      if (pick) taken.add(pick.key);
-      else unmet.add(comps[i]);
-    }
-    missing = comps.filter((c) => unmet.has(c));
+    const assigned = assignNodes(comps, nodes);
+    missing = comps.filter((_, i) => !assigned[i]);
   }
   if (!missing.length && !loose.length) return null;
   const added = nodes.map((n) => n.label);
@@ -275,4 +299,131 @@ export function leakedName(names: readonly string[], request: string, diagram: D
       if (lower(name).includes(e) && !known.includes(e)) return example;
     }
   return null;
+}
+
+/** "a generic database", "an unspecified component": the request asks for the generic stencil itself. */
+const QUALIFIED = /\b(?:generic|unspecified|any|some|plain)\b/i;
+
+/**
+ * Request–technology reconciliation: when the request names a stencil no new node has (".NET service")
+ * and a new node has a stencil the request never mentions ("Go service", label "dotnet-service"), that
+ * node becomes what the request named. Pairs by label words, then by role, then (one and one only) by
+ * order. Never touches a node whose technology the request names, nor components that are existing
+ * nodes. Returns each node's kind, changed or not.
+ */
+export function reconcileKinds(
+  nodes: readonly { label: string; kind: string }[],
+  request: string,
+  diagram: DiagramFile,
+): string[] {
+  const kinds = nodes.map((n) => n.kind);
+  if (!request || !nodes.length) return kinds;
+  const existing = diagram.nodes.map((n) => norm(n.label));
+  const comps = requestComponents(request).filter((c) => {
+    const n = norm(c.phrase);
+    return !existing.some(
+      (e) =>
+        e === n ||
+        (n &&
+          e
+            .split(" ")
+            .filter(Boolean)
+            .every((w) => n.split(" ").includes(w))),
+    );
+  });
+  const stencilOf = (i: number) => resolveKind(kinds[i], nodes[i].label).id;
+  const role = (id: string) => getStencil(id).simRole;
+  const had = (c: NamedComponent) =>
+    nodes.some(
+      (_, i) =>
+        stencilOf(i) === c.stencil ||
+        (c.stencil.startsWith("generic.") && !QUALIFIED.test(c.phrase) && role(stencilOf(i)) === role(c.stencil)),
+    );
+  const unmatched = comps.filter((c) => !had(c));
+  const eligible = nodes
+    .map((_, i) => i)
+    .filter((i) => !stencilOf(i).startsWith("generic.") && !comps.some((c) => c.stencil === stencilOf(i)));
+  if (!unmatched.length || !eligible.length) return kinds;
+  const free = new Set(eligible);
+  const assign = (c: NamedComponent, i: number) => {
+    // The stencil id itself: the phrase could resolve elsewhere ("Workers" to Cloudflare Workers).
+    kinds[i] = c.stencil;
+    free.delete(i);
+  };
+  const overlap = (c: NamedComponent, i: number) => {
+    const mine = words(nodes[i].label)
+      .map(stem)
+      .filter((w) => !GENERIC.has(w));
+    return words(c.phrase)
+      .map(stem)
+      .filter((w) => !GENERIC.has(w) && mine.includes(w)).length;
+  };
+  const left: NamedComponent[] = [];
+  for (const c of unmatched) {
+    // By label words: "billing consumers" for the node labelled "billing".
+    const scored = [...free].map((i) => ({ i, n: overlap(c, i) })).filter((x) => x.n > 0);
+    const top = Math.max(0, ...scored.map((x) => x.n));
+    const best = scored.filter((x) => x.n === top);
+    if (best.length === 1) assign(c, best[0].i);
+    else left.push(c);
+  }
+  const rest: NamedComponent[] = [];
+  for (const c of left) {
+    // By role: a generic database for the node that stores, a component for the one that processes.
+    const same = [...free].filter((i) => role(stencilOf(i)) === role(c.stencil));
+    if (same.length === 1) assign(c, same[0]);
+    else rest.push(c);
+  }
+  // By order, only one for one.
+  if (rest.length === 1 && free.size === 1) assign(rest[0], [...free][0]);
+  return kinds;
+}
+
+/**
+ * Deterministic completion, after a retry still left a simple request incomplete: into an empty diagram,
+ * a request naming two or three components, each next pair joined by a relating verb ("A .NET API
+ * stores documents in MongoDB"). The missing components are added from the request's words, and each
+ * pair connected the way its verb says ("consumes" flows back; "consumed by" forward). Null when the
+ * request isn't that simple.
+ */
+export function completeFromRequest(
+  ops: readonly DiagramOp[],
+  request: string,
+  diagram: DiagramFile,
+): DiagramOp[] | null {
+  if (diagram.nodes.length) return null;
+  const comps = requestComponents(request);
+  if (comps.length < 2 || comps.length > 3) return null;
+  // Where each component sits in the request, and the words between it and the next.
+  const at: number[] = [];
+  let from = 0;
+  for (const c of comps) {
+    const i = lower(request).indexOf(lower(c.phrase), from);
+    if (i < 0) return null;
+    at.push(i);
+    from = i + c.phrase.length;
+  }
+  const between = comps.slice(1).map((_, i) => request.slice(at[i] + comps[i].phrase.length, at[i + 1]));
+  if (!between.every((b) => RELATES.test(b))) return null;
+  const out = [...ops];
+  const assigned = assignNodes(comps, newNodes(out));
+  const keyOf: string[] = [];
+  for (const [i, c] of comps.entries()) {
+    const pick = assigned[i];
+    if (pick) {
+      keyOf.push(pick.key);
+      continue;
+    }
+    const key = `~req-${i + 1}`;
+    out.push({ op: "add_node", kind: c.stencil, label: c.phrase, key });
+    keyOf.push(key);
+  }
+  const joined = (a: string, b: string) =>
+    out.some((o) => o.op === "connect" && ((o.from === a && o.to === b) || (o.from === b && o.to === a)));
+  for (const [i, words] of between.entries()) {
+    const back = CONSUMES.test(words) && !/\b(?:consumed|read)\s+by\b/i.test(words);
+    const [a, b] = back ? [keyOf[i + 1], keyOf[i]] : [keyOf[i], keyOf[i + 1]];
+    if (!joined(a, b)) out.push({ op: "connect", from: a, to: b });
+  }
+  return out;
 }

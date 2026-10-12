@@ -14,10 +14,10 @@ import { confidentStencil, namedStencil, resolveKind } from "../stencils";
 import type { DiagramOp } from "../index";
 import { RefIndex, ReplyRefs, refWords, type NewNodeAlias } from "../refs";
 import type { ScopeItem } from "../ui/context";
-import { incompleteness, inRequest, kindFor, leakedName } from "./replyChecks";
+import { CONSUMES, incompleteness, inRequest, kindFor, leakedName, reconcileKinds } from "./replyChecks";
 
 /** At most this many ops per reply (checked in code: hard limits in a schema make small models odd). */
-export const MAX_OPS = 8;
+export const MAX_OPS = 6;
 
 export const COMPACT_OPS = ["add", "connect", "insert_between", "rename", "change_kind", "remove"] as const;
 export type CompactOpName = (typeof COMPACT_OPS)[number];
@@ -41,7 +41,7 @@ export interface ReplyContext {
 }
 
 type Connect = Extract<DiagramOp, { op: "connect" }>;
-type Result = { ok: true; ops: DiagramOp[]; summary: string } | { ok: false; error: string };
+type Result = { ok: true; ops: DiagramOp[]; summary: string } | { ok: false; error: string; partial?: DiagramOp[] };
 
 const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
 const slug = (s: string) =>
@@ -57,10 +57,17 @@ const KEY_PREFIX = "~";
 const THIS = /^(?:this|it|that|the selection|selection|the selected node|selected node|selected)$/i;
 
 /** Consume-type verbs: the data flows from the object to the subject ("Java consumes a topic"). */
-export const CONSUMES =
-  /\b(?:consumes?|consuming|reads? from|subscribes? to|listens? (?:to|on)|pulls? from|(?:is )?fed by|(?:is )?triggered by)\b/i;
+export { CONSUMES } from "./replyChecks";
 
-class ReplyError extends Error {}
+class ReplyError extends Error {
+  /** For an incomplete reply: the ops it did make (for completeFromRequest). */
+  constructor(
+    message: string,
+    readonly partial?: DiagramOp[],
+  ) {
+    super(message);
+  }
+}
 
 /** The reply's ops for the core, or what's wrong with it (fed back to the model for one retry). */
 export function toOps(reply: string, ctx: ReplyContext): Result {
@@ -77,7 +84,8 @@ export function toOps(reply: string, ctx: ReplyContext): Result {
   try {
     return { ok: true, ops: convert(body.ops as CompactOp[], ctx), summary: text(body.summary)?.slice(0, 200) ?? "" };
   } catch (err) {
-    if (err instanceof ReplyError) return { ok: false, error: err.message };
+    if (err instanceof ReplyError)
+      return { ok: false, error: err.message, ...(err.partial ? { partial: err.partial } : {}) };
     throw err;
   }
 }
@@ -120,9 +128,22 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
     while (used.has(key)) key = `${key}-2`;
     used.add(key);
     keyOf.set(op, key);
-    const kind = kindFor(text(op.kind)!, text(op.label)!, request);
-    nodeOf.set(op, { key, kind });
-    refs.add({ key, ...(alias ? { alias } : {}), kind, label: text(op.label)! } satisfies NewNodeAlias);
+    // The label wins over a wrong kind word, when the request names it.
+    nodeOf.set(op, { key, kind: kindFor(text(op.kind)!, text(op.label)!, request) });
+  }
+  // Then the request's technologies: one it names that no new node has goes to a new node of one it never
+  // mentions. Everything after this (references, repairs, the ops) reads these kinds.
+  const fresh = raw.filter((op) => nodeOf.has(op));
+  const reconciled = reconcileKinds(
+    fresh.map((op) => ({ label: text(op.label)!, kind: nodeOf.get(op)!.kind })),
+    request,
+    diagram,
+  );
+  for (const [i, op] of fresh.entries()) {
+    const n = nodeOf.get(op)!;
+    n.kind = reconciled[i];
+    const alias = text(op.key);
+    refs.add({ key: n.key, ...(alias ? { alias } : {}), kind: n.kind, label: text(op.label)! } satisfies NewNodeAlias);
   }
 
   /** A reference, looked up: never creates anything. Unresolved text goes on to the core's error. */
@@ -246,7 +267,7 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
   );
   // Everything the request names added, and connected: else the retry says what's missing.
   const missing = incompleteness(out, request, diagram);
-  if (missing) throw new ReplyError(missing);
+  if (missing) throw new ReplyError(missing, out);
   return out;
 }
 

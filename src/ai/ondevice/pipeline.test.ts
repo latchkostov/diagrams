@@ -5,11 +5,14 @@ import { applyOps } from "../index";
 import { diagramEvals } from "../evals/corpus";
 import { onDeviceCases } from "../evals/onDevice";
 import { EXAMPLE_NAMES } from "./examples";
+import { completeFromRequest } from "./replyChecks";
 import {
   diagramContext,
   INITIAL_PROMPTS,
   isTransient,
   planError,
+  resetSchemaTier,
+  currentSchemaTier,
   REPLY_SCHEMA,
   requestPrompt,
   runOnDevice,
@@ -77,7 +80,7 @@ describe("the prompt", () => {
     expect(answers).toHaveLength(4);
     // Each answer, checked against its own request and the examples' diagram.
     const sample = applyOps(EMPTY, [
-      { op: "add_node", kind: "API gateway", label: "sample-gateway", key: "g" },
+      { op: "add_node", kind: "Batch Job", label: "sample-batch", key: "g" },
       { op: "add_node", kind: "Kafka topic", label: "sample.jobs", key: "j" },
       { op: "add_node", kind: ".NET service", label: "sample-worker", key: "w" },
       { op: "add_node", kind: "PostgreSQL", label: "sample-store", key: "s" },
@@ -116,7 +119,7 @@ describe("leakage guard", () => {
   const kafkaLabels = diagram.nodes.map((n) => n.label);
 
   it("the placeholder names appear in no eval request and no example diagram label", () => {
-    expect(EXAMPLE_NAMES).toEqual(expect.arrayContaining(["sample-gateway", "sample.jobs", "sample-worker"]));
+    expect(EXAMPLE_NAMES).toEqual(expect.arrayContaining(["sample-batch", "sample.jobs", "sample-worker"]));
     for (const name of EXAMPLE_NAMES) {
       expect(name.startsWith("sample")).toBe(true);
       for (const text of [...requests, ...kafkaLabels])
@@ -131,6 +134,10 @@ describe("leakage guard", () => {
       for (const o of JSON.parse(p.content).ops as { op: string; label?: string }[])
         if (o.label) expect(request.includes(o.label.toLowerCase()), o.label).toBe(true);
     }
+  });
+
+  it('leave no gateway, API or ingress to copy (run 3 reused "sample-gateway")', () => {
+    for (const name of EXAMPLE_NAMES) expect(name).not.toMatch(/gateway|api|ingress|front/i);
   });
 
   it("nor do they reuse the old examples' names", () => {
@@ -151,7 +158,10 @@ describe("runOnDevice", () => {
     expect(r.plan.summary).toBe("+1 node, +1 connection");
     expect(r.plan.next.nodes.find((n) => n.label === "inventory-dlq")?.stencil).toBe("generic.queue");
     expect(statuses).toEqual(["thinking", "applying"]);
-    expect(s.prompt.mock.calls[0][1]).toMatchObject({ responseConstraint: REPLY_SCHEMA });
+    // The reply's shape for this request: its targets are the diagram's own names.
+    expect(
+      JSON.stringify((s.prompt.mock.calls[0][1] as { responseConstraint?: object } | undefined)?.responseConstraint),
+    ).toContain('"Inventory service"');
     expect(r.output.raw).toBe(DLQ);
   });
 
@@ -287,7 +297,7 @@ describe("round 2: runaways", () => {
       for (const [k, v] of Object.entries(n)) walk(v, `${path}.${k}`);
     };
     walk(REPLY_SCHEMA, "reply");
-    expect(REPLY_SCHEMA.properties.ops.maxItems).toBe(8);
+    expect(REPLY_SCHEMA.properties.ops.maxItems).toBe(6);
     expect(REPLY_SCHEMA.properties.summary.maxLength).toBe(160);
   });
 
@@ -365,5 +375,76 @@ describe("round 2: runaways", () => {
         diagram,
       ),
     ).toMatch(/Labels it could mean: "Inventory service"/);
+  });
+});
+
+describe("round 3: schema tiers and the completion after the retry", () => {
+  it("a NotSupportedError moves to the next schema tier, remembered for the page", async () => {
+    resetSchemaTier();
+    const tiers: string[] = [];
+    const s = {
+      prompt: vi.fn(async (_input: string, opts?: { responseConstraint?: object }) => {
+        const text = JSON.stringify(opts?.responseConstraint);
+        const tier = text.includes("anyOf")
+          ? "rich"
+          : text.includes('"enum":["Storefront') || text.includes('"Inventory service"')
+            ? "enums"
+            : "plain";
+        tiers.push(tier);
+        if (tier !== "plain") throw new DOMException("unsupported keyword", "NotSupportedError");
+        return DLQ;
+      }),
+    };
+    const r = await runOnDevice({ session: s, diagram, request: "Add a DLQ" });
+    expect(r).toMatchObject({ ok: true, attempts: 1 });
+    expect(tiers).toEqual(["rich", "enums", "plain"]);
+    expect(currentSchemaTier()).toBe("plain");
+    resetSchemaTier();
+  });
+
+  it("a simple request still incomplete after the retry is completed from its words (create-11, create-21)", async () => {
+    const empty: DiagramFile = { ...EMPTY };
+    const onlyApi = reply("", [{ op: "add", key: "api", kind: ".NET API", label: "API" }]);
+    const r = await runOnDevice({
+      session: session(onlyApi, onlyApi),
+      diagram: empty,
+      request: "A .NET API stores documents in MongoDB",
+    });
+    expect(r).toMatchObject({ ok: true, attempts: 2, completed: true });
+    if (!r.ok) return;
+    const label = new Map(r.plan.next.nodes.map((n) => [n.id, `${n.label}:${n.stencil}`]));
+    expect(r.plan.next.edges.map((e) => `${label.get(e.from)} -> ${label.get(e.to)}`)).toEqual([
+      "API:service.dotnet -> MongoDB:mongodb",
+    ]);
+    const onlyHub = reply("", [{ op: "add", key: "hub", kind: "Event Hubs", label: "IoT Events" }]);
+    const iot = await runOnDevice({
+      session: session(onlyHub, onlyHub),
+      diagram: empty,
+      request: "IoT devices publish into Event Hubs",
+    });
+    expect(iot).toMatchObject({ ok: true, completed: true });
+    if (!iot.ok) return;
+    const names = new Map(iot.plan.next.nodes.map((n) => [n.id, n.stencil]));
+    expect(iot.plan.next.edges.map((e) => `${names.get(e.from)} -> ${names.get(e.to)}`)).toEqual([
+      "client.iot -> azure.event-hubs",
+    ]);
+  });
+
+  it("completion keeps out of anything but a simple request into an empty diagram", () => {
+    const partial = [{ op: "add_node" as const, kind: "Go service", label: "API", key: "~api" }];
+    expect(completeFromRequest(partial, "A Go service uses Redis cache", diagram)).toBeNull();
+    expect(completeFromRequest(partial, "Add a Go service and a Redis cache", EMPTY)).toBeNull();
+    expect(
+      completeFromRequest(
+        partial,
+        "A Go service uses Redis cache, writes to Postgres, calls Stripe and sends to SQS",
+        EMPTY,
+      ),
+    ).toBeNull();
+    // "consumes" flows back; "consumed by" forward.
+    const consumes = completeFromRequest([], "Java consumes a Kafka topic", EMPTY)!;
+    expect(consumes.filter((o) => o.op === "connect")).toEqual([{ op: "connect", from: "~req-2", to: "~req-1" }]);
+    const passive = completeFromRequest([], "A Kafka topic consumed by a Java worker", EMPTY)!;
+    expect(passive.filter((o) => o.op === "connect")).toEqual([{ op: "connect", from: "~req-1", to: "~req-2" }]);
   });
 });

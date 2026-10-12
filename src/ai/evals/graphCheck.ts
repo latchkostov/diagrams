@@ -33,7 +33,15 @@ export function checkGraph(
   const candidates = expected.nodes.map((want) => diagram.nodes.filter((n) => fits(want, n)));
   const missing = expected.nodes.filter((_, i) => !candidates[i].length);
   if (missing.length)
-    return `missing ${missing.map((n) => (labels === "exact" ? `${n.label} (${n.stencil})` : n.stencil)).join(", ")}`;
+    return `missing ${missing
+      .map((n) =>
+        labels === "exact"
+          ? `${n.label} (${n.stencil})`
+          : n.accept?.length
+            ? `${n.stencil} (or ${n.accept.map((a) => a.replace(/^role:/, "any ").replace(/^category:/, "any ")).join(", ")})`
+            : n.stencil,
+      )
+      .join(", ")}`;
 
   const index = new Map(expected.nodes.map((n, i) => [n.label, i]));
   const edges = expected.edges.map(([from, to]) => {

@@ -104,8 +104,11 @@ export function resolveKind(kind: string, label?: string): StencilResolution {
 }
 
 /** Is this phrase one of the plain role words ("API", "processor", "worker") that mean a generic service? */
-export const isRoleWord = (phrase: string) =>
-  KIND_WORDS[bare(phrase).toLowerCase().replace(/\s+/g, " ")] === "generic.service";
+export const isRoleWord = (phrase: string) => {
+  const p = bare(phrase).toLowerCase().replace(/\s+/g, " ");
+  // Plurals too: "workers", "consumers".
+  return KIND_WORDS[p] === "generic.service" || (p.endsWith("s") && KIND_WORDS[p.slice(0, -1)] === "generic.service");
+};
 
 const VENDORS = new Set(["azure", "aws", "amazon", "google", "gcp", "microsoft", "cloud"]);
 const wordsOf = (s: string) =>

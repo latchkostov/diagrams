@@ -23,8 +23,10 @@ function checkJsonSchema(value, schema, path = "input", definitions = {}) {
 		if (!Number.isFinite(value) || typeof schema.minimum === "number" && value < schema.minimum || typeof schema.maximum === "number" && value > schema.maximum) throw new Error(`${path}: number outside allowed range.`);
 	}
 	if (typeof value === "string" && (typeof schema.maxLength === "number" && value.length > schema.maxLength || typeof schema.minLength === "number" && value.length < schema.minLength)) throw new Error(`${path}: text outside allowed length.`);
+	if (typeof value === "string" && typeof schema.pattern === "string" && !new RegExp(schema.pattern, "u").test(value)) throw new Error(`${path}: text doesn't match ${schema.pattern}.`);
 	if (Array.isArray(value)) {
 		if (typeof schema.maxItems === "number" && value.length > schema.maxItems || typeof schema.minItems === "number" && value.length < schema.minItems) throw new Error(`${path}: list outside allowed size.`);
+		if (schema.uniqueItems === true && new Set(value.map((v) => JSON.stringify(v))).size !== value.length) throw new Error(`${path}: list has repeated items.`);
 		if (schema.items) value.forEach((v, i) => checkJsonSchema(v, schema.items, `${path}[${i}]`, definitions));
 	} else if (value && typeof value === "object") {
 		const object = value;
