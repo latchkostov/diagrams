@@ -6,7 +6,7 @@ import {
   type Simulation,
 } from "../../model/types";
 import { sanitizeSettings } from "../../model/relations";
-import type { ImportGraph, ImportReport, ReportConnection, ReportGuess } from "./graph";
+import type { ImportGraph, ImportReport, ReportConnection, ReportGuess, ReportLine } from "./graph";
 import { pickFor, withoutCredentials } from "./stencils";
 import { LIMITS } from "../native";
 import { layoutImport } from "./layout";
@@ -14,6 +14,16 @@ import { ImportError } from "./yaml";
 
 // ImportGraph → diagram: stencils from the shared resolver, links to relationships, groups to boundaries,
 // then the three-step layout. The caller runs the result through validateDiagram, like every other import.
+
+/** Report rows listed per section: the rest are counted in one line, so a hostile file can't flood the dialog. */
+export const MAX_REPORT_LINES = 200;
+const capped = (lines: ReportLine[]): ReportLine[] =>
+  lines.length <= MAX_REPORT_LINES
+    ? lines
+    : [
+        ...lines.slice(0, MAX_REPORT_LINES),
+        { name: `${(lines.length - MAX_REPORT_LINES).toLocaleString("en")} more`, reason: "not listed" },
+      ];
 
 /** How long the "Imported traffic" simulation sends. */
 export const TRAFFIC_SECONDS = 120;
@@ -175,8 +185,8 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
       boundaries: groups.length,
       guesses,
       inferred,
-      notDrawn: g.notDrawn,
-      unread: g.unread,
+      notDrawn: capped(g.notDrawn),
+      unread: capped(g.unread),
       notes: simulation ? [...g.notes, "Go live and pick “Imported traffic” to watch messages flow"] : g.notes,
       ...(traffic.length
         ? {

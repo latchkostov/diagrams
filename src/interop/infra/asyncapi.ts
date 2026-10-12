@@ -1,6 +1,7 @@
 import type { Evidence, ImportComponent, ImportGraph, ImportLink } from "./graph";
 import type { DiagramGroup } from "../../model/types";
 import { parseUrl } from "./settings";
+import { decodeSegment, Refs, type At, type Doc } from "./asyncapiRefs";
 import { ImportError, isMap, list, own, readYaml, str } from "./yaml";
 
 // AsyncAPI 2.x and 3.x → ImportGraph (docs/research/imports.md § Mapping: AsyncAPI). Our own reader: the
@@ -8,46 +9,20 @@ import { ImportError, isMap, list, own, readYaml, str } from "./yaml";
 // application, from its own point of view. In 3.x `send` means it sends; 2.x inverts the words: `publish` means
 // others publish *to* it (it receives) and `subscribe` means it sends. Several documents join on the channel:
 // the same address on the same server (protocol family and host) is one node, so a producer in one file and a
-// consumer in another become one flow. `$ref`s are followed inside the opened files only, never fetched.
+// consumer in another become one flow. `$ref`s are followed inside the opened files only (asyncapiRefs.ts), each
+// resolved value with the document that owns it.
+
+export { REF_LIMITS } from "./asyncapiRefs";
 
 export interface SourceFile {
   name: string;
   text: string;
 }
 
-/** `$ref` limits: references followed in a row, and in all for one import. */
-export const REF_LIMITS = { depth: 32, total: 10_000 } as const;
 /** The "Imported traffic" simulation: this rate at each entry point, for this long. */
 export const IMPORTED_TRAFFIC = { ratePerSec: 1, seconds: 120 } as const;
 
-const REMOTE = "a remote reference, never fetched: open that file too";
-
-interface Doc {
-  file: string;
-  root: Record<string, unknown>;
-  v2: boolean;
-}
-
 const baseName = (path: string) => path.replace(/^.*[\\/]/, "").toLowerCase();
-
-/** A JSON pointer ("/components/messages/OrderPlaced") inside `root`, or undefined. */
-function pointerGet(root: unknown, pointer: string): unknown {
-  if (!pointer) return root;
-  if (!pointer.startsWith("/")) return undefined;
-  let cur: unknown = root;
-  for (const raw of pointer.slice(1).split("/")) {
-    let part = raw.replace(/~1/g, "/").replace(/~0/g, "~");
-    try {
-      part = decodeURIComponent(part);
-    } catch {
-      return undefined;
-    }
-    if (Array.isArray(cur)) cur = /^\d+$/.test(part) ? cur[Number(part)] : undefined;
-    else cur = own(cur, part);
-    if (cur === undefined) return undefined;
-  }
-  return cur;
-}
 
 // ---------------------------------------------------------------- protocols → stencils
 
@@ -138,7 +113,10 @@ const SCHEMA_FORMAT = /avro|protobuf/i;
 // ---------------------------------------------------------------- the reader
 
 /** A message as the import uses it: its name (the simulation's message type) and an Avro or Protobuf format. */
-type Message = { name?: string; contentType?: string };
+interface Message {
+  name?: string;
+  contentType?: string;
+}
 
 interface Server {
   id: string;
@@ -151,6 +129,7 @@ interface Server {
   avro?: boolean;
 }
 
+/** One channel node: every document's channel with this address on this server. */
 interface Channel {
   key: string;
   address: string;
@@ -158,9 +137,21 @@ interface Channel {
   kinds: { kind: ChannelKind; doc: string; exchange?: string }[];
   partitions?: number;
   contentType?: string;
+  /** Message names declared on it, in any document. */
+  messages: Set<string>;
   producers: Set<string>;
   consumers: Set<string>;
 }
+
+/** A resolved channel object, read once: its node and its messages, by object (for an operation's selection). */
+interface ChannelRead {
+  node: Channel;
+  messages: Message[];
+  byObject: Map<unknown, Message>;
+}
+
+/** Work units (channels, messages, operations read) for one import: a bound on what shared references can cost. */
+export const WORK_BUDGET = 200_000;
 
 export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
   const docs: Doc[] = [];
@@ -188,66 +179,31 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     unread: [],
     notes: [],
   };
-  const unread = (name: string, reason: string) => {
-    if (!g.unread.some((l) => l.name === name)) g.unread.push({ name: name.slice(0, 160), reason });
-  };
-
-  // ------------------------------------------------ $ref: local (and opened files) only, cycles and depth bounded
-  let followed = 0;
-  const deref = (value: unknown, doc: Doc): { value: unknown; doc: Doc } | undefined => {
-    const seen = new Set<string>();
-    let cur = value;
-    let d = doc;
-    for (let depth = 0; isMap(cur) && typeof own(cur, "$ref") === "string"; depth++) {
-      const ref = own(cur, "$ref") as string;
-      if (++followed > REF_LIMITS.total) throw new ImportError("It has too many references ($ref) to follow.");
-      if (depth >= REF_LIMITS.depth) return void unread(`$ref ${ref}`, "more than 32 references in a row");
-      const hash = ref.indexOf("#");
-      const file = hash < 0 ? ref : ref.slice(0, hash);
-      if (file) {
-        if (/^[a-z][a-z0-9+.-]*:/i.test(file)) return void unread(`$ref ${ref}`, REMOTE);
-        const other = byName.get(baseName(file));
-        if (!other) return void unread(`$ref ${ref}`, "not among the files you opened");
-        d = other;
-      }
-      const at = `${d.file}#${hash < 0 ? "" : ref.slice(hash + 1)}`;
-      if (seen.has(at)) return void unread(`$ref ${ref}`, "a reference cycle");
-      seen.add(at);
-      cur = pointerGet(d.root, hash < 0 ? "" : ref.slice(hash + 1));
-      if (cur === undefined) return void unread(`$ref ${ref}`, "points at nothing in the file");
-    }
-    return { value: cur, doc: d };
-  };
-  const get = (value: unknown, doc: Doc) => deref(value, doc)?.value;
-
+  const refs = new Refs(byName);
   // Every remote reference is listed, used or not: nothing is ever fetched.
-  for (const doc of docs) {
-    const stack: unknown[] = [doc.root];
-    while (stack.length) {
-      const v = stack.pop();
-      if (!v || typeof v !== "object") continue;
-      const ref = own(v, "$ref");
-      if (typeof ref === "string") {
-        const file = ref.split("#")[0];
-        if (/^[a-z][a-z0-9+.-]*:/i.test(file)) unread(`$ref ${ref}`, REMOTE);
-        else if (file && !byName.has(baseName(file))) unread(`$ref ${ref}`, "not among the files you opened");
-      }
-      stack.push(...(Array.isArray(v) ? v : Object.values(v)));
-    }
-  }
+  for (const doc of docs) refs.scan(doc);
+  let work = 0;
+  const step = () => {
+    if (++work > WORK_BUDGET) throw new ImportError("It has too much to read in one import.");
+  };
 
   // ------------------------------------------------ servers: one boundary per host and protocol family
   const servers = new Map<string, Server>();
+  const docServers = new Map<Doc, Map<string, Server>>();
   const serversOf = (doc: Doc) => {
-    const out = new Map<string, Server>();
-    const all = get(own(doc.root, "servers"), doc);
-    if (!isMap(all)) return out;
-    for (const name of Object.keys(all)) {
-      const s = get(all[name], doc);
-      if (!isMap(s)) continue;
-      const protocol = (str(own(s, "protocol")) ?? "").toLowerCase();
+    let out = docServers.get(doc);
+    if (out) return out;
+    out = new Map<string, Server>();
+    docServers.set(doc, out);
+    const all = refs.resolve(own(doc.root, "servers"), doc);
+    if (!all || !isMap(all.value)) return out;
+    for (const name of Object.keys(all.value)) {
+      step();
+      const s = refs.resolve(all.value[name], all.doc);
+      if (!s || !isMap(s.value)) continue;
+      const protocol = (str(own(s.value, "protocol")) ?? "").toLowerCase();
       const family = familyOf(protocol);
-      const raw = doc.v2 ? (str(own(s, "url")) ?? "") : (str(own(s, "host")) ?? "");
+      const raw = s.doc.v2 ? (str(own(s.value, "url")) ?? "") : (str(own(s.value, "host")) ?? "");
       const host = raw
         .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
         .replace(/[/?#].*$/, "")
@@ -258,13 +214,14 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
       let server = servers.get(id);
       if (!server) {
         const hostname = host.replace(/:\d+$/, "");
-        const name = hostname.endsWith(".servicebus.windows.net")
+        const label = hostname.endsWith(".servicebus.windows.net")
           ? "Service Bus"
           : (NAMES[family] ?? (protocol || "Server"));
-        server = { id, family, host, hostname, label: host ? `${name} · ${host}` : name };
+        server = { id, family, host, hostname, label: host ? `${label} · ${host}` : label };
         servers.set(id, server);
       }
-      const registry = str(own(own(get(own(s, "bindings"), doc), "kafka"), "schemaRegistryUrl"));
+      const kafka = refs.child(refs.child(s, "bindings"), "kafka");
+      const registry = str(own(kafka?.value, "schemaRegistryUrl"));
       const registryHost = registry && parseUrl(registry)?.hosts[0];
       if (registryHost) server.registry = registryHost;
       out.set(name, server);
@@ -272,7 +229,147 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     return out;
   };
 
-  // ------------------------------------------------ apps, channels and the flows between them
+  // ------------------------------------------------ messages: read once per object
+  const messageCache = new Map<unknown, { name?: string; contentType?: string }>();
+  const usedMessages = new Set<unknown>();
+  /** A message's name (its own, else the key it's listed under) and whether its schema is Avro or Protobuf. */
+  const messageOf = (at: At | undefined, key?: string): Message | undefined => {
+    if (!at || !isMap(at.value)) return undefined;
+    const m = at.value;
+    usedMessages.add(m);
+    let parsed = messageCache.get(m);
+    if (!parsed) {
+      step();
+      const payload = own(m, "payload");
+      const format = [str(own(m, "contentType")), str(own(m, "schemaFormat")), str(own(payload, "schemaFormat"))]
+        .filter((f): f is string => !!f)
+        .find((f) => SCHEMA_FORMAT.test(f));
+      const fallback = str(own(at.doc.root, "defaultContentType"));
+      parsed = {
+        name: (str(own(m, "name")) ?? str(own(m, "messageId")) ?? str(own(m, "title")))?.slice(0, 120),
+        contentType: format?.split(";")[0] ?? (fallback && SCHEMA_FORMAT.test(fallback) ? fallback : undefined),
+      };
+      messageCache.set(m, parsed);
+    }
+    const name = parsed.name ?? key?.slice(0, 120) ?? at.name?.slice(0, 120);
+    return { ...(name ? { name } : {}), ...(parsed.contentType ? { contentType: parsed.contentType } : {}) };
+  };
+  /** One message, or 2.x's `oneOf` list. */
+  const messagesOf = (at: At | undefined): Message[] => {
+    const oneOf = refs.child(at, "oneOf");
+    if (oneOf && Array.isArray(oneOf.value)) {
+      const out: Message[] = [];
+      for (const item of oneOf.value) {
+        const m = messageOf(refs.resolve(item, oneOf.doc));
+        if (m) out.push(m);
+      }
+      return out;
+    }
+    const m = messageOf(at);
+    return m ? [m] : [];
+  };
+
+  // ------------------------------------------------ channels: read once per object, joined across documents
+  const channels = new Map<string, Channel>();
+  const channelReads = new Map<unknown, ChannelRead>();
+  const channelIndex = new Map<Doc, Map<unknown, string>>();
+  /** The resolved channel objects of a document's `channels`, by object, with their keys. */
+  const indexOf = (doc: Doc) => {
+    let index = channelIndex.get(doc);
+    if (index) return index;
+    index = new Map();
+    channelIndex.set(doc, index);
+    const all = refs.resolve(own(doc.root, "channels"), doc);
+    if (all && isMap(all.value))
+      for (const key of Object.keys(all.value)) {
+        step();
+        const c = refs.resolve(all.value[key], all.doc);
+        if (c && isMap(c.value) && !index.has(c.value)) index.set(c.value, key);
+      }
+    return index;
+  };
+  const appTitles = new Map<Doc, string>();
+  const readChannel = (at: At, keyHint?: string): ChannelRead | undefined => {
+    if (!isMap(at.value)) return undefined;
+    const cached = channelReads.get(at.value);
+    if (cached) return cached;
+    step();
+    const c = at.value;
+    const key = indexOf(at.doc).get(c) ?? keyHint ?? at.name ?? "channel";
+    const address = (at.doc.v2 ? key : (str(own(c, "address")) ?? key)).slice(0, 200);
+    const bindings = refs.child(at, "bindings");
+    const docServerMap = serversOf(at.doc);
+    const names: string[] = [];
+    for (const entry of list(own(c, "servers"))) {
+      if (at.doc.v2) {
+        const name = str(entry);
+        if (name) names.push(name);
+        continue;
+      }
+      const ref = str(own(entry, "$ref")) ?? "";
+      if (!ref.startsWith("#/servers/")) continue;
+      const name = decodeSegment(ref.slice("#/servers/".length));
+      if (name === undefined) refs.report(`$ref ${ref}`, "a malformed reference");
+      else names.push(name);
+    }
+    const candidates = [...docServerMap.entries()].filter(([n]) => !names.length || names.includes(n));
+    // Several servers and no say: the one whose protocol has a binding on the channel, else the first.
+    const server = (candidates.find(([, s]) => isMap(bindings?.value) && Object.hasOwn(bindings.value, s.family)) ??
+      candidates[0])?.[1];
+    const nodeKey = `\u0004${server?.id ?? ""}\u0002${address}`;
+    let node = channels.get(nodeKey);
+    if (!node) {
+      node = {
+        key: nodeKey,
+        address,
+        server,
+        kinds: [],
+        messages: new Set(),
+        producers: new Set(),
+        consumers: new Set(),
+      };
+      channels.set(nodeKey, node);
+    }
+    const bound = isMap(bindings?.value) ? bindings.value : undefined;
+    node.kinds.push({
+      kind: channelKind(server?.family ?? "", server?.hostname ?? "", bound),
+      doc: appTitles.get(at.doc) ?? at.doc.file,
+      exchange: str(own(own(own(bound, "amqp"), "exchange"), "name")),
+    });
+    const partitions = Number(own(own(bound, "kafka"), "partitions"));
+    if (Number.isInteger(partitions) && partitions > 0 && partitions <= 10_000)
+      node.partitions = Math.max(node.partitions ?? 0, partitions);
+    const read: ChannelRead = { node, messages: [], byObject: new Map() };
+    if (!at.doc.v2) {
+      const msgs = refs.child(at, "messages");
+      if (msgs && isMap(msgs.value))
+        for (const k of Object.keys(msgs.value)) {
+          const mAt = refs.resolve(msgs.value[k], msgs.doc);
+          const m = messageOf(mAt, k);
+          if (!m || !mAt) continue;
+          read.messages.push(m);
+          read.byObject.set(mAt.value, m);
+          if (m.name) node.messages.add(m.name);
+          if (m.contentType) node.contentType = m.contentType;
+        }
+    }
+    channelReads.set(c, read);
+    return read;
+  };
+  /** An operation's messages: picked from its channel's own list (keeping each one's key), else the whole list. */
+  const selected = (list: At | undefined, channel: ChannelRead): Message[] => {
+    if (!list || !Array.isArray(list.value) || !list.value.length) return channel.messages;
+    const out: Message[] = [];
+    for (const item of list.value) {
+      step();
+      const mAt = refs.resolve(item, list.doc);
+      const m = (mAt && channel.byObject.get(mAt.value)) ?? messageOf(mAt);
+      if (m) out.push(m);
+    }
+    return out;
+  };
+
+  // ------------------------------------------------ apps and the flows between them
   const components = new Map<string, ImportComponent>();
   const add = (c: ImportComponent) => {
     if (!components.has(c.key)) {
@@ -281,124 +378,61 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     }
     return components.get(c.key)!;
   };
-  const channels = new Map<string, Channel>();
+  /** One edge per route: the same ends with a different group, message type or role are separate edges. */
   const flows = new Map<string, ImportLink>();
   const flow = (from: string, to: string, props: Record<string, unknown>, evidence: Evidence) => {
-    const id = `${from}\u0001${to}`;
+    const id = [from, to, str(props.emits) ?? "", str(props.group) ?? "", props.dlq ? "dlq" : ""].join("\u0001");
     const prev = flows.get(id);
     if (!prev) return void flows.set(id, { from, to, relation: "flow", kind: "async", props, evidence });
-    // The same flow from another document: one edge, message types joined.
-    const filter = [...new Set([...list(prev.props?.filter), ...list(props.filter)])];
-    if (filter.length) prev.props = { ...prev.props, filter };
+    // The same route from another document or operation: one edge, its accepted messages joined.
+    if (Array.isArray(prev.props?.filter) && Array.isArray(props.filter))
+      prev.props = { ...prev.props, filter: [...new Set([...prev.props.filter, ...props.filter])] };
+    else if (!Array.isArray(props.filter) && prev.props) delete prev.props.filter;
   };
-  const apps: { key: string; title: string; sends: { channel: string; message?: string }[]; receives: string[] }[] = [];
-  const usedMessages = new Set<unknown>();
+  interface App {
+    key: string;
+    title: string;
+    sends: { channel: string; message?: string }[];
+    receives: string[];
+    deadLetters: { channel: Channel; messages: Message[] }[];
+  }
+  const apps: App[] = [];
   const usedChannels = new Set<unknown>();
 
   for (const doc of docs) {
-    const info = get(own(doc.root, "info"), doc);
-    const title = (str(own(info, "title")) ?? doc.file.replace(/^.*[\\/]/, "")).trim().slice(0, 120) || "Application";
+    const info = refs.resolve(own(doc.root, "info"), doc);
+    const title =
+      (str(own(info?.value, "title")) ?? doc.file.replace(/^.*[\\/]/, "")).trim().slice(0, 120) || "Application";
+    appTitles.set(doc, title);
     const appKey = `\u0005${title.toLowerCase()}`;
     add({ key: appKey, label: title, hint: { name: title } });
     const found = apps.find((a) => a.key === appKey);
-    const app = found ?? { key: appKey, title, sends: [], receives: [] };
+    const app: App = found ?? { key: appKey, title, sends: [], receives: [], deadLetters: [] };
     if (!found) apps.push(app);
-    const docServers = serversOf(doc);
-    const contentDefault = str(own(doc.root, "defaultContentType"));
-    const channelMap = get(own(doc.root, "channels"), doc);
-    const channelKeys = new Map<unknown, string>();
-    if (isMap(channelMap))
-      for (const key of Object.keys(channelMap)) {
-        const c = get(channelMap[key], doc);
-        if (isMap(c) && !channelKeys.has(c)) channelKeys.set(c, key);
-      }
+    const root: At = { value: doc.root, doc };
 
-    /** A message's name, and whether its schema is Avro or Protobuf. */
-    const messageOf = (raw: unknown, key?: string): Message | undefined => {
-      const m = get(raw, doc);
-      if (!isMap(m)) return undefined;
-      usedMessages.add(m);
-      const payload = own(m, "payload");
-      const format = [str(own(m, "contentType")), str(own(m, "schemaFormat")), str(own(payload, "schemaFormat"))]
-        .filter(Boolean)
-        .find((f) => SCHEMA_FORMAT.test(f!));
-      const name = (str(own(m, "name")) ?? str(own(m, "messageId")) ?? key ?? str(own(m, "title")))?.slice(0, 120);
-      return {
-        name,
-        contentType: format?.split(";")[0] ?? (SCHEMA_FORMAT.test(contentDefault ?? "") ? contentDefault : undefined),
-      };
-    };
-    const some = (x: Message | undefined): x is Message => !!x;
-    /** One message, or 2.x's `oneOf` list. */
-    const messagesOf = (raw: unknown): Message[] => {
-      const m = get(raw, doc);
-      const oneOf = own(m, "oneOf");
-      if (Array.isArray(oneOf)) return oneOf.map((x) => messageOf(x)).filter(some);
-      return [messageOf(m)].filter(some);
-    };
-    /** 3.x: a channel's messages, a map by name. */
-    const channelMessages = (raw: unknown): Message[] => {
-      const m = get(raw, doc);
-      return isMap(m)
-        ? Object.keys(m)
-            .map((k) => messageOf(m[k], k))
-            .filter(some)
-        : [];
-    };
-
-    /** The channel's node, joined with every other document's channel of that address and server. */
-    const channelNode = (chKey: string, c: Record<string, unknown>) => {
-      usedChannels.add(c);
-      const address = (doc.v2 ? chKey : (str(own(c, "address")) ?? chKey)).slice(0, 200);
-      const bindings = get(own(c, "bindings"), doc);
-      const names = doc.v2
-        ? list(own(c, "servers")).map(str)
-        : list(own(c, "servers")).map((r) => {
-            const ref = str(own(r, "$ref")) ?? "";
-            return ref.startsWith("#/servers/") ? decodeURIComponent(ref.slice(10)) : undefined;
-          });
-      const candidates = [...docServers.entries()].filter(([n]) => !names.filter(Boolean).length || names.includes(n));
-      // Several servers and no say: the one whose protocol has a binding on the channel, else the first.
-      const server = (candidates.find(([, s]) => isMap(bindings) && Object.hasOwn(bindings, s.family)) ??
-        candidates[0])?.[1];
-      const key = `\u0004${server?.id ?? ""}\u0002${address}`;
-      let ch = channels.get(key);
-      if (!ch) {
-        ch = { key, address, server, kinds: [], producers: new Set(), consumers: new Set() };
-        channels.set(key, ch);
-      }
-      const kind = channelKind(server?.family ?? "", server?.hostname ?? "", isMap(bindings) ? bindings : undefined);
-      const exchange = str(own(own(own(bindings, "amqp"), "exchange"), "name"));
-      ch.kinds.push({ kind, doc: title, exchange });
-      const partitions = Number(own(own(bindings, "kafka"), "partitions"));
-      if (Number.isInteger(partitions) && partitions > 0 && partitions <= 10_000)
-        ch.partitions = Math.max(ch.partitions ?? 0, partitions);
-      if (!doc.v2)
-        for (const m of channelMessages(own(c, "messages"))) if (m.contentType) ch.contentType = m.contentType;
-      return ch;
-    };
-    const groupOf = (bindings: unknown) => {
-      const group = get(own(get(bindings, doc), "kafka"), doc);
-      const id = get(own(group, "groupId"), doc);
-      const values = str(id) ? [str(id)] : [str(own(id, "const")), ...list(own(id, "enum")).map(str)].filter(Boolean);
+    const groupOf = (bindings: At | undefined) => {
+      const id = refs.child(refs.child(bindings, "kafka"), "groupId");
+      const v = id?.value;
+      const values = str(v) ? [str(v)] : [str(own(v, "const")), ...list(own(v, "enum")).map(str)].filter(Boolean);
       return values.length === 1 ? values[0]!.slice(0, 120) : undefined;
     };
-    const connect = (action: "send" | "receive", ch: Channel, messages: Message[], bindings: unknown, what: string) => {
-      for (const m of messages) if (m.contentType) ch.contentType = m.contentType;
+    const connect = (
+      action: "send" | "receive",
+      ch: Channel,
+      messages: Message[],
+      bindings: At | undefined,
+      what: string,
+    ) => {
       const names = [...new Set(messages.map((m) => m.name).filter((n): n is string => !!n))];
+      for (const m of messages) if (m.contentType) ch.contentType = m.contentType;
       const evidence: Evidence = { source: "spec", name: what };
       if (action === "send") {
+        // A send to a dead-letter channel is how the app fails messages: drawn as its broker's route below.
+        if (DEAD_LETTER.test(ch.address)) return void app.deadLetters.push({ channel: ch, messages });
         ch.producers.add(appKey);
         app.sends.push({ channel: ch.key, message: names[0] });
-        flow(
-          appKey,
-          ch.key,
-          {
-            ...(names.length === 1 ? { emits: names[0] } : {}),
-            ...(DEAD_LETTER.test(ch.address) ? { dlq: true } : {}),
-          },
-          evidence,
-        );
+        flow(appKey, ch.key, names.length === 1 ? { emits: names[0] } : {}, evidence);
       } else {
         ch.consumers.add(appKey);
         app.receives.push(ch.key);
@@ -406,82 +440,80 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
         flow(ch.key, appKey, { ...(names.length ? { filter: names } : {}), ...(group ? { group } : {}) }, evidence);
       }
     };
-    const resolveChannel = (raw: unknown, what: string) => {
-      const c = get(raw, doc);
-      const key = isMap(c) ? channelKeys.get(c) : undefined;
-      if (!isMap(c) || key === undefined) return void unread(what, "its channel couldn't be found");
-      return channelNode(key, c);
-    };
 
     if (doc.v2) {
       // 2.x: the words are from the other side. `subscribe`: this app sends; `publish`: it receives.
-      for (const [c, key] of channelKeys)
+      for (const [c, key] of indexOf(doc)) {
+        const chAt: At = { value: c, doc };
         for (const [verb, action] of [
           ["subscribe", "send"],
           ["publish", "receive"],
         ] as const) {
-          const op = get(own(c, verb), doc);
-          if (!isMap(op)) continue;
-          const ch = channelNode(key, c as Record<string, unknown>);
-          connect(
-            action,
-            ch,
-            messagesOf(own(op, "message")),
-            own(op, "bindings"),
-            str(own(op, "operationId")) ?? `${verb} ${key}`,
-          );
+          const op = refs.child(chAt, verb);
+          if (!op || !isMap(op.value)) continue;
+          step();
+          const read = readChannel(chAt, key);
+          if (!read) continue;
+          usedChannels.add(c);
+          const what = str(own(op.value, "operationId")) ?? `${verb} ${key}`;
+          connect(action, read.node, messagesOf(refs.child(op, "message")), refs.child(op, "bindings"), what);
         }
+      }
     } else {
-      const ops = get(own(doc.root, "operations"), doc);
-      if (isMap(ops))
-        for (const opKey of Object.keys(ops)) {
-          const op = get(ops[opKey], doc);
-          const action = str(own(op, "action"));
-          if (!isMap(op) || (action !== "send" && action !== "receive")) {
-            unread(`operation ${opKey}`, "no send or receive action");
+      const ops = refs.child(root, "operations");
+      if (ops && isMap(ops.value))
+        for (const opKey of Object.keys(ops.value)) {
+          step();
+          const op = refs.resolve(ops.value[opKey], ops.doc);
+          const action = str(own(op?.value, "action"));
+          if (!op || !isMap(op.value) || (action !== "send" && action !== "receive")) {
+            refs.report(`operation ${opKey}`, "no send or receive action");
             continue;
           }
-          const ch = resolveChannel(own(op, "channel"), `operation ${opKey}`);
-          if (!ch) continue;
-          const messages =
-            own(op, "messages") !== undefined ? list(own(op, "messages")).flatMap((m) => messagesOf(m)) : [];
-          const fromChannel = messages.length
-            ? messages
-            : channelMessages(own(get(own(op, "channel"), doc), "messages"));
-          connect(action, ch, fromChannel, own(op, "bindings"), opKey);
+          const chAt = refs.child(op, "channel");
+          const read = chAt && readChannel(chAt);
+          if (!chAt || !read) {
+            refs.report(`operation ${opKey}`, "its channel couldn't be found");
+            continue;
+          }
+          usedChannels.add(chAt.value);
+          connect(action, read.node, selected(refs.child(op, "messages"), read), refs.child(op, "bindings"), opKey);
           // A request with a reply: the answer comes back on the reply channel.
-          const reply = get(own(op, "reply"), doc);
-          if (isMap(reply)) {
-            const back = resolveChannel(own(reply, "channel"), `operation ${opKey} (reply)`);
-            if (back)
-              connect(
-                action === "send" ? "receive" : "send",
-                back,
-                own(reply, "messages") !== undefined
-                  ? list(own(reply, "messages")).flatMap((m) => messagesOf(m))
-                  : channelMessages(own(get(own(reply, "channel"), doc), "messages")),
-                undefined,
-                `${opKey} (reply)`,
-              );
+          const reply = refs.child(op, "reply");
+          if (reply && isMap(reply.value)) {
+            const backAt = refs.child(reply, "channel");
+            const back = backAt && readChannel(backAt);
+            if (!backAt || !back) {
+              refs.report(`operation ${opKey} (reply)`, "its channel couldn't be found");
+              continue;
+            }
+            usedChannels.add(backAt.value);
+            connect(
+              action === "send" ? "receive" : "send",
+              back.node,
+              selected(refs.child(reply, "messages"), back),
+              undefined,
+              `${opKey} (reply)`,
+            );
           }
         }
     }
 
     // Unused and undrawn: listed, never dropped silently.
-    for (const [c, key] of channelKeys)
+    for (const [c, key] of indexOf(doc))
       if (!usedChannels.has(c)) g.notDrawn.push({ name: key, reason: `no operation in ${title} uses it` });
-    const comps = get(own(doc.root, "components"), doc);
-    const msgs = get(own(comps, "messages"), doc);
-    if (isMap(msgs))
-      for (const k of Object.keys(msgs)) {
-        const m = get(msgs[k], doc);
-        if (m !== undefined && !usedMessages.has(m)) g.notDrawn.push({ name: k, reason: "a message no channel uses" });
+    const comps = refs.child(root, "components");
+    const msgs = refs.child(comps, "messages");
+    if (msgs && isMap(msgs.value))
+      for (const k of Object.keys(msgs.value)) {
+        const m = refs.resolve(msgs.value[k], msgs.doc);
+        if (m && !usedMessages.has(m.value)) g.notDrawn.push({ name: k, reason: "a message no channel uses" });
       }
     for (const [what, field] of [
       ["security scheme", "securitySchemes"],
       ["payload schema", "schemas"],
     ] as const) {
-      const n = Object.keys(isMap(own(comps, field)) ? (own(comps, field) as object) : {}).length;
+      const n = Object.keys(isMap(own(comps?.value, field)) ? (own(comps?.value, field) as object) : {}).length;
       if (n)
         g.notDrawn.push({
           name: `${title}: ${n} ${what}${n === 1 ? "" : "s"}`,
@@ -489,6 +521,36 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
         });
     }
   }
+
+  // ------------------------------------------------ dead letters: the broker's route, as the simulation uses it
+  // An app that sends what it couldn't handle to a dead-letter channel fails messages it read from one of its
+  // inputs. Only a broker's dead-letter route catches failed deliveries in Live (src/sim/topology.ts), so the
+  // route goes from that input to the dead-letter channel. With no single input to point at, the send stays an
+  // ordinary message and the report says so.
+  for (const app of apps)
+    for (const { channel, messages } of app.deadLetters) {
+      const names = new Set(messages.map((m) => m.name).filter(Boolean));
+      const inputs = [...new Set(app.receives)]
+        .map((key) => channels.get(key)!)
+        .filter((input) => input !== channel && input.server?.id === channel.server?.id);
+      const matching = inputs.filter((input) => !names.size || [...names].some((n) => input.messages.has(n!)));
+      const source = matching.length === 1 ? matching[0] : inputs.length === 1 ? inputs[0] : undefined;
+      if (source) {
+        channel.producers.add(source.key);
+        flow(source.key, channel.key, { dlq: true }, { source: "spec", name: "dead letters" });
+        g.notes.push(
+          `${channel.address} is the dead-letter route of ${source.address} (${app.title} sends its failures there)`,
+        );
+      } else {
+        channel.producers.add(app.key);
+        const only = names.size === 1 ? [...names][0] : undefined;
+        app.sends.push({ channel: channel.key, message: only });
+        flow(app.key, channel.key, only ? { emits: only } : {}, { source: "spec", name: "dead letters" });
+        g.notes.push(
+          `${app.title} sends to ${channel.address}: which input's failures go there couldn't be told, so it's drawn as an ordinary message`,
+        );
+      }
+    }
 
   // ------------------------------------------------ channels: stencils, boundaries, notes
   for (const ch of channels.values()) {
@@ -526,6 +588,7 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
 
   // ------------------------------------------------ Schema Registry: from a Kafka server's binding, or for Avro
   const deps: ImportLink[] = [];
+  const depKeys = new Set<string>();
   for (const server of servers.values()) {
     if (server.family !== "kafka" || (!server.registry && !server.avro)) continue;
     const registry = add({
@@ -536,19 +599,24 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     });
     if (!server.registry)
       g.notes.push(`Schema Registry added: messages on ${server.host || "Kafka"} use Avro or Protobuf`);
-    const users = new Set(
-      [...channels.values()].filter((c) => c.server === server).flatMap((c) => [...c.producers, ...c.consumers]),
-    );
-    for (const user of users)
-      if (!deps.some((d) => d.from === user && d.to === registry.key))
+    for (const c of channels.values()) {
+      if (c.server !== server) continue;
+      for (const user of [...c.producers, ...c.consumers]) {
+        if (!components.get(user)?.key.startsWith("\u0005")) continue;
+        const id = `${user}\u0001${registry.key}`;
+        if (depKeys.has(id)) continue;
+        depKeys.add(id);
         deps.push({
           from: user,
           to: registry.key,
           relation: "depends",
           evidence: { source: "spec", name: "schemaRegistryUrl" },
         });
+      }
+    }
   }
   g.links = [...flows.values(), ...deps];
+  g.unread = refs.unread;
 
   // ------------------------------------------------ Imported traffic: where messages start
   const sent = new Set(apps.flatMap((a) => a.sends.map((s) => s.channel)));

@@ -338,7 +338,7 @@ test.describe("imports: AsyncAPI", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("Go live with Imported traffic: messages flow", async ({ page, consoleErrors }) => {
+  test("Go live with Imported traffic: messages reach Shipping and Notification", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, publicExamples[0].slug);
     await drop(page, [ORDERS, SHIPPING, NOTIFICATIONS]);
     await expect(page.getByTestId("diagram-title")).toHaveText("3 services");
@@ -351,6 +351,13 @@ test.describe("imports: AsyncAPI", () => {
         timeout: 15_000,
       })
       .toBeGreaterThan(0);
+    // Not just moving: delivered through the joined topics to both downstream consumers.
+    for (const id of ["shipping-service", "notification-service"])
+      await expect
+        .poll(async () => Number(await page.getByTestId(`node-badge-${id}`).getAttribute("data-processed")), {
+          timeout: 20_000,
+        })
+        .toBeGreaterThan(0);
     expectNoErrors(consoleErrors);
   });
 

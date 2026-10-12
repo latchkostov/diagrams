@@ -6,6 +6,9 @@ import { estimateCardSize } from "../../canvas/nodes/size";
 import { detectFormat, importFiles, importText, type ImportOutcome } from "../formats";
 import type { ImportReport } from "./graph";
 import { importAsyncApi } from "./pipeline";
+import { createSimulationRun } from "../../sim/simulation";
+import { perfBudget } from "../../test/perfBudget";
+import { Refs } from "./asyncapiRefs";
 
 // AsyncAPI 2.x and 3.x import against the self-written fixtures (tests/fixtures/imports/asyncapi and hostile),
 // as docs/research/imports.md § Mapping: AsyncAPI describes them.
@@ -89,7 +92,9 @@ describe("AsyncAPI import: the three fixtures together", () => {
       filter: ["PaymentCompleted"],
       group: "order-service",
     });
-    expect(edge(d, "shipping-service", "topic-shipping.orders-placed.dlq")?.props).toMatchObject({ dlq: true });
+    // Shipping's dead letters: the route Live uses goes from the broker it reads, not from the app.
+    expect(edge(d, "topic-orders.placed.v1", "topic-shipping.orders-placed.dlq")?.props).toEqual({ dlq: true });
+    expect(edge(d, "shipping-service", "topic-shipping.orders-placed.dlq")).toBeUndefined();
     // Avro: the channel says so; both Kafka apps depend on the registry.
     expect(node(d, "topic-orders.placed.v1")?.props).toEqual({
       partitions: 12,
@@ -352,5 +357,200 @@ ${chain}
     const out = JSON.stringify([diagram, report]);
     for (const secret of ["saslScram", "scramSha512", "retention.ms", "604800000", "declined", "totalCents"])
       expect(out, secret).not.toContain(secret);
+  });
+});
+
+describe("AsyncAPI import: review fixes", () => {
+  const doc = (name: string, text: string) => ({ name, text });
+
+  it("resolves refs inside an externally referenced channel against that file", () => {
+    const { diagram: d, report } = ok(
+      importAsyncApi([
+        doc(
+          "app.yaml",
+          `asyncapi: 3.0.0
+info: { title: App, version: "1" }
+components: { messages: { Event: { name: WrongEvent } } }
+operations:
+  publish: { action: send, channel: { $ref: "./shared.yaml#/channels/shared" } }
+`,
+        ),
+        doc(
+          "shared.yaml",
+          `asyncapi: 3.0.0
+info: { title: Shared, version: "1" }
+servers: { main: { host: "kafka-x:9092", protocol: kafka } }
+channels:
+  shared:
+    address: shared.events
+    servers: [{ $ref: "#/servers/main" }]
+    messages: { Event: { $ref: "#/components/messages/Event" } }
+components: { messages: { Event: { name: SharedEvent } } }
+`,
+        ),
+      ]),
+    );
+    const channel = d.nodes.find((n) => n.label === "shared.events");
+    expect(channel?.stencil).toBe("kafka.topic");
+    expect(edge(d, "app", channel?.id ?? "")?.props).toEqual({ emits: "SharedEvent" });
+    expect(report.traffic?.[0].messageType).toBe("SharedEvent");
+    expect(report.unread).toEqual([]);
+  });
+
+  it("keeps a channel message's key when an operation selects it", () => {
+    const { diagram: d } = ok(
+      importAsyncApi([
+        doc(
+          "p.yaml",
+          `asyncapi: 3.0.0
+info: { title: P, version: "1" }
+channels:
+  orders:
+    address: orders
+    messages: { OrderPlaced: { payload: { type: object } }, Other: { payload: { type: string } } }
+operations:
+  send:
+    action: send
+    channel: { $ref: "#/channels/orders" }
+    messages: [{ $ref: "#/channels/orders/messages/OrderPlaced" }]
+  read:
+    action: receive
+    channel: { $ref: "#/channels/orders" }
+    messages: [{ $ref: "#/channels/orders/messages/OrderPlaced" }]
+`,
+        ),
+      ]),
+    );
+    expect(edge(d, "p", "topic-orders")?.props).toEqual({ emits: "OrderPlaced" });
+    expect(edge(d, "topic-orders", "p")?.props).toEqual({ filter: ["OrderPlaced"] });
+  });
+
+  it("keeps parallel routes that differ by consumer group or message type", () => {
+    const { diagram: d } = ok(
+      importAsyncApi([
+        doc(
+          "g.yaml",
+          `asyncapi: 3.0.0
+info: { title: G, version: "1" }
+servers: { k: { host: "k:9092", protocol: kafka } }
+channels: { c: { address: c, messages: { A: { name: A }, B: { name: B } } } }
+operations:
+  r1: { action: receive, channel: { $ref: "#/channels/c" }, bindings: { kafka: { groupId: { const: one } } } }
+  r2: { action: receive, channel: { $ref: "#/channels/c" }, bindings: { kafka: { groupId: { const: two } } } }
+  s1: { action: send, channel: { $ref: "#/channels/c" }, messages: [{ $ref: "#/channels/c/messages/A" }] }
+  s2: { action: send, channel: { $ref: "#/channels/c" }, messages: [{ $ref: "#/channels/c/messages/B" }] }
+`,
+        ),
+      ]),
+    );
+    const groups = d.edges.filter((e) => e.from === "topic-c").map((e) => String(e.props?.group));
+    expect(groups.sort()).toEqual(["one", "two"]);
+    const emits = d.edges.filter((e) => e.to === "topic-c").map((e) => String(e.props?.emits));
+    expect(emits.sort()).toEqual(["A", "B"]);
+  });
+
+  it("draws an app's dead-letter channel as an ordinary send when its input can't be told", () => {
+    const { diagram: d, report } = ok(
+      importAsyncApi([
+        doc(
+          "w.yaml",
+          `asyncapi: 3.0.0
+info: { title: W, version: "1" }
+channels:
+  a: { address: a, messages: { A: { name: A } } }
+  b: { address: b, messages: { B: { name: B } } }
+  dead: { address: w.dlq, messages: { X: { name: X } } }
+operations:
+  ra: { action: receive, channel: { $ref: "#/channels/a" } }
+  rb: { action: receive, channel: { $ref: "#/channels/b" } }
+  fail: { action: send, channel: { $ref: "#/channels/dead" } }
+`,
+        ),
+      ]),
+    );
+    expect(edge(d, "w", "topic-w.dlq")?.props).toEqual({ emits: "X" });
+    expect(d.edges.some((e) => e.props?.dlq)).toBe(false);
+    expect(report.notes.some((n) => n.includes("couldn't be told"))).toBe(true);
+  });
+
+  it("delivers the imported traffic to Shipping and Notification in the simulation", () => {
+    const { diagram: d } = ok(importAsyncApi([ORDERS, SHIPPING, NOTIFICATIONS]));
+    const simulation = d.simulations?.[0];
+    if (!simulation) throw new Error("no simulation");
+    const run = createSimulationRun(d, simulation);
+    for (let t = 0; t < 30_000; t += 50) run.step(50);
+    const nodes = run.engine.snapshot().nodes;
+    expect(nodes["shipping-service"].processed).toBeGreaterThan(0);
+    expect(nodes["notification-service"].processed).toBeGreaterThan(0);
+  });
+
+  it("never throws on a malformed percent escape in a server reference", async () => {
+    const bad = doc(
+      "bad.yaml",
+      `asyncapi: 3.0.0
+info: { title: Bad, version: "1" }
+servers: { main: { host: "k:9092", protocol: kafka } }
+channels: { c: { address: c, servers: [{ $ref: "#/servers/%" }], messages: { M: { name: M } } } }
+operations: { s: { action: send, channel: { $ref: "#/channels/c" } } }
+`,
+    );
+    const outcome = await importFiles([bad, { ...bad, name: "bad-2.yaml" }]);
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok === true)
+      expect(outcome.report?.unread.some((l) => l.reason === "a malformed reference")).toBe(true);
+  });
+});
+
+describe("AsyncAPI import: hostile sizes", () => {
+  const header = `asyncapi: 3.0.0
+info: { title: Big, version: "1" }
+`;
+  const doc = (name: string, text: string) => ({ name, text });
+
+  it("reads a channel's messages once, however many operations select from it", () => {
+    const messages = Array.from({ length: 10_000 }, (_, i) => `      m${i}: { name: M${i} }`).join("\n");
+    const ops = Array.from(
+      { length: 1_000 },
+      (_, i) =>
+        `  o${i}: { action: send, channel: { $ref: "#/channels/c" }, messages: [{ $ref: "#/channels/c/messages/m${i}" }] }`,
+    ).join("\n");
+    const text = `${header}channels:\n  c:\n    address: c\n    messages:\n${messages}\noperations:\n${ops}\n`;
+    const started = performance.now();
+    const { diagram: d } = ok(importAsyncApi([doc("big.yaml", text)]));
+    expect(performance.now() - started).toBeLessThan(perfBudget(3_000));
+    expect(d.edges.filter((e) => e.from === "big")).toHaveLength(1_000);
+  });
+
+  it("lists remote references once each in linear time, and the report caps them", () => {
+    // The scan alone, on 60,000 distinct remote refs (parsing that much YAML is the library's time, not ours).
+    const schemas: Record<string, unknown> = {};
+    for (let i = 0; i < 60_000; i++) schemas[`s${i}`] = { $ref: `https://example.com/s${i}.json` };
+    const refs = new Refs(new Map());
+    const started = performance.now();
+    refs.scan({ file: "x.yaml", root: { components: { schemas } }, v2: false });
+    refs.scan({ file: "x.yaml", root: { components: { schemas } }, v2: false });
+    expect(performance.now() - started).toBeLessThan(perfBudget(1_000));
+    expect(refs.unread).toHaveLength(60_000);
+    // End to end: the report lists 200 and counts the rest.
+    const many = Array.from({ length: 1_500 }, (_, i) => `    s${i}: { $ref: "https://example.com/s${i}.json" }`).join(
+      "\n",
+    );
+    const text = `${header}channels: { c: { address: c, messages: { M: { name: M } } } }
+operations: { s: { action: send, channel: { $ref: "#/channels/c" } } }
+components:
+  schemas:
+${many}
+`;
+    const { report } = ok(importAsyncApi([doc("refs.yaml", text)]));
+    expect(report.unread).toHaveLength(201);
+    expect(report.unread.at(-1)).toEqual({ name: "1,300 more", reason: "not listed" });
+  });
+
+  it("walks a huge enum without overflowing the stack", () => {
+    const values = Array.from({ length: 140_000 }, (_, i) => i).join(",");
+    const text = `${header}channels: { c: { address: c, messages: { M: { name: M, payload: { enum: [${values}] } } } } }
+operations: { s: { action: send, channel: { $ref: "#/channels/c" } } }
+`;
+    expect(() => importAsyncApi([doc("enum.yaml", text)])).not.toThrow();
   });
 });
