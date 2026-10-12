@@ -59,9 +59,12 @@ if (!stale.length && !force) {
   console.log("skill:release: the committed viewer is already current; nothing to release (--force bumps anyway).");
   process.exit(0);
 }
-for (const rel of stale) fs.writeFileSync(path.join(skill, rel), fresh[rel]);
+// Staged, then swapped in with the version bump last; a failure rolls back, so a retry releases again.
 const manifest = path.join(root, ".claude-plugin", "marketplace.json");
-const bumped = viewer.bumpVersion(fs.readFileSync(manifest, "utf8"), kind);
-fs.writeFileSync(manifest, bumped.text);
+const bumped = viewer.applyRelease(
+  Object.fromEntries(stale.map((rel) => [path.join(skill, rel), fresh[rel]])),
+  manifest,
+  kind,
+);
 for (const rel of stale) console.log(`wrote ${SKILL_DIR}/${rel} (${kB(fresh[rel])})`);
 console.log(`livediagrams plugin ${bumped.from} → ${bumped.to} (.claude-plugin/marketplace.json). Commit these files.`);

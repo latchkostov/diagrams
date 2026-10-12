@@ -10,6 +10,7 @@
 // installs from git. The site's /skill/ folder and /livediagrams-skill.zip are built fresh from the current viewer
 // (scripts/skill-assets.ts), so downloads are always current. `pnpm skill:check` reports a stale copy (nightly).
 
+import * as nodeFs from "node:fs";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { build } from "vite";
@@ -88,4 +89,58 @@ export function bumpVersion(text: string, kind: "patch" | "minor"): { text: stri
     from: `${major}.${minor}.${patch}`,
     to,
   };
+}
+
+/** The file operations a release uses (the test fails one of them). */
+export interface ReleaseFs {
+  readFileSync(file: string, encoding: "utf8"): string;
+  writeFileSync(file: string, text: string): void;
+  renameSync(from: string, to: string): void;
+  rmSync(file: string, options: { force: true }): void;
+  existsSync(file: string): boolean;
+}
+
+/** A staged copy beside its target: a dotfile, so a crash never leaves one in the skill folder's listing or zip. */
+const staged = (file: string) => path.join(path.dirname(file), `.${path.basename(file)}.release-tmp`);
+
+/**
+ * Publishes a release as one step that can't stop halfway: every refreshed file and the bumped manifest are written
+ * to staged copies first (nothing changes if that fails), then swapped in by rename, the manifest last. If a swap
+ * fails, the files already swapped get their old contents back, so a retry sees the same stale files and the same
+ * version and does the whole release again. `files`: path → new text, only the ones that change.
+ */
+export function applyRelease(
+  files: Readonly<Record<string, string>>,
+  manifest: string,
+  kind: "patch" | "minor",
+  fs: ReleaseFs = nodeFs,
+): { from: string; to: string } {
+  const bumped = bumpVersion(fs.readFileSync(manifest, "utf8"), kind);
+  const writes: [string, string][] = [...Object.entries(files), [manifest, bumped.text]];
+  const before = new Map(writes.map(([file]) => [file, fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null]));
+  const cleanUp = () => {
+    for (const [file] of writes) fs.rmSync(staged(file), { force: true });
+  };
+  try {
+    for (const [file, text] of writes) fs.writeFileSync(staged(file), text);
+  } catch (err) {
+    cleanUp();
+    throw err;
+  }
+  const swapped: string[] = [];
+  try {
+    for (const [file] of writes) {
+      fs.renameSync(staged(file), file);
+      swapped.push(file);
+    }
+  } catch (err) {
+    for (const file of swapped) {
+      const old = before.get(file);
+      if (old === null || old === undefined) fs.rmSync(file, { force: true });
+      else fs.writeFileSync(file, old);
+    }
+    cleanUp();
+    throw err;
+  }
+  return { from: bumped.from, to: bumped.to };
 }

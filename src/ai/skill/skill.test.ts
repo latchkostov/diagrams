@@ -3,14 +3,21 @@
 // self-consistent, and validate.mjs explains what's wrong.
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { generateSkillFiles, publicExamples, SKILL_DIR } from "../../../scripts/skill-gen";
 import { readSkill, withFresh, zipSkill } from "../../../scripts/skill-assets";
-import { bumpVersion, iconMap, RELEASED, releasedFiles } from "../../../scripts/skill-viewer";
+import {
+  applyRelease,
+  bumpVersion,
+  iconMap,
+  RELEASED,
+  releasedFiles,
+  type ReleaseFs,
+} from "../../../scripts/skill-viewer";
 import {
   exportHtml,
   FALLBACK_ICON,
@@ -644,29 +651,26 @@ describe("export-html.mjs", () => {
         exportedOn: "2026-10-12",
         ...input,
       });
-    const cases: [string[], Partial<ExportInput>, string][] = [
-      [[], { startSimulation: "black-friday" }, 'plays "Black Friday'],
+    const cases: [string[], Partial<ExportInput>][] = [
+      [[], { startSimulation: "black-friday" }],
       [
         ["--theme", "dark", "--banner", "Confidential: internal use only", "--sim", "payments-outage"],
         { theme: "dark", banner: "Confidential: internal use only", startSimulation: "payments-outage" },
-        'plays "Payments',
       ],
-      [
-        ["--title", "Orders (team copy)", "--no-autoplay"],
-        { title: "Orders (team copy)", startSimulation: null },
-        "kB)",
-      ],
+      [["--title", "Orders (team copy)", "--no-autoplay"], { title: "Orders (team copy)", startSimulation: null }],
     ];
-    for (const [i, [args, input, says]] of cases.entries()) {
+    for (const [i, [args, input]] of cases.entries()) {
       const dir = out(`case${i}`);
       const r = run("export-html.mjs", kafka, "--out", dir, "--exported-on", "2026-10-12", ...args);
       expect(r.code, r.err).toBe(0);
       const file = path.join(dir, htmlFileName(input.title ?? diagram.title));
-      const [first, note] = r.out.trim().split("\n");
-      expect(first.startsWith(`${file} (1,2`), first).toBe(true);
-      expect(first).toContain(says);
-      expect(note).toMatch(/^Private: .*no network requests.*only people who have the file can open it/);
       const html = readFileSync(file, "utf8");
+      // It reports the path, the file's real size and what plays.
+      const kB = Math.max(1, Math.round(Buffer.byteLength(html) / 1000)).toLocaleString("en-US");
+      const sim = diagram.simulations.find((x: { id: string }) => x.id === input.startSimulation);
+      const [first, note] = r.out.trim().split("\n");
+      expect(first).toBe(`${file} (${kB} kB${sim ? `, plays "${sim.title}" when opened` : ""})`);
+      expect(note).toMatch(/^Private: .*no network requests.*only people who have the file can open it/);
       expect(html === expected(input), args.join(" ") || "defaults").toBe(true);
       // The payload is a data block: the policy still matches the untouched script and style.
       expect(csp(html)).toBe(csp(committedTemplate));
@@ -686,6 +690,27 @@ describe("export-html.mjs", () => {
     const r = run("export-html.mjs", file, "--out", out("private.html"));
     expect(r.code, r.err).toBe(0);
     expect(readFileSync(out("private.html"), "utf8")).toContain('"private":true');
+  });
+
+  it("refuses a file the viewer wouldn't show as made, before writing anything", () => {
+    // Valid, but escaping its 2,000,100 "<" (6 characters each in the payload) takes it past the viewer's budget.
+    const big = write({
+      format: "diagrams/v1",
+      title: "Big",
+      description: "<".repeat(2_000_100),
+      nodes: [{ id: "a", stencil: "postgres", label: "A", x: 0, y: 0 }],
+      edges: [],
+    });
+    expect(run("validate.mjs", big).code).toBe(0);
+    const tooBig = run("export-html.mjs", big, "--out", out("big"));
+    expect(tooBig.code).toBe(1);
+    expect(tooBig.err).toMatch(/the viewer wouldn't show the file as made\. It's too large to open/);
+    expect(existsSync(out("big"))).toBe(false);
+    // The viewer shows at most 300 characters of banner.
+    const banner = run("export-html.mjs", kafka, "--out", out("banner"), "--banner", "x".repeat(301));
+    expect(banner.code).toBe(1);
+    expect(banner.err).toMatch(/The banner is too long: the viewer shows at most 300 characters/);
+    expect(existsSync(out("banner"))).toBe(false);
   });
 
   it("refuses an invalid diagram and bad options, and writes nothing", () => {
@@ -729,6 +754,52 @@ describe("releasing the viewer", () => {
     expect(p.text).toBe(text.replace(`"version": "${version}"`, `"version": "${p.to}"`));
     expect(bumpVersion(text, "minor").to).toBe(`${major}.${minor + 1}.0`);
     expect(() => bumpVersion("{}", "patch")).toThrow(/no "version"/);
+  });
+
+  it("a release that fails partway changes nothing, so a retry releases and bumps", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "livediagrams-release-"));
+    const asset = path.join(dir, "viewer-template.html");
+    const icons = path.join(dir, "icons.json");
+    const manifest = path.join(dir, "marketplace.json");
+    const manifestAt = (v: string) => `{ "plugins": [{ "name": "livediagrams", "version": "${v}" }] }\n`;
+    writeFileSync(asset, "old template");
+    writeFileSync(icons, "old icons");
+    writeFileSync(manifest, manifestAt("1.1.0"));
+    const files = { [asset]: "new template", [icons]: "new icons" };
+    const state = () => [asset, icons, manifest].map((f) => readFileSync(f, "utf8"));
+    const listing = () => readdirSync(dir).sort();
+    const before = state();
+
+    // The manifest's swap, the last step, fails: the assets already swapped get their old contents back.
+    let failManifest = true;
+    const fs: ReleaseFs = {
+      readFileSync: (f, e) => readFileSync(f, e),
+      writeFileSync: (f, t) => writeFileSync(f, t),
+      renameSync: (from, to) => {
+        if (failManifest && to === manifest) throw new Error("disk full");
+        renameSync(from, to);
+      },
+      rmSync: (f, o) => rmSync(f, o),
+      existsSync: (f) => existsSync(f),
+    };
+    expect(() => applyRelease(files, manifest, "patch", fs)).toThrow(/disk full/);
+    expect(state()).toEqual(before);
+    expect(listing()).toEqual(["icons.json", "marketplace.json", "viewer-template.html"]);
+    // Staging fails: nothing is swapped at all.
+    failManifest = false;
+    const readOnly: ReleaseFs = {
+      ...fs,
+      writeFileSync: () => {
+        throw new Error("read-only");
+      },
+    };
+    expect(() => applyRelease(files, manifest, "patch", readOnly)).toThrow(/read-only/);
+    expect(state()).toEqual(before);
+
+    // The retry sees the same stale files and version, and completes.
+    expect(applyRelease(files, manifest, "patch", fs)).toEqual({ from: "1.1.0", to: "1.1.1" });
+    expect(state()).toEqual(["new template", "new icons", manifestAt("1.1.1")]);
+    expect(listing()).toEqual(["icons.json", "marketplace.json", "viewer-template.html"]);
   });
 
   it("the site serves a fresh template and icons in place of the committed ones", () => {

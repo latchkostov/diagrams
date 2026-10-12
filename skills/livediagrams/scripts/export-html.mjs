@@ -5,12 +5,14 @@
 // File > Export as > Interactive HTML…: read-only pan and zoom, and its simulations play. The file works offline,
 // makes no network requests (a strict Content-Security-Policy says so) and stores nothing in the browser. Only
 // people who have the file can open it. This script makes no network requests either: the viewer, the injection
-// and the icons are bundled in ./lib by `pnpm schemas`.
+// and the icons are bundled in ./lib (`pnpm skill:release`). Before writing, it checks the finished payload with
+// the viewer's own rules, so it never writes a file the viewer would refuse or show with something missing.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { checkFile } from "./lib/check.mjs";
-import { exportHtml, htmlFileName } from "./lib/inject.mjs";
+import { parsePayload } from "./lib/app.mjs";
+import { buildPayload, htmlFileName, injectPayload, scriptSafeJson } from "./lib/inject.mjs";
 
 const USAGE =
   'Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay]';
@@ -68,7 +70,8 @@ const lib = new URL("./lib/", import.meta.url);
 const template = readFileSync(new URL("viewer-template.html", lib), "utf8");
 const iconSvgs = JSON.parse(readFileSync(new URL("icons.json", lib), "utf8"));
 const title = opts["--title"]?.trim() || diagram.title;
-const html = exportHtml(template, {
+// exportHtml's two steps, so the payload can be checked between them.
+const payload = buildPayload(template, {
   diagram,
   iconSvgs,
   theme,
@@ -77,6 +80,25 @@ const html = exportHtml(template, {
   startSimulation: start,
   ...(exportedOn ? { exportedOn } : {}),
 });
+
+/** Why the viewer would refuse this payload, or show it with something missing; undefined if it's fine. */
+function viewerProblem() {
+  const shown = parsePayload(scriptSafeJson(payload));
+  if (!shown.ok) return shown.error;
+  const dropped = Object.keys(payload.icons).filter((name) => !Object.hasOwn(shown.icons, name));
+  if (dropped.length) return `It would leave out the icon${dropped.length === 1 ? "" : "s"} ${dropped.join(", ")}.`;
+  if ((payload.options.banner ?? "") !== (shown.options.banner ?? ""))
+    return `The banner is too long: the viewer shows at most ${shown.options.banner?.length ?? 0} characters.`;
+  if (payload.options.startSimulation !== shown.options.startSimulation)
+    return "It wouldn't play the chosen simulation.";
+  return undefined;
+}
+const problem = viewerProblem();
+if (problem) {
+  console.error(`Can't export ${file}: the viewer wouldn't show the file as made. ${problem}`);
+  process.exit(1);
+}
+const html = injectPayload(template, payload);
 
 // --out: a file ending in .html, or a folder for <title>.html. By default, <title>.html beside the diagram.
 const out = opts["--out"];

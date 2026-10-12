@@ -10,8 +10,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { crc32, deflateRawSync } from "node:zlib";
+import type { ServerResponse } from "node:http";
 import type { Plugin } from "vite";
-import { releasedFiles } from "./skill-viewer";
+import { RELEASED, releasedFiles } from "./skill-viewer";
 
 export const SKILL_NAME = "livediagrams";
 export const SKILL_ZIP = "livediagrams-skill.zip";
@@ -126,6 +127,27 @@ export function skillAssetsPlugin(viewerTemplate?: () => Promise<string>): Plugi
       this.emitFile({ type: "asset", fileName: SKILL_ZIP, source: zipSkill(files) });
     },
     configureServer(server) {
+      // Cached between requests, and dropped on any change in the project (a skill file, an icon, or the viewer's
+      // sources, which also rebuild its template). Ordinary skill files never wait for the viewer.
+      let folder: SkillFile[] | undefined;
+      let withViewer: Promise<{ files: SkillFile[]; zip: Buffer }> | undefined;
+      server.watcher.on("all", () => {
+        folder = undefined;
+        withViewer = undefined;
+      });
+      const released = new Set<string>(Object.values(RELEASED).map((name) => `/skill/${name}`));
+      const viewerFiles = () =>
+        (withViewer ??= current().then(
+          (files) => ({ files, zip: zipSkill(files) }),
+          (error: unknown) => {
+            withViewer = undefined;
+            throw error;
+          },
+        ));
+      const send = (res: ServerResponse, url: string, body: Buffer) => {
+        res.setHeader("Content-Type", TYPES[path.extname(url)] ?? "text/plain; charset=utf-8");
+        res.end(body);
+      };
       server.middlewares.use((req, res, next) => {
         const url = decodeURIComponent((req.url ?? "").split(/[?#]/)[0]);
         // The install page (public/skill/index.html) at /skill/, as static hosts and `vite preview` serve it.
@@ -137,13 +159,15 @@ export function skillAssetsPlugin(viewerTemplate?: () => Promise<string>): Plugi
           req.url = "/skill/index.html";
           return next();
         }
-        if (url !== `/${SKILL_ZIP}` && !url.startsWith("/skill/")) return next();
-        current().then((files) => {
-          const body = url === `/${SKILL_ZIP}` ? zipSkill(files) : files.find((f) => `/skill/${f.name}` === url)?.data;
-          if (!body) return next();
-          res.setHeader("Content-Type", TYPES[path.extname(url)] ?? "text/plain; charset=utf-8");
-          res.end(body);
-        }, next);
+        if (url === `/${SKILL_ZIP}` || released.has(url))
+          return void viewerFiles().then(({ files, zip }) => {
+            const body = url === `/${SKILL_ZIP}` ? zip : files.find((f) => `/skill/${f.name}` === url)?.data;
+            return body ? send(res, url, body) : next();
+          }, next);
+        if (!url.startsWith("/skill/")) return next();
+        const body = (folder ??= readSkill()).find((f) => `/skill/${f.name}` === url)?.data;
+        if (!body) return next();
+        send(res, url, body);
       });
     },
   };

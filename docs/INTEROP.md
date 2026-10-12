@@ -391,7 +391,8 @@ writeFileSync(htmlFileName(diagram.title), html);
 **From the agent skill, offline.** `skills/livediagrams/scripts/export-html.mjs <file> [--out path] [--theme light|dark]
 [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay]` makes the same kind of file on plain Node (20 or
 later, standard library only, no network): it validates the diagram with `validate.mjs`'s checks, then runs the
-bundled injection on the bundled template with the bundled icons, all in `skills/livediagrams/scripts/lib/`
+bundled injection on the bundled template with the bundled icons, and checks the finished payload with the viewer's own
+`parsePayload` (size budgets, the diagram contract, icons, the 300-character banner) before writing anything, all in `skills/livediagrams/scripts/lib/`
 (`scripts/skill-viewer.ts`). `--exported-on YYYY-MM-DD` fixes the footer's date.
 
 - `inject.mjs`: this module as plain JavaScript. Small and stable, so `pnpm schemas` keeps it current and the
@@ -399,7 +400,8 @@ bundled injection on the bundled template with the bundled icons, all in `skills
 - `viewer-template.html` (`buildViewerTemplate`, 1.2 MB minified) and `icons.json` (the SVG text of every icon the
   catalog uses, 387 kB) are **refreshed only on release**: `pnpm skill:release` (`scripts/skill-release.mjs`) rebuilds
   them, regenerates `inject.mjs` and bumps the plugin's version in `.claude-plugin/marketplace.json` (patch, or
-  `--minor`). Run it when you want Claude Code users to get the latest viewer: the committed copy is what the
+  `--minor`): it stages every file, swaps them in by rename with the version bump last, and rolls back if a step
+  fails, so a retry releases again. Run it when you want Claude Code users to get the latest viewer: the committed copy is what the
   marketplace installs from git. Neither `pnpm schemas` nor a build rewrites them, so pull requests that touch the
   canvas, live view or the export never conflict on an unmergeable minified file (`.gitattributes` also marks them
   `-diff`, generated, and `merge=ours`).

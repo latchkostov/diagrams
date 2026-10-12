@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { inflateRawSync } from "node:zlib";
 import { pathToFileURL } from "node:url";
 import { test, expect, gotoCanvas, E2E_TARGET } from "./fixtures";
@@ -10,7 +10,7 @@ import { expectPlaying, filePayload, KAFKA, watchedPage } from "./html-viewer";
 // The agent skill's offline Interactive HTML export (skills/livediagrams/scripts/export-html.mjs): it carries what
 // the app's file carries, from the viewer and icons released in the skill; the file opens from disk, renders and
 // plays with zero requests; a private diagram gets a file but never a share link; and the site's /skill/ download
-// carries the current viewer. Selectors are data-testid only.
+// carries the current viewer, and the downloaded skill works on its own. Selectors are data-testid only.
 
 const SCRIPTS = join(process.cwd(), "skills", "livediagrams", "scripts");
 const BANNER = "Confidential: internal use only";
@@ -20,17 +20,20 @@ function run(script: string, ...args: string[]) {
   return { code: r.status, out: r.stdout, err: r.stderr };
 }
 
-/** One entry of a zip (local headers, DEFLATE), as text. */
-function zipEntry(zip: Buffer, name: string): string | undefined {
+/** Every entry of a zip (local headers, DEFLATE): name → bytes. */
+function zipEntries(zip: Buffer): Map<string, Buffer> {
+  const out = new Map<string, Buffer>();
   for (let at = 0; zip.readUInt32LE(at) === 0x04034b50;) {
     const size = zip.readUInt32LE(at + 18);
     const nameLength = zip.readUInt16LE(at + 26);
     const start = at + 30 + nameLength + zip.readUInt16LE(at + 28);
-    if (zip.subarray(at + 30, at + 30 + nameLength).toString("utf8") === name)
-      return inflateRawSync(zip.subarray(start, start + size)).toString("utf8");
+    out.set(
+      zip.subarray(at + 30, at + 30 + nameLength).toString("utf8"),
+      inflateRawSync(zip.subarray(start, start + size)),
+    );
     at = start + size;
   }
-  return undefined;
+  return out;
 }
 
 /** Runs export-html.mjs into this test's output folder; returns the file's path and text. */
@@ -139,6 +142,46 @@ test.describe("The agent skill's Interactive HTML export", () => {
     expect((await app.text()) === template).toBe(true);
     // The zip's copy too.
     const zip = await (await page.request.get("/livediagrams-skill.zip")).body();
-    expect(zipEntry(zip, "livediagrams/scripts/lib/viewer-template.html") === template).toBe(true);
+    expect(zipEntries(zip).get("livediagrams/scripts/lib/viewer-template.html")?.toString("utf8") === template).toBe(
+      true,
+    );
+  });
+
+  test("the downloaded skill exports a file that plays offline", async ({ page, context }) => {
+    test.setTimeout(90_000);
+    // The zip people download, unpacked into a folder of its own, outside the repository.
+    const zip = await (await page.request.get("/livediagrams-skill.zip")).body();
+    const dir = test.info().outputPath("downloaded");
+    for (const [name, data] of zipEntries(zip)) {
+      expect(name, "every entry sits in livediagrams/, with no way out of it").toMatch(
+        /^livediagrams\/(?!.*\.\.)[\w./-]+$/,
+      );
+      mkdirSync(dirname(join(dir, name)), { recursive: true });
+      writeFileSync(join(dir, name), data);
+    }
+    const diagram = join(dir, "work", "orders.diagram.json");
+    mkdirSync(dirname(diagram), { recursive: true });
+    writeFileSync(diagram, readFileSync(join(process.cwd(), "src", "examples", `${KAFKA}.json`)));
+
+    // Plain Node, run from the unpacked folder: nothing of the repository on its path.
+    const r = spawnSync(
+      process.execPath,
+      [join("livediagrams", "scripts", "export-html.mjs"), diagram, "--banner", BANNER, "--out", join(dir, "out")],
+      { cwd: dir, encoding: "utf8" },
+    );
+    expect(r.status, r.stderr).toBe(0);
+    const path = r.stdout.split("\n")[0].replace(/ \(.*$/, "");
+    expect(path.startsWith(join(dir, "out"))).toBe(true);
+
+    const url = pathToFileURL(path).href;
+    const viewer = await watchedPage(context);
+    await viewer.page.goto(url);
+    // Every node with its icon loaded, the simulations play and switch.
+    await expectPlaying(viewer.page);
+    await expect(viewer.page.getByTestId("viewer-banner")).toHaveText(BANNER);
+    expect(viewer.requests.filter((u) => !u.startsWith("data:"))).toEqual([url]);
+    expect(await viewer.page.evaluate(() => window.__violations ?? [])).toEqual([]);
+    expect(viewer.errors).toEqual([]);
+    await viewer.page.close();
   });
 });
