@@ -1,0 +1,13 @@
+# Self-written fixture set for the Kubernetes importer (docs/research/imports.md). Two namespaces become two
+# boundaries; the Strimzi-managed Kafka cluster lives in its own.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shop
+  labels:
+    team: checkout
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka

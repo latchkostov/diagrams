@@ -1,0 +1,43 @@
+# The public entry point: an NGINX Ingress routing to the storefront and the orders API. The storefront Service
+# has no Deployment in this set, so the importer should keep it as a node and say so in the import report.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shop
+  namespace: shop
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [shop.example.com]
+      secretName: shop-tls
+  rules:
+    - host: shop.example.com
+      http:
+        paths:
+          - path: /api/orders
+            pathType: Prefix
+            backend:
+              service:
+                name: orders-api
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: storefront
+                port:
+                  number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storefront
+  namespace: shop
+spec:
+  selector:
+    app: storefront
+  ports:
+    - port: 80

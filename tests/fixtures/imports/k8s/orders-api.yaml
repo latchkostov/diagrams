@@ -1,0 +1,85 @@
+# The orders API: a Deployment behind a Service, reading a ConfigMap and a Secret, running as a service account
+# with Azure workload identity. Secret values are placeholders ("placeholder", base64-encoded).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orders-api
+  namespace: shop
+  annotations:
+    azure.workload.identity/client-id: 00000000-0000-0000-0000-000000000000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-api-config
+  namespace: shop
+data:
+  KAFKA_BOOTSTRAP_SERVERS: shop-kafka-kafka-bootstrap.kafka.svc:9092
+  ORDERS_TOPIC: orders.placed.v1
+  REDIS_URL: redis://redis.shop.svc:6379/0
+  FEATURE_SPLIT_SHIPMENTS: "true"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: orders-db
+  namespace: shop
+type: Opaque
+data:
+  DATABASE_URL: cGxhY2Vob2xkZXI=
+  DATABASE_PASSWORD: cGxhY2Vob2xkZXI=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-api
+  namespace: shop
+  labels:
+    app.kubernetes.io/name: orders-api
+    app.kubernetes.io/part-of: shop
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orders-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orders-api
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: orders-api
+      containers:
+        - name: api
+          image: example.azurecr.io/shop/orders-api:2.3.0
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: orders-api-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: orders-db
+                  key: DATABASE_URL
+            - name: DATABASE_HOST
+              value: postgres.shop.svc
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-api
+  namespace: shop
+spec:
+  selector:
+    app.kubernetes.io/name: orders-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
