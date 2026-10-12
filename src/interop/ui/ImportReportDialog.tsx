@@ -6,7 +6,8 @@ import { paletteHost } from "../../palette/host";
 import { getStencil, stencils } from "../../stencils/registry";
 import { searchStencils } from "../../lib/stencilSearch";
 import { DIAGRAMS_CHANGED } from "../../lib/diagramIO";
-import type { ImportReport, ReportGuess } from "../infra/graph";
+import type { ImportGraph, ImportReport, ReportGuess } from "../infra/graph";
+import type { ImportOutcome } from "../formats";
 
 // The Import report (docs/research/imports.md § UX): what the import drew as a guess (with one-click stencil
 // chips), the connections it found in settings and the variable behind each, what it chose not to draw and
@@ -22,21 +23,51 @@ function drewLine(r: Pick<ImportReport, "nodes" | "connections" | "boundaries">)
 }
 
 const editor = () => paletteHost.get().canvas?.editor ?? null;
+
+/**
+ * Draw everything: the replay drawn by the importers' lazy chunk, opened as a new diagram, and the keyboard focus
+ * handed to its canvas once it's there (the link that asked for it is gone with the dialog).
+ */
+async function drawEverything(replay: ImportGraph, open: (outcome: ImportOutcome) => void, close: () => void) {
+  let outcome: ImportOutcome;
+  try {
+    outcome = (await import("../infra/pipeline")).replayOutcome(replay);
+  } catch (err) {
+    outcome = { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+  close();
+  open(outcome);
+  if (outcome.ok !== true) return;
+  const title = outcome.diagram.title;
+  let frames = 60;
+  const focus = () => {
+    const wrap = document.querySelector<HTMLElement>(".canvas-wrap");
+    if (wrap && editor()?.getDiagram().title === title) {
+      wrap.focus({ preventScroll: true });
+      if (document.activeElement === wrap) return;
+    }
+    if (--frames > 0) requestAnimationFrame(focus);
+  };
+  requestAnimationFrame(focus);
+}
 let swaps = 0;
 
 export function ImportReportDialog({
   report,
   isPrivate,
   onMakePrivate,
-  onDrawEverything,
+  replay,
+  onReplay,
   onClose,
 }: {
   report: ImportReport;
   /** Is the diagram private now (asked at each render)? */
   isPrivate: () => boolean;
   onMakePrivate: () => void;
-  /** Terraform: open the same files again as a new diagram with every resource as a node. */
-  onDrawEverything?: () => void;
+  /** Terraform's Draw everything: the import with every resource as a node, as data read at import time. */
+  replay?: ImportGraph;
+  /** Opens the drawn replay as a new diagram (keeping this one's privacy). */
+  onReplay?: (outcome: ImportOutcome) => void;
   onClose: () => void;
 }) {
   const [, rerender] = useState(0);
@@ -188,10 +219,11 @@ export function ImportReportDialog({
             count={report.notDrawn.length}
             testId="import-report-not-drawn"
             action={
-              onDrawEverything && (
+              replay &&
+              onReplay && (
                 <button
                   className="link-btn ix-report-action"
-                  onClick={onDrawEverything}
+                  onClick={() => void drawEverything(replay, onReplay, onClose)}
                   title="Opens a new diagram with every resource as a node"
                   data-testid="import-report-draw-everything"
                 >

@@ -71,7 +71,7 @@ export type ImportOutcome =
       report?: ImportReport;
       /**
        * Terraform's **Draw everything**: the same import with every resource as a node, already read, as data
-       * (names and connections, never the source text), for `importReplay`.
+       * (names and connections, never the source text), drawn by the Import report.
        */
       replay?: ImportGraph;
     }
@@ -164,13 +164,4 @@ export interface ImportFile {
 export async function importFiles(files: readonly ImportFile[]): Promise<ImportOutcome> {
   if (files.length < 2) return importText(files[0]?.text ?? "", files[0]?.name);
   return (await infraReader()).importMany(files, detectFormat, importText);
-}
-
-/** Draws an import's replay (Terraform's Draw everything) as a new outcome. Never throws. */
-export async function importReplay(graph: ImportGraph): Promise<ImportOutcome> {
-  try {
-    return (await infraReader()).replayOutcome(graph);
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
-  }
 }

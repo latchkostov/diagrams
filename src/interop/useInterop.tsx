@@ -46,7 +46,6 @@ import { LIMITS, preserveUnknown, serializeNative, tooLargeMessage } from "./nat
 import {
   drawioWriter,
   importFiles,
-  importReplay,
   importText,
   mermaidWriter,
   OPEN_ACCEPT,
@@ -54,7 +53,6 @@ import {
   type ImportOutcome,
 } from "./formats";
 import type { ImportGraph, ImportReport } from "./infra/graph";
-import { paletteHost } from "../palette/host";
 import {
   clearUrlFragment,
   decodeShare,
@@ -170,22 +168,6 @@ interface Source {
   target?: SaveTarget;
   /** The diagram this one is made from (Draw everything): it inherits that diagram's privacy. */
   sourceSlug?: string;
-  /** Hand the keyboard focus to the new diagram's canvas once it's open (the action that opened it is gone). */
-  focus?: boolean;
-}
-
-/** Focuses the canvas once the diagram titled `title` is on it: a few frames at most. */
-function focusCanvasOf(title: string) {
-  let frames = 60;
-  const step = () => {
-    const wrap = document.querySelector<HTMLElement>(".canvas-wrap");
-    if (wrap && paletteHost.get().canvas?.editor.getDiagram().title === title) {
-      wrap.focus({ preventScroll: true });
-      if (document.activeElement === wrap) return;
-    }
-    if (--frames > 0) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
 }
 
 /** The canvas's canonical form of a file (same as CanvasView's "edited" check). Loads with the canvas. */
@@ -578,8 +560,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       setDialog(null);
       const r = outcome.report;
       if (r && created) {
-        setImported({ slug: created, report: r, ...(outcome.replay ? { replay: outcome.replay } : {}) });
-        if (source.focus) focusCanvasOf(outcome.diagram.title);
+        setImported({ slug: created, report: r, replay: outcome.replay });
         toast.info(r.summary, {
           action: { label: "Details", run: () => setDialog({ kind: "report" }), testId: "toast-import-details" },
           // Long enough to read when there's something to check.
@@ -595,19 +576,6 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     },
     [openDiagram],
   );
-
-  /**
-   * Terraform's Draw everything: the import's replay (data read at import time) as a new diagram. It's made from
-   * this one, so it keeps this one's privacy whatever the New diagrams setting says, and the focus goes to it.
-   */
-  const drawEverything = async (graph: ImportGraph, name: string) => {
-    const from = slug;
-    const keepPrivate = !!privacy();
-    setDialog(null);
-    const outcome = await importReplay(graph);
-    if (outcome.ok === true && keepPrivate) outcome.diagram = withPrivacyField(outcome.diagram, true);
-    handleOutcome(outcome, { name, sourceSlug: from, focus: true });
-  };
 
   /** Files from a drop, the file input or Open…: one, or several (a compose file and its overrides). */
   const importFileList = useCallback(
@@ -1047,7 +1015,16 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
           report={report}
           isPrivate={() => !!privacy()}
           onMakePrivate={() => void setPrivate(true)}
-          onDrawEverything={replay ? () => void drawEverything(replay, report.source) : undefined}
+          replay={replay}
+          onReplay={(outcome) =>
+            // Draw everything: made from this diagram, so it keeps this one's privacy whatever New diagrams says.
+            handleOutcome(
+              outcome.ok === true && privacy()
+                ? { ...outcome, diagram: withPrivacyField(outcome.diagram, true) }
+                : outcome,
+              { name: report.source, sourceSlug: slug },
+            )
+          }
           onClose={() => setDialog(null)}
         />
       )}
