@@ -85,9 +85,10 @@ test.describe("production build under a sub-path", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("save-status")).toHaveCount(0);
     // The OAuth callback and privacy pages ship with the build.
-    for (const path of ["privacy.html", "auth.html"]) expect((await page.request.get(`./${path}`)).status()).toBe(200);
+    for (const path of ["privacy.html", "terms.html", "auth.html"])
+      expect((await page.request.get(`./${path}`)).status()).toBe(200);
     await page.goto("./privacy.html");
-    await expect(page.getByTestId("privacy-title")).toHaveText("Privacy");
+    await expect(page.getByTestId("privacy-title")).toHaveText("Privacy policy");
     expect(contacted).toEqual([]);
     expect(warnings).toEqual([]);
     expectNoErrors(consoleErrors);

@@ -324,7 +324,7 @@ export function PasteDialog({ onImport, onClose }: { onImport: (text: string) =>
   return (
     <Dialog
       title="Paste a diagram"
-      subtitle="Diagrams JSON, draw.io XML or a Mermaid flowchart. The format is detected for you."
+      subtitle="Live Diagrams JSON, draw.io XML or a Mermaid flowchart. The format is detected for you."
       icon={<Glyph name="clipboard" />}
       onClose={onClose}
       testId="paste-dialog"

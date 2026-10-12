@@ -1,6 +1,6 @@
-# Diagrams
+# Live Diagrams
 
-> Diagrams (https://www.livediagrams.dev) is a free, open, in-browser tool for distributed-systems and event-driven architecture diagrams (Kafka, Azure, AWS, GCP, databases, services) with a live message-flow simulation. There's no backend: diagrams live in the browser, in files, or inside share links. No account, no API key.
+> Live Diagrams (https://www.livediagrams.dev) is a free, open, in-browser tool for distributed-systems and event-driven architecture diagrams (Kafka, Azure, AWS, GCP, databases, services) with a live message-flow simulation. There's no backend: diagrams live in the browser, in files, or inside share links. No account, no API key.
 
 ## The file format
 

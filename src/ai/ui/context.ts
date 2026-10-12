@@ -51,7 +51,7 @@ export function resolveScope(diagram: DiagramFile, ids: readonly string[]): Scop
  */
 export function referenceText(title: string, scope: readonly ScopeItem[]): string {
   return [
-    `In my Diagrams diagram ${JSON.stringify(title)} (https://www.livediagrams.dev), these elements:`,
+    `In my Live Diagrams diagram ${JSON.stringify(title)} (https://www.livediagrams.dev), these elements:`,
     ...scope.map((s) => `- ${s.kind} ${JSON.stringify(s.id)} ${JSON.stringify(s.label)}`),
   ].join("\n");
 }

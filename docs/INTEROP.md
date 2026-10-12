@@ -229,6 +229,32 @@ locked to the Picker API and your referrers). Never add a client secret or app s
 
 To remove a provider, delete its variable and redeploy; its menu entries disappear.
 
+### App name, logo and policy pages (all providers)
+
+The app's name is **Live Diagrams**, with a space, everywhere users see it: the top bar, the start card's footer,
+`index.html` (`<title>`, description, Open Graph and the static start-up page), the privacy policy and terms, and
+every consent screen. Google compares the consent screen's name with the home page's and rejects a mismatch (it
+rejected "LiveDiagrams" once), so enter it exactly. Code identifiers, storage keys, the `diagrams/v1` format, the
+`.diagram.json` extension and the repo name stay "diagrams"; so does the providers' folder, **Apps › Diagrams**
+(see OneDrive and Dropbox below).
+
+| What                     | Value                                                                                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App name                 | `Live Diagrams`                                                                                                                                                           |
+| Home page                | `https://www.livediagrams.dev` (the bare domain redirects there with a 308)                                                                                               |
+| Privacy policy           | `https://www.livediagrams.dev/privacy.html` (`public/privacy.html`)                                                                                                       |
+| Terms of service         | `https://www.livediagrams.dev/terms.html` (`public/terms.html`)                                                                                                           |
+| Authorized domain        | `livediagrams.dev`                                                                                                                                                        |
+| Support and contact mail | `latch.kostov@gmail.com` (also the privacy policy's contact)                                                                                                              |
+| Logo files               | `public/brand/logo-120.png` (Google), `logo-215.png` (Microsoft), `logo-64.png` and `logo-256.png` (Dropbox), all rendered from `public/favicon.svg`, the site's own icon |
+
+What reviewers look for, and where it is: without signing in, the home page shows the name (top bar), what the
+app does (the start card's footer, `start-about`) and **Privacy** and **Terms** links beside it. A crawler that
+doesn't run JavaScript gets the same from `index.html`'s static start-up page, which React replaces on load. The
+privacy policy has a section per provider (scope, use, where data goes, tokens, no sharing, how to revoke and
+delete), Google's Limited Use disclosure and a contact address. `tests/e2e/brand.spec.ts` checks that the names
+match exactly and that the links and the disclosure are there.
+
 ### Google Drive (owner, one time)
 
 1. **Create a project.** Go to <https://console.cloud.google.com/>, then project picker → **New project**. Name it
@@ -236,8 +262,8 @@ To remove a provider, delete its variable and redeploy; its menu entries disappe
    project id).
 2. **Enable the APIs.** **APIs & Services → Library**: enable **Google Drive API** and **Google Picker API**.
 3. **Set up the consent screen.** **Google Auth Platform** (older consoles: **APIs & Services → OAuth consent screen**):
-   - **Branding**: app name `Diagrams`, a support email, the logo, home page `https://www.livediagrams.dev`, privacy
-     policy `https://www.livediagrams.dev/privacy.html`, and under **Authorized domains** add `livediagrams.dev`.
+   - **Branding**: the values in "App name, logo and policy pages" above (field by field in "Before strangers can
+     use it" below).
    - **Audience**: **External**, publishing status **Testing**. Add your own Google account (and anyone else who
      should try it) as a test user. In Testing only they can sign in, and each consent expires after 7 days.
    - **Data access**: **Add or remove scopes** → `https://www.googleapis.com/auth/drive.file` ("See, edit, create,
@@ -260,11 +286,50 @@ To remove a provider, delete its variable and redeploy; its menu entries disappe
    **File → Open from ▸ Google Drive**. Files are `*.diagram.json` in My Drive; **Save** (Ctrl+S) updates the same
    file.
 
-**Before strangers can use it.** In **Audience**, choose **Publish app**. `drive.file` is a _non-sensitive_ scope, so
-there's no security assessment, but Google requires **brand verification**: the home page and privacy policy on a
-domain you've verified in Google Search Console, an app name and logo that match the site, and the authorized
-domain. Review usually takes a few business days. Until then users see an "unverified app" warning and there's a
-cap of 100 users.
+**Before strangers can use it.** In Testing, only test users can sign in. Publishing lets anyone with a Google
+account in. `drive.file` is a _non-sensitive_ scope (Google's Drive scope table), so there's no security
+assessment and no demo video. Google's "unverified app" screen and its 100-user cap apply to sensitive and
+restricted scopes. What remains is **brand verification**: until it's done, the consent screen shows only the
+domain, not the name and logo. Rules checked in October 2026 against Google's "Submit for brand verification",
+"Verification requirements" and "Manage app branding" pages. In order:
+
+1. **Verify the domain in Search Console.** Sign in with a Google account that is an **Owner** or **Editor** on the
+   Cloud project. Go to <https://search.google.com/search-console> → **Add property** → **Domain** →
+   `livediagrams.dev`. A Domain property covers `www` and the bare domain; Google wants the top private domain.
+   Copy the `google-site-verification=…` value. In Porkbun, open **Domain Management** → `livediagrams.dev` →
+   **DNS** → add a record: type **TXT**, host empty (the apex), answer = that value, TTL 600. Back in Search
+   Console, click **Verify**. DNS can take a few minutes to an hour. Keep the record: deleting it un-verifies the
+   domain.
+2. **Branding** (Google Auth Platform → **Branding**). Enter these exactly. They save as draft branding:
+   - **App name**: `Live Diagrams`. It must match the name on the home page. Don't use "Google" or "Drive" in it.
+   - **User support email**: `latch.kostov@gmail.com`. It must be your own account or a Google Group you manage.
+   - **App logo**: upload `public/brand/logo-120.png`. Google wants a square image, 120 × 120 px for the best
+     display, in JPG, PNG or BMP, up to 1 MB, that actually represents the app. It's the site's own icon (the
+     favicon and the start-up page's mark).
+   - **Application home page**: `https://www.livediagrams.dev`.
+   - **Application privacy policy link**: `https://www.livediagrams.dev/privacy.html`. This must be the same URL
+     the home page links to.
+   - **Application terms of service link**: `https://www.livediagrams.dev/terms.html`.
+   - **Authorized domains**: `livediagrams.dev`. It must cover every URL above and the client's JavaScript origins.
+   - **Developer contact information**: `latch.kostov@gmail.com`. Google's Trust & Safety team writes here, and
+     missing their mail can cost API access.
+3. **Data access**: only `…/auth/drive.file`, listed under non-sensitive scopes. Remove anything else.
+4. **Audience → Publish app** (Testing → In production) → **Confirm**.
+5. **Verify Branding** (Branding page). The automated check usually takes a few minutes. It ends as either:
+   - **Ready to publish**: go on to the next step.
+   - **Need to fix issues**: **View issues** lists what failed. Fix it and verify again.
+
+   If a finding looks wrong, for example it missed the Privacy link, choose **request additional review**. That
+   opens the Verification Center: click **Confirm**. A manual review usually takes 2–3 business days, and Google
+   may email the developer contact. You can't edit branding while a check runs (**Cancel** it first).
+
+6. **Publish branding** within 7 days of **Ready to publish**. After 7 days it says **Need to re-verify**.
+7. **Check it.** In a private window, sign in with an account that isn't a test user. Choose **File → Save to ▸
+   Google Drive**. The consent screen should say "Live Diagrams", show the logo, and ask only to "See, edit,
+   create, and delete only the specific Google Drive files you use with this app".
+
+Later, any change to the name, logo or links needs another **Verify Branding**. A change to the app's use of Drive
+data needs the privacy policy updated first, with a new effective date.
 
 **Troubleshooting.** A blocked popup: allow pop-ups for the site. `origin_mismatch`: the page's origin isn't in the
 client's JavaScript origins. "API developer key is invalid": a referrer is missing from the key, often
@@ -278,8 +343,9 @@ registrations). If you don't have one, sign up for a free Azure account with you
 a "Default Directory" tenant. The app still works with everyone's personal and work OneDrive.
 
 1. Go to <https://entra.microsoft.com> → **Entra ID** (or **Identity**) → **App registrations** → **New registration**.
-   - **Name**: `Diagrams`. Users see this name when they consent, and it names the folder created in their
-     OneDrive (**Apps › Diagrams**), so pick it once.
+   - **Name**: `Diagrams`. Users see this name when they consent. OneDrive also names the app folder after the
+     registration (**Apps › Diagrams**), and the app's label for that folder is hard-coded (`folder` in
+     `storage/onedrive.ts`). See "The name on Microsoft's consent screen" below before you change it.
    - **Supported account types**: **Accounts in any organizational directory (Any Microsoft Entra ID tenant -
      Multitenant) and personal Microsoft accounts (e.g. Skype, Xbox)**.
    - **Redirect URI**: platform **Single-page application (SPA)**, URI `https://www.livediagrams.dev/auth.html`.
@@ -292,8 +358,14 @@ a "Default Directory" tenant. The app still works with everyone's personal and w
 3. **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated permissions** → tick
    **Files.ReadWrite.AppFolder** and, under OpenId permissions, **offline_access** → **Add permissions**. You can
    remove the default **User.Read**; Diagrams doesn't use it. Don't grant admin consent: users consent for themselves.
-4. **Branding & properties**: home page `https://www.livediagrams.dev`, **Privacy statement URL**
-   `https://www.livediagrams.dev/privacy.html`, and optionally terms of service and a logo. **Save**.
+4. **Branding & properties**:
+   - **Logo**: `public/brand/logo-215.png`. The portal states its size limit beside the upload.
+   - **Home page URL**: `https://www.livediagrams.dev`.
+   - **Terms of service URL**: `https://www.livediagrams.dev/terms.html`.
+   - **Privacy statement URL**: `https://www.livediagrams.dev/privacy.html`.
+
+   **Save**.
+
 5. **Overview** → copy the **Application (client) ID** (a GUID). There's no secret: don't create one under
    **Certificates & secrets**.
 6. **Add to Vercel** (steps above): `VITE_ONEDRIVE_CLIENT_ID` = that GUID. Optional `VITE_ONEDRIVE_TENANT`:
@@ -302,14 +374,61 @@ a "Default Directory" tenant. The app still works with everyone's personal and w
 7. **Try it.** **File → Save to ▸ OneDrive**: a Microsoft popup signs you in and asks for consent once. The file
    appears in OneDrive under **Apps › Diagrams**. **File → Open from ▸ OneDrive** lists that folder.
 
-**Before strangers can use it.** Personal Microsoft accounts can sign in straight away; the consent screen marks
-the app "unverified". Many work or school tenants block users from consenting to apps by unverified publishers, so
-those users see "Need admin approval" until their admin consents, or until you complete **publisher
-verification**: join the Microsoft AI Cloud Partner Program (free) to get a Partner ID, verify `livediagrams.dev` as
-a custom domain in your tenant (a DNS TXT record; it must match the domain of the partner account's email), then
-add the Partner ID in **Branding & properties → Publisher verification**. Microsoft's app-folder guide says
-`Files.ReadWrite.AppFolder` works for work or school OneDrive, but the permissions reference still lists it as
-personal only: try it with a work account before announcing work support.
+**Before strangers can use it.** No review is needed:
+
+- **Personal Microsoft accounts** can sign in now. The consent screen shows the app as from an "unverified"
+  publisher.
+- **Work or school tenants** often block users from consenting to unverified multitenant apps (Microsoft's
+  risk-based step-up consent, for apps registered after November 2020). Those users see "Need admin approval"
+  until their admin consents, or until you finish **publisher verification**, which adds a blue "verified" badge.
+
+Publisher verification is free, but it verifies a **business**. Rules checked in October 2026 against Microsoft
+Learn's "Publisher verification overview", "Mark an app as publisher verified" and Partner Center's "Understand
+the verification process":
+
+1. **Partner Center account.** Enroll in the Microsoft AI Cloud Partner Program at
+   <https://partner.microsoft.com/dashboard>. Microsoft checks:
+   - the primary contact's **business email** (not a free address such as Gmail; an address at `livediagrams.dev`,
+     for example through Porkbun's email forwarding, can receive the code);
+   - a **government ID**;
+   - **domain documents** from the registrar (Porkbun's registration details for `livediagrams.dev`);
+   - the business's **legal registration**.
+
+   It usually takes 3–5 business days. A person without a registered business can't pass the business check
+   today, so leave this until there is one. Note the **Partner One ID** of the partner global account (PGA), not a
+   location ID.
+
+2. **A work account, not a personal one.** Microsoft can't verify an app registered with a personal Microsoft
+   account. If the tenant came from signing up with your personal account, create a user in it (Entra ID →
+   **Users** → **New user**). Give it **Application Administrator** (or Cloud Application Administrator) and MFA,
+   and add it as an owner of the app registration.
+3. **Verify the domain in the tenant.** Entra ID → **Domain names** → **Add custom domain** → `livediagrams.dev`.
+   Add the `MS=ms…` **TXT** record in Porkbun DNS (host empty, the apex), then **Verify**. Then in the app's
+   **Branding & properties**, set **Publisher domain** to `livediagrams.dev`. It can't be `*.onmicrosoft.com`. The
+   Partner Center email's domain must match it.
+4. **Add the Partner ID.** Sign in to <https://entra.microsoft.com> with MFA as a user who is an Application
+   Administrator in Entra and an Account Admin (or Partner Admin) in Partner Center. Open the app →
+   **Branding & properties** → **Add Partner ID to verify publisher** → enter the Partner One ID → **Verify and
+   save**. It takes minutes.
+5. **Check it.** Sign in with a work account, adding `prompt=consent` by hand while testing. The consent screen
+   shows the blue badge.
+
+Microsoft's app-folder guide says `Files.ReadWrite.AppFolder` works for work or school OneDrive, but the permissions
+reference still lists it as personal only. Try it with a work account before announcing work support.
+
+**The name on Microsoft's consent screen.** It's the registration's **Name**, `Diagrams`, while the site says
+"Live Diagrams". Microsoft doesn't compare it with the site the way Google does. OneDrive creates each user's
+**Apps › <name>** folder the first time it's used, and Diagrams always finds it through `special/approot`, so
+access never depends on the name. To make the consent screen say `Live Diagrams`, rename the registration
+(**Branding & properties → Name**). Then:
+
+- New users' folder will be called **Apps › Live Diagrams**.
+- Change the folder label in `storage/onedrive.ts` and the **Apps › Diagrams** wording in the UX vocabulary and
+  the privacy policy in the same change.
+- Before announcing it, check with an existing user whether OneDrive renames their folder (Microsoft doesn't
+  document this).
+
+Until then, keep the name `Diagrams`, so the label matches every user's folder.
 
 **Troubleshooting.** `AADSTS50011` (redirect URI mismatch) in the popup: that exact `…/auth.html` URI isn't
 registered. `AADSTS9002326`: the redirect URI is under "Web", not "Single-page application". "Need admin approval":
@@ -321,25 +440,47 @@ else).
 1. Go to <https://www.dropbox.com/developers/apps> → **Create app**.
    - **Choose an API**: **Scoped access**.
    - **Choose the type of access**: **App folder** (Diagrams then sees only its own folder).
-   - **Name**: must be unique across Dropbox, e.g. `livediagrams`. **Create app**.
+   - **Name**: what users see when they allow access, and unique across Dropbox. Use `Live Diagrams` if it's free,
+     or else something that includes it. Dropbox's branding guide forbids names that start with "drop", contain
+     "Dropbox", or sound like it. **Create app**.
 2. **Settings** tab:
-   - **App folder name**: `Diagrams` (the folder becomes **Apps › Diagrams** in users' Dropbox).
+   - **App folder name**: `Diagrams` (the folder becomes **Apps › Diagrams** in users' Dropbox). This is
+     separate from the app name, so the app can be called "Live Diagrams" while the folder stays as it is. Leave
+     it, because the app's label for it is hard-coded (`folder` in `storage/dropbox.ts`).
    - **OAuth 2 → Redirect URIs**: add `https://www.livediagrams.dev/auth.html` and `http://localhost:5173/auth.html`
      (Dropbox matches exactly, port included; add each dev port, and the bare domain if it serves the app).
    - **Allow public clients (Implicit Grant & PKCE)**: **Allow**.
    - Copy the **App key**. Never use or share the **App secret**; Diagrams doesn't need it.
 3. **Permissions** tab: tick **files.metadata.read**, **files.content.read** and **files.content.write** →
    **Submit**. Set these before anyone links: users who linked earlier must approve again after a scope change.
-4. **Branding** tab: app name and icon, description, website `https://www.livediagrams.dev` and privacy policy
-   `https://www.livediagrams.dev/privacy.html`.
+4. **Branding** tab:
+   - **Icons**: `public/brand/logo-64.png` and `logo-256.png`. They must look like the app's logo elsewhere and
+     must not resemble Dropbox's.
+   - **Description**: one line, for example "Draw distributed systems, then watch messages flow through them.
+     Saves your diagrams to its own Dropbox folder."
+   - **Website**: `https://www.livediagrams.dev`.
+   - **Privacy policy**: `https://www.livediagrams.dev/privacy.html`.
 5. **Add to Vercel** (steps above): `VITE_DROPBOX_APP_KEY` = the app key. Redeploy.
 6. **Try it.** **File → Save to ▸ Dropbox**: a Dropbox popup asks to allow access once. The file appears in
    **Apps › Diagrams**. **File → Open from ▸ Dropbox** lists that folder.
 
-**Before strangers can use it.** A new app is in **Development** status: it works for anyone, up to 500 linked
-users. Once 50 users have linked it, you have two weeks to get **production** approval (**Settings → Production
-status → Apply for production**), or it stops accepting new users. Dropbox reviews the branding, privacy policy
-and how the app uses the API, usually within a few business days.
+**Before strangers can use it.** Rules checked in October 2026 against Dropbox's developer guide and branding
+guide. A new app is in **Development** status and links only your own account at first:
+
+1. **Settings → Development users → Enable additional users.** Now anyone can link it, up to 500 users.
+2. **Get ready for review.** Dropbox rejects apps that break its branding guide or terms. Check that:
+   - the Branding tab is complete (above);
+   - the app names Dropbox only to identify the integration ("Save to ▸ Dropbox", "Sign out of Dropbox"), never
+     its logo as the app's own;
+   - the privacy policy is specific to the app (`privacy.html`'s Dropbox section);
+   - the scopes are no broader than needed (app folder plus the three file scopes; nothing else).
+3. **Settings → Production status → Apply for production.** You can apply any time, but Dropbox reviews only
+   after **50 users** have linked the app, unless you give a compelling reason to review earlier. Once 50 have
+   linked, you have **two weeks** to get approval, or new users can't link until you do. The form asks how the
+   app uses the API. For example: "Live Diagrams is a browser-only diagram editor. Users save diagrams as
+   .diagram.json files into the app's own folder (App folder access) and open them again later. There is no
+   server: the browser calls the Dropbox API directly with short-lived PKCE tokens kept only in the tab's memory."
+   Dropbox answers most requests within a few business days.
 
 **Troubleshooting.** "Invalid redirect_uri" in the popup: that exact `…/auth.html` URI (with its port) isn't
 listed. "Invalid client_id": wrong app key. `missing_scope`: tick the scopes under **Permissions**, then sign in
@@ -347,23 +488,23 @@ again.
 
 ## Files
 
-| Path                                                       | Purpose                                                                                           |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `src/interop/native.ts`                                    | Validation, `migrate`, `preserveUnknown`, `serializeNative`                                       |
-| `src/interop/formats.ts`                                   | Format detection, `importText` (one entry point for every import)                                 |
-| `src/interop/codec.ts`, `xml.ts`                           | DEFLATE / base64url codecs; a dependency-free XML reader (Node has no DOMParser)                  |
-| `src/interop/infer.ts`                                     | Label keywords → stencil                                                                          |
-| `src/interop/drawio/{read,write,mapping}.ts`               | draw.io converter plus fixtures in `drawio/fixtures/`                                             |
-| `src/interop/mermaid/{read,write}.ts`                      | Mermaid converter                                                                                 |
-| `src/interop/share.ts`                                     | Share-link and embed URL helpers                                                                  |
-| `src/interop/gdrive/{config,client,google}.ts`             | Env gating, pure REST client, GIS / Picker glue                                                   |
-| `src/interop/storage/types.ts`, `registry.ts`, `config.ts` | The `StorageProvider` interface; which providers this build offers (env-gated, lazy)              |
-| `src/interop/storage/{device,gdrive,onedrive,dropbox}.ts`  | The providers; OneDrive and Dropbox include their REST clients                                    |
-| `src/interop/storage/oauth.ts`, `http.ts`                  | PKCE popup sign-in, in-memory tokens; authorised fetch, capped reads                              |
-| `src/interop/storage/testProvider.ts`                      | Dev-only fake provider for e2e (`?storage=test`)                                                  |
-| `public/auth.html`, `public/privacy.html`                  | OAuth redirect page; the privacy policy                                                           |
-| `src/interop/files.ts`, `image.ts`, `icons.ts`             | File System Access and downloads, PNG/SVG rendering, icon inlining                                |
-| `src/interop/useInterop.tsx`                               | Controller: File menu actions, shortcuts, drag-and-drop, share-hash handling, canvas menu actions |
-| `src/interop/ui/*`                                         | File menu, dialogs, toasts (`notify`), drop overlay, glyphs                                       |
-| `src/interop/embed/EmbedView.tsx`                          | `?embed=1` viewer                                                                                 |
-| `src/styles/interop.css`                                   | Styles (prefixed `ix-`)                                                                           |
+| Path                                                       | Purpose                                                                                             |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `src/interop/native.ts`                                    | Validation, `migrate`, `preserveUnknown`, `serializeNative`                                         |
+| `src/interop/formats.ts`                                   | Format detection, `importText` (one entry point for every import)                                   |
+| `src/interop/codec.ts`, `xml.ts`                           | DEFLATE / base64url codecs; a dependency-free XML reader (Node has no DOMParser)                    |
+| `src/interop/infer.ts`                                     | Label keywords → stencil                                                                            |
+| `src/interop/drawio/{read,write,mapping}.ts`               | draw.io converter plus fixtures in `drawio/fixtures/`                                               |
+| `src/interop/mermaid/{read,write}.ts`                      | Mermaid converter                                                                                   |
+| `src/interop/share.ts`                                     | Share-link and embed URL helpers                                                                    |
+| `src/interop/gdrive/{config,client,google}.ts`             | Env gating, pure REST client, GIS / Picker glue                                                     |
+| `src/interop/storage/types.ts`, `registry.ts`, `config.ts` | The `StorageProvider` interface; which providers this build offers (env-gated, lazy)                |
+| `src/interop/storage/{device,gdrive,onedrive,dropbox}.ts`  | The providers; OneDrive and Dropbox include their REST clients                                      |
+| `src/interop/storage/oauth.ts`, `http.ts`                  | PKCE popup sign-in, in-memory tokens; authorised fetch, capped reads                                |
+| `src/interop/storage/testProvider.ts`                      | Dev-only fake provider for e2e (`?storage=test`)                                                    |
+| `public/auth.html`, `privacy.html`, `terms.html`, `brand/` | OAuth redirect page; the privacy policy and terms; the logo PNGs for the providers' consent screens |
+| `src/interop/files.ts`, `image.ts`, `icons.ts`             | File System Access and downloads, PNG/SVG rendering, icon inlining                                  |
+| `src/interop/useInterop.tsx`                               | Controller: File menu actions, shortcuts, drag-and-drop, share-hash handling, canvas menu actions   |
+| `src/interop/ui/*`                                         | File menu, dialogs, toasts (`notify`), drop overlay, glyphs                                         |
+| `src/interop/embed/EmbedView.tsx`                          | `?embed=1` viewer                                                                                   |
+| `src/styles/interop.css`                                   | Styles (prefixed `ix-`)                                                                             |

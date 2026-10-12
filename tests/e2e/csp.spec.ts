@@ -212,11 +212,13 @@ test.describe("Content-Security-Policy", () => {
     expect(messages.filter((m) => /Permissions[- ]Policy|Unrecognized feature/i.test(m))).toEqual([]);
   });
 
-  test("the static pages: privacy, sign-in redirect, skill install page", async ({ page, context }) => {
+  test("the static pages: privacy, terms, sign-in redirect, skill install page", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const csp = await watch(page);
     expectPolicy(await page.goto("./privacy.html"));
     await expect(page.getByTestId("privacy-title")).toBeVisible();
+    expectPolicy(await page.goto("./terms.html"));
+    await expect(page.getByTestId("terms-title")).toBeVisible();
 
     // auth.html's script is a file now: with nothing to hand back, it says so.
     const auth = await page.goto("./auth.html");

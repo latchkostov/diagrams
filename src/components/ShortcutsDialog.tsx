@@ -199,7 +199,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           </section>
         </div>
         <footer className="dlg-foot">
-          Diagrams is free and open source, and your diagrams stay in your browser.{" "}
+          Live Diagrams is free and open source, and your diagrams stay in your browser.{" "}
           <a href="privacy.html" target="_blank" rel="noopener" data-testid="privacy-link">
             Privacy
           </a>

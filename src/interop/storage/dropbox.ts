@@ -78,7 +78,7 @@ export function dropboxError(status: number, body: string, action: string): stri
     return "That Dropbox file no longer exists, or it was moved out of the Diagrams folder.";
   if (/conflict/.test(summary)) return `The file changed in Dropbox while trying to ${action}. Try again.`;
   if (status === 400 && /scope|app_folder|permission/i.test(summary))
-    return `Dropbox refused to ${action}: the app isn't set up with the permissions Diagrams needs.`;
+    return `Dropbox refused to ${action}: the app isn't set up with the permissions Live Diagrams needs.`;
   if (status === 403) return `Dropbox refused to ${action}.`;
   if (status === 429 || status >= 500) return `Dropbox is busy right now (${status}). Try again in a moment.`;
   return `Couldn't ${action} on Dropbox (${status}${summary ? `: ${summary}` : ""}).`;

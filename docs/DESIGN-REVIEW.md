@@ -1,5 +1,24 @@
 # Design review
 
+## Round 13: brand verification and the name Live Diagrams (2026-10-12)
+
+The OAuth providers' reviewers need the home page, without sign-in, to show the app's name exactly as on the
+consent screen, say what it does and link the privacy policy. Google rejected "LiveDiagrams" against a site that
+said "Diagrams", so the product is now **Live Diagrams** everywhere it's named. The common noun ("Your
+diagrams"), identifiers, the format and the providers' **Apps › Diagrams** folder are unchanged.
+
+- **No new chrome.** The start card gains one muted footer line: "**Live Diagrams** is a free, open-source
+  diagram tool that runs in your browser", with **Privacy** and **Terms** beside it. Both open in a new tab, as
+  the shortcuts sheet's Privacy link does, so the open diagram stays. The top bar is unchanged apart from the
+  longer wordmark. At 1024 × 768 it still fits with no overflow, and the card clears the canvas controls; the
+  footer wraps its links to a second line (`tests/e2e/brand.spec.ts`).
+- **Before the app starts.** `index.html` carries a quiet start-up page with the mark, the name, one line and
+  the two links, in the theme's colours. It shows while the script loads, and in place of the app without
+  JavaScript. React replaces it on mount, and embeds hide it (`theme.js` marks `?embed`). It's a loading state,
+  not a page, so it adds no layout jump to the app.
+- **Checked:** start card light and dark at 1024 and 1440, and the page without JavaScript
+  (`tests/.output/verify-shots/`).
+
 ## Round 12: Private diagrams (design note before building, 2026-10-12)
 
 The owner, verbatim: "What can we do in order to make things private, or is there any concern there. I'm

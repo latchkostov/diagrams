@@ -156,7 +156,13 @@ describe("security headers", () => {
   });
 
   it("no page the site serves has an inline script (the CSP would block it)", () => {
-    const pages = ["index.html", "public/auth.html", "public/privacy.html", "public/skill/index.html"];
+    const pages = [
+      "index.html",
+      "public/auth.html",
+      "public/privacy.html",
+      "public/terms.html",
+      "public/skill/index.html",
+    ];
     const found = readdirSync(join(root, "public")).filter((f) => f.endsWith(".html"));
     for (const f of found) expect(pages, `add public/${f} here`).toContain(`public/${f}`);
     for (const page of pages) {

@@ -74,7 +74,7 @@ export function migrate(raw: Record<string, unknown>): Record<string, unknown> {
       const found = cur.format;
       if (typeof found === "string" && /^diagrams\/v\d+$/.test(found)) {
         throw new FormatError(
-          `This file uses ${found}, which is newer than this version of Diagrams understands (expected format "${DIAGRAM_FORMAT}"). Reload the page to get the latest version.`,
+          `This file uses ${found}, which is newer than this version of Live Diagrams understands (expected format "${DIAGRAM_FORMAT}"). Reload the page to get the latest version.`,
         );
       }
       const shown = typeof found === "string" ? `"${found}"` : "missing";
@@ -558,7 +558,7 @@ export function parseNative(text: string): NativeResult {
   try {
     data = JSON.parse(text.replace(/^\uFEFF/, ""));
   } catch {
-    return { ok: false, error: "That file isn't valid JSON. Choose a .diagram.json file exported from Diagrams." };
+    return { ok: false, error: "That file isn't valid JSON. Choose a .diagram.json file exported from Live Diagrams." };
   }
   return validateDiagram(data);
 }

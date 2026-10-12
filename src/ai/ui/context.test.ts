@@ -38,7 +38,7 @@ describe("context", () => {
     ]);
     expect(referenceText("Shop", scope)).toBe(
       [
-        'In my Diagrams diagram "Shop" (https://www.livediagrams.dev), these elements:',
+        'In my Live Diagrams diagram "Shop" (https://www.livediagrams.dev), these elements:',
         '- node "api" "orders-api"',
         '- connection "e2" "write"',
         '- boundary "g1" "Azure"',
@@ -114,7 +114,7 @@ describe("prompts for live view and explain", () => {
       error: { error: "Unknown reference" },
       simulation: true,
     });
-    expect(p).toContain("Your simulation for my Diagrams diagram failed");
+    expect(p).toContain("Your simulation for my Live Diagrams diagram failed");
     expect(p).toContain("complete simulation as one JSON object");
   });
 });

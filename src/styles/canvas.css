@@ -2414,6 +2414,29 @@ select.insp-input {
   font-size: inherit;
 }
 
+.start-about {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  margin-top: 12px;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.start-about strong {
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.start-legal a {
+  color: inherit;
+}
+
+.start-legal a:hover {
+  color: var(--text);
+}
+
 /* ---------- node tooltip (replaces the native title) ---------- */
 
 .node-tip {

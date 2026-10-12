@@ -1,8 +1,8 @@
-# Diagrams
+# Live Diagrams
 
 **[livediagrams.dev](https://www.livediagrams.dev)**
 
-Architecture diagrams for event-driven systems, with a **live view** that plays messages through them.
+Live Diagrams draws architecture diagrams for event-driven systems, with a **live view** that plays messages through them.
 
 Draw your system with modern stencils (Kafka, Azure Service Bus, Event Hubs, SQS/SNS, Pub/Sub, Flink,
 Postgres, Redis, Snowflake, dbt, Stripe, and about 160 more), then go live: inject a storm of events and watch
