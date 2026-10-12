@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, fitDiagram, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
 
 // Flow building (docs/research/drawing-ux.md, batch 3): the "+" on a selected node and Alt+arrow quick-add
 // with Alt+Shift+arrow clone-and-connect (D3), reconnecting an edge's end and inserting a node by dropping
@@ -166,6 +166,8 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
     const card = await box(page.getByTestId("node-api"));
     const chip = await box(page.getByTestId("grow-chip-api"));
     expect(chip.x).toBeGreaterThan(card.x + card.width);
+    // The inspector opened and narrowed the canvas, keeping the API in view: the hub can be past the edge.
+    await fitDiagram(page);
     await select(page, "hub");
     await expect(chips).toHaveCount(1);
     // Two selected: no chip anywhere.

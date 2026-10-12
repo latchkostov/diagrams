@@ -1,7 +1,7 @@
 import { useEffect, useState, type RefObject } from "react";
 import { useReactFlow, useStoreApi, type ReactFlowState } from "@xyflow/react";
 import type { EdgeStyle } from "../harness/edgeStyles";
-import { fitAvoiding, panIntoView, type FitOptions } from "./geometry/fit";
+import { fitAvoiding, panClearOf, panIntoView, type FitOptions, type Viewport } from "./geometry/fit";
 import { intersects, union, type Rect } from "./geometry/rect";
 import { motionMs } from "../lib/motion";
 import { selectRoutes, useRoutingOptions, type RouteOptions } from "./edges/useEdgeRoute";
@@ -92,9 +92,44 @@ export function useOverlayFit(root: RefObject<HTMLElement | null>, opts: { style
 const VIEW_MARGIN = { top: 72, right: 40, bottom: 56, left: 40 };
 
 /**
+ * The one reveal for keyboard focus and a new selection: the smallest pan (never a zoom) that shows flow-space
+ * `want` in the pane, clear of the floating chrome (overlayRects: minimap, controls, live bar, title card).
+ * When `want` is too big for the pane (a large boundary), `must` (its name) is what's shown instead, so the
+ * part that says what it is never leaves. Null when that is in the pane and uncovered already: what's in
+ * view never moves.
+ */
+export function revealPan(root: HTMLElement, viewport: Viewport, want: Rect, must: Rect = want): Viewport | null {
+  const { width, height } = root.getBoundingClientRect();
+  const overlays = overlayRects(root);
+  const { x, y, zoom: k } = viewport;
+  const view = {
+    x: VIEW_MARGIN.left,
+    y: VIEW_MARGIN.top,
+    width: width - VIEW_MARGIN.left - VIEW_MARGIN.right,
+    height: height - VIEW_MARGIN.top - VIEW_MARGIN.bottom,
+  };
+  const target = want.width * k <= view.width && want.height * k <= view.height ? want : must;
+  const onScreen = (v: Viewport): Rect => ({
+    x: target.x * k + v.x,
+    y: target.y * k + v.y,
+    width: target.width * k,
+    height: target.height * k,
+  });
+  const now = onScreen(viewport);
+  const inPane = now.x >= 0 && now.y >= 0 && now.x + now.width <= width && now.y + now.height <= height;
+  if (inPane && !overlays.some((o) => intersects(now, o))) return null;
+  // Cut off by the pane's edge: into the view first. Then off the chrome.
+  const v = (inPane ? null : panIntoView(want, must, viewport, view)) ?? viewport;
+  const d = panClearOf(onScreen(v), overlays, { width, height });
+  const next = { x: v.x + d.dx, y: v.y + d.dy, zoom: k };
+  return Math.abs(next.x - x) >= 1 || Math.abs(next.y - y) >= 1 ? next : null;
+}
+
+/**
  * Pans (never zooms) so the selection and its edges are visible in the pane as it is now, e.g.
  * after the inspector opened and narrowed the canvas. If they can't all fit, the selection itself
- * wins. Returns false when nothing is selected or nothing had to move.
+ * wins. Returns the viewport it pans to (where the view will be once the pan lands), or null when
+ * nothing is selected or nothing had to move.
  */
 export function useKeepSelectionInView(
   root: RefObject<HTMLElement | null>,
@@ -103,9 +138,9 @@ export function useKeepSelectionInView(
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const routing = useRoutingOptions(opts);
-  return (duration = 250): boolean => {
+  return (duration = 250): Viewport | null => {
     const el = root.current;
-    if (!el) return false;
+    if (!el) return null;
     const s = store.getState() as State;
     const must: Rect[] = [];
     const around: Rect[] = [];
@@ -137,7 +172,7 @@ export function useKeepSelectionInView(
     }
     const core = union(must);
     const want = union([...must, ...around]);
-    if (!core || !want) return false;
+    if (!core || !want) return null;
     const { width, height } = el.getBoundingClientRect();
     const [x, y, zoom] = s.transform;
     const view = {
@@ -147,9 +182,9 @@ export function useKeepSelectionInView(
       height: height - VIEW_MARGIN.top - VIEW_MARGIN.bottom,
     };
     const v = panIntoView(want, core, { x, y, zoom }, view);
-    if (!v) return false;
+    if (!v) return null;
     void setViewport(v, { duration: motionMs(duration) });
-    return true;
+    return v;
   };
 }
 

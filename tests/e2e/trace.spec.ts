@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import { createSimulationRun } from "../../src/sim/simulation";
-import { test, expect, expectNoErrors, gotoLab, gotoLive, waitForStableBox } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLab, gotoLive } from "./fixtures";
 
 // Message trace: follow one message (and its fan-out copies) hop by hop, then turn its journey into
 // a sequence diagram. Selectors are data-testid only.
@@ -70,33 +70,13 @@ function poisonDeadLetters(): { last: number; newest: number } {
 const hopAttr = (page: Page, name: string) =>
   hops(page).evaluateAll((els, n) => els.map((e) => e.getAttribute(n)), name);
 
-/**
- * Clicks a control over the canvas (the live bar, its ⋯ menu, the trace card) where it is on screen.
- * Playwright's click first scrolls its target into view, and for these controls Chrome scrolls React Flow's
- * wrapper (overflow: hidden, but scrollable while its content spills past an edge: a fit under way, a tall
- * trace card). React Flow scrolls it back a frame later, so the press could land ~200 px away from the control:
- * the ⋯ menu didn't open, "Send one now" or "One that dead-lettered" did nothing. These controls never need
- * scrolling: wait until the control holds still and is what's under its centre, then click there.
- */
-async function clickInPlace(page: Page, control: Locator) {
-  await expect(control).toBeEnabled();
-  await waitForStableBox(control);
-  const box = await rect(control);
-  const x = box.x + box.width / 2,
-    y = box.y + box.height / 2;
-  await expect
-    .poll(() => control.evaluate((el, [x, y]) => el.contains(document.elementFromPoint(x, y)), [x, y] as const))
-    .toBe(true);
-  await page.mouse.click(x, y);
-}
-
 /** Traces the next message from the Kafka storefront and waits for its whole journey. */
 async function traceKafkaOrder(page: Page) {
   await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
   await openNodeMenu(page, "shopper", "sim.trace-next");
   await expect(card(page)).toHaveAttribute("data-state", "waiting");
   await expect(page.getByTestId("trace-waiting")).toContainText("Storefront");
-  await clickInPlace(page, page.getByTestId("trace-send-one"));
+  await page.getByTestId("trace-send-one").click();
   await expect(card(page)).toHaveAttribute("data-state", "done", { timeout: 20_000 });
 }
 
@@ -253,11 +233,11 @@ test.describe("message trace", () => {
   test("the live bar's ⋯ and the command palette start a trace", async ({ page, consoleErrors }) => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&speed=2`);
     // ⋯ offers the same three ways in as the right-click's "Trace a message ▸".
-    await clickInPlace(page, page.getByTestId("live-more"));
-    await clickInPlace(page, page.getByTestId("live-trace-message"));
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-trace-message").click();
     await expect(page.getByTestId("live-trace-slowest")).toBeVisible();
     await expect(page.getByTestId("live-trace-deadletter")).toBeVisible();
-    await clickInPlace(page, page.getByTestId("live-trace-next"));
+    await page.getByTestId("live-trace-next").click();
     await expect(page.getByTestId("live-more-menu")).toHaveCount(0);
     await expect(card(page)).toHaveAttribute("data-state", /flight|done/, { timeout: 10_000 });
     await page.getByTestId("trace-card-close").click();
@@ -313,9 +293,9 @@ test.describe("message trace", () => {
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting", { timeout: 20_000 });
     const { last, newest } = poisonDeadLetters();
     expect(last).not.toBe(newest);
-    await clickInPlace(page, page.getByTestId("live-more"));
-    await clickInPlace(page, page.getByTestId("live-trace-message"));
-    await clickInPlace(page, page.getByTestId("live-trace-deadletter"));
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-trace-message").click();
+    await page.getByTestId("live-trace-deadletter").click();
     await expect(card(page)).toHaveAttribute("data-root", String(last));
     await expect(card(page)).toHaveAttribute("data-state", "dlq");
     expectNoErrors(consoleErrors);

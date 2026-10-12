@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoGallery, expectNoErrors, fitDiagram } from "./fixtures";
 
 // Command palette (Ctrl/Cmd+K). Selectors are data-testid only. Uses the public Kafka example
 // (ids from src/examples/kafka-order-pipeline.json).
@@ -286,6 +286,8 @@ test.describe("command palette", () => {
 
   test("fits a 1024px window without overlap, and works from the gallery", async ({ page, consoleErrors }) => {
     await page.setViewportSize({ width: 1024, height: 700 });
+    // A smaller window doesn't refit a diagram fitted to the larger one: Payments can be under the AI rail.
+    await fitDiagram(page);
     await page.getByTestId("node-payments").click();
     await openPalette(page);
     await input(page).fill("a");

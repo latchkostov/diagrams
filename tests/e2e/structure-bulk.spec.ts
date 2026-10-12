@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, fitDiagram, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
 
 // Structure and bulk (docs/research/drawing-ux.md, batch 4): boundaries that keep up (D12), bulk edit in the
 // inspector and Select similar (D11), tidy the selection (D15), and keyboard selection between nodes (D14).
@@ -546,6 +546,8 @@ test.describe("review follow-ups", () => {
   test("bulk colours update every selected item, show Mixed, and undo together", async ({ page, consoleErrors }) => {
     await seed(page);
     await page.getByTestId("annotation-n1").click();
+    // The inspector opened and narrowed the canvas, keeping the first note in view: the second is past the edge.
+    await fitDiagram(page);
     await page.getByTestId("annotation-n2").click({ modifiers: [MOD] });
     await page.getByTestId("group-label-pay").click({ modifiers: [MOD] });
     await page.getByTestId("group-label-ship").click({ modifiers: [MOD] });
