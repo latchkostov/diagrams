@@ -7,7 +7,7 @@ import type { LiveState } from "../live/controller";
  * the editable canvas and the live view publish themselves here with one hook call each:
  *
  *   useCanvasHost(editor, { live, enabled: !readOnly });   // CanvasView (./canvasHost, needs React Flow)
- *   useLiveHost(toggle, enabled);                          // LiveView (the Live toggle)
+ *   useLiveHost(toggle, goLive, enabled);                  // LiveView (the Live toggle)
  *   useLiveSessionHost(selectSimulation, enabled, hint, getState); // LiveView's running session
  *
  * Each hook unpublishes on unmount, so the palette only offers what is on screen.
@@ -35,6 +35,8 @@ export interface CanvasHost {
 
 export interface LiveHost {
   toggle(): void;
+  /** Turns live view on; already on (its session still loading, say), nothing changes. */
+  goLive(): void;
 }
 
 export interface SessionHost {
@@ -83,8 +85,9 @@ export const paletteHost = {
       return true;
     }
     if (!state.live) return false;
+    // The session starts the pending run once it's up (it may be loading already).
     set({ pendingRun: id });
-    state.live.toggle();
+    state.live.goLive();
     return true;
   },
   /** Test seam and HMR safety: forget everything. */
@@ -94,8 +97,8 @@ export const paletteHost = {
 };
 
 /** Called by the live view's toggle owner. */
-export function useLiveHost(toggle: () => void, enabled: boolean) {
-  useEffect(() => (enabled ? publish("live", { toggle }) : undefined), [toggle, enabled]);
+export function useLiveHost(toggle: () => void, goLive: () => void, enabled: boolean) {
+  useEffect(() => (enabled ? publish("live", { toggle, goLive }) : undefined), [toggle, goLive, enabled]);
 }
 
 /** Called by the running live session; also starts a simulation the palette asked for before going live. */

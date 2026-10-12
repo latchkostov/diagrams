@@ -405,6 +405,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const grow = useRef<(from: string, toward: Toward, clone: boolean) => void>(() => {});
   /** Tab, Shift+Tab, Ctrl+Alt+arrows and Ctrl+Alt+] / [ (set below). */
   const navigate = useRef<(step: NavStep, from: EventTarget | null) => boolean>(() => false);
+  /**
+   * The node a step just went to, until the frame that focuses it: a second Tab in the same frame (two presses
+   * queued behind a busy moment) goes on from there, not from the node the key event still targets.
+   */
+  const stepping = useRef<string | undefined>(undefined);
   useCanvasShortcuts(editor, {
     enabled: !shortcutsOpen && !readOnly,
     onEscape: () => setMenu(null),
@@ -1577,7 +1582,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       const ns = getNodes().filter((n) => !n.hidden);
       const es = store.getState().edges.filter((e) => !e.hidden);
       const el = from instanceof Element ? from : null;
-      const focusedNode = el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined;
+      const focusedNode = stepping.current ?? el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined;
       const focusedEdge = el?.closest(".react-flow__edge")?.getAttribute("data-id") ?? undefined;
       const sel = editor.getSelection();
       const selectedFlowIds = [...sel.nodeIds, ...sel.groupIds.map((g) => GROUP_PREFIX + g)];
@@ -1597,11 +1602,13 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         if (isGroupNode(n)) editor.select({ groupIds: [n.data.groupId] });
         else editor.select({ nodeIds: [id] });
         setFocusId(id);
-        requestAnimationFrame(() =>
+        stepping.current = id;
+        requestAnimationFrame(() => {
+          if (stepping.current === id) stepping.current = undefined;
           wrapper.current
             ?.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
-            ?.focus({ preventScroll: true }),
-        );
+            ?.focus({ preventScroll: true });
+        });
         revealSelection();
         const at = `${order.indexOf(id) + 1} of ${order.length}`;
         if (isDiagramNode(n)) {

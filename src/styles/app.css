@@ -201,6 +201,23 @@ kbd {
   flex-direction: column;
 }
 
+/* The panel's download failed: say so, with Retry and Close. */
+.ai-dock-failed {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  color: var(--text-2);
+}
+
+.ai-dock-failed p {
+  margin: 0;
+}
+
+.ai-dock-failed div {
+  display: flex;
+  gap: 8px;
+}
+
 .ai-rail {
   width: 40px;
   display: flex;

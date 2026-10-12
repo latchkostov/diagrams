@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ErrorInfo,
   type ReactNode,
 } from "react";
@@ -15,7 +16,7 @@ import { examples, getLoadedExample, loadExample } from "./examples";
 import { groupByTheme, themeInfo } from "./examples/themes";
 import { TopBar, type ExampleOption } from "./components/TopBar";
 import type { CanvasHandle } from "./canvas/CanvasView";
-import { LazyCanvasView as CanvasView, loadCanvasView, preloadCanvasView } from "./canvas/loadCanvasView";
+import { LazyCanvasView as CanvasView, preloadCanvasView } from "./canvas/loadCanvasView";
 import type { OpenTarget } from "./lab/LabView";
 import type { DiagramFile } from "./model/types";
 import { showDiagram, useUrlState, type View } from "./lib/urlState";
@@ -46,8 +47,9 @@ import type { StartOptions } from "./canvas/StartCard";
 import { useInterop, useInteropCanvasActions } from "./interop/useInterop";
 import { notify } from "./interop/ui/toast";
 import { Toaster } from "./interop/ui/Toaster";
-import { preloadDialogs } from "./interop/ui/lazyDialogs";
+import { loadingDialog, preloadDialogs } from "./interop/ui/lazyDialogs";
 import { CommandPalette } from "./palette/CommandPalette";
+import { paletteHost } from "./palette/host";
 import { lazyComponent, whenIdle } from "./lib/lazyLoad";
 import { AiMount } from "./ai/ui/AiMount";
 import "./styles/interop.css";
@@ -57,7 +59,10 @@ import "./styles/interop.css";
 const GalleryView = lazy(() => import("./gallery/GalleryView").then((m) => ({ default: m.GalleryView })));
 const LabView = lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })));
 /** Your diagrams: loads when the app is idle, or when first opened. */
-const LibraryDialog = lazyComponent(() => import("./components/LibraryDialog").then((m) => m.LibraryDialog));
+const LibraryDialog = lazyComponent(
+  () => import("./components/LibraryDialog").then((m) => m.LibraryDialog),
+  loadingDialog("Your diagrams"),
+);
 
 // ?embed=1 renders the read-only viewer only: no top bar, no editor.
 // Any `embed` parameter (the links say embed=1): the same rule as the CSP that lets other sites frame
@@ -203,28 +208,21 @@ function MainApp() {
     rememberCanvas(slug);
   }, [url.view, url.example, slug, displayedSlug, targetSlug, setUrl]);
 
-  // Once the diagram is up, fetch the stencil library in the background so the tab opens instantly, and
-  // the dialogs once the app is idle, so they open at once too.
+  // Once a diagram is on screen and the app is idle, fetch the stencil library, the dialogs and Your
+  // diagrams in the background, so they open at once. (The editable canvas publishes itself when it mounts.)
+  // Not while live view runs: its animation comes first; this waits until the person is back to editing.
+  const canvasUp = useSyncExternalStore(paletteHost.subscribe, () => {
+    const canvas = paletteHost.get().canvas;
+    return canvas !== null && !canvas.live;
+  });
   useEffect(() => {
-    if (url.view !== "canvas") return;
-    let active = true;
-    let cancel = () => {};
-    loadCanvasView().then(
-      () => {
-        if (!active) return;
-        cancel = whenIdle(() => {
-          void import("./gallery/GalleryView").catch(() => {});
-          preloadDialogs();
-          LibraryDialog.preload();
-        });
-      },
-      () => {},
-    );
-    return () => {
-      active = false;
-      cancel();
-    };
-  }, [url.view]);
+    if (url.view !== "canvas" || !canvasUp) return;
+    return whenIdle(() => {
+      void import("./gallery/GalleryView").catch(() => {});
+      preloadDialogs();
+      LibraryDialog.preload();
+    });
+  }, [url.view, canvasUp]);
 
   useEffect(() => {
     if (!url.present) return;

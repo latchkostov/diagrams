@@ -453,6 +453,21 @@ test.describe("keyboard selection between nodes (D14)", () => {
   const focusedNode = (page: Page) =>
     page.evaluate(() => document.activeElement?.closest(".react-flow__node")?.getAttribute("data-id") ?? null);
 
+  test("two Tabs before the next frame step twice, from where the first one went", async ({ page }) => {
+    await seed(page);
+    await page.getByTestId("node-api").click();
+    await expect.poll(() => focusedNode(page)).toBe("api");
+    // Both presses arrive before the frame that moves focus (as when the page was busy for a moment).
+    await page.evaluate(() => {
+      const target = document.activeElement ?? document.body;
+      for (let i = 0; i < 2; i++)
+        target.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Tab", code: "Tab", bubbles: true, cancelable: true }),
+        );
+    });
+    await expect.poll(() => focusedNode(page)).toBe("group:ship");
+  });
+
   test("Tab steps through nodes in reading order, focus and selection together, and it's announced", async ({
     page,
     consoleErrors,

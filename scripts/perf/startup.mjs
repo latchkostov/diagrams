@@ -10,14 +10,16 @@
 //    screen, and TTI: the end of the last long task before a 2 s quiet window (no long tasks) after the
 //    canvas is up, or the canvas time if that is later.
 //  - The JavaScript fetched by then (encoded bytes and requests).
-//  - Interactions, in order on the same page, each from its input to the frame its result is on screen
-//    ("visible"), plus the slowest Event Timing entry in that interaction ("event", INP-style; entries under
-//    16 ms aren't reported, shown as <16). `--cold` runs them as soon as the canvas is up instead of after
-//    the quiet window, which is the worst case for anything that loads on intent.
+//  - Interactions, each from its input to the frame its result is on screen ("visible"), plus the slowest
+//    Event Timing entry in that interaction ("event", INP-style; entries under 16 ms aren't reported, shown
+//    as <16). By default they run in order on the same page after the quiet window. `--cold` gives each one
+//    its own fresh page and runs it as soon as the canvas is up: nothing else has loaded or warmed anything,
+//    the worst case for code that loads on intent. A result that never appears is reported as failed after
+//    10 s (a canvas, after 30 s), and the run goes on.
 // Results print as a table of medians, and per-run JSON lines with --json. Not part of the e2e suite
 // (timings depend on the machine).
 
-/* global window, document, performance, requestAnimationFrame, MutationObserver -- page.evaluate callbacks run in the browser */
+/* global window, document, performance, requestAnimationFrame, MutationObserver, clearTimeout -- page.evaluate callbacks run in the browser */
 import { chromium } from "@playwright/test";
 import process from "node:process";
 import console from "node:console";
@@ -55,14 +57,19 @@ const INIT = `(() => {
   new PerformanceObserver((l) => {
     for (const e of l.getEntries()) window.__et.push({ name: e.name, start: e.startTime, duration: e.duration });
   }).observe({ type: "event", durationThreshold: 16, buffered: true });
-  // The first frame with a diagram node in it.
-  window.__canvas = new Promise((resolve) => {
+  // The first frame with a diagram node in it (or a failure after 30 s).
+  window.__canvas = new Promise((resolve, reject) => {
+    const mo = new MutationObserver(() => check());
+    const timer = setTimeout(() => {
+      mo.disconnect();
+      reject(new Error("no canvas after 30 s"));
+    }, 30000);
     const check = () => {
-      if (!document.querySelector(".react-flow__node")) return false;
+      if (!document.querySelector(".react-flow__node")) return;
+      mo.disconnect();
+      clearTimeout(timer);
       requestAnimationFrame(() => resolve(performance.now()));
-      return true;
     };
-    const mo = new MutationObserver(() => check() && mo.disconnect());
     mo.observe(document, { childList: true, subtree: true });
   });
   // The last trusted input, for "from input to visible".
@@ -77,19 +84,26 @@ const median = (xs) => {
   return s.length ? s[Math.floor((s.length - 1) / 2)] : NaN;
 };
 
-/** Arms a watcher for `selector`: resolves with the time of the first frame it's in. */
+/** Arms a watcher for `selector`: resolves with the time of the first frame it's in, or fails after 10 s. */
 const arm = (page, selector) =>
   page.evaluate((sel) => {
-    window.__seen = new Promise((resolve) => {
-      const done = () => requestAnimationFrame(() => resolve(performance.now()));
-      if (document.querySelector(sel)) return done();
-      const mo = new MutationObserver(() => {
+    window.__seen = new Promise((resolve, reject) => {
+      const mo = new MutationObserver(() => check());
+      const timer = setTimeout(() => {
+        mo.disconnect();
+        reject(new Error(`${sel} didn't appear within 10 s`));
+      }, 10000);
+      const check = () => {
         if (!document.querySelector(sel)) return;
         mo.disconnect();
-        done();
-      });
+        clearTimeout(timer);
+        requestAnimationFrame(() => resolve(performance.now()));
+      };
       mo.observe(document, { childList: true, subtree: true, attributes: true });
+      check();
     });
+    // Handled when awaited; this keeps an unawaited failure from being reported as unhandled.
+    window.__seen.catch(() => {});
   }, selector);
 
 /** Runs `act` and returns { visible, event } for `selector` appearing. */
@@ -171,55 +185,99 @@ async function reset(page) {
   await sleep(200);
 }
 
-async function run(browser) {
+/** A fresh page on the Kafka example, throttled, once its canvas is up. Close its context when done. */
+async function open(browser) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
-  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(BASE).origin });
-  const page = await context.newPage();
-  await page.addInitScript(INIT);
-  const cdp = await context.newCDPSession(page);
-  await cdp.send("Network.enable");
-  await cdp.send("Network.setCacheDisabled", { cacheDisabled: true });
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: THROTTLE });
-  if (NET) await cdp.send("Network.emulateNetworkConditions", { offline: false, ...NET });
-  await page.goto(`${BASE}?view=canvas&example=kafka-order-pipeline`, { waitUntil: "commit" });
-  const canvas = await page.evaluate(() => window.__canvas);
-  // TTI: wait for a 2 s window without long tasks (up to 20 s).
-  let tti = canvas;
-  if (!COLD) {
-    const until = Date.now() + 20_000;
-    for (;;) {
-      const { last, now } = await page.evaluate(() => ({ last: Math.max(0, ...window.__lt), now: performance.now() }));
-      tti = Math.max(canvas, last);
-      if (now - last >= 2000 || Date.now() > until) break;
-      await sleep(250);
-    }
+  try {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(BASE).origin });
+    const page = await context.newPage();
+    page.setDefaultTimeout(15_000);
+    await page.addInitScript(INIT);
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Network.enable");
+    await cdp.send("Network.setCacheDisabled", { cacheDisabled: true });
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: THROTTLE });
+    if (NET) await cdp.send("Network.emulateNetworkConditions", { offline: false, ...NET });
+    await page.goto(`${BASE}?view=canvas&example=kafka-order-pipeline`, { waitUntil: "commit" });
+    const canvas = await page.evaluate(() => window.__canvas);
+    return { context, page, canvas };
+  } catch (err) {
+    await context.close();
+    throw err;
   }
-  const startup = await page.evaluate((tti) => {
-    const fcp = performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? NaN;
-    const js = performance.getEntriesByType("resource").filter((r) => /\.js(\?|$)/.test(r.name) && r.startTime <= tti);
-    return { fcp, lcp: window.__lcp, js: js.reduce((n, r) => n + r.encodedBodySize, 0), requests: js.length };
-  }, tti);
-  const result = { ...startup, canvas, tti: COLD ? NaN : tti, interactions: {} };
-  for (const [name, fn] of INTERACTIONS) {
-    try {
-      result.interactions[name] = await fn(page);
-    } catch (err) {
-      result.interactions[name] = { visible: NaN, event: NaN, error: String(err).split("\n")[0] };
-    }
-    await reset(page);
+}
+
+/** One interaction, its failure recorded instead of thrown. */
+async function measure(fn, page) {
+  try {
+    return await fn(page);
+  } catch (err) {
+    return { visible: NaN, event: NaN, error: String(err).split("\n")[0] };
   }
-  await context.close();
+}
+
+async function run(browser) {
+  const { context, page, canvas } = await open(browser);
+  let result;
+  try {
+    // TTI: wait for 2 s without long tasks, counted from the canvas or the last long task, whichever is later
+    // (up to 20 s).
+    let tti = canvas;
+    if (!COLD) {
+      const until = Date.now() + 20_000;
+      for (;;) {
+        const { last, now } = await page.evaluate(() => ({
+          last: Math.max(0, ...window.__lt),
+          now: performance.now(),
+        }));
+        tti = Math.max(canvas, last);
+        if (now - tti >= 2000 || Date.now() > until) break;
+        await sleep(250);
+      }
+    }
+    const startup = await page.evaluate((tti) => {
+      const fcp = performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? NaN;
+      const js = performance
+        .getEntriesByType("resource")
+        .filter((r) => /\.js(\?|$)/.test(r.name) && r.startTime <= tti);
+      return { fcp, lcp: window.__lcp, js: js.reduce((n, r) => n + r.encodedBodySize, 0), requests: js.length };
+    }, tti);
+    result = { ...startup, canvas, tti: COLD ? NaN : tti, interactions: {} };
+    if (!COLD)
+      for (const [name, fn] of INTERACTIONS) {
+        result.interactions[name] = await measure(fn, page);
+        await reset(page);
+      }
+  } finally {
+    await context.close();
+  }
+  // Cold: each interaction on its own fresh page, as soon as its canvas is up.
+  if (COLD)
+    for (const [name, fn] of INTERACTIONS) {
+      let fresh;
+      try {
+        fresh = await open(browser);
+        result.interactions[name] = await measure(fn, fresh.page);
+      } catch (err) {
+        result.interactions[name] = { visible: NaN, event: NaN, error: String(err).split("\n")[0] };
+      } finally {
+        await fresh?.context.close();
+      }
+    }
   return result;
 }
 
 const browser = await chromium.launch();
 const results = [];
-for (let i = 0; i < RUNS; i++) {
-  const r = await run(browser);
-  results.push(r);
-  if (JSON_LINES) console.log(JSON.stringify({ label: LABEL, throttle: THROTTLE, cold: COLD, run: i, ...r }));
+try {
+  for (let i = 0; i < RUNS; i++) {
+    const r = await run(browser);
+    results.push(r);
+    if (JSON_LINES) console.log(JSON.stringify({ label: LABEL, throttle: THROTTLE, cold: COLD, run: i, ...r }));
+  }
+} finally {
+  await browser.close();
 }
-await browser.close();
 
 const ms = (x) => (Number.isFinite(x) ? `${Math.round(x)} ms` : "-");
 console.log(

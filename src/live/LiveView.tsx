@@ -61,8 +61,9 @@ export function LiveView(props: LiveViewProps) {
   const [live, setLive] = useState(enabled && (params.live || !!props.alwaysOn));
   const [firstSession, setFirstSession] = useState(true);
   const toggle = useCallback(() => setLive((l) => !l), []);
-  // "Toggle live" in the command palette.
-  useLiveHost(toggle, enabled && !props.alwaysOn && !!props.editor);
+  const goLive = useCallback(() => setLive(true), []);
+  // "Toggle live" and "Run simulation" in the command palette.
+  useLiveHost(toggle, goLive, enabled && !props.alwaysOn && !!props.editor);
   // React Flow fills its store in an effect; start the session once nodes are there and measured.
   const mounted = useStore((s) => s.domNode !== null);
   const initialized = useNodesInitialized();

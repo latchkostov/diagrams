@@ -380,6 +380,12 @@
   overflow: auto;
 }
 
+/* A dialog whose code is still downloading (src/interop/ui/lazyDialogs.tsx). */
+.ix-lazy-status {
+  margin: 0;
+  color: var(--text-3);
+}
+
 .ix-dialog-foot {
   display: flex;
   flex-wrap: wrap;

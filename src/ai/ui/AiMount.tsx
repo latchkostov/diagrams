@@ -8,7 +8,7 @@ import { AI_PANEL_COMBO, OPEN_AI_PANEL, aiPanelTitle, buildWithAi, openAiPanel, 
 import { aiDock, RAIL_WIDTH, clampWidth, collapseDock, useAiDock } from "./dock";
 import { forgetLegacyAiKeys } from "./legacy";
 import { railLabel, unseen, useUnseen } from "./unseen";
-import { lazyComponent, whenIdle } from "../../lib/lazyLoad";
+import { lazyComponent, LOAD_FAILED, whenIdle } from "../../lib/lazyLoad";
 
 // The app shell's only AI code, kept small because it's in the main bundle: the dock's frame (the slim
 // rail, or the column the AI panel loads into), the shortcut, and the menu entries. The panel, the AI
@@ -17,7 +17,22 @@ import { lazyComponent, whenIdle } from "../../lib/lazyLoad";
 
 const AiPanel = lazyComponent(
   () => import("./AiPanel").then((m) => m.default),
-  <div className="ai-dock-loading" aria-busy="true" />,
+  (_, { failed, retry }) =>
+    failed ? (
+      <div className="ai-dock-loading ai-dock-failed" role="alert" data-testid="ai-panel-load-error">
+        <p>{LOAD_FAILED}</p>
+        <div>
+          <button className="btn" onClick={collapseDock} data-testid="ai-panel-load-close">
+            Close
+          </button>
+          <button className="btn btn-primary" onClick={retry} data-testid="ai-panel-load-retry">
+            Retry
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div className="ai-dock-loading" aria-busy="true" />
+    ),
 );
 const WebMcpBridge = lazy(() => import("../webmcp/WebMcpBridge"));
 
@@ -155,8 +170,8 @@ export function AiMount({
     if (shown && documentId && fresh) unseen.clear(documentId);
   }, [shown, documentId, fresh]);
 
-  // Once a diagram is up (not while the canvas itself is still downloading).
-  const canvasUp = docked && !!canvas;
+  // Once a diagram is up (not while the canvas itself is still downloading), and not while live view runs.
+  const canvasUp = docked && !!canvas && !canvas.live;
   useEffect(() => (canvasUp ? whenIdle(AiPanel.preload) : undefined), [canvasUp]);
 
   const [mcp] = useState(hasModelContext);

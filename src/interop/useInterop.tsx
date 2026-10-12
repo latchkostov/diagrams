@@ -123,7 +123,8 @@ type DialogState =
   | { kind: "unlock"; token: string; session: number }
   | { kind: "embed"; diagram: DiagramFile; source: string; example?: string }
   | { kind: "image" }
-  | { kind: "privacy" }
+  /** Turning Private off for `source`, the document it was opened for (it closes if another one opens). */
+  | { kind: "privacy"; source: string }
   | { kind: "paste" }
   | { kind: "link" }
   | {
@@ -688,7 +689,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     attempt(on ? "make it private" : "change its privacy", () => {
       const kind = privacy();
       if (!on) {
-        if (kind === "private") setDialog({ kind: "privacy" });
+        if (kind === "private") setDialog({ kind: "privacy", source: slug });
         return;
       }
       if (kind) return;
@@ -704,10 +705,12 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       toast.success(`Saved a private copy of “${d.title}” to Your diagrams.`);
     });
 
-  const confirmNotPrivate = () =>
+  /** Turns Private off for `source` only: the document the confirmation was asked for. */
+  const confirmNotPrivate = (source: string) =>
     attempt("change its privacy", () => {
       setDialog(null);
-      if (setDiagramPrivate(slug, false)) toast.success("This diagram is no longer private.");
+      if (source !== openSlug.current) return;
+      if (setDiagramPrivate(source, false)) toast.success("This diagram is no longer private.");
       // The badge that opened the dialog is gone with it: keep the keyboard on the canvas, not the page.
       requestAnimationFrame(() => {
         const active = document.activeElement;
@@ -715,6 +718,10 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
       });
     });
+
+  // The privacy confirmation is about one document: another one opening (Back, a link, another tab's
+  // navigation, even while the dialog's code is still downloading) closes it.
+  if (dialog?.kind === "privacy" && dialog.source !== slug) setDialog(null);
 
   // A share or embed dialog left open closes when its document becomes private (here or in another tab).
   const linkDialogSource =
@@ -735,7 +742,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   // The badge beside the title asks for the dialog: it explains, and turns Private off on confirmation.
   useEffect(() => {
     const onRequest = () => {
-      if (privacyOf(getPrivacyFlags(slug)) === "private") setDialog({ kind: "privacy" });
+      if (privacyOf(getPrivacyFlags(slug)) === "private") setDialog({ kind: "privacy", source: slug });
     };
     window.addEventListener(PRIVACY_REQUEST, onRequest);
     return () => window.removeEventListener(PRIVACY_REQUEST, onRequest);
@@ -870,7 +877,9 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
           onClose={() => setDialog(null)}
         />
       )}
-      {dialog?.kind === "privacy" && <PrivacyDialog onTurnOff={confirmNotPrivate} onClose={() => setDialog(null)} />}
+      {dialog?.kind === "privacy" && (
+        <PrivacyDialog onTurnOff={() => void confirmNotPrivate(dialog.source)} onClose={() => setDialog(null)} />
+      )}
       {dialog?.kind === "password-link" && (
         <PasswordLinkDialog
           diagram={dialog.diagram}
