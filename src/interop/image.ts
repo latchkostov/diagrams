@@ -133,10 +133,11 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
         height: `${height}px`,
         transform: `translate(${pad - b.x}px, ${pad - b.y}px) scale(1)`,
       },
-      // Editing affordances aren't part of the picture: connection and resize handles, and the
+      // Editing affordances aren't part of the picture: connection and resize handles (the "+" too), and the
       // "Double-click to write" placeholder of an empty note.
       filter: (node: Node) =>
-        !(node instanceof HTMLElement && EDITING_ONLY.some((cls) => node.classList.contains(cls))),
+        !(node instanceof HTMLElement && EDITING_ONLY.some((cls) => node.classList.contains(cls))) &&
+        !(node instanceof SVGElement && EDITING_ONLY_SVG.some((cls) => node.classList.contains(cls))),
     };
     return kind === "png" ? await toPng(viewport, options) : await toSvg(viewport, options);
   } finally {
@@ -147,7 +148,16 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
   }
 }
 
-const EDITING_ONLY = ["react-flow__handle", "react-flow__resize-control", "ann-placeholder"];
+const EDITING_ONLY = [
+  "react-flow__handle",
+  "react-flow__resize-control",
+  "ann-placeholder",
+  // A selected edge's ends and the outline of where a node will land (flow building, D3 and D8).
+  "edge-end",
+  "landing-outline",
+];
+// SVG editing chrome (not an HTMLElement): the line an insert would split.
+const EDITING_ONLY_SVG = ["insert-line", "edge-end-line"];
 
 const SELECTION_CLASSES = ["selected", "is-selected", "is-editing"] as const;
 

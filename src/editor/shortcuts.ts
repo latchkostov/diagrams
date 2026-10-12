@@ -15,6 +15,8 @@ export type ShortcutId =
   | "nudge-far"
   | "rename"
   | "add-text"
+  | "add-next"
+  | "clone-next"
   | "escape"
   | "fit-view"
   | "zoom-100"
@@ -38,6 +40,18 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { id: "duplicate", keys: ["Mod+D"], label: "Duplicate selection", group: "Edit" },
   { id: "group", keys: ["Mod+G"], label: "Add a boundary around the selection", group: "Edit" },
   { id: "add-text", keys: ["T"], label: "Add text at the pointer", group: "Edit" },
+  {
+    id: "add-next",
+    keys: ["Alt+ArrowRight", "Alt+ArrowDown", "Alt+ArrowLeft", "Alt+ArrowUp"],
+    label: "Next node that way, connected",
+    group: "Edit",
+  },
+  {
+    id: "clone-next",
+    keys: ["Alt+Shift+ArrowRight", "Alt+Shift+ArrowDown", "Alt+Shift+ArrowLeft", "Alt+Shift+ArrowUp"],
+    label: "A copy that way, connected",
+    group: "Edit",
+  },
   { id: "copy", keys: ["Mod+C"], label: "Copy", group: "Clipboard" },
   { id: "cut", keys: ["Mod+X"], label: "Cut", group: "Clipboard" },
   { id: "paste", keys: ["Mod+V"], label: "Paste", group: "Clipboard" },

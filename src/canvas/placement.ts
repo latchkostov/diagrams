@@ -12,6 +12,55 @@ export const overlaps = (a: Box, b: Box) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
 /**
+ * The gap along the flow for nodes added by hand (Alt+arrow, the "+", Ctrl+K and the rail after a selected
+ * node): room for a named edge's label between the cards, as in the examples.
+ */
+export const FLOW_GAP = 160;
+
+/** A side of a node, as the arrow keys name it: Alt+→ adds the next node to the right, and so on. */
+export type Toward = "right" | "left" | "down" | "up";
+
+/** → and ↓ add downstream (the new node is fed by the selected one); ← and ↑ add upstream (it feeds it). */
+export const isDownstream = (t: Toward) => t === "right" || t === "down";
+
+/** The side downstream (or upstream) lies on in a diagram of this direction. */
+export const towardOf = (direction: "LR" | "TB" = "LR", side: "downstream" | "upstream" = "downstream"): Toward =>
+  direction === "TB" ? (side === "upstream" ? "up" : "down") : side === "upstream" ? "left" : "right";
+
+/**
+ * One gap from `from` on its `toward` side (`gap` to the left or right, 80 above or below), centred on it
+ * across that axis. When the spot is taken (it overlaps one of `others`, grown by `margin`) it steps across:
+ * down for a left or right spot, right for one above or below, so a fan-out reads as a column (or a row).
+ * Returns the new box's centre.
+ */
+export function placeToward(
+  from: Box,
+  size: { width: number; height: number },
+  others: readonly Box[],
+  toward: Toward,
+  margin = 0,
+  gap = GAP_X,
+): { x: number; y: number } {
+  const across = toward === "right" || toward === "left";
+  let x = across
+    ? toward === "left"
+      ? from.x - gap - size.width
+      : from.x + from.width + gap
+    : from.x + from.width / 2 - size.width / 2;
+  let y = across
+    ? from.y + from.height / 2 - size.height / 2
+    : toward === "up"
+      ? from.y - GAP_Y * 2 - size.height
+      : from.y + from.height + GAP_Y * 2;
+  for (let i = 0; i < MAX_TRIES; i++) {
+    if (isClear({ x, y, ...size }, others, margin)) break;
+    if (across) y += size.height + GAP_Y;
+    else x += size.width + GAP_X / 2;
+  }
+  return { x: x + size.width / 2, y: y + size.height / 2 };
+}
+
+/**
  * Downstream is right of `from` (LR) or below it (TB); upstream is left of it or above it. The spot
  * steps across the flow (down for LR, right for TB) past any of `others` it would overlap.
  * Returns the new node's centre (what `editor.addNode` takes).
@@ -23,25 +72,7 @@ export function placeNextTo(
   direction: "LR" | "TB" = "LR",
   side: "downstream" | "upstream" = "downstream",
 ): { x: number; y: number } {
-  const down = direction === "TB";
-  const before = side === "upstream";
-  let x = down
-    ? from.x + from.width / 2 - size.width / 2
-    : before
-      ? from.x - GAP_X - size.width
-      : from.x + from.width + GAP_X;
-  let y = down
-    ? before
-      ? from.y - GAP_Y * 2 - size.height
-      : from.y + from.height + GAP_Y * 2
-    : from.y + from.height / 2 - size.height / 2;
-  for (let i = 0; i < MAX_TRIES; i++) {
-    const box = { x, y, ...size };
-    if (!others.some((o) => overlaps(box, o))) break;
-    if (down) x += size.width + GAP_X / 2;
-    else y += size.height + GAP_Y;
-  }
-  return { x: x + size.width / 2, y: y + size.height / 2 };
+  return placeToward(from, size, others, towardOf(direction, side));
 }
 
 /**

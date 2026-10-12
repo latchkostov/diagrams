@@ -1,3 +1,4 @@
+import { splitEdge } from "../model/edgeSplit";
 import type { DiagramFile, DiagramNode } from "../model/types";
 import { uniqueId, stencilIdBase } from "../editor/ids";
 import { estimateCardSize } from "../canvas/nodes/size";
@@ -219,35 +220,15 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
           });
           if (from?.group && from.group === to?.group) touched.add(from.group);
           fresh.push(id);
-          // The replaced connection's meaning carries over: kind, relation and props on both; its label
-          // and source side on the first, its target side on the second.
-          const carried = {
-            ...(old.kind ? { kind: old.kind } : {}),
-            ...(old.relation ? { relation: old.relation } : {}),
-          };
-          const props = () => (old.props ? { props: structuredClone(old.props) } : {});
+          // The replaced connection's meaning carries over (src/model/edgeSplit.ts, shared with the canvas).
           next.edges = next.edges.filter((e) => e.id !== old.id);
           index.remove(old.id);
           const first = uniqueId("e", allIds());
-          next.edges.push({
-            id: first,
-            from: a,
-            to: id,
-            ...carried,
-            ...(old.label !== undefined ? { label: old.label } : {}),
-            ...(old.sourceSide ? { sourceSide: old.sourceSide } : {}),
-            ...props(),
-          });
+          const second = uniqueId("e", new Set([...allIds(), first]));
+          const [one, two] = splitEdge(old, id, { first, second });
+          next.edges.push(one);
           index.refresh(next, first);
-          const second = uniqueId("e", allIds());
-          next.edges.push({
-            id: second,
-            from: id,
-            to: b,
-            ...carried,
-            ...(old.targetSide ? { targetSide: old.targetSide } : {}),
-            ...props(),
-          });
+          next.edges.push(two);
           index.refresh(next, second);
           Object.assign(result, { id, label: op.label, stencil, from: a, to: b });
           if (stencil.confidence === "low")

@@ -1,4 +1,17 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type DragEvent,
+} from "react";
+import { railAnchor } from "./railAnchor";
+import { flushSync } from "react-dom";
+import { DEFAULT_NODE_VARIANT, getNodeVariant, type NodeVariantId } from "../harness/nodeVariants";
 import { getStencil, stencils } from "../stencils/registry";
 import type { AnnotationKind, AnnotationShape, Stencil, StencilCategory } from "../model/types";
 import { StencilIcon } from "../components/StencilIcon";
@@ -48,17 +61,21 @@ export const Palette = memo(function Palette({
   onToggle,
   onAdd,
   onAnnotate,
+  nodeVariant = DEFAULT_NODE_VARIANT,
 }: {
   collapsed: boolean;
   onToggle: () => void;
   onAdd: (stencilId: string) => void;
   /** Adds a text, note, zone or shape (the Annotate group). */
   onAnnotate?: (kind: AnnotationKind, shape?: AnnotationShape) => void;
+  /** The canvas's node look, for the card a drag shows. */
+  nodeVariant?: NodeVariantId;
 }) {
   const [q, setQ] = useState("");
   const [family, setFamily] = useState<FamilyId | "all">(readFamily);
   const [closed, setClosed] = useState<StencilCategory[]>(readClosed);
   const recentIds = useRecentStencils();
+  const preview = useDragPreview(nodeVariant);
 
   useEffect(() => {
     safeStorage.setItem(FAMILY_KEY, family);
@@ -87,6 +104,7 @@ export const Palette = memo(function Palette({
     pushRecentStencil(id);
     onAdd(id);
   };
+  const item = { onAdd: add, onDrag: preview.start, onDragDone: preview.stop };
 
   const families = useMemo(() => familyCounts(stencils), []);
   const inFamily = useMemo(
@@ -120,10 +138,11 @@ export const Palette = memo(function Palette({
         >
           <Icon name="panel" />
         </button>
+        {preview.node}
         {recent.length > 0 && (
           <div className="palette-rail-recent" aria-label="Recently used stencils">
             {recent.map((s) => (
-              <RecentTile key={s.id} stencil={s} onAdd={add} />
+              <RecentTile key={s.id} stencil={s} {...item} />
             ))}
           </div>
         )}
@@ -135,6 +154,7 @@ export const Palette = memo(function Palette({
 
   return (
     <aside className="palette" data-testid="palette">
+      {preview.node}
       <div className="palette-head">
         <div className="palette-head-row">
           <label className="field">
@@ -211,7 +231,7 @@ export const Palette = memo(function Palette({
             </h3>
             <div className="palette-grid">
               {results.map((s) => (
-                <PaletteItem key={s.id} stencil={s} onAdd={add} />
+                <PaletteItem key={s.id} stencil={s} {...item} />
               ))}
             </div>
             {onAnnotate && annotateHits.length > 0 && (
@@ -237,7 +257,7 @@ export const Palette = memo(function Palette({
                 <h3 className="palette-sec-static">Recently used</h3>
                 <div className="palette-recent-grid">
                   {recent.map((s) => (
-                    <RecentTile key={s.id} stencil={s} onAdd={add} />
+                    <RecentTile key={s.id} stencil={s} {...item} />
                   ))}
                 </div>
               </section>
@@ -261,7 +281,7 @@ export const Palette = memo(function Palette({
                   {open && (
                     <div className="palette-grid">
                       {g.items.map((s) => (
-                        <PaletteItem key={s.id} stencil={s} onAdd={add} />
+                        <PaletteItem key={s.id} stencil={s} {...item} />
                       ))}
                     </div>
                   )}
@@ -273,13 +293,32 @@ export const Palette = memo(function Palette({
       </div>
       {/* Pinned under the list, so it's in view whatever is open above (searching lists matches instead). */}
       {onAnnotate && !results && <AnnotateGroup items={ANNOTATE} onAdd={onAnnotate} className="is-pinned" />}
-      <div className="palette-foot">
-        Drag onto the canvas or click to add. <kbd>{formatCombo(shortcutKeys("command-palette"))}</kbd> finds anything;{" "}
-        <kbd>?</kbd> lists shortcuts.
-      </div>
+      <PaletteFoot />
     </aside>
   );
 });
+
+/**
+ * The rail's footer: how to add, or, with exactly one node selected, that a click adds after it (decision 4).
+ * It follows the selection by itself, so selecting never re-renders the rail.
+ */
+function PaletteFoot() {
+  const after = useSyncExternalStore(railAnchor.subscribe, railAnchor.get, railAnchor.get);
+  return (
+    <div className="palette-foot">
+      {after ? (
+        <span data-testid="palette-after">
+          A click adds after <strong>{after}</strong>, connected. Drag to place it anywhere.
+        </span>
+      ) : (
+        <>
+          Drag onto the canvas or click to add. <kbd>{formatCombo(shortcutKeys("command-palette"))}</kbd> finds
+          anything; <kbd>?</kbd> lists shortcuts.
+        </>
+      )}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------- Annotate
 
@@ -385,14 +424,29 @@ function AnnotateGroup({
   );
 }
 
-function dragHandlers(s: Stencil, onAdd: (id: string) => void) {
+interface ItemProps {
+  stencil: Stencil;
+  onAdd: (id: string) => void;
+  /** Builds the node-card picture the drag shows; returns it (null: none). */
+  onDrag: (s: Stencil) => HTMLElement | null;
+  onDragDone: () => void;
+}
+
+function dragHandlers({ stencil: s, onAdd, onDrag, onDragDone }: ItemProps) {
   return {
     draggable: true,
     onDragStart: (e: DragEvent) => {
       e.dataTransfer.setData(STENCIL_DND_MIME, s.id);
       e.dataTransfer.effectAllowed = "copy";
+      // A node card at the canvas's zoom, not the browser's picture of this row.
+      const card = onDrag(s);
+      if (card) {
+        const r = card.getBoundingClientRect();
+        e.dataTransfer.setDragImage(card, r.width / 2, r.height / 2);
+      }
     },
     onDragEnd: (e: DragEvent) => {
+      onDragDone();
       // Only a drop the canvas accepted counts as "used".
       if (e.dataTransfer.dropEffect !== "none") pushRecentStencil(s.id);
     },
@@ -400,11 +454,43 @@ function dragHandlers(s: Stencil, onAdd: (id: string) => void) {
   };
 }
 
-function PaletteItem({ stencil: s, onAdd }: { stencil: Stencil; onAdd: (id: string) => void }) {
+/**
+ * The picture a stencil drag shows (D13): the node card it will make, at the canvas's zoom. Rendered
+ * offscreen for the length of the drag, since the browser snapshots it when the drag starts.
+ */
+function useDragPreview(nodeVariant: NodeVariantId) {
+  const [drag, setDrag] = useState<{ stencil: Stencil; zoom: number } | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const { Component } = getNodeVariant(nodeVariant);
+  const start = (s: Stencil) => {
+    const wrap = document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]');
+    const zoom = Number(wrap?.style.getPropertyValue("--rf-zoom")) || 1;
+    flushSync(() => setDrag({ stencil: s, zoom }));
+    return ref.current;
+  };
+  const stop = () => setDrag(null);
+  const stencil = drag?.stencil;
+  const node =
+    drag && stencil ? (
+      <div
+        ref={ref}
+        className={`stencil-drag-preview dn dn-${nodeVariant}`}
+        style={{ zoom: drag.zoom, "--accent": stencil.accent } as CSSProperties}
+        aria-hidden
+        data-testid="stencil-drag-preview"
+      >
+        <Component stencil={stencil} label={stencil.label} sublabel={stencil.defaultSublabel} />
+      </div>
+    ) : null;
+  return { start, stop, node };
+}
+
+function PaletteItem(p: ItemProps) {
+  const s = p.stencil;
   return (
     <button
       className="palette-item"
-      {...dragHandlers(s, onAdd)}
+      {...dragHandlers(p)}
       title={`${s.label} (${s.vendor})\n${s.description}`}
       data-testid={`palette-item-${s.id}`}
       style={{ "--accent": s.accent } as CSSProperties}
@@ -420,11 +506,12 @@ function PaletteItem({ stencil: s, onAdd }: { stencil: Stencil; onAdd: (id: stri
   );
 }
 
-function RecentTile({ stencil: s, onAdd }: { stencil: Stencil; onAdd: (id: string) => void }) {
+function RecentTile(p: ItemProps) {
+  const s = p.stencil;
   return (
     <button
       className="palette-recent-item"
-      {...dragHandlers(s, onAdd)}
+      {...dragHandlers(p)}
       title={`${s.label} (${s.vendor})`}
       aria-label={`Add ${s.label}`}
       data-testid={`palette-recent-item-${s.id}`}

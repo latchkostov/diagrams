@@ -2,6 +2,28 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Flow building (2026-10)
+
+One habit changes:
+
+- **A rail click respects the selection.** With exactly one node selected, clicking a stencil in the rail adds
+  it after that node, connected, as Ctrl+K's "Add …" already did. The rail's footer says so ("A click adds
+  after Payments service"). With nothing selected, or several things, it adds an unconnected node in free
+  space, as before. Drag the stencil instead to place it anywhere.
+
+Also new:
+
+- A selected node shows a "+": click it to pick the next node, which lands beside it, connected and ready to
+  name. Alt+arrow does the same from the keyboard (→ and ↓ downstream, ← and ↑ upstream), and Alt+Shift+arrow
+  adds a copy of the node there. On the canvas, Alt+← and Alt+→ no longer go back or forward in the browser.
+- A new connected node's name editor has one more field: Tab, Tab names its connection.
+- Drag either end of a selected edge onto another node to rewire it; it keeps its label and settings. From the
+  keyboard, the edge's menu and Ctrl+K have Reconnect ▸ From / To.
+- Hold a new node (or a stencil from the rail) over an edge for a moment and drop it to put it in between, or
+  use Insert node on the edge's menu or in Ctrl+K.
+- Dragging a stencil shows the node card it makes and an outline where it will land.
+- Quick-add finds stencils the way the rail does: "pg" finds PostgreSQL, "go" the Go service.
+
 ## Drawing precision (2026-10)
 
 Two habits change:

@@ -17,6 +17,7 @@ import { shortcutKeys } from "./shortcuts";
 import { capacityOverlay } from "../live/capacityOverlay";
 import { isFlowEdgeTarget, relationshipAction } from "./relationActions";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
+import type { EdgeEnd } from "./edgeEdits";
 
 // Built-in context-menu actions. Each reads the target from ctx and mutates through ctx.editor.
 
@@ -113,6 +114,40 @@ function sideMenu(ctx: ActionContext, end: "sourceSide" | "targetSide"): MenuNod
       checked: current === side,
       run: () => ctx.editor.updateEdge(id, { [end]: side }),
     })),
+  ];
+}
+
+/** The nodes (and shapes) an edge's `end` could move to: anything that takes edges, except its two ends. */
+function reconnectMenu(ctx: ActionContext, end: EdgeEnd): MenuNode[] {
+  const e = ctx.editor.getEdge(ctx.edgeId!);
+  if (!e) return [];
+  const d = ctx.editor.getDiagram();
+  const ends = new Set([e.from, e.to]);
+  const run = (id: string) => () => void ctx.editor.reconnectEdge(e.id, end, id);
+  return [
+    ...d.nodes
+      .filter((n) => !ends.has(n.id))
+      .map((n): MenuItem => ({
+        type: "item",
+        id: `reconnect-${end}:${n.id}`,
+        label: n.label || n.id,
+        paletteLabel: `Reconnect ${end === "source" ? "from" : "to"} › ${n.label || n.id}`,
+        stencil: n.stencil,
+        hint: n.sublabel,
+        keywords: n.id,
+        run: run(n.id),
+      })),
+    ...(d.annotations ?? [])
+      .filter((a) => a.kind === "shape" && !ends.has(a.id))
+      .map((a): MenuItem => ({
+        type: "item",
+        id: `reconnect-${end}:${a.id}`,
+        label: a.text || a.id,
+        paletteLabel: `Reconnect ${end === "source" ? "from" : "to"} › ${a.text || a.id}`,
+        icon: "shape-rect",
+        keywords: `${a.id} shape`,
+        run: run(a.id),
+      })),
   ];
 }
 
@@ -505,6 +540,52 @@ export function builtinActions(): Action[] {
       run: (ctx) => ctx.editor.startEditing({ kind: "edge", id: ctx.edgeId! }),
     },
     relationshipAction,
+    {
+      // Rewire one end from the keyboard (dragging a selected edge's end is the pointer's way): From ▸ and To ▸,
+      // each a searchable list of the nodes that end could move to. Keeps the label, relationship and settings.
+      id: "edge.reconnect",
+      section: "edge",
+      targets: ["edge"],
+      label: "Reconnect",
+      icon: "link",
+      children: (ctx) => {
+        const e = ctx.editor.getEdge(ctx.edgeId!);
+        const name = (id?: string) =>
+          (id && (ctx.editor.getNode(id)?.label || ctx.editor.getAnnotation(id)?.text)) || id;
+        return [
+          {
+            type: "item",
+            id: "edge.reconnect:from",
+            label: "From",
+            hint: name(e?.from),
+            searchable: "Search nodes",
+            children: reconnectMenu(ctx, "source"),
+          },
+          {
+            type: "item",
+            id: "edge.reconnect:to",
+            label: "To",
+            hint: name(e?.to),
+            searchable: "Search nodes",
+            children: reconnectMenu(ctx, "target"),
+          },
+        ];
+      },
+    },
+    {
+      // A new node in the middle of the edge (holding a node over it is the pointer's way): A→B becomes A→N→B,
+      // both halves keeping the edge's meaning; the new node's name opens, as quick-add's does.
+      id: "edge.insert-node",
+      section: "edge",
+      targets: ["edge"],
+      label: "Insert node",
+      icon: "plus",
+      searchable: "Search stencils",
+      children: (ctx) =>
+        stencilMenu("insert-node", (s) => ({
+          run: () => ctx.editor.nameNew(() => ctx.editor.insertNode(ctx.edgeId!, s.id), s.label),
+        })),
+    },
     {
       id: "edge.reverse",
       section: "edge",

@@ -3,6 +3,9 @@ import { makePayload, parsePayload } from "./clipboard";
 import { isEditableTarget, shortcutFor } from "./shortcuts";
 import { typeAheadActive } from "../canvas/typeAhead";
 import type { EditorApi } from "./types";
+import type { Toward } from "../canvas/placement";
+
+const TOWARD: Record<string, Toward> = { ArrowRight: "right", ArrowLeft: "left", ArrowDown: "down", ArrowUp: "up" };
 
 /** If no `paste` event follows Ctrl+V within this time, paste the internal clipboard. */
 const PASTE_FALLBACK_MS = 120;
@@ -36,7 +39,14 @@ const SELECTION_SHORTCUTS = new Set([
  */
 export function useCanvasShortcuts(
   editor: EditorApi,
-  opts: { enabled: boolean; onEscape: () => void; /** Live view: no new annotations mid-run. */ live?: boolean },
+  opts: {
+    enabled: boolean;
+    onEscape: () => void;
+    /** Live view: no new annotations mid-run. */
+    live?: boolean;
+    /** Alt+arrow from `from`: quick-add the next node that way; with Shift, a connected copy (D3). */
+    onGrow?: (from: string, toward: Toward, clone: boolean) => void;
+  },
 ) {
   const optsRef = useRef(opts);
   useLayoutEffect(() => {
@@ -110,6 +120,18 @@ export function useCanvasShortcuts(
           ] ?? [0, 0];
           // Grid-true with Snapping on (10 px, Shift 50 px, onto the grid); 1 px and 10 px with it off.
           editor.nudge(d[0], d[1], id === "nudge-far");
+          break;
+        }
+        case "add-next":
+        case "clone-next": {
+          const grow = optsRef.current.onGrow;
+          if (optsRef.current.live || !grow) return;
+          if (!(inCanvas(e.target) || e.target === document.body)) return;
+          // On the canvas Alt+arrows are ours, selection or not: never the browser's Back or Forward.
+          handled();
+          const from = editor.stencilAnchor();
+          if (e.repeat || !from) return;
+          grow(from, TOWARD[e.key], id === "clone-next");
           break;
         }
         case "add-text":

@@ -8,6 +8,9 @@
   position: relative;
   flex: 1;
   min-width: 0;
+  /* The app's accent, kept where a node's stencil colour replaces --accent (the "+" on a node). */
+  --ui-accent: var(--accent);
+  --ui-accent-ink: var(--accent-ink);
   /* Inline editors never read smaller than their CSS size: below 100% zoom they scale up by 1/zoom. */
   --edit-scale: max(1, calc(1 / var(--rf-zoom, 1)));
 }
@@ -2997,4 +3000,187 @@ select.insp-input {
   right: 0;
   top: 100%;
   height: calc(12px / var(--fe-card-scale, 1));
+}
+
+/* ---------- flow building (batch 3: D3, D8, D13) ---------- */
+
+/* The "+" on a single selected node: 20 px on screen at any zoom, 16 px off the card. A handle, so a drag
+   from it connects; a click opens quick-add for the next node. */
+.grow-chip.react-flow__handle {
+  --chip: calc(20px / var(--rf-zoom, 1));
+  --off: calc(16px / var(--rf-zoom, 1));
+  width: var(--chip);
+  height: var(--chip);
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  /* The app's accent, not the stencil's: at least 5:1 on the surface in both themes, whatever the stencil
+     (Azure Functions' amber or Go's cyan would be about 2:1). */
+  border: calc(1.5px / var(--rf-zoom, 1)) solid var(--ui-accent);
+  background: var(--surface);
+  color: var(--ui-accent);
+  box-shadow: 0 calc(1px / var(--rf-zoom, 1)) calc(4px / var(--rf-zoom, 1)) rgb(0 0 0 / 0.18);
+  cursor: pointer;
+  transform: none;
+  z-index: 3;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+
+.grow-chip.react-flow__handle:hover {
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+
+.grow-chip svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.grow-chip.react-flow__handle-right {
+  left: calc(100% + var(--off));
+  right: auto;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.grow-chip.react-flow__handle-left {
+  right: calc(100% + var(--off));
+  left: auto;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.grow-chip.react-flow__handle-bottom {
+  top: calc(100% + var(--off));
+  bottom: auto;
+  left: 50%;
+  translate: -50% 0;
+}
+
+.grow-chip.react-flow__handle-top {
+  bottom: calc(100% + var(--off));
+  top: auto;
+  left: 50%;
+  translate: -50% 0;
+}
+
+/* Every side taken (a dense diagram): on the card's own top-right corner, half over the card. */
+.grow-chip.react-flow__handle[data-side="corner"] {
+  top: calc(var(--chip) / -2);
+  bottom: auto;
+  left: calc(100% - var(--chip) / 2);
+  right: auto;
+  translate: none;
+}
+
+.react-flow.connecting .grow-chip,
+.canvas-wrap.is-connecting .grow-chip {
+  visibility: hidden;
+}
+
+/* A selected edge's ends: drag one onto another node to move it there (D8). */
+.edge-end {
+  --end: calc(12px / var(--rf-zoom, 1));
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--end);
+  height: var(--end);
+  margin: calc(var(--end) / -2) 0 0 calc(var(--end) / -2);
+  border-radius: 50%;
+  background: var(--surface);
+  border: calc(2px / var(--rf-zoom, 1)) solid var(--accent);
+  box-shadow: 0 0 0 calc(3px / var(--rf-zoom, 1)) color-mix(in oklab, var(--accent) 22%, transparent);
+  pointer-events: all;
+  cursor: crosshair;
+  z-index: 5;
+}
+
+/* The dot is small; the hit area around it is 24 px on screen at any zoom, like the connection handles. */
+.edge-end::after {
+  --hit: calc(24px / var(--rf-zoom, 1));
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--hit);
+  height: var(--hit);
+  translate: -50% -50%;
+  border-radius: 50%;
+}
+
+.edge-end:hover,
+.edge-end.is-dragging {
+  background: var(--accent);
+}
+
+.edge-end-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.edge-end-line path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: calc(1.6px / var(--rf-zoom, 1));
+  stroke-dasharray: calc(5px / var(--rf-zoom, 1)) calc(4px / var(--rf-zoom, 1));
+}
+
+/* The edge a held node (or a stencil) would go into (D8): its line, lit, where it ran when the drag began
+   (the edge itself steps aside from the node over it). */
+.insert-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.insert-line polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: calc(2.5px / var(--rf-zoom, 1));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.insert-line .insert-line-halo {
+  stroke: color-mix(in oklab, var(--accent) 25%, transparent);
+  stroke-width: calc(12px / var(--rf-zoom, 1));
+}
+
+/* Where the next node will land: quick-add for it is open, or a stencil is dragged over the canvas. */
+.landing-outline {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: var(--radius-l);
+  border: calc(1.5px / var(--rf-zoom, 1)) dashed color-mix(in oklab, var(--accent) 70%, transparent);
+  background: color-mix(in oklab, var(--accent) 6%, transparent);
+  pointer-events: none;
+}
+
+/* The picture a stencil drag shows: the node card it makes, drawn offscreen for the browser to snapshot. */
+.stencil-drag-preview {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  pointer-events: none;
 }

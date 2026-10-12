@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 import type { MenuItem, MenuNode } from "../editor/actions";
 import { formatCombo } from "../editor/shortcuts";
 import { getStencil } from "../stencils/registry";
+import { scoreStencil } from "../lib/stencilSearch";
 import { Icon } from "./Icon";
 import { StencilIcon } from "./StencilIcon";
 import { captureTypeAhead, type TypeAhead } from "../canvas/typeAhead";
@@ -36,6 +37,8 @@ const MAX_RESULTS = 60;
 export interface ContextMenuProps {
   x: number;
   y: number;
+  /** Where the menu's right edge goes when it doesn't fit right of `x` (it flips to the left). */
+  flipX?: number;
   items: MenuNode[];
   onClose: () => void;
   /** Root-level search box placeholder (quick-add, stencil picker). */
@@ -48,6 +51,7 @@ export interface ContextMenuProps {
 export function ContextMenu({
   x,
   y,
+  flipX,
   items,
   onClose,
   searchable,
@@ -101,7 +105,7 @@ export function ContextMenu({
     <div ref={layer} className="cm-layer" data-editor-overlay onContextMenu={(e) => e.preventDefault()}>
       <MenuList
         items={items}
-        anchor={{ x, y }}
+        anchor={{ x, y, flipX }}
         depth={0}
         searchable={searchable}
         takeTypeAhead={takeTypeAhead}
@@ -148,15 +152,20 @@ function search(items: MenuNode[], q: string): MenuNode[] {
   const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
   // A stencil listed twice (Recently used, and its category) is one result.
   const seen = new Set<string>();
-  return leaves(items)
-    .filter(({ item, trail }) => {
-      const hay = `${item.label} ${item.hint ?? ""} ${item.keywords ?? ""} ${trail.join(" ")}`.toLowerCase();
-      if (!tokens.every((t) => hay.includes(t))) return false;
-      if (!item.stencil) return true;
-      if (seen.has(item.stencil)) return false;
+  const hits: { item: MenuItem; i: number; score: number }[] = [];
+  leaves(items).forEach(({ item, trail }, i) => {
+    const hay = `${item.label} ${item.hint ?? ""} ${item.keywords ?? ""} ${trail.join(" ")}`.toLowerCase();
+    // Stencils rank as the rail's search ranks them, aliases included ("pg" → PostgreSQL, "go" → Go Service).
+    const score = item.stencil ? scoreStencil(getStencil(item.stencil), q) : 0;
+    if (score <= 0 && !tokens.every((t) => hay.includes(t))) return;
+    if (item.stencil) {
+      if (seen.has(item.stencil)) return;
       seen.add(item.stencil);
-      return true;
-    })
+    }
+    hits.push({ item, i, score });
+  });
+  return hits
+    .sort((a, b) => b.score - a.score || a.i - b.i)
     .slice(0, MAX_RESULTS)
     .map(({ item }) => item);
 }

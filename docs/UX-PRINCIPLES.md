@@ -27,7 +27,7 @@ path wins by default and the power path stays one step away.
 10. **Nothing overlaps by default.** Labels never cover nodes, parallel edges stay distinguishable,
     edges route around nodes, and floating panels never hide content after fit-view. Anything added
     without a spot (a click in the rail, the palette) goes to the free place nearest the view's centre,
-    clear of nodes, edges and the last thing added. A traced message's labels never cover a node, its
+    clear of nodes, edges and the last thing added; with one node selected, one gap beside it, connected. A traced message's labels never cover a node, its
     badges or each other (they step out with a leader line, or wait for room). An automated overlap audit
     (`tests/e2e/layout.spec.ts`) guards every example.
 11. **Presentation is a first-class mode.** Anything shown in a meeting reads at a distance and hides editing
@@ -74,9 +74,27 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   - **Dependencies** (Show ▸ Dependencies, View menu) shows or hides them all, one remembered setting.
     Hidden, a node keeps small glyph **pips** with the list on hover.
 - **Subtitle** for a node's second line. **Properties** opens the inspector for the thing.
-- **Quick-add** is the stencil search that opens on the canvas: double-click empty canvas, or drop a
-  connection there. Recently used stencils come first. From a dropped connection the pick lands on the drop
-  point, connected, with its label editor open (the name selected, so typing replaces it).
+- **Quick-add** is the stencil search that opens on the canvas: double-click empty canvas, drop a connection
+  there, press **Alt+arrow** or click the **"+"** on a selected node. Recently used stencils come first, and
+  the search ranks as the stencil rail's does ("pg" finds PostgreSQL). From a dropped connection the pick lands
+  on the drop point; from Alt+arrow or the "+", one gap beside the node, under the faint outline shown while
+  quick-add is open. Either way it arrives connected, with its label editor open (the name selected, so
+  typing replaces it).
+- **The next node**: a single selected node shows one **"+"** on its downstream side (right, or below in a
+  top-to-bottom diagram; another side when a neighbour or a label is there). Never a "+" on every node, never
+  on hover. **Alt+→ / Alt+↓** add downstream (the new node is fed by the selected one), **Alt+← / Alt+↑**
+  upstream (it feeds it). **Alt+Shift+arrow** skips quick-add and puts a copy of the node there, connected the
+  same way. The new node lands clear of everything, in view, its name ready to type; the gap along the flow
+  leaves room for the connection's label. A rail click or Ctrl+K "Add …" with one node selected adds after it
+  the same way (the rail's footer says "A click adds after Order service"), without opening the name.
+- **Reconnect**: a selected edge shows a round end at each side; drag one onto another node to move that end
+  there. The edge keeps its label, relationship and settings; dropped anywhere else (or Esc) it snaps back. From
+  the keyboard: the edge's right-click and Ctrl+K, **Reconnect ▸ From / To**, with a node search.
+- **Insert**: hold a node with no edges of its own (or a stencil from the rail) over an edge for a moment, and
+  the edge lights up; drop it there and it goes in between (A→B becomes A→N→B, both keeping the edge's
+  meaning, the label on the first). Passing over an edge, or dropping with Ctrl/⌘ held, never splits it. A
+  stencil dropped on a node goes after it, connected. From the keyboard: the edge's right-click and Ctrl+K,
+  **Insert node ▸** (a stencil search); the new node's name opens. A new node and its name are one undo step.
 - The **selection box** is a drag on empty canvas while editing. It picks what it touches (hold Ctrl/⌘:
   only what's wholly inside), boundaries and zones only when wholly inside, and the edges whose both ends it
   picked. **Shift+click** and Ctrl/⌘+click add to or take out of the selection. The inspector waits for the
@@ -99,7 +117,8 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   recordings. The arrow keys nudge onto the grid: to the next 10 px line, Shift 50 px (Snapping off: 1 px and
   10 px). The dots are every 10 px from 100% zoom and every 20 px below.
 - **Editing text** follows one set of keys in every inline editor (a node's label and subtitle, an edge's
-  label, a boundary's name, an annotation's text). **Enter** on a single selected thing edits it (F2 too).
+  label, a boundary's name, an annotation's text). A node just made connected (quick-add after a dropped
+  connection, Alt+arrow, the "+") has a third field, its **connection's label**, one Tab after the subtitle. **Enter** on a single selected thing edits it (F2 too).
   In the editor, Enter saves (a text or note adds a line; Ctrl/⌘+Enter saves), Tab goes to the next field
   (label, then subtitle) and saves after the last, and **Esc saves** too, as a click away does: Ctrl/⌘+Z right
   after takes the edit back. Nothing cancels. An editor never reads smaller than its own size, at any zoom.
@@ -201,20 +220,23 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 The shortcuts sheet's Mouse rows (`src/components/ShortcutsDialog.tsx`) say these in short; keep the two
 in step:
 
-| Gesture                   | Does                                                                      |
-| ------------------------- | ------------------------------------------------------------------------- |
-| Right-click               | Context menu for the canvas, a node, an edge or a boundary                |
-| Double-click canvas       | Quick-add a stencil at the cursor                                         |
-| Double-click node / edge  | Rename / edit label                                                       |
-| Drag on the canvas        | Selection box (Ctrl/⌘: only what's inside). Live, presenting, embeds: pan |
-| Shift / Ctrl / ⌘ + click  | Add to or take out of the selection                                       |
-| Scroll, two-finger swipe  | Pan (Shift + scroll: sideways). In an embed the wheel scrolls the page    |
-| Ctrl / ⌘ + scroll, pinch  | Zoom at the pointer                                                       |
-| Space + drag, middle-drag | Pan, even starting on a node                                              |
-| Drag from a handle        | Connect: drop on a node (anywhere on it), or on empty canvas to add one   |
-| Drag a node               | Lines up with nearby edges, centres and equal gaps, else the grid         |
-| Ctrl / ⌘ while dragging   | Move freely: no guides, no grid                                           |
-| Alt + drag                | Duplicate what you drag                                                   |
+| Gesture                    | Does                                                                      |
+| -------------------------- | ------------------------------------------------------------------------- |
+| Right-click                | Context menu for the canvas, a node, an edge or a boundary                |
+| Double-click canvas        | Quick-add a stencil at the cursor                                         |
+| Double-click node / edge   | Rename / edit label                                                       |
+| Drag on the canvas         | Selection box (Ctrl/⌘: only what's inside). Live, presenting, embeds: pan |
+| Shift / Ctrl / ⌘ + click   | Add to or take out of the selection                                       |
+| Scroll, two-finger swipe   | Pan (Shift + scroll: sideways). In an embed the wheel scrolls the page    |
+| Ctrl / ⌘ + scroll, pinch   | Zoom at the pointer                                                       |
+| Space + drag, middle-drag  | Pan, even starting on a node                                              |
+| Drag from a handle         | Connect: drop on a node (anywhere on it), or on empty canvas to add one   |
+| Click a selected node's +  | Quick-add the next node there, connected (drag it: connect)               |
+| Drag a selected edge's end | Move that end onto another node; anywhere else it snaps back              |
+| Hold a node on an edge     | Lights the edge up; drop to insert the node in between (Ctrl/⌘: don't)    |
+| Drag a node                | Lines up with nearby edges, centres and equal gaps, else the grid         |
+| Ctrl / ⌘ while dragging    | Move freely: no guides, no grid                                           |
+| Alt + drag                 | Duplicate what you drag                                                   |
 
 ## Process
 
