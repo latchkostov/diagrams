@@ -1,5 +1,4 @@
 import type { DiagramGroup, EdgeRelation } from "../../model/types";
-import type { ImportOutcome } from "../formats";
 
 // The intermediate graph every infrastructure reader builds (docs/research/imports.md § Pipeline). Readers
 // only describe what they found; shared code (resolveStencil, map.ts, layout.ts) turns hints into stencils,
@@ -144,6 +143,4 @@ export interface ImportReport {
   traffic?: { nodeId: string; label: string; messageType?: string; ratePerSec: number; seconds: number }[];
   /** "Connections found in settings" unless the source says otherwise ("…from subscriptions, mappings and grants"). */
   connectionsTitle?: string;
-  /** The same files again with every resource as a node (Terraform's **Draw everything**): a new diagram. */
-  drawEverything?: () => ImportOutcome;
 }

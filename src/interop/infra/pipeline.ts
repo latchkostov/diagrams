@@ -39,21 +39,29 @@ export function importKubernetes(files: readonly SourceFile[]): ImportOutcome {
 }
 
 /**
- * Terraform plan or state JSON (`terraform show -json`), one or several files. The report can draw the same files
- * again with every resource as a node (**Draw everything**), as a new diagram.
+ * Terraform plan or state JSON (`terraform show -json`), one or several files. When something isn't drawn, the
+ * outcome also carries the same import with every resource as a node (`replay`, for **Draw everything**): read now,
+ * as data, so no source text outlives the import.
  */
-export function importTerraform(files: readonly SourceFile[], everything = false): ImportOutcome {
-  const outcome = outcomeOf("terraform", readTerraform(files, { everything }));
-  if (!everything && outcome.ok === true && outcome.report?.notDrawn.length)
-    outcome.report.drawEverything = () => {
-      try {
-        return importTerraform(files, true);
-      } catch (err) {
-        if (err instanceof ImportError) return { ok: false, error: err.message };
-        throw err;
-      }
-    };
+export function importTerraform(files: readonly SourceFile[]): ImportOutcome {
+  const outcome = outcomeOf("terraform", readTerraform(files));
+  if (outcome.ok === true && outcome.report?.notDrawn.length)
+    try {
+      outcome.replay = readTerraform(files, { everything: true });
+    } catch (err) {
+      if (!(err instanceof ImportError)) throw err;
+    }
   return outcome;
+}
+
+/** An import's replay (Terraform's Draw everything), drawn: the shared map, layout and validation. */
+export function replayOutcome(graph: ImportGraph): ImportOutcome {
+  try {
+    return outcomeOf("terraform", graph);
+  } catch (err) {
+    if (err instanceof ImportError) return { ok: false, error: err.message };
+    throw err;
+  }
 }
 
 /**

@@ -6,6 +6,7 @@ import type { Evidence, ImportComponent, ImportGraph } from "./graph";
 import { Components, Links } from "./links";
 import { ignoredHost, isOutsideHost, parseUrl, productOf } from "./settings";
 import { configPath, newRefBudget, TF_LIMITS, TfConfig, type RefBudget, type Refs } from "./tfRefs";
+import { BoundedIndex } from "./tfIndex";
 import { GLUE, guessOf, nameAttr, notDrawnReason, stencilOf, toneOf } from "./tfTypes";
 import { ImportError, isMap, own, str } from "./yaml";
 
@@ -249,42 +250,55 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
   g.format = kinds.size === 1 ? (kinds.has("plan") ? "Terraform plan" : "Terraform state") : "Terraform";
 
   // ------------------------------------------------ indexes: identity values → resources (in memory only)
-  const index = new Map<string, Set<Resource>>();
-  const names = new Map<string, Set<Resource>>();
-  const principals = new Map<string, Set<Resource>>();
-  const hosts = new Map<string, Set<Resource>>();
-  /** A value shared by more than a few resources doesn't identify one: its set stays small, so lookups stay cheap. */
-  const put = (m: Map<string, Set<Resource>>, k: string, r: Resource) => {
-    const set = m.get(k);
-    if (set) {
-      if (set.size < 50) set.add(r);
-    } else if (m.size < 500_000) m.set(k, new Set([r]));
-  };
-  const EXTRA: Record<string, string[][]> = {
-    aws_lambda_function: [["invoke_arn"], ["qualified_arn"]],
-    aws_dynamodb_table: [["stream_arn"]],
-    aws_sqs_queue: [["url"]],
-  };
+  // A value shared by more than 50 resources identifies none, and a name more than one (BoundedIndex).
+  const index = new BoundedIndex<Resource>(50);
+  const names = new BoundedIndex<Resource>(1);
+  const principals = new BoundedIndex<Resource>(50);
+  const hosts = new BoundedIndex<Resource>(50);
+  /** EventBridge rules by file, bus and name: a rule's name is unique on its bus, not in the account. */
+  const ruleIndex = new BoundedIndex<Resource>(1);
+  const busOf = (v: string | undefined) => (v ? v.slice(v.lastIndexOf("/") + 1) : "") || "default";
+  const EXTRA = new Map<string, string[][]>([
+    ["aws_lambda_function", [["invoke_arn"], ["qualified_arn"]]],
+    ["aws_dynamodb_table", [["stream_arn"]]],
+    ["aws_sqs_queue", [["url"]]],
+  ]);
   for (const r of resources)
     for (const inst of r.instances) {
-      for (const path of [["arn"], ["id"], ...(EXTRA[r.type] ?? [])])
-        for (const v of strings(inst, path)) put(index, norm(v), r);
-      for (const v of strings(inst, [nameAttr(r.type)])) put(names, `${r.file}\u0001${r.type}\u0001${v}`, r);
+      for (const path of [["arn"], ["id"], ...(EXTRA.get(r.type) ?? [])])
+        for (const v of strings(inst, path)) index.add(norm(v), r);
+      for (const v of strings(inst, [nameAttr(r.type)])) names.add(`${r.file}\u0001${r.type}\u0001${v}`, r);
+      if (r.type === "aws_cloudwatch_event_rule")
+        for (const v of strings(inst, ["name"]))
+          ruleIndex.add(`${r.file}\u0001${busOf(strings(inst, ["event_bus_name"])[0])}\u0001${v}`, r);
       for (const v of [
         ...strings(inst, ["identity", "principal_id"]),
         ...(r.type === "azurerm_user_assigned_identity" ? strings(inst, ["principal_id"]) : []),
       ])
-        put(principals, v.toLowerCase(), r);
+        principals.add(v.toLowerCase(), r);
       for (const v of [...strings(inst, ["uri"]), ...strings(inst, ["status", "url"])]) {
         const host = parseUrl(v)?.hosts[0];
-        if (host) put(hosts, host, r);
+        if (host) hosts.add(host, r);
       }
     }
-  const byValue = (value: string, ok: (r: Resource) => boolean) => [...(index.get(norm(value)) ?? [])].filter(ok);
+  const byValue = (value: string, ok: (r: Resource) => boolean) => index.get(norm(value)).filter(ok);
   /** By name, within one file: a name that matches more than one resource joins nothing (scoped, never guessed). */
   const byName = (file: number, types: string[], name: string) => {
-    const found = types.flatMap((t) => [...(names.get(`${file}\u0001${t}\u0001${name}`) ?? [])]);
+    const found = types.flatMap((t) => names.get(`${file}\u0001${t}\u0001${name}`));
     return found.length === 1 ? found : [];
+  };
+
+  /**
+   * Work done expanding references and values into targets, for the whole import. A cached resolution costs
+   * nothing to find but its targets still cost something to visit: this counts them, so repeated references to a
+   * large module output can't freeze the tab.
+   */
+  let work = 0;
+  const spend = (n: number) => {
+    work += n;
+    if (work <= TF_LIMITS.maxWork) return true;
+    budget.exhausted = true;
+    return false;
   };
 
   /**
@@ -300,14 +314,22 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
   ): Resource[] => {
     const out = new Set<Resource>();
     const config = configs[r.file];
-    for (const ref of r.refs?.get(attr) ?? [])
-      for (const k of config?.resolve(r.module, ref) ?? []) {
+    for (const ref of new Set(r.refs?.get(attr))) {
+      const keys = config?.resolve(r.module, ref) ?? [];
+      if (!spend(keys.length + 1)) break;
+      for (const k of keys) {
         const t = byKey.get(`${r.file}\u0001${k}`);
         if (t && t !== r && ok(t)) out.add(t);
       }
+    }
     if (!out.size)
       for (const inst of r.instances)
-        for (const v of strings(inst, path)) for (const x of transform(v)) for (const t of byValue(x, ok)) out.add(t);
+        for (const v of strings(inst, path))
+          for (const x of transform(v)) {
+            const found = byValue(x, ok);
+            if (!spend(found.length + 1)) return [...out];
+            for (const t of found) out.add(t);
+          }
     return [...out];
   };
 
@@ -396,7 +418,7 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     const parsed = url ? parseUrl(url) : undefined;
     const host = parsed && /^https?$/.test(parsed.scheme) ? parsed.hosts[0] : undefined;
     if (!host || ignoredHost(host) || !isOutsideHost(host)) return [];
-    const served = [...(hosts.get(host) ?? [])].filter(drawn);
+    const served = hosts.get(host).filter(drawn);
     if (served.length) return served.map((r) => r.key);
     return [
       components.add({
@@ -447,9 +469,13 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     });
   }
   for (const t of resources.filter(is("aws_cloudwatch_event_target"))) {
-    const rules = targets(t, "rule", ["rule"], is("aws_cloudwatch_event_rule"));
+    // A plan's reference names the rule; a state names it by bus and name (a rule's id is only unique per bus).
     const ruleName = first(t, ["rule"]);
-    const rule = rules[0] ?? (ruleName ? byName(t.file, ["aws_cloudwatch_event_rule"], ruleName)[0] : undefined);
+    const rule =
+      targets(t, "rule", REFS_ONLY, is("aws_cloudwatch_event_rule"))[0] ??
+      (ruleName
+        ? ruleIndex.get(`${t.file}\u0001${busOf(first(t, ["event_bus_name"]))}\u0001${ruleName}`)[0]
+        : undefined);
     const to = keys(targets(t, "arn", ["arn"], DRAWN, lambdaArn));
     const from = rule && to.length ? ruleNode.get(rule)?.() : undefined;
     if (from) {
@@ -760,25 +786,40 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
   const dependOn = (r: Resource, t: Resource) => {
     if (drawn(t) && t !== r) links.dep(r.key, t.key, relationTo(r.key, t.key), spec);
   };
+  /**
+   * The resources `r` refers to, each reference and each target once however often the plan repeats them, a pass-
+   * through's own references followed one step, all of it counted against the import's work budget.
+   */
+  const referenced = (r: Resource): Set<Resource> => {
+    const out = new Set<Resource>();
+    const config = configs[r.file]!;
+    const seenRefs = new Set<string>();
+    const passed = new Set<Resource>();
+    const follow = (from: Resource, refs: Iterable<string>, pass: boolean) => {
+      for (const ref of refs) {
+        if (seenRefs.has(`${from.key}\u0002${ref}`)) continue;
+        seenRefs.add(`${from.key}\u0002${ref}`);
+        const keys = config.resolve(from.module, ref);
+        if (!spend(keys.length + 1)) return false;
+        for (const k of keys) {
+          const t = byKey.get(`${r.file}\u0001${k}`);
+          if (!t || out.has(t) || passed.has(t)) continue;
+          if (drawn(t)) out.add(t);
+          else if (pass && PASS_THROUGH.has(t.type)) {
+            passed.add(t);
+            for (const inner of t.refs?.values() ?? []) if (!follow(t, inner, false)) return false;
+          }
+        }
+      }
+      return true;
+    };
+    for (const refs of r.refs?.values() ?? []) if (!follow(r, refs, true)) break;
+    return out;
+  };
   for (const r of resources) {
     if (!drawn(r) || (!everything && GLUE.has(r.type))) continue;
-    if (r.refs) {
-      const config = configs[r.file]!;
-      for (const refs of r.refs.values())
-        for (const ref of refs)
-          for (const k of config.resolve(r.module, ref)) {
-            const t = byKey.get(`${r.file}\u0001${k}`);
-            if (!t) continue;
-            if (drawn(t)) dependOn(r, t);
-            else if (PASS_THROUGH.has(t.type))
-              for (const inner of t.refs?.values() ?? [])
-                for (const ref2 of inner)
-                  for (const k2 of config.resolve(t.module, ref2)) {
-                    const t2 = byKey.get(`${r.file}\u0001${k2}`);
-                    if (t2) dependOn(r, t2);
-                  }
-          }
-    } else {
+    if (r.refs) for (const t of referenced(r)) dependOn(r, t);
+    else {
       // A state has no configuration: identities from the attributes that name them.
       const ROLES = is("aws_iam_role");
       for (const path of [["role"], ["role_arn"], ["execution_role_arn"], ["task_role_arn"]])
@@ -832,23 +873,37 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
       byName(r.file, ["aws_iam_role"], n),
     );
   };
-  const grant = (roles: Resource[], stores: Resource[], via: Resource) => {
-    let any = false;
-    for (const role of roles)
-      for (const user of runsAs.get(role.key) ?? [])
-        for (const t of stores) {
-          links.dep(user, t.key, relationTo(user, t.key), resourceEvidence(via, { note: `as ${labelFor(role)}` }));
-          any = true;
-        }
-    if (any) used.add(via);
+  // Grants are collected first, one per role and store (the first policy that grants it is its evidence), and only
+  // then expanded across the components running as the role: thousands of policies granting one secret through one
+  // role cost one expansion, not one each.
+  const grants = new Map<string, { role: Resource; store: Resource; via: Resource }>();
+  const grant = (roles: Resource[], stores: Resource[], via: Resource, also?: Resource) => {
+    for (const role of roles) {
+      if (!runsAs.has(role.key)) continue;
+      for (const store of stores) {
+        const id = `${role.key}\u0001${store.key}`;
+        if (!grants.has(id)) grants.set(id, { role, store, via });
+        used.add(via);
+        if (also) used.add(also);
+      }
+    }
   };
-  for (const p of resources.filter(is("aws_iam_role_policy"))) grant(roleNamed(p, "role"), policyTargets(p), p);
+  const policyCache = new Map<Resource, Resource[]>();
+  const storesOf = (p: Resource) => {
+    let stores = policyCache.get(p);
+    if (!stores) policyCache.set(p, (stores = policyTargets(p)));
+    return stores;
+  };
+  for (const p of resources.filter(is("aws_iam_role_policy"))) grant(roleNamed(p, "role"), storesOf(p), p);
   for (const a of resources.filter(is("aws_iam_role_policy_attachment", "aws_iam_policy_attachment"))) {
     const roles = a.type === "aws_iam_policy_attachment" ? roleNamed(a, "roles") : roleNamed(a, "role");
-    for (const p of targets(a, "policy_arn", ["policy_arn"], is("aws_iam_policy"))) {
-      const stores = policyTargets(p);
-      grant(roles, stores, p);
-      if (stores.length && roles.some((r) => runsAs.has(r.key))) used.add(a);
+    for (const p of targets(a, "policy_arn", ["policy_arn"], is("aws_iam_policy"))) grant(roles, storesOf(p), p, a);
+  }
+  for (const { role, store, via } of grants.values()) {
+    const evidence = resourceEvidence(via, { note: `as ${labelFor(role)}` });
+    for (const user of runsAs.get(role.key) ?? []) {
+      if (!spend(1)) break;
+      links.dep(user, store.key, relationTo(user, store.key), evidence);
     }
   }
 
@@ -857,7 +912,7 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     let found = targets(r, attr, REFS_ONLY, (t) => drawn(t) || t.type === "azurerm_user_assigned_identity");
     if (!found.length)
       found = strings(r.instances[0] ?? { values: undefined, sensitive: undefined }, [attr]).flatMap((v) => [
-        ...(principals.get(v.toLowerCase()) ?? []),
+        ...principals.get(v.toLowerCase()),
       ]);
     return [
       ...new Set(

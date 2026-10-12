@@ -68,7 +68,10 @@ export class Links {
 
   flow(from: string, to: string, kind: "async" | "sync", evidence: Evidence, props?: Record<string, unknown>) {
     this.budget();
-    const id = `${from}\u0001${to}`;
+    // A route is its ends, its kind, its consumer group and whether it carries dead letters: two subscriptions
+    // forwarding to one queue are two groups, and a DLQ route beside an ordinary one is a route of its own.
+    const group = typeof props?.group === "string" ? props.group : "";
+    const id = `${from}\u0001${to}\u0001${kind}\u0001${group}\u0001${props?.dlq === true ? "dlq" : ""}`;
     if (from !== to && !this.flows.has(id))
       this.flows.set(id, { from, to, relation: "flow", kind, evidence, ...(props ? { props } : {}) });
   }

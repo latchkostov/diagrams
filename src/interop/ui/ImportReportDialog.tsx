@@ -188,7 +188,6 @@ export function ImportReportDialog({
             count={report.notDrawn.length}
             testId="import-report-not-drawn"
             action={
-              report.drawEverything &&
               onDrawEverything && (
                 <button
                   className="link-btn ix-report-action"

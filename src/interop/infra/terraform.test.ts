@@ -5,10 +5,10 @@ import { relationOf } from "../../model/relations";
 import { estimateCardSize } from "../../canvas/nodes/size";
 import { detectFormat, importFiles, importText, type ImportOutcome } from "../formats";
 import { sniffInfra } from "../sniff";
-import type { ImportReport } from "./graph";
-import { importTerraform } from "./pipeline";
+import type { ImportGraph, ImportReport } from "./graph";
+import { importTerraform, replayOutcome } from "./pipeline";
 import { MAX_RESOURCES, readTerraform, TERRAFORM_BINARY, TERRAFORM_RAW_STATE, TERRAFORM_SOURCE } from "./terraform";
-import { configPath, parseRef, TF_LIMITS } from "./tfRefs";
+import { collectRefs, configPath, parseRef, TF_LIMITS, withoutAncestors, type RefBudget } from "./tfRefs";
 import { notDrawnReason, stencilOf } from "./tfTypes";
 import { perfBudget } from "../../test/perfBudget";
 
@@ -21,11 +21,13 @@ const DIR = "tests/fixtures/imports/terraform";
 const AWS = { name: "aws-plan.json", text: readFileSync(`${DIR}/aws-plan.json`, "utf8") };
 const AZURE = { name: "azure-state.json", text: readFileSync(`${DIR}/azure-state.json`, "utf8") };
 
-function ok(outcome: ImportOutcome): { diagram: DiagramFile; report: ImportReport } {
+function ok(outcome: ImportOutcome): { diagram: DiagramFile; report: ImportReport; replay?: ImportGraph } {
   if (outcome.ok !== true) throw new Error(`import failed: ${JSON.stringify(outcome)}`);
   if (!outcome.report) throw new Error("no report");
-  return { diagram: outcome.diagram, report: outcome.report };
+  return { diagram: outcome.diagram, report: outcome.report, ...(outcome.replay ? { replay: outcome.replay } : {}) };
 }
+/** Draw everything: the import's replay, drawn. */
+const everythingOf = (o: { replay?: ImportGraph }) => ok(replayOutcome(o.replay!));
 const aws = () => ok(importTerraform([AWS]));
 const azure = () => ok(importTerraform([AZURE]));
 const node = (d: DiagramFile, id: string) => d.nodes.find((n) => n.id === id);
@@ -172,8 +174,7 @@ describe("Terraform import: the AWS plan fixture", () => {
   });
 
   it("Draw everything opens the same plan with every resource as a node", () => {
-    const { report } = aws();
-    const all = ok(report.drawEverything!());
+    const all = everythingOf(aws());
     expect(all.diagram.title).toBe("aws-plan (everything)");
     // Every managed resource in planned_values, count instances folded, plus the outside endpoint.
     expect(all.diagram.nodes).toHaveLength(27);
@@ -181,12 +182,12 @@ describe("Terraform import: the AWS plan fixture", () => {
       stencil: "generic.service",
       sublabel: "aws_security_group",
     });
-    expect(all.report.drawEverything).toBeUndefined();
+    expect(importTerraform([AWS]).ok === true && JSON.stringify(aws().report)).not.toContain("replay");
     expect(all.report.guesses).toEqual([]);
   });
 
   it("lays out without overlaps, every member inside its boundary", () => {
-    const everything = [aws(), azure()].map(({ report }) => ok(report.drawEverything!()));
+    const everything = [aws(), azure()].map(everythingOf);
     for (const { diagram: d } of [aws(), azure(), ...everything]) {
       const boxes = d.nodes.map((n) => ({ id: n.id, x: n.x, y: n.y, ...estimateCardSize(n.label, n.sublabel) }));
       for (const a of boxes)
@@ -293,9 +294,10 @@ describe("Terraform import: values never leave the file", () => {
   it("no sensitive value, variable, output, ARN or id reaches the diagram or the report, even drawing everything", () => {
     for (const files of [[AWS], [AZURE], [AWS, AZURE]]) {
       const outcome = importTerraform(files);
-      const { diagram, report } = ok(outcome);
-      const all = ok(report.drawEverything!());
-      const out = JSON.stringify([diagram, report, outcome.ok === true && outcome.warnings, all.diagram, all.report]);
+      const imported = ok(outcome);
+      const all = everythingOf(imported);
+      // The replay kept for Draw everything is data too: no source text, no values.
+      const out = JSON.stringify([imported, outcome.ok === true && outcome.warnings, all.diagram, all.report]);
       for (const secret of SECRETS) expect(out, `${files.map((f) => f.name)}: ${secret}`).not.toContain(secret);
     }
   });
@@ -379,7 +381,15 @@ describe("Terraform import: glue across services", () => {
           name: "partner",
           values: { name: "partner-orders", event_bus_name: "arn:aws:events:eu-west-1:123456789012:event-bus/partner" },
         },
-        { type: "aws_cloudwatch_event_target", name: "t3", values: { rule: "partner-orders", arn: sqsArn("jobs") } },
+        {
+          type: "aws_cloudwatch_event_target",
+          name: "t3",
+          values: {
+            rule: "partner-orders",
+            event_bus_name: "arn:aws:events:eu-west-1:123456789012:event-bus/partner",
+            arn: sqsArn("jobs"),
+          },
+        },
       ]),
     );
     expect(node(d, "partner")).toMatchObject({ stencil: "aws.eventbridge", sublabel: "not in these files" });
@@ -390,6 +400,40 @@ describe("Terraform import: glue across services", () => {
     // A version or alias ARN names its function.
     expect(relationBetween(d, "tick", "worker")).toBe("message");
     expect(node(d, "tick")).toMatchObject({ stencil: "generic.scheduler", sublabel: "rate(5 minutes)" });
+  });
+
+  it("EventBridge rules are named per bus: two buses' rules called orders stay apart", () => {
+    const bus = (name: string): Res => ({
+      type: "aws_cloudwatch_event_bus",
+      name,
+      values: { name, arn: `arn:aws:events:eu-west-1:1:event-bus/${name}` },
+    });
+    const rule = (name: string, busName: string): Res => ({
+      type: "aws_cloudwatch_event_rule",
+      name,
+      values: { name: "orders", event_bus_name: busName },
+    });
+    const { diagram: d, report } = tf(
+      state([
+        bus("sales"),
+        bus("billing"),
+        rule("sales_orders", "sales"),
+        rule("billing_orders", "billing"),
+        { type: "aws_sqs_queue", name: "q", values: { name: "jobs", arn: sqsArn("jobs") } },
+        {
+          type: "aws_cloudwatch_event_target",
+          name: "t",
+          values: { rule: "orders", event_bus_name: "billing", arn: sqsArn("jobs") },
+        },
+        // A target that names no bus means the default one, where there's no rule called orders.
+        { type: "aws_cloudwatch_event_target", name: "lost", values: { rule: "orders", arn: sqsArn("jobs") } },
+      ]),
+    );
+    expect(d.edges.map((e) => `${e.from}→${e.to}`)).toEqual(["billing→jobs"]);
+    expect(report.notDrawn).toContainEqual({
+      name: "aws_cloudwatch_event_target lost",
+      reason: "connects nothing in these files",
+    });
   });
 
   it("S3 notifications, load balancers through target groups, and API Gateway integrations", () => {
@@ -942,5 +986,255 @@ describe("Terraform type table", () => {
     expect(parseRef("var.lambda_role_arn")).toEqual({ kind: "var", name: "lambda_role_arn" });
     for (const r of ["local.x", "each.value", "count.index", "path.module", "self.arn", "terraform.workspace", "x"])
       expect(parseRef(r), r).toBeUndefined();
+  });
+});
+
+describe("Terraform import: review findings", () => {
+  const NS = "/subscriptions/s/resourceGroups/rg/providers/Microsoft.ServiceBus/namespaces/bus";
+  const sb = (type: string, name: string, values: Record<string, unknown>): Res => ({ type, name, values });
+
+  it("keeps distinct subscription routes: two groups to one queue, and a DLQ route beside an ordinary one", () => {
+    const { diagram: d } = tf(
+      state([
+        sb("azurerm_servicebus_topic", "orders", { id: `${NS}/topics/orders`, name: "orders", namespace_id: NS }),
+        sb("azurerm_servicebus_queue", "inbox", { id: `${NS}/queues/inbox`, name: "inbox", namespace_id: NS }),
+        sb("azurerm_servicebus_subscription", "billing", {
+          name: "billing",
+          topic_id: `${NS}/topics/orders`,
+          forward_to: "inbox",
+          forward_dead_lettered_messages_to: "inbox",
+        }),
+        sb("azurerm_servicebus_subscription", "audit", {
+          name: "audit",
+          topic_id: `${NS}/topics/orders`,
+          forward_to: "inbox",
+        }),
+      ]),
+    );
+    expect(d.edges.map((e) => [e.from, e.to, e.props])).toEqual([
+      ["orders", "inbox", { group: "billing" }],
+      ["orders", "inbox", { dlq: true }],
+      ["orders", "inbox", { group: "audit" }],
+    ]);
+  });
+
+  /** A plan whose root refers into module.queues, which outputs two queues' ARNs. */
+  const modulePlan = (refs: string[]) =>
+    JSON.stringify({
+      format_version: "1.2",
+      terraform_version: "1.9.5",
+      planned_values: {
+        root_module: {
+          resources: [
+            resource({ type: "aws_sns_topic", name: "t", values: { name: "events" } }, ""),
+            resource({ type: "aws_sns_topic_subscription", name: "s", values: { protocol: "sqs" } }, ""),
+          ],
+          child_modules: [
+            {
+              address: "module.queues",
+              resources: [
+                resource({ type: "aws_sqs_queue", name: "a", values: { name: "queue-a" } }, "module.queues."),
+                resource({ type: "aws_sqs_queue", name: "b", values: { name: "queue-b" } }, "module.queues."),
+              ],
+            },
+          ],
+        },
+      },
+      configuration: {
+        root_module: {
+          resources: [
+            { address: "aws_sns_topic.t", type: "aws_sns_topic", name: "t", expressions: {} },
+            {
+              address: "aws_sns_topic_subscription.s",
+              type: "aws_sns_topic_subscription",
+              name: "s",
+              expressions: {
+                topic_arn: { references: ["aws_sns_topic.t.arn", "aws_sns_topic.t"] },
+                endpoint: { references: refs },
+              },
+            },
+          ],
+          module_calls: {
+            queues: {
+              module: {
+                resources: [
+                  { address: "aws_sqs_queue.a", type: "aws_sqs_queue", name: "a", expressions: {} },
+                  { address: "aws_sqs_queue.b", type: "aws_sqs_queue", name: "b", expressions: {} },
+                ],
+                outputs: {
+                  a_arn: { expression: { references: ["aws_sqs_queue.a.arn", "aws_sqs_queue.a"] } },
+                  b_arn: { expression: { references: ["aws_sqs_queue.b.arn", "aws_sqs_queue.b"] } },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+  it("a module output's ancestor in the same reference list doesn't stand for every output", () => {
+    const one = tf(modulePlan(["module.queues.a_arn", "module.queues"]), "plan.json").diagram;
+    expect(one.edges.map((e) => `${e.from}→${e.to}`)).toEqual(["events→queue-a"]);
+    // A reference to the whole module, on its own, still means all of it.
+    const whole = tf(modulePlan(["module.queues"]), "plan.json").diagram;
+    expect(whole.edges.map((e) => `${e.from}→${e.to}`)).toEqual(["events→queue-a", "events→queue-b"]);
+    expect(withoutAncestors(["module.q.a", "module.q", "aws_x.y[0].arn", "aws_x.y", "aws_x.y", "var.v"])).toEqual([
+      "module.q.a",
+      "aws_x.y[0].arn",
+      "var.v",
+    ]);
+  });
+
+  it("expands repeated references once: 50 attributes repeating a 500-resource output 2,000 times", () => {
+    const n = 500;
+    const repeated = Array.from({ length: 2_000 }, () => "module.many.all");
+    const text = JSON.stringify({
+      format_version: "1.2",
+      terraform_version: "1.9.5",
+      planned_values: {
+        root_module: {
+          resources: [resource({ type: "aws_lambda_function", name: "fn", values: { function_name: "worker" } }, "")],
+          child_modules: [
+            {
+              address: "module.many",
+              resources: Array.from({ length: n }, (_, i) =>
+                resource({ type: "aws_sqs_queue", name: `q${i}`, values: { name: `q-${i}` } }, "module.many."),
+              ),
+            },
+          ],
+        },
+      },
+      configuration: {
+        root_module: {
+          resources: [
+            {
+              address: "aws_lambda_function.fn",
+              type: "aws_lambda_function",
+              name: "fn",
+              expressions: Object.fromEntries(
+                Array.from({ length: 50 }, (_, i) => [`a${i}`, { references: repeated }]),
+              ),
+            },
+          ],
+          module_calls: {
+            many: {
+              module: {
+                resources: Array.from({ length: n }, (_, i) => ({
+                  address: `aws_sqs_queue.q${i}`,
+                  type: "aws_sqs_queue",
+                  name: `q${i}`,
+                  expressions: {},
+                })),
+                outputs: {
+                  all: {
+                    expression: { references: Array.from({ length: n }, (_, i) => `aws_sqs_queue.q${i}.arn`) },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    const started = performance.now();
+    const graph = readTerraform([{ name: "repeat.json", text }]);
+    expect(performance.now() - started).toBeLessThan(perfBudget(2_000));
+    expect(graph.links).toHaveLength(n);
+    expect(graph.notes).toEqual([]);
+  });
+
+  it("deduplicates grants before expanding them across a role's users, in linear time", () => {
+    const secret = "arn:aws:secretsmanager:eu-west-1:1:secret:db";
+    const plan = (n: number) =>
+      state([
+        { type: "aws_iam_role", name: "r", values: { name: "shared", arn: "arn:aws:iam::1:role/shared" } },
+        { type: "aws_secretsmanager_secret", name: "s", values: { name: "db", arn: secret } },
+        ...Array.from({ length: n }, (_, i): Res[] => [
+          {
+            type: "aws_lambda_function",
+            name: `f${i}`,
+            values: { function_name: `f-${i}`, arn: lambdaArn(`f-${i}`), role: "arn:aws:iam::1:role/shared" },
+          },
+          {
+            type: "aws_iam_role_policy",
+            name: `p${i}`,
+            values: { role: "shared", policy: JSON.stringify({ Statement: [{ Resource: secret }] }) },
+          },
+        ]).flat(),
+      ]);
+    const fastest = (text: string) => {
+      let best = Infinity;
+      for (let run = 0; run < 2; run++) {
+        const started = performance.now();
+        readTerraform([{ name: "grants.json", text }]);
+        best = Math.min(best, performance.now() - started);
+      }
+      return best;
+    };
+    const small = plan(500);
+    const large = plan(2_000);
+    fastest(small);
+    // Once per role and secret: 4x the policies and users is about 4x the work, never 16x.
+    expect(fastest(large) / fastest(small)).toBeLessThan(8);
+    const g = readTerraform([{ name: "grants.json", text: large }]);
+    expect(g.links.filter((l) => l.relation === "secret")).toHaveLength(2_000);
+    expect(g.notDrawn).toEqual([]);
+    // Well inside the work budget: no reference or grant was left unfollowed.
+    expect(g.notes).toEqual([]);
+  });
+
+  it("an ARN shared by more than 50 resources resolves to nothing, in any order", () => {
+    const queues: Res[] = Array.from({ length: 51 }, (_, i) => ({
+      type: "aws_sqs_queue",
+      name: `q${i}`,
+      mode: "data",
+      values: { name: `jobs-${i}`, arn: sqsArn("jobs") },
+    }));
+    const rest: Res[] = [
+      { type: "aws_lambda_function", name: "fn", values: { function_name: "worker", arn: lambdaArn("worker") } },
+      {
+        type: "aws_lambda_event_source_mapping",
+        name: "m",
+        values: { event_source_arn: sqsArn("jobs"), function_name: lambdaArn("worker") },
+      },
+    ];
+    for (const order of [
+      [...queues, ...rest],
+      [...rest, ...[...queues].reverse()],
+    ]) {
+      const { diagram, report } = tf(state(order));
+      expect(diagram.edges).toEqual([]);
+      expect(report.notDrawn).toContainEqual({
+        name: "aws_lambda_event_source_mapping m",
+        reason: "connects nothing in these files",
+      });
+    }
+    // Fifty still identify (the limit is "more than 50").
+    expect(tf(state([...queues.slice(1), ...rest])).diagram.edges).toHaveLength(50);
+  });
+
+  it("a resource type named like an Object property is just a type", async () => {
+    const text = state([
+      { type: "constructor", name: "x", values: { arn: "a" } },
+      { type: "aws_sqs_queue", name: "q", values: { name: "jobs" } },
+    ]);
+    expect(tf(text).report.notDrawn).toContainEqual({ name: "constructor x", reason: "Terraform type not drawn" });
+    // And among several files, an import never throws past its outcome.
+    const outcome = await importFiles([
+      { name: "a.json", text },
+      { name: "b.json", text },
+    ]);
+    expect(outcome.ok).toBe(true);
+  });
+
+  it("walks huge arrays in expressions one frame per level, and stops when the budget is spent", () => {
+    const budget: RefBudget = { visits: TF_LIMITS.maxVisits - 10, steps: 0 };
+    const huge = new Array(1_000_000).fill({ references: ["aws_sqs_queue.q"] });
+    const started = performance.now();
+    const refs = collectRefs({ a: huge, b: { references: ["aws_sns_topic.t"] } }, budget);
+    expect(performance.now() - started).toBeLessThan(perfBudget(100));
+    expect(budget.exhausted).toBe(true);
+    expect(budget.visits).toBeLessThanOrEqual(TF_LIMITS.maxVisits + 1);
+    expect(refs.get("b")).toBeUndefined();
   });
 });

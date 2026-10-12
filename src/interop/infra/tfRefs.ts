@@ -12,6 +12,8 @@ export const TF_LIMITS = {
   maxVisits: 1_000_000,
   /** Steps taken to follow references through modules, for the whole import. */
   maxSteps: 200_000,
+  /** Targets visited expanding references and values, cached or not, for the whole import. */
+  maxWork: 2_000_000,
   /** Resources one reference can stand for (a module output of a list, say). */
   maxTargets: 500,
   /** References followed one inside another (a variable into an output into a variable…). */
@@ -68,35 +70,87 @@ function keysUpTo(obj: Record<string, unknown>, max: number, budget: RefBudget):
   return keys.slice(0, max);
 }
 
-/** The references in one resource's (or call's) expressions, by top-level attribute. Iterative and bounded. */
+/**
+ * One `references` list without its ancestors: Terraform lists `module.queues.a_arn` and `module.queues` (and
+ * `aws_sqs_queue.q.arn` with `aws_sqs_queue.q`). The ancestor of a longer reference in the same list says nothing
+ * more, and a whole module would stand for every one of its outputs.
+ */
+export function withoutAncestors(list: readonly string[]): string[] {
+  const unique = [...new Set(list)];
+  const ancestors = new Set<string>();
+  for (const r of unique) {
+    // Only the first few separators can make an ancestor that names something (`module.x`, `type.name`).
+    for (let i = 1, seen = 0; i < r.length && seen < 8; i++)
+      if (r[i] === "." || r[i] === "[") {
+        ancestors.add(r.slice(0, i));
+        seen++;
+      }
+  }
+  return unique.filter((r) => !ancestors.has(r));
+}
+
+/** A container being walked: one frame per level of nesting, never one per element. */
+interface Frame {
+  value: unknown[] | Record<string, unknown>;
+  keys?: string[];
+  i: number;
+  depth: number;
+}
+
+/**
+ * The references in one resource's (or call's) expressions, by top-level attribute. Iterative, one frame per level
+ * (so a huge array costs no memory), and it stops as soon as the import's visit budget is spent.
+ */
 export function collectRefs(expressions: unknown, budget: RefBudget): Refs {
   const out: Refs = new Map();
   if (!isMap(expressions)) return out;
+  const visit = () => {
+    if (++budget.visits <= TF_LIMITS.maxVisits) return true;
+    budget.exhausted = true;
+    return false;
+  };
   for (const attr of keysUpTo(expressions, 1_000, budget)) {
+    if (budget.exhausted && budget.visits > TF_LIMITS.maxVisits) break;
     const refs: string[] = [];
-    const stack: [unknown, number][] = [[expressions[attr], 0]];
-    while (stack.length) {
-      const [v, depth] = stack.pop()!;
-      if (++budget.visits > TF_LIMITS.maxVisits) {
-        budget.exhausted = true;
-        break;
-      }
-      if (depth > TF_LIMITS.maxExpressionDepth || typeof v !== "object" || v === null) continue;
-      if (Array.isArray(v)) {
-        for (const item of v) stack.push([item, depth + 1]);
+    const stack: Frame[] = [];
+    const enter = (v: unknown, depth: number) => {
+      if (!visit()) return false;
+      if (depth <= TF_LIMITS.maxExpressionDepth && typeof v === "object" && v !== null)
+        stack.push(
+          Array.isArray(v)
+            ? { value: v, i: 0, depth }
+            : { value: v as Record<string, unknown>, keys: Object.keys(v), i: 0, depth },
+        );
+      return true;
+    };
+    let going = enter(expressions[attr], 0);
+    while (going && stack.length) {
+      const f = stack[stack.length - 1];
+      const length = f.keys ? f.keys.length : (f.value as unknown[]).length;
+      if (f.i >= length) {
+        stack.pop();
         continue;
       }
-      for (const key of Object.keys(v)) {
-        // A literal's value is never read: it may be a password.
-        if (key === "constant_value") continue;
-        const child = (v as Record<string, unknown>)[key];
-        if (key === "references" && Array.isArray(child)) {
-          for (const r of child)
-            if (typeof r === "string" && r.length <= TF_LIMITS.maxRefLength && refs.length < 2_000) refs.push(r);
-        } else stack.push([child, depth + 1]);
+      const i = f.i++;
+      if (!f.keys) {
+        going = enter((f.value as unknown[])[i], f.depth + 1);
+        continue;
       }
+      const key = f.keys[i];
+      // A literal's value is never read: it may be a password.
+      if (key === "constant_value") continue;
+      const child = (f.value as Record<string, unknown>)[key];
+      if (key === "references" && Array.isArray(child)) {
+        const list: string[] = [];
+        for (let j = 0; j < child.length && list.length < 2_000 && (going = visit()); j++) {
+          const r = child[j];
+          if (typeof r === "string" && r.length <= TF_LIMITS.maxRefLength) list.push(r);
+        }
+        for (const r of withoutAncestors(list)) if (refs.length < 2_000) refs.push(r);
+      } else going = enter(child, f.depth + 1);
     }
     if (refs.length) out.set(attr, refs);
+    if (!going) break;
   }
   return out;
 }

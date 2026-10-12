@@ -1,7 +1,7 @@
 import type { DiagramFile } from "../model/types";
 import { LIMITS, parseNative, tooLargeMessage, validateDiagram } from "./native";
 import type { DrawioDocument } from "./drawio/read";
-import type { ImportReport } from "./infra/graph";
+import type { ImportGraph, ImportReport } from "./infra/graph";
 import { looksLikeDrawio, looksLikeMermaid, sniffInfra } from "./sniff";
 import { loadOnce } from "../lib/lazyLoad";
 
@@ -63,7 +63,18 @@ export function titleFromFileName(name: string): string {
 
 export type ImportOutcome =
   /** `report`: an infrastructure import's Import report, kept in memory (never in the file). */
-  | { ok: true; format: FormatId; diagram: DiagramFile; warnings: string[]; report?: ImportReport }
+  | {
+      ok: true;
+      format: FormatId;
+      diagram: DiagramFile;
+      warnings: string[];
+      report?: ImportReport;
+      /**
+       * Terraform's **Draw everything**: the same import with every resource as a node, already read, as data
+       * (names and connections, never the source text), for `importReplay`.
+       */
+      replay?: ImportGraph;
+    }
   /** A draw.io file with several pages: the caller asks which one, then calls `pick`. */
   | { ok: "pages"; format: "drawio"; pages: { name: string; index: number }[]; pick: (index: number) => ImportOutcome }
   | { ok: false; error: string };
@@ -153,4 +164,13 @@ export interface ImportFile {
 export async function importFiles(files: readonly ImportFile[]): Promise<ImportOutcome> {
   if (files.length < 2) return importText(files[0]?.text ?? "", files[0]?.name);
   return (await infraReader()).importMany(files, detectFormat, importText);
+}
+
+/** Draws an import's replay (Terraform's Draw everything) as a new outcome. Never throws. */
+export async function importReplay(graph: ImportGraph): Promise<ImportOutcome> {
+  try {
+    return (await infraReader()).replayOutcome(graph);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
 }

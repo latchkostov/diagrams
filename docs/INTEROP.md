@@ -219,7 +219,8 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
   - **Host names** (`k8sHosts.ts`) are parsed before anything is looked up: `svc`, `svc.ns`,
     `svc.ns.svc[.cluster.local]`, and StatefulSet pods by their ordinal (`db-0.db`, `db-0.db.data`). An explicit
     namespace that isn't in the files stays unresolved; it's never read as a local name. Names that look
-    in-cluster are never taken for outside APIs.
+    in-cluster are never taken for outside APIs. Workloads are indexed by kind and name (`WorkloadNames`), so a host
+    costs a few lookups however many workloads there are; its scaling test times resolution on its own.
 - **KEDA.** A ScaledObject's `kafka`, `rabbitmq`, `aws-sqs-queue` and `azure-servicebus` triggers draw the topic or
   queue with a **Message** to the workload it scales (`group` from `consumerGroup` or the subscription). The replica
   range goes in the report, and `minReplicaCount` above the Deployment's replicas becomes `replicas`. Other
@@ -282,10 +283,16 @@ and the entry grows by about 240 B (the key-order-independent sniff, the format 
   through listeners and target groups to their targets and ECS services, API Gateway integrations, Service Bus
   subscriptions and queue forwarding (the subscription is the consumer group), Event Grid system topics and event
   subscriptions (functions, queues, event hubs, webhooks), Pub/Sub subscriptions (push to Cloud Run or outside,
-  Cloud Storage, dead-letter topics), Cloud Functions triggers and Cloud Scheduler jobs.
+  Cloud Storage, dead-letter topics), Cloud Functions triggers and Cloud Scheduler jobs. A route is its ends, its
+  kind, its consumer group and whether it carries dead letters (`links.ts`, shared by every reader): two
+  subscriptions forwarding one topic to one queue are two routes, and a dead-letter route beside an ordinary one is
+  its own.
 - **References as dependencies.** In a plan, each drawn resource's `configuration…expressions.*.references` are
   followed (through module variables and outputs, cached, a cycle resolving to nothing, 256 hops and 200,000 steps
-  at most) to the drawn resources they name: an IAM role or managed identity gives **Identity**, Secrets Manager or
+  at most) to the drawn resources they name. Terraform lists `module.queues.a_arn` with its ancestor
+  `module.queues`; the ancestor is dropped, so only a reference to the whole module means every output. Each
+  reference and each target is expanded once per resource, and every target visited, cached or not, counts against
+  2,000,000 for the import (past that the report says some references weren't followed). The relationship: an IAM role or managed identity gives **Identity**, Secrets Manager or
   Key Vault **Secret**, Parameter Store or App Configuration **Config**, anything else **Depends on**. An ECS
   task definition passes its roles and secrets to its service. A state has no configuration: identities come from
   `role`, `role_arn`, the task definition's roles and `identity.identity_ids`. `constant_value` is never read.
@@ -294,10 +301,13 @@ and the entry grows by about 240 B (the key-order-independent sniff, the format 
   Reader or Subscriber on a queue, topic or hub is a flow to the principal; a Sender or Publisher a flow from it; a
   Key Vault role a Secret relationship; anything else Depends on. A Key Vault access policy is a Secret
   relationship. Principals are a component's own identity, or the components running as a user-assigned one.
+  Grants are collected once per role and store before they're expanded across the role's components, so thousands
+  of policies granting one secret cost one expansion.
 - **Identity is scoped.** Resources are keyed by file, module path and address. Joins by value use ARNs and ids
   (Azure ids case-insensitively); a bare name joins only when exactly one resource in that file has it, so a
   function name shared by two regions joins nothing and the mapping is listed. A value shared by more than 50
-  resources identifies none.
+  resources identifies none, in any order: its key is saturated for good (`tfIndex.ts`), never left as a partial
+  set. EventBridge rules are found by bus and name (a target that names no bus means the default one).
 - **Boundaries.** Modules (`module.streaming`, nested ones by full path), else Azure resource groups (the
   resource's own, the one in its id, or its namespace's or server's), toned by provider. Several files are one
   diagram, joined on ARNs; each file's resources stay its own.
@@ -307,7 +317,10 @@ and the entry grows by about 240 B (the key-order-independent sniff, the format 
   plan"), and a summary note ("7 supporting resources aren't drawn: access and permissions, parts of what's drawn,
   monitoring, networking and helpers"). A plan adds "Plan: 28 to add, 0 to change, 1 to destroy". **Draw
   everything**, beside the Not drawn heading, opens the same files again as a new diagram with every managed
-  resource as a node (its type as the subtitle); resources with no flows pack in a grid below the flows.
+  resource as a node (its type as the subtitle); resources with no flows pack in a grid below the flows. That
+  diagram is read at import time and kept beside the report as data (names and connections, never the source
+  text), until another diagram opens. It's made from the import, so it keeps the import's privacy (Private, or
+  local-only) whatever **New diagrams are private** says, and the focus moves to its canvas.
 - **Values never leave the file.** Only a whitelist of attributes is read (names, ARNs, ids, `engine`,
   `protocol`, endpoints, schedules, role names, principal ids), never one marked in `sensitive_values`, and never
   `variables`, outputs or `constant_value`. What can reach the diagram: resource names, outside host names and
@@ -315,15 +328,19 @@ and the entry grows by about 240 B (the key-order-independent sniff, the format 
 - **Bounded.** 10,000 resource instances per import, 100 read per resource, modules 32 deep (deeper ones are listed
   under "Couldn't read"), expressions 16 deep and a million values visited, 2,000 module calls or outputs and 1,000
   attributes per block (past those the report says some references weren't followed), 200 connection rows, and the
-  validator's node and edge budgets before any layout. `JSON.parse` is native; parsed objects are read with own
+  validator's node and edge budgets before any layout. Expressions are walked one frame per level of nesting, not one
+  per element, and the walk stops as soon as the budget is spent. `JSON.parse` is native; parsed objects are read with own
   keys only, so `__proto__` stays a name.
 - **Tests.** `infra/terraform.test.ts` (both fixtures end to end, flows, dependencies through modules, grants,
   boundaries, the report and Draw everything, overlap-free layout, the no-values leak test over both fixtures and
   Draw everything, sensitive attributes, outside endpoints, glue across services, scoped names, the type table,
   `.tf`, binary and raw-state messages, key order, 10,000 resources under `perfBudget`, deep modules, reference
-  cycles and long chains, prototype keys, linear patterns), the Terraform part of `tests/e2e/imports.spec.ts`
+  cycles and long chains, prototype keys, linear patterns, and the review's cases: distinct subscription routes,
+  module-output ancestors, repeated references, grants across thousands of policies, saturated ARNs in either
+  order, rules per bus, an Object-named type, huge arrays), the Terraform part of `tests/e2e/imports.spec.ts`
   (Open… and drop, SNS → SQS → Lambda, the module boundary, report rows and the supporting summary, Draw
-  everything, `.tf`, no network) and the Lab's "Imported: Terraform (AWS plan)" and "(Azure state)" overlap
+  everything, which keeps a manually private import private and focuses the new canvas, `.tf`, no network) and the
+  Lab's "Imported: Terraform (AWS plan)" and "(Azure state)" overlap
   audits. `bundleSplit.build.test.ts` names the Terraform reader. Fixtures: `tests/fixtures/imports/terraform/`
   (`aws-plan.json`, `azure-state.json`, self-written).
 

@@ -684,6 +684,34 @@ test.describe("imports: Terraform", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("Draw everything keeps a manually private import private, and hands the focus to the new canvas", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    // New diagrams are private is off (the default): the import isn't private until the person says so.
+    await drop(page, [TF_AWS]);
+    await expectAwsPlan(page);
+    await expect(page.getByTestId("private-badge")).toHaveCount(0);
+    await page.getByTestId("toast-import-details").click();
+    await page.getByTestId("import-report-make-private").click();
+    await expect(page.getByTestId("import-report-privacy")).not.toContainText("isn't private");
+    // Keyboard: the link is activated from the keyboard, and the focus lands on the new diagram's canvas.
+    await page.getByTestId("import-report-draw-everything").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("diagram-title")).toHaveText("aws-plan (everything)");
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    // Still private after a reload: no share link for it.
+    await page.reload();
+    await expect(page.getByTestId("diagram-title")).toHaveText("aws-plan (everything)");
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    await page.getByTestId("file-button").click();
+    await expect(page.getByTestId("export-share-link")).toBeDisabled();
+    await page.keyboard.press("Escape");
+    expectNoErrors(consoleErrors);
+  });
+
   test("Terraform source (.tf) says to run terraform show -json, and nothing is replaced", async ({
     page,
     consoleErrors,

@@ -7,8 +7,8 @@ import { detectFormat, importFiles, importText, type ImportOutcome } from "../fo
 import { sniffInfra } from "../sniff";
 import type { ImportReport } from "./graph";
 import { importKubernetes } from "./pipeline";
-import { HELM_TEMPLATE, MAX_RESOURCES, readKubernetes } from "./kubernetes";
-import { parseServiceHost } from "./k8sHosts";
+import { HELM_TEMPLATE, MAX_RESOURCES } from "./kubernetes";
+import { parseServiceHost, WorkloadNames } from "./k8sHosts";
 import { ENV_LIMITS, expandVars, OPAQUE } from "./k8sSettings";
 import { MAX_VALUE } from "./settings";
 import { TOO_MANY_ALIASES } from "./yaml";
@@ -944,40 +944,31 @@ stringData: { DB_HOST: db-b-from-secret }
     });
 
     it("resolves a host with no Service through an index, in linear time", () => {
-      // 20 unresolved hosts in every workload. A scan of every workload per host would be quadratic: 4x the
-      // workloads would take 16x as long. Compared against a quarter of the input, not a wall-clock budget,
-      // so a slow or busy machine (CI with coverage) doesn't fail it; the fastest of a few runs evens out noise.
-      const settings = Array.from({ length: 20 }, (_, i) => `{"name":"H${i}_HOST","value":"missing-${i}"}`).join(",");
-      const list = (n: number) =>
-        JSON.stringify({
-          apiVersion: "v1",
-          kind: "List",
-          items: Array.from({ length: n }, (_, i) => ({
-            apiVersion: "apps/v1",
-            kind: "Deployment",
-            metadata: { name: `w${i}` },
-            spec: {
-              template: { metadata: { labels: { team: "a", tier: "b" } }, spec: { containers: [] as unknown[] } },
-            },
-          })),
-        }).replaceAll('"containers":[]', `"containers":[{"name":"a","image":"example/a","env":[${settings}]}]`);
-      const fastest = (text: string) => {
+      // Host resolution on its own (WorkloadNames, which the reader asks for every host in every setting), so
+      // parsing and the rest of the import can't hide it. A scan of the workloads per host would be quadratic: 4x
+      // the workloads and hosts would take 16x as long. Compared against a quarter of the input, not a wall-clock
+      // budget, so a slow or busy machine (CI with coverage) doesn't fail it; the fastest of a few runs evens out
+      // noise. Unresolved hosts are the worst case: every reading is tried and none is found.
+      const fastest = (n: number) => {
+        const names = new WorkloadNames<{ key: string }>();
+        for (let i = 0; i < n; i++) names.add("Deployment", "shop", `w${i}`, { key: `w${i}` });
+        const services = new Map<string, string[]>();
+        const hosts = Array.from({ length: n * 5 }, (_, i) => `missing-${i}`);
         let best = Infinity;
-        for (let run = 0; run < 2; run++) {
+        for (let run = 0; run < 3; run++) {
           const started = performance.now();
-          const graph = readKubernetes([{ name: "list.json", text }]);
+          let found = 0;
+          for (const h of hosts) if (names.resolve(h, "shop", services)) found++;
           best = Math.min(best, performance.now() - started);
-          expect(graph.components.length).toBeGreaterThan(0);
+          expect(found).toBe(0);
         }
+        expect(names.resolve(`w${n - 1}.shop.svc`, "other", services)).toEqual([`w${n - 1}`]);
         return best;
       };
-      const small = list(150);
-      const large = list(600);
-      fastest(small); // warm up the parser and the JIT
-      const ratio = fastest(large) / fastest(small);
+      fastest(2_000); // warm up the JIT
+      const ratio = fastest(8_000) / fastest(2_000);
       expect(ratio).toBeLessThan(8);
-      expect(readKubernetes([{ name: "list.json", text: large }]).components).toHaveLength(600);
-    }, 60_000);
+    });
   });
 
   describe("Kafka identity", () => {

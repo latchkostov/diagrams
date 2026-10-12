@@ -2,7 +2,7 @@ import type { Evidence, ImportComponent, ImportGraph } from "./graph";
 import { imageStencil, shortImage } from "./stencils";
 import { isOutsideHost, parseUrl, productOf } from "./settings";
 import { Components, linkSettings, Links, type SettingsScope } from "./links";
-import { inClusterSyntax, parseServiceHost, strimziCluster } from "./k8sHosts";
+import { inClusterSyntax, parseServiceHost, strimziCluster, WorkloadNames } from "./k8sHosts";
 import { containerEnv, ENV_LIMITS, knownSettings, newEnvBudget } from "./k8sSettings";
 import { ImportError, isMap, list, own, readYaml, str, YAML_LIMITS } from "./yaml";
 
@@ -295,8 +295,8 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
 
   // ------------------------------------------------ workloads: anything with a pod template
   const workloads: Workload[] = [];
-  const workloadAt = new Map<string, Workload>();
-  const workloadByName = new Map<string, Workload>();
+  /** Workloads by kind and name, and by name: what hosts, backends and scalers name. */
+  const workloadNames = new WorkloadNames<Workload>();
   /** Workloads by namespace and pod label (`k=v`): a selector starts from its rarest pair. */
   const byLabel = new Map<string, Workload[]>();
   /** Pod labels of workloads that aren't drawn (a ZooKeeper image): a Service selecting them is known, not missing. */
@@ -339,9 +339,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     }
     const w: Workload = { res: r, key: `w\u0001${at(r.kind, r.ns, r.name)}`, pod: p.pod, labels: p.labels, image };
     workloads.push(w);
-    workloadAt.set(at(r.kind, r.ns, r.name), w);
-    const named = nsName(r.ns, r.name);
-    if (!workloadByName.has(named)) workloadByName.set(named, w);
+    workloadNames.add(r.kind, r.ns, r.name, w);
     for (const [k, v] of entries(p.labels)) {
       const pair = `${nsName(r.ns, k)}=${v}`;
       const bucket = byLabel.get(pair);
@@ -350,7 +348,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     }
   }
   /** The first workload with this name in the namespace, whatever its kind. */
-  const workloadNamed = (ns: string, name: string) => workloadByName.get(nsName(ns, name));
+  const workloadNamed = (ns: string, name: string) => workloadNames.named(ns, name);
 
   // What each workload uses: ConfigMaps and Secrets (for its dependencies) and setting names (for its stencil),
   // from every container. No values here: each container's environment is built on its own, later.
@@ -671,20 +669,8 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
 
   // ------------------------------------------------ hosts: Services, StatefulSet pods, Strimzi bootstrap
   // The DNS syntax is parsed first (k8sHosts.ts); the files only say whether a name reaches something drawn.
-  const lookup = (ns: string, name: string): string[] | undefined => {
-    const w = workloadNamed(ns, name);
-    return serviceTargets.get(nsName(ns, name)) ?? (w ? [w.key] : undefined);
-  };
-  const resolveHost = (host: string, from: string): string[] | undefined => {
-    for (const h of parseServiceHost(host)) {
-      const ns = h.namespace ?? from;
-      // A StatefulSet pod ("db-0") behind its headless Service: the StatefulSet itself, else the Service's targets.
-      const sts = h.pod ? workloadAt.get(at("StatefulSet", ns, h.pod.replace(/-\d+$/, ""))) : undefined;
-      const found = sts ? [sts.key] : lookup(ns, h.service);
-      if (found) return found;
-    }
-    return undefined;
-  };
+  const resolveHost = (host: string, from: string): string[] | undefined =>
+    workloadNames.resolve(host, from, serviceTargets);
   /** A Strimzi bootstrap or broker host names its cluster, whether or not its Kafka manifest is here. */
   const strimziOf = (host: string, from: string): string | undefined => {
     for (const h of parseServiceHost(host)) {
@@ -735,7 +721,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     const name = str(own(ref, "name"));
     if (!name) return undefined;
     const kind = str(own(ref, "kind")) ?? "Deployment";
-    return workloadAt.get(at(kind, r.ns, name)) ?? workloadNamed(r.ns, name);
+    return workloadNames.at(kind, r.ns, name) ?? workloadNamed(r.ns, name);
   };
   const floor = (w: Workload, min: number) => {
     const c = components.byKey.get(w.key);
@@ -759,7 +745,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     handled.add(so);
     const s = spec(so);
     const job = so.kind === "ScaledJob";
-    const w = job ? workloadAt.get(at(so.kind, so.ns, so.name)) : scaled(so, own(s, "scaleTargetRef"));
+    const w = job ? workloadNames.at(so.kind, so.ns, so.name) : scaled(so, own(s, "scaleTargetRef"));
     if (!w) {
       skip(so.kind, so.name, "scales a workload that isn't in these files");
       continue;
