@@ -2,6 +2,26 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Checks: four more (2026-10)
+
+No habit changes: the count under the title still shows warnings only, and a diagram that was clean before stays
+clean unless it has one of these. New, in the **Checks card**:
+
+- **{n} requests deep** (a warning): requests that go from service to service four or more times in a row. Each one
+  must be up for the first to answer. The fix makes the last call a message.
+- **{service} uses {owner}'s database** (a warning): a service reaching into a database that a boundary's own service
+  uses. The fix, **Ask {owner} instead**, replaces that connection with a request to the owner, label kept. When
+  several services in the boundary share the database, it's a suggestion, with no fix.
+- **{client} calls {service} directly** (a suggestion): an outside client going around the way in the diagram draws
+  (a gateway or load balancer the other clients use). The fix goes through it; chips under the button add a new
+  gateway instead (API Management or Front Door on Azure, API Gateway on AWS, Cloud Load Balancing on Google Cloud,
+  else a firewall or Kong). Diagrams that leave ingress out entirely aren't flagged.
+- **Every request goes through one {node}**: a service or gateway you run with one replica that is the only way
+  through for an entry point. A suggestion when the diagram says `replicas: 1`; a warning when it's 80% busy or more
+  at the diagram's own rates. The fix sets replicas. A replica count you never set isn't read as one (unless it's
+  busy).
+- Agents' `check_diagram` reports them too, with their fixes as edit operations.
+
 ## Import Terraform plans and state (2026-10)
 
 No habit changes. New:

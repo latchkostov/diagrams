@@ -1,9 +1,9 @@
 # Architecture checks: warnings with one-click fixes
 
-Research and plan, October 2026. Batches 1 and 2 are built: the engine, four rules and `check_diagram`, then the
-count, the Checks card, markers, the inspector row, fixes, Ignore and Turn off. Batch 1's precision gate, judged
-finding by finding on the examples, is in "Batch 1: precision gate" below; batch 2's notes are in "Batch 2: as
-built".
+Research and plan, October 2026. Batches 1 to 3 are built: the engine, four rules and `check_diagram`, then the
+count, the Checks card, markers, the inspector row, fixes, Ignore and Turn off, then the other four starter rules.
+Batch 1's precision gate, judged finding by finding on the examples, is in "Batch 1: precision gate" below; batch 2's
+notes are in "Batch 2: as built"; batch 3's gate and notes are in "Batch 3: precision gate" and "Batch 3: as built".
 
 ## Summary
 
@@ -183,6 +183,11 @@ Ids are stable, like stencil ids. Detection uses only the model: `relationOf`, `
 | 7   | `capacity`        | **{node} can't keep up**                                               | Warning                                                      | **Apply fix** (the capacity suggestion) |
 | 8   | `single-point`    | **Every request goes through one {node}**                              | Suggestion; Warning at ≥ 80% utilization                     | **Set replicas to 2**                   |
 
+Batch 3's precision gate tightened three of them (see "Batch 3: precision gate"): `shared-database` is a Suggestion
+when several services in the boundary share the store, `entry-gateway` fires only in a diagram that draws a way in
+(and its fix goes through it first), and `single-point` needs the diagram to say one replica (or capacity to say
+it's busy).
+
 Next batch (both asked for, and both need a little more model first):
 
 | #   | Id                | Title                                             | Default    | Fix                                       |
@@ -261,6 +266,10 @@ Next batch (both asked for, and both need a little more model first):
 - **False positives.** Low: none of the 16 examples has even 2 service-to-service sync hops.
 - **Fix: Make {edge} a message**, offered for the chain's last hop. The row says what that means: "Storefront stops
   waiting for Notification service".
+- **As built (batch 3).** One finding per chain start (`sync-chain:{first service}`), and one per last hop: when two
+  starts share a last hop, the longer chain keeps it. A loop on the way counts as one stop (`sync-cycle` reports it),
+  a self-loop as none. The row lists the chain ("Storefront API → Orders → … → Notifications: each waits for the
+  next, so all 5 must be up").
 
 #### 5. `shared-database`: {service} reads {owner}'s database
 
@@ -273,6 +282,13 @@ Next batch (both asked for, and both need a little more model first):
 - **False positives.** A boundary that's a network around one team's services and a shared DB. Ignore.
 - **Fix: Ask {owner} instead.** It replaces the foreign edge with a request to the owner service, and keeps the
   label. Offered only when there's exactly one owner.
+- **As built (batch 3).** The finding is about the connection (`shared-database:{edge}`), one per outside service and
+  store. Owners and users are services: connectors, loaders and transforms (Kafka Connect, Airbyte, Snowpipe, dbt,
+  Data Factory, Dataflow, Flink), telemetry collectors and model APIs never count, and a flow out of the store
+  (CDC reading its log) isn't a use. Warehouses, lakes and object storage (Snowflake, BigQuery, Redshift, Databricks,
+  S3, Blob Storage) are shared by design and never fire. A Warning with one owner; with several, a Suggestion
+  without a fix, since a boundary that several services already share is more likely a network than a team. The
+  title says "uses" rather than "reads": the flow can be a write.
 
 #### 6. `entry-gateway`: {client} calls {service} directly
 
@@ -291,6 +307,16 @@ Next batch (both asked for, and both need a little more model first):
   - otherwise: Firewall / WAF, Kong
 
   Several clients calling services of one family share one gateway.
+
+- **As built (batch 3).** The gate (see "Batch 3: precision gate") found the plan's version fired on 4 examples, and
+  only one was worth fixing: the others leave ingress out to stay at the level of their story. It now fires only when
+  the diagram draws a **way in** that an outside client reaches (a gateway, load balancer, CDN or firewall, through
+  DNS if need be; DNS, a mesh and SignalR aren't a way in) and another outside client goes around it: a bypass, not
+  a level of detail. Outside clients are `client.*` sources but an on-call engineer (`client.team`), and
+  `generic.webhook`. One finding per service, naming every client that calls it directly. The fix's button goes
+  through the existing way in ("Go through Commerce gateway": the clients connect to it, it gets the service's
+  route, and the direct calls go); the vendor family's new gateways are chips under it ("or Firewall / WAF · Kong
+  Gateway"), each inserting one gateway that every direct caller shares.
 
 #### 7. `capacity`: {node} can't keep up
 
@@ -324,6 +350,15 @@ Next batch (both asked for, and both need a little more model first):
 - **False positives.** A diagram that doesn't model replicas at all. The fix makes the model say so, which also
   makes the simulation more honest.
 - **Fix: Set replicas to 2.**
+- **As built (batch 3).** The gate found the plan's version fired 7 times on the examples and never where an owner
+  would set replicas: an unset count is the default, not a claim that one instance runs. It now needs evidence: a
+  **Suggestion** when the diagram says `replicas: 1`, a **Warning** when the capacity analysis (settled, at the
+  diagram's own rates) puts the node at 80% or more, replicas said or not. "Only way through" is per entry point
+  (each source with requests): the node dominates every end of the entry's request paths (a node with no request
+  onward), from Cooper-Harvey-Kennedy dominators per entry. Entries with the same first hops share one search, and
+  the searches stop at 250,000 nodes and edges visited, which only a pathological diagram (hundreds of entries, each
+  with its own first hop into one large graph) reaches. A busy node's fix sizes to capacity planning's 55%
+  ("Set replicas to 3"), as the capacity fix does.
 
 #### 9. `secret-identity` (next): {n} services read secrets without an identity
 
@@ -430,6 +465,61 @@ recount the numbers below.
   view's Show capacity and by the check, so the two can't drift. The finding and its fix are unchanged.
 - Every Warning is at 100%. Batch 2's count under the title would show 2 warnings across all 16 examples.
 
+### Batch 3: precision gate
+
+The same judgment for the four batch 3 rules, on the same 16 public examples (top level only): would I change the
+diagram as the finding asks? First as the plan described them, then as built. `src/checks/examples.test.ts` pins the
+built rules' findings (none), so a change to that list is a change to this table.
+
+**As built, the four rules raise nothing on the examples.** Every finding below was raised by the plan's version and
+removed by tightening; none is counted in the batch 1 numbers, which are unchanged (12 findings, 2 warnings).
+
+| #   | Example                    | Finding (rule: target), as planned                   | Severity   | Verdict      | Why                                                                                                                                                                                                                            |
+| --- | -------------------------- | ---------------------------------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| –   | event-driven-data-platform | `entry-gateway`: webhook-receiver (Billing webhooks) | Suggestion | **Wouldn't** | The diagram is about the data platform; it draws no ingress anywhere. The receiver's signature check ("Verify signature") is the control Stripe asks for, and a gateway box would say nothing about the platform.              |
+| –   | event-driven-data-platform | `entry-gateway`: checkout (Storefront)               | Suggestion | **Wouldn't** | Same diagram: the checkout is there as the source of order events.                                                                                                                                                             |
+| –   | outbox-saga-checkout       | `entry-gateway`: order-api (Mobile checkout)         | Suggestion | **Wouldn't** | The story is the outbox and the saga after the order is written. A gateway would be true of the real system and add nothing to this one.                                                                                       |
+| –   | rag-assistant              | `entry-gateway`: rag-api (Help center chat)          | Suggestion | Would fix    | Anonymous chat traffic straight into an API that calls a paid model: a rate limit in front is cost control, not detail. The one real gap; lost by the tightening (see below).                                                  |
+| –   | cqrs-event-sourcing        | `single-point`: gateway (Kong, Banking app)          | Suggestion | **Wouldn't** | No node in the diagram sets replicas: the default 1 isn't a claim that one instance runs. Setting 2 on the gateway alone makes the model inconsistent, not more honest.                                                        |
+| –   | event-driven-data-platform | `single-point`: webhook-receiver (Billing webhooks)  | Suggestion | **Wouldn't** | Replicas are set only where throughput is the point (Snowpipe ×6); the receiver is context.                                                                                                                                    |
+| –   | event-driven-data-platform | `single-point`: checkout (Storefront)                | Suggestion | **Wouldn't** | Same.                                                                                                                                                                                                                          |
+| –   | kafka-order-pipeline       | `single-point`: gateway (Commerce gateway, NGINX)    | Suggestion | **Wouldn't** | No node sets replicas. The diagram's outage stories are about consumers and lag, not its front door.                                                                                                                           |
+| –   | kafka-order-pipeline       | `single-point`: orders (Order service)               | Suggestion | **Wouldn't** | Same diagram, same reason.                                                                                                                                                                                                     |
+| –   | outbox-saga-checkout       | `single-point`: order-api (Mobile checkout)          | Suggestion | **Wouldn't** | No replicas anywhere; the story is the write and the relay.                                                                                                                                                                    |
+| –   | rag-assistant              | `single-point`: rag-api (Help center chat)           | Suggestion | **Wouldn't** | The closest call. The embed worker's 4 replicas are about throughput (competing workers), not a statement that everything else runs one. A second replica would be right in production, but the diagram doesn't say otherwise. |
+
+`sync-chain` and `shared-database` raised nothing in either version. The longest service-to-service chain on the
+examples is one request (RAG API → Claude API, Eval job → Claude API, Chunk and embed → Embeddings API).
+`shared-database` without its owner condition would raise 4, all false: orders-db in the Azure boundary with the
+Orders API in AKS (a network boundary, the plan's example), and three Snowflake stores in boundaries that hold no
+service of their own (loaded and transformed by Snowpipe, Airbyte and dbt). The owner condition removes all four; the
+warehouse and connector exclusions would each remove the Snowflake ones again.
+
+**Numbers**
+
+| Rule              | As planned | Would fix | Precision | As built | Outcome                                                                                              |
+| ----------------- | ---------- | --------- | --------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| `sync-chain`      | 0          | –         | –         | 0        | Warning at 4 hops, as planned. Unit tests cover it; no precision to measure yet.                     |
+| `shared-database` | 0          | –         | –         | 0        | Warning with one owner, Suggestion with several. Warehouses and connectors excluded.                 |
+| `entry-gateway`   | 4          | 1         | 25%       | 0        | Tightened: only when the diagram draws a way in that another client goes around. Stays a Suggestion. |
+| `single-point`    | 7          | 0         | 0%        | 0        | Tightened: a Suggestion only when the diagram says one replica; a Warning at 80% busy or more.       |
+| **All four**      | **11**     | **1**     | **9%**    | **0**    | The count under the title shows the same 2 warnings across the 16 examples as after batch 1.         |
+
+**What the gate changed**
+
+- `entry-gateway`: the plan's version (any outside client calling a service you run) fired on 4 examples at 25%,
+  under the bar even for a Suggestion. What separates a gap from a level of detail is whether the diagram draws
+  ingress at all, so it now fires only for a client that goes **around** a way in the diagram draws. That costs
+  rag-assistant's real gap (a diagram with no gateway anywhere): the trade is noise on most sketches against that
+  one, and the owner can reconsider it. Its fix's default goes through the existing way in.
+- `single-point`: 0 of 7 as planned. Every hit was an unset replica count read as "1". Now only a said `replicas: 1`
+  (Suggestion) or capacity evidence (Warning) fires. Kubernetes and docker-compose imports write replicas only when
+  there's more than one, so an imported one-replica Deployment still reads as unset (see "Batch 3: as built").
+- `shared-database` and `sync-chain`: the plan's thresholds hold. `shared-database` gained the warehouse and
+  connector exclusions (they'd catch the Snowflake boundaries if the owner rule were ever loosened) and its
+  several-owners Suggestion tier.
+- No Warning fires on the examples, so every Warning is still at 100%.
+
 ### Agents: `check_diagram` (WebMCP)
 
 One read-only tool. It's published in editing and live view, like `describe_diagram`. It's unavailable for private
@@ -481,7 +571,9 @@ diagrams, as every AI tool is.
 - Bundle: the checks chunk joins `NOT_AT_STARTUP` in `bundleSplit.build.test.ts`. Estimate 8 to 12 kB gzip, plus the
   capacity module, loaded when the capacity rule first runs.
 - Performance: every rule is O(V + E), except the capacity fixed point, which is already bounded at 256
-  iterations. Add a perf test with a 1,500-node synthetic diagram, under 50 ms (`src/test/perfBudget.ts`).
+  iterations. Add a perf test with a 1,500-node synthetic diagram, under 50 ms (`src/test/perfBudget.ts`). (Batch 3's
+  rules are guarded by a ratio instead: the same rules on 375 and 1,500 nodes, where linear is 4× and quadratic 16×.
+  Absolute budgets measured the CI machine.)
 
 ## Build batches
 
@@ -497,9 +589,9 @@ Each batch is its own PR and ends with the UX review gate (`docs/UX-PRINCIPLES.m
    inspector row, the canvas right-click and Ctrl+K, and fixes for batch 1's rules as ops through `applyOps` (one
    undo step, toast with Undo). Ignore and turn off, in the file (`checks` field, validator, schema, `pnpm
 schemas`). _UX gate: chrome budget, keyboard, Esc order, dark theme, 1280×800, presentation and export clean._
-3. **The other four starter rules.** `sync-chain`, `shared-database`, `entry-gateway` (with stencil chips) and
-   `single-point` (dominators, plus the capacity escalation), each with its fix. _Gate: the examples snapshot
-   again._
+3. **The other four starter rules.** _(Built; see "Batch 3: precision gate" and "Batch 3: as built".)_
+   `sync-chain`, `shared-database`, `entry-gateway` (with stencil chips) and `single-point` (dominators, plus the
+   capacity escalation), each with its fix. _Gate: the examples snapshot again._
 4. **Rules that need more model.** `secret-identity` (aggregated, plus a GCP service account stencil) and
    `schema-registry` (with the AsyncAPI import's `contentType`, see `imports.md`).
 5. **Simulation evidence (on demand).** In the Checks card, **Run simulations** plays each saved simulation
@@ -542,6 +634,41 @@ The visible part, as the UX section describes it. What was decided while buildin
   and **Turn off this check** are `updateMeta({ checks })`, one undo step each, with an Undo toast.
 - **Private diagrams** are checked like any other; nothing leaves the device.
 
+## Batch 3: as built
+
+The other four starter rules, through the engine and the UI that batches 1 and 2 built. What was decided while
+building:
+
+- **Order.** `CHECK_RULES` follows the rule table: dead-letter, no-reader, sync-cycle, sync-chain, shared-database,
+  entry-gateway, capacity, single-point. Findings list warnings first, then by that order, then reading order (a
+  connection reads where it starts: `shared-database` is about a connection).
+- **Shared graph code.** `src/checks/graph.ts` has Tarjan's components (moved from `sync-cycle`, and now shared with
+  `sync-chain`) and Cooper-Harvey-Kennedy dominators. The context builds the request adjacency (`ctx.requests`) once,
+  for `sync-cycle`, `sync-chain` and `single-point`. What the rules know about stencils beyond their role (self-hosted
+  compute and gateways, ways in, outside clients, stores shared by design, processors that aren't services) is one
+  file, `src/checks/kinds.ts`. Capacity evidence and the busy fix's size come from `analyzeCapacity` and
+  `capacityPlanning` (`FIX_TARGET`), as the capacity check's do.
+- **Fixes with options.** A fix can carry other ways to make the same change (`CheckFix.options`): `entry-gateway`
+  puts the existing way in on its button and new gateways as chips under it ("or Firewall / WAF · Kong Gateway"). A
+  chip applies like the button: checked again on the diagram as it is now, one undo step, a toast ("Added Kong
+  Gateway · Undo"). Agents get them as `fix.others` (label, kind, and ops while they fit beside the default's), and
+  the reply's hint says to send one's ops instead if the person prefers it.
+- **Wording.** "{n} requests deep", "{service} uses {owner}'s database" (the flow can be a write, so not "reads"),
+  "{client} calls {service} directly", "Every request goes through one {node}". Each row names what's involved and
+  says what the fix changes ("Making the last call a message means Storefront no longer waits for Notifications").
+- **Performance.** At 1,200 nodes each rule takes 1 to 3 ms on top of the shared context (single-point about 8 ms,
+  most of it the capacity analysis it shares with `capacity`). `src/checks/examples.test.ts` runs the four rules on
+  375 and 1,500 nodes and asserts the time ratio stays under 8 (linear is 4, quadratic 16), not a millisecond budget.
+  Two quadratic spots it found were fixed: ranking the ways in once per run rather than per finding, and counting the
+  connections between a pair once (`freshKey` also stopped scanning boundaries on every call).
+- **What ships when.** Startup JavaScript: +29 bytes gzip (the four rule ids). The checks worker +4.1 kB gzip, the
+  main-thread fallback chunk +4.2 kB, the card +0.1 kB (the chips) and a few lines of its CSS. The entry is 110.0 kB
+  of its 123.5 kB budget.
+- **Not done (owner's call).** The Kubernetes and docker-compose imports write `replicas` only when it's more than
+  one, so an imported one-replica Deployment reads as "not said" and `single-point` stays quiet on it, though it's
+  exactly kube-linter's `minimum-three-replicas` case. Writing `replicas: 1` there would let the rule see it; it
+  changes the imports' output, so it isn't in this batch.
+
 ## Explicitly not doing
 
 - **Style and completeness lint** (missing descriptions, unlabelled edges, orphan nodes, naming conventions).
@@ -579,7 +706,9 @@ The visible part, as the UX section describes it. What was decided while buildin
 1. **Show the warning count all the time, or only after the first Check diagram?** _Default: always, warnings only._
    It's one muted line that's absent when there's nothing to say. Suggestions never show uninvited.
 2. **`entry-gateway`: Warning or Suggestion?** _Default: Suggestion._ It fires on 4 examples that leave the gateway
-   out on purpose. Revisit if the owner adds gateways to those examples.
+   out on purpose. Revisit if the owner adds gateways to those examples. (Batch 3: it now fires only on a client
+   that goes around a way in the diagram draws, so it raises nothing on the examples. A bypass is a stronger signal;
+   a Warning is the owner's call once it has fired in real use.)
 3. **Which traffic does `capacity` use when a diagram has saved simulations?** _Default: free-play rates only._
    Saved simulations often overload on purpose. Live's heat map covers them, and batch 5 adds them on demand.
 4. **Where do ignores live: in the file, or in this browser?** _Default: in the file (`checks`)._ A team sees the

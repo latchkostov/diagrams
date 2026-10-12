@@ -74,7 +74,16 @@ export function sanitizeChecks(raw: unknown, ids: ReadonlySet<string>, warnings:
 }
 
 /** The rules this version runs, in the order findings list them. Ids are a public contract: never renamed. */
-export const CHECK_RULES = ["dead-letter", "no-reader", "sync-cycle", "capacity"] as const;
+export const CHECK_RULES = [
+  "dead-letter",
+  "no-reader",
+  "sync-cycle",
+  "sync-chain",
+  "shared-database",
+  "entry-gateway",
+  "capacity",
+  "single-point",
+] as const;
 export type CheckRuleId = (typeof CHECK_RULES)[number];
 export const isCheckRule = (v: unknown): v is CheckRuleId =>
   typeof v === "string" && (CHECK_RULES as readonly string[]).includes(v);

@@ -3364,6 +3364,12 @@ select.insp-input {
   width: 16px;
   height: 16px;
   pointer-events: auto;
+}
+
+/* The mark itself grows when its row is hovered, never the positioned box: scale on it would scale its
+   translate too and fly the marker away from its node. */
+.check-marker svg,
+.check-marker::before {
   transition: scale var(--dur-1) var(--ease-out);
 }
 
@@ -3390,6 +3396,7 @@ select.insp-input {
   box-shadow: 0 0 0 2px var(--surface);
 }
 
-.check-marker.is-hot {
+.check-marker.is-hot svg,
+.check-marker.is-hot::before {
   scale: 1.35;
 }

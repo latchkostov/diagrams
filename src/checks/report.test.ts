@@ -111,3 +111,52 @@ describe("agentReport", () => {
     });
   });
 });
+
+describe("agentReport, batch 3", () => {
+  /** `n` mobile apps each calling their own service around the storefront's gateway. */
+  const bypasses = (n: number, label = (i: number) => `Service ${i}`): DiagramFile => ({
+    format: "diagrams/v1",
+    title: "Bypass",
+    nodes: [
+      { id: "web", stencil: "client.browser", label: "Web", x: 0, y: 0 },
+      { id: "gw", stencil: "azure.front-door", label: "Front Door", x: 300, y: 0 },
+      ...Array.from({ length: n }, (_, i) => [
+        { id: `app${i}`, stencil: "client.mobile", label: `App ${i}`, x: 0, y: 200 * (i + 1) },
+        { id: `s${i}`, stencil: "service.go", label: label(i), x: 600, y: 200 * (i + 1) },
+      ]).flat(),
+    ],
+    edges: [
+      { id: "e-web", from: "web", to: "gw", kind: "sync" },
+      ...Array.from({ length: n }, (_, i) => ({ id: `e${i}`, from: `app${i}`, to: `s${i}`, kind: "sync" as const })),
+    ],
+  });
+
+  it("a fix's other options go with their kind and, when they fit, their ops", () => {
+    const out = json(bypasses(1));
+    const [finding] = out.findings;
+    expect(finding).toMatchObject({
+      id: "entry-gateway:s0",
+      severity: "suggestion",
+      title: "App 0 calls Service 0 directly",
+    });
+    const fix = finding.fix as {
+      label: string;
+      ops: unknown[];
+      others: { label: string; kind?: string; ops?: unknown[] }[];
+    };
+    expect(fix.label).toBe("Go through Front Door");
+    expect(fix.others.map((o) => [o.label, o.kind, !!o.ops])).toEqual([
+      ["Put API Management in front", "azure.api-management", true],
+    ]);
+    expect(out.hint).toContain("fix.others");
+    // The option's ops apply as they are.
+    const d = bypasses(1);
+    expect(applyOps(d, fix.others[0].ops as Parameters<typeof applyOps>[1]).ok).toBe(true);
+  });
+
+  it("many findings with long names keep to the budget", () => {
+    const out = json(bypasses(60, (i) => `${"Very long service name ".repeat(8)}${i}`));
+    expect(out.findings.length).toBeGreaterThan(0);
+    expect(out.more).toMatch(/more findings omitted/);
+  });
+});

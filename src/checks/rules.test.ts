@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DiagramEdge, DiagramFile, DiagramNode, Simulation } from "../model/types";
 import { applyOps } from "../ai";
 import { runChecks } from "./run";
-import { stronglyConnected } from "./rules/syncCycle";
+import { stronglyConnected } from "./graph";
 import { deadLetterFor } from "./rules/deadLetter";
 
 // One rule at a time, on tiny diagrams: what fires, what doesn't, and the false positives the plan
@@ -402,7 +402,15 @@ describe("runChecks", () => {
     expect(result.findings.map((f) => f.id)).toEqual(["dead-letter:q"]);
     expect(result.ignored.map((f) => f.id)).toEqual(["dead-letter:q2"]);
     expect(result.off).toEqual(["no-reader"]);
-    expect(result.ran).toEqual(["dead-letter", "sync-cycle", "capacity"]);
+    expect(result.ran).toEqual([
+      "dead-letter",
+      "sync-cycle",
+      "sync-chain",
+      "shared-database",
+      "entry-gateway",
+      "capacity",
+      "single-point",
+    ]);
   });
 
   it("runs only the rules asked for", () => {

@@ -5,10 +5,23 @@ import type { CheckResult, CheckRule, Finding } from "./types";
 import { deadLetter } from "./rules/deadLetter";
 import { noReader } from "./rules/noReader";
 import { syncCycle } from "./rules/syncCycle";
+import { syncChain } from "./rules/syncChain";
+import { sharedDatabase } from "./rules/sharedDatabase";
+import { entryGateway } from "./rules/entryGateway";
 import { capacity } from "./rules/capacity";
+import { singlePoint } from "./rules/singlePoint";
 
 /** Every rule, in CHECK_RULES order (the order findings list them). */
-export const RULES: readonly CheckRule[] = [deadLetter, noReader, syncCycle, capacity];
+export const RULES: readonly CheckRule[] = [
+  deadLetter,
+  noReader,
+  syncCycle,
+  syncChain,
+  sharedDatabase,
+  entryGateway,
+  capacity,
+  singlePoint,
+];
 
 export interface RunOptions {
   /** Only these rules (default: all). Rules turned off in the diagram stay off. */
@@ -43,7 +56,7 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-/** "2 warnings, 3 suggestions; 1 ignored; 1 check off." or "Nothing to check. 4 checks ran." */
+/** "2 warnings, 3 suggestions; 1 ignored; 1 check off." or "Nothing to check. 8 checks ran." */
 export function summarize(result: CheckResult): string {
   const warnings = result.findings.filter((f) => f.severity === "warning").length;
   const suggestions = result.findings.length - warnings;

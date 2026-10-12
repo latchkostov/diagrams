@@ -27,6 +27,8 @@ export interface CheckContext {
   routes(id: string): readonly CompiledEdge[];
   /** Every compiled flow into a node, dead-letter routes included. */
   incoming(id: string): readonly CompiledEdge[];
+  /** The requests (sync flows) out of a node, in diagram order. Built on first use. */
+  requests(id: string): readonly CompiledEdge[];
   /** The dead-letter route playback sends this broker's exhausted messages to (deadLetterRoutes). */
   deadLetterRoute(id: string): CompiledEdge | undefined;
   /**
@@ -34,7 +36,7 @@ export interface CheckContext {
    * emits and filters count). Computed on first use.
    */
   typesAt(id: string): ReadonlySet<string>;
-  /** Position in reading order (rows from the top, each left to right; columns in a TB diagram). */
+  /** Position in reading order (rows from the top, each left to right; columns in a TB diagram); a connection's is its start's. */
   rank(id: string): number;
   /** The node's label, or its id when it has none. */
   name(id: string): string;
@@ -71,6 +73,9 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   let planning: Simulation | undefined;
   let capacity: CapacityAnalysis | undefined;
   let types: Map<string, Set<string>> | undefined;
+  let requests: Map<string, CompiledEdge[]> | undefined;
+  /** Boundary and annotation ids, for freshKey. */
+  let others: Set<string> | undefined;
   const plan = () =>
     (planning ??= planningSimulation(diagram, {
       id: "free-play",
@@ -85,6 +90,18 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     topology,
     routes: (id) => topology.outgoing.get(id) ?? [],
     incoming: (id) => incoming.get(id) ?? [],
+    requests(id) {
+      if (!requests) {
+        requests = new Map();
+        for (const e of topology.edges) {
+          if (!e.sync) continue;
+          const list = requests.get(e.from);
+          if (list) list.push(e);
+          else requests.set(e.from, [e]);
+        }
+      }
+      return requests.get(id) ?? [];
+    },
     deadLetterRoute: (id) => deadLetter.get(id),
     typesAt(id) {
       if (!types) {
@@ -102,14 +119,12 @@ export function buildContext(diagram: DiagramFile): CheckContext {
       }
       return types.get(id) ?? new Set();
     },
-    rank: (id) => order.get(id) ?? Infinity,
+    // A connection reads where it starts.
+    rank: (id) => order.get(id) ?? order.get(edges.get(id)?.from ?? "") ?? Infinity,
     name: (id) => nodes.get(id)?.label.trim() || id,
     freshKey(base) {
-      const taken = (key: string) =>
-        nodes.has(key) ||
-        edges.has(key) ||
-        !!diagram.groups?.some((g) => g.id === key) ||
-        !!diagram.annotations?.some((a) => a.id === key);
+      others ??= new Set([...(diagram.groups ?? []), ...(diagram.annotations ?? [])].map((x) => x.id));
+      const taken = (key: string) => nodes.has(key) || edges.has(key) || others!.has(key);
       let key = base;
       for (let i = 2; taken(key); i++) key = `${base}-${i}`;
       return key;

@@ -185,6 +185,28 @@ export function FindingRow({
           <span aria-hidden>⋯</span>
         </button>
       </div>
+      {fix?.ops && fix.options?.length ? (
+        // Other ways to make the same fix, one click each (another gateway): secondary to the button.
+        <div className="check-alts" role="group" aria-label="Or instead">
+          <span className="check-alts-or">or</span>
+          {fix.options.map((o, i) => (
+            <button
+              key={o.label}
+              type="button"
+              className="check-chip is-option"
+              data-testid={t(`fix-option-${i}`)}
+              disabled={state.stale}
+              title={state.stale ? "Checking your change…" : o.label}
+              aria-label={o.label}
+              onClick={() => {
+                if (applyFix(host.editor, f, o.label)) host.applied?.();
+              }}
+            >
+              {o.short}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {panel === "menu" && (
         <div className="check-menu" role="group" aria-label="Finding options">
           <button type="button" data-testid={t("ignore")} onClick={() => setPanel("ignore")}>

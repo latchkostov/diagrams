@@ -284,7 +284,9 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - Side panels make room rather than cover: below 1680 px, live view and an open AI panel fold the stencils to
   their rail until they are opened by hand. Toasts centre on the canvas pane and stack above its bars.
 - **Checks** find likely design problems (failed messages that are dropped, a topic nobody reads, requests that go
-  round in a circle, a service that can't keep up) and offer a **fix** for each. Never "lint", "issues" or "errors":
+  round in a circle or chain too deep, a service using another's database, a client going around the gateway, a
+  service that can't keep up or that every request goes through on one replica) and offer a **fix** for each. Never
+  "lint", "issues" or "errors":
   a **finding** is a **Warning** or a **Suggestion**, and nothing blocks saving, sharing or going live.
   - **The count**: "⚠ 2 warnings" under the diagram's title, muted, only when there's a warning (suggestions alone show
     nothing, and with none there's no "0 issues"). Editing only: no count in live view, presenting, embeds or exports.
@@ -293,7 +295,8 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
     and brings it into view (as a new selection is shown); its chips select one thing each; **Why** says why it
     matters. The row's one button is the fix, named for the change ("Add dead-letter queue"), applied as one undo
     step with a toast that says what it added and offers **Undo**. A fix that needs a choice ("Add a consumer…")
-    opens quick-add downstream. **⋯** has **Ignore here…** (an optional reason), **Turn off this check** and **About
+    opens quick-add downstream. A fix with other ways to make it shows them as quiet chips under its button ("Go
+    through Commerce gateway", or Firewall / WAF · Kong Gateway), each one click and one undo step. **⋯** has **Ignore here…** (an optional reason), **Turn off this check** and **About
     this check**; the foot's "1 ignored · 1 check off" brings them back. Both are kept in the file (`checks`).
   - **Markers** (an amber triangle for a warning, a blue dot for a suggestion) show on the nodes and connections a
     finding names, only while the card is open. A single selected node or connection with findings shows them at the

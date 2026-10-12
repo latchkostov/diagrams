@@ -1,5 +1,57 @@
 # Design review
 
+## Round 22: checks, batch 3 (2026-10-12)
+
+The gate for architecture checks batch 3: four more rules (`sync-chain`, `shared-database`, `entry-gateway`,
+`single-point`), each with its fix, and fixes with other options as chips (`docs/research/architecture-checks.md`,
+"Batch 3"). Self-review against `docs/UX-PRINCIPLES.md` on the production build at 1024 × 768, 1280 × 800 and
+1440 × 900, light and dark, mouse and keyboard. The public examples raise none of the new findings (that's the
+precision gate), so the card is shown on a small test fixture, `tests/fixtures/checks/checkout-shortcuts.diagram.json`
+(a mobile app calling the order service around the gateway, and billing reading the order service's database), and
+on the Kafka example, which stays clean under all eight checks.
+
+- **No new chrome.** No control, menu row or palette entry: the new rules show in the same count, card, markers and
+  inspector row. The only new element is the chips row under a fix that has other ways to make it ("or Firewall /
+  WAF · Kong Gateway"): quiet chips in the style of the row's element chips, after an "or", under the one primary
+  button, so the row still has one obvious action (`card-row-hover-chips-1280-light`). Each chip is a button with the
+  full change as its name ("Put Kong Gateway in front"), is off while the check is stale, and applies as one undo
+  step with the usual toast (`chip-fix-toast-1280-light`: the gateway lands between the app and the service).
+- **Quiet by default holds.** The count shows the new warning only (`count-1280-light`: "1 warning"); the bypass is a
+  suggestion and shows only in the card. On the 16 examples the count is unchanged (2 warnings in total), and the
+  Kafka example's card says "Nothing to check. 8 checks ran." (`card-clean-kafka-1280-light`).
+- **Words.** Titles name the things ("Billing uses Order service's database", "Mobile app calls Order service
+  directly", "4 requests deep", "Every request goes through one Order service"); the message says what's wrong here
+  and the button names the change ("Ask Order service instead", "Go through Commerce gateway", "Set replicas to 2").
+  "Uses", not "reads": the flow can be a write. About checks lists all eight (`card-about-1280-light`).
+- **Widths and themes.** At 1024 the 290 px card wraps the chips and the element chips cleanly
+  (`card-batch3-1024-light`); dark reads as the light theme does (`card-batch3-1440-dark`). The inspector's version
+  carries the chips too (`inspector-finding-chips-1440-dark`), and a selected outside service shows the
+  database finding with its fix (`inspector-finding-1280-light`).
+
+### What was off (fixed in this round)
+
+- **Hovering a row flew its markers away from their nodes.** The hovered finding's markers grew with `scale` on the
+  positioned box, which also scaled its translate: a marker 500 px into the diagram jumped about 175 px further, onto
+  empty canvas (the first screenshots). It came with batch 2 and showed on every rule. The mark inside the box grows
+  now; `tests/e2e/checks-rules.spec.ts` checks a hovered marker stays at its node's corner.
+- **The fixture's description read like a test** in the diagram card. It now describes the diagram.
+
+### Still open (owner's call)
+
+- The element chips list a connection by its label ("Read order totals") before the nodes, since a finding's target
+  comes first and `shared-database`'s target is the connection. Clear enough with the marker on the connection; a
+  reorder would put nodes first everywhere.
+- `entry-gateway` gives up rag-assistant's real gap (no gateway anywhere) for silence on sketches that leave ingress
+  out; see the precision gate.
+
+![The card with a warning and a suggestion, 1280](screenshots/round22/card-batch3-1280-light.png)
+![A fix with other ways, hovered: chips under the button, markers grown in place](screenshots/round22/card-row-hover-chips-1280-light.png)
+![A chip applied: Kong Gateway inserted, with Undo](screenshots/round22/chip-fix-toast-1280-light.png)
+![The inspector's finding with its chips, dark](screenshots/round22/inspector-finding-chips-1440-dark.png)
+
+Also: `screenshots/round22/count-1280-light.png`, `card-batch3-1024-light.png`, `card-batch3-1440-dark.png`,
+`card-about-1280-light.png`, `inspector-finding-1280-light.png` and `card-clean-kafka-1280-light.png`.
+
 ## Round 20: imports (batch 4, Terraform) (2026-10-12)
 
 Terraform plan and state JSON on the shared pipeline and report. Self-review against `docs/UX-PRINCIPLES.md` at

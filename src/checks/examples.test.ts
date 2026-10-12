@@ -5,8 +5,9 @@ import { perfBudget } from "../test/perfBudget";
 import { runChecks } from "./run";
 
 // The regression snapshot over the 16 public examples (top level only; never ./private). Each finding here
-// was judged in docs/research/architecture-checks.md ("Precision gate"); a change to this list is a change
-// to that table.
+// was judged in docs/research/architecture-checks.md ("Batch 1: precision gate", "Batch 3: precision gate"); a
+// change to this list is a change to those tables. The batch 3 rules (sync-chain, shared-database,
+// entry-gateway, single-point) raise nothing on them, by the gate's tightening.
 
 const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: true, import: "default" });
 const bySlug = Object.fromEntries(
@@ -149,5 +150,87 @@ describe("performance", () => {
       expect(runChecks(d, { rules }).findings.map((f) => f.id)).toEqual([`sync-cycle:${d.nodes[0].id}`]);
       expect(timed(() => runChecks(d, { rules }))).toBeLessThan(perfBudget(100));
     }
+  });
+});
+
+describe("batch 3 rules scale linearly", () => {
+  const RULES = ["sync-chain", "shared-database", "entry-gateway", "single-point"] as const;
+  /**
+   * `n` pipelines of 15 nodes, each raising all four: a storefront through a one-replica gateway into five
+   * services in a row of requests, a database its first service owns and another service writes to, and a
+   * mobile app calling that first service directly. A scheduler calls every gateway, so one entry reaches it all.
+   */
+  function pipelines(n: number): DiagramFile {
+    const nodes: DiagramFile["nodes"] = [{ id: "cron", stencil: "generic.scheduler", label: "Cron", x: 0, y: -200 }];
+    const edges: DiagramFile["edges"] = [];
+    const groups: NonNullable<DiagramFile["groups"]> = [];
+    const req = (from: string, to: string) => edges.push({ id: `${from}-${to}`, from, to, kind: "sync" });
+    for (let p = 0; p < n; p++) {
+      const at = (i: number) => ({ x: i * 300, y: p * 200 });
+      const id = (name: string) => `${name}${p}`;
+      groups.push({ id: id("team"), label: `Team ${p}`, x: 0, y: p * 200, width: 300, height: 150 });
+      nodes.push(
+        { id: id("web"), stencil: "client.browser", label: `Web ${p}`, ...at(0) },
+        { id: id("app"), stencil: "client.mobile", label: `App ${p}`, ...at(0) },
+        { id: id("gw"), stencil: "nginx", label: `Gateway ${p}`, props: { replicas: 1 }, ...at(1) },
+        ...Array.from({ length: 6 }, (_, i) => ({
+          id: id(`s${i}-`),
+          stencil: "service.go",
+          label: `Service ${p}.${i}`,
+          ...(i === 0 ? { group: id("team") } : {}),
+          ...at(2 + i),
+        })),
+        { id: id("db"), stencil: "postgres", label: `DB ${p}`, group: id("team"), ...at(8) },
+        { id: id("x"), stencil: "service.java", label: `Reporting ${p}`, ...at(9) },
+        { id: id("q"), stencil: "aws.sqs", label: `Queue ${p}`, ...at(10) },
+        { id: id("w"), stencil: "service.node", label: `Worker ${p}`, ...at(11) },
+        { id: id("cache"), stencil: "redis.cache", label: `Cache ${p}`, ...at(12) },
+        { id: id("fn"), stencil: "aws.lambda", label: `Function ${p}`, ...at(13) },
+      );
+      req(id("web"), id("gw"));
+      req(id("gw"), id("s0-"));
+      for (let i = 0; i < 5; i++) req(id(`s${i}-`), id(`s${i + 1}-`));
+      req(id("s0-"), id("db"));
+      req(id("x"), id("db"));
+      req(id("app"), id("s0-"));
+      req("cron", id("gw"));
+      edges.push({ id: id("m1"), from: id("s5-"), to: id("q"), kind: "async" });
+      edges.push({ id: id("m2"), from: id("q"), to: id("w"), kind: "async" });
+      req(id("w"), id("cache"));
+      req(id("w"), id("fn"));
+    }
+    return { format: "diagrams/v1", title: "Big", nodes, edges, groups };
+  }
+  /** The fastest of a few runs (after a warm-up): the ratio guards complexity, not a busy machine. */
+  const fastest = (run: () => unknown) => {
+    run();
+    let best = Infinity;
+    for (let i = 0; i < 7; i++) {
+      const start = performance.now();
+      run();
+      best = Math.min(best, performance.now() - start);
+    }
+    return best;
+  };
+
+  it("four times the diagram (375 to 1,500 nodes) takes about four times as long, never sixteen", () => {
+    const small = pipelines(25);
+    const big = pipelines(100);
+    expect(big.nodes.length).toBe(1_501);
+    const count = (d: DiagramFile) => {
+      const by: Record<string, number> = {};
+      for (const f of runChecks(d, { rules: RULES }).findings) by[f.rule] = (by[f.rule] ?? 0) + 1;
+      return by;
+    };
+    // Every pipeline raises each rule once; the gateway is the only way through for its storefront and the cron.
+    expect(count(big)).toEqual({
+      "sync-chain": 100,
+      "shared-database": 100,
+      "entry-gateway": 100,
+      "single-point": 100,
+    });
+    const ratio = fastest(() => runChecks(big, { rules: RULES })) / fastest(() => runChecks(small, { rules: RULES }));
+    // Linear is 4; quadratic would be 16. The margin is for timer noise on small numbers.
+    expect(ratio).toBeLessThan(8);
   });
 });

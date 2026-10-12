@@ -17,6 +17,21 @@ export interface CheckFix {
   ops?: DiagramOp[];
   /** What has to be chosen first, when there are no ops ("Pick what reads orders.dlq…"). */
   choice?: string;
+  /**
+   * Other ways to make the same change, one click each (a gateway of another kind): shown as chips beside the
+   * button. The fix's own `label` and `ops` are the default; these are the rest.
+   */
+  options?: CheckFixOption[];
+}
+
+export interface CheckFixOption {
+  /** The change in words ("Put API Management in front"). */
+  label: string;
+  /** The chip's words: what's different about this option ("API Management"). */
+  short: string;
+  /** The stencil it adds, when it adds one (agents can swap it into the default's ops). */
+  kind?: string;
+  ops: DiagramOp[];
 }
 
 export interface Finding {

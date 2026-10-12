@@ -151,6 +151,7 @@
 .check-why,
 .check-chips,
 .check-actions,
+.check-alts,
 .check-menu,
 .check-ignore,
 .check-about {
@@ -222,6 +223,25 @@
   border-color: transparent;
   background: none;
   letter-spacing: 1px;
+}
+
+/* Other ways to make the fix (another gateway): quiet chips under the button. */
+.check-alts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.check-alts-or {
+  margin-right: 2px;
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+.check-chip.is-option:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .check-choice {
