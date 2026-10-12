@@ -2,6 +2,13 @@
 
 Review findings and ideas not yet scheduled. Remove items when they land.
 
+## On-device model
+
+- Run the on-device evals (`?view=lab&preset=ondevice-evals`, see `docs/research/on-device-model.md`) in a
+  Chrome with the model and record the rate. At 80% or more, turn `ON_DEVICE_DEFAULT` on.
+- Live view: scenario requests as simulations (`set_simulation`) need their own prompt and eval cases.
+- Boundaries and notes aren't in the on-device op format yet.
+
 ## Your diagrams
 
 - The library lives in `localStorage` (about 5M characters per site). If people keep many large

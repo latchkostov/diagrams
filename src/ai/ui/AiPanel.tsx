@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useId,
@@ -27,12 +29,17 @@ import { readAdvancedOpen } from "./advancedPref";
 import { ChoiceRow } from "./parts";
 import { AgentStatus, HowTo } from "./HowTo";
 import type { PanelRequest } from "./AiMount";
+import { useModelAvailability } from "../ondevice/useModelAvailability";
+import { readOnDevice, rememberOnDevice } from "../ondevice/onDevicePref";
 import "./ai.css";
 
 // The AI panel: a docked column beside the canvas where you see and control what AI did to this
 // diagram. Browser agents change the diagram through the page's WebMCP tools; each change is a turn
 // here with Undo this change, Revert to here and a highlight of what it touched. The manual
 // copy-and-paste flow lives in Advanced, closed by default.
+
+// Chrome's built-in model: its request box loads only where the Prompt API is and it's turned on.
+const OnDeviceInput = lazy(() => import("../ondevice/OnDeviceInput"));
 
 const editorNow = (): EditorApi | null => paletteHost.get().canvas?.editor ?? null;
 
@@ -59,6 +66,17 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const panelRef = useRef<HTMLElement>(null);
   const [mcp] = useState(hasModelContext);
   const live = !!canvas?.live;
+  // The on-device model: offered (in Advanced) where Chrome has it; its box shows once turned on.
+  const [model, setModel] = useModelAvailability();
+  const [onDeviceOn, setOnDeviceOn] = useState(readOnDevice);
+  const offerOnDevice = !!model && model !== "unavailable";
+  const onDevice = offerOnDevice && onDeviceOn;
+  /** The box is there to type in (not still waiting for its download). */
+  const typeHere = onDevice && model === "available";
+  const toggleOnDevice = (on: boolean) => {
+    setOnDeviceOn(on);
+    rememberOnDevice(on);
+  };
   // With a conversation, the how-to folds to one link.
   const [showHowTo, setShowHowTo] = useState(false);
 
@@ -307,7 +325,10 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
           <div className="ai-empty" data-testid="ai-empty">
             <h3>{localOnly ? "AI is off for this diagram" : "Change this diagram with AI"}</h3>
             {!localOnly && (
-              <p>Ask an AI agent to change it. Each change appears here, and you can undo or revert any of them.</p>
+              <p>
+                {typeHere ? "Type a change below, or ask an AI agent." : "Ask an AI agent to change it."} Each change
+                appears here, and you can undo or revert any of them.
+              </p>
             )}
           </div>
         )}
@@ -330,7 +351,13 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         )}
       </div>
 
-      <AgentStatus available={mcp} localOnly={localOnly} live={live} />
+      {onDevice && (
+        <Suspense fallback={null}>
+          <OnDeviceInput availability={model} onAvailability={setModel} live={live} onTurn={addTurn} />
+        </Suspense>
+      )}
+
+      <AgentStatus available={mcp} localOnly={localOnly} live={live} typeHere={typeHere} />
 
       <Advanced
         open={advancedOpen}
@@ -339,6 +366,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         current={current}
         live={live}
         onTurn={addTurn}
+        onDevice={offerOnDevice ? { on: onDeviceOn, set: toggleOnDevice } : undefined}
       />
     </section>
   );
@@ -425,6 +453,7 @@ function TurnItem({
 }) {
   const undone = !!turn.undone && !atThisTurn;
   const agent = turn.engine === "agent";
+  const onDevice = turn.engine === "on-device";
   const mark = () => markElements(turn.changed);
   const unmark = () => markElements([]);
   return (
@@ -442,6 +471,11 @@ function TurnItem({
     >
       {turn.request && <p className={`ai-turn-request${turn.kind === "revert" ? " is-system" : ""}`}>{turn.request}</p>}
       <div className="ai-turn-card">
+        {onDevice && (
+          <p className="ai-turn-who" data-testid={`ai-turn-${n}-who`}>
+            <Icon name="ai" size={12} /> On this device · Chrome&apos;s built-in model
+          </p>
+        )}
         {agent && (
           <p className="ai-turn-who" data-testid={`ai-turn-${n}-who`}>
             <Icon name="ai" size={12} /> Agent · {TOOL_NAMES[turn.tool ?? ""] ?? "Changed the diagram"}

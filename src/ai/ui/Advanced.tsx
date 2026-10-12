@@ -31,6 +31,7 @@ export function Advanced({
   current,
   live,
   onTurn,
+  onDevice,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,6 +40,8 @@ export function Advanced({
   current: DiagramFile | null;
   live: boolean;
   onTurn: (turn: TurnRecord) => void;
+  /** "Try the on-device model": offered only where Chrome's built-in model can run. */
+  onDevice?: { on: boolean; set: (on: boolean) => void };
 }) {
   const id = useId();
   const [request, setRequest] = useState("");
@@ -257,6 +260,20 @@ export function Advanced({
       </button>
       {open && (
         <div id={`${id}-body`} className="ai-composer" data-testid="ai-composer" onKeyDownCapture={onKeyDownCapture}>
+          {onDevice && (
+            <label className="ai-ondevice-pref" data-testid="ai-ondevice-pref">
+              <input
+                type="checkbox"
+                checked={onDevice.on}
+                onChange={(e) => onDevice.set(e.target.checked)}
+                data-testid="ai-ondevice-toggle"
+              />
+              <span>
+                Try the on-device model
+                <small>Chrome&apos;s built-in model, on this device: a request box at the panel&apos;s foot.</small>
+              </span>
+            </label>
+          )}
           {failure && <FailureBox failure={failure} copied={copied === "fix"} onCopyFix={copyFix} onChoose={choose} />}
           {place !== "create" && (
             <div className="ai-intent" role="group" aria-label="What to do">

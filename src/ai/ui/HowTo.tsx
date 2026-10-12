@@ -104,7 +104,18 @@ export function HowTo({
  * Whether agents can use this page here, honestly: WebMCP only means the page publishes its tools; the
  * browser's assistant still has to support them. Without WebMCP, /llms.txt for agents that drive pages.
  */
-export function AgentStatus({ available, localOnly, live }: { available: boolean; localOnly: boolean; live: boolean }) {
+export function AgentStatus({
+  available,
+  localOnly,
+  live,
+  typeHere = false,
+}: {
+  available: boolean;
+  localOnly: boolean;
+  live: boolean;
+  /** The panel has a request box of its own (the on-device model): don't say "not here". */
+  typeHere?: boolean;
+}) {
   const on = available && !localOnly;
   const count = publishedTools(live).length;
   return (
@@ -123,7 +134,8 @@ export function AgentStatus({ available, localOnly, live }: { available: boolean
             This page publishes {count} tools for AI agents in this browser (WebMCP).
           </p>
           <p className="ai-agent-status-hint" data-testid="ai-agent-status-hint">
-            Your browser&apos;s assistant must support WebMCP to use them. Type your request there, not here.
+            Your browser&apos;s assistant must support WebMCP to use them.
+            {!typeHere && " Type your request there, not here."}
           </p>
         </div>
       ) : (

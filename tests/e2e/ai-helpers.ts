@@ -230,3 +230,100 @@ export const speechState = (page: Page) =>
       .__speech;
     return { starts: s.starts, stops: s.stops, config: s.config, active: s.active };
   });
+
+export interface FakeModelOptions {
+  availability?: "unavailable" | "downloadable" | "downloading" | "available";
+  /** Replies in order (JSON strings); "hang" waits until the request is cancelled. */
+  replies?: string[];
+  /** A download reports 0, 0.5, 1 this many ms apart. */
+  downloadStepMs?: number;
+}
+
+/**
+ * A fake Prompt API (`LanguageModel`, Chrome's built-in model): availability as given, a download with
+ * progress through `monitor`, and canned replies. Records prompts in `window.__lm`.
+ */
+export function installFakeLanguageModel(page: Page, opts: FakeModelOptions = {}) {
+  return page.addInitScript((o) => {
+    const state = {
+      availability: o.availability ?? "available",
+      replies: [...(o.replies ?? [])],
+      prompts: [] as string[],
+      creates: 0,
+      monitored: false,
+      constraints: 0,
+      destroyed: 0,
+      aborted: 0,
+    };
+    type Listener = (e: { loaded: number }) => void;
+    const session = (): object => ({
+      async prompt(input: string, options?: { signal?: AbortSignal; responseConstraint?: object }) {
+        state.prompts.push(input);
+        if (options?.responseConstraint) state.constraints++;
+        const reply = state.replies.shift() ?? '{"summary":"","ops":[]}';
+        if (reply === "hang")
+          return new Promise<string>((_, reject) => {
+            const fail = () => {
+              state.aborted++;
+              reject(new DOMException("The request was aborted.", "AbortError"));
+            };
+            if (options?.signal?.aborted) fail();
+            options?.signal?.addEventListener("abort", fail);
+          });
+        await new Promise((r) => setTimeout(r, 30));
+        return reply;
+      },
+      async clone() {
+        return session();
+      },
+      destroy() {
+        state.destroyed++;
+      },
+      contextUsage: 0,
+      contextWindow: 9216,
+    });
+    const LanguageModel = {
+      async availability() {
+        return state.availability;
+      },
+      async create(options?: { monitor?: (m: { addEventListener(t: string, l: Listener): void }) => void }) {
+        state.creates++;
+        const listeners: Listener[] = [];
+        options?.monitor?.({
+          addEventListener: (_t: string, l: Listener) => {
+            state.monitored = true;
+            listeners.push(l);
+          },
+        });
+        if (state.availability !== "available") {
+          for (const loaded of [0, 0.5, 1]) {
+            listeners.forEach((l) => l({ loaded }));
+            await new Promise((r) => setTimeout(r, o.downloadStepMs ?? 150));
+          }
+          state.availability = "available";
+        }
+        return session();
+      },
+    };
+    (window as unknown as Record<string, unknown>).LanguageModel = LanguageModel;
+    (window as unknown as Record<string, unknown>).__lm = state;
+  }, opts);
+}
+
+/** The fake model's record: prompts sent, sessions created, and so on. */
+export const fakeModel = (page: Page) =>
+  page.evaluate(() => {
+    const s = (window as unknown as { __lm: Record<string, unknown> }).__lm;
+    return JSON.parse(JSON.stringify(s)) as {
+      availability: string;
+      prompts: string[];
+      creates: number;
+      monitored: boolean;
+      constraints: number;
+      destroyed: number;
+      aborted: number;
+    };
+  });
+
+/** A model reply in the on-device op format. */
+export const modelReply = (summary: string, ops: object[]) => JSON.stringify({ summary, ops });

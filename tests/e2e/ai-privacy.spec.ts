@@ -4,7 +4,15 @@ import type { Page } from "@playwright/test";
 import { deflateRawSync } from "node:zlib";
 import { localOnlyFixture } from "../../src/lab/localOnlyFixture";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { SLUG, installFakeModelContext, toolNames, openAdvanced, openAiPanel } from "./ai-helpers";
+import {
+  SLUG,
+  fakeModel,
+  installFakeLanguageModel,
+  installFakeModelContext,
+  toolNames,
+  openAdvanced,
+  openAiPanel,
+} from "./ai-helpers";
 
 async function installSyntheticRegistry(page: Page) {
   await installFakeModelContext(page);
@@ -152,4 +160,18 @@ test("on a local-only diagram the AI panel says so, and Copy for AI copies nothi
   await expect(page.getByTestId("toast")).toContainText("AI is off");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
   expectNoErrors(consoleErrors);
+});
+
+test("a local-only diagram never reaches the on-device model: its box is off", async ({ page }) => {
+  await installSyntheticRegistry(page);
+  await installFakeLanguageModel(page);
+  await page.addInitScript(() => localStorage.setItem("diagrams.ai-ondevice.v1", "1"));
+  await gotoCanvas(page, "synthetic-local");
+  await openAiPanel(page);
+  await expect(page.getByTestId("ai-privacy-note")).toContainText("Local-only");
+  const input = page.getByTestId("ai-ondevice-input");
+  await expect(input).toBeDisabled();
+  await expect(input).toHaveAttribute("placeholder", "AI is off for this local-only diagram");
+  await expect(page.getByTestId("ai-ondevice-send")).toBeDisabled();
+  expect((await fakeModel(page)).prompts).toEqual([]);
 });
