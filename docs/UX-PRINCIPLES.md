@@ -74,6 +74,26 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   - **Dependencies** (Show ▸ Dependencies, View menu) shows or hides them all, one remembered setting.
     Hidden, a node keeps small glyph **pips** with the list on hover.
 - **Subtitle** for a node's second line. **Properties** opens the inspector for the thing.
+- **Quick-add** is the stencil search that opens on the canvas: double-click empty canvas, or drop a
+  connection there. Recently used stencils come first. From a dropped connection the pick lands on the drop
+  point, connected, with its label editor open (the name selected, so typing replaces it).
+- The **selection box** is a drag on empty canvas while editing. It picks what it touches (hold Ctrl/⌘:
+  only what's wholly inside), boundaries and zones only when wholly inside, and the edges whose both ends it
+  picked. **Shift+click** and Ctrl/⌘+click add to or take out of the selection. The inspector waits for the
+  pointer-up, so nothing moves under a drag.
+- **Pan** and **zoom**: the wheel and a two-finger swipe pan (Shift+wheel sideways); Ctrl/⌘+wheel and a pinch
+  zoom at the pointer; Space+drag and the middle button pan from anywhere, even a node. Live view,
+  presentation and embeds keep drag-to-pan, and an embed lets the wheel scroll its page. The keys: **Fit
+  view** (Shift+1), **Zoom to selection** (Shift+2, at most 125%, or the hovered node with nothing selected)
+  and **Zoom to 100%** (Shift+0).
+- **Duplicate** (Ctrl+D) puts the copy one gap beside the original in the flow direction, clear of
+  everything; again on the copy repeats the step, or the gap you chose by moving it. **Paste** (Ctrl+V)
+  centres on the pointer over the canvas (else the view's centre); **Paste here** (right-click) puts it at the
+  click. **Alt+drag** drags a copy and leaves the original. A copy never lands on the original or on any
+  other node: it moves to the nearest free place.
+- While **connecting**: a crosshair throughout, the node a drop connects to lit up (anywhere on it), a "+"
+  at the line's end over empty canvas, and `not-allowed` over a text, note or zone. Handles are hittable
+  from at least 20 px on screen at any zoom, just outside the card.
 - **Your diagrams** is the user's own library in this browser (File > Your diagrams…, the picker's
   first group, the start card's first list). Open, Import, Paste and **Save a copy** each add a diagram
   to it; nothing ever replaces another. A blank **New diagram** joins it on its first edit. The
@@ -161,6 +181,24 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - Side panels make room rather than cover: below 1680 px, live view and an open AI panel fold the stencils to
   their rail until they are opened by hand. Toasts centre on the canvas pane and stack above its bars.
 - Esc backs out one level: menu, dialog, selection, slow motion, trace, highlighted path, presentation, then live view.
+
+## Mouse and trackpad
+
+The shortcuts sheet's Mouse rows (`src/components/ShortcutsDialog.tsx`) say these in short; keep the two
+in step:
+
+| Gesture                   | Does                                                                      |
+| ------------------------- | ------------------------------------------------------------------------- |
+| Right-click               | Context menu for the canvas, a node, an edge or a boundary                |
+| Double-click canvas       | Quick-add a stencil at the cursor                                         |
+| Double-click node / edge  | Rename / edit label                                                       |
+| Drag on the canvas        | Selection box (Ctrl/⌘: only what's inside). Live, presenting, embeds: pan |
+| Shift / Ctrl / ⌘ + click  | Add to or take out of the selection                                       |
+| Scroll, two-finger swipe  | Pan (Shift + scroll: sideways). In an embed the wheel scrolls the page    |
+| Ctrl / ⌘ + scroll, pinch  | Zoom at the pointer                                                       |
+| Space + drag, middle-drag | Pan, even starting on a node                                              |
+| Drag from a handle        | Connect: drop on a node (anywhere on it), or on empty canvas to add one   |
+| Alt + drag                | Duplicate what you drag                                                   |
 
 ## Process
 

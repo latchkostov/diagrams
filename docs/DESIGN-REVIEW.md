@@ -1,5 +1,104 @@
 # Design review
 
+## Round 8: drawing basics (batch 1) (2026-10-12)
+
+Batch 1 of `docs/research/drawing-ux.md`: D4 navigation, D5 selection gestures, D1 drop to create, D2
+hittable handles with connect feedback, D9 copies that never overlap, D10 zoom to selection. Decision 1
+applies: wheel-pans and drag-selects ship together, with no setting. The habit change is announced in
+`docs/RELEASE-NOTES.md`; the app has no "what's new" surface, and this batch didn't add one.
+
+**What changed**
+
+- **Navigation (D4).** In the editor, live view and presentation, the wheel and a two-finger swipe pan on
+  both axes (Shift+wheel sideways), and Ctrl/⌘+wheel and pinch zoom at the pointer. Space+drag and the middle
+  button pan, even when the drag starts on a node; Space shows `grab`, then `grabbing`. Embeds keep their
+  rule: the wheel scrolls the host page, and pinch or Ctrl+wheel zooms.
+- **Selection (D5).** While editing, a drag on empty canvas draws the selection box. It picks what it
+  touches, or with Ctrl/⌘ held only what's wholly inside. Boundaries and zones are picked only when wholly
+  inside, so a box drawn among a boundary's nodes doesn't pick the boundary. Edges come along only when
+  both ends are picked. Shift+click toggles, like Ctrl/⌘+click. Below 1680 px the inspector waits for the
+  pointer-up. Live view, presentation and embeds keep drag-to-pan. The empty canvas shows the arrow
+  cursor, not React Flow's hand.
+- **Drop to create (D1).** A connection dropped on empty canvas opens quick-add at the drop point.
+  Recently used stencils come first: at most three, so the menu stays within budget, and search shows each
+  stencil once. The pick lands centred on the drop, connected, and opens its label editor with the name
+  selected (decision 3). The whole thing is one undo step. Esc or a click away adds nothing. Over empty
+  canvas the dashed line ends in a "+".
+- **Handles and connect feedback (D2).** On a hovered or selected node, each handle has a hit area of at
+  least 20 px on screen at any zoom, sitting just outside the card. A press inside the card near its edge
+  still moves the node, and the area never takes clicks meant for an edge next to an unhovered node. A drop
+  anywhere on a card connects to it, and the side follows the geometry, as for every floating edge. The
+  card a drop would connect to wears the selection outline. The cursor stays `crosshair` throughout the
+  drag (`not-allowed` over a text, note or zone).
+- **Copies (D9).**
+  - **Ctrl+D** puts the copy one gap beside the original. It tries downstream first, then across the flow,
+    then the other two sides, and takes the nearest free place if all four are taken. Ctrl+D again on the
+    copy repeats the step, or repeats the gap you chose by moving the copy.
+  - **Ctrl+V** centres the paste on the pointer over the canvas, or on the view's centre when the pointer
+    is elsewhere.
+  - **Alt+drag** drags copies away and leaves the originals (the cursor is `copy` while Alt is held over a
+    selected node).
+  - Every copy lands clear of the other nodes, notes and shapes, and of edges. New copies, pastes and
+    dropped nodes are panned into view, clear of the inspector and of floating chrome such as the minimap.
+- **Zoom to selection (D10).** Shift+2 fits the selection, or the hovered node when nothing is selected,
+  at no more than 125% and clear of the panels. It's also in Ctrl+K and in the shortcuts sheet.
+- **Docs.**
+  - The shortcuts sheet's Mouse section was rewritten, and "Drag: pan the canvas" was added under Live and
+    presenting.
+  - `docs/UX-PRINCIPLES.md` gained vocabulary for Quick-add, the selection box, pan and zoom, Duplicate,
+    Paste and connecting, plus a Mouse and trackpad table.
+  - No onboarding hint mentioned drag-to-pan or wheel-zoom, so none changed.
+
+**What I checked** (production build, public Kafka example, 1280×800 and 1440×900, light and dark):
+
+- **Trackpad-style wheel.** Six small wheel steps of (4, 12) panned exactly −24 / −72 px at an unchanged
+  zoom, and Ctrl+wheel zoomed at the pointer (0.49 → 0.52 at 1280). A mouse wheel notch pans 100 px.
+- **Connecting.** Dragging from Order operations to empty canvas showed the "+"
+  (`connect-empty-plus-1280-light`). Quick-add opened at the drop (`quick-add-at-drop-1280-light`), and the
+  pick arrived connected with its editor open (`new-node-naming-1280-light`). Dropping on Schema registry's
+  body lit it up and connected (`connect-target-lit-1440-dark`).
+- **Selection box.** Mid-drag, six nodes and the edges between them were picked while the inspector stayed
+  folded (`box-select-mid-drag-1440-light`). On release it opened (`box-select-done-1440-dark`).
+- **Copies and zoom.**
+  - Two Ctrl+Ds on Payments service, in a column with no free side, landed clear and in view
+    (`duplicate-twice-1280-dark`).
+  - A paste aimed at Order service stepped clear of it (`paste-on-node-steps-clear-1440-light`).
+  - Shift+2 on Inventory database: `zoom-to-selection-1440-light`.
+  - The sheet: `shortcuts-mouse-1280-dark`, `shortcuts-mouse-1440-light`.
+- **The overlap audit.** `tests/e2e/layout.spec.ts` passes over every example. The new specs check the
+  bounding boxes of every node after Ctrl+D ×2, Ctrl+V ×3 (one aimed at a node) and an Alt-drag dropped
+  onto a node.
+- **Responsiveness.** Dev build, Kafka example, 1280, Event Timing with a 16 ms threshold and five runs
+  each, alternating with master in the same session:
+  - **Node drag at 4×:** the worst pointer event was 120–160 ms here against 136–144 ms on master, with the
+    same frame percentiles (p50 17 / p90 50 ms). No pointer move reached 16 ms in either.
+  - **Box select:** the press is now under 16 ms and the release 24–40 ms (master's Shift+drag, 24–32 ms).
+    A frame where the picked set changes costs up to about 50 ms at 4× (p90), because the box picks what it
+    touches and re-renders the selection as it changes; moves that don't change it cost nothing extra.
+  - Two costs were found in the walk and fixed. First, opening the inspector moved from the press to the
+    release, which made the release 208 ms; it now waits for the next frame. Second, a state flag
+    re-rendered the canvas on every press; it's a ref now.
+
+**Findings, fixed in this batch**
+
+1. **A node made from a drop near the right edge landed under the inspector it opened, and its label
+   editor with it.** Keep-in-view skipped it because it wasn't measured yet. Fixed: new copies, pastes and
+   dropped nodes are revealed once measured.
+2. **A dropped node near the bottom sat under the minimap,** because keep-in-view ignores floating chrome.
+   Fixed: a second, minimal pan clears the overlays, leaving room for the label editor below the card
+   (`panClearOf`, unit-tested).
+3. **Ctrl+D in a dense column jumped two rows into the next column,** where the copy read like a downstream
+   node. That came from stepping `placeNextTo` across the flow. Fixed: the four sides are tried in order,
+   then the nearest free place.
+4. **The Mouse rows wrapped to three lines** in the sheet at 1440. Fixed: shorter rows, one idea each.
+
+**Left for later batches**
+
+- **Text editing (D7).** The inline editor's text is still tiny at the fitted zoom (visible in
+  `new-node-naming-*`). A fast typist's first key after Enter in quick-add can still reach the canvas while
+  the card is being measured (F9).
+- **Quick-add ranking (D1).** It doesn't yet rank "downstream" stencils after the recents.
+
 ## Round 7: UX gate after relationships, Ask AI, slow motion and examples (2026-10-11)
 
 Reviewed against `docs/UX-PRINCIPLES.md` after the biggest batch so far: relationship kinds (dotted
