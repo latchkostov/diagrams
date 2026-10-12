@@ -97,7 +97,17 @@ export function useOnDeviceRequest({
       // Provenance again, right before inference: pasted content can make the diagram local-only.
       if (!editable(documentId)) controller.abort();
       signal.throwIfAborted();
-      const result = await runOnDevice({ session, diagram, request, scope, signal, onStatus: setStatus });
+      const primed = base;
+      const result = await runOnDevice({
+        session,
+        // After a transient Prompt API error: one more clone of the primed session.
+        freshSession: primed.clone ? () => primed.clone!({ signal }) : undefined,
+        diagram,
+        request,
+        scope,
+        signal,
+        onStatus: setStatus,
+      });
       signal.throwIfAborted();
       if (!result.ok) {
         setError(result.tooBig ? TOO_BIG : FAILED);

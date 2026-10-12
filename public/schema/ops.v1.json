@@ -97,6 +97,47 @@
             "type": "object",
             "required": [
               "op",
+              "from",
+              "to",
+              "kind",
+              "label"
+            ],
+            "additionalProperties": false,
+            "description": "Put a new node on the connection from -> to: it becomes from -> new -> to. Both new connections keep the old one's kind, relation and props; its label and source side go on the first, its target side on the second.",
+            "properties": {
+              "op": {
+                "const": "insert_between"
+              },
+              "from": {
+                "$ref": "#/$defs/Ref"
+              },
+              "to": {
+                "$ref": "#/$defs/Ref"
+              },
+              "kind": {
+                "type": "string",
+                "maxLength": 100,
+                "description": "Plain words or a stencil id, e.g. 'Redis cache'."
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "sublabel": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "key": {
+                "type": "string",
+                "maxLength": 50,
+                "description": "Name to refer to the new node later in the same call."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
               "target"
             ],
             "additionalProperties": false,
@@ -1170,6 +1211,47 @@
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 50
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "op",
+                    "from",
+                    "to",
+                    "kind",
+                    "label"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Put a new node on the connection from -> to: it becomes from -> new -> to. Both new connections keep the old one's kind, relation and props; its label and source side go on the first, its target side on the second.",
+                  "properties": {
+                    "op": {
+                      "const": "insert_between"
+                    },
+                    "from": {
+                      "$ref": "#/$defs/Ref"
+                    },
+                    "to": {
+                      "$ref": "#/$defs/Ref"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "maxLength": 100,
+                      "description": "Plain words or a stencil id, e.g. 'Redis cache'."
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "sublabel": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "key": {
+                      "type": "string",
+                      "maxLength": 50,
+                      "description": "Name to refer to the new node later in the same call."
                     }
                   }
                 },

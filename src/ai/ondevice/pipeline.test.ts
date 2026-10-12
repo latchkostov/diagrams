@@ -1,13 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import kafka from "../../examples/kafka-order-pipeline.json";
-import { diagramContext, INITIAL_PROMPTS, REPLY_SCHEMA, requestPrompt, runOnDevice, toOps } from "./pipeline";
+import { diagramEvals } from "../evals/corpus";
+import { onDeviceCases } from "../evals/onDevice";
+import {
+  diagramContext,
+  INITIAL_PROMPTS,
+  isTransient,
+  REPLY_SCHEMA,
+  requestPrompt,
+  runOnDevice,
+  toOps,
+} from "./pipeline";
 
 const diagram = kafka as unknown as DiagramFile;
+const EMPTY: DiagramFile = { format: "diagrams/v1", title: "t", nodes: [], edges: [] };
 const reply = (summary: string, ops: object[]) => JSON.stringify({ summary, ops });
 const DLQ = reply("Added a dead-letter queue after Inventory service", [
-  { op: "add", kind: "dead-letter queue", label: "inventory-dlq" },
-  { op: "connect", from: "Inventory service", to: "inventory-dlq", flow: "message" },
+  { op: "add", key: "dlq", kind: "dead-letter queue", label: "inventory-dlq" },
+  { op: "connect", from: "Inventory service", to: "dlq", flow: "message" },
 ]);
 
 /** A fake session answering in order. */
@@ -17,56 +28,7 @@ const session = (...replies: (string | Error)[]) => ({
     if (next instanceof Error) throw next;
     return next;
   }),
-});
-
-describe("toOps", () => {
-  it("maps the compact ops onto the core's ops", () => {
-    const r = toOps(
-      reply("s", [
-        { op: "add", kind: "Redis cache", label: "cache", sublabel: "orders" },
-        { op: "connect", from: "API", to: "cache", flow: "request" },
-        { op: "connect", from: "A", to: "B", flow: "message" },
-        { op: "rename", target: "API", label: "Orders API" },
-        { op: "change", target: "cache", kind: "Memcached" },
-        { op: "remove", target: "A -> B" },
-      ]),
-    );
-    expect(r).toEqual({
-      ok: true,
-      summary: "s",
-      ops: [
-        { op: "add_node", kind: "Redis cache", label: "cache", sublabel: "orders" },
-        { op: "connect", from: "API", to: "cache", kind: "sync" },
-        { op: "connect", from: "A", to: "B", kind: "async" },
-        { op: "update", target: "API", label: "Orders API" },
-        { op: "update", target: "cache", kind: "Memcached" },
-        { op: "remove", targets: ["A -> B"] },
-      ],
-    });
-  });
-
-  it("says what's missing, op by op", () => {
-    expect(toOps("not json")).toEqual({ ok: false, error: "The reply wasn't JSON." });
-    expect(toOps("{}")).toMatchObject({ ok: false, error: 'The reply needs an "ops" array.' });
-    expect(toOps(reply("", []))).toMatchObject({ ok: false, error: "The reply has no ops." });
-    expect(toOps(reply("", [{ op: "add", label: "x" }]))).toMatchObject({
-      error: 'Op 1 (add) needs "kind" and "label".',
-    });
-    expect(toOps(reply("", [{ op: "connect", from: "a" }]))).toMatchObject({
-      error: 'Op 1 (connect) needs "from" and "to".',
-    });
-    expect(toOps(reply("", [{ op: "fly" }]))).toMatchObject({ ok: false });
-    expect(
-      toOps(
-        reply(
-          "",
-          Array.from({ length: 17 }, () => ({ op: "remove", target: "x" })),
-        ),
-      ),
-    ).toMatchObject({
-      error: "Use at most 16 ops.",
-    });
-  });
+  destroy: vi.fn(),
 });
 
 describe("the prompt", () => {
@@ -87,30 +49,68 @@ describe("the prompt", () => {
     expect(text).toMatch(/\(\d+ more nodes not shown\)/);
   });
 
-  it("an empty diagram says so; the selection is listed as Copy for AI names it", () => {
-    expect(diagramContext({ ...diagram, nodes: [], edges: [] })).toBe("Empty diagram.");
-    const text = requestPrompt(diagram, " Add a DLQ ", [{ id: "inventory", label: "Inventory service", kind: "node" }]);
-    expect(text).toContain('Selected:\n- node "inventory" "Inventory service"');
-    expect(text.endsWith("Request: Add a DLQ")).toBe(true);
+  it('spells out the selection as this = <id> "<label>"', () => {
+    expect(diagramContext(EMPTY)).toBe("Empty diagram.");
+    const one = requestPrompt(diagram, " Add a DLQ ", [{ id: "inventory", label: "Inventory service", kind: "node" }]);
+    expect(one).toContain('this = inventory "Inventory service"');
+    expect(one.endsWith("Request: Add a DLQ")).toBe(true);
+    const two = requestPrompt(diagram, "x", [
+      { id: "inventory", label: "Inventory service", kind: "node" },
+      { id: "payments", label: "Payments service", kind: "node" },
+    ]);
+    expect(two).toContain('these = inventory "Inventory service", payments "Payments service"');
   });
 
-  it("primes the model with a system prompt and three worked examples that parse", () => {
+  it("states the direction rules", () => {
+    const system = INITIAL_PROMPTS[0].content;
+    expect(system).toMatch(/consumes \/ reads from \/ subscribes to .* goes from B to A/);
+    expect(system).toMatch(/calls \/ uses \/ writes to .* goes from A to B/);
+  });
+
+  it("primes the model with four worked examples that parse, with keys on every added node", () => {
     expect(INITIAL_PROMPTS[0].role).toBe("system");
     const answers = INITIAL_PROMPTS.filter((p) => p.role === "assistant");
-    expect(answers).toHaveLength(3);
-    for (const a of answers) expect(toOps(a.content).ok).toBe(true);
+    expect(answers).toHaveLength(4);
+    for (const a of answers) {
+      expect(toOps(a.content, { diagram: EMPTY }).ok).toBe(true);
+      for (const op of JSON.parse(a.content).ops as { op: string; key?: string }[])
+        if (op.op === "add" || op.op === "insert_between") expect(op.key).toBeTruthy();
+    }
     expect(REPLY_SCHEMA.properties.ops.items.properties.op.enum).toEqual([
       "add",
       "connect",
+      "insert_between",
       "rename",
-      "change",
+      "change_kind",
       "remove",
     ]);
   });
 });
 
+describe("leakage guard", () => {
+  // Names from the examples once turned up in answers to unrelated requests ("Orders API").
+  const exampleNames = INITIAL_PROMPTS.filter((p) => p.role === "assistant").flatMap((p) =>
+    (JSON.parse(p.content).ops as { label?: string; key?: string }[]).flatMap((o) => [o.label, o.key]),
+  );
+  const names = [...new Set(exampleNames.filter((n): n is string => !!n))];
+  const requests = [...diagramEvals.map((e) => e.description), ...onDeviceCases.map((c) => c.request)];
+  const kafkaLabels = diagram.nodes.map((n) => n.label);
+
+  it("the examples' node names appear in no eval request and no example diagram label", () => {
+    expect(names.length).toBeGreaterThan(5);
+    for (const name of names)
+      for (const text of [...requests, ...kafkaLabels])
+        expect(text.toLowerCase().includes(name.toLowerCase()), `${name} in "${text}"`).toBe(false);
+  });
+
+  it("nor do they reuse the old examples' names", () => {
+    for (const old of ["Orders API", "orders-db", "billing-worker", "orders.created", "Partner"])
+      expect(JSON.stringify(INITIAL_PROMPTS)).not.toContain(old);
+  });
+});
+
 describe("runOnDevice", () => {
-  it("a good reply becomes a plan (applied by the caller as one turn)", async () => {
+  it("a good reply becomes a plan (applied by the caller as one turn), with the model's output", async () => {
     const s = session(DLQ);
     const statuses: string[] = [];
     const r = await runOnDevice({ session: s, diagram, request: "Add a DLQ", onStatus: (x) => statuses.push(x) });
@@ -120,9 +120,9 @@ describe("runOnDevice", () => {
     expect(r.summary).toBe("Added a dead-letter queue after Inventory service");
     expect(r.plan.summary).toBe("+1 node, +1 connection");
     expect(r.plan.next.nodes.find((n) => n.label === "inventory-dlq")?.stencil).toBe("generic.queue");
-    expect(r.plan.changed.length).toBeGreaterThan(0);
     expect(statuses).toEqual(["thinking", "applying"]);
     expect(s.prompt.mock.calls[0][1]).toMatchObject({ responseConstraint: REPLY_SCHEMA });
+    expect(r.output.raw).toBe(DLQ);
   });
 
   it("retries once with the error fed back, then succeeds", async () => {
@@ -132,10 +132,22 @@ describe("runOnDevice", () => {
     expect(s.prompt.mock.calls[1][0]).toMatch(/^That failed: [\s\S]*Shipping service/);
   });
 
-  it("gives up after the retry, with nothing applied", async () => {
+  it("gives up after the retry, with nothing applied and the last reply kept", async () => {
     const bad = reply("", [{ op: "connect", from: "Nowhere", to: "Inventory service" }]);
     const r = await runOnDevice({ session: session(bad, bad), diagram, request: "x" });
-    expect(r).toMatchObject({ ok: false, attempts: 2 });
+    expect(r).toMatchObject({ ok: false, attempts: 2, output: { raw: bad } });
+  });
+
+  it("a transient Prompt API error is retried on a fresh session, without using up the retry", async () => {
+    const broken = session(new DOMException("An unknown error occurred: kErrorUnknown", "UnknownError"));
+    const fresh = session(DLQ);
+    const r = await runOnDevice({ session: broken, freshSession: async () => fresh, diagram, request: "Add a DLQ" });
+    expect(r).toMatchObject({ ok: true, attempts: 1 });
+    expect(fresh.prompt.mock.calls[0][0]).toBe(broken.prompt.mock.calls[0][0]);
+    expect(fresh.destroy).toHaveBeenCalled();
+    expect(isTransient(new Error("An unknown error occurred: kErrorUnknown"))).toBe(true);
+    expect(isTransient(new DOMException("no", "NotSupportedError"))).toBe(false);
+    expect(isTransient(new DOMException("x", "AbortError"))).toBe(false);
   });
 
   it("a diagram too big for the context says so at once", async () => {

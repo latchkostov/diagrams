@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
-import { ReferenceError, resolveRef } from "./refs";
+import { ReferenceError, ReplyRefs, resolveRef } from "./refs";
 
 const diagram: DiagramFile = {
   format: "diagrams/v1",
@@ -55,4 +55,44 @@ describe("resolveRef", () => {
     expect(() =>
       resolveRef({ ...diagram, edges: [...diagram.edges, { id: "e2", from: "a", to: "b" }] }, "a -> b"),
     ).toThrow("matches 2"));
+});
+
+describe("ReplyRefs: one precedence order for a model's references", () => {
+  const refs = () => {
+    const r = new ReplyRefs(diagram);
+    r.add({ key: "~db2", alias: "db2", kind: "PostgreSQL", label: "Billing DB" });
+    r.add({ key: "~q", kind: "SQS", label: "Inbox" });
+    return r;
+  };
+
+  it("an exact id, then an existing exact label, then a key the reply set", () => {
+    expect(refs().resolve("a")).toEqual({ ref: "a" });
+    expect(refs().resolve("Important")).toEqual({ ref: "n" });
+    expect(refs().resolve("db2")).toEqual({ ref: "~db2" });
+  });
+
+  it("an existing exact label beats an identical new label", () => {
+    expect(refs().resolve("Billing DB")).toEqual({ ref: "b" });
+  });
+
+  it("ignoring case, existing and new together: both matching is an error", () => {
+    expect(refs().resolve("billing db")).toMatchObject({
+      error: expect.stringMatching(/existing element or a new node/),
+    });
+    expect(refs().resolve("INBOX")).toEqual({ ref: "~q" });
+    expect(refs().resolve("billing worker")).toMatchObject({ error: expect.stringMatching(/names 2 elements/) });
+  });
+
+  it("then a new node's kind, then a shared word; otherwise the core's resolution, pinned to an id", () => {
+    expect(refs().resolve("sqs")).toEqual({ ref: "~q" });
+    expect(refs().resolve("the inbox queue")).toEqual({ ref: "~q" });
+    expect(refs().resolve("Billing Worker (Europe) -> Billing DB")).toEqual({ ref: "e" });
+    expect(refs().resolve("nothing like it")).toEqual({ ref: "nothing like it" });
+  });
+
+  it("matches a phrase of the request to exactly one node", () => {
+    expect(refs().match("an SQS queue")).toBe("~q");
+    expect(refs().match("Billing")).toBeNull();
+    expect(refs().match("")).toBeNull();
+  });
 });

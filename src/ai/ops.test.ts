@@ -219,4 +219,97 @@ describe("applyOps", () => {
     expect(applyOps(graph(), [{ op: "update", target: "API -> DB", kind: "Kafka" }]).ok).toBe(false);
     expect(applyOps(graph(), [{ op: "update", target: "API", members: ["DB"] }]).ok).toBe(false);
   });
+
+  describe("insert_between", () => {
+    /** API -> DB as a rich connection: label, relation, sides and routing props. */
+    const rich = (): DiagramFile => {
+      const d = graph();
+      d.edges[0] = {
+        ...d.edges[0],
+        kind: "async",
+        label: "orders",
+        sourceSide: "right",
+        targetSide: "left",
+        props: { filter: ["OrderPlaced"], group: "billing", travelMs: 300 },
+      };
+      return d;
+    };
+    const ends = (d: DiagramFile, id: string) => ({
+      into: d.edges.find((e) => e.to === id)!,
+      out: d.edges.find((e) => e.from === id)!,
+    });
+
+    it("puts the node on the connection, which keeps its kind, label, props and sides", () => {
+      const { diagram: d, results } = run(rich(), [
+        { op: "insert_between", from: "API", to: "DB", kind: "Kafka topic", label: "Bus", key: "bus" },
+        { op: "update", target: "bus", sublabel: "orders" },
+      ]);
+      const id = results[0].id!;
+      expect(d.edges.some((e) => e.from === "api-1" && e.to === "db-1")).toBe(false);
+      expect(d.edges).toHaveLength(2);
+      const { into, out } = ends(d, id);
+      expect(into).toMatchObject({ kind: "async", label: "orders", sourceSide: "right" });
+      expect(into.targetSide).toBeUndefined();
+      expect(out).toMatchObject({ kind: "async", targetSide: "left" });
+      expect(out.label).toBeUndefined();
+      for (const e of [into, out])
+        expect(e.props).toEqual({ filter: ["OrderPlaced"], group: "billing", travelMs: 300 });
+      expect(d.nodes.find((n) => n.id === id)).toMatchObject({ stencil: "kafka.topic", sublabel: "orders" });
+    });
+
+    it("keeps a dependency a dependency on both sides", () => {
+      const d = graph();
+      d.edges[0] = { ...d.edges[0], relation: "config", props: { settings: [{ key: "Orders:Db" }] } };
+      const { diagram: out, results } = run(d, [
+        { op: "insert_between", from: "API", to: "DB", kind: "cache", label: "C" },
+      ]);
+      const { into, out: next } = ends(out, results[0].id!);
+      expect(into).toMatchObject({ relation: "config", props: { settings: [{ key: "Orders:Db" }] } });
+      expect(next).toMatchObject({ relation: "config" });
+    });
+
+    it("works on the batch so far: a renamed end, named the other way round", () => {
+      const { diagram: d, results } = run(graph(), [
+        { op: "update", target: "API", label: "Renamed API" },
+        { op: "insert_between", from: "DB", to: "Renamed API", kind: "Redis cache", label: "Cache" },
+      ]);
+      const { into, out } = ends(d, results[1].id!);
+      expect(into.from).toBe(d.nodes.find((n) => n.label === "Renamed API")!.id);
+      expect(out.to).toBe(d.nodes.find((n) => n.label === "DB")!.id);
+      expect([into.kind, out.kind]).toEqual(["sync", "sync"]);
+      expect(d.edges).toHaveLength(2);
+    });
+
+    it("an insert into a connection made earlier in the batch", () => {
+      const { diagram: d } = run(empty(), [
+        { op: "add_node", kind: "Go service", label: "A", key: "a" },
+        { op: "add_node", kind: "pg", label: "B", key: "b" },
+        { op: "connect", from: "a", to: "b", kind: "sync", label: "write" },
+        { op: "insert_between", from: "a", to: "b", kind: "Redis cache", label: "C" },
+      ]);
+      const label = new Map(d.nodes.map((n) => [n.id, n.label]));
+      expect(d.edges.map((e) => `${label.get(e.from)} -> ${label.get(e.to)}`)).toEqual(["A -> C", "C -> B"]);
+    });
+
+    it("joins the boundary both ends share", () => {
+      const { diagram: d, results } = run(graph(), [
+        { op: "add_boundary", label: "Cloud", members: ["API", "DB"] },
+        { op: "insert_between", from: "API", to: "DB", kind: "Redis cache", label: "Cache" },
+      ]);
+      expect(d.nodes.find((n) => n.id === results[1].id)?.group).toBe(results[0].id);
+    });
+
+    it("fails, applying nothing, without exactly one connection to replace", () => {
+      const none = applyOps(graph(), [{ op: "insert_between", from: "API", to: "API", kind: "cache", label: "C" }]);
+      expect(none.ok).toBe(false);
+      const d = graph();
+      d.edges.push({ ...d.edges[0], id: "again" });
+      const two = applyOps(d, [{ op: "insert_between", from: "API", to: "DB", kind: "cache", label: "C" }]);
+      expect(two.errors[0].error).toMatch(/2 connections join/);
+      const unconnected = applyOps(run(graph(), [{ op: "add_node", kind: "queue", label: "Q" }]).diagram, [
+        { op: "insert_between", from: "API", to: "Q", kind: "cache", label: "C" },
+      ]);
+      expect(unconnected.errors[0].error).toMatch(/No connection from "API" to "Q"/);
+    });
+  });
 });

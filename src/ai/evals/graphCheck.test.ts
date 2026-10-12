@@ -86,4 +86,27 @@ describe("checkGraph", () => {
       ),
     ).toMatch(/^missing orders.created \(kafka.topic\)/);
   });
+
+  it("a model may pick an accepted alternative, never in exact mode", () => {
+    const fair = {
+      nodes: [
+        { label: "Stream", stencil: "aws.kinesis" },
+        { label: "Processor", stencil: "service.go", accept: ["role:processor"] },
+      ],
+      edges: [["Stream", "Processor"]] as [string, string][],
+    };
+    const d = diagram(
+      [
+        ["k", "aws.kinesis", "Stream"],
+        ["p", "aws.lambda", "Handler"],
+      ],
+      [["k", "p"]],
+    );
+    expect(checkGraph(d, fair)).toBeNull();
+    expect(checkGraph(d, fair, { labels: "exact" })).toMatch(/^missing Processor/);
+    const byCategory = { ...fair, nodes: [fair.nodes[0], { ...fair.nodes[1], accept: ["category:generic"] }] };
+    expect(checkGraph(d, byCategory)).toBe("missing service.go");
+    const byId = { ...fair, nodes: [fair.nodes[0], { ...fair.nodes[1], accept: ["aws.lambda"] }] };
+    expect(checkGraph(d, byId)).toBeNull();
+  });
 });

@@ -1,5 +1,6 @@
 import type { DiagramFile } from "../model/types";
 import { scoreQuery } from "../palette/fuzzy";
+import { getStencil } from "../stencils/registry";
 import type { Candidate, Ref } from "./index";
 
 export class ReferenceError extends Error {
@@ -137,4 +138,128 @@ export function resolveRef(
     );
   };
   return resolve(ref);
+}
+
+/** A node a model's reply adds, before it exists: how the reply may refer to it. */
+export interface NewNodeAlias {
+  /** The batch key the core sees (in a namespace no element id can take). */
+  key: string;
+  /** The key the model wrote, if any. */
+  alias?: string;
+  kind: string;
+  label: string;
+}
+
+/** Words that say little about which node is meant. */
+const FILLER = new Set(["a", "an", "the", "new", "node", "of", "to", "for", "and", "service", "this"]);
+export const refWords = (s: string) =>
+  s
+    .toLowerCase()
+    .split(/[^a-z0-9.#+]+/)
+    .filter((w) => w.length > 1 && !FILLER.has(w));
+
+const ci = (s: string) => normalizeRef(s);
+
+/**
+ * References in a small model's reply, resolved in one precedence order (the on-device pipeline):
+ * 1. an existing element's exact id; 2. an existing element's exact label; 3. a key the reply set;
+ * 4. an existing label or a new node's key or label, ignoring case and spaces (both matching is an
+ * error); 5. a new node's kind; 6. a word shared with exactly one new node, more than with any existing
+ * node; 7. otherwise the core's own resolution (sublabels, "A -> B", fuzzy), pinned to an id when unique.
+ * Anything ambiguous is an error the model's retry can fix, never a silent pick. One RefIndex serves
+ * the whole reply.
+ */
+export class ReplyRefs {
+  readonly index: RefIndex;
+  private readonly fresh: NewNodeAlias[] = [];
+  constructor(
+    private readonly diagram: DiagramFile,
+    index?: RefIndex,
+  ) {
+    this.index = index ?? new RefIndex(diagram);
+  }
+
+  /** Is this text an existing element's id or label (ignoring case)? Model keys mustn't be. */
+  existingName(s: string): boolean {
+    if (this.index.elements.has(s)) return true;
+    const n = ci(s);
+    return this.index.labels.has(n) || [...this.index.elements.keys()].some((id) => ci(id) === n);
+  }
+
+  add(node: NewNodeAlias) {
+    this.fresh.push(node);
+  }
+
+  /** The new node with this batch key. */
+  newNode(key: string): NewNodeAlias | undefined {
+    return this.fresh.find((f) => f.key === key);
+  }
+
+  /** The id of an existing element `r` names (core resolution), or undefined. */
+  existingId(r: string): string | undefined {
+    try {
+      return resolveRef(this.diagram, r, EMPTY_KEYS, this.index);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * The one node a free phrase from the request means ("Java", "a Kafka topic"): a new node's key or an
+   * existing node's id, by the words it shares with its label and kind. Null when none or a tie.
+   */
+  match(phrase: string): string | null {
+    const words = refWords(phrase);
+    if (!words.length) return null;
+    const overlap = (...texts: string[]) => new Set(texts.flatMap(refWords).filter((w) => words.includes(w))).size;
+    const scored = [
+      ...this.fresh.map((f) => ({ ref: f.key, n: overlap(f.label, f.kind) })),
+      ...[...this.index.nodes.values()].map((node) => ({
+        ref: node.id,
+        n: overlap(node.label, getStencil(node.stencil).label),
+      })),
+    ];
+    const top = Math.max(0, ...scored.map((x) => x.n));
+    const best = scored.filter((x) => x.n === top);
+    return top > 0 && best.length === 1 ? best[0].ref : null;
+  }
+
+  resolve(r: string): { ref: string } | { error: string } {
+    const q = JSON.stringify(r);
+    const elements = [...this.index.elements.values()];
+    // 1-2: exact id, exact label.
+    if (this.index.elements.has(r)) return { ref: r };
+    const exactLabel = elements.filter((e) => e.label === r);
+    if (exactLabel.length === 1) return { ref: exactLabel[0].id };
+    if (exactLabel.length > 1) return { error: `${q} names ${exactLabel.length} elements: use one's id.` };
+    // 3: a key the reply set, as written.
+    const byAlias = this.fresh.filter((f) => f.alias === r);
+    if (byAlias.length === 1) return { ref: byAlias[0].key };
+    // 4: ignoring case and spaces, existing and new together.
+    const n = ci(r);
+    const old = elements.filter((e) => ci(e.label) === n || ci(e.id) === n);
+    const mine = this.fresh.filter((f) => (f.alias !== undefined && ci(f.alias) === n) || ci(f.label) === n);
+    if (old.length && mine.length)
+      return { error: `${q} could be an existing element or a new node: use the new node's key.` };
+    if (old.length > 1) return { error: `${q} names ${old.length} elements: use one's exact label.` };
+    if (old.length === 1) return { ref: old[0].id };
+    if (mine.length > 1) return { error: `${q} names ${mine.length} new nodes: use their keys.` };
+    if (mine.length === 1) return { ref: mine[0].key };
+    // 5: a new node's kind.
+    const byKind = this.fresh.filter((f) => ci(f.kind) === n);
+    if (byKind.length > 1) return { error: `${q} is the kind of ${byKind.length} new nodes: use their keys.` };
+    if (byKind.length === 1) return { ref: byKind[0].key };
+    // 6: a word shared with exactly one new node, more than with any existing node.
+    const words = refWords(r);
+    if (words.length) {
+      const overlap = (s: string) => refWords(s).filter((w) => words.includes(w)).length;
+      const scored = this.fresh.map((f) => ({ f, n: Math.max(overlap(f.label), overlap(f.kind)) }));
+      const top = Math.max(0, ...scored.map((x) => x.n));
+      const best = scored.filter((x) => x.n === top && top > 0);
+      const rival = Math.max(0, ...[...this.index.nodes.values()].map((node) => overlap(node.label)));
+      if (best.length === 1 && top > rival) return { ref: best[0].f.key };
+    }
+    // 7: the core's resolution (sublabels, "A -> B", fuzzy), pinned when it's unique.
+    return { ref: this.existingId(r) ?? r };
+  }
 }

@@ -1,6 +1,11 @@
 import type { DiagramOp } from "../index";
 export interface ExpectedGraph {
-  nodes: { label: string; stencil: string }[];
+  /**
+   * `accept`: other stencils a model may fairly pick for the words of the request (a stencil id,
+   * `role:<sim role>` or `category:<category>`). The ops below pin one; a model reading the description
+   * doesn't have to. Only the on-device evals use it (checkGraph with labels "any").
+   */
+  nodes: { label: string; stencil: string; accept?: string[] }[];
   edges: [string, string][];
 }
 export interface EvalTurn {
@@ -13,7 +18,8 @@ export interface DiagramEval {
 }
 
 // Descriptions are reusable prompts; ops record the semantic extraction expected from a frontend.
-const flows: [string, [string, string, string][]][] = [
+// A fourth element on a node lists what else a model may fairly pick (see ExpectedGraph.accept).
+const flows: [string, [string, string, string, string[]?][]][] = [
   [
     "Kafka topic orders.created consumed by a .NET consumer billing-worker which writes to Postgres",
     [
@@ -75,7 +81,8 @@ const flows: [string, [string, string, string][]][] = [
     "Kinesis feeds a processor",
     [
       ["Kinesis", "Stream", "aws.kinesis"],
-      ["service.go", "Processor", "service.go"],
+      // "a processor" names no technology: any processor passes (the ops pin Go).
+      ["service.go", "Processor", "service.go", ["role:processor"]],
     ],
   ],
   [
@@ -137,7 +144,8 @@ const flows: [string, [string, string, string][]][] = [
   [
     "RabbitMQ routes to a Java worker",
     [
-      ["rabbitmq.queue", "Tasks", "rabbitmq.queue"],
+      // Bare "RabbitMQ" that "routes" fits an exchange as well as a queue.
+      ["rabbitmq.queue", "Tasks", "rabbitmq.queue", ["rabbitmq.exchange"]],
       ["service.java", "Worker", "service.java"],
     ],
   ],
@@ -207,7 +215,8 @@ const flows: [string, [string, string, string][]][] = [
   [
     "An unspecified component connects to a generic database",
     [
-      ["unrecognized frobnicator", "Component", "generic.service"],
+      // "An unspecified component" can be any generic or processing stencil.
+      ["unrecognized frobnicator", "Component", "generic.service", ["role:processor", "category:generic"]],
       ["generic.database", "Database", "generic.database"],
     ],
   ],
@@ -226,7 +235,7 @@ export const diagramEvals: DiagramEval[] = flows.map(([description, nodes]) => (
         })),
       ],
       expected: {
-        nodes: nodes.map(([, label, stencil]) => ({ label, stencil })),
+        nodes: nodes.map(([, label, stencil, accept]) => ({ label, stencil, ...(accept ? { accept } : {}) })),
         edges: nodes.slice(1).map(([, label], i) => [nodes[i][1], label]),
       },
     },

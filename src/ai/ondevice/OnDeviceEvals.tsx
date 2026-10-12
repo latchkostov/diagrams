@@ -96,7 +96,14 @@ export default function OnDeviceEvals() {
               <td style={{ padding: "4px 8px" }}>{r.pass ? "pass" : "FAIL"}</td>
               <td style={{ padding: "4px 8px" }}>{r.request}</td>
               <td style={{ padding: "4px 8px", color: "var(--text-3)" }}>
-                {r.attempts} · {r.ms} ms · {r.note}
+                {r.attempts} · {r.ms} ms · {r.category && <strong>{r.category}: </strong>}
+                {r.note}
+                {r.output && (
+                  <details>
+                    <summary data-testid={`ondevice-evals-${r.id}-output`}>Model output</summary>
+                    <code style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{r.output}</code>
+                  </details>
+                )}
               </td>
             </tr>
           ))}
