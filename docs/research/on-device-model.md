@@ -328,8 +328,17 @@ on-device check accepts Lambda, Go and Azure Functions there.
 
 - **Constrained names** (`src/ai/ondevice/replySchema.ts`). The `responseConstraint` is built per
   request:
-  - A rename, kind change or remove `target` is an enum of the diagram's names: labels, or ids where
-    labels repeat, plus "A -> B" for connections and "this" with a selection.
+  - A rename, kind change or remove `target` is an enum of the diagram's names, each mapping back to one
+    element:
+    - node labels, or ids where labels repeat;
+    - "A -> B" for a connection whose pair is unique, ids for parallel connections and a selected one;
+    - boundary labels;
+    - "this" for any selected element.
+
+    A label too long or odd for an enum (say, an imported 100,000-character one) is left out, or its id
+    is used, so it can't break the schema for other requests. If building the schema fails, the plain
+    tier is used.
+
   - A connection's `from` and `to` are `anyOf` that enum and a key pattern (`^[a-z][a-z0-9_-]{0,29}$`),
     which new nodes' keys follow too.
   - `ops` has `maxItems: 6` and `uniqueItems`.
@@ -343,16 +352,26 @@ on-device check accepts Lambda, Go and Azure Functions there.
     the runaway fix falls back to round 2's bounds and the stream cut-off.
 - **Request–technology reconciliation** (`reconcileKinds`). When the request names a stencil no new node
   has, and a new node has a stencil the request never mentions (and isn't generic), that node takes the
-  named stencil. Nodes pair by label words, then by role, then one for one by order. It never changes a
-  node whose technology the request names, never takes a component that's an existing node, and treats
-  a plural role word ("Workers") as a role. "Generic"/"unspecified" asks for the generic stencil
-  itself.
-- **Completion after the retry** (`completeFromRequest`). If the retry is still incomplete, the request
-  is simple and the diagram is empty, the missing components are added from the request's words and
-  connected the way each verb says. Simple means two or three named components, each next pair joined by
-  a relating verb. "consumes" flows back and "consumed by" forward. The turn says "Completed from the
-  request". Components count when `namedStencil` places them; ".NET API" is only medium confidence in
-  the catalogue, but its words match the .NET stencil.
+  named stencil. Technologies meant for existing nodes (a kind change in the reply, or "make X a Y") are
+  never given to new nodes. A node whose label names one component ("billing" for "a billing Go service")
+  takes that component's technology, so two swapped services are put right. The rest pair by label
+  words, then by role, then one for one by order. It never takes a component that's an existing node,
+  and treats a plural role word ("Workers") as a role. "Generic"/"unspecified" asks for the generic
+  stencil itself.
+- **Completion after the retry** (`completeFromRequest`) runs only when it can't guess wrong:
+  - **When:** the retry is still incomplete, the diagram is empty, the request names two or three
+    components, and nothing in it is negated ("don't connect", "not yet", "without", "leave…").
+  - **Connections:** each comes from an explicit relation, and that relation's subject and object must
+    each name exactly one component. A shared subject is a star ("A writes to B and reads from C" connects
+    A to both), and "which" refers back to the noun before it. Order alone never makes a connection.
+  - **Identity:** two components of one technology are told apart by their words; if they can't be,
+    completion declines.
+  - **Direction and kind:** come from the same role-aware relation semantics as the direction repair
+    (`requestRelations.ts`). So a service "reads from Postgres" still calls it (service → database, a
+    request), consuming a topic flows from the topic, and each completed connection gets its flow kind.
+  - Missing components are added from the request's words, and the turn says "Completed from the
+    request". A component counts when `namedStencil` places it; ".NET API" is only medium confidence in
+    the catalogue, but its words match the .NET stencil. When unsure, the turn fails instead.
 - **Leak bait removed.** The examples' diagram starts with `sample-batch` (a batch job) instead of a
   gateway, and a test keeps gateways, APIs and ingresses out of the placeholders.
 - **On by default** (see Where, above).

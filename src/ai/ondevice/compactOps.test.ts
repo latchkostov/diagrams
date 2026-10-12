@@ -859,3 +859,38 @@ describe("round 3: the request's technologies win over unmentioned ones", () => 
     expect(diagram.nodes.find((n) => n.id === "inventory")?.stencil).toBe("service.java");
   });
 });
+
+describe("round 3 review: reconciliation leaves updates alone and knows identities", () => {
+  it("a kind change meant for an existing node isn't given to a new node", () => {
+    const request = "Add a dead-letter queue after Payments service and make Orders database a MongoDB";
+    for (const ops of [
+      [
+        { op: "add", key: "q", kind: "Service Bus queue", label: "payments-dlq" },
+        { op: "connect", from: "Payments service", to: "q" },
+        { op: "change_kind", target: "Orders database", kind: "MongoDB" },
+      ],
+      // Even when the reply forgets the kind change, "make … a MongoDB" is for the existing node.
+      [
+        { op: "add", key: "q", kind: "Service Bus queue", label: "payments-dlq" },
+        { op: "connect", from: "Payments service", to: "q" },
+      ],
+    ]) {
+      const { node } = apply(KAFKA, ops, { request });
+      expect(node("payments-dlq")?.stencil).toBe("azure.service-bus.queue");
+    }
+  });
+
+  it("two services of different technologies, swapped by the model, take the technology their labels name", () => {
+    const { node } = apply(
+      EMPTY,
+      [
+        { op: "add", key: "b", kind: "Java service", label: "billing" },
+        { op: "add", key: "s", kind: "Go service", label: "shipping" },
+        { op: "connect", from: "b", to: "s" },
+      ],
+      { request: "A billing Go service calls a shipping Java service" },
+    );
+    expect(node("billing")?.stencil).toBe("service.go");
+    expect(node("shipping")?.stencil).toBe("service.java");
+  });
+});

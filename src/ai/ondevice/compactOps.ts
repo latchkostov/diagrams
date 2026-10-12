@@ -14,7 +14,8 @@ import { confidentStencil, namedStencil, resolveKind } from "../stencils";
 import type { DiagramOp } from "../index";
 import { RefIndex, ReplyRefs, refWords, type NewNodeAlias } from "../refs";
 import type { ScopeItem } from "../ui/context";
-import { CONSUMES, incompleteness, inRequest, kindFor, leakedName, reconcileKinds } from "./replyChecks";
+import { incompleteness, inRequest, kindFor, leakedName, reconcileKinds } from "./replyChecks";
+import { relationFlow, requestRelations } from "./requestRelations";
 
 /** At most this many ops per reply (checked in code: hard limits in a schema make small models odd). */
 export const MAX_OPS = 6;
@@ -57,7 +58,7 @@ const KEY_PREFIX = "~";
 const THIS = /^(?:this|it|that|the selection|selection|the selected node|selected node|selected)$/i;
 
 /** Consume-type verbs: the data flows from the object to the subject ("Java consumes a topic"). */
-export { CONSUMES } from "./replyChecks";
+export { CONSUMES } from "./requestRelations";
 
 class ReplyError extends Error {
   /** For an incomplete reply: the ops it did make (for completeFromRequest). */
@@ -96,6 +97,8 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
   const index = new RefIndex(diagram);
   const refs = new ReplyRefs(diagram, index);
   const selected = ctx.scope?.length === 1 && ctx.scope[0].kind === "node" ? ctx.scope[0] : undefined;
+  /** "this" as a rename, kind change or remove target: whatever is selected (a node, connection or boundary). */
+  const selectedAny = ctx.scope?.length === 1 ? ctx.scope[0] : undefined;
 
   // First pass: the nodes this reply adds. Their keys can't be an element id, and a key the model
   // wrote mustn't name an existing element or another new node.
@@ -134,10 +137,15 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
   // Then the request's technologies: one it names that no new node has goes to a new node of one it never
   // mentions. Everything after this (references, repairs, the ops) reads these kinds.
   const fresh = raw.filter((op) => nodeOf.has(op));
+  // The technologies the reply gives existing nodes (a kind change, or a kind-only "rename").
+  const kindChange = (op: CompactOp) =>
+    !!text(op?.kind) && (op.op === "change_kind" || op.op === "change" || (op.op === "rename" && !text(op.label)));
+  const updates = new Set(raw.filter(kindChange).map((op) => resolveKind(text(op.kind)!).id));
   const reconciled = reconcileKinds(
     fresh.map((op) => ({ label: text(op.label)!, kind: nodeOf.get(op)!.kind })),
     request,
     diagram,
+    updates,
   );
   for (const [i, op] of fresh.entries()) {
     const n = nodeOf.get(op)!;
@@ -148,7 +156,7 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
 
   /** A reference, looked up: never creates anything. Unresolved text goes on to the core's error. */
   const ref = (r: string): string => {
-    if (THIS.test(r) && selected) return selected.id;
+    if (THIS.test(r) && selectedAny) return selectedAny.id;
     const out = refs.resolve(r);
     if ("error" in out) throw new ReplyError(out.error);
     return out.ref;
@@ -271,42 +279,43 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
   return out;
 }
 
-/** Produce-type verbs: the data flows from the subject to the object ("A Lambda saves objects into S3"). */
-export const PRODUCES =
-  /\b(?:writes?(?: \w+)? (?:to|into)|persists?(?: \w+)? (?:to|into|in)|saves?(?: \w+)? (?:to|into|in)|stores?(?: \w+)? (?:in|into)|sends?(?: \w+)? to|publish(?:es)?(?: \w+)? (?:to|into)|routes? to|calls|invokes|feeds|exports? to|forwards?(?: \w+)? to|delivers|starts|accesses|uses|fans? out (?:toward|to))\b/gi;
-
-/** Where a clause ends: punctuation (a period only before a space, so ".NET" stays), or a conjunction. */
-const CLAUSE = /[,;]|\.(?=\s|$)|\b(?:and|then|which|that|while|before|after)\b/i;
+export { PRODUCES } from "./requestRelations";
 
 /**
- * The pairs a request describes with a direction verb, each phrase matched to one node (new or
- * existing): "<subject> consumes <object>" flows object -> subject; "<subject> writes to <object>"
- * flows subject -> object. Only pairs whose two phrases each match exactly one node.
+ * The connections a request describes (requestRelations.ts), each end matched to one node (new or
+ * existing), with the way the data flows there (relationFlow: role-aware). Negated relations, and those
+ * whose ends don't each match exactly one node, are left out.
  */
-export function describedPairs(request: string, refs: ReplyRefs): { from: string; to: string; consume: boolean }[] {
+export function describedPairs(
+  request: string,
+  refs: ReplyRefs,
+  diagram: DiagramFile,
+): { from: string; to: string; consume: boolean }[] {
   const out: { from: string; to: string; consume: boolean }[] = [];
-  const verbs = [
-    ...[...request.matchAll(new RegExp(CONSUMES.source, "gi"))].map((m) => ({ m, consume: true })),
-    ...[...request.matchAll(PRODUCES)].map((m) => ({ m, consume: false })),
-  ];
-  for (const { m, consume } of verbs) {
-    const before = request.slice(0, m.index).split(CLAUSE).pop() ?? "";
-    const after = request.slice(m.index! + m[0].length).split(CLAUSE)[0] ?? "";
-    const subject = refs.match(before);
-    const object = refs.match(after);
+  for (const r of requestRelations(request)) {
+    if (r.negated) continue;
+    const subject = refs.match(r.subject);
+    const object = refs.match(r.object);
     if (!subject || !object || subject === object) continue;
-    out.push(consume ? { from: object, to: subject, consume } : { from: subject, to: object, consume });
+    const flow = relationFlow(r, roleOf(object, refs, diagram));
+    out.push(
+      flow.fromSubject
+        ? { from: subject, to: object, consume: r.consume }
+        : { from: object, to: subject, consume: r.consume },
+    );
   }
   return out;
 }
 
-/** Back-compatible name: the first consume pair, as subject and object. */
-export function consumedPair(request: string, refs: ReplyRefs): { subject: string; object: string } | null {
-  const p = describedPairs(request, refs).find((x) => x.consume);
+/** Back-compatible name: the first consumed pair, as subject (the consumer) and object (the source). */
+export function consumedPair(
+  request: string,
+  refs: ReplyRefs,
+  diagram: DiagramFile,
+): { subject: string; object: string } | null {
+  const p = describedPairs(request, refs, diagram).find((x) => x.consume);
   return p ? { subject: p.to, object: p.from } : null;
 }
-
-const MESSAGING: readonly (SimRole | "none")[] = ["queue", "topic", "stream"];
 
 /** The sim role of a new node (by its kind) or an existing one. */
 function roleOf(ref: string, refs: ReplyRefs, diagram: DiagramFile): SimRole | undefined {
@@ -317,15 +326,14 @@ function roleOf(ref: string, refs: ReplyRefs, diagram: DiagramFile): SimRole | u
 }
 
 /**
- * A connection the request describes with a direction verb, drawn the wrong way round, is turned, and
- * only that one: when the reply has exactly that pair reversed and not the right way. What's consumed
- * must be a queue, topic or stream (a service "consuming data from Postgres" still calls it).
+ * A connection the request describes, drawn against the way its data flows, is turned, and only that
+ * one: when the reply has exactly that pair reversed and not the right way. The way comes from the
+ * shared, role-aware relation semantics, so a service "reading from Postgres" still calls it.
  */
 export function flipDescribed(ops: DiagramOp[], request: string, refs: ReplyRefs, diagram: DiagramFile) {
   const id = (r: string) => refs.existingId(r) ?? r;
   const connects = ops.filter((o): o is Connect => o.op === "connect");
-  for (const pair of describedPairs(request, refs)) {
-    if (pair.consume && !MESSAGING.includes(roleOf(pair.from, refs, diagram) ?? "none")) continue;
+  for (const pair of describedPairs(request, refs, diagram)) {
     const wrong = connects.filter((c) => id(c.from) === pair.to && id(c.to) === pair.from);
     const right = connects.some((c) => id(c.from) === pair.from && id(c.to) === pair.to);
     if (wrong.length === 1 && !right) [wrong[0].from, wrong[0].to] = [wrong[0].to, wrong[0].from];

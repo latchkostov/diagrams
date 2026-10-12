@@ -50,6 +50,15 @@ export function resetSchemaTier(tier: SchemaTier = "rich") {
   schemaTier = tier;
 }
 export const currentSchemaTier = () => schemaTier;
+/** This request's schema at the page's tier; if building it fails, the plain one (never a broken request). */
+function schemaFor(diagram: DiagramFile, request: string, scope: readonly ScopeItem[]): object {
+  try {
+    return replySchema(diagram, request, scope, schemaTier);
+  } catch {
+    return replySchema(diagram, request, scope, "plain");
+  }
+}
+
 /** A schema this large isn't put into the model's context too (the prompt lists the names already). */
 const OMIT_SCHEMA_CHARS = 2500;
 
@@ -301,10 +310,7 @@ export async function runOnDevice({
       try {
         const limit = AbortSignal.timeout(replyTimeoutMs);
         const both = signal ? AbortSignal.any([signal, limit]) : limit;
-        reply = await withTimeout(
-          askModel(current, input, both, replySchema(diagram, request, scope, schemaTier)),
-          replyTimeoutMs,
-        );
+        reply = await withTimeout(askModel(current, input, both, schemaFor(diagram, request, scope)), replyTimeoutMs);
       } catch (err) {
         if (signal?.aborted) throw err instanceof Error ? err : new DOMException("Aborted", "AbortError");
         if (err instanceof RunawayError) {

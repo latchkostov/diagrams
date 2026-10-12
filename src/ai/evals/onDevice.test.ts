@@ -120,18 +120,33 @@ describe("on-device evals", () => {
     expect(resultsMarkdown(results)).toContain("| edit-dlq |");
   });
 
-  it("rejects reversed connections", async () => {
+  it("rejects reversed connections (the scorer; the pipeline now repairs this reply itself)", async () => {
     const [c] = onDeviceCases.filter((x) => x.id === "create-1");
     const ops = perfectCreate(c.request).map((op) => {
       const o = op as { op: string; from?: string; to?: string };
       return o.op === "connect" ? { ...o, from: o.to, to: o.from } : o;
     });
+    // Through the pipeline, the request's relations turn both connections round, so it passes.
     const [r] = await runOnDeviceEvals(
       answering(() => reply(ops)),
       [c],
     );
-    expect(r.pass).toBe(false);
-    expect(r.note).toMatch(/^reversed connection/);
+    expect(r.pass).toBe(true);
+    // The scorer itself still rejects the reversed graph.
+    const labels = new Map<string, string>();
+    const reversed = applyOps(
+      EMPTY,
+      ops.map((o) => {
+        const x = o as { op: string; kind?: string; label?: string; from?: string; to?: string };
+        if (x.op === "add") {
+          const key = `k${labels.size}`;
+          labels.set(x.label!, key);
+          return { op: "add_node", kind: x.kind!, label: x.label!, key };
+        }
+        return { op: "connect", from: labels.get(x.from!)!, to: labels.get(x.to!)! };
+      }) as Parameters<typeof applyOps>[1],
+    ).diagram;
+    expect(c.check(EMPTY, reversed)).toMatch(/^reversed connection/);
   });
 
   it("rejects wrong endpoints with the correct edge count", async () => {

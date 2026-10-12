@@ -31,32 +31,72 @@ export function nodeNames(diagram: DiagramFile): Map<string, string> {
 
 const lower = (s: string) => s.toLowerCase();
 
+/** A name fit for an enum: short enough, one line, printable. */
+const fit = (name: string, max = NAME_CHARS) =>
+  name.length > 0 && name.length <= max && ![...name].some((ch) => ch.charCodeAt(0) < 32);
+
+/** Does the request name this as a whole name ("Node 2" isn't in "Node 250")? Literal, bounded. */
+function named(name: string, request: string): boolean {
+  if (!name || name.length > request.length) return false;
+  const text = lower(request);
+  const n = lower(name);
+  const edge = (c: string | undefined) => !c || !/[a-z0-9]/.test(c);
+  for (let i = text.indexOf(n); i >= 0; i = text.indexOf(n, i + 1))
+    if (edge(text[i - 1]) && edge(text[i + n.length])) return true;
+  return false;
+}
+
 /**
- * The names a reply may use for existing elements: nodes (the selection, its neighbours and those the
- * request names first, then the rest, up to ENUM_BUDGET) and the connections between them ("A -> B").
+ * The names a reply may use for existing elements, each mapping back to exactly one element:
+ * - nodes (the selection, its neighbours and those the request names first, then the rest, up to
+ *   ENUM_BUDGET), by label, or id where labels repeat;
+ * - connections as "A -> B" where that pair is unique, else by id (parallel connections), and a
+ *   selected connection's id;
+ * - boundaries, by label (or id where labels repeat).
+ * A name that's too long or odd for an enum (an imported 100,000-character label) is left out, or its id
+ * used, so one label can't break the schema for every request.
  */
 export function elementNames(
   diagram: DiagramFile,
   request: string,
   scope: readonly ScopeItem[] = [],
-): { nodes: string[]; edges: string[] } {
+): { nodes: string[]; edges: string[]; boundaries: string[] } {
   const names = nodeNames(diagram);
+  const nameOf = (id: string) => {
+    const n = names.get(id) ?? id;
+    return fit(n) ? n : fit(id) ? id : undefined;
+  };
   const focus = new Set(scope.map((s) => s.id));
   const near = new Set(focus);
   for (const e of diagram.edges) if (focus.has(e.from) || focus.has(e.to)) near.add(e.from).add(e.to);
-  // Named in the request as a whole name ("Node 2" isn't in "Node 250").
-  const named = (name: string) =>
-    new RegExp(`(^|[^a-z0-9])${name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9])`).test(
-      lower(request),
-    );
-  const rank = (id: string) => (focus.has(id) ? 0 : near.has(id) ? 1 : named(names.get(id) ?? "") ? 2 : 3);
-  const ordered = [...diagram.nodes].sort((a, b) => rank(a.id) - rank(b.id)).slice(0, ENUM_BUDGET);
-  const kept = new Set(ordered.map((n) => n.id));
-  const edges = diagram.edges
-    .filter((e) => kept.has(e.from) && kept.has(e.to))
-    .map((e) => `${names.get(e.from)} -> ${names.get(e.to)}`)
+  const rank = (id: string) => (focus.has(id) ? 0 : near.has(id) ? 1 : named(nameOf(id) ?? "", request) ? 2 : 3);
+  const ordered = [...diagram.nodes]
+    .filter((n) => nameOf(n.id))
+    .sort((a, b) => rank(a.id) - rank(b.id))
     .slice(0, ENUM_BUDGET);
-  return { nodes: ordered.map((n) => names.get(n.id)!), edges: [...new Set(edges)] };
+  const kept = new Set(ordered.map((n) => n.id));
+  const pairs = new Map<string, string[]>();
+  for (const e of diagram.edges) {
+    if (!kept.has(e.from) || !kept.has(e.to)) continue;
+    const pair = `${nameOf(e.from)} -> ${nameOf(e.to)}`;
+    pairs.set(pair, [...(pairs.get(pair) ?? []), e.id]);
+  }
+  const edges: string[] = [];
+  for (const [pair, ids] of pairs) {
+    if (ids.length === 1) edges.push(pair);
+    else edges.push(...ids.filter((id) => fit(id)));
+  }
+  for (const s of scope) if (s.kind === "connection" && fit(s.id) && !edges.includes(s.id)) edges.unshift(s.id);
+  const groupLabels = new Map<string, number>();
+  for (const g of diagram.groups ?? []) groupLabels.set(g.label, (groupLabels.get(g.label) ?? 0) + 1);
+  const boundaries = (diagram.groups ?? [])
+    .map((g) => (fit(g.label) && groupLabels.get(g.label) === 1 ? g.label : fit(g.id) ? g.id : undefined))
+    .filter((x): x is string => !!x);
+  return {
+    nodes: ordered.map((n) => nameOf(n.id)!),
+    edges: edges.slice(0, ENUM_BUDGET),
+    boundaries: boundaries.slice(0, ENUM_BUDGET),
+  };
 }
 
 /** The reply schema for this request, at this tier. */
@@ -66,16 +106,17 @@ export function replySchema(
   scope: readonly ScopeItem[] = [],
   tier: SchemaTier = "rich",
 ): object {
-  const { nodes, edges } = elementNames(diagram, request, scope);
-  const self = scope.length === 1 ? ["this"] : [];
-  const nodeEnum = [...nodes, ...self];
+  const { nodes, edges, boundaries } = elementNames(diagram, request, scope);
+  // "this": any selected element as a target; only a selected node as a connection's end.
+  const selfTarget = scope.length === 1 ? ["this"] : [];
+  const nodeEnum = [...nodes, ...(scope.length === 1 && scope[0].kind === "node" ? ["this"] : [])];
   const key =
     tier === "rich"
       ? { type: "string", pattern: KEY_PATTERN, maxLength: KEY_CHARS }
       : { type: "string", maxLength: KEY_CHARS };
   const free = { type: "string", maxLength: NAME_CHARS };
   // A target names an existing element only (rename, change_kind, remove). Nothing to name: a key.
-  const names = [...nodeEnum, ...edges];
+  const names = [...new Set([...nodes, ...selfTarget, ...edges, ...boundaries])];
   const target =
     tier === "plain"
       ? { type: "string", maxLength: 2 * NAME_CHARS + 4 }
