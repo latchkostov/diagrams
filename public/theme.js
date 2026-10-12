@@ -7,3 +7,5 @@ try {
 } catch {
   // Storage blocked or bad JSON: the default theme.
 }
+// An embed shows no start-up page (index.html's .boot) inside someone else's page.
+if (new URLSearchParams(location.search).has("embed")) document.documentElement.dataset.embed = "";

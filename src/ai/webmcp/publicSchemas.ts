@@ -17,7 +17,7 @@ function opsDoc() {
   return {
     $schema: SCHEMA,
     $id: `${SITE}/schema/ops.v1.json`,
-    title: "Diagrams edit ops (v1)",
+    title: "Live Diagrams edit ops (v1)",
     description: `${toolDescriptions.edit_diagram} The same input as the WebMCP tool edit_diagram and the AI panel's Advanced paste box (which also takes a bare array of ops).`,
     ...opsSchema,
     $comment: "The other tools' inputs are under $tools.",

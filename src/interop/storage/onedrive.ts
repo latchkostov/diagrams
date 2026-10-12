@@ -88,7 +88,7 @@ export function graphError(status: number, body: string, action: string): string
   if (status === 507 || code === "quotaLimitReached" || code === "insufficientStorage")
     return "Your OneDrive is full, so the file couldn't be saved.";
   if (status === 403)
-    return `OneDrive refused to ${action}. Diagrams can only use files in its own folder (Apps › Diagrams).${message ? ` (${message})` : ""}`;
+    return `OneDrive refused to ${action}. Live Diagrams can only use files in its own folder (Apps › Diagrams).${message ? ` (${message})` : ""}`;
   if (status === 404) return "That OneDrive file no longer exists, or it was moved out of the Diagrams folder.";
   if (status === 409 || status === 412) return `The file changed in OneDrive while trying to ${action}. Try again.`;
   if (status === 429 || status >= 500) return `OneDrive is busy right now (${status}). Try again in a moment.`;

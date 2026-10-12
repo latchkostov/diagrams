@@ -644,7 +644,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       if (token) return void askForPassword(token);
       const payload = sharePayloadFromInput(input);
       if (!payload)
-        return void toast.error("That doesn't look like a Diagrams share link (it should contain #d=… or #e=…).");
+        return void toast.error("That doesn't look like a Live Diagrams share link (it should contain #d=… or #e=…).");
       void openSharePayload(payload);
     },
     [openSharePayload, askForPassword],

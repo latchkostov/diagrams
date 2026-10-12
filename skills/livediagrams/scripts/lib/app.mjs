@@ -312,7 +312,7 @@ function migrate(raw) {
 		const step = typeof cur.format === "string" ? MIGRATIONS[cur.format] : void 0;
 		if (!step || hops > 20) {
 			const found = cur.format;
-			if (typeof found === "string" && /^diagrams\/v\d+$/.test(found)) throw new FormatError(`This file uses ${found}, which is newer than this version of Diagrams understands (expected format "${DIAGRAM_FORMAT}"). Reload the page to get the latest version.`);
+			if (typeof found === "string" && /^diagrams\/v\d+$/.test(found)) throw new FormatError(`This file uses ${found}, which is newer than this version of Live Diagrams understands (expected format "${DIAGRAM_FORMAT}"). Reload the page to get the latest version.`);
 			throw new FormatError(`Expected format "${DIAGRAM_FORMAT}", but it was ${typeof found === "string" ? `"${found}"` : "missing"}. Export a diagram from this app to get a compatible file.`);
 		}
 		cur = step(cur);

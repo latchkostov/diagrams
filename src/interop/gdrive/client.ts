@@ -64,8 +64,8 @@ function friendly(status: number, body: string, action: string): string {
   if (status === 403 && /storage|quota/i.test(reason))
     return "Your Google Drive is full, so the file couldn't be saved.";
   if (status === 403)
-    return `Google Drive refused to ${action}. Diagrams can only open files you pick with it or that it created.${reason ? ` (${reason})` : ""}`;
-  if (status === 404) return "That Google Drive file no longer exists, or Diagrams no longer has access to it.";
+    return `Google Drive refused to ${action}. Live Diagrams can only open files you pick with it or that it created.${reason ? ` (${reason})` : ""}`;
+  if (status === 404) return "That Google Drive file no longer exists, or Live Diagrams no longer has access to it.";
   if (status === 429 || status >= 500) return `Google Drive is busy right now (${status}). Try again in a moment.`;
   return `Couldn't ${action} on Google Drive (${status}${reason ? `: ${reason}` : ""}).`;
 }

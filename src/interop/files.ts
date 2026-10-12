@@ -41,10 +41,10 @@ export function fsAccessSupported(): boolean {
   }
 }
 
-export const NATIVE_TYPE: PickerType = { description: "Diagrams file", accept: { "application/json": [".json"] } };
+export const NATIVE_TYPE: PickerType = { description: "Live Diagrams file", accept: { "application/json": [".json"] } };
 const OPEN_TYPES: PickerType[] = [
   {
-    description: "Diagrams, draw.io and Mermaid files",
+    description: "Live Diagrams, draw.io and Mermaid files",
     accept: {
       "application/json": [".json"],
       "application/xml": [".drawio", ".xml", ".svg"],

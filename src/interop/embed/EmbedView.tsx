@@ -9,7 +9,7 @@ import { Glyph } from "../ui/glyphs";
 import { notify } from "../ui/toast";
 
 // ?embed=1 — a clean, read-only viewer for <iframe> embeds: no top bar, fitted to the frame, pan and
-// zoom only, plus a subtle "Open in Diagrams" link. The diagram comes from `example=<slug>` or a
+// zoom only, plus a subtle "Open in Live Diagrams" link. The diagram comes from `example=<slug>` or a
 // share payload in the fragment (`#d=...`). `live=1&sim=<id>` are passed through untouched for the
 // live view. A password link's fragment (`#e=...`) asks for the password inside the frame and keeps its
 // fragment (the host page's <iframe src> holds it anyway, and the frame must stay reloadable).
@@ -119,7 +119,7 @@ export function EmbedView() {
             target="_blank"
             rel="noopener"
             data-testid="embed-open-in-app"
-            title="Open an editable copy in Diagrams"
+            title="Open an editable copy in Live Diagrams"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden>
               <rect x="1.5" y="3" width="8" height="6" rx="2" fill="currentColor" opacity=".55" />
@@ -132,7 +132,7 @@ export function EmbedView() {
                 strokeLinecap="round"
               />
             </svg>
-            Open in Diagrams
+            Open in Live Diagrams
             <Glyph name="external" size={12} />
           </a>
         </>

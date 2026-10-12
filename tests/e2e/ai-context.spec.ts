@@ -75,7 +75,7 @@ test("Copy for AI puts the selection's ids and labels on the clipboard, for the 
   await page.getByTestId("context-menu-item-item.copy-for-ai").click();
   await expect(page.getByTestId("toast")).toContainText("Copied 2 elements for your AI");
   const text = await clipboard(page);
-  expect(text).toContain("In my Diagrams diagram");
+  expect(text).toContain("In my Live Diagrams diagram");
   expect(text).toMatch(/- node "payments" "[^"]+"/);
   expect(text).toMatch(/- node "payment-db" "[^"]+"/);
 

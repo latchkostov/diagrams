@@ -143,6 +143,21 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
         </button>
         .
       </p>
+      {/* What this is and the policies, without signing in: the home page OAuth brand reviewers check. */}
+      <footer className="start-about" data-testid="start-about">
+        <span>
+          <strong>Live Diagrams</strong> is a free, open-source diagram tool that runs in your browser.
+        </span>
+        <span className="start-legal">
+          <a href="privacy.html" target="_blank" rel="noopener" data-testid="start-privacy">
+            Privacy
+          </a>
+          <span aria-hidden> · </span>
+          <a href="terms.html" target="_blank" rel="noopener" data-testid="start-terms">
+            Terms
+          </a>
+        </span>
+      </footer>
     </section>
   );
 }

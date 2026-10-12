@@ -3,10 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Privacy policy for Diagrams (livediagrams.dev)." />
+    <meta
+      name="description"
+      content="Privacy policy for Live Diagrams (livediagrams.dev): what stays in your browser, what Google Drive, OneDrive and Dropbox access it uses, and how to revoke it."
+    />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <title>Privacy · Diagrams</title>
+    <title>Privacy policy · Live Diagrams</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -15,6 +18,7 @@
         --bg: #ffffff;
         --line: #e5e7eb;
         --accent: #2563eb;
+        --tint: #eff6ff;
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -23,6 +27,7 @@
           --bg: #0f172a;
           --line: #1f2937;
           --accent: #60a5fa;
+          --tint: #172036;
         }
       }
       body {
@@ -41,12 +46,19 @@
         margin: 0 0 4px;
       }
       h2 {
-        font-size: 17px;
-        margin: 32px 0 6px;
+        font-size: 19px;
+        margin: 36px 0 6px;
+      }
+      h3 {
+        font-size: 16px;
+        margin: 22px 0 4px;
       }
       p,
       li {
         color: var(--muted);
+      }
+      strong {
+        color: var(--text);
       }
       .updated {
         margin-top: 0;
@@ -72,24 +84,42 @@
       td {
         color: var(--muted);
       }
+      .callout {
+        margin: 14px 0;
+        padding: 10px 14px;
+        border-left: 3px solid var(--accent);
+        border-radius: 4px;
+        background: var(--tint);
+      }
+      .callout p {
+        margin: 0;
+        color: var(--text);
+      }
     </style>
   </head>
   <body>
     <main>
-      <h1 data-testid="privacy-title">Privacy</h1>
-      <p class="updated">Diagrams at livediagrams.dev · last updated 12 October 2026</p>
-
-      <p>
-        Diagrams is a free, open-source tool that runs entirely in your browser. There is no Diagrams server, no
-        account and no database. The short version: your diagrams stay in your browser unless you choose to save
-        them somewhere else.
+      <h1 data-testid="privacy-title">Privacy policy</h1>
+      <p class="updated" data-testid="privacy-effective">
+        Live Diagrams at livediagrams.dev · effective 12 October 2026
       </p>
 
-      <h2>Your diagrams</h2>
+      <p>
+        Live Diagrams is a free, open-source tool for drawing distributed-systems diagrams and watching messages flow
+        through them. It's made by Latch Kostov and runs entirely in your browser. There is no Live Diagrams server, no
+        account and no database. The short version: your diagrams stay in your browser unless you choose to save them
+        somewhere else, and we never receive them.
+      </p>
+      <p>
+        Jump to: <a href="#your-diagrams">Your diagrams</a> · <a href="#google-drive">Google Drive</a> ·
+        <a href="#onedrive">OneDrive</a> · <a href="#dropbox">Dropbox</a> · <a href="#contact">Contact</a>
+      </p>
+
+      <h2 id="your-diagrams">Your diagrams</h2>
       <ul>
         <li>
           Diagrams you make or open are kept in your browser's local storage on your device. They're never uploaded
-          to us. Clearing the site's data in your browser deletes them.
+          to us. Delete one in <em>Your diagrams</em>, or clear the site's data in your browser to delete them all.
         </li>
         <li>
           <strong>Save</strong> and <strong>Open</strong> use files on your device, which only your browser touches.
@@ -105,6 +135,12 @@
           Anyone with both the link and the password can open it, so send the password separately. Once opened, the
           encrypted part is cleared from the address bar, though your browser's history may still list the address
           as it was first visited.
+        </li>
+        <li>
+          <strong>AI features</strong> act only when you use them. Chrome's built-in model runs on your device. An AI
+          agent in your browser, or a chatbot you paste a prompt into, sees a diagram only when you ask it to; that's
+          your own tool, under its own terms. Live Diagrams never sends your diagrams to an AI service itself, and never
+          uses them to train AI models.
         </li>
       </ul>
 
@@ -143,10 +179,11 @@
         </li>
       </ul>
 
-      <h2>No analytics, no tracking</h2>
+      <h2>No analytics, no ads, no tracking</h2>
       <p>
-        Diagrams has no analytics, no tracking pixels, no ads and no cookies of its own. Fonts and icons are served
-        from this site, not from a third party.
+        Live Diagrams has no analytics, no tracking pixels, no ads and no cookies of its own. We don't sell, rent or share
+        anyone's data, because we never receive it. Fonts and icons are served from this site, not from a third
+        party.
       </p>
       <p>
         A strict Content-Security-Policy means the page can only talk to this site and the storage providers you
@@ -157,76 +194,142 @@
       <p>
         The site is static files hosted on <a href="https://vercel.com/legal/privacy-policy">Vercel</a>. Like any
         web host, Vercel handles the requests your browser makes for those files (including your IP address) to
-        deliver and protect the site. Diagrams doesn't receive or keep those logs for any other purpose.
+        deliver and protect the site. Live Diagrams doesn't receive or keep those logs for any other purpose.
       </p>
 
-      <h2>Cloud storage (only if you choose it)</h2>
+      <h2 id="cloud-storage">Cloud storage (only if you choose it)</h2>
       <p>
-        Where the File menu offers Google Drive, OneDrive or Dropbox, you can save to and open from your own
-        account there. Nothing is contacted until you pick one. Then:
+        Where the File menu offers Google Drive, OneDrive or Dropbox, you can save to and open from your own account
+        there. Nothing is contacted until you pick one. For all three:
       </p>
       <ul>
-        <li>You sign in on the provider's own page, in a pop-up. Diagrams never sees your password.</li>
+        <li>You sign in on the provider's own page, in a pop-up. Live Diagrams never sees your password.</li>
         <li>
           Your browser talks to the provider directly. Your files and the access token never pass through any
-          Diagrams server (there isn't one).
+          Live Diagrams server (there isn't one), and we never receive a copy.
         </li>
         <li>
-          The access token is kept only in the open tab's memory and is gone when you close or reload it. Diagrams
-          remembers which file a diagram was saved to (its id and name, in your browser), so Save goes back there.
+          The access token is kept only in the open tab's memory, is sent only to the provider that issued it, and is
+          gone when you close or reload the tab. It's never written to your browser's storage.
         </li>
-        <li>Diagrams asks for the smallest access each provider offers:</li>
+        <li>
+          Live Diagrams remembers which file a diagram was saved to or opened from (the provider, the file's id and name,
+          in your browser's storage), so Save goes back there. A diagram you open is kept in <em>Your diagrams</em>
+          in this browser, like any other.
+        </li>
+        <li>
+          Live Diagrams asks for the smallest access each provider offers, and reads no profile, email address, contacts
+          or other files.
+        </li>
       </ul>
-      <table>
-        <thead>
-          <tr>
-            <th>Provider</th>
-            <th>Access requested</th>
-            <th>What that means</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Google Drive</td>
-            <td><code>drive.file</code></td>
-            <td>Only files you pick in Google's file picker or that Diagrams created. Nothing else in your Drive.</td>
-          </tr>
-          <tr>
-            <td>OneDrive</td>
-            <td><code>Files.ReadWrite.AppFolder</code>, <code>offline_access</code></td>
-            <td>
-              Only Diagrams' own folder (<em>Apps › Diagrams</em>) in your OneDrive. <code>offline_access</code> lets
-              the open tab renew its sign-in for up to a day without asking again.
-            </td>
-          </tr>
-          <tr>
-            <td>Dropbox</td>
-            <td>
-              App folder: <code>files.metadata.read</code>, <code>files.content.read</code>,
-              <code>files.content.write</code>
-            </td>
-            <td>Only Diagrams' own folder (<em>Apps › Diagrams</em>) in your Dropbox.</td>
-          </tr>
-        </tbody>
-      </table>
-      <p>
-        Opening the File menu where Google Drive is offered loads Google's sign-in and picker scripts from Google, so
-        a click can open them straight away. When no provider is offered, nothing is loaded from any of them.
-      </p>
-      <p>
-        You can remove Diagrams' access at any time: Google (<a href="https://myaccount.google.com/permissions"
-          >myaccount.google.com/permissions</a
-        >), Microsoft (<a href="https://account.live.com/consent/Manage">account.live.com/consent/Manage</a>, or
-        <a href="https://myapps.microsoft.com">myapps.microsoft.com</a> for work accounts) and Dropbox (Settings →
-        Connected apps). Files Diagrams saved stay in your account until you delete them.
-      </p>
 
-      <h2>Changes and contact</h2>
+      <h3 id="google-drive">Google Drive</h3>
+      <ul>
+        <li>
+          <strong>What we access.</strong> Only the <code>drive.file</code> scope: the files you create with Live Diagrams
+          or pick yourself in Google's file picker. Live Diagrams can't see, list or change anything else in your Drive,
+          and it doesn't ask for your Google profile or email address.
+        </li>
+        <li>
+          <strong>How it's used.</strong> To save the diagram you're working on as a <code>.diagram.json</code> file
+          in your Drive, to update that same file when you save again, and to open a file you picked. Nothing else.
+        </li>
+        <li>
+          <strong>Where it goes.</strong> File contents go directly between your browser and Google's servers. Nothing
+          goes through our servers; we have none. Opening the File menu where Google Drive is offered loads Google's
+          sign-in and picker scripts from Google, so a click can open them straight away; Google's own
+          <a href="https://policies.google.com/privacy">privacy policy</a> covers what Google receives.
+        </li>
+        <li>
+          <strong>How it's stored.</strong> The Google access token stays in the tab's memory only and is never stored
+          or sent anywhere but Google. A diagram you open from Drive is kept in this browser (see above), not by us.
+        </li>
+        <li>
+          <strong>Sharing.</strong> We don't share, sell or transfer Google user data to anyone, don't use it for
+          advertising, don't run analytics on it, and don't use it to train AI models. No person at Live Diagrams can read
+          it, because it never reaches us.
+        </li>
+        <li>
+          <strong>Revoking access.</strong> Remove Live Diagrams at
+          <a href="https://myaccount.google.com/permissions" data-testid="revoke-google"
+            >myaccount.google.com/permissions</a
+          >. Files Live Diagrams saved stay in your Drive until you delete them there; delete the copy in this browser
+          from <em>Your diagrams</em>.
+        </li>
+      </ul>
+      <div class="callout" data-testid="limited-use">
+        <p>
+          Live Diagrams' use and transfer of information received from Google APIs to any other app will adhere to the
+          <a href="https://developers.google.com/terms/api-services-user-data-policy"
+            >Google API Services User Data Policy</a
+          >, including the Limited Use requirements.
+        </p>
+      </div>
+
+      <h3 id="onedrive">OneDrive</h3>
+      <ul>
+        <li>
+          <strong>What we access.</strong> <code>Files.ReadWrite.AppFolder</code>: only Live Diagrams' own folder,
+          <em>Apps › Diagrams</em>, in your OneDrive. Live Diagrams can't see anything else in your OneDrive.
+          <code>offline_access</code> lets the open tab renew its sign-in for up to a day without asking again; that
+          renewal token is kept in the tab's memory too.
+        </li>
+        <li>
+          <strong>How it's used.</strong> To save diagrams into that folder, list it when you choose Open, and read
+          the file you pick.
+        </li>
+        <li>
+          <strong>Where it goes.</strong> Directly between your browser and Microsoft. Nothing goes through our
+          servers, and nothing is shared, sold, used for ads or analysed.
+        </li>
+        <li>
+          <strong>Revoking access.</strong> Personal accounts:
+          <a href="https://account.live.com/consent/Manage" data-testid="revoke-microsoft"
+            >account.live.com/consent/Manage</a
+          >. Work or school accounts: <a href="https://myapps.microsoft.com">myapps.microsoft.com</a>, or ask your
+          admin. Files stay in <em>Apps › Diagrams</em> until you delete them there.
+        </li>
+      </ul>
+
+      <h3 id="dropbox">Dropbox</h3>
+      <ul>
+        <li>
+          <strong>What we access.</strong> An app folder only (<code>files.metadata.read</code>,
+          <code>files.content.read</code>, <code>files.content.write</code>): Live Diagrams' own folder,
+          <em>Apps › Diagrams</em>, in your Dropbox. Live Diagrams can't see anything else in your Dropbox.
+        </li>
+        <li>
+          <strong>How it's used.</strong> To save diagrams into that folder, list it when you choose Open, and read
+          the file you pick. Dropbox's sign-in lasts about four hours; there is no long-lived token.
+        </li>
+        <li>
+          <strong>Where it goes.</strong> Directly between your browser and Dropbox. Nothing goes through our servers,
+          and nothing is shared, sold, used for ads or analysed.
+        </li>
+        <li>
+          <strong>Revoking access.</strong> In Dropbox, open
+          <a href="https://www.dropbox.com/account/connected_apps" data-testid="revoke-dropbox"
+            >Settings → Connected apps</a
+          >
+          and remove Live Diagrams. Files stay in <em>Apps › Diagrams</em> until you delete them there.
+        </li>
+      </ul>
+
+      <h2>Children</h2>
+      <p>Live Diagrams isn't directed at children under 13 and doesn't knowingly collect anything from anyone.</p>
+
+      <h2 id="contact">Changes and contact</h2>
       <p>
-        Any change to this page shows in the site's public source code. Questions:
+        If this policy changes, the new version is posted here with a new effective date, and every change shows in
+        the site's <a href="https://github.com/latchkostov/diagrams">public source code</a>. We'll never start using
+        data in a new way without asking you first.
+      </p>
+      <p>
+        Privacy questions or requests:
+        <a href="mailto:latch.kostov@gmail.com" data-testid="privacy-contact">latch.kostov@gmail.com</a>, or
         <a href="https://github.com/latchkostov/diagrams/issues">open an issue on GitHub</a>.
       </p>
-      <p><a href="./">← Back to Diagrams</a></p>
+      <p><a href="./terms.html">Terms of use</a> · <a href="./">← Back to Live Diagrams</a></p>
     </main>
   </body>
 </html>

@@ -146,7 +146,7 @@ export function LibraryDialog({
         )}
         {entries.length === 0 ? (
           <p className="lib-empty" data-testid="library-empty">
-            No diagrams yet. Start a new one, or open a file from draw.io, Mermaid or Diagrams.
+            No diagrams yet. Start a new one, or open a file from draw.io, Mermaid or Live Diagrams.
           </p>
         ) : (
           <ul className="lib-list" aria-label="Your diagrams">

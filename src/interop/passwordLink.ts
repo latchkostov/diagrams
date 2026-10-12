@@ -58,7 +58,7 @@ export function parseEncrypted(token: string): EncryptedParts {
   const version = parts[0] ?? "";
   if (/^v\d+$/.test(version) && version !== ENCRYPTION_VERSION)
     throw new BadEncryptedLinkError(
-      "This link was made by a newer version of Diagrams. Reload the page to update, then open the link again.",
+      "This link was made by a newer version of Live Diagrams. Reload the page to update, then open the link again.",
     );
   if (version !== ENCRYPTION_VERSION || parts.length !== 4 || parts.some((p) => !/^[A-Za-z0-9_-]+$/.test(p)))
     throw new BadEncryptedLinkError(DAMAGED);

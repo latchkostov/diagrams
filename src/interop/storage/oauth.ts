@@ -176,9 +176,9 @@ export async function authorizeInPopup(
 /** Errors the authorize redirect can carry, in words. */
 export function authorizeError(label: string, error: string, description?: string): string {
   if (error === "access_denied" || /AADSTS65004/.test(description ?? ""))
-    return `${label} access wasn't granted, so Diagrams can't open or save files there.`;
+    return `${label} access wasn't granted, so Live Diagrams can't open or save files there.`;
   if (/AADSTS90094|AADSTS90008|admin/i.test(description ?? ""))
-    return `Your organization's admin has to approve Diagrams before you can use ${label} with this account.`;
+    return `Your organization's admin has to approve Live Diagrams before you can use ${label} with this account.`;
   return `${label} sign-in failed (${short(description) || error}).`;
 }
 

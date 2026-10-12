@@ -21,7 +21,7 @@ export function preloadFormats() {
 export type FormatId = "native" | "drawio" | "mermaid";
 
 export const FORMAT_LABEL: Record<FormatId, string> = {
-  native: "Diagrams file",
+  native: "Live Diagrams file",
   drawio: "draw.io diagram",
   mermaid: "Mermaid flowchart",
 };
@@ -119,6 +119,6 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
   return {
     ok: false,
     error:
-      "That doesn't look like a diagram we can read. Supported: Diagrams files (.diagram.json), draw.io (.drawio / .xml) and Mermaid flowcharts (.mmd).",
+      "That doesn't look like a diagram we can read. Supported: Live Diagrams files (.diagram.json), draw.io (.drawio / .xml) and Mermaid flowcharts (.mmd).",
   };
 }

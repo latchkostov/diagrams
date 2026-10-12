@@ -61,7 +61,7 @@ export function TopBar(p: Props) {
     <header className="topbar" data-testid="topbar">
       <div className="brand" data-testid="brand">
         <Logo />
-        <span>Diagrams</span>
+        <span>Live Diagrams</span>
       </div>
 
       <div className="segmented" role="tablist" aria-label="View">
