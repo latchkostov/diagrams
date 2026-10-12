@@ -98,6 +98,14 @@
           <strong>Share links</strong> carry the diagram inside the link, after the <code>#</code>. Browsers never send
           that part to a server, so the diagram travels only to whoever you send the link to.
         </li>
+        <li>
+          <strong>Links with a password</strong> (File → Copy link with password…) carry the diagram encrypted
+          (AES-256-GCM, with a key derived from your password by PBKDF2-SHA-256 at 600,000 iterations). The encryption
+          and decryption happen in your browser; the password and the readable diagram are never sent anywhere.
+          Anyone with both the link and the password can open it, so send the password separately. Once opened, the
+          encrypted part is cleared from the address bar, though your browser's history may still list the address
+          as it was first visited.
+        </li>
       </ul>
 
       <h2 id="private-diagrams">Private diagrams</h2>

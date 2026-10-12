@@ -25,11 +25,14 @@ const kb = (n: number) => (n < 1024 ? `${n} characters` : `${(n / 1024).toFixed(
 export function ShareDialog({
   diagram,
   allowed,
+  onPasswordLink,
   onClose,
 }: {
   diagram: DiagramFile;
   /** Whether its document may still be shared as a link (asked again by every action). */
   allowed?: () => boolean;
+  /** Copy link with password… (the same diagram, encrypted). */
+  onPasswordLink?: () => void;
   onClose: () => void;
 }) {
   const [url, setUrl] = useState<string>();
@@ -74,6 +77,17 @@ export function ShareDialog({
             </button>
           )}
           <span className="ix-grow" />
+          {onPasswordLink && (
+            <button
+              className="btn"
+              onClick={() => {
+                if (gate(allowed, onClose)) onPasswordLink();
+              }}
+              data-testid="share-link-password"
+            >
+              <Glyph name="lock" size={14} /> Copy link with password…
+            </button>
+          )}
           {url && (
             <a
               className="btn"

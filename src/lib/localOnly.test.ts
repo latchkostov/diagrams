@@ -23,7 +23,7 @@ vi.mock("../examples", async () => {
   return { examples, getLoadedExample: (slug: string) => examples.find((e) => e.slug === slug)?.diagram };
 });
 
-import { isLocalOnly } from "./localOnly";
+import { canShareAsLink, isLocalOnly } from "./localOnly";
 import { resetLocalFingerprintsForTest } from "./localOnly.dev";
 import * as io from "./diagramIO";
 import { describeForAi } from "../ai/privacy";
@@ -160,5 +160,14 @@ describe("dev-only content fingerprints", () => {
     const getDiagram = vi.fn(() => localOnlyFixture);
     expect(isLocalOnly({ editor: { getDiagram } })).toBe(false);
     expect(getDiagram).not.toHaveBeenCalled();
+  });
+});
+
+describe("canShareAsLink", () => {
+  it("is the one gate for every link: a local-only diagram gets none, any other diagram may", () => {
+    expect(canShareAsLink({ localOnly: true })).toBe(false);
+    expect(canShareAsLink({ localOnly: false, diagram: { ...localOnlyFixture, nodes: [], edges: [] } })).toBe(true);
+    expect(canShareAsLink(null)).toBe(true);
+    expect(canShareAsLink(undefined)).toBe(true);
   });
 });

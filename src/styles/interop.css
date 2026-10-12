@@ -1009,3 +1009,38 @@ p.ix-storage-state {
   min-height: 32px;
   padding: 5px 10px;
 }
+
+/* ---------- password links (src/interop/ui/passwordDialogs.tsx) ---------- */
+
+.ix-password {
+  display: grid;
+  gap: 8px;
+}
+
+.ix-password-field {
+  display: grid;
+  gap: 5px;
+}
+
+.ix-strength {
+  font-weight: 500;
+}
+
+.ix-strength.is-short,
+.ix-strength.is-weak {
+  color: var(--danger);
+}
+
+.ix-strength.is-fair {
+  color: var(--warning);
+}
+
+.ix-strength.is-strong {
+  color: var(--success);
+}
+
+.ix-embed-locked {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
