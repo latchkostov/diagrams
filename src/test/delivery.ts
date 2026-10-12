@@ -1,5 +1,5 @@
 import { expect } from "vitest";
-import { applyOps } from "../ai";
+import { applyOps, type DiagramOp } from "../ai";
 import type { CheckRuleId } from "../model/checks";
 import type { DiagramFile, DiagramNode, Simulation } from "../model/types";
 import { createSimulationRun } from "../sim/simulation";
@@ -39,16 +39,27 @@ export function preservesDelivery(
 ): number {
   const [finding] = runChecks(d, { rules: [rule] }).findings;
   expect(finding?.fix?.ops, rule).toBeDefined();
+  const ways = [{ label: finding.fix!.label, ops: finding.fix!.ops! }, ...(finding.fix!.options ?? [])];
+  sameDelivery(d, ways, counted);
+  return ways.length;
+}
+
+/** `ways` (each a batch of edit ops) all deliver what `d` delivered: see preservesDelivery. */
+export function sameDelivery(
+  d: DiagramFile,
+  ways: readonly { label: string; ops: DiagramOp[] }[],
+  counted: (n: DiagramNode) => boolean = () => true,
+): void {
   const before = delivered(d, counted);
   expect(Object.values(before).some((n) => n > 0)).toBe(true);
-  const ways = [{ label: finding.fix!.label, ops: finding.fix!.ops! }, ...(finding.fix!.options ?? [])];
   for (const way of ways) {
     const result = applyOps(d, way.ops);
     expect(result.errors, way.label).toEqual([]);
     const after = delivered(result.diagram, counted);
-    // What was there handles what it did, and what the fix added (that `counted` keeps) handles nothing.
-    const expected = Object.fromEntries(Object.keys(after).map((id) => [id, before[id] ?? 0]));
-    expect(after, way.label).toEqual(expected);
+    // Every node that was there is still there and handles what it did (one removed fails here)...
+    expect(Object.fromEntries(Object.keys(before).map((id) => [id, after[id]])), way.label).toEqual(before);
+    // ...and every node the change added (that `counted` keeps) handles nothing.
+    const added = Object.entries(after).filter(([id]) => !(id in before));
+    expect(Object.fromEntries(added), way.label).toEqual(Object.fromEntries(added.map(([id]) => [id, 0])));
   }
-  return ways.length;
 }

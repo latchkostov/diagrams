@@ -14,6 +14,9 @@ import type { CheckFix, CheckRule } from "../types";
 
 const FORMAT = /\b(avro|protobuf)\b/i;
 const REGISTRY = /schema[\s-]?registry|apicurio/i;
+/** Words saying there isn't one: "no schema registry", "needs a schema registry", "schema registry: missing". */
+const MISSING =
+  /\b(no|not|without|lacks?|needs?|todo)\W+(\w+\W+){0,3}?(schema[\s-]?registry|apicurio)|(schema[\s-]?registry|apicurio)\W+(\w+\W+){0,2}?(missing|needed|planned|todo)\b/i;
 const NAMES: Record<string, string> = { avro: "Avro", protobuf: "Protobuf" };
 
 /** The topic's schema format, from its content type, else its words. */
@@ -32,8 +35,12 @@ export const schemaRegistry: CheckRule = {
     "Fires once per diagram, for Kafka topics whose content type or label says Avro or Protobuf when no schema registry is drawn.",
   detect(ctx) {
     const nodes = ctx.diagram.nodes;
-    if (nodes.some((n) => n.stencil === "kafka.schema-registry" || REGISTRY.test(`${n.label} ${n.sublabel ?? ""}`)))
-      return [];
+    // A registry: the stencil, or a node (not a broker: a topic is never one) named as one, not as missing.
+    const named = (n: DiagramNode) => {
+      const words = `${n.label} ${n.sublabel ?? ""}`;
+      return !isBroker(ctx, n.id) && REGISTRY.test(words) && !MISSING.test(words);
+    };
+    if (nodes.some((n) => n.stencil === "kafka.schema-registry" || named(n))) return [];
     const topics = nodes.flatMap((n) => {
       const format = isKafkaFamily(n.stencil) ? formatOf(n) : undefined;
       return format ? [{ id: n.id, format }] : [];

@@ -45,6 +45,8 @@ export interface CheckContext {
    * "dlq" in a diagram with a node "dlq" would point at that node.
    */
   freshKey(base: string): string;
+  /** Whether a boundary has this id. Indexed on first use. */
+  isBoundary(id: string): boolean;
   /** Free play as capacity planning sees it, as live view's Show capacity does (src/sim/capacityPlanning.ts). */
   planning(): Simulation;
   /** analyzeCapacity of `planning()`: the diagram's own (free-play) rates. Computed on first use. */
@@ -83,6 +85,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   let requests: Map<string, CompiledEdge[]> | undefined;
   /** Boundary and annotation ids, for freshKey. */
   let others: Set<string> | undefined;
+  let boundaries: Set<string> | undefined;
   const otherIds = () =>
     (others ??= new Set([...(diagram.groups ?? []), ...(diagram.annotations ?? [])].map((x) => x.id)));
   const plan = () =>
@@ -137,6 +140,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
       for (let i = 2; taken(key); i++) key = `${base}-${i}`;
       return key;
     },
+    isBoundary: (id) => (boundaries ??= new Set((diagram.groups ?? []).map((g) => g.id))).has(id),
     planning: plan,
     capacity: () => (capacity ??= analyzeCapacity(diagram, plan())),
   };
@@ -150,7 +154,7 @@ export const isBroker = (ctx: CheckContext, id: string) => brokerRole(ctx.role(i
  */
 export function sharedBoundary(ctx: CheckContext, ids: readonly string[]): string | undefined {
   const group = ctx.nodes.get(ids[0])?.group;
-  if (!group || !fitsRef(group) || !ctx.diagram.groups?.some((g) => g.id === group)) return undefined;
+  if (!group || !fitsRef(group) || !ctx.isBoundary(group)) return undefined;
   return ids.every((id) => ctx.nodes.get(id)?.group === group) ? group : undefined;
 }
 

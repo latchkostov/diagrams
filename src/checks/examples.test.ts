@@ -371,12 +371,16 @@ describe("batch 4 rules scale linearly", () => {
   function dense(rule: (typeof RULES)[number], n: number): DiagramFile {
     const nodes: DiagramFile["nodes"] = [];
     const edges: DiagramFile["edges"] = [];
+    const groups: NonNullable<DiagramFile["groups"]> = [];
     for (let p = 0; nodes.length < n; p++) {
       const at = (i: number) => ({ x: i * 300, y: p * 200 });
       if (rule === "secret-identity") {
         nodes.push({ id: `kv${p}`, stencil: "azure.key-vault", label: `Vault ${p}`, ...at(0) });
+        // Each function in a boundary of its own: where a fix puts each one's identity is looked up per service.
         for (let i = 1; i < 5; i++) {
-          nodes.push({ id: `fn${p}-${i}`, stencil: "azure.functions", label: `Function ${p}.${i}`, ...at(i) });
+          const group = `g${p}-${i}`;
+          groups.push({ id: group, label: `App ${p}.${i}`, ...at(i), width: 280, height: 140 });
+          nodes.push({ id: `fn${p}-${i}`, stencil: "azure.functions", label: `Function ${p}.${i}`, group, ...at(i) });
           edges.push({ id: `s${p}-${i}`, from: `fn${p}-${i}`, to: `kv${p}`, relation: "secret" });
         }
       } else {
@@ -395,8 +399,23 @@ describe("batch 4 rules scale linearly", () => {
         }
       }
     }
-    return { format: "diagrams/v1", title: "Dense", nodes, edges };
+    return { format: "diagrams/v1", title: "Dense", nodes, edges, groups };
   }
+
+  it.each(RULES)("%s reads each boundary a bounded number of times, however many there are", (rule) => {
+    // A scan of every boundary per service is quadratic, yet too cheap to show in a timing ratio at 1,500 nodes:
+    // count the reads instead.
+    const d = dense(rule, 1_500);
+    let reads = 0;
+    d.groups = new Proxy(d.groups!, {
+      get(target, key, receiver) {
+        if (typeof key === "string" && /^\d+$/.test(key)) reads++;
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    expect(runChecks(d, { rules: [rule] }).findings).toHaveLength(1);
+    expect(reads).toBeLessThanOrEqual(10 * Math.max(d.groups.length, 1));
+  });
 
   it.each(RULES)("%s stays linear on a diagram made mostly of what it reads", (rule) => {
     const small = dense(rule, 375);

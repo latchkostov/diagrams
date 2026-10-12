@@ -110,19 +110,25 @@ export const secretIdentity: CheckRule = {
     const names = listNames(readers.map(ctx.name));
 
     // One identity per cloud, each service connected to it; a chip gives each service its own. Each only while it
-    // fits the operation schema: one edit batch, and ids short enough to name.
+    // fits the operation schema (one edit batch, ids short enough to name), counted before any op is built: the
+    // shared one is an identity per cloud plus a connection per service, one each is two ops per service.
     const safe = readers.every(fitsRef);
-    const shared = addIdentities(ctx, groups, false, n === 1);
-    const each = n > 1 ? addIdentities(ctx, groups, true, false) : undefined;
-    const fits = (ops: DiagramOp[]) => ops.length <= MAX_BATCH;
     const label = one ? `Add ${noun}` : "Add workload identities";
     const fix: CheckFix | undefined =
-      safe && fits(shared)
+      safe && groups.size + n <= MAX_BATCH
         ? {
             label,
-            ops: shared,
-            ...(each && fits(each)
-              ? { options: [{ label: `${label} for each service`, short: "One for each service", ops: each }] }
+            ops: addIdentities(ctx, groups, false, n === 1),
+            ...(n > 1 && 2 * n <= MAX_BATCH
+              ? {
+                  options: [
+                    {
+                      label: `${label} for each service`,
+                      short: "One for each service",
+                      ops: addIdentities(ctx, groups, true, false),
+                    },
+                  ],
+                }
               : {}),
           }
         : undefined;

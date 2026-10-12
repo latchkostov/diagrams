@@ -495,6 +495,26 @@ describe("schema-registry", () => {
     for (const d of [withStencil, apicurio, glue]) expect(ids(d, "schema-registry")).toEqual([]);
   });
 
+  it("words saying the registry is missing don't count as one, on the topic or anywhere else", () => {
+    const onTopic = avro({});
+    onTopic.nodes[2].sublabel = "Avro, no schema registry";
+    expect(ids(onTopic, "schema-registry")).toEqual(["warning:schema-registry:topic"]);
+    for (const words of [
+      "Needs a schema registry",
+      "Schema registry: missing",
+      "TODO schema registry",
+      "without Apicurio",
+    ]) {
+      const note = avro();
+      note.nodes.push(node("todo", "generic.service", { label: "Platform", sublabel: words }));
+      expect(ids(note, "schema-registry"), words).toEqual(["warning:schema-registry:topic"]);
+    }
+    // A topic is never the registry, even one named for it.
+    const named = avro();
+    named.nodes.push(node("sr-topic", "kafka.topic", { label: "_schemas", sublabel: "Schema Registry storage" }));
+    expect(ids(named, "schema-registry")).toEqual(["warning:schema-registry:topic"]);
+  });
+
   it("JSON, no format, a word that only contains avro, and brokers that aren't Kafka don't fire", () => {
     expect(ids(avro({ contentType: "application/json" }), "schema-registry")).toEqual([]);
     expect(ids(avro({}), "schema-registry")).toEqual([]);

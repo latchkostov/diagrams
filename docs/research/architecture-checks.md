@@ -404,7 +404,8 @@ Batch 4 (both asked for; they needed a little more model first, see "Batch 4: as
 - **As built (batch 4).** One Warning per diagram, naming every such topic (a registry serves them all). The Kafka
   family is `kafka.topic`, Amazon MSK and Confluent Cloud; Event Hubs is left out (Azure has its own schema registry
   there). A registry drawn any way keeps it quiet: the stencil, or a node named as one (Apicurio, Glue Schema
-  Registry), connected or not. Producers and consumers are the topics' direct flow neighbours that aren't brokers.
+  Registry), connected or not; a topic is never one, and words saying it's missing ("Avro, no schema registry",
+  "needs a schema registry") don't count. Producers and consumers are the topics' direct flow neighbours that aren't brokers.
   The AsyncAPI import already wrote `props.contentType` (imports batch 2), and adds a registry itself when it sees
   Avro or Protobuf, so an imported diagram warns only if the registry is taken out.
 
@@ -782,7 +783,9 @@ while building:
   allocate no ids themselves (`applyOps` does, for what they add); they name only batch keys. A fix is offered
   only while it fits the operation schema: at most 100 ops in the batch and ids of 200 characters or less; past that
   the row says it's too big a change for one step (unit tests: 60 services get the shared identity but no per-service
-  chip, 120 get no fix).
+  chip, 120 get no fix). The op count is checked before any op is built, and the boundary a new node goes in is an
+  indexed lookup, so a diagram with a boundary per service doesn't read every boundary per service (a test counts
+  the reads).
 - **Agents.** The per-service identities are a chip, so agents get them as `fix.others` while they fit beside the
   default's ops, else named in `fix.elsewhere`, within the reply's 1.5K-character budget (`agentReport` as in batch 3).
 - **The stencil.** The brief asked for a Google Cloud service account stencil; the catalogue has had one,
