@@ -1,4 +1,12 @@
 import { nodeSimPropsSchema, edgeSimPropsSchema } from "./simProps";
+import { EDGE_RELATIONS, MAX_SETTINGS, MAX_SETTING_KEY } from "./relations";
+import type { JsonSchema } from "./jsonSchema";
+import type { DiagramAnnotation, DiagramEdge, DiagramFile, DiagramGroup, DiagramNode, Simulation } from "./types";
+
+// Every field of the file format, its nodes, edges, boundaries, notes and simulations is listed here:
+// `satisfies Fields<T>` fails typecheck when a type gains a field the schema doesn't describe, and
+// diagramSchema.test.ts checks every example against the schema with unknown fields refused.
+type Fields<T> = Record<keyof T, JsonSchema>;
 const SITE = "https://www.livediagrams.dev";
 const SCHEMA = "https://json-schema.org/draft/2020-12/schema";
 const TONES = ["azure", "aws", "gcp", "k8s", "onprem", "neutral"];
@@ -39,7 +47,7 @@ function diagramSchema() {
         items: { type: "string" },
         description: "Back-to-front order of node and annotation ids.",
       },
-    },
+    } satisfies Fields<DiagramFile>,
     $defs: {
       Node: {
         type: "object",
@@ -56,7 +64,7 @@ function diagramSchema() {
           y: num,
           group: { type: "string", description: "Id of the boundary it sits in." },
           props: { $ref: "#/$defs/NodeProps" },
-        },
+        } satisfies Fields<DiagramNode>,
       },
       NodeProps: nodeSimPropsSchema,
       Edge: {
@@ -71,14 +79,42 @@ function diagramSchema() {
             type: "string",
             enum: ["async", "sync"],
             default: "async",
-            description: "async = messages/events (dashed); sync = request/response (solid).",
+            description:
+              "async = messages/events (dashed); sync = request/response (solid). Only meaningful for flows.",
           },
-          sourceSide: { type: "string", enum: SIDES },
-          targetSide: { type: "string", enum: SIDES },
+          relation: {
+            type: "string",
+            enum: EDGE_RELATIONS,
+            default: "flow",
+            description:
+              "What the connection means. flow carries messages or requests; the others are dependencies (dotted, no traffic, ignored by the simulation) and point from the thing that needs it to the dependency: config, secret, identity (gets tokens from), telemetry (reports to), deploy (from the actor to its target), depends.",
+          },
+          sourceSide: {
+            type: "string",
+            enum: SIDES,
+            description: "Side of the from node it attaches to. Omitted = chosen from the positions.",
+          },
+          targetSide: { type: "string", enum: SIDES, description: "Side of the to node it attaches to." },
           props: { $ref: "#/$defs/EdgeProps" },
+        } satisfies Fields<DiagramEdge>,
+      },
+      EdgeProps: {
+        ...edgeSimPropsSchema,
+        properties: {
+          ...(edgeSimPropsSchema.properties as Record<string, JsonSchema>),
+          settings: {
+            type: "array",
+            maxItems: MAX_SETTINGS,
+            description:
+              "Config connections only: the settings it reads. secret = the value is a reference to a secret store (e.g. a Key Vault reference). Names only, never values.",
+            items: {
+              type: "object",
+              required: ["key"],
+              properties: { key: str(MAX_SETTING_KEY), secret: { type: "boolean" } },
+            },
+          },
         },
       },
-      EdgeProps: edgeSimPropsSchema,
       Boundary: {
         type: "object",
         required: ["id", "label", "x", "y", "width", "height"],
@@ -90,7 +126,7 @@ function diagramSchema() {
           y: num,
           width: { type: "number", minimum: 0 },
           height: { type: "number", minimum: 0 },
-        },
+        } satisfies Fields<DiagramGroup>,
       },
       Annotation: {
         type: "object",
@@ -107,7 +143,7 @@ function diagramSchema() {
           shape: { type: "string", enum: ["rect", "rounded", "ellipse", "diamond", "cylinder"] },
           color: { type: "string", enum: ["neutral", "yellow", "green", "blue", "purple", "red"] },
           textSize: { type: "string", enum: ["s", "m", "l", "xl"] },
-        },
+        } satisfies Fields<DiagramAnnotation>,
       },
       Simulation: {
         type: "object",
@@ -277,7 +313,7 @@ function diagramSchema() {
               },
             },
           },
-        },
+        } satisfies Fields<Simulation>,
       },
     },
   };

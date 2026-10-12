@@ -217,7 +217,21 @@
             "sync"
           ],
           "default": "async",
-          "description": "async = messages/events (dashed); sync = request/response (solid)."
+          "description": "async = messages/events (dashed); sync = request/response (solid). Only meaningful for flows."
+        },
+        "relation": {
+          "type": "string",
+          "enum": [
+            "flow",
+            "config",
+            "secret",
+            "identity",
+            "telemetry",
+            "deploy",
+            "depends"
+          ],
+          "default": "flow",
+          "description": "What the connection means. flow carries messages or requests; the others are dependencies (dotted, no traffic, ignored by the simulation) and point from the thing that needs it to the dependency: config, secret, identity (gets tokens from), telemetry (reports to), deploy (from the actor to its target), depends."
         },
         "sourceSide": {
           "type": "string",
@@ -226,7 +240,8 @@
             "right",
             "bottom",
             "left"
-          ]
+          ],
+          "description": "Side of the from node it attaches to. Omitted = chosen from the positions."
         },
         "targetSide": {
           "type": "string",
@@ -235,7 +250,8 @@
             "right",
             "bottom",
             "left"
-          ]
+          ],
+          "description": "Side of the to node it attaches to."
         },
         "props": {
           "$ref": "#/$defs/EdgeProps"
@@ -269,6 +285,26 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "settings": {
+          "type": "array",
+          "maxItems": 200,
+          "description": "Config connections only: the settings it reads. secret = the value is a reference to a secret store (e.g. a Key Vault reference). Names only, never values.",
+          "items": {
+            "type": "object",
+            "required": [
+              "key"
+            ],
+            "properties": {
+              "key": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "secret": {
+                "type": "boolean"
+              }
+            }
           }
         }
       }
