@@ -553,3 +553,60 @@ for (const [format, item, file] of [
     expectNoErrors(consoleErrors);
   });
 }
+
+test("a private diagram gets no password link: the rows are off, and an open dialog closes without copying", async ({
+  page,
+  context,
+  consoleErrors,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  // Hold encryption (after PBKDF2) so the diagram can turn private while a link is being made.
+  await context.addInitScript(() => {
+    const w = window as unknown as { __holdEncrypt?: boolean; __releaseEncrypt?: () => void; __encrypting?: number };
+    const encrypt = crypto.subtle.encrypt.bind(crypto.subtle) as (...a: unknown[]) => Promise<ArrayBuffer>;
+    Object.defineProperty(crypto.subtle, "encrypt", {
+      configurable: true,
+      value: async (...args: unknown[]) => {
+        if (w.__holdEncrypt) {
+          w.__encrypting = (w.__encrypting ?? 0) + 1;
+          await new Promise<void>((resolve) => (w.__releaseEncrypt = resolve));
+        }
+        return encrypt(...args);
+      },
+    });
+  });
+  await gotoCanvas(page, SLUG);
+  const slug = await importDiagram(page, "Password plan");
+  await page.evaluate(() => navigator.clipboard.writeText("before"));
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("export-share-link-password").click();
+  await page.getByTestId("password-link-input").fill("plum orbit lantern 42");
+  await page.evaluate(() => ((window as unknown as { __holdEncrypt: boolean }).__holdEncrypt = true));
+  await page.getByTestId("password-link-copy").click();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __encrypting?: number }).__encrypting ?? 0), {
+      timeout: 15_000,
+    })
+    .toBe(1);
+
+  // Another tab makes it private while the link is being encrypted.
+  const other = await context.newPage();
+  await gotoCanvas(other, slug);
+  await expect(other.getByTestId("diagram-title")).toHaveText("Password plan");
+  await makePrivate(other);
+  await expect(page.getByTestId("password-link-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("toast").filter({ hasText: PRIVATE_SHARE })).toBeVisible();
+  await page.evaluate(() => (window as unknown as { __releaseEncrypt?: () => void }).__releaseEncrypt?.());
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
+
+  // Its menu rows are off, here and in the right-click's Export ▸.
+  await page.getByTestId("file-button").click();
+  await expect(page.getByTestId("export-share-link-password")).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: 700, y: 60 } });
+  await page.getByTestId("context-menu-item-canvas.export").hover();
+  await expect(page.getByTestId("context-menu-item-export:share-password")).toHaveAttribute("aria-disabled", "true");
+  await other.close();
+  expectNoErrors(consoleErrors);
+});

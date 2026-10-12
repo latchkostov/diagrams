@@ -84,23 +84,23 @@ export const contentSecurityPolicy = (o: { embed: boolean }) =>
  * (the AI panel's Dictate), display capture for Record video. The camera is left at the browser's default
  * (this site only) rather than off: Chromium checks it on every getDisplayMedia call and logs a policy
  * violation when it's denied, though the app never asks for a camera.
+ *
+ * Only features every current Chromium build recognises on every desktop platform: an unknown name makes
+ * the browser log "Unrecognized feature" for every page (Linux Chromium has no `bluetooth`, for example).
+ * tests/e2e/csp.spec.ts checks each one against `document.featurePolicy.features()`.
  */
-export const PERMISSIONS_POLICY = [
-  "microphone=(self)",
-  "display-capture=(self)",
-  "geolocation=()",
-  "payment=()",
-  "usb=()",
-  "serial=()",
-  "hid=()",
-  "bluetooth=()",
-  "midi=()",
-  "accelerometer=()",
-  "gyroscope=()",
-  "magnetometer=()",
-  "xr-spatial-tracking=()",
-  "browsing-topics=()",
-].join(", ");
+export const PERMISSIONS_FEATURES: [feature: string, allow: "self" | "none"][] = [
+  ["microphone", "self"],
+  ["display-capture", "self"],
+  ["geolocation", "none"],
+  ["payment", "none"],
+  ["usb", "none"],
+  ["serial", "none"],
+];
+
+export const PERMISSIONS_POLICY = PERMISSIONS_FEATURES.map(
+  ([f, allow]) => `${f}=${allow === "self" ? "(self)" : "()"}`,
+).join(", ");
 
 /** Sent with every response. */
 export const COMMON_HEADERS: Record<string, string> = {

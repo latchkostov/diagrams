@@ -192,6 +192,26 @@ test.describe("Content-Security-Policy", () => {
     expect(await csp.violations()).toEqual([]);
   });
 
+  test("the Permissions-Policy names only features this browser knows: no 'Unrecognized feature' warning", async ({
+    page,
+  }) => {
+    // Listening from before the navigation: the browser reports a bad header while it parses it.
+    const messages: string[] = [];
+    page.on("console", (m) => messages.push(`${m.type()}: ${m.text()}`));
+    const res = await page.goto(`./?view=canvas&example=${KAFKA}`);
+    await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+    const header = res?.headers()["permissions-policy"] ?? "";
+    const named = header.split(",").map((p) => p.trim().split("=")[0]);
+    expect(named.length).toBeGreaterThan(3);
+    const known = await page.evaluate(() => {
+      const d = document as Document & { featurePolicy?: { features(): string[] } };
+      return d.featurePolicy?.features() ?? [];
+    });
+    expect(known.length, "document.featurePolicy.features() is empty").toBeGreaterThan(0);
+    for (const feature of named) expect(known, `${feature} isn't a feature this Chromium knows`).toContain(feature);
+    expect(messages.filter((m) => /Permissions[- ]Policy|Unrecognized feature/i.test(m))).toEqual([]);
+  });
+
   test("the static pages: privacy, sign-in redirect, skill install page", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const csp = await watch(page);

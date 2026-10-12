@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import { examples, loadExample } from "../../examples";
 import { LazyCanvasView as CanvasView, preloadCanvasView } from "../../canvas/loadCanvasView";
@@ -17,8 +17,8 @@ import { notify } from "../ui/toast";
 type State =
   | { status: "loading" }
   | { status: "ready"; diagram: DiagramFile; key: string; openHref: string }
-  /** A password link: `asking` while the prompt is open. */
-  | { status: "locked"; token: string; asking: boolean }
+  /** A password link: `asking` while the prompt is open; `session` numbers that prompt. */
+  | { status: "locked"; token: string; asking: boolean; session?: number }
   /** `toast`: also announce the error (a failed download, not a bad link). */
   | { status: "error"; message: string; toast?: boolean };
 
@@ -72,24 +72,29 @@ function resolve(): Promise<State> {
 
 export function EmbedView() {
   const [state, setState] = useState<State>({ status: "loading" });
+  // Only the latest navigation may apply: a slow example download (or a password unlock) that finishes
+  // after a newer hash change, or after unmounting, is dropped, toast included.
+  const navigation = useRef(0);
+  // The password prompt's session: closing it (Cancel, Esc) or a new prompt drops an unlock in flight.
+  const unlockSession = useRef(0);
   useEffect(() => {
     // The diagram is always shown on the canvas: fetch its code while the diagram resolves.
     preloadCanvasView();
-    // Only the latest navigation may apply: a slow example download that finishes after a newer
-    // hash change (or after unmounting) is dropped, toast included.
-    let latest = 0;
+    const nav = navigation;
+    const prompt = unlockSession;
     const load = () => {
-      const request = ++latest;
+      const request = ++navigation.current;
       void resolve().then((s) => {
-        if (request !== latest) return;
+        if (request !== navigation.current) return;
         if (s.status === "error" && s.toast) notify(s.message, { kind: "error" });
-        setState(s);
+        setState(s.status === "locked" ? { ...s, session: ++unlockSession.current } : s);
       });
     };
     load();
     window.addEventListener("hashchange", load);
     return () => {
-      latest++;
+      nav.current++;
+      prompt.current++;
       window.removeEventListener("hashchange", load);
     };
   }, []);
@@ -137,7 +142,7 @@ export function EmbedView() {
             <span>This diagram is password-protected.</span>
             <button
               className="btn btn-primary"
-              onClick={() => setState({ ...state, asking: true })}
+              onClick={() => setState({ ...state, asking: true, session: ++unlockSession.current })}
               data-testid="embed-unlock"
             >
               <Glyph name="lock" size={14} /> Enter password
@@ -146,9 +151,13 @@ export function EmbedView() {
           {state.asking && (
             <Suspense fallback={null}>
               <UnlockDialog
+                key={state.session}
                 unlock={async (password) => {
+                  const request = navigation.current;
+                  const session = state.session;
                   const { decodeEncryptedShare } = await import("../shareCrypto");
                   const diagram = await decodeEncryptedShare(state.token, password);
+                  if (request !== navigation.current || session !== unlockSession.current) return;
                   const base = `${window.location.origin}${window.location.pathname}`;
                   setState({
                     status: "ready",
@@ -158,7 +167,10 @@ export function EmbedView() {
                     openHref: `${base}#e=${state.token}`,
                   });
                 }}
-                onClose={() => setState({ ...state, asking: false })}
+                onClose={() => {
+                  unlockSession.current++;
+                  setState({ ...state, asking: false });
+                }}
               />
             </Suspense>
           )}

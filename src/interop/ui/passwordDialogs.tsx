@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import { appBaseUrl, SHARE_WARN_LENGTH } from "../share";
 import { encodeEncryptedShare, encryptedShareUrl, MIN_PASSWORD_LENGTH, WrongPasswordError } from "../shareCrypto";
@@ -34,28 +34,47 @@ export function PasswordLinkDialog({
   };
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [url, setUrl] = useState<string>();
+  // Each link is bound to the exact password it was encrypted with. An edit (or closing the dialog) makes
+  // any encryption still running stale: its link is never shown or copied.
+  const [request, setRequest] = useState<{ id: number; password: string }>();
+  const [made, setMade] = useState<{ password: string; url: string }>();
   const [error, setError] = useState<string>();
+  const latest = useRef(0);
+  useEffect(
+    () => () => {
+      latest.current++;
+    },
+    [],
+  );
+  const busy = request?.password === password;
+  const url = made?.password === password ? made.url : undefined;
   const strength = passwordStrength(password);
   const ok = password.length >= MIN_PASSWORD_LENGTH;
   const hintId = useId();
 
   const create = async () => {
     if (!ok || busy || !stillAllowed()) return;
-    setBusy(true);
+    const id = ++latest.current;
+    const pw = password;
+    setRequest({ id, password: pw });
     setError(undefined);
+    let link: string;
     try {
-      const link = encryptedShareUrl(await encodeEncryptedShare(diagram, password), appBaseUrl());
-      if (!stillAllowed()) return;
-      setUrl(link);
-      if (await copyText(link)) toast.success("Link with password copied. Send the password separately.");
-      else toast.info("Couldn't copy automatically. Select the link and copy it.");
+      link = encryptedShareUrl(await encodeEncryptedShare(diagram, pw), appBaseUrl());
     } catch (err) {
-      setError(message(err));
-    } finally {
-      setBusy(false);
+      if (latest.current === id) {
+        setRequest(undefined);
+        setError(message(err));
+      }
+      return;
     }
+    if (latest.current !== id) return;
+    setRequest(undefined);
+    // Encrypting takes a moment: the diagram may have become private since (here or in another tab).
+    if (!stillAllowed()) return;
+    setMade({ password: pw, url: link });
+    if (await copyText(link)) toast.success("Link with password copied. Send the password separately.");
+    else toast.info("Couldn't copy automatically. Select the link and copy it.");
   };
 
   return (
@@ -71,7 +90,13 @@ export function PasswordLinkDialog({
           <span className="ix-grow" />
           {url ? (
             <>
-              <button className="btn" onClick={() => void copyText(url)} data-testid="password-link-copy-again">
+              <button
+                className="btn"
+                onClick={() => {
+                  if (stillAllowed()) void copyText(url);
+                }}
+                data-testid="password-link-copy-again"
+              >
                 <Glyph name="copy" size={14} /> Copy again
               </button>
               <button className="btn btn-primary" onClick={onClose} data-testid="password-link-done">
@@ -111,8 +136,10 @@ export function PasswordLinkDialog({
               type={show ? "text" : "password"}
               value={password}
               onChange={(e) => {
+                latest.current++;
+                setRequest(undefined);
+                setError(undefined);
                 setPassword(e.target.value);
-                setUrl(undefined);
               }}
               autoComplete="new-password"
               spellCheck={false}

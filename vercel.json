@@ -14,7 +14,7 @@
         },
         {
           "key": "Permissions-Policy",
-          "value": "microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), xr-spatial-tracking=(), browsing-topics=()"
+          "value": "microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=(), serial=()"
         }
       ]
     },

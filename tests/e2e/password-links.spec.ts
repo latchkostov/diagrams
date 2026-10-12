@@ -15,6 +15,55 @@ function recordRequests(context: BrowserContext) {
   return sent;
 }
 
+type CryptoStep = "encrypt" | "decrypt";
+interface Gate {
+  hold: Partial<Record<CryptoStep, boolean>>;
+  held: Partial<Record<CryptoStep, number>>;
+  release: Partial<Record<CryptoStep, (() => void)[]>>;
+}
+declare global {
+  interface Window {
+    __gate: Gate;
+    __blockShared?: boolean;
+  }
+}
+
+/**
+ * Lets a test hold WebCrypto's AES step (after PBKDF2) until it says so, in every page of the context, and
+ * make storing the Shared slot fail (as a full or blocked localStorage does).
+ */
+async function controlCrypto(context: BrowserContext) {
+  await context.addInitScript(() => {
+    const gate: Gate = { hold: {}, held: {}, release: {} };
+    window.__gate = gate;
+    for (const step of ["encrypt", "decrypt"] as const) {
+      const original = crypto.subtle[step].bind(crypto.subtle) as (...a: unknown[]) => Promise<ArrayBuffer>;
+      Object.defineProperty(crypto.subtle, step, {
+        configurable: true,
+        value: async (...args: unknown[]) => {
+          if (gate.hold[step]) {
+            gate.held[step] = (gate.held[step] ?? 0) + 1;
+            await new Promise<void>((resolve) => (gate.release[step] ??= []).push(resolve));
+          }
+          return original(...args);
+        },
+      });
+    }
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (window.__blockShared && key === "diagrams.shared.v1") throw new DOMException("full", "QuotaExceededError");
+      return setItem.call(this, key, value);
+    };
+  });
+}
+const hold = (page: Page, step: CryptoStep) => page.evaluate((s) => void (window.__gate.hold[s] = true), step);
+const held = (page: Page, step: CryptoStep) => page.evaluate((s) => window.__gate.held[s] ?? 0, step);
+const release = (page: Page, step: CryptoStep) =>
+  page.evaluate((s) => {
+    window.__gate.hold[s] = false;
+    for (const go of window.__gate.release[s]?.splice(0) ?? []) go();
+  }, step);
+
 async function makePasswordLink(page: Page, slug: string): Promise<string> {
   await gotoCanvas(page, slug);
   await page.getByTestId("file-button").click();
@@ -134,5 +183,208 @@ test.describe("password links", () => {
     await page.goto("./?view=gallery#e=v1.not-a-link");
     await expect(page.getByTestId("toast")).toContainText("damaged or incomplete", { timeout: pageLoadTimeout() });
     await expect(page.getByTestId("password-prompt")).toHaveCount(0);
+  });
+
+  test("editing the password while it encrypts never shows or copies the old password's link", async ({
+    page,
+    context,
+  }) => {
+    test.slow();
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await controlCrypto(context);
+    const ex = publicExamples[0];
+    await gotoCanvas(page, ex.slug);
+    await page.evaluate(() => navigator.clipboard.writeText("before"));
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("export-share-link-password").click();
+    await hold(page, "encrypt");
+    await page.getByTestId("password-link-input").fill("first password here");
+    await page.getByTestId("password-link-copy").click();
+    await expect(page.getByTestId("password-link-copy")).toBeDisabled();
+    await expect.poll(() => held(page, "encrypt"), { timeout: 15_000 }).toBe(1);
+    // Changed mid-encryption: the pending link (for the first password) is stale.
+    await page.getByTestId("password-link-input").fill(PASSWORD);
+    await release(page, "encrypt");
+    await page.waitForTimeout(500);
+    await expect(page.getByTestId("password-link-url")).toHaveCount(0);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
+    // The link made now is the current password's, and it opens with it.
+    await page.getByTestId("password-link-copy").click();
+    const link = await page.getByTestId("password-link-url").inputValue({ timeout: 15_000 });
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
+    const other = await context.newPage();
+    await other.goto(link);
+    await other.getByTestId("password-prompt-input").fill(PASSWORD);
+    await other.getByTestId("password-prompt-submit").click();
+    await expect(other.getByTestId("diagram-title")).toHaveText(ex.title, { timeout: 15_000 });
+  });
+
+  test("an unlock that finishes after Cancel, Esc or a newer link opens nothing", async ({ page, context }) => {
+    test.slow();
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await controlCrypto(context);
+    const link = await makePasswordLink(page, publicExamples[0].slug);
+    const token = link.split("#e=")[1];
+
+    const other = await context.newPage();
+    await other.goto(link);
+    await expect(other.getByTestId("password-prompt")).toBeVisible({ timeout: pageLoadTimeout() });
+    const before = await other.getByTestId("example-picker").inputValue();
+    for (const close of ["cancel", "escape"] as const) {
+      if (close === "escape") {
+        await other.reload();
+        await expect(other.getByTestId("password-prompt")).toBeVisible({ timeout: pageLoadTimeout() });
+      }
+      await hold(other, "decrypt");
+      await other.getByTestId("password-prompt-input").fill(PASSWORD);
+      await other.getByTestId("password-prompt-submit").click();
+      await expect.poll(() => held(other, "decrypt"), { timeout: 15_000 }).toBeGreaterThan(0);
+      if (close === "cancel") await other.getByTestId("password-prompt-cancel").click();
+      else await other.getByTestId("password-prompt-input").press("Escape");
+      await expect(other.getByTestId("password-prompt")).toHaveCount(0);
+      await release(other, "decrypt");
+      await other.waitForTimeout(500);
+      await expect(other.getByTestId("shared-banner")).toHaveCount(0);
+      await expect(other.getByTestId("example-picker")).toHaveValue(before);
+      await expect(other, "the link stays, so a reload asks again").toHaveURL(/#e=v1\./);
+    }
+
+    // A newer link replaces the prompt; the older unlock finishing later doesn't close or open anything.
+    await other.reload();
+    await expect(other.getByTestId("password-prompt")).toBeVisible({ timeout: pageLoadTimeout() });
+    await hold(other, "decrypt");
+    await other.getByTestId("password-prompt-input").fill(PASSWORD);
+    await other.getByTestId("password-prompt-submit").click();
+    await expect.poll(() => held(other, "decrypt"), { timeout: 15_000 }).toBeGreaterThan(0);
+    const [v, salt, iv, ct] = token.split(".");
+    const newer = [v, salt, iv, `${ct.slice(0, -2)}AA`].join(".");
+    await other.evaluate((t) => (window.location.hash = `e=${t}`), newer);
+    await expect(other.getByTestId("password-prompt-input")).toHaveValue("");
+    await release(other, "decrypt");
+    await other.waitForTimeout(500);
+    await expect(other.getByTestId("password-prompt")).toBeVisible();
+    await expect(other.getByTestId("shared-banner")).toHaveCount(0);
+    await expect(other).toHaveURL(new RegExp(`#e=${newer}$`));
+
+    // The embed viewer: Cancel during an unlock leaves it locked.
+    const embed = await context.newPage();
+    await embed.goto(`./?embed=1#e=${token}`);
+    await expect(embed.getByTestId("password-prompt")).toBeVisible({ timeout: pageLoadTimeout() });
+    await hold(embed, "decrypt");
+    await embed.getByTestId("password-prompt-input").fill(PASSWORD);
+    await embed.getByTestId("password-prompt-submit").click();
+    await expect.poll(() => held(embed, "decrypt"), { timeout: 15_000 }).toBeGreaterThan(0);
+    await embed.getByTestId("password-prompt-cancel").click();
+    await release(embed, "decrypt");
+    await embed.waitForTimeout(500);
+    await expect(embed.getByTestId("embed-locked")).toBeVisible();
+    await expect(embed.getByTestId(`node-${publicExamples[0].nodeIds[0]}`)).toHaveCount(0);
+  });
+
+  test("moving to another diagram during an unlock drops its result", async ({ page, context }) => {
+    test.slow();
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await controlCrypto(context);
+    const link = await makePasswordLink(page, publicExamples[0].slug);
+    const target = publicExamples[2];
+
+    const other = await context.newPage();
+    await other.goto(link);
+    await expect(other.getByTestId("password-prompt")).toBeVisible({ timeout: pageLoadTimeout() });
+    await hold(other, "decrypt");
+    await other.getByTestId("password-prompt-input").fill(PASSWORD);
+    await other.getByTestId("password-prompt-submit").click();
+    await expect.poll(() => held(other, "decrypt"), { timeout: 15_000 }).toBeGreaterThan(0);
+    // Back/forward to another diagram (the app follows popstate).
+    await other.evaluate((slug) => {
+      history.pushState(null, "", `?view=canvas&example=${slug}${location.hash}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }, target.slug);
+    await expect(other.getByTestId("example-picker")).toHaveValue(target.slug);
+    await release(other, "decrypt");
+    await expect(other.getByTestId("password-prompt-error")).toContainText("Another diagram opened", {
+      timeout: 15_000,
+    });
+    await expect(other.getByTestId("shared-banner")).toHaveCount(0);
+    await expect(other.getByTestId("example-picker")).toHaveValue(target.slug);
+    await expect(other).toHaveURL(/#e=v1\./);
+  });
+
+  test("if the diagram can't be stored, the prompt says why and keeps the link for a retry", async ({
+    page,
+    context,
+  }) => {
+    test.slow();
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await controlCrypto(context);
+    const ex = publicExamples[1];
+    const link = await makePasswordLink(page, ex.slug);
+
+    const other = await context.newPage();
+    await other.goto(link);
+    await expect(other.getByTestId("password-prompt")).toBeVisible({ timeout: pageLoadTimeout() });
+    const before = await other.getByTestId("example-picker").inputValue();
+    await other.evaluate(() => (window.__blockShared = true));
+    await other.getByTestId("password-prompt-input").fill(PASSWORD);
+    await other.getByTestId("password-prompt-submit").click();
+    await expect(other.getByTestId("password-prompt-error")).toBeVisible({ timeout: 15_000 });
+    await expect(other.getByTestId("password-prompt")).toBeVisible();
+    await expect(other).toHaveURL(/#e=v1\./);
+    await expect(other.getByTestId("shared-banner")).toHaveCount(0);
+    await expect(other.getByTestId("example-picker")).toHaveValue(before);
+    // Storage recovers: the same prompt opens it.
+    await other.evaluate(() => (window.__blockShared = false));
+    await other.getByTestId("password-prompt-submit").click();
+    await expect(other.getByTestId("password-prompt")).toHaveCount(0, { timeout: 15_000 });
+    await expect(other.getByTestId("diagram-title")).toHaveText(ex.title);
+    await expect(other).not.toHaveURL(/#e=/);
+  });
+
+  test("the share dialogs keep every action inside the dialog at 1024 px, at 320 px and in a small embed", async ({
+    page,
+    context,
+  }) => {
+    test.slow();
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    // Native Share adds a fourth footer action where the browser has it.
+    await context.addInitScript(() => Object.assign(navigator, { share: async () => {} }));
+    const inside = async (dialog: string, ids: string[]) => {
+      const box = await page.getByTestId(dialog).boundingBox();
+      const viewport = page.viewportSize();
+      if (!box || !viewport) throw new Error("no dialog box");
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 0.5);
+      for (const id of ids) {
+        const b = await page.getByTestId(id).boundingBox();
+        if (!b) throw new Error(`${id} has no box`);
+        expect(b.x, id).toBeGreaterThanOrEqual(box.x - 0.5);
+        expect(b.x + b.width, id).toBeLessThanOrEqual(box.x + box.width + 0.5);
+        expect(b.y + b.height, id).toBeLessThanOrEqual(box.y + box.height + 0.5);
+      }
+    };
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await gotoCanvas(page, publicExamples[1].slug);
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("export-share-link").click();
+    await page.getByTestId("toast-share-details").click();
+    const share = ["share-link-native", "share-link-password", "share-link-open", "share-link-copy"];
+    await expect(page.getByTestId("share-link-copy")).toBeEnabled();
+    await inside("share-link-dialog", share);
+    await page.setViewportSize({ width: 320, height: 640 });
+    await inside("share-link-dialog", share);
+    await page.getByTestId("share-link-password").click();
+    await page.getByTestId("password-link-input").fill(PASSWORD);
+    await inside("password-link-dialog", ["password-link-show", "password-link-cancel", "password-link-copy"]);
+    await page.getByTestId("password-link-copy").click();
+    const link = await page.getByTestId("password-link-url").inputValue({ timeout: 15_000 });
+    await inside("password-link-dialog", ["password-link-copy-again", "password-link-done"]);
+
+    // A short embed frame.
+    await page.setViewportSize({ width: 320, height: 300 });
+    await page.goto(`./?embed=1#e=${link.split("#e=")[1]}`);
+    await expect(page.getByTestId("password-prompt")).toBeVisible({ timeout: pageLoadTimeout() });
+    await inside("password-prompt", ["password-prompt-input", "password-prompt-cancel", "password-prompt-submit"]);
+    const submit = await page.getByTestId("password-prompt-submit").boundingBox();
+    expect((submit?.y ?? 999) + (submit?.height ?? 0)).toBeLessThanOrEqual(300);
   });
 });

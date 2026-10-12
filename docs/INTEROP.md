@@ -144,7 +144,8 @@ reload is needed.
   Cancel and a reload ask again). Plain `#d=` links were already cleared on open: the diagram stays in the
   Shared slot, so a reload still shows it. Embeds (`?embed=1#e=…`) ask inside the frame and keep the fragment.
 - Every link (share, password, inline embed, the agents' `get_share_link`) asks `canShareAsLink(state)` in
-  `src/lib/localOnly.ts` first: a local-only diagram gets no link, and a rule such as a Private switch plugs in there.
+  `src/lib/localOnly.ts` first, and again at the moment it acts (after encrypting, before copying): a local-only or
+  Private diagram gets no link, and a password-link dialog left open closes when its diagram turns private.
 - `?embed=1&example=<slug>` (public examples only), `?embed=1#d=…` or `?embed=1#e=…` renders a read-only viewer: no top bar,
   fitted, pan and pinch-zoom only (the wheel scrolls the host page), no menus, shortcuts or autosave, and a
   subtle "Open in Diagrams" link. `live=1&sim=<id>` pass through for the live view.
@@ -169,8 +170,8 @@ violation. The dev server sends none (React Refresh's preamble is an inline scri
   allows only this site to frame it.
 - `Referrer-Policy: strict-origin-when-cross-origin` (other sites see only the origin; a referrer-restricted
   Google API key still works), `X-Content-Type-Options: nosniff`, a `Permissions-Policy` that keeps the
-  microphone (dictation) and display capture (Record video) and turns off sensors, location, payment, USB and the
-  like, and `Cross-Origin-Opener-Policy: same-origin-allow-popups` (sign-in pop-ups keep their opener; not sent with
+  microphone (dictation) and display capture (Record video) and turns off location, payment, USB and serial (only
+  features every desktop Chromium recognises: an unknown one logs "Unrecognized feature" on every page), and `Cross-Origin-Opener-Policy: same-origin-allow-popups` (sign-in pop-ups keep their opener; not sent with
   `auth.html`).
 
 ### Local folders: Google Drive for desktop, OneDrive, Dropbox (no setup)

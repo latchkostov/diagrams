@@ -208,13 +208,9 @@ test("a local-only diagram gets no link: plain, with a password, or embed", asyn
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await installSyntheticRegistry(page);
   await gotoCanvas(page, "synthetic-local");
-  for (const item of ["export-share-link", "export-share-link-password", "export-embed"]) {
-    await page.getByTestId("file-button").click();
-    await page.getByTestId(item).click();
-    await expect(page.getByTestId("toast").last()).toContainText("can't be shared as links");
-    await expect(page.getByTestId("password-link-dialog")).toHaveCount(0);
-    await expect(page.getByTestId("embed-dialog")).toHaveCount(0);
-    await expect(page.getByTestId("share-link-dialog")).toHaveCount(0);
-  }
-  expect(await page.evaluate(() => navigator.clipboard.readText().catch(() => ""))).not.toContain("#d=");
+  await page.getByTestId("file-button").click();
+  for (const item of ["export-share-link", "export-share-link-password", "export-embed"])
+    await expect(page.getByTestId(item)).toBeDisabled();
+  await page.keyboard.press("Escape");
+  expect(await page.evaluate(() => navigator.clipboard.readText().catch(() => ""))).not.toMatch(/#[de]=/);
 });

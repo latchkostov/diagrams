@@ -123,7 +123,7 @@ type DialogState =
   | { kind: "share"; diagram: DiagramFile; source: string }
   | { kind: "password-link"; diagram: DiagramFile; source: string }
   /** A password link (#e=…) waiting for its password. */
-  | { kind: "unlock"; token: string }
+  | { kind: "unlock"; token: string; session: number }
   | { kind: "embed"; diagram: DiagramFile; source: string; example?: string }
   | { kind: "image" }
   | { kind: "privacy" }
@@ -157,8 +157,6 @@ const normalized = (d: DiagramFile) => {
 };
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
-/** Takes the fragment (a share link's diagram) out of the address bar and this tab's history entry. */
-const clearHash = () => window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
 const deviceTarget = (handle: FileHandle, savedAt?: number): SaveTarget => ({
   providerId: DEVICE_PROVIDER,
   ref: handle,
@@ -587,6 +585,22 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     [openShared],
   );
 
+  /**
+   * The password prompt's session: one number per prompt. Cancel or Esc, a newer link, another dialog,
+   * success and unmounting all end it, and a decryption that finishes after its session ended is dropped
+   * (it never opens the diagram, clears the link or closes a newer prompt).
+   */
+  const unlockSession = useRef(0);
+  useEffect(() => {
+    if (dialog?.kind !== "unlock") unlockSession.current++;
+  }, [dialog]);
+  useEffect(
+    () => () => {
+      unlockSession.current++;
+    },
+    [],
+  );
+
   /** A password link: check its format and version first, then ask for the password. */
   const askForPassword = useCallback((token: string): boolean => {
     try {
@@ -595,19 +609,25 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       toast.error(err instanceof BadEncryptedLinkError ? err.message : message(err));
       return false;
     }
-    setDialog({ kind: "unlock", token });
+    setDialog({ kind: "unlock", token, session: ++unlockSession.current });
     return true;
   }, []);
 
   const unlockShared = useCallback(
-    async (token: string, password: string) => {
+    async (session: number, token: string, password: string) => {
+      const from = openSlug.current;
       // The WebCrypto part loads on use (./passwordLink.ts is all the app carries up front).
       const { decodeEncryptedShare } = await import("./shareCrypto");
       const d = await decodeEncryptedShare(token, password);
-      // Opened: take the ciphertext out of the address bar and this tab's history entry.
-      if (encryptedPayloadFromHash(window.location.hash) === token) clearHash();
-      setDialog(null);
+      if (session !== unlockSession.current) return;
+      if (openSlug.current !== from)
+        throw new Error("Another diagram opened while this one was unlocking. Enter the password again to open it.");
+      // Stored first: if that fails (storage full or blocked), the prompt shows why and the link stays.
       openShared(d);
+      unlockSession.current++;
+      // Opened: take the ciphertext out of the address bar and this tab's history entry.
+      if (encryptedPayloadFromHash(window.location.hash) === token) clearUrlFragment();
+      setDialog(null);
       toast.info(`Opened the shared diagram “${d.title}”. It's kept apart from your own diagrams.`);
     },
     [openShared],
@@ -631,14 +651,14 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       // A password link keeps its fragment until it's unlocked: cancel, reload, and it asks again.
       const token = encryptedPayloadFromHash(window.location.hash);
       if (token) {
-        if (!askForPassword(token)) clearHash();
+        if (!askForPassword(token)) clearUrlFragment();
         return;
       }
       const payload = sharePayloadFromHash(window.location.hash);
       if (!payload) return;
       // Drop the fragment first so a reload doesn't re-import over edits made since. The diagram stays in
       // the Shared slot, so a reload still shows it.
-      clearHash();
+      clearUrlFragment();
       void openSharePayload(payload);
     };
     check();
@@ -851,8 +871,10 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       {dialog?.kind === "unlock" && (
         <Suspense fallback={null}>
           <UnlockDialog
-            unlock={(password) => unlockShared(dialog.token, password)}
+            key={dialog.session}
+            unlock={(password) => unlockShared(dialog.session, dialog.token, password)}
             onClose={() => {
+              unlockSession.current++;
               setDialog(null);
               toast.info("The password-protected diagram wasn't opened. Reload the page to enter the password.");
             }}
