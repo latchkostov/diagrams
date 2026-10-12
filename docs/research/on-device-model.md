@@ -211,7 +211,8 @@ fresh session to 30 s, with one retry in a fresh session.
 | ------------------------------------------------------------------------------------------ | ----- | ----- | --------------------------------------------------------------------------------- | ------------- |
 | Runaway: edit-rename, edit-change generated for ~190–199 s, then "too big"                 | 2     | 2     | Bounded reply schema; reply cut off at 2,400 characters and retried with feedback | Retry         |
 | Right label, wrong kind: create-6, 16, 17, 22 (and create-19 in run 2)                     | 4     | 5     | The label wins when the request names it                                          | Deterministic |
-| A component referred to but never added: create-25 (run 1), create-15 (run 2)              | 1     | 1     | Added when the request names it; create-25's reversed connection is turned        | Deterministic |
+| A component referred to but never added: create-15 (run 2)                                 | 0     | 1     | Added when the request names it and the catalogue is confident                    | Deterministic |
+| The same, with a medium-confidence name: create-25 (run 1, "ECS workload")                 | 1     | 0     | Completeness feedback names it ("but not the ECS workload")                       | Retry         |
 | "between" with one side connected: edit-between                                            | 0     | 1     | Completed as `insert_between`                                                     | Deterministic |
 | Omissions: create-12, 21, 28 (run 1); create-21, 25 (run 2, 25 as a self-loop)             | 3     | 2     | Completeness check and self-loop check, with specific feedback                    | Retry         |
 | Example leak: create-23 (`quill.jobs`, "Quill gateway")                                    | 1     | 1     | Placeholder example names, and a runtime guard                                    | Retry         |
@@ -227,27 +228,47 @@ fresh session to 30 s, with one retry in a fresh session.
   past 2,400 characters (no answer needs more). The retry then says why. The start of the runaway is kept
   in the Model output column, so the next run shows what the model was generating. Which field drives
   the runaway (the free-text `summary`, the `label` of a rename, or keys with spaces) is still unknown:
-  the runs recorded no output, only the context error. The prompt also asks for short labels and a
-  one-line summary.
+  the runs recorded no output, only the context error. An aborted prompt leaves the session's history, so
+  the retry resends the whole request with the feedback, in a fresh session where there is one. The
+  prompt also asks for short labels and a one-line summary.
 - **The label wins** (`kindFor` in `src/ai/ondevice/replyChecks.ts`). When an added node's label names a
   stencil (`namedStencil`: it must share a word with that stencil's label or id), every word of the label
   is in the request, and the kind disagrees, the label's stencil is used. The kind stays when the label
   is the model's own ("billing-worker") or generic ("Orders API", or a one-word label that isn't the
   stencil's own name, like "Events" or "Gateway"). It also stays when the request names the kind too
   ("Redis cache"), or when the label names a generic stencil in the kind's role ("Cache" for Memcached).
-- **Completeness** (`incompleteness`). Into an empty diagram, each component the request names must have
-  its own node. Components are runs of words between verbs, prepositions and articles that
-  `namedStencil` can place, so "billing" or "objects" don't count. In any request that relates things
-  ("calls", "writes to", "between", "after"…), every new node must be connected. Either failure goes to
-  the retry with specific feedback, e.g. "You added Redis but not the Go service, and nothing connects
-  them. Add every component the request names and connect them."
+- **Completeness** (`incompleteness`).
+  - **Every named component needs a node.** Into an empty diagram, each component the request names must
+    have its own node. Components are runs of words between verbs, prepositions and articles that
+    `namedStencil` can place, so "billing" or "objects" don't count. Repeated mentions are one component:
+    the same words ("Redis cache … Redis cache") or a definite reference back ("a Go service … the
+    service"). Different words stay different components ("billing and shipping consumers" is two
+    consumers).
+  - **New nodes in a relating clause must be connected.** A clause relates things with a verb like
+    "calls", "writes to", "between" or "after". A node added in some other clause ("…and add a Redis
+    cache") isn't held to it, nor is one the request asks to leave alone ("but don't connect it yet").
+  - Either failure goes to the retry with specific feedback, e.g. "You added Redis but not the Go
+    service, and nothing connects them. Add every component the request names and connect them."
 - **Self-loops** are an error for the retry: "A connection can't start and end at the same node; add the
   missing component first."
-- **A component connected but never added** ("Container Apps") is added when the request names it and
-  `namedStencil` places it. That doesn't happen when one of the reply's new nodes is that component.
+- **A component connected but never added** ("Container Apps") is added, but only:
+  - for a connection's endpoint, never for a rename, kind change or remove target (a missing one of those
+    is an error for the retry);
+  - when the request names it and the catalogue places it with high confidence ("ECS workload", medium,
+    is left to the completeness feedback);
+  - and when none of the reply's new nodes already is that component. That check uses the node's
+    corrected kind, so "Azure functions" finds the node whose kind was corrected to Azure Functions.
+
+  Lookup never creates anything; this is a separate repair step.
+
 - **Direction** now covers produce verbs too ("persists to", "writes to", "calls", "invokes"…), pair by
   pair like the consume verbs. Only a connection drawn exactly against the verb is turned.
-- **"between X and Y"** answered with the new node connected to only one of them becomes `insert_between`.
+- **"between X and Y"** answered with the new node connected to only one of them (or with plain connects)
+  becomes `insert_between`. This applies only to the component that clause names ("Put a Redis cache
+  between…"); other additions in the same reply are left alone.
+- **One normalized record per new node.** Its key and its corrected kind (after the label-wins rule) are
+  what references, direction repair, auto-add and the emitted op all read. One reply's endpoint lookups
+  are cached, and new-node keys skip the fuzzy scan.
 - **Example leak.** The examples' own components are now obvious placeholders (`sample-worker`), and
   their new nodes are named as each request names them ("MySQL", "retry queue"). A reply that uses a
   placeholder the request and diagram don't have goes to the retry: "Don't reuse names from the
@@ -259,18 +280,23 @@ fresh session to 30 s, with one retry in a fresh session.
   The model's structure there is still wrong, so the case is expected to keep failing. create-24 ("A
   service delivers email") keeps its expectation.
 
-**Projection** (per run, from which listed failures each fix addresses):
+**Projection** (per run, from which listed failures each fix addresses; revised after the review,
+because auto-add now needs a confident match, which moves create-25 to the retry):
 
-- **Deterministic fixes** (the label wins, auto-add, the one-sided "between"): run 1 → 29/37 (78%), run 2
-  → 29/37 (78%). This is the floor if nothing else helps.
-- **Retry-dependent fixes** (runaways, omissions, self-loop, leak) succeed only if the model follows the
-  feedback. If every retry succeeds: run 1 → 35/37 (95%), run 2 → 34/37 (92%).
-- **Likely: 31–33/37 (84–89%)**, if about half of the retry-dependent cases recover. Run-to-run variance
+- **Deterministic fixes** (the label wins, the confident auto-add, the scoped "between"): run 1 → 28/37
+  (76%), run 2 → 29/37 (78%). This is the floor if nothing else helps.
+- **Retry-dependent fixes** (runaways, omissions including create-25, the self-loop, the leak) succeed
+  only if the model follows the feedback. If every retry succeeds: run 1 → 35/37 (95%), run 2 → 34/37
+  (92%).
+- **Likely: 30–33/37 (81–89%)**, if about half of the retry-dependent cases recover. Run-to-run variance
   (±6 points) applies on top.
+- **Possible upside:** create-29 now gets feedback for a missing consumer ("billing and shipping
+  consumers" is two), so a retry could fix its structure.
 - **Risk:** the completeness check could send a reply that used to pass into the retry. It is
   conservative, and a perfect model still scores 37/37 in the unit tests.
 
 A unit test replays both runs' failures with replies shaped like the model's (`src/ai/evals/onDevice.test.ts`).
-The deterministic ones pass on the first try, and the omissions and the leak pass on a corrected retry.
+The deterministic ones pass on the first try; the omissions, create-25 and the leak pass on a corrected
+retry.
 
 Next: re-run the evals in the Lab and paste the table here.

@@ -291,15 +291,26 @@ describe("round 2: runaways", () => {
     expect(REPLY_SCHEMA.properties.summary.maxLength).toBe(160);
   });
 
-  /** A session whose first reply streams on and on, and whose second answers. */
+  /**
+   * A streaming session like Chrome's: one generation at a time (an overlapping prompt is rejected), and
+   * an aborted prompt leaves no trace in its history. Records each prompt and its signal.
+   */
   const streaming = (...replies: ("runaway" | string)[]) => {
     const prompts: string[] = [];
+    const signals: AbortSignal[] = [];
+    let active = false;
     return {
       prompts,
+      signals,
       prompt: vi.fn(async () => "unused"),
+      destroy: vi.fn(),
       promptStreaming: (input: string, opts?: { signal?: AbortSignal }) => {
+        if (active) throw new DOMException("A prompt is already running.", "InvalidStateError");
+        active = true;
         prompts.push(input);
+        signals.push(opts!.signal!);
         const next = replies.shift()!;
+        opts?.signal?.addEventListener("abort", () => (active = false));
         return new ReadableStream<string>({
           pull(controller) {
             if (opts?.signal?.aborted) return controller.error(new DOMException("aborted", "AbortError"));
@@ -307,6 +318,7 @@ describe("round 2: runaways", () => {
             else {
               controller.enqueue(next);
               controller.close();
+              active = false;
             }
           },
         });
@@ -314,11 +326,24 @@ describe("round 2: runaways", () => {
     };
   };
 
-  it("a reply that runs on is cut off and retried with feedback; its start is kept for the evals", async () => {
+  it("aborts a runaway generation, then resends the whole request with the feedback", async () => {
     const s = streaming("runaway", DLQ);
     const r = await runOnDevice({ session: s, diagram, request: "Add a DLQ" });
     expect(r).toMatchObject({ ok: true, attempts: 2 });
-    expect(s.prompts[1]).toMatch(/^That failed: your reply ran on past 2400 characters/);
+    // The first generation was stopped before the retry began (the fake rejects overlapping prompts).
+    expect(s.signals[0].aborted).toBe(true);
+    // The retry stands alone: an aborted prompt leaves the history, so it carries the diagram and request.
+    expect(s.prompts[1].startsWith(s.prompts[0])).toBe(true);
+    expect(s.prompts[1]).toMatch(/Request: Add a DLQ\n\nYour last reply ran on past 2400 characters/);
+  });
+
+  it("goes on in a fresh session when there is one, and keeps the runaway's start for the evals", async () => {
+    const first = streaming("runaway");
+    const fresh = streaming(DLQ);
+    const r = await runOnDevice({ session: first, freshSession: async () => fresh, diagram, request: "Add a DLQ" });
+    expect(r).toMatchObject({ ok: true, attempts: 2 });
+    expect(fresh.prompts[0]).toContain("Request: Add a DLQ");
+    expect(fresh.destroy).toHaveBeenCalled();
     const twice = await runOnDevice({ session: streaming("runaway", "runaway"), diagram, request: "x" });
     expect(twice).toMatchObject({ ok: false, error: "The reply ran on past 2400 characters." });
     expect(!twice.ok && twice.output?.raw.startsWith('{"summary":"xxx')).toBe(true);

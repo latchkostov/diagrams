@@ -7,7 +7,7 @@
 import type { DiagramFile } from "../../model/types";
 import type { DiagramOp } from "../index";
 import { getStencil } from "../../stencils/registry";
-import { namedStencil, resolveKind } from "../stencils";
+import { isRoleWord, namedStencil, resolveKind } from "../stencils";
 import { EXAMPLE_NAMES } from "./examples";
 
 const lower = (s: string) => s.toLowerCase();
@@ -19,14 +19,14 @@ const stem = (w: string) => (w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : 
 const GENERIC = new Set(["service", "node", "new", "the", "a", "an", "app", "api", "server"]);
 
 /**
- * Words that end a component's name in a request: articles, prepositions, verbs, pronouns, and the
- * nouns of what flows (events, objects, data) or where things sit (boundary, region).
+ * Words that end a component's name in a request: articles, prepositions, verbs, pronouns, and where
+ * things sit (boundary, region).
  */
 const BREAKS = new Set(
   (
-    "a an the to into in on onto from of for and or with through via toward towards that which then its it this " +
+    "a an the to into in on onto from of for and or but with through via toward towards that which then its it this " +
     "these those their there is are be by as at after before between behind out up down over inside within new " +
-    "add put make rename remove replace insert connect connects connected " +
+    "add put make rename remove replace insert connect connects connected not yet do don't " +
     "calls call uses use writes write reads read consumes consume consuming feeds feed routes route sends send " +
     "publishes publish invokes invoke stores store saves save accesses access exports export starts start " +
     "delivers deliver persists persist forwards forward fans fan resolves resolve subscribes subscribe listens " +
@@ -41,6 +41,8 @@ const FLOWS = new Set(
     " ",
   ),
 );
+/** Before a mention, these make it a reference back to a component already named ("the service"). */
+const DEFINITE = new Set(["the", "that", "this", "its", "their", "same"]);
 
 export interface NamedComponent {
   /** The words as the request has them ("Go service"). */
@@ -48,31 +50,77 @@ export interface NamedComponent {
   stencil: string;
 }
 
-/**
- * The components a request names, in order: runs of words between BREAKS that plausibly name a stencil
- * (namedStencil). Conservative by design: a phrase it can't place is left out, never guessed.
- */
-export function requestComponents(request: string): NamedComponent[] {
+interface Mention extends NamedComponent {
+  /** Preceded by "the", "that"…: may refer back to a component named earlier. */
+  definite: boolean;
+}
+
+const norm = (phrase: string) =>
+  words(phrase)
+    .map(stem)
+    .filter((w) => !DEFINITE.has(w))
+    .join(" ");
+
+/** The request's mentions of components, in order (each run of words between BREAKS that names one). */
+function mentions(request: string): Mention[] {
   // Words keep their dots (".NET", "orders.created"); trailing punctuation goes.
   const tokens = request
     .split(/[\s,;:!?()"]+/)
     .map((t) => t.replace(/[.]+$/, ""))
     .filter(Boolean);
-  const out: NamedComponent[] = [];
+  const runs: { words: string[]; definite: boolean; then: string }[] = [];
   let run: string[] = [];
-  const flush = () => {
-    if (run.length) {
-      const phrase = run.join(" ");
-      const stencil = namedStencil(phrase);
-      if (stencil) out.push({ phrase, stencil });
-    }
-    run = [];
-  };
+  let prev = "";
+  let definite = false;
   for (const t of tokens) {
-    if (BREAKS.has(lower(t)) || (FLOWS.has(t) && t === lower(t))) flush();
-    else run.push(t);
+    const l = lower(t);
+    if (BREAKS.has(l) || (FLOWS.has(t) && t === l)) {
+      if (run.length) runs.push({ words: run, definite, then: l });
+      run = [];
+      prev = l;
+    } else {
+      // A run's first word: is it right after "the", "that"…?
+      if (!run.length) definite = DEFINITE.has(prev);
+      run.push(t);
+    }
   }
-  flush();
+  if (run.length) runs.push({ words: run, definite, then: "" });
+  const out: Mention[] = [];
+  for (const [i, r] of runs.entries()) {
+    let phrase = r.words.join(" ");
+    // "billing and shipping consumers": the head noun of the next run is shared ("billing consumers").
+    const next = runs[i + 1];
+    if (r.then === "and" && next && !namedStencil(phrase)) {
+      const head = next.words[next.words.length - 1];
+      if (next.words.length > 1 && isRoleWord(stem(lower(head)))) phrase = `${phrase} ${head}`;
+    }
+    const stencil = namedStencil(phrase);
+    if (stencil) out.push({ phrase, stencil, definite: r.definite });
+  }
+  return out;
+}
+
+/**
+ * The distinct components a request names, in order. A repeat of the same words ("Redis cache … Redis
+ * cache") or a definite reference back ("a Go service … the service") is the same component; different
+ * words are different components, even of one technology ("billing and shipping consumers": two).
+ * Conservative by design: a phrase it can't place is left out, never guessed.
+ */
+export function requestComponents(request: string): NamedComponent[] {
+  const out: NamedComponent[] = [];
+  for (const m of mentions(request)) {
+    const n = norm(m.phrase);
+    const same = out.find((c) => {
+      if (norm(c.phrase) === n) return true;
+      if (!m.definite) return false;
+      const earlier = norm(c.phrase).split(" ");
+      return (
+        n.split(" ").every((w) => earlier.includes(w)) ||
+        (m.stencil === "generic.service" && getStencil(c.stencil).simRole === "processor")
+      );
+    });
+    if (!same) out.push({ phrase: m.phrase, stencil: m.stencil });
+  }
   return out;
 }
 
@@ -109,9 +157,11 @@ export function kindFor(kind: string, label: string, request: string): string {
   return label;
 }
 
-interface NewNode {
+/** A node a reply adds, after kindFor: what every later decision reads. */
+export interface NewNode {
   key: string;
   label: string;
+  /** The effective kind (the label, when the label won). */
   kind: string;
   stencil: string;
 }
@@ -138,15 +188,47 @@ function covers(node: NewNode, c: NamedComponent): boolean {
     .some((w) => !GENERIC.has(w) && mine.includes(w));
 }
 
-/** A request that relates things ("calls", "writes to", "between"): its new nodes must be connected. */
+/** A clause that relates things ("calls", "writes to", "between"): its new nodes must be connected. */
 const RELATES =
   /\b(?:calls?|uses?|writes?|reads?|consumes?|feeds?|routes?|sends?|publish(?:es)?|invokes?|stores?|saves?|accesses|access|exports?|starts?|delivers?|persists?|forwards?|fans? out|connects?|resolves?|subscribes?|listens?|pulls?|triggers?|talks?|quer(?:y|ies)|posts?|pushes?|emits?|produces?|between|after|before|behind|in front of)\b/i;
+/** "…, but don't connect it yet", "unconnected": the person wants it left alone. */
+const LEAVE =
+  /\b(?:not|n't|never|without)\s+(?:connect(?:ed|ing)?|link(?:ed|ing)?|wir(?:e|ed|ing))\b|\b(?:un|dis)connected\b|\bstand-?alone\b|\bon its own\b/i;
+/** A request's clauses: split at punctuation, conjunctions and "but". */
+const clausesOf = (request: string) =>
+  request
+    .split(/[,;]|\.(?=\s|$)|\b(?:and|but|then|while)\b/i)
+    .map((c) => c.trim())
+    .filter(Boolean);
+
+/** Does a clause talk about this node (its label, its kind's words, or a component it covers)? */
+function mentionsNode(clause: string, node: NewNode): boolean {
+  const have = new Set(
+    words(clause)
+      .map(stem)
+      .filter((w) => !GENERIC.has(w)),
+  );
+  const mine = words(`${node.label} ${node.kind}`)
+    .map(stem)
+    .filter((w) => !GENERIC.has(w));
+  return mine.some((w) => have.has(w)) || requestComponents(clause).some((c) => covers(node, c));
+}
+
+/**
+ * Must this new node be connected? When a clause that talks about it relates things; never when the
+ * request asks to leave it unconnected. A node no clause talks about is held to the whole request.
+ */
+function mustConnect(node: NewNode, request: string): boolean {
+  const clauses = clausesOf(request).filter((c) => mentionsNode(c, node));
+  if (clauses.some((c) => LEAVE.test(c)) || (!clauses.length && LEAVE.test(request))) return false;
+  return clauses.length ? clauses.some((c) => RELATES.test(c)) : RELATES.test(request);
+}
 
 const list = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0]);
 
 /**
  * Is anything the request asks for missing from the reply? Into a new, empty diagram every named
- * component must be added (one node each); in any request that relates things, every new node must be
+ * component must be added (one node each); every new node a relating clause talks about must be
  * connected. The message tells the model what to add or connect. Null when complete.
  */
 export function incompleteness(ops: readonly DiagramOp[], request: string, diagram: DiagramFile): string | null {
@@ -156,7 +238,7 @@ export function incompleteness(ops: readonly DiagramOp[], request: string, diagr
     if (o.op === "connect") linked.add(o.from).add(o.to);
     if (o.op === "insert_between" && o.key) linked.add(o.key);
   }
-  const loose = RELATES.test(request) ? nodes.filter((n) => !linked.has(n.key)) : [];
+  const loose = nodes.filter((n) => !linked.has(n.key) && mustConnect(n, request));
   let missing: NamedComponent[] = [];
   if (!diagram.nodes.length) {
     // One node per named component; the most constrained components pick first.
@@ -164,12 +246,13 @@ export function incompleteness(ops: readonly DiagramOp[], request: string, diagr
     const options = comps.map((c) => nodes.filter((n) => covers(n, c)));
     const order = comps.map((_, i) => i).sort((a, b) => options[a].length - options[b].length);
     const taken = new Set<string>();
+    const unmet = new Set<NamedComponent>();
     for (const i of order) {
       const pick = options[i].find((n) => !taken.has(n.key));
       if (pick) taken.add(pick.key);
-      else missing.push(comps[i]);
+      else unmet.add(comps[i]);
     }
-    missing = comps.filter((c) => missing.includes(c));
+    missing = comps.filter((c) => unmet.has(c));
   }
   if (!missing.length && !loose.length) return null;
   const added = nodes.map((n) => n.label);

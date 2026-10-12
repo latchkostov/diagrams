@@ -195,13 +195,22 @@ export class ReplyRefs {
     return this.fresh.find((f) => f.key === key);
   }
 
-  /** The id of an existing element `r` names (core resolution), or undefined. */
+  private readonly existing = new Map<string, string | undefined>();
+  /**
+   * The id of an existing element `r` names (core resolution), or undefined. A new node's key is never
+   * one, so it isn't looked up; other answers are cached for the reply (the fuzzy step scans everything).
+   */
   existingId(r: string): string | undefined {
+    if (r.startsWith("~") || this.newNode(r)) return undefined;
+    if (this.existing.has(r)) return this.existing.get(r);
+    let id: string | undefined;
     try {
-      return resolveRef(this.diagram, r, EMPTY_KEYS, this.index);
+      id = resolveRef(this.diagram, r, EMPTY_KEYS, this.index);
     } catch {
-      return undefined;
+      id = undefined;
     }
+    this.existing.set(r, id);
+    return id;
   }
 
   /**

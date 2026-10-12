@@ -278,10 +278,15 @@ describe("on-device evals", () => {
       "create-22": [[add("s", "Lambda", "Scheduler"), add("w", ".NET service", "Worker"), link("s", "w")]],
       // A component connected but never added (and, for create-25, drawn backwards): fixed outright.
       "create-15": [[add("cosmos", "Cosmos DB", "Container Cosmos DB"), link("Container Apps", "cosmos")]],
-      "create-25": [[add("ddb", "DynamoDB", "Table"), link("ddb", "ECS workload")]],
+
       // "between" with one side connected: fixed outright.
       "edit-between": [[add("c", "Redis cache", "Orders cache"), link("Order service", "c")]],
-      // Omissions and a leak: the feedback asks, the retry answers.
+      // Omissions, a leak and a component never added (medium confidence, so not added for it): the
+      // feedback asks, the retry answers.
+      "create-25": [
+        [add("ddb", "DynamoDB", "Table"), link("ddb", "ECS workload")],
+        [add("ecs", "ECS", "ECS workload"), add("ddb", "DynamoDB", "Table"), link("ecs", "ddb")],
+      ],
       "create-12": [
         [add("r", "Redis cache", "Redis")],
         [add("g", "Go service", "API"), add("r", "Redis cache", "Redis"), link("g", "r")],
@@ -315,18 +320,10 @@ describe("on-device evals", () => {
     }, cases);
     expect(results.filter((r) => !r.pass).map((r) => `${r.id}: ${r.note}`)).toEqual([]);
     const tries = Object.fromEntries(results.map((r) => [r.id, r.attempts]));
-    for (const id of [
-      "create-6",
-      "create-16",
-      "create-17",
-      "create-19",
-      "create-22",
-      "create-15",
-      "create-25",
-      "edit-between",
-    ])
+    for (const id of ["create-6", "create-16", "create-17", "create-19", "create-22", "create-15", "edit-between"])
       expect(tries[id], id).toBe(1);
-    for (const id of ["create-12", "create-21", "create-28", "create-23"]) expect(tries[id], id).toBe(2);
+    for (const id of ["create-12", "create-21", "create-28", "create-23", "create-25"]) expect(tries[id], id).toBe(2);
+    expect(feedback["create-25"]).toMatch(/You added Table but not the ECS workload/);
     expect(feedback["create-12"]).toMatch(/You added Redis but not the Go service, and nothing connects them/);
     expect(feedback["create-23"]).toMatch(/Don't reuse names from the examples/);
   });

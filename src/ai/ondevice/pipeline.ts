@@ -308,10 +308,13 @@ export async function runOnDevice({
       } catch (err) {
         if (signal?.aborted) throw err instanceof Error ? err : new DOMException("Aborted", "AbortError");
         if (err instanceof RunawayError) {
-          // A runaway is the model's answer gone wrong, not a transient failure: say so in the retry.
+          // A runaway is the model's answer gone wrong, not a transient failure: the retry says so. An
+          // aborted prompt leaves the session's history, so the retry carries the whole request again,
+          // in a fresh session where there is one (the cut-off one may still be busy).
           error = err.message;
           output = { raw: `${err.partial.slice(0, 600)}…` };
-          input = `That failed: your reply ran on past ${MAX_REPLY_CHARS} characters. Reply again with only the ops the request needs (at most ${MAX_OPS}), labels of a few words and a one-line summary.`;
+          if (!freshUsed && !(await swapToFresh())) return { ok: false, error: TIMED_OUT, attempts: attempt };
+          input = `${first}\n\nYour last reply ran on past ${MAX_REPLY_CHARS} characters. Reply with only the ops the request needs (at most ${MAX_OPS}), labels of a few words and a one-line summary.`;
           continue;
         }
         if (isTimeout(err) || (isAbort(err) && !signal?.aborted)) {

@@ -10,9 +10,9 @@
 
 import type { DiagramFile, SimRole } from "../../model/types";
 import { getStencil } from "../../stencils/registry";
-import { namedStencil, resolveKind } from "../stencils";
+import { confidentStencil, namedStencil, resolveKind } from "../stencils";
 import type { DiagramOp } from "../index";
-import { RefIndex, ReplyRefs, type NewNodeAlias } from "../refs";
+import { RefIndex, ReplyRefs, refWords, type NewNodeAlias } from "../refs";
 import type { ScopeItem } from "../ui/context";
 import { incompleteness, inRequest, kindFor, leakedName } from "./replyChecks";
 
@@ -102,6 +102,8 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
       `Don't reuse names from the examples (${JSON.stringify(leaked)}): name things as the request does.`,
     );
 
+  /** Each new node, normalized once: its key and its effective kind (after kindFor). */
+  const nodeOf = new Map<CompactOp, { key: string; kind: string }>();
   const keyOf = new Map<CompactOp, string>();
   const used = new Set<string>();
   const aliases = new Set<string>();
@@ -118,32 +120,47 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
     while (used.has(key)) key = `${key}-2`;
     used.add(key);
     keyOf.set(op, key);
-    refs.add({ key, ...(alias ? { alias } : {}), kind: text(op.kind)!, label: text(op.label)! } satisfies NewNodeAlias);
+    const kind = kindFor(text(op.kind)!, text(op.label)!, request);
+    nodeOf.set(op, { key, kind });
+    refs.add({ key, ...(alias ? { alias } : {}), kind, label: text(op.label)! } satisfies NewNodeAlias);
   }
 
-  /** Nodes added for components the request names but the reply only referred to. */
-  const added: DiagramOp[] = [];
+  /** A reference, looked up: never creates anything. Unresolved text goes on to the core's error. */
   const ref = (r: string): string => {
+    if (THIS.test(r) && selected) return selected.id;
+    const out = refs.resolve(r);
+    if ("error" in out) throw new ReplyError(out.error);
+    return out.ref;
+  };
+  /** Nodes added for components the request names but the reply only connected. */
+  const added: DiagramOp[] = [];
+  /**
+   * A connection's endpoint. The one repair that creates a node: "Container Apps", connected but never
+   * added, named so in the request and placed confidently by the catalogue, is added. Not when one of
+   * the reply's new nodes already is that component ("Python job" for the node added as Python, "Azure
+   * functions" for the node whose kind was corrected to Azure Functions).
+   */
+  const endpoint = (r: string): string => {
     if (THIS.test(r) && selected) return selected.id;
     const exact = refs.strict(r);
     if (exact && "error" in exact) throw new ReplyError(exact.error);
     if (exact) return exact.ref;
-    // "Container Apps", connected but never added, and named so in the request: add it. Unless one of
-    // the reply's new nodes is that component ("Python job" for the node added with kind "Python").
-    const stencil = refs.existingId(r) ? undefined : namedStencil(r);
+    const repaired = repairMissingEndpoint(r);
+    return repaired ?? ref(r);
+  };
+  const repairMissingEndpoint = (r: string): string | undefined => {
+    if (!inRequest(r, request) || refs.existingId(r)) return undefined;
+    const stencil = confidentStencil(r);
+    if (!stencil || stencil === "generic.service") return undefined;
     const near = refs.resolve(r);
     const mine = "ref" in near ? refs.newNode(near.ref) : undefined;
-    const same = mine && resolveKind(mine.kind, mine.label).id === stencil;
-    if (stencil && stencil !== "generic.service" && inRequest(r, request) && !same) {
-      let key = `${KEY_PREFIX}${slug(r)}`;
-      while (used.has(key)) key = `${key}-2`;
-      used.add(key);
-      refs.add({ key, kind: r, label: r });
-      added.push({ op: "add_node", kind: r, label: r, key });
-      return key;
-    }
-    if ("error" in near) throw new ReplyError(near.error);
-    return near.ref;
+    if (mine && resolveKind(mine.kind, mine.label).id === stencil) return mine.key;
+    let key = `${KEY_PREFIX}${slug(r)}`;
+    while (used.has(key)) key = `${key}-2`;
+    used.add(key);
+    refs.add({ key, kind: r, label: r });
+    added.push({ op: "add_node", kind: r, label: r, key });
+    return key;
   };
   const edgeRef = (r: string) => {
     const parts = r.split("->");
@@ -166,15 +183,15 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
         if (!kind || !label) throw new ReplyError(`${at} needs "kind" and "label".`);
         ops.push({
           op: "add_node",
-          kind: kindFor(kind, label, request),
+          kind: nodeOf.get(op)!.kind,
           label,
-          key: keyOf.get(op)!,
+          key: nodeOf.get(op)!.key,
           ...(sublabel ? { sublabel } : {}),
         });
         break;
       case "connect": {
         if (!from || !to) throw new ReplyError(`${at} needs "from" and "to".`);
-        const [a, b] = [ref(from), ref(to)];
+        const [a, b] = [endpoint(from), endpoint(to)];
         if (a === b)
           throw new ReplyError("A connection can't start and end at the same node; add the missing component first.");
         ops.push({ op: "connect", from: a, to: b, ...flowKind(op.flow), ...(label ? { label } : {}) });
@@ -186,9 +203,9 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
           op: "insert_between",
           from: ref(from),
           to: ref(to),
-          kind: kindFor(kind, label, request),
+          kind: nodeOf.get(op)!.kind,
           label,
-          key: keyOf.get(op)!,
+          key: nodeOf.get(op)!.key,
           ...(sublabel ? { sublabel } : {}),
         });
         break;
@@ -220,7 +237,13 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
   const batch = [...keyOf.values()];
   flipDescribed(ops, request, refs, diagram);
   if (selected) connectSelection(ops, request, selected.id, batch);
-  const out = betweenAsInsert(ops, request, diagram, refs);
+  const out = betweenAsInsert(
+    ops,
+    request,
+    diagram,
+    refs,
+    [...nodeOf.values()].map((n) => n.key),
+  );
   // Everything the request names added, and connected: else the retry says what's missing.
   const missing = incompleteness(out, request, diagram);
   if (missing) throw new ReplyError(missing);
@@ -318,13 +341,38 @@ export function connectSelection(ops: DiagramOp[], request: string, selected: st
 }
 
 /**
- * "Put a cache between A and B", answered as add + A -> cache + cache -> B (and perhaps a remove of
- * A -> B): that's the core's insert_between, which keeps the replaced connection's kind, relation, label,
- * props and sides. Only when the request says "between" and A -> B exists. Either way, a remove of the
- * connection an insert_between replaces is dropped (the insert does it).
+ * "Put a <component> between <X> and <Y>": the component's phrase and the two endpoints' phrases, from
+ * the clause that says it. Null without one.
  */
-export function betweenAsInsert(ops: DiagramOp[], request: string, diagram: DiagramFile, refs: ReplyRefs): DiagramOp[] {
-  const between = /\bbetween\b/i.test(request);
+export function betweenIntent(request: string): { component: string; x: string; y: string } | null {
+  const m = /\bbetween\s+(.+?)\s+and\s+(.+?)(?=[,;]|\.(?:\s|$)|\s+and\b|$)/i.exec(request);
+  if (!m) return null;
+  const component = (
+    request
+      .slice(0, m.index)
+      .split(/[,;]|\.(?=\s|$)|\b(?:and|then)\b/i)
+      .pop() ?? ""
+  )
+    .replace(/^\s*(?:put|add|insert|place|drop)\b/i, "")
+    .replace(/^\s*(?:a|an|the)\b/i, "")
+    .trim();
+  return { component, x: m[1].trim(), y: m[2].trim() };
+}
+
+/**
+ * "Put a cache between A and B": the core's insert_between, which keeps the replaced connection's kind,
+ * relation, label, props and sides. Only for the new node that is the clause's component (and the two
+ * endpoints it names); other additions are left alone. That node, answered with add + A -> new + new ->
+ * B, or connected to only one of A and B, becomes the insert. Either way, a remove of the connection an
+ * insert_between replaces is dropped (the insert does it).
+ */
+export function betweenAsInsert(
+  ops: DiagramOp[],
+  request: string,
+  diagram: DiagramFile,
+  refs: ReplyRefs,
+  batch: readonly string[],
+): DiagramOp[] {
   const id = (r: string) => refs.existingId(r);
   const edgeOf = (t: string) => {
     const parts = t.split("->");
@@ -333,60 +381,39 @@ export function betweenAsInsert(ops: DiagramOp[], request: string, diagram: Diag
     return diagram.edges.find((e) => e.from === a && e.to === b)?.id;
   };
   let out = [...ops];
-  // "between X and Y", the new node connected to only one of them: complete it as an insert.
-  const named = /\bbetween\s+(.+?)\s+and\s+(.+?)(?:[,;.]|\s+and\b|$)/i.exec(request);
+  const intent = betweenIntent(request);
   const phraseRef = (p: string) => {
     const bare = p.replace(/^(?:the|a|an)\s+/i, "").trim();
     const exact = refs.strict(bare);
     return exact && "ref" in exact ? exact.ref : (refs.match(bare) ?? undefined);
   };
-  const [x, y] = named ? [phraseRef(named[1]), phraseRef(named[2])] : [undefined, undefined];
-  if (x && y && x !== y)
-    for (const add of ops) {
-      if (add.op !== "add_node" || !add.key) continue;
-      const touching = out.filter((o): o is Connect => o.op === "connect" && (o.to === add.key || o.from === add.key));
-      if (touching.length !== 1) continue;
-      const other = id(touching[0].to === add.key ? touching[0].from : touching[0].to) ?? "";
-      if (other !== x && other !== y) continue;
-      out = out
-        .filter((o) => o !== touching[0])
-        .map((o) =>
-          o === add
-            ? {
-                op: "insert_between" as const,
-                from: x,
-                to: y,
-                kind: add.kind,
-                label: add.label,
-                key: add.key,
-                ...(add.sublabel ? { sublabel: add.sublabel } : {}),
-              }
-            : o,
-        );
+  const [x, y] = intent ? [phraseRef(intent.x), phraseRef(intent.y)] : [undefined, undefined];
+  // The new node the clause puts between them: the one that matches its component, or the only one.
+  const target = intent && x && y && x !== y ? betweenTarget(intent.component, refs, batch) : undefined;
+  const add = target ? out.find((o) => o.op === "add_node" && o.key === target) : undefined;
+  if (add && add.op === "add_node" && x && y) {
+    const touching = out.filter((o): o is Connect => o.op === "connect" && (o.to === add.key || o.from === add.key));
+    const ends = touching.map((c) => id(c.to === add.key ? c.from : c.to) ?? (c.to === add.key ? c.from : c.to));
+    const both =
+      touching.length === 2 &&
+      touching.some((c) => c.to === add.key && ends[touching.indexOf(c)] === x) &&
+      touching.some((c) => c.from === add.key && ends[touching.indexOf(c)] === y);
+    const one = touching.length === 1 && (ends[0] === x || ends[0] === y);
+    const edge = diagram.edges.find((e) => (e.from === x && e.to === y) || (e.from === y && e.to === x));
+    if ((both || one) && edge) {
+      const insert: DiagramOp = {
+        op: "insert_between",
+        from: x,
+        to: y,
+        kind: add.kind,
+        label: add.label,
+        key: add.key,
+        ...(add.sublabel ? { sublabel: add.sublabel } : {}),
+      };
+      out = out.filter((o) => !touching.includes(o as Connect)).map((o) => (o === add ? insert : o));
     }
-  for (const add of between ? ops : []) {
-    if (add.op !== "add_node" || !add.key) continue;
-    const ins = out.filter((o): o is Connect => o.op === "connect" && o.to === add.key);
-    const outs = out.filter((o): o is Connect => o.op === "connect" && o.from === add.key);
-    if (ins.length !== 1 || outs.length !== 1) continue;
-    const [a, b] = [id(ins[0].from), id(outs[0].to)];
-    const edge = diagram.edges.find((e) => e.from === a && e.to === b);
-    if (!edge) continue;
-    const insert: DiagramOp = {
-      op: "insert_between",
-      from: ins[0].from,
-      to: outs[0].to,
-      kind: add.kind,
-      label: add.label,
-      key: add.key,
-      ...(add.sublabel ? { sublabel: add.sublabel } : {}),
-    };
-    out = out
-      .filter((o) => o !== ins[0] && o !== outs[0])
-      .filter((o) => !(o.op === "remove" && o.targets.length === 1 && edgeOf(o.targets[0]) === edge.id))
-      .map((o) => (o === add ? insert : o));
   }
-  // An insert_between the model wrote itself, with a remove of the same connection: drop the remove.
+  // An insert_between with a remove of the same connection: drop the remove.
   for (const ins of out.filter((o): o is Extract<DiagramOp, { op: "insert_between" }> => o.op === "insert_between")) {
     const [a, b] = [id(ins.from), id(ins.to)];
     const edge = diagram.edges.find((e) => (e.from === a && e.to === b) || (e.from === b && e.to === a));
@@ -394,4 +421,19 @@ export function betweenAsInsert(ops: DiagramOp[], request: string, diagram: Diag
       out = out.filter((o) => !(o.op === "remove" && o.targets.length === 1 && edgeOf(o.targets[0]) === edge.id));
   }
   return out;
+}
+
+/** The new node a "between" clause's component phrase names: one match by words or stencil, or the only new node. */
+function betweenTarget(component: string, refs: ReplyRefs, batch: readonly string[]): string | undefined {
+  const named = namedStencil(component);
+  const words = refWords(component);
+  const scored = batch.map((key) => {
+    const n = refs.newNode(key)!;
+    const overlap = refWords(`${n.label} ${n.kind}`).filter((w) => words.includes(w)).length;
+    return { key, n: overlap + (named && resolveKind(n.kind, n.label).id === named ? 2 : 0) };
+  });
+  const top = Math.max(0, ...scored.map((x) => x.n));
+  const best = scored.filter((x) => x.n === top);
+  if (top > 0) return best.length === 1 ? best[0].key : undefined;
+  return batch.length === 1 ? batch[0] : undefined;
 }
