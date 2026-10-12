@@ -1,5 +1,4 @@
 import {
-  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -40,11 +39,10 @@ import {
 } from "../lib/localOnly";
 import { newDiagramsPrivate } from "../lib/privacyPrefs";
 import { PRIVACY_REQUEST } from "../lib/usePrivacy";
-import { fromFlow, toFlow } from "../canvas/convert";
+import { loadedCanvasActions } from "../canvas/loadCanvasView";
 import { actionRegistry, type Action, type MenuNode } from "../editor/actions";
-import { builtinActions } from "../editor/builtinActions";
 import { LIMITS, preserveUnknown, serializeNative, tooLargeMessage } from "./native";
-import { importText, OPEN_ACCEPT, type ImportOutcome } from "./formats";
+import { drawioWriter, importText, mermaidWriter, OPEN_ACCEPT, preloadFormats, type ImportOutcome } from "./formats";
 import {
   clearUrlFragment,
   decodeShare,
@@ -60,8 +58,6 @@ import {
   encryptedPayloadFromInput,
   parseEncrypted,
 } from "./passwordLink";
-import { diagramToDrawio } from "./drawio/write";
-import { diagramToMermaid } from "./mermaid/write";
 import { downloadDataUrl, downloadText, fsAccessSupported, slugify, type FileHandle } from "./files";
 import { deviceProvider } from "./storage/device";
 import { CLOUD_PROVIDERS, DEVICE as DEVICE_INFO, providerInfo, type ProviderInfo } from "./storage/registry";
@@ -73,14 +69,15 @@ import {
   ImageDialog,
   OpenLinkDialog,
   PagesDialog,
+  PasswordLinkDialog,
   PasteDialog,
+  preloadDialogs,
   PrivacyDialog,
   ShareDialog,
-} from "./ui/dialogs";
+  StorageFilesDialog,
+  UnlockDialog,
+} from "./ui/lazyDialogs";
 import { DropOverlay } from "./ui/DropOverlay";
-import { PasswordLinkDialog, UnlockDialog } from "./ui/passwordDialogsLazy";
-
-import { StorageFilesDialog } from "./ui/storageDialogLazy";
 
 // The import / export controller: every way a diagram enters or leaves the app goes through here
 // (top-bar menus, the canvas context menu, keyboard shortcuts, drag-and-drop, share links).
@@ -126,7 +123,8 @@ type DialogState =
   | { kind: "unlock"; token: string; session: number }
   | { kind: "embed"; diagram: DiagramFile; source: string; example?: string }
   | { kind: "image" }
-  | { kind: "privacy" }
+  /** Turning Private off for `source`, the document it was opened for (it closes if another one opens). */
+  | { kind: "privacy"; source: string }
   | { kind: "paste" }
   | { kind: "link" }
   | {
@@ -150,8 +148,9 @@ interface Source {
   target?: SaveTarget;
 }
 
-/** The canvas's canonical form of a file (same as CanvasView's "edited" check). */
-const normalized = (d: DiagramFile) => {
+/** The canvas's canonical form of a file (same as CanvasView's "edited" check). Loads with the canvas. */
+const normalized = async (d: DiagramFile) => {
+  const { fromFlow, toFlow } = await import("../canvas/convert");
   const f = toFlow(d);
   return JSON.stringify(fromFlow(f.meta, f.nodes, f.edges));
 };
@@ -272,7 +271,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   const exportDrawio = () =>
     attempt("export to draw.io", async () => {
       const d = current();
-      const { inlineIcons } = await import("./icons");
+      const [{ diagramToDrawio }, { inlineIcons }] = await Promise.all([drawioWriter(), import("./icons")]);
       const xml = diagramToDrawio(d, { iconSvg: await inlineIcons(d) });
       downloadText(xml, `${baseName(d)}.drawio`, "application/vnd.jgraph.mxfile");
       toast.success("Exported a .drawio file. Open it at app.diagrams.net or in draw.io Desktop.");
@@ -280,15 +279,17 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
 
   const copyMermaid = () =>
     attempt("copy Mermaid", async () => {
-      const text = diagramToMermaid(current());
+      const d = current();
+      const text = (await mermaidWriter()).diagramToMermaid(d);
       if (await copyText(text))
         toast.success("Mermaid flowchart copied. Paste it into GitHub, Notion, Obsidian or mermaid.live.");
       else throw new Error("The browser blocked clipboard access. Use Download .mmd instead.");
     });
 
   const downloadMermaid = () =>
-    attempt("export Mermaid", () => {
+    attempt("export Mermaid", async () => {
       const d = current();
+      const { diagramToMermaid } = await mermaidWriter();
       downloadText(diagramToMermaid(d), `${baseName(d)}.mmd`, "text/plain");
       toast.success("Exported a Mermaid .mmd file.");
     });
@@ -346,17 +347,21 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       }
     });
   const openEmbed = () =>
-    attempt("create embed code", () => {
-      if (!linkAllowed()) return;
+    attempt("create embed code", async () => {
+      const source = slug;
+      if (!linkAllowed(source)) return;
       const d = current();
       // Embed by name only when the example is public and unedited (the viewer shows the original).
-      const original = getOriginal(slug);
-      const pristine = !!original && normalized(original) === JSON.stringify(canvasRef.current?.getDiagram());
+      const original = getOriginal(source);
+      const shown = JSON.stringify(canvasRef.current?.getDiagram());
+      const pristine = !!original && (await normalized(original)) === shown;
+      // The check above can wait for code: the diagram may have become private since.
+      if (!linkAllowed(source)) return;
       setDialog({
         kind: "embed",
         diagram: d,
-        source: slug,
-        example: isPublicExample(slug) && pristine ? slug : undefined,
+        source,
+        example: isPublicExample(source) && pristine ? source : undefined,
       });
     });
 
@@ -684,7 +689,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     attempt(on ? "make it private" : "change its privacy", () => {
       const kind = privacy();
       if (!on) {
-        if (kind === "private") setDialog({ kind: "privacy" });
+        if (kind === "private") setDialog({ kind: "privacy", source: slug });
         return;
       }
       if (kind) return;
@@ -700,10 +705,12 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       toast.success(`Saved a private copy of “${d.title}” to Your diagrams.`);
     });
 
-  const confirmNotPrivate = () =>
+  /** Turns Private off for `source` only: the document the confirmation was asked for. */
+  const confirmNotPrivate = (source: string) =>
     attempt("change its privacy", () => {
       setDialog(null);
-      if (setDiagramPrivate(slug, false)) toast.success("This diagram is no longer private.");
+      if (source !== openSlug.current) return;
+      if (setDiagramPrivate(source, false)) toast.success("This diagram is no longer private.");
       // The badge that opened the dialog is gone with it: keep the keyboard on the canvas, not the page.
       requestAnimationFrame(() => {
         const active = document.activeElement;
@@ -711,6 +718,10 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
       });
     });
+
+  // The privacy confirmation is about one document: another one opening (Back, a link, another tab's
+  // navigation, even while the dialog's code is still downloading) closes it.
+  if (dialog?.kind === "privacy" && dialog.source !== slug) setDialog(null);
 
   // A share or embed dialog left open closes when its document becomes private (here or in another tab).
   const linkDialogSource =
@@ -731,7 +742,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   // The badge beside the title asks for the dialog: it explains, and turns Private off on confirmation.
   useEffect(() => {
     const onRequest = () => {
-      if (privacyOf(getPrivacyFlags(slug)) === "private") setDialog({ kind: "privacy" });
+      if (privacyOf(getPrivacyFlags(slug)) === "private") setDialog({ kind: "privacy", source: slug });
     };
     window.addEventListener(PRIVACY_REQUEST, onRequest);
     return () => window.removeEventListener(PRIVACY_REQUEST, onRequest);
@@ -764,8 +775,18 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     privacy,
     setPrivate,
     setNewDiagramsPrivate: (on: boolean) => newDiagramsPrivate.set(on),
-    /** Loads the configured providers' code and scripts (the File menu calls it as it opens). Nothing configured: nothing loads. */
-    preloadStorage: () => {
+    /**
+     * What the File menu's commands need, loaded as it opens: the dialogs, the draw.io and Mermaid converters,
+     * and the configured providers' code and scripts (nothing configured: no provider loads).
+     */
+    preload: () => {
+      // After the menu's first frame: running new code first would delay it.
+      requestAnimationFrame(() =>
+        setTimeout(() => {
+          preloadDialogs();
+          preloadFormats();
+        }),
+      );
       for (const info of CLOUD_PROVIDERS)
         void info.load().then(
           (p) => p.preload?.(),
@@ -818,28 +839,26 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       />
       <DropOverlay onFile={(f) => void importFile(f)} />
       {dialog?.kind === "storage" && (
-        <Suspense fallback={null}>
-          <StorageFilesDialog
-            label={dialog.info.label}
-            icon={dialog.info.icon}
-            folder={dialog.provider.folder}
-            load={dialog.load}
-            onPick={(entry) => {
-              setDialog(null);
-              dialog.resolve(entry);
-            }}
-            onSignOut={() => {
-              setDialog(null);
-              dialog.resolve(undefined);
-              void dialog.provider.signOut();
-              toast.info(`Signed out of ${dialog.info.label}.`);
-            }}
-            onClose={() => {
-              setDialog(null);
-              dialog.resolve(undefined);
-            }}
-          />
-        </Suspense>
+        <StorageFilesDialog
+          label={dialog.info.label}
+          icon={dialog.info.icon}
+          folder={dialog.provider.folder}
+          load={dialog.load}
+          onPick={(entry) => {
+            setDialog(null);
+            dialog.resolve(entry);
+          }}
+          onSignOut={() => {
+            setDialog(null);
+            dialog.resolve(undefined);
+            void dialog.provider.signOut();
+            toast.info(`Signed out of ${dialog.info.label}.`);
+          }}
+          onClose={() => {
+            setDialog(null);
+            dialog.resolve(undefined);
+          }}
+        />
       )}
       {dialog?.kind === "image" && (
         <ImageDialog
@@ -858,28 +877,26 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
           onClose={() => setDialog(null)}
         />
       )}
-      {dialog?.kind === "privacy" && <PrivacyDialog onTurnOff={confirmNotPrivate} onClose={() => setDialog(null)} />}
+      {dialog?.kind === "privacy" && (
+        <PrivacyDialog onTurnOff={() => void confirmNotPrivate(dialog.source)} onClose={() => setDialog(null)} />
+      )}
       {dialog?.kind === "password-link" && (
-        <Suspense fallback={null}>
-          <PasswordLinkDialog
-            diagram={dialog.diagram}
-            allowed={() => linkStillAllowed(dialog.source)}
-            onClose={() => setDialog(null)}
-          />
-        </Suspense>
+        <PasswordLinkDialog
+          diagram={dialog.diagram}
+          allowed={() => linkStillAllowed(dialog.source)}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === "unlock" && (
-        <Suspense fallback={null}>
-          <UnlockDialog
-            key={dialog.session}
-            unlock={(password) => unlockShared(dialog.session, dialog.token, password)}
-            onClose={() => {
-              unlockSession.current++;
-              setDialog(null);
-              toast.info("The password-protected diagram wasn't opened. Reload the page to enter the password.");
-            }}
-          />
-        </Suspense>
+        <UnlockDialog
+          key={dialog.session}
+          unlock={(password) => unlockShared(dialog.session, dialog.token, password)}
+          onClose={() => {
+            unlockSession.current++;
+            setDialog(null);
+            toast.info("The password-protected diagram wasn't opened. Reload the page to enter the password.");
+          }}
+        />
       )}
       {dialog?.kind === "embed" && (
         <EmbedDialog
@@ -921,8 +938,10 @@ export function useInteropCanvasActions(canvasRef: RefObject<CanvasHandle | null
     (handle: CanvasHandle | null) => {
       canvasRef.current = handle;
       unregister.current?.();
+      // A mounted canvas means its code has loaded, built-in actions included.
+      const builtins = handle ? loadedCanvasActions()?.builtinActions() : undefined;
       unregister.current = handle
-        ? actionRegistry.register([...builtinActions(), ...canvasActions(() => apiRef.current)])
+        ? actionRegistry.register([...(builtins ?? []), ...canvasActions(() => apiRef.current)])
         : undefined;
     },
     [canvasRef],

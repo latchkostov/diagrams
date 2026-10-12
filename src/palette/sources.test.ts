@@ -154,7 +154,7 @@ describe("palette sources", () => {
   const input = (over: Partial<SourceInput> = {}): SourceInput => ({
     registry: registry(),
     canvas: host(),
-    live: { toggle: vi.fn() },
+    live: { toggle: vi.fn(), goLive: vi.fn() },
     view: "canvas",
     stencils: catalog,
     recentStencils: ["kafka.topic"],

@@ -128,3 +128,15 @@ narrowly (selector and rule), with a comment saying why.
 `pnpm size` (after a build) fails if the main entry chunk's gzip size exceeds the budget in
 `scripts/bundle-budget.mjs`, set at about 15% over the measured size. Raise it on purpose, in the change
 that needs it, and say why.
+
+What isn't needed for the first view loads on first use or on intent, through the two helpers in
+`src/lib/lazyLoad.tsx` (`lazyComponent`, with `preload()` for hover, menu-open and idle prefetch, and
+`loadOnce` for plain modules): the import and export dialogs, the draw.io and Mermaid converters, image
+export, password links, Your diagrams, the embed viewer, the live session (simulation, slow motion,
+recording), the AI panel and the Lab. Until its code arrives a dialog shows its modal frame, which Esc and
+Close cancel; a failed download says so in place, with Retry (`tests/e2e/lazy-loading.spec.ts`). The canvas
+loads as two chunks (`canvasChunks` in `vite.config.ts`). `src/lib/bundleSplit.build.test.ts` builds the
+app and fails if any of that reaches the startup JavaScript (the entry and what it preloads) or the canvas's
+first view, or if the canvas splits into more chunks. `scripts/perf/startup.mjs` measures paint, time to
+interactive and the first open of the File menu, the dialogs, Ctrl+K, quick-add, the AI panel and live view on
+a production build, at a CPU and network throttle (`--cold`: each on a fresh page as soon as it's up).

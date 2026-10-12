@@ -33,6 +33,17 @@ describe("paletteHost", () => {
     expect(run).not.toHaveBeenCalled();
     off();
   });
+  it("goes live for a simulation without toggling live view off when it's already on", () => {
+    paletteHost.reset();
+    // Live view is on but its session (a separate chunk) hasn't published itself yet.
+    const live = { toggle: vi.fn(), goLive: vi.fn() };
+    const offLive = publish("live", live);
+    expect(paletteHost.runSimulation("peak")).toBe(true);
+    expect(live.goLive).toHaveBeenCalledTimes(1);
+    expect(live.toggle).not.toHaveBeenCalled();
+    expect(paletteHost.get().pendingRun).toBe("peak");
+    offLive();
+  });
   it("can't run a simulation without a live view", () => {
     paletteHost.reset();
     expect(paletteHost.runSimulation("peak")).toBe(false);

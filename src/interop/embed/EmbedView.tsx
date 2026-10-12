@@ -4,7 +4,7 @@ import { examples, loadExample } from "../../examples";
 import { LazyCanvasView as CanvasView, preloadCanvasView } from "../../canvas/loadCanvasView";
 import { decodeShare, sharePayloadFromHash } from "../share";
 import { encryptedPayloadFromHash, parseEncrypted } from "../passwordLink";
-import { UnlockDialog } from "../ui/passwordDialogsLazy";
+import { UnlockDialog } from "../ui/lazyDialogs";
 import { Glyph } from "../ui/glyphs";
 import { notify } from "../ui/toast";
 
@@ -149,30 +149,28 @@ export function EmbedView() {
             </button>
           </div>
           {state.asking && (
-            <Suspense fallback={null}>
-              <UnlockDialog
-                key={state.session}
-                unlock={async (password) => {
-                  const request = navigation.current;
-                  const session = state.session;
-                  const { decodeEncryptedShare } = await import("../shareCrypto");
-                  const diagram = await decodeEncryptedShare(state.token, password);
-                  if (request !== navigation.current || session !== unlockSession.current) return;
-                  const base = `${window.location.origin}${window.location.pathname}`;
-                  setState({
-                    status: "ready",
-                    diagram,
-                    key: `e:${state.token.length}:${state.token.slice(-16)}`,
-                    // Still encrypted: opening it in the app asks for the password again.
-                    openHref: `${base}#e=${state.token}`,
-                  });
-                }}
-                onClose={() => {
-                  unlockSession.current++;
-                  setState({ ...state, asking: false });
-                }}
-              />
-            </Suspense>
+            <UnlockDialog
+              key={state.session}
+              unlock={async (password) => {
+                const request = navigation.current;
+                const session = state.session;
+                const { decodeEncryptedShare } = await import("../shareCrypto");
+                const diagram = await decodeEncryptedShare(state.token, password);
+                if (request !== navigation.current || session !== unlockSession.current) return;
+                const base = `${window.location.origin}${window.location.pathname}`;
+                setState({
+                  status: "ready",
+                  diagram,
+                  key: `e:${state.token.length}:${state.token.slice(-16)}`,
+                  // Still encrypted: opening it in the app asks for the password again.
+                  openHref: `${base}#e=${state.token}`,
+                });
+              }}
+              onClose={() => {
+                unlockSession.current++;
+                setState({ ...state, asking: false });
+              }}
+            />
           )}
         </div>
       ) : (

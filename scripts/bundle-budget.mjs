@@ -7,8 +7,8 @@ import process from "node:process";
 import console from "node:console";
 import zlib from "node:zlib";
 
-/** Entry chunk gzip budget in bytes: 112,727 B measured on 2026-10-11, plus about 15%. */
-const BUDGET = 130_000;
+/** Entry chunk gzip budget in bytes: 107,278 B measured on 2026-10-12, plus about 15%. */
+const BUDGET = 123_500;
 
 const outDir = process.argv[2] ?? "dist";
 const htmlPath = path.join(outDir, "index.html");

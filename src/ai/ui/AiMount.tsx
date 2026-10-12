@@ -8,12 +8,32 @@ import { AI_PANEL_COMBO, OPEN_AI_PANEL, aiPanelTitle, buildWithAi, openAiPanel, 
 import { aiDock, RAIL_WIDTH, clampWidth, collapseDock, useAiDock } from "./dock";
 import { forgetLegacyAiKeys } from "./legacy";
 import { railLabel, unseen, useUnseen } from "./unseen";
+import { lazyComponent, LOAD_FAILED, whenIdle } from "../../lib/lazyLoad";
 
 // The app shell's only AI code, kept small because it's in the main bundle: the dock's frame (the slim
 // rail, or the column the AI panel loads into), the shortcut, and the menu entries. The panel, the AI
-// core and WebMCP are separate chunks, loaded on first open and only when needed.
+// core and WebMCP are separate chunks, loaded only when needed. The panel loads ahead of its first open:
+// once the canvas is idle, or as the pointer reaches the rail.
 
-const AiPanel = lazy(() => import("./AiPanel"));
+const AiPanel = lazyComponent(
+  () => import("./AiPanel").then((m) => m.default),
+  (_, { failed, retry }) =>
+    failed ? (
+      <div className="ai-dock-loading ai-dock-failed" role="alert" data-testid="ai-panel-load-error">
+        <p>{LOAD_FAILED}</p>
+        <div>
+          <button className="btn" onClick={collapseDock} data-testid="ai-panel-load-close">
+            Close
+          </button>
+          <button className="btn btn-primary" onClick={retry} data-testid="ai-panel-load-retry">
+            Retry
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div className="ai-dock-loading" aria-busy="true" />
+    ),
+);
 const WebMcpBridge = lazy(() => import("../webmcp/WebMcpBridge"));
 
 /** WebMCP feature detection without loading the adapter (`navigator.modelContext` is the old alias). */
@@ -150,6 +170,10 @@ export function AiMount({
     if (shown && documentId && fresh) unseen.clear(documentId);
   }, [shown, documentId, fresh]);
 
+  // Once a diagram is up (not while the canvas itself is still downloading), and not while live view runs.
+  const canvasUp = docked && !!canvas && !canvas.live;
+  useEffect(() => (canvasUp ? whenIdle(AiPanel.preload) : undefined), [canvasUp]);
+
   const [mcp] = useState(hasModelContext);
   const live = !!canvas?.live || presenting;
 
@@ -167,15 +191,15 @@ export function AiMount({
                 e.preventDefault();
             }}
           >
-            <Suspense fallback={<div className="ai-dock-loading" aria-busy="true" />}>
-              <AiPanel key={canvas?.documentId ?? "none"} request={request} />
-            </Suspense>
+            <AiPanel key={canvas?.documentId ?? "none"} request={request} />
           </div>
         ) : (
           <aside className="ai-rail" aria-label="AI panel" data-testid="ai-rail">
             <button
               className="ai-rail-btn"
               onClick={() => openAiPanel()}
+              onPointerEnter={AiPanel.preload}
+              onFocus={AiPanel.preload}
               aria-label={railLabel(fresh)}
               title={aiPanelTitle()}
               data-testid="ai-rail-open"
