@@ -1,6 +1,5 @@
 import {
   memo,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -12,6 +11,7 @@ import { Handle, NodeResizeControl, ResizeControlVariant, useReactFlow, type Nod
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
 import type { AnnotationKind, AnnotationShape } from "../../model/types";
 import { ANNOTATION_COLORS, annotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
+import { useSelectOnMount } from "../../components/useSelectOnMount";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { AnnotationFlowNode, FlowNode } from "../types";
@@ -227,11 +227,7 @@ function AnnotationEditor({
     const el = ref.current;
     onDone(v, el ? Math.max(0, el.scrollHeight - el.clientHeight) : 0);
   };
-  useEffect(() => {
-    // A frame later: the menu or double-click that opened the editor may still hold focus.
-    const id = requestAnimationFrame(() => ref.current?.select());
-    return () => cancelAnimationFrame(id);
-  }, []);
+  useSelectOnMount(ref);
   const onKey = (e: KeyboardEvent) => {
     e.stopPropagation();
     if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || e.metaKey || kind === "zone"))) {

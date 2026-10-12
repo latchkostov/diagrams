@@ -122,11 +122,19 @@ export function Recorder({
       return;
     }
     if (p !== "recording") return;
+    const take = recording.current;
+    // The indicator shows as the countdown ends, but the recorder starts two frames later. A stop in
+    // between has nothing to save: it cancels, like a stop during the countdown.
+    if (take && take.recorder.state === "inactive" && !startedAt.current) {
+      phase.current = "idle";
+      cancel();
+      dispatch({ type: "stop", unstarted: true });
+      return;
+    }
     phase.current = "stopping";
     dispatch({ type: "stop" });
     stoppedDuration.current = startedAt.current ? performance.now() - startedAt.current : 0;
     unframe();
-    const take = recording.current;
     if (!take || take.recorder.state === "inactive") {
       cancel();
       dispatch({ type: "failed", message: "Recording failed. Start again and keep this tab open." });

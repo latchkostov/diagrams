@@ -85,8 +85,25 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
     scope: "context-menu",
     open: async (page) => {
       await gotoCanvas(page, KAFKA);
-      await page.getByTestId("node-payments").click({ button: "right" });
-      await expect(page.getByTestId("context-menu")).toBeVisible();
+      // The opening fit moves the viewport, and a viewport move closes menus: wait for the node to hold
+      // still, and retry in case a late fit still closed it.
+      const node = page.getByTestId("node-payments");
+      let last = "";
+      await expect
+        .poll(
+          async () => {
+            const now = JSON.stringify(await node.boundingBox());
+            const still = now === last;
+            last = now;
+            return still;
+          },
+          { intervals: [100, 150, 150, 250] },
+        )
+        .toBe(true);
+      await expect(async () => {
+        await node.click({ button: "right" });
+        await expect(page.getByTestId("context-menu")).toBeVisible({ timeout: 1000 });
+      }).toPass();
     },
   },
   {

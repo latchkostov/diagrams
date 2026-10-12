@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useSelectOnMount } from "./useSelectOnMount";
 
 /**
  * Single-line inline editor: Enter / blur commits, Esc cancels. Used for edge and group labels
@@ -26,11 +27,7 @@ export function InlineInput({
     done.current = true;
     onDone(next);
   };
-  useEffect(() => {
-    // Wait a frame: the context menu that triggered the edit may still own focus.
-    const id = requestAnimationFrame(() => ref.current?.select());
-    return () => cancelAnimationFrame(id);
-  }, []);
+  useSelectOnMount(ref);
   return (
     <input
       ref={ref}

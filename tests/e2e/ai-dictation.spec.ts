@@ -33,11 +33,17 @@ test.describe("Dictate", () => {
     await expect(page.getByTestId("ai-request")).toHaveValue("A kafka topic orders");
     await expect(page.getByTestId("ai-interim")).toHaveText("consumed by");
 
-    // The browser ends the session on silence: dictation carries on in a new one.
+    // The browser ends the session on silence: dictation carries on in a new one. Its first words can
+    // arrive before its start event (the fake fires start 20 ms after start()): deliver them in between.
     await speech(page, "silence");
+    await page.evaluate(async () => {
+      const s = (window as unknown as { __speech: { starts: number; result(list: [string, boolean][]): void } })
+        .__speech;
+      while (s.starts < 2) await new Promise((r) => setTimeout(r, 1));
+      s.result([["consumed by billing-worker", true]]);
+    });
     await expect.poll(async () => (await speechState(page)).starts).toBe(2);
     await expect(mic(page)).toHaveAttribute("aria-pressed", "true");
-    await speech(page, "result", [["consumed by billing-worker", true]]);
     await expect(page.getByTestId("ai-request")).toHaveValue("A kafka topic orders consumed by billing-worker");
 
     await mic(page).click();

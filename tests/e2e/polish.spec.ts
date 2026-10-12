@@ -33,13 +33,39 @@ async function transformsAfter(page: Page, testId: string) {
   }, testId);
 }
 
+const viewportTransform = (page: Page) =>
+  page
+    .getByTestId("canvas-wrap")
+    .evaluate((wrap) => wrap.querySelector<HTMLElement>(".react-flow__viewport")?.style.transform ?? "");
+
+/** Waits until the viewport holds still (an opening fit or a pan's momentum has finished). */
+async function settleViewport(page: Page) {
+  let last = "";
+  await expect
+    .poll(
+      async () => {
+        const now = await viewportTransform(page);
+        const still = now === last;
+        last = now;
+        return still;
+      },
+      { intervals: [100, 150, 150, 250] },
+    )
+    .toBe(true);
+}
+
 async function panAway(page: Page) {
+  // The opening fit must land first: a fit that finishes after the drag would undo it.
+  await settleViewport(page);
+  const fitted = await viewportTransform(page);
   const wrap = await box(page.getByTestId("canvas-wrap"));
   // The top strip of the pane is empty after a fit (it keeps clear of the title card).
   await page.mouse.move(wrap.x + wrap.width / 2, wrap.y + 70);
   await page.mouse.down();
   await page.mouse.move(wrap.x + wrap.width / 2 - 260, wrap.y + 140, { steps: 6 });
   await page.mouse.up();
+  await expect.poll(() => viewportTransform(page)).not.toBe(fitted);
+  await settleViewport(page);
 }
 
 test.describe("polish", () => {

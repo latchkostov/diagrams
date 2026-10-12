@@ -179,35 +179,42 @@ test.describe("annotations", () => {
       await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
         theme === "light" ? "Switch to dark theme" : "Switch to light theme",
       );
-      const contrasts = await page.getByTestId("canvas-wrap").evaluate((wrap) => {
-        const ctx = document.createElement("canvas").getContext("2d");
-        if (!ctx) throw new Error("Missing color context");
-        const rgb = (color: string) => {
-          ctx.clearRect(0, 0, 1, 1);
-          ctx.fillStyle = color;
-          ctx.fillRect(0, 0, 1, 1);
-          return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
-        };
-        const luminance = (channels: number[]) =>
-          channels
-            .map((v) => {
-              const c = v / 255;
-              return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-            })
-            .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
-        const bg = rgb(getComputedStyle(wrap).getPropertyValue("--bg"));
-        return [...wrap.querySelectorAll('[data-testid^="annotation-text-caption-"]')].map((el) => {
-          let opacity = 1;
-          for (let parent: Element | null = el; parent; parent = parent.parentElement)
-            opacity *= Number(getComputedStyle(parent).opacity);
-          const ink = rgb(getComputedStyle(el).color).map((c, i) => c * opacity + bg[i] * (1 - opacity));
-          const a = luminance(ink),
-            b = luminance(bg);
-          return { id: el.getAttribute("data-testid"), ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+      // Measured once the live view and theme transitions (opacity, colours) have settled.
+      const measure = () =>
+        page.getByTestId("canvas-wrap").evaluate((wrap) => {
+          const ctx = document.createElement("canvas").getContext("2d");
+          if (!ctx) throw new Error("Missing color context");
+          const rgb = (color: string) => {
+            ctx.clearRect(0, 0, 1, 1);
+            ctx.fillStyle = color;
+            ctx.fillRect(0, 0, 1, 1);
+            return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+          };
+          const luminance = (channels: number[]) =>
+            channels
+              .map((v) => {
+                const c = v / 255;
+                return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+              })
+              .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+          const bg = rgb(getComputedStyle(wrap).getPropertyValue("--bg"));
+          return [...wrap.querySelectorAll('[data-testid^="annotation-text-caption-"]')].map((el) => {
+            let opacity = 1;
+            for (let parent: Element | null = el; parent; parent = parent.parentElement)
+              opacity *= Number(getComputedStyle(parent).opacity);
+            const ink = rgb(getComputedStyle(el).color).map((c, i) => c * opacity + bg[i] * (1 - opacity));
+            const a = luminance(ink),
+              b = luminance(bg);
+            return { id: el.getAttribute("data-testid"), ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+          });
         });
-      });
-      expect(contrasts).toHaveLength(colors.length);
-      for (const c of contrasts) expect(c.ratio, `${theme}: ${c.id}`).toBeGreaterThanOrEqual(4.5);
+      await expect
+        .poll(async () => {
+          const contrasts = await measure();
+          if (contrasts.length !== colors.length) return [`${contrasts.length} of ${colors.length} captions`];
+          return contrasts.filter((c) => c.ratio < 4.5).map((c) => `${theme}: ${c.id} at ${c.ratio.toFixed(2)}:1`);
+        })
+        .toEqual([]);
       if (theme === "light") await page.getByTestId("theme-toggle").click();
     }
   });

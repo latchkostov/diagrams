@@ -95,13 +95,14 @@ function createSession(Ctor: RecognitionCtor, ui: Ui) {
   const open = () => {
     const r = new Ctor();
     rec = r;
+    // Each session numbers its results from 0. Reset here, not on its start event: results can come first.
+    committed = 0;
     r.lang = navigator.language || "en-US";
     r.continuous = true;
     r.interimResults = true;
     if (local) r.processLocally = true;
     r.onstart = () => {
       if (rec !== r) return;
-      committed = 0;
       ui.status("listening");
     };
     r.onsoundstart = () => rec === r && ui.hearing(true);

@@ -281,6 +281,8 @@ test.describe("record video", () => {
     await page.getByTestId("record-start").click();
     await expect(page.getByTestId("record-indicator")).toBeVisible({ timeout: 6_000 });
     await expect(page).toHaveURL(/present=1/);
+    // The recorder starts two frames after the indicator shows; a stop before that cancels instead.
+    await expect.poll(() => rec(page, "started")).toBe(true);
     // L doesn't leave live view mid-take; Esc stops the recording (and only that).
     await page.keyboard.press("l");
     await page.keyboard.press("Escape");
