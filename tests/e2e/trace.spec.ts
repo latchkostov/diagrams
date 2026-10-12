@@ -227,20 +227,20 @@ test.describe("message trace", () => {
     page,
     consoleErrors,
   }) => {
-    await gotoLive(page, `./?view=canvas&example=${AZURE}&live=1&sim=poison&speed=8`);
+    // Ask while paused at 0 s, before anything has dead-lettered: the card always waits and then follows
+    // the first message to dead-letter (about 3.3 s), long before the story's pausing note at 10 s. Asked
+    // while playing, it raced the run: whether a journey existed yet, and which one, depended on how long
+    // the menu took to open.
+    await gotoLive(page, `./?view=canvas&example=${AZURE}&live=1&sim=poison&speed=8&paused=1`);
     await openCanvasSubmenu(page, "sim.trace-message", "sim.trace-message:dead-letter");
-    await expect(card(page)).toBeVisible();
-    // The story pauses on a note at 10 s; continue until the trace has its dead letter.
-    await expect
-      .poll(
-        async () => {
-          const play = page.getByTestId("live-play");
-          if ((await play.getAttribute("data-state")) === "waiting") await play.click();
-          return card(page).getAttribute("data-state");
-        },
-        { timeout: 30_000 },
-      )
-      .toBe("dlq");
+    await expect(card(page)).toHaveAttribute("data-state", "waiting");
+    await expect(page.getByTestId("trace-waiting")).toContainText("dead-letter");
+    await page.getByTestId("live-play").click();
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    // "Dead-lettered" shows when the broker gives up; the message then travels 300 ms (sim) to the DLQ.
+    // Wait for that last hop before reading the journey, or the list can still end at the dead letter.
+    await expect(card(page)).toHaveAttribute("data-state", "dlq", { timeout: 20_000 });
+    await expect(hops(page).last()).toHaveAttribute("data-kind", "dlq");
     await expect(page.getByTestId("trace-dlq")).toBeVisible();
     expect(Number(await page.getByTestId("trace-retries").getAttribute("data-count"))).toBeGreaterThan(0);
     const kinds = await hopAttr(page, "data-kind");
