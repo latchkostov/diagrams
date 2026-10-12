@@ -72,7 +72,9 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
   const nodes: DiagramNode[] = g.components.map((c) => {
     const id = idFor(c.key, c.label, c.idPrefix);
     // Subtitles carry evidence (an image, a build context), never anything credential-shaped.
-    const sublabel = c.sublabel && sanitizeSettings([{ key: withoutCredentials(c.sublabel) }])?.[0]?.key;
+    // Only a location (a URL, an image, a path) loses its query: a schedule's "cron(0 2 * * ? *)" stays whole.
+    const located = c.sublabel && /[/:@]/.test(c.sublabel) ? withoutCredentials(c.sublabel) : c.sublabel;
+    const sublabel = located && sanitizeSettings([{ key: located }])?.[0]?.key;
     let stencil = c.stencil;
     if (!stencil) {
       const pick = pickFor(c);
@@ -108,6 +110,8 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
   });
   const labelOf = new Map(g.components.map((c) => [c.key, rowLabel(c)]));
   const inferred: ReportConnection[] = [];
+  /** Inferred connections past MAX_REPORT_LINES: counted in a note, not listed. */
+  let unlisted = 0;
   const edges: DiagramEdge[] = [];
   for (const l of g.links) {
     const from = ids.get(l.from);
@@ -125,7 +129,13 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
     });
     // A setting's name, never its value; a credential-shaped name isn't shown either (sanitizeSettings).
     const named = l.evidence.name && sanitizeSettings([{ key: l.evidence.name }])?.[0]?.key;
-    if (l.evidence.source === "setting" && named)
+    if (
+      (l.evidence.source === "setting" || l.evidence.source === "resource") &&
+      named &&
+      inferred.length >= MAX_REPORT_LINES
+    )
+      unlisted++;
+    else if ((l.evidence.source === "setting" || l.evidence.source === "resource") && named)
       inferred.push({
         fromId: from,
         toId: to,
@@ -188,9 +198,14 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
       boundaries: groups.length,
       guesses,
       inferred,
+      ...(g.connectionsTitle ? { connectionsTitle: g.connectionsTitle } : {}),
       notDrawn: capped(g.notDrawn),
       unread: capped(g.unread),
-      notes: simulation ? [...g.notes, "Go live and pick “Imported traffic” to watch messages flow"] : g.notes,
+      notes: [
+        ...g.notes,
+        ...(unlisted ? [`${unlisted.toLocaleString("en")} more connections like these aren't listed`] : []),
+        ...(simulation ? ["Go live and pick “Imported traffic” to watch messages flow"] : []),
+      ],
       ...(traffic.length
         ? {
             traffic: traffic.map((t) => ({

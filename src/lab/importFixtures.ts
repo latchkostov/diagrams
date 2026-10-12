@@ -1,6 +1,6 @@
 import type { DiagramFile } from "../model/types";
 import type { ImportOutcome } from "../interop/formats";
-import { importAsyncApi, importCompose, importKubernetes } from "../interop/infra/pipeline";
+import { importAsyncApi, importCompose, importKubernetes, importTerraform } from "../interop/infra/pipeline";
 import composeFixture from "../../tests/fixtures/imports/compose/docker-compose.yml?raw";
 import ordersFixture from "../../tests/fixtures/imports/asyncapi/orders-service.asyncapi.yaml?raw";
 import shippingFixture from "../../tests/fixtures/imports/asyncapi/shipping-service.asyncapi.yaml?raw";
@@ -10,6 +10,8 @@ import k8sData from "../../tests/fixtures/imports/k8s/data.yaml?raw";
 import k8sIngress from "../../tests/fixtures/imports/k8s/ingress.yaml?raw";
 import k8sOrders from "../../tests/fixtures/imports/k8s/orders-api.yaml?raw";
 import k8sPayments from "../../tests/fixtures/imports/k8s/payments-worker.yaml?raw";
+import tfAwsPlan from "../../tests/fixtures/imports/terraform/aws-plan.json?raw";
+import tfAzureState from "../../tests/fixtures/imports/terraform/azure-state.json?raw";
 
 // The infrastructure import fixtures (tests/fixtures/imports), imported the way Open… does, for the Lab: the
 // overlap audit and a diagram to open in the editor. The Lab is a lazy chunk, so the YAML reader stays out of
@@ -45,3 +47,11 @@ export const importedKubernetes = (): DiagramFile =>
       { name: "payments-worker.yaml", text: k8sPayments },
     ]),
   );
+
+/** The AWS plan fixture (tests/fixtures/imports/terraform): SNS → SQS → Lambda → DynamoDB, a module with MSK. */
+export const importedTerraform = (): DiagramFile =>
+  diagramOf(importTerraform([{ name: "aws-plan.json", text: tfAwsPlan }]));
+
+/** The Azure state fixture: Service Bus, a Function App, Key Vault and Event Hubs in two resource groups. */
+export const importedTerraformAzure = (): DiagramFile =>
+  diagramOf(importTerraform([{ name: "azure-state.json", text: tfAzureState }]));

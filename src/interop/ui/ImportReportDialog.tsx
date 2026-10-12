@@ -10,7 +10,7 @@ import type { ImportReport, ReportGuess } from "../infra/graph";
 
 // The Import report (docs/research/imports.md § UX): what the import drew as a guess (with one-click stencil
 // chips), the connections it found in settings and the variable behind each, what it chose not to draw and
-// what it couldn't read. Nothing is dropped silently. It lives in memory while the diagram stays open.
+// what it couldn't read. Nothing is dropped silently: a Terraform import can be drawn again with every resource. It lives in memory while the diagram stays open.
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en")} ${n === 1 ? one : many}`;
 
@@ -28,12 +28,15 @@ export function ImportReportDialog({
   report,
   isPrivate,
   onMakePrivate,
+  onDrawEverything,
   onClose,
 }: {
   report: ImportReport;
   /** Is the diagram private now (asked at each render)? */
   isPrivate: () => boolean;
   onMakePrivate: () => void;
+  /** Terraform: open the same files again as a new diagram with every resource as a node. */
+  onDrawEverything?: () => void;
   onClose: () => void;
 }) {
   const [, rerender] = useState(0);
@@ -156,7 +159,11 @@ export function ImportReportDialog({
           </Section>
         )}
         {report.inferred.length > 0 && (
-          <Section title="Connections found in settings" count={report.inferred.length} testId="import-report-settings">
+          <Section
+            title={report.connectionsTitle ?? "Connections found in settings"}
+            count={report.inferred.length}
+            testId="import-report-settings"
+          >
             {report.inferred.map((c, i) => (
               <li key={i} className="ix-report-row" data-testid={`import-report-setting-${i}`}>
                 <span className="ix-report-what">
@@ -176,7 +183,24 @@ export function ImportReportDialog({
           </Section>
         )}
         {report.notDrawn.length > 0 && (
-          <Section title="Not drawn" count={report.notDrawn.length} testId="import-report-not-drawn">
+          <Section
+            title="Not drawn"
+            count={report.notDrawn.length}
+            testId="import-report-not-drawn"
+            action={
+              report.drawEverything &&
+              onDrawEverything && (
+                <button
+                  className="link-btn ix-report-action"
+                  onClick={onDrawEverything}
+                  title="Opens a new diagram with every resource as a node"
+                  data-testid="import-report-draw-everything"
+                >
+                  Draw everything
+                </button>
+              )
+            }
+          >
             {report.notDrawn.map((l, i) => (
               <li key={i} className="ix-report-row" data-testid={`import-report-not-drawn-${i}`}>
                 <span className="ix-report-what">{l.name}</span>
@@ -204,18 +228,31 @@ function Section({
   title,
   count,
   testId,
+  action,
   children,
 }: {
   title: string;
   count: number;
   testId: string;
+  /** One quiet action beside the heading (Terraform's Draw everything). */
+  action?: ReactNode;
   children: ReactNode;
 }) {
+  const heading = (
+    <h3>
+      {title} <span className="ix-report-count">({count})</span>
+    </h3>
+  );
   return (
     <section className="ix-report-section" data-testid={testId}>
-      <h3>
-        {title} <span className="ix-report-count">({count})</span>
-      </h3>
+      {action ? (
+        <div className="ix-report-head">
+          {heading}
+          {action}
+        </div>
+      ) : (
+        heading
+      )}
       <ul>{children}</ul>
     </section>
   );

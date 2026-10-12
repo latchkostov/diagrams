@@ -1,5 +1,45 @@
 # Design review
 
+## Round 20: imports (batch 4, Terraform) (2026-10-12)
+
+Terraform plan and state JSON on the shared pipeline and report. Self-review against `docs/UX-PRINCIPLES.md` at
+1024 × 768, 1280 × 800 dark and 1440 × 900, with the AWS plan and the Azure state fixtures.
+
+- **No new chrome.** The start-card line now reads "Drop a docker-compose, Kubernetes, AsyncAPI or Terraform plan
+  here." (one line at 1280; "Have a …, AsyncAPI or Terraform plan file? Drop it here." wrapped and left "it here."
+  alone). The drop overlay gains a "Terraform plan" chip, which still fits one row at 1440, and the paste dialog
+  and Open…'s file type name it. Nothing says Terraform "isn't supported yet" any more. A `.tf` file gets one
+  sentence that says what to run, not a JSON error.
+- **The canvas** (AWS plan) reads SNS → SQS → Lambda along the top lanes, with the DynamoDB stream into the
+  projector and the nightly schedule beside it; the `module.streaming` boundary (AWS-toned) holds MSK and its
+  consumer, "analytics ×2". The role, the secret and the parameter sit in one row under the flows, joined by
+  Identity, Secret and Config. The Azure state reads as two resource groups: Service Bus → the Function App →
+  Event Hubs, with Event Grid from the storage account, and the shared Key Vault in its own group below. The Lab's
+  overlap audit counts no node or label overlaps on either.
+- **The report** keeps the batch 1 layout; only the connections heading changes, to "Connections from
+  subscriptions, mappings and grants", each row naming the resource that made it
+  (`aws_sns_topic_subscription.orders_queue`), so a surprising edge can be traced to its line in the plan. Two
+  notes: the plan's changes in Terraform's own words ("Plan: 28 to add, 0 to change, 1 to destroy") and one line that summarises what isn't
+  drawn by kind. Not drawn is grouped by type ("azurerm_resource_group ×2 · not a component").
+- **Draw everything** is a quiet link at the end of the Not drawn heading, not a button in the foot: it's for the
+  few who want the resource graph, and it opens a new diagram ("aws-plan (everything)") rather than changing this
+  one, so the curated import is never lost. Resources with no flows pack in a grid under the flows instead of one
+  tall column.
+- **Secrets** never show: no variable, output, `sensitive_values` attribute, `constant_value`, ARN, account id,
+  principal or URL userinfo reaches the canvas, the report or the file; an outside SNS endpoint is drawn by its
+  host alone.
+- **Open:** long module addresses wrap mid-word in the report's evidence column at 1440
+  (`module.streaming.aws_lambda_event_source_mapping.analytics`); acceptable for a monospace address. Draw
+  everything on a plan with many flows still spreads its first column; Tidy up tightens it. The 300-node picker
+  isn't built (as in batch 3).
+
+![Import report, Terraform, 1440](screenshots/round20/import-report-terraform-1440.png)
+![Terraform AWS plan on the canvas, 1440](screenshots/round20/terraform-aws-canvas-1440.png)
+![Terraform Azure state on the canvas, 1440](screenshots/round20/terraform-azure-canvas-1440.png)
+
+Also: `screenshots/round20/import-report-terraform-1024.png`, `import-report-terraform-1280-dark.png`,
+`terraform-everything-canvas-1440.png`, `drop-overlay-1440.png` and `start-card-1280.png`.
+
 ## Round 19: private embeds (2026-10-12)
 
 **Embed ▸ Your app supplies it (private)**: the page that embeds the viewer fetches the diagram from its own server,

@@ -1115,6 +1115,23 @@ p.ix-storage-state {
   color: var(--text-2);
 }
 
+/* A heading with one quiet action at its end (Not drawn · Draw everything). */
+.ix-report-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 4px;
+}
+
+.ix-report-head h3 {
+  margin: 0;
+}
+
+.ix-report-action {
+  font-size: 12px;
+}
+
 .ix-report-count {
   color: var(--text-3);
   font-weight: 500;

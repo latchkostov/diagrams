@@ -1,0 +1,345 @@
+{
+  "format_version": "1.0",
+  "terraform_version": "1.9.5",
+  "values": {
+    "outputs": {
+      "servicebus_connection": {
+        "sensitive": true,
+        "type": "string",
+        "value": "Endpoint=sb://shop-bus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=c2VjcmV0LXNhcy1rZXk="
+      },
+      "function_hostname": {
+        "sensitive": false,
+        "type": "string",
+        "value": "billing-func.azurewebsites.net"
+      }
+    },
+    "root_module": {
+      "resources": [
+        {
+          "address": "azurerm_resource_group.billing",
+          "mode": "managed",
+          "type": "azurerm_resource_group",
+          "name": "billing",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing",
+            "name": "rg-billing",
+            "location": "westeurope"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_resource_group.shared",
+          "mode": "managed",
+          "type": "azurerm_resource_group",
+          "name": "shared",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-shared",
+            "name": "rg-shared",
+            "location": "westeurope"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_servicebus_namespace.shop",
+          "mode": "managed",
+          "type": "azurerm_servicebus_namespace",
+          "name": "shop",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.ServiceBus/namespaces/shop-bus",
+            "name": "shop-bus",
+            "resource_group_name": "rg-billing",
+            "sku": "Standard",
+            "default_primary_connection_string": "Endpoint=sb://shop-bus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=c2VjcmV0LXNhcy1rZXk=",
+            "default_primary_key": "c2VjcmV0LXNhcy1rZXk="
+          },
+          "sensitive_values": {
+            "default_primary_connection_string": true,
+            "default_primary_key": true
+          }
+        },
+        {
+          "address": "azurerm_servicebus_topic.orders",
+          "mode": "managed",
+          "type": "azurerm_servicebus_topic",
+          "name": "orders",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.ServiceBus/namespaces/shop-bus/topics/orders",
+            "name": "orders",
+            "namespace_id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.ServiceBus/namespaces/shop-bus"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_servicebus_subscription.billing",
+          "mode": "managed",
+          "type": "azurerm_servicebus_subscription",
+          "name": "billing",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.ServiceBus/namespaces/shop-bus/topics/orders/subscriptions/billing",
+            "name": "billing",
+            "topic_id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.ServiceBus/namespaces/shop-bus/topics/orders",
+            "forward_to": "billing-inbox",
+            "max_delivery_count": 10
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_servicebus_queue.billing_inbox",
+          "mode": "managed",
+          "type": "azurerm_servicebus_queue",
+          "name": "billing_inbox",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.ServiceBus/namespaces/shop-bus/queues/billing-inbox",
+            "name": "billing-inbox",
+            "namespace_id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.ServiceBus/namespaces/shop-bus"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_storage_account.billing",
+          "mode": "managed",
+          "type": "azurerm_storage_account",
+          "name": "billing",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.Storage/storageAccounts/billingfuncstore",
+            "name": "billingfuncstore",
+            "resource_group_name": "rg-billing",
+            "account_tier": "Standard",
+            "primary_access_key": "c3RvcmFnZS1hY2NvdW50LWtleQ==",
+            "primary_connection_string": "DefaultEndpointsProtocol=https;AccountName=billingfuncstore;AccountKey=c3RvcmFnZS1hY2NvdW50LWtleQ=="
+          },
+          "sensitive_values": {
+            "primary_access_key": true,
+            "primary_connection_string": true
+          }
+        },
+        {
+          "address": "azurerm_service_plan.billing",
+          "mode": "managed",
+          "type": "azurerm_service_plan",
+          "name": "billing",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.Web/serverFarms/billing-plan",
+            "name": "billing-plan",
+            "resource_group_name": "rg-billing",
+            "os_type": "Linux",
+            "sku_name": "Y1"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_linux_function_app.billing",
+          "mode": "managed",
+          "type": "azurerm_linux_function_app",
+          "name": "billing",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.Web/sites/billing-func",
+            "name": "billing-func",
+            "resource_group_name": "rg-billing",
+            "default_hostname": "billing-func.azurewebsites.net",
+            "storage_account_name": "billingfuncstore",
+            "storage_account_access_key": "c3RvcmFnZS1hY2NvdW50LWtleQ==",
+            "app_settings": {
+              "SERVICEBUS_CONNECTION": "Endpoint=sb://shop-bus.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=c2VjcmV0LXNhcy1rZXk=",
+              "KEYVAULT_URI": "https://shop-kv.vault.azure.net/"
+            },
+            "identity": [
+              {
+                "type": "SystemAssigned",
+                "principal_id": "aaaaaaaa-0000-4000-8000-000000000001",
+                "tenant_id": "99999999-8888-7777-6666-555555555555",
+                "identity_ids": []
+              }
+            ]
+          },
+          "sensitive_values": {
+            "storage_account_access_key": true,
+            "app_settings": true,
+            "identity": [
+              {
+                "identity_ids": []
+              }
+            ]
+          }
+        },
+        {
+          "address": "azurerm_role_assignment.func_reads_inbox",
+          "mode": "managed",
+          "type": "azurerm_role_assignment",
+          "name": "func_reads_inbox",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.ServiceBus/namespaces/shop-bus/queues/billing-inbox/providers/Microsoft.Authorization/roleAssignments/r1",
+            "scope": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.ServiceBus/namespaces/shop-bus/queues/billing-inbox",
+            "role_definition_name": "Azure Service Bus Data Receiver",
+            "principal_id": "aaaaaaaa-0000-4000-8000-000000000001"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_key_vault.shared",
+          "mode": "managed",
+          "type": "azurerm_key_vault",
+          "name": "shared",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-shared/providers/Microsoft.KeyVault/vaults/shop-kv",
+            "name": "shop-kv",
+            "resource_group_name": "rg-shared",
+            "vault_uri": "https://shop-kv.vault.azure.net/"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_key_vault_secret.servicebus",
+          "mode": "managed",
+          "type": "azurerm_key_vault_secret",
+          "name": "servicebus",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "https://shop-kv.vault.azure.net/secrets/servicebus-connection/0123",
+            "name": "servicebus-connection",
+            "key_vault_id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-shared/providers/Microsoft.KeyVault/vaults/shop-kv",
+            "value": "kv-secret-value-Endpoint"
+          },
+          "sensitive_values": {
+            "value": true
+          }
+        },
+        {
+          "address": "azurerm_role_assignment.func_reads_secrets",
+          "mode": "managed",
+          "type": "azurerm_role_assignment",
+          "name": "func_reads_secrets",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-shared/providers/Microsoft.KeyVault/vaults/shop-kv/providers/Microsoft.Authorization/roleAssignments/r2",
+            "scope": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-shared/providers/Microsoft.KeyVault/vaults/shop-kv",
+            "role_definition_name": "Key Vault Secrets User",
+            "principal_id": "aaaaaaaa-0000-4000-8000-000000000001"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_eventhub_namespace.telemetry",
+          "mode": "managed",
+          "type": "azurerm_eventhub_namespace",
+          "name": "telemetry",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.EventHub/namespaces/shop-telemetry",
+            "name": "shop-telemetry",
+            "resource_group_name": "rg-billing",
+            "sku": "Standard"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_eventhub.billing_events",
+          "mode": "managed",
+          "type": "azurerm_eventhub",
+          "name": "billing_events",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.EventHub/namespaces/shop-telemetry/eventhubs/billing-events",
+            "name": "billing-events",
+            "namespace_id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.EventHub/namespaces/shop-telemetry",
+            "partition_count": 4
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_eventhub_consumer_group.analytics",
+          "mode": "managed",
+          "type": "azurerm_eventhub_consumer_group",
+          "name": "analytics",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.EventHub/namespaces/shop-telemetry/eventhubs/billing-events/consumergroups/analytics",
+            "name": "analytics",
+            "eventhub_name": "billing-events"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_role_assignment.func_sends_events",
+          "mode": "managed",
+          "type": "azurerm_role_assignment",
+          "name": "func_sends_events",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.EventHub/namespaces/shop-telemetry/eventhubs/billing-events/providers/Microsoft.Authorization/roleAssignments/r3",
+            "scope": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.EventHub/namespaces/shop-telemetry/eventhubs/billing-events",
+            "role_definition_name": "Azure Event Hubs Data Sender",
+            "principal_id": "aaaaaaaa-0000-4000-8000-000000000001"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_eventgrid_system_topic.billing_blobs",
+          "mode": "managed",
+          "type": "azurerm_eventgrid_system_topic",
+          "name": "billing_blobs",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.EventGrid/systemTopics/billing-blobs",
+            "name": "billing-blobs",
+            "resource_group_name": "rg-billing",
+            "source_arm_resource_id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.Storage/storageAccounts/billingfuncstore",
+            "topic_type": "Microsoft.Storage.StorageAccounts"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "azurerm_eventgrid_system_topic_event_subscription.invoices",
+          "mode": "managed",
+          "type": "azurerm_eventgrid_system_topic_event_subscription",
+          "name": "invoices",
+          "provider_name": "registry.terraform.io/hashicorp/azurerm",
+          "schema_version": 0,
+          "values": {
+            "id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.EventGrid/systemTopics/billing-blobs/eventSubscriptions/invoice-uploaded",
+            "name": "invoice-uploaded",
+            "system_topic": "billing-blobs",
+            "resource_group_name": "rg-billing",
+            "azure_function_endpoint": [
+              {
+                "function_id": "/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-billing/providers/Microsoft.Web/sites/billing-func/functions/OnInvoiceUploaded",
+                "max_events_per_batch": 1
+              }
+            ]
+          },
+          "sensitive_values": {}
+        }
+      ]
+    }
+  }
+}

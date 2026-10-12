@@ -560,3 +560,167 @@ test.describe("imports: Kubernetes", () => {
       await expect(page.getByTestId(`audit-count-${kind}`)).toHaveAttribute("data-count", "0");
   });
 });
+
+// ---------------------------------------------------------------- Terraform (batch 4)
+
+const TF_DIR = join(FIXTURES, "terraform");
+const TF_AWS = { name: "aws-plan.json", text: readFileSync(join(TF_DIR, "aws-plan.json"), "utf8") };
+const TF_SUMMARY = "Imported “aws-plan” from Terraform plan: 13 nodes, 16 connections.";
+/** Values in the plan that must never reach the page or the stored diagram. */
+const TF_SECRETS = [
+  "sk_live",
+  "hunter2",
+  "Rnd-pa55word",
+  "ssm-secure-value",
+  "hook-token",
+  "abc123signature",
+  "123456789012",
+];
+
+interface StoredTf {
+  nodes: { id: string; group?: string; stencil: string }[];
+  edges: { from: string; to: string; relation?: string; kind?: string; props?: Record<string, unknown> }[];
+  groups?: { id: string; label: string }[];
+}
+
+async function expectAwsPlan(page: Page) {
+  await expect(page.getByTestId("diagram-title")).toHaveText("aws-plan");
+  for (const id of [
+    "order-events",
+    "orders-queue",
+    "orders-dlq",
+    "order-handler",
+    "orders",
+    "orders-projector",
+    "order-handler-role",
+    "orders-db-credentials",
+    "orders-projector-config",
+    "events-msk",
+    "analytics",
+    "nightly-rollup",
+    "ext-audit.example.com",
+  ])
+    await expect(page.getByTestId(`node-${id}`)).toBeVisible();
+  await expect(page.getByTestId(/^node-(?!tooltip$|editor-|pips-|pip-|dependencies-|dependency-)/)).toHaveCount(13);
+  await expect(page.getByTestId("group-boundary-module.streaming")).toBeVisible();
+  await expect(page.getByTestId(/^edge-e\d+$/)).toHaveCount(16);
+}
+
+test.describe("imports: Terraform", () => {
+  test("Open… imports the AWS plan: flows from subscriptions and mappings, the module boundary, IAM and secrets", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await fakePicker(page, [TF_AWS]);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await openViaMenu(page);
+    await expect(page.getByTestId("toast")).toContainText(TF_SUMMARY);
+    await expectAwsPlan(page);
+    const d = (await stored(page, "aws-plan")) as unknown as StoredTf;
+    const e = (from: string, to: string) => d.edges.find((x) => x.from === from && x.to === to);
+    // SNS → SQS → Lambda: a subscription and an event-source mapping are message flows.
+    expect(e("order-events", "orders-queue")?.kind).toBe("async");
+    expect(e("orders-queue", "order-handler")?.kind).toBe("async");
+    expect(e("orders", "orders-projector")?.kind).toBe("async");
+    expect(e("events-msk", "analytics")).toMatchObject({ kind: "async", props: { group: "orders-analytics" } });
+    // References: the role is Identity, the secret Secret, the parameter Config, the table Depends on.
+    expect(e("order-handler", "order-handler-role")?.relation).toBe("identity");
+    expect(e("order-handler", "orders-db-credentials")?.relation).toBe("secret");
+    expect(e("orders-projector", "orders-projector-config")?.relation).toBe("config");
+    expect(e("order-handler", "orders")?.relation).toBe("depends");
+    // module.streaming is a boundary holding MSK and its consumers.
+    const groupOf = (id: string) => d.groups?.find((g) => g.id === d.nodes.find((n) => n.id === id)?.group)?.label;
+    expect(groupOf("events-msk")).toBe("module.streaming");
+    expect(groupOf("analytics")).toBe("module.streaming");
+    expect(groupOf("order-handler")).toBeUndefined();
+    const json = JSON.stringify(d);
+    for (const secret of TF_SECRETS) expect(json, secret).not.toContain(secret);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("dropping the plan imports it; the report lists connections, what isn't drawn, and draws everything", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const dt = await page.evaluateHandle((f) => {
+      const d = new DataTransfer();
+      d.items.add(new File([f.text], f.name, { type: "application/json" }));
+      return d;
+    }, TF_AWS);
+    await page.getByTestId("canvas-view").dispatchEvent("dragenter", { dataTransfer: dt });
+    await expect(page.getByTestId("drop-overlay")).toContainText("Terraform plan");
+    await page.getByTestId("drop-overlay").dispatchEvent("drop", { dataTransfer: dt });
+    await expect(page.getByTestId("toast")).toContainText(TF_SUMMARY);
+    await expectAwsPlan(page);
+    await page.getByTestId("toast-import-details").click();
+    const report = page.getByTestId("import-report");
+    await expect(report).toBeVisible();
+    await expect(page.getByTestId("import-report-summary")).toHaveText("Drew 13 nodes, 16 connections and 1 boundary.");
+    // The connections say which resource made them.
+    const connections = page.getByTestId("import-report-settings");
+    await expect(connections).toContainText("Connections from subscriptions, mappings and grants");
+    await expect(connections).toContainText("aws_sns_topic_subscription.orders_queue");
+    await expect(connections).toContainText("aws_lambda_event_source_mapping.orders_queue");
+    await expect(connections).toContainText("aws_iam_role_policy.order_handler");
+    // The plan's changes and the supporting-resources summary.
+    const notes = page.getByTestId("import-report-note");
+    await expect(notes.nth(0)).toHaveText("Plan: 28 to add, 0 to change, 1 to destroy.");
+    await expect(notes.nth(1)).toHaveText(
+      "7 supporting resources aren't drawn: access and permissions, parts of what's drawn, monitoring, networking and helpers.",
+    );
+    const notDrawn = page.getByTestId("import-report-not-drawn");
+    await expect(notDrawn).toContainText("aws_iam_role_policy_attachment basic_logs");
+    await expect(notDrawn).toContainText("aws_sqs_queue legacy_orders");
+    await expect(notDrawn).toContainText("destroyed by this plan");
+    await expect(page.getByTestId("import-report-guesses")).toHaveCount(0);
+    for (const secret of TF_SECRETS) await expect(report).not.toContainText(secret);
+    // Draw everything: the same plan again, every resource a node, as a new diagram.
+    await page.getByTestId("import-report-draw-everything").click();
+    await expect(page.getByTestId("import-report")).toHaveCount(0);
+    await expect(page.getByTestId("diagram-title")).toHaveText("aws-plan (everything)");
+    await expect(page.getByTestId(/^node-(?!tooltip$|editor-|pips-|pip-|dependencies-|dependency-)/)).toHaveCount(27);
+    await expect(page.getByTestId("node-msk-brokers")).toBeVisible();
+    expectNoErrors(consoleErrors);
+  });
+
+  test("Terraform source (.tf) says to run terraform show -json, and nothing is replaced", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const title = await page.getByTestId("diagram-title").textContent();
+    await page.getByTestId("import-input").setInputFiles({
+      name: "main.tf",
+      mimeType: "text/plain",
+      buffer: Buffer.from('resource "aws_sqs_queue" "orders" {\n  name = "orders"\n}\n'),
+    });
+    const toast = page.getByTestId("toast");
+    await expect(toast).toHaveAttribute("data-kind", "error");
+    await expect(toast).toHaveText(
+      "Couldn't import main.tf. Terraform source (.tf) isn't read. Run “terraform show -json plan.out” (or state) and import that.",
+    );
+    await expect(page.getByTestId("diagram-title")).toHaveText(title ?? "");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a Terraform import makes no network requests", async ({ page }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const origin = new URL(page.url()).origin;
+    const requests: { url: string; type: string }[] = [];
+    page.on("request", (r) => requests.push({ url: r.url(), type: r.resourceType() }));
+    await drop(page, [TF_AWS]);
+    await expectAwsPlan(page);
+    // The plan names audit.example.com and AWS endpoints: none of them is contacted.
+    expect(requests.filter((r) => !r.url.startsWith(origin) && !r.url.startsWith("data:"))).toEqual([]);
+    expect(requests.filter((r) => r.type === "fetch" || r.type === "xhr")).toEqual([]);
+  });
+
+  for (const diagram of ["imported-terraform", "imported-terraform-azure"])
+    test(`the Terraform import is overlap-free in the Lab's audit (${diagram})`, async ({ page }) => {
+      await page.goto(`./?view=lab&preset=overlap-audit&diagram=${diagram}`);
+      await expect(page.getByTestId("audit-summary")).toBeVisible();
+      for (const kind of ["label-node", "label-label", "node-node"])
+        await expect(page.getByTestId(`audit-count-${kind}`)).toHaveAttribute("data-count", "0");
+    });
+});

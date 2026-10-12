@@ -4,6 +4,7 @@ import { sniffInfra, type InfraSniff } from "../sniff";
 import { readCompose, type SourceFile } from "./compose";
 import { readAsyncApi } from "./asyncapi";
 import { HELM_TEMPLATE, readKubernetes } from "./kubernetes";
+import { readTerraform, TERRAFORM_BINARY, TERRAFORM_SOURCE } from "./terraform";
 import type { ImportGraph } from "./graph";
 import { graphToDiagram } from "./map";
 import { ImportError } from "./yaml";
@@ -38,17 +39,33 @@ export function importKubernetes(files: readonly SourceFile[]): ImportOutcome {
 }
 
 /**
- * One text: a compose file, Kubernetes manifests, an AsyncAPI document, or a format that's recognised but not
- * imported (`later`): a Helm template says how to render it; Terraform isn't supported yet.
+ * Terraform plan or state JSON (`terraform show -json`), one or several files. The report can draw the same files
+ * again with every resource as a node (**Draw everything**), as a new diagram.
+ */
+export function importTerraform(files: readonly SourceFile[], everything = false): ImportOutcome {
+  const outcome = outcomeOf("terraform", readTerraform(files, { everything }));
+  if (!everything && outcome.ok === true && outcome.report?.notDrawn.length)
+    outcome.report.drawEverything = () => {
+      try {
+        return importTerraform(files, true);
+      } catch (err) {
+        if (err instanceof ImportError) return { ok: false, error: err.message };
+        throw err;
+      }
+    };
+  return outcome;
+}
+
+/**
+ * One text: a compose file, Kubernetes manifests, an AsyncAPI document, a Terraform plan or state, or a format
+ * that's recognised but not imported (`later`): a Helm template says how to render it, and Terraform source (or a
+ * binary plan) says to run `terraform show -json`.
  */
 export function importInfra(text: string, fileName: string, later?: InfraSniff, format?: FormatId): ImportOutcome {
   if (later === "helm") return { ok: false, error: HELM_TEMPLATE };
-  if (later)
-    return {
-      ok: false,
-      error:
-        "This looks like a Terraform plan. Importing those isn't supported yet; docker-compose files, Kubernetes manifests and AsyncAPI documents are.",
-    };
+  if (later === "hcl")
+    return { ok: false, error: text.startsWith("PK\u0003\u0004") ? TERRAFORM_BINARY : TERRAFORM_SOURCE };
+  if (format === "terraform") return importTerraform([{ name: fileName || "plan.json", text }]);
   if (format === "asyncapi") return importAsyncApi([{ name: fileName || "asyncapi.yaml", text }]);
   if (format === "kubernetes") return importKubernetes([{ name: fileName || "manifests.yaml", text }]);
   return importCompose([{ name: fileName || "docker-compose.yml", text }]);
@@ -85,16 +102,20 @@ export async function importMany(
     reason:
       sniffInfra(f.text) === "helm"
         ? "a Helm template: import “helm template” output instead"
-        : "not read: a different kind of file",
+        : sniffInfra(f.text) === "hcl" || /\.tf$/i.test(f.name)
+          ? "Terraform source: import “terraform show -json” output instead"
+          : "not read: a different kind of file",
   }));
-  if (format === "compose" || format === "asyncapi" || format === "kubernetes") {
+  if (format === "compose" || format === "asyncapi" || format === "kubernetes" || format === "terraform") {
     try {
       const outcome =
         format === "compose"
           ? importCompose(group, envFiles)
           : format === "kubernetes"
             ? importKubernetes(group)
-            : importAsyncApi(group);
+            : format === "terraform"
+              ? importTerraform(group)
+              : importAsyncApi(group);
       if (outcome.ok === true && outcome.report) outcome.report.unread.push(...restLines);
       return outcome;
     } catch (err) {

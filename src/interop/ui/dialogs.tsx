@@ -517,7 +517,7 @@ export function PasteDialog({ onImport, onClose }: { onImport: (text: string) =>
   return (
     <Dialog
       title="Paste a diagram"
-      subtitle="Live Diagrams JSON, draw.io XML, a Mermaid flowchart, a docker-compose file, Kubernetes manifests or an AsyncAPI document. The format is detected for you."
+      subtitle="Live Diagrams JSON, draw.io XML, a Mermaid flowchart, a docker-compose file, Kubernetes manifests, an AsyncAPI document or a Terraform plan (terraform show -json). The format is detected for you."
       icon={<Glyph name="clipboard" />}
       onClose={onClose}
       testId="paste-dialog"

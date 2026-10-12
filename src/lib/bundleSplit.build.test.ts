@@ -13,6 +13,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["the infrastructure importers (compose reader)", /[/\\]src[/\\]interop[/\\]infra[/\\]/],
   ["the AsyncAPI reader", /[/\\]src[/\\]interop[/\\]infra[/\\]asyncapi\.ts$/],
   ["the Kubernetes reader", /[/\\]src[/\\]interop[/\\]infra[/\\](?:kubernetes|k8sHosts|k8sSettings)\.ts$/],
+  ["the Terraform reader", /[/\\]src[/\\]interop[/\\]infra[/\\](?:terraform|tfRefs|tfTypes)\.ts$/],
   ["the YAML parser", /[/\\]node_modules[/\\](\.pnpm[/\\][^/\\]+[/\\]node_modules[/\\])?yaml[/\\]/],
   ["the Import report", /[/\\]src[/\\]interop[/\\]ui[/\\]ImportReportDialog\.tsx$/],
   ["html-to-image (image export)", /[/\\]html-to-image[/\\]/],

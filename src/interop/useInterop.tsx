@@ -1002,6 +1002,16 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
           report={report}
           isPrivate={() => !!privacy()}
           onMakePrivate={() => void setPrivate(true)}
+          onDrawEverything={
+            report.drawEverything
+              ? () => {
+                  // Terraform: the same files again, every resource a node, as a new diagram with its own report.
+                  const again = report.drawEverything!;
+                  setDialog(null);
+                  handleOutcome(again(), { name: report.source });
+                }
+              : undefined
+          }
           onClose={() => setDialog(null)}
         />
       )}

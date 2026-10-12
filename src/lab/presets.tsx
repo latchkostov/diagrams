@@ -36,7 +36,13 @@ import type { ControlDef, Preset } from "./types";
 import { LiveLabStage } from "../live/LiveLabStage";
 import { badgeStatesDiagram, noteStatesDiagram, particleStressDiagram, type NoteState } from "../live/labDiagrams";
 import { OverlapAudit } from "./OverlapAudit";
-import { importedAsyncApi, importedCompose, importedKubernetes } from "./importFixtures";
+import {
+  importedAsyncApi,
+  importedCompose,
+  importedKubernetes,
+  importedTerraform,
+  importedTerraformAzure,
+} from "./importFixtures";
 import { annotationCourseDiagram, obstacleCourseDiagram } from "./routingDiagrams";
 import { TraceCardInteraction, TraceCardStates, TraceSequencePreview, type TraceFlow } from "../live/TraceLab";
 
@@ -622,6 +628,8 @@ const auditSources: Record<string, { label: string; diagram: () => DiagramFile }
   "imported-compose": { label: "Imported: compose", diagram: importedCompose },
   "imported-asyncapi": { label: "Imported: AsyncAPI", diagram: importedAsyncApi },
   "imported-kubernetes": { label: "Imported: Kubernetes", diagram: importedKubernetes },
+  "imported-terraform": { label: "Imported: Terraform (AWS plan)", diagram: importedTerraform },
+  "imported-terraform-azure": { label: "Imported: Terraform (Azure state)", diagram: importedTerraformAzure },
   annotations: { label: "Annotations among routes", diagram: () => annotationCourseDiagram() },
   "stress-150": {
     label: "Stress: 150 nodes",
@@ -659,6 +667,24 @@ const layoutPresets: Preset[] = [
     description:
       "The five Kubernetes fixtures (tests/fixtures/imports/k8s): namespaces as boundaries, the Ingress entry, ConfigMap, Secrets and workload identity, and the KEDA consumer on a Strimzi topic.",
     diagram: importedKubernetes,
+  },
+  {
+    kind: "diagram",
+    id: "imported-terraform",
+    title: "Imported: Terraform (AWS plan)",
+    group: "Diagrams",
+    description:
+      "The AWS plan fixture (tests/fixtures/imports/terraform): SNS → SQS → Lambda → DynamoDB flows from subscriptions and event-source mappings, the streaming module as a boundary, and IAM, secret and config relationships.",
+    diagram: importedTerraform,
+  },
+  {
+    kind: "diagram",
+    id: "imported-terraform-azure",
+    title: "Imported: Terraform (Azure state)",
+    group: "Diagrams",
+    description:
+      "The Azure state fixture: resource groups as boundaries, a Service Bus forward, Event Grid into a Function App, and role assignments read as flows and a Key Vault secret relationship.",
+    diagram: importedTerraformAzure,
   },
   {
     kind: "diagram",

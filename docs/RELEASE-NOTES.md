@@ -2,6 +2,22 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Import Terraform plans and state (2026-10)
+
+No habit changes. New:
+
+- **Open…**, a drop and **Paste text** read the JSON from **`terraform show -json`**, a plan or a state, several files
+  at once. Queues, topics, functions, databases, secrets and identities on AWS, Azure and Google Cloud get their
+  stencils; modules (or Azure resource groups) become boundaries.
+- Subscriptions, event-source mappings, EventBridge targets, Service Bus and Event Grid subscriptions and Pub/Sub
+  subscriptions become **message flows**, so SNS → SQS → Lambda reads as it runs. References between resources
+  become **Identity**, **Secret**, **Config** or **Depends on**, and IAM policies and Azure role assignments say who
+  reads which secret and who sends or receives.
+- The Import report lists what wasn't drawn by type (policies, networking, helpers), the plan's changes, and
+  **Draw everything**, which opens the same files with every resource as a node.
+- Sensitive values, variables and outputs are never read. A `.tf` file says to run `terraform show -json plan.out`
+  and import that.
+
 ## Private embeds: your app supplies the diagram (2026-10)
 
 Nothing you do today changes: embed codes made before work as they did. New:
