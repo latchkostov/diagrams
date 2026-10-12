@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLive } from "./fixtures";
 
 // Slow motion: one message's recorded journey, replayed node by node while live stays frozen; and
 // calmer drawing below 1×. Selectors are data-testid only (axe takes [data-testid] CSS).
@@ -32,8 +32,7 @@ async function openCanvasSubmenu(page: Page, parent: string, child: string) {
 
 /** Kafka in free play with traffic flowing, then slow motion from the Storefront. */
 async function watchFromStorefront(page: Page, query = "") {
-  await page.goto(`./?view=canvas&example=${KAFKA}&live=1${query}`);
-  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1${query}`);
   // Let traffic build up so there's a busy background to freeze.
   await expect.poll(async () => Number(await data(page, "particles")), { timeout: 10_000 }).toBeGreaterThan(40);
   await openNodeMenu(page, "shopper", "sim.slowmo-from");
@@ -104,7 +103,7 @@ test.describe("slow motion", () => {
   });
 
   test("an open Inputs panel and capacity Apply fix wait until slow motion ends", async ({ page, consoleErrors }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=black-friday&paused=1`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=black-friday&paused=1`);
     await page.getByTestId("live-capacity").click();
     await page.getByTestId("capacity-traffic-mult").fill("14");
     await expect(page.getByTestId("bottleneck-apply")).toBeEnabled();
@@ -223,8 +222,7 @@ test.describe("slow motion", () => {
   });
 
   test("Esc goes back to live exactly where it left off, paused or playing", async ({ page, consoleErrors }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
     await expect.poll(async () => Number(await data(page, "particles")), { timeout: 10_000 }).toBeGreaterThan(20);
     await play(page).click();
     await expect(play(page)).toHaveAttribute("data-state", "paused");
@@ -262,8 +260,7 @@ test.describe("slow motion", () => {
     page,
     consoleErrors,
   }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&speed=2`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&speed=2`);
     await openCanvasSubmenu(page, "sim.trace-message", "sim.trace-message:slowmo");
     await expect(play(page)).toHaveAttribute("data-state", "slowmo");
     await page.keyboard.press("Escape");
@@ -285,8 +282,7 @@ test.describe("slow motion", () => {
   });
 
   test("with no traffic it waits for the message, then starts on Send one now", async ({ page, consoleErrors }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openNodeMenu(page, "shopper", "sim.slowmo-from");
     await expect(page.getByTestId("trace-waiting")).toContainText("slow motion starts when it comes");
     await page.getByTestId("trace-send-one").click();
@@ -436,8 +432,7 @@ test("Record this slow motion plays it from the start and stops at its end", asy
 
 test.describe("calmer slow speeds", () => {
   test("0.25× draws a calm sample of whole journeys; counts stay exact", async ({ page, consoleErrors }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
     const sample = async () => {
       const out: number[] = [];
       for (let i = 0; i < 12; i++) {

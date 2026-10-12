@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoLab } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLab, gotoLive } from "./fixtures";
 
 // Message trace: follow one message (and its fan-out copies) hop by hop, then turn its journey into
 // a sequence diagram. Selectors are data-testid only.
@@ -45,8 +45,7 @@ const hopAttr = (page: Page, name: string) =>
 
 /** Traces the next message from the Kafka storefront and waits for its whole journey. */
 async function traceKafkaOrder(page: Page) {
-  await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
-  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
   await openNodeMenu(page, "shopper", "sim.trace-next");
   await expect(card(page)).toHaveAttribute("data-state", "waiting");
   await expect(page.getByTestId("trace-waiting")).toContainText("Storefront");
@@ -72,8 +71,7 @@ test.describe("message trace", () => {
   test("starting a waiting trace preserves keyboard focus on its close control or transfers Send to hops", async ({
     page,
   }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
     await openNodeMenu(page, "shopper", "sim.trace-next");
     await page.getByTestId("trace-send-one").focus();
     await page.keyboard.press("Enter");
@@ -206,8 +204,7 @@ test.describe("message trace", () => {
   });
 
   test("the live bar's ⋯ and the command palette start a trace", async ({ page, consoleErrors }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&speed=2`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&speed=2`);
     // ⋯ offers the same three ways in as the right-click's "Trace a message ▸".
     await page.getByTestId("live-more").click();
     await page.getByTestId("live-trace-message").click();
@@ -230,8 +227,7 @@ test.describe("message trace", () => {
     page,
     consoleErrors,
   }) => {
-    await page.goto(`./?view=canvas&example=${AZURE}&live=1&sim=poison&speed=8`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${AZURE}&live=1&sim=poison&speed=8`);
     await openCanvasSubmenu(page, "sim.trace-message", "sim.trace-message:dead-letter");
     await expect(card(page)).toBeVisible();
     // The story pauses on a note at 10 s; continue until the trace has its dead letter.
@@ -269,8 +265,7 @@ test.describe("message trace", () => {
     page,
     consoleErrors,
   }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=0.5`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=0.5`);
     // A node card's on-screen width tells the zoom.
     const scaleOf = async () => (await page.getByTestId("node-shopper").boundingBox())?.width ?? 0;
     // Initial fitting animates, too. Sample only after both scheduled fits have settled.
@@ -372,8 +367,7 @@ test.describe("message trace", () => {
     page,
     consoleErrors,
   }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await page.getByTestId("live-capacity").click();
     await expect(page.getByTestId("capacity-panel")).toBeVisible();
     await openNodeMenu(page, "shopper", "sim.trace-next");
