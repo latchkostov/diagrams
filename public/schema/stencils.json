@@ -821,6 +821,19 @@
       ]
     },
     {
+      "id": "mysql",
+      "label": "MySQL",
+      "vendor": "MySQL",
+      "category": "data",
+      "simRole": "store",
+      "description": "Open-source relational database (MariaDB too).",
+      "aliases": [
+        "mariadb",
+        "rds",
+        "sql"
+      ]
+    },
+    {
       "id": "sqlserver",
       "label": "SQL Server",
       "vendor": "Microsoft",

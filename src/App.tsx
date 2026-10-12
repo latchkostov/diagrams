@@ -243,6 +243,7 @@ function MainApp() {
       });
       if (slug === SHARED_SLUG) clearShared();
       setUrl({ view: "canvas", example: created, present: false });
+      return created;
     },
     [setUrl, slug],
   );

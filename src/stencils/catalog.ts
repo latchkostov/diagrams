@@ -605,6 +605,16 @@ const data = group("data", [
     "database",
   ],
   [
+    "mysql",
+    "MySQL",
+    "MySQL",
+    "mysql",
+    "#00758F",
+    "store",
+    "Open-source relational database (MariaDB too).",
+    "database",
+  ],
+  [
     "sqlserver",
     "SQL Server",
     "Microsoft",

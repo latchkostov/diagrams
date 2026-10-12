@@ -35,6 +35,7 @@ import type { ControlDef, Preset } from "./types";
 import { LiveLabStage } from "../live/LiveLabStage";
 import { badgeStatesDiagram, noteStatesDiagram, particleStressDiagram, type NoteState } from "../live/labDiagrams";
 import { OverlapAudit } from "./OverlapAudit";
+import { importedCompose } from "./importFixtures";
 import { annotationCourseDiagram, obstacleCourseDiagram } from "./routingDiagrams";
 import { TraceCardInteraction, TraceCardStates, TraceSequencePreview, type TraceFlow } from "../live/TraceLab";
 
@@ -612,6 +613,7 @@ const capacityPresets: Preset[] = [
 const auditSources: Record<string, { label: string; diagram: () => DiagramFile }> = {
   ...Object.fromEntries(examples.map((e) => [e.slug, { label: e.title, diagram: () => exampleDiagram(e.slug) }])),
   obstacles: { label: "Routing obstacle course", diagram: () => obstacleCourseDiagram() },
+  "imported-compose": { label: "Imported: compose", diagram: importedCompose },
   annotations: { label: "Annotations among routes", diagram: () => annotationCourseDiagram() },
   "stress-150": {
     label: "Stress: 150 nodes",
@@ -623,6 +625,15 @@ const auditDefault = examples.some((e) => e.slug === "kafka-order-pipeline")
   : Object.keys(auditSources)[0];
 
 const layoutPresets: Preset[] = [
+  {
+    kind: "diagram",
+    id: "imported-compose",
+    title: "Imported: compose",
+    group: "Diagrams",
+    description:
+      "tests/fixtures/imports/compose/docker-compose.yml through the import pipeline: stencils, connections from settings, networks as boundaries and the three-step layout.",
+    diagram: importedCompose,
+  },
   {
     kind: "diagram",
     id: "edges-obstacles",

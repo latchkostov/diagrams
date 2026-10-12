@@ -248,3 +248,11 @@ Reverse ETL and Marketing Automation stencils, and Airbyte for ELT). Snowpipe St
 | `generic-rate-limiter.svg`     | Lucide (ISC)                             | `gauge`                                                           |
 | `generic-marketing.svg`        | Lucide (ISC)                             | `megaphone` (marketing automation: Braze, Customer.io, Iterable)  |
 | `generic-reverse-etl.svg`      | Lucide (ISC)                             | `arrow-left-right` (reverse ETL: Hightouch, Census)               |
+
+### Imports batch 1 (docker-compose)
+
+No new icon needs attribution. MariaDB images use the MySQL stencil.
+
+| Icon file   | Source                 | Original asset     |
+| ----------- | ---------------------- | ------------------ |
+| `mysql.svg` | gilbarbara/logos (CC0) | `logos:mysql-icon` |

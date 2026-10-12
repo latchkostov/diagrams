@@ -1,5 +1,41 @@
 # Design review
 
+## Round 14: imports (batch 1) (2026-10-12)
+
+docker-compose import and the shared import core (`docs/research/imports.md`, batch 1). Self-review against
+`docs/UX-PRINCIPLES.md` at 1024 × 768, 1280 × 800 dark and 1440 × 900, on the compose fixture.
+
+- **No new chrome.** Open…, the drop and Paste text take compose files; no menu item or top-bar control was added.
+  The only new on-screen text is one muted start-card line, "Have a docker-compose file? Drop it here.", plus a
+  `docker-compose.yml` chip in the drop overlay and the paste dialog's subtitle. The plan's longer copy names
+  Kubernetes, AsyncAPI and Terraform too; it waits for the batches that import them, so nothing promises a format
+  that would fail (rule 6).
+- **The toast** reads "Imported “shop” from docker-compose: 15 nodes, 17 connections. 2 guesses." with
+  **Details**, and stays 7 s when there's something to check. Ctrl+K "Import report" is the way back while the
+  diagram stays open; the action is hidden otherwise.
+- **The Import report** has one primary action (**Done**). Changes made while reviewing it:
+  - Node names were accent links, so 14 connection rows read as a wall of blue. They're now plain text that turns
+    accent on hover and focus; the variable names sit right-aligned in mono, muted.
+  - **Other…** search results got their own ids and leave out the chips already shown, so a stencil never
+    appears twice in a row.
+  - Sections with nothing in them aren't shown (the fixture has no "Couldn't read").
+  - The list scrolls inside the dialog (at most 56% of the window), so the foot with "Read on this device.
+    Nothing was uploaded." and **Make it private** is always in view at 1024 × 768.
+- **Layout.** Dependency targets (Schema Registry, the Kafka cluster with no topics named, Compose secrets) first
+  went "below their user", which in a crowded lane stepped them far to the right. They now form one row under the
+  flow lane, so the backend boundary is compact. The Lab's overlap audit on "Imported: compose" counts no
+  node-node or label overlaps.
+- **Dark theme**: chips, mono variable names and the foot read well; no contrast issue found.
+- **Open:** a compose stack is deep (Users → gateway → storefront → orders-api → topic → worker → topic is seven
+  layers), so the whole diagram fits at a small zoom on first view. Fit view, Zoom to selection and selecting a
+  node from the report work as usual. A top-to-bottom option for long chains is a candidate for the AsyncAPI batch.
+
+![Import report, 1440](screenshots/round14/import-report-1440.png)
+![Import report, 1024](screenshots/round14/import-report-1024.png)
+
+Also: `screenshots/round14/import-report-1280-dark.png`, `import-canvas-1440.png`, `drop-overlay-1440.png` and
+`start-card-1280.png`.
+
 ## Round 13: UX gate after drawing, privacy and AI (2026-10-12)
 
 The gate after the biggest run of changes since round 7. It covers drawing batches 1–4 (rounds 8–11), Private

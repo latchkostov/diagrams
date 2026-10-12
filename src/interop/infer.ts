@@ -58,6 +58,7 @@ const RULES: [RegExp, string][] = [
   [/\bpython\b|\bdjango\b|\bfast ?api\b|\bflask\b/, "service.python"],
   [/\bgolang\b|\bgo service\b/, "service.go"],
   // Data
+  [/\bmysql\b|\bmaria ?db\b/, "mysql"],
   [/\bpostgres(ql)?\b|\bpg\b|\baurora\b|\brds\b/, "postgres"],
   [/\bazure sql\b|\bsql database\b/, "azure.sql"],
   [/\bsql server\b|\bmssql\b/, "sqlserver"],

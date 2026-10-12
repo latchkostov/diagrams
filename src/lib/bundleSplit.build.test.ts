@@ -10,6 +10,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 const NOT_AT_STARTUP: [string, RegExp][] = [
   ["the draw.io converter", /[/\\]src[/\\]interop[/\\]drawio[/\\]/],
   ["the Mermaid converter", /[/\\]src[/\\]interop[/\\]mermaid[/\\]/],
+  ["the infrastructure importers (compose reader)", /[/\\]src[/\\]interop[/\\]infra[/\\]/],
+  ["the YAML parser", /[/\\]node_modules[/\\](\.pnpm[/\\][^/\\]+[/\\]node_modules[/\\])?yaml[/\\]/],
+  ["the Import report", /[/\\]src[/\\]interop[/\\]ui[/\\]ImportReportDialog\.tsx$/],
   ["html-to-image (image export)", /[/\\]html-to-image[/\\]/],
   ["the image export", /[/\\]src[/\\]interop[/\\]image\.ts$/],
   ["password-link crypto", /[/\\]src[/\\]interop[/\\]shareCrypto\.ts$/],

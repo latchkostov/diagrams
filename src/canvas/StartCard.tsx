@@ -128,6 +128,11 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
         </ul>
       )}
 
+      {/* Teaches the infrastructure import in place (docs/research/imports.md): the one line it adds. */}
+      <p className="start-note" data-testid="start-import-hint">
+        Have a docker-compose file? Drop it here.
+      </p>
+
       <div className="start-actions">
         <button className="btn" onClick={onBlank} data-testid="start-blank">
           <Icon name="plus" size={14} /> Start blank

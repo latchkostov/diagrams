@@ -42,7 +42,16 @@ import { PRIVACY_REQUEST } from "../lib/usePrivacy";
 import { loadedCanvasActions } from "../canvas/loadCanvasView";
 import { actionRegistry, type Action, type MenuNode } from "../editor/actions";
 import { LIMITS, preserveUnknown, serializeNative, tooLargeMessage } from "./native";
-import { drawioWriter, importText, mermaidWriter, OPEN_ACCEPT, preloadFormats, type ImportOutcome } from "./formats";
+import {
+  drawioWriter,
+  importFiles,
+  importText,
+  mermaidWriter,
+  OPEN_ACCEPT,
+  preloadFormats,
+  type ImportOutcome,
+} from "./formats";
+import type { ImportReport } from "./infra/graph";
 import {
   clearUrlFragment,
   decodeShare,
@@ -58,15 +67,16 @@ import {
   encryptedPayloadFromInput,
   parseEncrypted,
 } from "./passwordLink";
-import { downloadDataUrl, downloadText, fsAccessSupported, slugify, type FileHandle } from "./files";
+import { downloadDataUrl, downloadText, fsAccessSupported, openWithPicker, slugify, type FileHandle } from "./files";
 import { deviceProvider } from "./storage/device";
-import { CLOUD_PROVIDERS, DEVICE as DEVICE_INFO, providerInfo, type ProviderInfo } from "./storage/registry";
+import { CLOUD_PROVIDERS, providerInfo, type ProviderInfo } from "./storage/registry";
 import { StorageError, type OpenContext, type StorageEntry, type StorageProvider } from "./storage/types";
 import { toast } from "./ui/toast";
 import { copyText } from "./ui/copyText";
 import {
   EmbedDialog,
   ImageDialog,
+  ImportReportDialog,
   OpenLinkDialog,
   PagesDialog,
   PasswordLinkDialog,
@@ -99,8 +109,11 @@ interface Options {
   view: View;
   slug: string;
   canvas: RefObject<CanvasHandle | null>;
-  /** Adds the diagram to Your diagrams (bound to `target` for Save) and shows it. Throws if it can't be kept. */
-  openDiagram: (d: DiagramFile, target?: SaveTarget, sourceSlug?: string) => void;
+  /**
+   * Adds the diagram to Your diagrams (bound to `target` for Save) and shows it; returns its slug. Throws if it
+   * can't be kept.
+   */
+  openDiagram: (d: DiagramFile, target?: SaveTarget, sourceSlug?: string) => string | undefined;
   /** Shows a diagram from a share link in the shared slot, apart from the user's own. */
   openShared: (d: DiagramFile) => void;
   /** Public examples can be embedded by name. */
@@ -126,6 +139,8 @@ type DialogState =
   /** Turning Private off for `source`, the document it was opened for (it closes if another one opens). */
   | { kind: "privacy"; source: string }
   | { kind: "paste" }
+  /** The Import report of the diagram open now (an infrastructure import, this tab). */
+  | { kind: "report" }
   | { kind: "link" }
   | {
       kind: "pages";
@@ -165,6 +180,19 @@ const deviceTarget = (handle: FileHandle, savedAt?: number): SaveTarget => ({
 
 export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openShared, isPublicExample }: Options) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  /**
+   * The last import's report, for the diagram it made: in memory only, until another diagram opens. `seen`:
+   * that diagram has been open (the import itself switches to it).
+   */
+  const [imported, setImported] = useState<{ slug: string; report: ImportReport; seen?: boolean } | null>(null);
+  const [shownSlug, setShownSlug] = useState(slug);
+  if (shownSlug !== slug) {
+    setShownSlug(slug);
+    if (imported?.slug === slug) setImported({ ...imported, seen: true });
+    else if (imported?.seen) setImported(null);
+  }
+  const report = imported?.slug === slug ? imported.report : undefined;
+  if (dialog?.kind === "report" && !report) setDialog(null);
   // The diagram open right now (a save that finishes later compares against it).
   const openSlug = useRef(slug);
   useLayoutEffect(() => {
@@ -495,14 +523,25 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         setDialog({ kind: "pages", fileName: source.name, pages: outcome.pages, pick: outcome.pick, source });
         return;
       }
+      let created: string | undefined;
       try {
         // Only our own format saves back to where it came from (a .drawio file is converted).
-        openDiagram(outcome.diagram, outcome.format === "native" ? source.target : undefined);
+        created = openDiagram(outcome.diagram, outcome.format === "native" ? source.target : undefined);
       } catch (err) {
         toast.error(`Couldn't import ${source.name}. ${message(err)}`);
         return;
       }
       setDialog(null);
+      const r = outcome.report;
+      if (r && created) {
+        setImported({ slug: created, report: r });
+        toast.info(r.summary, {
+          action: { label: "Details", run: () => setDialog({ kind: "report" }), testId: "toast-import-details" },
+          // Long enough to read when there's something to check.
+          duration: r.guesses.length || r.unread.length ? 7000 : undefined,
+        });
+        return;
+      }
       const note = outcome.warnings.length
         ? ` ${outcome.warnings[0]}${outcome.warnings.length > 1 ? ` (+${outcome.warnings.length - 1} more)` : ""}`
         : "";
@@ -512,21 +551,25 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     [openDiagram],
   );
 
-  const importFile = useCallback(
-    async (file: File) => {
-      // Check the size before reading anything into memory.
-      if (file.size > LIMITS.maxTextChars) {
-        toast.error(`Couldn't import ${file.name}. ${tooLargeMessage(file.size)}`);
+  /** Files from a drop, the file input or Open…: one, or several (a compose file and its overrides). */
+  const importFileList = useCallback(
+    async (files: readonly File[], target?: SaveTarget) => {
+      if (!files.length) return;
+      const name = files.length === 1 ? files[0].name : `${files.length} files`;
+      // Check the size before reading anything into memory: the limit is for all of them together.
+      const size = files.reduce((sum, f) => sum + f.size, 0);
+      if (size > LIMITS.maxTextChars) {
+        toast.error(`Couldn't import ${name}. ${tooLargeMessage(size)}`);
         return;
       }
-      let text: string;
+      let read: { name: string; text: string }[];
       try {
-        text = await file.text();
+        read = await Promise.all(files.map(async (f) => ({ name: f.name, text: await f.text() })));
       } catch {
-        toast.error(`Couldn't read ${file.name}.`);
+        toast.error(`Couldn't read ${name}.`);
         return;
       }
-      handleOutcome(await importText(text, file.name), { name: file.name });
+      handleOutcome(await importFiles(read), { name, target: files.length === 1 ? target : undefined });
     },
     [handleOutcome],
   );
@@ -551,14 +594,20 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     handleOutcome(await importText(file.text, file.name), { name: file.name, target });
   };
 
-  /** Open… (Ctrl+O): this device's file picker, or the file input where the browser has none. */
+  /** Open… (Ctrl+O): this device's file picker (several files at once), or the file input where there's none. */
   const openFile = () =>
     attempt("open the file", async () => {
       if (!fsSupported) {
         fileInput.current?.click();
         return;
       }
-      await openFromProvider(DEVICE_INFO, deviceProvider);
+      const picked = await openWithPicker(true);
+      if (!picked?.length) return;
+      // One file opened here saves back to it (our own format).
+      await importFileList(
+        picked.map((p) => p.file),
+        deviceTarget(picked[0].handle),
+      );
     });
 
   /** File > Open from ▸ <provider>. */
@@ -769,6 +818,9 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     openFile,
     openFrom,
     openPaste: () => setDialog({ kind: "paste" }),
+    /** The open diagram's Import report, when it came from an infrastructure import in this tab. */
+    importReport: report,
+    openImportReport: () => setDialog({ kind: "report" }),
     openShareLink: () => setDialog({ kind: "link" }),
     keepSharedCopy,
     /** The open diagram's privacy: "local-only" (built in, always), "private" (the switch) or null. */
@@ -829,15 +881,15 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         type="file"
         accept={OPEN_ACCEPT}
         hidden
+        multiple
         onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void importFile(f);
+          void importFileList([...(e.target.files ?? [])]);
           e.target.value = "";
         }}
         name="import-file"
         data-testid="import-input"
       />
-      <DropOverlay onFile={(f) => void importFile(f)} />
+      <DropOverlay onFiles={(files) => void importFileList(files)} />
       {dialog?.kind === "storage" && (
         <StorageFilesDialog
           label={dialog.info.label}
@@ -909,6 +961,14 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       {dialog?.kind === "paste" && (
         <PasteDialog onImport={(t) => void importPasted(t)} onClose={() => setDialog(null)} />
       )}
+      {dialog?.kind === "report" && report && (
+        <ImportReportDialog
+          report={report}
+          isPrivate={() => !!privacy()}
+          onMakePrivate={() => void setPrivate(true)}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === "link" && <OpenLinkDialog onOpen={openShareLinkInput} onClose={() => setDialog(null)} />}
       {dialog?.kind === "pages" && (
         <PagesDialog
@@ -975,6 +1035,18 @@ function canvasActions(get: () => InteropApi): Action[] {
       enabled: () => get().privacy() !== "local-only",
       hint: () => (get().privacy() === "local-only" ? "Always private" : undefined),
       run: () => void get().setPrivate(!get().privacy()),
+    },
+    {
+      // Ctrl+K only, while the open diagram has one: the import toast's Details is the visible way in.
+      id: "file.import-report",
+      modes: ["edit", "live"],
+      section: "file",
+      targets: ["canvas"],
+      paletteOnly: true,
+      label: "Import report",
+      icon: "info",
+      when: () => !!get().importReport,
+      run: () => get().openImportReport(),
     },
     {
       // Replaces the editor's built-in JSON-only Export submenu.
