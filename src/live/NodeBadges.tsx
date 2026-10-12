@@ -105,22 +105,28 @@ export function NodeBadges({
   );
 }
 
-/** The diagram node under the pointer (the badge layer itself ignores the pointer). */
+/**
+ * The diagram node under the pointer, or the focused one (the badge layer itself ignores the pointer).
+ * Whichever moved last wins: a node focused after its label edit doesn't hide the one hovered next.
+ */
 function useHoveredNode(): string | null {
   const domNode = useStore((s) => s.domNode);
   const [id, setId] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  const [pointerLast, setPointerLast] = useState(false);
   useEffect(() => {
     if (!domNode) return;
     const over = (e: PointerEvent) => {
       const el =
         e.target instanceof Element ? e.target.closest<HTMLElement>(".react-flow__node-diagram[data-id]") : null;
       setId(el?.dataset.id ?? null);
+      setPointerLast(true);
     };
     const leave = () => setId(null);
     const focus = () => {
       const el = document.activeElement?.closest<HTMLElement>(".react-flow__node-diagram[data-id]");
       setFocused(el?.dataset.id ?? null);
+      setPointerLast(false);
     };
     focus();
     domNode.addEventListener("pointerover", over);
@@ -134,7 +140,7 @@ function useHoveredNode(): string | null {
       domNode.removeEventListener("focusout", focus);
     };
   }, [domNode]);
-  return focused ?? id;
+  return pointerLast ? (id ?? focused) : (focused ?? id);
 }
 
 /** Consumer-group name → who consumes it, for the lag breakdown. */

@@ -104,6 +104,7 @@ import { getRecentStencils, pushRecentStencil } from "../lib/recentStencils";
 import { connectHitAt, connectOver, connectTarget, edgesBetween, pickInBox, type BoxItem } from "./gestures";
 import { ConnectionLine } from "./ConnectionLine";
 import { captureTypeAhead } from "./typeAhead";
+import { useSmartGuides } from "./useSmartGuides";
 import { GROUP_PREFIX } from "./types";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
@@ -124,13 +125,26 @@ const PAN_MIDDLE = [1];
 
 /**
  * The view's zoom as a CSS variable on the canvas (`--rf-zoom`), for sizes that must hold on screen at
- * any zoom (the handles' hit areas). Re-renders only itself, and only when the zoom moves a step.
+ * any zoom (the handles' hit areas, the inline editors). Rounded down to a step, so what's scaled by
+ * 1/zoom is never short of its size. Re-renders only itself, and only when the zoom moves a step.
  */
 function ZoomVar({ host }: { host: RefObject<HTMLElement | null> }) {
-  const zoom = useStore((s: ReactFlowState) => Math.round(s.transform[2] * 50) / 50);
+  const zoom = useStore((s: ReactFlowState) => Math.max(0.02, Math.floor(s.transform[2] * 50 + 1e-6) / 50));
   useLayoutEffect(() => void host.current?.style.setProperty("--rf-zoom", String(zoom)), [host, zoom]);
   return null;
 }
+
+/**
+ * The dot grid: a dot every 10 px from 100% zoom up and every 20 px below, so the dots and the snap agree
+ * where they can be told apart. Re-renders only when the zoom crosses 100%.
+ */
+function DotGrid() {
+  const fine = useStore((s: ReactFlowState) => s.transform[2] >= 1);
+  return <Background variant={BackgroundVariant.Dots} gap={fine ? 10 : 20} size={1.3} color="var(--dot)" />;
+}
+
+/** The modifier keys of a drag's start event (a mouse or a touch event, whatever React Flow's types say). */
+type ModifierKeys = { altKey?: boolean; ctrlKey?: boolean; metaKey?: boolean };
 
 /** Ids whose selected flag inside React Flow disagrees with the box's pick. */
 function staleBoxFlags(
@@ -461,7 +475,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
    * Brings the selection into view (a pan, never a zoom) once React Flow has measured it, clear of the
    * floating chrome (minimap, controls, hint), then runs `then`: a copy, a paste or a node added from a
    * dropped connection may land off screen, under the inspector its selection opens, or under the
-   * minimap. `roomBelow` (flow px) keeps space for what hangs under the card (its label editor).
+   * minimap. `roomBelow` keeps space for what hangs under the card (its label editor): screen px up to 100%
+   * zoom (the editor never reads smaller than its CSS size), growing with the zoom above it.
    */
   const keepInView = useRef<() => boolean>(() => false);
   const revealSelection = useCallback(
@@ -477,7 +492,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
               x: n.position.x * k + tx,
               y: n.position.y * k + ty,
               width: (n.measured?.width ?? 0) * k,
-              height: ((n.measured?.height ?? 0) + roomBelow) * k,
+              height: (n.measured?.height ?? 0) * k + roomBelow * Math.max(1, k),
             })),
         );
         if (!sel) return;
@@ -678,9 +693,18 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     });
   }, [editGestures, store, setNodes, setEdges, applyBoxPick]);
 
-  // ---------------------------------------------------------------- Alt-drag duplicates (D9)
+  // ---------------------------------------------------------------- Alt-drag duplicates (D9), smart guides (D6)
   /** While an Alt-drag runs: original flow id → its copy. The drag moves the copies; the originals stay. */
   const altCopies = useRef<Map<string, string> | null>(null);
+  /** The guides' overlay: one layer over the flow, drawn only during a drag. */
+  const guideLayer = useRef<SVGSVGElement>(null);
+  const guides = useSmartGuides({
+    store,
+    snap: prefs.snap,
+    guides: editGestures,
+    layer: guideLayer,
+    apply: onNodesChange,
+  });
   const handleNodesChange = useCallback(
     (changes: NodeChange<FlowNode>[]) => {
       let next = changes;
@@ -688,9 +712,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       const copies = altCopies.current;
       if (copies)
         next = next.map((c) => (c.type === "position" && copies.has(c.id) ? { ...c, id: copies.get(c.id)! } : c));
+      // While dragging: snapped to guides, equal gaps or the grid, with boundary members following.
+      next = guides.filter(next);
       if (next.length) onNodesChange(next);
     },
-    [store, onNodesChange],
+    [store, onNodesChange, guides],
   );
   const handleEdgesChange = useCallback(
     (changes: EdgeChange<DiagramFlowEdge>[]) => {
@@ -705,10 +731,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     [],
   );
 
-  // Groups aren't React Flow parents, so carry their member nodes along manually.
-  const dragOrigin = useRef<{ x: number; y: number; members: Map<string, { x: number; y: number }> } | null>(null);
-  const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
-    (e, node, dragged) => {
+  const onNodeDragStart = useCallback(
+    (e: ModifierKeys, dragged: FlowNode[]) => {
       setMenu(null);
       hideTip();
       // Alt-drag: copies take the originals' place and move with the pointer; the originals stay.
@@ -719,34 +743,13 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         });
         if (made.size) altCopies.current = made;
       }
-      if (node.type !== "boundary") return;
-      const copies = altCopies.current;
-      const members = new Map<string, { x: number; y: number }>();
-      for (const n of nodes)
-        if (n.type === "diagram" && n.data.group === node.data.groupId)
-          members.set(copies?.get(n.id) ?? n.id, { ...n.position });
-      dragOrigin.current = { x: node.position.x, y: node.position.y, members };
+      guides.start(e, dragged, altCopies.current);
     },
-    [nodes, hideTip, editGestures, editor],
+    [hideTip, editGestures, editor, guides],
   );
-  const onNodeDrag: OnNodeDrag<FlowNode> = useCallback(
-    (_e, node) => {
-      const o = dragOrigin.current;
-      if (node.type !== "boundary" || !o) return;
-      const dx = node.position.x - o.x;
-      const dy = node.position.y - o.y;
-      setNodes((ns) =>
-        ns.map((n) => {
-          const p = o.members.get(n.id);
-          return p ? { ...n, position: { x: p.x + dx, y: p.y + dy } } : n;
-        }),
-      );
-    },
-    [setNodes],
-  );
-  const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
-    (_e, _node, dragged) => {
-      dragOrigin.current = null;
+  const onNodeDragStop = useCallback(
+    (_e: ModifierKeys, dragged: FlowNode[]) => {
+      guides.stop();
       const copies = altCopies.current;
       altCopies.current = null;
       const ids = new Set(dragged.filter((n) => n.type === "diagram").map((n) => copies?.get(n.id) ?? n.id));
@@ -771,7 +774,15 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         }),
       );
     },
-    [setNodes, editor],
+    [setNodes, editor, guides],
+  );
+  const onNodeDragStartRf: OnNodeDrag<FlowNode> = useCallback(
+    (e, _node, dragged) => onNodeDragStart(e, dragged),
+    [onNodeDragStart],
+  );
+  const onNodeDragStopRf: OnNodeDrag<FlowNode> = useCallback(
+    (e, _node, dragged) => onNodeDragStop(e, dragged),
+    [onNodeDragStop],
   );
 
   // ---------------------------------------------------------------- Space, Alt and the middle button (D4, D9)
@@ -1153,9 +1164,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             connectionMode={ConnectionMode.Loose}
             connectionRadius={28}
             onEdgeDoubleClick={readOnly ? undefined : onEdgeDoubleClick}
-            onNodeDragStart={onNodeDragStart}
-            onNodeDrag={onNodeDrag}
-            onNodeDragStop={onNodeDragStop}
+            onNodeDragStart={onNodeDragStartRf}
+            onNodeDragStop={onNodeDragStopRf}
+            // Dragging the selection's frame: the same snapping, copies and boundary members.
+            onSelectionDragStart={onNodeDragStart}
+            onSelectionDragStop={onNodeDragStop}
             onPaneContextMenu={onPaneContextMenu}
             onNodeContextMenu={onNodeContextMenu}
             onEdgeContextMenu={onEdgeContextMenu}
@@ -1221,7 +1234,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             }
           >
             <ZoomVar host={wrapper} />
-            {prefs.grid && <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />}
+            {prefs.grid && <DotGrid />}
+            {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}
             {!hideChrome && (
               <Controls
                 showInteractive={false}

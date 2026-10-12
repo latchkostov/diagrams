@@ -142,8 +142,9 @@ test.describe("AI panel dock", () => {
     const x = () => paymentsX(page);
     const start = await x();
     await page.getByTestId("node-payments").click();
+    // Snapping is on: Shift+arrow moves 50 px onto the grid.
     for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+ArrowRight");
-    await expect.poll(x).toBe(start + 30);
+    await expect.poll(x).toBe(start + 150);
     await expect(page.getByTestId("ai-turn-0-undo")).toHaveCount(0);
 
     // Undo the move by hand: now the turn's step is next again, and its Undo reverses only the turn.

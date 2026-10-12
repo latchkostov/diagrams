@@ -25,6 +25,7 @@ import { paletteHost } from "./host";
 import { flatten, GROUP_LABEL, PREFIXES, rank, type Command, type CommandGroup } from "./rank";
 import { getRecentCommands, pushRecentCommand } from "./recent";
 import { collectCommands } from "./sources";
+import type { TypeAhead } from "../canvas/typeAhead";
 
 const PAGE = 8;
 const PREFIX_HINTS: { prefix: keyof typeof PREFIXES; label: string }[] = [
@@ -33,12 +34,14 @@ const PREFIX_HINTS: { prefix: keyof typeof PREFIXES; label: string }[] = [
   { prefix: "+", label: "Add stencil" },
 ];
 
-interface Props extends CommandPaletteProps {
+export interface PaletteDialogProps extends CommandPaletteProps {
   onClose(): void;
+  /** What was typed between Ctrl+K and the search taking focus (it starts the search). */
+  typeAhead?: () => TypeAhead;
 }
 
 /** Ctrl/Cmd+K: every action, node, stencil, simulation and diagram, one search away. */
-export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onClose }: Props) {
+export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onClose, typeAhead }: PaletteDialogProps) {
   const id = useId();
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
@@ -229,6 +232,19 @@ export function PaletteDialog({ view, diagrams, currentSlug, onOpenDiagram, onCl
   useLayoutEffect(() => {
     latest.current = { flat, active, run };
   });
+  // Keys typed before the search had focus start it; an Enter among them runs the best match, an Esc closes.
+  const typed = useRef(typeAhead);
+  const tookTyped = useRef(false);
+  useLayoutEffect(() => {
+    if (tookTyped.current) return;
+    tookTyped.current = true;
+    const t = typed.current?.();
+    if (!t) return;
+    if (t.done === "escape") return closeRef.current();
+    if (t.done === "enter") return run(flatten(rank(commands, t.text ?? "", recent))[0]);
+    if (t.text) setQuery(t.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the search takes focus
+  }, []);
   const rowHover = useCallback((c: Command) => {
     const i = latest.current.flat.indexOf(c);
     if (i !== latest.current.active) setActive(i);

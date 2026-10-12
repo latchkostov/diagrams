@@ -16,6 +16,7 @@ import { formatCombo } from "../editor/shortcuts";
 import { getStencil } from "../stencils/registry";
 import { Icon } from "./Icon";
 import { StencilIcon } from "./StencilIcon";
+import { captureTypeAhead, type TypeAhead } from "../canvas/typeAhead";
 
 // App context menu: keyboard navigable (arrows, Home/End, Enter, Esc, ←/→ for submenus),
 // optional search-as-you-type, edge-aware placement. Submenus render as siblings in a fixed
@@ -59,6 +60,19 @@ export function ContextMenu({
   useLayoutEffect(() => {
     closeRef.current = onClose;
   }, [onClose]);
+  // A searchable menu (quick-add) keeps what's typed before its search can take focus: it starts the search.
+  const typing = useRef<{ stop: () => TypeAhead } | null>(null);
+  useLayoutEffect(() => {
+    if (!searchable) return;
+    const t = captureTypeAhead();
+    typing.current = t;
+    return () => void t.stop();
+  }, [searchable]);
+  const takeTypeAhead = useCallback(() => {
+    const t = typing.current?.stop();
+    typing.current = null;
+    return t;
+  }, []);
 
   useEffect(() => {
     const previousFocus = invoker.current;
@@ -90,6 +104,7 @@ export function ContextMenu({
         anchor={{ x, y }}
         depth={0}
         searchable={searchable}
+        takeTypeAhead={takeTypeAhead}
         focusOnMount
         activateFirst={false}
         onCloseAll={() => closeRef.current()}
@@ -107,6 +122,8 @@ interface ListProps {
   anchor: Anchor;
   depth: number;
   searchable?: string;
+  /** Keys typed before the search had focus (the root of a searchable menu). */
+  takeTypeAhead?: () => TypeAhead | undefined;
   focusOnMount: boolean;
   activateFirst: boolean;
   onCloseAll: () => void;
@@ -177,6 +194,27 @@ function MenuList(p: ListProps) {
     if (!p.focusOnMount || !placed) return;
     (input.current ?? ref.current)?.focus({ preventScroll: true });
   }, [p.focusOnMount, placed]);
+  // The search takes what was typed before it could: Esc among it closes, Enter runs the best match.
+  const take = p.takeTypeAhead;
+  useLayoutEffect(() => {
+    if (!placed || !take || !input.current) return;
+    input.current.focus({ preventScroll: true });
+    const t = take();
+    if (!t) return;
+    if (t.done === "escape") return p.onCloseAll();
+    if (t.done === "enter") {
+      const best = (t.text ? search(p.items, t.text) : p.items).find(selectable);
+      if (best && !best.children) {
+        p.onCloseAll();
+        best.run?.();
+        return;
+      }
+    }
+    // Before any later key reaches the (now focused) field, and before the next paint.
+    const text = t.text;
+    if (text) queueMicrotask(() => setQ(text));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the menu is placed
+  }, [placed, take]);
 
   useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
 

@@ -191,6 +191,7 @@ export function LibraryDialog({
                       value={e.title}
                       placeholder="Diagram title"
                       testId="library-rename-input"
+                      dialog
                       onDone={(next) => {
                         // Keyboard completion still owns the input. Blur has already
                         // handed focus to the pointer/Tab destination; don't steal it.

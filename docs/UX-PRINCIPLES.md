@@ -91,6 +91,19 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   centres on the pointer over the canvas (else the view's centre); **Paste here** (right-click) puts it at the
   click. **Alt+drag** drags a copy and leaves the original. A copy never lands on the original or on any
   other node: it moves to the nearest free place.
+- **Snapping** (Show ▸ Snapping; on by default, one remembered setting; never "Snap to grid") is the grid and
+  the guides together. While you drag a node or a selection it lines up with nearby nodes' edges and centres
+  (one thin accent line per axis) and with equal gaps in its row or column (the two gaps, each marked "="),
+  else with the 10 px grid. Guides engage once the pointer slows down, so a fast drag isn't sticky. Hold
+  Ctrl/⌘ to drag freely. Guides show only during a drag: never in presentation, live view, exports or
+  recordings. The arrow keys nudge onto the grid: to the next 10 px line, Shift 50 px (Snapping off: 1 px and
+  10 px). The dots are every 10 px from 100% zoom and every 20 px below.
+- **Editing text** follows one set of keys in every inline editor (a node's label and subtitle, an edge's
+  label, a boundary's name, an annotation's text). **Enter** on a single selected thing edits it (F2 too).
+  In the editor, Enter saves (a text or note adds a line; Ctrl/⌘+Enter saves), Tab goes to the next field
+  (label, then subtitle) and saves after the last, and **Esc saves** too, as a click away does: Ctrl/⌘+Z right
+  after takes the edit back. Nothing cancels. An editor never reads smaller than its own size, at any zoom.
+  Keys typed before Ctrl+K's search or a new node's name can take them are kept for it ("Ctrl+K kafka").
 - While **connecting**: a crosshair throughout, the node a drop connects to lit up (anywhere on it), a "+"
   at the line's end over empty canvas, and `not-allowed` over a text, note or zone. Handles are hittable
   from at least 20 px on screen at any zoom, just outside the card.
@@ -181,6 +194,7 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - Side panels make room rather than cover: below 1680 px, live view and an open AI panel fold the stencils to
   their rail until they are opened by hand. Toasts centre on the canvas pane and stack above its bars.
 - Esc backs out one level: menu, dialog, selection, slow motion, trace, highlighted path, presentation, then live view.
+  In a text field on the canvas it saves and leaves the field (Editing text, above).
 
 ## Mouse and trackpad
 
@@ -198,6 +212,8 @@ in step:
 | Ctrl / ⌘ + scroll, pinch  | Zoom at the pointer                                                       |
 | Space + drag, middle-drag | Pan, even starting on a node                                              |
 | Drag from a handle        | Connect: drop on a node (anywhere on it), or on empty canvas to add one   |
+| Drag a node               | Lines up with nearby edges, centres and equal gaps, else the grid         |
+| Ctrl / ⌘ while dragging   | Move freely: no guides, no grid                                           |
 | Alt + drag                | Duplicate what you drag                                                   |
 
 ## Process

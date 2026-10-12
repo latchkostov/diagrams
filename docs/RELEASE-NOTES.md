@@ -2,6 +2,26 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Drawing precision (2026-10)
+
+Two habits change:
+
+- **Esc saves a label instead of cancelling it.** In a node's label editor Esc used to throw the edit away; now
+  it keeps it, as it already did for text and notes, and as Figma and tldraw do. Every text box on the canvas
+  works the same way: Enter or Esc saves, Tab goes to the next field (label, then subtitle). Changed your mind?
+  Ctrl+Z (⌘Z on a Mac) right after takes the edit back.
+- **Snap to grid is now Snapping, and the arrow keys stay on the grid.** Dragged nodes line up with their
+  neighbours' edges and centres, and with equal gaps, as well as with the grid. Hold Ctrl (⌘ on a Mac) while
+  dragging to place something freely. An arrow key moves the selection to the next 10 px grid line and
+  Shift+arrow moves it 50 px; they used to move 1 px and 10 px, which they still do with Snapping turned off
+  (Show ▸ Snapping).
+
+Also new:
+
+- Enter edits the selected node, edge, boundary or annotation (F2 still works).
+- Label editors stay readable when you're zoomed out.
+- Ctrl+K opens at once, and what you type straight after it goes into its search.
+
 ## Drawing basics (2026-10)
 
 Two habits change, to work like Figma, tldraw, Excalidraw and draw.io:

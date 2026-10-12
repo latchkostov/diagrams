@@ -105,9 +105,11 @@ export function useCanvasShortcuts(
         case "nudge-far": {
           if (!hasNodes) return;
           handled();
-          const step = id === "nudge-far" ? 10 : 1;
-          const d = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key] ?? [0, 0];
-          editor.moveSelection(d[0] * step, d[1] * step);
+          const d = ({ ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] } as const)[
+            e.key as "ArrowUp"
+          ] ?? [0, 0];
+          // Grid-true with Snapping on (10 px, Shift 50 px, onto the grid); 1 px and 10 px with it off.
+          editor.nudge(d[0], d[1], id === "nudge-far");
           break;
         }
         case "add-text":
@@ -118,6 +120,13 @@ export function useCanvasShortcuts(
         case "rename": {
           const total = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length;
           if (total !== 1) return;
+          if (e.key === "Enter") {
+            // Live view's Enter continues after a note; a key held down doesn't reopen the editor.
+            if (optsRef.current.live || e.repeat) return;
+            // A focused node or edge that isn't selected: Enter selects it (React Flow's keyboard rule).
+            const item = e.target instanceof Element ? e.target.closest(".react-flow__node, .react-flow__edge") : null;
+            if (item && !item.classList.contains("selected")) return;
+          }
           handled();
           if (sel.nodeIds[0] && editor.getAnnotation(sel.nodeIds[0]))
             editor.startEditing({ kind: "annotation", id: sel.nodeIds[0] });

@@ -1,5 +1,129 @@
 # Design review
 
+## Round 9: drawing precision (batch 2) (2026-10-12)
+
+Batch 2 of `docs/research/drawing-ux.md`: D6 smart guides, equal spacing and grid-true nudges, and D7 one set
+of text-editing rules, type-ahead and a preloaded palette. Decision 2 applies: Esc saves a node's label, and
+Ctrl/⌘+Z takes it back. Decision 3 (from batch 1) is unchanged: only quick-add, drop-on-empty and, later,
+Alt+arrow open a new node's label editor. Both habit changes (Esc, and the nudge steps) are in
+`docs/RELEASE-NOTES.md`.
+
+**What changed**
+
+- **Smart guides (D6).** While a node or a selection is dragged, its left edge, centre and right edge (and
+  top, middle and bottom) line up with the nodes, notes, texts and shapes in view, within 6 px on screen and
+  600 px across. One thin accent line per axis shows it: the centre when it lines up (same-size cards share
+  all three), else the edge that does. Boundaries and zones never guide (they're backdrops), but they snap
+  when you drag them, and a boundary's members move by exactly the same amount.
+- **Equal spacing (D6).** The drag also snaps to the gap of its row or column: centred between its two
+  neighbours, or one gap past a pair. The two gaps show as short ticked lines, each with a small "=". When an
+  alignment and an equal gap agree, both show.
+- **Snapping (D6).** Guides first, then the 10 px grid. Ctrl/⌘ held during a drag places freely (Alt stays
+  Alt-drag's). Guides engage once the pointer slows below about 1000 px/s, and catch up 90 ms after a fast
+  drag stops, so flinging a node across the canvas isn't sticky. Show ▸ Snap to grid is now **Show ▸
+  Snapping** (grid and guides). Undo takes a drag back in one step, as before.
+- **Grid-true nudges (D6).** With Snapping on, an arrow key moves the selection's corner to the next 10 px
+  grid line, and Shift+arrow 50 px onto the grid; with it off, 1 px and 10 px as before. The dots are drawn
+  every 10 px from 100% zoom and every 20 px below, so the dots and the snap agree where they can be told
+  apart.
+- **Guides only while editing.** The guide layer exists only while editing and draws only during a drag. It
+  isn't rendered in presentation, live view or embeds, so recordings (always presentation view) can't show
+  it, and it sits outside the viewport an image export renders. A drag in live view snaps to the grid alone.
+- **One set of editing keys (D7).** Every inline editor (a node's label and subtitle, an edge's label, a
+  boundary's name, a text, note, shape or zone) follows the same rules, kept in one place (`editKeys.ts`):
+  Enter saves (a text or note adds a line; Ctrl/⌘+Enter saves), Tab goes from Label to Subtitle and saves
+  after the last field, Shift+Tab goes back, and Esc saves. A save from the keyboard puts focus back on the
+  thing edited, so Enter edits it again and Ctrl/⌘+Z undoes the edit. An edit that changed nothing writes
+  nothing.
+- **Enter edits (D7).** Enter on a single selected node, edge, boundary or annotation opens its editor (F2
+  still works). On a focused node that isn't selected, Enter selects it first, as before. In live view Enter
+  keeps its meaning there (continue after a note). Typing a letter never starts editing: T, L and C stay
+  shortcuts.
+- **Readable editors (D7).** Below 100% zoom every inline editor scales up by 1/zoom, so it reads at least at
+  its CSS size: the node editor is 260 px wide with 13 px text on screen at any zoom (its text was 6 px at the
+  fitted zoom). An edge label's field is 12 px while typing. Zoomed out, the node editor is wider than its
+  card, so it moves left to stay inside the canvas (never under the inspector) and opens above the card near
+  the bottom. A text, note or shape keeps its line breaks and gets a plain surface while it's magnified.
+- **Type-ahead and the palette (D7).** Keys typed after Ctrl+K but before its search exists go into the
+  search: "Ctrl+K kafka topic" typed fast searches "kafka topic" instead of making a Text reading "o". An Enter
+  among them runs the best match, and an Esc closes. Quick-add's search keeps early keys the same way. The
+  palette's code now loads on the first pointer move or Ctrl/⌘ press, not after 3 s, and once loaded it opens
+  in the same frame as the key.
+- **Docs.** The shortcuts sheet has an **Editing text** section (Enter, Ctrl/⌘+Enter, Tab, Esc), Mouse rows
+  for dragging a node and for Ctrl/⌘ while dragging, Enter beside F2, and the new nudge steps.
+  `docs/UX-PRINCIPLES.md` has Snapping and Editing text in the vocabulary, the Esc line, and two Mouse rows.
+
+**What I checked** (production build, public Kafka example, 1280×800 and 1440×900, light and dark):
+
+- **Guides.** Dragging Commerce metrics up into the payment events row, under Notification service: a line
+  along the row and one down the column, and both ways the gaps match their neighbours', so four "=" gaps
+  show (`guides-align-1280-light`). That's the busiest a drag gets, on a diagram laid out on a grid; most
+  moves show one line. Dragging Order operations up its column: the line along the row and the two equal
+  gaps above it (`guides-equal-gaps-1440-dark`).
+- **Editors at the fitted zoom.** Enter on Order service (`node-editor-fitted-1280-light`); Tab into the
+  subtitle of Payment ledger at the right edge, where the editor moves left to stay clear of the inspector
+  (`node-editor-at-edge-1440-light`); the HTTPS edge's label (`edge-editor-fitted-1440-dark`); the AKS boundary's name
+  (`boundary-editor-fitted-1280-dark`).
+- **Palette.** Ctrl+K and "kafka topic" typed at 25 ms a key straight after (`palette-typeahead-1280-light`).
+- **Menus and sheet.** Show ▸ Snapping (`show-snapping-1440-light`); the sheet's Editing text section and
+  Mouse rows (`shortcuts-text-1280-dark`).
+- **Responsiveness** (the batch's gate). `scripts/perf/drag-latency.mjs` drags a node along a fixed path at
+  about 60 moves a second, slowing at the end, on a production (e2e) build at 1440×900: Order service on the
+  Kafka example, and n75 on the Lab's generated 150-node diagram. Event Timing (16 ms threshold), frame gaps
+  and long animation frames, 16 runs each, alternating master and this branch in one session:
+
+  | Drag                   | Worst event p50 / p90 / max (ms) | Frames p50 / p90 / max (ms) | Longest LoAF p50 / p90 (ms) |
+  | ---------------------- | -------------------------------- | --------------------------- | --------------------------- |
+  | Kafka, 4×, master      | 32 / 40 / 40                     | 17 / 17 / 33                | 51 / 58                     |
+  | Kafka, 4×, this branch | 32 / 32 / 48                     | 17 / 17 / 33                | 0 / 54                      |
+  | 150 nodes, 4×, master  | 56 / 64 / 64                     | 17 / 50 / 83                | 93 / 102                    |
+  | 150 nodes, 4×, branch  | 56 / 64 / 64                     | 17 / 33 / 83                | 91 / 103                    |
+  | Kafka, 1×, both        | 16 / 24 / 24                     | 17 / 17 / 17                | 0 / 0                       |
+  | 150 nodes, 1×, master  | 16 / 24 / 32                     | 17 / 17 / 17                | 0 / 0                       |
+  | 150 nodes, 1×, branch  | 24 / 32 / 32                     | 17 / 17 / 17                | 0 / 0                       |
+
+  At 4× (the gate) it's no worse, and the 150-node drag drops fewer frames (p90 33 against 50 ms): a move
+  that snaps to where the node already is now costs nothing. At 1× the 150-node drag's worst event is one
+  8 ms bucket higher (pointer-out events early in the drag), still under two frames. In both builds the worst
+  events are the press and the drop, not the moves.
+
+**Findings, fixed in this batch**
+
+1. **The first guides cost a frame on large diagrams.** Measuring found four costs, all removed:
+   - React Flow's grid snapping skipped moves that didn't change the snapped spot; the new snapping passed
+     every move on. A move that lands where the node already is now changes nothing.
+   - The guides drew on a pane-sized canvas (the plan's suggestion): about 8 ms a redraw at 4× on 150 nodes.
+     They're now one thin SVG path per line, in a 1 px layer that draws outside itself; a pane-sized layer
+     over the moving nodes cost a few ms a frame even when empty.
+   - Switching React Flow's grid snapping off and on with `setState` woke every node's and edge's store
+     subscription twice a drag. It's switched in place now: React Flow reads it on each move, and nothing
+     subscribes to it.
+   - The equal-spacing index found every box's neighbours when a drag started (quadratic). It now finds the
+     one or two it needs, on first use.
+2. **Three guide lines per axis read as clutter** when same-size cards line up (top, middle and bottom at
+   once). Now there's one line per axis.
+3. **Esc in live view hid the next hover's breakdown.** Saving with Esc puts focus back on the node, and in
+   live view a focused node's breakdown beat a hovered one's. Now whichever moved last wins.
+4. **The magnified node editor ran under the inspector** for a node near the canvas's right edge. It now moves
+   left to stay inside the canvas, and opens above its card near the bottom.
+5. **The shortcuts sheet started 270 px down a 1280×800 window and ran off its bottom** (already in round 8's
+   shots; the Editing text section made it worse). Its height was capped by a grid row that grew to the
+   sheet's whole content. It's capped by the window now, and the body scrolls (`shortcuts-text-1280-dark`).
+
+**Deviations from the plan**
+
+- **No Alt+arrow 1 px nudge.** D6 lists it, but D3 (batch 3) gives Alt+arrow to "add the next node that way".
+  Fine steps are Snapping off (1 px, Shift 10 px) or a Ctrl/⌘ drag.
+- **An SVG layer, not a canvas,** for the guides: measured above.
+- **Texts, notes, shapes and zones** read at their CSS size too while edited (D7 names the node, edge and
+  boundary editors only): every editor is readable.
+
+**Left for later batches**
+
+- Guides while resizing (an annotation's or a boundary's edge lining up), and in the stencil rail's drag (D13,
+  batch 3).
+- Quick-add's ranking of "downstream" stencils (from round 8).
+
 ## Round 8: drawing basics (batch 1) (2026-10-12)
 
 Batch 1 of `docs/research/drawing-ux.md`: D4 navigation, D5 selection gestures, D1 drop to create, D2

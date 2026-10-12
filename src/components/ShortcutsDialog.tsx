@@ -16,7 +16,17 @@ const MOUSE: [string, string][] = [
   ["Ctrl / ⌘ + scroll, pinch", "Zoom"],
   ["Space + drag, middle-drag", "Pan from anywhere"],
   ["Drag from a handle", "Connect; on empty canvas, add a node"],
+  ["Drag a node", "Lines up with others and equal gaps"],
+  ["Ctrl / ⌘ while dragging", "Move freely, no snapping"],
   ["Alt + drag", "Duplicate"],
+];
+
+/** Inline editors: every text box on the canvas follows the same keys (src/components/editKeys.ts). */
+const TEXT: [string, string][] = [
+  ["Enter", "Save (a text or note: new line)"],
+  ["Mod+Enter", "Save a text or note"],
+  ["Tab", "Next field (label, subtitle), then save"],
+  ["Esc", "Save and close; Ctrl+Z takes it back"],
 ];
 
 /** Live view and presenting keys (handled by the live view and the app, not the editor). */
@@ -135,6 +145,17 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
               ))}
             </section>
           ))}
+          <section>
+            <h3>Editing text</h3>
+            {TEXT.map(([k, v]) => (
+              <div key={k} className="sc-row">
+                <span>{v.replace("Ctrl+Z", formatCombo("Mod+Z"))}</span>
+                <span className="sc-keys">
+                  <kbd>{formatCombo(k)}</kbd>
+                </span>
+              </div>
+            ))}
+          </section>
           <section>
             <h3>Live and presenting</h3>
             {LIVE.map(([k, v]) => (

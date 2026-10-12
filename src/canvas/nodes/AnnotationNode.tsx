@@ -12,6 +12,7 @@ import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/a
 import type { AnnotationKind, AnnotationShape } from "../../model/types";
 import { ANNOTATION_COLORS, annotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
 import { useSelectOnMount } from "../../components/useSelectOnMount";
+import { editKeyAction, refocusAfterEdit } from "../../components/editKeys";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { AnnotationFlowNode, FlowNode } from "../types";
@@ -22,7 +23,7 @@ import type { AnnotationFlowNode, FlowNode } from "../types";
  * - note: a soft-tinted card with a folded corner.
  * - zone: a dashed, rounded region behind nodes, dragged by its label (the inside stays pane).
  * - shape: a crisp SVG outline sized in real pixels; the only kind with connection handles.
- * Double-click edits the text in place (multi-line); Esc, Ctrl+Enter or clicking away commits.
+ * Double-click edits the text in place (multi-line); Esc, Ctrl+Enter, Tab or clicking away commits.
  */
 function AnnotationNodeImpl({
   id,
@@ -52,6 +53,8 @@ function AnnotationNodeImpl({
       void deleteElements({ nodes: [{ id }] });
       return;
     }
+    // Unchanged (Esc straight away): nothing to write.
+    if (text === data.text && overflow <= 0) return;
     updateNode(id, (n) =>
       n.type !== "annotation"
         ? {}
@@ -205,8 +208,9 @@ export function ShapeOutline({ shape, w, h }: { shape: AnnotationShape; w: numbe
 }
 
 /**
- * Multi-line editor in place of the text. Enter adds a line (a zone label is one line, so Enter
- * commits there); Esc, Ctrl/Cmd+Enter and clicking away commit. Reports how far the text overflows.
+ * Multi-line editor in place of the text, with every editor's keys (editKeys.ts): Enter adds a line (a
+ * zone's name is one line, so Enter saves there); Esc, Ctrl/Cmd+Enter, Tab and clicking away save.
+ * Reports how far the text overflows.
  */
 function AnnotationEditor({
   value,
@@ -230,15 +234,12 @@ function AnnotationEditor({
   useSelectOnMount(ref);
   const onKey = (e: KeyboardEvent) => {
     e.stopPropagation();
-    if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || e.metaKey || kind === "zone"))) {
-      e.preventDefault();
-      const wrapper = ref.current?.closest<HTMLElement>(".react-flow__node");
-      finish();
-      // Keyboard commits return to the canvas object; blur commits leave the new control focused.
-      requestAnimationFrame(() => {
-        if (wrapper?.isConnected) wrapper.focus();
-      });
-    }
+    if (editKeyAction(e.nativeEvent, { multiline: kind !== "zone" }) !== "save") return;
+    e.preventDefault();
+    const wrapper = ref.current?.closest(".react-flow__node");
+    finish();
+    // Keyboard commits return to the canvas object; blur commits leave the new control focused.
+    refocusAfterEdit(wrapper);
   };
   return (
     <textarea

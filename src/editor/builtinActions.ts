@@ -259,17 +259,25 @@ export function builtinActions(): Action[] {
       icon: "grid",
       children: (ctx) => {
         const p = ctx.editor.prefs;
-        const toggle = (id: string, label: string, key: keyof typeof p, icon: MenuItem["icon"]): MenuItem => ({
+        const toggle = (
+          id: string,
+          label: string,
+          key: keyof typeof p,
+          icon: MenuItem["icon"],
+          keywords?: string,
+        ): MenuItem => ({
           type: "item",
           id: `view:${id}`,
           label,
           icon,
+          keywords,
           checked: p[key],
           run: () => ctx.editor.setPref(key, !p[key]),
         });
         return [
           toggle("grid", "Grid", "grid", "grid"),
-          toggle("snap", "Snap to grid", "snap", "magnet"),
+          // Grid and smart guides together: a drag lines up with other nodes, else the 10 px grid.
+          toggle("snap", "Snapping", "snap", "magnet", "snap to grid smart guides align equal spacing"),
           toggle("minimap", "Minimap", "minimap", "minimap"),
           toggle("inspector", "Inspector", "inspector", "panel-right"),
           // The capacity heat map: the same app-wide setting as View > Show capacity and C.
