@@ -8,16 +8,33 @@ import { capThread, loadThread, saveThread, turnId, type ThreadTurn } from "./th
 const cache = new Map<string, ThreadTurn[]>();
 const listeners = new Map<string, Set<() => void>>();
 const EMPTY: ThreadTurn[] = [];
+/**
+ * Threads kept in memory besides the ones on screen (subscribed, never evicted): a diagram visited a while
+ * ago reloads from storage. A thread storage refused (full) lives only in memory, so it can go with eviction.
+ */
+export const MAX_CACHED_THREADS = 4;
+
+/** Most recent last (a Map keeps insertion order); then the oldest unwatched threads go. */
+function touch(documentId: string, turns: ThreadTurn[]): void {
+  cache.delete(documentId);
+  cache.set(documentId, turns);
+  for (const id of cache.keys()) {
+    if (cache.size <= MAX_CACHED_THREADS) break;
+    if (id !== documentId && !listeners.has(id)) cache.delete(id);
+  }
+}
 
 export const threads = {
   get(documentId: string): ThreadTurn[] {
-    let turns = cache.get(documentId);
-    if (!turns) cache.set(documentId, (turns = loadThread(documentId)));
+    const cached = cache.get(documentId);
+    if (cached) return cached;
+    const turns = loadThread(documentId);
+    touch(documentId, turns);
     return turns;
   },
   set(documentId: string, next: ThreadTurn[]): void {
     const capped = capThread(next);
-    cache.set(documentId, capped);
+    touch(documentId, capped);
     saveThread(documentId, capped);
     for (const l of listeners.get(documentId) ?? []) l();
   },
@@ -31,8 +48,13 @@ export const threads = {
     let set = listeners.get(documentId);
     if (!set) listeners.set(documentId, (set = new Set()));
     set.add(l);
-    return () => void set.delete(l);
+    return () => {
+      set.delete(l);
+      if (!set.size && listeners.get(documentId) === set) listeners.delete(documentId);
+    };
   },
+  /** For tests: how many threads are held in memory. */
+  cachedCount: () => cache.size,
 };
 
 /** The thread of one diagram (empty while there's no diagram). */

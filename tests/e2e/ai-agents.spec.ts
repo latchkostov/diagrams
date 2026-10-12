@@ -1,5 +1,15 @@
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { SLUG, callTool, installFakeModelContext, nodeCount, openAdvanced, openAiPanel, toolNames } from "./ai-helpers";
+import {
+  SLUG,
+  callTool,
+  installFakeModelContext,
+  must,
+  nodeCount,
+  openAdvanced,
+  openAiPanel,
+  settle,
+  toolNames,
+} from "./ai-helpers";
 
 // Agents first: a browser agent changes the diagram through the page's WebMCP tools (a fake
 // document.modelContext here, installed before the app loads), and each change is a turn in the AI
@@ -82,11 +92,14 @@ test.describe("an agent's changes in the AI panel", () => {
       summary: "Added a cache",
     });
     await expect(page.getByTestId("ai-turn-0-undo")).toBeVisible();
+    // Screen readers still hear about it.
+    await expect(page.getByTestId("ai-announce")).toHaveText("AI: +1 node");
     await callTool(page, "set_simulation", {
       title: "Agent storm",
       traffic: [{ from: "shopper", pattern: "burst", count: 20 }],
     });
     await expect(page.getByTestId("ai-turn-1-undo")).toBeVisible();
+    await expect(page.getByTestId("ai-announce")).toHaveText("AI: Added simulation “Agent storm”");
     await expect(aiToast).toHaveCount(0);
     await expect(page.getByTestId("ai-toast-undo")).toHaveCount(0);
     const res = await callTool(page, "new_diagram", { title: "Agent sketch" });
@@ -96,6 +109,11 @@ test.describe("an agent's changes in the AI panel", () => {
     await expect(page.getByTestId("ai-turn-0")).toContainText("Agent sketch");
     await expect(aiToast).toHaveCount(0);
     await expect(page.getByTestId("ai-toast-undo")).toHaveCount(0);
+    // Its turn keeps the starting point: after an edit, Revert to here goes back to it.
+    await callTool(page, "edit_diagram", { ops: [{ op: "add_node", kind: "Redis cache", label: "cache" }] });
+    await expect.poll(() => nodeCount(page)).toBe(1);
+    await page.getByTestId("ai-turn-0-revert").click();
+    await expect.poll(() => nodeCount(page)).toBe(0);
   });
 
   test("folded, an agent's change shows a toast that goes once the panel opens", async ({ page }) => {
@@ -130,6 +148,7 @@ test.describe("an agent's changes in the AI panel", () => {
     await expect(page.getByTestId("ai-rail-badge")).toHaveText("2");
     await expect(rail).toHaveAccessibleName("AI panel, 2 new changes");
     await expect(page.getByTestId("ai-dock")).toHaveCount(0);
+    // The layout around the canvas didn't change (the view inside it is the next test).
     expect(await page.getByTestId("canvas-wrap").boundingBox()).toEqual(pane);
 
     // Opening shows them and clears the count; folding again leaves it clear.
@@ -138,6 +157,29 @@ test.describe("an agent's changes in the AI panel", () => {
     await page.getByTestId("ai-collapse").click();
     await expect(rail).toHaveAccessibleName("AI panel");
     await expect(page.getByTestId("ai-rail-badge")).toHaveCount(0);
+  });
+
+  test("an agent's change off screen leaves the person's view where they put it", async ({ page }) => {
+    // Zoom in on payments by hand: the shopper (far left) goes off screen.
+    const payments = page.getByTestId("node-payments");
+    const b = must(await payments.boundingBox(), "payments");
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.keyboard.down("Control");
+    for (let i = 0; i < 6; i++) await page.mouse.wheel(0, -200);
+    await page.keyboard.up("Control");
+    await settle(page);
+    const before = must(await payments.boundingBox(), "payments zoomed");
+    expect(before.width).toBeGreaterThan(b.width);
+
+    await callTool(page, "edit_diagram", {
+      ops: [{ op: "update", target: "shopper", props: { sublabel: "Web and mobile" } }],
+      layout: "none",
+    });
+    await expect(page.getByTestId("ai-rail-badge")).toHaveText("1");
+    // Past the highlight and any reveal it could have asked for.
+    await page.waitForTimeout(600);
+    await settle(page);
+    expect(await payments.boundingBox()).toEqual(before);
   });
 
   test("the idle panel says the page's tools are available in this browser", async ({ page }) => {

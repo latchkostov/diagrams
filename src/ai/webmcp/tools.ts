@@ -17,7 +17,6 @@ import {
   type SimulationSpec,
 } from "../index";
 import { checkSchema } from "../validation";
-import { diagramDiff } from "../../model/diagramDiff";
 import { LOCAL_ONLY_MESSAGE } from "../privacy";
 import type { ToolDef } from "./adapter";
 import { choicesFrom, type StencilChoice } from "../ui/apply";
@@ -128,8 +127,9 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
         return compact({ ok: true, dryRun: true, summary, results: result.results, warnings: result.warnings });
       // Its own history tag: the AI panel offers Undo this change while this step is next.
       const historyKey = `ai:${turnId()}`;
-      editor.applyDiagram(result.diagram, { merge: historyKey });
-      const diff = diagramDiff(before, result.diagram);
+      const diff = editor.applyDiagram(result.diagram, { merge: historyKey });
+      // Already as asked: no undo step, so no turn (a retry can't crowd real changes out of the thread).
+      if (!diff.hasChanges) return { ok: true, summary: "No change: the diagram already matched.", changed: false };
       const choices = choicesFrom(result.results, ops ?? []).map((c) => ({
         ...c,
         node: result.diagram.nodes.find((n) => n.id === c.nodeId),
@@ -161,21 +161,22 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       const replaced = sims.some((s) => s.id === sim.id);
       const simulations = replaced ? sims.map((s) => (s.id === sim.id ? sim : s)) : [...sims, sim];
       const historyKey = `ai:${turnId()}`;
-      editor.applyDiagram({ ...before, simulations }, { merge: historyKey });
-      host.onApplied({
-        tool: "set_simulation",
-        note: noteOf(input),
-        summary: `${replaced ? "Updated" : "Added"} simulation “${sim.title}”`,
-        changed: [...new Set(sim.traffic.map((t) => t.node))],
-        editor,
-        historyKey,
-      });
+      const diff = editor.applyDiagram({ ...before, simulations }, { merge: historyKey });
+      if (diff.hasChanges)
+        host.onApplied({
+          tool: "set_simulation",
+          note: noteOf(input),
+          summary: `${replaced ? "Updated" : "Added"} simulation “${sim.title}”`,
+          changed: [...new Set(sim.traffic.map((t) => t.node))],
+          editor,
+          historyKey,
+        });
       return {
         ok: true,
         id: sim.id,
         title: sim.title,
         summary: `${replaced ? "Replaced" : "Added"} simulation ${JSON.stringify(sim.title)}: ${sim.traffic.length} traffic, ${sim.timeline?.length ?? 0} events, ${sim.expectations?.length ?? 0} expectations.`,
-        undo: "One undo step reverts this call.",
+        ...(diff.hasChanges ? { undo: "One undo step reverts this call." } : { changed: false }),
         play: "The user plays it in live view (L), or from the command palette.",
       };
     },

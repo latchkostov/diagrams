@@ -16,7 +16,7 @@ export function commitPlan(
 ): TurnRecord {
   const historyKey = `ai:${turnId()}`;
   editor.applyDiagram(plan.next, { merge: historyKey });
-  showApplied(plan.summary, plan.changed, editor);
+  showApplied(plan.summary, plan.changed, editor, { turnUndo: true, reveal: true });
   return {
     kind: "change",
     ...record,

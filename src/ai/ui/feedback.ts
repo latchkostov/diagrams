@@ -78,21 +78,55 @@ export const panelShown = () => typeof document !== "undefined" && !!document.qu
 
 let appliedToast: number | undefined;
 
+/** A polite status for screen readers when an AI change shows no toast (the toast has its own). */
+function announce(text: string): void {
+  let region = document.querySelector<HTMLElement>("[data-ai-announce]");
+  if (!region) {
+    region = document.createElement("div");
+    region.dataset.aiAnnounce = "";
+    region.dataset.testid = "ai-announce";
+    region.className = "sr-only";
+    region.setAttribute("role", "status");
+    region.setAttribute("aria-live", "polite");
+    document.body.appendChild(region);
+  }
+  // Emptied first, so the same words twice are read twice.
+  region.textContent = "";
+  const el = region;
+  requestAnimationFrame(() => (el.textContent = text));
+}
+
+export interface AppliedFeedback {
+  /** A turn in the thread offers Undo for exactly this step: with the panel open, no toast then. */
+  turnUndo: boolean;
+  /** Bring changed elements that are off screen into view: the person's own applies, never an agent's. */
+  reveal: boolean;
+}
+
 /**
- * "AI: +3 nodes, +2 connections" with Undo, and the highlight. While the AI panel is open the change is a
- * turn there with its own Undo, so the toast stays away (one Undo, not two).
+ * "AI: +3 nodes, +2 connections" with Undo, and the highlight. While the AI panel is open and the change
+ * is a turn there with its own Undo, the toast stays away (one Undo, not two) and a status announces it.
  */
-export function showApplied(summary: string, changed: readonly string[], editor: EditorApi): void {
-  if (!panelShown())
-    appliedToast = notify(`AI: ${summary}`, {
+export function showApplied(
+  summary: string,
+  changed: readonly string[],
+  editor: EditorApi,
+  { turnUndo, reveal }: AppliedFeedback,
+): void {
+  if (typeof document === "undefined") return;
+  if (turnUndo && panelShown()) announce(`AI: ${summary}`);
+  else {
+    const id = notify(`AI: ${summary}`, {
       kind: "success",
       action: { label: "Undo", run: () => editor.undo(), testId: "ai-toast-undo" },
     });
+    appliedToast = turnUndo ? id : undefined;
+  }
   flashChanged(changed);
-  revealChanged(changed, editor);
+  if (reveal) revealChanged(changed, editor);
 }
 
-/** The panel opened: its turns now carry the Undo, so an AI change's toast still showing goes. */
+/** The panel opened: a toast for a change whose turn now carries the Undo goes. */
 export function dismissAppliedToast(): void {
   if (appliedToast !== undefined) toast.dismiss(appliedToast);
   appliedToast = undefined;

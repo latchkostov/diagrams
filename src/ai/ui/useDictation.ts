@@ -201,6 +201,17 @@ function createSession(Ctor: RecognitionCtor, ui: Ui) {
         idle();
       }
     },
+    /** Stops at once, words in flight dropped (and a pending start cancelled); ready to start again. */
+    cancel() {
+      generation++;
+      const r = rec;
+      idle();
+      try {
+        r?.abort();
+      } catch {
+        // Already ended.
+      }
+    },
     dispose() {
       generation++;
       wanted = false;
@@ -231,6 +242,8 @@ export interface Dictation {
   onDevice: boolean;
   start(): void;
   stop(): void;
+  /** Stops at once and drops words in flight: the request box went out of sight. */
+  cancel(): void;
   toggle(): void;
 }
 
@@ -277,6 +290,7 @@ export function useDictation(read: () => SpeechText, write: (t: SpeechText) => v
     onDevice,
     start: () => ensure()?.start(),
     stop: () => session.current?.stop(),
+    cancel: () => session.current?.cancel(),
     toggle: () => {
       const s = ensure();
       if (s?.wanted) s.stop();

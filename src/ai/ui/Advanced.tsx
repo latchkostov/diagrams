@@ -78,6 +78,15 @@ export function Advanced({
       pendingCaret.current = null;
     }
   }, [request]);
+  // Folding Advanced hides the request box, the microphone and its shortcut: the microphone goes off
+  // too, a pending start included (closing the panel or switching diagrams unmounts all this instead).
+  const cancelDictation = useRef(dictation.cancel);
+  useEffect(() => {
+    cancelDictation.current = dictation.cancel;
+  });
+  useEffect(() => {
+    if (!open) cancelDictation.current();
+  }, [open]);
   useEffect(() => {
     if (!dictation.supported || !open) return;
     const onKey = (e: KeyboardEvent) => {

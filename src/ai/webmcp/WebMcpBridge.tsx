@@ -38,7 +38,8 @@ function nextEditor(previous: EditorApi | null, timeoutMs = 4000): Promise<Edito
  * count on the rail; the panel never opens by itself.
  */
 function recordChange(change: AgentChange): void {
-  if (change.historyKey) showApplied(change.summary, change.changed, change.editor);
+  // An agent never moves the person's view. new_diagram has no step to undo, so no toast.
+  if (change.historyKey) showApplied(change.summary, change.changed, change.editor, { turnUndo: true, reveal: false });
   const documentId = paletteHost.get().canvas?.documentId;
   if (!documentId) return;
   if (!panelShown()) unseen.bump(documentId);
@@ -50,7 +51,9 @@ function recordChange(change: AgentChange): void {
     changed: change.changed,
     ...(change.choices ? { choices: change.choices } : {}),
     ...(change.warnings ? { warnings: change.warnings } : {}),
-    ...(change.historyKey ? { after: change.editor.getDiagram(), historyKey: change.historyKey } : {}),
+    // The snapshot (for Revert to here) is kept whether or not the change is an undo step (new_diagram isn't).
+    after: change.editor.getDiagram(),
+    ...(change.historyKey ? { historyKey: change.historyKey } : {}),
     engine: "agent",
     tool: change.tool,
   });

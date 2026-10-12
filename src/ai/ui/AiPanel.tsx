@@ -126,7 +126,8 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     ed.applyDiagram(plan.next, { merge: `ai:swap:${++mergeSeq}` });
     const s = getStencil(stencilId);
     const label = ed.getNode(choice.nodeId)?.label || choice.nodeId;
-    showApplied(`${label} is now ${s.label}`, [choice.nodeId], ed);
+    // The swap is its own undo step, which no turn offers: the toast keeps its Undo.
+    showApplied(`${label} is now ${s.label}`, [choice.nodeId], ed, { turnUndo: false, reveal: true });
     setTurns((all) =>
       all.map((t) =>
         t.id !== turn.id
@@ -475,14 +476,16 @@ function TurnItem({
           turn.choices
             ?.filter((c) => choiceIsCurrent(current, c))
             .map((c) => <ChoiceRow key={c.nodeId} choice={c} onSwap={(id) => onSwap(c, id)} />)}
-        {canChange && turn.after && (canUndo || !atThisTurn) && (
+        {/* Undo needs only the turn's history step; Revert to here needs its snapshot (a big diagram's
+            isn't kept). */}
+        {canChange && (canUndo || (turn.after && !atThisTurn)) && (
           <div className="ai-turn-actions">
             {canUndo && (
               <button className="btn btn-ghost" onClick={onUndo} data-testid={`ai-turn-${n}-undo`}>
                 <Icon name="undo" size={13} /> Undo this change
               </button>
             )}
-            {!atThisTurn && (
+            {turn.after && !atThisTurn && (
               <button
                 className="btn btn-ghost"
                 onClick={onRevert}

@@ -107,6 +107,69 @@ test.describe("Dictate", () => {
   });
 });
 
+test.describe("the microphone goes off with the request box", () => {
+  test("folding Advanced stops listening for good: no restart after silence, nothing written", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await installFakeSpeech(page);
+    await gotoCanvas(page, SLUG);
+    await openAdvanced(page);
+    await mic(page).click();
+    await expect(page.getByTestId("ai-interim")).toContainText("Listening");
+    await expect.poll(async () => (await speechState(page)).active).toBe(1);
+
+    await page.getByTestId("ai-advanced-toggle").click();
+    await expect(page.getByTestId("ai-request")).toHaveCount(0);
+    await expect.poll(async () => (await speechState(page)).active).toBe(0);
+    await speech(page, "result", [["late words", true]]);
+    await speech(page, "silence");
+    await page.waitForTimeout(200);
+    expect((await speechState(page)).starts).toBe(1);
+
+    await page.getByTestId("ai-advanced-toggle").click();
+    await expect(mic(page)).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByTestId("ai-request")).toHaveValue("");
+    // And it starts again as usual.
+    await mic(page).click();
+    await expect.poll(async () => (await speechState(page)).active).toBe(1);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("folding Advanced while the microphone is still starting starts nothing", async ({ page }) => {
+    await installFakeSpeech(page, { deferredAvailability: true });
+    await gotoCanvas(page, SLUG);
+    await openAdvanced(page);
+    await mic(page).click();
+    await expect(page.getByTestId("ai-interim")).toContainText("Allow the microphone");
+    await page.getByTestId("ai-advanced-toggle").click();
+    await speech(page, "resolveAvailability");
+    await page.waitForTimeout(200);
+    expect(await speechState(page)).toMatchObject({ starts: 0, active: 0 });
+  });
+
+  test("folding the panel or opening another diagram stops it too", async ({ page }) => {
+    await installFakeSpeech(page);
+    await gotoCanvas(page, SLUG);
+    await openAdvanced(page);
+    await mic(page).click();
+    await expect.poll(async () => (await speechState(page)).active).toBe(1);
+    await page.getByTestId("ai-collapse").click();
+    await expect.poll(async () => (await speechState(page)).active).toBe(0);
+
+    await openAdvanced(page);
+    await mic(page).click();
+    await expect.poll(async () => (await speechState(page)).active).toBe(1);
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-new").click();
+    await expect(page.getByTestId("start-card")).toBeVisible();
+    await expect.poll(async () => (await speechState(page)).active).toBe(0);
+    await speech(page, "silence");
+    await page.waitForTimeout(200);
+    expect((await speechState(page)).starts).toBe(2);
+  });
+});
+
 test("the mic is hidden when the browser has no speech recognition", async ({ page, consoleErrors }) => {
   await page.addInitScript(() => {
     delete (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
