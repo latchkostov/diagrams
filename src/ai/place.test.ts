@@ -45,6 +45,12 @@ describe("placement", () => {
     expect(placeNew(d, ["new"], "full").nodes[0].x).not.toBe(d.nodes[0].x);
     expect(placeNew(d, ["c", "new"], "none").nodes[0]).toEqual(d.nodes[0]);
   });
+  it("never lays out the existing nodes in incremental mode, however many are new", () => {
+    const d = diagram();
+    const result = placeNew(d, ["c", "new"], "incremental");
+    expect(result.nodes.slice(0, 2)).toEqual(d.nodes.slice(0, 2));
+    expect(result.nodes[3].x).toBeGreaterThan(d.nodes[0].x);
+  });
   it("fits only touched boundaries for incremental layout", () => {
     const d = diagram();
     d.nodes[3].group = "g";

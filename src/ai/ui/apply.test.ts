@@ -151,3 +151,70 @@ describe("fileToDiagram", () => {
     });
   });
 });
+
+describe("fileToDiagram positions", () => {
+  const placed = (): DiagramFile => ({
+    format: "diagrams/v1",
+    title: "Placed",
+    nodes: [
+      { id: "api", stencil: "generic.service", label: "API", x: 640, y: 420, group: "cloud" },
+      { id: "db", stencil: "postgres", label: "DB", x: 1100, y: 480, group: "cloud" },
+      { id: "client", stencil: "generic.service", label: "Client", x: 40, y: 900 },
+    ],
+    edges: [
+      { id: "e1", from: "client", to: "api" },
+      { id: "e2", from: "api", to: "db", kind: "sync" },
+    ],
+    groups: [{ id: "cloud", label: "Cloud", x: 600, y: 380, width: 820, height: 260 }],
+  });
+
+  it("keeps every coordinate and boundary box of a file that has them", () => {
+    const file = placed();
+    const result = fileToDiagram(structuredClone(file) as unknown as Record<string, unknown>);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.diagram.nodes).toEqual(file.nodes);
+    expect(result.diagram.groups).toEqual(file.groups);
+  });
+
+  it("fits only the boundaries that have no box", () => {
+    const file = placed() as unknown as { groups: Record<string, unknown>[] } & Record<string, unknown>;
+    file.groups.push({ id: "empty-box", label: "Fitted" });
+    (file.nodes as Record<string, unknown>[])[2].group = "empty-box";
+    const result = fileToDiagram(file);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.diagram.nodes.map((n) => [n.x, n.y])).toEqual([
+      [640, 420],
+      [1100, 480],
+      [40, 900],
+    ]);
+    expect(result.diagram.groups?.[0]).toEqual(placed().groups![0]);
+    const fitted = result.diagram.groups![1];
+    expect(fitted.width).toBeGreaterThan(0);
+    expect(fitted.x).toBeLessThan(40);
+    expect(fitted.y).toBeLessThan(900);
+  });
+
+  it("places only the nodes without coordinates", () => {
+    const file = placed() as unknown as Record<string, unknown>;
+    const nodes = file.nodes as Record<string, unknown>[];
+    nodes.push({ id: "cache", stencil: "redis", label: "Cache" });
+    (file.edges as Record<string, unknown>[]).push({ id: "e3", from: "api", to: "cache" });
+    const result = fileToDiagram(file);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.diagram.nodes.slice(0, 3)).toEqual(placed().nodes);
+    const cache = result.diagram.nodes[3];
+    expect(Number.isFinite(cache.x) && Number.isFinite(cache.y)).toBe(true);
+  });
+
+  it("lays out a file without coordinates", () => {
+    const file = placed() as unknown as Record<string, unknown>;
+    for (const n of file.nodes as Record<string, unknown>[]) {
+      delete n.x;
+      delete n.y;
+    }
+    const result = fileToDiagram(file);
+    if (!result.ok) throw new Error(result.error);
+    const xs = result.diagram.nodes.map((n) => n.x);
+    expect(new Set(xs).size).toBeGreaterThan(1);
+  });
+});
