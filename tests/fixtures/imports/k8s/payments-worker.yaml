@@ -1,0 +1,71 @@
+# A Kafka consumer scaled by KEDA on consumer-group lag, plus a nightly CronJob. The ScaledObject's trigger names
+# the topic and group, which is what lets the importer draw orders.placed.v1 -> payments-worker.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-worker
+  namespace: shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payments-worker
+  template:
+    metadata:
+      labels:
+        app: payments-worker
+    spec:
+      containers:
+        - name: worker
+          image: example.azurecr.io/shop/payments-worker:1.8.2
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: shop-kafka-kafka-bootstrap.kafka.svc:9092
+            - name: INPUT_TOPIC
+              value: orders.placed.v1
+            - name: OUTPUT_TOPIC
+              value: payments.completed.v1
+            - name: CONSUMER_GROUP
+              value: payments
+            - name: PROVIDER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: payment-provider
+                  key: api-key
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: payments-worker
+  namespace: shop
+spec:
+  scaleTargetRef:
+    name: payments-worker
+  minReplicaCount: 1
+  maxReplicaCount: 12
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: shop-kafka-kafka-bootstrap.kafka.svc:9092
+        consumerGroup: payments
+        topic: orders.placed.v1
+        lagThreshold: "50"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: settlement-report
+  namespace: shop
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: report
+              image: example.azurecr.io/shop/settlement-report:0.4.0
+              env:
+                - name: DATABASE_HOST
+                  value: postgres.shop.svc

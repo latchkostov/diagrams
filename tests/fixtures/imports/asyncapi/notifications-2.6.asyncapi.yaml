@@ -1,0 +1,42 @@
+# Self-written fixture in AsyncAPI 2.6 form, to test the 2.x reader. In 2.x, `subscribe` on a channel means
+# "this application SENDS here" (others subscribe to it) and `publish` means "this application RECEIVES" (others
+# publish to it). The importer must map them the way the spec defines them, not the way the words read.
+asyncapi: 2.6.0
+info:
+  title: Notification service
+  version: 0.9.0
+servers:
+  broker:
+    url: amqp://rabbitmq.shop.internal:5672
+    protocol: amqp
+channels:
+  order-notifications:
+    publish:
+      operationId: onOrderConfirmationRequested
+      message:
+        name: OrderConfirmationRequested
+        payload:
+          type: object
+          properties:
+            orderId:
+              type: string
+    bindings:
+      amqp:
+        is: queue
+        queue:
+          name: order-notifications
+          durable: true
+        bindingVersion: 0.2.0
+  email.sent:
+    subscribe:
+      operationId: emailSent
+      message:
+        name: EmailSent
+        payload:
+          type: object
+          properties:
+            orderId:
+              type: string
+            provider:
+              type: string
+              enum: [sendgrid]

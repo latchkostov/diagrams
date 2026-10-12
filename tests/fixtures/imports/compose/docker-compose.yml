@@ -1,0 +1,167 @@
+# Self-written fixture for the docker-compose importer (docs/research/imports.md). A small shop: a storefront
+# behind NGINX, an orders API and two workers around Kafka, with PostgreSQL and Redis. Passwords are variables
+# or Compose secrets; nothing here is a real credential.
+name: shop
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+  networks:
+    - backend
+
+x-kafka-client-env: &kafka-client-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry:8081
+
+services:
+  gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - storefront
+      - orders-api
+    networks:
+      - frontend
+
+  storefront:
+    image: ghcr.io/example-shop/storefront:4.2.0
+    environment:
+      ORDERS_API_URL: http://orders-api:8080
+      NODE_ENV: production
+    networks:
+      - frontend
+
+  orders-api:
+    <<: *service-defaults
+    build:
+      context: ./services/orders-api
+      dockerfile: Dockerfile
+    image: example-shop/orders-api:dev
+    environment:
+      <<: *kafka-client-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/orders
+      SPRING_DATASOURCE_USERNAME: orders
+      SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/orders_db_password
+      REDIS_URL: redis://redis:6379/0
+      ORDERS_TOPIC: orders.placed.v1
+    secrets:
+      - orders_db_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_started
+    networks:
+      - frontend
+      - backend
+
+  payments-worker:
+    <<: *service-defaults
+    image: example-shop/payments-worker:dev
+    environment:
+      <<: *kafka-client-env
+      CONSUMER_GROUP: payments
+      INPUT_TOPIC: orders.placed.v1
+      OUTPUT_TOPIC: payments.completed.v1
+      PAYMENT_PROVIDER_URL: https://api.payments.example.com
+      PAYMENT_PROVIDER_KEY: ${PAYMENT_PROVIDER_KEY:?set it in .env}
+    deploy:
+      replicas: 3
+    depends_on:
+      - kafka
+
+  shipping-worker:
+    <<: *service-defaults
+    image: example-shop/shipping-worker:dev
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_GROUP_ID=shipping
+      - DATABASE_URL=postgres://shipping:${SHIPPING_DB_PASSWORD}@postgres:5432/shipping?sslmode=disable
+    depends_on:
+      - kafka
+      - postgres
+
+  kafka:
+    image: apache/kafka:3.9.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - backend
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.7.1
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - kafka
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD_FILE: /run/secrets/orders_db_password
+      POSTGRES_DB: orders
+    secrets:
+      - orders_db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders"]
+      interval: 5s
+      retries: 10
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - backend
+
+  legacy-adapter:
+    image: registry.example.com/integration/legacy-adapter:1.4
+    environment:
+      UPSTREAM: tcp://mainframe-gw.example.com:7000
+    networks:
+      - backend
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    profiles: ["debug"]
+    ports:
+      - "8085:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    networks:
+      - backend
+
+networks:
+  frontend:
+  backend:
+
+volumes:
+  pgdata:
+
+secrets:
+  orders_db_password:
+    file: ./secrets/orders_db_password.txt

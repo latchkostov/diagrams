@@ -1,0 +1,128 @@
+# Data services: PostgreSQL (StatefulSet) and Redis (Deployment) with Services, and a Strimzi Kafka cluster with
+# two topics. One KafkaTopic uses the older v1beta2 API and one the v1 API that Strimzi 1.0 serves; the importer
+# reads both. The ServiceMonitor is a CRD the importer doesn't draw: it should appear in the import report.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: shop
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: shop
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: shop
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: shop-kafka
+  namespace: kafka
+spec:
+  kafka:
+    replicas: 3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: orders-placed
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: shop-kafka
+spec:
+  topicName: orders.placed.v1
+  partitions: 12
+  replicas: 3
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: payments-completed
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: shop-kafka
+spec:
+  topicName: payments.completed.v1
+  partitions: 6
+  replicas: 3
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: orders-api
+  namespace: shop
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orders-api
+  endpoints:
+    - port: http
+      path: /metrics

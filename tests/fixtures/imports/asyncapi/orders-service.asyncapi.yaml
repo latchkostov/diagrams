@@ -1,0 +1,205 @@
+# Self-written fixture for the AsyncAPI importer (docs/research/imports.md). Not taken from any real system.
+# One AsyncAPI document describes one application: here, the Order service. Operations are from its point of
+# view (AsyncAPI 3.0): `send` = it produces to the channel, `receive` = it consumes from it.
+asyncapi: 3.0.0
+info:
+  title: Order service
+  version: 2.3.0
+  description: |
+    Accepts orders from the storefront, publishes their lifecycle as events and listens for payment results.
+  tags:
+    - name: team-checkout
+defaultContentType: application/json
+
+servers:
+  production:
+    host: kafka-0.shop.internal:9092
+    protocol: kafka-secure
+    description: Production Kafka cluster (three brokers).
+    security:
+      - $ref: "#/components/securitySchemes/saslScram"
+    bindings:
+      kafka:
+        schemaRegistryUrl: https://schema-registry.shop.internal
+        schemaRegistryVendor: confluent
+        bindingVersion: 0.5.0
+  notifications:
+    host: rabbitmq.shop.internal:5672
+    protocol: amqp
+    description: RabbitMQ used for customer notifications.
+
+channels:
+  orderPlaced:
+    address: orders.placed.v1
+    title: Order placed
+    servers:
+      - $ref: "#/servers/production"
+    messages:
+      OrderPlaced:
+        $ref: "#/components/messages/OrderPlaced"
+    bindings:
+      kafka:
+        topic: orders.placed.v1
+        partitions: 12
+        replicas: 3
+        topicConfiguration:
+          retention.ms: 604800000
+        bindingVersion: 0.5.0
+  orderCancelled:
+    address: orders.cancelled.v1
+    servers:
+      - $ref: "#/servers/production"
+    messages:
+      OrderCancelled:
+        $ref: "#/components/messages/OrderCancelled"
+    bindings:
+      kafka:
+        partitions: 6
+        bindingVersion: 0.5.0
+  paymentCompleted:
+    address: payments.completed.v1
+    servers:
+      - $ref: "#/servers/production"
+    messages:
+      PaymentCompleted:
+        $ref: "#/components/messages/PaymentCompleted"
+  paymentFailed:
+    address: payments.failed.v1
+    servers:
+      - $ref: "#/servers/production"
+    messages:
+      PaymentFailed:
+        $ref: "#/components/messages/PaymentFailed"
+  orderNotifications:
+    address: order-notifications
+    servers:
+      - $ref: "#/servers/notifications"
+    messages:
+      OrderConfirmationRequested:
+        $ref: "#/components/messages/OrderConfirmationRequested"
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: notifications
+          type: topic
+          durable: true
+          vhost: /
+        bindingVersion: 0.3.0
+
+operations:
+  publishOrderPlaced:
+    action: send
+    channel:
+      $ref: "#/channels/orderPlaced"
+    summary: An order was accepted and its stock reserved.
+    messages:
+      - $ref: "#/channels/orderPlaced/messages/OrderPlaced"
+  publishOrderCancelled:
+    action: send
+    channel:
+      $ref: "#/channels/orderCancelled"
+    messages:
+      - $ref: "#/channels/orderCancelled/messages/OrderCancelled"
+  onPaymentCompleted:
+    action: receive
+    channel:
+      $ref: "#/channels/paymentCompleted"
+    summary: Marks the order paid.
+    bindings:
+      kafka:
+        groupId:
+          type: string
+          enum:
+            - order-service
+        bindingVersion: 0.5.0
+  onPaymentFailed:
+    action: receive
+    channel:
+      $ref: "#/channels/paymentFailed"
+    bindings:
+      kafka:
+        groupId:
+          type: string
+          enum:
+            - order-service
+        bindingVersion: 0.5.0
+  requestOrderConfirmation:
+    action: send
+    channel:
+      $ref: "#/channels/orderNotifications"
+    messages:
+      - $ref: "#/channels/orderNotifications/messages/OrderConfirmationRequested"
+
+components:
+  securitySchemes:
+    saslScram:
+      type: scramSha512
+      description: SASL/SCRAM credentials come from the platform's secret store.
+
+  messages:
+    OrderPlaced:
+      name: OrderPlaced
+      title: Order placed
+      contentType: application/vnd.apache.avro
+      payload:
+        schemaFormat: application/vnd.apache.avro;version=1.9.0
+        schema:
+          type: record
+          name: OrderPlaced
+          namespace: shop.orders.v1
+          fields:
+            - name: orderId
+              type: string
+            - name: customerId
+              type: string
+            - name: totalCents
+              type: long
+            - name: currency
+              type: string
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: The order id, so one order's events stay in order.
+          schemaIdLocation: payload
+          bindingVersion: 0.5.0
+    OrderCancelled:
+      name: OrderCancelled
+      payload:
+        $ref: "#/components/schemas/OrderRef"
+    PaymentCompleted:
+      name: PaymentCompleted
+      payload:
+        type: object
+        properties:
+          orderId:
+            type: string
+          paymentId:
+            type: string
+          amountCents:
+            type: integer
+    PaymentFailed:
+      name: PaymentFailed
+      payload:
+        type: object
+        properties:
+          orderId:
+            type: string
+          reason:
+            type: string
+            enum: [declined, expired, fraud_suspected]
+    OrderConfirmationRequested:
+      name: OrderConfirmationRequested
+      payload:
+        $ref: "#/components/schemas/OrderRef"
+
+  schemas:
+    OrderRef:
+      type: object
+      required: [orderId]
+      properties:
+        orderId:
+          type: string
+        reason:
+          type: string

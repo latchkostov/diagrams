@@ -1,0 +1,22 @@
+# Self-written hostile input: $ref cycles and a remote $ref. The importer resolves only local "#/..." refs, with
+# a depth limit and cycle detection, and never fetches a URL: the remote ref stays unresolved and is listed in
+# the import report.
+asyncapi: 3.0.0
+info:
+  title: Loops
+  version: 0.0.1
+channels:
+  a:
+    $ref: "#/channels/b"
+  b:
+    $ref: "#/channels/a"
+  remote:
+    address: remote.events
+    messages:
+      Remote:
+        $ref: "https://schemas.example.com/remote.yaml#/components/messages/Remote"
+operations:
+  sendA:
+    action: send
+    channel:
+      $ref: "#/channels/a"
