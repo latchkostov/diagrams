@@ -256,8 +256,9 @@ diagramEvals.push({
       expected: {
         nodes: [
           { label: "Orders", stencil: "kafka.topic" },
-          { label: "Billing", stencil: "service.dotnet" },
-          { label: "Shipping", stencil: "service.python" },
+          // "billing and shipping consumers" names no language: any processor passes.
+          { label: "Billing", stencil: "service.dotnet", accept: ["role:processor"] },
+          { label: "Shipping", stencil: "service.python", accept: ["role:processor"] },
         ],
         edges: [
           ["Orders", "Billing"],

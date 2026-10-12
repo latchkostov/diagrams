@@ -10,13 +10,14 @@
 
 import type { DiagramFile, SimRole } from "../../model/types";
 import { getStencil } from "../../stencils/registry";
-import { resolveKind } from "../stencils";
+import { namedStencil, resolveKind } from "../stencils";
 import type { DiagramOp } from "../index";
 import { RefIndex, ReplyRefs, type NewNodeAlias } from "../refs";
 import type { ScopeItem } from "../ui/context";
+import { incompleteness, inRequest, kindFor, leakedName } from "./replyChecks";
 
 /** At most this many ops per reply (checked in code: hard limits in a schema make small models odd). */
-export const MAX_OPS = 16;
+export const MAX_OPS = 8;
 
 export const COMPACT_OPS = ["add", "connect", "insert_between", "rename", "change_kind", "remove"] as const;
 export type CompactOpName = (typeof COMPACT_OPS)[number];
@@ -90,6 +91,17 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
 
   // First pass: the nodes this reply adds. Their keys can't be an element id, and a key the model
   // wrote mustn't name an existing element or another new node.
+  // Names copied from the few-shot examples ("sample-worker") are never meant.
+  const leaked = leakedName(
+    raw.flatMap((o) => [o?.label, o?.from, o?.to, o?.target].filter((x): x is string => typeof x === "string")),
+    request,
+    diagram,
+  );
+  if (leaked)
+    throw new ReplyError(
+      `Don't reuse names from the examples (${JSON.stringify(leaked)}): name things as the request does.`,
+    );
+
   const keyOf = new Map<CompactOp, string>();
   const used = new Set<string>();
   const aliases = new Set<string>();
@@ -109,11 +121,29 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
     refs.add({ key, ...(alias ? { alias } : {}), kind: text(op.kind)!, label: text(op.label)! } satisfies NewNodeAlias);
   }
 
+  /** Nodes added for components the request names but the reply only referred to. */
+  const added: DiagramOp[] = [];
   const ref = (r: string): string => {
     if (THIS.test(r) && selected) return selected.id;
-    const out = refs.resolve(r);
-    if ("error" in out) throw new ReplyError(out.error);
-    return out.ref;
+    const exact = refs.strict(r);
+    if (exact && "error" in exact) throw new ReplyError(exact.error);
+    if (exact) return exact.ref;
+    // "Container Apps", connected but never added, and named so in the request: add it. Unless one of
+    // the reply's new nodes is that component ("Python job" for the node added with kind "Python").
+    const stencil = refs.existingId(r) ? undefined : namedStencil(r);
+    const near = refs.resolve(r);
+    const mine = "ref" in near ? refs.newNode(near.ref) : undefined;
+    const same = mine && resolveKind(mine.kind, mine.label).id === stencil;
+    if (stencil && stencil !== "generic.service" && inRequest(r, request) && !same) {
+      let key = `${KEY_PREFIX}${slug(r)}`;
+      while (used.has(key)) key = `${key}-2`;
+      used.add(key);
+      refs.add({ key, kind: r, label: r });
+      added.push({ op: "add_node", kind: r, label: r, key });
+      return key;
+    }
+    if ("error" in near) throw new ReplyError(near.error);
+    return near.ref;
   };
   const edgeRef = (r: string) => {
     const parts = r.split("->");
@@ -134,19 +164,29 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
     switch (op?.op) {
       case "add":
         if (!kind || !label) throw new ReplyError(`${at} needs "kind" and "label".`);
-        ops.push({ op: "add_node", kind, label, key: keyOf.get(op)!, ...(sublabel ? { sublabel } : {}) });
+        ops.push({
+          op: "add_node",
+          kind: kindFor(kind, label, request),
+          label,
+          key: keyOf.get(op)!,
+          ...(sublabel ? { sublabel } : {}),
+        });
         break;
-      case "connect":
+      case "connect": {
         if (!from || !to) throw new ReplyError(`${at} needs "from" and "to".`);
-        ops.push({ op: "connect", from: ref(from), to: ref(to), ...flowKind(op.flow), ...(label ? { label } : {}) });
+        const [a, b] = [ref(from), ref(to)];
+        if (a === b)
+          throw new ReplyError("A connection can't start and end at the same node; add the missing component first.");
+        ops.push({ op: "connect", from: a, to: b, ...flowKind(op.flow), ...(label ? { label } : {}) });
         break;
+      }
       case "insert_between":
         if (!kind || !label || !from || !to) throw new ReplyError(`${at} needs "kind", "label", "from" and "to".`);
         ops.push({
           op: "insert_between",
           from: ref(from),
           to: ref(to),
-          kind,
+          kind: kindFor(kind, label, request),
           label,
           key: keyOf.get(op)!,
           ...(sublabel ? { sublabel } : {}),
@@ -176,30 +216,50 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
     }
   }
 
+  ops.unshift(...added);
   const batch = [...keyOf.values()];
-  flipConsumed(ops, request, refs, diagram);
+  flipDescribed(ops, request, refs, diagram);
   if (selected) connectSelection(ops, request, selected.id, batch);
-  return betweenAsInsert(ops, request, diagram, refs);
+  const out = betweenAsInsert(ops, request, diagram, refs);
+  // Everything the request names added, and connected: else the retry says what's missing.
+  const missing = incompleteness(out, request, diagram);
+  if (missing) throw new ReplyError(missing);
+  return out;
 }
 
+/** Produce-type verbs: the data flows from the subject to the object ("A Lambda saves objects into S3"). */
+export const PRODUCES =
+  /\b(?:writes?(?: \w+)? (?:to|into)|persists?(?: \w+)? (?:to|into|in)|saves?(?: \w+)? (?:to|into|in)|stores?(?: \w+)? (?:in|into)|sends?(?: \w+)? to|publish(?:es)?(?: \w+)? (?:to|into)|routes? to|calls|invokes|feeds|exports? to|forwards?(?: \w+)? to|delivers|starts|accesses|uses|fans? out (?:toward|to))\b/gi;
+
+/** Where a clause ends: punctuation (a period only before a space, so ".NET" stays), or a conjunction. */
+const CLAUSE = /[,;]|\.(?=\s|$)|\b(?:and|then|which|that|while|before|after)\b/i;
+
 /**
- * The pair a request describes with a consume verb: "<subject> consumes <object>", each phrase matched
- * to one node (new or existing). The data flows object -> subject. Null unless both match one node each.
+ * The pairs a request describes with a direction verb, each phrase matched to one node (new or
+ * existing): "<subject> consumes <object>" flows object -> subject; "<subject> writes to <object>"
+ * flows subject -> object. Only pairs whose two phrases each match exactly one node.
  */
+export function describedPairs(request: string, refs: ReplyRefs): { from: string; to: string; consume: boolean }[] {
+  const out: { from: string; to: string; consume: boolean }[] = [];
+  const verbs = [
+    ...[...request.matchAll(new RegExp(CONSUMES.source, "gi"))].map((m) => ({ m, consume: true })),
+    ...[...request.matchAll(PRODUCES)].map((m) => ({ m, consume: false })),
+  ];
+  for (const { m, consume } of verbs) {
+    const before = request.slice(0, m.index).split(CLAUSE).pop() ?? "";
+    const after = request.slice(m.index! + m[0].length).split(CLAUSE)[0] ?? "";
+    const subject = refs.match(before);
+    const object = refs.match(after);
+    if (!subject || !object || subject === object) continue;
+    out.push(consume ? { from: object, to: subject, consume } : { from: subject, to: object, consume });
+  }
+  return out;
+}
+
+/** Back-compatible name: the first consume pair, as subject and object. */
 export function consumedPair(request: string, refs: ReplyRefs): { subject: string; object: string } | null {
-  const m = CONSUMES.exec(request);
-  if (!m) return null;
-  // The clause around the verb: back to the start or a break, forward to the next break.
-  const before =
-    request
-      .slice(0, m.index)
-      .split(/[,;.]|\b(?:and|then|which|that|while|before|after)\b/i)
-      .pop() ?? "";
-  const after =
-    request.slice(m.index + m[0].length).split(/[,;.]|\b(?:and|then|which|that|while|before|after)\b/i)[0] ?? "";
-  const subject = refs.match(before);
-  const object = refs.match(after);
-  return subject && object && subject !== object ? { subject, object } : null;
+  const p = describedPairs(request, refs).find((x) => x.consume);
+  return p ? { subject: p.to, object: p.from } : null;
 }
 
 const MESSAGING: readonly (SimRole | "none")[] = ["queue", "topic", "stream"];
@@ -213,19 +273,19 @@ function roleOf(ref: string, refs: ReplyRefs, diagram: DiagramFile): SimRole | u
 }
 
 /**
- * "Java consumes a Kafka topic": the data flows from the topic to Java. When the reply draws exactly
- * that pair the other way round (Java -> topic), that one connection is turned. Nothing else is touched.
+ * A connection the request describes with a direction verb, drawn the wrong way round, is turned, and
+ * only that one: when the reply has exactly that pair reversed and not the right way. What's consumed
+ * must be a queue, topic or stream (a service "consuming data from Postgres" still calls it).
  */
-export function flipConsumed(ops: DiagramOp[], request: string, refs: ReplyRefs, diagram: DiagramFile) {
-  const pair = consumedPair(request, refs);
-  // Only what's consumed from a queue, topic or stream: a service "consuming data from Postgres" still
-  // calls the database (a request drawn service -> database).
-  if (!pair || !MESSAGING.includes(roleOf(pair.object, refs, diagram) ?? "none")) return;
+export function flipDescribed(ops: DiagramOp[], request: string, refs: ReplyRefs, diagram: DiagramFile) {
   const id = (r: string) => refs.existingId(r) ?? r;
   const connects = ops.filter((o): o is Connect => o.op === "connect");
-  const wrong = connects.filter((c) => id(c.from) === pair.subject && id(c.to) === pair.object);
-  const right = connects.some((c) => id(c.from) === pair.object && id(c.to) === pair.subject);
-  if (wrong.length === 1 && !right) [wrong[0].from, wrong[0].to] = [wrong[0].to, wrong[0].from];
+  for (const pair of describedPairs(request, refs)) {
+    if (pair.consume && !MESSAGING.includes(roleOf(pair.from, refs, diagram) ?? "none")) continue;
+    const wrong = connects.filter((c) => id(c.from) === pair.to && id(c.to) === pair.from);
+    const right = connects.some((c) => id(c.from) === pair.from && id(c.to) === pair.to);
+    if (wrong.length === 1 && !right) [wrong[0].from, wrong[0].to] = [wrong[0].to, wrong[0].from];
+  }
 }
 
 /**
@@ -273,6 +333,37 @@ export function betweenAsInsert(ops: DiagramOp[], request: string, diagram: Diag
     return diagram.edges.find((e) => e.from === a && e.to === b)?.id;
   };
   let out = [...ops];
+  // "between X and Y", the new node connected to only one of them: complete it as an insert.
+  const named = /\bbetween\s+(.+?)\s+and\s+(.+?)(?:[,;.]|\s+and\b|$)/i.exec(request);
+  const phraseRef = (p: string) => {
+    const bare = p.replace(/^(?:the|a|an)\s+/i, "").trim();
+    const exact = refs.strict(bare);
+    return exact && "ref" in exact ? exact.ref : (refs.match(bare) ?? undefined);
+  };
+  const [x, y] = named ? [phraseRef(named[1]), phraseRef(named[2])] : [undefined, undefined];
+  if (x && y && x !== y)
+    for (const add of ops) {
+      if (add.op !== "add_node" || !add.key) continue;
+      const touching = out.filter((o): o is Connect => o.op === "connect" && (o.to === add.key || o.from === add.key));
+      if (touching.length !== 1) continue;
+      const other = id(touching[0].to === add.key ? touching[0].from : touching[0].to) ?? "";
+      if (other !== x && other !== y) continue;
+      out = out
+        .filter((o) => o !== touching[0])
+        .map((o) =>
+          o === add
+            ? {
+                op: "insert_between" as const,
+                from: x,
+                to: y,
+                kind: add.kind,
+                label: add.label,
+                key: add.key,
+                ...(add.sublabel ? { sublabel: add.sublabel } : {}),
+              }
+            : o,
+        );
+    }
   for (const add of between ? ops : []) {
     if (add.op !== "add_node" || !add.key) continue;
     const ins = out.filter((o): o is Connect => o.op === "connect" && o.to === add.key);

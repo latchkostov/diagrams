@@ -74,9 +74,9 @@ describe("toOps: the format", () => {
     expect(
       error(
         EMPTY,
-        Array.from({ length: 17 }, () => ({ op: "remove", target: "x" })),
+        Array.from({ length: 9 }, () => ({ op: "remove", target: "x" })),
       ),
-    ).toBe("Use at most 16 ops.");
+    ).toBe("Use at most 8 ops.");
   });
 });
 
@@ -376,7 +376,7 @@ describe("toOps: cost", () => {
       })),
       edges: Array.from({ length: 20000 }, (_, i) => ({ id: `e${i}`, from: `n${i % n}`, to: `n${(i * 7 + 1) % n}` })),
     };
-    const ops = Array.from({ length: 16 }, (_, i) => ({
+    const ops = Array.from({ length: 8 }, (_, i) => ({
       op: "connect",
       from: `Node ${2 * i}`,
       to: `Node ${2 * i + 1}`,
@@ -386,5 +386,202 @@ describe("toOps: cost", () => {
     const ms = performance.now() - t0;
     expect(r.ok).toBe(true);
     expect(ms).toBeLessThan(perfBudget(400));
+  });
+});
+
+describe("round 2: the label wins over a wrong kind word, when the request names it", () => {
+  const stencilOf = (request: string, kind: string, label: string, other: object[]) =>
+    apply(EMPTY, [{ op: "add", key: "x", kind, label }, ...other], { request }).node(label)?.stencil;
+  const partner = (kind: string, label: string, from: "x" | "y" = "x") => [
+    { op: "add", key: "y", kind, label },
+    from === "x" ? { op: "connect", from: "x", to: "y" } : { op: "connect", from: "y", to: "x" },
+  ];
+
+  it.each([
+    // create-6, create-16, create-17, create-22, create-19, as the model answered them.
+    [
+      "An Azure function consumes a Service Bus queue",
+      "Lambda",
+      "Azure function",
+      partner("Service Bus queue", "Jobs", "y"),
+      "azure.functions",
+    ],
+    [
+      "A mobile client calls an API gateway",
+      "browser",
+      "Mobile Client",
+      partner("API gateway", "Gateway"),
+      "client.mobile",
+    ],
+    [
+      "Front Door routes to App Service",
+      "Amazon API Gateway",
+      "Front Door",
+      partner("App Service", "Web app"),
+      "azure.front-door",
+    ],
+    ["A scheduler starts a .NET worker", "Lambda", "Scheduler", partner(".NET service", "Worker"), "generic.scheduler"],
+    ["Prometheus exports to Grafana", "Go service", "Prometheus", partner("Grafana", "Dashboards"), "prometheus"],
+  ])("%s: kind %s, label %s", (request, kind, label, other, stencil) => {
+    expect(stencilOf(request, kind, label, other)).toBe(stencil);
+  });
+
+  it("the kind stays for a label of the model's own, a generic label, or a kind the request names", () => {
+    // "Orders API" isn't in the request; Node stays.
+    expect(stencilOf("A browser calls an API", "Node.js API", "Orders API", partner("browser", "Web", "y"))).toBe(
+      "service.node",
+    );
+    expect(stencilOf("Workers write to Postgres", ".NET service", "billing-worker", partner("PostgreSQL", "DB"))).toBe(
+      "service.dotnet",
+    );
+    // A one-word generic label ("Events", "Cache") doesn't beat a specific kind.
+    expect(
+      stencilOf("Java consumes a Kafka topic and forwards events to SQS", "Kafka topic", "Events", [
+        { op: "add", key: "j", kind: "Java service", label: "Worker" },
+        { op: "add", key: "q", kind: "SQS", label: "Outbox" },
+        { op: "connect", from: "x", to: "j" },
+        { op: "connect", from: "j", to: "q" },
+      ]),
+    ).toBe("kafka.topic");
+    expect(stencilOf("A Go service uses Redis cache", "Redis cache", "Cache", partner("Go service", "API", "y"))).toBe(
+      "redis.cache",
+    );
+  });
+});
+
+describe("round 2: completeness", () => {
+  it("into an empty diagram, every named component must be added and connected", () => {
+    // create-12: only Redis.
+    expect(
+      error(EMPTY, [{ op: "add", key: "r", kind: "Redis cache", label: "Redis" }], {
+        request: "A Go service uses Redis cache",
+      }),
+    ).toBe(
+      "You added Redis but not the Go service, and nothing connects them. Add every component the request names and connect them.",
+    );
+    // create-28: one node only.
+    expect(
+      error(EMPTY, [{ op: "add", kind: "generic database", label: "DB" }], {
+        request: "An unspecified component connects to a generic database",
+      }),
+    ).toMatch(/^You added DB but not the unspecified component/);
+  });
+
+  it("new nodes left unconnected in a request that relates things", () => {
+    // create-21: both nodes, no connection.
+    expect(
+      error(
+        EMPTY,
+        [
+          { op: "add", key: "d", kind: "IoT devices", label: "Devices" },
+          { op: "add", key: "h", kind: "Event Hubs", label: "Hub" },
+        ],
+        { request: "IoT devices publish into Event Hubs" },
+      ),
+    ).toBe("You added Devices and Hub but nothing connects them. Connect every component the request names.");
+    expect(
+      error(KAFKA, [{ op: "add", key: "q", kind: "queue", label: "inventory-dlq" }], {
+        request: "Add a dead-letter queue after Inventory service",
+      }),
+    ).toMatch(/^You added inventory-dlq but nothing connects it/);
+  });
+
+  it("stays quiet when nothing is missing, or the request relates nothing", () => {
+    const full = [
+      { op: "add", key: "s", kind: "service", label: "Notifier" },
+      { op: "add", key: "e", kind: "email", label: "Email" },
+      { op: "connect", from: "s", to: "e" },
+    ];
+    expect(error(EMPTY, full, { request: "A service delivers email" })).toBeNull();
+    expect(
+      error(KAFKA, [{ op: "add", kind: "Redis cache", label: "Cache" }], { request: "Add a Redis cache" }),
+    ).toBeNull();
+  });
+});
+
+describe("round 2: references the model gets wrong", () => {
+  it("a connection from a node to itself is an error for the retry", () => {
+    expect(
+      error(
+        EMPTY,
+        [
+          { op: "add", key: "ecs-dynamodb", kind: "DynamoDB", label: "Table" },
+          { op: "connect", from: "ecs-dynamodb", to: "ecs-dynamodb" },
+        ],
+        { request: "An ECS workload persists to DynamoDB" },
+      ),
+    ).toBe("A connection can't start and end at the same node; add the missing component first.");
+  });
+
+  it("a component the request names, connected but never added, is added (create-15)", () => {
+    const { edges, node } = apply(
+      EMPTY,
+      [
+        { op: "add", key: "cosmos", kind: "Cosmos DB", label: "Container Cosmos DB" },
+        { op: "connect", from: "Container Apps", to: "cosmos" },
+      ],
+      { request: "Container Apps accesses Cosmos DB" },
+    );
+    expect(node("Container Apps")?.stencil).toBe("azure.container-apps");
+    expect(edges).toEqual(["Container Apps -> Container Cosmos DB"]);
+  });
+
+  it("…but not when one of the reply's new nodes is that component", () => {
+    const { diagram } = apply(
+      EMPTY,
+      [
+        { op: "add", kind: "Python", label: "Job" },
+        { op: "add", kind: "pg", label: "pg" },
+        { op: "connect", from: "Python job", to: "pg" },
+      ],
+      { request: "A Python job writes to pg" },
+    );
+    expect(diagram.nodes).toHaveLength(2);
+  });
+
+  it("…and a connection drawn against the request's verb is turned (create-25)", () => {
+    const { edges } = apply(
+      EMPTY,
+      [
+        { op: "add", key: "ddb", kind: "DynamoDB", label: "Table" },
+        { op: "connect", from: "ddb", to: "ECS workload" },
+      ],
+      { request: "An ECS workload persists to DynamoDB" },
+    );
+    expect(edges).toEqual(["ECS workload -> Table"]);
+  });
+
+  it('"between X and Y" with only one side connected becomes insert_between', () => {
+    for (const connect of [
+      { op: "connect", from: "Order service", to: "c" },
+      { op: "connect", from: "c", to: "Orders database" },
+    ]) {
+      const { edges } = apply(KAFKA, [{ op: "add", key: "c", kind: "Redis cache", label: "Orders cache" }, connect], {
+        request: "Put a Redis cache between Order service and Orders database",
+      });
+      expect(edges).not.toContain("Order service -> Orders database");
+      expect(edges).toEqual(
+        expect.arrayContaining(["Order service -> Orders cache", "Orders cache -> Orders database"]),
+      );
+    }
+  });
+
+  it("a placeholder name from the examples is an error, unless the request or diagram has it", () => {
+    expect(
+      error(
+        EMPTY,
+        [
+          { op: "add", key: "p", kind: "partner", label: "External partner" },
+          { op: "add", key: "g", kind: "API gateway", label: "sample-gateway" },
+          { op: "connect", from: "p", to: "g" },
+        ],
+        { request: "An external partner sends a webhook" },
+      ),
+    ).toMatch(/^Don't reuse names from the examples \("sample-gateway"\)/);
+    expect(
+      error(EMPTY, [{ op: "add", key: "g", kind: "API gateway", label: "sample-gateway" }], {
+        request: "Add sample-gateway",
+      }),
+    ).toBeNull();
   });
 });

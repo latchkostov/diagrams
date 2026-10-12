@@ -134,9 +134,24 @@ const createCases: OnDeviceCase[] = diagramEvals
 export const onDeviceCases: OnDeviceCase[] = [...editCases, ...createCases];
 
 /** Which part of the pipeline a failure points at, so the next round is quick to triage. */
-export type FailureCategory = "reference" | "direction" | "stencil" | "structure" | "format" | "model error" | "other";
+export type FailureCategory =
+  | "reference"
+  | "direction"
+  | "stencil"
+  | "omission"
+  | "structure"
+  | "leak"
+  | "format"
+  | "runaway"
+  | "model error"
+  | "other";
 
 export function failureCategory(note: string): FailureCategory {
+  if (/^You added /.test(note)) return "omission";
+  if (/^Don't reuse names from the examples/.test(note)) return "leak";
+  if (/ran on past/.test(note)) return "runaway";
+  if (/isn't in the diagram/.test(note)) return "reference";
+  if (/can't start and end at the same node/.test(note)) return "structure";
   if (/Unknown reference|matches \d+ elements|must refer to/.test(note)) return "reference";
   if (/^reversed connection/.test(note)) return "direction";
   if (/^missing |no new node of the right kind/.test(note)) return "stencil";
@@ -184,7 +199,7 @@ function describeOutput(
  * The diagram afterwards must pass the case's check and validate.
  */
 export async function runOnDeviceEvals(
-  newSession: () => Promise<Pick<ModelSession, "prompt"> & { destroy?: () => void }>,
+  newSession: () => Promise<Pick<ModelSession, "prompt" | "promptStreaming"> & { destroy?: () => void }>,
   cases: readonly OnDeviceCase[] = onDeviceCases,
   onResult?: (r: CaseResult, done: number) => void,
   signal?: AbortSignal,

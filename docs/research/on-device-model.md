@@ -201,4 +201,76 @@ original stencil):
 - Reversed connections in requests without a consume verb ("SNS fans out toward SQS"). These rely on the
   prompt alone.
 
+### Round 2: after #33 and #34
+
+**Run 1, 12 October 2026, Chrome 154: 24/37 (65%), 23 on the first try. Run 2, same build, a second PC:
+22/37 (59%).** So expect about ±6 points from run to run. #34 (in between) limits each reply and each
+fresh session to 30 s, with one retry in a fresh session.
+
+| Cause                                                                                      | Run 1 | Run 2 | Fix in `feat/ondevice-accuracy-2`                                                 | Kind of fix   |
+| ------------------------------------------------------------------------------------------ | ----- | ----- | --------------------------------------------------------------------------------- | ------------- |
+| Runaway: edit-rename, edit-change generated for ~190–199 s, then "too big"                 | 2     | 2     | Bounded reply schema; reply cut off at 2,400 characters and retried with feedback | Retry         |
+| Right label, wrong kind: create-6, 16, 17, 22 (and create-19 in run 2)                     | 4     | 5     | The label wins when the request names it                                          | Deterministic |
+| A component referred to but never added: create-25 (run 1), create-15 (run 2)              | 1     | 1     | Added when the request names it; create-25's reversed connection is turned        | Deterministic |
+| "between" with one side connected: edit-between                                            | 0     | 1     | Completed as `insert_between`                                                     | Deterministic |
+| Omissions: create-12, 21, 28 (run 1); create-21, 25 (run 2, 25 as a self-loop)             | 3     | 2     | Completeness check and self-loop check, with specific feedback                    | Retry         |
+| Example leak: create-23 (`quill.jobs`, "Quill gateway")                                    | 1     | 1     | Placeholder example names, and a runtime guard                                    | Retry         |
+| Structure (Service Bus queues as "consumers"): create-29                                   | 1     | 1     | Expectation widened (any processor), but the structure is still wrong             | None          |
+| Wrong components (a Lambda and a queue or topic for "a service delivers email"): create-24 | 1     | 1     | None: the expectation stays                                                       | None          |
+| Not itemized in the run's report                                                           | 0     | 1     | Unknown                                                                           | —             |
+
+**What changed:**
+
+- **Runaways.** Every string in the reply schema has a `maxLength`: 60 for names and kinds, 160 for the
+  summary, and two names for a `target` ("A -> B"). `ops` has `maxItems: 8` (the code cap is 8 too), and
+  every object is closed. Where the session can stream, the reply is read as it's generated and cut off
+  past 2,400 characters (no answer needs more). The retry then says why. The start of the runaway is kept
+  in the Model output column, so the next run shows what the model was generating. Which field drives
+  the runaway (the free-text `summary`, the `label` of a rename, or keys with spaces) is still unknown:
+  the runs recorded no output, only the context error. The prompt also asks for short labels and a
+  one-line summary.
+- **The label wins** (`kindFor` in `src/ai/ondevice/replyChecks.ts`). When an added node's label names a
+  stencil (`namedStencil`: it must share a word with that stencil's label or id), every word of the label
+  is in the request, and the kind disagrees, the label's stencil is used. The kind stays when the label
+  is the model's own ("billing-worker") or generic ("Orders API", or a one-word label that isn't the
+  stencil's own name, like "Events" or "Gateway"). It also stays when the request names the kind too
+  ("Redis cache"), or when the label names a generic stencil in the kind's role ("Cache" for Memcached).
+- **Completeness** (`incompleteness`). Into an empty diagram, each component the request names must have
+  its own node. Components are runs of words between verbs, prepositions and articles that
+  `namedStencil` can place, so "billing" or "objects" don't count. In any request that relates things
+  ("calls", "writes to", "between", "after"…), every new node must be connected. Either failure goes to
+  the retry with specific feedback, e.g. "You added Redis but not the Go service, and nothing connects
+  them. Add every component the request names and connect them."
+- **Self-loops** are an error for the retry: "A connection can't start and end at the same node; add the
+  missing component first."
+- **A component connected but never added** ("Container Apps") is added when the request names it and
+  `namedStencil` places it. That doesn't happen when one of the reply's new nodes is that component.
+- **Direction** now covers produce verbs too ("persists to", "writes to", "calls", "invokes"…), pair by
+  pair like the consume verbs. Only a connection drawn exactly against the verb is turned.
+- **"between X and Y"** answered with the new node connected to only one of them becomes `insert_between`.
+- **Example leak.** The examples' own components are now obvious placeholders (`sample-worker`), and
+  their new nodes are named as each request names them ("MySQL", "retry queue"). A reply that uses a
+  placeholder the request and diagram don't have goes to the retry: "Don't reuse names from the
+  examples…".
+- **Unknown references** to something that isn't in the diagram at all now say how to fix them: "ECS
+  workload isn't in the diagram. Add it with an add op (with a key), then connect it by that key."
+- **Expectation change:** create-29, "Publish an event to billing and shipping consumers inside an Azure
+  boundary", now accepts any processor for billing and shipping, because the request names no language.
+  The model's structure there is still wrong, so the case is expected to keep failing. create-24 ("A
+  service delivers email") keeps its expectation.
+
+**Projection** (per run, from which listed failures each fix addresses):
+
+- **Deterministic fixes** (the label wins, auto-add, the one-sided "between"): run 1 → 29/37 (78%), run 2
+  → 29/37 (78%). This is the floor if nothing else helps.
+- **Retry-dependent fixes** (runaways, omissions, self-loop, leak) succeed only if the model follows the
+  feedback. If every retry succeeds: run 1 → 35/37 (95%), run 2 → 34/37 (92%).
+- **Likely: 31–33/37 (84–89%)**, if about half of the retry-dependent cases recover. Run-to-run variance
+  (±6 points) applies on top.
+- **Risk:** the completeness check could send a reply that used to pass into the retry. It is
+  conservative, and a perfect model still scores 37/37 in the unit tests.
+
+A unit test replays both runs' failures with replies shaped like the model's (`src/ai/evals/onDevice.test.ts`).
+The deterministic ones pass on the first try, and the omissions and the leak pass on a corrected retry.
+
 Next: re-run the evals in the Lab and paste the table here.
