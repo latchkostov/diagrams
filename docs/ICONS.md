@@ -256,3 +256,11 @@ No new icon needs attribution. MariaDB images use the MySQL stencil.
 | Icon file   | Source                 | Original asset     |
 | ----------- | ---------------------- | ------------------ |
 | `mysql.svg` | gilbarbara/logos (CC0) | `logos:mysql-icon` |
+
+### Imports batch 2 (AsyncAPI)
+
+No new icon needs attribution. The MQTT Broker stencil also stands for Mosquitto, EMQX and HiveMQ images.
+
+| Icon file  | Source             | Original asset                      |
+| ---------- | ------------------ | ----------------------------------- |
+| `mqtt.svg` | Simple Icons (CC0) | `simple-icons:mqtt`, fill `#660066` |

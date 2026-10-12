@@ -35,7 +35,7 @@ import type { ControlDef, Preset } from "./types";
 import { LiveLabStage } from "../live/LiveLabStage";
 import { badgeStatesDiagram, noteStatesDiagram, particleStressDiagram, type NoteState } from "../live/labDiagrams";
 import { OverlapAudit } from "./OverlapAudit";
-import { importedCompose } from "./importFixtures";
+import { importedAsyncApi, importedCompose } from "./importFixtures";
 import { annotationCourseDiagram, obstacleCourseDiagram } from "./routingDiagrams";
 import { TraceCardInteraction, TraceCardStates, TraceSequencePreview, type TraceFlow } from "../live/TraceLab";
 
@@ -614,6 +614,7 @@ const auditSources: Record<string, { label: string; diagram: () => DiagramFile }
   ...Object.fromEntries(examples.map((e) => [e.slug, { label: e.title, diagram: () => exampleDiagram(e.slug) }])),
   obstacles: { label: "Routing obstacle course", diagram: () => obstacleCourseDiagram() },
   "imported-compose": { label: "Imported: compose", diagram: importedCompose },
+  "imported-asyncapi": { label: "Imported: AsyncAPI", diagram: importedAsyncApi },
   annotations: { label: "Annotations among routes", diagram: () => annotationCourseDiagram() },
   "stress-150": {
     label: "Stress: 150 nodes",
@@ -633,6 +634,15 @@ const layoutPresets: Preset[] = [
     description:
       "tests/fixtures/imports/compose/docker-compose.yml through the import pipeline: stencils, connections from settings, networks as boundaries and the three-step layout.",
     diagram: importedCompose,
+  },
+  {
+    kind: "diagram",
+    id: "imported-asyncapi",
+    title: "Imported: AsyncAPI",
+    group: "Diagrams",
+    description:
+      "The three AsyncAPI fixtures (tests/fixtures/imports/asyncapi) joined on their channels: apps, Kafka and RabbitMQ boundaries, typed flows and the Imported traffic simulation.",
+    diagram: importedAsyncApi,
   },
   {
     kind: "diagram",

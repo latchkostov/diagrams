@@ -139,6 +139,22 @@ export function ImportReportDialog({
             ))}
           </Section>
         )}
+        {report.traffic && report.traffic.length > 0 && (
+          // Where the saved simulation starts messages, and how fast: Go live and pick it to watch them flow.
+          <Section title="Imported traffic" count={report.traffic.length} testId="import-report-traffic">
+            {report.traffic.map((t, i) => (
+              <li key={t.nodeId} className="ix-report-row" data-testid={`import-report-traffic-${i}`}>
+                <span className="ix-report-what">
+                  {name(t.nodeId, t.label, `import-report-traffic-name-${i}`)}
+                  {t.messageType && <span className="ix-report-muted">{t.messageType}</span>}
+                </span>
+                <span className="ix-report-why">
+                  {t.ratePerSec} msg/s for {t.seconds >= 60 ? `${t.seconds / 60} min` : `${t.seconds} s`}
+                </span>
+              </li>
+            ))}
+          </Section>
+        )}
         {report.inferred.length > 0 && (
           <Section title="Connections found in settings" count={report.inferred.length} testId="import-report-settings">
             {report.inferred.map((c, i) => (

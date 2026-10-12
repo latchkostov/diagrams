@@ -455,6 +455,19 @@
       ]
     },
     {
+      "id": "mqtt.broker",
+      "label": "MQTT Broker",
+      "vendor": "MQTT",
+      "role": "topic",
+      "aliases": [
+        "mqtt",
+        "mosquitto",
+        "emqx",
+        "hivemq",
+        "iot"
+      ]
+    },
+    {
       "id": "aws.msk",
       "label": "Amazon MSK",
       "vendor": "AWS",

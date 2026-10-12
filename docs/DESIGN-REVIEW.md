@@ -1,5 +1,35 @@
 # Design review
 
+## Round 16: imports (batch 2, AsyncAPI) (2026-10-12)
+
+AsyncAPI 2.x and 3.x import on the shared pipeline and the batch 1 report. Self-review against
+`docs/UX-PRINCIPLES.md` at 1024 × 768, 1280 × 800 dark and 1440 × 900, with the three fixtures dropped together.
+
+- **No new chrome.** The start-card line now reads "Have a docker-compose or AsyncAPI file? Drop it here.", the
+  drop overlay gains an AsyncAPI chip and the paste dialog names it. Kubernetes and Terraform still say they can't
+  be imported yet, without listing AsyncAPI.
+- **Ready to Go live.** Each import saves an **Imported traffic** simulation (1 msg/s for 2 minutes where messages
+  start). The report has an **Imported traffic** section with the entry point, its message type and the rate, and
+  one note: "Go live and pick “Imported traffic” to watch messages flow." Live shows typed messages from Order
+  service through the Kafka topics to Shipping, and through RabbitMQ to Notification.
+- **Layout.** The first pass put the Kafka boundary first: request and reply loops between apps and brokers left
+  the layered layout no clear start, so Order service ended above the topics it feeds. The importer now starts
+  from where traffic starts, so the diagram reads left to right: Order service, then the Kafka and RabbitMQ
+  boundaries, then Shipping and Notification. The Lab's overlap audit on "Imported: AsyncAPI" counts no node or
+  label overlaps.
+- **The report** keeps its density: notes for channels with no producer and for the exchange that feeds a queue,
+  counted schemas and security schemes under Not drawn, and protocols with no stencil of their own (Solace, IBM
+  MQ, HTTP, WebSocket) as guesses with chips.
+- **A file that can't be drawn** (only cycles and remote `$ref`s) fails with one sentence that names the first
+  reference and why, instead of opening an empty diagram.
+- **Open:** a joined title is "3 services" (the plan's wording); renaming it is one click on the title.
+
+![Import report, AsyncAPI, 1440](screenshots/round16/import-report-asyncapi-1440.png)
+![Import report, AsyncAPI, 1024](screenshots/round16/import-report-asyncapi-1024.png)
+
+Also: `screenshots/round16/import-report-asyncapi-1280-dark.png`, `asyncapi-canvas-1440.png`,
+`asyncapi-imported-traffic-live-1440.png` and `drop-overlay-1440.png`.
+
 ## Round 14: imports (batch 1) (2026-10-12)
 
 docker-compose import and the shared import core (`docs/research/imports.md`, batch 1). Self-review against

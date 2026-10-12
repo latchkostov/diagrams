@@ -266,3 +266,142 @@ test.describe("imports: docker-compose", () => {
       await expect(page.getByTestId(`audit-count-${kind}`)).toHaveAttribute("data-count", "0");
   });
 });
+
+// ---------------------------------------------------------------- AsyncAPI (batch 2)
+
+const ASYNCAPI = (name: string) => ({
+  name,
+  text: readFileSync(join(FIXTURES, "asyncapi", name), "utf8"),
+});
+const ORDERS = ASYNCAPI("orders-service.asyncapi.yaml");
+const SHIPPING = ASYNCAPI("shipping-service.asyncapi.yaml");
+const NOTIFICATIONS = ASYNCAPI("notifications-2.6.asyncapi.yaml");
+
+interface SavedDiagram {
+  title: string;
+  nodes: { id: string; stencil: string }[];
+  edges: { from: string; to: string; props?: Record<string, unknown> }[];
+  simulations?: { id: string }[];
+}
+
+/** The imported diagram as stored in Your diagrams (data, not a selector: the canvas shows the same). */
+async function stored(page: Page, title: string): Promise<SavedDiagram> {
+  let found: SavedDiagram | undefined;
+  await expect
+    .poll(async () => {
+      found = await page.evaluate((title) => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i) ?? "";
+          if (!key.startsWith("diagrams.doc.v1:")) continue;
+          try {
+            const d = JSON.parse(localStorage.getItem(key) ?? "null");
+            const doc = d?.doc ?? d?.diagram ?? d;
+            if (doc?.title === title) return doc;
+          } catch {
+            // not a diagram
+          }
+        }
+        return undefined;
+      }, title);
+      return !!found;
+    })
+    .toBe(true);
+  if (!found) throw new Error(`No stored diagram “${title}”`);
+  return found;
+}
+const has = (d: SavedDiagram, from: string, to: string) => d.edges.some((e) => e.from === from && e.to === to);
+
+test.describe("imports: AsyncAPI", () => {
+  test("two 3.0 documents join on their channel: producer, topic, consumer and the Schema Registry", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await fakePicker(page, [ORDERS, SHIPPING]);
+    await gotoCanvas(page, publicExamples[0].slug);
+    await openViaMenu(page);
+    await expect(page.getByTestId("toast")).toContainText("Imported “2 services” from AsyncAPI");
+    await expect(page.getByTestId("diagram-title")).toHaveText("2 services");
+    for (const id of ["order-service", "shipping-service", "topic-orders.placed.v1", "schema-registry.shop.internal"])
+      await expect(page.getByTestId(`node-${id}`)).toBeVisible();
+    // One joined topic, not one per file.
+    await expect(page.getByTestId("node-topic-orders.placed.v1-2")).toHaveCount(0);
+    await expect(page.getByTestId("group-boundary-kafka-kafka-0.shop.internal-9092")).toBeVisible();
+    const d = await stored(page, "2 services");
+    expect(has(d, "order-service", "topic-orders.placed.v1")).toBe(true);
+    expect(has(d, "topic-orders.placed.v1", "shipping-service")).toBe(true);
+    expect(has(d, "order-service", "schema-registry.shop.internal")).toBe(true);
+    expect(has(d, "shipping-service", "schema-registry.shop.internal")).toBe(true);
+    // The report says where traffic starts.
+    await page.getByTestId("toast-import-details").click();
+    await expect(page.getByTestId("import-report-traffic-0")).toContainText("Order service");
+    await expect(page.getByTestId("import-report-traffic-0")).toContainText("1 msg/s for 2 min");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("Go live with Imported traffic: messages flow", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    await drop(page, [ORDERS, SHIPPING, NOTIFICATIONS]);
+    await expect(page.getByTestId("diagram-title")).toHaveText("3 services");
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await page.getByTestId("live-sim-picker").selectOption("imported-traffic");
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("imported-traffic");
+    await expect
+      .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-particles")), {
+        timeout: 15_000,
+      })
+      .toBeGreaterThan(0);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("AsyncAPI 2.6: publish means it receives, subscribe means it sends", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    await drop(page, [NOTIFICATIONS]);
+    await expect(page.getByTestId("diagram-title")).toHaveText("Notification service");
+    const d = await stored(page, "Notification service");
+    expect(has(d, "topic-order-notifications", "notification-service")).toBe(true);
+    expect(has(d, "notification-service", "topic-order-notifications")).toBe(false);
+    expect(has(d, "notification-service", "topic-email.sent")).toBe(true);
+    expect(has(d, "topic-email.sent", "notification-service")).toBe(false);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a remote $ref is never fetched, and the import says why nothing could be drawn", async ({ page }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const origin = new URL(page.url()).origin;
+    const requests: { url: string; type: string }[] = [];
+    page.on("request", (r) => requests.push({ url: r.url(), type: r.resourceType() }));
+    const title = await page.getByTestId("diagram-title").textContent();
+    await page.getByTestId("import-input").setInputFiles({
+      name: "recursive-ref.asyncapi.yaml",
+      mimeType: "application/yaml",
+      buffer: readFileSync(join(FIXTURES, "hostile", "recursive-ref.asyncapi.yaml")),
+    });
+    const toast = page.getByTestId("toast");
+    await expect(toast).toHaveAttribute("data-kind", "error");
+    await expect(toast).toHaveText(
+      "Couldn't import recursive-ref.asyncapi.yaml. Nothing in it could be drawn: $ref https://schemas.example.com/remote.yaml#/components/messages/Remote (a remote reference, never fetched: open that file too).",
+    );
+    await expect(page.getByTestId("diagram-title")).toHaveText(title ?? "");
+    expect(requests.filter((r) => r.url.includes("schemas.example.com"))).toEqual([]);
+    expect(requests.filter((r) => !r.url.startsWith(origin) && !r.url.startsWith("data:"))).toEqual([]);
+  });
+
+  test("an AsyncAPI import makes no network requests", async ({ page }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const origin = new URL(page.url()).origin;
+    const requests: { url: string; type: string }[] = [];
+    page.on("request", (r) => requests.push({ url: r.url(), type: r.resourceType() }));
+    await drop(page, [ORDERS, SHIPPING, NOTIFICATIONS]);
+    await expect(page.getByTestId("node-notification-service")).toBeVisible();
+    expect(requests.filter((r) => !r.url.startsWith(origin) && !r.url.startsWith("data:"))).toEqual([]);
+    expect(requests.filter((r) => r.type === "fetch" || r.type === "xhr")).toEqual([]);
+  });
+
+  test("the AsyncAPI import is overlap-free in the Lab's audit", async ({ page }) => {
+    await page.goto("./?view=lab&preset=overlap-audit&diagram=imported-asyncapi");
+    await expect(page.getByTestId("audit-summary")).toBeVisible();
+    for (const kind of ["label-node", "label-label", "node-node"])
+      await expect(page.getByTestId(`audit-count-${kind}`)).toHaveAttribute("data-count", "0");
+  });
+});

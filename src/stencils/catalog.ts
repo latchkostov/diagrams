@@ -270,6 +270,16 @@ const messaging = group("messaging", [
     "topic",
   ],
   [
+    "mqtt.broker",
+    "MQTT Broker",
+    "MQTT",
+    "mqtt",
+    "#660066",
+    "topic",
+    "Lightweight pub/sub for devices (Mosquitto, EMQX, HiveMQ); every subscriber to a topic gets a copy.",
+    "topic",
+  ],
+  [
     "aws.msk",
     "Amazon MSK",
     "AWS",

@@ -1,14 +1,30 @@
 import type { DiagramFile } from "../model/types";
-import { importCompose } from "../interop/infra/pipeline";
+import type { ImportOutcome } from "../interop/formats";
+import { importAsyncApi, importCompose } from "../interop/infra/pipeline";
 import composeFixture from "../../tests/fixtures/imports/compose/docker-compose.yml?raw";
+import ordersFixture from "../../tests/fixtures/imports/asyncapi/orders-service.asyncapi.yaml?raw";
+import shippingFixture from "../../tests/fixtures/imports/asyncapi/shipping-service.asyncapi.yaml?raw";
+import notificationsFixture from "../../tests/fixtures/imports/asyncapi/notifications-2.6.asyncapi.yaml?raw";
 
 // The infrastructure import fixtures (tests/fixtures/imports), imported the way Open… does, for the Lab: the
 // overlap audit and a diagram to open in the editor. The Lab is a lazy chunk, so the YAML reader stays out of
 // the startup JavaScript.
 
-/** tests/fixtures/imports/compose/docker-compose.yml, imported. */
-export function importedCompose(): DiagramFile {
-  const outcome = importCompose([{ name: "docker-compose.yml", text: composeFixture }]);
+const diagramOf = (outcome: ImportOutcome): DiagramFile => {
   if (outcome.ok !== true) throw new Error(outcome.ok === false ? outcome.error : "unexpected outcome");
   return outcome.diagram;
-}
+};
+
+/** tests/fixtures/imports/compose/docker-compose.yml, imported. */
+export const importedCompose = (): DiagramFile =>
+  diagramOf(importCompose([{ name: "docker-compose.yml", text: composeFixture }]));
+
+/** The three AsyncAPI fixtures (3.0, 3.0 and 2.6), imported together and joined on their channels. */
+export const importedAsyncApi = (): DiagramFile =>
+  diagramOf(
+    importAsyncApi([
+      { name: "orders-service.asyncapi.yaml", text: ordersFixture },
+      { name: "shipping-service.asyncapi.yaml", text: shippingFixture },
+      { name: "notifications-2.6.asyncapi.yaml", text: notificationsFixture },
+    ]),
+  );

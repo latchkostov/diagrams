@@ -66,9 +66,12 @@ export function layoutImport(diagram: DiagramFile): DiagramFile {
     return g && blocks.has(g) ? `\u0001${g}` : id;
   };
   const loose = nodes.filter((n) => !(n.group && blocks.has(n.group)) && !target(n));
+  // Where messages start (the import's traffic) reads first: with request and reply loops between apps and
+  // brokers, the layered layout breaks cycles from the leftmost unit it's given.
+  const entries = new Set(diagram.simulations?.flatMap((s) => s.traffic.map((t) => t.node)));
   const units = [
     ...[...blocks].map(([id, b]) => ({ id: `\u0001${id}`, x: 0, y: 0, width: b.width, height: b.height })),
-    ...loose.map((n) => ({ id: n.id, x: 0, y: 0, ...sizeOf(n) })),
+    ...loose.map((n) => ({ id: n.id, x: entries.has(n.id) ? -1 : 0, y: 0, ...sizeOf(n) })),
   ];
   // One edge per pair of units, in one pass.
   const seen = new Set<string>();

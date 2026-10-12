@@ -334,6 +334,21 @@
       ]
     },
     {
+      "id": "mqtt.broker",
+      "label": "MQTT Broker",
+      "vendor": "MQTT",
+      "category": "messaging",
+      "simRole": "topic",
+      "description": "Lightweight pub/sub for devices (Mosquitto, EMQX, HiveMQ); every subscriber to a topic gets a copy.",
+      "aliases": [
+        "mqtt",
+        "mosquitto",
+        "emqx",
+        "hivemq",
+        "iot"
+      ]
+    },
+    {
       "id": "aws.msk",
       "label": "Amazon MSK",
       "vendor": "AWS",

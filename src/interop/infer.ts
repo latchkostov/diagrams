@@ -38,6 +38,7 @@ const RULES: [RegExp, string][] = [
   [/\bkinesis\b/, "aws.kinesis"],
   [/\bpub ?sub\b/, "gcp.pubsub"],
   [/\bnats\b|\bjetstream\b/, "nats.subject"],
+  [/\bmqtt\b|\bmosquitto\b|\bemqx\b|\bhivemq\b/, "mqtt.broker"],
   [/\bredis streams?\b/, "redis.stream"],
   // Compute
   [/\bfunction apps?\b|\bazure functions?\b/, "azure.functions"],

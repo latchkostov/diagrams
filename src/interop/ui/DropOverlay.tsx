@@ -74,6 +74,9 @@ export function DropOverlay({ onFiles }: { onFiles: (files: File[]) => void }) {
           <span>
             <Glyph name="file" size={14} /> docker-compose.yml
           </span>
+          <span>
+            <Glyph name="file" size={14} /> AsyncAPI
+          </span>
         </span>
         <span className="ix-drop-hint">Opens as your diagram. Examples are never overwritten.</span>
       </div>

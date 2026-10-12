@@ -44,7 +44,7 @@ export function fsAccessSupported(): boolean {
 export const NATIVE_TYPE: PickerType = { description: "Live Diagrams file", accept: { "application/json": [".json"] } };
 const OPEN_TYPES: PickerType[] = [
   {
-    description: "Live Diagrams, draw.io, Mermaid and docker-compose files",
+    description: "Live Diagrams, draw.io, Mermaid, docker-compose and AsyncAPI files",
     accept: {
       "application/json": [".json"],
       "application/xml": [".drawio", ".xml", ".svg"],

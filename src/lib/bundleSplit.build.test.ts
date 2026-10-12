@@ -11,6 +11,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["the draw.io converter", /[/\\]src[/\\]interop[/\\]drawio[/\\]/],
   ["the Mermaid converter", /[/\\]src[/\\]interop[/\\]mermaid[/\\]/],
   ["the infrastructure importers (compose reader)", /[/\\]src[/\\]interop[/\\]infra[/\\]/],
+  ["the AsyncAPI reader", /[/\\]src[/\\]interop[/\\]infra[/\\]asyncapi\.ts$/],
   ["the YAML parser", /[/\\]node_modules[/\\](\.pnpm[/\\][^/\\]+[/\\]node_modules[/\\])?yaml[/\\]/],
   ["the Import report", /[/\\]src[/\\]interop[/\\]ui[/\\]ImportReportDialog\.tsx$/],
   ["html-to-image (image export)", /[/\\]html-to-image[/\\]/],

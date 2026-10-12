@@ -62,6 +62,7 @@ const VENDOR_FAMILY: Record<string, FamilyId> = {
   NATS: "streaming",
   Confluent: "streaming",
   "Apache Pulsar": "streaming",
+  MQTT: "streaming",
   "Apache Flink": "streaming",
   Debezium: "streaming",
   PostgreSQL: "oss",
