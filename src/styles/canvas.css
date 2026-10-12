@@ -8,6 +8,9 @@
   position: relative;
   flex: 1;
   min-width: 0;
+  /* The app's accent, kept where a node's stencil colour replaces --accent (the "+" on a node). */
+  --ui-accent: var(--accent);
+  --ui-accent-ink: var(--accent-ink);
   /* Inline editors never read smaller than their CSS size: below 100% zoom they scale up by 1/zoom. */
   --edit-scale: max(1, calc(1 / var(--rf-zoom, 1)));
 }
@@ -3014,9 +3017,11 @@ select.insp-input {
   place-items: center;
   padding: 0;
   border-radius: 50%;
-  border: calc(1.5px / var(--rf-zoom, 1)) solid var(--accent);
+  /* The app's accent, not the stencil's: at least 5:1 on the surface in both themes, whatever the stencil
+     (Azure Functions' amber or Go's cyan would be about 2:1). */
+  border: calc(1.5px / var(--rf-zoom, 1)) solid var(--ui-accent);
   background: var(--surface);
-  color: var(--accent);
+  color: var(--ui-accent);
   box-shadow: 0 calc(1px / var(--rf-zoom, 1)) calc(4px / var(--rf-zoom, 1)) rgb(0 0 0 / 0.18);
   cursor: pointer;
   transform: none;
@@ -3027,8 +3032,8 @@ select.insp-input {
 }
 
 .grow-chip.react-flow__handle:hover {
-  background: var(--accent);
-  color: #fff;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
 }
 
 .grow-chip svg {
@@ -3099,6 +3104,19 @@ select.insp-input {
   pointer-events: all;
   cursor: crosshair;
   z-index: 5;
+}
+
+/* The dot is small; the hit area around it is 24 px on screen at any zoom, like the connection handles. */
+.edge-end::after {
+  --hit: calc(24px / var(--rf-zoom, 1));
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--hit);
+  height: var(--hit);
+  translate: -50% -50%;
+  border-radius: 50%;
 }
 
 .edge-end:hover,

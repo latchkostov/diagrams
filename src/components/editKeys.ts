@@ -26,9 +26,14 @@ export function editKeyAction(
   return null;
 }
 
-/** Focuses `el` (the node or edge just edited) once the editor has gone, if it's still there. */
+/**
+ * Focuses `el` (the node or edge just edited) once the editor has gone, if it's still there and nothing else
+ * took focus meanwhile (a key pressed straight after may already have opened a menu, Alt+arrow's quick-add).
+ */
 export function refocusAfterEdit(el: Element | null | undefined) {
   requestAnimationFrame(() => {
+    const now = document.activeElement;
+    if (now && now !== document.body) return;
     if ((el instanceof HTMLElement || el instanceof SVGElement) && el.isConnected) el.focus({ preventScroll: true });
   });
 }

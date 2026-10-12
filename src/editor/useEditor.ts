@@ -43,9 +43,10 @@ import {
   FLOW_GAP,
   isDownstream,
   towardOf,
+  type Toward,
   type Box as PlaceBox,
 } from "../canvas/placement";
-import { reconnectEdge, splitEdge } from "./edgeEdits";
+import { reconnectEdge, splitFlowEdge } from "./edgeEdits";
 import type { EditTarget } from "../canvas/DiagramContext";
 import {
   GROUP_PREFIX,
@@ -65,7 +66,7 @@ import { makePayload, parsePayload, remapPayload, type ClipboardPayload } from "
 import { stencilIdBase, uniqueId } from "./ids";
 import { layeredLayout } from "./layout";
 import type { HistoryApi } from "./useHistory";
-import type { EditorApi, EditorPrefs, Selection, XY } from "./types";
+import type { EditorApi, EditorPrefs, NewNode, Selection, XY } from "./types";
 import { diagramDiff } from "./diagramDiff";
 import { nudgeOnGrid } from "../canvas/guides";
 import { validateDiagram } from "../interop/native";
@@ -118,6 +119,8 @@ export interface EditorDeps {
   hovered?: () => string | undefined;
   /** Brings the selection into view once it's measured (a copy or a paste may land off screen). */
   reveal?: () => void;
+  /** Makes a node, brings it into view and opens its name, keeping keys typed meanwhile (the canvas). */
+  nameNew?: (make: () => NewNode | null, fallback: string) => void;
 }
 
 export function useEditor(deps: EditorDeps): EditorApi {
@@ -295,6 +298,46 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     } catch {
       return null;
     }
+  };
+
+  /**
+   * Where a node `size` goes beside `from` on `toward` side (default: downstream): one gap that way, stepping
+   * across past what's there, then (a crowded side) the nearest free place on the grid. Never on anything.
+   */
+  const spotBeside = (from: PlaceBox, toward: Toward | undefined, size: { width: number; height: number }) => {
+    const others = obstacles();
+    const dir = toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
+    const c = placeToward(from, size, others, dir, COPY_MARGIN, FLOW_GAP);
+    const at = { x: snap10(c.x - size.width / 2), y: snap10(c.y - size.height / 2), ...size };
+    const d = snappedClear(at, clearOffset(at, others), others);
+    return { ...at, x: at.x + d.x, y: at.y + d.y };
+  };
+  /**
+   * A new edge from `a` to `b`, its relationship inferred from their stencils (an edge into Key Vault is a
+   * secret dependency, one from a deploy pipeline a deploy). The stencils are passed in, so a node not yet
+   * committed to React Flow's store infers the same as one that is.
+   */
+  const newEdge = (
+    a: { id: string; stencil?: string },
+    b: { id: string; stencil?: string },
+    existing: readonly DiagramFlowEdge[],
+  ): DiagramFlowEdge => {
+    const relation = inferRelation(a.stencil, b.stencil);
+    return {
+      id: uniqueId("e", new Set(existing.map((e) => e.id))),
+      source: a.id,
+      target: b.id,
+      type: "flow",
+      data: relation === "flow" ? { kind: "async" } : { kind: "async", relation },
+    };
+  };
+  /** The first time a relationship is inferred, a toast says what it means (with a way back to a flow). */
+  const explainEdge = (edge: DiagramFlowEdge) => {
+    const relation = edge.data?.relation;
+    if (relation && isDependency(edge.data))
+      explainInference(relation as DependencyRelation, () =>
+        api.updateEdge(edge.id, { relation: undefined }, { merge: `inference:flow:${edge.id}` }),
+      );
   };
 
   const api: EditorApi = {
@@ -527,28 +570,14 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const es = rf.getEdges();
       const existing = es.find((e) => e.source === from && e.target === to);
       if (existing) return existing.id;
-      const id = uniqueId("e", new Set(es.map((e) => e.id)));
-      // An edge into a typed stencil (Key Vault, App Configuration, an IdP...) is a dependency, not a flow.
       const stencilOf = (nodeId: string) => {
         const n = rf.getNode(nodeId);
         return n && isDiagram(n) ? n.data.stencil : undefined;
       };
-      const relation = inferRelation(stencilOf(from), stencilOf(to));
-      deps().setEdges((cur) => [
-        ...cur,
-        {
-          id,
-          source: from,
-          target: to,
-          type: "flow",
-          data: relation === "flow" ? { kind: "async" } : { kind: "async", relation },
-        },
-      ]);
-      if (relation !== "flow")
-        explainInference(relation, () =>
-          api.updateEdge(id, { relation: undefined }, { merge: `inference:flow:${id}` }),
-        );
-      return id;
+      const edge = newEdge({ id: from, stencil: stencilOf(from) }, { id: to, stencil: stencilOf(to) }, es);
+      deps().setEdges((cur) => [...cur, edge]);
+      explainEdge(edge);
+      return edge.id;
     },
     reverseEdge: (id) => {
       deps().setEdges((es) =>
@@ -573,34 +602,91 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const n = rf.getNode(fromId);
       if (!n || !takesEdges(n)) return null;
       const from = box(n);
-      const size = clone ? { width: from.width, height: from.height } : deps().nodeSize;
-      const others = obstacles();
-      const dir = toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
-      const c = placeToward(from, size, others, dir, COPY_MARGIN, FLOW_GAP);
-      // Then never on anything (a crowded side): the nearest free place, on the grid.
-      const at = { x: snap10(c.x - size.width / 2), y: snap10(c.y - size.height / 2), ...size };
-      const d = snappedClear(at, clearOffset(at, others), others);
-      return { ...at, x: at.x + d.x, y: at.y + d.y };
+      return spotBeside(from, toward, clone ? { width: from.width, height: from.height } : deps().nodeSize);
     },
-    addConnected: (fromId, stencilId, toward) => {
-      const dir = toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
-      const spot = api.nextSpot(fromId, dir);
-      if (!spot) return null;
-      // Same tick: the history debounce records the node and its edge as one undo step.
-      const id = api.addNode(stencilId, { x: spot.x + spot.width / 2, y: spot.y + spot.height / 2 });
-      const edge = isDownstream(dir) ? api.connect(fromId, id) : api.connect(id, fromId);
-      return { id, edge };
+    createConnected: (req) => {
+      const ns = rf.getNodes();
+      const src = ns.find((n) => n.id === req.from);
+      if (!src || !takesEdges(src)) return null;
+      const srcStencil = isDiagram(src) ? src.data.stencil : undefined;
+      let data: DiagramFlowNode["data"];
+      let size = deps().nodeSize;
+      if (req.clone) {
+        if (!isDiagram(src)) return null;
+        const b = box(src);
+        size = { width: b.width, height: b.height };
+        data = { ...src.data, props: src.data.props && structuredClone(src.data.props) };
+      } else {
+        const s = getStencil(req.stencil ?? "");
+        data = { stencil: s.id, label: s.label, sublabel: s.defaultSublabel };
+      }
+      // Where: the drop point (a dropped connection, centred on it), else one gap beside the node that way.
+      const toward = req.toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
+      const spot = req.at
+        ? { x: req.at.x - size.width / 2, y: req.at.y - size.height / 2 }
+        : spotBeside(box(src), toward, size);
+      const position = { x: snap10(spot.x), y: snap10(spot.y) };
+      const id = uniqueId(stencilIdBase(data.stencil), new Set(ns.map((n) => n.id)));
+      const node: DiagramFlowNode = {
+        id,
+        type: "diagram",
+        position,
+        selected: true,
+        data: { ...data, group: groupAt(ns, position.x + size.width / 2, position.y + size.height / 2) },
+      };
+      // The edge from what's known here (both stencils), not from React Flow's store, which won't have the
+      // new node until React commits: an edge into a new Key Vault is a secret dependency at once.
+      const ends = [
+        { id: src.id, stencil: srcStencil },
+        { id, stencil: data.stencil },
+      ];
+      const [a, b] = req.at || isDownstream(toward) ? ends : [ends[1], ends[0]];
+      const edge = newEdge(a, b, rf.getEdges());
+      const merge = `new:${id}`;
+      hint(merge);
+      deps().setNodes((cur) => [...cur.map((n) => (n.selected ? { ...n, selected: false } : n)), node]);
+      deps().setEdges((cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]);
+      explainEdge(edge);
+      return { id, edge: edge.id, merge };
     },
-    cloneConnected: (fromId, toward) => {
-      const n = rf.getNode(fromId);
-      const spot = n && isDiagram(n) ? api.nextSpot(fromId, toward, true) : null;
-      const p = spot && makePayload(diagram(), [fromId], []);
-      if (!n || !spot || !p) return null;
-      const ids = insert(p, { x: spot.x - n.position.x, y: spot.y - n.position.y });
-      const id = ids?.get(fromId);
-      if (!id) return null;
-      const edge = isDownstream(toward) ? api.connect(fromId, id) : api.connect(id, fromId);
-      return { id, edge };
+    insertNode: (edgeId, stencilId, at) => {
+      const es = rf.getEdges();
+      const e = es.find((x) => x.id === edgeId);
+      const a = e && rf.getNode(e.source);
+      const b = e && rf.getNode(e.target);
+      if (!e || !a || !b) return null;
+      const s = getStencil(stencilId);
+      const size = deps().nodeSize;
+      const ns = rf.getNodes();
+      // Where it was dropped; from a menu, the free place nearest the middle of the two ends (the edge itself
+      // doesn't count: it's about to go through the node).
+      const [ba, bb] = [box(a), box(b)];
+      const mid = {
+        x: (ba.x + ba.width / 2 + bb.x + bb.width / 2) / 2,
+        y: (ba.y + ba.height / 2 + bb.y + bb.height / 2) / 2,
+      };
+      const others = obstacles().filter((o) => (o as { edge?: string }).edge !== edgeId);
+      const c = at ?? placeFree(mid, size, others, { margin: COPY_MARGIN, step: 20, maxRings: 40 });
+      const id = uniqueId(stencilIdBase(s.id), new Set(ns.map((n) => n.id)));
+      const node: DiagramFlowNode = {
+        id,
+        type: "diagram",
+        position: { x: snap10(c.x - size.width / 2), y: snap10(c.y - size.height / 2) },
+        selected: true,
+        data: { stencil: s.id, label: s.label, sublabel: s.defaultSublabel, group: groupAt(ns, c.x, c.y) },
+      };
+      const r = splitFlowEdge(es, edgeId, id);
+      if (!r) return null;
+      const merge = `new:${id}`;
+      hint(merge);
+      deps().setNodes((cur) => [...cur.map((n) => (n.selected ? { ...n, selected: false } : n)), node]);
+      deps().setEdges(r.edges.map((x) => (x.selected ? { ...x, selected: false } : x)));
+      return { id, edge: null, merge };
+    },
+    nameNew: (make, fallback) => {
+      const name = deps().nameNew;
+      if (name) name(make, fallback);
+      else make();
     },
     stencilAnchor: () => {
       const sel = api.getSelection();
@@ -610,7 +696,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     addStencil: (stencilId) => {
       const from = api.stencilAnchor();
-      const made = from ? api.addConnected(from, stencilId) : null;
+      const made = from ? api.createConnected({ from, stencil: stencilId }) : null;
       const id = made?.id ?? api.addNode(stencilId);
       deps().reveal?.();
       return id;
@@ -624,10 +710,9 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       return true;
     },
     insertIntoEdge: (edgeId, nodeId) => {
-      // A node added in this same tick isn't in React Flow's store yet: only a known one is checked.
       const n = rf.getNode(nodeId);
-      if (n && !takesEdges(n)) return false;
-      const r = splitEdge(rf.getEdges(), edgeId, nodeId);
+      if (!n || !takesEdges(n)) return false;
+      const r = splitFlowEdge(rf.getEdges(), edgeId, nodeId);
       if (!r) return false;
       deps().setEdges(r.edges);
       return true;

@@ -17,6 +17,8 @@ import type { EdgeEnd } from "./edgeEdits";
 export type { DiagramDiff, ChangeSet } from "./diagramDiff";
 
 export type XY = { x: number; y: number };
+/** A node just made with its edge (null when it has none of its own) and the undo tag naming it joins. */
+export type NewNode = { id: string; edge: string | null; merge: string };
 /** A box in flow coordinates. */
 export type XYBox = XY & { width: number; height: number };
 
@@ -106,12 +108,20 @@ export interface EditorApi {
    */
   nextSpot(fromId: string, toward?: Toward, clone?: boolean): XYBox | null;
   /**
-   * Adds a stencil at `nextSpot`, connected (→ and ↓: from `fromId`; ← and ↑: into it), selected, as one
-   * undo step. Returns the new node and its edge.
+   * The one way a connected node is made: a dropped connection (`at`, the drop point), the "+" and Alt+arrow
+   * (`toward`, default downstream), Alt+Shift+arrow (`clone`), the rail and Ctrl+K after a selected node, and a
+   * stencil dropped on a node. The node and its edge are built from one snapshot (the relationship inferred from
+   * both stencils) and committed together as one undo step, tagged `merge` so naming the node joins it. The new
+   * node is fed by `from` (→, ↓, a drop) or feeds it (←, ↑).
    */
-  addConnected(fromId: string, stencilId: string, toward?: Toward): { id: string; edge: string | null } | null;
-  /** Copies `fromId` (stencil, label, subtitle, settings) to `nextSpot`, connected the same way. */
-  cloneConnected(fromId: string, toward: Toward): { id: string; edge: string | null } | null;
+  createConnected(req: { from: string; stencil?: string; clone?: boolean; toward?: Toward; at?: XY }): NewNode | null;
+  /**
+   * Insert node on an edge (its menu, Ctrl+K, a stencil dropped on it): a new node at `at`, else the free place
+   * nearest the middle of the edge's ends, and the edge split around it (src/model/edgeSplit.ts), one undo step.
+   */
+  insertNode(edgeId: string, stencilId: string, at?: XY): NewNode | null;
+  /** Makes a node with `make`, brings it into view and opens its name (keys typed meanwhile are kept). */
+  nameNew(make: () => NewNode | null, fallback: string): void;
   /**
    * The stencil rail and Ctrl+K: with exactly one node selected (one that takes edges), the stencil goes
    * after it, connected; otherwise it goes to the free place nearest the view's centre. Returns its id.

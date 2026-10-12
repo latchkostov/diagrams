@@ -79,6 +79,8 @@ export interface MenuItem {
   children?: MenuNode[];
   /** Show a search box (with this placeholder) at the top of the submenu; filters all leaf items. */
   searchable?: string;
+  /** The command palette's name for this leaf when "Parent › leaf" would be ambiguous (nested submenus). */
+  paletteLabel?: string;
 }
 
 export interface Action {

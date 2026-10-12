@@ -17,7 +17,9 @@ export function GrowChip({ id, x, y }: { id: string; x: number; y: number }) {
   const [side, setSide] = useState<Side | "corner">(CHIP_ORDER[direction][0]);
   const update = useUpdateNodeInternals();
   // React Flow learns a handle's place when its node is measured: tell it about the chip as it moves.
-  useLayoutEffect(() => update(id), [id, side, update]);
+  // On screen the chip keeps its size at any zoom, so in flow terms it moves as the zoom does.
+  const zoomStep = useStore((s) => Math.floor(s.transform[2] * 50));
+  useLayoutEffect(() => update(id), [id, side, zoomStep, update]);
   // Where the edges' labels are: they move when edges change (an insert, a reconnect) or reroute.
   const edges = useStore((s) => s.edges);
   useLayoutEffect(() => {
@@ -35,10 +37,10 @@ export function GrowChip({ id, x, y }: { id: string; x: number; y: number }) {
       setSide(freeSide(card, taken, CHIP_ORDER[direction]));
     };
     place();
-    // Again once the routes and their labels have caught up with this change.
+    // Again once the routes and their labels (and the zoom's CSS) have caught up with this change.
     const id = requestAnimationFrame(() => requestAnimationFrame(place));
     return () => cancelAnimationFrame(id);
-  }, [x, y, direction, edges]);
+  }, [x, y, direction, edges, zoomStep]);
   const combo = formatCombo(direction === "TB" ? "Alt+ArrowDown" : "Alt+ArrowRight");
   return (
     <Handle

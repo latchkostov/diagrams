@@ -31,8 +31,9 @@ adds after it, connected). The one habit change, the rail click, is in `docs/REL
   lands on anything. Ctrl+K's "Add … after" and a rail click after a selected node use the same placement.
 - **Naming the connection.** A node just made connected (a dropped connection's quick-add, Alt+arrow, the "+"
   and Alt+Shift+arrow) opens its editor with a third field, the connection's label, one Tab after the
-  subtitle. Naming the node and its connection is one undo step after the add.
-- **Reconnect (D8).** A selected edge shows a round end on each side (accent ring, 12 px on screen). Dragging
+  subtitle. Naming the node and its connection joins the add's undo step, so one Ctrl+Z takes the lot.
+- **Reconnect (D8).** A selected edge shows a round end on each side (accent ring, 12 px on screen, a 24 px hit
+  area). From the keyboard: the edge's menu (and Ctrl+K) **Reconnect ▸ From / To**, a searchable list of nodes. Dragging
   one draws a dashed line from the end that stays, lights up the node a drop would move it to (anywhere on it),
   and keeps the crosshair; `not-allowed` over a text, note, zone or the other end's node. Dropped on a node, that
   end moves there and the edge keeps its id, label, relationship, kind and settings (the side pinned for that
@@ -156,6 +157,40 @@ keyboard at all.
 - Quick-add ranking "downstream" stencils after the recents (from round 8).
 - Boundaries that grow to take a node added next to a member (D12): a copy placed above a boundary's top row
   lands outside it.
+
+### Round 10 follow-up: CI and the review of PR #44
+
+**CI** failed on all three retries of `drawing-basics.spec.ts:269` (drop to create, then one undo takes the node
+and its edge). The trace showed Undo restoring "Kafka Topic": the add and the name were two undo steps. History
+records a step once edits pause for 350 ms, and the add was only joined by its name when the name came sooner.
+Batch 3 adds work as the new node appears (the "+" mounts and measures on it, the editor has three fields),
+and on the CI runner the name came 554 ms after the add. That was the real fault: one step had only ever been
+luck. Now every connected node is made by one editor command, tagged for undo, and its name (and its
+connection's label) carries the same tag, so they are one step whatever the timing (within the history's
+1.5 s merge window, after which a late name is its own step). A test names a node 800 ms after the add.
+
+**The review** (`.reviews/20261012-051950`, 6 P1, 8 P2), each checked first:
+
+| #   | Finding                                                                                                  | Verdict             | What changed                                                                                                                                                                                                                                                                                                                                                         |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1-4 | Connected nodes read React Flow state not yet committed (architecture, correctness, security, types; P1) | Confirmed (one bug) | A unit test with React-like queued setters gave "flow" for Key Vault. `createConnected` builds the node and edge from one snapshot, inferring the relationship from both stencils; drop to create, the "+", Alt+arrow, Alt+Shift+arrow, the rail and Ctrl+K after a selection, and a stencil dropped on a node all use it. `insertNode` does the same for an insert. |
+| 5   | Reconnect has no keyboard entry point (P1)                                                               | Confirmed           | Edge menu and Ctrl+K: **Reconnect ▸ From / To**, a searchable node list. One submenu, so the flow edge's menu stays at 12 items.                                                                                                                                                                                                                                     |
+| 6   | Insert on edge is drag-only (P1)                                                                         | Confirmed           | Edge menu and Ctrl+K: **Insert node ▸** (stencil search); the node lands in free space near the middle and its name opens, as quick-add's does.                                                                                                                                                                                                                      |
+| 7   | The "+" has low contrast on some stencils (P2)                                                           | Confirmed           | The chip uses the app's accent, not the stencil's: 5.9:1 (light) and about 7:1 (dark) on the surface; hover inverts with the accent's own ink.                                                                                                                                                                                                                       |
+| 8   | Reconnect ends are a 12 px target (P2)                                                                   | Confirmed           | A 24 px hit area around the 12 px dot, at any zoom.                                                                                                                                                                                                                                                                                                                  |
+| 9   | The split duplicates `insert_between` (P2)                                                               | Confirmed           | One rule, `src/model/edgeSplit.ts` over `DiagramEdge`; the AI op and the canvas adapter call it, and a contract test checks both give the same two edges (only the ids differ, by design).                                                                                                                                                                           |
+| 10  | Every selected node rescans the selection (P2)                                                           | Confirmed           | The single selected node is worked out once per store change and shared.                                                                                                                                                                                                                                                                                             |
+| 11  | The "+" doesn't re-place on zoom (P2)                                                                    | Confirmed           | It re-places (and re-measures as a handle) when the zoom moves a step.                                                                                                                                                                                                                                                                                               |
+| 12  | The Esc test never pressed Esc (P2)                                                                      | Confirmed           | New test: Esc over a lit node, then release: nothing changes, no undo step, the line and highlight go.                                                                                                                                                                                                                                                               |
+| 13  | Drag measured before the view settled (P2)                                                               | Confirmed           | Measured after the reveal's pan; the test also checks the node moved and the edges didn't.                                                                                                                                                                                                                                                                           |
+| 14  | The gate test didn't check topology (P2)                                                                 | Confirmed           | It checks all six (from, to, label) triples and every node's stencil from the saved diagram.                                                                                                                                                                                                                                                                         |
+
+Also found while repeating the gate test: after saving a name, the editor handed focus back to the node a frame
+later, even when a key pressed meanwhile had opened Alt+arrow's quick-add, so the search lost its keys. Focus now
+goes back only if nothing else took it.
+
+None rejected. The palette names each Reconnect leaf in full ("Reconnect to › Billing") through a new
+`paletteLabel` on menu items, since "Reconnect › Billing" would be ambiguous.
 
 ## Round 9: drawing precision (batch 2) (2026-10-12)
 

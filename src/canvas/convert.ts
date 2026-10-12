@@ -176,6 +176,19 @@ export const edgeToFlow = (e: DiagramEdge): DiagramFlowEdge => ({
   },
 });
 
+/** React Flow -> DiagramEdge (one edge; `fromFlow` does them all). */
+export const edgeFromFlow = (e: DiagramFlowEdge): DiagramEdge => ({
+  id: e.id,
+  from: e.source,
+  to: e.target,
+  label: e.data?.label,
+  kind: e.data?.kind ?? "async",
+  relation: isDependency(e.data) ? relationOf(e.data) : undefined,
+  sourceSide: e.data?.sourceSide,
+  targetSide: e.data?.targetSide,
+  props: e.data?.props,
+});
+
 /**
  * DiagramFile -> React Flow. Groups become background nodes (zIndex -1), NOT React Flow
  * parents, so every node keeps the absolute coordinates stored in the file.
@@ -255,17 +268,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
   // Drop references to groups that were deleted on the canvas.
   const groupIds = new Set(groups.map((g) => g.id));
   for (const n of out) if (n.group && !groupIds.has(n.group)) n.group = undefined;
-  const outEdges: DiagramEdge[] = edges.map((e) => ({
-    id: e.id,
-    from: e.source,
-    to: e.target,
-    label: e.data?.label,
-    kind: e.data?.kind ?? "async",
-    relation: isDependency(e.data) ? relationOf(e.data) : undefined,
-    sourceSide: e.data?.sourceSide,
-    targetSide: e.data?.targetSide,
-    props: e.data?.props,
-  }));
+  const outEdges: DiagramEdge[] = edges.map(edgeFromFlow);
   const layerOrder = nodes
     .filter((n) => n.type !== "boundary" && !(n.type === "annotation" && n.data.kind === "zone"))
     .map((n) => n.id);

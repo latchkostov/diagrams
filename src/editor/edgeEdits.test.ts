@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFlowEdge } from "../canvas/types";
-import { reconnectEdge, splitEdge } from "./edgeEdits";
+import { reconnectEdge, splitFlowEdge as splitEdge } from "./edgeEdits";
 
 const edge = (id: string, source: string, target: string, data: DiagramFlowEdge["data"] = { kind: "async" }) =>
   ({ id, source, target, type: "flow", data }) as DiagramFlowEdge;
 
-describe("splitEdge", () => {
+describe("splitFlowEdge (the canvas side of src/model/edgeSplit.ts)", () => {
   const rich = edge("orders-to-topic", "orders", "topic", {
     kind: "sync",
     relation: "config",

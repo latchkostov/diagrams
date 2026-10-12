@@ -13,12 +13,25 @@ import { useShowDependencies } from "../dependencyVisibility";
 import { DependencyPips } from "./DependencyPips";
 import { GrowChip } from "./GrowChip";
 
-/** Exactly one thing is selected (this node): only then does it show its "+". */
-function onlyOne(s: ReactFlowState) {
-  let n = 0;
-  for (const x of s.nodes) if (x.selected && ++n > 1) return false;
-  for (const e of s.edges) if (e.selected) return false;
-  return n === 1;
+/**
+ * The one selected thing, when it's a single node (only it shows a "+"); null otherwise. Worked out once per
+ * store change and shared by every selected node, so selecting many nodes stays linear.
+ */
+let sole: { nodes: unknown; edges: unknown; id: string | null } = { nodes: null, edges: null, id: null };
+function soleSelectedNode(s: ReactFlowState): string | null {
+  if (s.nodes === sole.nodes && s.edges === sole.edges) return sole.id;
+  let id: string | null = null;
+  for (const x of s.nodes)
+    if (x.selected) {
+      if (id !== null) {
+        id = null;
+        break;
+      }
+      id = x.id;
+    }
+  if (id !== null && s.edges.some((e) => e.selected)) id = null;
+  sole = { nodes: s.nodes, edges: s.edges, id };
+  return id;
 }
 const never = () => false;
 
@@ -36,9 +49,9 @@ function DiagramNodeImpl({
   positionAbsoluteY,
 }: NodeProps<DiagramFlowNode>) {
   const { nodeVariant } = useSettings();
-  const { editing, setEditing, grow } = useDiagram();
+  const { editing, setEditing, grow, hint } = useDiagram();
   const { updateNodeData, updateEdgeData } = useReactFlow();
-  const single = useStore(selected && grow ? onlyOne : never);
+  const single = useStore(selected && grow ? (s: ReactFlowState) => soleSelectedNode(s) === id : never);
   const stencil = getStencil(data.stencil);
   const unknown = stencil === FALLBACK_STENCIL;
   const { Component } = getNodeVariant(nodeVariant);
@@ -84,11 +97,13 @@ function DiagramNodeImpl({
             setEditing(null);
             const label = next.label.trim() || data.label;
             const sublabel = next.sublabel.trim() || undefined;
+            const connection = (edit.edge && next.connection.trim()) || "";
+            const renamed = label !== data.label || sublabel !== (data.sublabel || undefined);
             // Unchanged (Esc or Enter straight away): nothing to write, so nothing re-renders or resets.
-            if (label !== data.label || sublabel !== (data.sublabel || undefined))
-              updateNodeData(id, { label, sublabel });
-            // The same tick: naming the node and its connection is one undo step.
-            const connection = next.connection.trim();
+            if (!renamed && !connection) return;
+            // A node just made: its name joins the undo step that made it (and its edge), in the same tick.
+            if (edit.merge) hint?.(edit.merge);
+            if (renamed) updateNodeData(id, { label, sublabel });
             if (edit.edge && connection) updateEdgeData(edit.edge, { label: connection });
           }}
         />

@@ -86,7 +86,7 @@ import { useHistory, type CanvasSnapshot } from "../editor/useHistory";
 import { useEditor } from "../editor/useEditor";
 import { inCanvas, useCanvasShortcuts } from "../editor/useCanvasShortcuts";
 import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
-import type { Selection, XYBox } from "../editor/types";
+import type { NewNode, Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { flushSync } from "react-dom";
 import { LiveView } from "../live/LiveView";
@@ -365,6 +365,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     zoomTo: (only, onlyEdges) => fitView_({ only, onlyEdges, maxZoom: 1.25, margin: 64, duration: 300 }),
     hovered: () => hovered.current,
     reveal: () => revealSelection(),
+    nameNew: (make, fallback) => nameNew.current(make, fallback),
   });
 
   /** Alt+arrow and Alt+Shift+arrow (set below, once the flows they open are defined). */
@@ -544,7 +545,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
    * take focus).
    */
   const pickNamed = useCallback(
-    (make: () => { id: string; edge: string | null } | null, fallback: string) => {
+    (make: () => NewNode | null, fallback: string) => {
       // Hold what's typed from now until the label editor can take it.
       const typing = captureTypeAhead();
       const made = make();
@@ -553,7 +554,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         const typed = typing.stop();
         if (typed.done === "escape") return;
         if (typed.done === "enter") {
-          if (typed.text !== null) editor.updateNode(made.id, { label: typed.text.trim() || fallback });
+          if (typed.text !== null)
+            editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
           return;
         }
         // In this same task: a key arriving before the editor had mounted would reach the canvas instead.
@@ -564,12 +566,19 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             field: "label",
             text: typed.text ?? undefined,
             edge: made.edge ?? undefined,
+            merge: made.merge,
           }),
         );
       }, 90);
     },
     [editor, revealSelection],
   );
+
+  /** For the editor's `nameNew` (menus and Ctrl+K: Insert node on an edge). */
+  const nameNew = useRef(pickNamed);
+  useLayoutEffect(() => {
+    nameNew.current = pickNamed;
+  });
 
   // ---------------------------------------------------------------- the next node (D3)
   // Alt+arrow and the "+" on a selected node: quick-add opens under an outline of where the node will land,
@@ -615,7 +624,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         testId: "quick-add",
         searchable: "Add a node…",
         items: quickAddMenu((s) => {
-          pickNamed(() => editor.addConnected(fromId, s.id, dir), s.label);
+          pickNamed(() => editor.createConnected({ from: fromId, stencil: s.id, toward: dir }), s.label);
           pushRecentStencil(s.id);
         }, getRecentStencils()),
       });
@@ -627,7 +636,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       if (readOnly || live || presenting) return;
       setMenu(null);
       hideTip();
-      pickNamed(() => editor.cloneConnected(fromId, toward), editor.getNode(fromId)?.label ?? "");
+      pickNamed(
+        () => editor.createConnected({ from: fromId, clone: true, toward }),
+        editor.getNode(fromId)?.label ?? "",
+      );
     },
     [readOnly, live, presenting, editor, hideTip, pickNamed],
   );
@@ -716,10 +728,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         testId: "quick-add",
         searchable: "Add a node…",
         items: quickAddMenu((s) => {
-          pickNamed(() => {
-            const id = editor.addNode(s.id, point);
-            return { id, edge: editor.connect(from, id) };
-          }, s.label);
+          pickNamed(() => editor.createConnected({ from, stencil: s.id, at: point }), s.label);
           pushRecentStencil(s.id);
         }, getRecentStencils()),
       });
@@ -1137,10 +1146,12 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     e.preventDefault();
     const after = editGestures ? dropNodeAt(e.clientX, e.clientY) : null;
     // Onto a node: after it, connected (as a rail click does with it selected).
-    if (after && editor.addConnected(after.id, id)) return revealSelection();
-    const made = editor.addNode(id, screenToFlowPosition({ x: e.clientX, y: e.clientY }));
-    // Held over an edge: in between. Anywhere else: where it was dropped, moved clear if it landed on something.
-    if (into && !(e.ctrlKey || e.metaKey) && editor.insertIntoEdge(into, made)) return;
+    if (after && editor.createConnected({ from: after.id, stencil: id })) return revealSelection();
+    const at = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    // Held over an edge: in between, where it was dropped.
+    if (into && !(e.ctrlKey || e.metaKey) && editor.insertNode(into, id, at)) return;
+    // Anywhere else: where it was dropped, moved clear if it landed on something.
+    const made = editor.addNode(id, at);
     requestAnimationFrame(() => editor.keepClear({ nodeIds: [made] }));
   };
 
@@ -1169,9 +1180,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       openEdgeMenu,
       settleText: readOnly ? undefined : settleText,
       grow: editGestures ? growFromChip : undefined,
+      hint: history.hint,
       reconnect: editGestures ? editor.reconnectEdge : undefined,
     }),
-    [direction, editing, openEdgeMenu, readOnly, settleText, editGestures, growFromChip, editor],
+    [direction, editing, openEdgeMenu, readOnly, settleText, editGestures, growFromChip, editor, history.hint],
   );
   // Read-only (embed) hides the same chrome as presenting, without the presentation sizing.
   const hideChrome = presenting || readOnly;

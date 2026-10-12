@@ -309,6 +309,20 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
   });
 
+  test("a name typed after the add was recorded still joins its undo step", async ({ page }) => {
+    await select(page, "hub");
+    await page.keyboard.press("Alt+ArrowRight");
+    await page.keyboard.type("redis cache");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    // Longer than the history's 350 ms settle: the add is its own entry by now.
+    await page.waitForTimeout(800);
+    await page.keyboard.type("Dedupe");
+    await page.keyboard.press("Enter");
+    await savedWhen(page, (s) => s.nodes.some((n) => n.label === "Dedupe"));
+    await undoUntil(page, (s) => s.nodes.length === 5 && s.edges.length === 1, 1);
+  });
+
   test("the + and Alt+arrow stay out of live view", async ({ page }) => {
     await select(page, "hub");
     await page.getByTestId("live-toggle").click();
@@ -354,7 +368,7 @@ test.describe("edges: reconnect and insert (D8)", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("an edge's end dropped on empty canvas snaps back; Esc cancels", async ({ page }) => {
+  test("an edge's end dropped on empty canvas snaps back", async ({ page }) => {
     await page.getByTestId("edge-label-api-db").click();
     const from = centre(await box(page.getByTestId("reconnect-api-db-source")));
     const wrap = await box(page.getByTestId("canvas-wrap"));
@@ -366,6 +380,81 @@ test.describe("edges: reconnect and insert (D8)", () => {
     await page.waitForTimeout(500);
     const d = await saved(page);
     expect(d?.edges[0] ?? SEED.edges[0]).toMatchObject({ from: "api", to: "db" });
+  });
+
+  test("Esc during a reconnect over a valid node cancels it: nothing changes, nothing to undo", async ({ page }) => {
+    await page.getByTestId("edge-label-api-db").click();
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    const from = centre(await box(page.getByTestId("reconnect-api-db-target")));
+    const to = centre(await box(page.getByTestId("node-billing")));
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x - 30, from.y - 30, { steps: 4 });
+    await page.mouse.move(to.x, to.y, { steps: 10 });
+    await expect(page.getByTestId("reconnect-line")).toBeVisible();
+    await expect(page.getByTestId("rf__node-billing")).toHaveClass(/is-connect-target/);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("reconnect-line")).toHaveCount(0);
+    await expect(page.getByTestId("rf__node-billing")).not.toHaveClass(/is-connect-target/);
+    // Released over Billing after Esc: still nothing.
+    await page.mouse.up();
+    await page.waitForTimeout(600);
+    expect((await saved(page))?.edges[0] ?? SEED.edges[0]).toMatchObject({ from: "api", to: "db" });
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+  });
+
+  test("keyboard: an edge's menu and Ctrl+K reconnect either end, keeping its meaning", async ({ page }) => {
+    // The edge's menu: Reconnect to, a searchable list of nodes.
+    await page.getByTestId("edge-label-api-db").click({ button: "right" });
+    await page.getByTestId("context-menu-item-edge.reconnect").click();
+    await page.getByTestId("context-menu-item-edge.reconnect:to").click();
+    await expect(page.getByTestId("context-menu-sub-sub-search")).toBeFocused();
+    await page.keyboard.type("bill");
+    await page.keyboard.press("Enter");
+    await savedWhen(page, (s) => s.edges[0]?.to === "billing");
+    // Ctrl+K with the edge selected: Reconnect from › Hub.
+    await page.getByTestId("edge-label-api-db").click();
+    await page.keyboard.press(`${MOD}+k`);
+    await page.keyboard.type("reconnect from hub");
+    await expect(page.getByTestId("command-item-action:reconnect-source:hub")).toBeVisible();
+    await page.keyboard.press("Enter");
+    const d = await savedWhen(page, (s) => s.edges[0]?.from === "hub");
+    expect(d.edges).toEqual([
+      { id: "api-db", from: "hub", to: "billing", kind: "sync", label: "writes", props: { dlq: true } },
+    ]);
+  });
+
+  test("keyboard: Insert node on an edge (menu or Ctrl+K) splits it and names the node; one undo takes it all", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.getByTestId("edge-label-api-db").click();
+    await page.keyboard.press(`${MOD}+k`);
+    await page.keyboard.type("insert node redis cache");
+    await expect(page.getByTestId("command-item-action:insert-node:redis.cache")).toBeVisible();
+    await page.keyboard.press("Enter");
+    const label = page.getByTestId("node-editor-label");
+    await expect(label).toBeFocused();
+    await expect(label).toHaveValue("Redis Cache");
+    // Named after the add has been recorded: still one step with it.
+    await page.waitForTimeout(700);
+    await page.keyboard.type("Read cache");
+    await page.keyboard.press("Enter");
+    const d = await savedWhen(page, (s) => s.edges.length === 2 && s.nodes.some((n) => n.label === "Read cache"));
+    const made = must(
+      d.nodes.find((n) => n.label === "Read cache"),
+      "the inserted node",
+    );
+    expect(d.edges).toEqual([
+      { id: "api-db", from: "api", to: made.id, kind: "sync", label: "writes", props: { dlq: true } },
+      { id: "e-1", from: made.id, to: "db", kind: "sync", props: { dlq: true } },
+    ]);
+    await expectNoNodeOverlaps(page);
+    await undoUntil(page, (s) => s.nodes.length === 5 && s.edges.length === 1 && s.edges[0].to === "db", 1);
+    // The edge's own menu offers it too.
+    await page.getByTestId("edge-label-api-db").click({ button: "right" });
+    await expect(page.getByTestId("context-menu-item-edge.insert-node")).toBeVisible();
+    expectNoErrors(consoleErrors);
   });
 
   test("a node held over an edge lights it up; dropped, it goes in between, keeping the edge's meaning", async ({
@@ -438,7 +527,6 @@ test.describe("edges: reconnect and insert (D8)", () => {
   });
 
   test("a connected node never splits an edge it's dropped on", async ({ page }) => {
-    const press = centre(await box(page.getByTestId("node-billing")));
     // Connect billing first, so it has an edge.
     await select(page, "billing");
     await page.keyboard.press("Alt+ArrowUp");
@@ -446,6 +534,10 @@ test.describe("edges: reconnect and insert (D8)", () => {
     await page.keyboard.press("Enter");
     await page.keyboard.press("Escape");
     await savedWhen(page, (s) => s.edges.length === 2);
+    // The new node was brought into view (a pan): measure after it settles.
+    await waitForStableViewport(page);
+    const before = await flowPos(page, "node-billing");
+    const press = centre(await box(page.getByTestId("node-billing")));
     const mid = await edgeMiddle(page, "api-db");
     await page.mouse.move(press.x, press.y);
     await page.mouse.down();
@@ -453,11 +545,18 @@ test.describe("edges: reconnect and insert (D8)", () => {
     await hold(page, mid);
     await expect(page.getByTestId("edge-api-db")).not.toHaveAttribute("data-insert", "1");
     await page.mouse.up();
-    await page.waitForTimeout(500);
-    expect(must(await saved(page), "the autosave").edges.find((e) => e.id === "api-db")).toMatchObject({
-      from: "api",
-      to: "db",
+    // It did move (onto the line), and the edges are as they were.
+    const d = await savedWhen(page, (s) => {
+      const b = s.nodes.find((n) => n.id === "billing");
+      return !!b && (b.x !== before.x || b.y !== before.y);
     });
+    expect(d.edges).toHaveLength(2);
+    expect(d.edges.find((e) => e.id === "api-db")).toMatchObject({ from: "api", to: "db" });
+    const billing = must(
+      d.nodes.find((n) => n.id === "billing"),
+      "billing",
+    );
+    expect(billing.y).toBeGreaterThan(before.y + 150);
   });
 });
 
@@ -680,7 +779,52 @@ test("gate: the right half of the Kafka example, keyboard only, in under 60 keys
   console.log(`Gate: ${keys.length} keys: ${log.join(" ")}`);
   expect(keys.length).toBeLessThan(60);
 
-  // The diagram it made: 7 nodes of the right stencils, 6 named edges, nothing overlapping.
+  // The diagram it made, edge by edge: the topic fans out to three services, each writing to its store.
+  const graph = await page.waitForFunction(() => {
+    for (let i = 0; i < localStorage.length; i++) {
+      const raw = localStorage.getItem(localStorage.key(i) ?? "") ?? "";
+      if (!raw.includes("orders.created.v1")) continue;
+      try {
+        type Graph = {
+          nodes?: { id: string; label: string; stencil: string }[];
+          edges?: { from: string; to: string; label?: string }[];
+        };
+        // A diagram of your own is kept as { …, diagram }.
+        const stored = JSON.parse(raw) as Graph & { diagram?: Graph };
+        const d = stored.diagram ?? stored;
+        if (d.nodes?.length === 7 && d.edges?.length === 6 && d.edges.every((e) => e.label)) return d;
+      } catch {
+        // Not a diagram.
+      }
+    }
+    return null;
+  });
+  const built = (await graph.jsonValue()) as {
+    nodes: { id: string; label: string; stencil: string }[];
+    edges: { from: string; to: string; label?: string }[];
+  };
+  const labelOf = (id: string) => built.nodes.find((n) => n.id === id)?.label;
+  expect(built.edges.map((e) => [labelOf(e.from), labelOf(e.to), e.label]).sort()).toEqual(
+    [
+      ["Inventory service", "Inventory database", "Reserve SKUs"],
+      ["orders.created.v1", "Inventory service", "Reserve inventory"],
+      ["orders.created.v1", "Payments service", "Authorize payment"],
+      ["Payments service", "Payment ledger", "Record authorization"],
+      ["orders.created.v1", "Notification service", "Send confirmation"],
+      ["Notification service", "Notification dedupe", "SET NX · dedupe"],
+    ].sort(),
+  );
+  expect(Object.fromEntries(built.nodes.map((n) => [n.label, n.stencil]))).toEqual({
+    "Inventory database": "postgres",
+    "Inventory service": "service.java",
+    "orders.created.v1": "kafka.topic",
+    "Payments service": "service.go",
+    "Payment ledger": "postgres",
+    "Notification service": "service.node",
+    "Notification dedupe": "redis.cache",
+  });
+
+  // On the canvas: 7 nodes of the right stencils, 6 named edges, nothing overlapping.
   await expect(page.getByTestId(NODES)).toHaveCount(7);
   for (const [id, label] of [
     ["postgres-1", "Inventory database"],

@@ -88,11 +88,13 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   leaves room for the connection's label. A rail click or Ctrl+K "Add …" with one node selected adds after it
   the same way (the rail's footer says "A click adds after Order service"), without opening the name.
 - **Reconnect**: a selected edge shows a round end at each side; drag one onto another node to move that end
-  there. The edge keeps its label, relationship and settings; dropped anywhere else (or Esc) it snaps back.
+  there. The edge keeps its label, relationship and settings; dropped anywhere else (or Esc) it snaps back. From
+  the keyboard: the edge's right-click and Ctrl+K, **Reconnect ▸ From / To**, with a node search.
 - **Insert**: hold a node with no edges of its own (or a stencil from the rail) over an edge for a moment, and
   the edge lights up; drop it there and it goes in between (A→B becomes A→N→B, both keeping the edge's
   meaning, the label on the first). Passing over an edge, or dropping with Ctrl/⌘ held, never splits it. A
-  stencil dropped on a node goes after it, connected.
+  stencil dropped on a node goes after it, connected. From the keyboard: the edge's right-click and Ctrl+K,
+  **Insert node ▸** (a stencil search); the new node's name opens. A new node and its name are one undo step.
 - The **selection box** is a drag on empty canvas while editing. It picks what it touches (hold Ctrl/⌘:
   only what's wholly inside), boundaries and zones only when wholly inside, and the edges whose both ends it
   picked. **Shift+click** and Ctrl/⌘+click add to or take out of the selection. The inspector waits for the
