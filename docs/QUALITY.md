@@ -95,6 +95,23 @@ retries (2), three workers and `E2E_TARGET=build`, longer Vitest timeouts, and s
 (`src/test/perfBudget.ts`). Retries keep a flaky test from blocking a merge, but the job summary lists
 every test that needed one: treat those as bugs.
 
+### Nightly
+
+`.github/workflows/nightly.yml` runs every night (04:23 UTC) and on demand (Actions › Nightly › Run
+workflow). It covers what pull requests skip for speed, with no retries:
+
+- **Dev server 1/4 … 4/4:** the whole suite with `E2E_TARGET=dev`: the `chromium` and `dev` projects on
+  the Vite dev server, and `subpath` on the production build.
+- **Build ×3 1/6 … 6/6:** the production-build suite, as on pull requests, with `--repeat-each=3`. A test
+  that fails once in three runs is a flake.
+
+When any of them fails, **Report failure** opens an issue labelled `nightly-failure` (creating the label
+if needed), or, when one is already open, replaces its body and comments on it. The body lists each failed
+test with how many of its runs failed and the first error line (`scripts/e2e-failures.mjs`), and links the
+run. It uses the workflow's `GITHUB_TOKEN` with `issues: write` in that job only (`contents: read`
+elsewhere). Close the issue once the cause is fixed. Each job uploads its JSON report
+(`nightly-results-<suite>-<n>`), and its HTML report and traces when it fails.
+
 ## Accessibility
 
 `tests/e2e/a11y.spec.ts` runs axe-core (WCAG 2.0/2.1 A and AA) on every main view and overlay, in both
