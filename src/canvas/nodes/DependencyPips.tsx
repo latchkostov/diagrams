@@ -1,7 +1,7 @@
 import { memo, useCallback, type CSSProperties } from "react";
 import { useStore, type ReactFlowState } from "@xyflow/react";
 import { Icon } from "../../components/Icon";
-import { useTooltip } from "../../components/useTooltip";
+import { useKeyboardFocusOn, useTooltip } from "../../components/useTooltip";
 import { RELATION_META, type DependencyRelation } from "../../model/relations";
 import { pipsByNode } from "./dependencyRows";
 import { relationIcon } from "../../editor/relationActions";
@@ -28,7 +28,9 @@ function DependencyPipsImpl({ id }: { id: string }) {
       [rows],
     ),
   );
-  const tooltip = useTooltip();
+  // Not a Tab stop of its own (the canvas is one): the list opens when the node is reached from the keyboard.
+  const nodeFocused = useKeyboardFocusOn(rows.length ? `.react-flow__node[data-id="${CSS.escape(id)}"]` : null);
+  const tooltip = useTooltip(nodeFocused);
   if (!rows.length) return null;
   const labels = JSON.parse(encodedLabels) as string[];
   const kinds = [...new Set(rows.map((r) => r.relation))];
@@ -38,6 +40,7 @@ function DependencyPipsImpl({ id }: { id: string }) {
       <button
         type="button"
         className="dn-pips nodrag nopan"
+        tabIndex={-1}
         {...tooltip.trigger}
         aria-label="Show dependencies"
         aria-describedby={tooltip.open ? `node-dependencies-${id}` : undefined}

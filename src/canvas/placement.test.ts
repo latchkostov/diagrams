@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { perfBudget } from "../test/perfBudget";
 import {
   boundsOf,
   clearOffset,
   COPY_MARGIN,
+  findClearTranslation,
   findFree,
   isClear,
   isDownstream,
@@ -201,5 +203,40 @@ describe("a failed search is never a silent overlap", () => {
       for (let j = -12; j <= 12; j++) if (i || j) crowd.push(box(i * 230, j * 130, 200, 100));
     const d = placeCopy(original, crowd);
     expect(isClear({ ...original, x: d.x, y: d.y }, crowd)).toBe(true);
+  });
+});
+
+describe("findClearTranslation (the one free-place search)", () => {
+  it("moves a group of boxes together, nearest first, clear of everything by the margin", () => {
+    const boxes = [box(0, 0), box(300, 0)];
+    const d = findClearTranslation(boxes, [box(300, 0)], { margin: COPY_MARGIN });
+    expect(d).not.toBeNull();
+    for (const b of boxes)
+      expect(isClear({ ...b, x: b.x + d!.x, y: b.y + d!.y }, [box(300, 0)], COPY_MARGIN)).toBe(true);
+  });
+
+  it("says null when the search runs out, never an overlapping move", () => {
+    expect(findClearTranslation([box(0, 0)], [box(-5000, -5000, 10000, 10000)], { maxRings: 40 })).toBeNull();
+  });
+
+  it("stops at its budget instead of blocking the page", () => {
+    // Every box clashes with a field of small obstacles: the work, not the search's reach, ends it.
+    const boxes = Array.from({ length: 300 }, (_, i) => box((i % 30) * 240, Math.floor(i / 30) * 90));
+    const field = Array.from({ length: 3000 }, (_, i) =>
+      box((i % 60) * 120 - 200, Math.floor(i / 60) * 30 - 200, 100, 20),
+    );
+    const t = performance.now();
+    findClearTranslation(boxes, field, { budget: { tests: 50_000, accepts: 10 } });
+    expect(performance.now() - t).toBeLessThan(perfBudget(100));
+  });
+
+  it("indexes obstacles once: hundreds of boxes against thousands of far obstacles stay fast", () => {
+    const boxes = Array.from({ length: 200 }, (_, i) => box((i % 20) * 300, Math.floor(i / 20) * 200));
+    const far = Array.from({ length: 5000 }, (_, i) => box(50_000 + (i % 100) * 300, (i / 100) * 200));
+    const blocker = box(-100, -100, 7000, 400);
+    const t = performance.now();
+    const d = findClearTranslation(boxes, [...far, blocker]);
+    expect(performance.now() - t).toBeLessThan(perfBudget(100));
+    expect(d).not.toBeNull();
   });
 });

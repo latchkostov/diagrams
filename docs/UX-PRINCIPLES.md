@@ -41,6 +41,15 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - **Live** is the mode where messages flow (toggle, L). A **simulation** is a saved, scripted run you
   replay in it. "Free play" is live without one.
 - **Boundary** (never "group") for the box around nodes: Add boundary, Remove boundary, Colour.
+  - **Membership**: a node belongs to the boundary around its centre (the inner one, when one sits in another).
+    While you drag, the boundary that will hold it on drop shows its outline in its tone, and one it would leave
+    shows dashed. Leaving is never silent: a toast says so, with Undo ("Payments service left AKS").
+  - A member dropped so it pokes out **grows** its boundary to hold it, with the usual padding, in the drop's
+    undo step; so does a node added inside one (quick-add, Alt+arrow, the rail, a paste). It never grows onto
+    another boundary or a node that isn't its own: then it shows dashed and stays as it is. Boundaries never
+    shrink by themselves; **Fit to contents** (right-click and the inspector) does.
+  - **Resizing** a boundary takes in the nodes now inside it and lets go of those outside, and says so ("Added 2
+    nodes to Payments", with Undo).
 - **Annotations** document a diagram and never take part in the simulation. Four kinds, one word each:
   - **Text**: plain words on the canvas (titles, captions), no chrome. `T` adds text at the pointer.
   - **Note**: a tinted sticky note.
@@ -99,6 +108,31 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   only what's wholly inside), boundaries and zones only when wholly inside, and the edges whose both ends it
   picked. **Shift+click** and Ctrl/⌘+click add to or take out of the selection. The inspector waits for the
   pointer-up, so nothing moves under a drag.
+- **Bulk edit**: with several things selected the inspector shows **Arrange** first (Align; Distribute and **Tidy
+  up** at three or more), then a small section per kind present, headed by its count ("3 nodes", "2 edges"):
+  nodes' **Stencil**, **Boundary** and the **Simulation** settings their roles share; edges' **Relationship** and
+  **Label**; annotations' and boundaries' **Colour**. Where the values differ the field says **Mixed** and is
+  empty; setting it sets all of them, as one undo step. A mixed selection fits one screen at 1280×800.
+- **Select similar** (a node's or an edge's right-click, Ctrl+K): every node of the same stencil, or every edge of
+  the same relationship (Message, Request, or that one dependency). Then bulk edit them.
+- **Tidy up** (the selection's right-click, the inspector's Arrange, Ctrl+K; three or more nodes): the layered
+  layout on just those nodes and the edges between them, inside their box where it fits, its top-left kept.
+  Nothing else moves, and if the result would cover anything the tidied nodes move together to the nearest free
+  place. Members stay in their boundaries, which grow to hold them. When no place within reach is clear (or
+  a boundary can't grow to hold its members), nothing moves and a toast says "Couldn't find room. Nothing
+  moved." **Align** and **Distribute** never stack
+  things either: what would land on another steps along the line. **Auto-layout** (the canvas right-click) is
+  the whole diagram.
+- **Moving between nodes** from the keyboard: the canvas is one Tab stop. Inside it **Tab** and **Shift+Tab** step
+  through nodes in reading order (rows from the top, each left to right; in a top-to-bottom diagram, columns),
+  meeting each boundary just before its first member; past the last one Tab leaves the canvas. **Ctrl+Alt+arrows**
+  (⌃⌥ on a Mac) go to the nearest node that way, and **Ctrl+Alt+]** and **[** to the node's outgoing and incoming
+  edges (again: the next one). Selection and focus move together, the view follows, and a screen reader hears
+  the node, its boundary, its place in the order and its edges ("Payments service, Go Service, processor, in AKS.
+  6 of 16. 2 out, 1 in."). Controls on a node or an edge (a node's dependency pips, an edge's settings) aren't Tab
+  stops of their own: their list opens when the node or edge is reached from the keyboard, and the announcement
+  reads it. A diagram of boundaries only starts at its first boundary. The arrow keys still nudge and Alt+arrow
+  still adds the next node.
 - **Pan** and **zoom**: the wheel and a two-finger swipe pan (Shift+wheel sideways); Ctrl/⌘+wheel and a pinch
   zoom at the pointer; Space+drag and the middle button pan from anywhere, even a node. Live view,
   presentation and embeds keep drag-to-pan, and an embed lets the wheel scroll its page. The keys: **Fit
@@ -227,23 +261,25 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 The shortcuts sheet's Mouse rows (`src/components/ShortcutsDialog.tsx`) say these in short; keep the two
 in step:
 
-| Gesture                    | Does                                                                      |
-| -------------------------- | ------------------------------------------------------------------------- |
-| Right-click                | Context menu for the canvas, a node, an edge or a boundary                |
-| Double-click canvas        | Quick-add a stencil at the cursor                                         |
-| Double-click node / edge   | Rename / edit label                                                       |
-| Drag on the canvas         | Selection box (Ctrl/⌘: only what's inside). Live, presenting, embeds: pan |
-| Shift / Ctrl / ⌘ + click   | Add to or take out of the selection                                       |
-| Scroll, two-finger swipe   | Pan (Shift + scroll: sideways). In an embed the wheel scrolls the page    |
-| Ctrl / ⌘ + scroll, pinch   | Zoom at the pointer                                                       |
-| Space + drag, middle-drag  | Pan, even starting on a node                                              |
-| Drag from a handle         | Connect: drop on a node (anywhere on it), or on empty canvas to add one   |
-| Click a selected node's +  | Quick-add the next node there, connected (drag it: connect)               |
-| Drag a selected edge's end | Move that end onto another node; anywhere else it snaps back              |
-| Hold a node on an edge     | Lights the edge up; drop to insert the node in between (Ctrl/⌘: don't)    |
-| Drag a node                | Lines up with nearby edges, centres and equal gaps, else the grid         |
-| Ctrl / ⌘ while dragging    | Move freely: no guides, no grid                                           |
-| Alt + drag                 | Duplicate what you drag                                                   |
+| Gesture                              | Does                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| Right-click                          | Context menu for the canvas, a node, an edge or a boundary                |
+| Double-click canvas                  | Quick-add a stencil at the cursor                                         |
+| Double-click node / edge             | Rename / edit label                                                       |
+| Drag on the canvas                   | Selection box (Ctrl/⌘: only what's inside). Live, presenting, embeds: pan |
+| Shift / Ctrl / ⌘ + click             | Add to or take out of the selection                                       |
+| Scroll, two-finger swipe             | Pan (Shift + scroll: sideways). In an embed the wheel scrolls the page    |
+| Ctrl / ⌘ + scroll, pinch             | Zoom at the pointer                                                       |
+| Space + drag, middle-drag            | Pan, even starting on a node                                              |
+| Drag from a handle                   | Connect: drop on a node (anywhere on it), or on empty canvas to add one   |
+| Click a selected node's +            | Quick-add the next node there, connected (drag it: connect)               |
+| Drag a selected edge's end           | Move that end onto another node; anywhere else it snaps back              |
+| Hold a node on an edge               | Lights the edge up; drop to insert the node in between (Ctrl/⌘: don't)    |
+| Drag a node                          | Lines up with nearby edges, centres and equal gaps, else the grid         |
+| Ctrl / ⌘ while dragging              | Move freely: no guides, no grid                                           |
+| Alt + drag                           | Duplicate what you drag                                                   |
+| Drag a node across a boundary's edge | Joins it (its outline lights up) or leaves it (dashed)                    |
+| Drag a boundary's corner             | Resize; it takes in the nodes now inside it and lets go of the rest       |
 
 ## Process
 

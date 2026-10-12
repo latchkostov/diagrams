@@ -1,4 +1,5 @@
-import { isDependency } from "../model/relations";
+import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
+import { pipsByNode } from "./nodes/dependencyRows";
 import { dependencyVisibility, projectDependencies, useShowDependencies } from "./dependencyVisibility";
 import { edgeMarks } from "./edgeMarks";
 import {
@@ -62,7 +63,19 @@ import {
 import { privacyOf } from "../lib/localOnly";
 import { PRIVACY_REQUEST, usePrivacyFlags } from "../lib/usePrivacy";
 import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
-import { fromFlow, groupAt, toFlow, withEdgeAria, withEditingOnTop, withNodeAria, type DiagramMeta } from "./convert";
+import {
+  edgeAriaLabel,
+  fromFlow,
+  nodeAriaLabel,
+  toFlow,
+  withEdgeAria,
+  withEditingOnTop,
+  withNodeAria,
+  withRovingFocus,
+  type DiagramMeta,
+} from "./convert";
+import { previewMembership, type GroupRect, type MemberBox } from "./membership";
+import { nearestInDirection, readingOrder, stepInOrder, tabOrder, type NavBox } from "./keyboardNav";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
 import { overlayRects, useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
 import { panClearOf, panIntoView } from "./geometry/fit";
@@ -71,6 +84,7 @@ import { canvasNodeTypes } from "./nodes/nodeTypes";
 import {
   ANNOTATION_COLORS,
   ANNOTATION_DND_MIME,
+  annotationAriaLabel,
   annotationColor,
   annotationTitle,
   parseAnnotationDrag,
@@ -87,7 +101,7 @@ import { builtinActions, quickAddMenu } from "../editor/builtinActions";
 import { useEditorPrefs } from "../editor/prefs";
 import { useHistory, type CanvasSnapshot } from "../editor/useHistory";
 import { useEditor } from "../editor/useEditor";
-import { inCanvas, useCanvasShortcuts } from "../editor/useCanvasShortcuts";
+import { inCanvas, useCanvasShortcuts, type NavStep } from "../editor/useCanvasShortcuts";
 import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
 import type { NewNode, Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
@@ -389,11 +403,14 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
 
   /** Alt+arrow and Alt+Shift+arrow (set below, once the flows they open are defined). */
   const grow = useRef<(from: string, toward: Toward, clone: boolean) => void>(() => {});
+  /** Tab, Shift+Tab, Ctrl+Alt+arrows and Ctrl+Alt+] / [ (set below). */
+  const navigate = useRef<(step: NavStep, from: EventTarget | null) => boolean>(() => false);
   useCanvasShortcuts(editor, {
     enabled: !shortcutsOpen && !readOnly,
     onEscape: () => setMenu(null),
     live,
     onGrow: (from, toward, clone) => grow.current(from, toward, clone),
+    onNavigate: (step, from) => navigate.current(step, from),
   });
   // The command palette (Ctrl/Cmd+K) acts on this canvas while it's mounted and editable.
   const hostRevision = useMemo(() => ({ nodes, edges, meta }), [nodes, edges, meta]);
@@ -929,6 +946,116 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     [insertHover],
   );
   useEffect(() => () => insertWatch.current?.stop(), []);
+  /**
+   * Boundaries that keep up (D12): while nodes are dragged, the boundary that will hold them on drop shows its
+   * outline in its tone (`data-membership` "join" or "hold"), and one they'd leave shows dashed ("leave"), as
+   * does one that can't grow to hold a member poking out ("blocked"). The node's centre decides. Painted on
+   * the boundaries' elements once a frame, so a drag re-renders nothing.
+   */
+  const membershipWatch = useRef<{ stop: () => void } | null>(null);
+  /**
+   * The dragged nodes whose membership a drop decides (their copies' ids, for an Alt-drag): all of them but the
+   * members of a boundary dragged with them, which it carries.
+   */
+  const droppedNodes = useCallback((dragged: FlowNode[], copies: Map<string, string> | null) => {
+    const carriers = new Set(dragged.filter(isGroupNode).map((g) => g.data.groupId));
+    const carried = (n: DiagramFlowNode) => {
+      // An Alt-drag's copy belongs to the copy of its boundary, the original's to the original.
+      const g = n.data.group;
+      return !!g && carriers.has(g);
+    };
+    return dragged
+      .filter((n): n is DiagramFlowNode => isDiagramNode(n) && !carried(n))
+      .map((n) => copies?.get(n.id) ?? n.id);
+  }, []);
+  const watchMembership = useCallback(
+    (dragged: FlowNode[], copies: Map<string, string> | null) => {
+      const s = store.getState();
+      const ids = droppedNodes(dragged, copies);
+      const groupsOf = (ns: readonly FlowNode[]): GroupRect[] =>
+        ns.filter(isGroupNode).map((g) => ({
+          id: g.data.groupId,
+          x: g.position.x,
+          y: g.position.y,
+          width: g.width ?? g.measured?.width ?? 0,
+          height: g.height ?? g.measured?.height ?? 0,
+        }));
+      const sizeOf = (n: FlowNode) => ({
+        width: n.measured?.width ?? n.width ?? 0,
+        height: n.measured?.height ?? n.height ?? 0,
+      });
+      const moving = new Set([...ids, ...dragged.map((n) => n.id)]);
+      const othersOf = (ns: readonly FlowNode[]): MemberBox[] =>
+        ns
+          .filter((n): n is DiagramFlowNode => isDiagramNode(n) && !moving.has(n.id))
+          .map((n) => ({ id: n.id, ...n.position, ...sizeOf(n), group: n.data.group }));
+      // Boundaries dragged along (with their members) move under the nodes: read them each frame then. Otherwise
+      // the rest holds still, so it's read once.
+      const live = dragged.some(isGroupNode);
+      let groups = groupsOf(s.nodes);
+      let others = othersOf(s.nodes);
+      if (!ids.length || !groups.length) return;
+      const marked = new Map<string, Element>();
+      let frame = 0;
+      const paint = () => {
+        frame = 0;
+        const st = store.getState();
+        if (live) {
+          groups = groupsOf(st.nodes);
+          others = othersOf(st.nodes);
+        }
+        const now: MemberBox[] = [];
+        for (const id of ids) {
+          const n = st.nodeLookup.get(id);
+          const u = n?.internals.userNode;
+          if (!n || !u || !isDiagramNode(u)) continue;
+          now.push({ id, ...n.internals.positionAbsolute, ...sizeOf(u), group: u.data.group });
+        }
+        const preview = previewMembership(now, groups, others);
+        for (const [id, el] of marked)
+          if (!preview.has(id)) {
+            el.removeAttribute("data-membership");
+            marked.delete(id);
+          }
+        for (const [id, m] of preview) {
+          const el =
+            marked.get(id) ?? wrapper.current?.querySelector(`[data-testid="group-${CSS.escape(id)}"]`) ?? null;
+          if (!el) continue;
+          marked.set(id, el);
+          if (el.getAttribute("data-membership") !== m) el.setAttribute("data-membership", m);
+        }
+      };
+      const onMove = () => {
+        if (!frame) frame = requestAnimationFrame(paint);
+      };
+      document.addEventListener("pointermove", onMove, true);
+      membershipWatch.current = {
+        stop: () => {
+          document.removeEventListener("pointermove", onMove, true);
+          cancelAnimationFrame(frame);
+          for (const el of marked.values()) el.removeAttribute("data-membership");
+        },
+      };
+    },
+    [store, droppedNodes],
+  );
+  useEffect(() => () => membershipWatch.current?.stop(), []);
+  /** Members dropped outside their boundary left it: say so, with Undo (D12: leaving is never silent). */
+  const sayLeft = useCallback(
+    (left: Map<string, string[]>) => {
+      const [first] = left;
+      if (!first) return;
+      const [groupId, ids] = first;
+      const count = [...left.values()].reduce((n, l) => n + l.length, 0);
+      const group = editor.getGroup(groupId)?.label || "its boundary";
+      const one = count === 1 ? editor.getNode(ids[0])?.label || ids[0] : null;
+      const where = left.size > 1 ? "their boundaries" : group;
+      notify(one ? `${one} left ${where}` : `${count} nodes left ${where}`, {
+        action: { label: "Undo", run: editor.undo, testId: "membership-undo" },
+      });
+    },
+    [editor],
+  );
   const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
     (e, _node, dragged) => {
       if (dragActive.current) return;
@@ -949,8 +1076,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         if (made.size) altCopies.current = made;
       }
       guides.start(e, dragged, altCopies.current);
+      if (editGestures) watchMembership(dragged, altCopies.current);
     },
-    [hideTip, editGestures, editor, guides, store, watchInsert],
+    [hideTip, editGestures, editor, guides, store, watchInsert, watchMembership],
   );
   const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
     (e, _node, dragged) => {
@@ -962,31 +1090,29 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       const into = watch?.hover.lit();
       watch?.stop();
       if (watch && into && !(e.ctrlKey || e.metaKey)) editor.insertIntoEdge(into, watch.node);
+      membershipWatch.current?.stop();
+      membershipWatch.current = null;
       const copies = altCopies.current;
       altCopies.current = null;
-      const ids = new Set(dragged.filter((n) => n.type === "diagram").map((n) => copies?.get(n.id) ?? n.id));
-      if (ids.size)
-        setNodes((ns) =>
-          ns.map((n) => {
-            if (!ids.has(n.id) || n.type !== "diagram") return n;
-            const w = n.measured?.width ?? 0;
-            const h = n.measured?.height ?? 0;
-            const group = groupAt(ns, n.position.x + w / 2, n.position.y + h / 2);
-            return group === n.data.group ? n : { ...n, data: { ...n.data, group } };
-          }),
-        );
-      if (!copies) return;
-      // A copy dropped onto something moves to the nearest free place (nothing overlaps by default),
-      // once the drop has rendered.
-      const made = [...copies.values()];
-      requestAnimationFrame(() =>
-        editor.keepClear({
-          nodeIds: made.filter((id) => !id.startsWith(GROUP_PREFIX)),
-          groupIds: made.filter((id) => id.startsWith(GROUP_PREFIX)).map((id) => id.slice(GROUP_PREFIX.length)),
-        }),
-      );
+      // Members a dragged boundary carries stay in it; every other dropped node settles where it landed.
+      const ids = droppedNodes(dragged, copies);
+      // Once the drop has rendered: a copy dropped onto something moves to the nearest free place (nothing
+      // overlaps by default), then the dropped nodes settle into the boundaries around them, which grow to hold
+      // a member poking out (D12), in the drop's undo step. A member that left its boundary says so.
+      requestAnimationFrame(() => {
+        if (copies) {
+          const made = [...copies.values()];
+          editor.keepClear({
+            nodeIds: made.filter((id) => !id.startsWith(GROUP_PREFIX)),
+            groupIds: made.filter((id) => id.startsWith(GROUP_PREFIX)).map((id) => id.slice(GROUP_PREFIX.length)),
+          });
+        }
+        if (!ids.length) return;
+        const left = editor.settleMembership(ids);
+        if (!copies && editGestures) sayLeft(left);
+      });
     },
-    [setNodes, editor, guides],
+    [editor, guides, editGestures, sayLeft, droppedNodes],
   );
 
   // ---------------------------------------------------------------- Space, Alt and the middle button (D4, D9)
@@ -1200,6 +1326,24 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     },
     [editor],
   );
+  /** A boundary resized by hand adopts the nodes now inside it and releases those outside (D12), and says so. */
+  const boundaryResized = useCallback(
+    (groupId: string) =>
+      // Once the resize's last size has landed.
+      requestAnimationFrame(() => {
+        const { adopted, released } = editor.adoptAfterResize(groupId);
+        if (!adopted.length && !released.length) return;
+        const name = editor.getGroup(groupId)?.label || "the boundary";
+        const n = (k: number) => (k === 1 ? "1 node" : `${k} nodes`);
+        const text = !released.length
+          ? `Added ${n(adopted.length)} to ${name}`
+          : !adopted.length
+            ? `Took ${n(released.length)} out of ${name}`
+            : `Added ${n(adopted.length)} to ${name} and took ${released.length} out`;
+        notify(text, { action: { label: "Undo", run: editor.undo, testId: "membership-undo" } });
+      }),
+    [editor],
+  );
   const ui = useMemo<DiagramUi>(
     () => ({
       direction,
@@ -1210,8 +1354,20 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       grow: editGestures ? growFromChip : undefined,
       hint: history.hint,
       reconnect: editGestures ? editor.reconnectEdge : undefined,
+      boundaryResized: editGestures ? boundaryResized : undefined,
     }),
-    [direction, editing, openEdgeMenu, readOnly, settleText, editGestures, growFromChip, editor, history.hint],
+    [
+      direction,
+      editing,
+      openEdgeMenu,
+      readOnly,
+      settleText,
+      editGestures,
+      growFromChip,
+      editor,
+      history.hint,
+      boundaryResized,
+    ],
   );
   // Read-only (embed) hides the same chrome as presenting, without the presentation sizing.
   const hideChrome = presenting || readOnly;
@@ -1357,9 +1513,187 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       ]),
     [diagramNodes, annotationNodes],
   );
+  // ---------------------------------------------------------------- keyboard selection between nodes (D14)
+  // The canvas is one Tab stop: the node last focused (else the first in reading order) is the one in the page's
+  // Tab order. Inside, Tab and Shift+Tab step through nodes in reading order, Ctrl+Alt+arrows go to the nearest
+  // node that way, and Ctrl+Alt+] / [ to a node's outgoing and incoming edges. Selection and focus move
+  // together, the view follows, and a polite live region names what's selected.
+  const [focusId, setFocusId] = useState<string | undefined>();
+  useEffect(() => {
+    const wrap = wrapper.current;
+    if (!wrap) return;
+    const onFocus = (e: FocusEvent) => {
+      const id = e.target instanceof Element ? e.target.closest(".react-flow__node")?.getAttribute("data-id") : null;
+      if (id) setFocusId(id);
+    };
+    wrap.addEventListener("focusin", onFocus);
+    return () => wrap.removeEventListener("focusin", onFocus);
+  }, []);
+  const { width: nominalW, height: nominalH } = getNodeVariant(nodeVariant).size;
+  const navBox = useCallback(
+    (n: FlowNode): NavBox => ({
+      id: n.id,
+      x: n.position.x,
+      y: n.position.y,
+      width: n.measured?.width ?? n.width ?? nominalW,
+      height: n.measured?.height ?? n.height ?? nominalH,
+    }),
+    [nominalW, nominalH],
+  );
+  /** Tab's order: reading order, each boundary just before its first member, an empty one where it reads. */
+  const navOrder = useCallback(
+    (ns: readonly FlowNode[]) =>
+      tabOrder(
+        ns.filter((n) => !isGroupNode(n)).map(navBox),
+        ns.filter(isGroupNode).map((g) => ({
+          ...navBox(g),
+          members: ns.filter((m) => isDiagramNode(m) && m.data.group === g.data.groupId).map((m) => m.id),
+        })),
+        direction,
+      ),
+    [navBox, direction],
+  );
+  const rovingId = useMemo(() => {
+    if (readOnly) return undefined;
+    if (focusId && nodes.some((n) => n.id === focusId && !n.hidden)) return focusId;
+    // The first thing Tab would meet, a boundary included: a diagram of boundaries only is still reachable.
+    return navOrder(nodes.filter((n) => !n.hidden))[0];
+  }, [readOnly, focusId, nodes, navOrder]);
   // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel), and a
   // card being edited inline draws above everything else (its editor hangs below the card).
-  const ariaNodes = useMemo(() => withEditingOnTop(withNodeAria(nodes), editing), [nodes, editing]);
+  // Only one node is in the page's Tab order (see above).
+  const ariaNodes = useMemo(
+    () =>
+      readOnly
+        ? withEditingOnTop(withNodeAria(nodes), editing)
+        : withRovingFocus(withEditingOnTop(withNodeAria(nodes), editing), rovingId),
+    [nodes, editing, readOnly, rovingId],
+  );
+  /** What the live region says (seq: the same words again are read again). */
+  const [announcement, setAnnouncement] = useState({ text: "", seq: 0 });
+  const announce = useCallback((text: string) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })), []);
+  useLayoutEffect(() => {
+    navigate.current = (step, from) => {
+      const ns = getNodes().filter((n) => !n.hidden);
+      const es = store.getState().edges.filter((e) => !e.hidden);
+      const el = from instanceof Element ? from : null;
+      const focusedNode = el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined;
+      const focusedEdge = el?.closest(".react-flow__edge")?.getAttribute("data-id") ?? undefined;
+      const sel = editor.getSelection();
+      const selectedFlowIds = [...sel.nodeIds, ...sel.groupIds.map((g) => GROUP_PREFIX + g)];
+      const current = focusedNode ?? (!focusedEdge && selectedFlowIds.length === 1 ? selectedFlowIds[0] : undefined);
+      const labelOf = (id: string) => {
+        const n = ns.find((x) => x.id === id);
+        if (!n) return id;
+        if (isDiagramNode(n)) return n.data.label || n.id;
+        if (isAnnotationNode(n)) return annotationTitle(n.data);
+        return (n as GroupFlowNode).data.label || "Untitled boundary";
+      };
+      const order = navOrder(ns);
+
+      const goNode = (id: string) => {
+        const n = ns.find((x) => x.id === id);
+        if (!n) return false;
+        if (isGroupNode(n)) editor.select({ groupIds: [n.data.groupId] });
+        else editor.select({ nodeIds: [id] });
+        setFocusId(id);
+        requestAnimationFrame(() =>
+          wrapper.current
+            ?.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
+            ?.focus({ preventScroll: true }),
+        );
+        revealSelection();
+        const at = `${order.indexOf(id) + 1} of ${order.length}`;
+        if (isDiagramNode(n)) {
+          const outs = es.filter((e) => e.source === id).length;
+          const ins = es.filter((e) => e.target === id).length;
+          const inGroup = n.data.group ? editor.getGroup(n.data.group)?.label : undefined;
+          const edges = outs + ins ? `${outs} out, ${ins} in` : "no connections";
+          // Hidden dependencies show as pips, whose list opens on the focused node: say it too.
+          const pips = dependencyVisibility.get() ? [] : (pipsByNode(store.getState().edges).get(id) ?? []);
+          const deps = pips.length
+            ? ` Dependencies: ${pips.map((r) => `${RELATION_META[r.relation].label} · ${labelOf(r.target)}`).join(", ")}.`
+            : "";
+          announce(`${nodeAriaLabel(n.data)}${inGroup ? `, in ${inGroup}` : ""}. ${at}. ${edges}.${deps}`);
+        } else if (isAnnotationNode(n)) announce(`${annotationAriaLabel(n.data)}. ${at}.`);
+        else {
+          const members = ns.filter((m) => isDiagramNode(m) && m.data.group === (n as GroupFlowNode).data.groupId);
+          announce(`${labelOf(id)}, boundary, ${members.length === 1 ? "1 node" : `${members.length} nodes`}. ${at}.`);
+        }
+        return true;
+      };
+
+      if (step === "next" || step === "prev") {
+        // From an edge, the order goes on from its source.
+        const start = current ?? (focusedEdge ? es.find((e) => e.id === focusedEdge)?.source : undefined);
+        if (!start && el?.matches('[data-testid="canvas-wrap"]') === false) return false;
+        const next = start ? stepInOrder(order, start, step === "prev") : (rovingId ?? order[0]);
+        return next ? goNode(next) : false;
+      }
+
+      if (step === "edge-out" || step === "edge-in") {
+        // From a node: its first outgoing (or incoming) edge; again from that edge: the node's next one.
+        const edge = focusedEdge ? es.find((e) => e.id === focusedEdge) : undefined;
+        const out = step === "edge-out";
+        const anchor = edge ? (out ? edge.source : edge.target) : current;
+        if (!anchor || anchor.startsWith(GROUP_PREFIX)) return false;
+        const pos = new Map(order.map((id, i) => [id, i]));
+        const list = es
+          .filter((e) => (out ? e.source : e.target) === anchor)
+          .sort((a, b) => (pos.get(out ? a.target : a.source) ?? 0) - (pos.get(out ? b.target : b.source) ?? 0));
+        if (!list.length) {
+          announce(`${labelOf(anchor)} has no ${out ? "outgoing" : "incoming"} edges.`);
+          return false;
+        }
+        const i = edge ? list.findIndex((e) => e.id === edge.id) : -1;
+        const e = list[(i + 1) % list.length];
+        editor.select({ edgeIds: [e.id] });
+        requestAnimationFrame(() =>
+          wrapper.current
+            ?.querySelector<SVGElement>(`.react-flow__edge[data-id="${CSS.escape(e.id)}"]`)
+            ?.focus({ preventScroll: true }),
+        );
+        revealSelection();
+        const said = edgeAriaLabel(labelOf(e.source), labelOf(e.target), e.data?.kind, e.data?.label, e.data?.relation);
+        const settings = settingsSummary(edgeSettings(e.data));
+        announce(
+          `${said}.${settings ? ` ${settings}.` : ""} ${out ? "Outgoing" : "Incoming"} ${list.indexOf(e) + 1} of ${list.length}.`,
+        );
+        return true;
+      }
+
+      // Ctrl+Alt+arrows: the nearest node that way (boundaries and zones are backdrops, not stops).
+      const stops = ns.filter((n) => !isGroupNode(n) && !(isAnnotationNode(n) && n.data.kind === "zone")).map(navBox);
+      let fromBox = current ? stops.find((b) => b.id === current) : undefined;
+      if (!fromBox && focusedEdge) {
+        // From an edge: halfway along it.
+        const e = es.find((x) => x.id === focusedEdge);
+        const a = e && stops.find((b) => b.id === e.source);
+        const b = e && stops.find((x) => x.id === e.target);
+        if (a && b)
+          fromBox = {
+            id: focusedEdge,
+            x: (a.x + a.width / 2 + b.x + b.width / 2) / 2,
+            y: (a.y + a.height / 2 + b.y + b.height / 2) / 2,
+            width: 0,
+            height: 0,
+          };
+      }
+      if (!fromBox) {
+        // Nothing selected: the first thing in Tab's order (a boundary, when there are only boundaries).
+        const first = readingOrder(stops, direction)[0]?.id ?? order[0];
+        return first ? goNode(first) : false;
+      }
+      const to = nearestInDirection(fromBox, stops, step);
+      if (!to) {
+        announce(
+          `Nothing ${step === "right" ? "to the right" : step === "left" ? "to the left" : step === "up" ? "above" : "below"}.`,
+        );
+        return false;
+      }
+      return goNode(to);
+    };
+  });
   const showDependencies = useShowDependencies();
   useEffect(
     () =>
@@ -1713,6 +2047,17 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         />
       )}
       {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
+      {!readOnly && (
+        <div
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+          data-testid="canvas-announce"
+          data-seq={announcement.seq}
+        >
+          {announcement.text}
+        </div>
+      )}
       {nodeTip && !menu && <NodeTooltip tip={nodeTip} />}
     </DiagramContext.Provider>
   );

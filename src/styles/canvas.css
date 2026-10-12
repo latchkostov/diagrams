@@ -408,6 +408,21 @@
   border-color: color-mix(in oklab, var(--tone) 70%, transparent);
 }
 
+/* Boundaries that keep up (D12): while nodes are dragged, the boundary that will hold them on drop shows its
+   outline in its tone, and one they'd leave (or one that can't grow to hold them) shows dashed. */
+.grp[data-membership="join"],
+.grp[data-membership="hold"] {
+  outline: 2px solid color-mix(in oklab, var(--tone) 85%, transparent);
+  outline-offset: -1px;
+  background: color-mix(in oklab, var(--tone) 11%, transparent);
+}
+
+.grp[data-membership="leave"],
+.grp[data-membership="blocked"] {
+  outline: 2px dashed color-mix(in oklab, var(--tone) 80%, transparent);
+  outline-offset: -1px;
+}
+
 .grp-label {
   position: absolute;
   top: 12px;
@@ -1956,6 +1971,64 @@ select.insp-input {
 .insp-toolbar {
   display: flex;
   gap: 4px;
+}
+
+.btn.insp-tidy {
+  height: 30px;
+  margin-left: auto;
+  font-size: 12.5px;
+}
+
+/* The multi-selection's compact rows (D11): label beside the control, so a mixed selection fits one screen. */
+.insp-bulk-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.insp-bulk-row > .insp-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.insp-mixed {
+  font-style: normal;
+  font-weight: 450;
+  color: var(--text-3);
+}
+
+.insp-stencil.insp-stencil-compact {
+  height: 30px;
+  min-width: 0;
+  gap: 8px;
+  padding: 0 8px 0 3px;
+  border-radius: 7px;
+}
+
+.insp-stencil-compact .palette-tile {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+
+.insp-stencil-compact .insp-stencil-name {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
+}
+
+.insp-tones.insp-tones-compact {
+  gap: 4px;
+}
+
+.insp-tones-compact .insp-tone {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
 }
 
 .insp-toolbar .icon-btn {

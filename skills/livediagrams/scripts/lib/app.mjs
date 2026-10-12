@@ -1028,36 +1028,181 @@ function placeFree(center, size, others, opts = {}) {
 * `maxRings` steps, or null when every candidate is taken.
 */
 function findFree(center, size, others, { margin = 32, step = 40, maxRings = 24 } = {}) {
-	const fits = (cx, cy) => {
-		const b = {
-			x: cx - size.width / 2 - margin,
-			y: cy - size.height / 2 - margin,
-			width: size.width + margin * 2,
-			height: size.height + margin * 2
-		};
-		return !others.some((o) => overlaps(b, o));
+	const d = findClearTranslation([{
+		x: center.x - size.width / 2,
+		y: center.y - size.height / 2,
+		...size
+	}], others, {
+		margin,
+		step,
+		maxRings
+	});
+	return d && {
+		x: center.x + d.x,
+		y: center.y + d.y
 	};
-	if (fits(center.x, center.y)) return center;
+}
+/**
+* The obstacles of one search, indexed once on a grid of `cell`-sized buckets (by index into flat
+* coordinate arrays), so a test looks only at the obstacles near a box and allocates nothing. An obstacle
+* spanning too many cells goes in a short list that's always checked.
+*/
+var ObstacleIndex = class {
+	cell;
+	x1;
+	y1;
+	x2;
+	y2;
+	cells = /* @__PURE__ */ new Map();
+	wide = [];
+	/** Box-against-obstacle tests made so far (the search's work). */
+	tests = 0;
+	constructor(others, cell) {
+		this.cell = cell;
+		const n = others.length;
+		this.x1 = new Float64Array(n);
+		this.y1 = new Float64Array(n);
+		this.x2 = new Float64Array(n);
+		this.y2 = new Float64Array(n);
+		others.forEach((o, i) => {
+			this.x1[i] = o.x;
+			this.y1[i] = o.y;
+			this.x2[i] = o.x + o.width;
+			this.y2[i] = o.y + o.height;
+			const cx1 = Math.floor(o.x / cell);
+			const cy1 = Math.floor(o.y / cell);
+			const cx2 = Math.floor((o.x + o.width) / cell);
+			const cy2 = Math.floor((o.y + o.height) / cell);
+			if (![
+				cx1,
+				cy1,
+				cx2,
+				cy2
+			].every(Number.isSafeInteger) || (cx2 - cx1 + 1) * (cy2 - cy1 + 1) > 64) {
+				this.wide.push(i);
+				return;
+			}
+			for (let cx = cx1; cx <= cx2; cx++) for (let cy = cy1; cy <= cy2; cy++) {
+				const k = this.key(cx, cy);
+				const list = this.cells.get(k);
+				if (list) list.push(i);
+				else this.cells.set(k, [i]);
+			}
+		});
+	}
+	key(cx, cy) {
+		return cx * 1000003 + cy;
+	}
+	hitsOne(i, x1, y1, x2, y2) {
+		this.tests++;
+		return x1 < this.x2[i] && this.x1[i] < x2 && y1 < this.y2[i] && this.y1[i] < y2;
+	}
+	/** True when the box from (x1, y1) to (x2, y2) overlaps any obstacle. */
+	hits(x1, y1, x2, y2) {
+		for (const i of this.wide) if (this.hitsOne(i, x1, y1, x2, y2)) return true;
+		const c = this.cell;
+		const cx1 = Math.floor(x1 / c);
+		const cy1 = Math.floor(y1 / c);
+		const cx2 = Math.floor(x2 / c);
+		const cy2 = Math.floor(y2 / c);
+		for (let cx = cx1; cx <= cx2; cx++) for (let cy = cy1; cy <= cy2; cy++) {
+			const list = this.cells.get(this.key(cx, cy));
+			if (list) {
+				for (const i of list) if (this.hitsOne(i, x1, y1, x2, y2)) return true;
+			}
+		}
+		return false;
+	}
+};
+/** The work one translation search may do: box-against-obstacle tests, and `accept` calls. */
+var SEARCH_BUDGET = {
+	tests: 4e5,
+	accepts: 200
+};
+/**
+* The one free-place search (copies, pastes, text, quick placement and Tidy up share it): the smallest move,
+* on a `step` grid in rings out to `maxRings` (nearest first; ties above before below, left before right), that
+* puts every one of `boxes`, grown by `margin`, clear of `others`, and that `accept` (if given) agrees to.
+* Obstacles are indexed once; only those within reach of the search count, and the work is bounded
+* (`SEARCH_BUDGET`). Returns null when the search runs out: callers keep things where they were, or use their
+* own guaranteed fallback (`pastAll`), never an overlapping spot.
+*/
+function findClearTranslation(boxes, others, { margin = 16, step = 20, maxRings = 40, accept, budget = SEARCH_BUDGET } = {}) {
+	const all = boundsOf(boxes);
+	if (!all) return null;
+	const reach = maxRings * step + margin;
+	const envelope = {
+		x: all.x - reach,
+		y: all.y - reach,
+		width: all.width + reach * 2,
+		height: all.height + reach * 2
+	};
+	const near = others.filter((o) => overlaps(envelope, o));
+	const size = Math.max(...boxes.map((b) => Math.max(b.width, b.height)));
+	const index = new ObstacleIndex(near, Math.max(80, Math.min(640, size + margin * 2)));
+	const n = boxes.length;
+	const bx1 = boxes.map((b) => b.x - margin);
+	const by1 = boxes.map((b) => b.y - margin);
+	const bx2 = boxes.map((b) => b.x + b.width + margin);
+	const by2 = boxes.map((b) => b.y + b.height + margin);
+	let accepts = 0;
+	/** Clear and accepted; undefined when the budget ran out. */
+	const fits = (dx, dy) => {
+		for (let i = 0; i < n; i++) {
+			if (index.hits(bx1[i] + dx, by1[i] + dy, bx2[i] + dx, by2[i] + dy)) return false;
+			if (index.tests > budget.tests) return void 0;
+		}
+		if (!accept) return true;
+		if (++accepts > budget.accepts) return void 0;
+		return accept({
+			x: dx,
+			y: dy
+		});
+	};
+	const first = fits(0, 0);
+	if (first) return {
+		x: 0,
+		y: 0
+	};
+	if (first === void 0) return null;
 	for (let ring = 1; ring <= maxRings; ring++) {
 		const spots = [];
-		for (let i = -ring; i <= ring; i++) for (let j = -ring; j <= ring; j++) {
-			if (Math.max(Math.abs(i), Math.abs(j)) !== ring) continue;
-			const x = center.x + i * step;
-			const y = center.y + j * step;
-			spots.push({
-				x,
-				y,
-				d: Math.hypot(i, j)
-			});
-		}
+		for (let i = -ring; i <= ring; i++) for (let j = -ring; j <= ring; j++) if (Math.max(Math.abs(i), Math.abs(j)) === ring) spots.push({
+			x: i * step,
+			y: j * step,
+			d: Math.hypot(i, j)
+		});
 		spots.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x);
-		const hit = spots.find((s) => fits(s.x, s.y));
-		if (hit) return {
-			x: hit.x,
-			y: hit.y
-		};
+		for (const s of spots) {
+			const ok = fits(s.x, s.y);
+			if (ok) return {
+				x: s.x,
+				y: s.y
+			};
+			if (ok === void 0) return null;
+		}
 	}
 	return null;
+}
+/** The box around all of `boxes`, or null when there are none. */
+function boundsOf(boxes) {
+	if (!boxes.length) return null;
+	let x1 = Infinity;
+	let y1 = Infinity;
+	let x2 = -Infinity;
+	let y2 = -Infinity;
+	for (const b of boxes) {
+		x1 = Math.min(x1, b.x);
+		y1 = Math.min(y1, b.y);
+		x2 = Math.max(x2, b.x + b.width);
+		y2 = Math.max(y2, b.y + b.height);
+	}
+	return {
+		x: x1,
+		y: y1,
+		width: x2 - x1,
+		height: y2 - y1
+	};
 }
 /** True when `box`, grown by `margin` on every side, touches none of `others`. */
 function isClear(box, others, margin = 0) {

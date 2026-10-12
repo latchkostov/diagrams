@@ -1,4 +1,4 @@
-import { useTooltip } from "../../components/useTooltip";
+import { useKeyboardFocusOn, useTooltip } from "../../components/useTooltip";
 import { memo, useCallback, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { EdgeLabelRenderer, useReactFlow, useStore, type EdgeProps, type ReactFlowState } from "@xyflow/react";
 import { InlineInput } from "../../components/InlineInput";
@@ -36,7 +36,11 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       [source],
     ),
   );
-  const tooltip = useTooltip();
+  // The settings open when the edge is reached from the keyboard (its label isn't a Tab stop: D14).
+  const edgeFocused = useKeyboardFocusOn(
+    dep?.settings?.length ? `.react-flow__edge[data-id="${CSS.escape(id)}"]` : null,
+  );
+  const tooltip = useTooltip(edgeFocused);
   const card = tooltip.open;
   const kind = data?.kind ?? "async";
   const relation = isDependency(data) ? (relationOf(data) as DependencyRelation) : null;
@@ -91,7 +95,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
         }
         {...(settings.length && !isEditing
           ? {
-              tabIndex: 0,
+              tabIndex: -1,
               role: "button",
               "aria-describedby": card ? `edge-settings-${id}` : undefined,
               "aria-label": `${label?.text ?? ""}: show settings`,

@@ -21,12 +21,20 @@ export type ShortcutId =
   | "fit-view"
   | "zoom-100"
   | "zoom-selection"
+  | "select-next"
+  | "select-prev"
+  | "select-toward"
+  | "select-edge-out"
+  | "select-edge-in"
   | "command-palette"
   | "shortcuts";
 
 export interface Shortcut {
   id: ShortcutId;
-  /** Any of these combos triggers it. The first is shown in menus. */
+  /**
+   * Any of these combos triggers it. The first is shown in menus. `Mod` is Ctrl or ⌘; `Ctrl` is the Control key
+   * on every platform (⌃ on a Mac, where ⌘⌥ + arrows already switch the browser's tabs).
+   */
   keys: string[];
   label: string;
   group: "Edit" | "Clipboard" | "Selection" | "View" | "Help";
@@ -68,6 +76,16 @@ export const SHORTCUTS: readonly Shortcut[] = [
     label: "Nudge 50 px (Snapping off: 10 px)",
     group: "Selection",
   },
+  { id: "select-next", keys: ["Tab"], label: "Next node, in reading order", group: "Selection" },
+  { id: "select-prev", keys: ["Shift+Tab"], label: "Previous node", group: "Selection" },
+  {
+    id: "select-toward",
+    keys: ["Ctrl+Alt+ArrowRight", "Ctrl+Alt+ArrowDown", "Ctrl+Alt+ArrowLeft", "Ctrl+Alt+ArrowUp"],
+    label: "Nearest node that way",
+    group: "Selection",
+  },
+  { id: "select-edge-out", keys: ["Ctrl+Alt+]"], label: "The node's next outgoing edge", group: "Selection" },
+  { id: "select-edge-in", keys: ["Ctrl+Alt+["], label: "The node's next incoming edge", group: "Selection" },
   { id: "escape", keys: ["Escape"], label: "Close menus, clear selection, then leave live view", group: "Selection" },
   { id: "fit-view", keys: ["Shift+1"], label: "Fit diagram to view", group: "View" },
   { id: "zoom-selection", keys: ["Shift+2"], label: "Zoom to selection", group: "View" },
@@ -115,7 +133,10 @@ export function matches(e: KeyLike, combo: string): boolean {
   // "Mod++" style isn't used; a bare "+" key would be written "Plus".
   const key = parts[parts.length - 1];
   const mods = new Set(parts.slice(0, -1));
-  const mod = e.ctrlKey || e.metaKey;
+  // `Ctrl` is the Control key itself (⌃ on a Mac); `Mod` is Ctrl or ⌘.
+  const ctrl = mods.has("Ctrl");
+  if (ctrl && (!e.ctrlKey || e.metaKey)) return false;
+  const mod = ctrl ? e.metaKey : e.ctrlKey || e.metaKey;
   if (mods.has("Mod") !== mod) return false;
   if (mods.has("Alt") !== e.altKey) return false;
   if (!SHIFTED_PUNCTUATION.has(key) && mods.has("Shift") !== e.shiftKey) return false;
@@ -123,6 +144,9 @@ export function matches(e: KeyLike, combo: string): boolean {
     // Shift+1 prints "!" — compare the physical digit instead.
     return e.code === `Digit${key}` || e.key === key;
   }
+  // Brackets by physical key too: with Ctrl+Alt (AltGr on some layouts) the printed character can differ.
+  if ((key === "[" || key === "]") && e.code)
+    return e.code === (key === "[" ? "BracketLeft" : "BracketRight") || e.key === key;
   return e.key.length === 1 ? e.key.toLowerCase() === key.toLowerCase() : e.key === key;
 }
 
@@ -137,6 +161,7 @@ export const isMac = () =>
 
 const KEY_NAMES: Record<string, [mac: string, other: string]> = {
   Mod: ["⌘", "Ctrl"],
+  Ctrl: ["⌃", "Ctrl"],
   Shift: ["⇧", "Shift"],
   Alt: ["⌥", "Alt"],
   Delete: ["⌦", "Del"],

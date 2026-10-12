@@ -45,7 +45,28 @@ describe("shortcuts", () => {
     expect(shortcutFor(key("d", { ctrlKey: true }))).toBe("duplicate");
   });
 
+  it("keyboard selection between nodes doesn't collide with nudges or Alt+arrow quick-add (D14)", () => {
+    expect(shortcutFor(key("ArrowRight", { ctrlKey: true, altKey: true }))).toBe("select-toward");
+    expect(shortcutFor(key("ArrowRight", { altKey: true }))).toBe("add-next");
+    expect(shortcutFor(key("ArrowRight", { altKey: true, shiftKey: true }))).toBe("clone-next");
+    expect(shortcutFor(key("ArrowRight"))).toBe("nudge");
+    // Ctrl is the Control key: ⌘⌥+arrows switch the browser's tabs on a Mac, so they stay the browser's.
+    expect(shortcutFor(key("ArrowRight", { metaKey: true, altKey: true }))).toBeNull();
+    expect(shortcutFor(key("Tab"))).toBe("select-next");
+    expect(shortcutFor(key("Tab", { shiftKey: true }))).toBe("select-prev");
+  });
+
+  it("Ctrl+Alt+] and [ go by the physical bracket key or the printed one", () => {
+    expect(shortcutFor({ ...key("]", { ctrlKey: true, altKey: true }), code: "BracketRight" })).toBe("select-edge-out");
+    expect(shortcutFor({ ...key("[", { ctrlKey: true, altKey: true }), code: "BracketLeft" })).toBe("select-edge-in");
+    // A layout where Ctrl+Alt on that key prints something else.
+    expect(shortcutFor({ ...key("+", { ctrlKey: true, altKey: true }), code: "BracketRight" })).toBe("select-edge-out");
+    expect(shortcutFor({ ...key("]"), code: "BracketRight" })).toBeNull();
+  });
+
   it("formats per platform", () => {
+    expect(formatCombo("Ctrl+Alt+]", false)).toBe("Ctrl+Alt+]");
+    expect(formatCombo("Ctrl+Alt+]", true)).toBe("⌃⌥]");
     expect(formatCombo("Mod+Shift+Z", false)).toBe("Ctrl+Shift+Z");
     expect(formatCombo("Mod+Shift+Z", true)).toBe("⌘⇧Z");
     expect(formatCombo("Delete", false)).toBe("Del");

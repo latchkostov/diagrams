@@ -71,7 +71,7 @@ test.describe("editor", () => {
     // Edge labels open the edge menu too (a straight edge's <g> has no height to click).
     await page.getByTestId("edge-label-shopper-to-gateway").click({ button: "right" });
     await expect(menuItem(page, "edge.relationship")).toBeVisible();
-    await expect(menuItem(page, "edge.from-side")).toBeVisible();
+    await expect(menuItem(page, "edge.route")).toBeVisible();
 
     // The Simulation section stays hidden until the sim UI registers actions.
     await expect(page.getByTestId("context-menu")).not.toContainText("Simulation");

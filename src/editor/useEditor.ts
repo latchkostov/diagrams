@@ -61,7 +61,7 @@ import type { EdgeMark } from "../canvas/edgeMarks";
 import { getStencil } from "../stencils/registry";
 import { downloadDiagram, isOwnSlug } from "../lib/diagramIO";
 import { motionMs } from "../lib/motion";
-import { align, boundaryAround, distribute, type Box, type Positions } from "./arrange";
+import { align, boundaryAround, distribute, spreadOverlaps, type Box, type Positions } from "./arrange";
 import { makePayload, parsePayload, remapPayload, type ClipboardPayload } from "./clipboard";
 import { stencilIdBase, uniqueId } from "./ids";
 import { layeredLayout } from "./layout";
@@ -70,6 +70,17 @@ import type { EditorApi, EditorPrefs, NewNode, Selection, XY } from "./types";
 import { diagramDiff } from "./diagramDiff";
 import { nudgeOnGrid } from "../canvas/guides";
 import { validateDiagram } from "../interop/native";
+import type { DiagramAnnotation } from "../model/types";
+import {
+  membershipAfterResize,
+  planKeep,
+  settleMembership,
+  type GroupRect,
+  type MemberBox,
+} from "../canvas/membership";
+import { tidyLayout } from "./tidy";
+import { choiceOf } from "./relationActions";
+import { dependencyVisibility } from "../canvas/dependencyVisibility";
 
 // The EditorApi implementation over React Flow state. Built once per canvas; reads the latest
 // committed props so menus / shortcuts never see stale state.
@@ -220,12 +231,20 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     });
     const notes = (r.annotations ?? []).map((a) => ({ ...annotationToFlow(a), selected: true }));
     const foreground = new Map([...nodes, ...notes.filter((n) => n.data.kind !== "zone")].map((n) => [n.id, n]));
-    deps().setNodes((cur) => [
-      ...notes.filter((n) => n.data.kind === "zone"),
-      ...cur.map((n) => (n.selected ? { ...n, selected: false } : n)),
-      ...groupNodes,
-      ...foregroundLayerOrder(r).map((id) => foreground.get(id)!),
-    ]);
+    // A copy landing in a boundary already there joins it, and the boundary grows to hold it (D12).
+    const joining = new Set(nodes.filter((n) => !(n.data.group && newGroups.has(n.data.group))).map((n) => n.id));
+    deps().setNodes(
+      (cur) =>
+        settled(
+          [
+            ...notes.filter((n) => n.data.kind === "zone"),
+            ...cur.map((n) => (n.selected ? { ...n, selected: false } : n)),
+            ...groupNodes,
+            ...foregroundLayerOrder(r).map((id) => foreground.get(id)!),
+          ],
+          joining,
+        ).nodes,
+    );
     deps().setEdges((cur) => [
       ...cur.map((e) => (e.selected ? { ...e, selected: false } : e)),
       ...r.edges.map(edgeToFlow),
@@ -297,6 +316,89 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     groupIds: (sel.groupIds ?? []).map((g) => ids.get(GROUP_PREFIX + g)?.slice(GROUP_PREFIX.length) ?? g),
     edgeIds: [],
   });
+
+  /** Boundaries as rects (their own size first: a resize sets it before React Flow measures it). */
+  const groupRects = (ns: readonly FlowNode[]): GroupRect[] =>
+    ns.filter(isGroup).map((n) => ({
+      id: n.data.groupId,
+      x: n.position.x,
+      y: n.position.y,
+      width: n.width ?? n.measured?.width ?? 0,
+      height: n.height ?? n.measured?.height ?? 0,
+    }));
+  const memberBoxes = (ns: readonly FlowNode[]): MemberBox[] =>
+    ns.filter(isDiagram).map((n) => ({ ...box(n), group: n.data.group }));
+  /**
+   * Nodes `ids` (at their new places) settled into boundaries (D12): each one in the boundary around its
+   * centre, and that boundary grown to hold it when it pokes out (never onto another boundary or a node that
+   * isn't a member). Returns the nodes as they should be, and the members each boundary lost.
+   */
+  const settled = (ns: FlowNode[], ids: ReadonlySet<string>) => {
+    const all = memberBoxes(ns);
+    const moving = all.filter((m) => ids.has(m.id));
+    if (!moving.length) return { nodes: ns, left: new Map<string, string[]>() };
+    const s = settleMembership(
+      moving,
+      groupRects(ns),
+      all.filter((m) => !ids.has(m.id)),
+    );
+    let changed = false;
+    const nodes = ns.map((n): FlowNode => {
+      if (isDiagram(n) && s.group.has(n.id)) {
+        const group = s.group.get(n.id);
+        if (group === n.data.group) return n;
+        changed = true;
+        return { ...n, data: { ...n.data, group } };
+      }
+      const r = isGroup(n) ? s.grow.get(n.data.groupId) : undefined;
+      if (!r) return n;
+      changed = true;
+      return { ...n, position: { x: r.x, y: r.y }, width: r.width, height: r.height };
+    });
+    return { nodes: changed ? nodes : ns, left: s.left };
+  };
+  /** Adds `node` (selected, the rest deselected), settled into the boundary around it (grown to hold it). */
+  const addSettled = (node: FlowNode) =>
+    deps().setNodes(
+      (cur) =>
+        settled([...cur.map((n) => (n.selected ? { ...n, selected: false } : n)), node], new Set([node.id])).nodes,
+    );
+  /** One function for every annotation patch (one or many). */
+  const patchAnnotation = (
+    n: AnnotationFlowNode,
+    patch: Partial<Omit<DiagramAnnotation, "id">>,
+  ): AnnotationFlowNode => {
+    const data = { ...n.data };
+    if ("text" in patch) data.text = annotationText(patch.text ?? "");
+    if ("color" in patch) data.color = patch.color;
+    if ("textSize" in patch) data.textSize = patch.textSize;
+    if ("shape" in patch && data.kind === "shape") data.shape = patch.shape;
+    const kind = patch.kind ?? data.kind;
+    data.kind = kind;
+    if (kind !== "shape") data.shape = undefined;
+    let width = patch.width ?? n.width;
+    let height = patch.height ?? n.height;
+    // Text has no frame to fill: a new text size scales its box with the type, so a one-line
+    // title stays one line (instead of wrapping and spilling out of a box sized for 14px).
+    if (kind === "text" && "textSize" in patch && patch.width === undefined && patch.height === undefined) {
+      const r = textSizePx[data.textSize ?? "m"] / textSizePx[n.data.textSize ?? "m"];
+      if (r !== 1 && width && height) {
+        width = Math.round(width * r);
+        height = Math.round(height * r);
+      }
+    }
+    return {
+      ...n,
+      data,
+      connectable: isConnectable(kind),
+      position: {
+        x: annotationCoordinate(patch.x ?? n.position.x),
+        y: annotationCoordinate(patch.y ?? n.position.y),
+      },
+      width: annotationSize(width ?? 1),
+      height: annotationSize(height ?? 1),
+    };
+  };
 
   const readSystemClipboard = async (): Promise<ClipboardPayload | null> => {
     try {
@@ -389,6 +491,29 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       });
     },
     clearSelection: () => setSelected({}),
+    selectSimilar: ({ nodeId, edgeId }) => {
+      if (nodeId) {
+        const n = rf.getNode(nodeId);
+        if (!n || !isDiagram(n)) return 0;
+        const nodeIds = rf
+          .getNodes()
+          .filter((x) => isDiagram(x) && x.data.stencil === n.data.stencil)
+          .map((x) => x.id);
+        setSelected({ nodeIds });
+        return nodeIds.length;
+      }
+      const e = edgeId ? rf.getEdge(edgeId) : undefined;
+      if (!e) return 0;
+      const want = choiceOf(e.data);
+      // Hidden dependencies can't be seen or picked, so they aren't "similar" either.
+      const shown = dependencyVisibility.get();
+      const edgeIds = rf
+        .getEdges()
+        .filter((x) => choiceOf(x.data) === want && (shown || !isDependency(x.data)))
+        .map((x) => x.id);
+      setSelected({ edgeIds });
+      return edgeIds.length;
+    },
 
     addNode: (stencilId, at) => {
       const s = getStencil(stencilId);
@@ -405,7 +530,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         selected: true,
         data: { stencil: s.id, label: s.label, sublabel: s.defaultSublabel, group: groupAt(ns, c.x, c.y) },
       };
-      deps().setNodes((cur) => [...cur.map((n) => (n.selected ? { ...n, selected: false } : n)), node]);
+      addSettled(node);
       deps().setEdges((cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)));
       return id;
     },
@@ -456,46 +581,52 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     updateAnnotation: (id, patch, opts) => {
       hint(opts?.merge);
-      deps().setNodes((ns) =>
-        ns.map((n) => {
-          if (n.id !== id || !isAnnotation(n)) return n;
-          const data = { ...n.data };
-          if ("text" in patch) data.text = annotationText(patch.text ?? "");
-          if ("color" in patch) data.color = patch.color;
-          if ("textSize" in patch) data.textSize = patch.textSize;
-          if ("shape" in patch && data.kind === "shape") data.shape = patch.shape;
-          const kind = patch.kind ?? data.kind;
-          data.kind = kind;
-          if (kind !== "shape") data.shape = undefined;
-          let width = patch.width ?? n.width;
-          let height = patch.height ?? n.height;
-          // Text has no frame to fill: a new text size scales its box with the type, so a one-line
-          // title stays one line (instead of wrapping and spilling out of a box sized for 14px).
-          if (kind === "text" && "textSize" in patch && patch.width === undefined && patch.height === undefined) {
-            const r = textSizePx[data.textSize ?? "m"] / textSizePx[n.data.textSize ?? "m"];
-            if (r !== 1 && width && height) {
-              width = Math.round(width * r);
-              height = Math.round(height * r);
-            }
-          }
-          return {
-            ...n,
-            data,
-            connectable: isConnectable(kind),
-            position: {
-              x: annotationCoordinate(patch.x ?? n.position.x),
-              y: annotationCoordinate(patch.y ?? n.position.y),
-            },
-            width: annotationSize(width ?? 1),
-            height: annotationSize(height ?? 1),
-          };
-        }),
-      );
+      deps().setNodes((ns) => ns.map((n) => (n.id === id && isAnnotation(n) ? patchAnnotation(n, patch) : n)));
       // A shape that stops being a shape can't keep its edges.
       if (patch.kind && !isConnectable(patch.kind))
         deps().setEdges((es) => es.filter((e) => e.source !== id && e.target !== id));
     },
 
+    updateAnnotations: (ids, patch, opts) => {
+      const set = new Set(ids);
+      hint(opts?.merge);
+      deps().setNodes((ns) => ns.map((n) => (set.has(n.id) && isAnnotation(n) ? patchAnnotation(n, patch) : n)));
+    },
+    updateNodes: (ids, patch, opts) => {
+      const set = new Set(ids);
+      hint(opts?.merge);
+      deps().setNodes((ns) =>
+        ns.map((n) => {
+          if (!set.has(n.id) || !isDiagram(n)) return n;
+          const data = { ...n.data };
+          if (patch.stencil) data.stencil = patch.stencil;
+          if ("group" in patch) data.group = patch.group || undefined;
+          return data.stencil === n.data.stencil && data.group === n.data.group ? n : { ...n, data };
+        }),
+      );
+    },
+    setNodesProps: (ids, patch, opts) => {
+      const set = new Set(ids);
+      hint(opts?.merge);
+      deps().setNodes((ns) =>
+        ns.map((n) =>
+          set.has(n.id) && isDiagram(n)
+            ? { ...n, data: { ...n.data, props: withoutUndefined({ ...n.data.props, ...patch }) } }
+            : n,
+        ),
+      );
+    },
+    updateGroups: (ids, patch, opts) => {
+      const set = new Set(ids);
+      hint(opts?.merge);
+      deps().setNodes((ns) =>
+        ns.map((n) =>
+          isGroup(n) && set.has(n.data.groupId) && patch.tone && n.data.tone !== patch.tone
+            ? { ...n, data: { ...n.data, tone: patch.tone } }
+            : n,
+        ),
+      );
+    },
     updateNode: (id, patch, opts) => {
       hint(opts?.merge);
       deps().setNodes((ns) =>
@@ -651,7 +782,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const edge = newEdge(a, b, rf.getEdges());
       const merge = `new:${id}`;
       hint(merge);
-      deps().setNodes((cur) => [...cur.map((n) => (n.selected ? { ...n, selected: false } : n)), node]);
+      addSettled(node);
       deps().setEdges((cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]);
       explainEdge(edge);
       return { id, edge: edge.id, merge };
@@ -686,7 +817,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       if (!r) return null;
       const merge = `new:${id}`;
       hint(merge);
-      deps().setNodes((cur) => [...cur.map((n) => (n.selected ? { ...n, selected: false } : n)), node]);
+      addSettled(node);
       deps().setEdges(r.edges.map((x) => (x.selected ? { ...x, selected: false } : x)));
       return { id, edge: null, merge };
     },
@@ -788,27 +919,86 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     align: (ids, mode) => {
       const set = new Set(ids);
-      movePositions(
-        align(
-          rf
-            .getNodes()
-            .filter((n) => set.has(n.id) && isPlaced(n))
-            .map(box),
-          mode,
-        ),
-      );
+      const boxes = rf
+        .getNodes()
+        .filter((n) => set.has(n.id) && isPlaced(n))
+        .map(box);
+      // Lined up, never stacked: things that would land on each other step apart across the line.
+      const across = mode === "left" || mode === "center" || mode === "right" ? "v" : "h";
+      movePositions(spreadOverlaps(boxes, align(boxes, mode), across));
     },
     distribute: (ids, axis) => {
       const set = new Set(ids);
-      movePositions(
-        distribute(
-          rf
-            .getNodes()
-            .filter((n) => set.has(n.id) && isPlaced(n))
-            .map(box),
-          axis,
+      const boxes = rf
+        .getNodes()
+        .filter((n) => set.has(n.id) && isPlaced(n))
+        .map(box);
+      movePositions(spreadOverlaps(boxes, distribute(boxes, axis), axis));
+    },
+    tidy: (ids) => {
+      const set = new Set(ids);
+      const ns = rf.getNodes();
+      const picked = ns.filter((n): n is DiagramFlowNode => set.has(n.id) && isDiagram(n));
+      if (picked.length < 2) return false;
+      // Only the nodes move: anything else selected (a note, a shape) stays put, so it's an obstacle too.
+      const moving = new Set(picked.map((n) => n.id));
+      const groups = groupRects(ns);
+      const members = memberBoxes(ns);
+      const stay = members.filter((m) => !moving.has(m.id));
+      const own = new Map(members.map((m) => [m.id, m.group]));
+      /** The boundaries' growth that keeps every tidied node in its own boundary there, or null. */
+      const fit = (pos: Positions) =>
+        planKeep(
+          picked.map((n) => ({ ...box(n), ...pos.get(n.id)!, group: own.get(n.id) })),
+          groups,
+          stay,
+        );
+      const pos = tidyLayout({
+        nodes: picked.map((n) => ({ ...box(n), label: n.data.label })),
+        edges: rf.getEdges().map((e) => ({ from: e.source, to: e.target, label: e.data?.label })),
+        direction: deps().meta.direction === "TB" ? "TB" : "LR",
+        // Everything else stays put, so the tidied nodes land clear of it (boundaries and zones are backdrops).
+        others: ns
+          .filter((n) => !moving.has(n.id) && (isDiagram(n) || (isAnnotation(n) && isObstacle(n.data.kind))))
+          .map(box),
+        // Members stay in their boundaries, which must be able to grow to hold them there.
+        accept: (p) => fit(p) !== null,
+      });
+      const grow = pos && fit(pos);
+      if (!pos || !grow) {
+        notify("Couldn't find room. Nothing moved.");
+        return false;
+      }
+      // The positions and the boundaries' growth together, as planned: one undo step.
+      hint(`tidy:${Date.now()}`);
+      deps().setNodes((cur) =>
+        cur.map((n) => {
+          if (isGroup(n)) {
+            const r = grow.get(n.data.groupId);
+            return r ? { ...n, position: { x: r.x, y: r.y }, width: r.width, height: r.height } : n;
+          }
+          const at = pos.get(n.id);
+          return at && (at.x !== n.position.x || at.y !== n.position.y) ? { ...n, position: at } : n;
+        }),
+      );
+      return true;
+    },
+    settleMembership: (ids) => {
+      const set = new Set(ids);
+      const { left } = settled(rf.getNodes(), set);
+      deps().setNodes((cur) => settled(cur, set).nodes);
+      return left;
+    },
+    adoptAfterResize: (groupId) => {
+      const ns = rf.getNodes();
+      const r = membershipAfterResize(groupId, memberBoxes(ns), groupRects(ns));
+      if (!r.group.size) return { adopted: [], released: [] };
+      deps().setNodes((cur) =>
+        cur.map((n) =>
+          isDiagram(n) && r.group.has(n.id) ? { ...n, data: { ...n.data, group: r.group.get(n.id) } } : n,
         ),
       );
+      return { adopted: r.adopted, released: r.released };
     },
     groupNodes: (ids, tone = "neutral") => {
       const set = new Set(ids);
