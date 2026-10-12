@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { actionRegistry } from "../../editor/actions";
+import { actionRegistry, type Action } from "../../editor/actions";
 import { matches } from "../../editor/shortcuts";
 import { paletteHost } from "../../palette/host";
 import { privacyOf } from "../../lib/localOnly";
+import { AI_TOOLS } from "../../lib/deployment";
 import { Icon } from "../../components/Icon";
 import { AI_PANEL_COMBO, OPEN_AI_PANEL, aiPanelTitle, buildWithAi, openAiPanel, type OpenAiPanel } from "./events";
 import { aiDock, RAIL_WIDTH, clampWidth, collapseDock, useAiDock } from "./dock";
@@ -15,7 +16,8 @@ import { lazyComponent, LOAD_FAILED, whenIdle } from "../../lib/lazyLoad";
 // core and WebMCP are separate chunks, loaded only when needed. The panel loads ahead of its first open:
 // once the canvas is idle, or as the pointer reaches the rail.
 
-const AiPanel = lazyComponent(
+// Pure: a copy deployed without an AI panel (src/lib/deployment.ts) drops it, and so its chunk.
+const AiPanel = /* @__PURE__ */ lazyComponent(
   () => import("./AiPanel").then((m) => m.default),
   (_, { failed, retry }) =>
     failed ? (
@@ -34,7 +36,8 @@ const AiPanel = lazyComponent(
       <div className="ai-dock-loading" aria-busy="true" />
     ),
 );
-const WebMcpBridge = lazy(() => import("../webmcp/WebMcpBridge"));
+// None in a copy deployed without AI tools (src/lib/deployment.ts): folded at build time, so no chunk either.
+const WebMcpBridge = AI_TOOLS ? lazy(() => import("../webmcp/WebMcpBridge")) : null;
 
 /** WebMCP feature detection without loading the adapter (`navigator.modelContext` is the old alias). */
 const hasModelContext = () =>
@@ -117,7 +120,7 @@ export function AiMount({
 
   // "AI panel" on the canvas right-click (and so in the palette); "Copy for AI" on a node, an edge or a
   // selection (their ids and labels, for the person to hand to their agent); "Build with AI…" (a new
-  // diagram, described with copy and paste) in the palette only.
+  // diagram, described with copy and paste) in the palette only. The last two only with AI tools.
   useEffect(
     () =>
       actionRegistry.register([
@@ -132,32 +135,7 @@ export function AiMount({
           shortcut: AI_PANEL_COMBO,
           run: () => openAiPanel(),
         },
-        {
-          id: "item.copy-for-ai",
-          section: "clipboard",
-          targets: ["node", "edge", "selection"],
-          modes: ["edit", "live"],
-          order: 190,
-          label: "Copy for AI",
-          icon: "ai",
-          // Off (and saying why) on a private diagram. A local-only example's says so when chosen.
-          enabled: () => privacyOf(paletteHost.get().canvas) !== "private",
-          hint: () => (privacyOf(paletteHost.get().canvas) === "private" ? "Private" : undefined),
-          // Loaded on use: the main bundle stays small.
-          run: (ctx) =>
-            void import("./copyForAi").then((m) =>
-              m.copyForAi([...ctx.selection.nodeIds, ...ctx.selection.edgeIds, ...ctx.selection.groupIds]),
-            ),
-        },
-        {
-          id: "file.build-with-ai",
-          section: "file",
-          targets: ["canvas"],
-          paletteOnly: true,
-          label: "Build with AI…",
-          icon: "ai",
-          run: () => buildWithAi(() => newDiagram.current()),
-        },
+        ...(AI_TOOLS ? aiToolActions(() => newDiagram.current()) : []),
       ]),
     [],
   );
@@ -174,7 +152,7 @@ export function AiMount({
   const canvasUp = docked && !!canvas && !canvas.live;
   useEffect(() => (canvasUp ? whenIdle(AiPanel.preload) : undefined), [canvasUp]);
 
-  const [mcp] = useState(hasModelContext);
+  const [mcp] = useState(() => AI_TOOLS && hasModelContext());
   const live = !!canvas?.live || presenting;
 
   return (
@@ -213,11 +191,43 @@ export function AiMount({
             </button>
           </aside>
         ))}
-      {mcp && editorSeen && (
+      {WebMcpBridge && mcp && editorSeen && (
         <Suspense fallback={null}>
           <WebMcpBridge live={live} onNewDiagram={onNewDiagram} />
         </Suspense>
       )}
     </>
   );
+}
+
+/** Copy for AI and Build with AI: AI outside the app, so only in a copy deployed with AI tools. */
+function aiToolActions(newDiagram: () => void): Action[] {
+  return [
+    {
+      id: "item.copy-for-ai",
+      section: "clipboard",
+      targets: ["node", "edge", "selection"],
+      modes: ["edit", "live"],
+      order: 190,
+      label: "Copy for AI",
+      icon: "ai",
+      // Off (and saying why) on a private diagram. A local-only example's says so when chosen.
+      enabled: () => privacyOf(paletteHost.get().canvas) !== "private",
+      hint: () => (privacyOf(paletteHost.get().canvas) === "private" ? "Private" : undefined),
+      // Loaded on use: the main bundle stays small.
+      run: (ctx) =>
+        void import("./copyForAi").then((m) =>
+          m.copyForAi([...ctx.selection.nodeIds, ...ctx.selection.edgeIds, ...ctx.selection.groupIds]),
+        ),
+    },
+    {
+      id: "file.build-with-ai",
+      section: "file",
+      targets: ["canvas"],
+      paletteOnly: true,
+      label: "Build with AI…",
+      icon: "ai",
+      run: () => buildWithAi(newDiagram),
+    },
+  ];
 }

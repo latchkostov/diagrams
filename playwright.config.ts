@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * E2E config. Three projects:
- *  - "chromium": every spec in tests/e2e except subpath.spec.ts and tests tagged @dev, against the app
+ * E2E config. Five projects:
+ *  - "chromium": every spec in tests/e2e except those with a build of their own (below) and tests tagged @dev, against the app
  *                server on E2E_PORT (default 5191). What that server is depends on E2E_TARGET:
  *                  build (default on CI): `vite preview` of a production build made with VITE_E2E=1, which
  *                         keeps the dev-only test hooks (`?storage=test`, the Lab tab) and nothing else.
@@ -12,13 +12,17 @@ import { defineConfig, devices } from "@playwright/test";
  *                with E2E_TARGET=build it runs on E2E_DEV_PORT (default E2E_PORT + 1).
  *  - "subpath":  tests/e2e/subpath.spec.ts against a real production build (no test hooks) served by
  *                `vite preview` under /tools/diagrams/ (port E2E_PREVIEW_PORT, default 5193).
+ *  - "internal": tests/e2e/self-host.spec.ts against a self-hosting build (docs/SELF-HOSTING.md): production with
+ *                `pnpm build:internal`'s switches and a brand name (port E2E_INTERNAL_PORT, default preview + 1).
+ *  - "locked":   tests/e2e/self-host-locked.spec.ts against one with every switch off, opening links included
+ *                (port E2E_LOCKED_PORT, default preview + 2).
  *
  * Ports: set E2E_PORT / E2E_DEV_PORT / E2E_PREVIEW_PORT to run beside another checkout's servers. A running
  * server is reused only when its port was chosen explicitly, or locally (not on CI) on the default port, so
  * a CI run never silently tests a server it didn't start.
- * E2E_PREBUILT=1 serves tests/.output/e2e-dist and tests/.output/preview-dist as they are (CI builds them
- * in an earlier step); otherwise each run builds what it serves.
- * Skip the production-build server locally with E2E_SKIP_PREVIEW=1 (saves a build per run).
+ * E2E_PREBUILT=1 serves tests/.output/{e2e,preview,internal,locked}-dist as they are (CI builds them in an earlier
+ * step, .github/actions/e2e, with the envs below); otherwise each run builds what it serves.
+ * Skip the production-build servers (subpath, internal, locked) locally with E2E_SKIP_PREVIEW=1 (saves the builds).
  * Every test gets a fresh browser context, so localStorage (settings, autosave) starts empty.
  * All outputs live in tests/.output (gitignored by tests/.gitignore).
  */
@@ -41,6 +45,22 @@ const app = port("E2E_PORT", 5191);
 const devServer = BUILD ? port("E2E_DEV_PORT", app.port + 1, app.explicit) : app;
 const preview = port("E2E_PREVIEW_PORT", 5193);
 export const PREVIEW_BASE = "/tools/diagrams/";
+const internal = port("E2E_INTERNAL_PORT", preview.port + 1, preview.explicit);
+const locked = port("E2E_LOCKED_PORT", preview.port + 2, preview.explicit);
+/** The self-hosting builds' switches (scripts/deployment-env.ts); .github/actions/e2e builds them the same way. */
+export const INTERNAL_ENV = {
+  VITE_DISABLE_SHARE_LINKS: "1",
+  VITE_DISABLE_AI_TOOLS: "1",
+  VITE_PRIVATE_BY_DEFAULT: "1",
+  VITE_BRAND_NAME: "Acme Diagrams (internal)",
+};
+export const LOCKED_ENV = {
+  VITE_DISABLE_SHARE_LINKS: "1",
+  VITE_DISABLE_LINK_OPEN: "1",
+  VITE_DISABLE_AI_TOOLS: "1",
+  VITE_DISABLE_ONDEVICE: "1",
+  VITE_PRIVATE_BY_DEFAULT: "1",
+};
 const skipPreview = process.env.E2E_SKIP_PREVIEW === "1";
 const prebuilt = process.env.E2E_PREBUILT === "1";
 
@@ -62,6 +82,10 @@ const serve = (outDir: string, extra: string) =>
 
 const E2E_DIST = "tests/.output/e2e-dist";
 const PREVIEW_DIST = "tests/.output/preview-dist";
+const INTERNAL_DIST = "tests/.output/internal-dist";
+const LOCKED_DIST = "tests/.output/locked-dist";
+/** Specs with a build of their own (their projects below); the app's projects skip them. */
+const OWN_BUILD = /(subpath|self-host|self-host-locked)\.spec\.ts/;
 
 const devWebServer = {
   command: `pnpm dev --port ${devServer.port} --strictPort`,
@@ -107,7 +131,7 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
-      testIgnore: /subpath\.spec\.ts/,
+      testIgnore: OWN_BUILD,
       grepInvert: DEV_ONLY,
     },
     {
@@ -117,7 +141,7 @@ export default defineConfig({
         viewport: { width: 1440, height: 900 },
         baseURL: `http://localhost:${devServer.port}`,
       },
-      testIgnore: /subpath\.spec\.ts/,
+      testIgnore: OWN_BUILD,
       grep: DEV_ONLY,
     },
     ...(skipPreview
@@ -127,6 +151,16 @@ export default defineConfig({
             name: "subpath",
             use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${preview.port}${PREVIEW_BASE}` },
             testMatch: /subpath\.spec\.ts/,
+          },
+          {
+            name: "internal",
+            use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${internal.port}/` },
+            testMatch: /self-host\.spec\.ts/,
+          },
+          {
+            name: "locked",
+            use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${locked.port}/` },
+            testMatch: /self-host-locked\.spec\.ts/,
           },
         ]),
   ],
@@ -159,6 +193,19 @@ export default defineConfig({
             stdout: "ignore" as const,
             stderr: "pipe" as const,
           },
+          // The self-hosting builds: production as it ships (no VITE_E2E), with the switches set.
+          ...[
+            { dist: INTERNAL_DIST, at: internal, env: INTERNAL_ENV },
+            { dist: LOCKED_DIST, at: locked, env: LOCKED_ENV },
+          ].map(({ dist, at, env }) => ({
+            command: serve(dist, `--port ${at.port} --strictPort`),
+            url: `http://localhost:${at.port}/`,
+            env: { VITE_E2E: "", ...env },
+            reuseExistingServer: at.explicit || !CI,
+            timeout: 180_000,
+            stdout: "ignore" as const,
+            stderr: "pipe" as const,
+          })),
         ]),
   ],
 });

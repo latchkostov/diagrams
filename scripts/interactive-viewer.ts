@@ -5,6 +5,7 @@ import { build, type Plugin, type PluginOption, type Rollup, type ViteDevServer 
 import react from "@vitejs/plugin-react";
 import { catalog } from "../src/stencils/catalog";
 import { PAYLOAD_BLOCK, STENCIL_ICONS_OPEN, viewerCsp } from "../src/export/inject";
+import { deploymentDefines } from "./deployment-env";
 
 /**
  * The Interactive HTML export's template (File ▸ Export as ▸ Interactive HTML…, docs/INTEROP.md): the viewer
@@ -262,6 +263,8 @@ async function buildTemplate(root: string, plugins: PluginOption[]): Promise<{ h
       "import.meta.env.MODE": JSON.stringify("production"),
       "import.meta.env.VITE_E2E": JSON.stringify(""),
       __BUILD_SHA__: JSON.stringify(""),
+      // The public site's switches (src/lib/deployment.ts): the viewer has no links or AI of its own anyway.
+      ...deploymentDefines({}),
     },
     build: {
       write: false,

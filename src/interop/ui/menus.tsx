@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { formatCombo } from "../../editor/shortcuts";
 import { formatAgo } from "../../lib/time";
 import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
+import { LINK_OPEN, SHARE_LINKS } from "../../lib/deployment";
 import { newDiagramsPrivate } from "../../lib/privacyPrefs";
 import type { Binding, Interop } from "../useInterop";
 import { Menu, type MenuEntry } from "./Menu";
@@ -104,13 +105,18 @@ export function FileMenu({
           desc: "JSON, draw.io XML or Mermaid",
           onSelect: api.openPaste,
         },
-        {
-          type: "item",
-          testId: "import-share-link",
-          icon: <Glyph name="link" />,
-          title: "Share link…",
-          onSelect: api.openShareLink,
-        },
+        // A copy deployed without opening links (src/lib/deployment.ts) has no row for it.
+        ...(LINK_OPEN
+          ? [
+              {
+                type: "item" as const,
+                testId: "import-share-link",
+                icon: <Glyph name="link" />,
+                title: "Share link…",
+                onSelect: api.openShareLink,
+              },
+            ]
+          : []),
         { type: "note", text: "Or drop a file anywhere on the page." },
       ],
     });
@@ -172,7 +178,8 @@ export function FileMenu({
         onSelect: () => void api.saveAs(),
       });
     }
-    // Sharing and privacy together: a private diagram's link rows stay in place, off, saying why.
+    // Sharing and privacy together: a private diagram's link rows stay in place, off, saying why. A copy
+    // deployed without share links (src/lib/deployment.ts) has no link rows at all.
     const privacy = api.privacy();
     out.push(
       { type: "separator" },
@@ -185,30 +192,37 @@ export function FileMenu({
         desc: privacy ? "This diagram is private" : undefined,
         submenu: () => privacyMenu(api),
       },
-      {
-        type: "item",
-        testId: "export-share-link",
-        icon: <Glyph name="link" />,
-        title: "Copy share link",
-        desc: privacy ? PRIVATE_SHARE_MESSAGE : undefined,
-        disabled: !!privacy,
-        onSelect: () => void api.copyShareLink(),
-      },
-      {
-        type: "item",
-        testId: "export-share-link-password",
-        icon: <Glyph name="lock" />,
-        title: "Copy link with password…",
-        disabled: !!privacy,
-        onSelect: () => void api.copyPasswordLink(),
-      },
+    );
+    // Links only where this copy makes them; Embed code… always: a page that supplies the diagram puts none of
+    // it in a URL, so a private diagram (and a copy without share links) offers just that kind of embed.
+    if (SHARE_LINKS)
+      out.push(
+        {
+          type: "item",
+          testId: "export-share-link",
+          icon: <Glyph name="link" />,
+          title: "Copy share link",
+          desc: privacy ? PRIVATE_SHARE_MESSAGE : undefined,
+          disabled: !!privacy,
+          onSelect: () => void api.copyShareLink(),
+        },
+        {
+          type: "item",
+          testId: "export-share-link-password",
+          icon: <Glyph name="lock" />,
+          title: "Copy link with password…",
+          disabled: !!privacy,
+          onSelect: () => void api.copyPasswordLink(),
+        },
+      );
+    out.push(
       {
         type: "item",
         testId: "export-embed",
         icon: <Glyph name="code" />,
         title: "Embed code…",
         // A private diagram still embeds in a page that supplies it: nothing of it goes in a URL.
-        hint: privacy ? "Your app supplies it" : undefined,
+        hint: privacy || !SHARE_LINKS ? "Your app supplies it" : undefined,
         onSelect: api.openEmbed,
       },
       { type: "separator" },

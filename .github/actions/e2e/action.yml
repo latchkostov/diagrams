@@ -64,12 +64,23 @@ runs:
         fi
         VITE_E2E='' pnpm exec vite build --outDir tests/.output/preview-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/prod-build.log" 2>&1 &
         prod=$!
+        # The self-hosting builds (playwright.config.ts's INTERNAL_ENV and LOCKED_ENV).
+        VITE_E2E='' VITE_DISABLE_SHARE_LINKS=1 VITE_DISABLE_AI_TOOLS=1 VITE_PRIVATE_BY_DEFAULT=1 \
+          VITE_BRAND_NAME='Acme Diagrams (internal)' \
+          pnpm exec vite build --outDir tests/.output/internal-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/internal-build.log" 2>&1 &
+        internal=$!
+        VITE_E2E='' VITE_DISABLE_SHARE_LINKS=1 VITE_DISABLE_LINK_OPEN=1 VITE_DISABLE_AI_TOOLS=1 VITE_DISABLE_ONDEVICE=1 \
+          VITE_PRIVATE_BY_DEFAULT=1 \
+          pnpm exec vite build --outDir tests/.output/locked-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/locked-build.log" 2>&1 &
+        locked=$!
         if [ "$CACHE_HIT" = "true" ]; then pnpm exec playwright install-deps chromium; fi
         status=0
         if [ -n "$e2e" ]; then
           wait "$e2e" || { echo "::error::e2e build failed"; cat "$RUNNER_TEMP/e2e-build.log"; status=1; }
         fi
         wait "$prod" || { echo "::error::production build failed"; cat "$RUNNER_TEMP/prod-build.log"; status=1; }
+        wait "$internal" || { echo "::error::internal build failed"; cat "$RUNNER_TEMP/internal-build.log"; status=1; }
+        wait "$locked" || { echo "::error::locked build failed"; cat "$RUNNER_TEMP/locked-build.log"; status=1; }
         exit "$status"
     - name: Playwright
       shell: bash

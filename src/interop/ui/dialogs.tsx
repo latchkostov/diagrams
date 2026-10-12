@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DiagramFile } from "../../model/types";
 import { embedSnippet, embedUrl, encodeShare, SHARE_WARN_LENGTH, shareUrl } from "../share";
 import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
+import { SHARE_LINKS } from "../../lib/deployment";
 import { hostEmbedUrl, iframeSnippet, SNIPPET_PROTOCOL, webComponentSnippet } from "../embed/hostSnippets";
 
 /**
@@ -247,7 +248,7 @@ export function EmbedDialog({
   diagram,
   example,
   allowed,
-  privateOnly = false,
+  privateOnly: privateDiagram = false,
   fileName,
   onDownload,
   onClose,
@@ -264,6 +265,9 @@ export function EmbedDialog({
   onDownload: () => void;
   onClose: () => void;
 }) {
+  // A copy deployed without share links (src/lib/deployment.ts) offers only the host-supplied embed, and the
+  // sources that put the diagram in a URL aren't shown at all.
+  const privateOnly = privateDiagram || !SHARE_LINKS;
   const [payload, setPayload] = useState<string>();
   const [chosen, setChosen] = useState<EmbedSource>(privateOnly ? "host" : example ? "example" : "inline");
   const source: EmbedSource = privateOnly ? "host" : chosen;
@@ -315,7 +319,7 @@ export function EmbedDialog({
     else toast.error("Couldn't copy automatically. Select the code and copy it.");
   };
 
-  const sources: EmbedSource[] = example ? ["example", "inline", "host"] : ["inline", "host"];
+  const sources: EmbedSource[] = !SHARE_LINKS ? ["host"] : example ? ["example", "inline", "host"] : ["inline", "host"];
   const sourceButton = (value: EmbedSource, label: string) => (
     <button
       role="radio"
@@ -394,8 +398,8 @@ export function EmbedDialog({
         role="radiogroup"
         aria-label="Where the diagram comes from"
       >
-        {example && sourceButton("example", "Example by name")}
-        {sourceButton("inline", "In the link")}
+        {SHARE_LINKS && example && sourceButton("example", "Example by name")}
+        {SHARE_LINKS && sourceButton("inline", "In the link")}
         {sourceButton("host", "Your app supplies it (private)")}
       </div>
       {host && (

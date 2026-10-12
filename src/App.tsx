@@ -52,6 +52,7 @@ import { CommandPalette } from "./palette/CommandPalette";
 import { paletteHost } from "./palette/host";
 import { lazyComponent, whenIdle } from "./lib/lazyLoad";
 import { AiMount } from "./ai/ui/AiMount";
+import { AI_PANEL } from "./lib/deployment";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -451,7 +452,8 @@ function MainApp() {
             </Suspense>
           </ViewBoundary>
         </div>
-        <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />
+        {/* No AI panel in a copy deployed without AI tools or the on-device model (src/lib/deployment.ts). */}
+        {AI_PANEL && <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />}
       </div>
       <div className="sr-only" role="status" data-testid="example-loading">
         {url.view === "canvas" && waitingForExample

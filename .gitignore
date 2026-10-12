@@ -8,3 +8,5 @@ coverage/
 *.local
 .env.local
 .vitest/
+# Written by `pnpm headers:self-host` (docs/SELF-HOSTING.md)
+self-host-headers/

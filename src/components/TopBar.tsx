@@ -11,6 +11,7 @@ import { capacityOverlay } from "../live/capacityOverlay";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { checksPanel } from "../canvas/checks/checksPanel";
 import { groupByTheme, type ExampleThemeInfo } from "../examples/themes";
+import { BRAND_NAME } from "../lib/deployment";
 
 export interface ExampleOption {
   slug: string;
@@ -62,7 +63,7 @@ export function TopBar(p: Props) {
     <header className="topbar" data-testid="topbar">
       <div className="brand" data-testid="brand">
         <Logo />
-        <span>Live Diagrams</span>
+        <span>{BRAND_NAME}</span>
       </div>
 
       <div className="segmented" role="tablist" aria-label="View">

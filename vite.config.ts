@@ -5,6 +5,7 @@ import { exampleMetadataPlugin } from "./scripts/example-metadata";
 import { skillAssetsPlugin } from "./scripts/skill-assets";
 import { securityHeaders } from "./scripts/security-headers";
 import { interactiveViewer } from "./scripts/interactive-viewer";
+import { deploymentSwitches } from "./scripts/deployment-env";
 
 /**
  * `VITE_E2E=1` builds the app for the e2e suite: a production build that keeps the dev-only test hooks
@@ -136,6 +137,8 @@ export default defineConfig({
     securityHeaders(),
     canvas.plugin,
     viewer,
+    // Self-hosting switches (src/lib/deployment.ts, docs/SELF-HOSTING.md), folded to constants; the brand name.
+    deploymentSwitches(),
   ],
   // Always defined, so `import.meta.env.VITE_E2E === "1"` folds to a constant and the hooks drop out.
   define: {
@@ -146,7 +149,12 @@ export default defineConfig({
   build: {
     // Icons are many small SVGs; serving them as cached files keeps them out of the main JS chunk.
     assetsInlineLimit: 0,
-    rolldownOptions: { output: { codeSplitting: { groups: [canvas.group] } } },
+    rolldownOptions: {
+      // Every imported constant inlined where it's read (the default inlines only some reads): the self-hosting
+      // switches (src/lib/deployment.ts) fold in every chunk, so the code they turn off drops out.
+      optimization: { inlineConst: true },
+      output: { codeSplitting: { groups: [canvas.group] } },
+    },
   },
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],

@@ -64,6 +64,13 @@ Bump the version the same way (`pnpm skill:release --force`) after other skill c
 zip always carry the current viewer, and `pnpm skill:check` (nightly) reports a stale committed copy. Once per clone,
 `git config merge.ours.driver true` lets merges keep your copy of the viewer files.
 
+## Run your own copy
+
+The app is static files, so a company can host its own copy behind its own sign-in and keep every diagram inside its
+network. `pnpm build:internal` builds one with share links and AI tools off and new diagrams private, and
+`VITE_BRAND_NAME` names it. [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) covers the switches, hosting behind SSO
+(Azure Static Web Apps, CloudFront, nginx with oauth2-proxy, IIS), the security headers and updates.
+
 ## Development
 
 ```sh
@@ -71,6 +78,7 @@ pnpm install
 pnpm dev            # http://localhost:5173
 pnpm check          # typecheck, lint, unit tests (Vitest), e2e tests (Playwright)
 pnpm build          # production build in dist/
+pnpm build:internal # the same for a self-hosted copy (docs/SELF-HOSTING.md)
 pnpm review         # multi-angle Codex review of changes since review-base
 ```
 
@@ -86,6 +94,7 @@ audits, simulation scenarios and capacity states. Use it to preview changes quic
 | `docs/SIMULATION.md`    | Engine semantics: roles, consumer groups, retries, DLQ, capacity, units          |
 | `docs/SIMULATIONS.md`   | The saved-simulation format: traffic, timeline, expectations                     |
 | `docs/INTEROP.md`       | Formats, share links, embed, and Google Drive setup                              |
+| `docs/SELF-HOSTING.md`  | Running your own copy: the switches, hosting behind SSO, headers and updates     |
 | `docs/ICONS.md`         | Icon sources and licences                                                        |
 | `docs/QUALITY.md`       | The quality loop: checks, Codex reviews, and UX gates                            |
 | `docs/DESIGN-REVIEW.md` | UX review rounds and scorecards                                                  |

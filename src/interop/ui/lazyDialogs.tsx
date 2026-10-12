@@ -1,5 +1,6 @@
 import { lazyComponent, LOAD_FAILED, type Placeholder } from "../../lib/lazyLoad";
 import { Dialog } from "./Dialog";
+import { LINKS_OFF_MESSAGE } from "../../lib/deployment";
 
 // The import / export dialogs load the first time one opens, or earlier: when the File menu opens, or once
 // the app is idle (preloadDialogs). None of them is part of the first view.
@@ -41,20 +42,40 @@ export function loadingDialog<P extends { onClose: () => void }>(title: string):
   );
 }
 
-const dialogs = () => import("./dialogs");
-const passwordDialogs = () => import("./passwordDialogs");
+/**
+ * The dialogs that make links, only in a copy deployed with share links (src/lib/deployment.ts's SHARE_LINKS).
+ * Embed stays: without links it offers only the embed whose diagram the host's page supplies.
+ * Read here as the build's literal, not through deployment.ts: the bundler drops a lazy import's code only when
+ * its condition is a literal in the module that imports it, and an export only when the `import()` is read
+ * directly (`import(…).then((m) => m.X)`, not through a helper) (src/lib/deployment.build.test.ts checks).
+ */
+declare const __DEPLOYMENT_SHARE_LINKS__: boolean;
+const LINKS = __DEPLOYMENT_SHARE_LINKS__;
+const linksOff = () => Promise.reject(new Error(LINKS_OFF_MESSAGE));
 
-export const ShareDialog = lazyComponent(() => dialogs().then((m) => m.ShareDialog), loadingDialog("Share link"));
-export const EmbedDialog = lazyComponent(() => dialogs().then((m) => m.EmbedDialog), loadingDialog("Embed"));
-export const ImageDialog = lazyComponent(() => dialogs().then((m) => m.ImageDialog), loadingDialog("Export image"));
-export const PasteDialog = lazyComponent(() => dialogs().then((m) => m.PasteDialog), loadingDialog("Paste a diagram"));
+export const ShareDialog = lazyComponent(
+  LINKS ? () => import("./dialogs").then((m) => m.ShareDialog) : linksOff,
+  loadingDialog("Share link"),
+);
+export const EmbedDialog = lazyComponent(() => import("./dialogs").then((m) => m.EmbedDialog), loadingDialog("Embed"));
+export const ImageDialog = lazyComponent(
+  () => import("./dialogs").then((m) => m.ImageDialog),
+  loadingDialog("Export image"),
+);
+export const PasteDialog = lazyComponent(
+  () => import("./dialogs").then((m) => m.PasteDialog),
+  loadingDialog("Paste a diagram"),
+);
 export const OpenLinkDialog = lazyComponent(
-  () => dialogs().then((m) => m.OpenLinkDialog),
+  () => import("./dialogs").then((m) => m.OpenLinkDialog),
   loadingDialog("Open a share link"),
 );
-export const PagesDialog = lazyComponent(() => dialogs().then((m) => m.PagesDialog), loadingDialog("Choose a page"));
+export const PagesDialog = lazyComponent(
+  () => import("./dialogs").then((m) => m.PagesDialog),
+  loadingDialog("Choose a page"),
+);
 export const PrivacyDialog = lazyComponent(
-  () => dialogs().then((m) => m.PrivacyDialog),
+  () => import("./dialogs").then((m) => m.PrivacyDialog),
   loadingDialog("Private diagram"),
 );
 /** File ▸ Export as ▸ Interactive HTML… (src/export): the template itself downloads only when it opens. */
@@ -64,11 +85,11 @@ export const HtmlExportDialog = lazyComponent(
 );
 /** Password links: the dialogs and the strength hint. */
 export const PasswordLinkDialog = lazyComponent(
-  () => passwordDialogs().then((m) => m.PasswordLinkDialog),
+  LINKS ? () => import("./passwordDialogs").then((m) => m.PasswordLinkDialog) : linksOff,
   loadingDialog("Copy link with password"),
 );
 export const UnlockDialog = lazyComponent(
-  () => passwordDialogs().then((m) => m.UnlockDialog),
+  () => import("./passwordDialogs").then((m) => m.UnlockDialog),
   loadingDialog("This diagram is password-protected"),
 );
 /** The Import report: with the first infrastructure import (it brings the stencil search and the AI swap). */
@@ -85,14 +106,13 @@ export const StorageFilesDialog = lazyComponent(
 /** Warms every dialog the File menu and the canvas's Export menu can open. */
 export function preloadDialogs() {
   for (const dialog of [
-    ShareDialog,
+    ...(LINKS ? [ShareDialog, PasswordLinkDialog] : []),
     EmbedDialog,
     ImageDialog,
     PasteDialog,
     OpenLinkDialog,
     PagesDialog,
     PrivacyDialog,
-    PasswordLinkDialog,
     HtmlExportDialog,
   ])
     dialog.preload();

@@ -20,6 +20,8 @@
     "format:check": "prettier --check .",
     "test:coverage": "vitest run --coverage",
     "size": "node scripts/bundle-budget.mjs",
+    "build:internal": "node scripts/build-internal.mjs",
+    "headers:self-host": "node scripts/headers-self-host.mjs",
     "review": "bash scripts/review/run.sh"
   },
   "dependencies": {
