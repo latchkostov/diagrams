@@ -1,13 +1,31 @@
 // The agent skill (skills/livediagrams/): its generated files are current, its scripts agree with the app
-// (layout, share-link encoding, what the app will open), and validate.mjs explains what's wrong.
+// (layout, share-link encoding, what the app will open, the HTML export's injection), its released viewer is
+// self-consistent, and validate.mjs explains what's wrong.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { generateSkillFiles, publicExamples, SKILL_DIR } from "../../../scripts/skill-gen";
-import { readSkill, zipSkill } from "../../../scripts/skill-assets";
+import { readSkill, withFresh, zipSkill } from "../../../scripts/skill-assets";
+import {
+  applyRelease,
+  bumpVersion,
+  iconMap,
+  RELEASED,
+  releasedFiles,
+  type ReleaseFs,
+} from "../../../scripts/skill-viewer";
+import {
+  exportHtml,
+  FALLBACK_ICON,
+  htmlFileName,
+  PAYLOAD_BLOCK,
+  templateStencilIcons,
+  type ExportInput,
+} from "../../export/inject";
 import { decodeShare, encodeShare, sharePayloadFromInput } from "../../interop/share";
 import { parseNative } from "../../interop/native";
 import { layoutDiagram } from "./layout";
@@ -60,6 +78,7 @@ describe("generated skill files", () => {
       "reference/simulation.md",
       "reference/stencils.md",
       "scripts/lib/app.mjs",
+      "scripts/lib/inject.mjs",
       "scripts/lib/spec.json",
     ]);
     for (const [name, text] of Object.entries(files))
@@ -74,7 +93,13 @@ describe("generated skill files", () => {
     expect(field("name")).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
     expect(field("description").length).toBeGreaterThan(50);
     expect(field("description").length).toBeLessThanOrEqual(1024);
-    for (const doc of ["SKILL.md", "reference/format.md", "reference/simulation.md", "reference/stencils.md"]) {
+    for (const doc of [
+      "SKILL.md",
+      "reference/format.md",
+      "reference/outputs.md",
+      "reference/simulation.md",
+      "reference/stencils.md",
+    ]) {
       const body = readFileSync(path.join(skill, doc), "utf8");
       for (const [, href] of body.matchAll(/\]\(([^)#:]+)(?:#[^)]*)?\)/g))
         expect(existsSync(path.join(skill, path.dirname(doc), href)), `${doc} -> ${href}`).toBe(true);
@@ -154,6 +179,7 @@ describe("validate.mjs", () => {
     ["the wrong format", (d) => ({ ...d, format: "drawio" }), /"format" must be "diagrams\/v1", not "drawio"/],
     ["no title", (d) => ({ ...d, title: "" }), /Add a "title"/],
     ["no edges list", ({ edges: _, ...d }) => d, /"edges" must be a list/],
+    ["a private that isn't true", (d) => ({ ...d, private: "yes" }), /"private" must be true/],
     [
       "an unknown stencil",
       (d) => ({ ...d, nodes: [{ ...d.nodes[0], stencil: "kafka-topic" }, ...d.nodes.slice(1)] }),
@@ -539,8 +565,18 @@ describe("the downloadable skill", () => {
   it("zips the skill folder deterministically, under livediagrams/", () => {
     const files = readSkill();
     const names = files.map((f) => f.name);
-    expect(names).toEqual(expect.arrayContaining(["SKILL.md", "scripts/validate.mjs", "scripts/lib/spec.json"]));
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "SKILL.md",
+        "scripts/validate.mjs",
+        "scripts/export-html.mjs",
+        "scripts/lib/spec.json",
+        "scripts/lib/viewer-template.html",
+      ]),
+    );
     const zip = zipSkill(files);
+    // The viewer template is most of it (about 415 kB of the zip): keep the download in check.
+    expect(zip.length).toBeLessThan(800_000);
     expect(zipSkill(readSkill()).equals(zip)).toBe(true);
     // Read the local file entries back.
     const out = new Map<string, string>();
@@ -554,5 +590,226 @@ describe("the downloadable skill", () => {
     }
     expect([...out.keys()]).toEqual(names.map((name) => `livediagrams/${name}`));
     expect(out.get("livediagrams/SKILL.md")).toBe(readFileSync(path.join(skill, "SKILL.md"), "utf8"));
+  });
+});
+
+/** The released viewer (`pnpm skill:release`, scripts/skill-viewer.ts), as committed. */
+const committedTemplate = readFileSync(path.join(skill, RELEASED.template), "utf8");
+const committedIcons = JSON.parse(readFileSync(path.join(skill, RELEASED.icons), "utf8")) as Record<string, string>;
+const sha256 = (text: string) => createHash("sha256").update(text, "utf8").digest("base64");
+const csp = (html: string) => /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html)?.[1] ?? "";
+/** The contents of every <tag> element without attributes (the executable script, the style). */
+const blocks = (html: string, tag: "script" | "style") =>
+  [...html.matchAll(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, "g"))].map((m) => m[1]);
+
+// Not compared with the current app: the committed copy is refreshed only on release (`pnpm skill:check` reports a
+// stale one, nightly). It has to work on its own.
+describe("the committed viewer", () => {
+  it("allows exactly its one inline script and style by hash, and nothing else", () => {
+    const [script, ...moreScripts] = blocks(committedTemplate, "script");
+    const [style, ...moreStyles] = blocks(committedTemplate, "style");
+    expect(moreScripts).toEqual([]);
+    expect(moreStyles).toEqual([]);
+    const policy = csp(committedTemplate);
+    expect(policy).toContain(`script-src 'sha256-${sha256(script)}'`);
+    expect(policy).toContain(`style-src 'sha256-${sha256(style)}'`);
+    expect(policy).toContain("default-src 'none'");
+    expect(policy).toContain("connect-src 'none'");
+    expect(policy).not.toMatch(/unsafe-|worker-src|'self'|https?:/);
+  });
+
+  it("has the payload placeholder once, and references nothing outside itself", () => {
+    expect(committedTemplate.split(PAYLOAD_BLOCK)).toHaveLength(2);
+    expect(committedTemplate).not.toMatch(/<script[^>]+\bsrc=/);
+    expect(committedTemplate).not.toMatch(/<link\b(?![^>]*href="data:)/);
+    const urls = [...committedTemplate.matchAll(/url\(\s*["']?([^"')\s]{0,40})/g)].map((m) => m[1]);
+    expect(urls.filter((u) => !/^(data:|#|$)/.test(u))).toEqual([]);
+    expect(committedTemplate).not.toMatch(/particleWorker|assets\/[\w.-]+\.(svg|js|css|woff2)/);
+  });
+
+  it("has an icon for every stencil it names, and the fallback", () => {
+    const named = new Set(Object.values(templateStencilIcons(committedTemplate)));
+    expect(named.size).toBeGreaterThan(100);
+    expect(Object.keys(committedIcons)).toContain(FALLBACK_ICON);
+    expect([...named].filter((icon) => !Object.hasOwn(committedIcons, icon))).toEqual([]);
+    for (const [name, svg] of Object.entries(committedIcons)) expect(svg, name).toMatch(/^<svg[\s>]/);
+  });
+});
+
+describe("export-html.mjs", () => {
+  const kafka = path.join(root, "src", "examples", "kafka-order-pipeline.json");
+  const out = (...parts: string[]) => path.join(tmp, "html", ...parts);
+
+  it("makes the file src/export/inject.ts makes from the committed viewer, for every option", () => {
+    // inject.mjs (byte-identical to a fresh build of inject.ts, above) behaves as inject.ts does.
+    const diagram = read(kafka);
+    const expected = (input: Partial<ExportInput>) =>
+      exportHtml(committedTemplate, {
+        diagram,
+        iconSvgs: committedIcons,
+        theme: "light",
+        exportedOn: "2026-10-12",
+        ...input,
+      });
+    const cases: [string[], Partial<ExportInput>][] = [
+      [[], { startSimulation: "black-friday" }],
+      [
+        ["--theme", "dark", "--banner", "Confidential: internal use only", "--sim", "payments-outage"],
+        { theme: "dark", banner: "Confidential: internal use only", startSimulation: "payments-outage" },
+      ],
+      [["--title", "Orders (team copy)", "--no-autoplay"], { title: "Orders (team copy)", startSimulation: null }],
+    ];
+    for (const [i, [args, input]] of cases.entries()) {
+      const dir = out(`case${i}`);
+      const r = run("export-html.mjs", kafka, "--out", dir, "--exported-on", "2026-10-12", ...args);
+      expect(r.code, r.err).toBe(0);
+      const file = path.join(dir, htmlFileName(input.title ?? diagram.title));
+      const html = readFileSync(file, "utf8");
+      // It reports the path, the file's real size and what plays.
+      const kB = Math.max(1, Math.round(Buffer.byteLength(html) / 1000)).toLocaleString("en-US");
+      const sim = diagram.simulations.find((x: { id: string }) => x.id === input.startSimulation);
+      const [first, note] = r.out.trim().split("\n");
+      expect(first).toBe(`${file} (${kB} kB${sim ? `, plays "${sim.title}" when opened` : ""})`);
+      expect(note).toMatch(/^Private: .*no network requests.*only people who have the file can open it/);
+      expect(html === expected(input), args.join(" ") || "defaults").toBe(true);
+      // The payload is a data block: the policy still matches the untouched script and style.
+      expect(csp(html)).toBe(csp(committedTemplate));
+      expect(blocks(html, "script")).toEqual(blocks(committedTemplate, "script"));
+    }
+  });
+
+  it("exports a private diagram, which share-link.mjs refuses", () => {
+    const file = write({ ...read(kafka), title: "Ledger flow", private: true });
+    const valid = run("validate.mjs", file);
+    expect(valid.code, valid.out).toBe(0);
+    expect(valid.out).not.toMatch(/warning:/);
+    const link = run("share-link.mjs", file);
+    expect(link.code).toBe(1);
+    expect(link.out).toBe("");
+    expect(link.err).toMatch(/private diagram.*export-html.mjs/);
+    const r = run("export-html.mjs", file, "--out", out("private.html"));
+    expect(r.code, r.err).toBe(0);
+    expect(readFileSync(out("private.html"), "utf8")).toContain('"private":true');
+  });
+
+  it("refuses a file the viewer wouldn't show as made, before writing anything", () => {
+    // Valid, but escaping its 2,000,100 "<" (6 characters each in the payload) takes it past the viewer's budget.
+    const big = write({
+      format: "diagrams/v1",
+      title: "Big",
+      description: "<".repeat(2_000_100),
+      nodes: [{ id: "a", stencil: "postgres", label: "A", x: 0, y: 0 }],
+      edges: [],
+    });
+    expect(run("validate.mjs", big).code).toBe(0);
+    const tooBig = run("export-html.mjs", big, "--out", out("big"));
+    expect(tooBig.code).toBe(1);
+    expect(tooBig.err).toMatch(/the viewer wouldn't show the file as made\. It's too large to open/);
+    expect(existsSync(out("big"))).toBe(false);
+    // The viewer shows at most 300 characters of banner.
+    const banner = run("export-html.mjs", kafka, "--out", out("banner"), "--banner", "x".repeat(301));
+    expect(banner.code).toBe(1);
+    expect(banner.err).toMatch(/The banner is too long: the viewer shows at most 300 characters/);
+    expect(existsSync(out("banner"))).toBe(false);
+  });
+
+  it("refuses an invalid diagram and bad options, and writes nothing", () => {
+    const broken = run(
+      "export-html.mjs",
+      write({ format: "diagrams/v1", title: "x", nodes: [{ id: "a" }], edges: [] }),
+    );
+    expect(broken.code).toBe(1);
+    expect(broken.err).toMatch(/fix them first/);
+    const unplaced = write({
+      format: "diagrams/v1",
+      title: "x",
+      nodes: [{ id: "a", stencil: "postgres", label: "A" }],
+      edges: [],
+    });
+    expect(run("export-html.mjs", unplaced).err).toMatch(/layout\.mjs/);
+    expect(run("export-html.mjs", kafka, "--theme", "blue").code).toBe(2);
+    expect(run("export-html.mjs", kafka, "--sim", "nope").err).toMatch(/isn't one of this diagram's simulations/);
+    expect(run("export-html.mjs", kafka, "--colour", "red").code).toBe(2);
+    expect(run("export-html.mjs").code).toBe(2);
+    expect(existsSync(path.join(root, "src", "examples", "Kafka order pipeline.html"))).toBe(false);
+    expect(readdirSync(tmp).filter((f) => f.endsWith(".html"))).toEqual([]);
+  });
+
+  it("uses nothing that could reach the network", () => {
+    for (const f of ["export-html.mjs", "lib/inject.mjs", "lib/check.mjs"]) {
+      const code = readFileSync(path.join(skill, "scripts", f), "utf8");
+      expect(code, f).not.toMatch(/node:(http|https|net|dgram|tls|dns)\b|\bfetch\(|XMLHttpRequest|WebSocket/);
+    }
+  });
+});
+
+describe("releasing the viewer", () => {
+  it("bumps the plugin's version, patch by default, and keeps the rest of the manifest as it is", () => {
+    const text = readFileSync(path.join(root, ".claude-plugin", "marketplace.json"), "utf8");
+    const version = JSON.parse(text).plugins[0].version as string;
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+    const [major, minor, patch] = version.split(".").map(Number);
+    const p = bumpVersion(text, "patch");
+    expect([p.from, p.to]).toEqual([version, `${major}.${minor}.${patch + 1}`]);
+    expect(p.text).toBe(text.replace(`"version": "${version}"`, `"version": "${p.to}"`));
+    expect(bumpVersion(text, "minor").to).toBe(`${major}.${minor + 1}.0`);
+    expect(() => bumpVersion("{}", "patch")).toThrow(/no "version"/);
+  });
+
+  it("a release that fails partway changes nothing, so a retry releases and bumps", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "livediagrams-release-"));
+    const asset = path.join(dir, "viewer-template.html");
+    const icons = path.join(dir, "icons.json");
+    const manifest = path.join(dir, "marketplace.json");
+    const manifestAt = (v: string) => `{ "plugins": [{ "name": "livediagrams", "version": "${v}" }] }\n`;
+    writeFileSync(asset, "old template");
+    writeFileSync(icons, "old icons");
+    writeFileSync(manifest, manifestAt("1.1.0"));
+    const files = { [asset]: "new template", [icons]: "new icons" };
+    const state = () => [asset, icons, manifest].map((f) => readFileSync(f, "utf8"));
+    const listing = () => readdirSync(dir).sort();
+    const before = state();
+
+    // The manifest's swap, the last step, fails: the assets already swapped get their old contents back.
+    let failManifest = true;
+    const fs: ReleaseFs = {
+      readFileSync: (f, e) => readFileSync(f, e),
+      writeFileSync: (f, t) => writeFileSync(f, t),
+      renameSync: (from, to) => {
+        if (failManifest && to === manifest) throw new Error("disk full");
+        renameSync(from, to);
+      },
+      rmSync: (f, o) => rmSync(f, o),
+      existsSync: (f) => existsSync(f),
+    };
+    expect(() => applyRelease(files, manifest, "patch", fs)).toThrow(/disk full/);
+    expect(state()).toEqual(before);
+    expect(listing()).toEqual(["icons.json", "marketplace.json", "viewer-template.html"]);
+    // Staging fails: nothing is swapped at all.
+    failManifest = false;
+    const readOnly: ReleaseFs = {
+      ...fs,
+      writeFileSync: () => {
+        throw new Error("read-only");
+      },
+    };
+    expect(() => applyRelease(files, manifest, "patch", readOnly)).toThrow(/read-only/);
+    expect(state()).toEqual(before);
+
+    // The retry sees the same stale files and version, and completes.
+    expect(applyRelease(files, manifest, "patch", fs)).toEqual({ from: "1.1.0", to: "1.1.1" });
+    expect(state()).toEqual(["new template", "new icons", manifestAt("1.1.1")]);
+    expect(listing()).toEqual(["icons.json", "marketplace.json", "viewer-template.html"]);
+  });
+
+  it("the site serves a fresh template and icons in place of the committed ones", () => {
+    const files = readSkill();
+    const fresh = releasedFiles(root, "<!doctype html><title>fresh</title>\n");
+    const served = withFresh(files, fresh);
+    expect(served.map((f) => f.name)).toEqual(files.map((f) => f.name));
+    expect(served.find((f) => f.name === RELEASED.template)?.data.toString("utf8")).toBe(fresh[RELEASED.template]);
+    expect(JSON.parse(served.find((f) => f.name === RELEASED.icons)!.data.toString("utf8"))).toEqual(iconMap(root));
+    expect(served.find((f) => f.name === "SKILL.md")).toBe(files.find((f) => f.name === "SKILL.md"));
+    expect(() => withFresh(files, { "scripts/lib/nope.html": "" })).toThrow(/no scripts\/lib\/nope\.html/);
   });
 });

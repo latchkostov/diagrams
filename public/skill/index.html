@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Install the Live Diagrams Agent Skill in Claude Code, Codex or the Claude apps: your agent draws architecture diagrams and returns a livediagrams.dev link."
+      content="Install the Live Diagrams Agent Skill in Claude Code, Codex or the Claude apps: your agent draws architecture diagrams and returns a private interactive HTML file, a diagram file or a livediagrams.dev link."
     />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
@@ -98,10 +98,21 @@
       <h1 data-testid="skill-title">Use Live Diagrams with your AI agent</h1>
       <p>
         The <strong>livediagrams</strong> Agent Skill lets your coding agent draw diagrams for you. Ask "diagram our
-        order pipeline" and it writes a <code>.diagram.json</code> file, checks it, and replies with a
-        livediagrams.dev link that opens it. Nothing is uploaded: the diagram travels inside the link. It needs Node.js
-        20 or later, and no account or API key.
+        order pipeline" and it writes a <code>.diagram.json</code> file, checks it, and asks what you want back.
+        Nothing is uploaded. It needs Node.js 20 or later, and no account or API key.
       </p>
+      <ul data-testid="skill-outputs">
+        <li>
+          <strong>Interactive HTML file</strong>, recommended for work and company diagrams: one file that plays the
+          simulations, works offline and makes no network requests. Only people who have the file can open it.
+        </li>
+        <li><strong>Diagram file</strong> (<code>.diagram.json</code>), to keep editing at livediagrams.dev.</li>
+        <li><strong>Image</strong>: it tells you how to export one from the app.</li>
+        <li>
+          <strong>Share link</strong>: anyone who has the link can open the diagram, so private diagrams never get
+          one.
+        </li>
+      </ul>
 
       <h2 id="claude-code">Claude Code</h2>
       <p>Run these two commands in Claude Code:</p>
@@ -148,7 +159,8 @@
       <h2 id="try-it">Then ask</h2>
       <p>
         "Diagram a Kafka order pipeline: an order service publishes orders.created, billing and inventory consume it,
-        and failed messages go to a dead-letter queue." Open the link it gives you.
+        and failed messages go to a dead-letter queue." For a work diagram, ask for the HTML file and a
+        "Confidential" banner.
       </p>
 
       <h2 id="in-the-browser">In the browser</h2>

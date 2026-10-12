@@ -1,6 +1,7 @@
 // The generated parts of the agent skill (skills/livediagrams/), built from the same sources as
-// public/llms.txt and public/schema/: the stencil catalog, the file format, and the app's
-// own validator and layout code.
+// public/llms.txt and public/schema/: the stencil catalog, the file format, the app's own validator and
+// layout code, and the Interactive HTML export's injection. The export's viewer template and icons are refreshed
+// only on release (`pnpm skill:release`, see scripts/skill-viewer.ts).
 // scripts/gen-schemas.mjs writes them (`pnpm schemas`); src/ai/skill/skill.test.ts fails when they're stale.
 //
 // Privacy: the only diagrams read here are the public examples, the *.json files directly in
@@ -8,7 +9,7 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { build } from "vite";
+import { bundleModule, INJECT, injectModule } from "./skill-viewer";
 import type { DiagramFile } from "../src/model/types";
 import { catalog } from "../src/stencils/catalog";
 import { STENCIL_ALIASES } from "../src/lib/stencilSearch";
@@ -207,31 +208,19 @@ export function fillRegions(text: string, file: string): string {
 export const REGION_FILES = ["reference/format.md", "reference/simulation.md"];
 
 /** The app's validator and layout (src/ai/skill/app.ts and what it imports) as one plain ES module. */
-export async function bundleApp(root: string): Promise<string> {
-  const out = await build({
-    root,
-    configFile: false,
-    logLevel: "error",
-    publicDir: false,
-    build: {
-      write: false,
-      minify: false,
-      copyPublicDir: false,
-      reportCompressedSize: false,
-      lib: { entry: path.join(root, "src/ai/skill/app.ts"), formats: ["es"], fileName: "app" },
-    },
-  });
-  const outputs = (Array.isArray(out) ? out : [out]) as { output: { type: string; code?: string }[] }[];
-  const chunk = outputs[0].output.find((o) => o.type === "chunk");
-  if (!chunk?.code) throw new Error("skill-gen: bundling the app code produced no code.");
-  return `// ${NOTICE}\n// The app's own validator and layout (src/ai/skill/app.ts), bundled so the skill runs on plain Node.\n${chunk.code.replace(/\r\n/g, "\n")}`;
-}
+export const bundleApp = (root: string) =>
+  bundleModule(root, "src/ai/skill/app.ts", [
+    NOTICE,
+    "The app's own validator and layout (src/ai/skill/app.ts), bundled so the skill runs on plain Node.",
+  ]);
 
 /** Every generated file, by path under skills/livediagrams/. */
 export async function generateSkillFiles(root: string): Promise<Record<string, string>> {
   const files: Record<string, string> = {
     "scripts/lib/spec.json": JSON.stringify(spec(), null, 2) + "\n",
     "scripts/lib/app.mjs": await bundleApp(root),
+    // The HTML export's injection. Its template and icons are released, not generated here (scripts/skill-viewer.ts).
+    [INJECT]: await injectModule(root),
     "reference/stencils.md": stencilsDoc(publicExamples(root)),
   };
   for (const rel of REGION_FILES) {

@@ -54,7 +54,7 @@ A password link is `https://www.livediagrams.dev/#e=v1.<salt>.<iv>.<ciphertext>`
 
 ## Agent Skill
 
-Agents without a browser can use the livediagrams Agent Skill: [SKILL.md](https://www.livediagrams.dev/skill/SKILL.md), or the whole folder as [livediagrams-skill.zip](https://www.livediagrams.dev/livediagrams-skill.zip). Install steps for Claude Code, Codex and the Claude apps: [livediagrams.dev/skill/](https://www.livediagrams.dev/skill/). Its scripts validate a `.diagram.json` file, lay it out and print its share link, offline.
+Agents without a browser can use the livediagrams Agent Skill: [SKILL.md](https://www.livediagrams.dev/skill/SKILL.md), or the whole folder as [livediagrams-skill.zip](https://www.livediagrams.dev/livediagrams-skill.zip). Install steps for Claude Code, Codex and the Claude apps: [livediagrams.dev/skill/](https://www.livediagrams.dev/skill/). Its scripts validate a `.diagram.json` file, lay it out, print its share link and export it as Interactive HTML (`scripts/export-html.mjs`: the app's own file, made offline with no network requests), all offline. The skill asks which output the person wants and recommends the HTML file or the diagram file for work diagrams; a private diagram (`"private": true`) never gets a share link.
 
 ## Untrusted content
 

@@ -388,6 +388,38 @@ const html = exportHtml(template, {
 writeFileSync(htmlFileName(diagram.title), html);
 ```
 
+**From the agent skill, offline.** `skills/livediagrams/scripts/export-html.mjs <file> [--out path] [--theme light|dark]
+[--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay]` makes the same kind of file on plain Node (20 or
+later, standard library only, no network): it validates the diagram with `validate.mjs`'s checks, then runs the
+bundled injection on the bundled template with the bundled icons, and checks the finished payload with the viewer's own
+`parsePayload` (size budgets, the diagram contract, icons, the 300-character banner) before writing anything, all in `skills/livediagrams/scripts/lib/`
+(`scripts/skill-viewer.ts`). `--exported-on YYYY-MM-DD` fixes the footer's date.
+
+- `inject.mjs`: this module as plain JavaScript. Small and stable, so `pnpm schemas` keeps it current and the
+  staleness test (`src/ai/skill/skill.test.ts`) compares it byte for byte.
+- `viewer-template.html` (`buildViewerTemplate`, 1.2 MB minified) and `icons.json` (the SVG text of every icon the
+  catalog uses, 387 kB) are **refreshed only on release**: `pnpm skill:release` (`scripts/skill-release.mjs`) rebuilds
+  them, regenerates `inject.mjs` and bumps the plugin's version in `.claude-plugin/marketplace.json` (patch, or
+  `--minor`): it stages every file, swaps them in by rename with the version bump last, and rolls back if a step
+  fails, so a retry releases again. Run it when you want Claude Code users to get the latest viewer: the committed copy is what the
+  marketplace installs from git. Neither `pnpm schemas` nor a build rewrites them, so pull requests that touch the
+  canvas, live view or the export never conflict on an unmergeable minified file (`.gitattributes` also marks them
+  `-diff`, generated, and `merge=ours`).
+- **The site is always current.** The build serves `/skill/` and `/livediagrams-skill.zip` (`scripts/skill-assets.ts`)
+  with the template the same build emits for the app and fresh icons, in place of the committed copy; the dev server
+  does the same.
+- **Staleness is reported, never blocking.** `pnpm skill:check` says whether the committed copy differs from a fresh
+  build and always exits 0; the nightly workflow runs it and shows a warning on the run when it does.
+
+The skill grows from 50 kB to about 607 kB zipped (the template is 415 kB of it). It's kept raw rather than gzipped:
+the zip deflates it to the same size either way. Tests: `src/ai/skill/skill.test.ts` (the committed template is
+self-consistent: its CSP hashes match its inline script and style, it has the payload placeholder once and
+references nothing outside itself, and `icons.json` covers every icon it names; the script's file equals
+`exportHtml` from `inject.ts` on the committed template for several option sets; a private diagram exports but gets
+no link; bad input writes nothing; the version bump; the site's fresh copy) and `tests/e2e/skill-html.spec.ts` (the
+same diagram and options as the app's download; opens from `file://`, renders and plays with zero requests; a
+private diagram; the build's `/skill/` template and zip are this build's viewer).
+
 The JSON is escaped for a `<script>` element (every `<` as a JSON unicode escape, so no `</script>` or `<!--`, and
 U+2028 and U+2029 too). Both ends hold the whole diagrams/v1 contract: the app runs `validateDiagram` before it
 writes a file, and the viewer bounds the payload before parsing it (12 MB in all, the diagram within the app's own

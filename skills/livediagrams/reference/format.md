@@ -12,7 +12,8 @@ are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file
 - `nodes` and `edges` (required, may be empty), and optionally `groups`, `annotations` and `simulations`.
 - `private`: `true` marks a Private diagram. The app keeps it on the device (no share links, no cloud saves, no
   AI tools) and it stays private when it's opened again. Keep the field as it is, never make a share link for
-  it (`scripts/share-link.mjs` refuses) and don't upload it anywhere; hand the user the file.
+  it (`scripts/share-link.mjs` refuses) and don't upload it anywhere; hand the user the file or an Interactive HTML
+  file (`scripts/export-html.mjs`, see [outputs.md](outputs.md)).
 - `checks`: the architecture checks a person turned off (`"off": ["capacity"]`) or ignored for one element
   (`"ignore": [{ "rule": "dead-letter", "target": "<node id>", "reason": "..." }]`). Keep it as it is. Only the
   person decides it: never add entries to silence a finding; fix the design instead.
@@ -160,7 +161,8 @@ and `y`, and the boundary gains its box.
 
 ## Share links
 
-`scripts/share-link.mjs` builds the link. Without Node, build it the same way: take the diagram as minified JSON
+Anyone who has a link can open the diagram, so make one only when the user asked for a link, and never for a private
+diagram ([outputs.md](outputs.md)). `scripts/share-link.mjs` builds the link. Without Node, build it the same way: take the diagram as minified JSON
 (UTF-8), compress it with raw DEFLATE (RFC 1951, no zlib header), encode that as base64url without padding, and
 append it to `https://www.livediagrams.dev/#d=`. In Python:
 

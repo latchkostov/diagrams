@@ -32,9 +32,16 @@ in the browser. There is no account and no server.
 ## Use with your AI agent
 
 The **livediagrams** [Agent Skill](skills/livediagrams/SKILL.md) lets an agent draw diagrams for you. Ask "diagram
-our order pipeline" and it writes a `.diagram.json` file, checks it, and hands back a livediagrams.dev link. No
-browser is needed and nothing is uploaded: the diagram travels inside the link. The skill needs Node.js 20 or later
-and no keys.
+our order pipeline" and it writes a `.diagram.json` file, checks it, and asks what you want back:
+
+- an **interactive HTML file** (recommended for work and company diagrams): the app's Interactive HTML export, made
+  offline by the skill's `export-html.mjs`. It plays the simulations, works offline, makes no network requests, and
+  only people who have the file can open it;
+- the **diagram file**, to keep editing at livediagrams.dev;
+- an **image**, which it tells you how to export from the app;
+- a **share link**, where anyone who has the link can open the diagram. Private diagrams never get one.
+
+No browser is needed and nothing is uploaded. The skill needs Node.js 20 or later and no keys. To install it:
 
 - **Claude Code**: `/plugin marketplace add latchkostov/diagrams`, then `/plugin install livediagrams@livediagrams`
   (or, on Claude Code 2.1.275 or later, `/plugin install livediagrams --marketplace latchkostov/diagrams`).
@@ -47,8 +54,15 @@ and no keys.
 
 The same steps, with copyable commands, are at [livediagrams.dev/skill/](https://www.livediagrams.dev/skill/) (linked from
 the AI panel). The skill is also published at [livediagrams.dev/skill/SKILL.md](https://www.livediagrams.dev/skill/SKILL.md). Its
-stencil list, validator, layout and parts of its reference are generated from the app by `pnpm schemas`, and a unit test fails
-when they're stale.
+stencil list, validator, layout, parts of its reference and its HTML export's injection are generated from the app by
+`pnpm schemas`, and a unit test fails when they're stale.
+
+**Releasing the skill.** Its HTML export's viewer (`scripts/lib/viewer-template.html` and `icons.json`) is refreshed only
+on release: run `pnpm skill:release` (`--minor` for a minor version) when you want Claude Code users to get the latest
+viewer. It rebuilds them and bumps the plugin's version in `.claude-plugin/marketplace.json`; commit what it changes.
+Bump the version the same way (`pnpm skill:release --force`) after other skill changes. The site's `/skill/` folder and
+zip always carry the current viewer, and `pnpm skill:check` (nightly) reports a stale committed copy. Once per clone,
+`git config merge.ours.driver true` lets merges keep your copy of the viewer files.
 
 ## Development
 

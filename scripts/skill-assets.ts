@@ -2,15 +2,22 @@
 // /skill/SKILL.md and its relative links work) and the whole folder as /livediagrams-skill.zip, the
 // upload format for Claude apps and a manual install for any agent. Emitted as separate assets, so the
 // app bundle doesn't grow. In dev, the same paths are served from the folder.
+//
+// The HTML export's viewer template and icons (scripts/skill-viewer.ts) are committed only on release, for Claude
+// Code's marketplace, which installs from git. The site serves them fresh from the current viewer instead, so the
+// folder and the zip people download always match the app.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { crc32, deflateRawSync } from "node:zlib";
+import type { ServerResponse } from "node:http";
 import type { Plugin } from "vite";
+import { RELEASED, releasedFiles } from "./skill-viewer";
 
 export const SKILL_NAME = "livediagrams";
 export const SKILL_ZIP = "livediagrams-skill.zip";
-const SKILL_ROOT = path.resolve(import.meta.dirname, "..", "skills", SKILL_NAME);
+const REPO_ROOT = path.resolve(import.meta.dirname, "..");
+const SKILL_ROOT = path.join(REPO_ROOT, "skills", SKILL_NAME);
 
 export interface SkillFile {
   /** Path inside the skill folder, with forward slashes. */
@@ -31,6 +38,15 @@ export function readSkill(dir = SKILL_ROOT): SkillFile[] {
   };
   walk("");
   return out.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+/** `files` with the released viewer files replaced by `fresh` ones (same names, same order). */
+export function withFresh(files: SkillFile[], fresh: Readonly<Record<string, string>>): SkillFile[] {
+  for (const name of Object.keys(fresh))
+    if (!files.some((f) => f.name === name)) throw new Error(`skill-assets: the skill has no ${name} to refresh.`);
+  return files.map((f) =>
+    Object.hasOwn(fresh, f.name) ? { name: f.name, data: Buffer.from(fresh[f.name], "utf8") } : f,
+  );
 }
 
 /**
@@ -94,15 +110,44 @@ const TYPES: Record<string, string> = {
   ".zip": "application/zip",
 };
 
-export function skillAssetsPlugin(): Plugin {
+/**
+ * `viewerTemplate`: the current Interactive HTML template (the interactive viewer plugin's), served in place of the
+ * committed one along with fresh icons. Without it, the committed folder is served as it is.
+ */
+export function skillAssetsPlugin(viewerTemplate?: () => Promise<string>): Plugin {
+  const current = async () => {
+    const files = readSkill();
+    return viewerTemplate ? withFresh(files, releasedFiles(REPO_ROOT, await viewerTemplate())) : files;
+  };
   return {
     name: "skill-assets",
-    generateBundle() {
-      const files = readSkill();
+    async generateBundle() {
+      const files = await current();
       for (const f of files) this.emitFile({ type: "asset", fileName: `skill/${f.name}`, source: f.data });
       this.emitFile({ type: "asset", fileName: SKILL_ZIP, source: zipSkill(files) });
     },
     configureServer(server) {
+      // Cached between requests, and dropped on any change in the project (a skill file, an icon, or the viewer's
+      // sources, which also rebuild its template). Ordinary skill files never wait for the viewer.
+      let folder: SkillFile[] | undefined;
+      let withViewer: Promise<{ files: SkillFile[]; zip: Buffer }> | undefined;
+      server.watcher.on("all", () => {
+        folder = undefined;
+        withViewer = undefined;
+      });
+      const released = new Set<string>(Object.values(RELEASED).map((name) => `/skill/${name}`));
+      const viewerFiles = () =>
+        (withViewer ??= current().then(
+          (files) => ({ files, zip: zipSkill(files) }),
+          (error: unknown) => {
+            withViewer = undefined;
+            throw error;
+          },
+        ));
+      const send = (res: ServerResponse, url: string, body: Buffer) => {
+        res.setHeader("Content-Type", TYPES[path.extname(url)] ?? "text/plain; charset=utf-8");
+        res.end(body);
+      };
       server.middlewares.use((req, res, next) => {
         const url = decodeURIComponent((req.url ?? "").split(/[?#]/)[0]);
         // The install page (public/skill/index.html) at /skill/, as static hosts and `vite preview` serve it.
@@ -114,11 +159,15 @@ export function skillAssetsPlugin(): Plugin {
           req.url = "/skill/index.html";
           return next();
         }
-        const files = url === `/${SKILL_ZIP}` || url.startsWith("/skill/") ? readSkill() : [];
-        const body = url === `/${SKILL_ZIP}` ? zipSkill(files) : files.find((f) => `/skill/${f.name}` === url)?.data;
+        if (url === `/${SKILL_ZIP}` || released.has(url))
+          return void viewerFiles().then(({ files, zip }) => {
+            const body = url === `/${SKILL_ZIP}` ? zip : files.find((f) => `/skill/${f.name}` === url)?.data;
+            return body ? send(res, url, body) : next();
+          }, next);
+        if (!url.startsWith("/skill/")) return next();
+        const body = (folder ??= readSkill()).find((f) => `/skill/${f.name}` === url)?.data;
         if (!body) return next();
-        res.setHeader("Content-Type", TYPES[path.extname(url)] ?? "text/plain; charset=utf-8");
-        res.end(body);
+        send(res, url, body);
       });
     },
   };

@@ -310,13 +310,17 @@ export const templateFileName = (template: string) =>
  * Builds the template beside the app and tells the app where it is (`virtual:interactive-viewer`). In the dev
  * server it's built on first request, again after a change.
  */
-export function interactiveViewer(plugins: () => PluginOption[] = () => []): Plugin {
+export function interactiveViewer(
+  plugins: () => PluginOption[] = () => [],
+): Plugin & { api: { template: () => Promise<string> } } {
   let root = process.cwd();
   let isBuild = false;
   let template: Promise<string> | undefined;
   const get = () => (template ??= buildViewerTemplate(root, plugins()));
   return {
     name: "interactive-viewer",
+    /** The current template (the agent skill's /skill/ folder and zip serve it: scripts/skill-assets.ts). */
+    api: { template: () => get() },
     configResolved(config) {
       root = config.root;
       isBuild = config.command === "build";

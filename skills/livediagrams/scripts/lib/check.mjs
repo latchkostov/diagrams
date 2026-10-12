@@ -23,6 +23,7 @@ const KNOWN_TOP = [
   "annotations",
   "layerOrder",
   "checks",
+  "private",
 ];
 const BROKERS = new Set(["topic", "queue", "stream"]);
 
@@ -245,6 +246,9 @@ export function checkDiagram(d) {
   if (d.description !== undefined && !isStr(d.description)) errors.push('"description" must be a string.');
   if (d.direction !== undefined && !E.direction.includes(d.direction))
     errors.push(`"direction" must be ${list(E.direction)}.`);
+  // The app keeps a diagram private unless "private" is plainly false; an agent writes true or leaves it out.
+  if (d.private !== undefined && d.private !== true)
+    errors.push('"private" must be true (a Private diagram), or leave it out.');
   for (const key of Object.keys(d))
     if (!KNOWN_TOP.includes(key)) warnings.push(`Unknown top-level field ${q(key)}: the app keeps it but ignores it.`);
   if (!Array.isArray(d.nodes)) errors.push('"nodes" must be a list.');

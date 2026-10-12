@@ -73,6 +73,24 @@ jobs:
             tests/.output/results
           retention-days: 14
 
+  # Informational, never a failure: whether the agent skill's committed viewer (what Claude Code's marketplace
+  # installs) still matches a fresh build. Stale shows as a warning on the run and a line in its summary; refresh
+  # it with `pnpm skill:release` when users should get the latest viewer.
+  skill-viewer:
+    name: Skill viewer freshness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm skill:check
+
   # Opens the `nightly-failure` issue, or updates the open one (its body is the latest failure, and a
   # comment notifies its subscribers), listing the failed tests and linking the run.
   report:

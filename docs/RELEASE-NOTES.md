@@ -2,6 +2,20 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Agent Skill: asks what you want back, and makes Interactive HTML (2026-10)
+
+One habit changes for people who use the livediagrams Agent Skill: it **asks which output you want** before it hands
+the diagram back, unless you already said. Update the plugin in Claude Code (`/plugin`), or download the skill again
+for the Claude apps and Codex.
+
+- **Interactive HTML file**, offered first and recommended for anything about your work or company: the same file as
+  **File ▸ Export as ▸ Interactive HTML…**, made on your computer by the skill (`scripts/export-html.mjs`). It plays
+  the simulations, works offline and makes no network requests, and only people who have the file can open it. Ask
+  for a banner such as "Confidential".
+- **Diagram file** (`.diagram.json`) to keep editing, **Image** (the skill says how to export one from the app) and
+  **Share link**, which the skill now says anyone who has it can open. A private diagram never gets a link.
+- For work diagrams the skill marks the diagram private (`"private": true`).
+
 ## Import Kubernetes manifests (2026-10)
 
 No habit changes. New:
