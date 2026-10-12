@@ -515,6 +515,14 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       return edgeIds.length;
     },
 
+    addNamed: (stencilId, at) => {
+      const s = getStencil(stencilId);
+      const id = uniqueId(stencilIdBase(s.id), new Set(rf.getNodes().map((n) => n.id)));
+      const merge = `new:${id}`;
+      hint(merge);
+      return { id: api.addNode(stencilId, at), edge: null, merge };
+    },
+
     addNode: (stencilId, at) => {
       const s = getStencil(stencilId);
       const { width, height } = deps().nodeSize;

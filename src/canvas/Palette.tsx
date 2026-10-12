@@ -128,7 +128,7 @@ export const Palette = memo(function Palette({
 
   if (collapsed) {
     return (
-      <aside className="palette is-collapsed" data-testid="palette">
+      <aside className="palette is-collapsed" aria-label="Stencils" data-testid="palette">
         <button
           className="icon-btn"
           onClick={onToggle}
@@ -153,7 +153,7 @@ export const Palette = memo(function Palette({
   const familyLabel = family === "all" ? null : getFamily(family).label;
 
   return (
-    <aside className="palette" data-testid="palette">
+    <aside className="palette" aria-label="Stencils" data-testid="palette">
       {preview.node}
       <div className="palette-head">
         <div className="palette-head-row">

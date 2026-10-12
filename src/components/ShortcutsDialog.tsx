@@ -9,7 +9,7 @@ const MOUSE: [string, string][] = [
   ["Right-click", "Context menu for the canvas, a node, an edge or a boundary"],
   ["Double-click canvas", "Quick-add a stencil at the cursor"],
   ["Double-click node / edge", "Rename / edit label"],
-  ["Drag on the canvas", "Select what the box touches"],
+  ["Drag on the canvas", "Select what the box touches; Shift adds"],
   ["Ctrl / ⌘ + drag on the canvas", "Select only what's inside"],
   ["Shift / Ctrl / ⌘ + click", "Add to or take from the selection"],
   ["Scroll, two-finger swipe", "Pan (Shift + scroll: sideways)"],
@@ -34,13 +34,21 @@ const TEXT: [string, string][] = [
   ["Esc", "Save and close; Ctrl+Z takes it back"],
 ];
 
+/** The File menu's keys (src/interop/ui/menus.tsx), shown there beside Open…, Save and Save to ▸ This device…. */
+const FILE: [string, string][] = [
+  ["Mod+O", "Open a file from this device"],
+  ["Mod+S", "Save (back to where the diagram came from)"],
+  ["Mod+Shift+S", "Save to this device as a new file"],
+];
+
 /** Live view and presenting keys (handled by the live view and the app, not the editor). */
 const LIVE: [string, string][] = [
   ["L", "Go live / back to editing"],
   ["Drag", "Pan the canvas"],
-  ["C", "Show capacity: colour nodes by how busy they are"],
+  ["C", "Show capacity: colour services by how busy they are"],
   ["Space", "Play or pause; continue after a note"],
-  ["Esc", "Leave presentation, then live view"],
+  ["← →", "Slow motion: step back or on, hop by hop"],
+  ["Esc", "Leave slow motion, presentation, then live view"],
 ];
 
 /** The AI panel (AiMount opens it; Advanced handles the rest). */
@@ -158,6 +166,17 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             {TEXT.map(([k, v]) => (
               <div key={k} className="sc-row">
                 <span>{v.replace("Ctrl+Z", formatCombo("Mod+Z"))}</span>
+                <span className="sc-keys">
+                  <kbd>{formatCombo(k)}</kbd>
+                </span>
+              </div>
+            ))}
+          </section>
+          <section>
+            <h3>File</h3>
+            {FILE.map(([k, v]) => (
+              <div key={k} className="sc-row">
+                <span>{v}</span>
                 <span className="sc-keys">
                   <kbd>{formatCombo(k)}</kbd>
                 </span>

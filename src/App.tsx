@@ -473,6 +473,7 @@ function MainApp() {
         diagrams={options.filter((o) => o.group !== "examples" || publicSlugs.has(o.slug))}
         currentSlug={slug}
         onOpenDiagram={(example) => setUrl({ view: "canvas", example, present: false })}
+        onPresent={url.view === "canvas" && !url.present ? () => setUrl({ present: true }) : undefined}
       />
     </div>
   );

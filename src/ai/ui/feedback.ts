@@ -118,7 +118,7 @@ export function showApplied(
   else {
     const id = notify(`AI: ${summary}`, {
       kind: "success",
-      action: { label: "Undo", run: () => editor.undo(), testId: "ai-toast-undo" },
+      action: { label: "Undo", run: () => editor.undo(), testId: "ai-toast-undo", undoes: true },
     });
     appliedToast = turnUndo ? id : undefined;
   }

@@ -190,13 +190,26 @@ export function useCanvasShortcuts(
           else editor.startEditing({ kind: "group", id: sel.groupIds[0] });
           break;
         }
-        case "escape":
+        case "escape": {
           // Don't stop propagation: the app also uses Esc to leave presentation mode.
           optsRef.current.onEscape();
           // Cleared after React Flow's own Esc handler on a focused node or edge. Cleared before it, the
           // node read as unselected and React Flow selected it again, so Esc never cleared a clicked node.
-          if (hasAny && inCanvas(e.target)) window.setTimeout(() => editor.clearSelection(), 0);
+          // On a focused node that isn't selected, React Flow's own Esc selects it: clear that too (Esc never selects).
+          const onNode = e.target instanceof Element && !!e.target.closest(".react-flow__node");
+          if ((hasAny || onNode) && inCanvas(e.target)) {
+            window.setTimeout(() => editor.clearSelection(), 0);
+            // React Flow blurs the node it unselects a frame later, which left focus on the page: Tab then started
+            // from the top. Focus stays on the node (now unselected), the canvas's tab stop.
+            const was = e.target instanceof HTMLElement ? e.target : null;
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                if (was?.isConnected && document.activeElement === document.body) was.focus({ preventScroll: true });
+              }),
+            );
+          }
           break;
+        }
         case "fit-view":
           handled();
           editor.fitView();

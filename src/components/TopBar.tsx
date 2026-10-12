@@ -214,7 +214,7 @@ function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
           className="btn"
           {...props}
           aria-label="View options"
-          title="Node and edge style"
+          title="Node and edge style, and overlays"
           data-testid="view-button"
         >
           <Glyph name="sliders" size={14} /> <span className="label-optional">View</span>

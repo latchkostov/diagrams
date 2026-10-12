@@ -1293,7 +1293,7 @@ export function EditCapacity({ editor, presenting }: { editor: EditorApi; presen
       const merge = "capacity:fix:" + Date.now();
       for (const c of fix.changes) editor.setNodeProps(c.nodeId, { [c.key]: c.to }, { merge });
       notify("Applied the fix: " + fix.label + ".", {
-        action: { label: "Undo", run: () => editor.undo(), testId: "capacity-fix-undo" },
+        action: { label: "Undo", run: () => editor.undo(), testId: "capacity-fix-undo", undoes: true },
       });
     },
     [editor],

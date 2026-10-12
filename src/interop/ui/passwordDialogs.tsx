@@ -48,6 +48,13 @@ export function PasswordLinkDialog({
   );
   const busy = request?.password === password;
   const url = made?.password === password ? made.url : undefined;
+  // Copy link gives way to Copy again and Done: focus goes to Done, not the page, when the button it was on goes.
+  const done = useRef<HTMLButtonElement>(null);
+  const hasUrl = !!url;
+  useEffect(() => {
+    const el = document.activeElement;
+    if (hasUrl && (!el || el === document.body)) done.current?.focus();
+  }, [hasUrl]);
   const strength = passwordStrength(password);
   const ok = password.length >= MIN_PASSWORD_LENGTH;
   const hintId = useId();
@@ -99,7 +106,7 @@ export function PasswordLinkDialog({
               >
                 <Glyph name="copy" size={14} /> Copy again
               </button>
-              <button className="btn btn-primary" onClick={onClose} data-testid="password-link-done">
+              <button ref={done} className="btn btn-primary" onClick={onClose} data-testid="password-link-done">
                 Done
               </button>
             </>

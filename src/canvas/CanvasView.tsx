@@ -116,7 +116,7 @@ import { motionMs } from "../lib/motion";
 import { NodeTooltip } from "./NodeTooltip";
 import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { FirstRunHint } from "./FirstRunHint";
-import { notify } from "../interop/ui/toast";
+import { notify, toast } from "../interop/ui/toast";
 import { useCanvasHost } from "../palette/canvasHost";
 import { useNoCanvasTextSelection } from "./useNoCanvasTextSelection";
 import { getRecentStencils, pushRecentStencil } from "../lib/recentStencils";
@@ -383,7 +383,18 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     setMeta,
     setNodes,
     setEdges,
-    history,
+    // An Undo toast offers to reverse one change: once anything else undoes or redoes, it would reverse another.
+    history: {
+      ...history,
+      undo: () => {
+        toast.dismissUndo();
+        history.undo();
+      },
+      redo: () => {
+        toast.dismissUndo();
+        history.redo();
+      },
+    },
     prefs,
     setPref,
     setEditing,
@@ -501,6 +512,14 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   );
 
   useEffect(() => onTitleChange?.(meta.title), [meta.title, onTitleChange]);
+
+  // Presenting hides the button that started it: focus goes to the canvas, not the page, so the keys (Esc, L,
+  // Space) and the next Tab start from there.
+  useEffect(() => {
+    if (!presenting) return;
+    const el = document.activeElement;
+    if (!el || el === document.body || !el.isConnected) wrapper.current?.focus({ preventScroll: true });
+  }, [presenting]);
 
   // Refit when chrome appears / disappears (presentation mode).
   useEffect(() => {
@@ -808,6 +827,8 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   // (Ctrl/Cmd held: only what's wholly inside), boundaries and zones only when wholly inside, and the
   // edges whose both ends it picked. React Flow's selection changes are dropped while a box is drawn.
   const contain = useRef(false);
+  /** Shift held as the box started: what was selected then stays selected (Shift adds, as Shift+click does). */
+  const boxBase = useRef<{ nodes: ReadonlySet<string>; edges: ReadonlySet<string> } | null>(null);
   const boxPicked = useRef<string | null>(null);
   const boxSet = useRef<Set<string> | null>(null);
   /**
@@ -835,6 +856,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             if (stale.size) applyBoxPick(set, stale);
           }
           boxSet.current = null;
+          boxBase.current = null;
           // React Flow shows its multi-selection frame (drag it, right-click it) from its own pick, which
           // it sets after this; follow ours instead.
           const any = !!boxPicked.current;
@@ -856,9 +878,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           n.type === "boundary" || (n.type === "annotation" && (n as AnnotationFlowNode).data.kind === "zone");
         items.push({ id: n.id, ...n.internals.positionAbsolute, width: w, height: h, backdrop });
       }
+      const base = boxBase.current;
       const picked = pickInBox(items, box, contain.current);
       const key = picked.join(" ");
-      const set = new Set(picked);
+      const set = new Set(base ? [...base.nodes, ...picked] : picked);
       const stale = staleBoxFlags(s, set);
       if (key === boxPicked.current && !stale.size) return;
       const pickChanged = key !== boxPicked.current;
@@ -871,6 +894,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         s.edges.filter((e) => !(hiddenDeps && isDependency(e.data))),
         set,
       );
+      if (base) for (const id of base.edges) edgeSet.add(id);
       // The same array when no edge's flag changes: the routes and their caches stay as they are.
       setEdges((es) => {
         let changed = false;
@@ -1073,7 +1097,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       const one = count === 1 ? editor.getNode(ids[0])?.label || ids[0] : null;
       const where = left.size > 1 ? "their boundaries" : group;
       notify(one ? `${one} left ${where}` : `${count} nodes left ${where}`, {
-        action: { label: "Undo", run: editor.undo, testId: "membership-undo" },
+        action: { label: "Undo", run: editor.undo, testId: "membership-undo", undoes: true },
       });
     },
     [editor],
@@ -1257,8 +1281,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       label: "Add a node",
       testId: "quick-add",
       searchable: "Add a node…",
+      // Quick-add opens the new node's name (decision 3), so what's typed next names it instead of reaching the
+      // canvas's one-key shortcuts (T, L, C).
       items: quickAddMenu((s) => {
-        editor.addNode(s.id, point);
+        pickNamed(() => editor.addNamed(s.id, point), s.label);
         pushRecentStencil(s.id);
       }, getRecentStencils()),
     });
@@ -1342,7 +1368,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         const hit = editor.keepTextClear(id, before);
         if (hit)
           notify(`Moved the text off ${hit === "node" ? "a node" : "an edge"}.`, {
-            action: { label: "Undo", run: editor.undo, testId: "text-moved-undo" },
+            action: { label: "Undo", run: editor.undo, testId: "text-moved-undo", undoes: true },
           });
       }, 60);
     },
@@ -1362,7 +1388,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           : !adopted.length
             ? `Took ${n(released.length)} out of ${name}`
             : `Added ${n(adopted.length)} to ${name} and took ${released.length} out`;
-        notify(text, { action: { label: "Undo", run: editor.undo, testId: "membership-undo" } });
+        notify(text, { action: { label: "Undo", run: editor.undo, testId: "membership-undo", undoes: true } });
       }),
     [editor],
   );
@@ -1861,6 +1887,16 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           data-toast-area
           tabIndex={-1}
           ref={wrapper}
+          onPointerDownCapture={(e) => {
+            // Shift+drag on empty canvas adds the box's pick to the selection, as Shift+click adds a node.
+            const onPane = e.target instanceof Element && e.target.classList.contains("react-flow__pane");
+            if (!onPane || e.button !== 0 || !e.shiftKey) return void (boxBase.current = null);
+            const { nodes: ns, edges: es } = store.getState();
+            boxBase.current = {
+              nodes: new Set(ns.filter((n) => n.selected).map((n) => n.id)),
+              edges: new Set(es.filter((x) => x.selected).map((x) => x.id)),
+            };
+          }}
           onPointerMove={(e) => {
             pointer.current = { x: e.clientX, y: e.clientY };
             // Ctrl/Cmd during a box selection: only what's wholly inside.
