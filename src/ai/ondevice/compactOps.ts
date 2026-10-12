@@ -15,7 +15,8 @@ import type { DiagramOp } from "../index";
 import { RefIndex, ReplyRefs, refWords, type NewNodeAlias } from "../refs";
 import type { ScopeItem } from "../ui/context";
 import { incompleteness, inRequest, kindFor, leakedName, reconcileKinds } from "./replyChecks";
-import { relationFlow, requestRelations } from "./requestRelations";
+import { relationFlow, relationsCoverRequest, requestRelations } from "./requestRelations";
+import { tokenize, wordOf, type Token } from "./requestClauses";
 import { fillEdits } from "./requestEdits";
 
 /** At most this many ops per reply (checked in code: hard limits in a schema make small models odd). */
@@ -41,6 +42,9 @@ export interface ReplyContext {
   scope?: readonly ScopeItem[];
   request?: string;
 }
+
+/** The fields a reply op may have; each is text when present. */
+const OP_FIELDS = ["op", "key", "kind", "label", "sublabel", "from", "to", "flow", "target"] as const;
 
 type Connect = Extract<DiagramOp, { op: "connect" }>;
 type Result = { ok: true; ops: DiagramOp[]; summary: string } | { ok: false; error: string; partial?: DiagramOp[] };
@@ -83,6 +87,15 @@ export function toOps(reply: string, ctx: ReplyContext): Result {
   if (!body || !Array.isArray(body.ops)) return { ok: false, error: 'The reply needs an "ops" array.' };
   if (!body.ops.length) return { ok: false, error: "The reply has no ops." };
   if (body.ops.length > MAX_OPS) return { ok: false, error: `Use at most ${MAX_OPS} ops.` };
+  // Every field is text (or missing, for the repairs to fill): nothing past here needs to check.
+  for (const [i, op] of body.ops.entries()) {
+    if (!op || typeof op !== "object") continue;
+    for (const field of OP_FIELDS) {
+      const v = (op as Record<string, unknown>)[field];
+      if (v !== undefined && v !== null && typeof v !== "string")
+        return { ok: false, error: `Op ${i + 1}: "${field}" must be text.` };
+    }
+  }
   try {
     return { ok: true, ops: convert(body.ops as CompactOp[], ctx), summary: text(body.summary)?.slice(0, 200) ?? "" };
   } catch (err) {
@@ -103,7 +116,7 @@ function convert(reply: CompactOp[], ctx: ReplyContext): DiagramOp[] {
   // A rename's label or a kind change's kind the reply left out, from the request's own words ("Rename X
   // to Y", "Make X a Y"), and an empty duplicate of a change dropped.
   const raw = fillEdits(reply, request, (name) =>
-    THIS.test(name.trim()) ? selectedAny?.id : refs.existingId(name.trim()),
+    typeof name !== "string" ? undefined : THIS.test(name.trim()) ? selectedAny?.id : refs.existingId(name.trim()),
   );
 
   // First pass: the nodes this reply adds. Their keys can't be an element id, and a key the model
@@ -344,19 +357,24 @@ function roleOf(ref: string, refs: ReplyRefs, diagram: DiagramFile): SimRole | u
 /**
  * A connection the request describes, drawn against the way its data flows, is turned, and only that
  * one: when the reply has exactly that pair reversed and not the right way. Drawn both ways, the reversed
- * one is dropped, unless the request describes that way too. The way comes from the shared, role-aware
- * relation semantics, so a service "reading from Postgres" still calls it.
+ * one is dropped only when it's demonstrably not asked for: every clause of the request is a relation
+ * it reads, and none describes that way. The way comes from the shared, role-aware relation semantics,
+ * so a service "reading from Postgres" still calls it.
  */
 export function flipDescribed(ops: DiagramOp[], request: string, refs: ReplyRefs, diagram: DiagramFile) {
   const id = (r: string) => refs.existingId(r) ?? r;
   const connects = ops.filter((o): o is Connect => o.op === "connect");
   const pairs = describedPairs(request, refs, diagram);
+  // Removing needs the whole request understood: a clause it can't read ("…and API responds to Client")
+  // may be what asks for the other way.
+  const understood = relationsCoverRequest(request);
   for (const pair of pairs) {
     const wrong = connects.filter((c) => id(c.from) === pair.to && id(c.to) === pair.from);
     const right = connects.some((c) => id(c.from) === pair.from && id(c.to) === pair.to);
     if (wrong.length === 1 && !right) [wrong[0].from, wrong[0].to] = [wrong[0].to, wrong[0].from];
-    // Drawn both ways, where the request describes one way only: the reversed one goes.
-    else if (wrong.length && right && !pairs.some((p) => p.from === pair.to && p.to === pair.from))
+    // Drawn both ways, where every clause is understood and none asks for the other way: the reversed
+    // one goes.
+    else if (wrong.length && right && understood && !pairs.some((p) => p.from === pair.to && p.to === pair.from))
       for (const w of wrong) if (ops.includes(w)) ops.splice(ops.indexOf(w), 1);
   }
 }
@@ -395,18 +413,24 @@ export function connectSelection(ops: DiagramOp[], request: string, selected: st
  * the clause that says it. Null without one.
  */
 export function betweenIntent(request: string): { component: string; x: string; y: string } | null {
-  const m = /\bbetween\s+(.+?)\s+and\s+(.+?)(?=[,;]|\.(?:\s|$)|\s+and\b|$)/i.exec(request);
-  if (!m) return null;
-  const component = (
-    request
-      .slice(0, m.index)
-      .split(/[,;]|\.(?=\s|$)|\b(?:and|then)\b/i)
-      .pop() ?? ""
-  )
-    .replace(/^\s*(?:put|add|insert|place|drop)\b/i, "")
-    .replace(/^\s*(?:a|an|the)\b/i, "")
-    .trim();
-  return { component, x: m[1].trim(), y: m[2].trim() };
+  // Tokens, not a backtracking regex: linear in the request, and a quoted name is one token.
+  const tokens = tokenize(request);
+  const text = (ts: readonly Token[]) => (ts.length ? request.slice(ts[0].start, ts[ts.length - 1].end) : "");
+  const stop = (t: Token) => t.kind === "punct" || wordOf(t) === "and";
+  const b = tokens.findIndex((t) => wordOf(t) === "between");
+  if (b < 0) return null;
+  let a = b + 2;
+  while (a < tokens.length && !stop(tokens[a])) a++;
+  if (a >= tokens.length || wordOf(tokens[a]) !== "and") return null;
+  let end = a + 1;
+  while (end < tokens.length && !stop(tokens[end])) end++;
+  if (end === a + 1) return null;
+  let s = b;
+  while (s > 0 && !(tokens[s - 1].kind === "punct" || ["and", "then"].includes(wordOf(tokens[s - 1])))) s--;
+  let c = s;
+  if (["put", "add", "insert", "place", "drop"].includes(wordOf(tokens[c])) && c < b) c++;
+  if (["a", "an", "the"].includes(wordOf(tokens[c])) && c < b) c++;
+  return { component: text(tokens.slice(c, b)), x: text(tokens.slice(b + 1, a)), y: text(tokens.slice(a + 1, end)) };
 }
 
 /**

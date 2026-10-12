@@ -10,6 +10,7 @@ import { getStencil } from "../../stencils/registry";
 import { confidentStencil, isRoleWord, namedStencil, resolveKind } from "../stencils";
 import { EXAMPLE_NAMES } from "./examples";
 import { NEGATION, relationFlow, requestRelations } from "./requestRelations";
+import { editIntents } from "./requestEdits";
 
 const lower = (s: string) => s.toLowerCase();
 
@@ -367,9 +368,11 @@ export function reconcileKinds(
   const kinds = nodes.map((n) => n.kind);
   if (!request || !nodes.length) return kinds;
   const existing = diagram.nodes.map((n) => norm(n.label));
-  // "make Orders database a MongoDB": MongoDB is for an existing node.
-  const madeInto = [...request.matchAll(/\bmake\s+.+?\s+(?:a|an|into)\s+(.+?)(?=$|[,;]|\.(?:\s|$)|\s+and\b)/gi)]
-    .map((m) => namedStencil(m[1]))
+  // "make Orders database a MongoDB": MongoDB is for an existing node (negated or not: either way it
+  // isn't a new node's technology).
+  const madeInto = editIntents(request)
+    .filter((e) => e.field === "kind")
+    .map((e) => namedStencil(e.value))
     .filter((x): x is string => !!x);
   const comps = requestComponents(request).filter((c) => {
     if (updateStencils.has(c.stencil) || madeInto.includes(c.stencil)) return false;

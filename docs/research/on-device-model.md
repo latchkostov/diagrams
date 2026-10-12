@@ -443,14 +443,31 @@ reversed one when the request describes only one way.
   request's renames ("Rename X to Y") and kind changes ("Make X a Y", "turn X into Y", "change X to Y",
   "X should be Y") are read clause by clause. A kind must name a stencil, so "change X to the old one"
   says nothing.
+  - **Never from a negated clause** ("Don't rename X to Y", "…but not a MongoDB"): an incomplete op for
+    it stays an error for the retry.
   - A rename without a label, or a kind change without a kind, gets the value the request gives **the
     same element**: its target and the request's words must resolve to one id. Nothing the model wrote
     is replaced.
   - The model sometimes picks the wrong one of the two ops for exactly what was asked. A rename to the
     kind "make X a Y" asks for becomes that kind change. A kind change to the label "rename X to Y" asks
     for becomes that rename. The typed schema makes a rename carry a label, so this matters more now.
-  - A change repeated, or left empty beside another change of the same element, is dropped (edit-change's
-    empty rename).
+  - Only ops with no effect are dropped, in order: a change exactly like the element's change just before
+    it (label, kind and sublabel all equal), and an empty one beside another change of the same element
+    (edit-change's empty rename). Different sublabels, or MongoDB → Redis → MongoDB, all stay.
+- **One clause reader** (`requestClauses.ts`, after the review). Relations, edits, "between" and the
+  "make X a Y" check in reconciliation share one tokenizer:
+  - It is linear in the request's length, with no backtracking regex. Before, a request of 3,200 spaces
+    took about 9 s on the main thread. A test runs adversarial inputs of 20,000 characters within a
+    time budget.
+  - A quoted name is one token, so `"Billing and shipping"` or `"Billing, v2"` is never cut at its
+    "and" or comma. Unquoted, "and" starts a new edit clause only before an instruction ("…and make X a
+    Y"), so "Rename X to Billing and Shipping" keeps the whole name.
+  - Each clause carries its negation.
+- **Requested responses stay.** A connection drawn both ways loses its reversed copy only when every
+  clause of the request is a relation the pipeline reads and none asks for that way. "Client calls API
+  and API responds to Client" keeps both connections, because "responds to" isn't a verb it reads.
+- **Fields are checked at the boundary.** A reply field that isn't text (`"target": 42`) is a validation
+  error for the retry, not a crash.
 - **A generic kind loses to a confident label** (`kindFor`). When the kind resolves to a generic stencil
   and the label, named in the request, resolves with high confidence to a specific one, the label wins.
   Before, "the request names the kind too" kept "service", although the request's "service" was part of

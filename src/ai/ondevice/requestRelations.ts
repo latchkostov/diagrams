@@ -4,6 +4,7 @@
 // whether it's a message or a request.
 
 import type { SimRole } from "../../model/types";
+import { splitClauses } from "./requestClauses";
 
 /** Consume-type verbs: the data flows from the object to the subject ("Java consumes a topic"). */
 export const CONSUMES =
@@ -15,12 +16,10 @@ export const PRODUCES =
   /\b(?:writes?(?: \w+)? (?:to|into)|writes|persists?(?: \w+)? (?:to|into|in)|saves?(?: \w+)? (?:to|into|in)|stores?(?: \w+)? (?:in|into)|sends?(?: \w+)? to|publish(?:es)?(?: \w+)? (?:to|into)|routes? to|calls|invokes|feeds|exports? to|forwards?(?: \w+)? to|delivers|starts|accesses|uses|queries|connects to|fans? out (?:toward|to))\b/i;
 /** A request call rather than a message, whatever the target: "calls", "uses", "queries", "accesses". */
 const REQUEST_VERB = /\b(?:calls|uses|queries|accesses|reads? from)\b/i;
-/** "not", "never", "without", "don't connect", "unconnected", "leave it…": nothing may be inferred. */
-export const NEGATION =
-  /\b(?:not|never|no|without|n't|nor)\b|n't\b|\b(?:un|dis)connected\b|\bstand-?alone\b|\bon its own\b|\bleave\b/i;
+export { NEGATION } from "./requestClauses";
 
-/** Where clauses break: punctuation (a period only before a space), conjunctions, relative pronouns. */
-const BREAK = /([,;]|\.(?=\s|$)|\b(?:and|but|then|which|that|who|while)\b)/i;
+/** Where clauses break, besides punctuation (requestClauses.ts): conjunctions and relative pronouns. */
+const JOINERS: ReadonlySet<string> = new Set(["and", "but", "then", "which", "that", "who", "while"]);
 
 export interface RequestRelation {
   /** The words naming the subject (inherited for "…and reads from C" or "…which writes to D"). */
@@ -40,30 +39,36 @@ export interface RequestRelation {
  * "that" or "who" ("X consumed by Y which writes to Z": Y writes to Z).
  */
 export function requestRelations(request: string): RequestRelation[] {
-  const parts = request.split(BREAK);
+  return parseRelations(request).relations;
+}
+
+/**
+ * Does every clause of the request relate two things the way requestRelations reads them? False when a
+ * clause has a verb it doesn't know ("…and API responds to Client"): what that clause says is unknown,
+ * so nothing may be removed on the strength of its silence.
+ */
+export function relationsCoverRequest(request: string): boolean {
+  const { relations, unread } = parseRelations(request);
+  return relations.length > 0 && unread === 0;
+}
+
+function parseRelations(request: string): { relations: RequestRelation[]; unread: number } {
   const out: RequestRelation[] = [];
+  let unread = 0;
   let lastSubject = "";
   let lastObject = "";
-  let joiner = "";
-  for (const part of parts) {
-    if (/^\s*(?:[,;.]|and|but|then|which|that|who|while)\s*$/i.test(part)) {
-      joiner = part.trim().toLowerCase();
-      continue;
-    }
-    const clause = part.trim();
-    if (!clause) continue;
+  for (const { text: clause, joiner, negated } of splitClauses(request, JOINERS)) {
     const passive = CONSUMED_BY.exec(clause);
     const consume = passive ? null : CONSUMES.exec(clause);
     const produce = passive || consume ? null : PRODUCES.exec(clause);
     const m = passive ?? consume ?? produce;
     if (!m) {
-      joiner = "";
+      unread++;
       continue;
     }
     let subject = clause.slice(0, m.index).trim();
     const object = clause.slice(m.index + m[0].length).trim();
     if (!subject) subject = /^(which|that|who)$/.test(joiner) ? lastObject : lastSubject;
-    const negated = NEGATION.test(clause);
     // "X consumed by Y": Y consumes X.
     const rel: RequestRelation = passive
       ? { subject: object, object: subject, consume: true, verb: m[0], negated }
@@ -72,9 +77,8 @@ export function requestRelations(request: string): RequestRelation[] {
     // "and" goes on with the clause's subject as written; "which" with its last noun, after the verb.
     lastSubject = subject;
     lastObject = object;
-    joiner = "";
   }
-  return out;
+  return { relations: out, unread };
 }
 
 const MESSAGING: readonly SimRole[] = ["queue", "topic", "stream"];

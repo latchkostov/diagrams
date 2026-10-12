@@ -1028,3 +1028,92 @@ describe("round 4: filled from the request, generic kinds, stray selections, pai
     ).toEqual(["pubsub -> python", "python -> pubsub"]);
   });
 });
+
+describe("round 4 review: negation, exact duplicates, requested responses, robust parsing", () => {
+  const node = (d: DiagramFile, id: string) => d.nodes.find((n) => n.id === id);
+
+  it("does not fill edits from negated clauses: the incomplete reply stays a validation failure", () => {
+    for (const request of [
+      "Do not rename Payments service to Billing service",
+      "Don't rename Payments service to Billing; make Orders database a MongoDB",
+    ])
+      expect(error(KAFKA, [{ op: "rename", target: "Payments service" }], { request }), request).toMatch(
+        /needs "target" and the new "label"/,
+      );
+    // Mixed: the positive edit is still filled; the forbidden one, left empty beside nothing, still fails.
+    const r = toOps(
+      reply([
+        { op: "rename", target: "Orders database" },
+        { op: "change_kind", target: "Orders database", kind: "MongoDB" },
+      ]),
+      { diagram: KAFKA, request: "Do not rename Orders database to Billing; make Orders database a MongoDB" },
+    );
+    // The empty rename beside a real change of the same node does nothing, so it goes; nothing is renamed.
+    expect(r).toMatchObject({ ok: true, ops: [{ op: "update", target: "order-db", kind: "MongoDB" }] });
+    if (r.ok) expect(r.ops).toHaveLength(1);
+  });
+
+  it("keeps a sublabel change and order-dependent changes", () => {
+    const sub = apply(
+      KAFKA,
+      [
+        { op: "change_kind", target: "Orders database", kind: "MongoDB" },
+        { op: "change_kind", target: "Orders database", kind: "MongoDB", sublabel: "New" },
+      ],
+      { request: "Make Orders database a MongoDB" },
+    );
+    expect(node(sub.diagram, "order-db")).toMatchObject({ stencil: "mongodb", sublabel: "New" });
+    const back = apply(KAFKA, [
+      { op: "change_kind", target: "Orders database", kind: "MongoDB" },
+      { op: "change_kind", target: "Orders database", kind: "Redis cache" },
+      { op: "change_kind", target: "Orders database", kind: "MongoDB" },
+    ]);
+    expect(node(back.diagram, "order-db")?.stencil).toBe("mongodb");
+  });
+
+  it("keeps a response the request asks for in a clause it can't read", () => {
+    const ops = [
+      { op: "add", key: "c", kind: "browser", label: "Client" },
+      { op: "add", key: "api", kind: "Node.js API", label: "API" },
+      { op: "connect", from: "c", to: "api" },
+      { op: "connect", from: "api", to: "c" },
+    ];
+    for (const request of [
+      "Client calls API and API responds to Client",
+      "A browser calls the API, and the API replies to the browser",
+    ])
+      expect(apply(EMPTY, ops, { request }).edges.sort(), request).toEqual(["API -> Client", "Client -> API"]);
+  });
+
+  it("a quoted label with delimiters is filled whole", () => {
+    for (const label of ["Billing and shipping", "Billing, v2", "Billing. Shipping"]) {
+      const { diagram } = apply(KAFKA, [{ op: "rename", target: "Payments service" }], {
+        request: `Rename Payments service to "${label}"`,
+      });
+      expect(node(diagram, "payments")?.label).toBe(label);
+    }
+  });
+
+  it("a field that isn't text is a validation error for the retry, not a crash", () => {
+    for (const op of [
+      { op: "rename", target: 42, label: "x" },
+      { op: "rename", target: "Payments service", label: { a: 1 } },
+      { op: "connect", from: ["a"], to: "b" },
+      { op: 7 },
+    ])
+      expect(error(KAFKA, [op], { request: "Rename Payments service to Billing" })).toMatch(/must be text/);
+    // null is a missing field, as before.
+    expect(error(KAFKA, [{ op: "rename", target: "Payments service", label: null }], { request: "x" })).toMatch(
+      /needs "target" and the new "label"/,
+    );
+  });
+
+  it("a long adversarial request converts within budget", () => {
+    const pad = " ".repeat(20_000);
+    const add = [{ op: "add", key: "q", kind: "queue", label: "q" }];
+    const t0 = performance.now();
+    for (const request of [`rename ${pad}X`, `make ${pad}X`, `between ${pad}X`, `a${pad}should`])
+      toOps(reply(add), { diagram: EMPTY, request });
+    expect(performance.now() - t0).toBeLessThan(perfBudget(500));
+  });
+});
