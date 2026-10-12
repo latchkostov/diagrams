@@ -55,6 +55,9 @@ const FORBIDDEN: [string, RegExp][] = [
   ["share links", /[/\\]src[/\\]interop[/\\](share|shareCrypto|passwordLink)\.ts$/],
   ["the example diagrams", /[/\\]src[/\\]examples[/\\][^/\\]+\.json$/],
   ["local-only examples", /[/\\]examples[/\\]private[/\\]|[/\\]localOnly\.dev\.ts$/],
+  // Architecture checks are for editing: the engine, the Checks card and the checks worker never ship in a file.
+  ["the architecture checks", /[/\\]src[/\\]checks[/\\]/],
+  ["the checks markers", /[/\\]src[/\\]canvas[/\\]checks[/\\]ChecksMarkers\.tsx$/],
 ];
 
 /**
@@ -85,8 +88,39 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     stub: () => "export const ShortcutsDialog = () => null;",
   },
   { name: "the simulation editor", path: "/src/live/SimPanel.tsx", stub: () => "export const SimPanel = () => null;" },
+  // Architecture checks (editing only): a read-only canvas runs none, so no count, card, markers or worker.
+  {
+    name: "the checks scheduler",
+    path: "/src/canvas/checks/useChecks.ts",
+    stub: () =>
+      [
+        "const state = { result: null, stale: false, warnings: 0, byElement: new Map(), name: () => undefined };",
+        "const store = { subscribe: () => () => {}, get: () => state, getHot: () => null, setHot() {}, markStale() {} };",
+        "export const useChecks = () => store;",
+      ].join("\n"),
+  },
+  {
+    name: "the checks worker client",
+    path: "/src/canvas/checks/runner.ts",
+    stub: () => 'export const runChecksOffThread = () => Promise.reject(new Error("No checks in an exported file."));',
+  },
+  {
+    name: "the checks count, card and markers",
+    path: "/src/canvas/checks/ChecksViews.tsx",
+    stub: () =>
+      [
+        "export const DiagramCardMeta = () => null;",
+        "export const ChecksCardView = () => null;",
+        "export const ChecksMarkersView = () => null;",
+        "export const SelectionFindings = () => null;",
+      ].join("\n"),
+  },
 ];
 const STUB = "\0interactive-viewer:editor-only:";
+/** An import whose last segment names one of them (the resolved path is checked before it's swapped). */
+const STUBBED = new RegExp(
+  `(?:^|/)(${EDITOR_ONLY.map((p) => (p.path.split("/").pop() ?? "").replace(/\.tsx?$/, "")).join("|")})$`,
+);
 const pathPattern = (path: string) => new RegExp(`${path.replace(/[.]/g, "\\.").replace(/\//g, "[/\\\\]")}$`);
 FORBIDDEN.push(...EDITOR_ONLY.map(({ name, path }): [string, RegExp] => [name, pathPattern(path)]));
 
@@ -106,12 +140,7 @@ function viewerSwaps(root: string): Plugin {
       // every module it reaches, used or not).
       if (source === "./localOnly.dev" && importer && own(importer, "/src/lib/localOnly.ts")) return NO_LOCAL;
       // The editing-only panels, whoever imports them.
-      if (
-        !importer ||
-        importer.startsWith("\0") ||
-        !/(Inspector|Palette|StartCard|FirstRunHint|ShortcutsDialog|SimPanel)$/.test(source)
-      )
-        return null;
+      if (!importer || importer.startsWith("\0") || !STUBBED.test(source)) return null;
       const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
       const panel = resolved && EDITOR_ONLY.find((p) => own(resolved.id, p.path));
       return panel ? `${STUB}${panel.path}:stub` : null;

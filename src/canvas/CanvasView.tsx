@@ -486,8 +486,9 @@ function CanvasInner({
 
   // ---------------------------------------------------------------- architecture checks
   // They run after edits pause, in idle time, off the main thread (checks/useChecks.ts). Editing only: no count
-  // and no card in live view, presenting or an embed. Private diagrams are checked like any other (it's local).
-  const checksOn = !readOnly && !presenting && !live;
+  // and no card in live view, presenting, an embed or the exported HTML viewer (read-only, and its build stubs the
+  // checks out: scripts/interactive-viewer.ts). Private diagrams are checked like any other (it's local).
+  const checksOn = !readOnly && !viewer && !presenting && !live;
   useEffect(() => {
     checksPanel.setAvailable(checksOn);
     return () => checksPanel.setAvailable(false);
