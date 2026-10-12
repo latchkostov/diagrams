@@ -403,10 +403,18 @@ test.describe("live view", () => {
     // No timer runs from here until after the round trip: the save must not depend on one.
     await page.clock.pauseAt(new Date(Date.now() + 1000));
     await page.getByTestId("sim-panel-save").click();
+    // Wait for each diagram to be on screen. The canvas stays mounted until the requested example has
+    // loaded, so switching back before the other one arrived (a slow import on the dev server) kept
+    // this canvas and its live session, and the round trip never reloaded the saved diagram.
+    const title = page.getByTestId("diagram-title");
     await page.getByTestId("example-picker").selectOption(KAFKA);
+    await expect(title).toHaveText("Kafka order pipeline");
     await page.getByTestId("example-picker").selectOption("azure-service-bus-integration");
+    await expect(title).toHaveText("Azure invoice integration");
     await page.clock.resume();
-    if (!(await page.getByTestId("live-controls").count())) await page.getByTestId("live-toggle").click();
+    // A freshly opened diagram starts out of live view (switching diagrams drops the live URL params).
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    await page.getByTestId("live-toggle").click();
     await page.getByTestId("live-more").click();
     await page.getByTestId("live-edit-sims").click();
     await page.getByTestId(/^sim-panel-edit-storm-/).click();

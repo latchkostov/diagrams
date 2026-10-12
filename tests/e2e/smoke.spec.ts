@@ -14,13 +14,14 @@ test.describe("smoke", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("canvas", async ({ page, consoleErrors }) => {
-    for (const ex of publicExamples) {
+  // One test per example: each is a full page load, and on the dev server (hundreds of unbundled modules
+  // per load) a CI runner takes 4 to 10 s for one. All of them in one test overran its 30 s.
+  for (const ex of publicExamples)
+    test(`canvas: ${ex.slug}`, async ({ page, consoleErrors }) => {
       await gotoCanvas(page, ex.slug);
       await expect(page.getByTestId(`node-${ex.nodeIds[0]}`)).toBeVisible();
-    }
-    expectNoErrors(consoleErrors);
-  });
+      expectNoErrors(consoleErrors);
+    });
 
   test("lab", async ({ page, consoleErrors }) => {
     await gotoLab(page);
