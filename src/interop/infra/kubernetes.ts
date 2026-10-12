@@ -2,6 +2,8 @@ import type { Evidence, ImportComponent, ImportGraph } from "./graph";
 import { imageStencil, shortImage } from "./stencils";
 import { isOutsideHost, parseUrl, productOf } from "./settings";
 import { Components, linkSettings, Links, type SettingsScope } from "./links";
+import { inClusterSyntax, parseServiceHost, strimziCluster } from "./k8sHosts";
+import { containerEnv, ENV_LIMITS, knownSettings, newEnvBudget } from "./k8sSettings";
 import { ImportError, isMap, list, own, readYaml, str, YAML_LIMITS } from "./yaml";
 
 // Kubernetes manifests → ImportGraph (docs/research/imports.md § Mapping: Kubernetes). Several files, each with
@@ -163,18 +165,10 @@ const IDENTITIES: [annotation: string, stencil: string, valid: RegExp, label: (v
     ],
   ];
 
-/** In-cluster DNS suffixes ("orders.shop.svc.cluster.local"). */
-const IN_CLUSTER = /\.svc(?:\.cluster\.local)?$|\.cluster\.local$/;
 /** A two-label host is outside the cluster only with a familiar top-level domain ("example.com", not "orders.shop"). */
 const TLD = /^(?:com|net|org|io|dev|app|ai|co|cloud|eu|us|uk|de|fr|nl|ca|au|in|jp|me|info|biz|tech|xyz)$/;
-
-/** `$(VAR)` in an env value, from the variables before it (Kubernetes' dependent variables); `$$` is a `$`. */
-function expandVars(value: string, env: Map<string, string>): string {
-  if (!value.includes("$")) return value;
-  return value.replace(/\$\$|\$\(([A-Za-z_][\w.-]{0,255})\)/g, (_m, name: string | undefined) =>
-    name === undefined ? "$" : (env.get(name) ?? "\u0000"),
-  );
-}
+/** Kinds that fold into the workload that owns them (`kubectl get all`): never a Deployment an operator owns. */
+const FOLDABLE = new Set(["Pod", "ReplicaSet", "Job"]);
 
 /** Every resource in the files: documents, and the items of `kind: List`. Values are read, never executed. */
 function readResources(files: readonly SourceFile[], unread: (name: string, reason: string) => void): Res[] {
@@ -302,22 +296,30 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
   // ------------------------------------------------ workloads: anything with a pod template
   const workloads: Workload[] = [];
   const workloadAt = new Map<string, Workload>();
+  const workloadByName = new Map<string, Workload>();
   /** Workloads by namespace and pod label (`k=v`): a selector starts from its rarest pair. */
   const byLabel = new Map<string, Workload[]>();
   /** Pod labels of workloads that aren't drawn (a ZooKeeper image): a Service selecting them is known, not missing. */
   const skippedPods: { ns: string; labels: Record<string, unknown> }[] = [];
+  /** The workload a Pod, ReplicaSet or Job belongs to: an owner in the files that runs pods itself. */
+  const ownerWorkload = (r: Res): Res | undefined => {
+    if (!FOLDABLE.has(r.kind)) return undefined;
+    for (const o of list(own(meta(r), "ownerReferences"))) {
+      const kind = str(own(o, "kind"));
+      const name = str(own(o, "name"));
+      const owner = kind && name ? byAt.get(at(kind, r.ns, name)) : undefined;
+      if (owner && owner !== r && podOf(owner)) return owner;
+    }
+    return undefined;
+  };
   for (const r of resources) {
     if (r.group === "" && r.kind === "Service") continue;
     const p = podOf(r);
     if (!p) continue;
     handled.add(r);
-    // Pods and ReplicaSets from `kubectl get all` fold into the owner that's in the files.
-    const owner = list(own(meta(r), "ownerReferences")).find((o) => {
-      const kind = str(own(o, "kind"));
-      const name = str(own(o, "name"));
-      return kind && name && byAt.has(at(kind, r.ns, name));
-    });
-    if (owner) {
+    // Pods, ReplicaSets and Jobs from `kubectl get all` fold into the workload that owns them. Anything else an
+    // owner makes (a Deployment an operator's custom resource manages) is drawn: the owner isn't.
+    if (ownerWorkload(r)) {
       skip(r.kind, r.name, "folded into its owner");
       continue;
     }
@@ -338,16 +340,21 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     const w: Workload = { res: r, key: `w\u0001${at(r.kind, r.ns, r.name)}`, pod: p.pod, labels: p.labels, image };
     workloads.push(w);
     workloadAt.set(at(r.kind, r.ns, r.name), w);
+    const named = nsName(r.ns, r.name);
+    if (!workloadByName.has(named)) workloadByName.set(named, w);
     for (const [k, v] of entries(p.labels)) {
       const pair = `${nsName(r.ns, k)}=${v}`;
-      byLabel.set(pair, [...(byLabel.get(pair) ?? []), w]);
+      const bucket = byLabel.get(pair);
+      if (bucket) bucket.push(w);
+      else byLabel.set(pair, [w]);
     }
   }
-  const workloadNamed = (ns: string, name: string) => workloads.find((w) => w.res.ns === ns && w.res.name === name);
+  /** The first workload with this name in the namespace, whatever its kind. */
+  const workloadNamed = (ns: string, name: string) => workloadByName.get(nsName(ns, name));
 
-  // Settings per workload: env and envFrom of its containers, ConfigMap values included, Secret values never.
+  // What each workload uses: ConfigMaps and Secrets (for its dependencies) and setting names (for its stencil),
+  // from every container. No values here: each container's environment is built on its own, later.
   interface Uses {
-    env: Map<string, string>;
     names: Set<string>;
     configs: Map<string, Set<string> | "all">;
     secrets: Map<string, Set<string> | "all">;
@@ -359,8 +366,34 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     if (!key) m.set(name, "all");
     else m.set(name, (cur ?? new Set()).add(key));
   };
+  /** Setting names hint at a language; a few hundred say as much as thousands. */
+  const MAX_NAMES = 500;
+  const addNames = (u: Uses, prefix: string, names: Iterable<string>) => {
+    for (const n of names) {
+      if (u.names.size >= MAX_NAMES) return;
+      u.names.add(prefix + n);
+    }
+  };
+  /** Own keys, one at a time (a ConfigMap shared by thousands of workloads isn't copied for each). */
+  function* keysIn(...maps: unknown[]) {
+    for (const m of maps) if (isMap(m)) for (const k in m) if (Object.hasOwn(m, k)) yield k;
+  }
+  const configData = (ns: string, name: string) => {
+    const data = own(configMaps.get(nsName(ns, name))?.obj, "data");
+    return isMap(data) ? data : undefined;
+  };
+  /** A Secret's key names, listed once per Secret however many containers read it. */
+  const secretKeyCache = new Map<string, string[] | undefined>();
+  const secretKeys = (ns: string, name: string) => {
+    const id = nsName(ns, name);
+    if (!secretKeyCache.has(id)) {
+      const s = secrets.get(id)?.obj;
+      secretKeyCache.set(id, s ? keysOf(own(s, "data"), own(s, "stringData")) : undefined);
+    }
+    return secretKeyCache.get(id);
+  };
   for (const w of workloads) {
-    const u: Uses = { env: new Map(), names: new Set(), configs: new Map(), secrets: new Map() };
+    const u: Uses = { names: new Set(), configs: new Map(), secrets: new Map() };
     uses.set(w, u);
     const ns = w.res.ns;
     for (const [init, c] of [
@@ -372,18 +405,14 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
         const cm = str(own(own(ef, "configMapRef"), "name"));
         if (cm) {
           addUse(u.configs, cm);
-          if (!init)
-            for (const [k, v] of entries(own(configMaps.get(nsName(ns, cm))?.obj, "data"))) {
-              u.env.set(prefix + k, v);
-              u.names.add(prefix + k);
-            }
+          if (!init) addNames(u, prefix, keysIn(configData(ns, cm)));
         }
         const secret = str(own(own(ef, "secretRef"), "name"));
         if (secret) {
           addUse(u.secrets, secret);
           // Names only: a Secret's values are never read.
           const s = secrets.get(nsName(ns, secret))?.obj;
-          if (!init) for (const k of keysOf(own(s, "data"), own(s, "stringData"))) u.names.add(prefix + k);
+          if (!init) addNames(u, prefix, keysIn(own(s, "data"), own(s, "stringData")));
         }
       }
       for (const e of list(own(c, "env"))) {
@@ -396,14 +425,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
         const secret = str(own(secretRef, "name"));
         if (cm) addUse(u.configs, cm, str(own(cmRef, "key")));
         if (secret) addUse(u.secrets, secret, str(own(secretRef, "key")));
-        if (init) continue;
-        u.names.add(name);
-        const value = str(own(e, "value"));
-        const key = str(own(cmRef, "key"));
-        const fromConfig = cm && key ? str(own(own(configMaps.get(nsName(ns, cm))?.obj, "data"), key)) : undefined;
-        if (value !== undefined) u.env.set(name, expandVars(value, u.env));
-        else if (fromConfig !== undefined) u.env.set(name, fromConfig);
-        else u.env.delete(name);
+        if (!init) addNames(u, "", [name]);
       }
     }
     for (const v of list(own(w.pod, "volumes"))) {
@@ -443,20 +465,32 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
           ? { stencil: "generic.batch-job" }
           : {}),
       group: r.ns,
+      context: r.ns,
       ...(replicas && replicas > 1 && replicas <= 10_000 ? { props: { replicas } } : {}),
     });
   }
 
   // ------------------------------------------------ Strimzi: the cluster is shown through its topics
+  // A Strimzi cluster is its namespace and name, whether or not its `Kafka` manifest was opened: a KafkaTopic's
+  // label or a bootstrap host names it. A topic with no cluster label is scoped to its namespace.
   const clusterId = (ns: string, name: string) => `\u0007${nsName(ns, name)}`;
+  const clusterOf = (id: string) => {
+    const [ns, name] = id.slice(1).split("\u0001");
+    return { ns, name };
+  };
+  /** Clusters the files name: a Kafka manifest, a topic's label. */
+  const strimziIds = new Set([...strimzi.values()].map((k) => clusterId(k.ns, k.name)));
   const strimziTopics = resources.filter((r) => r.group === "kafka.strimzi.io" && r.kind === "KafkaTopic");
   const clustersWithTopics = new Set<string>();
   const topicKey = (cluster: string | undefined, name: string) => `\u0004${cluster ?? ""}\u0001${name}`;
   for (const t of strimziTopics) {
     handled.add(t);
-    const cluster = str(own(own(meta(t), "labels"), "strimzi.io/cluster"));
-    const id = cluster && strimzi.has(nsName(t.ns, cluster)) ? clusterId(t.ns, cluster) : undefined;
-    if (id) clustersWithTopics.add(id);
+    const cluster = str(own(own(meta(t), "labels"), "strimzi.io/cluster"))?.slice(0, 200);
+    const id = clusterId(t.ns, cluster ?? "");
+    if (cluster) {
+      clustersWithTopics.add(id);
+      strimziIds.add(id);
+    }
     const name = (str(own(spec(t), "topicName")) ?? t.name).slice(0, 249);
     const partitions = num(own(spec(t), "partitions"));
     const key = add({
@@ -465,14 +499,25 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       hint: { name },
       stencil: "kafka.topic",
       group: t.ns,
+      context: t.ns,
       ...(partitions ? { props: { partitions } } : {}),
     });
-    if (id) links.topicCluster.set(key, id);
+    if (cluster) links.topicCluster.set(key, id);
   }
+  /** The cluster as a node (when something depends on it but names no topic, or it has no topics). */
   const clusterNode = (id: string) => {
-    const r = [...strimzi.values()].find((k) => clusterId(k.ns, k.name) === id);
-    if (!r) return components.has(id) ? id : undefined;
-    return add({ key: id, label: label(r.name), hint: { name: r.name }, stencil: "kafka.cluster", group: r.ns });
+    if (!id.startsWith("\u0007")) return components.has(id) ? id : undefined;
+    const { ns, name } = clusterOf(id);
+    if (!name) return undefined;
+    return add({
+      key: id,
+      label: label(name),
+      ...(strimzi.has(nsName(ns, name)) ? {} : { sublabel: NOT_IN_FILES }),
+      hint: { name },
+      stencil: "kafka.cluster",
+      group: ns,
+      context: ns,
+    });
   };
   for (const k of strimzi.values()) {
     handled.add(k);
@@ -492,6 +537,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       hint: { name },
       stencil: "generic.service",
       group: ns,
+      context: ns,
     });
     note(`${label(name)}: a Service with ${why === NOT_IN_FILES ? "no definition" : "no workload"} in these files`);
     return key;
@@ -513,7 +559,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     let targets: string[] = [];
     if (type === "ExternalName") {
       const host = (str(own(s, "externalName")) ?? "").toLowerCase().replace(/\.$/, "");
-      if (/^[a-z0-9][a-z0-9.-]{0,252}$/.test(host) && isOutsideHost(host) && !IN_CLUSTER.test(host))
+      if (/^[a-z0-9][a-z0-9.-]{0,252}$/.test(host) && isOutsideHost(host) && !inClusterSyntax(host))
         targets = [externalNode(host)];
     } else {
       const selector = entries(own(s, "selector"));
@@ -560,6 +606,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       hint: { name: ing.name },
       stencil: gatewayStencil(cls),
       group: ing.ns,
+      context: ing.ns,
       idPrefix: "ingress-",
     });
     links.flow(users(), key, "sync", spec_);
@@ -584,6 +631,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       hint: { name: gw.name },
       stencil: gatewayStencil(str(own(spec(gw), "gatewayClassName"))),
       group: gw.ns,
+      context: gw.ns,
       idPrefix: "gateway-",
     });
     links.flow(users(), key, "sync", spec_);
@@ -605,6 +653,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
             hint: { name },
             stencil: "load-balancer",
             group: ns,
+            context: ns,
             idPrefix: "gateway-",
           });
           links.flow(users(), key, "sync", spec_);
@@ -621,43 +670,45 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
   }
 
   // ------------------------------------------------ hosts: Services, StatefulSet pods, Strimzi bootstrap
-  const lookup = (ns: string, name: string): string[] | undefined =>
-    serviceTargets.get(nsName(ns, name)) ?? (workloadNamed(ns, name) ? [workloadNamed(ns, name)!.key] : undefined);
-  /** "svc", "svc.ns", "pod.svc", "pod.svc.ns", each with or without ".svc[.cluster.local]". */
+  // The DNS syntax is parsed first (k8sHosts.ts); the files only say whether a name reaches something drawn.
+  const lookup = (ns: string, name: string): string[] | undefined => {
+    const w = workloadNamed(ns, name);
+    return serviceTargets.get(nsName(ns, name)) ?? (w ? [w.key] : undefined);
+  };
   const resolveHost = (host: string, from: string): string[] | undefined => {
-    const parts = host.replace(IN_CLUSTER, "").split(".");
-    if (parts.length === 1) return lookup(from, parts[0]);
-    if (parts.length === 2) return namespaces.has(parts[1]) ? lookup(parts[1], parts[0]) : lookup(from, parts[1]);
-    if (parts.length === 3 && namespaces.has(parts[2])) return lookup(parts[2], parts[1]);
+    for (const h of parseServiceHost(host)) {
+      const ns = h.namespace ?? from;
+      // A StatefulSet pod ("db-0") behind its headless Service: the StatefulSet itself, else the Service's targets.
+      const sts = h.pod ? workloadAt.get(at("StatefulSet", ns, h.pod.replace(/-\d+$/, ""))) : undefined;
+      const found = sts ? [sts.key] : lookup(ns, h.service);
+      if (found) return found;
+    }
     return undefined;
   };
+  /** A Strimzi bootstrap or broker host names its cluster, whether or not its Kafka manifest is here. */
   const strimziOf = (host: string, from: string): string | undefined => {
-    // "svc", "svc.ns", "pod.svc" or "pod.svc.ns", as resolveHost reads them.
-    const parts = host.replace(IN_CLUSTER, "").split(".");
-    if (parts.length > 3) return undefined;
-    const twoNs = parts.length === 2 && namespaces.has(parts[1]);
-    const ns = parts.length === 3 ? parts[2] : twoNs ? parts[1] : from;
-    const service = parts.length === 3 || (parts.length === 2 && !twoNs) ? parts[1] : parts[0];
-    const m = /^(.+)-kafka-(?:bootstrap|brokers)$/.exec(service);
-    return m && strimzi.has(nsName(ns, m[1])) ? clusterId(ns, m[1]) : undefined;
+    for (const h of parseServiceHost(host)) {
+      const cluster = strimziCluster(h.service);
+      if (cluster) return clusterId(h.namespace ?? from, cluster);
+    }
+    return undefined;
   };
   const kafkaClusters = [
-    ...[...strimzi.values()].map((k) => clusterId(k.ns, k.name)),
+    ...strimziIds,
     ...workloads.filter((w) => components.stencilOf(w.key) === "kafka.cluster").map((w) => w.key),
   ];
   const isKafka = (cluster: string) =>
     cluster.startsWith("\u0007") || components.stencilOf(cluster) === "kafka.cluster";
-  const strimziNs = (id: string) => (id.startsWith("\u0007") ? id.slice(1).split("\u0001")[0] : undefined);
   const topicOn = (cluster: string | undefined, name: string) => {
     const key = topicKey(cluster, name);
     if (components.has(key)) return key;
-    const group = cluster ? (groupOf(cluster) ?? strimziNs(cluster)) : undefined;
+    const group = cluster ? (groupOf(cluster) ?? (isKafka(cluster) ? clusterOf(cluster).ns : undefined)) : undefined;
     return add({
       key,
       label: label(name),
       hint: { name },
       stencil: !cluster || isKafka(cluster) ? "kafka.topic" : "generic.topic",
-      ...(group ? { group } : {}),
+      ...(group ? { group, context: group } : {}),
     });
   };
   const scopeFor = (ns: string): SettingsScope => ({
@@ -665,7 +716,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     outside: (host) => {
       const parts = host.split(".");
       const last = parts[parts.length - 1];
-      return !IN_CLUSTER.test(host) && !namespaces.has(last) && (parts.length > 2 || TLD.test(last));
+      return !inClusterSyntax(host) && !namespaces.has(last) && (parts.length > 2 || TLD.test(last));
     },
     cluster: (hosts) => {
       for (const h of hosts) {
@@ -754,7 +805,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
           label: label(queue),
           hint: { name: queue },
           stencil: "rabbitmq.queue",
-          ...(group ? { group } : {}),
+          ...(group ? { group, context: group } : {}),
         });
         links.flow(key, w.key, "async", evidence);
       } else if (type === "aws-sqs-queue") {
@@ -809,6 +860,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       hint: { name: kc.name },
       stencil: "kafka.connect",
       group: kc.ns,
+      context: kc.ns,
     });
     const cluster = scopeFor(kc.ns).cluster(brokerHosts(str(own(spec(kc), "bootstrapServers"))));
     const node = cluster && clusterNode(cluster);
@@ -836,6 +888,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
         hint: { name },
         stencil: "k8s.configmap",
         group: ns,
+        context: ns,
         idPrefix: "configmap-",
       });
       const all = keys === "all" ? keysOf(own(cm?.obj, "data"), own(cm?.obj, "binaryData")) : [...keys];
@@ -853,6 +906,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
         hint: { name },
         stencil: "k8s.secret",
         group: ns,
+        context: ns,
         idPrefix: "secret-",
       });
       // Key names only; `data` and `stringData` values are never read.
@@ -879,7 +933,25 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       }
     }
   }
-  for (const w of workloads) linkSettings(components, links, w.key, uses.get(w)!.env, scopeFor(w.res.ns));
+  // Connections from settings: each container's environment on its own (two containers may give one name two
+  // values), built, read and released in turn. The workload's connections are the union of its containers'.
+  const budget = newEnvBudget();
+  for (const w of workloads) {
+    const ns = w.res.ns;
+    const sources = {
+      configMap: (name: string) => configData(ns, name),
+      secretKeys: (name: string) => secretKeys(ns, name),
+    };
+    const scope = scopeFor(ns);
+    for (const c of list(own(w.pod, "containers"))) {
+      const env = containerEnv(c, sources, budget);
+      if (env) linkSettings(components, links, w.key, knownSettings(env), scope);
+    }
+  }
+  if (budget.exhausted)
+    note(
+      `Settings past the first ${ENV_LIMITS.maxSettings.toLocaleString("en")} weren't read for connections (ConfigMaps shared by many workloads count each time)`,
+    );
 
   // ------------------------------------------------ what isn't drawn, and why
   for (const r of resources) {

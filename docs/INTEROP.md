@@ -173,14 +173,16 @@ Batch 2. Our own reader (about 4 kB gzip in the same lazy chunk): `@asyncapi/par
   hostile refs), the AsyncAPI part of `tests/e2e/imports.spec.ts` (join, Go live with Imported traffic, 2.6
   direction, remote `$ref`, no network) and the Lab's "Imported: AsyncAPI" overlap audit. The entry grows by 48 B.
 
-### Infrastructure imports: Kubernetes manifests (`src/interop/infra/kubernetes.ts`)
+### Infrastructure imports: Kubernetes manifests (`src/interop/infra/kubernetes.ts`, `k8sHosts.ts`, `k8sSettings.ts`)
 
 Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the shared settings code it now uses, in
-`links.ts`). The entry grows by 69 B (the kubectl JSON sniff and the wiring).
+`links.ts`). The entry grows by about 70 B (the kubectl JSON sniff and the wiring). JSON is recognised by its
+`apiVersion` and `kind` in any order, anywhere in the text (a ConfigMap's data may come first).
 
 - **Reading.** Several files, each with several documents, are one diagram; `kind: List` (and `*List`) items are
   read too, so `kubectl get all -o yaml` or `-o json` output works. 2,000 YAML documents and 10,000 resources per
-  import at most. Pods and ReplicaSets whose owner is in the files fold into it.
+  import at most. Pods, ReplicaSets and Jobs fold into an owner in the files that runs pods itself; anything else
+  an owner makes (a Deployment an operator's custom resource manages) is drawn.
 - **Workloads** are found by their pod template, not their kind: Deployment, StatefulSet, DaemonSet, Pod, Argo
   Rollout, Knative Service, KEDA ScaledJob. The main container (not a known sidecar such as `istio-proxy`) gives
   the stencil through the compose image table, then its settings' names, then its name, then **Kubernetes
@@ -205,18 +207,32 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
   (`eks.amazonaws.com/role-arn`) or GKE (`iam.gke.io/gcp-service-account`) gives a Managed Identity, an IAM Role
   (named by the role) or the new **Service Account** (Google Cloud, named by the account), with an **Identity**
   dependency from each workload running as it. Client ids, account numbers and projects aren't shown.
-- **Connections from settings** use the compose rules (`linkSettings` in `links.ts`, shared with compose), with
-  Kubernetes host names: `svc`, `svc.ns`, `svc.ns.svc[.cluster.local]` and StatefulSet pods (`db-0.db.data`),
-  resolved through Services to their workloads. Names that look in-cluster are never taken for outside APIs.
+- **Connections from settings** use the compose rules (`linkSettings` in `links.ts`, shared with compose).
+  - **Each container's environment is its own** (`k8sSettings.ts`), built as the kubelet builds it: `envFrom`
+    sources in order, a later one overriding an earlier one, then `env`, which beats them all. A Secret's keys
+    override with a value that's never read, so a ConfigMap setting a later Secret replaces connects nothing; so
+    does `env` from a Secret or a field. A workload's connections are the union of its containers'.
+  - **`$(VAR)`** expands once, from the same container's earlier variables. Values are bounded while they're built:
+    past 2,048 characters, 64 references, or with an unknown part, a value is unknown and connects nothing. One
+    import materializes at most 100,000 settings across all containers (a ConfigMap shared by many workloads
+    counts each time); past that the report says settings weren't read.
+  - **Host names** (`k8sHosts.ts`) are parsed before anything is looked up: `svc`, `svc.ns`,
+    `svc.ns.svc[.cluster.local]`, and StatefulSet pods by their ordinal (`db-0.db`, `db-0.db.data`). An explicit
+    namespace that isn't in the files stays unresolved; it's never read as a local name. Names that look
+    in-cluster are never taken for outside APIs.
 - **KEDA.** A ScaledObject's `kafka`, `rabbitmq`, `aws-sqs-queue` and `azure-servicebus` triggers draw the topic or
   queue with a **Message** to the workload it scales (`group` from `consumerGroup` or the subscription). The replica
   range goes in the report, and `minReplicaCount` above the Deployment's replicas becomes `replicas`. Other
   triggers (CPU, cron…) are listed as "scaling only". An HPA's range is a report note too.
 - **Strimzi.** `Kafka` and `KafkaTopic` in `v1beta2` and `v1`: the cluster is shown through its topics (in its
-  namespace, with `partitions`), scoped to the cluster, and listed as "shown through its topics". A cluster with no
+  namespace, with `partitions`), scoped to the cluster, and listed as "shown through its topics". A cluster is its
+  namespace and name, from a topic's `strimzi.io/cluster` label or a bootstrap host, whether or not its `Kafka`
+  manifest was opened; a topic with no label is scoped to its namespace. A cluster with no
   topics is a Kafka Cluster node. Bootstrap hosts (`<cluster>-kafka-bootstrap.<ns>.svc`) name the cluster, so a
   KEDA trigger and an `INPUT_TOPIC` meet on the same topic. KafkaConnect is drawn; KafkaUser, KafkaNodePool and
   the rest are "part of Kafka". KafkaUser ACLs aren't read yet.
+- **Report rows** name the namespace when there's more than one ("orders (staging)"), in the row and in its chips'
+  accessible names, so two workloads with one name can be told apart. The canvas label stays short.
 - **Not drawn**, grouped by kind and reason: "ServiceMonitor orders-api · unknown kind (monitoring.coreos.com)",
   "PersistentVolumeClaim ×4 · not a component", "Pod ×12 · folded into its owner", ConfigMaps and Secrets no
   workload uses.
@@ -227,7 +243,9 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
   KafkaUser ACLs.
 - **Tests.** `infra/kubernetes.test.ts` (the fixture set end to end, the Secret-values leak test, KEDA, Strimzi in
   both versions, entry points, identities, host forms, not-drawn grouping, kubectl JSON and Lists, Helm, alias
-  bomb, nesting, 2,000 documents under `perfBudget`, the resource cap, prototype keys, linear patterns), the
+  bomb, nesting, 2,000 documents under `perfBudget`, the resource cap, prototype keys, linear patterns, and the
+  review's cases: per-container environments, `envFrom` precedence, bounded expansion and the settings budget, DNS
+  parsing, Kafka identity without manifests, owners that aren't drawn, JSON in any key order), the
   Kubernetes part of `tests/e2e/imports.spec.ts` (Open… and drop, boundaries, the Ingress entry, config, secret
   and identity relationships, the KEDA consumer, report rows, Helm, no network) and the Lab's "Imported:
   Kubernetes" overlap audit. `bundleSplit.build.test.ts` names the Kubernetes reader.

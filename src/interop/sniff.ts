@@ -34,8 +34,9 @@ export function sniffInfra(text: string): InfraSniff | undefined {
       ? "asyncapi"
       : /"format_version"/.test(head) && /"terraform_version"/.test(head)
         ? "terraform"
-        : // kubectl's JSON output starts with its apiVersion.
-          /^\s*\{\s*"apiVersion"\s*:/.test(head) && /"kind"\s*:/.test(head)
+        : // Kubernetes JSON: apiVersion and kind in any order, anywhere (a ConfigMap's data may come first).
+          // Only a JSON object that is none of the above gets this one linear scan of the whole text.
+          /"apiVersion"\s*:\s*"/.test(text) && /"kind"\s*:\s*"/.test(text)
           ? "kubernetes"
           : undefined;
   }

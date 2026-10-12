@@ -29,6 +29,11 @@ export interface ImportComponent {
   group?: string;
   /** Starts the node's id ("configmap-", "secret-"), so a ConfigMap named like its workload keeps a readable id. */
   idPrefix?: string;
+  /**
+   * Where it lives (a Kubernetes namespace). With more than one boundary, report rows name it, "orders (shop)",
+   * so two workloads with one name can be told apart; the canvas label stays short.
+   */
+  context?: string;
   props?: Record<string, unknown>;
 }
 

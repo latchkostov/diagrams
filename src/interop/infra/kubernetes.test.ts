@@ -7,7 +7,10 @@ import { detectFormat, importFiles, importText, type ImportOutcome } from "../fo
 import { sniffInfra } from "../sniff";
 import type { ImportReport } from "./graph";
 import { importKubernetes } from "./pipeline";
-import { HELM_TEMPLATE, MAX_RESOURCES } from "./kubernetes";
+import { HELM_TEMPLATE, MAX_RESOURCES, readKubernetes } from "./kubernetes";
+import { parseServiceHost } from "./k8sHosts";
+import { ENV_LIMITS, expandVars, OPAQUE } from "./k8sSettings";
+import { MAX_VALUE } from "./settings";
 import { TOO_MANY_ALIASES } from "./yaml";
 import { perfBudget } from "../../test/perfBudget";
 
@@ -158,11 +161,12 @@ describe("Kubernetes import: the fixture set", () => {
     expect(report.boundaries).toBe(2);
     expect(report.guesses).toEqual([]);
     expect(report.inferred.map((c) => `${c.from} → ${c.to} ${c.evidence}${c.guess ? " (guess)" : ""}`)).toEqual([
-      "orders-api → redis REDIS_URL",
-      "orders-api → postgres DATABASE_HOST",
-      "orders-api → orders.placed.v1 ORDERS_TOPIC (guess)",
-      "payments-worker → payments.completed.v1 OUTPUT_TOPIC",
-      "settlement-report → postgres DATABASE_HOST",
+      // Two namespaces: each row says where its nodes live.
+      "orders-api (shop) → redis (shop) REDIS_URL",
+      "orders-api (shop) → postgres (shop) DATABASE_HOST",
+      "orders-api (shop) → orders.placed.v1 (kafka) ORDERS_TOPIC (guess)",
+      "payments-worker (shop) → payments.completed.v1 (kafka) OUTPUT_TOPIC",
+      "settlement-report (shop) → postgres (shop) DATABASE_HOST",
     ]);
     expect(report.notDrawn).toEqual([
       { name: "Kafka shop-kafka", reason: "shown through its topics" },
@@ -770,5 +774,300 @@ data: { __proto__: { polluted: "yes" }, constructor: x }
 `);
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     expect(diagram.nodes.map((n) => n.label).sort()).toEqual(["__proto__", "__proto__", "constructor"]);
+  });
+});
+
+describe("Kubernetes import: review findings", () => {
+  /** A Deployment with the given containers (YAML flow maps, one per line). */
+  const pods = (name: string, containers: string[], ns = "") => `---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: ${name}${ns ? `, namespace: ${ns}` : ""} }
+spec:
+  template:
+    metadata: { labels: { app: ${name} } }
+    spec:
+      containers:
+${containers.map((c) => `        - ${c}`).join("\n")}
+`;
+  const targets = ["db-a", "db-b", "other"].map((n) => deployment(n, "example/store")).join("");
+
+  it("keeps each container's environment its own: both connections, in either order", () => {
+    const main = "{ name: api, image: example/api, env: [{ name: DB_HOST, value: db-a }] }";
+    const sidecar = "{ name: sync, image: example/sync, env: [{ name: DB_HOST, value: db-b }] }";
+    for (const order of [
+      [main, sidecar],
+      [sidecar, main],
+    ]) {
+      const { diagram } = k8s(pods("api", order) + targets);
+      expect(relationBetween(diagram, "api", "db-a")).toBe("request");
+      expect(relationBetween(diagram, "api", "db-b")).toBe("request");
+    }
+  });
+
+  it("expands $(VAR) only from the same container's variables", () => {
+    const { diagram } = k8s(
+      pods("api", [
+        "{ name: api, image: example/api, env: [{ name: HOST_SEGMENT, value: other }] }",
+        "{ name: proxy, image: example/proxy, env: [{ name: UPSTREAM_URL, value: 'http://$(HOST_SEGMENT)' }] }",
+      ]) + targets,
+    );
+    expect(edge(diagram, "api", "other")).toBeUndefined();
+    const same = k8s(
+      pods("api", [
+        "{ name: api, image: example/api, env: [{ name: HOST_SEGMENT, value: other }, { name: UPSTREAM_URL, value: 'http://$(HOST_SEGMENT):80' }] }",
+      ]) + targets,
+    );
+    expect(relationBetween(same.diagram, "api", "other")).toBe("request");
+  });
+
+  describe("envFrom precedence", () => {
+    const sources = `---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: cfg }
+data: { DB_HOST: db-a }
+---
+apiVersion: v1
+kind: Secret
+metadata: { name: sec }
+stringData: { DB_HOST: db-b-from-secret }
+`;
+    it("a later Secret overrides a ConfigMap's value without its own being read", () => {
+      const { diagram } = k8s(
+        sources +
+          pods("api", [
+            "{ name: api, image: example/api, envFrom: [{ configMapRef: { name: cfg } }, { secretRef: { name: sec } }] }",
+          ]) +
+          targets,
+      );
+      expect(edge(diagram, "api", "db-a")).toBeUndefined();
+      expect(edge(diagram, "api", "db-b")).toBeUndefined();
+      expect(relationBetween(diagram, "api", "configmap-cfg")).toBe("config");
+      expect(relationBetween(diagram, "api", "secret-sec")).toBe("secret");
+      expect(JSON.stringify(diagram)).not.toContain("db-b-from-secret");
+    });
+
+    it("a later ConfigMap overrides a Secret; explicit env beats every envFrom source", () => {
+      const reverse = k8s(
+        sources +
+          pods("api", [
+            "{ name: api, image: example/api, envFrom: [{ secretRef: { name: sec } }, { configMapRef: { name: cfg } }] }",
+          ]) +
+          targets,
+      );
+      expect(relationBetween(reverse.diagram, "api", "db-a")).toBe("request");
+      const explicit = k8s(
+        sources +
+          pods("api", [
+            "{ name: api, image: example/api, envFrom: [{ configMapRef: { name: cfg } }], env: [{ name: DB_HOST, value: db-b }] }",
+          ]) +
+          targets,
+      );
+      expect(edge(explicit.diagram, "api", "db-a")).toBeUndefined();
+      expect(relationBetween(explicit.diagram, "api", "db-b")).toBe("request");
+      // env from a Secret also beats envFrom, as an unknown value.
+      const secretEnv = k8s(
+        sources +
+          pods("api", [
+            "{ name: api, image: example/api, envFrom: [{ configMapRef: { name: cfg } }], env: [{ name: DB_HOST, valueFrom: { secretKeyRef: { name: sec, key: DB_HOST } } }] }",
+          ]) +
+          targets,
+      );
+      expect(edge(secretEnv.diagram, "api", "db-a")).toBeUndefined();
+    });
+  });
+
+  describe("bounded $(VAR) expansion", () => {
+    it("never builds a value past MAX_VALUE, nor follows more than its share of references", () => {
+      const env = new Map([["A", "x".repeat(1_500)]]);
+      expect(expandVars("$(A)$(A)", env)).toBe(OPAQUE);
+      expect(expandVars("http://$(A)", env)).toBe(`http://${"x".repeat(1_500)}`);
+      expect(expandVars("$(B)", new Map([["B", OPAQUE]]))).toBe(OPAQUE);
+      expect(expandVars("$(UNSET) and $$(A)", env)).toBe("$(UNSET) and $(A)");
+      expect(expandVars("$(A)".repeat(ENV_LIMITS.maxReferences + 1), new Map([["A", "y"]]))).toBe(OPAQUE);
+      expect(expandVars("y".repeat(MAX_VALUE + 1), env)).toBe(OPAQUE);
+    });
+
+    it("a chain of doubling variables stays small and fast", () => {
+      const vars = [`{ name: V0, value: "${"x".repeat(64)}" }`];
+      for (let i = 1; i <= 40; i++) vars.push(`{ name: V${i}, value: "$(V${i - 1})$(V${i - 1})" }`);
+      vars.push('{ name: DB_URL, value: "http://$(V40)" }', '{ name: CACHE_HOST, value: "other" }');
+      const started = performance.now();
+      const { diagram, report } = k8s(
+        pods("api", [`{ name: api, image: example/api, env: [${vars.join(", ")}] }`]) + targets,
+      );
+      expect(performance.now() - started).toBeLessThan(perfBudget(1_000));
+      expect(JSON.stringify([diagram, report]).length).toBeLessThan(50_000);
+      // The bounded values don't stop the rest of the container's settings from being read.
+      expect(relationBetween(diagram, "api", "other")).toBe("request");
+    });
+
+    it("budgets ConfigMap settings across workloads, and says so", () => {
+      const data = Array.from({ length: 1_000 }, (_, i) => `  K${i}: v${i}`).join("\n");
+      const many = Array.from({ length: 500 }, (_, i) =>
+        pods(`w${i}`, ["{ name: a, image: example/a, envFrom: [{ configMapRef: { name: big } }] }"]),
+      ).join("");
+      const started = performance.now();
+      const { report } = k8s(`apiVersion: v1\nkind: ConfigMap\nmetadata: { name: big }\ndata:\n${data}\n${many}`);
+      expect(performance.now() - started).toBeLessThan(perfBudget(6_000));
+      expect(report.notes.some((n) => n.startsWith("Settings past the first 100,000 weren't read"))).toBe(true);
+    });
+  });
+
+  describe("host names", () => {
+    it("parses DNS syntax before looking anything up", () => {
+      expect(parseServiceHost("postgres.data.svc.cluster.local")).toEqual([{ service: "postgres", namespace: "data" }]);
+      expect(parseServiceHost("db-0.db.data.svc")).toEqual([{ pod: "db-0", service: "db", namespace: "data" }]);
+      expect(parseServiceHost("db-0.db")).toEqual([
+        { pod: "db-0", service: "db" },
+        { service: "db-0", namespace: "db" },
+      ]);
+      expect(parseServiceHost("orders")).toEqual([{ service: "orders" }]);
+      expect(parseServiceHost("orders.shop")).toEqual([{ service: "orders", namespace: "shop" }]);
+      expect(parseServiceHost("api.stripe.com")).toEqual([]);
+      expect(parseServiceHost("x.svc")).toEqual([]);
+      expect(parseServiceHost("node.cluster.local")).toEqual([]);
+    });
+
+    it("a namespace that isn't in the files stays unresolved, never read as a local name", () => {
+      const { diagram } = k8s(
+        pods("api", [
+          "{ name: api, image: example/api, env: [{ name: DB_HOST, value: postgres.data.svc.cluster.local }] }",
+        ]) +
+          deployment("data", "example/data") +
+          deployment("postgres", "postgres:16"),
+      );
+      expect(edge(diagram, "api", "data")).toBeUndefined();
+      expect(edge(diagram, "api", "postgres")).toBeUndefined();
+      expect(diagram.nodes.map((n) => n.id).sort()).toEqual(["api", "data", "postgres"]);
+    });
+
+    it("resolves a host with no Service through an index, in linear time", () => {
+      const settings = Array.from({ length: 20 }, (_, i) => `{ name: H${i}_HOST, value: missing-${i} }`).join(", ");
+      const items = Array.from({ length: 2_000 }, (_, i) => ({
+        apiVersion: "apps/v1",
+        kind: "Deployment",
+        metadata: { name: `w${i}` },
+        spec: { template: { metadata: { labels: { team: "a", tier: "b" } }, spec: { containers: [] as unknown[] } } },
+      }));
+      const text = JSON.stringify({ apiVersion: "v1", kind: "List", items }).replaceAll(
+        '"containers":[]',
+        `"containers":[{"name":"a","image":"example/a","env":[${settings.replace(
+          /\{ name: (\w+), value: ([\w-]+) \}/g,
+          '{"name":"$1","value":"$2"}',
+        )}]}]`,
+      );
+      const started = performance.now();
+      const graph = readKubernetes([{ name: "list.json", text }]);
+      expect(performance.now() - started).toBeLessThan(perfBudget(2_000));
+      expect(graph.components).toHaveLength(2_000);
+    });
+  });
+
+  describe("Kafka identity", () => {
+    const topic = (ns: string, cluster: string | undefined, partitions: number) => `---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata: { name: orders, namespace: ${ns}${cluster ? `, labels: { strimzi.io/cluster: ${cluster} }` : ""} }
+spec: { topicName: orders.v1, partitions: ${partitions} }
+`;
+    it("topics keep their cluster without its Kafka manifest; unlabeled ones are scoped to their namespace", () => {
+      const labelled = k8s(topic("x", "a", 3) + topic("y", "b", 6));
+      expect(labelled.diagram.nodes.map((n) => [boundaryOf(labelled.diagram, n.id), n.props])).toEqual([
+        ["x", { partitions: 3 }],
+        ["y", { partitions: 6 }],
+      ]);
+      const unlabelled = k8s(topic("x", undefined, 3) + topic("y", undefined, 6));
+      expect(unlabelled.diagram.nodes).toHaveLength(2);
+    });
+
+    it("a bootstrap host names the cluster too: settings meet the labelled topic, or depend on the cluster", () => {
+      const { diagram } = k8s(
+        topic("kafka", "events", 12) +
+          pods(
+            "reader",
+            [
+              "{ name: r, image: example/r, env: [{ name: KAFKA_BOOTSTRAP_SERVERS, value: 'events-kafka-bootstrap.kafka.svc:9092' }, { name: INPUT_TOPIC, value: orders.v1 }] }",
+            ],
+            "apps",
+          ) +
+          pods(
+            "auditor",
+            [
+              "{ name: a, image: example/a, env: [{ name: KAFKA_BROKERS, value: 'audit-kafka-bootstrap.kafka:9092' }] }",
+            ],
+            "apps",
+          ),
+      );
+      expect(relationBetween(diagram, "topic-orders.v1", "reader")).toBe("message");
+      expect(diagram.nodes.filter((n) => n.label === "orders.v1")).toHaveLength(1);
+      expect(node(diagram, "audit")).toMatchObject({ stencil: "kafka.cluster", sublabel: "not in these files" });
+      expect(relationBetween(diagram, "auditor", "audit")).toBe("depends");
+    });
+  });
+
+  it("keeps a workload whose owner isn't drawn (an operator's custom resource)", () => {
+    const { diagram, report } = k8s(`apiVersion: example.com/v1
+kind: Database
+metadata: { name: main }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-proxy
+  ownerReferences: [{ apiVersion: example.com/v1, kind: Database, name: main, controller: true }]
+spec: { template: { spec: { containers: [{ name: p, image: "example/proxy" }] } } }
+`);
+    expect(diagram.nodes.map((n) => n.id)).toEqual(["db-proxy"]);
+    expect(report.notDrawn).toEqual([{ name: "Database main", reason: "unknown kind (example.com)" }]);
+  });
+
+  it.each(["apiVersion", "kind", "metadata"])("imports Kubernetes JSON with %s first", async (first) => {
+    const fields: Record<string, unknown> = {
+      apiVersion: "apps/v1",
+      kind: "Deployment",
+      metadata: { name: "orders" },
+      spec: { template: { spec: { containers: [{ name: "orders", image: "postgres:16" }] } } },
+    };
+    const ordered = Object.fromEntries([
+      [first, fields[first]],
+      ...Object.entries(fields).filter(([k]) => k !== first),
+    ]);
+    const text = JSON.stringify(ordered, null, 2);
+    expect(detectFormat(text, "orders.json")).toBe("kubernetes");
+    const { diagram } = ok(await importText(text, "orders.json"));
+    expect(diagram.nodes.map((n) => [n.id, n.stencil])).toEqual([["orders", "postgres"]]);
+  });
+
+  it("reads a JSON ConfigMap whose kind comes after 4,000 characters of data, among other files", async () => {
+    const data = Object.fromEntries(Array.from({ length: 300 }, (_, i) => [`KEY_${i}`, `value-${i}`]));
+    const cm = JSON.stringify({
+      data: { ...data, DB_HOST: "other" },
+      metadata: { name: "cfg" },
+      apiVersion: "v1",
+      kind: "ConfigMap",
+    });
+    expect(cm.indexOf('"kind"')).toBeGreaterThan(4_000);
+    const outcome = ok(
+      await importFiles([
+        { name: "cfg.json", text: cm },
+        {
+          name: "app.yaml",
+          text:
+            pods("api", ["{ name: api, image: example/api, envFrom: [{ configMapRef: { name: cfg } }] }"]) + targets,
+        },
+      ]),
+    );
+    expect(relationBetween(outcome.diagram, "api", "other")).toBe("request");
+    expect(outcome.report.unread).toEqual([]);
+  });
+
+  it("names the namespace in report rows when two workloads share a name", () => {
+    const { report } = k8s(
+      deployment("orders", "example/orders:1", "", "staging") +
+        deployment("orders", "example/orders:1", "", "production"),
+    );
+    expect(report.guesses.map((g) => g.label).sort()).toEqual(["orders (production)", "orders (staging)"]);
   });
 });
