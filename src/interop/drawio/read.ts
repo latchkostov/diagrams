@@ -626,11 +626,4 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
   return { diagram, warnings };
 }
 
-/** Quick sniff: does this text look like draw.io / mxGraph XML? */
-export function looksLikeDrawio(text: string): boolean {
-  const head = text.slice(0, 4000).trimStart();
-  return (
-    /^(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*<(mxfile|mxGraphModel)\b/.test(head) ||
-    (/^(<\?xml[^>]*>\s*)?<svg\b/.test(head) && /content="[^"]*(mxfile|mxGraphModel)/.test(text.slice(0, 200000)))
-  );
-}
+export { looksLikeDrawio } from "../sniff";

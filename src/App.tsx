@@ -15,7 +15,7 @@ import { examples, getLoadedExample, loadExample } from "./examples";
 import { groupByTheme, themeInfo } from "./examples/themes";
 import { TopBar, type ExampleOption } from "./components/TopBar";
 import type { CanvasHandle } from "./canvas/CanvasView";
-import { LazyCanvasView as CanvasView, preloadCanvasView } from "./canvas/loadCanvasView";
+import { LazyCanvasView as CanvasView, loadCanvasView, preloadCanvasView } from "./canvas/loadCanvasView";
 import type { OpenTarget } from "./lab/LabView";
 import type { DiagramFile } from "./model/types";
 import { showDiagram, useUrlState, type View } from "./lib/urlState";
@@ -40,15 +40,15 @@ import {
 import { useLibrary } from "./lib/useLibrary";
 import { newDiagramsPrivate } from "./lib/privacyPrefs";
 import { Icon } from "./components/Icon";
-import { LibraryDialog } from "./components/LibraryDialog";
 import { formatAgo } from "./lib/time";
 import { lastCanvas, rememberCanvas } from "./lib/canvasBridge";
 import type { StartOptions } from "./canvas/StartCard";
 import { useInterop, useInteropCanvasActions } from "./interop/useInterop";
 import { notify } from "./interop/ui/toast";
 import { Toaster } from "./interop/ui/Toaster";
-import { EmbedView } from "./interop/embed/EmbedView";
+import { preloadDialogs } from "./interop/ui/lazyDialogs";
 import { CommandPalette } from "./palette/CommandPalette";
+import { lazyComponent, whenIdle } from "./lib/lazyLoad";
 import { AiMount } from "./ai/ui/AiMount";
 import "./styles/interop.css";
 
@@ -56,18 +56,27 @@ import "./styles/interop.css";
 // with the canvas), and the Lab never downloads unless someone opens ?view=lab.
 const GalleryView = lazy(() => import("./gallery/GalleryView").then((m) => ({ default: m.GalleryView })));
 const LabView = lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })));
+/** Your diagrams: loads when the app is idle, or when first opened. */
+const LibraryDialog = lazyComponent(() => import("./components/LibraryDialog").then((m) => m.LibraryDialog));
+
+// ?embed=1 renders the read-only viewer only: no top bar, no editor.
+// Any `embed` parameter (the links say embed=1): the same rule as the CSP that lets other sites frame
+// embeds and nothing else (scripts/security-headers.ts), so no URL gets the app in a frame.
+const EMBED = new URLSearchParams(window.location.search).has("embed");
+const EmbedView = lazyComponent(() => import("./interop/embed/EmbedView").then((m) => m.EmbedView));
+// The viewer always shows a canvas: fetch both at once rather than one after the other.
+if (EMBED) {
+  EmbedView.preload();
+  preloadCanvasView();
+}
 
 // Only public examples appear in prompts, the palette and the start card.
 const publicSlugs = new Set(examples.filter((e) => !e.localOnly).map((e) => e.slug));
 
 export function App() {
-  // ?embed=1 renders the read-only viewer only: no top bar, no editor.
-  // Any `embed` parameter (the links say embed=1): the same rule as the CSP that lets other sites frame
-  // embeds and nothing else (scripts/security-headers.ts), so no URL gets the app in a frame.
-  const embed = useMemo(() => new URLSearchParams(window.location.search).has("embed"), []);
   return (
     <>
-      {embed ? <EmbedView /> : <MainApp />}
+      {EMBED ? <EmbedView /> : <MainApp />}
       <Toaster />
     </>
   );
@@ -194,11 +203,27 @@ function MainApp() {
     rememberCanvas(slug);
   }, [url.view, url.example, slug, displayedSlug, targetSlug, setUrl]);
 
-  // Once the diagram is up, fetch the stencil library in the background so the tab opens instantly.
+  // Once the diagram is up, fetch the stencil library in the background so the tab opens instantly, and
+  // the dialogs once the app is idle, so they open at once too.
   useEffect(() => {
     if (url.view !== "canvas") return;
-    const t = setTimeout(() => void import("./gallery/GalleryView").catch(() => {}), 1500);
-    return () => clearTimeout(t);
+    let active = true;
+    let cancel = () => {};
+    loadCanvasView().then(
+      () => {
+        if (!active) return;
+        cancel = whenIdle(() => {
+          void import("./gallery/GalleryView").catch(() => {});
+          preloadDialogs();
+          LibraryDialog.preload();
+        });
+      },
+      () => {},
+    );
+    return () => {
+      active = false;
+      cancel();
+    };
   }, [url.view]);
 
   useEffect(() => {

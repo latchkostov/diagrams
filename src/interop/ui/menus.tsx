@@ -235,7 +235,7 @@ export function FileMenu({
     <Menu
       label="File"
       testId="file-menu"
-      onOpen={api.preloadStorage}
+      onOpen={api.preload}
       entries={entries}
       width={320}
       trigger={(props) => (

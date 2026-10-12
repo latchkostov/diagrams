@@ -1,10 +1,22 @@
 import type { DiagramFile } from "../model/types";
 import { LIMITS, parseNative, tooLargeMessage, validateDiagram } from "./native";
-import { drawioPageToDiagram, DrawioError, looksLikeDrawio, readDrawio, type DrawioDocument } from "./drawio/read";
-import { looksLikeMermaid, MermaidError, parseMermaid } from "./mermaid/read";
+import type { DrawioDocument } from "./drawio/read";
+import { looksLikeDrawio, looksLikeMermaid } from "./sniff";
+import { loadOnce } from "../lib/lazyLoad";
 
 // One entry point for "here is some text (and maybe a file name): what is it, and what diagram
-// does it hold?" Used by Open file, drag-and-drop, paste and Google Drive.
+// does it hold?" Used by Open file, drag-and-drop, paste and Google Drive. The draw.io and Mermaid
+// converters load when a file needs them (or when the File menu opens: preloadFormats).
+
+const drawioReader = loadOnce(() => import("./drawio/read"));
+const mermaidReader = loadOnce(() => import("./mermaid/read"));
+export const drawioWriter = loadOnce(() => import("./drawio/write"));
+export const mermaidWriter = loadOnce(() => import("./mermaid/write"));
+
+/** Warms the converters, so an import or export that follows doesn't wait for them. */
+export function preloadFormats() {
+  for (const load of [drawioReader, mermaidReader, drawioWriter, mermaidWriter]) void load().catch(() => {});
+}
 
 export type FormatId = "native" | "drawio" | "mermaid";
 
@@ -53,7 +65,12 @@ function validated(format: FormatId, diagram: DiagramFile, warnings: string[]): 
     : { ok: false, error: r.error };
 }
 
-function drawioOutcome(doc: DrawioDocument, index: number, fallbackTitle: string): ImportOutcome {
+function drawioOutcome(
+  { drawioPageToDiagram }: typeof import("./drawio/read"),
+  doc: DrawioDocument,
+  index: number,
+  fallbackTitle: string,
+): ImportOutcome {
   const page = doc.pages[index];
   const title =
     doc.pages.length > 1 && /^page-\d+$/i.test(page.name) ? `${fallbackTitle} (${page.name})` : fallbackTitle;
@@ -68,29 +85,35 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
   if (text.length > LIMITS.maxTextChars) return { ok: false, error: tooLargeMessage(text.length) };
   const format = detectFormat(text, fileName);
   const fallbackTitle = fileName ? titleFromFileName(fileName) : "Imported diagram";
+  /** The loaded reader's own error type: its message is meant for the user. */
+  let readerErrors: (new (message?: string) => Error)[] = [];
   try {
     if (format === "native") {
       const r = parseNative(text);
       return r.ok ? { ok: true, format, diagram: r.diagram, warnings: r.warnings } : { ok: false, error: r.error };
     }
     if (format === "drawio") {
-      const doc = await readDrawio(text);
+      const reader = await drawioReader();
+      readerErrors = [reader.DrawioError];
+      const doc = await reader.readDrawio(text);
       if (doc.pages.length > 1) {
         return {
           ok: "pages",
           format,
           pages: doc.pages.map((p, index) => ({ name: p.name, index })),
-          pick: (index) => drawioOutcome(doc, index, fallbackTitle),
+          pick: (index) => drawioOutcome(reader, doc, index, fallbackTitle),
         };
       }
-      return drawioOutcome(doc, 0, fallbackTitle);
+      return drawioOutcome(reader, doc, 0, fallbackTitle);
     }
     if (format === "mermaid") {
-      const { diagram, warnings } = parseMermaid(text, fallbackTitle);
+      const reader = await mermaidReader();
+      readerErrors = [reader.MermaidError];
+      const { diagram, warnings } = reader.parseMermaid(text, fallbackTitle);
       return validated(format, diagram, warnings);
     }
   } catch (err) {
-    if (err instanceof DrawioError || err instanceof MermaidError) return { ok: false, error: err.message };
+    if (readerErrors.some((type) => err instanceof type)) return { ok: false, error: (err as Error).message };
     return { ok: false, error: `Something went wrong reading it: ${err instanceof Error ? err.message : String(err)}` };
   }
   return {

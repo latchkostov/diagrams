@@ -45,6 +45,64 @@ function noTestHooks(): Plugin {
   };
 }
 
+/**
+ * The canvas's code in two chunks. Left alone, the bundler splits what CanvasView imports (beyond the entry)
+ * into a dozen small chunks, shared with the live session, the Lab, the stencil library, the converters and
+ * so on, and the canvas's first view queues for each of them. Instead: "CanvasView" holds what only code
+ * that comes with the canvas uses (React Flow included); "canvas-shared" holds the rest, the few modules
+ * that code able to load without a canvas (the stencil library, the command palette, the converters, ...)
+ * also imports, so opening that code never downloads the canvas itself. The plugin reads the module graph
+ * once it is known; the groups (build.rolldownOptions.output.codeSplitting) apply it.
+ */
+function canvasChunks() {
+  const groups = new Map<string, string>();
+  const plugin: Plugin = {
+    name: "canvas-chunk",
+    apply: "build",
+    buildEnd() {
+      groups.clear();
+      const info = (id: string) => this.getModuleInfo(id);
+      const ids = [...this.getModuleIds()];
+      const reach = (from: Iterable<string>) => {
+        const seen = new Set<string>();
+        const stack = [...from];
+        for (let id = stack.pop(); id !== undefined; id = stack.pop()) {
+          if (seen.has(id)) continue;
+          seen.add(id);
+          stack.push(...(info(id)?.importedIds ?? []));
+        }
+        return seen;
+      };
+      const canvas = ids.find((id) => /[/\\]src[/\\]canvas[/\\]CanvasView\.tsx$/.test(id));
+      if (!canvas) return;
+      const initial = reach(ids.filter((id) => info(id)?.isEntry));
+      const own = [...reach([canvas])].filter((id) => !initial.has(id));
+      // Code that only ever loads with the canvas: its own modules, what they alone import dynamically (the
+      // live session, its dialogs, ...), and the Lab (a development tool made of canvases).
+      const withCanvas = new Set(own);
+      const lazy = ids.filter((id) => info(id)?.dynamicImporters.length);
+      const lab = (id: string) => /[/\\]src[/\\]lab[/\\]LabView\.tsx$/.test(id);
+      for (let grew = true; grew;) {
+        grew = false;
+        for (const id of lazy) {
+          const onlyFromCanvas = info(id)?.dynamicImporters.every((by) => withCanvas.has(by));
+          if (withCanvas.has(id) || !(lab(id) || onlyFromCanvas)) continue;
+          for (const dep of reach([id])) if (!initial.has(dep)) withCanvas.add(dep);
+          grew = true;
+        }
+      }
+      const shared = reach(lazy.filter((id) => !withCanvas.has(id)));
+      for (const id of own) groups.set(id, shared.has(id) ? "canvas-shared" : "CanvasView");
+    },
+  };
+  return {
+    plugin,
+    // Only these modules: everything they import is in the entry, which always loads first, or in a group.
+    group: { name: (id: string) => groups.get(id) ?? null, includeDependenciesRecursively: false },
+  };
+}
+const canvas = canvasChunks();
+
 export default defineConfig({
   // Relative base so the build can be served from any sub-path (e.g. latchkostov.com/tools/diagrams/).
   base: "./",
@@ -56,12 +114,14 @@ export default defineConfig({
     skillAssetsPlugin(),
     // CSP and the other security headers on `vite preview`, exactly as vercel.json sends them. Not in dev.
     securityHeaders(),
+    canvas.plugin,
   ],
   // Always defined, so `import.meta.env.VITE_E2E === "1"` folds to a constant and the hooks drop out.
   define: { "import.meta.env.VITE_E2E": JSON.stringify(E2E_BUILD ? "1" : "") },
   build: {
     // Icons are many small SVGs; serving them as cached files keeps them out of the main JS chunk.
     assetsInlineLimit: 0,
+    rolldownOptions: { output: { codeSplitting: { groups: [canvas.group] } } },
   },
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
