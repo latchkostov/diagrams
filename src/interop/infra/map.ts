@@ -81,13 +81,15 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
       ...(l.relation === "flow" ? { kind: l.kind ?? "async" } : { relation: l.relation }),
       ...(Object.keys(props).length ? { props } : {}),
     });
-    if (l.evidence.source === "setting" && l.evidence.name)
+    // A setting's name, never its value; a credential-shaped name isn't shown either (sanitizeSettings).
+    const named = l.evidence.name && sanitizeSettings([{ key: l.evidence.name }])?.[0]?.key;
+    if (l.evidence.source === "setting" && named)
       inferred.push({
         fromId: from,
         toId: to,
         from: labelOf.get(l.from) ?? from,
         to: labelOf.get(l.to) ?? to,
-        evidence: l.evidence.name,
+        evidence: named,
         ...(l.evidence.note ? { note: l.evidence.note } : {}),
         ...(l.evidence.guess ? { guess: true } : {}),
       });

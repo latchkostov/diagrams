@@ -3,7 +3,7 @@ import { inferRelation } from "../../stencils/relations";
 import type { EdgeRelation } from "../../model/types";
 import type { Evidence, ImportComponent, ImportGraph, ImportLink } from "./graph";
 import { resolveStencil, shortImage, imageStencil } from "./stencils";
-import { isOutsideHost, productOf, readSetting } from "./settings";
+import { isOutsideHost, MAX_VALUE, productOf, readSetting } from "./settings";
 import { bare, ImportError, isMap, list, own, readYaml, str } from "./yaml";
 
 // docker-compose → ImportGraph (docs/research/imports.md § Mapping: docker-compose). Several files merge the
@@ -276,7 +276,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
         : context
           ? `built from ${context}`.slice(0, 80)
           : undefined,
-      hint: { name, image, env: [...env.keys()].slice(0, 500) },
+      hint: { name: name.slice(0, 120), image: image?.slice(0, 512), env: [...env.keys()].slice(0, 500) },
       ...(Number.isInteger(replicas) && replicas > 1 && replicas <= 10_000 ? { props: { replicas } } : {}),
     });
     const nets = own(svc, "networks");
@@ -354,6 +354,8 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
     const topics: { topics: string[]; dir: "read" | "write" | "guess"; name: string }[] = [];
     let group: string | undefined;
     for (const [name, raw] of env) {
+      // Long values are skipped before anything (interpolation included) looks at them.
+      if (raw.length > MAX_VALUE) continue;
       for (const hit of readSetting(name, interpolate(raw))) {
         const evidence: Evidence = { source: "setting", name };
         if (hit.type === "host") {

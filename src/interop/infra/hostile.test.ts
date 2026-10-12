@@ -113,6 +113,7 @@ services:
       STRIPE_URL: https://sk_live_abcdefghijklmnop@api.stripe.com/v1
       API_KEY: AKIAABCDEFGHIJKLMNOP
       ORDERS_TOPIC: orders
+      "Password=hunter3-name;DB_URL": http://db:5432
   db: { image: postgres }
   cache: { image: redis }
 `;
@@ -126,6 +127,7 @@ services:
       const out = JSON.stringify([outcome.diagram, outcome.report, outcome.warnings]);
       for (const secret of [
         "hunter2",
+        "hunter3",
         "s3cr3t",
         "sk_live",
         "AKIA",
