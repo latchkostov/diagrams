@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { DiagramEdge, DiagramFile, DiagramGroup, DiagramNode } from "../model/types";
+import type { DiagramEdge, DiagramFile, DiagramGroup, DiagramNode, Simulation } from "../model/types";
+import { createSimulationRun } from "../sim/simulation";
+import { stencilRole } from "../stencils/roles";
 import { applyOps } from "../ai";
 import { runChecks } from "./run";
 import { dominators, stronglyConnected } from "./graph";
 import { SYNC_CHAIN_MIN } from "./rules/syncChain";
+import { MAX_COUNT } from "../sim/capacityPlanning";
+import { nodeSimPropsSchema } from "../model/simProps";
 
 // The four batch 3 rules (sync-chain, shared-database, entry-gateway, single-point) on tiny diagrams: what
 // fires, what doesn't, the edge cases (loops, self-loops, disconnected parts), and that each fix clears its
@@ -66,6 +70,42 @@ function fixed(d: DiagramFile, rule: string, option?: string): DiagramFile {
   expect(result.errors).toEqual([]);
   expect(result.ok).toBe(true);
   return result.diagram;
+}
+
+/** Messages each node handles in a seeded run, every outside client sending a burst of 12. */
+function delivered(d: DiagramFile): Record<string, number> {
+  const sim: Simulation = {
+    id: "t",
+    title: "Delivery",
+    seed: 7,
+    traffic: d.nodes
+      .filter((n) => n.stencil.startsWith("client.") || n.stencil === "generic.webhook")
+      .map((n) => ({ id: `t-${n.id}`, node: n.id, shape: { kind: "burst" as const, count: 12 } })),
+  };
+  const run = createSimulationRun(d, sim);
+  run.setSpeed(8);
+  for (let i = 0; i < 4000 && !run.state().done; i++) run.step(25);
+  const nodes = run.engine.snapshot().nodes;
+  // Gateways aside: a reused one handles more by design (that's the fix); where its traffic lands is what counts.
+  return Object.fromEntries(
+    d.nodes.filter((n) => stencilRole(n.stencil) !== "gateway").map((n) => [n.id, nodes[n.id].processed]),
+  );
+}
+
+/**
+ * Every way the entry-gateway finding offers to fix it delivers what the diagram delivered: each node the diagram
+ * had handles as many messages afterwards (gateways aside: a fix adds or reuses one on purpose).
+ */
+function preservesDelivery(d: DiagramFile) {
+  const [finding] = of(d, "entry-gateway");
+  const before = delivered(d);
+  expect(Object.values(before).some((n) => n > 0)).toBe(true);
+  for (const option of [{ label: finding.fix!.label, ops: finding.fix!.ops! }, ...(finding.fix!.options ?? [])]) {
+    const result = applyOps(d, option.ops);
+    expect(result.errors, option.label).toEqual([]);
+    const after = delivered(result.diagram);
+    expect(Object.fromEntries(Object.keys(before).map((id) => [id, after[id]])), option.label).toEqual(before);
+  }
 }
 
 describe("graph", () => {
@@ -211,7 +251,7 @@ describe("shared-database", () => {
     expect(finding.fix).toEqual({
       label: "Ask Order service instead",
       ops: [
-        { op: "connect", from: "billing", to: "orders", kind: "sync", label: "Read order totals" },
+        { op: "connect", from: "billing", to: "orders", kind: "sync", key: "ask-orders-1", label: "Read order totals" },
         { op: "remove", targets: ["billing-db"] },
       ],
     });
@@ -222,6 +262,28 @@ describe("shared-database", () => {
       label: "Read order totals",
     });
     expect(ids(after, "shared-database")).toEqual([]);
+  });
+
+  it("the request to the owner keeps each flow's settings, even when the two already talk", () => {
+    const d = shared({ edges: [req("billing", "orders")] });
+    d.edges = d.edges.map((e) => (e.id === "billing-db" ? { ...e, props: { filter: ["Totals*"], travelMs: 80 } } : e));
+    const after = fixed(d, "shared-database");
+    const asks = after.edges.filter((e) => e.from === "billing" && e.to === "orders");
+    expect(asks.map((e) => e.props ?? null)).toEqual([null, { filter: ["Totals*"], travelMs: 80 }]);
+    expect(after.nodes.map((n) => n.id).sort()).toEqual(d.nodes.map((n) => n.id).sort());
+  });
+
+  it("never removes a node that shares its id with the flow: no fix then", () => {
+    // A file may use one id for a node and a connection; edit ops resolve it to the node, and removing that would
+    // delete an unrelated service and its connections.
+    const d = shared({
+      nodes: [node("billing-db", "service.go", undefined, "Ledger")],
+      edges: [req("ledger-in", "billing-db")],
+    });
+    d.nodes.push(node("ledger-in", "client.team"));
+    const [finding] = of(d, "shared-database");
+    expect(finding.id).toBe("shared-database:billing-db");
+    expect(finding.fix).toBeUndefined();
   });
 
   it("the fix only removes the flow when the service already asks the owner", () => {
@@ -310,8 +372,9 @@ describe("entry-gateway", () => {
       "Traffic from outside comes in through Commerce gateway, but Mobile app reaches Order service around it: nothing in front of Order service filters attacks or limits the rate.",
     );
     expect(finding.fix?.label).toBe("Go through Commerce gateway");
+    // One connection to the gateway for each direct one, with its label; the gateway's own route stays as it is.
     expect(finding.fix?.ops).toEqual([
-      { op: "connect", from: "mobile", to: "gw", kind: "sync" },
+      { op: "connect", from: "mobile", to: "gw", kind: "sync", label: "POST /orders" },
       { op: "remove", targets: ["mobile-orders"] },
     ]);
     // The other ways: a new gateway, by the diagram's cloud (none here: a firewall or Kong).
@@ -322,6 +385,7 @@ describe("entry-gateway", () => {
     const after = fixed(bypass(), "entry-gateway");
     expect(after.edges.filter((e) => e.to === "orders").map((e) => e.from)).toEqual(["gw"]);
     expect(ids(after, "entry-gateway")).toEqual([]);
+    preservesDelivery(bypass());
   });
 
   it("is quiet when the diagram draws no way in at all: ingress is left out on purpose", () => {
@@ -346,10 +410,10 @@ describe("entry-gateway", () => {
     expect(ids(team, "entry-gateway")).toEqual([]);
   });
 
-  it("offers the service's cloud's gateways; one inserts on the connection, and several callers share it", () => {
+  it("offers the service's cloud's gateways; one inserts on the connection, and every plain caller shares it", () => {
     const d = bypass();
     d.nodes.push(node("partner", "generic.webhook", undefined, "Partner hooks"));
-    d.edges.push(msg("partner", "orders", "order.updated"));
+    d.edges.push(req("partner", "orders", "order.updated"));
     d.nodes = d.nodes.map((n) => (n.id === "orders" ? { ...n, group: "az" } : n));
     d.groups = [box("az", "Azure", "azure")];
     const [finding] = of(d, "entry-gateway");
@@ -367,7 +431,7 @@ describe("entry-gateway", () => {
         label: "API Management",
         key: "new-gateway",
       },
-      { op: "connect", from: "partner", to: "new-gateway", kind: "async", label: "order.updated" },
+      { op: "connect", from: "partner", to: "new-gateway", kind: "sync", label: "order.updated" },
       { op: "remove", targets: ["partner-orders"] },
     ]);
     const after = fixed(d, "entry-gateway", "Put API Management in front");
@@ -385,17 +449,82 @@ describe("entry-gateway", () => {
         .sort(),
     ).toEqual([apim.id, "gw"]);
     expect(ids(after, "entry-gateway")).toEqual([]);
+    preservesDelivery(d);
   });
 
-  it("two connections from one caller: the gateway is added and connected, not inserted", () => {
+  it("two connections from one caller: two to the gateway, so the service still gets both copies", () => {
     const d = bypass();
-    d.edges.push({ ...msg("mobile", "orders"), id: "mobile-orders-2" });
-    const option = of(d, "entry-gateway")[0].fix!.options![0];
+    d.edges.push({ ...req("mobile", "orders"), id: "mobile-orders-2" });
+    const [finding] = of(d, "entry-gateway");
+    expect(finding.fix?.ops?.filter((o) => o.op === "connect")).toHaveLength(2);
+    const option = finding.fix!.options![0];
     expect(option.ops[0]).toMatchObject({ op: "add_node", kind: "generic.firewall" });
     expect(ids(fixed(d, "entry-gateway", option.label), "entry-gateway")).toEqual([]);
+    preservesDelivery(d);
   });
 
-  it("prefers the way in the callers' neighbours use, behind DNS", () => {
+  it("an existing gateway that also routes elsewhere isn't offered: it would share this traffic out", () => {
+    // Storefront → gateway → Catalog, and the app straight to Orders: a gateway → Orders route would take half of
+    // the storefront's requests away from Catalog (a gateway sends round-robin).
+    const d = diagram(
+      [
+        node("web", "client.browser", { messageType: "Browse" }, "Storefront"),
+        node("app", "client.mobile", { messageType: "Order" }, "Mobile app"),
+        node("gw", "nginx", undefined, "Gateway"),
+        node("catalog", "service.go", undefined, "Catalog"),
+        node("orders", "service.dotnet", undefined, "Orders"),
+      ],
+      [req("web", "gw"), req("gw", "catalog"), req("app", "orders")],
+    );
+    const [finding] = of(d, "entry-gateway");
+    expect([finding.fix!.label, ...finding.fix!.options!.map((o) => o.label)]).toEqual([
+      "Put Firewall / WAF in front",
+      "Put Kong Gateway in front",
+    ]);
+    preservesDelivery(d);
+    // Two routes out, one of them to Orders: still shared out.
+    d.edges.push(req("gw", "orders"));
+    expect(of(d, "entry-gateway")[0].fix?.label).toBe("Put Firewall / WAF in front");
+    preservesDelivery(d);
+  });
+
+  it("an existing gateway whose route filters the traffic isn't offered", () => {
+    const d = bypass();
+    d.nodes = d.nodes.map((n) =>
+      n.id === "web"
+        ? { ...n, props: { messageType: "WebOrder" } }
+        : n.id === "mobile"
+          ? { ...n, props: { messageType: "AppOrder" } }
+          : n,
+    );
+    d.edges = d.edges.map((e) => (e.id === "gw-orders" ? { ...e, props: { filter: ["Web*"] } } : e));
+    const [finding] = of(d, "entry-gateway");
+    expect(finding.fix?.label).toBe("Put Firewall / WAF in front");
+    preservesDelivery(d);
+  });
+
+  it("no fix when the direct connections carry settings or mix requests and messages; the row says why", () => {
+    for (const props of [{ filter: ["Created"] }, { emits: "Renamed" }, { travelMs: 900 }, { share: 0.5 }]) {
+      const d = bypass();
+      d.edges = d.edges.map((e) => (e.id === "mobile-orders" ? { ...e, props } : e));
+      const [finding] = of(d, "entry-gateway");
+      expect(finding.fix, JSON.stringify(props)).toBeUndefined();
+      expect(finding.message).toContain("carry settings (a filter, a message type, timing)");
+    }
+    const mixed = bypass();
+    mixed.edges.push({ ...msg("mobile", "orders"), id: "mobile-orders-async" });
+    expect(of(mixed, "entry-gateway")[0].fix).toBeUndefined();
+  });
+
+  it("no fix when a direct connection's id is also a node's: removing it would remove that node", () => {
+    const d = bypass();
+    d.nodes.push(node("mobile-orders", "service.go", undefined, "Unrelated"));
+    const [finding] = of(d, "entry-gateway");
+    expect(finding.fix).toBeUndefined();
+    expect(finding.message).toContain("share their ids with other elements");
+  });
+
+  it("behind DNS: the load balancer routes only to its own service, so a new gateway is offered", () => {
     const d = diagram(
       [
         node("users", "client.user", undefined, "Customers"),
@@ -407,13 +536,9 @@ describe("entry-gateway", () => {
       [req("users", "r53"), req("r53", "alb"), req("alb", "api"), req("users", "admin")],
     );
     const [finding] = of(d, "entry-gateway");
-    expect(finding.fix?.label).toBe("Go through Load balancer");
-    // Customers already reach it through Route 53: only the new hop to Admin API is drawn.
-    expect(finding.fix?.ops).toEqual([
-      { op: "connect", from: "alb", to: "admin", kind: "sync" },
-      { op: "remove", targets: ["users-admin"] },
-    ]);
-    expect(finding.fix?.options?.map((o) => o.short)).toEqual(["Amazon API Gateway"]);
+    expect(finding.message).toContain("comes in through Load balancer");
+    expect(finding.fix?.label).toBe("Put Amazon API Gateway in front");
+    preservesDelivery(d);
   });
 });
 
@@ -511,5 +636,58 @@ describe("single-point", () => {
       [req("shop", "a"), req("a", "b"), req("b", "a")],
     );
     expect(ids(loop, "single-point")).toEqual(["suggestion:single-point:a"]);
+  });
+});
+
+describe("fixes never change what they don't own", () => {
+  it("a replica fix stays within the op schema's bound, and says when replicas alone aren't enough", () => {
+    // 10,000 a second into one replica that handles 1 a second: capacity planning would want 18,182.
+    const d = diagram(
+      [
+        node("shop", "client.browser", { ratePerSec: 10_000 }, "Storefront"),
+        node("api", "service.go", { replicas: 1, concurrency: 1, latencyMs: 1000 }, "API"),
+      ],
+      [req("shop", "api")],
+    );
+    const [finding] = of(d, "single-point");
+    expect(finding.severity).toBe("warning");
+    const to = (finding.fix!.ops![0] as unknown as { props: { replicas: number } }).props.replicas;
+    expect(to).toBeGreaterThanOrEqual(2);
+    expect(to).toBeLessThanOrEqual(MAX_COUNT);
+    expect(applyOps(d, finding.fix!.ops!).errors).toEqual([]);
+    expect(finding.message).toContain("More replicas alone can't bring it under its limit");
+    // The bound is the node props schema's.
+    const schema = nodeSimPropsSchema.properties as Record<string, { maximum?: number }>;
+    expect(schema.replicas.maximum).toBe(MAX_COUNT);
+  });
+
+  it("no update by a connection id another element shares: it would change that element", () => {
+    const chain = diagram(
+      ["a", "b", "c", "d", "e"].map((id) => node(id, "service.go")),
+      [req("a", "b"), req("b", "c"), req("c", "d"), req("d", "e")],
+    );
+    expect(of(chain, "sync-chain")[0].fix?.ops).toBeDefined();
+    chain.nodes.push(node("d-e", "postgres"));
+    expect(of(chain, "sync-chain")[0].fix).toBeUndefined();
+
+    const loop = diagram([node("a", "service.go"), node("b", "service.go")], [req("a", "b"), req("b", "a")]);
+    expect(of(loop, "sync-cycle")[0].fix?.ops).toBeDefined();
+    loop.nodes.push(node("b-a", "postgres"));
+    expect(of(loop, "sync-cycle")[0].fix).toBeUndefined();
+
+    const dlq = diagram(
+      [
+        node("api", "service.node"),
+        node("q", "aws.sqs"),
+        node("w", "service.go", { failureRate: 1 }),
+        node("parked", "aws.sqs", undefined, "q-dlq"),
+      ],
+      [msg("api", "q"), msg("q", "w"), { ...msg("q", "parked"), props: { dlq: true, filter: [] } }],
+    );
+    expect(of(dlq, "dead-letter")[0].fix?.ops).toBeDefined();
+    dlq.nodes.push(node("q-parked", "service.java"));
+    const [finding] = of(dlq, "dead-letter");
+    expect(finding.severity).toBe("warning");
+    expect(finding.fix).toBeUndefined();
   });
 });

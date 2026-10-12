@@ -55,29 +55,34 @@ export const sharedDatabase: CheckRule = {
       const where = groupName.get(boundary)!;
       for (const [from, into] of foreign) {
         const user = ctx.name(from);
-        const first = ctx.edges.get(into[0].id)!;
         const elements = [into[0].id, from, id, ...owners, ...into.slice(1).map((e) => e.id)];
         const rationale =
           "Database per service: each service's data stays private to it and is reached only through its API. A second service using the same tables couples their deploys and schemas, so neither can change them alone.";
         if (owners.length === 1) {
           const owner = owners[0];
           const ownerName = ctx.name(owner);
-          // A request to the owner, keeping the flow's label; one is enough when the two already talk.
+          // A request to the owner for each flow, keeping its label and settings (a filter, timing): one plain flow
+          // needs none when the two already talk. A flow whose id another element shares can't be removed by id
+          // (edit ops would remove that element instead), so then there's no fix.
           const talks = ctx.requests(from).some((e) => e.to === owner);
-          const ops: DiagramOp[] = [
-            ...(talks
-              ? []
-              : [
-                  {
-                    op: "connect" as const,
-                    from,
-                    to: owner,
-                    kind: "sync" as const,
-                    ...(first.label?.trim() ? { label: first.label } : {}),
-                  },
-                ]),
-            { op: "remove", targets: into.map((e) => e.id) },
-          ];
+          const ops: DiagramOp[] = [];
+          into.forEach((e, i) => {
+            const edge = ctx.edges.get(e.id)!;
+            const props = edge.props && Object.keys(edge.props).length ? edge.props : undefined;
+            if (talks && !props) return;
+            const key = ctx.freshKey(`ask-${owner}-${i + 1}`);
+            ops.push({
+              op: "connect",
+              from,
+              to: owner,
+              kind: "sync",
+              key,
+              ...(edge.label?.trim() ? { label: edge.label } : {}),
+            });
+            if (props) ops.push({ op: "update", target: key, props: structuredClone(props) });
+          });
+          ops.push({ op: "remove", targets: into.map((e) => e.id) });
+          const fix = into.every((e) => ctx.edgeRef(e.id)) ? { label: `Ask ${ownerName} instead`, ops } : undefined;
           findings.push({
             id: `shared-database:${into[0].id}`,
             rule: "shared-database",
@@ -87,7 +92,7 @@ export const sharedDatabase: CheckRule = {
             title: `${user} uses ${ownerName}'s database`,
             message: `${store} sits in ${where} with ${ownerName}, which uses it. ${user}, outside ${where}, goes to it directly: a change to its tables now has to ship in both.`,
             rationale,
-            fix: { label: `Ask ${ownerName} instead`, ops },
+            ...(fix ? { fix } : {}),
           });
         } else {
           findings.push({

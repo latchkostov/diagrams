@@ -1,4 +1,4 @@
-import { FIX_TARGET } from "../../sim/capacityPlanning";
+import { redundancyFix } from "../../sim/capacityPlanning";
 import { listNames, type CheckContext } from "../context";
 import { dominators } from "../graph";
 import { isSelfHostedGateway, isSelfHostedService } from "../kinds";
@@ -101,8 +101,10 @@ export const singlePoint: CheckRule = {
       if (!said && !busy) continue;
       const name = ctx.name(node.id);
       const who = listNames(entries.map(ctx.name));
-      // Two replicas, or as many as bring it to capacity planning's headroom when it's busy.
-      const to = busy ? Math.max(2, Math.ceil(load.utilization / FIX_TARGET)) : 2;
+      // Two replicas, or as many as capacity planning sizes it to when it's busy, within the op schema's bound.
+      const { replicas: to, enough } = busy
+        ? redundancyFix(ctx.diagram, ctx.planning(), load)
+        : { replicas: 2, enough: true };
       findings.push({
         id: `single-point:${node.id}`,
         rule: "single-point",
@@ -111,7 +113,7 @@ export const singlePoint: CheckRule = {
         elements: [node.id, ...entries],
         title: `Every request goes through one ${name}`,
         message: busy
-          ? `It runs 1 replica at ${Math.round(load.utilization * 100)}% of what it can handle, and every request from ${who} goes through it: if it stops or slows, ${who} get${entries.length === 1 ? "s" : ""} nothing.`
+          ? `It runs 1 replica at ${Math.round(load.utilization * 100)}% of what it can handle, and every request from ${who} goes through it: if it stops or slows, ${who} get${entries.length === 1 ? "s" : ""} nothing.${enough ? "" : " More replicas alone can't bring it under its limit: it needs faster processing or more concurrency too."}`
           : `It runs 1 replica, and every request from ${who} goes through it: if it stops, ${who} get${entries.length === 1 ? "s" : ""} nothing.`,
         rationale:
           "Redundancy is what turns one instance's availability into a service's: with two replicas, one can stop (a deploy, a crash, a node drained) while the other answers.",

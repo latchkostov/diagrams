@@ -12,7 +12,11 @@ import type { CheckRule, Finding } from "../types";
 /** Hops (requests between services) from which a chain is a finding: five services in a row. */
 export const SYNC_CHAIN_MIN = 4;
 
-/** The longest request chain from each start, as edges. */
+/**
+ * The longest request chain from each start, one per last hop (when starts share a last hop, the longest chain
+ * keeps it, then reading order), as edges, longest first. Each component's last hop is known before any path is
+ * built, so only the winners' paths are: starts feeding one long shared tail cost one path, not one each.
+ */
 function chains(ctx: CheckContext): { start: string; edges: CompiledEdge[] }[] {
   const services = ctx.diagram.nodes.filter((n) => ctx.role(n.id) === "processor").map((n) => n.id);
   const between = new Map(
@@ -26,6 +30,8 @@ function chains(ctx: CheckContext): { start: string; edges: CompiledEdge[] }[] {
   components.forEach((members, i) => members.forEach((id) => componentOf.set(id, i)));
   const depth = new Array<number>(components.length).fill(0);
   const via = new Array<CompiledEdge | undefined>(components.length);
+  /** The last hop of each component's longest chain. */
+  const last = new Array<CompiledEdge | undefined>(components.length);
   const entered = new Array<boolean>(components.length).fill(false);
   const edgeOrder = new Map(ctx.diagram.edges.map((e, i) => [e.id, i]));
   components.forEach((members, c) => {
@@ -39,21 +45,34 @@ function chains(ctx: CheckContext): { start: string; edges: CompiledEdge[] }[] {
       if (depth[d] + 1 > depth[c]) {
         depth[c] = depth[d] + 1;
         via[c] = e;
+        last[c] = last[d] ?? e;
       }
     }
   });
-  const found: { start: string; edges: CompiledEdge[] }[] = [];
+  // The winning start for each last hop, before any path is built.
+  const winners = new Map<string, number>();
   components.forEach((_, c) => {
     if (entered[c] || depth[c] < SYNC_CHAIN_MIN) return;
-    const edges: CompiledEdge[] = [];
-    for (let at: number | undefined = c; at !== undefined && via[at];) {
-      const e: CompiledEdge = via[at]!;
-      edges.push(e);
-      at = componentOf.get(e.to);
-    }
-    found.push({ start: edges[0].from, edges });
+    const hop = last[c]!.id;
+    const held = winners.get(hop);
+    if (
+      held === undefined ||
+      depth[c] > depth[held] ||
+      (depth[c] === depth[held] && ctx.rank(via[c]!.from) < ctx.rank(via[held]!.from))
+    )
+      winners.set(hop, c);
   });
-  return found;
+  return [...winners.values()]
+    .sort((a, b) => depth[b] - depth[a] || ctx.rank(via[a]!.from) - ctx.rank(via[b]!.from))
+    .map((c) => {
+      const edges: CompiledEdge[] = [];
+      for (let at: number | undefined = c; at !== undefined && via[at];) {
+        const e: CompiledEdge = via[at]!;
+        edges.push(e);
+        at = componentOf.get(e.to);
+      }
+      return { start: edges[0].from, edges };
+    });
 }
 
 /** The services a chain passes through, in order (a loop it passes through shows where it enters and leaves). */
@@ -73,14 +92,9 @@ export const syncChain: CheckRule = {
     "Every service a request waits on must be up for it to succeed, and their latencies add up: three services at 99.99% give 99.97% at best. " +
     `Fires when requests go from service to service ${SYNC_CHAIN_MIN} or more times in a row; calls from clients and gateways, and into stores, don't count.`,
   detect(ctx) {
-    // Longest first, then reading order: when two starts share a last hop, the longest one keeps the finding.
-    const all = chains(ctx).sort((a, b) => b.edges.length - a.edges.length || ctx.rank(a.start) - ctx.rank(b.start));
-    const lastHops = new Set<string>();
     const findings: Finding[] = [];
-    for (const { start, edges } of all) {
+    for (const { start, edges } of chains(ctx)) {
       const last = edges[edges.length - 1];
-      if (lastHops.has(last.id)) continue;
-      lastHops.add(last.id);
       const path = stops(edges);
       const hops = edges.length;
       const head = ctx.name(start);
@@ -95,10 +109,14 @@ export const syncChain: CheckRule = {
         message: `${path.map(ctx.name).join(" → ")}: each waits for the next, so all ${new Set(path).size} must be up, and their latencies add up. Making the last call a message means ${head} no longer waits for ${tail}.`,
         rationale:
           "Each synchronous hop multiplies availability and adds latency: a request succeeds only when every service it waits on does. Turning a call into a message lets the caller finish without waiting.",
-        fix: {
-          label: `Make ${edgeName(ctx, last)} a message`,
-          ops: [{ op: "update", target: last.id, kind: "async" }],
-        },
+        ...(ctx.edgeRef(last.id)
+          ? {
+              fix: {
+                label: `Make ${edgeName(ctx, last)} a message`,
+                ops: [{ op: "update", target: last.id, kind: "async" }],
+              },
+            }
+          : {}),
       });
     }
     return findings;

@@ -113,7 +113,7 @@ describe("agentReport", () => {
 });
 
 describe("agentReport, batch 3", () => {
-  /** `n` mobile apps each calling their own service around the storefront's gateway. */
+  /** `n` mobile apps each calling their own service, the first of which is behind the storefront's gateway. */
   const bypasses = (n: number, label = (i: number) => `Service ${i}`): DiagramFile => ({
     format: "diagrams/v1",
     title: "Bypass",
@@ -127,6 +127,7 @@ describe("agentReport, batch 3", () => {
     ],
     edges: [
       { id: "e-web", from: "web", to: "gw", kind: "sync" },
+      { id: "e-gw", from: "gw", to: "s0", kind: "sync" },
       ...Array.from({ length: n }, (_, i) => ({ id: `e${i}`, from: `app${i}`, to: `s${i}`, kind: "sync" as const })),
     ],
   });
@@ -152,6 +153,41 @@ describe("agentReport, batch 3", () => {
     // The option's ops apply as they are.
     const d = bypasses(1);
     expect(applyOps(d, fix.others[0].ops as Parameters<typeof applyOps>[1]).ok).toBe(true);
+  });
+
+  it("an alternative too long to send is named for the person, never listed without its ops", () => {
+    // Six apps straight to one service: going through Front Door is six connections, and the API Management option
+    // as many again, too long to send beside it.
+    const d: DiagramFile = {
+      ...bypasses(1),
+      nodes: [
+        ...bypasses(1).nodes,
+        ...Array.from({ length: 5 }, (_, i) => ({
+          id: `more${i}`,
+          stencil: "client.mobile",
+          label: `More ${i}`,
+          x: 0,
+          y: 1000 + i * 200,
+        })),
+      ],
+      edges: [
+        ...bypasses(1).edges,
+        ...Array.from({ length: 5 }, (_, i) => ({ id: `m${i}`, from: `more${i}`, to: "s0", kind: "sync" as const })),
+      ],
+    };
+    const result = runChecks(d);
+    const bypass = result.findings.find((f) => f.rule === "entry-gateway")!;
+    expect(bypass.fix?.options?.map((o) => o.label)).toEqual(["Put API Management in front"]);
+    const report = agentReport(runChecks(d, { rules: ["entry-gateway"] }));
+    expect(JSON.stringify(report).length).toBeLessThanOrEqual(OUTPUT_BUDGET);
+    const [finding] = report.findings;
+    const fix = finding.fix as { ops: Parameters<typeof applyOps>[1]; others?: unknown[]; elsewhere?: string };
+    expect(applyOps(d, fix.ops).ok).toBe(true);
+    expect(fix.others).toBeUndefined();
+    expect(fix.elsewhere).toBe(
+      "Also possible, too long for this reply (the person can pick it in the Checks card): Put API Management in front.",
+    );
+    expect(report.hint).not.toContain("fix.others");
   });
 
   it("many findings with long names keep to the budget", () => {

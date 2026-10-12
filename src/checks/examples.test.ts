@@ -233,4 +233,50 @@ describe("batch 3 rules scale linearly", () => {
     // Linear is 4; quadratic would be 16. The margin is for timer noise on small numbers.
     expect(ratio).toBeLessThan(8);
   });
+
+  /** Half the nodes start a request into one shared chain made of the other half: one finding, many starts. */
+  function sharedTail(n: number): DiagramFile {
+    const nodes: DiagramFile["nodes"] = [];
+    const edges: DiagramFile["edges"] = [];
+    const half = n / 2;
+    for (let i = 0; i < half; i++) {
+      nodes.push({ id: `t${i}`, stencil: "service.go", label: `Tail ${i}`, x: 300 + i * 300, y: 0 });
+      nodes.push({ id: `s${i}`, stencil: "service.java", label: `Start ${i}`, x: 0, y: 200 + i * 200 });
+      edges.push({ id: `s${i}-t0`, from: `s${i}`, to: "t0", kind: "sync" });
+      if (i) edges.push({ id: `t${i - 1}-t${i}`, from: `t${i - 1}`, to: `t${i}`, kind: "sync" });
+    }
+    return { format: "diagrams/v1", title: "Tail", nodes, edges };
+  }
+
+  /** One gateway route, and every other node an outside client calling the service straight. */
+  function crowd(n: number): DiagramFile {
+    const nodes: DiagramFile["nodes"] = [
+      { id: "web", stencil: "client.browser", label: "Web", x: 0, y: 0 },
+      { id: "gw", stencil: "nginx", label: "Gateway", x: 300, y: 0 },
+      { id: "api", stencil: "service.go", label: "API", x: 600, y: 0 },
+    ];
+    const edges: DiagramFile["edges"] = [
+      { id: "web-gw", from: "web", to: "gw", kind: "sync" },
+      { id: "gw-api", from: "gw", to: "api", kind: "sync" },
+    ];
+    for (let i = 3; i < n; i++) {
+      nodes.push({ id: `c${i}`, stencil: "client.mobile", label: `App ${i}`, x: 0, y: i * 200 });
+      edges.push({ id: `c${i}-api`, from: `c${i}`, to: "api", kind: "sync" });
+    }
+    return { format: "diagrams/v1", title: "Crowd", nodes, edges };
+  }
+
+  it("many starts into one shared chain, and many callers into one service, stay linear", () => {
+    for (const [build, rule] of [
+      [sharedTail, "sync-chain"],
+      [crowd, "entry-gateway"],
+    ] as const) {
+      const small = build(376);
+      const big = build(1_504);
+      expect(runChecks(big, { rules: [rule] }).findings, rule).toHaveLength(1);
+      const ratio =
+        fastest(() => runChecks(big, { rules: [rule] })) / fastest(() => runChecks(small, { rules: [rule] }));
+      expect(ratio, rule).toBeLessThan(8);
+    }
+  });
 });

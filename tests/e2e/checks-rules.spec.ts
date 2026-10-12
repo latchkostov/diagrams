@@ -71,13 +71,16 @@ test("a client going around the gateway: the fix goes through it, a chip adds an
   };
   await expect.poll(near).toBeLessThan(16);
 
-  // A chip: one new node, inserted on the connection, and the suggestion goes.
+  // A chip, from the keyboard: one new node, inserted on the connection, and the suggestion goes. Focus moves on to
+  // the finding that's left (its row's head), never to the page.
   const nodes = page.getByTestId(/^node-(?!tooltip$|editor-)/);
   const before = await nodes.count();
-  await page.getByTestId(`check-fix-option-1-${BYPASS}`).click();
+  await page.getByTestId(`check-fix-option-1-${BYPASS}`).focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByTestId("toast")).toContainText("Added Kong Gateway");
   await expect.poll(() => nodes.count()).toBe(before + 1);
   await expect(bypass).toHaveCount(0);
+  await expect(page.getByTestId(`check-select-${SHARED}`)).toBeFocused();
 
   // Undo, then the button: through the gateway that's already there, no new node.
   await page.getByTestId("check-fix-undo").click();

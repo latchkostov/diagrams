@@ -314,9 +314,10 @@ Next batch (both asked for, and both need a little more model first):
   DNS if need be; DNS, a mesh and SignalR aren't a way in) and another outside client goes around it: a bypass, not
   a level of detail. Outside clients are `client.*` sources but an on-call engineer (`client.team`), and
   `generic.webhook`. One finding per service, naming every client that calls it directly. The fix's button goes
-  through the existing way in ("Go through Commerce gateway": the clients connect to it, it gets the service's
-  route, and the direct calls go); the vendor family's new gateways are chips under it ("or Firewall / WAF · Kong
-  Gateway"), each inserting one gateway that every direct caller shares.
+  through an existing way in whose one route already goes to the service ("Go through Commerce gateway": each direct
+  call becomes a call to it); the vendor family's new gateways are chips under it ("or Firewall / WAF · Kong
+  Gateway"), each inserting one gateway that every direct caller shares. Only when that keeps every flow as it was
+  (plain connections of one kind); otherwise no fix, and the row says why (see "Batch 3: as built").
 
 #### 7. `capacity`: {node} can't keep up
 
@@ -664,6 +665,31 @@ building:
 - **What ships when.** Startup JavaScript: +29 bytes gzip (the four rule ids). The checks worker +4.1 kB gzip, the
   main-thread fallback chunk +4.2 kB, the card +0.1 kB (the chips) and a few lines of its CSS. The entry is 110.0 kB
   of its 123.5 kB budget.
+- **After code review: a fix never changes traffic it doesn't mean to, nor removes what it doesn't own.** A
+  one-click fix is offered only when it's lossless; otherwise the finding stays, without a button, and says why.
+  - `entry-gateway` (narrowed rather than redesigned). Rerouting can't carry a flow's settings through a gateway: a
+    gateway sends round-robin to its routes and ignores shares, and a split connection copies its filter, emits,
+    share and timing onto both halves, which applies emits and shares twice. So the fix is offered only when every
+    direct connection is plain (no settings) and of one kind, and then maps them one for one (a client sends a copy
+    down each connection, so two connections stay two). An existing gateway is offered only when its one route out
+    is a plain route to this service, of the same kind: a new route would take a share of its traffic, and a
+    filtered one would drop the new callers'. Unit tests play a seeded simulation before and after every option
+    and assert each node (gateways aside) handles the same messages.
+  - Edit ops resolve an id to a node before a connection, and a file can use one id for both. Every fix that
+    updates or removes a connection by id (`sync-cycle`, `sync-chain`, `shared-database`, `entry-gateway`, and
+    `dead-letter`'s "Send every failed message") is withheld when that id isn't the connection's alone
+    (`ctx.edgeRef`): before, it could delete an unrelated service and its connections.
+  - `shared-database`'s request to the owner keeps each replaced flow's settings (a keyed connect, then its props).
+  - `single-point` sizes a busy node with capacity planning's own `redundancyFix` (`src/sim/capacityPlanning.ts`),
+    bounded by the props schema's 10,000 (`MAX_COUNT`, shared with the capacity fix). When no count within the
+    bound is enough, it still offers two replicas and says capacity needs more than replicas.
+  - `sync-chain` picks each last hop's winning start before building any path, and `entry-gateway` no longer scans a
+    service's callers per caller: both were quadratic (many starts into one shared chain, many clients into one
+    service), and the scaling test now covers both shapes.
+  - Agents: an alternative is listed in `fix.others` only with its ops; one too long for the reply is named in
+    `fix.elsewhere` for the person to pick in the Checks card.
+  - Keyboard: a fix (button or chip) applied from a focused row moves focus to the next finding's head (else the one
+    before, else the card's Close; in the inspector, its body), not to the page.
 - **Not done (owner's call).** The Kubernetes and docker-compose imports write `replicas` only when it's more than
   one, so an imported one-replica Deployment reads as "not said" and `single-point` stays quiet on it, though it's
   exactly kube-linter's `minimum-three-replicas` case. Writing `replicas: 1` there would let the rule see it; it

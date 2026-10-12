@@ -15,7 +15,9 @@ clean unless it has one of these. New, in the **Checks card**:
 - **{client} calls {service} directly** (a suggestion): an outside client going around the way in the diagram draws
   (a gateway or load balancer the other clients use). The fix goes through it; chips under the button add a new
   gateway instead (API Management or Front Door on Azure, API Gateway on AWS, Cloud Load Balancing on Google Cloud,
-  else a firewall or Kong). Diagrams that leave ingress out entirely aren't flagged.
+  else a firewall or Kong). Each is offered only when it keeps every connection's traffic as it was; when the direct
+  connections carry settings (a filter, a message type, timing), the row says so and has no fix. Diagrams that leave
+  ingress out entirely aren't flagged.
 - **Every request goes through one {node}**: a service or gateway you run with one replica that is the only way
   through for an entry point. A suggestion when the diagram says `replicas: 1`; a warning when it's 80% busy or more
   at the diagram's own rates. The fix sets replicas. A replica count you never set isn't read as one (unless it's
