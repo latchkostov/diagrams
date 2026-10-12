@@ -4,7 +4,15 @@ import { SLUG, callTool, must, installFakeModelContext, nodeCount, openAdvanced,
 // WebMCP: a fake document.modelContext (installed before the app loads) records registerTool, so the
 // test can call the tools the way a browsing agent would. Selectors are data-testid only.
 
-const ALL = ["describe_diagram", "edit_diagram", "find_stencils", "get_share_link", "new_diagram", "set_simulation"];
+const ALL = [
+  "check_diagram",
+  "describe_diagram",
+  "edit_diagram",
+  "find_stencils",
+  "get_share_link",
+  "new_diagram",
+  "set_simulation",
+];
 
 test.describe("WebMCP tools", () => {
   test.beforeEach(async ({ page }) => {
@@ -14,12 +22,13 @@ test.describe("WebMCP tools", () => {
     await expect.poll(() => toolNames(page)).toEqual(ALL);
   });
 
-  test("registers the six tools with their annotations, once (StrictMode-safe)", async ({ page, consoleErrors }) => {
+  test("registers the seven tools with their annotations, once (StrictMode-safe)", async ({ page, consoleErrors }) => {
     const annotations = await page.evaluate(() =>
       (window as unknown as { __mcp: { annotations(): Record<string, object> } }).__mcp.annotations(),
     );
     expect(annotations).toEqual({
       describe_diagram: { readOnlyHint: true, untrustedContentHint: true },
+      check_diagram: { readOnlyHint: true, untrustedContentHint: true },
       find_stencils: { readOnlyHint: true },
       edit_diagram: { untrustedContentHint: true },
       set_simulation: {},
@@ -118,9 +127,9 @@ test.describe("WebMCP tools", () => {
     await expect.poll(() => nodeCount(page)).toBe(1);
   });
 
-  test("live view offers only reading and sharing; other views offer nothing", async ({ page }) => {
+  test("live view offers only reading, checking and sharing; other views offer nothing", async ({ page }) => {
     await page.getByTestId("live-toggle").click();
-    await expect.poll(() => toolNames(page)).toEqual(["describe_diagram", "get_share_link"]);
+    await expect.poll(() => toolNames(page)).toEqual(["check_diagram", "describe_diagram", "get_share_link"]);
     await page.getByTestId("live-toggle").click();
     await expect.poll(() => toolNames(page)).toEqual(ALL);
     await page.getByTestId("view-gallery").click();

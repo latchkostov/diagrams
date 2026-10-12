@@ -841,6 +841,282 @@
         "untrustedContentHint": true
       }
     },
+    "check_diagram": {
+      "description": "Find likely design problems in the current diagram (failed messages that are dropped, topics nobody reads, requests that go round in a circle, a service that can't keep up), each naming its elements and, where one exists, a fix as edit_diagram ops. Read-only: apply a fix by sending its ops to edit_diagram. Findings the person ignored aren't listed; only the person can ignore one.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "dead-letter",
+                "no-reader",
+                "sync-cycle",
+                "capacity"
+              ]
+            },
+            "maxItems": 4,
+            "description": "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), capacity (a service can't keep up at the diagram's rates)."
+          },
+          "include": {
+            "type": "string",
+            "enum": [
+              "warnings",
+              "all"
+            ],
+            "default": "all",
+            "description": "warnings: likely real problems only; all: suggestions too."
+          }
+        },
+        "$defs": {
+          "Ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "An element: id from describe_diagram (preferred), a key set earlier in this call, an exact label, 'label (sublabel)', or for a connection 'From -> To'."
+          },
+          "NodeProps": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "ratePerSec": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "latencyMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "concurrency": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "replicas": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "jitter": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "failureRate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "retry": {
+                "type": "string",
+                "enum": [
+                  "requeue",
+                  "inplace"
+                ]
+              },
+              "retryBackoffMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "messageType": {
+                "type": "string"
+              },
+              "emits": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "Tone": {
+            "type": "string",
+            "enum": [
+              "azure",
+              "aws",
+              "gcp",
+              "k8s",
+              "onprem",
+              "neutral"
+            ]
+          },
+          "PropsPatch": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "group": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "dlq": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "emits": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "filter": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "ratePerSec": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "latencyMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "concurrency": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "replicas": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "jitter": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "failureRate": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "retry": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "requeue",
+                  "inplace",
+                  null
+                ]
+              },
+              "retryBackoffMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "maxDeliveryCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "partitions": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "messageType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "untrustedContentHint": true
+      }
+    },
     "find_stencils": {
       "description": "Search the stencil catalog (Kafka, Azure, AWS, GCP, databases, services…). Use when edit_diagram reported low confidence for a kind.",
       "inputSchema": {

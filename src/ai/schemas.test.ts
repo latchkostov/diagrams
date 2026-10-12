@@ -3,8 +3,8 @@ import { toolSchemas, toolDescriptions, edit_diagramSchema, flatOpsSchema } from
 import { checkSchema } from "./validation";
 
 describe("shared tool schemas", () => {
-  it("provides six self-contained JSON schemas and descriptions", () => {
-    expect(Object.keys(toolSchemas)).toHaveLength(6);
+  it("provides seven self-contained JSON schemas and descriptions", () => {
+    expect(Object.keys(toolSchemas)).toHaveLength(7);
     for (const [name, schema] of Object.entries(toolSchemas)) {
       expect(schema.$defs).toBeDefined();
       expect(schema.type).toBe("object");

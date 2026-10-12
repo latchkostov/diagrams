@@ -72,9 +72,55 @@
     "private": {
       "type": "boolean",
       "description": "true for a Private diagram: the app keeps it on the device (no share links, no cloud saves, no AI tools) and it stays private when opened again. Agents must not share or upload a file that has it."
+    },
+    "checks": {
+      "$ref": "#/$defs/Checks"
     }
   },
   "$defs": {
+    "Checks": {
+      "type": "object",
+      "description": "Architecture checks a person turned off or ignored for this diagram. Only people change it: agents report findings (check_diagram) and fix them, never silence them.",
+      "properties": {
+        "off": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,49}$"
+          },
+          "description": "Rule ids turned off for this diagram, e.g. 'dead-letter'."
+        },
+        "ignore": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": {
+            "type": "object",
+            "required": [
+              "rule",
+              "target"
+            ],
+            "properties": {
+              "rule": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,49}$"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "description": "The finding's element id. Dropped when that element is removed."
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "Why it's fine here."
+              }
+            }
+          }
+        }
+      }
+    },
     "Node": {
       "type": "object",
       "required": [

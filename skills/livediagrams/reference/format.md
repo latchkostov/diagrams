@@ -13,6 +13,9 @@ are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file
 - `private`: `true` marks a Private diagram. The app keeps it on the device (no share links, no cloud saves, no
   AI tools) and it stays private when it's opened again. Keep the field as it is, never make a share link for
   it (`scripts/share-link.mjs` refuses) and don't upload it anywhere; hand the user the file.
+- `checks`: the architecture checks a person turned off (`"off": ["capacity"]`) or ignored for one element
+  (`"ignore": [{ "rule": "dead-letter", "target": "<node id>", "reason": "..." }]`). Keep it as it is. Only the
+  person decides it: never add entries to silence a finding; fix the design instead.
 
 ## Nodes
 

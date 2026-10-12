@@ -1,5 +1,6 @@
 // JSON Schema draft 2020-12. Shared by paste, WebMCP and static schema generation.
 import { aiNodePropsSchema, simPropsPatchSchema } from "../model/simProps";
+import { CHECK_RULES } from "../model/checks";
 export type { JsonSchema } from "../model/jsonSchema";
 import type { JsonSchema } from "../model/jsonSchema";
 /** An agent's note for the person, on every tool that changes the diagram: shown with the change. */
@@ -48,6 +49,27 @@ export const describe_diagramSchema: JsonSchema = {
         maximum: 500,
         default: 150,
         description: "Max lines.",
+      },
+    },
+  },
+  $defs: sharedDefs,
+};
+export const check_diagramSchema: JsonSchema = {
+  ...{
+    type: "object",
+    properties: {
+      rules: {
+        type: "array",
+        items: { type: "string", enum: [...CHECK_RULES] },
+        maxItems: CHECK_RULES.length,
+        description:
+          "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), capacity (a service can't keep up at the diagram's rates).",
+      },
+      include: {
+        type: "string",
+        enum: ["warnings", "all"],
+        default: "all",
+        description: "warnings: likely real problems only; all: suggestions too.",
       },
     },
   },
@@ -534,6 +556,7 @@ export const get_share_linkSchema: JsonSchema = {
 };
 export const toolSchemas = {
   describe_diagram: describe_diagramSchema,
+  check_diagram: check_diagramSchema,
   find_stencils: find_stencilsSchema,
   edit_diagram: edit_diagramSchema,
   set_simulation: set_simulationSchema,
@@ -543,6 +566,8 @@ export const toolSchemas = {
 export const toolDescriptions = {
   describe_diagram:
     "Read the current diagram as compact text: nodes with ids, kinds and labels, connections, boundaries and simulations. Call before editing an existing diagram.",
+  check_diagram:
+    "Find likely design problems in the current diagram (failed messages that are dropped, topics nobody reads, requests that go round in a circle, a service that can't keep up), each naming its elements and, where one exists, a fix as edit_diagram ops. Read-only: apply a fix by sending its ops to edit_diagram. Findings the person ignored aren't listed; only the person can ignore one.",
   find_stencils:
     "Search the stencil catalog (Kafka, Azure, AWS, GCP, databases, services…). Use when edit_diagram reported low confidence for a kind.",
   edit_diagram:
@@ -585,6 +610,7 @@ export interface ToolAnnotations {
 /** Decision 8: labels are user-authored, so anything echoing them is untrusted content. */
 export const toolAnnotations: Record<keyof typeof toolSchemas, ToolAnnotations> = {
   describe_diagram: { readOnlyHint: true, untrustedContentHint: true },
+  check_diagram: { readOnlyHint: true, untrustedContentHint: true },
   find_stencils: { readOnlyHint: true },
   edit_diagram: { untrustedContentHint: true },
   set_simulation: {},

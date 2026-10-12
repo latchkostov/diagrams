@@ -20,7 +20,7 @@ test.describe("an agent's changes in the AI panel", () => {
     await installFakeModelContext(page);
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("node-payments")).toBeVisible();
-    await expect.poll(async () => (await toolNames(page)).length).toBe(6);
+    await expect.poll(async () => (await toolNames(page)).length).toBe(7);
   });
 
   test("an edit becomes a turn with the agent's note, Undo this change and Revert to here", async ({
@@ -186,7 +186,7 @@ test.describe("an agent's changes in the AI panel", () => {
     await openAiPanel(page);
     await expect(page.getByTestId("ai-agent-status")).toHaveAttribute("data-available", "1");
     await expect(page.getByTestId("ai-agent-status-text")).toHaveText(
-      "This page publishes 6 tools for AI agents in this browser (WebMCP).",
+      "This page publishes 7 tools for AI agents in this browser (WebMCP).",
     );
     await expect(page.getByTestId("ai-llms-link")).toHaveCount(0);
   });

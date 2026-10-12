@@ -46,7 +46,7 @@ describe("AI review regressions", () => {
       shareLink,
     }).map(toModelContextTool);
     localOnly = true;
-    for (const name of ["describe_diagram", "edit_diagram", "set_simulation", "get_share_link"]) {
+    for (const name of ["describe_diagram", "check_diagram", "edit_diagram", "set_simulation", "get_share_link"]) {
       const tool = tools.find((t) => t.name === name)!;
       const result = await tool.execute({ ops: [{ op: "remove", targets: ["a"] }] });
       expect(result.isError).toBe(true);

@@ -8,7 +8,7 @@ import { buildTools, EDIT_TOOLS, LIVE_TOOLS, type WebMcpHost } from "./tools";
  *
  * Registration lives in an effect with an AbortController: unmounting (or a StrictMode double
  * mount, or switching to live view) aborts, which unregisters every tool. `live` reduces the set
- * to reading and sharing.
+ * to reading, checking and sharing.
  */
 export function useWebMcp(host: WebMcpHost, opts: { enabled: boolean; live: boolean }): void {
   const hostRef = useRef(host);

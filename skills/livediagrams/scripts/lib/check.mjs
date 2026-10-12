@@ -22,6 +22,7 @@ const KNOWN_TOP = [
   "simulations",
   "annotations",
   "layerOrder",
+  "checks",
 ];
 const BROKERS = new Set(["topic", "queue", "stream"]);
 

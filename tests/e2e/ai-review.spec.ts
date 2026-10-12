@@ -118,7 +118,7 @@ test("synthetic local example is excluded from tools and copied prompts, includi
     }),
   );
   await gotoCanvas(page, SLUG);
-  await expect.poll(() => toolNames(page)).toHaveLength(6);
+  await expect.poll(() => toolNames(page)).toHaveLength(7);
   await openAdvanced(page);
   await page.evaluate(() => {
     history.pushState({}, "", "?view=canvas&example=synthetic-local");
