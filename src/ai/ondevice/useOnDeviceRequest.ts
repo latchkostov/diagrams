@@ -7,7 +7,7 @@ import { planTurn } from "../ui/apply";
 import { commitPlan, type TurnRecord } from "../ui/commitTurn";
 import { resolveScope } from "../ui/context";
 import { sameContent } from "../ui/thread";
-import { isAbort, runOnDevice, type OnDeviceStatus } from "./pipeline";
+import { isAbort, runOnDevice, TIMED_OUT, type OnDeviceStatus } from "./pipeline";
 import type { ModelSession } from "./promptApi";
 import { primedSession } from "./session";
 
@@ -18,6 +18,7 @@ import { primedSession } from "./session";
 export const FAILED = "Couldn't apply that. Try rephrasing.";
 export const CHANGED = "The diagram changed while the model was thinking. Send it again.";
 const TOO_BIG = "This diagram is too big for the on-device model. Select the part to change and try again.";
+const SLOW = "The on-device model took too long to answer. Try again, or ask for a smaller change.";
 
 /** The editor, when this diagram may be read and changed by the model now; null otherwise. */
 function editable(documentId: string | undefined): EditorApi | null {
@@ -110,7 +111,7 @@ export function useOnDeviceRequest({
       });
       signal.throwIfAborted();
       if (!result.ok) {
-        setError(result.tooBig ? TOO_BIG : FAILED);
+        setError(result.tooBig ? TOO_BIG : result.error === TIMED_OUT ? SLOW : FAILED);
         return false;
       }
       // Commit only into the same diagram, still in the editor, still allowed to reach AI, and with the
