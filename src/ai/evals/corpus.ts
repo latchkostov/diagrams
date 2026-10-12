@@ -187,7 +187,8 @@ const flows: [string, [string, string, string, string[]?][]][] = [
   [
     "A service delivers email",
     [
-      ["generic.service", "Notifications", "generic.service"],
+      // "A service" names no technology: any processor passes (the ops pin the generic service).
+      ["generic.service", "Notifications", "generic.service", ["role:processor"]],
       ["generic.email", "Email", "generic.email"],
     ],
   ],

@@ -193,6 +193,9 @@ original stencil):
 
 - create-9, "Kinesis feeds a processor": any processor passes. "A processor" names no technology, and Go
   was only what the corpus ops chose.
+- create-24, "A service delivers email" (round 4, the owner's decision): any processor passes for the
+  service, for the same reason. "A service" names no technology, and the generic service was only what
+  the corpus ops chose. The email side still has to be the email stencil.
 - create-18, "RabbitMQ routes to a Java worker": a RabbitMQ exchange passes as well as a queue. Bare
   "RabbitMQ" fits both, and routing is what an exchange does.
 - create-28, "An unspecified component connects to a generic database": any generic or processing stencil
@@ -407,7 +410,7 @@ edit-rename and edit-change used to take about 190 s, and now fail in about 13 s
 | edit-change | `change_kind` and `rename` of Orders database, neither with a `kind` (format, 2 tries)                                 | Typed schema; the kind filled from "Make X a Y"; the empty duplicate rename dropped | Deterministic                   |
 | create-17   | App Service got the kind "service", so `generic.service`                                                               | The label wins over a generic kind when it resolves confidently                     | Deterministic                   |
 | create-23   | Connected `webhook → "this"` with nothing selected                                                                     | "this" is no name or key in the typed schema; a stray "this" connection is dropped  | Deterministic (or the retry)    |
-| create-24   | A Lambda `email_service` and an SQS `message_queue` became email and service, so `email → service`, scored as reversed | The Lambda stays the service, and the queue becomes the email                       | Now fails on the stencil only   |
+| create-24   | A Lambda `email_service` and an SQS `message_queue` became email and service, so `email → service`, scored as reversed | The Lambda stays the service, and the queue becomes the email; any processor passes | Deterministic                   |
 | create-29   | `missing kafka.topic`: the request names no broker                                                                     | Expectation widened to any topic, queue or stream                                   | None: the structure stays wrong |
 
 **create-10** ("PubSub feeds Python") passed, though the raw reply drew python → pubsub. The direction
@@ -458,9 +461,7 @@ reversed one when the request describes only one way.
   - Reconciliation never gives another component to a node that already is one its own label names. A
     Lambda labelled "email_service" is the request's service by role, so the email goes to the queue
     the request never mentions. The reply's connection is then service → email, the right way round.
-  - The case still fails, because its expectation is `generic.service` and the model drew a Lambda.
-    "A service" names no technology, like create-9's "a processor", which accepts any processor. Widening
-    it the same way would pass this reply. It's left for the owner to decide, as in rounds 2 and 3.
+  - With the expectation widened (below), run 4's reply now passes: the Lambda counts as the service.
 - **Stray "this"** (`compactOps.ts`). A connection to "this" (or "it", "the selection") is dropped when:
   - nothing is selected;
   - no new node is so named;
@@ -472,20 +473,30 @@ reversed one when the request describes only one way.
   passes for it (`accept: ["role:topic", "role:queue", "role:stream"]`). The model's structure (a
   publisher → services, no broker) still fails, now as "missing kafka.topic (or any topic, any queue, any
   stream)".
+- **Expectation change, create-24** (the owner's decision): "A service" names no technology, so any
+  processor passes for it (`accept: ["role:processor"]`), as for create-9's "a processor". Rounds 2 and 3
+  kept the generic service; the model has drawn a Lambda for it in every run. A queue or topic still
+  isn't the service, and a reversed connection still fails.
 
 **Projection** (from run 4's 31/37):
 
-- **Deterministic, if the model repeats its replies:** edit-rename, edit-change (fill), create-17 (the
-  generic kind) and create-23 (the drop, when the reply also connects the partner to the webhook) →
-  35/37 (95%).
-- **Still failing:** create-24 (stencil, unless its expectation widens) and create-29 (structure).
+- **Deterministic, if the model repeats its replies:**
+  - edit-rename and edit-change (the fill);
+  - create-17 (the generic kind);
+  - create-23 (the drop, when the reply also connects the partner to the webhook);
+  - create-24 (the pairing, and the widened expectation).
+
+  That's 36/37 (97%).
+
+- **Still failing:** create-29 (structure).
 - **Risk:** the typed schema changes what the model is allowed to write in every case. Most of that
   helps (a required key, label or kind), but it could move a reply that passed. The fills and the rich
   fallback limit the damage.
-- **Likely: 34–35/37 (92–95%),** with the usual ±6 points between runs.
+- **Likely: 35–36/37 (95–97%),** with the usual ±6 points between runs.
 
-A unit test replays run 4's failures: edit-rename, edit-change, create-17 and create-23 pass on the
-first try, create-10's reversed reply is turned, and create-24 fails only on its stencil
-(`src/ai/evals/onDevice.test.ts`).
+A unit test replays run 4's failures (`src/ai/evals/onDevice.test.ts`):
+
+- edit-rename, edit-change, create-17, create-23 and create-24 pass on the first try;
+- create-10's reversed reply is turned.
 
 Next: re-run the evals in the Lab and paste the table here.

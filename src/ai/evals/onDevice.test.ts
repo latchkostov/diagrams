@@ -419,7 +419,7 @@ describe("on-device evals", () => {
     });
   });
 
-  it("create-24 no longer reads as reversed: the Lambda is the service, the email the unmentioned queue", async () => {
+  it("create-24 passes with run 4's reply: the Lambda is the service, the email the unmentioned queue", async () => {
     const [c] = onDeviceCases.filter((x) => x.id === "create-24");
     const ops = [
       { op: "add", key: "email_service", kind: "Lambda", label: "email_service" },
@@ -430,9 +430,26 @@ describe("on-device evals", () => {
       answering(() => reply(ops)),
       [c],
     );
-    // Still a fail, on the stencil: the expectation wants the generic service, and the model drew a Lambda.
-    expect(r.note).toBe("missing generic.service");
+    // "A service" names no technology, so the Lambda passes for it (like create-9's "a processor").
+    expect(r.pass, r.note).toBe(true);
     expect(r.output).toContain("email_service → aws.lambda, message_queue → generic.email");
+    // Drawn the other way round, it's still a reversal.
+    const [back] = await runOnDeviceEvals(
+      answering(() => reply([ops[0], ops[1], { op: "connect", from: "message_queue", to: "email_service" }])),
+      [c],
+    );
+    expect(back.note).toMatch(/^reversed connection/);
+    // And something that isn't a processor still isn't the service.
+    expect(
+      c.check(
+        EMPTY,
+        applyOps(EMPTY, [
+          { op: "add_node", kind: "SQS", label: "q", key: "q" },
+          { op: "add_node", kind: "email", label: "Email", key: "e" },
+          { op: "connect", from: "q", to: "e" },
+        ]).diagram,
+      ),
+    ).toBe("missing generic.service (or any processor)");
   });
 
   it("replays round 3's failures (run 3, Chrome 154): reconciled outright, or completed after the retry", async () => {
