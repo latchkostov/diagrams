@@ -126,6 +126,14 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   moved." **Align** and **Distribute** never stack
   things either: what would land on another steps along the line. **Auto-layout** (the canvas right-click) is
   the whole diagram.
+- **Undo and the selection**: Undo puts the document back, then selects what the undone step changed, as it
+  was before; Redo selects what it changed, as it is after. If everything it changed was part of the selection
+  the step was made with, that whole selection comes back (an align or a Tidy up leaves a node where it was).
+  Undoing an add leaves nothing of it to select: the current selection stays where it still exists, and if
+  none does, the selection the add was made from comes back. Undoing a delete selects what came back. Knock-on
+  changes don't count: a boundary that grew to hold its members, members carried by their boundary. The
+  inspector follows, so a bulk edit undone keeps its panel open with the old values, to tweak and retry.
+  Selecting is never an undo step of its own.
 - **Moving between nodes** from the keyboard: the canvas is one Tab stop. Inside it **Tab** and **Shift+Tab** step
   through nodes in reading order (rows from the top, each left to right; in a top-to-bottom diagram, columns),
   meeting each boundary just before its first member; past the last one Tab leaves the canvas. **Ctrl+Alt+arrows**

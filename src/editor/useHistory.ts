@@ -1,16 +1,14 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { fromFlow, type DiagramMeta } from "../canvas/convert";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
+import { canRedo, canUndo, commit, commitReplacement, createHistory, present } from "./history";
 import {
-  canRedo,
-  canUndo,
-  commit,
-  commitReplacement,
-  createHistory,
-  present,
-  redo as redoH,
-  undo as undoH,
-} from "./history";
+  selectionOf,
+  snapshotKey as keyOf,
+  stepWithSelection,
+  type CanvasHistory,
+  type FlowSelection,
+} from "./historySelection";
 
 export interface CanvasSnapshot {
   meta: DiagramMeta;
@@ -37,9 +35,6 @@ export interface HistoryApi {
 /** Quiet time after the last change before it becomes an undo step. */
 const DEBOUNCE_MS = 350;
 
-/** What counts as a change: the saved file (positions rounded, selection ignored). */
-const keyOf = (s: CanvasSnapshot) => JSON.stringify(fromFlow(s.meta, s.nodes, s.edges));
-
 const clean = (s: CanvasSnapshot): CanvasSnapshot => ({
   ...s,
   nodes: s.nodes.map((n) => (n.dragging || n.resizing ? { ...n, dragging: false, resizing: false } : n)),
@@ -48,28 +43,41 @@ const clean = (s: CanvasSnapshot): CanvasSnapshot => ({
 /**
  * Observes canvas state and records undo steps. Every mutation path (menus, inspector, React
  * Flow drags / resizes / deletes, inline editors, reset) is captured without having to call
- * into history: a change is committed once things settle and no drag is in progress.
+ * into history: a change is committed once things settle and no drag is in progress. The selection
+ * is never a change of its own; Undo and Redo choose it (historySelection.ts).
  */
 export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => void): HistoryApi {
-  const [history, setHistory] = useState(() => createHistory(keyOf(state), clean(state), Date.now()));
+  const [history, setHistory] = useState<CanvasHistory>(() => createHistory(keyOf(state), clean(state), Date.now()));
   const hist = useRef(history);
   const latest = useRef(state);
   const applyRef = useRef(apply);
+  const stateKey = useMemo(() => keyOf(state), [state]);
+  /** The selection while the canvas matched the present step: where the next step starts from. */
+  const settledSelection = useRef<FlowSelection>({ nodes: [], edges: [] });
   useLayoutEffect(() => {
     latest.current = state;
     applyRef.current = apply;
   });
+  useLayoutEffect(() => {
+    if (stateKey === present(history).key) settledSelection.current = selectionOf(state);
+  }, [state, stateKey, history]);
   const mergeKey = useRef<string | undefined>(undefined);
   const timer = useRef<number | undefined>(undefined);
   /** An uncommitted change exists (so Undo is available before the debounce fires). */
-  const pending = keyOf(state) !== present(history).key;
+  const pending = stateKey !== present(history).key;
 
   const flush = useCallback(() => {
     window.clearTimeout(timer.current);
     timer.current = undefined;
     const s = latest.current;
     if (s.nodes.some((n) => n.dragging || n.resizing)) return;
-    const next = commit(hist.current, { key: keyOf(s), value: clean(s), mergeKey: mergeKey.current, at: Date.now() });
+    const next = commit(hist.current, {
+      key: keyOf(s),
+      value: clean(s),
+      mergeKey: mergeKey.current,
+      at: Date.now(),
+      start: settledSelection.current,
+    });
     mergeKey.current = undefined;
     if (next !== hist.current) {
       hist.current = next;
@@ -85,20 +93,20 @@ export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const go = useCallback(
-    (step: typeof undoH) => {
+    (direction: "undo" | "redo") => {
       flush();
-      const next = step(hist.current);
-      if (next === hist.current) return;
-      hist.current = next;
-      setHistory(next);
+      const step = stepWithSelection(hist.current, direction, selectionOf(latest.current));
+      if (!step) return;
+      hist.current = step.history;
+      setHistory(step.history);
       // The restored state has the present entry's key, so the next flush is a no-op.
-      applyRef.current(present(next).value);
+      applyRef.current(step.snapshot);
     },
     [flush],
   );
 
-  const undo = useCallback(() => go(undoH), [go]);
-  const redo = useCallback(() => go(redoH), [go]);
+  const undo = useCallback(() => go("undo"), [go]);
+  const redo = useCallback(() => go("redo"), [go]);
   const hint = useCallback(
     (key: string | undefined) => {
       // A pending, differently-tagged change gets its own step first.
@@ -116,8 +124,14 @@ export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => 
     // Break coalescing on both sides, even when an adapter reuses its call id.
     hist.current = commitReplacement(
       hist.current,
-      { key: keyOf(current), value: current, mergeKey: mergeKey.current, at: Date.now() },
-      { key: keyOf(next), value: next, mergeKey: key, at: Date.now() },
+      {
+        key: keyOf(current),
+        value: current,
+        mergeKey: mergeKey.current,
+        at: Date.now(),
+        start: settledSelection.current,
+      },
+      { key: keyOf(next), value: next, mergeKey: key, at: Date.now(), start: selectionOf(latest.current) },
     );
     mergeKey.current = undefined;
     latest.current = next;
