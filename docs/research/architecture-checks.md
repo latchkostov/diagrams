@@ -1,7 +1,9 @@
 # Architecture checks: warnings with one-click fixes
 
-Research and plan, October 2026. Batch 1 (the engine, four rules and `check_diagram`) is built; its precision
-gate, judged finding by finding on the examples, is in "Batch 1: precision gate" below.
+Research and plan, October 2026. Batches 1 and 2 are built: the engine, four rules and `check_diagram`, then the
+count, the Checks card, markers, the inspector row, fixes, Ignore and Turn off. Batch 1's precision gate, judged
+finding by finding on the examples, is in "Batch 1: precision gate" below; batch 2's notes are in "Batch 2: as
+built".
 
 ## Summary
 
@@ -145,6 +147,8 @@ Checks                                   ✕
   once the canvas is idle, so the startup bundle doesn't grow. A diagram over 1,500 nodes checks only when the card
   opens.
 - **Live view.** No count and no card. Capacity has its own heat map and callout there. Checks are for editing.
+  (Decided in batch 2 as written: live view, presenting and embeds show no count, and the card closes on going
+  live. The agents' `check_diagram` stays available in live view.)
 
 Budget: no top-bar control, one context-menu row, one palette entry, one floating card shown on demand.
 
@@ -489,7 +493,7 @@ Each batch is its own PR and ends with the UX review gate (`docs/UX-PRINCIPLES.m
    `compileTopology` and `analyzeCapacity` directly. Includes the regression snapshot over the examples, and
    `check_diagram` (read-only, no UI needed, so agents get value first). _Gate: the owner marks every finding on
    the examples as would or wouldn't fix._
-2. **The Checks card, the count and fixes.** The card, the diagram-card count, markers while open, the node
+2. **The Checks card, the count and fixes.** _(Built; see "Batch 2: as built".)_ The card, the diagram-card count, markers while open, the node
    inspector row, the canvas right-click and Ctrl+K, and fixes for batch 1's rules as ops through `applyOps` (one
    undo step, toast with Undo). Ignore and turn off, in the file (`checks` field, validator, schema, `pnpm
 schemas`). _UX gate: chrome budget, keyboard, Esc order, dark theme, 1280×800, presentation and export clean._
@@ -502,6 +506,33 @@ schemas`). _UX gate: chrome budget, keyboard, Esc order, dark theme, 1280×800, 
    headless in a worker (deterministic, seeded, capped at 60 s simulated time) and attaches counts to findings
    ("312 dropped in _Payments goes down_"). It also adds `dropped` findings that the static rules can't see. Only
    on click: it costs seconds.
+
+## Batch 2: as built
+
+The visible part, as the UX section describes it. What was decided while building:
+
+- **Entry points.** The count (warnings only), the canvas right-click (**Check diagram**, after Auto-layout: 9 of
+  12 rows), Ctrl+K (the same action), and a fourth the plan didn't have: **View ▸ Checks**, a toggle beside Show
+  capacity and Show dependencies (9 of 12 rows), so the card can be found without a warning. The inspector's row
+  has **All checks**.
+- **Off the main thread.** Checks run after edits pause (400 ms), in idle time, in a worker
+  (`src/checks/worker.ts`); the main thread only builds and copies the file. The first run waits 1.2 s for the
+  canvas to settle. One run at a time, with only the newest diagram queued behind it
+  (`src/canvas/checks/scheduler.ts`). Where workers fail, the engine loads as a lazy chunk and runs in idle time.
+  Measured with Event Timing on a 1,500-node diagram with a loop of requests in each pipeline (capacity's slowest
+  case): keystrokes in the inspector's label stay at 110–150 ms on the production build while checks run between
+  them (`tests/e2e/checks-ui.spec.ts`).
+- **What ships when.** The startup JavaScript gains only the card's open/closed store and two icons (+0.3 kB
+  gzip). The canvas chunk has the scheduler, the count and the markers; the card is its own lazy chunk (3.5 kB
+  gzip, plus 1.3 kB CSS), and the engine lives in the worker.
+- **The card.** Under the diagram card, 340 px wide, as tall as it can be above the canvas controls. Opening it over
+  a diagram that was all in view refits the diagram clear of it (rule 10: floating panels never hide content after
+  fit-view). Rows draw 40 per group, with **Show more**. Arrow keys move between rows' heads; Esc closes the card
+  when nothing is selected (one level, after the selection).
+- **Fixes** are `applyOps` plus one `applyDiagram` step (the same as an agent's turn), with a toast ("Added
+  ledger-posting DLQ · Undo"). A fix that needs a choice opens quick-add downstream of its node. **Ignore here…**
+  and **Turn off this check** are `updateMeta({ checks })`, one undo step each, with an Undo toast.
+- **Private diagrams** are checked like any other; nothing leaves the device.
 
 ## Explicitly not doing
 
