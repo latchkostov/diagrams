@@ -86,6 +86,50 @@ describe("applyFix", () => {
   });
 });
 
+describe("applyFix with an option", () => {
+  const bypass = (): DiagramFile => ({
+    format: "diagrams/v1",
+    title: "Bypass",
+    nodes: [
+      { id: "web", stencil: "client.browser", label: "Web", x: 0, y: 0 },
+      { id: "app", stencil: "client.mobile", label: "App", x: 0, y: 200 },
+      { id: "gw", stencil: "nginx", label: "Gateway", x: 300, y: 0 },
+      { id: "api", stencil: "service.go", label: "API", x: 600, y: 0 },
+    ],
+    edges: [
+      { id: "e1", from: "web", to: "gw", kind: "sync" },
+      { id: "e2", from: "gw", to: "api", kind: "sync" },
+      { id: "e3", from: "app", to: "api", kind: "sync" },
+    ],
+  });
+
+  it("applies the chosen option, worked out now, as one step; an unknown option applies nothing", () => {
+    const d = bypass();
+    const cached = runChecks(d).findings.find((f) => f.id === "entry-gateway:api")!;
+    expect(cached.fix?.options?.map((o) => o.label)).toEqual([
+      "Put Firewall / WAF in front",
+      "Put Kong Gateway in front",
+    ]);
+    const { api, replace } = editorFor(d);
+    expect(applyFix(api, cached, "Put a moat in front")).toBe(false);
+    expect(replace).not.toHaveBeenCalled();
+    expect(applyFix(api, cached, "Put Kong Gateway in front")).toBe(true);
+    expect(replace).toHaveBeenCalledTimes(1);
+    const kong = api.getDiagram().nodes.find((n) => n.stencil === "kong")!;
+    expect(kong.label).toBe("Kong Gateway");
+    expect(
+      api
+        .getDiagram()
+        .edges.filter((e) => e.to === "api")
+        .map((e) => e.from)
+        .sort(),
+    ).toEqual(["gw", kong.id]);
+    // Fixed: a second click (either way) does nothing.
+    expect(applyFix(api, cached, "Put Kong Gateway in front")).toBe(false);
+    expect(applyFix(api, cached)).toBe(false);
+  });
+});
+
 describe("check settings", () => {
   it("each ignore, turn-off and restore is its own undo step (a tag of its own)", () => {
     const d = queue();

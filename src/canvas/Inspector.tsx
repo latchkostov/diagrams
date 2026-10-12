@@ -254,7 +254,8 @@ export function Inspector(p: InspectorProps) {
           <Icon name="panel-right" />
         </button>
       </div>
-      <div className="insp-body" ref={body} data-testid="inspector-body">
+      {/* Where focus goes after a finding's fix when no other finding is left to take it. */}
+      <div className="insp-body" ref={body} data-testid="inspector-body" data-check-fallback-scope>
         {n === 1 && p.findings}
         {content}
       </div>

@@ -16,6 +16,8 @@ const MAX_TEXT = 300;
 const MAX_TARGETS = 12;
 const MAX_ID = 200;
 const MAX_OPS = 700;
+const MAX_OPTIONS = 4;
+const MAX_OPTION = 80;
 /** Room kept for the `more` line. */
 const MORE_ROOM = 120;
 
@@ -28,7 +30,16 @@ export interface AgentFinding {
   targets: string[];
   /** Elements beyond `targets`, left out for size. */
   moreTargets?: number;
-  fix?: { label: string; ops: DiagramOp[] } | { label: string; needsChoice: string };
+  fix?:
+    | { label: string; ops: DiagramOp[]; others?: AgentFixOption[]; elsewhere?: string }
+    | { label: string; needsChoice: string };
+}
+
+/** Another way to make the same fix: its words, the stencil it adds, and its ops, ready to send instead. */
+export interface AgentFixOption {
+  label: string;
+  kind?: string;
+  ops: DiagramOp[];
 }
 
 export interface AgentReport {
@@ -41,6 +52,33 @@ export interface AgentReport {
 const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 const size = (value: unknown) => JSON.stringify(value).length;
 
+/**
+ * The fix's other options that fit beside the default's ops (within the same per-finding bound), each with its own
+ * ops, ready to send; the rest are only named (`elsewhere`), for the person to pick in the Checks card. An option
+ * without its ops is never listed as one to send.
+ */
+function others(f: Finding): { list?: AgentFixOption[]; elsewhere?: string } {
+  let room = MAX_OPS - size(f.fix?.ops ?? []);
+  const list: AgentFixOption[] = [];
+  const left: string[] = [];
+  for (const o of f.fix?.options?.slice(0, MAX_OPTIONS) ?? []) {
+    if (size(o.ops) > room) {
+      left.push(clip(o.label, MAX_OPTION));
+      continue;
+    }
+    room -= size(o.ops);
+    list.push({ label: clip(o.label, MAX_OPTION), ...(o.kind ? { kind: clip(o.kind, MAX_OPTION) } : {}), ops: o.ops });
+  }
+  return {
+    ...(list.length ? { list } : {}),
+    ...(left.length
+      ? {
+          elsewhere: `Also possible, too long for this reply (the person can pick it in the Checks card): ${left.join("; ")}.`,
+        }
+      : {}),
+  };
+}
+
 /** The finding at its fullest within the per-finding bounds. */
 function bounded(f: Finding): AgentFinding {
   const usable = f.elements.filter((id) => id.length <= MAX_ID);
@@ -49,7 +87,10 @@ function bounded(f: Finding): AgentFinding {
   const fix: AgentFinding["fix"] = !f.fix
     ? undefined
     : f.fix.ops && size(f.fix.ops) <= MAX_OPS
-      ? { label, ops: f.fix.ops }
+      ? (() => {
+          const { list, elsewhere } = others(f);
+          return { label, ops: f.fix.ops, ...(list ? { others: list } : {}), ...(elsewhere ? { elsewhere } : {}) };
+        })()
       : {
           label,
           needsChoice: f.fix.ops
@@ -91,7 +132,10 @@ export function agentReport(result: CheckResult, include: "warnings" | "all" = "
   const report: AgentReport = { findings: [], summary: summarize(result) };
   if (listed.some((f) => f.fix?.ops))
     report.hint =
-      "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.";
+      "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding." +
+      (listed.some((f) => f.fix?.ops && others(f).list)
+        ? " fix.others are other ways to make the same change: if the person prefers one, send its ops instead."
+        : "");
   // `findings: []` already counted; each kept finding adds its JSON and a comma.
   let used = size(report) + MORE_ROOM;
   for (const f of listed) {

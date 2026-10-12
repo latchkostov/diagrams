@@ -13,6 +13,8 @@ import { resolveMultiplier } from "./units";
 /** Utilization above this gets a fix; fixes aim for this much headroom (lands in green). */
 export const FIX_ABOVE = 0.9;
 export const FIX_TARGET = 0.55;
+/** The largest replica or partition count a fix may set: the node props schema's bound (src/model/simProps.ts). */
+export const MAX_COUNT = 10_000;
 
 const PARTITIONED: ReadonlySet<SimRole> = new Set(["topic", "stream"]);
 const roleOf = (n: DiagramNode): SimRole => stencilRole(n.stencil);
@@ -135,4 +137,21 @@ export function sizingFix(
   const verified = analyzeCapacity(d, planningSimulation(d, withSizing(sim, changes)), { status: opts.status });
   if ([...effective.keys()].some((id) => verified.nodes[id].utilization > FIX_TARGET + 1e-9)) return null;
   return changes;
+}
+
+/**
+ * Replicas for a node that runs one and is the only way through (the single-point check): two, for redundancy,
+ * or, when it's busy (at FIX_ABOVE or more), what the capacity fix asks, within `maxCount`. `enough` is false when
+ * no count within the bound brings it to FIX_TARGET: two replicas still remove the single point, but capacity needs
+ * more than replicas (faster processing, more concurrency).
+ */
+export function redundancyFix(
+  d: DiagramFile,
+  sim: Simulation,
+  node: NodeCapacity,
+  maxCount = MAX_COUNT,
+): { replicas: number; enough: boolean } {
+  if (!Number.isFinite(node.utilization) || node.utilization < FIX_ABOVE) return { replicas: 2, enough: true };
+  const sized = sizingFix(d, sim, [node], { maxCount })?.find((c) => c.nodeId === node.id && c.key === "replicas");
+  return sized ? { replicas: Math.min(maxCount, Math.max(2, sized.to)), enough: true } : { replicas: 2, enough: false };
 }

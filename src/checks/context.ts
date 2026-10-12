@@ -27,6 +27,8 @@ export interface CheckContext {
   routes(id: string): readonly CompiledEdge[];
   /** Every compiled flow into a node, dead-letter routes included. */
   incoming(id: string): readonly CompiledEdge[];
+  /** The requests (sync flows) out of a node, in diagram order. Built on first use. */
+  requests(id: string): readonly CompiledEdge[];
   /** The dead-letter route playback sends this broker's exhausted messages to (deadLetterRoutes). */
   deadLetterRoute(id: string): CompiledEdge | undefined;
   /**
@@ -34,7 +36,7 @@ export interface CheckContext {
    * emits and filters count). Computed on first use.
    */
   typesAt(id: string): ReadonlySet<string>;
-  /** Position in reading order (rows from the top, each left to right; columns in a TB diagram). */
+  /** Position in reading order (rows from the top, each left to right; columns in a TB diagram); a connection's is its start's. */
   rank(id: string): number;
   /** The node's label, or its id when it has none. */
   name(id: string): string;
@@ -43,6 +45,12 @@ export interface CheckContext {
    * "dlq" in a diagram with a node "dlq" would point at that node.
    */
   freshKey(base: string): string;
+  /**
+   * Whether a connection's id names it alone. Edit ops resolve an id to a node before a connection, and a file may
+   * reuse one id for both: a fix that updates or removes a connection by such an id would change or delete the node
+   * (and its connections) instead, so it offers no ops.
+   */
+  edgeRef(id: string): boolean;
   /** Free play as capacity planning sees it, as live view's Show capacity does (src/sim/capacityPlanning.ts). */
   planning(): Simulation;
   /** analyzeCapacity of `planning()`: the diagram's own (free-play) rates. Computed on first use. */
@@ -71,6 +79,20 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   let planning: Simulation | undefined;
   let capacity: CapacityAnalysis | undefined;
   let types: Map<string, Set<string>> | undefined;
+  let requests: Map<string, CompiledEdge[]> | undefined;
+  /** Boundary and annotation ids, for freshKey and edgeRef. */
+  let others: Set<string> | undefined;
+  /** Connection ids the file uses more than once. */
+  let twice: Set<string> | undefined;
+  const repeated = () => {
+    if (twice) return twice;
+    const seen = new Set<string>();
+    twice = new Set();
+    for (const e of diagram.edges) (seen.has(e.id) ? twice : seen).add(e.id);
+    return twice;
+  };
+  const otherIds = () =>
+    (others ??= new Set([...(diagram.groups ?? []), ...(diagram.annotations ?? [])].map((x) => x.id)));
   const plan = () =>
     (planning ??= planningSimulation(diagram, {
       id: "free-play",
@@ -85,6 +107,18 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     topology,
     routes: (id) => topology.outgoing.get(id) ?? [],
     incoming: (id) => incoming.get(id) ?? [],
+    requests(id) {
+      if (!requests) {
+        requests = new Map();
+        for (const e of topology.edges) {
+          if (!e.sync) continue;
+          const list = requests.get(e.from);
+          if (list) list.push(e);
+          else requests.set(e.from, [e]);
+        }
+      }
+      return requests.get(id) ?? [];
+    },
     deadLetterRoute: (id) => deadLetter.get(id),
     typesAt(id) {
       if (!types) {
@@ -102,14 +136,12 @@ export function buildContext(diagram: DiagramFile): CheckContext {
       }
       return types.get(id) ?? new Set();
     },
-    rank: (id) => order.get(id) ?? Infinity,
+    // A connection reads where it starts.
+    rank: (id) => order.get(id) ?? order.get(edges.get(id)?.from ?? "") ?? Infinity,
     name: (id) => nodes.get(id)?.label.trim() || id,
+    edgeRef: (id) => edges.has(id) && !nodes.has(id) && !otherIds().has(id) && !repeated().has(id),
     freshKey(base) {
-      const taken = (key: string) =>
-        nodes.has(key) ||
-        edges.has(key) ||
-        !!diagram.groups?.some((g) => g.id === key) ||
-        !!diagram.annotations?.some((a) => a.id === key);
+      const taken = (key: string) => nodes.has(key) || edges.has(key) || otherIds().has(key);
       let key = base;
       for (let i = 2; taken(key); i++) key = `${base}-${i}`;
       return key;

@@ -1,6 +1,6 @@
 import type { DiagramOp } from "../../ai";
 import type { NodeCapacity } from "../../sim/capacity";
-import { sizingFix } from "../../sim/capacityPlanning";
+import { MAX_COUNT, sizingFix } from "../../sim/capacityPlanning";
 import { formatRate, isBroker, type CheckContext } from "../context";
 import type { CheckFix, CheckRule } from "../types";
 
@@ -17,7 +17,7 @@ function scaleFix(ctx: CheckContext, n: NodeCapacity): CheckFix | undefined {
   // Edit ops take replicas and partitions up to 10,000 (the op schema's bound).
   const changes = sizingFix(ctx.diagram, ctx.planning(), [n], {
     idle: n.idleReplicas > 0 ? n.id : undefined,
-    maxCount: 10_000,
+    maxCount: MAX_COUNT,
   });
   if (!changes) return undefined;
   const ops: DiagramOp[] = changes.map((c) => ({ op: "update", target: c.nodeId, props: { [c.key]: c.to } }));

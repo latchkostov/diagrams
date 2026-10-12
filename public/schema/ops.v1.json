@@ -842,7 +842,7 @@
       }
     },
     "check_diagram": {
-      "description": "Find likely design problems in the current diagram (failed messages that are dropped, topics nobody reads, requests that go round in a circle, a service that can't keep up), each naming its elements and, where one exists, a fix as edit_diagram ops. Read-only: apply a fix by sending its ops to edit_diagram. Findings the person ignored aren't listed; only the person can ignore one.",
+      "description": "Find likely design problems in the current diagram (failed messages that are dropped, topics nobody reads, requests that go round in a circle or chain too deep, a service using another's database, a client going around the gateway, a service that can't keep up or that every request goes through), each naming its elements and, where one exists, a fix as edit_diagram ops. Read-only: apply a fix by sending its ops to edit_diagram. Findings the person ignored aren't listed; only the person can ignore one.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -854,11 +854,15 @@
                 "dead-letter",
                 "no-reader",
                 "sync-cycle",
-                "capacity"
+                "sync-chain",
+                "shared-database",
+                "entry-gateway",
+                "capacity",
+                "single-point"
               ]
             },
-            "maxItems": 4,
-            "description": "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), capacity (a service can't keep up at the diagram's rates)."
+            "maxItems": 8,
+            "description": "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), sync-chain (requests chained too deep), shared-database (a service uses another's database), entry-gateway (a client goes around the gateway), capacity (a service can't keep up at the diagram's rates), single-point (every request goes through one replica)."
           },
           "include": {
             "type": "string",

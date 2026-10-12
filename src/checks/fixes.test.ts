@@ -187,6 +187,86 @@ describe("fixes", () => {
     expect(runChecks(after).findings).toEqual([]);
   });
 
+  describe("batch 3: each fix is one step, and its finding goes", () => {
+    const n = (id: string, stencil: string, x: number, extra: Partial<DiagramFile["nodes"][number]> = {}) => ({
+      id,
+      stencil,
+      label: id,
+      x,
+      y: 0,
+      ...extra,
+    });
+    const r = (from: string, to: string, label?: string) => ({
+      id: `${from}-${to}`,
+      from,
+      to,
+      kind: "sync" as const,
+      ...(label ? { label } : {}),
+    });
+
+    it("Make the last hop a message: the chain is three deep", () => {
+      const d: DiagramFile = {
+        format: "diagrams/v1",
+        title: "Chain",
+        nodes: ["a", "b", "c", "d", "e"].map((id, i) => n(id, "service.go", i * 300)),
+        edges: [r("a", "b"), r("b", "c"), r("c", "d"), r("d", "e")],
+      };
+      const after = applyFix(d, finding(d, "sync-chain:a"));
+      expect(after.edges.find((e) => e.id === "d-e")?.kind).toBe("async");
+      expect(runChecks(after).findings).toEqual([]);
+    });
+
+    it("Ask the owner instead: a request to it replaces the flow into its database, label kept", () => {
+      const d: DiagramFile = {
+        format: "diagrams/v1",
+        title: "Shared",
+        nodes: [
+          n("orders", "service.dotnet", 0, { group: "team" }),
+          n("db", "postgres", 300, { group: "team" }),
+          n("billing", "service.java", 600),
+        ],
+        edges: [r("orders", "db"), r("billing", "db", "Totals")],
+        groups: [{ id: "team", label: "Orders", x: -50, y: -50, width: 500, height: 200 }],
+      };
+      const after = applyFix(d, finding(d, "shared-database:billing-db"));
+      expect(after.edges.map((e) => `${e.from}->${e.to}${e.label ? ` ${e.label}` : ""}`)).toEqual([
+        "orders->db",
+        "billing->orders Totals",
+      ]);
+      expect(runChecks(after).findings).toEqual([]);
+    });
+
+    it("Go through the gateway: the direct call is gone", () => {
+      const d: DiagramFile = {
+        format: "diagrams/v1",
+        title: "Bypass",
+        nodes: [
+          n("web", "client.browser", 0),
+          n("app", "client.mobile", 0, { y: 200 }),
+          n("gw", "nginx", 300),
+          n("orders", "service.dotnet", 600, { props: { replicas: 2 } }),
+        ],
+        edges: [r("web", "gw"), r("gw", "orders"), r("app", "orders")],
+      };
+      const after = applyFix(d, finding(d, "entry-gateway:orders"));
+      expect(after.edges.filter((e) => e.to === "orders").map((e) => e.from)).toEqual(["gw"]);
+      expect(after.edges.some((e) => e.from === "app" && e.to === "gw")).toBe(true);
+      expect(runChecks(after).findings).toEqual([]);
+    });
+
+    it("Set replicas to 2: the only way through has a second replica", () => {
+      const d: DiagramFile = {
+        format: "diagrams/v1",
+        title: "One",
+        nodes: [n("web", "client.browser", 0), n("api", "service.node", 300, { props: { replicas: 1 } })],
+        edges: [r("web", "api")],
+      };
+      const after = applyFix(d, finding(d, "single-point:api"));
+      expect(after.nodes.find((x) => x.id === "api")?.props).toEqual({ replicas: 2 });
+      expect(runChecks(after).findings).toEqual([]);
+    });
+  });
+
   it("the editor keeps the file's checks through edits and fixes", () => {
     const d = base({ checks: { ignore: [{ rule: "dead-letter", target: "q", reason: "Retried by the caller" }] } });
     const editor = editorFor(d);

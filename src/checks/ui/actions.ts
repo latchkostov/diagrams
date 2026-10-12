@@ -15,13 +15,15 @@ let seq = 0;
  * Applies a finding's fix as one undo step, with a toast that says what changed and offers Undo. The finding is
  * checked again first, on the diagram as it is now (its rule only): a finding that no longer holds isn't fixed
  * (a second click adds no second queue), and the fix applied is the one worked out now (a capacity fix sizes from
- * today's replicas, not the ones the cached check saw).
+ * today's replicas, not the ones the cached check saw). `option` picks one of the fix's other options by its label.
  */
-export function applyFix(editor: EditorApi, finding: Finding): boolean {
+export function applyFix(editor: EditorApi, finding: Finding, option?: string): boolean {
   if (!finding.fix?.ops) return false;
   const current = editor.getDiagram();
   const fresh = runChecks(current, { rules: [finding.rule] }).findings.find((f) => f.id === finding.id);
-  const ops = fresh?.fix?.ops;
+  // One of the fix's other options, by its words (the same option worked out now).
+  const chosen = option === undefined ? undefined : fresh?.fix?.options?.find((o) => o.label === option);
+  const ops = option === undefined ? fresh?.fix?.ops : chosen?.ops;
   if (!ops) {
     notify("Nothing to fix: the diagram already changed.", { kind: "info" });
     return false;
@@ -34,7 +36,7 @@ export function applyFix(editor: EditorApi, finding: Finding): boolean {
   const diff = editor.applyDiagram(result.diagram, { merge: `check:fix:${++seq}` });
   if (!diff.hasChanges) return false;
   const added = diff.added.nodes.map((id) => result.diagram.nodes.find((n) => n.id === id)?.label).filter(Boolean);
-  const text = added.length ? `Added ${added.join(", ")}` : `${fresh!.fix!.label}: done`;
+  const text = added.length ? `Added ${added.join(", ")}` : `${chosen?.label ?? fresh!.fix!.label}: done`;
   notify(text, {
     kind: "success",
     action: { label: "Undo", run: () => editor.undo(), testId: "check-fix-undo", undoes: true },

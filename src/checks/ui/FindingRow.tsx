@@ -32,6 +32,26 @@ const ruleOf = (id: string) => RULES.find((r) => r.id === id);
 
 const MAX_CHIPS = 5;
 
+/**
+ * After a fix from a row that had focus: the row goes with the next check, so focus moves on first, to the next
+ * finding's head (else the one before), else the scope's fallback (the card's Close; in the inspector, its body),
+ * never to the page.
+ */
+function focusNeighbour(row: HTMLElement) {
+  const scope = row.closest<HTMLElement>("[data-check-scope]");
+  if (!scope) return;
+  const heads = [...scope.querySelectorAll<HTMLElement>("[data-check-head]")].filter((h) => !row.contains(h));
+  const after = heads.find((h) => row.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING);
+  const target =
+    after ??
+    heads[heads.length - 1] ??
+    scope.querySelector<HTMLElement>("[data-check-fallback]") ??
+    row.closest<HTMLElement>("[data-check-fallback-scope]");
+  if (!target) return;
+  if (target.tabIndex < 0 && !target.hasAttribute("tabindex")) target.tabIndex = -1;
+  target.focus();
+}
+
 export function FindingRow({
   finding: f,
   host,
@@ -49,6 +69,15 @@ export function FindingRow({
   const [panel, setPanel] = useState<"menu" | "ignore" | "about" | null>(null);
   const [reason, setReason] = useState("");
   const more = useRef<HTMLButtonElement>(null);
+  const self = useRef<HTMLDivElement>(null);
+  /** Applies the fix (or one of its options); focus inside the row moves on before the row goes. */
+  const fixIt = (option?: string) => {
+    const row = self.current;
+    const focused = !!row && row.contains(document.activeElement);
+    if (!applyFix(host.editor, f, option)) return;
+    host.applied?.();
+    if (focused && row) focusNeighbour(row);
+  };
   const t = (part: string) => `${testPrefix}-${part}-${f.id}`;
   // Names only for the chips drawn, from the check's one index: a loop of 1,500 services costs five lookups.
   const chips: { id: string; name: string }[] = [];
@@ -90,6 +119,7 @@ export function FindingRow({
     // Esc inside the row closes its open options first (one level); hover highlights its markers.
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
+      ref={self}
       className={`check-row is-${f.severity}${compact ? " is-compact" : ""}`}
       role="listitem"
       data-testid={t("row")}
@@ -149,9 +179,7 @@ export function FindingRow({
             // A fix from a check the diagram has moved on from waits for the next one (never applied twice).
             disabled={state.stale}
             title={state.stale ? "Checking your change…" : undefined}
-            onClick={() => {
-              if (applyFix(host.editor, f)) host.applied?.();
-            }}
+            onClick={() => fixIt()}
           >
             <Icon name="check" size={13} /> {fix.label}
           </button>
@@ -185,6 +213,26 @@ export function FindingRow({
           <span aria-hidden>⋯</span>
         </button>
       </div>
+      {fix?.ops && fix.options?.length ? (
+        // Other ways to make the same fix, one click each (another gateway): secondary to the button.
+        <div className="check-alts" role="group" aria-label="Or instead">
+          <span className="check-alts-or">or</span>
+          {fix.options.map((o, i) => (
+            <button
+              key={o.label}
+              type="button"
+              className="check-chip is-option"
+              data-testid={t(`fix-option-${i}`)}
+              disabled={state.stale}
+              title={state.stale ? "Checking your change…" : o.label}
+              aria-label={o.label}
+              onClick={() => fixIt(o.label)}
+            >
+              {o.short}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {panel === "menu" && (
         <div className="check-menu" role="group" aria-label="Finding options">
           <button type="button" data-testid={t("ignore")} onClick={() => setPanel("ignore")}>
