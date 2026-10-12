@@ -29,6 +29,26 @@ in the browser. There is no account and no server.
   Mermaid. Share links carry the whole diagram in the URL, an embed mode makes a read-only viewer, and Record
   saves a simulation as a video. Google Drive works once it's configured (see `docs/INTEROP.md`).
 
+## Use with your AI agent
+
+The **livediagrams** [Agent Skill](skills/livediagrams/SKILL.md) lets an agent draw diagrams for you. Ask "diagram
+our order pipeline" and it writes a `.diagram.json` file, checks it, and hands back a livediagrams.dev link. No
+browser is needed and nothing is uploaded: the diagram travels inside the link. The skill needs Node.js 20 or later
+and no keys.
+
+- **Claude Code**: `/plugin marketplace add latchkostov/diagrams`, then `/plugin install livediagrams@livediagrams`
+  (or, on Claude Code 2.1.275 or later, `/plugin install livediagrams --marketplace latchkostov/diagrams`).
+- **Claude apps** (claude.ai, desktop): download
+  [livediagrams-skill.zip](https://www.livediagrams.dev/livediagrams-skill.zip) and upload it in **Settings >
+  Capabilities > Skills**.
+- **Codex**: unzip it into `~/.agents/skills/` (for you) or `.agents/skills/` (for one repository).
+- **Other agents** that read the Agent Skills format: copy the `livediagrams/` folder into the agent's skills folder,
+  such as `~/.claude/skills/` for Claude Code without the plugin.
+
+The skill is also published at [livediagrams.dev/skill/SKILL.md](https://www.livediagrams.dev/skill/SKILL.md). Its
+stencil list, layout and parts of its reference are generated from the app by `pnpm schemas`, and a unit test fails
+when they're stale.
+
 ## Development
 
 ```sh
