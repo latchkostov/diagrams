@@ -195,13 +195,22 @@ export class ReplyRefs {
     return this.fresh.find((f) => f.key === key);
   }
 
-  /** The id of an existing element `r` names (core resolution), or undefined. */
+  private readonly existing = new Map<string, string | undefined>();
+  /**
+   * The id of an existing element `r` names (core resolution), or undefined. A new node's key is never
+   * one, so it isn't looked up; other answers are cached for the reply (the fuzzy step scans everything).
+   */
   existingId(r: string): string | undefined {
+    if (r.startsWith("~") || this.newNode(r)) return undefined;
+    if (this.existing.has(r)) return this.existing.get(r);
+    let id: string | undefined;
     try {
-      return resolveRef(this.diagram, r, EMPTY_KEYS, this.index);
+      id = resolveRef(this.diagram, r, EMPTY_KEYS, this.index);
     } catch {
-      return undefined;
+      id = undefined;
     }
+    this.existing.set(r, id);
+    return id;
   }
 
   /**
@@ -224,7 +233,8 @@ export class ReplyRefs {
     return top > 0 && best.length === 1 ? best[0].ref : null;
   }
 
-  resolve(r: string): { ref: string } | { error: string } {
+  /** Steps 1-5 only (exact names, keys, kinds): null when none applies. */
+  strict(r: string): { ref: string } | { error: string } | null {
     const q = JSON.stringify(r);
     const elements = [...this.index.elements.values()];
     // 1-2: exact id, exact label.
@@ -249,6 +259,12 @@ export class ReplyRefs {
     const byKind = this.fresh.filter((f) => ci(f.kind) === n);
     if (byKind.length > 1) return { error: `${q} is the kind of ${byKind.length} new nodes: use their keys.` };
     if (byKind.length === 1) return { ref: byKind[0].key };
+    return null;
+  }
+
+  resolve(r: string): { ref: string } | { error: string } {
+    const exact = this.strict(r);
+    if (exact) return exact;
     // 6: a word shared with exactly one new node, more than with any existing node.
     const words = refWords(r);
     if (words.length) {

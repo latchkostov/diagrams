@@ -12,6 +12,8 @@ export interface PromptOptions {
 
 export interface ModelSession {
   prompt(input: string, options?: PromptOptions): Promise<string>;
+  /** The reply as it's generated (text deltas). */
+  promptStreaming?(input: string, options?: PromptOptions): ReadableStream<string>;
   clone?(options?: { signal?: AbortSignal }): Promise<ModelSession>;
   destroy(): void;
   readonly contextUsage?: number;

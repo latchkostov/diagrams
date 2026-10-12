@@ -5,17 +5,26 @@
 // result as one turn with Undo, exactly like an agent's change.
 
 import type { DiagramFile } from "../../model/types";
-import type { DiagramOp } from "../index";
+import type { AiError, DiagramOp } from "../index";
 import { getStencil } from "../../stencils/registry";
 import { planTurn, type TurnPlan } from "../ui/apply";
 import type { ScopeItem } from "../ui/context";
-import { COMPACT_OPS, toOps } from "./compactOps";
-import type { InitialPrompt, ModelSession } from "./promptApi";
+import { COMPACT_OPS, MAX_OPS, toOps } from "./compactOps";
+import type { ModelSession } from "./promptApi";
+import { INITIAL_PROMPTS, SYSTEM_PROMPT } from "./examples";
+
+export { INITIAL_PROMPTS, SYSTEM_PROMPT };
 
 export { MAX_OPS, toOps } from "./compactOps";
 
 /** The diagram's description stays under this many characters (a small model's context is a few K tokens). */
 export const CONTEXT_CHARS = 2400;
+
+/** Bounds in the reply schema. Unbounded strings let the model generate until its context ran out. */
+export const NAME_CHARS = 60;
+export const SUMMARY_CHARS = 160;
+/** A whole reply never needs more: past this it's a runaway, cut off and retried (see askModel). */
+export const MAX_REPLY_CHARS = 2400;
 
 /**
  * The reply's shape, as `responseConstraint`: one flat op object (Chrome's subset may reject `oneOf`),
@@ -24,21 +33,24 @@ export const CONTEXT_CHARS = 2400;
 export const REPLY_SCHEMA = {
   type: "object",
   properties: {
-    summary: { type: "string" },
+    summary: { type: "string", maxLength: SUMMARY_CHARS },
     ops: {
       type: "array",
+      minItems: 1,
+      maxItems: MAX_OPS,
       items: {
         type: "object",
         properties: {
           op: { type: "string", enum: [...COMPACT_OPS] },
-          key: { type: "string" },
-          kind: { type: "string" },
-          label: { type: "string" },
-          sublabel: { type: "string" },
-          from: { type: "string" },
-          to: { type: "string" },
+          key: { type: "string", maxLength: NAME_CHARS },
+          kind: { type: "string", maxLength: NAME_CHARS },
+          label: { type: "string", maxLength: NAME_CHARS },
+          sublabel: { type: "string", maxLength: NAME_CHARS },
+          from: { type: "string", maxLength: NAME_CHARS },
+          to: { type: "string", maxLength: NAME_CHARS },
           flow: { type: "string", enum: ["message", "request"] },
-          target: { type: "string" },
+          // "A -> B" names a connection: two labels.
+          target: { type: "string", maxLength: 2 * NAME_CHARS + 4 },
         },
         required: ["op"],
         additionalProperties: false,
@@ -48,96 +60,6 @@ export const REPLY_SCHEMA = {
   required: ["summary", "ops"],
   additionalProperties: false,
 } as const;
-
-export const SYSTEM_PROMPT = `You change architecture diagrams. Reply with JSON only: {"summary": "<one short sentence>", "ops": [...]}.
-Ops:
-- {"op":"add","key":"<short id>","kind":"<the technology in plain words: Kafka topic, Service Bus queue, PostgreSQL, Redis cache, Go service, Python service, Java service, Lambda, browser>","label":"<short name>"}
-- {"op":"connect","from":"<label or key>","to":"<label or key>","flow":"message" or "request"}
-- {"op":"insert_between","key":"<short id>","kind":"<plain words>","label":"<short name>","from":"<label>","to":"<label>"} (puts a new node on the connection from -> to)
-- {"op":"rename","target":"<label>","label":"<new label>"}
-- {"op":"change_kind","target":"<label>","kind":"<plain words>"} ("make X a Y": X keeps its label and connections)
-- {"op":"remove","target":"<label>"} (a connection: "<from label> -> <to label>")
-Rules:
-- Give every added node a short key, and connect new nodes by their key.
-- Name existing nodes by their exact label from the diagram. "this" is the selected node.
-- Direction follows the data. "A calls / uses / writes to / sends to / publishes to / routes to / invokes / feeds B" goes from A to B. "A consumes / reads from / subscribes to / is fed by / is triggered by B" goes from B to A.
-- flow is "message" for events and queues, "request" for HTTP, gRPC, SQL and cache calls.
-- Change only what was asked, with as few ops as possible. Never write ids or coordinates.`;
-
-// The examples use made-up names (Zephyr, Quill) that no real request names, so the model can't copy
-// one into an answer (the leakage guard in pipeline.test.ts checks).
-const EXAMPLE_DIAGRAM = `Diagram "Quill"
-Nodes (label: kind):
-- Quill gateway: Amazon API Gateway
-- quill.jobs: Kafka Topic
-- Quill worker: .NET Service
-- Quill store: PostgreSQL
-Connections:
-- Quill gateway -> quill.jobs (message)
-- quill.jobs -> Quill worker (message)
-- Quill worker -> Quill store (request)`;
-
-const answer = (summary: string, ops: object[]) => JSON.stringify({ summary, ops });
-
-/** The system prompt and four short examples: a create with "reads from", two edits, a selection. */
-export const INITIAL_PROMPTS: InitialPrompt[] = [
-  { role: "system", content: SYSTEM_PROMPT },
-  {
-    role: "user",
-    content: "Empty diagram.\n\nRequest: Zephyr reads events from a NATS subject and saves them to MySQL",
-  },
-  {
-    role: "assistant",
-    content: answer("Zephyr reads a NATS subject and writes to MySQL", [
-      { op: "add", key: "zephyr-events", kind: "NATS subject", label: "zephyr.events" },
-      { op: "add", key: "zephyr", kind: "Go service", label: "Zephyr" },
-      { op: "add", key: "zephyr-db", kind: "MySQL", label: "Zephyr db" },
-      { op: "connect", from: "zephyr-events", to: "zephyr", flow: "message" },
-      { op: "connect", from: "zephyr", to: "zephyr-db", flow: "request" },
-    ]),
-  },
-  {
-    role: "user",
-    content: `${EXAMPLE_DIAGRAM}\n\nRequest: Add a dead-letter queue after Quill worker and rename Quill store to Quill ledger`,
-  },
-  {
-    role: "assistant",
-    content: answer("Added a dead-letter queue after Quill worker and renamed Quill store", [
-      { op: "add", key: "quill-dlq", kind: "dead-letter queue", label: "quill-dlq" },
-      { op: "connect", from: "Quill worker", to: "quill-dlq", flow: "message" },
-      { op: "rename", target: "Quill store", label: "Quill ledger" },
-    ]),
-  },
-  {
-    role: "user",
-    content: `${EXAMPLE_DIAGRAM}\n\nRequest: Put a Redis cache between Quill worker and Quill store, and make Quill store a MongoDB`,
-  },
-  {
-    role: "assistant",
-    content: answer("Put a Redis cache in front of Quill store and made it MongoDB", [
-      {
-        op: "insert_between",
-        key: "quill-cache",
-        kind: "Redis cache",
-        label: "Quill cache",
-        from: "Quill worker",
-        to: "Quill store",
-      },
-      { op: "change_kind", target: "Quill store", kind: "MongoDB" },
-    ]),
-  },
-  {
-    role: "user",
-    content: `${EXAMPLE_DIAGRAM}\n\nthis = quill-worker "Quill worker"\n\nRequest: Add a retry queue after this`,
-  },
-  {
-    role: "assistant",
-    content: answer("Added a retry queue after Quill worker", [
-      { op: "add", key: "quill-retry", kind: "queue", label: "quill-retry" },
-      { op: "connect", from: "Quill worker", to: "quill-retry", flow: "message" },
-    ]),
-  },
-];
 
 /**
  * The diagram in a few lines a small model can read: each node by the name it should use (its label,
@@ -227,6 +149,31 @@ export type OnDeviceResult =
     }
   | { ok: false; error: string; attempts: number; tooBig?: boolean; output?: ModelOutput };
 
+/**
+ * A plan's error as feedback for the retry. An unknown reference to something that isn't in the diagram
+ * at all ("ECS workload", never added) says to add it; a near miss lists the labels it could mean.
+ */
+export function planError(e: AiError, diagram: DiagramFile): string {
+  const unknown = e.ref !== undefined && /^Unknown reference/.test(e.error);
+  const close = (e.candidates ?? []).filter((c) => {
+    const words = (s: string) =>
+      s
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length > 2);
+    const mine = words(e.ref ?? "");
+    return words(c.label).some((w) => mine.includes(w));
+  });
+  if (unknown && !close.length)
+    return `${e.ref} isn't in the diagram. Add it with an add op (with a key), then connect it by that key.`;
+  const could = unknown ? close : (e.candidates ?? []);
+  return `${e.error}${e.hint ? ` ${e.hint}` : ""}${
+    could.length && diagram.nodes.length
+      ? ` Labels it could mean: ${could.map((c) => JSON.stringify(c.label)).join(", ")}.`
+      : ""
+  }`;
+}
+
 /** True for the abort a cancel causes (the caller says nothing then). */
 export const isAbort = (err: unknown) => err instanceof DOMException && err.name === "AbortError";
 
@@ -237,7 +184,7 @@ export const isTransient = (err: unknown) =>
   !["QuotaExceededError", "NotSupportedError", "SyntaxError", "NotAllowedError"].includes(err.name) &&
   (err.name === "UnknownError" || /kError|unknown error|generic failure|internal/i.test(err.message));
 
-type Session = Pick<ModelSession, "prompt"> & { destroy?: () => void };
+type Session = Pick<ModelSession, "prompt" | "promptStreaming"> & { destroy?: () => void };
 
 /**
  * How long one reply (or one fresh session) may take. The built-in model can keep generating under a
@@ -264,6 +211,40 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, onLate?: (value:
 }
 
 const isTimeout = (err: unknown) => err instanceof DOMException && err.name === "TimeoutError";
+
+/** A reply cut off for running past MAX_REPLY_CHARS; `partial` is what came before the cut. */
+export class RunawayError extends Error {
+  constructor(readonly partial: string) {
+    super(`The reply ran on past ${MAX_REPLY_CHARS} characters.`);
+    this.name = "RunawayError";
+  }
+}
+
+/**
+ * One reply. Streamed where the session can, so a runaway (the model generating under the constraint
+ * until its context runs out) is cut off at MAX_REPLY_CHARS instead of minutes later.
+ */
+async function askModel(session: Session, input: string, signal: AbortSignal): Promise<string> {
+  if (!session.promptStreaming) return session.prompt(input, { signal, responseConstraint: REPLY_SCHEMA });
+  const cut = new AbortController();
+  const both = AbortSignal.any([signal, cut.signal]);
+  const reader = session.promptStreaming(input, { signal: both, responseConstraint: REPLY_SCHEMA }).getReader();
+  let text = "";
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return text;
+      // Chunks are deltas; older Chrome sent the whole text so far each time.
+      text = text && value.length > text.length && value.startsWith(text) ? value : text + value;
+      if (text.length > MAX_REPLY_CHARS) {
+        cut.abort();
+        throw new RunawayError(text);
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
 
 /**
  * Asks the model, checks the reply against the ops core, and on failure asks once more with the error.
@@ -323,12 +304,19 @@ export async function runOnDevice({
       try {
         const limit = AbortSignal.timeout(replyTimeoutMs);
         const both = signal ? AbortSignal.any([signal, limit]) : limit;
-        reply = await withTimeout(
-          current.prompt(input, { signal: both, responseConstraint: REPLY_SCHEMA }),
-          replyTimeoutMs,
-        );
+        reply = await withTimeout(askModel(current, input, both), replyTimeoutMs);
       } catch (err) {
         if (signal?.aborted) throw err instanceof Error ? err : new DOMException("Aborted", "AbortError");
+        if (err instanceof RunawayError) {
+          // A runaway is the model's answer gone wrong, not a transient failure: the retry says so. An
+          // aborted prompt leaves the session's history, so the retry carries the whole request again,
+          // in a fresh session where there is one (the cut-off one may still be busy).
+          error = err.message;
+          output = { raw: `${err.partial.slice(0, 600)}…` };
+          if (!freshUsed && !(await swapToFresh())) return { ok: false, error: TIMED_OUT, attempts: attempt };
+          input = `${first}\n\nYour last reply ran on past ${MAX_REPLY_CHARS} characters. Reply with only the ops the request needs (at most ${MAX_OPS}), labels of a few words and a one-line summary.`;
+          continue;
+        }
         if (isTimeout(err) || (isAbort(err) && !signal?.aborted)) {
           // Ran over: this session may still be busy, so go on with a fresh one if there is one.
           error = TIMED_OUT;
@@ -363,13 +351,7 @@ export async function runOnDevice({
         const plan = planTurn(diagram, { ok: true, kind: "ops", ops: parsed.ops });
         if (plan.ok && plan.hasChanges)
           return { ok: true, plan, summary: parsed.summary, attempts: attempt, ops: parsed.ops, output };
-        error = plan.ok
-          ? "The ops didn't change anything."
-          : `${plan.error.error}${plan.error.hint ? ` ${plan.error.hint}` : ""}${
-              plan.error.candidates?.length
-                ? ` Labels it could mean: ${plan.error.candidates.map((c) => JSON.stringify(c.label)).join(", ")}.`
-                : ""
-            }`;
+        error = plan.ok ? "The ops didn't change anything." : planError(plan.error, diagram);
       } else error = parsed.error;
       input = `That failed: ${error}\nReply again with the whole corrected JSON, using exact labels from the diagram and keys for new nodes.`;
     }

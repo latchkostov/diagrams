@@ -102,3 +102,41 @@ export function resolveKind(kind: string, label?: string): StencilResolution {
     alternatives,
   };
 }
+
+/** Is this phrase one of the plain role words ("API", "processor", "worker") that mean a generic service? */
+export const isRoleWord = (phrase: string) =>
+  KIND_WORDS[bare(phrase).toLowerCase().replace(/\s+/g, " ")] === "generic.service";
+
+const VENDORS = new Set(["azure", "aws", "amazon", "google", "gcp", "microsoft", "cloud"]);
+const wordsOf = (s: string) =>
+  s
+    .toLowerCase()
+    .split(/[^a-z0-9#+]+/)
+    .filter((w) => w.length > 1);
+const stem = (w: string) => (w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w);
+
+/**
+ * The stencil a phrase plausibly names, or undefined: stricter than resolveKind, which always answers
+ * (even "billing" finds Stripe, through an alias). The phrase must share a word with the stencil's
+ * label or id ("Mobile Client" names the Mobile App), or be a plain role word or end in one ("a
+ * processor", "shipping consumers": a generic service). A vendor alone ("Azure") names nothing.
+ */
+export function namedStencil(phrase: string): string | undefined {
+  const words = wordsOf(bare(phrase)).map(stem);
+  if (!words.length || words.every((w) => VENDORS.has(w))) return undefined;
+  if (isRoleWord(phrase)) return "generic.service";
+  const r = resolveKind(phrase);
+  if (r.confidence !== "low") {
+    const s = catalog.find((x) => x.id === r.id)!;
+    const known = new Set([s.label, s.id.replace(/[.-]/g, " ")].flatMap(wordsOf).map(stem));
+    if (words.some((w) => !VENDORS.has(w) && known.has(w))) return r.id;
+  }
+  // "shipping consumers", "billing worker": named by its role, no technology.
+  return isRoleWord(words[words.length - 1]) ? "generic.service" : undefined;
+}
+
+/** namedStencil, only when the catalogue search is confident too (implicit additions use this). */
+export function confidentStencil(phrase: string): string | undefined {
+  const named = namedStencil(phrase);
+  return named && (isRoleWord(phrase) || resolveKind(phrase).confidence === "high") ? named : undefined;
+}

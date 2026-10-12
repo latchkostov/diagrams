@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import kafka from "../../examples/kafka-order-pipeline.json";
+import { applyOps } from "../index";
 import { diagramEvals } from "../evals/corpus";
 import { onDeviceCases } from "../evals/onDevice";
+import { EXAMPLE_NAMES } from "./examples";
 import {
   diagramContext,
   INITIAL_PROMPTS,
   isTransient,
+  planError,
   REPLY_SCHEMA,
   requestPrompt,
   runOnDevice,
@@ -72,8 +75,25 @@ describe("the prompt", () => {
     expect(INITIAL_PROMPTS[0].role).toBe("system");
     const answers = INITIAL_PROMPTS.filter((p) => p.role === "assistant");
     expect(answers).toHaveLength(4);
-    for (const a of answers) {
-      expect(toOps(a.content, { diagram: EMPTY }).ok).toBe(true);
+    // Each answer, checked against its own request and the examples' diagram.
+    const sample = applyOps(EMPTY, [
+      { op: "add_node", kind: "API gateway", label: "sample-gateway", key: "g" },
+      { op: "add_node", kind: "Kafka topic", label: "sample.jobs", key: "j" },
+      { op: "add_node", kind: ".NET service", label: "sample-worker", key: "w" },
+      { op: "add_node", kind: "PostgreSQL", label: "sample-store", key: "s" },
+      { op: "connect", from: "g", to: "j" },
+      { op: "connect", from: "j", to: "w" },
+      { op: "connect", from: "w", to: "s", kind: "sync" },
+    ]).diagram;
+    for (const [i, a] of INITIAL_PROMPTS.entries()) {
+      if (a.role !== "assistant") continue;
+      const user = INITIAL_PROMPTS[i - 1].content;
+      const request = user.slice(user.lastIndexOf("Request: ") + 9);
+      const diagram = user.startsWith("Empty diagram.") ? EMPTY : sample;
+      const worker = sample.nodes.find((n) => n.label === "sample-worker")!;
+      const scope = user.includes("this = ") ? [{ id: worker.id, label: worker.label, kind: "node" as const }] : [];
+      const r = toOps(a.content, { diagram, request, scope });
+      expect(r.ok ? "" : r.error).toBe("");
       for (const op of JSON.parse(a.content).ops as { op: string; key?: string }[])
         if (op.op === "add" || op.op === "insert_between") expect(op.key).toBeTruthy();
     }
@@ -89,23 +109,32 @@ describe("the prompt", () => {
 });
 
 describe("leakage guard", () => {
-  // Names from the examples once turned up in answers to unrelated requests ("Orders API").
-  const exampleNames = INITIAL_PROMPTS.filter((p) => p.role === "assistant").flatMap((p) =>
-    (JSON.parse(p.content).ops as { label?: string; key?: string }[]).flatMap((o) => [o.label, o.key]),
-  );
-  const names = [...new Set(exampleNames.filter((n): n is string => !!n))];
+  // Names from the examples once turned up in answers to unrelated requests ("Orders API", "Quill
+  // gateway"). The examples' own components are now obvious placeholders, and their new nodes are named
+  // as each example's request names them.
   const requests = [...diagramEvals.map((e) => e.description), ...onDeviceCases.map((c) => c.request)];
   const kafkaLabels = diagram.nodes.map((n) => n.label);
 
-  it("the examples' node names appear in no eval request and no example diagram label", () => {
-    expect(names.length).toBeGreaterThan(5);
-    for (const name of names)
+  it("the placeholder names appear in no eval request and no example diagram label", () => {
+    expect(EXAMPLE_NAMES).toEqual(expect.arrayContaining(["sample-gateway", "sample.jobs", "sample-worker"]));
+    for (const name of EXAMPLE_NAMES) {
+      expect(name.startsWith("sample")).toBe(true);
       for (const text of [...requests, ...kafkaLabels])
         expect(text.toLowerCase().includes(name.toLowerCase()), `${name} in "${text}"`).toBe(false);
+    }
+  });
+
+  it("each example answer names its new nodes from its own request, or with a placeholder", () => {
+    for (const [i, p] of INITIAL_PROMPTS.entries()) {
+      if (p.role !== "assistant") continue;
+      const request = INITIAL_PROMPTS[i - 1].content.toLowerCase();
+      for (const o of JSON.parse(p.content).ops as { op: string; label?: string }[])
+        if (o.label) expect(request.includes(o.label.toLowerCase()), o.label).toBe(true);
+    }
   });
 
   it("nor do they reuse the old examples' names", () => {
-    for (const old of ["Orders API", "orders-db", "billing-worker", "orders.created", "Partner"])
+    for (const old of ["Orders API", "orders-db", "billing-worker", "orders.created", "Partner", "Quill", "Zephyr"])
       expect(JSON.stringify(INITIAL_PROMPTS)).not.toContain(old);
   });
 });
@@ -244,5 +273,97 @@ describe("runOnDevice", () => {
     controller.abort();
     await expect(run).rejects.toMatchObject({ name: "AbortError" });
     expect(s.prompt).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("round 2: runaways", () => {
+  it("the reply schema bounds every string and array, and closes every object", () => {
+    const walk = (node: unknown, path: string): void => {
+      if (!node || typeof node !== "object") return;
+      const n = node as Record<string, unknown>;
+      if (n.type === "string" && !n.enum) expect(n.maxLength, `${path} maxLength`).toBeTypeOf("number");
+      if (n.type === "array") expect(n.maxItems, `${path} maxItems`).toBeTypeOf("number");
+      if (n.type === "object") expect(n.additionalProperties, `${path} additionalProperties`).toBe(false);
+      for (const [k, v] of Object.entries(n)) walk(v, `${path}.${k}`);
+    };
+    walk(REPLY_SCHEMA, "reply");
+    expect(REPLY_SCHEMA.properties.ops.maxItems).toBe(8);
+    expect(REPLY_SCHEMA.properties.summary.maxLength).toBe(160);
+  });
+
+  /**
+   * A streaming session like Chrome's: one generation at a time (an overlapping prompt is rejected), and
+   * an aborted prompt leaves no trace in its history. Records each prompt and its signal.
+   */
+  const streaming = (...replies: ("runaway" | string)[]) => {
+    const prompts: string[] = [];
+    const signals: AbortSignal[] = [];
+    let active = false;
+    return {
+      prompts,
+      signals,
+      prompt: vi.fn(async () => "unused"),
+      destroy: vi.fn(),
+      promptStreaming: (input: string, opts?: { signal?: AbortSignal }) => {
+        if (active) throw new DOMException("A prompt is already running.", "InvalidStateError");
+        active = true;
+        prompts.push(input);
+        signals.push(opts!.signal!);
+        const next = replies.shift()!;
+        opts?.signal?.addEventListener("abort", () => (active = false));
+        return new ReadableStream<string>({
+          pull(controller) {
+            if (opts?.signal?.aborted) return controller.error(new DOMException("aborted", "AbortError"));
+            if (next === "runaway") controller.enqueue('{"summary":"' + "x".repeat(500));
+            else {
+              controller.enqueue(next);
+              controller.close();
+              active = false;
+            }
+          },
+        });
+      },
+    };
+  };
+
+  it("aborts a runaway generation, then resends the whole request with the feedback", async () => {
+    const s = streaming("runaway", DLQ);
+    const r = await runOnDevice({ session: s, diagram, request: "Add a DLQ" });
+    expect(r).toMatchObject({ ok: true, attempts: 2 });
+    // The first generation was stopped before the retry began (the fake rejects overlapping prompts).
+    expect(s.signals[0].aborted).toBe(true);
+    // The retry stands alone: an aborted prompt leaves the history, so it carries the diagram and request.
+    expect(s.prompts[1].startsWith(s.prompts[0])).toBe(true);
+    expect(s.prompts[1]).toMatch(/Request: Add a DLQ\n\nYour last reply ran on past 2400 characters/);
+  });
+
+  it("goes on in a fresh session when there is one, and keeps the runaway's start for the evals", async () => {
+    const first = streaming("runaway");
+    const fresh = streaming(DLQ);
+    const r = await runOnDevice({ session: first, freshSession: async () => fresh, diagram, request: "Add a DLQ" });
+    expect(r).toMatchObject({ ok: true, attempts: 2 });
+    expect(fresh.prompts[0]).toContain("Request: Add a DLQ");
+    expect(fresh.destroy).toHaveBeenCalled();
+    const twice = await runOnDevice({ session: streaming("runaway", "runaway"), diagram, request: "x" });
+    expect(twice).toMatchObject({ ok: false, error: "The reply ran on past 2400 characters." });
+    expect(!twice.ok && twice.output?.raw.startsWith('{"summary":"xxx')).toBe(true);
+  });
+
+  it("an unknown reference to something not in the diagram says to add it", () => {
+    const empty: DiagramFile = { ...EMPTY };
+    expect(
+      planError({ i: 1, ref: "ECS workload", error: 'Unknown reference "ECS workload".', candidates: [] }, empty),
+    ).toBe("ECS workload isn't in the diagram. Add it with an add op (with a key), then connect it by that key.");
+    expect(
+      planError(
+        {
+          i: 0,
+          ref: "Inventory servce",
+          error: 'Unknown reference "Inventory servce".',
+          candidates: [{ id: "inventory", label: "Inventory service" }],
+        },
+        diagram,
+      ),
+    ).toMatch(/Labels it could mean: "Inventory service"/);
   });
 });

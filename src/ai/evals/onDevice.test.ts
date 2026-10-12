@@ -50,9 +50,11 @@ function perfectCreate(request: string): object[] {
   });
 }
 
-const answering = (answer: (prompt: string) => string) => async () => ({
-  prompt: async (input: string) => answer(input),
-});
+/** A fake session; a retry ("That failed: …") is answered as the first prompt was. */
+const answering = (answer: (prompt: string) => string) => async () => {
+  let first: string | undefined;
+  return { prompt: async (input: string) => answer((first ??= input)) };
+};
 
 describe("on-device evals", () => {
   it("the cases name real stencils and nodes", () => {
@@ -98,13 +100,20 @@ describe("on-device evals", () => {
 
   it("a model that adds the wrong thing fails, with the reason", async () => {
     const cases = onDeviceCases.filter((c) => c.id === "edit-dlq" || c.id === "create-1");
+    // Connected, so complete as far as the reply can tell, but the wrong stencil: the check says so.
+    const wrong = [
+      { op: "add", key: "g", kind: "Grafana", label: "Dashboards" },
+      { op: "connect", from: "Inventory service", to: "g" },
+    ];
+    // Into an empty diagram, the request's components are missing: the completeness check says which.
+    const lone = [{ op: "add", kind: "Grafana", label: "Dashboards" }];
     const results = await runOnDeviceEvals(
-      answering(() => reply([{ op: "add", kind: "Grafana", label: "Dashboards" }])),
+      answering((prompt) => reply(prompt.includes("Empty diagram.") ? lone : wrong)),
       cases,
     );
     expect(results.map((r) => r.pass)).toEqual([false, false]);
     expect(results[0].note).toMatch(/no new node of the right kind/);
-    expect(results[1].note).toMatch(/^missing /);
+    expect(results[1].note).toMatch(/^You added Dashboards but not the Kafka topic orders.created/);
     expect(resultsMarkdown(results)).toContain("| edit-dlq |");
   });
 
@@ -151,14 +160,30 @@ describe("on-device evals", () => {
     expect(failureCategory('Op 1 (rename) needs "target" and the new "label".')).toBe("format");
     expect(failureCategory("An unknown error occurred: kErrorUnknown")).toBe("model error");
     const cases = onDeviceCases.filter((c) => c.id === "edit-dlq" || c.id === "create-1");
+    expect(failureCategory("You added Redis but not the Go service, and nothing connects them.")).toBe("omission");
+    expect(failureCategory('Don\'t reuse names from the examples ("sample-worker")')).toBe("leak");
+    expect(failureCategory("The reply ran on past 2400 characters.")).toBe("runaway");
+    expect(failureCategory("ECS workload isn't in the diagram. Add it with an add op")).toBe("reference");
+    expect(failureCategory("A connection can't start and end at the same node; add the missing component first.")).toBe(
+      "structure",
+    );
     const results = await runOnDeviceEvals(
-      answering(() => reply([{ op: "add", kind: "Grafana", label: "Dashboards" }])),
+      answering((prompt) =>
+        reply(
+          prompt.includes("Empty diagram.")
+            ? [{ op: "add", kind: "Grafana", label: "Dashboards" }]
+            : [
+                { op: "add", key: "g", kind: "Grafana", label: "Dashboards" },
+                { op: "connect", from: "Inventory service", to: "g" },
+              ],
+        ),
+      ),
       cases,
     );
-    expect(results.map((r) => r.category)).toEqual(["stencil", "stencil"]);
+    expect(results.map((r) => r.category)).toEqual(["stencil", "omission"]);
     expect(results[0].output).toContain("Dashboards → grafana");
     const md = resultsMarkdown(results);
-    expect(md).toContain("Failures by category: stencil 2.");
+    expect(md).toMatch(/Failures by category: (stencil 1 · omission 1|omission 1 · stencil 1)\./);
     expect(md).toContain("| Case | Request | Result | Tries | ms | Category | Note | Model output |");
   });
 
@@ -236,5 +261,70 @@ describe("on-device evals", () => {
     );
     expect(results.filter((r) => !r.pass).map((r) => `${r.id}: ${r.note}`)).toEqual([]);
     expect(results).toHaveLength(Object.keys(replies).length + 1);
+  });
+
+  it("replays round 2's failures (two runs, Chrome 154): fixed outright, or on the retry the feedback asks for", async () => {
+    const add = (key: string, kind: string, label: string) => ({ op: "add", key, kind, label });
+    const link = (from: string, to: string) => ({ op: "connect", from, to });
+    // Answers shaped like the recorded mistakes; a second entry is the corrected retry.
+    const replies: Record<string, object[][]> = {
+      // Right label, wrong kind: fixed outright.
+      "create-6": [[add("f", "Lambda", "Azure function"), add("q", "Service Bus queue", "Jobs"), link("q", "f")]],
+      "create-16": [[add("m", "browser", "Mobile Client"), add("g", "API gateway", "Gateway"), link("m", "g")]],
+      "create-17": [
+        [add("fd", "Amazon API Gateway", "Front Door"), add("app", "App Service", "Web app"), link("fd", "app")],
+      ],
+      "create-19": [[add("p", "Go service", "Prometheus"), add("g", "Grafana", "Grafana"), link("p", "g")]],
+      "create-22": [[add("s", "Lambda", "Scheduler"), add("w", ".NET service", "Worker"), link("s", "w")]],
+      // A component connected but never added (and, for create-25, drawn backwards): fixed outright.
+      "create-15": [[add("cosmos", "Cosmos DB", "Container Cosmos DB"), link("Container Apps", "cosmos")]],
+
+      // "between" with one side connected: fixed outright.
+      "edit-between": [[add("c", "Redis cache", "Orders cache"), link("Order service", "c")]],
+      // Omissions, a leak and a component never added (medium confidence, so not added for it): the
+      // feedback asks, the retry answers.
+      "create-25": [
+        [add("ddb", "DynamoDB", "Table"), link("ddb", "ECS workload")],
+        [add("ecs", "ECS", "ECS workload"), add("ddb", "DynamoDB", "Table"), link("ecs", "ddb")],
+      ],
+      "create-12": [
+        [add("r", "Redis cache", "Redis")],
+        [add("g", "Go service", "API"), add("r", "Redis cache", "Redis"), link("g", "r")],
+      ],
+      "create-21": [
+        [add("e", "Event Hubs", "IoT Events")],
+        [add("d", "IoT devices", "Devices"), add("e", "Event Hubs", "IoT Events"), link("d", "e")],
+      ],
+      "create-28": [
+        [add("d", "generic database", "Database")],
+        [add("c", "component", "Component"), add("d", "generic database", "Database"), link("c", "d")],
+      ],
+      "create-23": [
+        [add("p", "external partner", "Partner"), add("g", "API gateway", "sample-gateway"), link("p", "g")],
+        [add("p", "external partner", "Partner"), add("w", "webhook", "Webhook"), link("p", "w")],
+      ],
+    };
+    const cases = onDeviceCases.filter((c) => c.id in replies);
+    const feedback: Record<string, string> = {};
+    const results = await runOnDeviceEvals(async () => {
+      let id = "";
+      let n = 0;
+      return {
+        prompt: async (input: string) => {
+          id ||= cases.find((c) => input.endsWith(`Request: ${c.request}`))!.id;
+          if (n) feedback[id] = input;
+          const answers = replies[id];
+          return reply(answers[Math.min(n++, answers.length - 1)]);
+        },
+      };
+    }, cases);
+    expect(results.filter((r) => !r.pass).map((r) => `${r.id}: ${r.note}`)).toEqual([]);
+    const tries = Object.fromEntries(results.map((r) => [r.id, r.attempts]));
+    for (const id of ["create-6", "create-16", "create-17", "create-19", "create-22", "create-15", "edit-between"])
+      expect(tries[id], id).toBe(1);
+    for (const id of ["create-12", "create-21", "create-28", "create-23", "create-25"]) expect(tries[id], id).toBe(2);
+    expect(feedback["create-25"]).toMatch(/You added Table but not the ECS workload/);
+    expect(feedback["create-12"]).toMatch(/You added Redis but not the Go service, and nothing connects them/);
+    expect(feedback["create-23"]).toMatch(/Don't reuse names from the examples/);
   });
 });
