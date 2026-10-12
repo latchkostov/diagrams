@@ -43,13 +43,13 @@ View, File and Present become icon-only, so the bar fits at 1024px without scrol
 | File menu                    | Notes                                                                                                                                                                                                                                                                   |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Save** (Ctrl+S)            | Goes back to wherever the diagram came from or was last saved: the same device file (File System Access) or the same file in Google Drive, OneDrive or Dropbox. Otherwise it asks where to save (or downloads, in browsers without the API). Ctrl+Shift+S is "Save as". |
-| **Open…** (Ctrl+O)           | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`, and docker-compose `.yml` / `.yaml`, several files at once. A draw.io file with several pages asks which page to open.                                                                                       |
+| **Open…** (Ctrl+O)           | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`, docker-compose and AsyncAPI `.yml` / `.yaml` / `.json`, several files at once. A draw.io file with several pages asks which page to open.                                                                    |
 | Open from ▸ / Save to ▸      | Only when at least one cloud provider is configured (see "Storage providers" below); otherwise hidden completely, and **Save as…** stays a plain row. Each lists **This device** first, then the configured providers. Save to ▸ always makes a new file.               |
 | **Export PNG**               | 2×, whole diagram, independent of pan and zoom.                                                                                                                                                                                                                         |
 | **Copy share link**          | One click; the toast's **Details** opens the dialog (length, warning above 8k characters, native Share).                                                                                                                                                                |
 | **Copy link with password…** | Encrypts the diagram into a `#e=` link with a password (8+ characters, strength hint); see "Share links and embeds" below.                                                                                                                                              |
 | More formats ▸               | Diagram file (`.diagram.json`, lossless, simulations included) · Image… (PNG or SVG; scale and transparent background behind **Options**) · draw.io · Copy as Mermaid · Mermaid file (`.mmd`) · Embed code… · Save as…                                                  |
-| Import from ▸                | Paste text… (JSON, draw.io XML, Mermaid or docker-compose, auto-detected) · Share link…                                                                                                                                                                                 |
+| Import from ▸                | Paste text… (JSON, draw.io XML, Mermaid, docker-compose or AsyncAPI, auto-detected) · Share link…                                                                                                                                                                       |
 
 You can also drop files anywhere on the page to open them (several at once: a compose file with its overrides).
 
@@ -118,8 +118,8 @@ Batch 1 of the plan in `docs/research/imports.md` (which has the full mapping ta
   a service on several goes where most of its connections are, and the report says so.
 - **The Import report** (`ui/ImportReportDialog.tsx`, lazy) opens from the toast's **Details** ("Imported “shop”
   from docker-compose: 15 nodes, 17 connections. 2 guesses.", 7 s when there's something to check) and from Ctrl+K
-  "Import report" while that diagram stays open. Sections: guesses with stencil chips (one undo step each, through
-  the AI panel's `swapStencil`) and **Other…** (a catalogue search); connections found in settings with the
+  "Import report" while that diagram stays open. Sections: guesses with stencil chips (one undo step each, the
+  editor's own stencil change) and **Other…** (a catalogue search); connections found in settings with the
   variable; not drawn, with a fixed reason; couldn't read. A name selects its node. The report is kept in memory
   (`useInterop`), never in the file, a share link or an export.
 - **Privacy.** An import is opened like any file from this device, so **New diagrams are private** applies. The
@@ -134,9 +134,43 @@ Batch 1 of the plan in `docs/research/imports.md` (which has the full mapping ta
   no values in the output), `tests/e2e/imports.spec.ts`, the CSP walk, the bundle-split guard
   (`src/interop/infra/`, `yaml` and the report are never startup JavaScript) and the Lab's "Imported: compose"
   overlap audit. The sniffers and the wiring add 0.8 kB gzip to the entry.
-- **Copy for this batch.** The drop overlay lists `docker-compose.yml`, the paste dialog names docker-compose, and
-  the start card has one line, "Have a docker-compose file? Drop it here." The plan's wider wording (Kubernetes,
-  AsyncAPI, Terraform) waits for the batches that import them.
+- **Copy.** The drop overlay lists `docker-compose.yml` and AsyncAPI, the paste dialog names both, and the start
+  card has one line, "Have a docker-compose or AsyncAPI file? Drop it here." Kubernetes and Terraform join the
+  wording with the batches that import them.
+
+### Infrastructure imports: AsyncAPI 2.x and 3.x (`src/interop/infra/asyncapi.ts`)
+
+Batch 2. Our own reader (about 4 kB gzip in the same lazy chunk): `@asyncapi/parser` compiles schemas with
+`new Function`, which the CSP forbids.
+
+- **One document is one application.** In 3.x `send` means it sends; 2.x inverts the words (`subscribe`: it sends,
+  `publish`: it receives), checked by the 2.6 fixture. An operation's `reply` draws the answer back.
+- **Joining.** Several documents are one diagram: a channel is its address on a server (protocol family and host),
+  so a producer in one file and a consumer in another meet on one node; apps with the same title are one node. The
+  same address on another cluster stays a separate topic.
+- **Servers** are boundaries ("Kafka · kafka-0.shop.internal:9092"), tinted by host (Azure, AWS, GCP), holding
+  their channels; apps stay outside.
+- **Channels** take a stencil from the protocol and binding: Kafka (Confluent Cloud and MSK by host), RabbitMQ
+  exchange or queue (`is: queue` wins when files disagree, and the report names the exchange), Service Bus by
+  host, SNS, SQS, Pub/Sub, Pulsar, NATS, Redis Streams and the new **MQTT Broker**. Solace, IBM MQ, JMS, STOMP,
+  HTTP and WebSocket channels are drawn as a Topic or Queue and listed as guesses with chips.
+- **Typed messages.** A send with one message sets the edge's `emits`; a receive lists its messages in `filter`;
+  the Kafka `groupId` (`const` or a single `enum`) becomes `group`. An address that says dead letter (`dlq`,
+  `dlt`, `dead-letter`) is the app's DLQ route. Kafka `partitions` and Avro or Protobuf content types (as
+  `contentType`, which the schema-registry check reads) go on the channel.
+- **Schema Registry** from a Kafka server's `schemaRegistryUrl`, or added when its messages use Avro or Protobuf
+  (the report says so), with **Depends on** from every app using that server.
+- **Imported traffic.** A saved simulation of 1 msg/s for 2 minutes at each app where messages start (one that
+  sends and whose inputs nobody in the files produces), with its first message type, so the first Go live shows
+  typed messages flowing. The report lists the entry points and rates.
+- **The report** also lists channels no operation uses, messages no channel uses, security schemes and payload
+  schemas (counted, not drawn), channels with no producer in the files, and every `$ref` it couldn't follow.
+- **`$ref`.** Local (`#/…`) and into files opened together; remote ones are never fetched and are listed. 32
+  references in a row at most, cycles stop where they close, and 10,000 per import. A document whose channels
+  can't be read at all fails with the first reason ("…a remote reference, never fetched: open that file too").
+- **Tests.** `infra/asyncapi.test.ts` (the three fixtures together and alone, protocols, replies, clusters, the
+  hostile refs), the AsyncAPI part of `tests/e2e/imports.spec.ts` (join, Go live with Imported traffic, 2.6
+  direction, remote `$ref`, no network) and the Lab's "Imported: AsyncAPI" overlap audit. The entry grows by 48 B.
 
 ### draw.io (`src/interop/drawio/`)
 
@@ -542,7 +576,7 @@ again.
 | `src/interop/formats.ts`                                   | Format detection, `importText` (one entry point for every import)                                   |
 | `src/interop/codec.ts`, `xml.ts`                           | DEFLATE / base64url codecs; a dependency-free XML reader (Node has no DOMParser)                    |
 | `src/interop/infer.ts`                                     | Label keywords → stencil                                                                            |
-| `src/interop/infra/*`                                      | Infrastructure imports: YAML, the compose reader, stencils, settings, mapping, layout (lazy)        |
+| `src/interop/infra/*`                                      | Infrastructure imports: YAML, the compose and AsyncAPI readers, stencils, settings, mapping, layout |
 | `src/interop/ui/ImportReportDialog.tsx`                    | The Import report (lazy)                                                                            |
 | `src/interop/drawio/{read,write,mapping}.ts`               | draw.io converter plus fixtures in `drawio/fixtures/`                                               |
 | `src/interop/mermaid/{read,write}.ts`                      | Mermaid converter                                                                                   |

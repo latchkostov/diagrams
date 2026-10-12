@@ -2,6 +2,19 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Import AsyncAPI documents (2026-10)
+
+No habit changes. New:
+
+- **Open…**, a drop and **Paste text** read **AsyncAPI** 2.x and 3.x documents. Open several at once and they join
+  into one system on their channels: a producer in one file and a consumer in another become one flow. Servers
+  become boundaries, channels get their broker's stencil (Kafka, RabbitMQ, Service Bus, SNS, SQS, Pub/Sub, MQTT…),
+  and edges carry the message types.
+- Each import saves an **Imported traffic** simulation: Go live and pick it to watch the messages flow. The Import
+  report says where the traffic starts and how fast.
+- References (`$ref`) are followed inside the files you open; a remote one is never fetched, and the report lists it.
+- New stencil: **MQTT Broker** (also for Mosquitto, EMQX and HiveMQ in docker-compose files).
+
 ## Import docker-compose files (2026-10)
 
 One habit changes: **Open…** and a drop take several files at once. Opening one file works as before. New:

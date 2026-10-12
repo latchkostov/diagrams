@@ -97,6 +97,7 @@ export const STENCIL_ALIASES: Record<string, readonly string[]> = {
   "kafka.streams": ["kstreams", "streams", "stream processing", "stateful"],
   debezium: ["cdc", "change data capture", "outbox", "binlog", "wal"],
   "pulsar.topic": ["pulsar", "pubsub", "streamnative"],
+  "mqtt.broker": ["mqtt", "mosquitto", "emqx", "hivemq", "iot"],
   "aws.msk": ["msk", "managed kafka", "kafka"],
   "aws.mq": ["activemq", "rabbitmq", "jms", "amqp", "broker"],
   flink: ["stream processing", "streaming", "cep", "windowing"],

@@ -150,20 +150,18 @@ services:
 });
 
 describe("format detection", () => {
-  it("recognises compose, and names the formats that aren't imported yet", async () => {
+  it("recognises compose and AsyncAPI, and names the formats that aren't imported yet", async () => {
     expect(detectFormat("services:\n  a: {}\n")).toBe("compose");
     expect(detectFormat("version: '3'\nservices:\n  a: {}\n")).toBe("compose");
     expect(detectFormat('{"format":"diagrams/v1","nodes":[],"edges":[]}')).toBe("native");
-    for (const [file, words] of [
-      ["k8s/orders-api.yaml", "Kubernetes manifests"],
-      ["asyncapi/orders-service.asyncapi.yaml", "an AsyncAPI document"],
-    ] as const) {
-      const outcome = await importText(read(file), file);
-      expect(outcome).toEqual({
-        ok: false,
-        error: `This looks like ${words}. Importing those isn't supported yet; docker-compose files are.`,
-      });
-    }
+    expect(detectFormat(read("asyncapi/orders-service.asyncapi.yaml"))).toBe("asyncapi");
+    expect(detectFormat('{"asyncapi": "2.6.0", "info": {}}')).toBe("asyncapi");
+    const outcome = await importText(read("k8s/orders-api.yaml"), "orders-api.yaml");
+    expect(outcome).toEqual({
+      ok: false,
+      error:
+        "This looks like Kubernetes manifests. Importing those isn't supported yet; docker-compose files and AsyncAPI documents are.",
+    });
     expect(sniffInfra('apiVersion: v1\nkind: ConfigMap\ndata:\n  x: "{{ .Values.x }}"\n')).toBe("helm");
     expect(sniffInfra('{"format_version":"1.2","terraform_version":"1.9.0"}')).toBe("terraform");
     expect(sniffInfra('{"asyncapi": "3.0.0"}')).toBe("asyncapi");

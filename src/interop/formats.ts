@@ -22,13 +22,14 @@ export function preloadFormats() {
     void load().catch(() => {});
 }
 
-export type FormatId = "native" | "drawio" | "mermaid" | "compose";
+export type FormatId = "native" | "drawio" | "mermaid" | "compose" | "asyncapi";
 
 export const FORMAT_LABEL: Record<FormatId, string> = {
   native: "Live Diagrams file",
   drawio: "draw.io diagram",
   mermaid: "Mermaid flowchart",
   compose: "docker-compose file",
+  asyncapi: "AsyncAPI document",
 };
 
 /** File-picker accept list. */
@@ -39,7 +40,7 @@ export function detectFormat(text: string, fileName = ""): FormatId | undefined 
   const name = fileName.toLowerCase();
   const head = text.replace(/^\uFEFF/, "").trimStart();
   const infra = sniffInfra(head);
-  if (infra === "compose") return "compose";
+  if (infra === "compose" || infra === "asyncapi") return infra;
   if (head.startsWith("{")) return infra ? undefined : "native";
   if (looksLikeDrawio(head)) return "drawio";
   if (looksLikeMermaid(head)) return "mermaid";
@@ -122,10 +123,10 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
       const { diagram, warnings } = reader.parseMermaid(text, fallbackTitle);
       return validated(format, diagram, warnings);
     }
-    if (format === "compose" || later) {
+    if (format === "compose" || format === "asyncapi" || later) {
       const reader = await infraReader();
       readerErrors = [reader.ImportError];
-      return reader.importInfra(text, fileName, later);
+      return reader.importInfra(text, fileName, later, format);
     }
   } catch (err) {
     if (readerErrors.some((type) => err instanceof type)) return { ok: false, error: (err as Error).message };
@@ -134,7 +135,7 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
   return {
     ok: false,
     error:
-      "That doesn't look like a diagram we can read. Supported: Live Diagrams files (.diagram.json), draw.io (.drawio / .xml), Mermaid flowcharts (.mmd) and docker-compose files.",
+      "That doesn't look like a diagram we can read. Supported: Live Diagrams files (.diagram.json), draw.io (.drawio / .xml), Mermaid flowcharts (.mmd), docker-compose files and AsyncAPI documents.",
   };
 }
 

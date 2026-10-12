@@ -21,6 +21,8 @@ export interface ImportComponent {
   hint: StencilHint;
   /** A stencil the reader is sure of (a topic, the Users entry): resolveStencil is skipped. */
   stencil?: string;
+  /** The reader's `stencil` is a guess (an MQTT-like protocol drawn as a Topic): listed with these chips. */
+  guess?: { evidence?: string; alternatives: string[] };
   /** An ImportGroup's key. */
   group?: string;
   props?: Record<string, unknown>;
@@ -29,7 +31,7 @@ export interface ImportComponent {
 /** Why a link was drawn: the setting name (never its value), or the file's own key. */
 export interface Evidence {
   /** "setting": inferred from a setting's value; the rest are the file's own structure. */
-  source: "setting" | "depends_on" | "secrets" | "configs" | "ports";
+  source: "setting" | "depends_on" | "secrets" | "configs" | "ports" | "spec";
   /** The setting's name ("SPRING_DATASOURCE_URL"). */
   name?: string;
   /** "reads", "writes", "couldn't tell what it reads or writes"… */
@@ -73,6 +75,15 @@ export interface ImportGraph {
   unread: ReportLine[];
   /** Placement notes ("orders-api is on frontend and backend; shown in backend"). */
   notes: string[];
+  /** Entry traffic for an "Imported traffic" simulation: where messages start, so Go live shows them flow. */
+  traffic?: ImportTraffic[];
+}
+
+export interface ImportTraffic {
+  /** A component's key. */
+  key: string;
+  messageType?: string;
+  ratePerSec: number;
 }
 
 /** A node drawn as a guess: its best stencil, with the alternatives offered as chips. */
@@ -114,4 +125,6 @@ export interface ImportReport {
   notDrawn: ReportLine[];
   unread: ReportLine[];
   notes: string[];
+  /** The "Imported traffic" simulation's entry points, so the report says where messages start and how fast. */
+  traffic?: { nodeId: string; label: string; messageType?: string; ratePerSec: number; seconds: number }[];
 }

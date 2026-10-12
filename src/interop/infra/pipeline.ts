@@ -2,6 +2,8 @@ import { validateDiagram } from "../native";
 import type { FormatId, ImportFile, ImportOutcome } from "../formats";
 import type { InfraSniff } from "../sniff";
 import { readCompose, type SourceFile } from "./compose";
+import { readAsyncApi } from "./asyncapi";
+import type { ImportGraph } from "./graph";
 import { graphToDiagram } from "./map";
 import { ImportError } from "./yaml";
 
@@ -13,30 +15,41 @@ export { ImportError };
 /** At most this many files in one import. */
 export const MAX_FILES = 100;
 
-export function importCompose(files: readonly SourceFile[], others: readonly SourceFile[] = []): ImportOutcome {
-  const { diagram, report } = graphToDiagram(readCompose(files, others));
+/** The shared tail of every infrastructure import: map, lay out, validate. */
+function outcomeOf(format: FormatId, graph: ImportGraph): ImportOutcome {
+  const { diagram, report } = graphToDiagram(graph);
   const r = validateDiagram(diagram);
-  return r.ok
-    ? { ok: true, format: "compose", diagram: r.diagram, warnings: r.warnings, report }
-    : { ok: false, error: r.error };
+  return r.ok ? { ok: true, format, diagram: r.diagram, warnings: r.warnings, report } : { ok: false, error: r.error };
+}
+
+export function importCompose(files: readonly SourceFile[], others: readonly SourceFile[] = []): ImportOutcome {
+  return outcomeOf("compose", readCompose(files, others));
+}
+
+/** One or several AsyncAPI documents, joined on their channels. */
+export function importAsyncApi(files: readonly SourceFile[]): ImportOutcome {
+  return outcomeOf("asyncapi", readAsyncApi(files));
 }
 
 /** Recognised, but not imported yet: said plainly rather than "not a diagram". */
 const LATER: Record<InfraSniff, string> = {
   compose: "a docker-compose file",
+  asyncapi: "an AsyncAPI document",
   helm: "a Helm template",
   kubernetes: "Kubernetes manifests",
-  asyncapi: "an AsyncAPI document",
   terraform: "a Terraform plan",
 };
 
-/** One text: a compose file, or a format that's recognised but not imported yet (`later`). */
-export function importInfra(text: string, fileName: string, later?: InfraSniff): ImportOutcome {
+/**
+ * One text: a compose file, an AsyncAPI document, or a format that's recognised but not imported yet (`later`).
+ */
+export function importInfra(text: string, fileName: string, later?: InfraSniff, format?: FormatId): ImportOutcome {
   if (later)
     return {
       ok: false,
-      error: `This looks like ${LATER[later]}. Importing those isn't supported yet; docker-compose files are.`,
+      error: `This looks like ${LATER[later]}. Importing those isn't supported yet; docker-compose files and AsyncAPI documents are.`,
     };
+  if (format === "asyncapi") return importAsyncApi([{ name: fileName || "asyncapi.yaml", text }]);
   return importCompose([{ name: fileName || "docker-compose.yml", text }]);
 }
 
@@ -45,7 +58,7 @@ const isEnvFile = (name: string) => /(^|[\\/])\.env(\.[\w.-]+)?$|\.env$/i.test(n
 
 /**
  * Several files at once. They're grouped by format, and the largest group imports: a compose file with its
- * overrides (and any .env files) is one diagram. A diagram file, draw.io or Mermaid group opens its first
+ * overrides (and any .env files) is one diagram, and so are several AsyncAPI documents (joined on their channels). A diagram file, draw.io or Mermaid group opens its first
  * file. The rest are listed as not read.
  */
 export async function importMany(
@@ -66,9 +79,9 @@ export async function importMany(
   if (!format || !group) return importOne(files[0].text, files[0].name);
   const rest = files.filter((f) => !group.includes(f) && !(format === "compose" && envFiles.includes(f)));
   const restLines = rest.map((f) => ({ name: f.name, reason: "not read: a different kind of file" }));
-  if (format === "compose") {
+  if (format === "compose" || format === "asyncapi") {
     try {
-      const outcome = importCompose(group, envFiles);
+      const outcome = format === "compose" ? importCompose(group, envFiles) : importAsyncApi(group);
       if (outcome.ok === true && outcome.report) outcome.report.unread.push(...restLines);
       return outcome;
     } catch (err) {

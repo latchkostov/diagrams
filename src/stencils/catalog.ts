@@ -270,6 +270,16 @@ const messaging = group("messaging", [
     "topic",
   ],
   [
+    "mqtt.broker",
+    "MQTT Broker",
+    "MQTT",
+    "mqtt",
+    "#A855A8", // Brighter than the logo's #660066: the accent is also the focus ring (3:1 on light and dark).
+    "topic",
+    "Lightweight pub/sub for devices (Mosquitto, EMQX, HiveMQ); every subscriber to a topic gets a copy.",
+    "topic",
+  ],
+  [
     "aws.msk",
     "Amazon MSK",
     "AWS",
