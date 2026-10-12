@@ -1,0 +1,130 @@
+name: Nightly
+# The checks a pull request run skips for speed: the whole e2e suite on the Vite dev server (with the
+# dev-only project), and the production-build suite three times over with no retries, to surface flakes.
+# A failure opens (or updates) the one open issue labelled `nightly-failure`.
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+
+jobs:
+  e2e:
+    name: ${{ matrix.label }} ${{ matrix.shard }}/${{ matrix.total }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Dev server: every project (chromium, dev, subpath) once. E2E_TARGET=dev serves both the
+          # chromium and dev projects from `pnpm dev`; subpath still needs the production build, which
+          # the action makes. Tests that read the e2e build skip (lazy-examples.spec.ts).
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 1, total: 4 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 2, total: 4 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 3, total: 4 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 4, total: 4 }
+          # Production build (as on pull requests), each test three times.
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 1, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 2, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 3, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 4, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 5, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 6, total: 6 }
+    steps:
+      - uses: actions/checkout@v7
+      # The same setup, builds and shard run as pull requests (ci.yml), with no retries: a test that fails
+      # once out of its runs is a flake to fix.
+      - name: Playwright shard
+        uses: ./.github/actions/e2e
+        with:
+          target: ${{ matrix.target }}
+          shard: ${{ matrix.shard }}
+          total: ${{ matrix.total }}
+          retries: "0"
+          repeat-each: ${{ matrix.repeat }}
+          blob-name: report-${{ matrix.suite }}-${{ matrix.shard }}.zip
+      - name: Durations
+        if: ${{ !cancelled() }}
+        run: node scripts/e2e-durations.mjs tests/.output/results.json 15 >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results-${{ matrix.suite }}-${{ matrix.shard }}
+          path: tests/.output/results.json
+          retention-days: 14
+      - name: Upload report and traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-output-${{ matrix.suite }}-${{ matrix.shard }}
+          path: |
+            tests/.output/report
+            tests/.output/results
+          retention-days: 14
+
+  # Opens the `nightly-failure` issue, or updates the open one (its body is the latest failure, and a
+  # comment notifies its subscribers), listing the failed tests and linking the run.
+  report:
+    name: Report failure
+    needs: e2e
+    if: failure() && needs.e2e.result == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: nightly-results-*
+          path: results
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          args=()
+          for f in results/nightly-results-dev-*/results.json; do
+            [ -f "$f" ] && args+=("Dev server: every project, once=$f")
+          done
+          for f in results/nightly-results-repeat-*/results.json; do
+            [ -f "$f" ] && args+=("Production build: each test three times=$f")
+          done
+          failures="$(node scripts/e2e-failures.mjs "${args[@]}")"
+          {
+            echo "The nightly e2e run failed on ${GITHUB_SHA:0:7}: $RUN_URL"
+            echo
+            if [ -n "$failures" ]; then
+              echo "$failures"
+            else
+              echo "No test failed in the recorded results: a job failed outside the tests. See the run."
+            fi
+            echo
+            echo "Each test ran once on the dev server and three times on the production build, with no retries."
+            echo "Fix the cause; this issue stays open until someone closes it."
+          } > body.md
+          # An issue body holds at most 65,536 characters.
+          head -c 60000 body.md > issue.md
+          gh label create nightly-failure --color B60205 --description "The nightly e2e run failed" 2> /dev/null || true
+          number="$(gh issue list --label nightly-failure --state open --limit 1 --json number --jq '.[0].number // empty')"
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file issue.md
+            gh issue comment "$number" --body "Failed again: $RUN_URL"
+          else
+            gh issue create --title "Nightly e2e run failed" --label nightly-failure --body-file issue.md
+          fi

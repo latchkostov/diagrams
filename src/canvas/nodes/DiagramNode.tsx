@@ -1,8 +1,9 @@
-import { memo, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { memo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Handle, useReactFlow, type NodeProps } from "@xyflow/react";
 import { FALLBACK_STENCIL, getStencil } from "../../stencils/registry";
 import { getNodeVariant } from "../../harness/nodeVariants";
 import { useSettings } from "../../harness/settings";
+import { useSelectOnMount } from "../../components/useSelectOnMount";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { DiagramFlowNode } from "../types";
@@ -92,11 +93,7 @@ function NodeEditor({
     done.current = true;
     onDone(next);
   };
-  useEffect(() => {
-    // A frame later: the context menu that opened the editor may still be releasing focus.
-    const id = requestAnimationFrame(() => (focus === "sublabel" ? second : first).current?.select());
-    return () => cancelAnimationFrame(id);
-  }, [focus]);
+  useSelectOnMount(focus === "sublabel" ? second : first);
   const onKey = (e: KeyboardEvent) => {
     e.stopPropagation();
     if (e.key === "Enter") finish({ label: l, sublabel: s });

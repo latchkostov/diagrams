@@ -33,12 +33,24 @@ test.describe("Dictate", () => {
     await expect(page.getByTestId("ai-request")).toHaveValue("A kafka topic orders");
     await expect(page.getByTestId("ai-interim")).toHaveText("consumed by");
 
-    // The browser ends the session on silence: dictation carries on in a new one.
+    // The browser ends the session on silence: dictation carries on in a new one. That session's first
+    // words can arrive before its start event: they're committed once, and its later (cumulative) result
+    // lists don't repeat them.
+    await speech(page, "holdStarts");
     await speech(page, "silence");
     await expect.poll(async () => (await speechState(page)).starts).toBe(2);
-    await expect(mic(page)).toHaveAttribute("aria-pressed", "true");
     await speech(page, "result", [["consumed by billing-worker", true]]);
     await expect(page.getByTestId("ai-request")).toHaveValue("A kafka topic orders consumed by billing-worker");
+    await speech(page, "releaseStart");
+    await expect.poll(async () => (await speechState(page)).active).toBe(1);
+    await expect(mic(page)).toHaveAttribute("aria-pressed", "true");
+    await speech(page, "result", [
+      ["consumed by billing-worker", true],
+      ["and shipping", true],
+    ]);
+    await expect(page.getByTestId("ai-request")).toHaveValue(
+      "A kafka topic orders consumed by billing-worker and shipping",
+    );
 
     await mic(page).click();
     await expect(mic(page)).toHaveAttribute("aria-pressed", "false");

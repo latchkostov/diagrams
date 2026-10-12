@@ -57,6 +57,14 @@ describe("record state machine", () => {
   it("stopping before anything is recorded cancels", () => {
     expect(run({ type: "open" }, { type: "start" }, { type: "granted" }, { type: "stop" })).toEqual(initialRecordState);
     expect(run({ type: "open" }, { type: "start" }, { type: "stop" })).toEqual(initialRecordState);
+    // Recording, but the recorder hadn't started yet.
+    const unstarted = run(
+      { type: "open" },
+      { type: "start" },
+      { type: "granted", count: 0 },
+      { type: "stop", unstarted: true },
+    );
+    expect(unstarted).toEqual(initialRecordState);
   });
 
   it("a recorder failure lands in the dialog with its message, never stuck", () => {

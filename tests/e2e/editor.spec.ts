@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox } from "./fixtures";
 
 // Editor UX: context menus, keyboard, undo / redo, clipboard, inspector, arrange.
 // Selectors are data-testid only. Uses the Kafka example (ids from src/examples/kafka-order-pipeline.json).
@@ -25,18 +25,7 @@ async function clickEmpty(page: Page) {
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
 /** The element's box once it has stopped moving (two equal readings, a frame apart). */
 async function settledBox(locator: import("@playwright/test").Locator) {
-  let last = "";
-  await expect
-    .poll(
-      async () => {
-        const now = JSON.stringify(await locator.boundingBox());
-        const still = now === last;
-        last = now;
-        return still;
-      },
-      { intervals: [50, 100, 100, 200] },
-    )
-    .toBe(true);
+  await waitForStableBox(locator);
   return requiredBox(locator);
 }
 const requiredBox = async (locator: import("@playwright/test").Locator) => {

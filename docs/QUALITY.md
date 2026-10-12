@@ -63,9 +63,10 @@ build that bundles the test storage provider, so `pnpm build` on CI proves produ
   `master`). If `master` moved in between, the tree differs and everything runs.
 - **Types, lint, unit, build:** `tsc`, `pnpm lint`, `pnpm format:check`, `pnpm test:coverage`, `pnpm build`
   (with the test-hook and private-example guards), then `pnpm size`. Runs on every event, beside e2e.
-- **E2E 1/6 … 6/6** (after Detect changes): the Playwright suite split with `--shard`, three workers each
-  (the runners have 4 vCPUs). Each shard builds the e2e and production bundles while apt installs
-  Chromium's system libraries, then runs with `E2E_PREBUILT=1`. The pnpm store is cached by lockfile and
+- **E2E 1/6 … 6/6** (after Detect changes): the Playwright suite in six shards of whole spec files, three
+  workers each (the runners have 4 vCPUs). The local action `.github/actions/e2e` (shared with the nightly
+  workflow, so both test the same setup) builds the e2e and production bundles while apt installs Chromium's
+  system libraries, then runs the shard with `E2E_PREBUILT=1`. The pnpm store is cached by lockfile and
   Chromium by Playwright version. Each shard writes its slowest tests, slowest spec files and any test that
   needed a retry to the job summary, and uploads the JSON report (`e2e-durations-<n>`, 30 days) for
   timing analysis. On failure it uploads its HTML report and traces (`playwright-output-<n>`), and
@@ -74,13 +75,47 @@ build that bundles the test storage provider, so `pnpm build` on CI proves produ
   skipped e2e matrix counts as passed. On a passing pull request run it uploads a
   `ci-tested-tree-<tree>` marker, which the merge's push run looks up to skip the matrix.
 
-Sharding is per test (`fullyParallel`), in file order, so a shard's time depends on which specs it gets.
-Check the job summaries when adding slow tests.
+Shards are balanced by measured time, not by test count. `scripts/e2e-shard.mjs` deals the spec files out
+longest first, each to the least loaded shard, using the seconds per file in `tests/e2e-timings.json`.
+Inside a shard, `fullyParallel` spreads the tests over the workers. Playwright's own `--shard` splits by
+test count in file order, which put the slow specs together: two shards ran 35 to 55 s longer than the rest.
+A spec file missing from the timings counts as an average one. Setup and builds cost every shard about the
+same (35 to 40 s), so only test time needs balancing. Refresh the timings from the latest pull request run
+when the shards' wall times drift apart, or after adding, speeding up or splitting a slow spec. Use runs
+of the current code: averaging in older runs left the first balanced split 54 s apart, because specs had
+since got faster or slower.
+
+```sh
+gh run download <run-id> -p 'e2e-durations-*' -D /tmp/durations
+node scripts/e2e-shard.mjs --update /tmp/durations/*/results.json
+node scripts/e2e-shard.mjs --plan 6   # each shard's files and projected seconds
+```
+
+Keep single tests short: a shard can't finish before its longest test. Split a long sweep into parts
+(`lab.spec.ts` and `layout.spec.ts` take every Nth preset or fixture per test) rather than raising its timeout.
 
 A newer push to the same branch cancels the running workflow. `CI=true` keeps its meaning: Playwright
 retries (2), three workers and `E2E_TARGET=build`, longer Vitest timeouts, and scaled perf budgets
 (`src/test/perfBudget.ts`). Retries keep a flaky test from blocking a merge, but the job summary lists
 every test that needed one: treat those as bugs.
+
+### Nightly
+
+`.github/workflows/nightly.yml` runs every night (04:23 UTC) and on demand (Actions › Nightly › Run
+workflow). It covers what pull requests skip for speed, with no retries:
+
+- **Dev server 1/4 … 4/4:** the whole suite with `E2E_TARGET=dev`: the `chromium` and `dev` projects on
+  the Vite dev server, and `subpath` on the production build. Checks of the e2e build itself skip
+  (`E2E_TARGET` in `tests/e2e/fixtures.ts`).
+- **Build ×3 1/6 … 6/6:** the production-build suite, as on pull requests, with `--repeat-each=3`. A test
+  that fails once in three runs is a flake.
+
+When any of them fails, **Report failure** opens an issue labelled `nightly-failure` (creating the label
+if needed), or, when one is already open, replaces its body and comments on it. The body lists each failed
+test with how many of its runs failed and the first error line (`scripts/e2e-failures.mjs`), and links the
+run. It uses the workflow's `GITHUB_TOKEN` with `issues: write` in that job only (`contents: read`
+elsewhere). Close the issue once the cause is fixed. Each job uploads its JSON report
+(`nightly-results-<suite>-<n>`), and its HTML report and traces when it fails.
 
 ## Accessibility
 

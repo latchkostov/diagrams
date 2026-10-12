@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas } from "./fixtures";
+import { test, expect, gotoCanvas, viewportTransform, waitForStableViewport } from "./fixtures";
 
 // Polish and reliability: the selection stays in view when the inspector opens, the live bar
 // names the simulation being edited, edge labels sit under particles while live, viewport
@@ -34,12 +34,17 @@ async function transformsAfter(page: Page, testId: string) {
 }
 
 async function panAway(page: Page) {
+  // The opening fit must land first: a fit that finishes after the drag would undo it.
+  await waitForStableViewport(page);
+  const fitted = await viewportTransform(page);
   const wrap = await box(page.getByTestId("canvas-wrap"));
   // The top strip of the pane is empty after a fit (it keeps clear of the title card).
   await page.mouse.move(wrap.x + wrap.width / 2, wrap.y + 70);
   await page.mouse.down();
   await page.mouse.move(wrap.x + wrap.width / 2 - 260, wrap.y + 140, { steps: 6 });
   await page.mouse.up();
+  await expect.poll(() => viewportTransform(page)).not.toBe(fitted);
+  await waitForStableViewport(page);
 }
 
 test.describe("polish", () => {

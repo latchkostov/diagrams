@@ -43,7 +43,8 @@ export type RecordEvent =
   | { type: "granted"; count?: number }
   | { type: "denied"; message: string }
   | { type: "tick"; at: number }
-  | { type: "stop" }
+  /** `unstarted`: the recorder hadn't started (it starts two frames after the countdown), so nothing was recorded. */
+  | { type: "stop"; unstarted?: boolean }
   | { type: "finished"; result: RecordResult }
   | { type: "failed"; message: string }
   | { type: "close" }
@@ -73,8 +74,9 @@ export function recordReducer(state: RecordState, event: RecordEvent): RecordSta
         ? { ...state, count: state.count - 1 }
         : { ...state, phase: "recording", count: 0, startedAt: event.at };
     case "stop":
-      if (state.phase === "recording") return { ...state, phase: "stopping" };
-      // Nothing recorded yet: stopping during the countdown (or the prompt) just cancels.
+      // Nothing recorded yet: stopping during the countdown (or the prompt, or before the recorder starts)
+      // just cancels.
+      if (state.phase === "recording") return event.unstarted ? initialRecordState : { ...state, phase: "stopping" };
       if (state.phase === "countdown" || state.phase === "requesting") return initialRecordState;
       return state;
     case "finished":

@@ -21,7 +21,8 @@ it("limits development layout audits to public fixtures instead of picker enumer
   const spec = readFileSync("tests/e2e/layout.spec.ts", "utf8");
   expect(spec).not.toContain("pickerSlugs");
   expect(spec).not.toContain("HTMLSelectElement");
-  expect(spec).toContain("of publicExamples");
+  // The audits walk the public fixtures, all at once or in parts.
+  expect(spec).toMatch(/of publicExamples|publicExamples\.filter\(/);
   // The production subpath spec verifies the build's public-only picker; it never visits dev.
   for (const file of readdirSync("tests/e2e").filter((f) => f.endsWith(".spec.ts") && f !== "subpath.spec.ts")) {
     const source = readFileSync(`tests/e2e/${file}`, "utf8");
