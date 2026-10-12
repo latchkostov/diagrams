@@ -3,9 +3,20 @@ import { test, expect, expectNoErrors } from "./fixtures";
 
 // Record video captures the tab, so whatever the compositor shows is in the video, worker canvases
 // included. A real tab capture, accepted automatically (full Chromium's headless mode supports it).
-// Each layer is checked on its own: with the simulation paused, a layer's painted pixels (read
-// through the renderer, `__liveProbe`) are looked up in a captured frame, then the layer alone is
-// hidden and a newer captured frame must differ there.
+//
+// Each layer is checked on its own, with everything standing still (the simulation and the slow-motion
+// replay paused, the march with them):
+//  1. Find where the layer paints (read through the renderer, `__liveProbe`). The live canvases above
+//     it are hidden while it's measured (particles and trails ride the busiest edges, right over the
+//     ants), and spots under DOM above it (a label pill, a node, a badge) are left out: the video
+//     can't show the layer there, whatever the capture does. Spots where the layer's colour is close
+//     to what's beneath it (a white caption card on the light canvas) are left out too: showing or
+//     hiding it changes nothing measurable.
+//  2. Capture a frame, hide that layer, capture again once the captured frames have settled.
+//  3. At every remaining spot, the frame with the layer must be nearer the layer's colour than the
+//     frame without it, by a good part of the difference. A thin dash comes out blurred (the capture
+//     scales the tab, to 1080p here), so a spot is looked at as its 3x3 neighbourhood and never needs
+//     the exact colour.
 
 const KAFKA = "kafka-order-pipeline";
 const canvas = (page: Page) => page.getByTestId("live-canvas");
@@ -29,13 +40,28 @@ async function goLive(page: Page, renderer: "worker" | "main") {
   await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(40);
 }
 
+/** Starts a take of what's on screen now (no restart), then waits for the presentation refit to end. */
 async function record(page: Page) {
   await page.getByTestId("live-more").click();
   await page.getByTestId("live-record").click();
+  // In slow motion the take would otherwise rewind the replay and play it: keep it where it is.
+  const fromStart = page.getByTestId("record-opt-slowmo");
+  if (await fromStart.isVisible()) await fromStart.uncheck();
   await page.getByTestId("record-start").click();
   await expect(page.getByTestId("record-indicator")).toBeVisible({ timeout: 10_000 });
-  // Recording presents the diagram: let the refit settle (nothing else moves while paused).
-  await page.waitForTimeout(1500);
+  // Recording presents the diagram and refits it: wait until the view stops moving.
+  let last = "";
+  await expect
+    .poll(
+      async () => {
+        const now = (await canvas(page).getAttribute("style")) ?? "";
+        const still = now === last;
+        last = now;
+        return still;
+      },
+      { intervals: [400], timeout: 15_000 },
+    )
+    .toBe(true);
 }
 
 type Layer = "base" | "over" | "march" | "glow";
@@ -46,25 +72,40 @@ const TEST_ID: Record<Layer, string> = {
   glow: "live-toggle-glow",
 };
 
+interface LayerCheck {
+  /** Solid painted spots looked up. */
+  points: number;
+  /** Of those, spots nothing covers and where the layer stands out from what's beneath it. */
+  shown: number;
+  /** Of the shown spots, those the video draws nearer the layer's colour with the layer than without. */
+  lost: number;
+  /** The glow: spots in its canvas that change when it's hidden (it should have none: the toggle is out of the take). */
+  changed: number;
+}
+
 /**
- * Where `layer` paints (up to 300 points, in client px; the glow: its whole canvas), how many of those
- * a captured frame changes at when that layer alone is hidden. `within`: only paint inside this rect.
+ * How `layer` shows up in the captured video (see the top of the file). `within`: only paint inside
+ * this client rect.
  */
-async function layerInVideo(page: Page, layer: Layer, within?: { x: number; y: number; w: number; h: number }) {
+async function layerInVideo(
+  page: Page,
+  layer: Layer,
+  within?: { x: number; y: number; w: number; h: number },
+): Promise<LayerCheck> {
   return page.evaluate(
     async ([layer, testId, within]) => {
       const stream = (window as unknown as { __captured: MediaStream }).__captured;
       const el = document.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
-      const pane = document.querySelector('[data-testid="live-canvas"]')?.getBoundingClientRect();
       const wrap = document.querySelector('[data-testid="canvas-wrap"]')?.getBoundingClientRect();
-      if (!stream || !el || !pane || !wrap) throw new Error("no capture, layer or pane");
+      const pane = document.querySelector('[data-testid="live-canvas"]')?.getBoundingClientRect();
+      if (!stream || !el || !wrap || !pane) throw new Error("no capture, layer or pane");
 
-      // The layer's painted points, in client px.
-      const points: { x: number; y: number }[] = [];
+      // The layer's painted spots in client px, with the colour it paints there.
+      const spots: { x: number; y: number; rgb?: [number, number, number] }[] = [];
       if (layer === "glow") {
         const r = el.getBoundingClientRect();
         for (let y = r.top + 2; y < r.bottom - 2; y += 3)
-          for (let x = r.left + 2; x < r.right - 2; x += 3) points.push({ x, y });
+          for (let x = r.left + 2; x < r.right - 2; x += 3) spots.push({ x, y });
       } else {
         const probe = window.__liveProbe;
         if (!probe) throw new Error("no __liveProbe");
@@ -76,102 +117,174 @@ async function layerInVideo(page: Page, layer: Layer, within?: { x: number; y: n
         });
         const { data, width } = px;
         for (let i = 3; i < data.length; i += 4) {
-          if (data[i] < 120) continue;
+          // Well-covered pixels: blended over what's beneath, their colour still shows where nothing
+          // covers them (thin dashes have few fully opaque pixels).
+          if (data[i] < 140) continue;
           const x = px.x + (((i - 3) / 4) % width) / px.scale;
           const y = px.y + Math.floor((i - 3) / 4 / width) / px.scale;
           if (within && !(x >= within.x && x <= within.x + within.w && y >= within.y && y <= within.y + within.h))
             continue;
-          points.push({ x, y });
+          spots.push({ x, y, rgb: [data[i - 3], data[i - 2], data[i - 1]] });
         }
       }
-      const step = Math.max(1, Math.floor(points.length / 300));
-      const sample = points.filter((_, i) => i % step === 0);
+      // What's above the layer: the live canvases drawn over it (hidden while it's measured), and DOM
+      // (pills, nodes, badges), whose spots are left out.
+      const above: Record<string, string[]> = {
+        march: ["live-canvas", "live-canvas-over"],
+        base: ["live-canvas-over"],
+        over: [],
+      };
+      const upper = (above[layer] ?? []).flatMap(
+        (id) => document.querySelector<HTMLElement>(`[data-testid="${id}"]`) ?? [],
+      );
+      const boxes = [
+        ...document.querySelectorAll(
+          '[data-testid^="edge-label-"], [data-testid^="node-"], [data-testid^="node-badge-"]',
+        ),
+      ].map((e) => e.getBoundingClientRect());
+      const covered = (p: { x: number; y: number }) =>
+        layer !== "over" &&
+        boxes.some((b) => p.x >= b.left - 2 && p.x <= b.right + 2 && p.y >= b.top - 2 && p.y <= b.bottom + 2);
+      const open = layer === "glow" ? spots : spots.filter((p) => !covered(p));
+      const step = Math.max(1, Math.floor(open.length / 400));
+      const sample = open.filter((_, i) => i % step === 0);
 
       const video = document.createElement("video");
       video.muted = true;
       video.srcObject = stream;
       await video.play();
-      /**
-       * Waits until captured frames show what's on screen now: capture runs ~100-200 ms behind, so
-       * both some time and a few new frames (a still tab may send none: then time alone).
-       */
-      const caughtUp = async () => {
-        const until = performance.now() + 500;
-        let frames = 0;
-        while (performance.now() < until || frames < 3) {
-          await new Promise<void>((resolve) => {
-            const t = setTimeout(resolve, 200);
-            video.requestVideoFrameCallback(() => {
-              clearTimeout(t);
-              frames++;
-              resolve();
-            });
-          });
-          if (performance.now() > until + 1500) break;
-        }
-      };
-      const grab = () => {
+      type Frame = { data: Uint8ClampedArray; width: number; height: number };
+      const grab = (): Frame => {
         const c = document.createElement("canvas");
         c.width = video.videoWidth;
         c.height = video.videoHeight;
         const g = c.getContext("2d");
         if (!g) throw new Error("no 2D context");
         g.drawImage(video, 0, 0);
-        return g.getImageData(0, 0, c.width, c.height).data;
+        return { data: g.getImageData(0, 0, c.width, c.height).data, width: c.width, height: c.height };
       };
-      await caughtUp();
-      // The captured surface, known once frames arrive (Chrome may scale it, e.g. to 1080p): the canvas
-      // area (Element Capture) or the whole tab, whichever shape fits.
-      const ratio = video.videoWidth / video.videoHeight;
-      const area =
-        Math.abs(ratio - wrap.width / wrap.height) <= Math.abs(ratio - innerWidth / innerHeight)
-          ? { left: wrap.left, top: wrap.top, width: wrap.width }
-          : { left: 0, top: 0, width: innerWidth };
-      const frameWidth = video.videoWidth;
-      const scale = frameWidth / area.width;
-      const at = (frame: Uint8ClampedArray, p: { x: number; y: number }) => {
-        const vx = Math.round((p.x - area.left) * scale);
-        const vy = Math.round((p.y - area.top) * scale);
-        const i = (vy * frameWidth + vx) * 4;
-        return [frame[i], frame[i + 1], frame[i + 2]];
+      /** The captured surface: the canvas area (Element Capture) or the whole tab, whichever shape fits. */
+      const toFrame = (f: Frame, p: { x: number; y: number }) => {
+        const ratio = f.width / f.height;
+        const area =
+          Math.abs(ratio - wrap.width / wrap.height) <= Math.abs(ratio - innerWidth / innerHeight)
+            ? { left: wrap.left, top: wrap.top, width: wrap.width }
+            : { left: 0, top: 0, width: innerWidth };
+        const s = f.width / area.width;
+        return { x: Math.round((p.x - area.left) * s), y: Math.round((p.y - area.top) * s) };
+      };
+      /** The colours around a spot (3x3 frame pixels): the capture's scaling blurs and shifts by a pixel. */
+      const around = (f: Frame, p: { x: number; y: number }) => {
+        const c = toFrame(f, p);
+        const out: [number, number, number][] = [];
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const x = Math.min(f.width - 1, Math.max(0, c.x + dx));
+            const y = Math.min(f.height - 1, Math.max(0, c.y + dy));
+            const i = (y * f.width + x) * 4;
+            out.push([f.data[i], f.data[i + 1], f.data[i + 2]]);
+          }
+        return out;
+      };
+      const dist = (a: [number, number, number], b: [number, number, number]) =>
+        Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+      /** The sample's colours in a frame: what "settled" compares. */
+      const signature = (f: Frame) =>
+        sample.map((p) => {
+          const c = toFrame(f, p);
+          const i = (c.y * f.width + c.x) * 4;
+          return f.data[i] + f.data[i + 1] * 256 + f.data[i + 2] * 65536;
+        });
+      /**
+       * The latest frame, once the capture has caught up with the page: frames keep arriving until the
+       * sample's colours hold for three in a row (a still tab may send none for a while: a short
+       * timeout stands for "no change"), and never sooner than 300 ms after the change. `fresh`: the
+       * page just changed, so that many frames captured after the change must arrive first (frames
+       * captured before it can still be on their way: capture runs behind).
+       */
+      const settled = async (fresh: number): Promise<Frame> => {
+        const since = performance.now();
+        let frame = grab();
+        let last = signature(frame).join();
+        let same = 0;
+        let arrived = 0;
+        while (performance.now() - since < 8000) {
+          await new Promise<void>((resolve) => {
+            const t = setTimeout(resolve, 250);
+            video.requestVideoFrameCallback((_now, meta) => {
+              clearTimeout(t);
+              // When the frame was captured (tab capture reports it; else when it's presented, later).
+              const at = (meta as VideoFrameCallbackMetadata & { captureTime?: number }).captureTime;
+              if ((at ?? meta.presentationTime - 100) > since + 16) arrived++;
+              resolve();
+            });
+          });
+          frame = grab();
+          const now = signature(frame).join();
+          same = now === last && frame.width > 0 ? same + 1 : 0;
+          last = now;
+          if (same >= 3 && arrived >= fresh && performance.now() - since >= 300) break;
+        }
+        return frame;
       };
 
-      const shown = grab();
+      // The first frames can be empty: wait for real ones.
+      while (video.videoWidth === 0) await new Promise((r) => setTimeout(r, 50));
+      for (const u of upper) u.style.visibility = "hidden";
+      const before = await settled(upper.length ? 2 : 0);
       el.style.visibility = "hidden";
-      await caughtUp();
-      const hidden = grab();
+      const after = await settled(2);
       el.style.visibility = "";
+      for (const u of upper) u.style.visibility = "";
       video.srcObject = null;
-      let differ = 0;
+
+      let shown = 0;
+      let lost = 0;
+      let changed = 0;
       for (const p of sample) {
-        const a = at(shown, p);
-        const b = at(hidden, p);
-        if (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) > 30) differ++;
+        const a = around(before, p);
+        const b = around(after, p);
+        if (Math.max(...a.map((c, i) => dist(c, b[i]))) > 30) changed++;
+        const rgb = p.rgb;
+        if (!rgb) continue;
+        // The neighbourhood pixel nearest the layer's colour with the layer shown, and the same pixel
+        // without it (what's beneath).
+        let k = 0;
+        for (let i = 1; i < a.length; i++) if (dist(a[i], rgb) < dist(a[k], rgb)) k = i;
+        const contrast = dist(b[k], rgb);
+        if (contrast < 90) continue; // the layer looks like what's beneath: nothing to measure here
+        shown++;
+        if (contrast - dist(a[k], rgb) > contrast * 0.25) lost++;
       }
-      return { points: sample.length, differ };
+      return { points: sample.length, shown, lost, changed };
     },
     [layer, TEST_ID[layer], within ?? null] as const,
   );
 }
 
+/** The layer reaches the video: enough of its spots show its colour, and nearly all of those go with it. */
+function expectInVideo(layer: string, c: LayerCheck) {
+  expect(c.points, `${layer}: uncovered painted spots to look up`).toBeGreaterThan(30);
+  expect(c.shown, `${layer}: spots where the layer stands out from what's beneath it`).toBeGreaterThan(20);
+  expect(c.lost / c.shown, `${layer}: of those, the share the video draws with the layer`).toBeGreaterThan(0.9);
+}
+
 for (const renderer of ["worker", "main"] as const) {
   test.describe(`recording captures each live layer (${renderer} path)`, () => {
-    test("the particles, the marching edges and the overlay are each in the video", async ({ page, consoleErrors }) => {
-      test.setTimeout(60_000);
+    test("the particles and the marching edges are each in the video", async ({ page, consoleErrors }) => {
+      test.setTimeout(90_000);
       await goLive(page, renderer);
+      // Paused: the particles stay put and the march with them.
       await page.getByTestId("live-play").click();
+      await expect(page.getByTestId("rf__wrapper")).toHaveAttribute("data-live-still", "1");
       await record(page);
-      for (const layer of ["base", "march"] as const) {
-        const { points, differ } = await layerInVideo(page, layer);
-        expect(points, `${layer}: painted points to look up`).toBeGreaterThan(30);
-        expect(differ / points, `${layer}: share of its pixels the video loses without it`).toBeGreaterThan(0.5);
-      }
+      for (const layer of ["base", "march"] as const) expectInVideo(layer, await layerInVideo(page, layer));
       // The Live toggle (and with it the dot's breath) stays out of the take, as before.
       await expect(page.getByTestId("live-toggle")).toHaveCSS("visibility", "hidden");
       if (renderer === "worker") {
         const glow = await layerInVideo(page, "glow");
         expect(glow.points).toBeGreaterThan(30);
-        expect(glow.differ).toBe(0);
+        expect(glow.changed).toBe(0);
       }
 
       await page.getByTestId("record-stop").click();
@@ -180,7 +293,7 @@ for (const renderer of ["worker", "main"] as const) {
     });
 
     test("slow motion's captions are in the video", async ({ page, consoleErrors }) => {
-      test.setTimeout(60_000);
+      test.setTimeout(90_000);
       await goLive(page, renderer);
       await expect(async () => {
         await page.getByTestId("node-shopper").click({ button: "right" });
@@ -195,6 +308,8 @@ for (const renderer of ["worker", "main"] as const) {
       await page.getByTestId("live-play").click();
       await expect(canvas(page)).toHaveAttribute("data-slowmo", "paused");
       await record(page);
+      // The replay stayed paused for the take.
+      await expect(canvas(page)).toHaveAttribute("data-slowmo", "paused");
       // The captions as drawn now (recording refitted the view), each a rect in pane px.
       await expect
         .poll(async () => JSON.parse((await canvas(page).getAttribute("data-slowmo-captions")) ?? "[]").length)
@@ -207,14 +322,10 @@ for (const renderer of ["worker", "main"] as const) {
         h: number;
       }[];
       if (!pane || !caption) throw new Error("no caption");
-      const { points, differ } = await layerInVideo(page, "over", {
-        x: pane.x + caption.x,
-        y: pane.y + caption.y,
-        w: caption.w,
-        h: caption.h,
-      });
-      expect(points, "caption pixels to look up").toBeGreaterThan(30);
-      expect(differ / points, "share of the caption the video loses without the overlay").toBeGreaterThan(0.5);
+      expectInVideo(
+        "caption",
+        await layerInVideo(page, "over", { x: pane.x + caption.x, y: pane.y + caption.y, w: caption.w, h: caption.h }),
+      );
       await page.getByTestId("record-stop").click();
       await expect(page.getByTestId("record-meta")).toContainText(/WebM/, { timeout: 10_000 });
       expectNoErrors(consoleErrors);
