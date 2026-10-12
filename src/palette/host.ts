@@ -15,7 +15,12 @@ import type { LiveState } from "../live/controller";
 
 export interface CanvasHost {
   editor: EditorApi;
+  /** Privacy provenance, for the one decision in src/lib/localOnly.ts (never read these directly). */
   localOnly?: boolean;
+  private?: boolean;
+  onDevice?: boolean;
+  /** "Allow the on-device model" for this private diagram. */
+  allowOnDevice?(on: boolean): void;
   documentId?: string;
   /** The canvas is in live view. */
   live: boolean;

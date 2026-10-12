@@ -47,6 +47,8 @@ Agents that drive the page directly can use the accessible names: the top bar's 
 
 A share link holds the whole diagram in the URL fragment, so nothing is uploaded: `https://www.livediagrams.dev/#d=<payload>`, where the payload is the minified diagram JSON, compressed with raw DEFLATE (RFC 1951) and encoded as base64url without padding. Links over about 8,000 characters may be cut off by chat apps; offer a `.diagram.json` file instead. Read-only embeds use `?embed=1`.
 
+A **Private** diagram (`"private": true` in its file) stays on the person's device: it never gets a share link or an embed, isn't saved to cloud storage, and while one is open the page publishes no tools (and `get_share_link` refuses). Don't build a link for a file that has it; hand over the file.
+
 ## Agent Skill
 
 Agents without a browser can use the livediagrams Agent Skill: [SKILL.md](https://www.livediagrams.dev/skill/SKILL.md), or the whole folder as [livediagrams-skill.zip](https://www.livediagrams.dev/livediagrams-skill.zip). Install steps for Claude Code, Codex and the Claude apps: [livediagrams.dev/skill/](https://www.livediagrams.dev/skill/). Its scripts validate a `.diagram.json` file, lay it out and print its share link, offline.

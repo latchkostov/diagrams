@@ -27,6 +27,7 @@ export default function OnDeviceInput({
   documentId,
   live,
   localOnly,
+  privateDiagram = false,
   scope,
   onTurn,
 }: {
@@ -35,6 +36,8 @@ export default function OnDeviceInput({
   documentId: string | undefined;
   live: boolean;
   localOnly: boolean;
+  /** A private diagram the person allowed the model for: dictation listens only on this device. */
+  privateDiagram?: boolean;
   /** The selection, from the panel's settled snapshot (not read per keystroke or drag frame). */
   scope: readonly ScopeItem[];
   onTurn: (turn: TurnRecord) => void;
@@ -56,6 +59,7 @@ export default function OnDeviceInput({
       pendingCaret.current = t.caret;
       setRequest(t.value);
     },
+    privateDiagram,
   );
   useEffect(() => {
     const el = inputRef.current;
@@ -201,7 +205,7 @@ export default function OnDeviceInput({
               </button>
             )}
           </div>
-          {speechLeaves && dictation.supported && !blocked && (
+          {speechLeaves && dictation.supported && !blocked && !privateDiagram && (
             <p className="ai-ondevice-note" data-testid="ai-ondevice-speech-note">
               {SPEECH_NOTE}
             </p>

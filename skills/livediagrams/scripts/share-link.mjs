@@ -24,6 +24,14 @@ if (errors.length) {
   process.exit(1);
 }
 
+// A Private diagram stays on the device: the app never makes a link for one, and neither does this.
+if (diagram.private === true) {
+  console.error(
+    `${file} is a private diagram ("private": true), so it gets no share link. Give the user the .diagram.json file instead.`,
+  );
+  process.exit(1);
+}
+
 /** The share payload for a diagram object. */
 function encodeShare(d) {
   return deflateRawSync(Buffer.from(JSON.stringify(d), "utf8")).toString("base64url");

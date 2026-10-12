@@ -115,6 +115,7 @@ const file: Required<DiagramFile> = {
   simulations: [simulation],
   annotations: [annotation],
   layerOrder: ["shape", "api", "config"],
+  private: true,
 };
 
 describe("diagram.v1 schema", () => {

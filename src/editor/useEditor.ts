@@ -121,6 +121,13 @@ export interface EditorDeps {
   reveal?: () => void;
   /** Makes a node, brings it into view and opens its name, keeping keys typed meanwhile (the canvas). */
   nameNew?: (make: () => NewNode | null, fallback: string) => void;
+  /** This diagram is private (local-only or the Private switch): copies from it say so. */
+  isPrivate?: () => boolean;
+  /**
+   * A paste from a private diagram is about to land: make this diagram private first. False when it can't
+   * be (an example, a shared diagram): then nothing is pasted.
+   */
+  makePrivate?: () => boolean;
 }
 
 export function useEditor(deps: EditorDeps): EditorApi {
@@ -907,7 +914,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
 
     copy: (sel) => {
-      const p = makePayload(diagram(), sel.nodeIds ?? [], sel.groupIds ?? []);
+      const p = makePayload(diagram(), sel.nodeIds ?? [], sel.groupIds ?? [], api.isPrivate?.());
       if (!p) return;
       clipboard = p;
       navigator.clipboard?.writeText(JSON.stringify(p, null, 2)).catch(() => {});
@@ -923,6 +930,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       if (p) api.pastePayload(p, at);
     },
     pastePayload: (p, at) => {
+      // Private content keeps its privacy: the diagram it lands in becomes private, or it doesn't land.
+      if (p.private && !api.isPrivate?.() && deps().makePrivate?.() === false) return;
       const from = boundsOf(payloadBoxes(p));
       if (!from || ![from.x, from.y, from.width, from.height].every(Number.isFinite)) return;
       // Paste here (a spot given) puts the top-left there; Ctrl+V centres it on the pointer over the
@@ -937,6 +946,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       if (insert(p, { x: placed.x + d.x - from.x, y: placed.y + d.y - from.y })) deps().reveal?.();
     },
     hasClipboard: () => clipboard !== null,
+    isPrivate: () => deps().isPrivate?.() ?? false,
 
     undo: () => deps().history.undo(),
     redo: () => deps().history.redo(),

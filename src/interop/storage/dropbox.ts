@@ -133,7 +133,7 @@ export function createDropboxClient(deps: ClientDeps) {
      * Writes a file. Save as: a new path in the app folder, `add` + autorename (never overwrites).
      * Save: the same file by id, `overwrite`.
      */
-    async upload(path: string, text: string, mode: "add" | "overwrite"): Promise<DropboxFile> {
+    async upload(path: string, text: string, mode: "add" | "overwrite", signal?: AbortSignal): Promise<DropboxFile> {
       const res = await call(
         `${CONTENT}/files/upload`,
         {
@@ -143,6 +143,7 @@ export function createDropboxClient(deps: ClientDeps) {
             "Dropbox-API-Arg": headerSafeJson({ path, mode, autorename: mode === "add", mute: true }),
           },
           body: text,
+          signal,
         },
         mode === "add" ? "save the file" : "update the file",
       );
@@ -212,11 +213,11 @@ export function dropboxProvider(
         done();
       }
     },
-    async save(ref, text) {
-      return saved(await client.upload(ref.id, text, "overwrite"));
+    async save(ref, text, opts) {
+      return saved(await client.upload(ref.id, text, "overwrite", opts?.signal));
     },
-    async saveAs(name, text) {
-      return saved(await client.upload(dropboxPath(name), text, "add"));
+    async saveAs(name, text, opts) {
+      return saved(await client.upload(dropboxPath(name), text, "add", opts?.signal));
     },
   };
 }

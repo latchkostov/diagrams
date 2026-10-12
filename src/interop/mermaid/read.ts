@@ -485,6 +485,8 @@ export function parseMermaid(src: string, fallbackTitle = "Imported diagram"): M
     format: DIAGRAM_FORMAT,
     title: title || meta?.title || fallbackTitle,
     ...(meta?.description ? { description: meta.description } : {}),
+    // Fails closed, like the file format's "private".
+    ...(meta?.private !== undefined && (meta.private as unknown) !== false ? { private: true } : {}),
     direction,
     ...(outGroups.length ? { groups: outGroups } : {}),
     nodes: outNodes,

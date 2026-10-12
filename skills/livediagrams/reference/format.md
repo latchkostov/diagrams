@@ -10,6 +10,9 @@ are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file
 - `title` (required) and an optional `description` of one or two sentences.
 - `direction`: `"LR"` (left to right, the default) or `"TB"` (top to bottom). The layout follows it.
 - `nodes` and `edges` (required, may be empty), and optionally `groups`, `annotations` and `simulations`.
+- `private`: `true` marks a Private diagram. The app keeps it on the device (no share links, no cloud saves, no
+  AI tools) and it stays private when it's opened again. Keep the field as it is, never make a share link for
+  it (`scripts/share-link.mjs` refuses) and don't upload it anywhere; hand the user the file.
 
 ## Nodes
 

@@ -5,7 +5,7 @@ import { OPENABLE, StorageError, type StorageEntry, type StorageProvider } from 
 // (registry.ts); the production build drops it entirely.
 //
 // Tests read the files from localStorage (TEST_STORAGE_KEY) and can make the next call fail with
-// `localStorage.setItem("diagrams.test-storage.fail", "save" | "open")`.
+// `localStorage.setItem("diagrams.test-storage.fail", "save" | "open")`, or slow down writes (see `slow`).
 
 export const TEST_STORAGE_KEY = "diagrams.test-storage.v1";
 const FAIL_KEY = "diagrams.test-storage.fail";
@@ -31,6 +31,17 @@ const failing = (what: string) => {
   localStorage.removeItem(FAIL_KEY);
   throw new StorageError(`Test storage refused to ${what} the file (a simulated failure).`);
 };
+
+/**
+ * Stands in for a slow sign-in or upload: `localStorage.setItem("diagrams.test-storage.delay", "800")` makes
+ * each write wait that long first. The write then honours its signal, as the real providers' uploads do.
+ */
+const DELAY_KEY = "diagrams.test-storage.delay";
+async function slow(signal?: AbortSignal) {
+  const ms = Number(localStorage.getItem(DELAY_KEY)) || 0;
+  if (ms > 0) await new Promise((resolve) => setTimeout(resolve, ms));
+  signal?.throwIfAborted();
+}
 
 type Ref = { id: string };
 let signedIn = false;
@@ -63,7 +74,8 @@ export const testProvider: StorageProvider<Ref> = {
     if (!file) throw new StorageError("That file no longer exists in Test storage.");
     return { name: file.name, text: file.text, ref: { id: file.id } };
   },
-  async save(ref, text) {
+  async save(ref, text, opts) {
+    await slow(opts?.signal);
     failing("save");
     const files = read();
     const file = files.find((f) => f.id === ref.id);
@@ -73,7 +85,8 @@ export const testProvider: StorageProvider<Ref> = {
     write(files);
     return { name: file.name, ref };
   },
-  async saveAs(name, text) {
+  async saveAs(name, text, opts) {
+    await slow(opts?.signal);
     failing("save");
     const files = read();
     let unique = name;

@@ -47,6 +47,11 @@ function diagramSchema() {
         items: { type: "string" },
         description: "Back-to-front order of node and annotation ids.",
       },
+      private: {
+        type: "boolean",
+        description:
+          "true for a Private diagram: the app keeps it on the device (no share links, no cloud saves, no AI tools) and it stays private when opened again. Agents must not share or upload a file that has it.",
+      },
     } satisfies Fields<DiagramFile>,
     $defs: {
       Node: {

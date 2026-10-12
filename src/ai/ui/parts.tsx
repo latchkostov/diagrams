@@ -81,10 +81,13 @@ export function FailureBox({
   copied,
   onCopyFix,
   onChoose,
+  fixOff = false,
 }: {
   failure: Failure;
   copied: boolean;
   onCopyFix: () => void;
+  /** A private diagram: no fix-up prompt is copied (the button stays, off, saying why). */
+  fixOff?: boolean;
   onChoose: (id: string) => void;
 }) {
   const { error } = failure;
@@ -142,11 +145,13 @@ export function FailureBox({
       )}
       {error.hint && !canPick && <p className="ai-failure-hint">{error.hint}</p>}
       <div className="ai-copy-row">
-        <button className="btn btn-primary" onClick={onCopyFix} data-testid="ai-copy-fix">
+        <button className="btn btn-primary" onClick={onCopyFix} disabled={fixOff} data-testid="ai-copy-fix">
           <Icon name={copied ? "check" : "copy"} size={14} />
           {copied ? "Copied" : "Copy fix-up prompt"}
         </button>
-        <span className="ai-hint">Your AI corrects its reply; paste it back below.</span>
+        <span className="ai-hint">
+          {fixOff ? "Off for this private diagram." : "Your AI corrects its reply; paste it back below."}
+        </span>
       </div>
     </section>
   );

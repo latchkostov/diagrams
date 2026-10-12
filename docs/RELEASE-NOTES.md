@@ -2,6 +2,18 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Private diagrams (2026-10)
+
+No habit changes unless you use it. New:
+
+- **File ▸ Privacy ▸ Private diagram** keeps a diagram on this device: no share links or embed codes, no saves to
+  Google Drive, OneDrive or Dropbox, and no AI (the page's tools, Copy for AI and copied prompts are off). A
+  **Private** lock sits beside its title; click it to read what that means or to make it not private again.
+  Saving and exporting to this device work as before, and an exported file stays private when it's opened again.
+- **File ▸ Privacy ▸ New diagrams are private** makes everything you start, import or open from this device
+  private.
+- In a private diagram the AI panel can allow Chrome's on-device model, which runs on this device.
+
 ## Flow building (2026-10)
 
 One habit changes:

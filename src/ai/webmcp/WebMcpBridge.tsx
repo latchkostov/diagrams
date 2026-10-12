@@ -7,7 +7,7 @@ import { useWebMcp } from "./useWebMcp";
 import type { AgentChange, WebMcpHost } from "./tools";
 import { threads } from "../ui/threadStore";
 import { unseen } from "../ui/unseen";
-import { isLocalOnly } from "../../lib/localOnly";
+import { canShareAsLink, isLocalOnly, PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
 
 // Lazy-loaded by AiMount, only in the editor view and only when the browser has WebMCP. Renders nothing.
 
@@ -85,7 +85,13 @@ export default function WebMcpBridge({
         return currentEditor() ?? editor;
       },
       async shareLink(diagram) {
+        const canvas = paletteHost.get().canvas;
+        if (!canShareAsLink(canvas)) throw new Error(PRIVATE_SHARE_MESSAGE);
         const url = shareUrl(await encodeShare(diagram));
+        // Encoding takes a moment: the same document may have become private (or been replaced) meanwhile.
+        const now = paletteHost.get().canvas;
+        if (!now || now.documentId !== canvas?.documentId || !canShareAsLink(now))
+          throw new Error(PRIVATE_SHARE_MESSAGE);
         return {
           url,
           length: url.length,

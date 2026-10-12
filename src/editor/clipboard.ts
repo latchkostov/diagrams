@@ -26,6 +26,8 @@ export interface ClipboardPayload {
   edges: DiagramEdge[];
   /** Texts, notes, zones and shapes (absent in payloads from before annotations). */
   annotations?: DiagramAnnotation[];
+  /** Copied from a private diagram: pasting it makes the target diagram private too. */
+  private?: boolean;
 }
 
 export interface TakenIds {
@@ -42,6 +44,7 @@ export function makePayload(
   d: DiagramFile,
   nodeIds: Iterable<string>,
   groupIds: Iterable<string> = [],
+  isPrivate = false,
 ): ClipboardPayload | null {
   const gs = new Set(groupIds);
   const groups = (d.groups ?? []).filter((g) => gs.has(g.id));
@@ -58,6 +61,7 @@ export function makePayload(
     edges,
     ...(annotations.length ? { annotations } : {}),
     ...(d.layerOrder ? { layerOrder: filterLayerOrder(d.layerOrder, { nodes, annotations }) } : {}),
+    ...(isPrivate ? { private: true } : {}),
   });
 }
 
@@ -124,6 +128,8 @@ export function parsePayload(text: string): ClipboardPayload | null {
     ...(Array.isArray(data.layerOrder)
       ? { layerOrder: filterLayerOrder(data.layerOrder, { nodes, annotations }) }
       : {}),
+    // Fails closed, like a file's "private": anything but absent or false keeps the paste private.
+    ...(data.private !== undefined && data.private !== false ? { private: true } : {}),
   };
 }
 

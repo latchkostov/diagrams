@@ -62,6 +62,16 @@ export function sharePayloadFromInput(input: string): string | undefined {
   return /^[A-Za-z0-9_-]{16,}$/.test(s) ? s : undefined;
 }
 
+/**
+ * Drops the address bar's fragment (a share payload) without navigating. A private diagram never keeps
+ * one: the fragment is a copy of a diagram, and the address bar is synced, shared and kept in history.
+ */
+export function clearUrlFragment(): boolean {
+  if (!window.location.hash) return false;
+  window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`);
+  return true;
+}
+
 /** The app's base URL (works under a sub-path such as /tools/diagrams/). */
 export function appBaseUrl(loc: Pick<Location, "origin" | "pathname"> = window.location): string {
   return `${loc.origin}${loc.pathname}`;

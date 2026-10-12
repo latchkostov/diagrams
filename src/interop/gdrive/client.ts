@@ -77,13 +77,16 @@ export function createDriveClient(deps: DriveClientDeps) {
   async function call(url: string, init: RequestInit, action: string): Promise<Response> {
     let token = await deps.getToken();
     for (let attempt = 0; ; attempt++) {
+      // A cancelled write stops here, after the token (which may have meant a sign-in) and before the upload.
+      init.signal?.throwIfAborted();
       let res: Response;
       try {
         res = await deps.fetch(url, {
           ...init,
           headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${token}` },
         });
-      } catch {
+      } catch (err) {
+        if (init.signal?.aborted) throw init.signal.reason ?? err;
         throw new DriveError(`Couldn't reach Google Drive to ${action}. Check your connection.`);
       }
       if (res.ok) return res;
@@ -142,7 +145,10 @@ export function createDriveClient(deps: DriveClientDeps) {
     },
 
     /** Creates a file (in `parents` or My Drive root). */
-    async create(file: { name: string; mimeType: string; content: string; parents?: string[] }): Promise<DriveFile> {
+    async create(
+      file: { name: string; mimeType: string; content: string; parents?: string[] },
+      signal?: AbortSignal,
+    ): Promise<DriveFile> {
       const b = boundary();
       const meta = { name: file.name, mimeType: file.mimeType, ...(file.parents ? { parents: file.parents } : {}) };
       const res = await call(
@@ -151,6 +157,7 @@ export function createDriveClient(deps: DriveClientDeps) {
           method: "POST",
           headers: { "Content-Type": `multipart/related; boundary=${b}` },
           body: multipartBody(meta, file.content, file.mimeType, b),
+          signal,
         },
         "save the file",
       );
@@ -158,7 +165,11 @@ export function createDriveClient(deps: DriveClientDeps) {
     },
 
     /** Replaces the content (and optionally the name) of an existing file. */
-    async update(id: string, file: { content: string; mimeType: string; name?: string }): Promise<DriveFile> {
+    async update(
+      id: string,
+      file: { content: string; mimeType: string; name?: string },
+      signal?: AbortSignal,
+    ): Promise<DriveFile> {
       const b = boundary();
       const meta = file.name ? { name: file.name } : {};
       const res = await call(
@@ -167,6 +178,7 @@ export function createDriveClient(deps: DriveClientDeps) {
           method: "PATCH",
           headers: { "Content-Type": `multipart/related; boundary=${b}` },
           body: multipartBody(meta, file.content, file.mimeType, b),
+          signal,
         },
         "update the file",
       );

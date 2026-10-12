@@ -198,8 +198,15 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   browser's speech service. It edits only: in live view the box waits for **Back to editing**. Where the model can't run, nothing shows.
 - **Build with AI** (Ctrl+K only) starts a new diagram from a description: a blank diagram with Advanced
   open. Never "Build with AI" for changing a diagram.
-- A **local-only** diagram never reaches any AI: the page's tools are off, Copy for AI copies nothing, and
-  the panel says AI is off for this diagram.
+- **Private** (never "local-only", "secret" or "confidential" in the UI) keeps a diagram on this device: no share
+  links or embeds, no cloud saves, no AI. The switch is **File ▸ Privacy ▸ Private diagram** (and Ctrl+K, "Make
+  this diagram private"); a **Private** lock badge sits beside the title, and its click opens the **Private
+  diagram** dialog, the one confirmation for **Make not private** (**Keep private** is the default). The link
+  rows stay, off, saying "Private diagrams can't be shared as links. Export a file instead."; the panel says
+  **AI is off for this private diagram** and offers **Allow the on-device model (stays on this device)**. Copies,
+  duplicates, exports (`"private": true`) and pasted nodes stay private. **New diagrams are private** (File ▸
+  Privacy ▸) is one remembered setting, off by default. The built-in local-only examples (development only) are
+  always private, with their own wording.
 - **Dictate** is the mic in Advanced's describe box (Ctrl+Shift+M): **Listening…** while on, interim words shown
   lighter; **Stop dictating** to end. It's hidden where the browser has no speech recognition.
 - **Slow motion** (noun and mode) is a paced _replay_ of a trace: one message's recorded journey, node

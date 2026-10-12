@@ -518,6 +518,27 @@
   line-height: 1.4;
 }
 
+.ai-private-note {
+  display: grid;
+  gap: 4px;
+}
+
+.ai-private-note p {
+  margin: 0;
+}
+
+.ai-private-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ai-private-note .ai-ondevice-pref {
+  margin-top: 4px;
+}
+
 .ai-note.is-error {
   background: var(--danger-soft);
   color: var(--danger);

@@ -1149,6 +1149,51 @@
   color: var(--text-2);
 }
 
+/* A private diagram: a lock chip on the title line (the description and meta run full width below). */
+.diagram-card.has-badge:not([hidden]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: start;
+}
+
+.diagram-card.has-badge > :not(h1, .private-badge) {
+  grid-column: 1 / -1;
+}
+
+.private-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  margin-top: -1px;
+  padding: 0 8px 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.private-badge:hover {
+  color: var(--text);
+  border-color: var(--line-strong, var(--line));
+}
+
+.private-badge[aria-disabled="true"] {
+  cursor: default;
+}
+
+.private-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .diagram-card-meta {
   margin-top: 8px;
   display: flex;
@@ -1226,7 +1271,7 @@
   text-overflow: ellipsis;
 }
 
-.diagram-card.is-compact:not(:hover) > :not(h1) {
+.diagram-card.is-compact:not(:hover) > :not(h1, .private-badge) {
   display: none;
 }
 

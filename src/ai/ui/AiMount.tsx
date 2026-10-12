@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncEx
 import { actionRegistry } from "../../editor/actions";
 import { matches } from "../../editor/shortcuts";
 import { paletteHost } from "../../palette/host";
+import { privacyOf } from "../../lib/localOnly";
 import { Icon } from "../../components/Icon";
 import { AI_PANEL_COMBO, OPEN_AI_PANEL, aiPanelTitle, buildWithAi, openAiPanel, type OpenAiPanel } from "./events";
 import { aiDock, RAIL_WIDTH, clampWidth, collapseDock, useAiDock } from "./dock";
@@ -119,6 +120,9 @@ export function AiMount({
           order: 190,
           label: "Copy for AI",
           icon: "ai",
+          // Off (and saying why) on a private diagram. A local-only example's says so when chosen.
+          enabled: () => privacyOf(paletteHost.get().canvas) !== "private",
+          hint: () => (privacyOf(paletteHost.get().canvas) === "private" ? "Private" : undefined),
           // Loaded on use: the main bundle stays small.
           run: (ctx) =>
             void import("./copyForAi").then((m) =>

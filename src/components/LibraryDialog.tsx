@@ -172,6 +172,11 @@ export function LibraryDialog({
                   <span className="lib-text">
                     {renaming === e.slug ? null : <strong data-testid={`library-title-${e.slug}`}>{e.title}</strong>}
                     <span>
+                      {(e.private || e.localOnly) && (
+                        <span className="lib-private" data-testid={`library-private-${e.slug}`}>
+                          <Icon name="lock" size={11} /> Private ·{" "}
+                        </span>
+                      )}
                       {e.slug === current ? "Open now · " : ""}
                       {e.nodes} {e.nodes === 1 ? "node" : "nodes"} · edited {formatAgo(e.updatedAt)}
                     </span>

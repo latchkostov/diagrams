@@ -1,6 +1,6 @@
 import { copyText } from "../../interop/ui/copyText";
 import { notify } from "../../interop/ui/toast";
-import { isLocalOnly } from "../../lib/localOnly";
+import { isLocalOnly, privacyOf, PRIVATE_AI_OFF } from "../../lib/localOnly";
 import { paletteHost } from "../../palette/host";
 import { referenceText, resolveScope } from "./context";
 
@@ -11,7 +11,13 @@ import { referenceText, resolveScope } from "./context";
 export async function copyForAi(ids: string[]): Promise<void> {
   const canvas = paletteHost.get().canvas;
   if (!canvas) return;
-  if (isLocalOnly(canvas)) return void notify("AI is off for this local-only diagram.", { kind: "error" });
+  if (isLocalOnly(canvas))
+    return void notify(
+      privacyOf(canvas) === "private" ? `${PRIVATE_AI_OFF}.` : "AI is off for this local-only diagram.",
+      {
+        kind: "error",
+      },
+    );
   const diagram = canvas.editor.getDiagram();
   const scope = resolveScope(diagram, ids);
   if (!scope.length) return;

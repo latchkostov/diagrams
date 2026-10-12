@@ -24,6 +24,8 @@ export interface MermaidMeta {
   relations?: Record<string, DependencyRelation>;
   /** Output edge indexes of dependencies saved as sync (their kind returns if they become flows). */
   syncDependencies?: number[];
+  /** A private diagram: it stays private when the text is imported again. */
+  private?: true;
 }
 
 /**
@@ -144,8 +146,12 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
       ...(edges.some((e, i) => relations[i] && e.kind === "sync")
         ? { syncDependencies: edges.flatMap((e, i) => (relations[i] && e.kind === "sync" ? [i] : [])) }
         : {}),
+      ...(d.private ? { private: true as const } : {}),
     };
     lines.push(`${META_PREFIX}${JSON.stringify(meta)}`);
+  } else if (d.private) {
+    // Even without the rest of the metadata, a private diagram's text keeps the marking.
+    lines.push(`${META_PREFIX}${JSON.stringify({ v: 1, nodes: {}, private: true } satisfies MermaidMeta)}`);
   }
   return lines.join("\n") + "\n";
 }

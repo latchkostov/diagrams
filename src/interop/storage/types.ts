@@ -25,6 +25,14 @@ export interface SavedFile<Ref = unknown> {
   url?: string;
 }
 
+/**
+ * A write's options. `signal` cancels it: checked after every token request and passed to the upload
+ * itself, so a write the app no longer allows (the diagram became private meanwhile) never lands.
+ */
+export interface WriteOptions {
+  signal?: AbortSignal;
+}
+
 /** A row in a provider's in-app file list. */
 export interface StorageEntry<Ref = unknown> {
   name: string;
@@ -59,9 +67,9 @@ export interface StorageProvider<Ref = unknown> {
   /** A picker or the in-app list. Undefined when the user cancels. */
   open(ctx: OpenContext): Promise<StorageFile<Ref> | undefined>;
   /** Writes over the file that `ref` points at. */
-  save(ref: Ref, text: string): Promise<SavedFile<Ref>>;
+  save(ref: Ref, text: string, opts?: WriteOptions): Promise<SavedFile<Ref>>;
   /** Creates a new file (never overwriting another one). Undefined when the user cancels. */
-  saveAs(name: string, text: string): Promise<SavedFile<Ref> | undefined>;
+  saveAs(name: string, text: string, opts?: WriteOptions): Promise<SavedFile<Ref> | undefined>;
   /** Files this app can open (providers with an in-app list). */
   list?(): Promise<StorageEntry<Ref>[]>;
   /** Where saved files go, for the in-app list's subtitle (e.g. "Apps/Diagrams"). */

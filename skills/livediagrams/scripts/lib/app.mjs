@@ -399,6 +399,11 @@ function validateDiagram(data) {
 	const d = { ...raw };
 	if (typeof d.title !== "string" || !d.title.trim()) d.title = typeof d.title === "number" ? String(d.title) : "Untitled diagram";
 	if (d.description !== void 0 && typeof d.description !== "string") delete d.description;
+	if (d.private === false) delete d.private;
+	else if (d.private !== void 0 && d.private !== true) {
+		warnings.push(`"private" should be true or false; the diagram was kept private.`);
+		d.private = true;
+	}
 	if (d.direction !== void 0 && d.direction !== "LR" && d.direction !== "TB") {
 		warnings.push(`Unknown direction "${String(d.direction)}" was ignored.`);
 		delete d.direction;

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { formatCombo } from "../../editor/shortcuts";
 import { formatAgo } from "../../lib/time";
+import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
+import { newDiagramsPrivate } from "../../lib/privacyPrefs";
 import type { Binding, Interop } from "../useInterop";
 import { Menu, type MenuEntry } from "./Menu";
 import { Glyph } from "./glyphs";
@@ -153,7 +155,8 @@ export function FileMenu({
             testId: `save-to-${p.id}`,
             icon: <Glyph name={p.icon} />,
             title: p.label,
-            desc: b?.providerId === p.id ? "Saves a new copy" : undefined,
+            desc: api.privacy() ? "Off for private diagrams" : b?.providerId === p.id ? "Saves a new copy" : undefined,
+            disabled: !!api.privacy(),
             onSelect: () => void api.saveTo(p.id),
           })),
         ],
@@ -169,13 +172,26 @@ export function FileMenu({
         onSelect: () => void api.saveAs(),
       });
     }
+    // Sharing and privacy together: a private diagram's link rows stay in place, off, saying why.
+    const privacy = api.privacy();
     out.push(
       { type: "separator" },
+      {
+        type: "item",
+        testId: "file-privacy",
+        submenuTestId: "file-privacy-menu",
+        icon: <Glyph name="lock" />,
+        title: "Privacy",
+        desc: privacy ? "This diagram is private" : undefined,
+        submenu: () => privacyMenu(api),
+      },
       {
         type: "item",
         testId: "export-share-link",
         icon: <Glyph name="link" />,
         title: "Copy share link",
+        desc: privacy ? PRIVATE_SHARE_MESSAGE : undefined,
+        disabled: !!privacy,
         onSelect: () => void api.copyShareLink(),
       },
       {
@@ -183,6 +199,7 @@ export function FileMenu({
         testId: "export-embed",
         icon: <Glyph name="code" />,
         title: "Embed code…",
+        disabled: !!privacy,
         onSelect: api.openEmbed,
       },
       { type: "separator" },
@@ -280,6 +297,36 @@ export function SharedChip({ onKeep }: { onKeep: () => void }) {
       </button>
     </div>
   );
+}
+
+/** File ▸ Privacy: this diagram's Private switch, and the setting for new ones. */
+function privacyMenu(api: Api): MenuEntry[] {
+  const privacy = api.privacy();
+  return [
+    {
+      type: "item",
+      testId: "privacy-diagram",
+      title: "Private diagram",
+      desc:
+        privacy === "local-only"
+          ? "Always private: it comes from a local-only example"
+          : "No share links, cloud saves or AI",
+      checked: !!privacy,
+      checkbox: true,
+      disabled: privacy === "local-only",
+      onSelect: () => void api.setPrivate(!privacy),
+    },
+    {
+      type: "item",
+      testId: "privacy-new-diagrams",
+      title: "New diagrams are private",
+      desc: "Diagrams you start or bring in from this device",
+      checked: newDiagramsPrivate.get(),
+      checkbox: true,
+      onSelect: () => api.setNewDiagramsPrivate(!newDiagramsPrivate.get()),
+    },
+    { type: "note", text: "Export a file to share a private diagram." },
+  ];
 }
 
 /** "Export as" formats. The canvas right-click "Export as" (useInterop.tsx) uses the same names and order. */

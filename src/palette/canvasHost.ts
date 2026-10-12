@@ -13,14 +13,24 @@ export { placeNextTo };
 /** Called by the canvas (inside its ReactFlowProvider) to publish itself to the palette. */
 export function useCanvasHost(
   editor: EditorApi,
-  opts: { live: boolean; enabled: boolean; localOnly?: boolean; documentId?: string; revision?: unknown },
+  opts: {
+    live: boolean;
+    enabled: boolean;
+    localOnly?: boolean;
+    private?: boolean;
+    onDevice?: boolean;
+    /** Stable (a callback keyed on the diagram): it's a dependency of the published host. */
+    allowOnDevice?: (on: boolean) => void;
+    documentId?: string;
+    revision?: unknown;
+  },
 ) {
   const rf = useReactFlow();
   const rfRef = useRef(rf);
   useLayoutEffect(() => {
     rfRef.current = rf;
   });
-  const { live, enabled, localOnly, documentId, revision } = opts;
+  const { live, enabled, localOnly, private: isPrivate, onDevice, allowOnDevice, documentId, revision } = opts;
   useEffect(() => {
     if (!enabled) return;
     const boxOf = (id: string): Box | null => {
@@ -37,6 +47,9 @@ export function useCanvasHost(
       editor,
       live,
       localOnly,
+      private: isPrivate,
+      onDevice,
+      allowOnDevice,
       documentId,
       focusNode(id) {
         const box = boxOf(id);
@@ -63,5 +76,5 @@ export function useCanvasHost(
         return id;
       },
     });
-  }, [editor, live, enabled, localOnly, documentId, revision]);
+  }, [editor, live, enabled, localOnly, isPrivate, onDevice, allowOnDevice, documentId, revision]);
 }

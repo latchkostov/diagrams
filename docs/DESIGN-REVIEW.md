@@ -1,5 +1,67 @@
 # Design review
 
+## Round 12: Private diagrams (design note before building, 2026-10-12)
+
+The owner, verbatim: "What can we do in order to make things private, or is there any concern there. I'm
+thinking for example, if I want to have diagrams for work. I know the diagrams themselves are part of the URL."
+Approved plan: a **Private diagram** switch that turns the existing local-only protection (until now only for
+the built-in, development-only private examples) into a setting for any diagram.
+
+**The honest answer first.** Nothing is uploaded today: diagrams live in this browser, and a share link carries
+the diagram in its `#` fragment, which browsers never send to a server. The exposure is the link itself (chat
+history, synced browser history, whoever gets it), cloud saves, and AI agents reading the page. Private closes
+those three doors for one diagram; it can't stop the person exporting a file, the browser's own extensions
+reading the page, or someone with access to the device.
+
+**One decision, one word.** `src/lib/localOnly.ts` stays the single privacy decision. `privacyOf()` answers
+`"local-only"` (a built-in private example, a copy of one, or in development content matching one; always
+private, no switch), `"private"` (the person's switch, or inherited) or `null`. Every gate asks it:
+`isLocalOnly` (AI), `canShareAsLink` (every link, so password-protected links compose through the same gate),
+`canSaveToCloud` and `canUseOnDevice`. The user-facing word is **Private** everywhere (menus, badge, panel,
+dialog, library, docs); "local-only" stays an internal name for the built-in ones, whose behaviour and copy are
+unchanged.
+
+**Where the switch lives (fewest clear places).**
+
+- **File ▸ Privacy ▸** (one new File-menu row, so the menu stays at 12 with cloud storage): **Private diagram**
+  (checked when on) and **New diagrams are private** (one remembered setting, off by default), with a note:
+  "Export a file to share a private diagram." The row's line reads "This diagram is private" while it is.
+- **The lock badge** beside the title on the diagram card ("Private"). Clicking it opens the **Private diagram**
+  dialog: what's off (links, cloud, AI), a link to the privacy page, and **Keep private** (the default) or
+  **Make not private**. That dialog is the one confirmation for turning it off, wherever that starts.
+- **Ctrl+K**: "Make this diagram private" / "Make this diagram not private…".
+- **Your diagrams** marks private rows ("Private · 4 nodes · edited…"), no new button. The inspector stays as it is.
+
+Making an example or a shared diagram private saves a private copy in Your diagrams (they aren't yours to change).
+
+**What Private does.**
+
+- **Links:** Copy share link and Embed code… stay in the File menu, off, saying "Private diagrams can't be shared
+  as links. Export a file instead."; the canvas right-click's Export ▸ shows them off with "Private"; any other
+  way in (a shortcut, a stale menu) gets that sentence as a toast with **Export file**. The page's
+  `get_share_link` refuses too. If the address bar still holds a `#` fragment when a diagram becomes private,
+  it's cleared.
+- **Cloud:** Save to ▸ Google Drive / OneDrive / Dropbox are off ("Off for private diagrams"); Ctrl+S on a
+  diagram bound to a cloud file says so and offers **Save to this device**. Files on this device (Save, Save as,
+  Export) are the person's own act and stay.
+- **AI:** the page's WebMCP tools unregister; Copy for AI is off ("Private"); Advanced's boxes stay, off, with
+  "Off for this private diagram."; agent turns can't happen. The panel says **AI is off for this private diagram**
+  ("Agents, Copy for AI and copied prompts can't read it.") and, where Chrome's model can run, offers **Allow the
+  on-device model (stays on this device)**, per diagram, off by default. Allowed, the box comes back; its
+  dictation listens only with on-device speech (otherwise it says why and doesn't start), since the browser's
+  speech service would send audio away.
+- **Provenance:** Duplicate, Save a copy, a private copy and an export → import round trip stay private. A file
+  says `"private": true` (`public/schema/diagram.v1.json`, the skill's format page and `llms.txt` know it; the
+  skill's `share-link.mjs` refuses such a file), and the library keeps the flag in the entry, never in the stored
+  document. Copying nodes from a private diagram marks the clipboard (in-app and the system clipboard's JSON), and
+  pasting them makes the target private, with a toast saying so; an example or a shared diagram refuses the
+  paste instead. "New diagrams are private" covers what's started, opened from this device, imported or pasted
+  (a file opened from cloud storage keeps saving back there).
+- **The privacy page** (`public/privacy.html`) gains "Private diagrams" with the limits above.
+
+**Out of scope:** encryption at rest (the browser's storage isn't ours to encrypt meaningfully without a
+password the person must keep), and private flags for examples.
+
 ## Round 10: flow building (batch 3) (2026-10-12)
 
 Batch 3 of `docs/research/drawing-ux.md`: D3 the "+" and Alt+arrow quick-add with Alt+Shift+arrow
