@@ -367,6 +367,44 @@ export function OpenLinkDialog({ onOpen, onClose }: { onOpen: (input: string) =>
   );
 }
 
+/**
+ * What Private means, and the one confirmation before it's turned off (the badge beside the title and
+ * File ▸ Privacy ▸ Private diagram open it). Keeping it private is the default button.
+ */
+export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; onClose: () => void }) {
+  return (
+    <Dialog
+      title="Private diagram"
+      subtitle="It stays on this device. Export a file when you want to share it."
+      icon={<Glyph name="lock" />}
+      onClose={onClose}
+      testId="privacy-dialog"
+      width={480}
+      footer={
+        <>
+          <a className="link-btn" href="privacy.html" target="_blank" rel="noopener" data-testid="privacy-dialog-more">
+            How privacy works
+          </a>
+          <span className="ix-grow" />
+          <button className="btn" onClick={onTurnOff} data-testid="privacy-turn-off">
+            Make not private
+          </button>
+          <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="privacy-keep">
+            Keep private
+          </button>
+        </>
+      }
+    >
+      <ul className="ix-privacy-list" data-testid="privacy-dialog-list">
+        <li>No share links or embed codes</li>
+        <li>No saves to cloud storage</li>
+        <li>No AI: agents, Copy for AI and copied prompts can&apos;t read it</li>
+      </ul>
+      <p className="ix-muted">Made not private, it can be shared, saved to the cloud and read by AI again.</p>
+    </Dialog>
+  );
+}
+
 /** A draw.io file with several pages: pick one. */
 export function PagesDialog({
   fileName,

@@ -49,6 +49,9 @@ export type DictationStatus = "idle" | "starting" | "listening";
 /** Shown once per browser when audio leaves the device. */
 const CLOUD_NOTE_KEY = "diagrams.ai.dictationNote.v1";
 export const CLOUD_NOTE = "Your browser's speech service transcribes this (in Chrome, Google).";
+/** A private diagram's dictation never goes to the browser's speech service. */
+export const PRIVATE_SPEECH_NOTE =
+  "Dictation is off here: this browser would send your voice to its speech service, and this diagram is private.";
 
 type Message = { tone: "info" | "error"; text: string } | null;
 
@@ -74,8 +77,11 @@ function firstCloudUse(): boolean {
 
 const clearError = (m: Message): Message => (m?.tone === "error" ? null : m);
 
-/** The recognition lifecycle, outside React: start, keep listening across silences, stop. */
-function createSession(Ctor: RecognitionCtor, ui: Ui) {
+/**
+ * The recognition lifecycle, outside React: start, keep listening across silences, stop. With
+ * `onDeviceOnly()` true (a private diagram), it listens only when recognition runs on this device.
+ */
+function createSession(Ctor: RecognitionCtor, ui: Ui, onDeviceOnly: () => boolean = () => false) {
   let rec: Recognition | null = null;
   /** The person wants to be listening (we restart on the browser's silence timeout). */
   let wanted = false;
@@ -123,6 +129,11 @@ function createSession(Ctor: RecognitionCtor, ui: Ui) {
       if (rec !== r) return;
       const kind = speechErrorKind(e.error);
       // An on-device pack can go missing: fall back to the browser's service (restarts on end).
+      if (kind === "language" && local && onDeviceOnly()) {
+        wanted = false;
+        ui.message({ tone: "info", text: PRIVATE_SPEECH_NOTE });
+        return;
+      }
       if (kind === "language" && local) {
         local = false;
         ui.onDevice(false);
@@ -182,6 +193,11 @@ function createSession(Ctor: RecognitionCtor, ui: Ui) {
         : Promise.resolve(false);
       void check.then((isLocal) => {
         if (!wanted || token !== generation) return;
+        if (!isLocal && onDeviceOnly()) {
+          idle();
+          ui.message({ tone: "info", text: PRIVATE_SPEECH_NOTE });
+          return;
+        }
         local = isLocal;
         ui.onDevice(isLocal);
         if (!isLocal && firstCloudUse()) ui.message({ tone: "info", text: CLOUD_NOTE });
@@ -252,15 +268,20 @@ export interface Dictation {
  * `read` returns the current text and caret; `write` puts spoken words back (and should move the
  * caret). Both are read through a ref, so callers can pass inline functions.
  */
-export function useDictation(read: () => SpeechText, write: (t: SpeechText) => void): Dictation {
+export function useDictation(
+  read: () => SpeechText,
+  write: (t: SpeechText) => void,
+  /** Listen only when speech is recognised on this device (a private diagram). */
+  onDeviceOnly = false,
+): Dictation {
   const [status, setStatus] = useState<DictationStatus>("idle");
   const [interim, setInterim] = useState("");
   const [hearing, setHearing] = useState(false);
   const [message, setMessage] = useState<Message>(null);
   const [onDevice, setOnDevice] = useState(false);
-  const io = useRef({ read, write });
+  const io = useRef({ read, write, onDeviceOnly });
   useEffect(() => {
-    io.current = { read, write };
+    io.current = { read, write, onDeviceOnly };
   });
 
   const [Ctor] = useState(speechRecognition);
@@ -268,15 +289,19 @@ export function useDictation(read: () => SpeechText, write: (t: SpeechText) => v
   /** Created on first use (an event handler), never during render. */
   const ensure = () => {
     if (!session.current && Ctor)
-      session.current = createSession(Ctor, {
-        status: setStatus,
-        interim: setInterim,
-        hearing: setHearing,
-        message: setMessage,
-        onDevice: setOnDevice,
-        read: () => io.current.read(),
-        write: (t) => io.current.write(t),
-      });
+      session.current = createSession(
+        Ctor,
+        {
+          status: setStatus,
+          interim: setInterim,
+          hearing: setHearing,
+          message: setMessage,
+          onDevice: setOnDevice,
+          read: () => io.current.read(),
+          write: (t) => io.current.write(t),
+        },
+        () => io.current.onDeviceOnly,
+      );
     return session.current;
   };
   // Leaving the dialog ends dictation for good.

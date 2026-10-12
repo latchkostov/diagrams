@@ -107,11 +107,14 @@ export function HowTo({
 export function AgentStatus({
   available,
   localOnly,
+  privateDiagram = false,
   live,
   typeHere = false,
 }: {
   available: boolean;
   localOnly: boolean;
+  /** Off because the person made it Private (rather than a built-in local-only example). */
+  privateDiagram?: boolean;
   live: boolean;
   /** The panel has a request box of its own (the on-device model): don't say "not here". */
   typeHere?: boolean;
@@ -127,7 +130,7 @@ export function AgentStatus({
     >
       <span className="ai-agent-dot" aria-hidden />
       {localOnly ? (
-        <p>The page&apos;s tools are off for this local-only diagram.</p>
+        <p>The page&apos;s tools are off for this {privateDiagram ? "private" : "local-only"} diagram.</p>
       ) : available ? (
         <div>
           <p data-testid="ai-agent-status-text">

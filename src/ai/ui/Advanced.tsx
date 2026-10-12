@@ -33,6 +33,7 @@ export function Advanced({
   live,
   onTurn,
   onDevice,
+  privateDiagram = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,6 +44,8 @@ export function Advanced({
   onTurn: (turn: TurnRecord) => void;
   /** "Try the on-device model": offered only where Chrome's built-in model can run. */
   onDevice?: { on: boolean; set: (on: boolean) => void };
+  /** A Private diagram: no prompt is copied and no reply applied (the boxes stay, off, saying why). */
+  privateDiagram?: boolean;
 }) {
   const id = useId();
   const [request, setRequest] = useState("");
@@ -89,10 +92,10 @@ export function Advanced({
     cancelDictation.current = dictation.cancel;
   });
   useEffect(() => {
-    if (!open) cancelDictation.current();
-  }, [open]);
+    if (!open || privateDiagram) cancelDictation.current();
+  }, [open, privateDiagram]);
   useEffect(() => {
-    if (!dictation.supported || !open) return;
+    if (!dictation.supported || !open || privateDiagram) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "m") {
         e.preventDefault();
@@ -102,7 +105,7 @@ export function Advanced({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dictation, open]);
+  }, [dictation, open, privateDiagram]);
 
   const { parsed, pending } = useParsedReply(reply);
 
@@ -303,6 +306,7 @@ export function Advanced({
             onChange={setRequest}
             placeholder={placeholder}
             rows={3}
+            disabled={privateDiagram}
             dictation={dictation}
             shortcut
             testIds={{ input: "ai-request", mic: "ai-mic", interim: "ai-interim", message: "ai-dictation-message" }}
@@ -311,17 +315,23 @@ export function Advanced({
             <button
               className={`btn${hasReply ? "" : " btn-primary"}`}
               onClick={() => void copyPrompt()}
-              disabled={!editor}
+              disabled={!editor || privateDiagram}
               data-testid="ai-copy-prompt"
             >
               <Icon name={copied === "prompt" ? "check" : "copy"} size={14} />
               {copied === "prompt" ? "Copied" : "Copy prompt"}
             </button>
-            <span className="ai-hint" data-testid={explaining ? "ai-explain-note" : undefined}>
-              {explaining
-                ? "Your AI answers in its own chat; nothing to paste back."
-                : "Paste it into any chatbot, then its reply below."}
-            </span>
+            {privateDiagram ? (
+              <span className="ai-hint" data-testid="ai-private-hint">
+                Off for this private diagram.
+              </span>
+            ) : (
+              <span className="ai-hint" data-testid={explaining ? "ai-explain-note" : undefined}>
+                {explaining
+                  ? "Your AI answers in its own chat; nothing to paste back."
+                  : "Paste it into any chatbot, then its reply below."}
+              </span>
+            )}
           </div>
           {!explaining && (
             <>
@@ -339,6 +349,7 @@ export function Advanced({
                 }}
                 placeholder="Paste the reply"
                 rows={3}
+                disabled={privateDiagram}
                 spellCheck={false}
                 data-testid="ai-reply"
               />
@@ -348,7 +359,7 @@ export function Advanced({
                 </span>
                 <button
                   className={`btn${hasReply && !failure ? " btn-primary" : ""}`}
-                  disabled={!hasReply || !editor}
+                  disabled={!hasReply || !editor || privateDiagram}
                   onClick={apply}
                   data-testid="ai-apply"
                 >

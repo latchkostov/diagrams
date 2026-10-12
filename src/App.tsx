@@ -23,6 +23,7 @@ import {
   clearShared,
   createLibraryDiagram,
   deleteLibraryDiagram,
+  DEVICE_PROVIDER,
   DRAFT_SLUG,
   duplicateLibraryDiagram,
   getDiagramIdentity,
@@ -37,6 +38,7 @@ import {
   writeAutosave,
 } from "./lib/diagramIO";
 import { useLibrary } from "./lib/useLibrary";
+import { newDiagramsPrivate } from "./lib/privacyPrefs";
 import { Icon } from "./components/Icon";
 import { LibraryDialog } from "./components/LibraryDialog";
 import { formatAgo } from "./lib/time";
@@ -208,7 +210,12 @@ function MainApp() {
   const openDiagram = useCallback(
     (d: DiagramFile, target?: SaveTarget, sourceSlug?: string) => {
       // Validates and stores first; on failure the current diagram stays (and the caller reports why).
-      const created = createLibraryDiagram(d, target, undefined, { sourceSlug });
+      // "New diagrams are private" covers what comes in from this device; a cloud file keeps saving back there.
+      const fromCloud = !!target && target.providerId !== DEVICE_PROVIDER;
+      const created = createLibraryDiagram(d, target, undefined, {
+        sourceSlug,
+        private: !fromCloud && newDiagramsPrivate.get(),
+      });
       if (slug === SHARED_SLUG) clearShared();
       setUrl({ view: "canvas", example: created, present: false });
     },

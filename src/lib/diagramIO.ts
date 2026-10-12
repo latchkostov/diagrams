@@ -4,7 +4,8 @@ import { LIMITS, parseNative, preserveUnknown, serializeNative, validateDiagram 
 import { notify } from "../interop/ui/toast";
 import { safeStorage } from "./storage";
 import { diagramThumb, isThumb, type Thumb } from "./thumbnail";
-import { isLocalOnly } from "./localOnly";
+import { isLocalOnly, privacyOf } from "./localOnly";
+import { newDiagramsPrivate } from "./privacyPrefs";
 
 // Where diagrams live in the browser.
 //
@@ -191,10 +192,13 @@ const randomHex = (words: number) =>
 let draftToken = randomHex(2);
 let promoted: { token: string; slug: string } | null = null;
 const draftIdentity = () => `draft:${draftToken}`;
+/** The blank draft's Private switch (and on-device permission) until its first edit makes it an entry. */
+let draftPrivacy: PrivacyFlags = newDiagramsPrivate.get() ? { private: true } : {};
 
 /** A fresh blank draft (File > New diagram): the next visit to DRAFT_SLUG starts empty. */
 export function newDraft(): void {
   draftToken = randomHex(2);
+  draftPrivacy = newDiagramsPrivate.get() ? { private: true } : {};
 }
 
 /** The draft's first edit turned it into this library entry; links to "new" follow it until the next New diagram. */
@@ -207,7 +211,7 @@ function promoteDraft(identity: string): string | undefined {
   const routed = resolveSlug(DRAFT_SLUG);
   if (routed !== DRAFT_SLUG) return identity === draftIdentity() ? routed : undefined;
   if (identity !== draftIdentity()) return undefined;
-  const slug = createLibraryDiagram(emptyDiagram(), undefined, identity);
+  const slug = createLibraryDiagram(emptyDiagram(), undefined, identity, draftPrivacy);
   promoted = { token: draftToken, slug };
   return slug;
 }
@@ -384,7 +388,14 @@ interface StoredEntry {
   thumb?: Thumb;
   /** Sticky provenance, kept in the library index and never in exported diagram JSON. */
   localOnly?: boolean;
+  /** The Private switch. Exports carry it as the file's `"private": true`; copies and pastes inherit it. */
+  private?: boolean;
+  /** This private diagram may use the on-device model. */
+  onDevice?: boolean;
 }
+
+/** A diagram's privacy provenance, as kept in its library entry (see src/lib/localOnly.ts). */
+export type PrivacyFlags = Pick<StoredEntry, "localOnly" | "private" | "onDevice">;
 
 export interface LibraryEntry extends StoredEntry {
   thumb: Thumb;
@@ -414,15 +425,25 @@ const isBlank = (d: DiagramFile) =>
   !d.description &&
   (d.title || UNTITLED) === UNTITLED;
 
-const summarize = (slug: string, d: DiagramFile, at: number, createdAt = at, localOnly = false): StoredEntry => ({
+const summarize = (
+  slug: string,
+  d: DiagramFile,
+  at: number,
+  createdAt = at,
+  flags: PrivacyFlags = {},
+): StoredEntry => ({
   slug,
   title: d.title.trim() || UNTITLED,
   createdAt,
   updatedAt: at,
   nodes: d.nodes.length,
   thumb: diagramThumb(d),
-  ...(isLocalOnly({ localOnly, diagram: d }) ? { localOnly: true } : {}),
+  ...(privacyOf({ localOnly: flags.localOnly, diagram: d }) === "local-only" ? { localOnly: true } : {}),
+  ...(flags.private ? { private: true } : {}),
+  ...(flags.private && flags.onDevice ? { onDevice: true } : {}),
 });
+const flagsOf = (e: StoredEntry | undefined): PrivacyFlags =>
+  e ? { localOnly: e.localOnly, private: e.private, onDevice: e.onDevice } : {};
 
 function validEntry(v: unknown): v is StoredEntry {
   const e = v as Partial<StoredEntry> | null;
@@ -519,15 +540,66 @@ export function hasLibraryEntry(slug: string): boolean {
   return readIndex().some((e) => e.slug === slug);
 }
 
+/**
+ * A document's privacy provenance: a local-only example, its library entry's flags, the blank draft's
+ * switch, or a shared diagram whose file says `"private": true`. Content is checked by privacyOf.
+ */
+export function getPrivacyFlags(slug: string): PrivacyFlags {
+  const resolved = resolveSlug(slug);
+  if (resolved === DRAFT_SLUG) return { ...draftPrivacy };
+  if (examples.some((e) => e.slug === resolved && e.localOnly)) return { localOnly: true };
+  if (resolved === SHARED_SLUG) return getShared()?.private === true ? { private: true } : {};
+  return flagsOf(readIndex().find((e) => e.slug === resolved));
+}
+
 /** Resolve draft promotion as well as example/library provenance. Content is checked by isLocalOnly. */
 export function isLocalOnlySource(slug: string, diagram?: DiagramFile): boolean {
+  return isLocalOnly({ ...getPrivacyFlags(slug), diagram });
+}
+
+/**
+ * The Private switch for one of your diagrams (or the blank draft). Turning it off also withdraws the
+ * on-device permission. Returns false where there's no switch: examples and shared diagrams (make a
+ * private copy instead). Local-only provenance stays whatever the switch says.
+ */
+export function setDiagramPrivate(slug: string, on: boolean): boolean {
   const resolved = resolveSlug(slug);
-  return isLocalOnly({
-    localOnly:
-      examples.some((e) => e.slug === resolved && e.localOnly) ||
-      readIndex().some((e) => e.slug === resolved && e.localOnly),
-    diagram,
-  });
+  if (resolved === DRAFT_SLUG) {
+    draftPrivacy = on ? { ...draftPrivacy, private: true } : { localOnly: draftPrivacy.localOnly };
+    changed();
+    return true;
+  }
+  return updateFlags(resolved, (f) => (on ? { ...f, private: true } : { localOnly: f.localOnly }));
+}
+
+/** "Allow the on-device model" for a private diagram. */
+export function setOnDeviceAllowed(slug: string, on: boolean): boolean {
+  const resolved = resolveSlug(slug);
+  if (resolved === DRAFT_SLUG) {
+    if (!draftPrivacy.private) return false;
+    draftPrivacy = { ...draftPrivacy, onDevice: on };
+    changed();
+    return true;
+  }
+  return updateFlags(resolved, (f) => (f.private ? { ...f, onDevice: on } : f));
+}
+
+function updateFlags(slug: string, next: (f: PrivacyFlags) => PrivacyFlags): boolean {
+  if (!isLibrarySlug(slug) || isDeleted(slug)) return false;
+  const entry = readIndex().find((e) => e.slug === slug);
+  const current = getCurrent(slug);
+  if (!entry || !current) return false;
+  const updated = summarize(slug, current, entry.updatedAt, entry.createdAt, next(flagsOf(entry)));
+  if (!writeEntry(updated)) throw new Error(STORAGE_FULL);
+  changed();
+  return true;
+}
+
+/** A file leaving this device says whether it's private (`"private": true`), so a re-import stays private. */
+export function withPrivacyField(d: DiagramFile, isPrivate: boolean): DiagramFile {
+  const rest = { ...d };
+  delete rest.private;
+  return isPrivate ? { ...rest, private: true } : rest;
 }
 
 /** Keeps an entry's title, node count, thumbnail and time in step with its latest content. Best effort. */
@@ -536,7 +608,7 @@ function touchEntry(slug: string, d: DiagramFile | undefined) {
   const entries = readIndex();
   const i = entries.findIndex((e) => e.slug === slug);
   const now = Date.now();
-  const next = summarize(slug, d, now, i >= 0 ? entries[i].createdAt : now, entries[i]?.localOnly);
+  const next = summarize(slug, d, now, i >= 0 ? entries[i].createdAt : now, flagsOf(entries[i]));
   // A missing entry is re-listed only while its document exists (never a deleted one).
   if (i < 0 && safeStorage.getItem(slotKey(slug)!) === null) return;
   if (writeEntry(next)) changed();
@@ -547,20 +619,29 @@ function touchEntry(slug: string, d: DiagramFile | undefined) {
  * invalid or storage is full (nothing is left half-written). `target` binds where Save writes.
  */
 export function createLibraryDiagram(
-  d: DiagramFile,
+  input: DiagramFile,
   target?: SaveTarget,
   sessionId?: string,
-  provenance: { localOnly?: boolean; sourceSlug?: string } = {},
+  provenance: PrivacyFlags & { sourceSlug?: string } = {},
 ): string {
   const entries = readIndex();
   let slug: string;
   do slug = LIBRARY_SLUG_PREFIX + randomHex(2).slice(0, 12);
   while (entries.some((e) => e.slug === slug));
+  // A file's `"private": true` becomes the entry's switch; the stored document never carries it.
+  const d = withPrivacyField(input, false);
+  // Copies inherit their source's privacy: a local-only example's provenance, or the Private switch.
+  const source = provenance.sourceSlug !== undefined ? getPrivacyFlags(provenance.sourceSlug) : {};
+  const flags: PrivacyFlags = {
+    localOnly:
+      provenance.localOnly ||
+      (provenance.sourceSlug !== undefined && privacyOf({ localOnly: source.localOnly, diagram: d }) === "local-only"),
+    private: provenance.private || source.private || input.private === true,
+    onDevice: provenance.onDevice || source.onDevice,
+  };
   replaceDocument(slug, d, target, sessionId);
   const r = validateDiagram(d);
-  const localOnly =
-    provenance.localOnly || (provenance.sourceSlug !== undefined && isLocalOnlySource(provenance.sourceSlug, d));
-  if (!writeEntry(summarize(slug, r.ok ? r.diagram : d, Date.now(), undefined, localOnly))) {
+  if (!writeEntry(summarize(slug, r.ok ? r.diagram : d, Date.now(), undefined, flags))) {
     safeStorage.removeItem(slotKey(slug)!);
     memoryTargets.delete(slug);
     throw new Error(STORAGE_FULL);
@@ -616,10 +697,7 @@ export function renameLibraryDiagram(slug: string, title: string): void {
             },
       ),
     ]);
-  writes.push([
-    entryKey(slug),
-    JSON.stringify(summarize(slug, current, Date.now(), entry?.createdAt, entry?.localOnly)),
-  ]);
+  writes.push([entryKey(slug), JSON.stringify(summarize(slug, current, Date.now(), entry?.createdAt, flagsOf(entry)))]);
   commitWrites(writes);
   changed();
 }
@@ -634,7 +712,7 @@ export function deleteLibraryDiagram(slug: string): () => boolean {
   const indexed = entries.find((e) => e.slug === slug);
   const current = getCurrent(slug);
   const entry =
-    indexed && current ? summarize(slug, current, Date.now(), indexed.createdAt, indexed.localOnly) : indexed;
+    indexed && current ? summarize(slug, current, Date.now(), indexed.createdAt, flagsOf(indexed)) : indexed;
   const memory = memoryTargets.get(slug);
   // The index goes first: if it can't be written, nothing is deleted.
   if (!safeStorage.setItem(deletedKey(slug), JSON.stringify({ slug, deleted: true }))) throw new Error(STORAGE_FULL);
@@ -699,7 +777,9 @@ export function warnIfNearlyFull(): boolean {
  * navigation, e.g. `openCanvas(createDiagram(seed))` in canvasBridge.
  */
 export function createDiagram(seed: Partial<DiagramFile> = {}): string {
-  return createLibraryDiagram({ ...emptyDiagram(), ...seed, format: DIAGRAM_FORMAT });
+  return createLibraryDiagram({ ...emptyDiagram(), ...seed, format: DIAGRAM_FORMAT }, undefined, undefined, {
+    private: newDiagramsPrivate.get(),
+  });
 }
 
 export const emptyDiagram = (): DiagramFile => ({

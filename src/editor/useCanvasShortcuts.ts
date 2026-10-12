@@ -193,7 +193,7 @@ export function useCanvasShortcuts(
         return;
       const sel = editor.getSelection();
       if (!sel.nodeIds.length && !sel.groupIds.length) return;
-      const payload = makePayload(editor.getDiagram(), sel.nodeIds, sel.groupIds);
+      const payload = makePayload(editor.getDiagram(), sel.nodeIds, sel.groupIds, editor.isPrivate?.());
       if (!payload) return;
       e.clipboardData?.setData("text/plain", JSON.stringify(payload, null, 2));
       e.preventDefault();

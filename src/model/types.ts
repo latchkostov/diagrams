@@ -57,6 +57,11 @@ export interface DiagramFile {
   annotations?: DiagramAnnotation[];
   /** Shared back-to-front order of diagram nodes and annotations; absent means default order. */
   layerOrder?: string[];
+  /**
+   * A Private diagram's export says so, so it stays private when it's opened or imported again: no share
+   * links, no cloud saves, no AI. Kept in the library's metadata while the diagram is in the browser.
+   */
+  private?: boolean;
 }
 
 // ---------- Annotations ----------

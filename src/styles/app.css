@@ -964,6 +964,15 @@ kbd {
   font-size: 12px;
 }
 
+.lib-text .lib-private {
+  color: var(--text-2);
+  font-size: inherit;
+}
+
+.lib-private svg {
+  vertical-align: -1px;
+}
+
 /* Rename edits the title in place, over the row's title line. */
 .lib-rename {
   position: absolute;

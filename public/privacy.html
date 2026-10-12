@@ -77,7 +77,7 @@
   <body>
     <main>
       <h1 data-testid="privacy-title">Privacy</h1>
-      <p class="updated">Diagrams at livediagrams.dev · last updated 11 October 2026</p>
+      <p class="updated">Diagrams at livediagrams.dev · last updated 12 October 2026</p>
 
       <p>
         Diagrams is a free, open-source tool that runs entirely in your browser. There is no Diagrams server, no
@@ -97,6 +97,41 @@
         <li>
           <strong>Share links</strong> carry the diagram inside the link, after the <code>#</code>. Browsers never send
           that part to a server, so the diagram travels only to whoever you send the link to.
+        </li>
+      </ul>
+
+      <h2 id="private-diagrams">Private diagrams</h2>
+      <p>
+        For work diagrams, or anything you'd rather keep to yourself, mark a diagram <strong>Private</strong> (File →
+        Privacy → Private diagram, or turn on <em>New diagrams are private</em>). A lock beside its title shows it's
+        on. A private diagram:
+      </p>
+      <ul>
+        <li>can't be shared as a link or embedded, so it never ends up in a URL, a chat or your browser history;</li>
+        <li>isn't saved to Google Drive, OneDrive or Dropbox;</li>
+        <li>
+          is off-limits to AI: the page offers no tools to AI agents while it's open, and Copy for AI and copied
+          prompts are off. Chrome's built-in model runs on your device, so you can allow it for a private diagram;
+          dictation then works only where your browser recognises speech on the device too.
+        </li>
+        <li>
+          stays private when you duplicate it, copy its nodes into another diagram, or export it and open the file
+          again (the file says <code>"private": true</code>).
+        </li>
+      </ul>
+      <p>What Private can't do, honestly:</p>
+      <ul>
+        <li>
+          A file you export or save to this device is yours to send anywhere. Private stops the app from sharing, not
+          you.
+        </li>
+        <li>
+          Your browser's extensions can read any page they're allowed on, this one included. Use a browser profile
+          without extensions you don't trust for sensitive work.
+        </li>
+        <li>
+          Diagrams are kept unencrypted in your browser's storage on this device. Anyone who can use your device and
+          browser profile can open them, so lock your device and avoid shared profiles.
         </li>
       </ul>
 

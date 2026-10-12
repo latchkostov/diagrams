@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EditorApi } from "../../editor/types";
 import { paletteHost } from "../../palette/host";
-import { isLocalOnly } from "../../lib/localOnly";
-import { LOCAL_ONLY_MESSAGE } from "../privacy";
+import { canUseOnDevice } from "../../lib/localOnly";
+import { aiOffMessage } from "../privacy";
 import { planTurn } from "../ui/apply";
 import { commitPlan, type TurnRecord } from "../ui/commitTurn";
 import { resolveScope } from "../ui/context";
@@ -23,7 +23,7 @@ const SLOW = "The on-device model took too long to answer. Try again, or ask for
 /** The editor, when this diagram may be read and changed by the model now; null otherwise. */
 function editable(documentId: string | undefined): EditorApi | null {
   const canvas = paletteHost.get().canvas;
-  if (!canvas || canvas.documentId !== documentId || canvas.live || isLocalOnly(canvas)) return null;
+  if (!canvas || canvas.documentId !== documentId || canvas.live || !canUseOnDevice(canvas)) return null;
   return canvas.editor;
 }
 
@@ -75,7 +75,8 @@ export function useOnDeviceRequest({
     // Provenance first: a local-only diagram is never read for the model.
     const ed = editable(documentId);
     if (!ed) {
-      if (isLocalOnly(paletteHost.get().canvas)) setError(LOCAL_ONLY_MESSAGE);
+      const canvas = paletteHost.get().canvas;
+      if (!canUseOnDevice(canvas)) setError(aiOffMessage(canvas));
       return false;
     }
     const diagram = ed.getDiagram();

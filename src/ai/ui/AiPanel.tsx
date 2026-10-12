@@ -16,7 +16,7 @@ import type { DiagramFile } from "../../model/types";
 import { notify } from "../../interop/ui/toast";
 import { paletteHost } from "../../palette/host";
 import { getStencil } from "../../stencils/registry";
-import { isLocalOnly } from "../../lib/localOnly";
+import { canUseOnDevice, privacyOf, PRIVATE_AI_OFF } from "../../lib/localOnly";
 import { LOCAL_ONLY_MESSAGE } from "../privacy";
 import { choiceIsCurrent, diffDiagrams, summarize, swapStencil, type StencilChoice } from "./apply";
 import { dismissAppliedToast, markElements, showApplied } from "./feedback";
@@ -60,7 +60,12 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const canvas = host.canvas;
   const editor = canvas?.editor ?? null;
   const documentId = canvas?.documentId;
-  const localOnly = isLocalOnly(canvas);
+  // One privacy decision (src/lib/localOnly.ts): a built-in local-only example, or a Private diagram.
+  const privacy = privacyOf(canvas);
+  const localOnly = privacy !== null;
+  const privateDiagram = privacy === "private";
+  /** A private diagram may use the on-device model once the person allows it (a local-only one never). */
+  const onDeviceAllowed = canUseOnDevice(canvas);
   const titleId = useId();
   const turns = useThread(documentId);
   const historyEnd = useRef<HTMLLIElement>(null);
@@ -71,7 +76,8 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   const [model, setModel] = useModelAvailability();
   const [onDeviceOn, setOnDeviceOn] = useState(readOnDevice);
   const offerOnDevice = !!model && model !== "unavailable";
-  const onDevice = offerOnDevice && onDeviceOn;
+  // A private diagram shows the box only once its on-device model is allowed (the note has the switch).
+  const onDevice = offerOnDevice && onDeviceOn && (!privateDiagram || onDeviceAllowed);
   /** The box is there to type in (not still waiting for its download). */
   const typeHere = onDevice && model === "available";
   const toggleOnDevice = (on: boolean) => {
@@ -156,7 +162,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
 
   const swap = (turn: ThreadTurn, choice: StencilChoice, stencilId: string) => {
     const ed = editorNow();
-    if (!ed || localOnly || !choiceIsCurrent(ed.getDiagram(), choice))
+    if (!ed || !onDeviceAllowed || !choiceIsCurrent(ed.getDiagram(), choice))
       return notify("This stencil choice is stale: its node changed since.", { kind: "error" });
     const plan = swapStencil(ed.getDiagram(), choice.nodeId, stencilId, choice.node);
     if (!plan.ok) return notify(plan.error.error, { kind: "error" });
@@ -210,7 +216,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
   /** Revert to here: the diagram as it was after this turn, as one undo step (and a turn of its own). */
   const revertTo = (turn: ThreadTurn) => {
     const ed = editorNow();
-    if (!ed || !turn.after || localOnly) return;
+    if (!ed || !turn.after || !onDeviceAllowed) return;
     const before = ed.getDiagram();
     const historyKey = `ai:${turnId()}`;
     try {
@@ -308,10 +314,29 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
       </header>
 
       <div className="ai-body">
-        {localOnly && (
+        {privacy === "local-only" && (
           <p className="ai-note" role="status" data-testid="ai-privacy-note">
             {LOCAL_ONLY_MESSAGE}
           </p>
+        )}
+        {privateDiagram && (
+          <div className="ai-note ai-private-note" role="status" data-testid="ai-privacy-note">
+            <p className="ai-private-title">
+              <Icon name="lock" size={13} /> {PRIVATE_AI_OFF}
+            </p>
+            <p>Agents, Copy for AI and copied prompts can&apos;t read it.</p>
+            {offerOnDevice && (
+              <label className="ai-ondevice-pref" data-testid="ai-private-ondevice">
+                <input
+                  type="checkbox"
+                  checked={onDeviceAllowed}
+                  onChange={(e) => canvas?.allowOnDevice?.(e.target.checked)}
+                  data-testid="ai-private-ondevice-toggle"
+                />
+                <span>Allow the on-device model (stays on this device)</span>
+              </label>
+            )}
+          </div>
         )}
         {turns.length > 0 ? (
           <ol className="ai-history" aria-label="Conversation" data-testid="ai-history">
@@ -323,7 +348,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
                 current={current}
                 atThisTurn={atTurn.get(t.id) ?? false}
                 canUndo={!!t.historyKey && t.historyKey === undoTarget}
-                canChange={!!editor && !localOnly}
+                canChange={!!editor && onDeviceAllowed}
                 onUndo={() => undoTurn(t)}
                 onRevert={() => revertTo(t)}
                 onSwap={(c, id) => swap(t, c, id)}
@@ -331,7 +356,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
             ))}
             <li ref={historyEnd} aria-hidden className="ai-history-end" />
           </ol>
-        ) : (
+        ) : privateDiagram ? null : (
           <div className="ai-empty" data-testid="ai-empty">
             <h3>{localOnly ? "AI is off for this diagram" : "Change this diagram with AI"}</h3>
             {!localOnly && (
@@ -368,14 +393,21 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
             onAvailability={setModel}
             documentId={documentId}
             live={live}
-            localOnly={localOnly}
+            localOnly={!onDeviceAllowed}
+            privateDiagram={privateDiagram}
             scope={scope}
             onTurn={addTurn}
           />
         </Suspense>
       )}
 
-      <AgentStatus available={mcp} localOnly={localOnly} live={live} typeHere={typeHere} />
+      <AgentStatus
+        available={mcp}
+        localOnly={localOnly}
+        privateDiagram={privateDiagram}
+        live={live}
+        typeHere={typeHere}
+      />
 
       <Advanced
         open={advancedOpen}
@@ -385,6 +417,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
         live={live}
         onTurn={addTurn}
         onDevice={offerOnDevice ? { on: onDeviceOn, set: toggleOnDevice } : undefined}
+        privateDiagram={privateDiagram}
       />
     </section>
   );

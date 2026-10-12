@@ -54,10 +54,13 @@ import {
   getDiagramIdentity,
   getOriginal,
   isLibrarySlug,
-  isLocalOnlySource,
+  setDiagramPrivate,
+  setOnDeviceAllowed,
   UNTITLED,
   writeAutosave,
 } from "../lib/diagramIO";
+import { privacyOf } from "../lib/localOnly";
+import { PRIVACY_REQUEST, usePrivacyFlags } from "../lib/usePrivacy";
 import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
 import { fromFlow, groupAt, toFlow, withEdgeAria, withEditingOnTop, withNodeAria, type DiagramMeta } from "./convert";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
@@ -337,8 +340,24 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     [fitView_],
   );
   const fit = useCallback(() => overlayFit({ maxZoom: 1.25, duration: 300 }), [overlayFit]);
+  // Privacy: the diagram's provenance (Private switch, local-only example), re-read when the library changes.
+  const privacyFlags = usePrivacyFlags(slug);
+  const privacyNow = () => privacyOf({ ...privacyFlags, editor: { getDiagram: () => fromFlow(meta, nodes, edges) } });
   const editor = useEditor({
     slug,
+    isPrivate: () => privacyNow() !== null,
+    makePrivate: () => {
+      if (setDiagramPrivate(slug, true)) {
+        notify("Pasted from a private diagram, so this one is private now: no share links, cloud saves or AI.", {
+          kind: "info",
+        });
+        return true;
+      }
+      notify("That came from a private diagram. Paste it into one of your diagrams, not an example or a shared one.", {
+        kind: "error",
+      });
+      return false;
+    },
     meta,
     setMeta,
     setNodes,
@@ -378,10 +397,19 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   });
   // The command palette (Ctrl/Cmd+K) acts on this canvas while it's mounted and editable.
   const hostRevision = useMemo(() => ({ nodes, edges, meta }), [nodes, edges, meta]);
+  const allowOnDevice = useCallback((on: boolean) => void setOnDeviceAllowed(slug, on), [slug]);
+  // Only development builds read content for privacy (privacyOf); production reads provenance alone.
+  const privacy = privacyOf({
+    ...privacyFlags,
+    ...(import.meta.env.DEV ? { diagram: fromFlow(meta, nodes, edges) } : {}),
+  });
   useCanvasHost(editor, {
     live,
     enabled: !readOnly,
-    localOnly: isLocalOnlySource(slug, fromFlow(meta, nodes, edges)),
+    localOnly: privacy === "local-only",
+    private: !!privacyFlags.private,
+    onDevice: !!privacyFlags.onDevice,
+    allowOnDevice,
     documentId: getDiagramIdentity(slug),
     revision: hostRevision,
   });
@@ -1580,14 +1608,22 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
 
           <div
             ref={card}
-            className={`diagram-card${presenting ? " is-large" : ""}${cardCovers ? " is-compact" : ""}`}
+            className={`diagram-card${presenting ? " is-large" : ""}${cardCovers ? " is-compact" : ""}${privacy && !hideChrome ? " has-badge" : ""}`}
             data-testid="diagram-card"
             data-canvas-overlay
             data-collapsed={cardCovers ? "1" : undefined}
-            // A blank, untitled diagram is already named in the picker: the card waits for the first node.
-            hidden={nodeCount === 0 && !presenting && (meta.title || UNTITLED) === UNTITLED && !meta.description}
+            // A blank, untitled diagram is already named in the picker: the card waits for the first node
+            // (a private one shows at once, so its lock does).
+            hidden={
+              nodeCount === 0 &&
+              !presenting &&
+              (meta.title || UNTITLED) === UNTITLED &&
+              !meta.description &&
+              !(privacy && !hideChrome)
+            }
           >
             <h1 data-testid="diagram-title">{meta.title}</h1>
+            {privacy && !hideChrome && <PrivateBadge kind={privacy} />}
             {meta.description && <p>{meta.description}</p>}
             {/* Node and edge counts live in the inspector's diagram panel, not here too. */}
             {!hideChrome && modified && !ownDiagram && (
@@ -1679,5 +1715,31 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
       {nodeTip && !menu && <NodeTooltip tip={nodeTip} />}
     </DiagramContext.Provider>
+  );
+}
+
+/**
+ * The lock beside the title of a private diagram. A click explains what Private means and offers to turn it
+ * off (one confirmation). A local-only example's lock only says it's always private.
+ */
+function PrivateBadge({ kind }: { kind: "local-only" | "private" }) {
+  const always = kind === "local-only";
+  return (
+    <button
+      type="button"
+      className="private-badge"
+      data-testid="private-badge"
+      data-kind={kind}
+      aria-label={always ? "Private: always, it comes from a local-only example" : "Private diagram: what this means"}
+      title={
+        always ? "Always private: no share links, cloud saves or AI" : "Private: no share links, cloud saves or AI"
+      }
+      aria-disabled={always || undefined}
+      onClick={() => {
+        if (!always) window.dispatchEvent(new Event(PRIVACY_REQUEST));
+      }}
+    >
+      <Icon name="lock" size={12} /> Private
+    </button>
   );
 }

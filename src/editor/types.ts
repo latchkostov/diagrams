@@ -178,6 +178,8 @@ export interface EditorApi {
   /** Inserts a payload (e.g. from a system clipboard paste event); placed as `paste`. */
   pastePayload(payload: ClipboardPayload, at?: XY): void;
   hasClipboard(): boolean;
+  /** A private diagram: what's copied from it carries that, so a paste elsewhere makes the target private. */
+  isPrivate?(): boolean;
 
   // ---- history ----
   undo(): void;

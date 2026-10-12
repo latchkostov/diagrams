@@ -15,19 +15,38 @@ import type { View } from "../lib/urlState";
 import {
   bindSaveTarget,
   DEVICE_PROVIDER,
+  DIAGRAMS_CHANGED,
+  DRAFT_SLUG,
   getDiagramIdentity,
+  getPrivacyFlags,
   getSaveTarget,
   getOriginal,
+  isLibrarySlug,
   isOwnSlug,
+  setDiagramPrivate,
+  SHARED_SLUG,
   UNTITLED,
+  withPrivacyField,
   type SaveTarget,
 } from "../lib/diagramIO";
+import {
+  canSaveToCloud,
+  canShareAsLink,
+  isLocalOnly,
+  privacyOf,
+  PRIVATE_SHARE_MESSAGE,
+  type CanvasPrivacyState,
+  type Privacy,
+} from "../lib/localOnly";
+import { newDiagramsPrivate } from "../lib/privacyPrefs";
+import { PRIVACY_REQUEST } from "../lib/usePrivacy";
 import { fromFlow, toFlow } from "../canvas/convert";
 import { actionRegistry, type Action, type MenuNode } from "../editor/actions";
 import { builtinActions } from "../editor/builtinActions";
 import { LIMITS, preserveUnknown, serializeNative, tooLargeMessage } from "./native";
 import { importText, OPEN_ACCEPT, type ImportOutcome } from "./formats";
 import {
+  clearUrlFragment,
   decodeShare,
   encodeShare,
   SHARE_WARN_LENGTH,
@@ -43,7 +62,15 @@ import { CLOUD_PROVIDERS, DEVICE as DEVICE_INFO, providerInfo, type ProviderInfo
 import { StorageError, type OpenContext, type StorageEntry, type StorageProvider } from "./storage/types";
 import { toast } from "./ui/toast";
 import { copyText } from "./ui/copyText";
-import { EmbedDialog, ImageDialog, OpenLinkDialog, PagesDialog, PasteDialog, ShareDialog } from "./ui/dialogs";
+import {
+  EmbedDialog,
+  ImageDialog,
+  OpenLinkDialog,
+  PagesDialog,
+  PasteDialog,
+  PrivacyDialog,
+  ShareDialog,
+} from "./ui/dialogs";
 import { DropOverlay } from "./ui/DropOverlay";
 
 import { StorageFilesDialog } from "./ui/storageDialogLazy";
@@ -88,6 +115,7 @@ type DialogState =
   | { kind: "share"; diagram: DiagramFile }
   | { kind: "embed"; diagram: DiagramFile; example?: string }
   | { kind: "image" }
+  | { kind: "privacy" }
   | { kind: "paste" }
   | { kind: "link" }
   | {
@@ -156,13 +184,35 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     return bound;
   }, []);
 
+  // ---------------------------------------------------------------- privacy
+
+  /** The open diagram's privacy inputs: its provenance, and (in development) its content. */
+  const privacyState = useCallback(
+    (): CanvasPrivacyState => ({ ...getPrivacyFlags(slug), diagram: canvasRef.current?.getDiagram() }),
+    [canvasRef, slug],
+  );
+  /** Local-only (built in), Private (the switch) or null. Read when asked, never cached. */
+  const privacy = (): Privacy => privacyOf(privacyState());
+
+  // A private diagram never keeps a fragment in the address bar, however it became private (the switch,
+  // a paste from a private diagram, another tab). Not on mount: a share link being opened is read first.
+  useEffect(() => {
+    if (view !== "canvas") return;
+    const check = () => {
+      if (isLocalOnly(getPrivacyFlags(slug))) clearUrlFragment();
+    };
+    window.addEventListener(DIAGRAMS_CHANGED, check);
+    return () => window.removeEventListener(DIAGRAMS_CHANGED, check);
+  }, [view, slug]);
+
   // ---------------------------------------------------------------- export
 
+  /** The open diagram as a file. A private one says so (`"private": true`), so it stays private when reopened. */
   const current = useCallback((): DiagramFile => {
     const d = canvasRef.current?.getDiagram();
     if (!d) throw new Error("Open a diagram on the canvas first.");
-    return preserveUnknown(d, getOriginal(slug));
-  }, [canvasRef, slug]);
+    return withPrivacyField(preserveUnknown(d, getOriginal(slug)), isLocalOnly(privacyState()));
+  }, [canvasRef, slug, privacyState]);
 
   const baseName = useCallback((d: DiagramFile) => (isOwnSlug(slug) ? slugify(d.title) : slug), [slug]);
 
@@ -224,11 +274,24 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       toast.success("Exported a Mermaid .mmd file.");
     });
 
-  const openShare = () => attempt("create a share link", () => setDialog({ kind: "share", diagram: current() }));
+  /** Share links and embeds: the one gate. A private diagram gets no link, and says why. */
+  const linkAllowed = () => {
+    if (canShareAsLink(privacyState())) return true;
+    toast.info(PRIVATE_SHARE_MESSAGE, {
+      action: { label: "Export file", run: () => void exportNative(), testId: "toast-private-export" },
+    });
+    return false;
+  };
+
+  const openShare = () =>
+    attempt("create a share link", () => {
+      if (linkAllowed()) setDialog({ kind: "share", diagram: current() });
+    });
 
   /** One click: copy the link. The dialog (details, warnings, native share) is one step away. */
   const copyShareLink = () =>
     attempt("create a share link", async () => {
+      if (!linkAllowed()) return;
       const d = current();
       const url = shareUrl(await encodeShare(d));
       const details = {
@@ -248,6 +311,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     });
   const openEmbed = () =>
     attempt("create embed code", () => {
+      if (!linkAllowed()) return;
       const d = current();
       // Embed by name only when the example is public and unedited (the viewer shows the original).
       const original = getOriginal(slug);
@@ -293,6 +357,16 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   /** Save to a cloud provider: over the file this diagram is bound to there, or (`asNew`) a new file. */
   const saveToCloud = (info: ProviderInfo, asNew = false) =>
     attempt(`save to ${info.label}`, async () => {
+      if (!canSaveToCloud(privacyState())) {
+        toast.error(`Private diagrams aren't saved to ${info.label}. Save to this device instead.`, {
+          action: {
+            label: "Save to this device",
+            run: () => void saveToDevice(true),
+            testId: "toast-private-save-device",
+          },
+        });
+        return;
+      }
       const d = current();
       const identity = getDiagramIdentity(slug);
       const stored = getSaveTarget(slug);
@@ -475,6 +549,47 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       toast.success(`Saved a copy of “${d.title}” to Your diagrams.`);
     });
 
+  // ---------------------------------------------------------------- the Private switch
+
+  /**
+   * On: your own diagram (or the blank draft) changes in place; an example or a shared diagram becomes a
+   * private copy in Your diagrams. Off: one confirmation first (the privacy dialog).
+   */
+  const setPrivate = (on: boolean) =>
+    attempt(on ? "make it private" : "change its privacy", () => {
+      const kind = privacy();
+      if (!on) {
+        if (kind === "private") setDialog({ kind: "privacy" });
+        return;
+      }
+      if (kind) return;
+      if (isLibrarySlug(slug) || slug === DRAFT_SLUG) {
+        setDiagramPrivate(slug, true);
+        clearUrlFragment();
+        toast.success("Private: no share links, cloud saves or AI for this diagram.");
+        return;
+      }
+      const d = current();
+      openDiagram(withPrivacyField(d, true), undefined, slug === SHARED_SLUG ? slug : undefined);
+      clearUrlFragment();
+      toast.success(`Saved a private copy of “${d.title}” to Your diagrams.`);
+    });
+
+  const confirmNotPrivate = () =>
+    attempt("change its privacy", () => {
+      setDialog(null);
+      if (setDiagramPrivate(slug, false)) toast.success("This diagram is no longer private.");
+    });
+
+  // The badge beside the title asks for the dialog: it explains, and turns Private off on confirmation.
+  useEffect(() => {
+    const onRequest = () => {
+      if (privacyOf(getPrivacyFlags(slug)) === "private") setDialog({ kind: "privacy" });
+    };
+    window.addEventListener(PRIVACY_REQUEST, onRequest);
+    return () => window.removeEventListener(PRIVACY_REQUEST, onRequest);
+  }, [slug]);
+
   // ---------------------------------------------------------------- keyboard
 
   const api = {
@@ -497,6 +612,10 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     openPaste: () => setDialog({ kind: "paste" }),
     openShareLink: () => setDialog({ kind: "link" }),
     keepSharedCopy,
+    /** The open diagram's privacy: "local-only" (built in, always), "private" (the switch) or null. */
+    privacy,
+    setPrivate,
+    setNewDiagramsPrivate: (on: boolean) => newDiagramsPrivate.set(on),
     /** Loads the configured providers' code and scripts (the File menu calls it as it opens). Nothing configured: nothing loads. */
     preloadStorage: () => {
       for (const info of CLOUD_PROVIDERS)
@@ -584,6 +703,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
         />
       )}
       {dialog?.kind === "share" && <ShareDialog diagram={dialog.diagram} onClose={() => setDialog(null)} />}
+      {dialog?.kind === "privacy" && <PrivacyDialog onTurnOff={confirmNotPrivate} onClose={() => setDialog(null)} />}
       {dialog?.kind === "embed" && (
         <EmbedDialog diagram={dialog.diagram} example={dialog.example} onClose={() => setDialog(null)} />
       )}
@@ -633,14 +753,28 @@ export function useInteropCanvasActions(canvasRef: RefObject<CanvasHandle | null
  * the File menu exactly.
  */
 function canvasActions(get: () => InteropApi): Action[] {
-  const item = (id: string, label: string, run: () => unknown, hint?: string): MenuNode => ({
+  const item = (id: string, label: string, run: () => unknown, hint?: string, disabled = false): MenuNode => ({
     type: "item",
     id,
     label,
     hint,
+    disabled,
     run: () => void run(),
   });
   return [
+    {
+      // Ctrl+K only: the File menu's Privacy ▸ and the badge beside the title are the visible controls.
+      id: "file.private",
+      modes: ["edit", "live"],
+      section: "file",
+      targets: ["canvas"],
+      paletteOnly: true,
+      label: () => (get().privacy() ? "Make this diagram not private…" : "Make this diagram private"),
+      icon: "lock",
+      enabled: () => get().privacy() !== "local-only",
+      hint: () => (get().privacy() === "local-only" ? "Always private" : undefined),
+      run: () => void get().setPrivate(!get().privacy()),
+    },
     {
       // Replaces the editor's built-in JSON-only Export submenu.
       id: "canvas.export",
@@ -650,17 +784,21 @@ function canvasActions(get: () => InteropApi): Action[] {
       order: 20,
       label: "Export",
       icon: "download",
-      children: () => [
-        item("export:png", "Export PNG", () => get().exportPng({ scale: 2 }), "2×"),
-        item("export:share", "Copy share link", () => get().copyShareLink()),
-        item("export:embed", "Embed code…", () => get().openEmbed()),
-        { type: "separator" },
-        item("export:json", "Diagram file", () => get().exportNative(), ".diagram.json"),
-        item("export:image", "Image…", () => get().openImageOptions(), "PNG or SVG"),
-        item("export:drawio", "draw.io", () => get().exportDrawio(), ".drawio"),
-        item("export:mermaid-download", "Mermaid file", () => get().downloadMermaid(), ".mmd"),
-        item("export:mermaid", "Copy as Mermaid", () => get().copyMermaid()),
-      ],
+      children: () => {
+        const privateNow = !!get().privacy();
+        const hint = privateNow ? "Private" : undefined;
+        return [
+          item("export:png", "Export PNG", () => get().exportPng({ scale: 2 }), "2×"),
+          item("export:share", "Copy share link", () => get().copyShareLink(), hint, privateNow),
+          item("export:embed", "Embed code…", () => get().openEmbed(), hint, privateNow),
+          { type: "separator" },
+          item("export:json", "Diagram file", () => get().exportNative(), ".diagram.json"),
+          item("export:image", "Image…", () => get().openImageOptions(), "PNG or SVG"),
+          item("export:drawio", "draw.io", () => get().exportDrawio(), ".drawio"),
+          item("export:mermaid-download", "Mermaid file", () => get().downloadMermaid(), ".mmd"),
+          item("export:mermaid", "Copy as Mermaid", () => get().copyMermaid()),
+        ];
+      },
     },
   ];
 }

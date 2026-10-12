@@ -143,6 +143,11 @@
   text-overflow: ellipsis;
 }
 
+/* An unavailable row says why in full (e.g. a private diagram's share link). */
+.ix-menu-row.is-disabled .ix-menu-desc {
+  white-space: normal;
+}
+
 .ix-menu-kbd {
   margin-left: auto;
   padding-left: 10px;
@@ -485,6 +490,15 @@
   border-radius: 10px;
   background: var(--danger-soft);
   color: var(--danger);
+  font-size: 13px;
+}
+
+.ix-privacy-list {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: var(--text-2);
   font-size: 13px;
 }
 
