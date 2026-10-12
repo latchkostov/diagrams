@@ -597,7 +597,8 @@ function LiveSession({
     let lastUi = 0;
     let generation = controller.getState().generation;
     let stats = 0;
-    let lastSnap: unknown = null;
+    let lastTime = NaN;
+    let lastGeneration = generation;
     /** Milliseconds of moving simulation: the marching ants' clock (it stops when the simulation does). */
     let march = 0;
     const tick = (now: number) => {
@@ -614,9 +615,11 @@ function LiveSession({
       // Slow motion: live is frozen underneath, and the replay is drawn over it.
       const slow = slowRef.current?.frame(dt, speed);
       // The simulation stands still (paused, a note waiting, slow motion): so do the marching edges.
-      // Slow motion shows them unshifted, like the SVG's `animation: none` did.
-      const still = snap === lastSnap;
-      lastSnap = snap;
+      // Read off the sim clock: a waiting note hands out fresh snapshots at the same time. Slow motion
+      // shows them unshifted, like the SVG's `animation: none` did.
+      const still = snap.time === lastTime && gen === lastGeneration;
+      lastTime = snap.time;
+      lastGeneration = gen;
       march = slow ? 0 : still ? march : march + dt;
       const ui = now - lastUi >= UI_MS;
       if (ui) {

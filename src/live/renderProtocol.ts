@@ -126,8 +126,19 @@ export interface AckMessage {
   slowLabels?: PaintedLabel[];
 }
 
+/**
+ * A repaint the worker did on its own (fonts finished loading): fresh counts, hits and labels, but
+ * not an answer to a frame, so it doesn't release the next one.
+ */
+export interface RepaintMessage extends Omit<AckMessage, "type" | "buf" | "animating"> {
+  type: "repaint";
+}
+
 export type FromWorker =
-  AckMessage | { type: "probe"; id: number; data: Uint8ClampedArray } | { type: "error"; message: string };
+  | AckMessage
+  | RepaintMessage
+  | { type: "probe"; id: number; data: Uint8ClampedArray }
+  | { type: "error"; message: string };
 
 /** Interns strings as small integers, reporting the new ones. */
 class Table {

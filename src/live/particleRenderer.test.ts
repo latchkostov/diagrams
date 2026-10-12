@@ -210,6 +210,25 @@ describe("calm sampler and frame counts", () => {
     expect(renderer.drawn).toBe(full);
   });
 
+  it("repaints the same paused snapshot when the speed changes", () => {
+    // Paused, the controller hands back one snapshot for good: only the speed changes.
+    const { renderer, main } = setup();
+    const paused = snapshot(Array.from({ length: 200 }, (_, i) => particle(i + 1, (i % 100) / 100)));
+    renderer.draw(paused, 0, undefined, undefined, 1);
+    const full = renderer.drawn;
+    const fullHits = renderer.hitPoints.length;
+    renderer.draw(paused, 16, undefined, undefined, 0.25);
+    expect(renderer.drawn).toBeLessThan(full);
+    expect(renderer.hitPoints.length).toBeLessThan(fullHits);
+    renderer.draw(paused, 32, undefined, undefined, 1);
+    expect(renderer.drawn).toBe(full);
+    expect(renderer.hitPoints.length).toBe(fullHits);
+    // Nothing else changes: the next frame is skipped.
+    const clears = main.clearRect;
+    renderer.draw(paused, 48, undefined, undefined, 1);
+    expect(main.clearRect).toBe(clears);
+  });
+
   it("counts painted frames only", () => {
     const { renderer } = setup();
     const paused = snapshot([particle(1, 0.2)]);

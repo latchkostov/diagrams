@@ -21,7 +21,14 @@ import {
 } from "./particleRenderer";
 import { MarchRenderer } from "./marchRenderer";
 import { GlowRenderer } from "./toggleGlow";
-import { SnapshotUnpacker, type AckMessage, type FrameMessage, type FromWorker, type ToWorker } from "./renderProtocol";
+import {
+  SnapshotUnpacker,
+  type AckMessage,
+  type FrameMessage,
+  type FromWorker,
+  type RepaintMessage,
+  type ToWorker,
+} from "./renderProtocol";
 import { SlowPainter } from "./slowmo/painter";
 
 interface WorkerScope {
@@ -61,7 +68,7 @@ function loadFonts(): void {
     .then(() => {
       if (!renderer || !last) return;
       renderer.invalidate();
-      drawAndAck(last, undefined);
+      drawAndReport(last, "repaint");
     })
     .catch(() => {});
 }
@@ -178,22 +185,22 @@ function onFrame(m: FrameMessage): void {
   }
   march?.draw(view, m.marchPhase, options.reducedMotion);
   last = { epoch: m.epoch, now: m.now, focus: m.focus, speed: m.speed, slow: m.slow };
-  drawAndAck(last, m.snap?.buf);
+  drawAndReport(last, "ack", m.snap?.buf);
 }
 
-/** Draws the frame and tells the main thread what it needs back (`buf`: the particle buffer to return). */
-function drawAndAck(f: NonNullable<typeof last>, buf: ArrayBuffer | undefined): void {
+/**
+ * Draws and tells the main thread what it needs back. An "ack" answers a frame message (and returns
+ * its particle buffer, `buf`); a "repaint" (fonts loaded) only reports, so the one frame the main
+ * thread may have in flight stays in flight until its own ack.
+ */
+function drawAndReport(f: NonNullable<typeof last>, kind: "ack" | "repaint", buf?: ArrayBuffer): void {
   if (!renderer) return;
   renderer.draw(snap, f.now, f.focus, f.slow ? painter : undefined, f.speed);
-  const ack: AckMessage = {
-    type: "ack",
-    epoch: f.epoch,
-    drawn: renderer.drawn,
-    frames: renderer.frames,
-    animating: renderer.animating,
-  };
+  const base = { epoch: f.epoch, drawn: renderer.drawn, frames: renderer.frames };
+  const ack: AckMessage | RepaintMessage =
+    kind === "ack" ? { type: "ack", ...base, animating: renderer.animating } : { type: "repaint", ...base };
   const transfer: Transferable[] = [];
-  if (buf) {
+  if (buf && ack.type === "ack") {
     ack.buf = buf;
     transfer.push(buf);
   }

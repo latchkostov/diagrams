@@ -267,6 +267,7 @@ export class ParticleRenderer {
   private lastSnap: RenderSnapshot | null = null;
   private lastFocus: number | undefined;
   private lastPaths = -1;
+  private lastSpeed = NaN;
   /** The overlay the last frame drew, and its revision (slow motion's drawings change on their own). */
   private lastOverlay: RenderOverlay | undefined;
   private lastRevision = -1;
@@ -379,9 +380,11 @@ export class ParticleRenderer {
     // Paused (the controller hands back the same snapshot), nothing fading out, the view and the
     // edges where they were: the canvas already shows this frame, and the hit targets still hold.
     // Slow motion animates over a frozen snapshot: skip only while its overlay is unchanged too (a
-    // paused or finished replay), and always draw the frame after it ends.
+    // paused or finished replay), and always draw the frame after it ends. A new speed redraws too:
+    // the calm sampler draws a different sample below 1x, paused or not.
     const revision = slow?.revision ?? -1;
     if (
+      speed === this.lastSpeed &&
       slow === this.lastOverlay &&
       revision === this.lastRevision &&
       !moved &&
@@ -392,6 +395,7 @@ export class ParticleRenderer {
     )
       return;
     this.lastSnap = snap;
+    this.lastSpeed = speed;
     this.lastFocus = focus;
     this.lastOverlay = slow;
     this.lastRevision = revision;

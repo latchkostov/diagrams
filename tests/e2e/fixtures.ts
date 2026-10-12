@@ -54,7 +54,7 @@ declare global {
     __liveProbe?: (
       layer: "base" | "over" | "march",
       rect: { x: number; y: number; width: number; height: number },
-    ) => Promise<Uint8ClampedArray>;
+    ) => Promise<{ data: Uint8ClampedArray; width: number; height: number; x: number; y: number; scale: number }>;
   }
 }
 
@@ -76,7 +76,10 @@ export async function livePaint(
       const el = document.querySelector('[data-testid="live-canvas"]');
       if (!el) throw new Error("no live canvas");
       const pane = el.getBoundingClientRect();
-      const data = await probe(layer, rect ?? { x: pane.left, y: pane.top, width: pane.width, height: pane.height });
+      const { data } = await probe(
+        layer,
+        rect ?? { x: pane.left, y: pane.top, width: pane.width, height: pane.height },
+      );
       let n = 0;
       for (let i = 3; i < data.length; i += 4) if (data[i] > threshold) n++;
       return n;

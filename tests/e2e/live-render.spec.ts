@@ -41,7 +41,10 @@ async function pixels(
       const probe = window.__liveProbe;
       if (!el || !probe) throw new Error("live view isn't on, or this build has no test hooks");
       const pane = el.getBoundingClientRect();
-      const data = await probe(layer, rect ?? { x: pane.left, y: pane.top, width: pane.width, height: pane.height });
+      const { data } = await probe(
+        layer,
+        rect ?? { x: pane.left, y: pane.top, width: pane.width, height: pane.height },
+      );
       let peak = 0;
       let sum = 0;
       for (let i = 0; i < data.length; i++) {
@@ -103,14 +106,14 @@ for (const renderer of ["worker", "main"] as const) {
 
     test("a dot passing behind an edge label pill is drawn dimmed above it", async ({ page, consoleErrors }) => {
       await goLive(page, renderer);
-      const pill = await page.getByTestId(`edge-label-${PILL}`).boundingBox();
-      if (!pill) throw new Error("no pill");
       // The overlay has paint inside the pill only while a dot passes, and never at full strength.
+      // (The pill is re-read each time: the view may still be fitting.)
       let peak = 0;
       await expect
         .poll(
           async () => {
-            peak = Math.max(peak, (await pixels(page, "over", pill)).peak);
+            const pill = await page.getByTestId(`edge-label-${PILL}`).boundingBox();
+            if (pill) peak = Math.max(peak, (await pixels(page, "over", pill)).peak);
             return peak;
           },
           { timeout: 10_000, intervals: [50] },
@@ -190,13 +193,12 @@ for (const renderer of ["worker", "main"] as const) {
         const probe = window.__liveProbe;
         if (!el || !probe) return null;
         const pane = el.getBoundingClientRect();
-        const data = await probe("base", { x: pane.left, y: pane.top, width: pane.width, height: pane.height });
-        const w = Math.round(data.length / 4 / pane.height);
-        const dpr = w / pane.width;
+        const px = await probe("base", { x: pane.left, y: pane.top, width: pane.width, height: pane.height });
+        const { data, width } = px;
         for (let i = 3; i < data.length; i += 4 * 7) {
           if (data[i] < 255) continue;
-          const x = pane.left + (((i - 3) / 4) % w) / dpr;
-          const y = pane.top + Math.floor((i - 3) / 4 / w) / dpr;
+          const x = px.x + (((i - 3) / 4) % width) / px.scale;
+          const y = px.y + Math.floor((i - 3) / 4 / width) / px.scale;
           const hit = document.elementFromPoint(x, y);
           if (hit && !hit.closest(".react-flow__node, button, [data-editor-overlay], .fe-label")) return { x, y };
         }
@@ -205,6 +207,36 @@ for (const renderer of ["worker", "main"] as const) {
       if (!at) throw new Error("no opaque particle core on the canvas");
       await page.mouse.click(at.x, at.y);
       await expect(page.getByTestId("trace-card")).toBeVisible();
+      expectNoErrors(consoleErrors);
+    });
+
+    test("a waiting note stops the march like pausing does (the sim clock stands still)", async ({
+      page,
+      consoleErrors,
+    }) => {
+      // Waiting, the controller still hands out fresh snapshots, at the same simulated time.
+      await page.goto(
+        `./?view=canvas&example=${KAFKA}&sim=payments-outage&speed=8${renderer === "main" ? "&renderer=main" : ""}`,
+      );
+      await expect(page.getByTestId("live-note-continue")).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
+      await expect(page.getByTestId("rf__wrapper")).toHaveAttribute("data-live-still", "1");
+      // The note's camera fit animates first; then the ants hold still (marching, they never would).
+      let ants = await pixels(page, "march");
+      await expect
+        .poll(
+          async () => {
+            const now = await pixels(page, "march");
+            const same = now.sum === ants.sum;
+            ants = now;
+            return same;
+          },
+          { intervals: [700], timeout: 8000 },
+        )
+        .toBe(true);
+      expect(ants.peak).toBeGreaterThan(0);
+      await page.getByTestId("live-note-continue").click();
+      await expect(page.getByTestId("rf__wrapper")).not.toHaveAttribute("data-live-still", "1");
       expectNoErrors(consoleErrors);
     });
 
@@ -290,15 +322,46 @@ test.describe("live rendering stays off the main thread", () => {
   });
 });
 
-test("a particle worker that can't start hands over to the main thread", async ({ page }) => {
-  // The worker script never arrives (a proxy, a CSP, a broken deploy): fresh canvases take the fallback.
-  await page.route(/particleWorker/, (route) => route.abort());
-  await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
+/** The fallback took over on fresh canvases: particles and the march paint, the dot breathes in CSS. */
+async function handedOver(page: Page) {
   await expect(page.getByTestId("live-controls")).toBeVisible();
   await expect(canvas(page)).toHaveAttribute("data-renderer", "main", { timeout: 15_000 });
   await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(10);
   await expect.poll(() => livePaint(page, "base")).toBeGreaterThan(100);
   await expect.poll(() => livePaint(page, "march")).toBeGreaterThan(100);
-  // The dot breathes in CSS again.
   await expect(page.getByTestId("rf__wrapper")).not.toHaveAttribute("data-live-glow", "canvas");
+}
+
+test.describe("a particle worker that can't start hands over to the main thread", () => {
+  test("its script never arrives (an error event)", async ({ page }) => {
+    // A proxy, a CSP on worker-src, a broken deploy.
+    await page.route(/particleWorker/, (route) => route.abort());
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
+    await handedOver(page);
+  });
+
+  test("its constructor throws (a CSP, disabled workers, Trusted Types)", async ({ page, consoleErrors }) => {
+    // The capability check still passes (it constructs nothing); the particle worker itself throws.
+    await page.addInitScript(() => {
+      const Real = window.Worker;
+      window.Worker = function (this: Worker, url: string | URL, options?: WorkerOptions) {
+        if (String(url).includes("particleWorker")) throw new DOMException("Blocked by policy", "SecurityError");
+        return new Real(url, options);
+      } as unknown as typeof Worker;
+    });
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
+    await handedOver(page);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a canvas can't be transferred", async ({ page, consoleErrors }) => {
+    await page.addInitScript(() => {
+      HTMLCanvasElement.prototype.transferControlToOffscreen = function () {
+        throw new DOMException("Cannot transfer", "InvalidStateError");
+      };
+    });
+    await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
+    await handedOver(page);
+    expectNoErrors(consoleErrors);
+  });
 });

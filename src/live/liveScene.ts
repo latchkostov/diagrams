@@ -1,12 +1,18 @@
-// What the particle renderer needs from the page, read on the main thread: every edge's path sampled
-// in flow coordinates, node boxes, label obstacles and the view. Both render paths read it (the
-// fallback directly, the worker through messages, see liveRenderer.ts), and it reads the DOM only
-// when something changed: a MutationObserver marks the paths dirty when an edge's `d` changes or
-// edges mount, so a frame with nothing new costs a flag check.
+// What the particle renderer needs from the page, read on the main thread: edge paths sampled in flow
+// coordinates, node boxes, label obstacles and the view. Both render paths read it (the fallback
+// directly, the worker through messages, see liveRenderer.ts), and it reads the DOM only when
+// something changed: a MutationObserver marks the paths dirty when an edge's `d` changes or edges
+// mount, so a frame with nothing new costs a flag check.
+//
+// Sampling is lazy and bounded. A scan only reads each edge's `d`; an edge is sampled the first time
+// the renderer needs it (a particle rides it, or slow motion replays along it), so dependency edges
+// and edges with no traffic never are. Each path gets at most MAX_SEGMENTS samples (longer paths are
+// sampled more coarsely), and a frame spends at most SAMPLE_BUDGET point queries: what doesn't fit
+// waits for the next frame, so an imported diagram with huge edges can't freeze the tab.
 
 import { OVERLAY_SELECTOR } from "../canvas/useOverlayFit";
 import { parseDash, type MarchEdge } from "./marchRenderer";
-import { samplePath, type PathSamples } from "./pathSampler";
+import { SAMPLE_SPACING, samplePath, type PathLike, type PathSamples } from "./pathSampler";
 import type { Obstacles, Rect } from "./particleRenderer";
 
 /** The slice of React Flow's store the scene reads. */
@@ -24,11 +30,19 @@ export interface FlowStoreLike {
 }
 
 interface PathEntry {
+  el: PathLike;
   d: string;
-  samples: PathSamples;
+  /** Sampled from `sampledD` (null: never sampled); stale while it differs from `d`. */
+  samples: PathSamples | null;
+  sampledD: string | null;
 }
 
 const EMPTY: PathSamples = { length: 0, points: new Float32Array(4) };
+
+/** At most this many segments per path: longer paths are sampled more coarsely than SAMPLE_SPACING. */
+export const MAX_SEGMENTS = 2048;
+/** Point queries (getPointAtLength) per frame; the rest of the sampling waits for the next frame. */
+export const SAMPLE_BUDGET = 20_000;
 
 /** Pending changes since the last `takeChanges` (the worker path posts them). */
 export interface SceneChanges {
@@ -42,18 +56,27 @@ export interface SceneChanges {
 const MARCHING = '.react-flow__edge[data-live-edge="active"] .fe-async path.fe-path';
 
 export class LiveScene {
-  /** Bumps whenever any edge's samples change. */
+  /** Bumps whenever a sampled edge's path changes (the renderer redraws, and re-samples it). */
   pathsVersion = 0;
   private paths = new Map<string, PathEntry>();
   private dirty = true;
   private observer: MutationObserver | null = null;
-  private changedPaths = new Set<string>();
+  /** Point queries left this frame. */
+  private budget = SAMPLE_BUDGET;
+  /** A sample was put off for the budget: redraw next frame, when there's budget again. */
+  private deferred = false;
+  /** Edges the worker needs (they carry or carried particles, or a replay rides them). */
+  private wanted = new Set<string>();
+  /** Wanted edges whose current samples the worker hasn't got; and sent ones that went away. */
+  private pending = new Set<string>();
+  private sent = new Set<string>();
   private removedPaths = new Set<string>();
   private nodes = new Map<string, Rect>();
   private nodesRef: unknown = undefined;
   private nodesChanged = false;
   private obstacleCache: (Obstacles & { at: number; view: string }) | null = null;
   private marchEdges: MarchEdge[] = [];
+  private marchIds = new Set<string>();
   private marchKey = "";
   private marchChanged = false;
 
@@ -92,8 +115,45 @@ export class LiveScene {
     return Math.min(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1);
   }
 
+  /**
+   * An edge's samples, sampled now if they're missing or stale and the frame's budget allows (else the
+   * stale ones, or null, until a later frame). Called per particle: a hit is one Map lookup.
+   */
   samples(edgeId: string): PathSamples | null {
-    return this.paths.get(edgeId)?.samples ?? null;
+    const entry = this.paths.get(edgeId);
+    if (!entry) return null;
+    if (entry.samples && entry.sampledD === entry.d) return entry.samples;
+    return this.sample(entry);
+  }
+
+  private sample(entry: PathEntry): PathSamples | null {
+    if (!entry.d) {
+      entry.samples = EMPTY;
+      entry.sampledD = entry.d;
+      return EMPTY;
+    }
+    if (this.budget <= 0) {
+      this.deferred = true;
+      return entry.samples;
+    }
+    const length = entry.el.getTotalLength();
+    const spacing = Math.max(SAMPLE_SPACING, (Number.isFinite(length) ? length : 0) / MAX_SEGMENTS);
+    entry.samples = samplePath(length, (l) => entry.el.getPointAtLength(l), spacing);
+    entry.sampledD = entry.d;
+    this.budget -= entry.samples.points.length / 2;
+    return entry.samples;
+  }
+
+  /** The worker needs this edge's samples (and their updates from now on). */
+  want(edgeId: string): void {
+    if (this.wanted.has(edgeId)) return;
+    this.wanted.add(edgeId);
+    this.pending.add(edgeId);
+  }
+
+  /** Sampling still waits on the budget: post again next frame. */
+  get backlog(): boolean {
+    return this.pending.size > 0 || this.deferred;
   }
 
   nodeRect(nodeId: string): Rect | null {
@@ -105,6 +165,12 @@ export class LiveScene {
    * boxes when React Flow's nodes changed. `force` re-reads both (the UI clock does, as a backstop).
    */
   refresh(force = false): void {
+    this.budget = SAMPLE_BUDGET;
+    if (this.deferred) {
+      // Last frame ran out of budget: draw again, which samples what's left.
+      this.deferred = false;
+      this.pathsVersion++;
+    }
     if (this.dirty || force || !this.observer) this.scanPaths();
     this.refreshNodes(force);
   }
@@ -143,18 +209,20 @@ export class LiveScene {
     this.setMarch(out);
   }
 
-  private setMarch(edges: MarchEdge[]): void {
-    const key = JSON.stringify(edges);
+  private setMarch(edges: MarchEdge[], key = JSON.stringify(edges)): void {
     if (key === this.marchKey) return;
     this.marchKey = key;
     this.marchEdges = edges;
+    this.marchIds = new Set(edges.map((e) => e.id));
     this.marchChanged = true;
   }
 
+  /** Reads every edge's `d` (no sampling: that waits until an edge is needed). */
   private scanPaths(): void {
     this.dirty = false;
     const seen = new Set<string>();
-    let changed = false;
+    const moved = new Set<string>();
+    let version = false;
     for (const g of this.root.querySelectorAll(".react-flow__edge[data-id]")) {
       const id = g.getAttribute("data-id");
       if (!id || seen.has(id)) continue;
@@ -163,24 +231,32 @@ export class LiveScene {
       seen.add(id);
       const d = el.getAttribute("d") ?? "";
       const prev = this.paths.get(id);
+      if (prev) prev.el = el;
       if (prev && prev.d === d) continue;
-      const samples = d ? samplePath(el.getTotalLength(), (l) => el.getPointAtLength(l)) : EMPTY;
-      this.paths.set(id, { d, samples });
-      // A marching edge moved (a node dragged): its ants follow now, not at the next UI tick.
-      if (this.marchEdges.some((e) => e.id === id && e.d !== d))
-        this.setMarch(this.marchEdges.map((e) => (e.id === id ? { ...e, d } : e)));
-      this.changedPaths.add(id);
+      if (prev) prev.d = d;
+      else this.paths.set(id, { el, d, samples: null, sampledD: null });
+      moved.add(id);
+      if (prev?.samples) version = true;
+      if (this.wanted.has(id)) this.pending.add(id);
       this.removedPaths.delete(id);
-      changed = true;
     }
     for (const id of [...this.paths.keys()]) {
       if (seen.has(id)) continue;
+      if (this.paths.get(id)?.samples) version = true;
       this.paths.delete(id);
-      this.changedPaths.delete(id);
-      this.removedPaths.add(id);
-      changed = true;
+      this.pending.delete(id);
+      if (this.sent.delete(id)) this.removedPaths.add(id);
     }
-    if (changed) this.pathsVersion++;
+    if (version) this.pathsVersion++;
+    // Marching edges that moved (a node dragged) follow now, not at the next UI tick: one rebuild
+    // for all of them.
+    let marchMoved = false;
+    for (const id of moved) if (this.marchIds.has(id)) marchMoved = true;
+    if (marchMoved)
+      this.setMarch(
+        this.marchEdges.map((e) => (moved.has(e.id) ? { ...e, d: this.paths.get(e.id)?.d ?? e.d } : e)),
+        "",
+      );
   }
 
   private refreshNodes(force: boolean): void {
@@ -205,24 +281,34 @@ export class LiveScene {
     this.nodesChanged = true;
   }
 
-  /** Every path and node box, as if all were new (a worker that just attached needs them all). */
+  /** Every wanted path, node box and the march, as if all were new (a worker that just attached). */
   everything(): SceneChanges {
-    this.changedPaths = new Set(this.paths.keys());
+    this.pending = new Set(this.wanted);
+    this.sent.clear();
     this.removedPaths.clear();
     this.nodesChanged = true;
     this.marchChanged = true;
     return this.takeChanges() ?? {};
   }
 
-  /** What changed since the last call, or undefined when nothing did. */
+  /** What changed since the last call (wanted paths sampled within the budget), or undefined. */
   takeChanges(): SceneChanges | undefined {
     const out: SceneChanges = {};
-    if (this.changedPaths.size || this.removedPaths.size) {
-      out.paths = {
-        set: [...this.changedPaths].map((id) => [id, this.paths.get(id)!.samples] as [string, PathSamples]),
-        remove: [...this.removedPaths],
-      };
-      this.changedPaths.clear();
+    const set: [string, PathSamples][] = [];
+    for (const id of this.pending) {
+      const entry = this.paths.get(id);
+      if (!entry) {
+        this.pending.delete(id);
+        continue;
+      }
+      const s = this.samples(id);
+      if (!s || entry.sampledD !== entry.d) break; // out of budget: the rest next frame
+      set.push([id, s]);
+      this.sent.add(id);
+      this.pending.delete(id);
+    }
+    if (set.length || this.removedPaths.size) {
+      out.paths = { set, remove: [...this.removedPaths] };
       this.removedPaths.clear();
     }
     if (this.nodesChanged) {
