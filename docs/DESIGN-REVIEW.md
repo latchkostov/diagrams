@@ -62,6 +62,136 @@ Making an example or a shared diagram private saves a private copy in Your diagr
 **Out of scope:** encryption at rest (the browser's storage isn't ours to encrypt meaningfully without a
 password the person must keep), and private flags for examples.
 
+## Round 11: structure and bulk (batch 4) (2026-10-12)
+
+Batch 4, the last of `docs/research/drawing-ux.md`: D12 boundaries that keep up, D11 bulk edit in the inspector
+and Select similar, D15 tidy the selection, and D14 keyboard selection between nodes. Decision 5 applies: a
+boundary grows on drop to hold a node dropped into it and never shrinks by itself; Fit to contents stays (the
+right-click and the boundary's inspector both have it). The three habit changes (boundaries, Tab, Route ▸) are in
+`docs/RELEASE-NOTES.md`.
+
+**What changed**
+
+- **Membership you can see (D12).** One rule, as before: a node belongs to the boundary around its centre (the
+  inner one, when boundaries nest). While nodes are dragged, the boundary that will hold them on drop shows a solid
+  outline in its tone and a stronger tint (`boundary-join-1440-light`, `boundary-hold-1440-light`); one they'd
+  leave shows a dashed outline (`boundary-leave-1280-dark`). Solid against dashed, so it never rests on colour
+  alone. It's painted on the boundaries' elements once a frame, so a drag re-renders nothing.
+- **Growth on drop (D12).** A member dropped so it pokes out (its centre still inside) grows its boundary to hold
+  it with the usual 40 px padding, on the sides it pokes out of only, onto the grid, in the drop's undo step
+  (`boundary-grown-1440-light`). It never grows onto another boundary or onto a node that isn't its own: then the
+  drag shows it dashed and it stays as it is (`boundary-blocked-1440-dark`: Order service poking out of AKS
+  towards Commerce gateway). A node added inside a boundary (quick-add, a dropped connection, Alt+arrow, the rail,
+  Insert node, a paste or a duplicate) grows it the same way.
+- **Leaving is explicit (D12).** Today's complaint was a node near the edge silently dropping out. Now the
+  boundary shows dashed during the drag, and on drop a toast says so with Undo: "Payments service left AKS ·
+  commerce workloads + Kafka" (`boundary-left-toast-1280-dark`). Several at once: "3 nodes left Payments".
+- **Resizing adopts and releases (D12).** Resizing a boundary takes in the nodes whose centre is now inside it and
+  lets go of members now outside, with a toast and Undo ("Added 1 node to Shipping"), in the resize's undo step.
+- **Bulk edit (D11).** The multi-selection's inspector leads with **Arrange** (the six Align buttons; at three or
+  more, Distribute and **Tidy up**), then one compact section per kind present, headed by its count: **3 nodes**
+  (Stencil, Boundary, and a collapsed Simulation with the settings their roles share), **2 edges** (Relationship,
+  Label), **1 annotation** and **1 boundary** (Colour), then Add boundary and Delete (`bulk-mixed-1280-light`).
+  Where values differ the field reads **Mixed**: the stencil button, a disabled "Mixed" option in a select, an
+  empty field with a "Mixed" placeholder, and "Mixed" under the swatches' label with none ticked
+  (`bulk-nodes-stencil-1440-dark`). Every change is one undo step: each click gets its own tag, and typing in a
+  shared field coalesces as typing in one field does.
+- **Select similar (D11).** On a node's and an edge's right-click, and in Ctrl+K: every node of that stencil, or
+  every edge of that relationship (Message, Request, or that one dependency; hidden dependencies stay out)
+  (`select-similar-menu-1440-light`, `select-similar-done-1440-light`).
+- **Tidy up (D15).** On the selection's right-click (three or more nodes), the inspector's Arrange and Ctrl+K. The
+  layered layout runs on just the selected nodes and the edges between them. Its layers close up to fit the
+  selection's box where an 80 px gap along the flow and 40 px across it allow (a gap a named edge crosses keeps
+  its label's room), and its top-left stays. Nothing else moves; if the result would cover anything (cards,
+  notes, shapes), the tidied nodes move together to the nearest free place. Members stay in their boundaries,
+  which grow to hold them. One undo step (`tidy-before-1440-light`, `tidy-menu-1440-light`,
+  `tidy-after-1440-light`).
+- **Align and Distribute never stack.** Aligning the tops of a column used to put every card on the same spot;
+  now what would land on another steps along the line, 40 px apart. Distributing more than fits the span does the
+  same.
+- **Keyboard selection (D14).** The canvas is one Tab stop: only the node last focused (else the first in reading
+  order) is in the page's Tab order, and edges are out of it. Inside, Tab and Shift+Tab step through nodes in
+  reading order (rows from the top, each left to right; columns in a top-to-bottom diagram), meeting each boundary
+  just before its first member; past the last node Tab leaves the canvas, so it's never a trap.
+  **Ctrl+Alt+arrows** go to the nearest node that way (within 45° of the arrow, distance across it counting
+  double; else the nearest on that side), and **Ctrl+Alt+]** and **[** to the node's outgoing and incoming edges,
+  again for the next (`keyboard-nav-1440-dark`, `keyboard-edge-1440-dark`). Selection and focus move together, the
+  view pans if it must, and a polite live region says what's selected: "Payments service, Go Service, processor,
+  in AKS · commerce workloads + Kafka. 7 of 16. 2 out, 1 in." for a node, "Payments service to Payment ledger,
+  request: Record authorization. Outgoing 1 of 2." for an edge, "Nothing above." at an edge of the diagram.
+- **Menus within budget.** Select similar takes the node menu to 12 rows. The edge menu was already at 12, so Route
+  from side and Route to side fold into one **Route ▸** row (From side ▸, To side ▸, each showing its current side)
+  (`edge-menu-route-1280-dark`). Tidy up takes the selection menu to at most 12. The palette names the folded leaves
+  in full ("Route from side › Top").
+- **Docs.** The shortcuts sheet has five Selection rows (Tab, Shift+Tab, Ctrl+Alt+arrows, Ctrl+Alt+], Ctrl+Alt+[)
+  and two Mouse rows (dragging across a boundary's edge, a boundary's corner) (`shortcuts-selection-1280-light`).
+  `docs/UX-PRINCIPLES.md` has Membership, Bulk edit, Select similar, Tidy up and Moving between nodes in the
+  vocabulary, and the same two Mouse rows.
+
+**Chrome count**
+
+| Surface                             | Before                                         | After                                                     | Budget   |
+| ----------------------------------- | ---------------------------------------------- | --------------------------------------------------------- | -------- |
+| Node right-click (edit)             | 11                                             | **12** (Select similar)                                   | ≤ 12     |
+| Edge right-click (edit, a flow)     | 12                                             | **12** (Select similar in, Route from/to folded to Route) | ≤ 12     |
+| Selection right-click               | up to 11                                       | **up to 12** (Tidy up, three or more nodes)               | ≤ 12     |
+| Canvas right-click                  | 9                                              | 9                                                         | ≤ 12     |
+| Multi-selection inspector, 1280×800 | count, Align, Distribute, Add boundary, Delete | Arrange + one section per kind; fits with room to spare   | 1 screen |
+| Top bar, rails, floating bars       | unchanged                                      | unchanged                                                 |          |
+
+The gate: a mixed selection (three nodes, two edges, a note and a boundary) at 1280×800 shows every section with
+the inspector's body not scrolling, its last button above the window's bottom (`structure-bulk.spec.ts`, "fits one
+screen"); in `bulk-mixed-1280-light` (three nodes, two edges and the AKS boundary) the panel ends with 180 px to
+spare.
+
+**What I checked** (dev server and the production build, public Kafka example, 1280×800 and 1440×900, light and
+dark): every shot above; the e2e suite on the production build; the drag in live view (no outline: the watch runs
+only while editing); presentation and embeds (no roving tab stops in embeds, which stay as they were); the AI panel's
+turns (applyDiagram is untouched); relationships (Select similar keeps hidden dependencies out, bulk Relationship
+uses the same one-step `applyChoice` as the right-click); batches 1–3 (their specs pass unchanged, apart from the
+edge menu's Route row).
+
+**Findings, fixed in this batch**
+
+1. **A member poking out on one side grew its boundary on every side.** Inventory service dragged to poke out of
+   AKS's right edge sat 40 px below its top, closer than the padding and label row, so the top grew too, onto
+   Schema registry, and the growth was refused (the drag showed dashed for a move that only needed 50 px on the
+   right). Now only the sides it pokes out of move.
+2. **Tidy up let its own members go.** The tidied row was wider than its boundary, so the members' centres landed
+   outside and the centre rule took them out. Tidy up rearranges members; it keeps them in, and the boundary grows.
+3. **Tidy up squashed named edges.** Closing the gaps to fit the box took a labelled gap down to the 80 px minimum,
+   where round 10 saw labels truncate. A gap a named edge crosses now keeps the room the layered layout gave it.
+4. **Closing up across the flow could overlap layers.** The layered layout centres short layers, so a per-row
+   squeeze moved slots of different layers into each other. Across the flow everything now draws together by one
+   factor, never closer than 40 px within a layer.
+5. **Tab trapped focus.** Stepping in reading order with every node still a Tab stop meant Tab past the last node
+   landed on another node, and so on forever. The roving tab stop (one node in the page's order) fixes it.
+6. **Boundaries in the middle of Tab's order.** By their centres, a boundary came after the first row of its own
+   members. Tab now meets it just before its first member.
+
+**Deviations from the plan**
+
+- **A toast when a member leaves.** D12 has the dashed outline; the batch's brief asked that leaving be explicit,
+  and a drop that ends with the card still half over the boundary isn't. The toast carries Undo, and only leaving
+  says so (joining is visible).
+- **Blocked growth keeps the member.** D12 says not to grow onto another boundary and to show it dashed; the node
+  stays a member (its centre decides), poking out. A neighbouring node that isn't a member blocks growth too.
+- **Tidy up keeps members in their boundary** (finding 2) and moves the whole result to the nearest free place
+  rather than refusing when it doesn't fit; Align and Distribute gained the no-stacking rule.
+- **Ctrl means the Control key** for Ctrl+Alt+arrows and brackets, on a Mac too (⌃⌥): ⌘⌥+arrows switch the
+  browser's tabs there. With VoiceOver on, ⌃⌥ is its own key; VoiceOver users have its navigation.
+- **From an edge,** Ctrl+Alt+] cycles the edges leaving its source, Ctrl+Alt+[ those arriving at its target,
+  Tab carries on from its source, and an arrow goes from its middle.
+- **Mixed edges** show the Relationship and Label only; the edge's simulation fields stay per edge.
+
+**Left for later**
+
+- **Undo forgets the selection.** History restores the selection each step was saved with, so after undoing a bulk
+  change the multi-selection is gone and the panel with it. Keeping the current selection across undo is a
+  history-wide change for its own batch.
+- Nudging a member out with the arrow keys doesn't change membership (only a drop does).
+- Guides while resizing a boundary (from round 9).
+
 ## Round 10: flow building (batch 3) (2026-10-12)
 
 Batch 3 of `docs/research/drawing-ux.md`: D3 the "+" and Alt+arrow quick-add with Alt+Shift+arrow

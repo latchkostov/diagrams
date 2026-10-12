@@ -14,6 +14,31 @@ No habit changes unless you use it. New:
   private.
 - In a private diagram the AI panel can allow Chrome's on-device model, which runs on this device.
 
+## Structure and bulk (2026-10)
+
+Three habits change:
+
+- **Boundaries keep up.** A node belongs to the boundary around its centre, as before, but you now see it while you
+  drag: the boundary it will be in lights up, and one it's leaving shows dashed. Drop a member so it pokes out of
+  its boundary and the boundary grows to hold it; it used to stay the same size, and a node dragged a little too
+  far quietly left. Leaving now says so, with Undo. Resizing a boundary takes in the nodes now inside it and lets
+  go of those outside. Boundaries never shrink by themselves: Fit to contents does that.
+- **Tab moves between nodes.** The canvas is one stop in the page's Tab order. Inside it, Tab and Shift+Tab step
+  through the nodes in reading order, selecting each one; past the last, Tab leaves the canvas. Tab used to visit
+  every node and then every edge, in the order they were made. Edges are reached from a node with Ctrl+Alt+] and
+  Ctrl+Alt+[, and Ctrl+Alt+arrows (⌃⌥ on a Mac) go to the nearest node that way.
+- **Route from side and Route to side are one row**, Route ▸, on the edge's menu.
+
+Also new:
+
+- With several things selected, the inspector edits them together: the nodes' stencil, boundary and shared
+  simulation settings, the edges' relationship and label, and the colour of annotations and boundaries. "Mixed"
+  shows where they differ. Each change is one undo step.
+- Select similar (a node's or an edge's right-click, Ctrl+K) selects every node of that stencil, or every edge of
+  that relationship.
+- Tidy up (a selection's right-click, the inspector, Ctrl+K) lays out just the selected nodes by their connections,
+  without moving anything else. Align and Distribute no longer stack nodes on top of each other.
+
 ## Flow building (2026-10)
 
 One habit changes:

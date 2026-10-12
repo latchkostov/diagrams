@@ -7,6 +7,16 @@ import type { Toward } from "../canvas/placement";
 
 const TOWARD: Record<string, Toward> = { ArrowRight: "right", ArrowLeft: "left", ArrowDown: "down", ArrowUp: "up" };
 
+/** Keyboard selection between nodes (D14): Tab, Shift+Tab, Ctrl+Alt+arrows, and Ctrl+Alt+] / [ to a node's edges. */
+export type NavStep = "next" | "prev" | Toward | "edge-out" | "edge-in";
+
+/** On a node or an edge of the canvas (or the canvas itself): where Tab steps between nodes. */
+const onCanvasItem = (t: EventTarget | null) =>
+  t instanceof Element &&
+  !!t.closest('[data-testid="canvas-wrap"]') &&
+  (t.matches('[data-testid="canvas-wrap"]') || !!t.closest(".react-flow__node, .react-flow__edge")) &&
+  !isEditableTarget(t);
+
 /** If no `paste` event follows Ctrl+V within this time, paste the internal clipboard. */
 const PASTE_FALLBACK_MS = 120;
 
@@ -46,6 +56,11 @@ export function useCanvasShortcuts(
     live?: boolean;
     /** Alt+arrow from `from`: quick-add the next node that way; with Shift, a connected copy (D3). */
     onGrow?: (from: string, toward: Toward, clone: boolean) => void;
+    /**
+     * Moves the selection (and focus) between nodes from the keyboard (D14). False when there's nowhere to go:
+     * Tab past the last node then leaves the canvas, as Tab does.
+     */
+    onNavigate?: (step: NavStep, from: EventTarget | null) => boolean;
   },
 ) {
   const optsRef = useRef(opts);
@@ -132,6 +147,24 @@ export function useCanvasShortcuts(
           const from = editor.stencilAnchor();
           if (e.repeat || !from) return;
           grow(from, TOWARD[e.key], id === "clone-next");
+          break;
+        }
+        case "select-next":
+        case "select-prev": {
+          // Tab steps between nodes only from a node, an edge or the canvas; elsewhere it's the page's.
+          const nav = optsRef.current.onNavigate;
+          if (!nav || !onCanvasItem(e.target)) return;
+          if (nav(id === "select-next" ? "next" : "prev", e.target)) handled();
+          break;
+        }
+        case "select-toward":
+        case "select-edge-out":
+        case "select-edge-in": {
+          const nav = optsRef.current.onNavigate;
+          if (!nav || !(inCanvas(e.target) || e.target === document.body)) return;
+          // Ours on the canvas even when there's nothing that way (an announcement says so).
+          handled();
+          nav(id === "select-toward" ? TOWARD[e.key] : id === "select-edge-out" ? "edge-out" : "edge-in", e.target);
           break;
         }
         case "add-text":

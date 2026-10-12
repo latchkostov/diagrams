@@ -252,7 +252,7 @@ export function Inspector(p: InspectorProps) {
           <Icon name="panel-right" />
         </button>
       </div>
-      <div className="insp-body" ref={body}>
+      <div className="insp-body" ref={body} data-testid="inspector-body">
         {content}
       </div>
     </aside>
@@ -937,84 +937,358 @@ const ALIGN_BUTTONS: { mode: AlignMode; icon: IconName; label: string }[] = [
   { mode: "bottom", icon: "align-bottom", label: "Align bottom" },
 ];
 
-function MultiPanel({
-  editor,
-  selectedNodes,
-  selectedEdges,
-  selectedGroups,
-  selectedAnnotations = [],
-}: InspectorProps) {
+/** What every item of a list shares: the one value, or MIXED when they differ (undefined when the list is empty). */
+const MIXED = Symbol("mixed");
+function shared<T, V>(items: readonly T[], read: (t: T) => V): V | typeof MIXED | undefined {
+  if (!items.length) return undefined;
+  const first = read(items[0]);
+  return items.every((i) => read(i) === first) ? first : MIXED;
+}
+
+/** A fresh undo tag per click: one bulk change is one undo step, and the next click is another. */
+let bulkSeq = 0;
+const bulkStep = (what: string) => ({ merge: `bulk:${what}:${++bulkSeq}` });
+
+function MultiPanel(p: InspectorProps) {
+  const { editor, selectedNodes, selectedEdges, selectedGroups, selectedAnnotations = [] } = p;
   const nodeIds = selectedNodes.map((n) => n.id);
-  // Align and distribute arrange nodes and annotations alike.
+  // Align and distribute arrange nodes and annotations alike; Tidy up lays out nodes (and their edges).
   const ids = [...nodeIds, ...selectedAnnotations.map((n) => n.id)];
   return (
-    <Section>
-      <p className="insp-note">
-        {countText(selectedNodes.length, selectedEdges.length, selectedGroups.length, selectedAnnotations.length)}
-      </p>
-      {ids.length > 1 && (
-        <Field label="Align" group>
-          <div className="insp-toolbar">
-            {ALIGN_BUTTONS.map((a) => (
-              <button
-                key={a.mode}
-                className="icon-btn"
-                title={a.label}
-                aria-label={a.label}
-                onClick={() => editor.align(ids, a.mode)}
-                data-testid={`inspector-align-${a.mode}`}
-              >
-                <Icon name={a.icon} />
-              </button>
-            ))}
-          </div>
-        </Field>
-      )}
-      {ids.length > 2 && (
-        <Field label="Distribute" group>
-          <div className="insp-toolbar">
-            <button
-              className="icon-btn"
-              title="Distribute horizontally"
-              aria-label="Distribute horizontally"
-              onClick={() => editor.distribute(ids, "h")}
-              data-testid="inspector-distribute-h"
-            >
-              <Icon name="distribute-h" />
-            </button>
-            <button
-              className="icon-btn"
-              title="Distribute vertically"
-              aria-label="Distribute vertically"
-              onClick={() => editor.distribute(ids, "v")}
-              data-testid="inspector-distribute-v"
-            >
-              <Icon name="distribute-v" />
-            </button>
-          </div>
-        </Field>
-      )}
-      <div className="insp-actions">
-        {nodeIds.length > 0 && (
-          <button className="btn" onClick={() => editor.groupNodes(nodeIds)} data-testid="inspector-group-selection">
-            <Icon name="boundary" size={14} /> Add boundary
-          </button>
+    <>
+      <Section>
+        {ids.length > 1 ? (
+          <Field label="Arrange" group>
+            <div className="insp-toolbar">
+              {ALIGN_BUTTONS.map((a) => (
+                <button
+                  key={a.mode}
+                  className="icon-btn"
+                  title={a.label}
+                  aria-label={a.label}
+                  onClick={() => editor.align(ids, a.mode)}
+                  data-testid={`inspector-align-${a.mode}`}
+                >
+                  <Icon name={a.icon} />
+                </button>
+              ))}
+            </div>
+            {ids.length > 2 && (
+              <div className="insp-toolbar">
+                <button
+                  className="icon-btn"
+                  title="Distribute horizontally"
+                  aria-label="Distribute horizontally"
+                  onClick={() => editor.distribute(ids, "h")}
+                  data-testid="inspector-distribute-h"
+                >
+                  <Icon name="distribute-h" />
+                </button>
+                <button
+                  className="icon-btn"
+                  title="Distribute vertically"
+                  aria-label="Distribute vertically"
+                  onClick={() => editor.distribute(ids, "v")}
+                  data-testid="inspector-distribute-v"
+                >
+                  <Icon name="distribute-v" />
+                </button>
+                {nodeIds.length > 2 && (
+                  <button
+                    className="btn insp-tidy"
+                    title="Lay out just these nodes by their connections; nothing else moves"
+                    onClick={() => editor.tidy(nodeIds)}
+                    data-testid="inspector-tidy"
+                  >
+                    <Icon name="layout" size={14} /> Tidy up
+                  </button>
+                )}
+              </div>
+            )}
+          </Field>
+        ) : (
+          <p className="insp-note">
+            {countText(selectedNodes.length, selectedEdges.length, selectedGroups.length, selectedAnnotations.length)}
+          </p>
         )}
-        <button
-          className="btn btn-danger"
-          onClick={() =>
-            editor.deleteElements({
-              nodeIds: ids,
-              edgeIds: selectedEdges.map((e) => e.id),
-              groupIds: selectedGroups.map((g) => g.data.groupId),
-            })
-          }
-          data-testid="inspector-delete-selection"
+      </Section>
+      {selectedNodes.length > 0 && <BulkNodes {...p} />}
+      {selectedEdges.length > 0 && <BulkEdges {...p} />}
+      {selectedAnnotations.length > 0 && (
+        <Section title={plural(selectedAnnotations.length, "annotation", "annotations")}>
+          <BulkSwatches
+            testId="inspector-field-color"
+            itemTestId="inspector-color"
+            options={ANNOTATION_COLOR_IDS.map((c) => ({
+              id: c,
+              colour: ANNOTATION_COLORS[c].hex,
+              label: ANNOTATION_COLORS[c].label,
+            }))}
+            value={shared(selectedAnnotations, (a) => annotationColor(a.data))}
+            onPick={(c) =>
+              editor.updateAnnotations(
+                selectedAnnotations.map((a) => a.id),
+                { color: c },
+                bulkStep("annotation-colour"),
+              )
+            }
+          />
+        </Section>
+      )}
+      {selectedGroups.length > 0 && (
+        <Section title={plural(selectedGroups.length, "boundary", "boundaries")}>
+          <BulkSwatches
+            testId="inspector-field-tone"
+            itemTestId="inspector-tone"
+            options={(Object.keys(toneColor) as GroupTone[]).map((t) => ({
+              id: t,
+              colour: toneColor[t],
+              label: toneLabel[t],
+            }))}
+            value={shared(selectedGroups, (g) => g.data.tone)}
+            onPick={(t) =>
+              editor.updateGroups(
+                selectedGroups.map((g) => g.data.groupId),
+                { tone: t },
+                bulkStep("tone"),
+              )
+            }
+          />
+        </Section>
+      )}
+      <Section>
+        <div className="insp-actions">
+          {nodeIds.length > 0 && (
+            <button className="btn" onClick={() => editor.groupNodes(nodeIds)} data-testid="inspector-group-selection">
+              <Icon name="boundary" size={14} /> Add boundary
+            </button>
+          )}
+          <button
+            className="btn btn-danger"
+            onClick={() =>
+              editor.deleteElements({
+                nodeIds: ids,
+                edgeIds: selectedEdges.map((e) => e.id),
+                groupIds: selectedGroups.map((g) => g.data.groupId),
+              })
+            }
+            data-testid="inspector-delete-selection"
+          >
+            <Icon name="trash" size={14} /> Delete
+          </button>
+        </div>
+      </Section>
+    </>
+  );
+}
+
+/** The fields several nodes share (D11): Stencil, Boundary, and the simulation settings their roles have in common. */
+function BulkNodes({ editor, selectedNodes, groups }: InspectorProps) {
+  const ids = selectedNodes.map((n) => n.id);
+  const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
+  const stencilId = shared(selectedNodes, (n) => n.data.stencil);
+  const stencil = typeof stencilId === "string" ? getStencil(stencilId) : null;
+  const group = shared(selectedNodes, (n) => n.data.group ?? "");
+  const roles = [...new Set(selectedNodes.map((n) => getStencil(n.data.stencil).simRole))];
+  const simKeys = SIM_FIELDS_BY_ROLE[roles[0]].filter((k) => roles.every((r) => SIM_FIELDS_BY_ROLE[r].includes(k)));
+  const mergeKey = ids.join(",");
+  return (
+    <>
+      <Section title={plural(ids.length, "node", "nodes")}>
+        <BulkRow label="Stencil">
+          <button
+            className="insp-stencil insp-stencil-compact"
+            data-testid="inspector-field-stencil"
+            data-mixed={stencil ? undefined : "true"}
+            aria-label={`Stencil: ${stencil ? stencil.label : "Mixed"}. Change the stencil of ${ids.length} nodes`}
+            aria-haspopup="menu"
+            style={stencil ? ({ "--accent": stencil.accent } as CSSProperties) : undefined}
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setPicker({ x: r.left, y: r.bottom + 4 });
+            }}
+          >
+            <span className="palette-tile">
+              {stencil ? <StencilIcon stencil={stencil} size={16} /> : <Icon name="shapes" size={14} />}
+            </span>
+            <span className="insp-stencil-name">{stencil ? stencil.label : <em className="insp-mixed">Mixed</em>}</span>
+            <Icon name="chevron-down" size={14} />
+          </button>
+        </BulkRow>
+        <BulkRow label="Boundary">
+          <select
+            className="insp-input"
+            value={group === MIXED ? MIXED_VALUE : (group ?? "")}
+            onChange={(e) =>
+              e.target.value !== MIXED_VALUE &&
+              editor.updateNodes(ids, { group: e.target.value || undefined }, bulkStep("group"))
+            }
+            name="group"
+            aria-label={`Boundary of ${ids.length} nodes`}
+            data-testid="inspector-field-group"
+          >
+            {group === MIXED && (
+              <option value={MIXED_VALUE} disabled>
+                Mixed
+              </option>
+            )}
+            <option value="">None</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.data.groupId}>
+                {g.data.label}
+              </option>
+            ))}
+          </select>
+        </BulkRow>
+      </Section>
+      {simKeys.length > 0 && (
+        <Disclosure id="multi-simulation" title="Simulation">
+          {simKeys.map((k) => {
+            const value = shared(selectedNodes, (n) => showSim(SIM_FIELDS[k]!.kind, n.data.props?.[k]));
+            const first = selectedNodes[0].data.props?.[k];
+            return (
+              <SimInput
+                key={k}
+                name={k}
+                field={value === MIXED ? { ...SIM_FIELDS[k]!, placeholder: "Mixed" } : SIM_FIELDS[k]!}
+                value={value === MIXED ? undefined : first}
+                onChange={(v) => editor.setNodesProps(ids, { [k]: v }, { merge: `bulk:${mergeKey}:${k}` })}
+              />
+            );
+          })}
+        </Disclosure>
+      )}
+      {picker && (
+        <ContextMenu
+          x={picker.x}
+          y={picker.y}
+          label="Change stencil"
+          testId="stencil-picker"
+          searchable="Search stencils"
+          items={stencilMenu(
+            "pick-stencil",
+            (s) => ({
+              checked: s.id === stencilId,
+              run: () => editor.updateNodes(ids, { stencil: s.id }, bulkStep("stencil")),
+            }),
+            stencil?.category ?? getStencil(selectedNodes[0].data.stencil).category,
+          )}
+          onClose={() => setPicker(null)}
+        />
+      )}
+    </>
+  );
+}
+
+/** The fields several edges share (D11): Relationship and Label. */
+function BulkEdges({ editor, selectedEdges }: InspectorProps) {
+  const ids = selectedEdges.map((e) => e.id);
+  const choice = shared(selectedEdges, (e) => choiceOf(e.data));
+  const label = shared(selectedEdges, (e) => e.data?.label ?? "");
+  return (
+    <Section title={plural(ids.length, "edge", "edges")}>
+      <BulkRow label="Relationship">
+        <select
+          className="insp-input"
+          value={choice === MIXED ? MIXED_VALUE : choice}
+          onChange={(e) => {
+            const next = RELATION_CHOICES.find((c) => c.id === e.target.value);
+            if (next) applyChoice(editor, ids, next);
+          }}
+          name="relationship"
+          aria-label={`Relationship of ${ids.length} edges`}
+          data-testid="inspector-field-relation"
         >
-          <Icon name="trash" size={14} /> Delete
-        </button>
-      </div>
+          {choice === MIXED && (
+            <option value={MIXED_VALUE} disabled>
+              Mixed
+            </option>
+          )}
+          <optgroup label="Flow">
+            {RELATION_CHOICES.filter((c) => c.relation === "flow").map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label} ({c.kind})
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Dependency">
+            {RELATION_CHOICES.filter((c) => c.relation !== "flow").map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+      </BulkRow>
+      <BulkRow label="Label">
+        <input
+          className="insp-input"
+          value={label === MIXED ? "" : (label ?? "")}
+          placeholder={label === MIXED ? "Mixed" : "e.g. OrderPlaced"}
+          onChange={(e) => editor.updateEdges(ids, { label: e.target.value }, { merge: `bulk:${ids.join(",")}:label` })}
+          name="edge-label"
+          aria-label={`Label of ${ids.length} edges`}
+          data-testid="inspector-field-label"
+        />
+      </BulkRow>
     </Section>
+  );
+}
+
+/** The value a select shows while the selection differs (a disabled "Mixed" option). */
+const MIXED_VALUE = "__mixed";
+
+/** A compact label-and-control row, so a mixed selection's panel fits one screen. */
+function BulkRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="insp-bulk-row">
+      <span className="insp-label">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/** Colour swatches for several things: none ticked, and "Mixed" beside the label, while they differ. */
+function BulkSwatches<T extends string>({
+  options,
+  value,
+  onPick,
+  testId,
+  itemTestId,
+}: {
+  options: { id: T; colour: string; label: string }[];
+  value: T | typeof MIXED | undefined;
+  onPick: (v: T) => void;
+  testId: string;
+  itemTestId: string;
+}) {
+  return (
+    <div className="insp-bulk-row">
+      <span className="insp-label">
+        Colour
+        {value === MIXED && (
+          <em className="insp-mixed" data-testid={`${testId}-mixed`}>
+            Mixed
+          </em>
+        )}
+      </span>
+      <div className="insp-tones insp-tones-compact" data-testid={testId} role="radiogroup" aria-label="Colour">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={value === o.id}
+            className={`insp-tone${value === o.id ? " is-on" : ""}`}
+            style={{ "--tone": o.colour } as CSSProperties}
+            title={o.label}
+            aria-label={o.label}
+            onClick={() => onPick(o.id)}
+            data-testid={`${itemTestId}-${o.id}`}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 

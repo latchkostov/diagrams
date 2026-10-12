@@ -68,6 +68,12 @@ export interface EditorApi {
   select(sel: Partial<Selection>): void;
   selectAll(): void;
   clearSelection(): void;
+  /**
+   * Select similar (a node's or an edge's right-click, Ctrl+K): every node of the same stencil, or every edge
+   * of the same relationship (Message, Request, or one dependency), shown or hidden as dependencies are.
+   * Returns how many are selected.
+   */
+  selectSimilar(target: { nodeId?: string; edgeId?: string }): number;
 
   // ---- create / update ----
   /** One replacement and one immediate undo step, isolated from user edits. */
@@ -82,6 +88,14 @@ export interface EditorApi {
   updateNode(id: string, patch: Partial<Omit<DiagramNode, "id">>, opts?: EditOptions): void;
   /** Shallow-merges node props; `undefined` values delete keys. */
   setNodeProps(id: string, patch: Record<string, unknown>, opts?: EditOptions): void;
+  /** Bulk edit (the multi-selection's inspector): one state pass and one undo step for all of `ids`. */
+  updateNodes(ids: readonly string[], patch: Pick<Partial<DiagramNode>, "stencil" | "group">, opts?: EditOptions): void;
+  /** Bulk edit: shallow-merges the same props into every node of `ids`, as one undo step. */
+  setNodesProps(ids: readonly string[], patch: Record<string, unknown>, opts?: EditOptions): void;
+  /** Bulk edit: one colour for several texts, notes, zones and shapes, as one undo step. */
+  updateAnnotations(ids: readonly string[], patch: Pick<Partial<DiagramAnnotation>, "color">, opts?: EditOptions): void;
+  /** Bulk edit: one colour for several boundaries, as one undo step. */
+  updateGroups(ids: readonly string[], patch: Pick<Partial<DiagramGroup>, "tone">, opts?: EditOptions): void;
   updateEdge(id: string, patch: Partial<Omit<DiagramEdge, "id">>, opts?: EditOptions): void;
   /** Update selected edges in one state pass and one history step. */
   updateEdges(ids: readonly string[], patch: Partial<Omit<DiagramEdge, "id">>, opts?: EditOptions): void;
@@ -147,6 +161,19 @@ export interface EditorApi {
   keepClear(sel: Partial<Selection>): void;
   align(nodeIds: string[], mode: AlignMode): void;
   distribute(nodeIds: string[], axis: Axis): void;
+  /**
+   * Tidy up (D15): the layered layout on just these nodes and the edges between them, inside their bounding
+   * box where it fits (its top-left kept), clear of everything else. Nothing else moves; one undo step.
+   */
+  tidy(nodeIds: string[]): void;
+  /**
+   * Boundaries that keep up (D12): nodes `ids`, just dropped, join the boundary around their centre (or leave
+   * theirs), and a boundary grows to hold a member that pokes out. Joins the drop's undo step. Returns the
+   * boundaries members left (group id → node ids), for the toast that says so.
+   */
+  settleMembership(ids: readonly string[]): Map<string, string[]>;
+  /** A boundary resized by hand adopts the nodes now inside it and releases those now outside it. */
+  adoptAfterResize(groupId: string): { adopted: string[]; released: string[] };
   /** Wraps nodes in a new boundary and starts renaming it. Returns the group id. */
   groupNodes(nodeIds: string[], tone?: GroupTone): string | null;
   ungroup(groupId: string): void;

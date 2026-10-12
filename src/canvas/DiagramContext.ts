@@ -29,6 +29,8 @@ export interface DiagramUi {
   hint?: (merge: string | undefined) => void;
   /** Editing only: a selected edge's end dropped on another node moves there. */
   reconnect?: (edgeId: string, end: EdgeEnd, nodeId: string) => boolean;
+  /** Editing only: a boundary resized by hand adopts the nodes now inside it and releases those outside (D12). */
+  boundaryResized?: (groupId: string) => void;
 }
 
 export const DiagramContext = createContext<DiagramUi>({

@@ -8,7 +8,7 @@ import { toneColor } from "../groupTones";
 
 /** Boundary box (cloud, cluster, network) drawn behind nodes. Dragged by its label. */
 function GroupNodeImpl({ id, data, selected }: NodeProps<GroupFlowNode>) {
-  const { editing, setEditing } = useDiagram();
+  const { editing, setEditing, boundaryResized } = useDiagram();
   const { updateNodeData } = useReactFlow();
   const isEditing = editing?.kind === "group" && editing.id === data.groupId;
   return (
@@ -23,6 +23,7 @@ function GroupNodeImpl({ id, data, selected }: NodeProps<GroupFlowNode>) {
         minHeight={100}
         lineClassName="grp-resize-line"
         handleClassName="grp-resize-handle"
+        onResizeEnd={boundaryResized ? () => boundaryResized(data.groupId) : undefined}
       />
       <div
         className="grp-label grp-drag"

@@ -72,3 +72,30 @@ export function boundaryAround(boxes: readonly Box[], pad = 40, labelRoom = 24) 
     height: Math.round(bb.height + pad * 2 + labelRoom),
   };
 }
+
+/**
+ * Keeps an arrangement overlap-free: aligning a column's tops (or distributing nodes that don't fit their span)
+ * would stack them. Boxes that overlap after `positions` are moved apart along `axis` ("h": sideways, "v":
+ * down), in their order on it, `gap` apart; boxes that don't overlap stay where `positions` put them.
+ */
+export function spreadOverlaps(boxes: readonly Box[], positions: Positions, axis: Axis, gap = 40): Positions {
+  const out: Positions = new Map(positions);
+  const at = (b: Box) => ({ ...b, ...(out.get(b.id) ?? { x: b.x, y: b.y }) });
+  const h = axis === "h";
+  const sorted = [...boxes].sort((a, b) => (h ? a.x - b.x || a.y - b.y : a.y - b.y || a.x - b.x));
+  const placed: Box[] = [];
+  for (const b0 of sorted) {
+    const b = at(b0);
+    for (let i = 0; i < placed.length * 2 + 1; i++) {
+      const hit = placed.find(
+        (p) => b.x < p.x + p.width && p.x < b.x + b.width && b.y < p.y + p.height && p.y < b.y + b.height,
+      );
+      if (!hit) break;
+      if (h) b.x = hit.x + hit.width + gap;
+      else b.y = hit.y + hit.height + gap;
+    }
+    out.set(b.id, { x: Math.round(b.x), y: Math.round(b.y) });
+    placed.push(b);
+  }
+  return out;
+}

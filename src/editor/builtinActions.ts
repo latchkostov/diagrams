@@ -23,6 +23,7 @@ import type { EdgeEnd } from "./edgeEdits";
 
 const TONES = Object.keys(toneColor) as GroupTone[];
 const SIDE_LABEL: Record<Side, string> = { top: "Top", right: "Right", bottom: "Bottom", left: "Left" };
+const SIDE_HINT = (side: Side | undefined) => (side ? SIDE_LABEL[side] : "Auto");
 
 /** Category ▸ stencil submenus. `pick` builds the leaf for one stencil. */
 export function stencilMenu(
@@ -81,6 +82,11 @@ export function quickAddMenu(pick: (s: Stencil) => void, recent: readonly string
 }
 
 const nodeCount = (ctx: ActionContext) => ctx.selection.nodeIds.length;
+/** Tidy up lays out nodes (not annotations): it needs three of them. */
+const tidyCount = (ctx: ActionContext) => {
+  const ids = new Set(ctx.selection.nodeIds);
+  return ctx.editor.getDiagram().nodes.filter((n) => ids.has(n.id)).length;
+};
 const total = (ctx: ActionContext) =>
   ctx.selection.nodeIds.length + ctx.selection.groupIds.length + ctx.selection.edgeIds.length;
 
@@ -97,11 +103,13 @@ function sideMenu(ctx: ActionContext, end: "sourceSide" | "targetSide"): MenuNod
   const id = ctx.edgeId!;
   const current = ctx.editor.getEdge(id)?.[end];
   const prefix = end === "sourceSide" ? "edge.from-side" : "edge.to-side";
+  const name = end === "sourceSide" ? "Route from side" : "Route to side";
   return [
     {
       type: "item",
       id: `${prefix}:auto`,
       label: "Auto",
+      paletteLabel: `${name} › Auto`,
       hint: "follows layout",
       checked: !current,
       run: () => ctx.editor.updateEdge(id, { [end]: undefined }),
@@ -111,6 +119,7 @@ function sideMenu(ctx: ActionContext, end: "sourceSide" | "targetSide"): MenuNod
       type: "item",
       id: `${prefix}:${side}`,
       label: SIDE_LABEL[side],
+      paletteLabel: `${name} › ${SIDE_LABEL[side]}`,
       checked: current === side,
       run: () => ctx.editor.updateEdge(id, { [end]: side }),
     })),
@@ -470,6 +479,17 @@ export function builtinActions(): Action[] {
       run: (ctx) => ctx.editor.openInspector(),
     },
     {
+      // "Select all like this": every node of this stencil, every edge of this relationship (D11).
+      id: "item.select-similar",
+      section: "edit",
+      targets: ["node", "edge"],
+      label: "Select similar",
+      icon: "select-all",
+      order: 150,
+      when: (ctx) => (ctx.nodeId ? !!ctx.editor.getNode(ctx.nodeId) : !!ctx.edgeId),
+      run: (ctx) => void ctx.editor.selectSimilar({ nodeId: ctx.nodeId, edgeId: ctx.edgeId }),
+    },
+    {
       id: "item.duplicate",
       section: "clipboard",
       targets: ["node", "selection", "group", "annotation"],
@@ -617,20 +637,30 @@ export function builtinActions(): Action[] {
       run: (ctx) => ctx.editor.openInspector("group"),
     },
     {
-      id: "edge.from-side",
+      // Pinning a side is rare (the router picks them): one row, From side ▸ and To side ▸ under it.
+      id: "edge.route",
       section: "edge",
       targets: ["edge"],
-      label: "Route from side",
+      label: "Route",
       icon: "route",
-      children: (ctx) => sideMenu(ctx, "sourceSide"),
-    },
-    {
-      id: "edge.to-side",
-      section: "edge",
-      targets: ["edge"],
-      label: "Route to side",
-      icon: "route",
-      children: (ctx) => sideMenu(ctx, "targetSide"),
+      children: (ctx) => [
+        {
+          type: "item",
+          id: "edge.from-side",
+          label: "From side",
+          icon: "route",
+          hint: SIDE_HINT(ctx.editor.getEdge(ctx.edgeId!)?.sourceSide),
+          children: sideMenu(ctx, "sourceSide"),
+        },
+        {
+          type: "item",
+          id: "edge.to-side",
+          label: "To side",
+          icon: "route",
+          hint: SIDE_HINT(ctx.editor.getEdge(ctx.edgeId!)?.targetSide),
+          children: sideMenu(ctx, "targetSide"),
+        },
+      ],
     },
 
     // ---------------- selection ----------------
@@ -679,6 +709,17 @@ export function builtinActions(): Action[] {
           run: () => ctx.editor.distribute(ctx.selection.nodeIds, "v"),
         },
       ],
+    },
+    {
+      // The layered layout on just the selection (D15): nothing else moves, and it lands clear of the rest.
+      id: "selection.tidy",
+      section: "arrange",
+      targets: ["selection"],
+      label: "Tidy up",
+      icon: "layout",
+      order: 25,
+      when: (ctx) => tidyCount(ctx) >= 3,
+      run: (ctx) => ctx.editor.tidy(ctx.selection.nodeIds),
     },
     {
       id: "selection.group",

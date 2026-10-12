@@ -22,6 +22,8 @@ const MOUSE: [string, string][] = [
   ["Drag a node", "Lines up with others and equal gaps"],
   ["Ctrl / ⌘ while dragging", "Move freely, no snapping"],
   ["Alt + drag", "Duplicate"],
+  ["Drag a node across a boundary's edge", "Join it (lit) or leave it (dashed)"],
+  ["Drag a boundary's corner", "Resize; takes in what's now inside"],
 ];
 
 /** Inline editors: every text box on the canvas follows the same keys (src/components/editKeys.ts). */
@@ -54,6 +56,7 @@ function displayKeys(s: Shortcut): string[] {
   if (s.id === "nudge-far") return [`${formatCombo("Shift")} ← ↑ → ↓`];
   if (s.id === "add-next") return [`${formatCombo("Alt")} ← ↑ → ↓`];
   if (s.id === "clone-next") return [`${formatCombo("Alt+Shift")} ← ↑ → ↓`];
+  if (s.id === "select-toward") return [`${formatCombo("Ctrl+Alt")} ← ↑ → ↓`];
   return s.keys.map((k) => formatCombo(k));
 }
 

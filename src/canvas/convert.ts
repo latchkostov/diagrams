@@ -93,12 +93,36 @@ export function withEdgeAria(edges: DiagramFlowEdge[], labelOf: (id: string) => 
         ...e.domAttributes,
         "data-testid": `relationship-wrapper-${e.id}`,
         "data-dependency": isDependency(e.data) ? "true" : "false",
+        // The canvas is one Tab stop (D14): edges are reached from a node with Ctrl+Alt+] and [, or a click.
+        tabIndex: -1,
       },
     };
     edgeAriaCopies.set(e, copy);
     return copy;
   });
   return changed ? out : edges;
+}
+
+const rovingCopies = new WeakMap<object, { tabIndex: number; node: FlowNode }>();
+
+/**
+ * The canvas as one Tab stop (D14): only `current` (the node last focused or selected) is in the page's Tab
+ * order; the rest are reached with Tab and Shift+Tab inside the canvas, which step in reading order. Copies are
+ * cached per node object, as withNodeAria's are.
+ */
+export function withRovingFocus(nodes: FlowNode[], current: string | undefined): FlowNode[] {
+  let changed = false;
+  const out = nodes.map((n) => {
+    const tabIndex = n.id === current ? 0 : -1;
+    if (n.domAttributes?.tabIndex === tabIndex) return n;
+    changed = true;
+    const cached = rovingCopies.get(n);
+    if (cached?.tabIndex === tabIndex) return cached.node;
+    const node = { ...n, domAttributes: { ...n.domAttributes, tabIndex } } as FlowNode;
+    rovingCopies.set(n, { tabIndex, node });
+    return node;
+  });
+  return changed ? out : nodes;
 }
 
 // ---------------------------------------------------------------- inline editing on top
