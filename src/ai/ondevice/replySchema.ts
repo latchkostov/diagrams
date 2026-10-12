@@ -1,8 +1,10 @@
 // The reply's shape for one request, as `responseConstraint`. Every field that names an existing element
 // is an enum of the diagram's own names, so constrained decoding can't wander off inside a string (run 3:
 // a rename's target looped "Payments service apart from that connection to …" until it ran out). Keys
-// for new nodes follow a short pattern. Chrome doesn't document which schema keywords it supports, so
-// there are three tiers, tried in order; a NotSupportedError moves to the next (see pipeline.ts).
+// for new nodes follow a short pattern, and each op type requires its own fields (run 4: a rename came
+// back with no label, a kind change with no kind). Chrome doesn't document which schema keywords it
+// supports, so there are four tiers, tried in order; a NotSupportedError moves to the next (see
+// pipeline.ts).
 
 import type { DiagramFile } from "../../model/types";
 import type { ScopeItem } from "../ui/context";
@@ -13,12 +15,28 @@ export const SUMMARY_CHARS = 160;
 export const KEY_CHARS = 30;
 /** A new node's key: short, lower case. */
 export const KEY_PATTERN = `^[a-z][a-z0-9_-]{0,${KEY_CHARS - 1}}$`;
+/**
+ * The same, except "this", for a request with nothing selected (run 4 connected a webhook to "this").
+ * Written without a lookahead, which a constrained decoder may not take: a first letter other than "t";
+ * or "t", "th" or "thi", alone or followed by a different letter; or "this" followed by more.
+ */
+export const KEY_PATTERN_NOT_THIS = (() => {
+  const c = "[a-z0-9_-]";
+  const rest = (used: number) => `${c}{0,${KEY_CHARS - used}}`;
+  return (
+    `^(?:[a-su-z]${rest(1)}` +
+    `|t(?:[a-gi-z0-9_-]${rest(2)}|h(?:[a-hj-z0-9_-]${rest(3)}|i(?:[a-rt-z0-9_-]${rest(4)}|s${c}{1,${KEY_CHARS - 4}})?)?)?)$`
+  );
+})();
 /** The most names an enum lists (a big diagram: the selection, its neighbours, what the request names first). */
 export const ENUM_BUDGET = 120;
 
-/** "rich": enums, anyOf and patterns; "enums": enums only; "plain": bounded strings only. */
-export type SchemaTier = "rich" | "enums" | "plain";
-export const SCHEMA_TIERS: readonly SchemaTier[] = ["rich", "enums", "plain"];
+/**
+ * "typed": as "rich", and each op type requires its own fields (an anyOf of one object per op); "rich":
+ * enums, anyOf and patterns; "enums": enums only; "plain": bounded strings only.
+ */
+export type SchemaTier = "typed" | "rich" | "enums" | "plain";
+export const SCHEMA_TIERS: readonly SchemaTier[] = ["typed", "rich", "enums", "plain"];
 
 /** Each node by the name the prompt shows: its label, or its id where labels repeat. */
 export function nodeNames(diagram: DiagramFile): Map<string, string> {
@@ -104,16 +122,20 @@ export function replySchema(
   diagram: DiagramFile,
   request: string,
   scope: readonly ScopeItem[] = [],
-  tier: SchemaTier = "rich",
+  tier: SchemaTier = "typed",
 ): object {
   const { nodes, edges, boundaries } = elementNames(diagram, request, scope);
-  // "this": any selected element as a target; only a selected node as a connection's end.
+  const typed = tier === "typed";
+  const patterns = typed || tier === "rich";
+  // "this": any selected element as a target; only a selected node as a connection's end. A key is
+  // never "this" in the typed tier (with nothing selected the model connected to "this"; with a node
+  // selected, the enum has it). The rich tier stays as round 3 shipped it, so a browser that turns down
+  // the typed tier falls back to a schema known to work.
   const selfTarget = scope.length === 1 ? ["this"] : [];
   const nodeEnum = [...nodes, ...(scope.length === 1 && scope[0].kind === "node" ? ["this"] : [])];
-  const key =
-    tier === "rich"
-      ? { type: "string", pattern: KEY_PATTERN, maxLength: KEY_CHARS }
-      : { type: "string", maxLength: KEY_CHARS };
+  const key = patterns
+    ? { type: "string", pattern: typed ? KEY_PATTERN_NOT_THIS : KEY_PATTERN, maxLength: KEY_CHARS }
+    : { type: "string", maxLength: KEY_CHARS };
   const free = { type: "string", maxLength: NAME_CHARS };
   // A target names an existing element only (rename, change_kind, remove). Nothing to name: a key.
   const names = [...new Set([...nodes, ...selfTarget, ...edges, ...boundaries])];
@@ -124,7 +146,26 @@ export function replySchema(
         ? { type: "string", enum: names }
         : key;
   // A connection's end: an existing node, or a new node's key (an enum alone can't allow keys).
-  const end = tier === "rich" ? (nodeEnum.length ? { anyOf: [{ type: "string", enum: nodeEnum }, key] } : key) : free;
+  const end = patterns ? (nodeEnum.length ? { anyOf: [{ type: "string", enum: nodeEnum }, key] } : key) : free;
+  const flow = { type: "string", enum: ["message", "request"] };
+  const items = typed
+    ? { anyOf: typedOps({ key, free, required: { ...free, minLength: 1 }, target, end, flow }) }
+    : {
+        type: "object",
+        properties: {
+          op: { type: "string", enum: [...COMPACT_OPS] },
+          key,
+          kind: free,
+          label: free,
+          sublabel: free,
+          from: end,
+          to: end,
+          flow,
+          target,
+        },
+        required: ["op"],
+        additionalProperties: false,
+      };
   return {
     type: "object",
     properties: {
@@ -133,26 +174,48 @@ export function replySchema(
         type: "array",
         minItems: 1,
         maxItems: MAX_OPS,
-        ...(tier === "rich" ? { uniqueItems: true } : {}),
-        items: {
-          type: "object",
-          properties: {
-            op: { type: "string", enum: [...COMPACT_OPS] },
-            key,
-            kind: free,
-            label: free,
-            sublabel: free,
-            from: end,
-            to: end,
-            flow: { type: "string", enum: ["message", "request"] },
-            target,
-          },
-          required: ["op"],
-          additionalProperties: false,
-        },
+        ...(patterns ? { uniqueItems: true } : {}),
+        items,
       },
     },
     required: ["summary", "ops"],
     additionalProperties: false,
   };
+}
+
+/**
+ * One closed object per op type, each requiring what that op needs (run 4: a rename with no label, a
+ * kind change with no kind): add a key, kind and label; connect both ends; insert_between both ends, a
+ * key, kind and label; rename a target and its new label; change_kind a target and its kind; remove a
+ * target. "op" comes first in each, so once it's written the decoder holds the reply to that op's fields.
+ */
+function typedOps(t: {
+  key: object;
+  free: object;
+  required: object;
+  target: object;
+  end: object;
+  flow: object;
+}): object[] {
+  const { key, free, required: word, target, end, flow } = t;
+  const op = (name: (typeof COMPACT_OPS)[number], properties: Record<string, object>, required: string[]) => ({
+    type: "object",
+    properties: { op: { type: "string", enum: [name] }, ...properties },
+    required: ["op", ...required],
+    additionalProperties: false,
+  });
+  return [
+    op("add", { key, kind: word, label: word, sublabel: free }, ["key", "kind", "label"]),
+    op("connect", { from: end, to: end, flow, label: free }, ["from", "to"]),
+    op("insert_between", { key, kind: word, label: word, from: end, to: end, sublabel: free }, [
+      "key",
+      "kind",
+      "label",
+      "from",
+      "to",
+    ]),
+    op("rename", { target, label: word }, ["target", "label"]),
+    op("change_kind", { target, kind: word, sublabel: free }, ["target", "kind"]),
+    op("remove", { target }, ["target"]),
+  ];
 }

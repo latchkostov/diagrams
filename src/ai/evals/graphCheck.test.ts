@@ -28,6 +28,36 @@ const NODES: [string, string, string][] = [
 ];
 
 describe("checkGraph", () => {
+  it("an expected one-way connection drawn both ways is a reversal (unless both ways are expected)", () => {
+    const both = diagram(NODES, [
+      ["t", "w"],
+      ["w", "t"],
+      ["w", "d"],
+    ]);
+    expect(checkGraph(both, expected)).toBe(
+      "reversed connection: service.dotnet -> kafka.topic drawn as well as kafka.topic -> service.dotnet",
+    );
+    expect(
+      checkGraph(both, { ...expected, edges: [...expected.edges, ["billing-worker", "orders.created"]] }),
+    ).toBeNull();
+    // Two nodes of one stencil: an assignment without the backwards connection still passes.
+    const two = diagram(
+      [
+        ["a", "service.go", "A"],
+        ["b", "service.go", "B"],
+      ],
+      [["a", "b"]],
+    );
+    const pair = {
+      nodes: [
+        { label: "A", stencil: "service.go" },
+        { label: "B", stencil: "service.go" },
+      ],
+      edges: [["A", "B"]] as [string, string][],
+    };
+    expect(checkGraph(two, pair)).toBeNull();
+  });
+
   it("passes the expected directed graph whatever the labels", () => {
     expect(
       checkGraph(

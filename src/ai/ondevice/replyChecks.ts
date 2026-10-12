@@ -7,9 +7,10 @@
 import type { DiagramFile } from "../../model/types";
 import type { DiagramOp } from "../index";
 import { getStencil } from "../../stencils/registry";
-import { isRoleWord, namedStencil, resolveKind } from "../stencils";
+import { confidentStencil, isRoleWord, namedStencil, resolveKind } from "../stencils";
 import { EXAMPLE_NAMES } from "./examples";
 import { NEGATION, relationFlow, requestRelations } from "./requestRelations";
+import { editIntents } from "./requestEdits";
 
 const lower = (s: string) => s.toLowerCase();
 
@@ -140,7 +141,11 @@ export function inRequest(phrase: string, request: string): boolean {
  * stays when:
  * - the label is the model's own ("billing-worker") or generic ("Orders API", "Events", "Gateway": a
  *   one-word label must be the stencil's own name, like "Prometheus" or "Scheduler");
- * - the request names the kind too ("Redis cache" in "A Go service uses Redis cache");
+ * - the label strings two of the request's components together ("email_service" for "A service delivers
+ *   email"): it names neither one;
+ * - the request names the kind too ("Redis cache" in "A Go service uses Redis cache"), unless the kind
+ *   is generic and the label names a specific stencil confidently (kind "service", label "App Service":
+ *   the request's "service" is part of "App Service");
  * - the label names a generic stencil in the same role as the kind's (label "Cache", kind "Memcached").
  */
 export function kindFor(kind: string, label: string, request: string): string {
@@ -153,8 +158,14 @@ export function kindFor(kind: string, label: string, request: string): string {
     const names = [s.label, ...s.id.split(".")].map((n) => words(n).map(stem).join(" "));
     if (!names.includes(labelWords[0])) return kind;
   }
+  const whole = requestComponents(request).filter((c) => {
+    const cw = words(c.phrase).map(stem);
+    return cw.length > 0 && cw.every((w) => labelWords.includes(w));
+  });
+  if (new Set(whole.map((c) => c.stencil)).size > 1) return kind;
   const byKind = resolveKind(kind, label).id;
   if (byKind === byLabel) return kind;
+  if (byKind.startsWith("generic.") && confidentStencil(label) === byLabel) return label;
   if (inRequest(kind, request) && namedStencil(kind) === byKind) return kind;
   if (byLabel.startsWith("generic.") && getStencil(byLabel).simRole === getStencil(byKind).simRole) return kind;
   return label;
@@ -343,7 +354,9 @@ const QUALIFIED = /\b(?:generic|unspecified|any|some|plain)\b/i;
  *   (`updateStencils`) and "make X a Y" in the request.
  * - A node whose label names one component ("billing" for "a billing Go service") is that component,
  *   and takes its technology.
- * - The rest pair by label words, then by role, then (one and one only) by order.
+ * - The rest pair by label words, then by role, then (one and one only) by order. A node that already is
+ *   a component its label names (a Lambda labelled "email_service" is the request's "service") is never
+ *   given another one.
  * It never takes a component that's an existing node. Returns each node's kind, changed or not.
  */
 export function reconcileKinds(
@@ -355,9 +368,11 @@ export function reconcileKinds(
   const kinds = nodes.map((n) => n.kind);
   if (!request || !nodes.length) return kinds;
   const existing = diagram.nodes.map((n) => norm(n.label));
-  // "make Orders database a MongoDB": MongoDB is for an existing node.
-  const madeInto = [...request.matchAll(/\bmake\s+.+?\s+(?:a|an|into)\s+(.+?)(?=$|[,;]|\.(?:\s|$)|\s+and\b)/gi)]
-    .map((m) => namedStencil(m[1]))
+  // "make Orders database a MongoDB": MongoDB is for an existing node (negated or not: either way it
+  // isn't a new node's technology).
+  const madeInto = editIntents(request)
+    .filter((e) => e.field === "kind")
+    .map((e) => namedStencil(e.value))
     .filter((x): x is string => !!x);
   const comps = requestComponents(request).filter((c) => {
     if (updateStencils.has(c.stencil) || madeInto.includes(c.stencil)) return false;
@@ -398,8 +413,19 @@ export function reconcileKinds(
   }
   const had = (c: NamedComponent) => nodes.some((_, i) => stencilOf(i) === c.stencil || roleOk(c, i));
   const unmatched = comps.filter((c) => !done.has(c) && !had(c));
+  // A node that already is a component its label names stays that component, even when its label also
+  // has another component's word: a Lambda labelled "email_service" for "A service delivers email" is
+  // the service, not the email.
+  const fits = (c: NamedComponent, i: number) => {
+    const mine = words(nodes[i].label).map(stem);
+    const cw = words(c.phrase).map(stem);
+    return cw.length > 0 && cw.every((w) => mine.includes(w)) && (stencilOf(i) === c.stencil || roleOk(c, i));
+  };
   const eligible = [...free].filter(
-    (i) => !stencilOf(i).startsWith("generic.") && !comps.some((c) => c.stencil === stencilOf(i)),
+    (i) =>
+      !stencilOf(i).startsWith("generic.") &&
+      !comps.some((c) => c.stencil === stencilOf(i)) &&
+      !comps.some((c) => fits(c, i)),
   );
   const pool = new Set(eligible);
   if (!unmatched.length || !pool.size) return kinds;

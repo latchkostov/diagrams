@@ -62,11 +62,12 @@ read from a `VITE_` variable, so builds without it still deploy.
     label (or id where labels repeat) and stencil name, then the connections; a big diagram keeps the
     selection and its neighbours first and says how much it left out. Then the selection, spelled out as
     `this = <id> "<label>"`, then the request.
-  - **Output:** `responseConstraint` is a flat op object with an `op` enum (`add`, `connect`,
-    `insert_between`, `rename`, `change_kind`, `remove`) and optional `key`, `kind`, `label`, `sublabel`,
-    `from`, `to`, `flow` (message or request) and `target`. Kinds are plain words, new nodes have short
-    keys, existing nodes are named by label, and there are no ids or coordinates. Per-op required fields
-    and the 16-op cap are checked in code, not in the schema.
+  - **Output:** `responseConstraint` is built per request (round 3), and since round 4 each op type
+    (`add`, `connect`, `insert_between`, `rename`, `change_kind`, `remove`) is its own closed object
+    that requires that op's fields, from `key`, `kind`, `label`, `sublabel`, `from`, `to`, `flow`
+    (message or request) and `target`. Kinds are plain words, new nodes have short keys, existing nodes
+    are named by label, and there are no ids or coordinates. The code checks the same fields again
+    (older tiers don't require them), and caps a reply at 6 ops.
   - **Priming:** a system prompt with explicit direction rules, plus four worked examples (a create with
     "reads from", an edit by label, `insert_between` with `change_kind`, and "after this" with a
     selection), created once and `clone()`d per request. The examples use made-up names (Zephyr, Quill);
@@ -192,6 +193,9 @@ original stencil):
 
 - create-9, "Kinesis feeds a processor": any processor passes. "A processor" names no technology, and Go
   was only what the corpus ops chose.
+- create-24, "A service delivers email" (round 4, the owner's decision): any processor passes for the
+  service, for the same reason. "A service" names no technology, and the generic service was only what
+  the corpus ops chose. The email side still has to be the email stencil.
 - create-18, "RabbitMQ routes to a Java worker": a RabbitMQ exchange passes as well as a queue. Bare
   "RabbitMQ" fits both, and routing is what an exchange does.
 - create-28, "An unspecified component connects to a generic database": any generic or processing stencil
@@ -387,5 +391,129 @@ on-device check accepts Lambda, Go and Azure Functions there.
 
 A unit test replays run 3's failures: create-14, 28 and 29 pass on the first try, and create-11 and 21
 are completed after the retry (`src/ai/evals/onDevice.test.ts`).
+
+### Round 4: after #38
+
+**Run 4, 12 October 2026, Chrome 154: 31/37 (84%), 30 on the first try.** This is the first measured run
+above the 80% bar, so the box stays on by default. The constrained target enum ended the runaways:
+edit-rename and edit-change used to take about 190 s, and now fail in about 13 s.
+
+| Group                   | Passed | Failures                                                                     |
+| ----------------------- | ------ | ---------------------------------------------------------------------------- |
+| Edits (Kafka example)   | 6/8    | format 2 (edit-rename, edit-change)                                          |
+| Creates (corpus, empty) | 25/29  | stencil 2 (create-17, create-29), direction 1 (create-24), create-23 (below) |
+| **All**                 | 31/37  | 6                                                                            |
+
+| Case        | Run 4 failure                                                                                                          | Round 4 fix                                                                         | Kind of fix                     |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------- |
+| edit-rename | `{"op":"rename","target":"Payments service"}`: no `label` (format, 2 tries)                                            | Typed schema; the label filled from "Rename X to Y"                                 | Deterministic                   |
+| edit-change | `change_kind` and `rename` of Orders database, neither with a `kind` (format, 2 tries)                                 | Typed schema; the kind filled from "Make X a Y"; the empty duplicate rename dropped | Deterministic                   |
+| create-17   | App Service got the kind "service", so `generic.service`                                                               | The label wins over a generic kind when it resolves confidently                     | Deterministic                   |
+| create-23   | Connected `webhook → "this"` with nothing selected                                                                     | "this" is no name or key in the typed schema; a stray "this" connection is dropped  | Deterministic (or the retry)    |
+| create-24   | A Lambda `email_service` and an SQS `message_queue` became email and service, so `email → service`, scored as reversed | The Lambda stays the service, and the queue becomes the email; any processor passes | Deterministic                   |
+| create-29   | `missing kafka.topic`: the request names no broker                                                                     | Expectation widened to any topic, queue or stream                                   | None: the structure stays wrong |
+
+**create-10** ("PubSub feeds Python") passed, though the raw reply drew python → pubsub. The direction
+repair turned it ("feeds" is a produce verb), and the scorer would have caught it otherwise: a reversed
+connection alone fails `checkGraph`. One gap was real, though. A reply that drew **both** ways passed,
+because the expected connection was there. Now `checkGraph` fails a one-way connection drawn both ways
+("reversed connection: … drawn as well as …"), unless both ways are expected. The pipeline drops the
+reversed one when the request describes only one way.
+
+**What changed:**
+
+- **Typed reply schema** (`replySchema.ts`, tier `typed`). `items` is an `anyOf` of one closed object
+  per op type, each with `op` first (a one-value enum) and that op's fields required (`minLength: 1`
+  for the required words):
+  - `add`: key, kind and label;
+  - `connect`: from and to;
+  - `insert_between`: key, kind, label, from and to;
+  - `rename`: target and label;
+  - `change_kind`: target and kind;
+  - `remove`: target.
+
+  Keys in this tier follow a pattern that can't be "this" (written without a lookahead). With a node
+  selected, "this" is still in the enum. There are four tiers now: typed, rich, enums, plain. Rich is
+  round 3's schema, unchanged, so a Chrome that turns down the typed tier (`NotSupportedError`) falls
+  back to a schema known to work on Chrome 154. **Unverified on a real model:** the DevTools Chrome here
+  reports `"unavailable"`. The next run shows whether the typed tier holds; if it doesn't, the requests
+  run on rich and the fills below still apply.
+
+- **Filled from the request** (`requestEdits.ts`, `fillEdits`, run before anything else in `toOps`). The
+  request's renames ("Rename X to Y") and kind changes ("Make X a Y", "turn X into Y", "change X to Y",
+  "X should be Y") are read clause by clause. A kind must name a stencil, so "change X to the old one"
+  says nothing.
+  - **Never from a negated clause** ("Don't rename X to Y", "…but not a MongoDB"): an incomplete op for
+    it stays an error for the retry.
+  - A rename without a label, or a kind change without a kind, gets the value the request gives **the
+    same element**: its target and the request's words must resolve to one id. Nothing the model wrote
+    is replaced.
+  - The model sometimes picks the wrong one of the two ops for exactly what was asked. A rename to the
+    kind "make X a Y" asks for becomes that kind change. A kind change to the label "rename X to Y" asks
+    for becomes that rename. The typed schema makes a rename carry a label, so this matters more now.
+  - Only ops with no effect are dropped, in order: a change exactly like the element's change just before
+    it (label, kind and sublabel all equal), and an empty one beside another change of the same element
+    (edit-change's empty rename). Different sublabels, or MongoDB → Redis → MongoDB, all stay.
+- **One clause reader** (`requestClauses.ts`, after the review). Relations, edits, "between" and the
+  "make X a Y" check in reconciliation share one tokenizer:
+  - It is linear in the request's length, with no backtracking regex. Before, a request of 3,200 spaces
+    took about 9 s on the main thread. A test runs adversarial inputs of 20,000 characters within a
+    time budget.
+  - A quoted name is one token, so `"Billing and shipping"` or `"Billing, v2"` is never cut at its
+    "and" or comma. Unquoted, "and" starts a new edit clause only before an instruction ("…and make X a
+    Y"), so "Rename X to Billing and Shipping" keeps the whole name.
+  - Each clause carries its negation.
+- **Requested responses stay.** A connection drawn both ways loses its reversed copy only when every
+  clause of the request is a relation the pipeline reads and none asks for that way. "Client calls API
+  and API responds to Client" keeps both connections, because "responds to" isn't a verb it reads.
+- **Fields are checked at the boundary.** A reply field that isn't text (`"target": 42`) is a validation
+  error for the retry, not a crash.
+- **A generic kind loses to a confident label** (`kindFor`). When the kind resolves to a generic stencil
+  and the label, named in the request, resolves with high confidence to a specific one, the label wins.
+  Before, "the request names the kind too" kept "service", although the request's "service" was part of
+  "App Service".
+- **Pairing by label** (`kindFor`, `reconcileKinds`), for create-24.
+  - A label that holds the whole names of two of the request's components ("email_service" for "A
+    service delivers email") names neither, so the kind stays.
+  - Reconciliation never gives another component to a node that already is one its own label names. A
+    Lambda labelled "email_service" is the request's service by role, so the email goes to the queue
+    the request never mentions. The reply's connection is then service → email, the right way round.
+  - With the expectation widened (below), run 4's reply now passes: the Lambda counts as the service.
+- **Stray "this"** (`compactOps.ts`). A connection to "this" (or "it", "the selection") is dropped when:
+  - nothing is selected;
+  - no new node is so named;
+  - and the request never says the word.
+
+  What the drop leaves unconnected goes to the completeness check and its retry.
+
+- **Expectation change, create-29:** "Publish an event…" names no broker, so any topic, queue or stream
+  passes for it (`accept: ["role:topic", "role:queue", "role:stream"]`). The model's structure (a
+  publisher → services, no broker) still fails, now as "missing kafka.topic (or any topic, any queue, any
+  stream)".
+- **Expectation change, create-24** (the owner's decision): "A service" names no technology, so any
+  processor passes for it (`accept: ["role:processor"]`), as for create-9's "a processor". Rounds 2 and 3
+  kept the generic service; the model has drawn a Lambda for it in every run. A queue or topic still
+  isn't the service, and a reversed connection still fails.
+
+**Projection** (from run 4's 31/37):
+
+- **Deterministic, if the model repeats its replies:**
+  - edit-rename and edit-change (the fill);
+  - create-17 (the generic kind);
+  - create-23 (the drop, when the reply also connects the partner to the webhook);
+  - create-24 (the pairing, and the widened expectation).
+
+  That's 36/37 (97%).
+
+- **Still failing:** create-29 (structure).
+- **Risk:** the typed schema changes what the model is allowed to write in every case. Most of that
+  helps (a required key, label or kind), but it could move a reply that passed. The fills and the rich
+  fallback limit the damage.
+- **Likely: 35–36/37 (95–97%),** with the usual ±6 points between runs.
+
+A unit test replays run 4's failures (`src/ai/evals/onDevice.test.ts`):
+
+- edit-rename, edit-change, create-17, create-23 and create-24 pass on the first try;
+- create-10's reversed reply is turned.
 
 Next: re-run the evals in the Lab and paste the table here.

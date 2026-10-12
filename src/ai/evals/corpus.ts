@@ -187,7 +187,8 @@ const flows: [string, [string, string, string, string[]?][]][] = [
   [
     "A service delivers email",
     [
-      ["generic.service", "Notifications", "generic.service"],
+      // "A service" names no technology: any processor passes (the ops pin the generic service).
+      ["generic.service", "Notifications", "generic.service", ["role:processor"]],
       ["generic.email", "Email", "generic.email"],
     ],
   ],
@@ -255,7 +256,8 @@ diagramEvals.push({
       ],
       expected: {
         nodes: [
-          { label: "Orders", stencil: "kafka.topic" },
+          // "Publish an event" names no broker: any topic, queue or stream passes.
+          { label: "Orders", stencil: "kafka.topic", accept: ["role:topic", "role:queue", "role:stream"] },
           // "billing and shipping consumers" names no language: any processor passes.
           { label: "Billing", stencil: "service.dotnet", accept: ["role:processor"] },
           { label: "Shipping", stencil: "service.python", accept: ["role:processor"] },

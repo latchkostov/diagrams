@@ -387,11 +387,13 @@ describe("round 3: schema tiers and the completion after the retry", () => {
     const s = {
       prompt: vi.fn(async (_input: string, opts?: { responseConstraint?: object }) => {
         const text = JSON.stringify(opts?.responseConstraint);
-        const tier = text.includes("anyOf")
-          ? "rich"
-          : text.includes('"enum":["Storefront') || text.includes('"Inventory service"')
-            ? "enums"
-            : "plain";
+        const tier = text.includes('"enum":["rename"]')
+          ? "typed"
+          : text.includes("anyOf")
+            ? "rich"
+            : text.includes('"enum":["Storefront') || text.includes('"Inventory service"')
+              ? "enums"
+              : "plain";
         tiers.push(tier);
         if (tier !== "plain") throw new DOMException("unsupported keyword", "NotSupportedError");
         return DLQ;
@@ -399,7 +401,7 @@ describe("round 3: schema tiers and the completion after the retry", () => {
     };
     const r = await runOnDevice({ session: s, diagram, request: "Add a DLQ" });
     expect(r).toMatchObject({ ok: true, attempts: 1 });
-    expect(tiers).toEqual(["rich", "enums", "plain"]);
+    expect(tiers).toEqual(["typed", "rich", "enums", "plain"]);
     expect(currentSchemaTier()).toBe("plain");
     resetSchemaTier();
   });

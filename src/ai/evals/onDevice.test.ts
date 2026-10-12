@@ -363,6 +363,95 @@ describe("on-device evals", () => {
     );
   });
 
+  it("create-29 accepts any topic, queue or stream for the broker the request doesn't name (round 4)", () => {
+    const c = onDeviceCases.find((x) => x.id === "create-29")!;
+    const build = (broker: string) =>
+      applyOps(EMPTY, [
+        { op: "add_node", kind: broker, label: "Orders", key: "t" },
+        { op: "add_node", kind: "Go service", label: "billing", key: "b" },
+        { op: "add_node", kind: "Go service", label: "shipping", key: "s" },
+        { op: "connect", from: "t", to: "b" },
+        { op: "connect", from: "t", to: "s" },
+      ]).diagram;
+    for (const broker of ["Kafka topic", "Service Bus topic", "Service Bus queue", "SQS", "Kinesis"])
+      expect(c.check(EMPTY, build(broker)), broker).toBeNull();
+    expect(c.check(EMPTY, build("PostgreSQL"))).toBe("missing kafka.topic (or any topic, any queue, any stream)");
+  });
+
+  it("replays run 4's failures (round 3, Chrome 154): filled, reconciled or dropped outright", async () => {
+    const add = (key: string, kind: string, label: string) => ({ op: "add", key, kind, label });
+    const link = (from: string, to: string) => ({ op: "connect", from, to });
+    const replies: Record<string, object[]> = {
+      // The model's own replies, from the run's Model output column.
+      "edit-rename": [{ op: "rename", target: "Payments service" }],
+      "edit-change": [
+        { op: "change_kind", target: "Orders database" },
+        { op: "rename", target: "Orders database" },
+      ],
+      // Shaped like the recorded mistakes.
+      "create-17": [add("fd", "Front Door", "Front Door"), add("app", "service", "App Service"), link("fd", "app")],
+      "create-23": [
+        add("partner", "external partner", "Partner"),
+        add("webhook", "webhook", "Webhook"),
+        link("partner", "webhook"),
+        link("webhook", "this"),
+      ],
+      // Passed in run 4, with python -> pubsub in the raw reply: turned round by the direction repair.
+      "create-10": [add("pubsub", "PubSub", "PubSub"), add("python", "Python", "Python"), link("python", "pubsub")],
+    };
+    const cases = onDeviceCases.filter((c) => c.id in replies);
+    const results = await runOnDeviceEvals(async () => {
+      let id = "";
+      return {
+        prompt: async (input: string) => {
+          id ||= cases.find((c) => input.endsWith(`Request: ${c.request}`))!.id;
+          return reply(replies[id]);
+        },
+      };
+    }, cases);
+    expect(results.filter((r) => !r.pass).map((r) => `${r.id}: ${r.note}`)).toEqual([]);
+    expect(Object.fromEntries(results.map((r) => [r.id, r.attempts]))).toEqual({
+      "edit-rename": 1,
+      "edit-change": 1,
+      "create-10": 1,
+      "create-17": 1,
+      "create-23": 1,
+    });
+  });
+
+  it("create-24 passes with run 4's reply: the Lambda is the service, the email the unmentioned queue", async () => {
+    const [c] = onDeviceCases.filter((x) => x.id === "create-24");
+    const ops = [
+      { op: "add", key: "email_service", kind: "Lambda", label: "email_service" },
+      { op: "add", key: "message_queue", kind: "SQS queue", label: "message_queue" },
+      { op: "connect", from: "email_service", to: "message_queue" },
+    ];
+    const [r] = await runOnDeviceEvals(
+      answering(() => reply(ops)),
+      [c],
+    );
+    // "A service" names no technology, so the Lambda passes for it (like create-9's "a processor").
+    expect(r.pass, r.note).toBe(true);
+    expect(r.output).toContain("email_service → aws.lambda, message_queue → generic.email");
+    // Drawn the other way round, it's still a reversal.
+    const [back] = await runOnDeviceEvals(
+      answering(() => reply([ops[0], ops[1], { op: "connect", from: "message_queue", to: "email_service" }])),
+      [c],
+    );
+    expect(back.note).toMatch(/^reversed connection/);
+    // And something that isn't a processor still isn't the service.
+    expect(
+      c.check(
+        EMPTY,
+        applyOps(EMPTY, [
+          { op: "add_node", kind: "SQS", label: "q", key: "q" },
+          { op: "add_node", kind: "email", label: "Email", key: "e" },
+          { op: "connect", from: "q", to: "e" },
+        ]).diagram,
+      ),
+    ).toBe("missing generic.service (or any processor)");
+  });
+
   it("replays round 3's failures (run 3, Chrome 154): reconciled outright, or completed after the retry", async () => {
     const add = (key: string, kind: string, label: string) => ({ op: "add", key, kind, label });
     const link = (from: string, to: string) => ({ op: "connect", from, to });
