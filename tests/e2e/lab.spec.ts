@@ -10,21 +10,28 @@ async function waitForPreset(page: import("@playwright/test").Page) {
   if (kind === "scenario") await expect(page.getByTestId("sim-readout")).toBeVisible();
 }
 
+/** The preset sweep runs in this many tests, so the shards' workers share it (it took 80 s as one test). */
+const PRESET_PARTS = 8;
+
 test.describe("lab", () => {
-  test("every preset renders without errors", async ({ page, consoleErrors }) => {
-    // One page load per preset (about 45 of them) on a dev server shared by the whole suite.
-    test.setTimeout(300_000);
-    const ids = await labPresetIds(page);
-    expect(ids.length).toBeGreaterThan(20);
-    for (const id of ids) {
-      await test.step(id, async () => {
-        await gotoLab(page, id);
-        await waitForPreset(page);
-        await expect(page.getByTestId("lab-preset-title")).not.toBeEmpty();
-        expectNoErrors(consoleErrors.map((e) => `[${id}] ${e}`));
-      });
-    }
-  });
+  for (let part = 0; part < PRESET_PARTS; part++)
+    test(`every preset renders without errors (part ${part + 1} of ${PRESET_PARTS})`, async ({
+      page,
+      consoleErrors,
+    }) => {
+      // One page load per preset; this part takes every PRESET_PARTS-th preset of the sidebar's list.
+      test.setTimeout(120_000);
+      const ids = await labPresetIds(page);
+      expect(ids.length).toBeGreaterThan(20);
+      for (const id of ids.filter((_, i) => i % PRESET_PARTS === part)) {
+        await test.step(id, async () => {
+          await gotoLab(page, id);
+          await waitForPreset(page);
+          await expect(page.getByTestId("lab-preset-title")).not.toBeEmpty();
+          expectNoErrors(consoleErrors.map((e) => `[${id}] ${e}`));
+        });
+      }
+    });
 
   test("defaults to a preset and is reachable from the top bar in dev", async ({ page }) => {
     await page.goto("./?view=gallery");
