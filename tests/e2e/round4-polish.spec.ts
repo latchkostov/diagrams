@@ -24,6 +24,22 @@ async function openNative(page: Page, diagram: Record<string, unknown>) {
   await expect(page.getByTestId("diagram-title")).toHaveText(String(diagram.title));
 }
 
+/** Waits until an element holds still (the opening fit, or a pan clear of the inspector, has finished). */
+async function holdStill(l: Locator) {
+  let last = "";
+  await expect
+    .poll(
+      async () => {
+        const now = JSON.stringify(await l.boundingBox());
+        const still = now === last;
+        last = now;
+        return still;
+      },
+      { intervals: [100, 150, 150, 250] },
+    )
+    .toBe(true);
+}
+
 /** Someone who keeps the inspector on: below 1680px it waits for a selection, then narrows the canvas. */
 async function keepInspectorOn(page: Page) {
   await page.addInitScript(() =>
@@ -198,8 +214,11 @@ test.describe("round 4 polish", () => {
       annotations: [{ id: "text-1", kind: "text", x: 0, y: 300, width: 200, height: 30, text: "Caption" }],
     });
     const text = page.getByTestId("annotation-text-1");
-    const placed = await box(text);
+    await holdStill(text);
     await text.click();
+    // Selecting opens the inspector, which may move the view: measure where the text settles.
+    await holdStill(text);
+    const placed = await box(text);
     await page.getByTestId("inspector-field-text").fill("Caption\nwith a second line\nand a third");
     await page.getByTestId("inspector-field-text-size-xl").click();
     await expect.poll(async () => (await box(text)).height).toBeGreaterThan(placed.height * 2);
@@ -270,29 +289,19 @@ test.describe("round 4 polish", () => {
     });
     await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
     // The opening fit closes context menus. Wait for the camera before opening one.
-    let last = "";
-    await expect
-      .poll(
-        async () => {
-          const now = JSON.stringify(await box(page.getByTestId("node-a")));
-          const still = now === last;
-          last = now;
-          return still;
-        },
-        { intervals: [100, 150, 150, 250] },
-      )
-      .toBe(true);
+    await holdStill(page.getByTestId("node-a"));
     const wrap = await box(page.getByTestId("canvas-wrap"));
-    // Right-click 60px from the pane's right edge: a 200px note centred there pokes past it.
+    const note = page.getByTestId("annotation-note-1");
+    // Right-click 60px from the pane's right edge: a 200px note centred there pokes past it. Retried until
+    // the note is added: a late camera move closes the menu at any step, the submenu included.
     await expect(async () => {
       await page
         .getByTestId("canvas-wrap")
         .click({ button: "right", position: { x: wrap.width - 140, y: wrap.height / 2 - 160 } });
-      await expect(page.getByTestId("context-menu")).toBeVisible({ timeout: 1000 });
+      await page.getByTestId("context-menu-item-canvas.annotate").click({ timeout: 1000 });
+      await page.getByTestId("context-menu-item-annotate:note").click({ timeout: 1000 });
+      await expect(note).toBeAttached({ timeout: 1000 });
     }).toPass();
-    await page.getByTestId("context-menu-item-canvas.annotate").click();
-    await page.getByTestId("context-menu-item-annotate:note").click();
-    const note = page.getByTestId("annotation-note-1");
     await expect(note).toBeVisible();
     await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
     await expect
