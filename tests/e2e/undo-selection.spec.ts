@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
-import { nodeCount, openAdvanced } from "./ai-helpers";
+import { must, nodeCount, openAdvanced } from "./ai-helpers";
 
 // Undo and the selection (docs/UX-PRINCIPLES.md): Undo selects what the undone step changed, as it was
 // before; Redo what it changed, as it is after; undoing an add keeps the selection it can. The inspector
@@ -91,6 +91,18 @@ function selectedIds(page: Page) {
     return out.sort();
   });
 }
+/** The node keyboard focus is on (its React Flow id), or null. */
+const focusedNode = (page: Page) =>
+  page.evaluate(() => document.activeElement?.closest(".react-flow__node")?.getAttribute("data-id") ?? null);
+/** The nodes in the page's Tab order (the canvas is one Tab stop). */
+const tabStops = (page: Page) =>
+  page.getByTestId(/^(node|group)-(?!tooltip$|editor)/).evaluateAll((els) =>
+    els
+      .map((el) => el.closest(".react-flow__node"))
+      .filter((n) => n?.getAttribute("tabindex") === "0")
+      .map((n) => n?.getAttribute("data-id"))
+      .filter((id, i, all) => all.indexOf(id) === i),
+  );
 const expectSelected = (page: Page, ids: string[]) => expect.poll(() => selectedIds(page)).toEqual([...ids].sort());
 
 async function selectNodes(page: Page, ids: string[]) {
@@ -99,6 +111,8 @@ async function selectNodes(page: Page, ids: string[]) {
   await expect(page.getByTestId("inspector-title")).toHaveText(ids.length > 1 ? `${ids.length} selected` : /.+/);
 }
 
+/** Edits with the same tag this close together join one undo step (src/editor/history.ts). */
+const MERGE_WINDOW_MS = 1500;
 /** Lets the history record the last edit as its own step (it settles after 350 ms). */
 const settleStep = (page: Page) => page.waitForTimeout(500);
 
@@ -184,7 +198,16 @@ test.describe("undo and the selection", () => {
     await expect(page.getByTestId("node-editor-label")).toBeFocused();
     await page.keyboard.type("Audit");
     await page.keyboard.press("Enter");
-    await savedWhen(page, (s) => s.nodes.some((n) => n.label === "Audit"));
+    const added = await savedWhen(page, (s) => s.nodes.some((n) => n.label === "Audit"));
+    const made = must(
+      added.nodes.find((n) => n.label === "Audit"),
+      "the added node",
+    );
+    const link = must(
+      added.edges.find((e) => e.to === made.id),
+      "its connection",
+    );
+    expect(link.from).toBe("cache");
     await expect.poll(() => nodeCount(page)).toBe(before + 1);
     await settleStep(page);
 
@@ -194,11 +217,75 @@ test.describe("undo and the selection", () => {
     await expect.poll(() => nodeCount(page)).toBe(before);
     await expectSelected(page, ["node-cache"]);
     await expect(page.getByTestId("inspector-field-label")).toHaveValue("Cache");
-    // Redo selects what it added.
+    // Redo selects what it added: the node, with its name, and its connection from Cache.
     await page.getByTestId("redo-button").click();
     await expect.poll(() => nodeCount(page)).toBe(before + 1);
-    await expect.poll(async () => (await selectedIds(page)).filter((id) => id.startsWith("node-")).length).toBe(1);
-    expect(await selectedIds(page)).not.toContain("node-cache");
+    const back = await savedWhen(page, (s) => s.nodes.some((n) => n.id === made.id));
+    expect(node(back, made.id)).toEqual(made);
+    expect(back.edges.find((e) => e.id === link.id)).toEqual(link);
+    await expectSelected(page, [`node-${made.id}`, `edge-${link.id}`]);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("quick-add after a pending edit restores its source selection", async ({ page, consoleErrors }) => {
+    // Rename Orders API, then, before that edit settles into a step (350 ms, restarted by each change), pick
+    // Cache and quick-add from it: the add's hint flushes the rename in the same event as the add.
+    await page.getByTestId("node-api").click();
+    await page.getByTestId("inspector-field-label").fill("Orders");
+    await page.getByTestId("node-cache").click();
+    await page.keyboard.press("Alt+ArrowRight");
+    await page.keyboard.type("postgres", { delay: 0 });
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await savedWhen(page, (s) => s.nodes.length === SEED.nodes.length + 1);
+    await settleStep(page);
+
+    await page.getByTestId("undo-button").click();
+    const d = await savedWhen(page, (s) => s.nodes.length === SEED.nodes.length);
+    expect(node(d, "api").label).toBe("Orders");
+    await expectSelected(page, ["node-cache"]);
+    // The rename is its own step, from Orders API.
+    await page.getByTestId("undo-button").click();
+    await savedWhen(page, (s) => node(s, "api").label === "Orders API");
+    await expectSelected(page, ["node-api"]);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("undo from the keyboard moves focus to what it selected; from the toolbar, focus stays", async ({
+    page,
+    consoleErrors,
+  }) => {
+    // Nudge Orders API three times, then Tab on to Payment worker: focus and selection there.
+    await page.getByTestId("node-api").click();
+    const xs = [40];
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press("Shift+ArrowRight");
+      const d = await savedWhen(page, (s) => node(s, "api").x > xs[i]);
+      xs.push(node(d, "api").x);
+      // Nudges a moment apart join one step: these are three.
+      await page.waitForTimeout(MERGE_WINDOW_MS + 200);
+    }
+    await page.keyboard.press("Tab");
+    await expect.poll(() => focusedNode(page)).toBe("worker");
+
+    // Ctrl+Z puts Orders API back and selects it: focus, the Tab stop and the announcement follow.
+    await page.keyboard.press(`${MOD}+z`);
+    await savedWhen(page, (s) => node(s, "api").x === xs[2]);
+    await expectSelected(page, ["node-api"]);
+    await expect.poll(() => focusedNode(page)).toBe("api");
+    await expect(page.getByTestId("canvas-announce")).toHaveText("Undone. Orders API selected.");
+    expect(await tabStops(page)).toEqual(["api"]);
+    // Enter edits Orders API, not Payment worker.
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("node-editor-label")).toHaveValue("Orders API");
+    await page.keyboard.press("Escape");
+
+    // Undo from the toolbar: the selection follows, focus stays on the button.
+    await page.getByTestId("undo-button").click();
+    await savedWhen(page, (s) => node(s, "api").x === xs[1]);
+    await expectSelected(page, ["node-api"]);
+    await expect(page.getByTestId("undo-button")).toBeFocused();
     expectNoErrors(consoleErrors);
   });
 

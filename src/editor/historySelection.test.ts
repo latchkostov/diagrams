@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { fromFlow, toFlow } from "../canvas/convert";
 import type { DiagramFile, DiagramNode } from "../model/types";
-import { commit, commitReplacement, createHistory, MERGE_WINDOW_MS, present } from "./history";
+import { MERGE_WINDOW_MS, present } from "./history";
+import { HistoryController } from "./historyController";
 import {
+  reordered,
   selectionOf,
   snapshotKey,
   stepChanges,
   stepWithSelection,
   withSelection,
-  type CanvasHistory,
   type FlowSelection,
 } from "./historySelection";
 import type { CanvasSnapshot } from "./useHistory";
@@ -38,22 +39,35 @@ const selected = (s: CanvasSnapshot) => {
 };
 
 /**
- * The canvas as useHistory sees it: every state change goes through `set`, a settled change through `flush`
- * (the debounce), and Undo / Redo through the same step function the hook calls.
+ * The canvas as useHistory drives it, through the same HistoryController: each state change is a render the
+ * controller observes, except inside `batch`, where (as in one React event) the changes land together and only
+ * the last is rendered. `flush` is the debounce firing, or a command's hint() flushing a pending edit.
  */
 class Canvas {
   state: CanvasSnapshot;
-  history: CanvasHistory;
-  private settled: FlowSelection;
+  readonly ctl: HistoryController;
   private clock = 1_000_000;
+  private batching = false;
   constructor(d: DiagramFile, selection = sel()) {
     this.state = withSelection(toFlow(d), selection);
-    this.history = createHistory(snapshotKey(this.state), this.state, 0);
-    this.settled = selectionOf(this.state);
+    this.ctl = new HistoryController(this.state, 0);
   }
-  set(next: CanvasSnapshot) {
+  get history() {
+    return this.ctl.history;
+  }
+  private set(next: CanvasSnapshot) {
     this.state = next;
-    if (snapshotKey(next) === present(this.history).key) this.settled = selectionOf(next);
+    if (!this.batching) this.ctl.observe(next);
+  }
+  /** Several changes in one event: one render, after the last. */
+  batch(run: () => void) {
+    this.batching = true;
+    try {
+      run();
+    } finally {
+      this.batching = false;
+    }
+    this.ctl.observe(this.state);
   }
   /** Changes the document, keeping or setting the selection. */
   edit(change: (d: DiagramFile) => DiagramFile, selection?: FlowSelection) {
@@ -65,26 +79,14 @@ class Canvas {
   }
   flush(mergeKey?: string, gap = MERGE_WINDOW_MS * 2) {
     this.clock += gap;
-    const s = this.state;
-    this.history = commit(this.history, {
-      key: snapshotKey(s),
-      value: s,
-      mergeKey,
-      at: this.clock,
-      start: this.settled,
-    });
-    this.set(s);
+    if (this.ctl.commit(this.state, mergeKey, this.clock)) this.set(this.state);
   }
   /** An AI turn: one tagged replacement, as EditorApi.applyDiagram makes it. */
   replace(change: (d: DiagramFile) => DiagramFile, tag: string) {
     const current = this.state;
     const next = toFlow(change(file(current)));
     this.clock += MERGE_WINDOW_MS * 2;
-    this.history = commitReplacement(
-      this.history,
-      { key: snapshotKey(current), value: current, at: this.clock, start: this.settled },
-      { key: snapshotKey(next), value: next, mergeKey: tag, at: this.clock, start: selectionOf(current) },
-    );
+    this.ctl.replace(current, undefined, next, tag, selectionOf(current), this.clock);
     this.set(next);
   }
   undo() {
@@ -95,10 +97,8 @@ class Canvas {
   }
   private step(direction: "undo" | "redo") {
     this.flush();
-    const step = stepWithSelection(this.history, direction, selectionOf(this.state));
-    if (!step) return;
-    this.history = step.history;
-    this.set(step.snapshot);
+    const next = this.ctl.step(direction, selectionOf(this.state));
+    if (next) this.set(next);
   }
 }
 
@@ -327,6 +327,125 @@ describe("undo and the selection", () => {
     c.flush();
     c.undo();
     expect(selected(c.state)).toEqual(sel(["worker"]));
+  });
+
+  it("a pending edit flushed by the next command doesn't lend that command its starting selection", () => {
+    // Rename Orders API (pending), pick Cache, then quick-add from Cache: its hint flushes the rename in the
+    // same event as the add, with no render between them.
+    const c = new Canvas(SEED, sel(["api"]));
+    c.edit(mapNodes(["api"], (n) => ({ ...n, label: "Orders" })));
+    c.select(sel(["cache"]));
+    c.batch(() => {
+      c.flush("inspector:node:api:label");
+      c.edit(
+        (d) => ({
+          ...d,
+          nodes: [...d.nodes, { id: "audit", stencil: "postgres", label: "Audit", x: 1000, y: 560 }],
+          edges: [...d.edges, { id: "c-a", from: "cache", to: "audit" }],
+        }),
+        sel(["audit"]),
+      );
+    });
+    c.flush("add:audit");
+    expect(c.history.entries).toHaveLength(3);
+    c.undo();
+    expect(nodeOf(c, "audit")).toBeUndefined();
+    expect(nodeOf(c, "api")?.label).toBe("Orders");
+    expect(selected(c.state)).toEqual(sel(["cache"]));
+    // And the rename's own step starts from Orders API.
+    c.undo();
+    expect(nodeOf(c, "api")?.label).toBe("Orders API");
+    expect(selected(c.state)).toEqual(sel(["api"]));
+  });
+
+  it("two adds inside the debounce: undoing the second goes back to the first", () => {
+    const c = new Canvas(SEED, sel(["cache"]));
+    const add = (id: string, from: string) => (d: DiagramFile) => ({
+      ...d,
+      nodes: [...d.nodes, { id, stencil: "postgres", label: id, x: 1000 + d.nodes.length * 300, y: 560 }],
+      edges: [...d.edges, { id: `${from}-${id}`, from, to: id }],
+    });
+    c.edit(add("b", "cache"), sel(["b"]));
+    c.batch(() => {
+      c.flush("add:b");
+      c.edit(add("c", "b"), sel(["c"]));
+    });
+    c.flush("add:c");
+    c.undo();
+    expect(nodeOf(c, "c")).toBeUndefined();
+    expect(selected(c.state)).toEqual(sel(["b"]));
+    c.undo();
+    expect(selected(c.state)).toEqual(sel(["cache"]));
+  });
+
+  it("a member dragged out past its boundary's left or top edge is what Undo selects, not the boundary", () => {
+    for (const [dx, dy] of [
+      [-50, 0],
+      [0, -100],
+    ]) {
+      const c = new Canvas(SEED, sel(["api"]));
+      // The boundary grows on that side only: its far edges stay put.
+      c.edit((d) => ({
+        ...mapNodes(["api"], (n) => ({ ...n, x: n.x + dx, y: n.y + dy }))(d),
+        groups: [{ ...d.groups![0], x: dx, y: dy, width: 640 - dx, height: 400 - dy }],
+      }));
+      c.flush();
+      expect(stepChanges(file(present({ ...c.history, index: 0 }).value), file(c.state))).toEqual({
+        before: sel(["api"]),
+        after: sel(["api"]),
+      });
+      c.select(sel(["cache"]));
+      c.undo();
+      expect(selected(c.state)).toEqual(sel(["api"]));
+      expect(file(c.state).groups![0]).toMatchObject({ x: 0, y: 0, width: 640, height: 400 });
+    }
+  });
+
+  it("Bring to front undone selects what moved in the order, not what it passed", () => {
+    const c = new Canvas(SEED, sel(["api"]));
+    c.edit((d) => ({ ...d, layerOrder: ["worker", "ledger", "cache", "api"] }));
+    c.flush();
+    c.select(sel(["worker"]));
+    c.undo();
+    expect(file(c.state).layerOrder).toBeUndefined();
+    expect(selected(c.state)).toEqual(sel(["api"]));
+    c.select(sel());
+    c.redo();
+    expect(selected(c.state)).toEqual(sel(["api"]));
+  });
+
+  it("whatever changes the history's key is a change to some element, or to the diagram's own fields", () => {
+    const d: DiagramFile = {
+      ...SEED,
+      groups: [...SEED.groups!, { id: "ship", label: "Shipping", x: 1000, y: 0, width: 600, height: 400 }],
+      annotations: [
+        { id: "z1", kind: "zone", text: "EU", x: -40, y: -40, width: 800, height: 600 },
+        { id: "z2", kind: "zone", text: "US", x: 960, y: -40, width: 700, height: 600 },
+        { id: "n1", kind: "note", text: "Retry budget", x: 300, y: 560, width: 160, height: 100 },
+      ],
+    };
+    const swap = <T>(xs: T[]) => [xs[1], xs[0], ...xs.slice(2)];
+    const steps: [string, (x: DiagramFile) => DiagramFile, FlowSelection][] = [
+      ["layer", (x) => ({ ...x, layerOrder: ["n1", "api", "worker", "ledger", "cache"] }), sel(["n1"])],
+      ["zones", (x) => ({ ...x, annotations: swap(x.annotations!) }), sel(["z1"])],
+      ["boundaries", (x) => ({ ...x, groups: swap(x.groups!) }), sel(["group:pay"])],
+      ["edges", (x) => ({ ...x, edges: swap(x.edges) }), sel([], ["a-w"])],
+    ];
+    const before = new Canvas(d).state;
+    for (const [what, change, moved] of steps) {
+      const after = toFlow(change(file(before)));
+      expect(snapshotKey(after), what).not.toBe(snapshotKey(before));
+      expect(stepChanges(file(before), file(after)).before, what).toEqual(moved);
+    }
+  });
+
+  it("reordered names what changed place, not what it passed", () => {
+    expect(reordered(["a", "b", "c", "d"], ["a", "b", "c", "d"])).toEqual([]);
+    expect(reordered(["a", "b", "c", "d"], ["b", "c", "d", "a"])).toEqual(["a"]);
+    expect(reordered(["a", "b", "c", "d"], ["d", "a", "b", "c"])).toEqual(["d"]);
+    expect(reordered(["a", "b", "c"], ["c", "b", "a"])).toHaveLength(2);
+    // Added and removed ids aren't moves.
+    expect(reordered(["a", "x", "b"], ["a", "b", "y"])).toEqual([]);
   });
 
   it("there's nothing to step to at either end", () => {

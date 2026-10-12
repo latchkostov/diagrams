@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
-import { canRedo, canUndo, commit, commitReplacement, createHistory, present } from "./history";
-import {
-  selectionOf,
-  snapshotKey as keyOf,
-  stepWithSelection,
-  type CanvasHistory,
-  type FlowSelection,
-} from "./historySelection";
+import { canRedo, canUndo, present } from "./history";
+import { HistoryController } from "./historyController";
+import { selectionOf, snapshotKey as keyOf, type FlowSelection } from "./historySelection";
 
 export interface CanvasSnapshot {
   meta: DiagramMeta;
@@ -44,23 +39,26 @@ const clean = (s: CanvasSnapshot): CanvasSnapshot => ({
  * Observes canvas state and records undo steps. Every mutation path (menus, inspector, React
  * Flow drags / resizes / deletes, inline editors, reset) is captured without having to call
  * into history: a change is committed once things settle and no drag is in progress. The selection
- * is never a change of its own; Undo and Redo choose it (historySelection.ts).
+ * is never a change of its own; Undo and Redo choose it (historySelection.ts) and tell `onStep` what
+ * they selected, so keyboard focus can follow.
  */
-export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => void): HistoryApi {
-  const [history, setHistory] = useState<CanvasHistory>(() => createHistory(keyOf(state), clean(state), Date.now()));
-  const hist = useRef(history);
+export function useHistory(
+  state: CanvasSnapshot,
+  apply: (s: CanvasSnapshot) => void,
+  onStep?: (direction: "undo" | "redo", selection: FlowSelection) => void,
+): HistoryApi {
+  const [ctl] = useState(() => new HistoryController(clean(state), Date.now()));
+  const [history, setHistory] = useState(ctl.history);
   const latest = useRef(state);
   const applyRef = useRef(apply);
+  const onStepRef = useRef(onStep);
   const stateKey = useMemo(() => keyOf(state), [state]);
-  /** The selection while the canvas matched the present step: where the next step starts from. */
-  const settledSelection = useRef<FlowSelection>({ nodes: [], edges: [] });
   useLayoutEffect(() => {
     latest.current = state;
     applyRef.current = apply;
+    onStepRef.current = onStep;
   });
-  useLayoutEffect(() => {
-    if (stateKey === present(history).key) settledSelection.current = selectionOf(state);
-  }, [state, stateKey, history]);
+  useLayoutEffect(() => ctl.observe(state, stateKey), [ctl, state, stateKey, history]);
   const mergeKey = useRef<string | undefined>(undefined);
   const timer = useRef<number | undefined>(undefined);
   /** An uncommitted change exists (so Undo is available before the debounce fires). */
@@ -71,19 +69,10 @@ export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => 
     timer.current = undefined;
     const s = latest.current;
     if (s.nodes.some((n) => n.dragging || n.resizing)) return;
-    const next = commit(hist.current, {
-      key: keyOf(s),
-      value: clean(s),
-      mergeKey: mergeKey.current,
-      at: Date.now(),
-      start: settledSelection.current,
-    });
+    const changed = ctl.commit(clean(s), mergeKey.current, Date.now());
     mergeKey.current = undefined;
-    if (next !== hist.current) {
-      hist.current = next;
-      setHistory(next);
-    }
-  }, []);
+    if (changed) setHistory(ctl.history);
+  }, [ctl]);
 
   useEffect(() => {
     window.clearTimeout(timer.current);
@@ -95,14 +84,14 @@ export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => 
   const go = useCallback(
     (direction: "undo" | "redo") => {
       flush();
-      const step = stepWithSelection(hist.current, direction, selectionOf(latest.current));
-      if (!step) return;
-      hist.current = step.history;
-      setHistory(step.history);
+      const snapshot = ctl.step(direction, selectionOf(latest.current));
+      if (!snapshot) return;
+      setHistory(ctl.history);
       // The restored state has the present entry's key, so the next flush is a no-op.
-      applyRef.current(step.snapshot);
+      applyRef.current(snapshot);
+      onStepRef.current?.(direction, selectionOf(snapshot));
     },
-    [flush],
+    [ctl, flush],
   );
 
   const undo = useCallback(() => go("undo"), [go]);
@@ -116,35 +105,34 @@ export function useHistory(state: CanvasSnapshot, apply: (s: CanvasSnapshot) => 
     [flush],
   );
 
-  const replace = useCallback((snapshot: CanvasSnapshot, key?: string, before?: CanvasSnapshot) => {
-    window.clearTimeout(timer.current);
-    timer.current = undefined;
-    const current = clean(before ?? latest.current);
-    const next = clean(snapshot);
-    // Break coalescing on both sides, even when an adapter reuses its call id.
-    hist.current = commitReplacement(
-      hist.current,
-      {
-        key: keyOf(current),
-        value: current,
-        mergeKey: mergeKey.current,
-        at: Date.now(),
-        start: settledSelection.current,
-      },
-      { key: keyOf(next), value: next, mergeKey: key, at: Date.now(), start: selectionOf(latest.current) },
-    );
-    mergeKey.current = undefined;
-    latest.current = next;
-    setHistory(hist.current);
-    applyRef.current(next);
-  }, []);
+  const replace = useCallback(
+    (snapshot: CanvasSnapshot, key?: string, before?: CanvasSnapshot) => {
+      window.clearTimeout(timer.current);
+      timer.current = undefined;
+      const next = clean(snapshot);
+      // Break coalescing on both sides, even when an adapter reuses its call id.
+      ctl.replace(
+        clean(before ?? latest.current),
+        mergeKey.current,
+        next,
+        key,
+        selectionOf(latest.current),
+        Date.now(),
+      );
+      mergeKey.current = undefined;
+      latest.current = next;
+      setHistory(ctl.history);
+      applyRef.current(next);
+    },
+    [ctl],
+  );
 
   const top = useCallback(() => {
-    const h = hist.current;
+    const h = ctl.history;
     if (h.index === 0) return undefined;
     const cur = present(h);
     return keyOf(latest.current) === cur.key ? cur.mergeKey : undefined;
-  }, []);
+  }, [ctl]);
 
   return {
     undo,
