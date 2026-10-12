@@ -1,12 +1,14 @@
-// Draws every particle, trail, arrival pulse and failure flash onto one <canvas>, imperatively,
-// once per animation frame. No React here: the live view calls `draw(snapshot)` from rAF.
+// Draws every particle, trail, arrival pulse and failure flash onto one canvas, imperatively, once
+// per animation frame. No React and no DOM here: the same code draws on the main thread (an
+// HTMLCanvasElement, the fallback) and in a worker (an OffscreenCanvas, see liveRenderer.ts). The
+// environment hands it path samples, node boxes and the view; it never reads the document.
 //
 // Budget (~1,500 particles at 60 fps): per particle it's one Map lookup, one interpolation and one
 // drawImage of a pre-rendered glow sprite. Trails are batched into one stroke per colour.
 
-import type { Particle, ParticleKind, SimSnapshot } from "../sim/types";
-import { PathCache, pointOnSamples, sampleIndex, type PathLike, type PathSamples } from "./pathSampler";
-import type { CalmSampler } from "./slowmo/sampler";
+import type { Particle, ParticleKind } from "../sim/types";
+import { pointOnSamples, sampleIndex, type PathSamples } from "./pathSampler";
+import { CalmSampler } from "./slowmo/sampler";
 import { nearestOnBox, placeTraceLabels, traceLabelInk, type Box, type PlacedLabel } from "./traceLabels";
 
 /** Theme colours the canvas can't read from CSS by itself (from tokens.css, see `readParticleTokens`). */
@@ -56,20 +58,49 @@ export interface Rect {
   height: number;
 }
 
+/** A canvas to draw on: an HTMLCanvasElement on the main thread, an OffscreenCanvas in the worker. */
+export type Surface = HTMLCanvasElement | OffscreenCanvas;
+
+/** A 2D context of either kind (every call made here exists on both). */
+export function context2d(surface: Surface): CanvasRenderingContext2D {
+  return surface.getContext("2d", { alpha: true }) as CanvasRenderingContext2D;
+}
+
+/** A scratch canvas for a sprite: a DOM canvas on the main thread, an OffscreenCanvas in a worker. */
+export function createSurface(width: number, height: number): Surface {
+  if (typeof document !== "undefined") {
+    const c = document.createElement("canvas");
+    c.width = width;
+    c.height = height;
+    return c;
+  }
+  return new OffscreenCanvas(width, height);
+}
+
+/**
+ * What a traced message's labels keep clear of, in pane CSS px: `hard` is never covered (node
+ * cards, their badges, floating chrome), `soft` only when there's a choice (edge labels).
+ */
+export interface Obstacles {
+  hard: readonly Rect[];
+  soft: readonly Rect[];
+}
+
 export interface RenderEnv {
   /** Viewport transform: screen = flow * zoom + (x, y). */
   transform(): readonly [x: number, y: number, zoom: number];
   /** Pane size in CSS px. */
   size(): { width: number; height: number };
-  /** The DOM path for an edge (`path.react-flow__edge-path`). */
-  edgePath(edgeId: string): PathLike | null;
+  /** Device pixels per CSS px for the backing store (capped at 2). */
+  dpr(): number;
+  /** An edge's path sampled in flow coordinates (pathSampler.ts), or null when it isn't drawn. */
+  samples(edgeId: string): PathSamples | null;
+  /** Changes whenever any edge's samples change (a node moved, an edge was re-routed). */
+  pathsVersion(): number;
   /** A node's box in flow coordinates. */
   nodeRect(nodeId: string): Rect | null;
-  /**
-   * What a traced message's labels keep clear of, in pane CSS px: `hard` is never covered (node
-   * cards, their badges, floating chrome), `soft` only when there's a choice (edge labels).
-   */
-  obstacles?(): { hard: readonly Rect[]; soft: readonly Rect[] };
+  /** Obstacles for trace labels (only asked while a message is traced or slow motion plays). */
+  obstacles?(): Obstacles | undefined;
   /**
    * Edge label pills in flow coordinates (the router's placements, cached by the caller: called
    * every frame, so it must not touch the DOM). Dots inside one are drawn dimmed above the pill.
@@ -83,8 +114,13 @@ export interface RenderOptions {
   /** Presentation mode draws everything a little larger. */
   scale: number;
   tokens: ParticleTokens;
-  /** Calmer slow speeds: below 1×, only a sample of message families is drawn (slowmo/sampler.ts). */
-  calm?: CalmSampler;
+}
+
+/** What the renderer reads from a simulation snapshot (a SimSnapshot is one). */
+export interface RenderSnapshot {
+  particles: readonly Particle[];
+  /** Failure counters per node: a rise flashes the node. */
+  nodes: Readonly<Record<string, { failed: number; deadLettered: number; dropped: number }>>;
 }
 
 /** What an overlay (slow motion) draws with: the frame's transform, paths and sprites. */
@@ -105,9 +141,9 @@ export interface OverlayView {
   tokens: ParticleTokens;
   reduced: boolean;
   samples(edgeId: string): PathSamples | null;
-  sprite(color: string, kind: ParticleKind, r: number): HTMLCanvasElement;
+  sprite(color: string, kind: ParticleKind, r: number): Surface;
   nodeRect(nodeId: string): Rect | null;
-  obstacles(): { hard: readonly Rect[]; soft: readonly Rect[] } | undefined;
+  obstacles(): Obstacles | undefined;
 }
 
 /** Drawn over a frozen frame: background dots stay put, faint, with no trails, pulses or flashes. */
@@ -147,6 +183,22 @@ export function insideAny(rects: readonly number[], x: number, y: number): boole
   for (let i = 0; i < rects.length; i += 4)
     if (x >= rects[i] && x <= rects[i + 2] && y >= rects[i + 1] && y <= rects[i + 3]) return true;
   return false;
+}
+
+/** The message under a pane point within `radius`, from hit targets laid out as x, y, message id. */
+export function hitTestPoints(hits: ArrayLike<number>, x: number, y: number, radius = 12): number | undefined {
+  let best: number | undefined;
+  let bestD = radius * radius;
+  for (let i = 0; i + 2 < hits.length; i += 3) {
+    const dx = hits[i] - x,
+      dy = hits[i + 1] - y,
+      d = dx * dx + dy * dy;
+    if (d <= bestD) {
+      bestD = d;
+      best = hits[i + 2];
+    }
+  }
+  return best;
 }
 
 interface Pulse {
@@ -197,8 +249,9 @@ export class ParticleRenderer {
   private overlayDrawn = false;
   /** Edge label pills this frame, device px [x0, y0, x1, y1, ...] (see deviceRects). */
   private pills: number[] = [];
-  private cache: PathCache;
-  private sprites = new Map<string, HTMLCanvasElement>();
+  private sprites = new Map<string, Surface>();
+  /** Calmer slow speeds: below 1×, only a sample of message families is drawn (slowmo/sampler.ts). */
+  private calm = new CalmSampler();
   private batches = new Map<string, Batch>();
   private pulses: Pulse[] = [];
   private seen = new Map<number, Seen>();
@@ -211,14 +264,17 @@ export class ParticleRenderer {
   private w = 0;
   private h = 0;
   private lastKey = "";
-  private lastSnap: SimSnapshot | null = null;
+  private lastSnap: RenderSnapshot | null = null;
   private lastFocus: number | undefined;
+  private lastPaths = -1;
   /** The overlay the last frame drew, and its revision (slow motion's drawings change on their own). */
   private lastOverlay: RenderOverlay | undefined;
   private lastRevision = -1;
   private wasEmpty = true;
   /** Particles drawn in the last frame (for the stats readout and tests). */
   drawn = 0;
+  /** Frames painted so far (skipped frames don't count): a frame rate readout for tests and perf runs. */
+  frames = 0;
   /** Hit targets from the last frame, in pane CSS px: x, y, message id (for click-to-trace). */
   private hits: number[] = [];
   /** The traced message's particles this frame (device px), drawn last, brighter and labelled. */
@@ -237,15 +293,14 @@ export class ParticleRenderer {
   private labelSpots = new Map<number, number>();
 
   constructor(
-    private canvas: HTMLCanvasElement,
+    private canvas: Surface,
     private env: RenderEnv,
     private opts: RenderOptions,
     /** Drawn over the edge label pills; without it everything goes on `canvas`. */
-    private overlay?: HTMLCanvasElement,
+    private overlay?: Surface,
   ) {
-    this.ctx = canvas.getContext("2d", { alpha: true })!;
-    this.octx = overlay?.getContext("2d", { alpha: true }) ?? this.ctx;
-    this.cache = new PathCache((id) => env.edgePath(id));
+    this.ctx = context2d(canvas);
+    this.octx = overlay ? context2d(overlay) : this.ctx;
   }
 
   setOptions(opts: RenderOptions): void {
@@ -255,9 +310,8 @@ export class ParticleRenderer {
     this.lastKey = "";
   }
 
-  /** Forget cached paths and per-message history (new engine, new diagram). */
+  /** Forget per-message history (new engine, new diagram). */
   reset(): void {
-    this.cache.clear();
     this.seen.clear();
     this.pulses.length = 0;
     this.failed.clear();
@@ -265,33 +319,30 @@ export class ParticleRenderer {
     this.lastKey = "";
   }
 
-  /** Keeps the backing store at device resolution and the canvas over the visible pane. */
+  /** Paint the next frame even if nothing changed (the worker's fonts finished loading). */
+  invalidate(): void {
+    this.lastKey = "";
+  }
+
+  /**
+   * Keeps the backing store at device resolution. (The canvas element's CSS size and its place over
+   * the pane are the main thread's business: see CanvasPlacement in liveRenderer.ts.)
+   */
   private layout(): readonly [number, number, number] {
     const t = this.env.transform();
     const { width, height } = this.env.size();
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = this.env.dpr();
     if (width !== this.w || height !== this.h || dpr !== this.dpr) {
       this.w = width;
       this.h = height;
       this.dpr = dpr;
       this.canvas.width = Math.max(1, Math.round(width * dpr));
       this.canvas.height = Math.max(1, Math.round(height * dpr));
-      this.canvas.style.width = `${width}px`;
-      this.canvas.style.height = `${height}px`;
       if (this.overlay) {
         this.overlay.width = this.canvas.width;
         this.overlay.height = this.canvas.height;
-        this.overlay.style.width = `${width}px`;
-        this.overlay.style.height = `${height}px`;
       }
       this.lastKey = "";
-    }
-    // The canvas lives inside React Flow's viewport (so DOM order puts it between nodes and the
-    // badges); undo the viewport transform so it covers exactly the visible pane.
-    const key = `${t[0]}|${t[1]}|${t[2]}|${width}|${height}`;
-    if (key !== this.lastKey) {
-      this.canvas.style.transform = `translate(${-t[0] / t[2]}px, ${-t[1] / t[2]}px) scale(${1 / t[2]})`;
-      if (this.overlay) this.overlay.style.transform = this.canvas.style.transform;
     }
     return t;
   }
@@ -301,29 +352,30 @@ export class ParticleRenderer {
    * Uses the last frame's positions, so it costs nothing until someone clicks or hovers.
    */
   hitTest(x: number, y: number, radius = 12): number | undefined {
-    let best: number | undefined;
-    let bestD = radius * radius;
-    const h = this.hits;
-    for (let i = 0; i < h.length; i += 3) {
-      const dx = h[i] - x,
-        dy = h[i + 1] - y,
-        d = dx * dx + dy * dy;
-      if (d <= bestD) {
-        bestD = d;
-        best = h[i + 2];
-      }
-    }
-    return best;
+    return hitTestPoints(this.hits, x, y, radius);
+  }
+
+  /** The last frame's hit targets in pane CSS px: x, y, message id, ... (the worker posts them back). */
+  get hitPoints(): readonly number[] {
+    return this.hits;
+  }
+
+  /** Arrival pulses or failure flashes are still fading: the next frame differs even if nothing else does. */
+  get animating(): boolean {
+    return this.pulses.length > 0;
   }
 
   /**
    * `focus`: the traced root message id. Its particles glow and carry a label; the rest dim.
    * `slow` (slow motion): the snapshot is frozen background, drawn faint and still beneath it.
+   * `speed`: the playback speed; below 1× the calm sampler draws a sample of message families.
    */
-  draw(snap: SimSnapshot, now: number, focus?: number, slow?: RenderOverlay): void {
+  draw(snap: RenderSnapshot, now: number, focus?: number, slow?: RenderOverlay, speed = 1): void {
+    this.calm.setSpeed(speed);
     const [tx, ty, zoom] = this.layout();
     const key = `${tx}|${ty}|${zoom}|${this.w}|${this.h}`;
     const moved = key !== this.lastKey;
+    const paths = this.env.pathsVersion();
     // Paused (the controller hands back the same snapshot), nothing fading out, the view and the
     // edges where they were: the canvas already shows this frame, and the hit targets still hold.
     // Slow motion animates over a frozen snapshot: skip only while its overlay is unchanged too (a
@@ -336,13 +388,14 @@ export class ParticleRenderer {
       snap === this.lastSnap &&
       focus === this.lastFocus &&
       !this.pulses.length &&
-      !this.cache.stale()
+      paths === this.lastPaths
     )
       return;
     this.lastSnap = snap;
     this.lastFocus = focus;
     this.lastOverlay = slow;
     this.lastRevision = revision;
+    this.lastPaths = paths;
     this.frame++;
     this.lastKey = key;
     if (slow) {
@@ -357,6 +410,7 @@ export class ParticleRenderer {
       return;
     }
     this.wasEmpty = empty;
+    this.frames++;
     const { ctx, octx, dpr } = this;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -384,7 +438,7 @@ export class ParticleRenderer {
 
     const particles = snap.particles;
     const stride = reduced && particles.length > REDUCED_MAX ? Math.ceil(particles.length / REDUCED_MAX) : 1;
-    const calm = slow ? undefined : this.opts.calm;
+    const calm = slow || !this.calm.active ? undefined : this.calm;
     calm?.begin(particles, now);
     const perEdge = this.perEdge;
     perEdge.clear();
@@ -397,7 +451,7 @@ export class ParticleRenderer {
     this.focusHeads.length = 0;
     for (let i = 0; i < particles.length; i += stride) {
       const p = particles[i];
-      const s = this.cache.get(p.edgeId, this.frame);
+      const s = this.env.samples(p.edgeId);
       if (!s || s.length === 0) continue;
       const focused = focus !== undefined && p.rootId === focus;
       if (calm && !calm.keep(p, focus)) continue;
@@ -490,7 +544,7 @@ export class ParticleRenderer {
         theme: this.opts.theme,
         tokens: this.opts.tokens,
         reduced,
-        samples: (id) => this.cache.get(id, this.frame),
+        samples: (id) => this.env.samples(id),
         sprite: (color, kind, r) => this.sprite(color, kind, r),
         nodeRect: (id) => this.env.nodeRect(id),
         obstacles: () => this.env.obstacles?.(),
@@ -706,7 +760,7 @@ export class ParticleRenderer {
       if (this.opts.reducedMotion || s.progress < 0.55 || s.kind === "reply") continue;
       const last = this.lastPulseAt.get(s.edgeId) ?? -Infinity;
       if (now - last < 110 || this.pulses.length >= MAX_PULSES) continue;
-      const samples = this.cache.get(s.edgeId, frame);
+      const samples = this.env.samples(s.edgeId);
       if (!samples || !samples.length) continue;
       this.lastPulseAt.set(s.edgeId, now);
       // Retries end back at the broker (the edge's source).
@@ -717,7 +771,7 @@ export class ParticleRenderer {
   }
 
   /** Failed or dead-lettered counts went up since the last frame: flash the node. */
-  private detectFailures(snap: SimSnapshot, now: number): void {
+  private detectFailures(snap: RenderSnapshot, now: number): void {
     for (const id in snap.nodes) {
       const n = snap.nodes[id];
       const bad = n.failed + n.deadLettered + n.dropped;
@@ -775,21 +829,19 @@ export class ParticleRenderer {
   }
 
   /** Pre-rendered glow + core for a colour / kind / radius. */
-  private sprite(color: string, kind: ParticleKind, r: number): HTMLCanvasElement {
+  private sprite(color: string, kind: ParticleKind, r: number): Surface {
     const rr = Math.round(r * 4) / 4;
     const key = `${color}|${kind}|${rr}`;
     let c = this.sprites.get(key);
     if (c) return c;
-    c = document.createElement("canvas");
     const reduced = this.opts.reducedMotion;
     const { core, glowOpacity, glowBlur } = this.opts.tokens;
     // --particle-glow-blur sets how far the halo reaches beyond the head.
     const reach = 1.6 + glowBlur * 0.22;
     const glow = kind === "reply" || reduced ? 1.2 : kind === "dlq" ? reach + 0.5 : reach;
     const side = Math.ceil(rr * glow * 2 + 2);
-    c.width = side;
-    c.height = side;
-    const g = c.getContext("2d")!;
+    c = createSurface(side, side);
+    const g = context2d(c);
     const m = side / 2;
     const dark = this.opts.theme === "dark";
     if (glow > 1.5) {

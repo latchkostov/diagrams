@@ -25,8 +25,8 @@ import { LiveContext, useLiveState, type LiveUi, type TraceChoice } from "./cont
 import { Decorator } from "./decorations";
 import { downstreamOfEdge, edgesWithin } from "./graph";
 import { liveActions, liveMutationGuard } from "./liveActions";
-import { DEFAULT_TOKENS, ParticleRenderer, readParticleTokens, type Rect, type RenderEnv } from "./particleRenderer";
-import { OVERLAY_SELECTOR } from "../canvas/useOverlayFit";
+import { DEFAULT_TOKENS, readParticleTokens, type Rect } from "./particleRenderer";
+import { createLiveRenderer, pickRenderer, type LiveRenderer, type RendererKind } from "./liveRenderer";
 import { createStormSimulation, suggestedMessageType } from "./storm";
 import { readLiveParams, writeLiveParams, type LiveParams } from "./urlParams";
 import { ControlBar } from "./ControlBar";
@@ -61,7 +61,6 @@ import { isRecordingActive } from "./record/framing";
 import { TraceCard } from "./TraceCard";
 import { useSlowMotion, type SlowMotionView } from "./slowmo/useSlowMotion";
 import { SlowCaption } from "./slowmo/SlowBar";
-import { CalmSampler } from "./slowmo/sampler";
 import type { SlowSource } from "./slowmo/session";
 import { PACING } from "./slowmo/script";
 import { formatDuration as formatSpan } from "../trace/journey";
@@ -554,13 +553,14 @@ function LiveSession({
     const id = requestAnimationFrame(() => setTokens(readParticleTokens()));
     return () => cancelAnimationFrame(id);
   }, [theme]);
-  // Calmer slow speeds: below 1×, a sample of whole journeys is drawn (counts stay exact).
-  const [calm] = useState(() => new CalmSampler());
   const renderOpts = useMemo(
-    () => ({ theme, reducedMotion, scale: presenting ? 1.35 : 1, tokens, calm }),
-    [theme, reducedMotion, presenting, tokens, calm],
+    () => ({ theme, reducedMotion, scale: presenting ? 1.35 : 1, tokens }),
+    [theme, reducedMotion, presenting, tokens],
   );
-  const rendererRef = useRef<ParticleRenderer | null>(null);
+  // Particles draw in a worker on an OffscreenCanvas where the browser can (liveRenderer.ts); if the
+  // worker fails, fresh canvases (a new key) take the main-thread fallback.
+  const [rendererKind, setRendererKind] = useState<RendererKind>(() => pickRenderer());
+  const rendererRef = useRef<LiveRenderer | null>(null);
   const renderOptsRef = useRef(renderOpts);
   useLayoutEffect(() => {
     renderOptsRef.current = renderOpts;
@@ -569,61 +569,37 @@ function LiveSession({
 
   useEffect(() => {
     const root = store.getState().domNode;
-    if (!canvas || !overlay || !root) return;
-    let obstacleCache: { at: number; view: string; hard: Rect[]; soft: Rect[] } | null = null;
-    const env: RenderEnv = {
-      labelRects: () => labelRectsRef.current,
-      transform: () => store.getState().transform,
-      size: () => ({ width: store.getState().width, height: store.getState().height }),
-      edgePath: (id) =>
-        root.querySelector<SVGPathElement>(`.react-flow__edge[data-id="${CSS.escape(id)}"] path.react-flow__edge-path`),
-      nodeRect: (id) => {
-        const n = store.getState().nodeLookup.get(id);
-        if (!n) return null;
-        return {
-          x: n.internals.positionAbsolute.x,
-          y: n.internals.positionAbsolute.y,
-          width: n.measured.width ?? 0,
-          height: n.measured.height ?? 0,
-        };
-      },
-      obstacles: () => {
-        // Read from the DOM a few times a second, only while a message is traced, and at once when
-        // the view moves (a refit animates): node cards, their badges, the floating chrome and,
-        // softly, edge labels and annotations.
-        const now = performance.now();
-        const [vx, vy, vz] = store.getState().transform;
-        const view = `${vx}|${vy}|${vz}`;
-        if (obstacleCache && obstacleCache.view === view && now - obstacleCache.at < 200) return obstacleCache;
-        const base = root.getBoundingClientRect();
-        const rects = (selector: string) => {
-          const out: Rect[] = [];
-          for (const el of root.querySelectorAll<HTMLElement>(selector)) {
-            const r = el.getBoundingClientRect();
-            if (r.width && r.height)
-              out.push({ x: r.left - base.left, y: r.top - base.top, width: r.width, height: r.height });
-          }
-          return out;
-        };
-        obstacleCache = {
-          at: now,
-          view,
-          hard: rects(`.react-flow__node-diagram, .lv-strip, .lv-hud > *, .lv-panel, ${OVERLAY_SELECTOR}`),
-          soft: rects(".fe-label, .react-flow__node-annotation"),
-        };
-        return obstacleCache;
-      },
-    };
+    // After a fallback the old canvases (handed to the worker, now unmounted) linger in state for one
+    // render: wait for the fresh ones.
+    if (!canvas || !overlay || !root || !canvas.isConnected || !overlay.isConnected) return;
     // Fit-view padding elsewhere can reserve room for the control bar.
     root.style.setProperty(LIVE_BAR_VAR, `${LIVE_BAR_SPACE}px`);
-    const renderer = new ParticleRenderer(canvas, env, renderOptsRef.current, overlay);
+    const renderer = createLiveRenderer(rendererKind, {
+      canvas,
+      overlay,
+      root,
+      store,
+      labelRects: () => labelRectsRef.current,
+      options: renderOptsRef.current,
+      onFail: (reason) => {
+        console.warn(`Live particles: ${reason}; drawing on the main thread instead.`);
+        setRendererKind("main");
+      },
+    });
     rendererRef.current = renderer;
+    // Test hook (dev and e2e builds): read a layer's pixels, wherever it is drawn.
+    const testHooks = import.meta.env.DEV || import.meta.env.VITE_E2E === "1";
+    if (testHooks)
+      (window as unknown as { __liveProbe?: LiveRenderer["probe"] }).__liveProbe = (l, r) => renderer.probe(l, r);
     const decorator = new Decorator(root);
     let raf = 0;
     let last = performance.now();
     let lastUi = 0;
     let generation = controller.getState().generation;
     let stats = 0;
+    let lastSnap: unknown = null;
+    /** Milliseconds of moving simulation: the marching ants' clock (it stops when the simulation does). */
+    let march = 0;
     const tick = (now: number) => {
       const dt = Math.min(100, now - last);
       last = now;
@@ -635,16 +611,28 @@ function LiveSession({
       }
       const snap = controller.snapshot();
       const speed = controller.getState().speed;
-      calm.setSpeed(speed);
       // Slow motion: live is frozen underneath, and the replay is drawn over it.
       const slow = slowRef.current?.frame(dt, speed);
-      renderer.draw(snap, now, slow ? undefined : controller.tracedRoot, slow);
-      if (now - lastUi >= UI_MS) {
+      // The simulation stands still (paused, a note waiting, slow motion): so do the marching edges.
+      // Slow motion shows them unshifted, like the SVG's `animation: none` did.
+      const still = snap === lastSnap;
+      lastSnap = snap;
+      march = slow ? 0 : still ? march : march + dt;
+      const ui = now - lastUi >= UI_MS;
+      if (ui) {
         lastUi = now;
         if (controller.isPlaying) controller.publish();
-        slowRef.current?.ui(canvas, snap);
-        decorator.apply({ snapshot: snap, spotlight: spotlightRef.current });
-        if (++stats % 2 === 0) canvas.dataset.particles = String(renderer.drawn);
+        // Before the frame, so an edge marked active marches in the same frame its SVG stops.
+        decorator.apply({ snapshot: snap, spotlight: spotlightRef.current, still });
+        renderer.tick();
+      }
+      renderer.frame({ snap, now, speed, focus: slow ? undefined : controller.tracedRoot, slow, march });
+      if (ui) {
+        slowRef.current?.ui(canvas, snap, renderer.slowLabels);
+        if (++stats % 2 === 0) {
+          canvas.dataset.particles = String(renderer.drawn);
+          canvas.dataset.frames = String(renderer.frames);
+        }
         // The traced message's labels, for tests (pane CSS px).
         if (renderer.labels.length)
           canvas.dataset.traceLabels = JSON.stringify(
@@ -659,10 +647,12 @@ function LiveSession({
       cancelAnimationFrame(raf);
       decorator.clear();
       root.style.removeProperty(LIVE_BAR_VAR);
+      renderer.dispose();
       rendererRef.current = null;
+      if (testHooks) delete (window as unknown as { __liveProbe?: unknown }).__liveProbe;
     };
     // renderOpts changes are applied through setOptions above, without restarting the loop.
-  }, [controller, store, canvas, overlay, calm]);
+  }, [controller, store, canvas, overlay, rendererKind]);
 
   // Click a particle to trace its message; the pointer says when one is under it.
   useEffect(() => {
@@ -1256,8 +1246,21 @@ function LiveSession({
   return (
     <LiveContext.Provider value={ui}>
       <ViewportPortal>
-        <canvas ref={setCanvas} className="lv-canvas" data-testid="live-canvas" aria-hidden />
-        <canvas ref={setOverlay} className="lv-canvas lv-canvas-over" data-testid="live-canvas-over" aria-hidden />
+        <canvas
+          key={`base-${rendererKind}`}
+          data-renderer={rendererKind}
+          ref={setCanvas}
+          className="lv-canvas"
+          data-testid="live-canvas"
+          aria-hidden
+        />
+        <canvas
+          key={`over-${rendererKind}`}
+          ref={setOverlay}
+          className="lv-canvas lv-canvas-over"
+          data-testid="live-canvas-over"
+          aria-hidden
+        />
         <NodeBadges state={state} presenting={presenting} capacity={showCapacity ? capacity : null} />
       </ViewportPortal>
       <div

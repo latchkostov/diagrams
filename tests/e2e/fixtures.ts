@@ -48,6 +48,43 @@ export const publicExamples: PublicExample[] = (() => {
     });
 })();
 
+declare global {
+  interface Window {
+    /** Dev and e2e builds: RGBA pixels of a live canvas layer inside a client rect (src/live/LiveView.tsx). */
+    __liveProbe?: (
+      layer: "base" | "over" | "march",
+      rect: { x: number; y: number; width: number; height: number },
+    ) => Promise<Uint8ClampedArray>;
+  }
+}
+
+/**
+ * Painted pixels (alpha above `threshold`) of a live canvas layer inside a client rect, wherever the
+ * layer is drawn: an OffscreenCanvas in the particle worker can't be read from the page, so this asks
+ * the renderer (the `__liveProbe` hook of dev and e2e builds). The whole pane when `rect` is omitted.
+ */
+export async function livePaint(
+  page: Page,
+  layer: "base" | "over" | "march",
+  rect?: { x: number; y: number; width: number; height: number },
+  threshold = 40,
+): Promise<number> {
+  return page.evaluate(
+    async ([layer, rect, threshold]) => {
+      const probe = window.__liveProbe;
+      if (!probe) throw new Error("no __liveProbe: live view isn't on, or this build has no test hooks");
+      const el = document.querySelector('[data-testid="live-canvas"]');
+      if (!el) throw new Error("no live canvas");
+      const pane = el.getBoundingClientRect();
+      const data = await probe(layer, rect ?? { x: pane.left, y: pane.top, width: pane.width, height: pane.height });
+      let n = 0;
+      for (let i = 3; i < data.length; i += 4) if (data[i] > threshold) n++;
+      return n;
+    },
+    [layer, rect ?? null, threshold] as const,
+  );
+}
+
 /** Console noise that isn't an app error. Keep this list short and specific. */
 const IGNORED_CONSOLE = [/Download the React DevTools/i, /\[vite\]/i];
 

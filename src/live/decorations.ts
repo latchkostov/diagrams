@@ -10,6 +10,8 @@ export interface DecorationInput {
   snapshot: SimSnapshot;
   /** When set, everything outside these nodes / edges is dimmed (narration focus, path trace). */
   spotlight: { nodes: ReadonlySet<string>; edges: ReadonlySet<string>; kind: "focus" | "trace" } | null;
+  /** The simulation isn't moving (paused, a note waiting, slow motion): the marching edges stop too. */
+  still?: boolean;
 }
 
 const RISE_WINDOW = 8; // samples (~1 s at 8 Hz)
@@ -20,10 +22,11 @@ export class Decorator {
 
   constructor(private root: HTMLElement) {}
 
-  apply({ snapshot, spotlight }: DecorationInput): void {
+  apply({ snapshot, spotlight, still }: DecorationInput): void {
     const root = this.root;
     setAttr(root, "data-live", "on");
     setAttr(root, "data-live-spotlight", spotlight?.kind ?? null);
+    setAttr(root, "data-live-still", still ? "1" : null);
     const seen = new Set<Element>();
 
     for (const el of root.querySelectorAll<HTMLElement>(".react-flow__node-diagram[data-id]")) {
@@ -69,7 +72,7 @@ export class Decorator {
   /** Remove every live attribute (leaving live mode). */
   clear(): void {
     const root = this.root;
-    for (const a of ["data-live", "data-live-spotlight"]) root.removeAttribute(a);
+    for (const a of ["data-live", "data-live-spotlight", "data-live-still"]) root.removeAttribute(a);
     for (const el of root.querySelectorAll(
       "[data-live-status],[data-live-edge],[data-live-dim],[data-live-heat],[data-live-trace],[data-live-rising]",
     )) {
