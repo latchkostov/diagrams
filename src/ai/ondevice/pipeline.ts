@@ -240,6 +240,32 @@ export const isTransient = (err: unknown) =>
 type Session = Pick<ModelSession, "prompt"> & { destroy?: () => void };
 
 /**
+ * How long one reply (or one fresh session) may take. The built-in model can keep generating under a
+ * response constraint and never finish; without a limit one such prompt hangs the request (and the evals).
+ */
+export const REPLY_TIMEOUT_MS = 30_000;
+
+export const TIMED_OUT = "The model took too long to answer.";
+
+/** `promise`, or a TimeoutError after `ms` (the work itself isn't cancelled; free what it returns late). */
+export function withTimeout<T>(promise: Promise<T>, ms: number, onLate?: (value: T) => void): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let late = false;
+  void promise.then((v) => late && onLate?.(v)).catch(() => undefined);
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        late = true;
+        reject(new DOMException(TIMED_OUT, "TimeoutError"));
+      }, ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+const isTimeout = (err: unknown) => err instanceof DOMException && err.name === "TimeoutError";
+
+/**
  * Asks the model, checks the reply against the ops core, and on failure asks once more with the error.
  * A transient Prompt API error is retried once on a fresh session from `freshSession`, without using up
  * that retry. Applies nothing: the caller commits `plan` (one turn, one undo step). Throws only an
@@ -253,6 +279,7 @@ export async function runOnDevice({
   scope = [],
   signal,
   onStatus,
+  replyTimeoutMs = REPLY_TIMEOUT_MS,
 }: {
   /** A fresh session per request (a clone of the primed one): retries share its context. */
   session: Session;
@@ -263,23 +290,54 @@ export async function runOnDevice({
   scope?: readonly ScopeItem[];
   signal?: AbortSignal;
   onStatus?: (s: OnDeviceStatus) => void;
+  /** The limit for one reply; a reply that runs over is cancelled and counts as a transient failure. */
+  replyTimeoutMs?: number;
 }): Promise<OnDeviceResult> {
   const first = requestPrompt(diagram, request, scope);
   let input = first;
   let error = "";
   let output: ModelOutput | undefined;
   let current = session;
-  let replaced: Session | null = null;
+  // Assigned in swapToFresh too, so typed wide (not narrowed to null).
+  let replaced = null as Session | null;
   let freshUsed = !freshSession;
+  /** Goes on in a fresh session (once per request); false when none arrived in time. */
+  const swapToFresh = async (): Promise<boolean> => {
+    freshUsed = true;
+    replaced?.destroy?.();
+    replaced = null;
+    try {
+      replaced = await withTimeout(freshSession!(), replyTimeoutMs, (s) => s.destroy?.());
+    } catch (err) {
+      if (signal?.aborted) throw err instanceof Error ? err : new DOMException("Aborted", "AbortError");
+      return false;
+    }
+    current = replaced;
+    input = first;
+    return true;
+  };
   try {
     for (let attempt = 1; attempt <= 2; attempt++) {
       onStatus?.(attempt === 1 ? "thinking" : "retrying");
       let reply: string;
       try {
-        reply = await current.prompt(input, { signal, responseConstraint: REPLY_SCHEMA });
+        const limit = AbortSignal.timeout(replyTimeoutMs);
+        const both = signal ? AbortSignal.any([signal, limit]) : limit;
+        reply = await withTimeout(
+          current.prompt(input, { signal: both, responseConstraint: REPLY_SCHEMA }),
+          replyTimeoutMs,
+        );
       } catch (err) {
-        if (isAbort(err) || signal?.aborted)
-          throw err instanceof Error ? err : new DOMException("Aborted", "AbortError");
+        if (signal?.aborted) throw err instanceof Error ? err : new DOMException("Aborted", "AbortError");
+        if (isTimeout(err) || (isAbort(err) && !signal?.aborted)) {
+          // Ran over: this session may still be busy, so go on with a fresh one if there is one.
+          error = TIMED_OUT;
+          if (!freshUsed) {
+            if (!(await swapToFresh())) return { ok: false, error: TIMED_OUT, attempts: attempt };
+            attempt--;
+          }
+          continue;
+        }
         if (err instanceof DOMException && err.name === "QuotaExceededError")
           return {
             ok: false,
@@ -290,10 +348,7 @@ export async function runOnDevice({
         error = err instanceof Error ? err.message : String(err);
         if (!freshUsed && isTransient(err)) {
           // A fresh session and the request from the start; this doesn't count as the retry.
-          freshUsed = true;
-          replaced = await freshSession!();
-          current = replaced;
-          input = first;
+          if (!(await swapToFresh())) return { ok: false, error: TIMED_OUT, attempts: attempt };
           attempt--;
           continue;
         }

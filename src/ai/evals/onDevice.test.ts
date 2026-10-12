@@ -72,6 +72,30 @@ describe("on-device evals", () => {
     expect(resultsMarkdown(results)).toContain(`Pass rate: **${results.length}/${results.length} (100%)**`);
   });
 
+  it("a case whose session or reply hangs fails as a timeout and the run goes on", async () => {
+    const cases = onDeviceCases.filter((c) => c.id === "edit-dlq" || c.id === "create-1");
+    let calls = 0;
+    const results = await runOnDeviceEvals(
+      () => {
+        calls++;
+        // The first case never gets a session; every later session answers perfectly.
+        if (calls === 1) return new Promise(() => undefined);
+        return answering((prompt) => {
+          const request = prompt.slice(prompt.lastIndexOf("Request: ") + 9);
+          const c = onDeviceCases.find((x) => x.request === request)!;
+          return reply(perfectEdits[c.id] ?? perfectCreate(c.request));
+        })();
+      },
+      cases,
+      undefined,
+      undefined,
+      20,
+    );
+    expect(results.map((r) => r.pass)).toEqual([false, true]);
+    expect(results[0].note).toMatch(/took too long/);
+    expect(results[0].category).toBe("model error");
+  });
+
   it("a model that adds the wrong thing fails, with the reason", async () => {
     const cases = onDeviceCases.filter((c) => c.id === "edit-dlq" || c.id === "create-1");
     const results = await runOnDeviceEvals(

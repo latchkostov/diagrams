@@ -10,6 +10,7 @@ import {
   REPLY_SCHEMA,
   requestPrompt,
   runOnDevice,
+  TIMED_OUT,
   toOps,
 } from "./pipeline";
 
@@ -148,6 +149,76 @@ describe("runOnDevice", () => {
     expect(isTransient(new Error("An unknown error occurred: kErrorUnknown"))).toBe(true);
     expect(isTransient(new DOMException("no", "NotSupportedError"))).toBe(false);
     expect(isTransient(new DOMException("x", "AbortError"))).toBe(false);
+  });
+
+  it("a reply that never comes times out and the request goes on in a fresh session", async () => {
+    let seen: AbortSignal | undefined;
+    const hung = {
+      prompt: vi.fn((_input: string, opts?: { signal?: AbortSignal }) => {
+        seen = opts?.signal;
+        return new Promise<string>(() => undefined);
+      }),
+      destroy: vi.fn(),
+    };
+    const fresh = session(DLQ);
+    const r = await runOnDevice({
+      session: hung,
+      freshSession: async () => fresh,
+      diagram,
+      request: "Add a DLQ",
+      replyTimeoutMs: 20,
+    });
+    expect(r).toMatchObject({ ok: true, attempts: 1 });
+    // The hung prompt was told to stop.
+    expect(seen?.aborted).toBe(true);
+    expect(fresh.prompt.mock.calls[0][0]).toBe(hung.prompt.mock.calls[0][0]);
+  });
+
+  it("when every reply hangs it gives up with a timeout instead of waiting forever", async () => {
+    const hang = () => ({ prompt: vi.fn(() => new Promise<string>(() => undefined)), destroy: vi.fn() });
+    const t0 = Date.now();
+    const r = await runOnDevice({
+      session: hang(),
+      freshSession: async () => hang(),
+      diagram,
+      request: "Add a DLQ",
+      replyTimeoutMs: 20,
+    });
+    expect(r).toMatchObject({ ok: false, error: TIMED_OUT, attempts: 2 });
+    expect(Date.now() - t0).toBeLessThan(2000);
+  });
+
+  it("a fresh session that never arrives also times out", async () => {
+    const r = await runOnDevice({
+      session: session(new DOMException("An unknown error occurred: kErrorUnknown", "UnknownError")),
+      freshSession: () => new Promise(() => undefined),
+      diagram,
+      request: "Add a DLQ",
+      replyTimeoutMs: 20,
+    });
+    expect(r).toMatchObject({ ok: false, error: TIMED_OUT, attempts: 1 });
+  });
+
+  it("a cancel during a slow reply is still a cancel, not a timeout", async () => {
+    const controller = new AbortController();
+    const slow = {
+      prompt: vi.fn(
+        (_input: string, opts?: { signal?: AbortSignal }) =>
+          new Promise<string>((_, reject) =>
+            opts?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError"))),
+          ),
+      ),
+      destroy: vi.fn(),
+    };
+    const running = runOnDevice({
+      session: slow,
+      diagram,
+      request: "x",
+      signal: controller.signal,
+      replyTimeoutMs: 5000,
+    });
+    controller.abort();
+    await expect(running).rejects.toMatchObject({ name: "AbortError" });
   });
 
   it("a diagram too big for the context says so at once", async () => {

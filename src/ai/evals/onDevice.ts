@@ -7,7 +7,7 @@ import type { DiagramFile } from "../../model/types";
 import { validateDiagram } from "../../interop/native";
 import { getStencil } from "../../stencils/registry";
 import kafka from "../../examples/kafka-order-pipeline.json";
-import { runOnDevice } from "../ondevice/pipeline";
+import { REPLY_TIMEOUT_MS, runOnDevice, withTimeout } from "../ondevice/pipeline";
 import type { DiagramOp } from "../index";
 import { resolveKind } from "../stencils";
 import type { ModelSession } from "../ondevice/promptApi";
@@ -147,7 +147,7 @@ export function failureCategory(note: string): FailureCategory {
   )
     return "structure";
   if (/needs "|wasn't JSON|must be one of|has no ops|at most \d+ ops|"ops" array/.test(note)) return "format";
-  if (/kError|error occurred|Error\b|too big/.test(note)) return "model error";
+  if (/kError|error occurred|Error\b|too big|took too long/.test(note)) return "model error";
   return "other";
 }
 
@@ -188,14 +188,18 @@ export async function runOnDeviceEvals(
   cases: readonly OnDeviceCase[] = onDeviceCases,
   onResult?: (r: CaseResult, done: number) => void,
   signal?: AbortSignal,
+  /** The limit for a session or one reply; a case that runs over fails and the run goes on. */
+  timeoutMs = REPLY_TIMEOUT_MS,
 ): Promise<CaseResult[]> {
   const results: CaseResult[] = [];
   for (const c of cases) {
     signal?.throwIfAborted();
     const t0 = performance.now();
-    const session = await newSession();
     let r: CaseResult;
+    let session: Awaited<ReturnType<typeof newSession>> | undefined;
     try {
+      // A clone that never arrives fails this case instead of stalling the run.
+      session = await withTimeout(newSession(), timeoutMs, (s) => s.destroy?.());
       const out = await runOnDevice({
         session,
         freshSession: newSession,
@@ -203,6 +207,7 @@ export async function runOnDeviceEvals(
         request: c.request,
         scope: c.scope,
         signal,
+        replyTimeoutMs: timeoutMs,
       });
       if (!out.ok)
         r = {
@@ -230,7 +235,7 @@ export async function runOnDeviceEvals(
       if (signal?.aborted) throw err;
       r = { id: c.id, request: c.request, pass: false, attempts: 0, note: String(err), ms: 0 };
     } finally {
-      session.destroy?.();
+      session?.destroy?.();
     }
     r.ms = Math.round(performance.now() - t0);
     if (!r.pass) r.category = failureCategory(r.note);
