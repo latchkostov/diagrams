@@ -16,6 +16,17 @@
   height: 0;
 }
 
+/*
+ * Backstop: nothing on the drawing is selectable (app.css; useNoCanvasTextSelection clears and blocks
+ * selections that start there), but should a selection ever reach it, it doesn't paint. Text fields (the
+ * inline editors) and overlays keep their highlight.
+ */
+.canvas-wrap
+  .react-flow__renderer
+  :not(input, textarea, [contenteditable="true"], [data-editor-overlay], [data-editor-overlay] *)::selection {
+  background: transparent;
+}
+
 /* ---------- React Flow theming ---------- */
 
 .react-flow {

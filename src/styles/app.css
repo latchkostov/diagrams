@@ -26,11 +26,15 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Places where text is meant to be typed or copied opt back in. */
+/*
+ * Places where text is meant to be typed or copied opt back in. The class is `text-selectable`, never
+ * `selectable`: React Flow puts `selectable` on every node and edge, which would make the whole canvas
+ * selectable (dragging a connection then highlights labels and icons across nodes).
+ */
 input,
 textarea,
 [contenteditable="true"],
-.selectable {
+.text-selectable {
   user-select: text;
   -webkit-user-select: text;
 }
@@ -91,7 +95,7 @@ input:disabled,
 }
 
 /* Text meant to be copied (ids, URLs, code) opts back into the I-beam. */
-.selectable {
+.text-selectable {
   cursor: text;
 }
 
