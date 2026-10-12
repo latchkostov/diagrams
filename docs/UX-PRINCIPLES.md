@@ -111,8 +111,17 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   edge (40 px) and after that stays as the person left it. The rail, Ctrl+I, and **AI panel** on the
   canvas right-click and in Ctrl+K show it; the top bar has no AI button. An agent acting never opens the
   panel or moves the canvas: while folded, the rail's spark counts the agent changes not yet seen in this
-  diagram ("AI panel, 2 new changes"), and opening the panel clears it. A status line says whether this
-  browser offers the page's tools, and points agents that drive pages to llms.txt when it doesn't.
+  diagram ("AI panel, 2 new changes"), and opening the panel clears it.
+- The panel has no request box: you **ask an agent**, never the panel. Idle, it answers "how do I use this?"
+  under **Ways to use AI here**, at most three short items, each with one action: **Your browser's AI
+  assistant** (only with WebMCP; **Copy example request** copies a request naming a real node), **Your coding
+  agent** (**Install the skill**, the site's `/skill/` page) and **Any chatbot** (**Open Advanced**). With
+  WebMCP, **What agents can do here** (collapsed) lists the published tools, one line each. Once there are
+  turns, the conversation takes over and all this folds to one link, **How to use AI here**.
+- The **status line** at the panel's foot is honest: WebMCP only means the page publishes its tools, so it
+  says "This page publishes 6 tools for AI agents in this browser (WebMCP)" and, muted, that the browser's
+  assistant must support WebMCP and that requests are typed there, not here. Without WebMCP it points agents
+  that drive pages to llms.txt. It never claims an assistant will use the tools.
 - Each change is a **turn** in the diagram's **conversation**: the agent's own note (the tools' optional
   `summary`), what changed ("+3 nodes, +2 connections"; while the panel is folded, a toast carries **Undo**, and it goes
   when the panel opens) and a highlight on hover. A turn offers **Undo this change** only while its own step is the next undo; any turn offers
@@ -126,6 +135,15 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   question. A failed reply shows **Nothing was applied**, the elements it could mean (pick one to apply)
   and **Copy fix-up prompt**. A stencil the app wasn't sure of says **not sure** (or **a guess**) with its
   alternatives as one-click chips.
+- The **on-device model** is Chrome's built-in model (the Prompt API): no key, nothing leaves the device.
+  Where it can run, **Advanced ▸ Try the on-device model** (off by default, remembered) adds the panel's
+  only request box, at its foot: "Describe a change…", the mic, **Send** (Enter), labelled "Runs on this
+  device with Chrome's built-in model". A one-time **Download the on-device model** shows progress first
+  where needed. Its changes are turns like an agent's ("On this device"); a reply that doesn't fit after one
+  retry says **Couldn't apply that. Try rephrasing.** and applies nothing. **Stop** (or Esc) cancels, and
+  so do going live or switching diagrams. Nothing lands if the diagram changed meanwhile. Its mic is Advanced's,
+  with the same feedback, and until speech is confirmed on this device the box says dictation may use the
+  browser's speech service. It edits only: in live view the box waits for **Back to editing**. Where the model can't run, nothing shows.
 - **Build with AI** (Ctrl+K only) starts a new diagram from a description: a blank diagram with Advanced
   open. Never "Build with AI" for changing a diagram.
 - A **local-only** diagram never reaches any AI: the page's tools are off, Copy for AI copies nothing, and

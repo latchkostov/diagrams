@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Install the Live Diagrams Agent Skill in Claude Code, Codex or the Claude apps: your agent draws architecture diagrams and returns a livediagrams.dev link."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <title>Use Live Diagrams with your AI agent · Diagrams</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --text: #1f2937;
+        --muted: #4b5563;
+        --bg: #ffffff;
+        --code-bg: #f3f4f6;
+        --line: #e5e7eb;
+        --accent: #2563eb;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --text: #e5e7eb;
+          --muted: #9ca3af;
+          --bg: #0f172a;
+          --code-bg: #1e293b;
+          --line: #1f2937;
+          --accent: #60a5fa;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 48px 24px 64px;
+      }
+      h1 {
+        font-size: 28px;
+        line-height: 1.25;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 17px;
+        margin: 32px 0 6px;
+      }
+      p,
+      li {
+        color: var(--muted);
+      }
+      a {
+        color: var(--accent);
+      }
+      code {
+        font: 13px/1.5 ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+      }
+      .cmd {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin: 8px 0;
+        padding: 8px 8px 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--code-bg);
+      }
+      .cmd code {
+        flex: 1;
+        min-width: 0;
+        padding-top: 3px;
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
+      .cmd button {
+        flex: none;
+        padding: 3px 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--bg);
+        color: var(--text);
+        font: 600 12.5px/1.5 system-ui, sans-serif;
+        cursor: pointer;
+      }
+      .label {
+        margin: 12px 0 0;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 data-testid="skill-title">Use Live Diagrams with your AI agent</h1>
+      <p>
+        The <strong>livediagrams</strong> Agent Skill lets your coding agent draw diagrams for you. Ask "diagram our
+        order pipeline" and it writes a <code>.diagram.json</code> file, checks it, and replies with a
+        livediagrams.dev link that opens it. Nothing is uploaded: the diagram travels inside the link. It needs Node.js
+        20 or later, and no account or API key.
+      </p>
+
+      <h2 id="claude-code">Claude Code</h2>
+      <p>Run these two commands in Claude Code:</p>
+      <div class="cmd">
+        <code data-testid="skill-cmd-marketplace">/plugin marketplace add latchkostov/diagrams</code>
+        <button type="button" data-copy data-testid="skill-copy-marketplace">Copy</button>
+      </div>
+      <div class="cmd">
+        <code data-testid="skill-cmd-install">/plugin install livediagrams@livediagrams</code>
+        <button type="button" data-copy data-testid="skill-copy-install">Copy</button>
+      </div>
+
+      <h2 id="claude-apps">Claude apps (claude.ai, desktop)</h2>
+      <p>
+        Download <a href="../livediagrams-skill.zip" data-testid="skill-zip">livediagrams-skill.zip</a>, then upload
+        it in <strong>Settings &gt; Capabilities &gt; Skills</strong>.
+      </p>
+
+      <h2 id="codex">Codex</h2>
+      <p>Unzip the skill into <code>~/.agents/skills/</code> (for you) or <code>.agents/skills/</code> (for one repository).</p>
+      <p class="label">macOS, Linux</p>
+      <div class="cmd">
+        <code data-testid="skill-cmd-codex"
+          >curl -LO https://www.livediagrams.dev/livediagrams-skill.zip &amp;&amp; unzip livediagrams-skill.zip -d
+          ~/.agents/skills/</code
+        >
+        <button type="button" data-copy data-testid="skill-copy-codex">Copy</button>
+      </div>
+      <p class="label">Windows (PowerShell)</p>
+      <div class="cmd">
+        <code data-testid="skill-cmd-codex-windows"
+          >iwr https://www.livediagrams.dev/livediagrams-skill.zip -OutFile livediagrams-skill.zip; Expand-Archive
+          livediagrams-skill.zip "$HOME\.agents\skills"</code
+        >
+        <button type="button" data-copy data-testid="skill-copy-codex-windows">Copy</button>
+      </div>
+
+      <h2 id="other-agents">Other agents</h2>
+      <p>
+        Agents that read the Agent Skills format: copy the <code>livediagrams/</code> folder from the zip into the
+        agent's skills folder. The skill itself is <a href="SKILL.md" data-testid="skill-md">SKILL.md</a>.
+      </p>
+
+      <h2 id="try-it">Then ask</h2>
+      <p>
+        "Diagram a Kafka order pipeline: an order service publishes orders.created, billing and inventory consume it,
+        and failed messages go to a dead-letter queue." Open the link it gives you.
+      </p>
+
+      <h2 id="in-the-browser">In the browser</h2>
+      <p>
+        If your browser's AI assistant supports WebMCP, it can change the diagram open at livediagrams.dev directly.
+        Type your request in the assistant, not in the page; each change appears in the page's AI panel with Undo.
+      </p>
+
+      <p><a href="../" data-testid="skill-back">← Back to Diagrams</a></p>
+    </main>
+    <script>
+      for (const button of document.querySelectorAll("[data-copy]")) {
+        button.addEventListener("click", async () => {
+          const text = button.previousElementSibling.textContent.replace(/\s+/g, " ").trim();
+          try {
+            await navigator.clipboard.writeText(text);
+            button.textContent = "Copied";
+          } catch {
+            button.textContent = "Select and copy";
+          }
+          setTimeout(() => (button.textContent = "Copy"), 2000);
+        });
+      }
+    </script>
+  </body>
+</html>

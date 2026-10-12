@@ -45,7 +45,8 @@ and no keys.
 - **Other agents** that read the Agent Skills format: copy the `livediagrams/` folder into the agent's skills folder,
   such as `~/.claude/skills/` for Claude Code without the plugin.
 
-The skill is also published at [livediagrams.dev/skill/SKILL.md](https://www.livediagrams.dev/skill/SKILL.md). Its
+The same steps, with copyable commands, are at [livediagrams.dev/skill/](https://www.livediagrams.dev/skill/) (linked from
+the AI panel). The skill is also published at [livediagrams.dev/skill/SKILL.md](https://www.livediagrams.dev/skill/SKILL.md). Its
 stencil list, validator, layout and parts of its reference are generated from the app by `pnpm schemas`, and a unit test fails
 when they're stale.
 

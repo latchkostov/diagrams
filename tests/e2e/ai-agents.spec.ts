@@ -185,7 +185,9 @@ test.describe("an agent's changes in the AI panel", () => {
   test("the idle panel says the page's tools are available in this browser", async ({ page }) => {
     await openAiPanel(page);
     await expect(page.getByTestId("ai-agent-status")).toHaveAttribute("data-available", "1");
-    await expect(page.getByTestId("ai-agent-status")).toContainText("WebMCP");
+    await expect(page.getByTestId("ai-agent-status-text")).toHaveText(
+      "This page publishes 6 tools for AI agents in this browser (WebMCP).",
+    );
     await expect(page.getByTestId("ai-llms-link")).toHaveCount(0);
   });
 });
@@ -209,7 +211,7 @@ test("without WebMCP the panel points agents that drive pages to llms.txt", asyn
   await openAiPanel(page);
   await expect(page.getByTestId("ai-agent-status")).toHaveAttribute("data-available", "0");
   await expect(page.getByTestId("ai-llms-link")).toHaveAttribute("href", /llms\.txt$/);
-  await expect(page.getByTestId("ai-empty")).toContainText("Its changes appear here");
+  await expect(page.getByTestId("ai-empty")).toContainText("Each change appears here");
 });
 
 test("there's no API key anywhere, and a key stored by the removed setting is deleted on load", async ({

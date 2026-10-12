@@ -19,6 +19,7 @@ import {
 import { checkSchema } from "../validation";
 import { LOCAL_ONLY_MESSAGE } from "../privacy";
 import type { ToolDef } from "./adapter";
+import { EDIT_TOOLS } from "./toolList";
 import { choicesFrom, type StencilChoice } from "../ui/apply";
 import { turnId } from "../ui/thread";
 
@@ -63,16 +64,8 @@ const TITLES: Record<ToolName, string> = {
   get_share_link: "Get a share link",
 };
 
-/** Live view (and presenting) offers reading and sharing only. */
-export const LIVE_TOOLS: readonly ToolName[] = ["describe_diagram", "get_share_link"];
-export const EDIT_TOOLS: readonly ToolName[] = [
-  "describe_diagram",
-  "find_stencils",
-  "edit_diagram",
-  "set_simulation",
-  "new_diagram",
-  "get_share_link",
-];
+// The names live in toolList.ts (the AI panel lists them without loading this file).
+export { EDIT_TOOLS, LIVE_TOOLS } from "./toolList";
 
 /** Chrome's guidance: keep tool output around 1.5K characters. Long result lists are summarised. */
 const OUTPUT_BUDGET = 1500;

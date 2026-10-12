@@ -33,3 +33,14 @@ describe("public/schema", () => {
     ]);
   });
 });
+
+describe("the tool list the AI panel shows", () => {
+  it("names every tool, with a line for people", async () => {
+    const { toolSchemas } = await import("../schemas");
+    const { EDIT_TOOLS, LIVE_TOOLS, TOOL_HELP } = await import("./toolList");
+    expect([...EDIT_TOOLS].sort()).toEqual(Object.keys(toolSchemas).sort());
+    expect(Object.keys(TOOL_HELP).sort()).toEqual([...EDIT_TOOLS].sort());
+    expect(LIVE_TOOLS.every((t) => EDIT_TOOLS.includes(t))).toBe(true);
+    for (const line of Object.values(TOOL_HELP)) expect(line).toMatch(/^[A-Z].{10,80}\.$/);
+  });
+});

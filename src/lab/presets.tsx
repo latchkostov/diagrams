@@ -1,3 +1,4 @@
+import { OnDeviceEvalsLab } from "./OnDeviceEvalsLab";
 import { relationshipFixture } from "./relationshipFixture";
 import { safeStorage } from "../lib/storage";
 import { layersFixture, headerOverflowFixture } from "./layersFixture";
@@ -341,6 +342,15 @@ export function readCustomDiagram(): DiagramFile | null {
 }
 
 const playgroundPresets: Preset[] = [
+  {
+    kind: "render",
+    id: "ondevice-evals",
+    title: "On-device model: evals",
+    group: "Playground",
+    description:
+      "Runs the eval cases through Chrome's built-in model with the AI panel's prompt and schema. Needs the model; never in CI.",
+    render: () => <OnDeviceEvalsLab />,
+  },
   {
     kind: "diagram",
     id: "relationship-regressions",
