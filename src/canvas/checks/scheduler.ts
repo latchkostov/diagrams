@@ -68,15 +68,19 @@ export function createCheckScheduler(run: () => Promise<void>, opts: SchedulerOp
       .catch(() => {})
       .finally(() => {
         inFlight = false;
-        if (again) {
-          again = false;
-          toIdle();
-        }
+        if (!again) return;
+        again = false;
+        // A newer edit's debounce still waiting starts the follow-up itself, once edits pause.
+        if (timer === undefined) requestIdle();
       });
   };
+  const requestIdle = () => {
+    if (idleId === undefined) idleId = idle.request(start, idleTimeout);
+  };
+  /** The debounce is over. */
   const toIdle = () => {
     timer = undefined;
-    if (idleId === undefined) idleId = idle.request(start, idleTimeout);
+    requestIdle();
   };
   return {
     schedule(ms = delay) {
@@ -85,7 +89,7 @@ export function createCheckScheduler(run: () => Promise<void>, opts: SchedulerOp
     },
     now() {
       clear();
-      toIdle();
+      requestIdle();
     },
     cancel() {
       clear();

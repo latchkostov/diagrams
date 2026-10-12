@@ -1,5 +1,8 @@
 import { ViewportPortal, useStore, type ReactFlowState } from "@xyflow/react";
 import type { Finding } from "../../checks/types";
+import type { EdgeRoute } from "../geometry/router";
+import { pointAlong } from "../geometry/path";
+import { useAllRoutes, useRoutingOptions } from "../edges/useEdgeRoute";
 
 // While the Checks card is open: a small amber triangle (warning) or blue dot (suggestion) at the top-right
 // of each node a finding names, and at the middle of each connection. In flow space, so they pan and zoom
@@ -17,7 +20,12 @@ interface Mark {
   hot: boolean;
 }
 
-function marks(s: State, byElement: ReadonlyMap<string, Finding[]>, hot: string | null): Mark[] {
+function marks(
+  s: State,
+  routes: ReadonlyMap<string, EdgeRoute>,
+  byElement: ReadonlyMap<string, Finding[]>,
+  hot: string | null,
+): Mark[] {
   const box = (id: string) => {
     const n = s.nodeLookup.get(id);
     if (!n || n.hidden) return null;
@@ -36,25 +44,22 @@ function marks(s: State, byElement: ReadonlyMap<string, Finding[]>, hot: string 
       out.push({ id, x: node.x + node.w - 4, y: node.y - 4, severity, title, hot: isHot });
       continue;
     }
-    const edge = s.edgeLookup.get(id);
-    const a = edge && box(edge.source);
-    const b = edge && box(edge.target);
-    if (!a || !b) continue;
-    out.push({
-      id,
-      x: (a.x + a.w / 2 + b.x + b.w / 2) / 2,
-      y: (a.y + a.h / 2 + b.y + b.h / 2) / 2,
-      severity,
-      title,
-      hot: isHot,
-    });
+    // A connection's marker sits on its drawn route (the shared router, as FlowEdge draws it): at its label's
+    // corner when it has one, else halfway along. Not drawn (hidden dependencies), no marker.
+    const route = routes.get(id);
+    if (!route?.points.length) continue;
+    const at = route.label
+      ? { x: route.label.x + route.label.width / 2, y: route.label.y - route.label.height / 2 }
+      : pointAlong(route.points, 0.5).point;
+    out.push({ id, x: at.x, y: at.y, severity, title, hot: isHot });
   }
   return out;
 }
 
 export function ChecksMarkers({ byElement, hot }: { byElement: ReadonlyMap<string, Finding[]>; hot: string | null }) {
   // Re-rendered as nodes move; only mounted while the card is open.
-  const list = useStore((s: State) => marks(s, byElement, hot), sameMarks);
+  const routes = useAllRoutes(useRoutingOptions());
+  const list = useStore((s: State) => marks(s, routes, byElement, hot), sameMarks);
   return (
     <ViewportPortal>
       <div className="check-markers" data-testid="check-markers" aria-hidden>

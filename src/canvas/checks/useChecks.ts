@@ -11,17 +11,42 @@ import { runChecksOffThread } from "./runner";
 export const FIRST_RUN_DELAY = 1200;
 export const BIG_DIAGRAM = 1500;
 
+/** What a finished check of an empty diagram says: it ran, and there's nothing to check. */
+export const NOTHING_TO_CHECK: CheckResult = { findings: [], ignored: [], off: [], ran: [] };
+
 export interface ChecksState {
-  /** The newest result, or null before the first run (and where checks don't run). */
+  /** The newest result, or null before the first run finishes (and where checks don't run). */
   result: CheckResult | null;
+  /**
+   * The diagram has changed since `result` was worked out: its fixes wait for the next result (a fix is never
+   * applied from a stale finding, nor twice).
+   */
+  stale: boolean;
   warnings: number;
   /** Shown findings by element id (node, edge), in the result's order. */
   byElement: ReadonlyMap<string, Finding[]>;
+  /** A node's or connection's name as of the checked diagram (one index per result, never a full rebuild). */
+  name(id: string): string | undefined;
 }
 
-const EMPTY: ChecksState = { result: null, warnings: 0, byElement: new Map() };
+const noName = () => undefined;
+const EMPTY: ChecksState = { result: null, stale: false, warnings: 0, byElement: new Map(), name: noName };
 
-export function summarizeResult(result: CheckResult | null): ChecksState {
+/** Names for the elements of `diagram`: a node's label, a connection's label or "From → To". */
+export function elementNames(diagram: DiagramFile | undefined): (id: string) => string | undefined {
+  if (!diagram) return noName;
+  const nodes = new Map(diagram.nodes.map((n) => [n.id, n.label.trim() || n.id]));
+  const edges = new Map(diagram.edges.map((e) => [e.id, e]));
+  return (id) => {
+    const node = nodes.get(id);
+    if (node !== undefined) return node;
+    const e = edges.get(id);
+    if (!e) return undefined;
+    return e.label?.trim() || `${nodes.get(e.from) ?? e.from} → ${nodes.get(e.to) ?? e.to}`;
+  };
+}
+
+export function summarizeResult(result: CheckResult | null, diagram?: DiagramFile): ChecksState {
   if (!result) return EMPTY;
   const byElement = new Map<string, Finding[]>();
   for (const f of result.findings)
@@ -30,13 +55,19 @@ export function summarizeResult(result: CheckResult | null): ChecksState {
       if (list) list.push(f);
       else byElement.set(id, [f]);
     }
-  return { result, warnings: result.findings.filter((f) => f.severity === "warning").length, byElement };
+  return {
+    result,
+    stale: false,
+    warnings: result.findings.filter((f) => f.severity === "warning").length,
+    byElement,
+    name: elementNames(diagram),
+  };
 }
 
 /**
  * The canvas's checks, outside React state: the canvas itself never re-renders for a result or a hovered row.
  * Only what shows them subscribes (the count, the card, the markers, the inspector's row). A result equal to the
- * last one notifies nobody.
+ * last one notifies nobody (unless it ends a stale spell).
  */
 export class ChecksStore {
   private state: ChecksState = EMPTY;
@@ -53,13 +84,20 @@ export class ChecksStore {
   readonly get = (): ChecksState => (this.enabled ? this.state : EMPTY);
   readonly getHot = (): string | null => this.hot;
 
-  set(result: CheckResult | null) {
+  set(result: CheckResult | null, diagram?: DiagramFile) {
     const json = JSON.stringify(result);
-    if (json === this.json) return;
+    if (json === this.json && !this.state.stale) return;
     this.json = json;
-    this.state = summarizeResult(result);
+    this.state = summarizeResult(result, diagram);
     this.emit();
   }
+
+  /** The diagram changed (or a fix was just applied): the findings shown wait for the next result. */
+  readonly markStale = () => {
+    if (this.state.stale || !this.state.result) return;
+    this.state = { ...this.state, stale: true };
+    this.emit();
+  };
 
   setEnabled(on: boolean) {
     if (on === this.enabled) return;
@@ -102,13 +140,15 @@ export function useChecks(opts: {
 }): ChecksStore {
   const { enabled, revision, nodeCount, cardOpen } = opts;
   const [store] = useState(() => new ChecksStore());
-  const [runs] = useState(() => new CheckRuns((r) => store.set(r)));
+  const [runs] = useState(() => new CheckRuns((r, d) => store.set(r, d)));
   useEffect(() => runs.setRead(opts.read));
   useEffect(() => store.setEnabled(enabled), [enabled, store]);
   const active = enabled && (nodeCount <= BIG_DIAGRAM || cardOpen);
   useEffect(() => {
-    if (active) runs.changed();
-  }, [active, revision, runs]);
+    if (!active) return;
+    store.markStale();
+    runs.changed();
+  }, [active, revision, runs, store]);
   // Leaving (live view, presenting, unmounting) cancels what's waiting and drops what's in flight.
   useEffect(() => {
     if (active) return () => runs.stop();
@@ -120,6 +160,15 @@ export function useChecks(opts: {
   return store;
 }
 
+/**
+ * Counts of the canvas's check runs (started on the main thread, finished with a result), and a switch that
+ * holds them. Development and e2e builds put them on `window.__checks`, so a test can prove checks ran while it
+ * measured, and compare the same typing with them held.
+ */
+export const checkRunStats = { started: 0, finished: 0, held: false };
+if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && typeof window !== "undefined")
+  (window as unknown as { __checks: typeof checkRunStats }).__checks = checkRunStats;
+
 /** The runs behind useChecks: the scheduler, what to read, and which results are still wanted. */
 export class CheckRuns {
   private read: () => DiagramFile = () => ({ format: "diagrams/v1", title: "", nodes: [], edges: [] });
@@ -128,17 +177,21 @@ export class CheckRuns {
   private readonly scheduler: CheckScheduler;
 
   constructor(
-    deliver: (result: CheckResult | null) => void,
+    deliver: (result: CheckResult, diagram: DiagramFile) => void,
     run: (d: DiagramFile) => Promise<CheckResult> = runChecksOffThread,
     scheduler?: (task: () => Promise<void>) => CheckScheduler,
   ) {
     const task = async () => {
+      if (checkRunStats.held) return;
       const gen = this.generation;
       const diagram = this.read();
-      const next = diagram.nodes.length ? await run(diagram) : null;
+      checkRunStats.started++;
+      // An empty diagram has nothing to check: that's a finished check, not one still running.
+      const next = diagram.nodes.length ? await run(diagram) : NOTHING_TO_CHECK;
+      checkRunStats.finished++;
       // A result for a diagram that has since been replaced (another one opened, checks off) is dropped; one
-      // for an older edit of this diagram still shows until the newer run lands.
-      if (gen === this.generation) deliver(next);
+      // for an older edit of this diagram still shows (marked stale) until the newer run lands.
+      if (gen === this.generation) deliver(next, diagram);
     };
     this.scheduler = scheduler ? scheduler(task) : createCheckScheduler(task);
   }

@@ -1,10 +1,10 @@
 import "../../styles/checks.css";
-import { useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { Icon } from "../../components/Icon";
 import { RULES, summarize } from "../run";
 import type { CheckResult, Finding } from "../types";
 import { turnOn, unignore } from "./actions";
-import { FindingRow, type RowHost } from "./FindingRow";
+import { FindingRow, type RowHost, type RowState } from "./FindingRow";
 
 // The Checks card (docs/research/architecture-checks.md, "Where it shows"): opened on demand, under the
 // diagram card. Warnings first, then suggestions; each row selects what it involves, and its button is the
@@ -13,6 +13,9 @@ import { FindingRow, type RowHost } from "./FindingRow";
 export interface ChecksCardProps extends RowHost {
   /** Null while the first check is running. */
   result: CheckResult | null;
+  state: RowState;
+  /** Where focus goes back to when the card closes (what opened it), else the canvas. */
+  returnFocus(): void;
   /** Distance from the canvas's top: just under the diagram card. */
   top: number;
   onClose(): void;
@@ -21,9 +24,13 @@ export interface ChecksCardProps extends RowHost {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const ruleName = (id: string) => RULES.find((r) => r.id === id)?.name ?? id;
 
-/** Arrow keys move between rows' heads; Home and End go to the first and last. */
+/**
+ * Arrow keys move between rows' heads; Home and End go to the first and last. Only from a head: in the Ignore
+ * reason box, Home and End move the caret, and the row's buttons keep their keys.
+ */
 function onListKeys(e: KeyboardEvent<HTMLDivElement>) {
   if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+  if (!(e.target instanceof HTMLElement) || !e.target.hasAttribute("data-check-head")) return;
   const heads = [...e.currentTarget.querySelectorAll<HTMLElement>("[data-check-head]")];
   if (!heads.length) return;
   const at = heads.indexOf(document.activeElement as HTMLElement);
@@ -71,14 +78,32 @@ export function ChecksCard(p: ChecksCardProps) {
   const [shown, setShown] = useState(PAGE);
   const self = useRef<HTMLElement>(null);
   const maxHeight = useMaxHeight(self, p.top);
+  // Closing with focus inside the card (Esc, ✕, a fix that ended it) hands focus back, never to the page.
+  const returnFocus = useRef(p.returnFocus);
+  useEffect(() => {
+    returnFocus.current = p.returnFocus;
+  });
+  useEffect(() => {
+    const el = self.current;
+    return () => {
+      const at = document.activeElement;
+      if (!at || at === document.body || el?.contains(at)) requestAnimationFrame(() => returnFocus.current());
+    };
+  }, []);
   const r = p.result;
+  // The reasons for what's ignored, read once when that list is open.
+  const reasons = new Map(
+    foot === "ignored"
+      ? (p.editor.getDiagram().checks?.ignore ?? []).map((i) => [`${i.rule}:${i.target}`, i.reason])
+      : [],
+  );
   const warnings = r?.findings.filter((f) => f.severity === "warning") ?? [];
   const suggestions = r?.findings.filter((f) => f.severity === "suggestion") ?? [];
   const group = (title: string, list: Finding[], id: string) =>
     list.length > 0 && (
       <div className="checks-group" role="list" aria-label={title} data-testid={`checks-group-${id}`}>
         {list.slice(0, shown).map((f) => (
-          <FindingRow key={f.id} finding={f} host={p} />
+          <FindingRow key={f.id} finding={f} host={p} state={p.state} />
         ))}
         {list.length > shown && (
           <button
@@ -146,7 +171,10 @@ export function ChecksCard(p: ChecksCardProps) {
         </>
       ) : (
         <p className="checks-note checks-empty" data-testid="checks-empty">
-          <Icon name="check" size={14} /> {summarize({ ...r, ignored: [], off: [] }).replace(/\.$/, "")}.
+          <Icon name="check" size={14} />{" "}
+          {r.ran.length
+            ? `${summarize({ ...r, ignored: [], off: [] }).replace(/\.$/, "")}.`
+            : "Nothing to check yet: add a node and its checks run as you draw."}
         </p>
       )}
       {r && (
@@ -187,9 +215,7 @@ export function ChecksCard(p: ChecksCardProps) {
       {r && foot === "ignored" && (
         <ul className="checks-aside" data-testid="checks-ignored">
           {r.ignored.map((f) => {
-            const reason = p.editor
-              .getDiagram()
-              .checks?.ignore?.find((i) => i.rule === f.rule && i.target === f.target)?.reason;
+            const reason = reasons.get(`${f.rule}:${f.target}`);
             return (
               <li key={f.id}>
                 <span>
@@ -242,11 +268,19 @@ export function ChecksCard(p: ChecksCardProps) {
 }
 
 /** The selection's findings at the top of the inspector, with their fixes. */
-export function InspectorFindings({ findings, host }: { findings: Finding[]; host: RowHost & { open(): void } }) {
+export function InspectorFindings({
+  findings,
+  host,
+  state,
+}: {
+  findings: Finding[];
+  host: RowHost & { open(): void };
+  state: RowState;
+}) {
   return (
     <div className="insp-findings" role="list" aria-label="Checks" data-testid="inspector-findings">
       {findings.map((f) => (
-        <FindingRow key={f.id} finding={f} host={host} compact testPrefix="inspector-check" />
+        <FindingRow key={f.id} finding={f} host={host} state={state} compact testPrefix="inspector-check" />
       ))}
       <button type="button" className="link-btn" data-testid="inspector-open-checks" onClick={host.open}>
         All checks

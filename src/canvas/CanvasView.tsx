@@ -464,7 +464,10 @@ function CanvasInner({
     onEscape: () => {
       // Esc backs out one level: a menu, the selection, then the Checks card.
       const sel = editor.getSelection();
+      // Inside the card, the card handles Esc itself (a finding's options first, then the card).
+      const inCard = !!document.activeElement?.closest('[data-testid="checks-card"]');
       if (
+        !inCard &&
         !menuOpen.current &&
         checksPanel.isOpen() &&
         !sel.nodeIds.length &&
@@ -807,15 +810,22 @@ function CanvasInner({
    */
   const revealIds = useCallback(
     (ids: readonly string[]) => {
-      const nodeIds = ids.filter((id) => editor.getNode(id));
-      const edgeIds = ids.filter((id) => editor.getEdge(id));
+      // From React Flow's lookups: one finding may name thousands of things, and the editor's getNode/getEdge
+      // each rebuild the file.
+      const st = store.getState();
+      const nodeIds = ids.filter((id) => st.nodeLookup.get(id)?.type === "diagram");
+      const edgeIds = ids.filter((id) => st.edgeLookup.has(id));
       editor.select({ nodeIds, edgeIds, groupIds: [] });
       requestAnimationFrame(() => {
         const el = wrapper.current;
         if (!el) return;
-        const st = store.getState();
-        const boxes = [...nodeIds, ...edgeIds.flatMap((id) => [editor.getEdge(id)!.from, editor.getEdge(id)!.to])]
-          .map((id) => st.nodeLookup.get(id))
+        const now = store.getState();
+        const ends = edgeIds.flatMap((id) => {
+          const e = now.edgeLookup.get(id);
+          return e ? [e.source, e.target] : [];
+        });
+        const boxes = [...nodeIds, ...ends]
+          .map((id) => now.nodeLookup.get(id))
           .filter((n) => !!n && !n.hidden && n.measured?.width)
           .map((n) => ({
             x: n!.internals.positionAbsolute.x,
@@ -825,7 +835,7 @@ function CanvasInner({
           }));
         const want = union(boxes);
         if (!want) return;
-        const [x, y, zoom] = st.transform;
+        const [x, y, zoom] = now.transform;
         const next = revealPan(el, { x, y, zoom }, want);
         if (next) void setViewport(next, { duration: motionMs(250) });
       });
@@ -839,6 +849,7 @@ function CanvasInner({
       choose: growFromChip,
       hover: checks.setHot,
       open: () => checksPanel.open(),
+      returnFocus: () => (checksPanel.opener() ?? wrapper.current)?.focus(),
     }),
     [editor, revealIds, growFromChip, checks],
   );

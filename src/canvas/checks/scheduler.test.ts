@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CheckResult } from "../../checks/types";
 import type { DiagramFile } from "../../model/types";
 import { createCheckScheduler, type IdleApi } from "./scheduler";
-import { CheckRuns, ChecksStore, FIRST_RUN_DELAY, summarizeResult } from "./useChecks";
+import { CheckRuns, ChecksStore, FIRST_RUN_DELAY, NOTHING_TO_CHECK, summarizeResult } from "./useChecks";
 
 // When the checks run: after edits pause, in idle time, one at a time with only the newest queued.
 
@@ -81,6 +81,38 @@ describe("createCheckScheduler", () => {
     expect(s.busy()).toBe(false);
   });
 
+  it("completion respects the latest debounce and cancellation", async () => {
+    const idle = fakeIdle();
+    const { run, finish } = deferredRuns();
+    const s = createCheckScheduler(run, { delayMs: 400, idle: idle.api });
+    s.schedule();
+    vi.advanceTimersByTime(400);
+    idle.flush();
+    expect(run).toHaveBeenCalledTimes(1);
+    // While it runs: a change whose debounce passes (queues a follow-up), then a newer one still debouncing.
+    s.schedule();
+    vi.advanceTimersByTime(400);
+    idle.flush();
+    s.schedule();
+    vi.advanceTimersByTime(100);
+    await finish();
+    idle.flush();
+    // No early follow-up: the newest edit's quiet time isn't over.
+    expect(run).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(300);
+    idle.flush();
+    expect(run).toHaveBeenCalledTimes(2);
+    await finish();
+    // And after cancel(), nothing runs, however long it waits.
+    s.schedule();
+    vi.advanceTimersByTime(100);
+    s.cancel();
+    vi.advanceTimersByTime(5000);
+    idle.flush();
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(s.busy()).toBe(false);
+  });
+
   it("now() skips the debounce; cancel() drops what's waiting", () => {
     const idle = fakeIdle();
     const { run } = deferredRuns();
@@ -154,7 +186,7 @@ describe("CheckRuns", () => {
     expect(delivered).toHaveLength(1);
   });
 
-  it("an empty diagram has nothing to check", async () => {
+  it("an empty diagram finishes with an empty result, not a run that never ends", async () => {
     const idle = fakeIdle();
     const delivered: (CheckResult | null)[] = [];
     const run = vi.fn();
@@ -166,8 +198,13 @@ describe("CheckRuns", () => {
     runs.setRead(() => diagram(0));
     runs.now();
     idle.flush();
-    await vi.waitFor(() => expect(delivered).toEqual([null]));
+    await vi.waitFor(() => expect(delivered).toEqual([NOTHING_TO_CHECK]));
     expect(run).not.toHaveBeenCalled();
+    // The store tells "nothing found" from "still checking".
+    const store = new ChecksStore();
+    expect(store.get().result).toBeNull();
+    store.set(NOTHING_TO_CHECK);
+    expect(store.get().result).toEqual(NOTHING_TO_CHECK);
   });
 });
 
@@ -223,5 +260,40 @@ describe("ChecksStore", () => {
     store.setHot("a");
     expect(store.getHot()).toBe("a");
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ChecksStore staleness", () => {
+  it("an edit (or an applied fix) marks the findings stale until the next result, which clears it", () => {
+    const store = new ChecksStore();
+    const r: CheckResult = { findings: [], ignored: [], off: [], ran: ["capacity"] };
+    store.markStale();
+    expect(store.get().stale).toBe(false); // nothing shown yet: nothing to be stale
+    store.set(r);
+    store.markStale();
+    expect(store.get().stale).toBe(true);
+    const listener = vi.fn();
+    store.subscribe(listener);
+    store.set(r); // the same findings again: still delivered, to end the stale spell
+    expect(store.get().stale).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("names elements from one index of the checked diagram", () => {
+    const store = new ChecksStore();
+    store.set(
+      { findings: [], ignored: [], off: [], ran: [] },
+      {
+        format: "diagrams/v1",
+        title: "t",
+        nodes: [
+          { id: "a", stencil: "service.go", label: "Orders", x: 0, y: 0 },
+          { id: "b", stencil: "service.go", label: " ", x: 0, y: 0 },
+        ],
+        edges: [{ id: "e", from: "a", to: "b" }],
+      },
+    );
+    const { name } = store.get();
+    expect([name("a"), name("b"), name("e"), name("gone")]).toEqual(["Orders", "b", "Orders → b", undefined]);
   });
 });

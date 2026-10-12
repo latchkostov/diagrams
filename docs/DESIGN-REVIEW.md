@@ -19,8 +19,8 @@ Public examples only: Azure invoice integration (one warning, two suggestions), 
   (`fix-toast-1280-light`). One Ctrl+Z takes the queue and its route back, and the warning returns.
 - **You meet the finding where you work.** Selecting the queue shows its finding at the top of the inspector, with
   the same fix (`inspector-finding-1280-light`).
-- **Typing never waits.** Keystrokes in a 1,500-node diagram stay at 110–150 ms while checks run between them in
-  the worker.
+- **Typing doesn't wait on checks.** In a 1,500-node diagram a keystroke costs the same with checks running between
+  keys in the worker as with them held (the e2e test compares the two in one run).
 
 ### What was off (fixed in this round)
 
@@ -31,15 +31,17 @@ Public examples only: Azure invoice integration (one warning, two suggestions), 
 - **Ctrl+K showed "Add something to check first"** beside Check diagram even when there was something to check. The
   hint now shows only when the action is off (`palette-check-diagram-1280-light`).
 - **A big diagram drew every finding.** Hundreds of rows made the card slow to open; rows now draw 40 per group with
-  **Show more**.
+  **Show more**, and a row names only the chips it draws, from one index per check.
+- **At 1024 the refit left the diagram small** (`card-open-1024-light`). The card is 290 px wide in windows up to
+  1,100 px (the owner's call after the first review).
+- **Keyboard (after the code review).** Home and End in the Ignore reason box move the caret; Esc closes a finding's
+  options before the card; closing the card puts focus back on what opened it (the count, else the canvas).
 
 ### Still open (owner's call)
 
-- At 1024 the refit leaves the Azure example small (`card-open-1024-light`): the card takes a third of a narrow
-  pane; Fit view (Shift+1) after closing it gives the room back. A narrower card at 1024 is an option.
 - Markers are deliberately small (14 px); on a zoomed-out dark diagram they're easy to miss
   (`card-open-1440-dark`). The rows' heads are the way in; a marker is a hint.
-- The Ignore reason box is one line in a 340 px card (`card-ignore-reason-1280-light`): long reasons scroll.
+- The Ignore reason box is one line in a 290–340 px card (`card-ignore-reason-1280-light`): long reasons scroll.
 
 ## Round 17: Interactive HTML export (2026-10-12)
 

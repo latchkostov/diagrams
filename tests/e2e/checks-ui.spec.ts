@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport } from "./fixtures";
+import { perfBudget } from "../../src/test/perfBudget";
 
 // Architecture checks in the editor: the count under the title, the Checks card (from the count, the canvas
 // right-click, Ctrl+K and the View menu), fixes, Ignore and Turn off (kept in the file), markers while the card
@@ -201,6 +202,61 @@ test("Ignore keeps its reason through reload, export and import, and Show again 
   expectNoErrors(consoleErrors);
 });
 
+test("an empty diagram's check finishes: an empty state, not 'Checking…' forever", async ({ page }) => {
+  await gotoCanvas(page, WARN);
+  await page.getByTestId("import-input").setInputFiles({
+    name: "empty.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ format: "diagrams/v1", title: "Empty", nodes: [], edges: [] })),
+  });
+  await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("view-checks").click();
+  await expect(page.getByTestId("checks-empty")).toContainText("Nothing to check yet");
+  await expect(page.getByTestId("checks-running")).toHaveCount(0);
+});
+
+test("keyboard: Esc closes a finding's options first, then the card, and focus goes back", async ({ page }) => {
+  await gotoCanvas(page, WARN);
+  await expect(page.getByTestId("checks-count")).toBeVisible();
+  await page.getByTestId("checks-count").focus();
+  await page.keyboard.press("Enter");
+  await expect(card(page)).toBeVisible();
+  await page.getByTestId(`check-more-${WARNING}`).click();
+  await page.getByTestId(`check-ignore-${WARNING}`).click();
+  const reason = page.getByTestId(`check-ignore-reason-${WARNING}`);
+  await reason.fill("abc");
+  // Home and End move the caret in the reason box; they don't jump between findings.
+  await reason.press("Home");
+  await expect(reason).toBeFocused();
+  await reason.press("End");
+  await expect(reason).toBeFocused();
+  // Esc: the options close (focus back on ⋯), the card stays.
+  await page.keyboard.press("Escape");
+  await expect(reason).toHaveCount(0);
+  await expect(page.getByTestId(`check-more-${WARNING}`)).toBeFocused();
+  await expect(card(page)).toBeVisible();
+  // Arrow keys between the findings' heads.
+  await page.getByTestId(`check-select-${WARNING}`).focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByTestId("check-select-dead-letter:approval-sub")).toBeFocused();
+  // Esc again: the card closes and focus goes back to the count that opened it.
+  await page.keyboard.press("Escape");
+  await expect(card(page)).toHaveCount(0);
+  await expect(page.getByTestId("checks-count")).toBeFocused();
+});
+
+test("a fix clicked twice adds one dead-letter queue", async ({ page }) => {
+  await gotoCanvas(page, WARN);
+  await openFromCount(page);
+  const nodes = page.getByTestId(/^node-(?!tooltip$|editor-)/);
+  const before = await nodes.count();
+  await page.getByTestId(`check-fix-${WARNING}`).dblclick();
+  await expect.poll(() => nodes.count()).toBe(before + 1);
+  await page.waitForTimeout(1500);
+  expect(await nodes.count()).toBe(before + 1);
+});
+
 test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await gotoCanvas(page, WARN);
@@ -234,9 +290,24 @@ test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
   expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(wrap.y + wrap.height);
 });
 
-test("typing a label stays responsive on a large diagram while checks run", async ({ page }, info) => {
+const LONG = "Node 0.12, renamed to something wider than any card";
+
+/** The page's check-run counts and switch (dev and e2e builds: `window.__checks`, src/canvas/checks/useChecks.ts). */
+type CheckRunStats = { started: number; finished: number; held: boolean };
+const runStats = (page: Page) =>
+  page.evaluate(() => ({ ...(window as unknown as { __checks: CheckRunStats }).__checks }));
+const holdChecks = (page: Page, held: boolean) =>
+  page.evaluate((h) => void ((window as unknown as { __checks: CheckRunStats }).__checks.held = h), held);
+
+const median = (xs: number[]) => {
+  const s = [...xs].sort((a, b) => a - b);
+  return s.length ? s[Math.floor(s.length / 2)] : 0;
+};
+
+test("typing a label is as responsive while checks run as with them held", async ({ page }, info) => {
+  test.setTimeout(120_000);
   // 1,500 nodes in 100 pipelines, each with a loop of requests: every check runs, and capacity's fixed point
-  // runs to its bound (the slowest case), off the main thread.
+  // runs to its bound (the slowest case), in the worker.
   const nodes: object[] = [];
   const edges: object[] = [];
   for (let p = 0; p < 100; p++)
@@ -255,7 +326,7 @@ test("typing a label stays responsive on a large diagram while checks run", asyn
     buffer: Buffer.from(JSON.stringify(diagram)),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Large");
-  await expect(page.getByTestId("checks-count")).toHaveText(/\d+ warnings/, { timeout: 30_000 });
+  await expect(page.getByTestId("checks-count")).toHaveText(/\d+ warnings/, { timeout: 60_000 });
 
   // Select a node through its finding (the diagram is far bigger than the view), then close the card.
   await openFromCount(page);
@@ -263,27 +334,72 @@ test("typing a label stays responsive on a large diagram while checks run", asyn
   await page.getByTestId("checks-close").click();
   const label = page.getByTestId("inspector-field-label");
   await expect(label).toHaveValue("Node 0.12");
-  // Only the typing is measured (selecting in a 1,500-node diagram is its own, one-off cost).
+  // A name already wider than a card can grow: typing on doesn't resize the node and re-route its edges, a
+  // cost of its own (several times a keystroke's) that would land in whichever phase crosses the width.
+  await label.fill(LONG);
+  await label.press("End");
+  // Opt-in, to see CI's slower machines here: CHECKS_CPU=4 slows this page's CPU fourfold.
+  if (process.env.CHECKS_CPU) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.CHECKS_CPU) });
+  }
+
+  // Event Timing, one sample per keystroke (its longest event); under the 16 ms threshold it isn't reported.
   await page.evaluate(() => {
-    const w = window as unknown as { __events: number[] };
-    w.__events = [];
+    const w = window as unknown as { __keys: Map<number, number> };
+    w.__keys = new Map();
     new PerformanceObserver((list) => {
       for (const e of list.getEntries() as (PerformanceEntry & { interactionId?: number })[])
-        if (e.interactionId) w.__events.push(e.duration);
+        if (e.interactionId) w.__keys.set(e.interactionId, Math.max(w.__keys.get(e.interactionId) ?? 0, e.duration));
     }).observe({ type: "event", durationThreshold: 16, buffered: false } as PerformanceObserverInit);
   });
-  await label.click();
-  await label.press("End");
-  // Pauses long enough for a check to start between keys: each run happens while typing goes on.
-  for (const ch of " renamed") {
-    await page.keyboard.type(ch);
-    await page.waitForTimeout(450);
+  const takeSamples = () =>
+    page.evaluate(() => {
+      const w = window as unknown as { __keys: Map<number, number> };
+      const out = [...w.__keys.values()];
+      w.__keys.clear();
+      return out;
+    });
+
+  /** Types `text` a key at a time, pausing long enough for a check to start between keys. */
+  async function phase(held: boolean, text: string) {
+    await holdChecks(page, held);
+    // A run left over from the last phase finishes first.
+    await expect.poll(async () => (await runStats(page)).started - (await runStats(page)).finished).toBe(0);
+    await takeSamples();
+    const before = await runStats(page);
+    for (const ch of text) {
+      await page.keyboard.type(ch);
+      await page.waitForTimeout(450);
+    }
+    // Event Timing reports a little after the paint.
+    await page.waitForTimeout(300);
+    const after = await runStats(page);
+    const samples = await takeSamples();
+    // Keystrokes under the reporting threshold took under 16 ms.
+    while (samples.length < text.length) samples.push(16);
+    return { samples, started: after.started - before.started };
   }
-  await expect(label).toHaveValue("Node 0.12 renamed");
-  const durations = await page.evaluate(() => (window as unknown as { __events: number[] }).__events);
-  info.annotations.push({ type: "event-timing", description: JSON.stringify(durations) });
-  // Each keystroke is handled and painted in 110-150 ms here alone, and up to ~250 ms in a full parallel run on a
-  // shared machine. Checks on the main thread (capacity's loop runs to its bound: a few hundred milliseconds here) would add that to
-  // a keystroke: the budget catches it with room for a busy machine.
-  expect(Math.max(0, ...durations)).toBeLessThan(300);
+  // Alternating, so the two see the same page in the same state: held, running, held, running.
+  const held: number[] = [];
+  const running: number[] = [];
+  let runs = 0;
+  for (const [i, kind] of ["h", "r", "h", "r"].entries()) {
+    const p = await phase(kind === "h", ` ${kind}${i}xyz`);
+    if (kind === "h") {
+      expect(p.started, "checks held: none ran").toBe(0);
+      held.push(...p.samples);
+    } else {
+      runs += p.started;
+      running.push(...p.samples);
+    }
+  }
+  await holdChecks(page, false);
+  await expect(label).toHaveValue(`${LONG} h0xyz r1xyz h2xyz r3xyz`);
+  info.annotations.push({ type: "event-timing", description: JSON.stringify({ held, running, runs }) });
+  // Checks ran while the second set was typed: one after nearly every key (each pause outlasts the debounce).
+  expect(runs).toBeGreaterThanOrEqual(8);
+  // And typing was no slower for it: the same median keystroke, give or take noise. Checks on the main thread
+  // (capacity's loop alone runs to its bound here) would add their whole run to the keystrokes they meet.
+  expect(median(running)).toBeLessThanOrEqual(median(held) * 1.25 + perfBudget(25));
 });

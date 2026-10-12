@@ -13,7 +13,11 @@ const loadChecksUi = () => import("../../checks/ui/ChecksCard");
 const ChecksCard = lazyComponent(() => loadChecksUi().then((m) => m.ChecksCard));
 const InspectorFindings = lazyComponent(() => loadChecksUi().then((m) => m.InspectorFindings));
 
-export type ChecksHost = RowHost & { open(): void };
+export type ChecksHost = RowHost & {
+  open(): void;
+  /** Focus back to what opened the card, else the canvas. */
+  returnFocus(): void;
+};
 
 /**
  * The diagram card's meta row: "Edited, reset" (when given) and the count of warnings. Warnings only: suggestions
@@ -41,8 +45,17 @@ export function DiagramCardMeta({ store, reset, open }: { store: ChecksStore; re
 }
 
 export function ChecksCardView({ store, host, top }: { store: ChecksStore; host: ChecksHost; top: number }) {
-  const { result } = useChecksState(store);
-  return <ChecksCard {...host} result={result} top={top} onClose={() => checksPanel.close()} />;
+  const state = useChecksState(store);
+  return (
+    <ChecksCard
+      {...host}
+      applied={store.markStale}
+      result={state.result}
+      state={state}
+      top={top}
+      onClose={() => checksPanel.close()}
+    />
+  );
 }
 
 export function ChecksMarkersView({ store }: { store: ChecksStore }) {
@@ -53,6 +66,9 @@ export function ChecksMarkersView({ store }: { store: ChecksStore }) {
 
 /** A single selected node's or connection's findings, at the top of its inspector. */
 export function SelectionFindings({ store, id, host }: { store: ChecksStore; id: string; host: ChecksHost }) {
-  const findings = useChecksState(store).byElement.get(id);
-  return findings?.length ? <InspectorFindings findings={findings} host={host} /> : null;
+  const state = useChecksState(store);
+  const findings = state.byElement.get(id);
+  return findings?.length ? (
+    <InspectorFindings findings={findings} host={{ ...host, applied: store.markStale }} state={state} />
+  ) : null;
 }

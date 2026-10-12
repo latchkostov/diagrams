@@ -520,15 +520,23 @@ The visible part, as the UX section describes it. What was decided while buildin
   canvas to settle. One run at a time, with only the newest diagram queued behind it
   (`src/canvas/checks/scheduler.ts`). Where workers fail, the engine loads as a lazy chunk and runs in idle time.
   Measured with Event Timing on a 1,500-node diagram with a loop of requests in each pipeline (capacity's slowest
-  case): keystrokes in the inspector's label stay at 110–150 ms on the production build while checks run between
-  them (`tests/e2e/checks-ui.spec.ts`).
+  case): the same typing with checks running between keys and with them held, alternating, in one run
+  (`tests/e2e/checks-ui.spec.ts`). The keystroke cost is the diagram's own (each one re-renders 1,500 nodes:
+  ~130 ms here, ~600 ms at a fourfold CPU slowdown); checks add 0–17% to the median at that slowdown with four
+  tests in parallel, from building and copying the file on the main thread. A fixed millisecond budget measured
+  the machine, not the checks, which is why CI failed it.
 - **What ships when.** The startup JavaScript gains only the card's open/closed store and two icons (+0.3 kB
   gzip). The canvas chunk has the scheduler, the count and the markers; the card is its own lazy chunk (3.5 kB
   gzip, plus 1.3 kB CSS), and the engine lives in the worker.
-- **The card.** Under the diagram card, 340 px wide, as tall as it can be above the canvas controls. Opening it over
+- **The card.** Under the diagram card, 340 px wide (290 px in windows up to 1,100 px), as tall as it can be above
+  the canvas controls. Opening it over
   a diagram that was all in view refits the diagram clear of it (rule 10: floating panels never hide content after
   fit-view). Rows draw 40 per group, with **Show more**. Arrow keys move between rows' heads; Esc closes the card
   when nothing is selected (one level, after the selection).
+- **Fixes are checked again before they apply.** A finding's fix was worked out when the check ran; clicking it
+  re-runs that one rule on the diagram as it is now and applies the fix worked out then, or nothing ("Nothing to
+  fix: the diagram already changed"). So a second click adds no second queue, and a capacity fix sizes from
+  today's replicas. Between an edit and the next result the findings show as stale and their fix buttons wait.
 - **Fixes** are `applyOps` plus one `applyDiagram` step (the same as an agent's turn), with a toast ("Added
   ledger-posting DLQ · Undo"). A fix that needs a choice opens quick-add downstream of its node. **Ignore here…**
   and **Turn off this check** are `updateMeta({ checks })`, one undo step each, with an Undo toast.

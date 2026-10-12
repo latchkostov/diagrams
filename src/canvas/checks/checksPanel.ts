@@ -6,6 +6,8 @@ import { useSyncExternalStore } from "react";
 
 let open = false;
 let available = false;
+/** What had focus when the card opened: focus goes back there when it closes. */
+let opener: HTMLElement | null = null;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
@@ -15,8 +17,12 @@ export const checksPanel = {
   open() {
     if (!available || open) return;
     open = true;
+    const at = typeof document === "undefined" ? null : document.activeElement;
+    opener = at instanceof HTMLElement && at !== document.body ? at : null;
     emit();
   },
+  /** What had focus when the card opened, while it's still on the page. */
+  opener: (): HTMLElement | null => (opener?.isConnected ? opener : null),
   close() {
     if (!open) return;
     open = false;
