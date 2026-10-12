@@ -1,5 +1,6 @@
 // The generated parts of the agent skill (skills/livediagrams/), built from the same sources as
-// public/llms.txt and public/schema/: the stencil catalog, the file format and the app's layout code.
+// public/llms.txt and public/schema/: the stencil catalog, the file format, and the app's
+// own validator and layout code.
 // scripts/gen-schemas.mjs writes them (`pnpm schemas`); src/ai/skill/skill.test.ts fails when they're stale.
 //
 // Privacy: the only diagrams read here are the public examples, the *.json files directly in
@@ -79,27 +80,13 @@ export function publicExamples(root: string): Example[] {
 
 const props = (s: JsonSchema) => (s.properties ?? {}) as Record<string, JsonSchema>;
 
-/** Data the skill's scripts check against (scripts/lib/spec.json). */
+/** Data the skill's scripts check against (scripts/lib/spec.json). Limits come from the bundled app code. */
 function spec() {
   return {
     $comment: NOTICE,
     format: DIAGRAM_FORMAT,
     site: SITE,
     shareWarnLength: SHARE_WARN_LENGTH,
-    limits: {
-      maxNodes: LIMITS.maxNodes,
-      maxEdges: LIMITS.maxEdges,
-      maxGroups: LIMITS.maxGroups,
-      maxAnnotations: LIMITS.maxAnnotations,
-      maxSimulations: LIMITS.maxSimulations,
-      maxCoordinate: LIMITS.maxCoordinate,
-      maxTextChars: LIMITS.maxTextChars,
-      maxDepth: LIMITS.maxDepth,
-      maxRatePerSec: LIMITS.maxRatePerSec,
-      maxMessageCount: LIMITS.maxMessageCount,
-      maxSimulationMs: LIMITS.maxSimulationMs,
-      maxTrafficVolume: LIMITS.maxTrafficVolume,
-    },
     enums: {
       direction: ["LR", "TB"],
       tone: TONES,
@@ -219,8 +206,8 @@ export function fillRegions(text: string, file: string): string {
 /** Hand-written files with generated regions. */
 export const REGION_FILES = ["reference/format.md", "reference/simulation.md"];
 
-/** The app's layout code (src/ai/skill/layout.ts and what it imports) as one plain ES module. */
-export async function bundleLayout(root: string): Promise<string> {
+/** The app's validator and layout (src/ai/skill/app.ts and what it imports) as one plain ES module. */
+export async function bundleApp(root: string): Promise<string> {
   const out = await build({
     root,
     configFile: false,
@@ -231,20 +218,20 @@ export async function bundleLayout(root: string): Promise<string> {
       minify: false,
       copyPublicDir: false,
       reportCompressedSize: false,
-      lib: { entry: path.join(root, "src/ai/skill/layout.ts"), formats: ["es"], fileName: "layout" },
+      lib: { entry: path.join(root, "src/ai/skill/app.ts"), formats: ["es"], fileName: "app" },
     },
   });
   const outputs = (Array.isArray(out) ? out : [out]) as { output: { type: string; code?: string }[] }[];
   const chunk = outputs[0].output.find((o) => o.type === "chunk");
-  if (!chunk?.code) throw new Error("skill-gen: bundling the layout produced no code.");
-  return `// ${NOTICE}\n// The app's own layout (src/ai/skill/layout.ts), bundled so the skill runs on plain Node.\n${chunk.code.replace(/\r\n/g, "\n")}`;
+  if (!chunk?.code) throw new Error("skill-gen: bundling the app code produced no code.");
+  return `// ${NOTICE}\n// The app's own validator and layout (src/ai/skill/app.ts), bundled so the skill runs on plain Node.\n${chunk.code.replace(/\r\n/g, "\n")}`;
 }
 
 /** Every generated file, by path under skills/livediagrams/. */
 export async function generateSkillFiles(root: string): Promise<Record<string, string>> {
   const files: Record<string, string> = {
     "scripts/lib/spec.json": JSON.stringify(spec(), null, 2) + "\n",
-    "scripts/lib/layout.mjs": await bundleLayout(root),
+    "scripts/lib/app.mjs": await bundleApp(root),
     "reference/stencils.md": stencilsDoc(publicExamples(root)),
   };
   for (const rel of REGION_FILES) {

@@ -3,20 +3,6 @@
   "format": "diagrams/v1",
   "site": "https://www.livediagrams.dev",
   "shareWarnLength": 8000,
-  "limits": {
-    "maxNodes": 5000,
-    "maxEdges": 20000,
-    "maxGroups": 1000,
-    "maxAnnotations": 2000,
-    "maxSimulations": 200,
-    "maxCoordinate": 1000000,
-    "maxTextChars": 8000000,
-    "maxDepth": 48,
-    "maxRatePerSec": 10000,
-    "maxMessageCount": 100000,
-    "maxSimulationMs": 600000,
-    "maxTrafficVolume": 200000
-  },
   "enums": {
     "direction": [
       "LR",

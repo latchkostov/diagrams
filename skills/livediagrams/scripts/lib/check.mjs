@@ -1,13 +1,15 @@
 // Checks a diagrams/v1 diagram the way the app will read it, and stricter where a mistake would make a
-// worse diagram. Every message says where the problem is and how to fix it. Standard library only.
+// worse diagram. Every message says where the problem is and how to fix it. Standard library only, plus
+// the app's own validator (./app.mjs, bundled by `pnpm schemas`): a diagram that passes here opens in the
+// app exactly as written, with nothing dropped or repaired.
 import { readFileSync } from "node:fs";
+import { annotationGeometryError, LIMITS as L, simulationProblem, validateDiagram } from "./app.mjs";
 
-/** Stencil ids, enums, limits and property schemas, generated from the app (`pnpm schemas`). */
+/** Stencil ids, enums and property schemas, generated from the app (`pnpm schemas`). */
 export const spec = JSON.parse(readFileSync(new URL("./spec.json", import.meta.url), "utf8"));
 
 const STENCILS = new Map(spec.stencils.map((s) => [s.id, s]));
 const E = spec.enums;
-const L = spec.limits;
 const KNOWN_TOP = [
   "$schema",
   "format",
@@ -144,149 +146,88 @@ export function suggestedScale(sim, nodes) {
   return [1, 2, 5, 10].find((v) => v * power >= required) * power;
 }
 
-/** Messages a simulation sends in total (rate × duration, bursts and injections). */
-function volume(sim) {
-  let messages = 0;
-  for (const { shape: sh } of sim.traffic ?? []) {
-    if (!isObj(sh)) continue;
-    if (sh.kind === "burst") messages += sh.count ?? 0;
-    else if (sh.kind === "constant") messages += ((sh.ratePerSec ?? 0) * (sh.durationMs ?? 0)) / 1000;
-    else if (sh.kind === "spike")
-      messages += (Math.max(sh.baseRate ?? 0, sh.peakRate ?? 0) * (sh.durationMs ?? 0)) / 1000;
-    else if (sh.kind === "ramp") {
-      let previous = sh.startRate ?? 0;
-      for (const st of sh.stages ?? []) {
-        messages += (Math.max(previous, st?.targetRate ?? 0) * (st?.durationMs ?? 0)) / 1000;
-        previous = st?.targetRate ?? 0;
-      }
-    }
-  }
-  for (const step of sim.timeline ?? []) if (step?.action?.do === "inject") messages += step.action.count ?? 0;
-  return messages * Math.max(1, isNum(sim.multipliers?.traffic) ? sim.multipliers.traffic : 1);
+/** Node ids a structurally valid simulation refers to, with where. */
+function simulationRefs(sim) {
+  const refs = [];
+  sim.traffic.forEach((t, j) => refs.push([t.node, `traffic[${j}].node`]));
+  (sim.timeline ?? []).forEach(({ action: a }, j) => {
+    if (a.do === "note") (a.focus ?? []).forEach((id) => refs.push([id, `timeline[${j}].action.focus`]));
+    else refs.push([a.node, `timeline[${j}].action.node`]);
+  });
+  for (const id of Object.keys(sim.setup?.status ?? {})) refs.push([id, "setup.status"]);
+  for (const id of Object.keys(sim.setup?.props ?? {})) refs.push([id, "setup.props"]);
+  (sim.expectations ?? []).forEach((x, j) => {
+    if ("node" in x.metric) refs.push([x.metric.node, `expectations[${j}].metric.node`]);
+  });
+  return refs;
 }
 
+/**
+ * The app's own structural check first (an invalid simulation is silently dropped when the app opens the
+ * file), then references and live-view advice, which only ever see a structurally valid simulation.
+ */
 function checkSimulation(sim, i, nodeIds, nodes, errors, warnings) {
   const where = `simulations[${i}]${isObj(sim) && isStr(sim.title) ? ` ${q(sim.title)}` : ""}`;
-  const err = (m) => errors.push(`${where}: ${m}`);
-  if (!isObj(sim)) return err("must be an object.");
-  if (!isStr(sim.id) || !sim.id) err('needs an "id".');
-  if (!isStr(sim.title)) err('needs a "title".');
-  const time = (v) => isNum(v) && v >= 0 && v <= L.maxSimulationMs;
-  const optTime = (v) => v === undefined || time(v);
-  const count = (v) => Number.isSafeInteger(v) && v >= 0 && v <= L.maxMessageCount;
-  const rate = (v) => isNum(v) && v >= 0 && v <= L.maxRatePerSec;
-  const nodeRef = (id, what) => {
-    if (!nodeIds.has(id)) err(`${what} refers to ${q(id)}, which isn't a node id.`);
-  };
-  if (!optTime(sim.durationMs)) err(`"durationMs" must be 0 to ${L.maxSimulationMs} ms.`);
-  if (sim.scale !== undefined && (!isNum(sim.scale) || sim.scale < 1)) err('"scale" must be a number of at least 1.');
-  if (!Array.isArray(sim.traffic)) err('needs a "traffic" list (it may be empty).');
-  for (const [j, t] of (Array.isArray(sim.traffic) ? sim.traffic : []).entries()) {
-    const w = `traffic[${j}]`;
-    if (!isObj(t) || !isStr(t.id) || !isStr(t.node)) {
-      err(`${w} needs an "id", a "node" and a "shape".`);
-      continue;
-    }
-    nodeRef(t.node, `${w}.node`);
-    const sh = t.shape;
-    const bad = (m) => err(`${w}.shape: ${m}`);
-    if (!isObj(sh)) bad('needs a "kind": burst, constant, ramp or spike.');
-    else if (sh.kind === "burst") {
-      if (!count(sh.count)) bad(`"count" must be a whole number up to ${L.maxMessageCount}.`);
-      if (!optTime(sh.atMs) || !optTime(sh.spreadMs)) bad('"atMs" and "spreadMs" must be valid times in ms.');
-    } else if (sh.kind === "constant") {
-      if (!rate(sh.ratePerSec)) bad(`"ratePerSec" must be 0 to ${L.maxRatePerSec}.`);
-      if (!time(sh.durationMs) || !optTime(sh.fromMs)) bad('needs "durationMs" (and an optional "fromMs") in ms.');
-    } else if (sh.kind === "ramp") {
-      if (!optTime(sh.fromMs) || (sh.startRate !== undefined && !rate(sh.startRate)))
-        bad('"fromMs" or "startRate" is invalid.');
-      if (!Array.isArray(sh.stages) || !sh.stages.every((s) => isObj(s) && time(s.durationMs) && rate(s.targetRate)))
-        bad('"stages" must be a list of { "durationMs", "targetRate" }.');
-    } else if (sh.kind === "spike") {
-      if (![sh.baseRate, sh.peakRate].every(rate) || ![sh.atMs, sh.peakMs, sh.durationMs].every(time))
-        bad('needs "baseRate", "peakRate", "atMs", "peakMs" and "durationMs".');
-    } else bad(`unknown kind ${q(sh.kind)}; use burst, constant, ramp or spike.`);
-  }
-  if (sim.timeline !== undefined && !Array.isArray(sim.timeline)) err('"timeline" must be a list.');
-  for (const [j, step] of (Array.isArray(sim.timeline) ? sim.timeline : []).entries()) {
-    const w = `timeline[${j}]`;
-    if (!isObj(step) || !time(step.atMs) || !isObj(step.action)) {
-      err(`${w} needs "atMs" (0 to ${L.maxSimulationMs}) and an "action".`);
-      continue;
-    }
-    const a = step.action;
-    if (a.do !== "note") {
-      if (!isStr(a.node)) err(`${w}.action needs a "node".`);
-      else nodeRef(a.node, `${w}.action.node`);
-    }
-    if (a.do === "note") {
-      if (!isStr(a.text)) err(`${w}: a note needs "text".`);
-      if (a.focus !== undefined && !(Array.isArray(a.focus) && a.focus.every(isStr)))
-        err(`${w}: "focus" must be a list of node ids.`);
-      for (const id of Array.isArray(a.focus) ? a.focus.filter(isStr) : []) nodeRef(id, `${w}.action.focus`);
-      if (a.pause !== undefined && typeof a.pause !== "boolean") err(`${w}: "pause" must be true or false.`);
-    } else if (a.do === "status") {
-      if (!E.status.includes(a.status)) err(`${w}: "status" must be one of ${list(E.status)}.`);
-    } else if (a.do === "props") {
-      checkProps(a.props, spec.nodeProps, `${w}.action`, errors);
-      if (!isObj(a.props)) err(`${w}: a props action needs "props".`);
-    } else if (a.do === "inject") {
-      if (!count(a.count)) err(`${w}: "count" must be a whole number up to ${L.maxMessageCount}.`);
-      if (!optTime(a.spreadMs)) err(`${w}: "spreadMs" must be a time in ms.`);
-    } else if (a.do !== "trace") err(`${w}: unknown action ${q(a.do)}; use status, props, inject, note or trace.`);
-  }
-  if (sim.expectations !== undefined && !Array.isArray(sim.expectations)) err('"expectations" must be a list.');
-  for (const [j, x] of (Array.isArray(sim.expectations) ? sim.expectations : []).entries()) {
-    const w = `expectations[${j}]`;
-    if (!isObj(x) || !isStr(x.id) || !isStr(x.label) || !isObj(x.metric) || !isNum(x.value)) {
-      err(`${w} needs "id", "label", "metric", "op" and a numeric "value".`);
-      continue;
-    }
-    if (!E.op.includes(x.op)) err(`${w}: "op" must be one of ${list(E.op)}.`);
-    const m = x.metric;
-    if (m.system !== undefined) {
-      if (m.system !== "inSystem") err(`${w}: a system metric is { "system": "inSystem" }.`);
-    } else {
-      if (!isStr(m.node)) err(`${w}.metric needs a "node".`);
-      else nodeRef(m.node, `${w}.metric.node`);
-      if (!E.metric.includes(m.field)) err(`${w}.metric: "field" must be one of ${list(E.metric)}.`);
-    }
-    if (x.when !== undefined && !E.when.includes(x.when)) err(`${w}: "when" must be one of ${list(E.when)}.`);
-    if (x.when === "at" && !time(x.atMs)) err(`${w}: "when": "at" needs "atMs".`);
-  }
-  if (sim.setup !== undefined) {
-    if (!isObj(sim.setup)) err('"setup" must be an object.');
-    else {
-      for (const [id, status] of Object.entries(isObj(sim.setup.status) ? sim.setup.status : {})) {
-        nodeRef(id, "setup.status");
-        if (!E.status.includes(status)) err(`setup.status.${id} must be one of ${list(E.status)}.`);
-      }
-      for (const [id, p] of Object.entries(isObj(sim.setup.props) ? sim.setup.props : {})) {
-        nodeRef(id, "setup.props");
-        checkProps(p, spec.nodeProps, `${where} setup.props.${id}`, errors);
-      }
-    }
-  }
-  if (Array.isArray(sim.traffic)) {
-    // Short bursts may animate many dots briefly; sustained traffic should stay near 60 dots a second.
-    const scale = isNum(sim.scale) && sim.scale >= 1 ? sim.scale : 1;
-    const sustained = sim.traffic
-      .filter((t) => isObj(t) && t.shape?.kind !== "burst")
-      .reduce((s, t) => s + peak(t.shape), 0);
-    const biggestBurst = Math.max(
-      0,
-      ...sim.traffic.filter((t) => isObj(t) && t.shape?.kind === "burst").map((t) => t.shape.count ?? 0),
-      ...(Array.isArray(sim.timeline) ? sim.timeline : []).map((s) =>
-        s?.action?.do === "inject" ? (s.action.count ?? 0) : 0,
-      ),
+  const problem = simulationProblem(sim);
+  if (problem) return void errors.push(`${where}: ${problem}. The app would drop this simulation.`);
+  for (const [id, what] of simulationRefs(sim))
+    if (!nodeIds.has(id)) errors.push(`${where}: ${what} refers to ${q(id)}, which isn't a node id.`);
+  // Short bursts may animate many dots briefly; sustained traffic should stay near 60 dots a second.
+  const scale = sim.scale ?? 1;
+  const multiplier = sim.multipliers?.traffic ?? 1;
+  const sustained = sim.traffic.filter((t) => t.shape.kind !== "burst").reduce((s, t) => s + peak(t.shape), 0);
+  const biggestBurst = Math.max(
+    0,
+    ...sim.traffic.filter((t) => t.shape.kind === "burst").map((t) => t.shape.count),
+    ...(sim.timeline ?? []).map(({ action: a }) => (a.do === "inject" ? a.count : 0)),
+  );
+  if ((sustained * multiplier) / scale > 120 || (biggestBurst * multiplier) / scale > 1000) {
+    const suggested = suggestedScale(sim, nodes);
+    warnings.push(
+      `${where}: at "scale": ${scale}${multiplier !== 1 ? ` with a traffic multiplier of ${multiplier}` : ""}, live view would animate too many dots. Use "scale": ${suggested} (one dot stands for ${suggested} messages).`,
     );
-    if (sustained / scale > 120 || biggestBurst / scale > 1000) {
-      const suggested = suggestedScale(sim, nodes);
-      warnings.push(
-        `${where}: at "scale": ${scale} live view would animate too many dots. Add "scale": ${suggested} (one dot stands for ${suggested} messages).`,
-      );
-    }
   }
+}
+
+/** The first path where two JSON values differ (an absent key equals undefined), or undefined. */
+function firstDifference(a, b, path = "") {
+  if (Object.is(a, b)) return undefined;
+  if (
+    typeof a !== "object" ||
+    typeof b !== "object" ||
+    a === null ||
+    b === null ||
+    Array.isArray(a) !== Array.isArray(b)
+  )
+    return path || "(the whole file)";
+  if (Array.isArray(a) && a.length !== b.length) return `${path} (its length)`;
+  for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if (a[key] === undefined && b[key] === undefined) continue;
+    const at = Array.isArray(a) ? `${path}[${key}]` : path ? `${path}.${key}` : key;
+    const diff = firstDifference(a[key], b[key], at);
+    if (diff) return diff;
+  }
+  return undefined;
+}
+
+/**
+ * Runs the app's own file validator: what it refuses, and anything it would drop, rename or repair when
+ * the file or share link opens. A diagram with no problems here opens exactly as written.
+ */
+function appProblems(d) {
+  const app = validateDiagram(d);
+  if (!app.ok) return [`The app would refuse this file: ${app.error}`];
+  const problems = app.warnings.map((w) => `The app would change this when it opens the file: ${w}`);
+  if (problems.length) return problems;
+  // Empty optional lists are dropped on open, which loses nothing.
+  const emptyList = (key) => Array.isArray(d[key]) && !d[key].length;
+  const written = Object.fromEntries(
+    Object.entries(JSON.parse(JSON.stringify(d))).filter(([key]) =>
+      ["groups", "annotations", "simulations"].includes(key) ? !emptyList(key) : true,
+    ),
+  );
+  const diff = firstDifference(written, JSON.parse(JSON.stringify(app.diagram)));
+  return diff ? [`The app would drop or change ${diff} when it opens the file. Remove it or fix its value.`] : [];
 }
 
 /**
@@ -318,7 +259,8 @@ export function checkDiagram(d) {
   for (const [key, max] of counts)
     if (Array.isArray(d[key]) && d[key].length > max)
       errors.push(`${q(key)} has ${d[key].length} entries; the limit is ${max}.`);
-  if (exceedsDepth(d, L.maxDepth)) errors.push(`The diagram is nested more than ${L.maxDepth} levels deep.`);
+  if (exceedsDepth(d, L.maxDepth))
+    return { errors: [`The diagram is nested more than ${L.maxDepth} levels deep.`], warnings, summary: "" };
   for (const key of ["groups", "annotations", "simulations", "layerOrder"])
     if (d[key] !== undefined && !Array.isArray(d[key])) errors.push(`${q(key)} must be a list.`);
 
@@ -398,7 +340,15 @@ export function checkDiagram(d) {
       errors.push(
         `${where}: needs x, y, width and height.${a.kind === "note" || a.kind === "text" ? " Run node scripts/layout.mjs <file> to place it." : ""}`,
       );
-    if (a.kind === "shape") shapeIds.add(a.id);
+    else {
+      const geometry = annotationGeometryError(a);
+      if (geometry)
+        errors.push(
+          `${where}: ${geometry.replace(/ Move the selection.*| Choose a smaller.*/, "")} The app would drop it.`,
+        );
+      else if (a.kind === "shape") shapeIds.add(a.id);
+    }
+    if (a.shape !== undefined && a.kind !== "shape") errors.push(`${where}: only a "shape" annotation takes "shape".`);
     for (const [key, values] of [
       ["shape", E.annotationShape],
       ["color", E.annotationColor],
@@ -483,15 +433,12 @@ export function checkDiagram(d) {
       simIds.add(sim.id);
     }
   });
-  const total = sims.filter(isObj).reduce((sum, sim) => sum + volume(sim), 0);
-  if (total > L.maxTrafficVolume)
-    errors.push(
-      `The simulations send about ${Math.round(total)} messages in all; the limit is ${L.maxTrafficVolume}. Lower the rates or durations.`,
-    );
 
   const text = JSON.stringify(d);
   if (text.length > L.maxTextChars)
     errors.push(`The diagram is ${text.length} characters; the limit is ${L.maxTextChars}.`);
+  // Last, the app's own reading: document-wide budgets, and anything it would refuse, drop or repair.
+  if (!errors.length) errors.push(...appProblems(d));
   if (nodes.length > 30)
     warnings.push(`${nodes.length} nodes: consider a smaller diagram, or split it into several, so it stays readable.`);
 
@@ -514,5 +461,16 @@ export function checkFile(file) {
   } catch (err) {
     return { errors: [`It isn't valid JSON: ${err.message}`], warnings: [], summary: "" };
   }
-  return { ...checkDiagram(data), diagram: data };
+  try {
+    return { ...checkDiagram(data), diagram: data };
+  } catch (err) {
+    // A bug here must still leave a report, and let the next file be checked.
+    return {
+      errors: [
+        `The checker failed on this file (${err.message}). Run validate.mjs on a simpler version to narrow it down.`,
+      ],
+      warnings: [],
+      summary: "",
+    };
+  }
 }

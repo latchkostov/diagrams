@@ -8,7 +8,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import process from "node:process";
 import { stripBom } from "./lib/check.mjs";
-import { layoutDiagram } from "./lib/layout.mjs";
+import { layoutDiagram } from "./lib/app.mjs";
 
 const args = process.argv.slice(2);
 const outAt = args.indexOf("--out");
@@ -26,20 +26,13 @@ try {
   console.error(`Can't read ${file} as JSON: ${err.message}`);
   process.exit(1);
 }
-const ok =
-  typeof data === "object" &&
-  data !== null &&
-  Array.isArray(data.nodes) &&
-  data.nodes.every((n) => typeof n === "object" && n !== null && typeof n.id === "string") &&
-  (data.edges === undefined || Array.isArray(data.edges));
-if (!ok) {
-  console.error(
-    `Can't lay out ${file}: it needs a "nodes" list of objects with ids. Run node scripts/validate.mjs ${file}.`,
-  );
+const result = layoutDiagram(data, { force: args.includes("--force") });
+if (!result.ok) {
+  console.error(`Can't lay out ${file}: ${result.error}`);
+  console.error(`Fix it and run again, or run node scripts/validate.mjs ${file} for a full report.`);
   process.exit(1);
 }
-
-const { diagram, laidOut, fitted, placedNotes } = layoutDiagram(data, { force: args.includes("--force") });
+const { diagram, laidOut, fitted, placedNotes } = result;
 const changes = [
   laidOut ? `placed ${diagram.nodes.length} nodes` : "",
   fitted.length ? `fitted ${fitted.length} boundar${fitted.length === 1 ? "y" : "ies"}` : "",

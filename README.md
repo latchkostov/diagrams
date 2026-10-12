@@ -46,7 +46,7 @@ and no keys.
   such as `~/.claude/skills/` for Claude Code without the plugin.
 
 The skill is also published at [livediagrams.dev/skill/SKILL.md](https://www.livediagrams.dev/skill/SKILL.md). Its
-stencil list, layout and parts of its reference are generated from the app by `pnpm schemas`, and a unit test fails
+stencil list, validator, layout and parts of its reference are generated from the app by `pnpm schemas`, and a unit test fails
 when they're stale.
 
 ## Development

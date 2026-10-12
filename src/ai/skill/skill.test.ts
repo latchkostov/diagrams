@@ -59,7 +59,7 @@ describe("generated skill files", () => {
       "reference/format.md",
       "reference/simulation.md",
       "reference/stencils.md",
-      "scripts/lib/layout.mjs",
+      "scripts/lib/app.mjs",
       "scripts/lib/spec.json",
     ]);
     for (const [name, text] of Object.entries(files))
@@ -88,7 +88,9 @@ describe("layout.mjs", () => {
     const r = run("layout.mjs", file);
     expect(r.code, r.err).toBe(0);
     const out = read(file);
-    expect(out).toEqual(JSON.parse(JSON.stringify(layoutDiagram(unplaced(diagram)).diagram)));
+    const direct = layoutDiagram(unplaced(diagram));
+    expect(direct.ok).toBe(true);
+    expect(out).toEqual(JSON.parse(JSON.stringify(direct.ok && direct.diagram)));
     expect(parseNative(JSON.stringify(out)).ok).toBe(true);
     expect(run("validate.mjs", file).code).toBe(0);
   });
@@ -212,7 +214,7 @@ describe("validate.mjs", () => {
         ...d,
         simulations: [{ id: "s", title: "Storm", traffic: [{ id: "t", node: "api", shape: { kind: "wave" } }] }],
       }),
-      /unknown kind "wave"; use burst, constant, ramp or spike/,
+      /simulations\[0\] "Storm": every traffic entry needs a shape \(burst, constant, ramp or spike\)\. The app would drop/,
     ],
   ];
 
@@ -237,6 +239,244 @@ describe("validate.mjs", () => {
     expect(r.code).toBe(0);
     expect(r.out).toMatch(/warning: nodes\[2\] "worker": the label is \d+ characters/);
     expect(r.out).toMatch(/warning: Node "topic" \(topic\) has no consumer/);
+  });
+
+  const sim = (
+    extra: Record<string, unknown> = {},
+    traffic: unknown = [{ id: "t", node: "api", shape: { kind: "constant", ratePerSec: 10, durationMs: 5000 } }],
+  ) => ({ id: "s", title: "Run", traffic, ...extra });
+  const note = { id: "n1", kind: "note", text: "Retries", x: 0, y: 400, width: 240, height: 160 };
+  const discarded: [string, (d: Fixture) => unknown, RegExp][] = [
+    ["a non-numeric seed", (d) => ({ ...d, simulations: [sim({ seed: "oops" })] }), /seed or durationMs is invalid/],
+    [
+      "a negative capacity multiplier",
+      (d) => ({ ...d, simulations: [sim({ multipliers: { capacity: -1 } })] }),
+      /multipliers must be bounded/,
+    ],
+    [
+      "a capacity multiplier over 100",
+      (d) => ({ ...d, simulations: [sim({ multipliers: { capacity: 101 } })] }),
+      /multipliers must be bounded/,
+    ],
+    ["a setup status list", (d) => ({ ...d, simulations: [sim({ setup: { status: [] } })] }), /setup status must map/],
+    [
+      "a numeric message type",
+      (d) => ({
+        ...d,
+        simulations: [sim({}, [{ id: "t", node: "api", messageType: 7, shape: { kind: "burst", count: 5 } }])],
+      }),
+      /every traffic entry needs string id, node, label and messageType/,
+    ],
+    [
+      "more traffic profiles than the document allows",
+      (d) => ({
+        ...d,
+        simulations: [
+          sim(
+            {},
+            Array.from({ length: 2001 }, (_, i) => ({ id: `t${i}`, node: "api", shape: { kind: "burst", count: 0 } })),
+          ),
+        ],
+      }),
+      /The app would refuse this file: The simulations exceed the document's traffic/,
+    ],
+    [
+      "a note with a negative width",
+      (d) => ({ ...d, annotations: [{ ...note, width: -1 }] }),
+      /annotations\[0\] "n1": its size must be between 1 and 20000 pixels\. The app would drop it/,
+    ],
+    [
+      "a note outside the coordinate budget",
+      (d) => ({ ...d, annotations: [{ ...note, x: 2_000_000 }] }),
+      /annotations\[0\] "n1": it's outside the coordinate budget\. The app would drop it/,
+    ],
+    [
+      "an edge to a shape with an invalid size",
+      (d) => ({
+        ...d,
+        annotations: [{ id: "box", kind: "shape", text: "Legacy", x: 0, y: 400, width: 0, height: 80 }],
+        edges: [...d.edges, { id: "e3", from: "worker", to: "box", kind: "sync" }],
+      }),
+      /annotations\[0\] "box": its size must be between 1.*\n.*edges\[2\] "e3": "to" is annotation "box"/,
+    ],
+    [
+      "a shape outline on a note",
+      (d) => ({ ...d, annotations: [{ ...note, shape: "ellipse" }] }),
+      /only a "shape" annotation takes "shape"/,
+    ],
+  ];
+
+  it.each(discarded)("rejects %s, which the app would discard", (_name, breakIt, message) => {
+    const d = breakIt(structuredClone(base) as Fixture) as object;
+    // The app really would lose something: it refuses the file, warns, or opens something else.
+    const app = parseNative(JSON.stringify(d));
+    expect(app.ok && !app.warnings.length && JSON.stringify(app.diagram) === JSON.stringify(d)).toBe(false);
+    const file = write(d);
+    const r = run("validate.mjs", file);
+    expect(r.code).toBe(1);
+    expect(r.out).toMatch(message);
+    const link = run("share-link.mjs", file);
+    expect(link.code).toBe(1);
+    expect(link.out).toBe("");
+  });
+
+  const malformed: [string, unknown][] = [
+    ["traffic: [null]", sim({}, [null])],
+    ["traffic: {}", sim({}, {})],
+    ["timeline: {}", sim({ timeline: {} })],
+    ["ramp stages: {}", sim({}, [{ id: "t", node: "api", shape: { kind: "ramp", stages: {} } }])],
+    ["a null simulation", null],
+  ];
+
+  it.each(malformed)("reports %s without throwing, and checks the next file", (_name, simulation) => {
+    const bad = write({ ...structuredClone(base), simulations: [simulation] });
+    const good = write(base);
+    const r = run("validate.mjs", bad, good);
+    expect(r.code).toBe(1);
+    expect(r.out).toMatch(/^INVALID .*\n {2}error: simulations\[0\].*The app would drop this simulation/);
+    expect(r.out).toMatch(/\nVALID .*: 3 nodes/);
+    expect(r.out + r.err).not.toMatch(/TypeError|checker failed|at .*\.mjs:\d+/);
+  });
+
+  it("warns when a traffic multiplier makes live view animate too many dots", () => {
+    const d = { ...structuredClone(base), simulations: [sim({ scale: 1, multipliers: { traffic: 100 } })] };
+    const r = run("validate.mjs", write(d));
+    expect(r.code).toBe(0);
+    expect(r.out).toMatch(
+      /warning: simulations\[0\] "Run": at "scale": 1 with a traffic multiplier of 100.*"scale": 20/,
+    );
+  });
+});
+
+describe("layout.mjs with unusual input", () => {
+  it.each([
+    ["an unknown direction", { direction: "left-to-right" }],
+    ["a null boundary", { groups: [null] }],
+    ["a numeric edge label", { edges: [{ id: "e1", from: "a", to: "b", label: 42 }] }],
+  ])("lays out a file with %s without crashing, and leaves the problem for validate.mjs", (_name, extra) => {
+    const d = {
+      format: "diagrams/v1",
+      title: "Odd",
+      nodes: [
+        { id: "a", stencil: "service.node", label: "A" },
+        { id: "b", stencil: "postgres", label: "B" },
+      ],
+      edges: [{ id: "e1", from: "a", to: "b", kind: "sync" }],
+      ...extra,
+    };
+    const file = write(d);
+    const r = run("layout.mjs", file);
+    expect(r.code, r.err).toBe(0);
+    expect(r.err).not.toMatch(/TypeError/);
+    const out = read(file);
+    for (const [key, value] of Object.entries(extra)) expect(out[key]).toEqual(value);
+    expect(out.nodes.every((n: { x?: number }) => typeof n.x === "number")).toBe(true);
+    expect(run("validate.mjs", file).code).toBe(1);
+  });
+
+  it("explains a file it can't lay out", () => {
+    const r = run("layout.mjs", write({ format: "diagrams/v1", title: "x", nodes: [{ id: "a" }], edges: [] }));
+    expect(r.code).toBe(1);
+    expect(r.err).toMatch(/Can't lay out .*Every node needs an id, a stencil/);
+  });
+
+  it("places a new note clear of the annotations already there", () => {
+    const d = {
+      format: "diagrams/v1",
+      title: "Notes",
+      nodes: [{ id: "a", stencil: "service.node", label: "A", x: 40, y: 40 }],
+      edges: [],
+      annotations: [
+        { id: "old", kind: "note", text: "Existing", x: 40, y: 172, width: 240, height: 160 },
+        { id: "new", kind: "note", text: "Added" },
+        { id: "caption", kind: "text", text: "Caption" },
+      ],
+    };
+    const file = write(d);
+    expect(run("layout.mjs", file).code).toBe(0);
+    const boxes = read(file).annotations as { x: number; y: number; width: number; height: number }[];
+    const overlaps = (a: (typeof boxes)[number], b: (typeof boxes)[number]) =>
+      a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+    expect(boxes[0]).toEqual(d.annotations[0]);
+    for (let i = 0; i < boxes.length; i++)
+      for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i], boxes[j]), `${i} / ${j}`).toBe(false);
+    expect(run("validate.mjs", file).code).toBe(0);
+  });
+});
+
+describe("sharing keeps everything the author wrote", () => {
+  it("round-trips simulations and every kind of annotation", async () => {
+    const d = {
+      format: "diagrams/v1",
+      title: "Everything",
+      description: "Nodes, a boundary, annotations, dependencies and a simulation.",
+      direction: "LR",
+      groups: [{ id: "vpc", label: "VPC", tone: "aws", x: 0, y: 0, width: 800, height: 300 }],
+      nodes: [
+        { id: "api", stencil: "service.node", label: "API", x: 40, y: 100, group: "vpc", props: { ratePerSec: 5 } },
+        { id: "q", stencil: "aws.sqs", label: "SQS", sublabel: "orders", x: 400, y: 100, group: "vpc" },
+        { id: "worker", stencil: "service.go", label: "Worker", x: 900, y: 100, props: { failureRate: 0.1 } },
+        { id: "dlq", stencil: "aws.sqs", label: "Orders DLQ", x: 900, y: 260 },
+        { id: "kv", stencil: "vault", label: "Vault", x: 40, y: 400 },
+      ],
+      edges: [
+        { id: "e1", from: "api", to: "q", kind: "async", label: "OrderPlaced" },
+        { id: "e2", from: "q", to: "worker", kind: "async" },
+        { id: "e3", from: "q", to: "dlq", kind: "async", props: { dlq: true } },
+        { id: "e4", from: "api", to: "kv", relation: "secret" },
+        { id: "e5", from: "worker", to: "legacy", kind: "sync" },
+      ],
+      annotations: [
+        { id: "title", kind: "text", text: "Orders", x: 0, y: -120, width: 240, height: 80, textSize: "xl" },
+        { id: "tip", kind: "note", text: "Retried 3 times", x: 400, y: 400, width: 240, height: 160, color: "yellow" },
+        { id: "zone", kind: "zone", text: "Async", x: 360, y: 60, width: 320, height: 160 },
+        { id: "legacy", kind: "shape", text: "Mainframe", x: 1300, y: 100, width: 200, height: 80, shape: "cylinder" },
+      ],
+      simulations: [
+        {
+          id: "outage",
+          title: "Worker outage",
+          seed: 3,
+          scale: 1,
+          multipliers: { traffic: 1, capacity: 1 },
+          durationMs: 20000,
+          setup: { status: { worker: "up" }, props: { worker: { replicas: 2 } } },
+          traffic: [
+            {
+              id: "t",
+              node: "api",
+              label: "Orders",
+              messageType: "OrderPlaced",
+              shape: { kind: "constant", ratePerSec: 10, durationMs: 15000 },
+            },
+          ],
+          timeline: [
+            { atMs: 0, action: { do: "note", text: "Steady", focus: ["api"] } },
+            { atMs: 5000, action: { do: "status", node: "worker", status: "down" } },
+            { atMs: 10000, action: { do: "status", node: "worker", status: "up" } },
+          ],
+          expectations: [
+            {
+              id: "x",
+              label: "Some dead-lettered",
+              metric: { node: "q", field: "deadLettered" },
+              op: ">",
+              value: 0,
+              when: "end",
+            },
+          ],
+        },
+      ],
+    };
+    const file = write(d);
+    const v = run("validate.mjs", file);
+    expect(v.code, v.out).toBe(0);
+    const r = run("share-link.mjs", file);
+    expect(r.code, r.err).toBe(0);
+    const opened = await decodeShare(sharePayloadFromInput(r.out.trim())!);
+    expect(opened).toEqual(d);
+    const app = parseNative(JSON.stringify(d));
+    expect(app.ok && app.warnings).toEqual([]);
   });
 });
 
@@ -263,9 +503,10 @@ describe("share-link.mjs", () => {
     expect(inflateRawSync(Buffer.from(payload, "base64url")).toString("utf8")).toBe(JSON.stringify(original));
     // ...the app's own encoder produces the same link, and its decoder opens it as the same diagram.
     expect(payload).toBe(await encodeShare(original));
+    // Nothing the author wrote is lost: the opened diagram is the authored file, with no repairs.
+    expect(await decodeShare(payload)).toEqual(original);
     const parsed = parseNative(readFileSync(file, "utf8"));
-    expect(parsed.ok).toBe(true);
-    expect(await decodeShare(payload)).toEqual(parsed.ok && parsed.diagram);
+    expect(parsed.ok && parsed.warnings).toEqual([]);
   });
 
   it("uses --base for another host, refuses an invalid diagram, and warns when the link is long", () => {
