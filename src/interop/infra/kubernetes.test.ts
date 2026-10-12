@@ -13,6 +13,7 @@ import { ENV_LIMITS, expandVars, OPAQUE } from "./k8sSettings";
 import { MAX_VALUE } from "./settings";
 import { TOO_MANY_ALIASES } from "./yaml";
 import { perfBudget } from "../../test/perfBudget";
+import { runChecks } from "../../checks/run";
 
 // Kubernetes import against the self-written fixture set (tests/fixtures/imports/k8s), as
 // docs/research/imports.md § Mapping: Kubernetes describes it, plus KEDA, Strimzi, entry points, identities,
@@ -110,6 +111,10 @@ describe("Kubernetes import: the fixture set", () => {
     expect(n("redis").stencil).toBe("redis.cache");
     expect(n("orders-api")).toMatchObject({ stencil: "generic.service", sublabel: "orders-api:2.3.0" });
     expect(n("orders-api").props).toEqual({ replicas: 3 });
+    // `replicas: 1` in the manifest is said, so single-point can read it; KEDA's own floor of 1 says it too.
+    expect(n("postgres").props).toEqual({ replicas: 1 });
+    expect(n("redis").props).toEqual({ replicas: 1 });
+    expect(n("payments-worker").props).toEqual({ replicas: 1 });
     expect(n("settlement-report")).toMatchObject({ stencil: "generic.scheduler", sublabel: "0 2 * * *" });
     expect(n("storefront")).toMatchObject({ stencil: "generic.service", sublabel: "no workload in these files" });
     expect(n("ingress-shop")).toMatchObject({ stencil: "nginx", label: "shop", sublabel: "shop.example.com" });
@@ -422,6 +427,72 @@ spec: { scaleTargetRef: { name: ghost }, triggers: [] }
     expect(report.notDrawn).toEqual([
       { name: "ScaledObject ghost", reason: "scales a workload that isn't in these files" },
     ]);
+  });
+});
+
+describe("Kubernetes import: replicas", () => {
+  const scaledTo = (n: number | "") => (n === "" ? "" : `  replicas: ${n}\n`);
+  /** An Ingress → web (NGINX) → api chain, with web's replicas and anything after it. */
+  const chain = (replicas: number | "", after = "") =>
+    `${deployment("web", "nginx:1.27").replace("spec:\n", `spec:\n${scaledTo(replicas)}`)}${deployment("api", "example/api")}
+---
+apiVersion: v1
+kind: Service
+metadata: { name: web }
+spec: { selector: { app: web } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: { name: shop }
+spec:
+  ingressClassName: traefik
+  rules: [{ http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: web, port: { number: 80 } } } }] } }]
+${after}`;
+  const replicasOf = (text: string) => node(k8s(text).diagram, "web")?.props?.replicas;
+  const hpa = (min: string) => `---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: web }
+spec: { scaleTargetRef: { kind: Deployment, name: web }, ${min}maxReplicas: 5 }
+`;
+  const keda = (min: string) => `---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata: { name: web }
+spec: { scaleTargetRef: { name: web }, ${min}triggers: [{ type: cpu, metadata: { value: "60" } }] }
+`;
+
+  it("writes the count the manifest sets, one included, and leaves an unset one unset", () => {
+    expect(replicasOf(chain(1))).toBe(1);
+    expect(replicasOf(chain(4))).toBe(4);
+    expect(replicasOf(chain(""))).toBeUndefined();
+    // Scaled to zero isn't a count to draw.
+    expect(replicasOf(chain(0))).toBeUndefined();
+  });
+
+  it("an autoscaler owns the count: only its own floor says one", () => {
+    // The manifest's 1 is the autoscaler's to change; a minimum it doesn't set isn't evidence either.
+    expect(replicasOf(chain(1, hpa("")))).toBeUndefined();
+    expect(replicasOf(chain(1, keda("")))).toBeUndefined();
+    expect(replicasOf(chain(1, keda("minReplicaCount: 0, ")))).toBeUndefined();
+    // Its floor, when the file sets it.
+    expect(replicasOf(chain("", hpa("minReplicas: 1, ")))).toBe(1);
+    expect(replicasOf(chain(1, keda("minReplicaCount: 1, ")))).toBe(1);
+    expect(replicasOf(chain(1, hpa("minReplicas: 2, ")))).toBe(2);
+    // A count above the floor stays, as before; a KEDA object and its HPA together keep the higher floor.
+    expect(replicasOf(chain(4, hpa("minReplicas: 2, ")))).toBe(4);
+    expect(replicasOf(chain(1, keda("minReplicaCount: 3, ") + hpa("minReplicas: 1, ")))).toBe(3);
+  });
+
+  it("single-point sees an imported one-replica gateway on the only way in, and nothing when it's unset", () => {
+    const findings = (text: string) =>
+      runChecks(k8s(text).diagram)
+        .findings.filter((f) => f.rule === "single-point")
+        .map((f) => `${f.severity} ${f.id}`);
+    expect(findings(chain(1))).toEqual(["suggestion single-point:web"]);
+    expect(findings(chain(""))).toEqual([]);
+    expect(findings(chain(2))).toEqual([]);
+    expect(findings(chain(1, hpa("")))).toEqual([]);
   });
 });
 

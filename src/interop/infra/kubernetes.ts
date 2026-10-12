@@ -464,7 +464,9 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
           : {}),
       group: r.ns,
       context: r.ns,
-      ...(replicas && replicas > 1 && replicas <= 10_000 ? { props: { replicas } } : {}),
+      // A count the manifest sets, one included (single-point reads it). An unset one stays unset: a base that
+      // an overlay or an autoscaler scales leaves it out, so it isn't evidence of one replica.
+      ...(replicas && replicas <= 10_000 ? { props: { replicas } } : {}),
     });
   }
 
@@ -723,10 +725,23 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     const kind = str(own(ref, "kind")) ?? "Deployment";
     return workloadNames.at(kind, r.ns, name) ?? workloadNamed(r.ns, name);
   };
-  const floor = (w: Workload, min: number) => {
+  /** Workloads an autoscaler scales: their count is its to set. */
+  const autoscaled = new Set<Workload>();
+  /** An autoscaler's floor (`min`, only when the file sets it) raises the workload's replicas. */
+  const floor = (w: Workload, min: number | undefined) => {
     const c = components.byKey.get(w.key);
-    const current = Number(c?.props?.replicas ?? 1);
-    if (c && min > current && min <= 10_000) c.props = { ...c.props, replicas: min };
+    if (!c) return;
+    if (!autoscaled.has(w)) {
+      autoscaled.add(w);
+      // The manifest's own single replica isn't the count once an autoscaler owns it (kube-score and KICS ask
+      // that such a Deployment set none): only the autoscaler's own floor of one says one.
+      if (c.props?.replicas === 1) {
+        const { replicas: _, ...rest } = c.props;
+        c.props = Object.keys(rest).length ? rest : undefined;
+      }
+    }
+    const current = Number(c.props?.replicas ?? 0);
+    if (min !== undefined && min > current && min <= 10_000) c.props = { ...c.props, replicas: min };
   };
   const brokerHosts = (value: string | undefined) =>
     (value ?? "")
@@ -752,10 +767,10 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     }
     const wl = label(w.res.name);
     const max = num(own(s, "maxReplicaCount")) ?? 100;
-    const min = num(own(s, "minReplicaCount")) ?? 0;
+    const min = num(own(s, "minReplicaCount"));
     if (job) note(`${wl} runs up to ${max} jobs at once (KEDA)`);
     else {
-      note(`${wl} scales from ${min} to ${max} replicas (KEDA)`);
+      note(`${wl} scales from ${min ?? 0} to ${max} replicas (KEDA)`);
       floor(w, min);
     }
     const scope = scopeFor(so.ns);
@@ -831,9 +846,10 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       skip(hpa.kind, hpa.name, "scales a workload that isn't in these files");
       continue;
     }
-    const min = num(own(s, "minReplicas")) ?? 1;
+    const min = num(own(s, "minReplicas"));
     const max = num(own(s, "maxReplicas"));
-    if (max !== undefined) note(`${label(w.res.name)} scales from ${min} to ${max} replicas (HorizontalPodAutoscaler)`);
+    if (max !== undefined)
+      note(`${label(w.res.name)} scales from ${min ?? 1} to ${max} replicas (HorizontalPodAutoscaler)`);
     floor(w, min);
   }
 

@@ -270,7 +270,12 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
       }
     const build = own(svc, "build");
     const context = str(build) ?? str(own(build, "context"));
-    const replicas = Number(own(own(svc, "deploy"), "replicas") ?? own(svc, "scale"));
+    const said = own(own(svc, "deploy"), "replicas") ?? own(svc, "scale");
+    // A number, or digits after the file's own defaults ("${REPLICAS:-2}"): never `true` or `[1]`, which
+    // Number() would read as 1.
+    const count = typeof said === "string" ? interpolate(said.slice(0, 64)) : said;
+    const replicas =
+      typeof count === "number" || (typeof count === "string" && /^\d{1,5}$/.test(count)) ? Number(count) : NaN;
     add({
       key: name,
       label: name.slice(0, 120),
@@ -280,7 +285,9 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
           ? `built from ${withoutCredentials(context)}`.slice(0, 80)
           : undefined,
       hint: { name: name.slice(0, 120), image: image?.slice(0, 512), env: [...env.keys()].slice(0, 500) },
-      ...(Number.isInteger(replicas) && replicas > 1 && replicas <= 10_000 ? { props: { replicas } } : {}),
+      // A count the file sets, one included (single-point reads it). Unset stays unset: Compose files are mostly
+      // for one machine, where one replica is the default, not a claim.
+      ...(Number.isInteger(replicas) && replicas >= 1 && replicas <= 10_000 ? { props: { replicas } } : {}),
     });
     const nets = own(svc, "networks");
     const networks = isMap(nets) ? Object.keys(nets) : [];

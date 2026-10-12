@@ -534,12 +534,57 @@ warehouse and connector exclusions would each remove the Snowflake ones again.
   rag-assistant's real gap (a diagram with no gateway anywhere): the trade is noise on most sketches against that
   one, and the owner can reconsider it. Its fix's default goes through the existing way in.
 - `single-point`: 0 of 7 as planned. Every hit was an unset replica count read as "1". Now only a said `replicas: 1`
-  (Suggestion) or capacity evidence (Warning) fires. Kubernetes and docker-compose imports write replicas only when
-  there's more than one, so an imported one-replica Deployment still reads as unset (see "Batch 3: as built").
+  (Suggestion) or capacity evidence (Warning) fires. The Kubernetes and docker-compose imports now write a count
+  the file sets, one included (see "Imports" below).
 - `shared-database` and `sync-chain`: the plan's thresholds hold. `shared-database` gained the warehouse and
   connector exclusions (they'd catch the Snowflake boundaries if the owner rule were ever loosened) and its
   several-owners Suggestion tier.
 - No Warning fires on the examples, so every Warning is still at 100%.
+
+#### Imports
+
+The import follow-ups (October 2026) made the Kubernetes and docker-compose imports write `replicas: 1` when the
+file says one, so `single-point` can see an imported one-replica Deployment, the case kube-linter's
+`minimum-three-replicas` flags. What a count means, as built:
+
+| Source                            | Writes `replicas`                                                                                                                                                                           | Unset                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Kubernetes workload               | `spec.replicas`, 1 included (0 isn't a count to draw)                                                                                                                                       | stays unset                           |
+| …with an HPA or KEDA ScaledObject | The autoscaler's floor when the file sets it (`minReplicas`, `minReplicaCount`), 1 included; a higher `spec.replicas` stays. The manifest's own 1 is dropped: the autoscaler owns the count | stays unset (the HPA's default 1 too) |
+| docker-compose                    | `deploy.replicas` or `scale`, 1 included, after the file's own `${VAR:-default}`                                                                                                            | stays unset                           |
+| Terraform                         | not read (see below)                                                                                                                                                                        | –                                     |
+
+- **Unset stays unset.** Kubernetes and Compose both run one replica when the count is left out, and kube-linter
+  reads a missing `spec.replicas` as 1. But the precision gate's finding holds for imports too: a GitOps base leaves
+  the count out for a Kustomize overlay or an autoscaler in another file to set, and a compose file is mostly one
+  developer's machine. Reading those as "one" would fire on exactly the files where it's wrong. `kubectl get -o
+yaml` output always has the count (the API server fills it in), so a dump of a live cluster is read as it runs.
+- **An autoscaler owns the count.** kube-score and KICS ask that a Deployment an HPA scales not set `replicas` at
+  all, since applying the manifest resets it. So under an autoscaler only its own floor is evidence: a stated
+  `minReplicas: 1` is one replica at quiet times (Polaris's `hpaMinAvailability` flags it), a `minReplicaCount: 0`
+  or a missing minimum isn't one.
+- **Terraform** isn't changed. The reader doesn't read ECS `desired_count`, App Service or Container Apps minimum
+  replicas, and a plan's `values` carry the provider's default whether or not the configuration set it (a state has
+  no configuration at all), so "the file says one" can't be told from "nobody said". Serverless and PaaS compute,
+  which most of those are, don't count for `single-point` anyway.
+
+**Findings on the import fixtures, before and after.** `src/interop/infra/checks.test.ts` pins them, as
+`examples.test.ts` does for the examples.
+
+| Fixture                                    | Before | After | New findings                                                                                                                                                    |
+| ------------------------------------------ | ------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| compose (`docker-compose.yml`)             | 1      | 1     | None. No service says `replicas: 1`; `payments-worker` says 3.                                                                                                  |
+| Kubernetes (the five files)                | 1      | 1     | None. Three nodes now say one replica: PostgreSQL and Redis are stores, and `payments-worker` (KEDA floor 1) consumes from a topic, so a broker buffers for it. |
+| AsyncAPI (the three documents)             | 5      | 5     | None (no replicas in AsyncAPI).                                                                                                                                 |
+| Terraform AWS plan, and Draw everything    | 1, 1   | 1, 1  | None.                                                                                                                                                           |
+| Terraform Azure state, and Draw everything | 2, 2   | 2, 2  | None.                                                                                                                                                           |
+
+The findings that were there (`no-reader` on topics nobody in the files reads, `dead-letter` on a subscription
+without one) are unchanged. With no new finding, there was nothing to judge as noise and the rule's condition isn't
+changed. Where it does fire, unit tests pin it: an Ingress to a one-replica NGINX Deployment, and a compose proxy with
+`deploy.replicas: 1` in front of a two-replica API, each raise "Every request goes through one …" as a Suggestion
+(**would fix**: it's kube-linter's case, on the only way in), and the same files with the count unset, above one or
+under an autoscaler with no floor of its own raise nothing.
 
 ### Batch 4: precision gate
 
@@ -754,10 +799,10 @@ building:
     `fix.elsewhere` for the person to pick in the Checks card.
   - Keyboard: a fix (button or chip) applied from a focused row moves focus to the next finding's head (else the one
     before, else the card's Close; in the inspector, its body), not to the page.
-- **Not done (owner's call).** The Kubernetes and docker-compose imports write `replicas` only when it's more than
-  one, so an imported one-replica Deployment reads as "not said" and `single-point` stays quiet on it, though it's
-  exactly kube-linter's `minimum-three-replicas` case. Writing `replicas: 1` there would let the rule see it; it
-  changes the imports' output, so it isn't in this batch.
+- **Done since.** The Kubernetes and docker-compose imports wrote `replicas` only when it was more than one, so an
+  imported one-replica Deployment read as "not said" and `single-point` stayed quiet on it, though it's exactly
+  kube-linter's `minimum-three-replicas` case. The import follow-ups write a stated `replicas: 1` (see "Imports"
+  under "Batch 3: precision gate").
 
 ## Batch 4: as built
 
