@@ -62,6 +62,7 @@ import { layeredLayout } from "./layout";
 import type { HistoryApi } from "./useHistory";
 import type { EditorApi, EditorPrefs, Selection, XY } from "./types";
 import { diagramDiff } from "./diagramDiff";
+import { nudgeOnGrid } from "../canvas/guides";
 import { validateDiagram } from "../interop/native";
 
 // The EditorApi implementation over React Flow state. Built once per canvas; reads the latest
@@ -706,6 +707,15 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       deps().setNodes((cur) =>
         cur.map((n) => (moving.has(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n)),
       );
+    },
+    nudge: (dx, dy, far) => {
+      if (!deps().prefs.snap) return api.moveSelection(dx * (far ? 10 : 1), dy * (far ? 10 : 1));
+      const sel = rf.getNodes().filter((n) => n.selected);
+      if (!sel.length) return;
+      const x = Math.min(...sel.map((n) => n.position.x));
+      const y = Math.min(...sel.map((n) => n.position.y));
+      const step = far ? 50 : null;
+      api.moveSelection(nudgeOnGrid(x, dx, 10, step), nudgeOnGrid(y, dy, 10, step));
     },
     keepTextClear: (id, before) => {
       const ns = rf.getNodes();

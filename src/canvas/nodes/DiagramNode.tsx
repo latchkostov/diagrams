@@ -1,9 +1,11 @@
-import { memo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { memo, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Handle, useReactFlow, type NodeProps } from "@xyflow/react";
 import { FALLBACK_STENCIL, getStencil } from "../../stencils/registry";
 import { getNodeVariant } from "../../harness/nodeVariants";
 import { useSettings } from "../../harness/settings";
 import { useSelectOnMount } from "../../components/useSelectOnMount";
+import { editKeyAction, refocusAfterEdit } from "../../components/editKeys";
+import { keepInPane } from "../keepInPane";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { DiagramFlowNode } from "../types";
@@ -60,11 +62,11 @@ function DiagramNodeImpl({ id, data, selected }: NodeProps<DiagramFlowNode>) {
           focus={edit.field}
           onDone={(next) => {
             setEditing(null);
-            if (next)
-              updateNodeData(id, {
-                label: next.label.trim() || data.label,
-                sublabel: next.sublabel.trim() || undefined,
-              });
+            const label = next.label.trim() || data.label;
+            const sublabel = next.sublabel.trim() || undefined;
+            // Unchanged (Esc or Enter straight away): nothing to write, so nothing re-renders or resets.
+            if (label !== data.label || sublabel !== (data.sublabel || undefined))
+              updateNodeData(id, { label, sublabel });
           }}
         />
       )}
@@ -84,24 +86,35 @@ function NodeEditor({
   typed?: boolean;
   sublabel: string;
   focus: "label" | "sublabel";
-  onDone: (next: { label: string; sublabel: string } | null) => void;
+  onDone: (next: { label: string; sublabel: string }) => void;
 }) {
   const [l, setL] = useState(label);
   const [s, setS] = useState(sublabel);
+  const [onSubtitle, setOnSubtitle] = useState(focus === "sublabel");
   const first = useRef<HTMLInputElement>(null);
   const second = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const done = useRef(false);
-  const finish = (next: { label: string; sublabel: string } | null) => {
+  const finish = (next: { label: string; sublabel: string }) => {
     if (done.current) return;
     done.current = true;
     onDone(next);
   };
   useSelectOnMount(focus === "sublabel" ? second : first, typed ? "end" : "all");
-  const onKey = (e: KeyboardEvent) => {
+  // Zoomed out it's wider than its card: it stays inside the canvas, and opens above the card near the bottom.
+  useLayoutEffect(() => keepInPane(root.current, { above: () => root.current?.classList.add("is-above") }), []);
+  // Every editor's keys (editKeys.ts): Enter and Esc save, Tab goes from Label to Subtitle and saves there.
+  const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    if (e.key === "Enter") finish({ label: l, sublabel: s });
-    if (e.key === "Escape") finish(null);
+    const isFirst = e.currentTarget === first.current;
+    const action = editKeyAction(e.nativeEvent, { hasNext: isFirst, hasPrev: !isFirst });
+    if (!action) return;
+    e.preventDefault();
+    if (action === "next") return second.current?.select();
+    if (action === "prev") return first.current?.select();
+    const back = root.current?.closest(".react-flow__node");
+    finish({ label: l, sublabel: s });
+    refocusAfterEdit(back);
   };
   return (
     <div
@@ -118,6 +131,7 @@ function NodeEditor({
         value={l}
         onChange={(e) => setL(e.target.value)}
         onKeyDown={onKey}
+        onFocus={() => setOnSubtitle(false)}
         placeholder="Label"
         aria-label="Label"
         name="label"
@@ -128,13 +142,16 @@ function NodeEditor({
         value={s}
         onChange={(e) => setS(e.target.value)}
         onKeyDown={onKey}
+        onFocus={() => setOnSubtitle(true)}
         placeholder="Subtitle, e.g. orders.created"
         aria-label="Subtitle"
         className="mono"
         name="sublabel"
         data-testid="node-editor-sublabel"
       />
-      <div className="dn-editor-hint">Enter saves, Esc cancels</div>
+      <div className="dn-editor-hint" data-testid="node-editor-hint">
+        {onSubtitle ? "Enter saves" : "Enter saves · Tab: subtitle"}
+      </div>
     </div>
   );
 }

@@ -13,7 +13,7 @@ function GroupNodeImpl({ id, data, selected }: NodeProps<GroupFlowNode>) {
   const isEditing = editing?.kind === "group" && editing.id === data.groupId;
   return (
     <div
-      className={`grp${selected ? " is-selected" : ""}`}
+      className={`grp${selected ? " is-selected" : ""}${isEditing ? " is-editing" : ""}`}
       style={{ "--tone": toneColor[data.tone] ?? toneColor.neutral } as CSSProperties}
       data-testid={`group-${data.groupId}`}
     >
@@ -38,9 +38,10 @@ function GroupNodeImpl({ id, data, selected }: NodeProps<GroupFlowNode>) {
             value={data.label}
             placeholder="Boundary name"
             testId="group-label-input"
+            returnFocus={() => document.querySelector(`.react-flow__node[data-id="${CSS.escape(id)}"]`)}
             onDone={(next) => {
               setEditing(null);
-              if (next !== null && next.trim()) updateNodeData(id, { label: next.trim() });
+              if (next?.trim() && next.trim() !== data.label) updateNodeData(id, { label: next.trim() });
             }}
           />
         ) : (

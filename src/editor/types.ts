@@ -121,6 +121,11 @@ export interface EditorApi {
   /** Moves the selected nodes (and the contents of selected boundaries). */
   moveSelection(dx: number, dy: number): void;
   /**
+   * The arrow keys. With Snapping on they're grid-true: the selection's top-left corner goes to the next
+   * 10 px grid line that way (`far`, Shift: 50 px, onto the grid). With Snapping off, 1 px (Shift: 10 px).
+   */
+  nudge(dx: -1 | 0 | 1, dy: -1 | 0 | 1, far: boolean): void;
+  /**
    * A text that grew (new words, a new size) and now covers a node or an edge it didn't cover at
    * `before` moves to the nearest free spot, as its own undo step. Returns what it was moved off.
    */

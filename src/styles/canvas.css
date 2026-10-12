@@ -8,6 +8,36 @@
   position: relative;
   flex: 1;
   min-width: 0;
+  /* Inline editors never read smaller than their CSS size: below 100% zoom they scale up by 1/zoom. */
+  --edit-scale: max(1, calc(1 / var(--rf-zoom, 1)));
+}
+
+/* Smart guides (D6): one layer over the flow, drawn only while a drag runs. */
+.smart-guides {
+  /*
+   * A pixel in the corner (an SVG of size 0 draws nothing): the paths draw outside it, in pane coordinates,
+   * so a drag doesn't carry a pane-sized layer over the moving nodes (that cost a few ms a frame at 4× CPU
+   * throttling).
+   */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  z-index: 4;
+  pointer-events: none;
+  color: color-mix(in oklab, var(--accent) 85%, transparent);
+}
+
+.smart-guides:not([data-on]) {
+  display: none;
+}
+
+.smart-guides path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
 }
 
 .df-defs {
@@ -305,6 +335,8 @@
   left: 0;
   width: 260px;
   z-index: 20;
+  scale: var(--edit-scale, 1);
+  transform-origin: 0 0;
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -314,6 +346,13 @@
   border: 1px solid var(--line-strong);
   box-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.35);
   cursor: default;
+}
+
+/* Near the bottom of the canvas the editor opens above its card instead. */
+.dn-editor.is-above {
+  top: auto;
+  bottom: calc(100% + 8px);
+  transform-origin: 0 100%;
 }
 
 .dn-editor input {
@@ -384,6 +423,13 @@
   pointer-events: all;
   cursor: move;
   white-space: nowrap;
+}
+
+/* Editing the name: at least its CSS size on screen (it grows to the right from its left edge). */
+.grp.is-editing .grp-label {
+  scale: var(--edit-scale, 1);
+  transform-origin: 0 50%;
+  z-index: 1;
 }
 
 .grp-swatch {
@@ -748,6 +794,8 @@
   overflow: visible;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+  /* 12 px while typing: the 10 px pill text is for reading at a glance, not for editing. */
+  font-size: 12px;
 }
 
 .inline-input {
@@ -1912,7 +1960,8 @@ select.insp-input {
 
 .dlg {
   width: min(760px, 100%);
-  max-height: min(640px, 100%);
+  /* Against the window, not the grid row: a row sized to a long body centred the dialog off screen. */
+  max-height: min(640px, calc(100dvh - 48px));
   display: flex;
   flex-direction: column;
   border-radius: 14px;
@@ -2641,6 +2690,30 @@ select.insp-input {
 
 .ann-zone.is-editing .ann-zone-label {
   overflow: visible;
+  scale: var(--edit-scale, 1);
+  transform-origin: 0 50%;
+}
+
+/*
+ * Editing a text, a note or a shape: the field keeps its layout (the same line breaks) and scales up to
+ * at least its CSS size on screen, on a plain surface so it reads over whatever it covers meanwhile.
+ */
+.ann.is-editing .ann-body {
+  overflow: visible;
+}
+
+.ann.is-editing:not(.ann-zone) .ann-editor {
+  position: relative;
+  z-index: 1;
+  scale: var(--edit-scale, 1);
+  transform-origin: 0 0;
+  border-radius: 4px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1.5px var(--accent);
+}
+
+.ann-shape.is-editing .ann-editor {
+  transform-origin: 50% 50%;
 }
 
 /* ---- shape: a crisp outline drawn at real pixel size, text centred inside */

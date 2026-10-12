@@ -1,6 +1,7 @@
-// Keys typed between picking a node in quick-add and its label editor taking focus (React Flow measures a
-// new card before it's shown, and a hidden field can't be focused). They belong to the name: they're held
-// here, kept from the canvas shortcuts (T would add a text), and handed to the editor when it opens.
+// Keys typed before a field can take them: between picking a node in quick-add and its label editor taking
+// focus (React Flow measures a new card before it's shown, and a hidden field can't be focused), or between
+// Ctrl+K and the palette's search appearing (its code may still be loading). They belong to the field:
+// they're held here, kept from the canvas shortcuts (T would add a text), and handed over when it opens.
 
 /** What was typed: `text` is null until a key changes the name (the stencil's name is kept). */
 export interface TypeAhead {
@@ -22,32 +23,38 @@ export function typeAheadKey(s: TypeAhead, e: Key): TypeAhead | null {
   return null;
 }
 
-let active: TypeAhead | null = null;
+/** The captures running, newest last: only the newest takes keys (a menu's search inside the palette's). */
+const captures: { state: TypeAhead }[] = [];
 
-/** True while keys are being held for a new node's name (the canvas shortcuts stand aside). */
-export const typeAheadActive = () => active !== null;
+/** True while keys are being held for a field that isn't focused yet (the canvas shortcuts stand aside). */
+export const typeAheadActive = () => captures.length > 0;
 
 /**
- * Starts holding keys typed anywhere (capture phase, before the canvas sees them). `stop` ends it and
- * returns what was typed.
+ * Starts holding keys typed anywhere (capture phase, before the canvas sees them): for a new node's name
+ * while its card is measured, or for the palette's search while it loads. `stop` ends it and returns what
+ * was typed; calling it again returns the same.
  */
 export function captureTypeAhead(): { stop: () => TypeAhead } {
-  active = { text: null };
+  const me = { state: { text: null } as TypeAhead };
+  captures.push(me);
   const onKey = (e: KeyboardEvent) => {
-    if (!active) return;
-    const next = typeAheadKey(active, e);
+    if (captures[captures.length - 1] !== me || e.isComposing) return;
+    const next = typeAheadKey(me.state, e);
     if (!next) return;
-    active = next;
+    me.state = next;
     e.preventDefault();
     e.stopImmediatePropagation();
   };
   window.addEventListener("keydown", onKey, true);
+  let stopped = false;
   return {
     stop: () => {
-      window.removeEventListener("keydown", onKey, true);
-      const typed = active ?? { text: null };
-      active = null;
-      return typed;
+      if (!stopped) {
+        stopped = true;
+        window.removeEventListener("keydown", onKey, true);
+        captures.splice(captures.indexOf(me), 1);
+      }
+      return me.state;
     },
   };
 }

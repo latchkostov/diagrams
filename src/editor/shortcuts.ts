@@ -33,7 +33,7 @@ export interface Shortcut {
 export const SHORTCUTS: readonly Shortcut[] = [
   { id: "undo", keys: ["Mod+Z"], label: "Undo", group: "Edit" },
   { id: "redo", keys: ["Mod+Shift+Z", "Mod+Y"], label: "Redo", group: "Edit" },
-  { id: "rename", keys: ["F2"], label: "Rename the selection, or edit its text", group: "Edit" },
+  { id: "rename", keys: ["Enter", "F2"], label: "Rename the selection, or edit its text", group: "Edit" },
   { id: "delete", keys: ["Delete", "Backspace"], label: "Delete selection", group: "Edit" },
   { id: "duplicate", keys: ["Mod+D"], label: "Duplicate selection", group: "Edit" },
   { id: "group", keys: ["Mod+G"], label: "Add a boundary around the selection", group: "Edit" },
@@ -45,13 +45,13 @@ export const SHORTCUTS: readonly Shortcut[] = [
   {
     id: "nudge",
     keys: ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"],
-    label: "Nudge selection 1px",
+    label: "Nudge to the next grid line (Snapping off: 1 px)",
     group: "Selection",
   },
   {
     id: "nudge-far",
     keys: ["Shift+ArrowUp", "Shift+ArrowDown", "Shift+ArrowLeft", "Shift+ArrowRight"],
-    label: "Nudge selection 10px",
+    label: "Nudge 50 px (Snapping off: 10 px)",
     group: "Selection",
   },
   { id: "escape", keys: ["Escape"], label: "Close menus, clear selection, then leave live view", group: "Selection" },

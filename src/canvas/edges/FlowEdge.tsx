@@ -78,7 +78,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
     body = (
       <div
         className={`fe-label fe-label-${relation ? `dep fe-rel-${relation}` : kind} is-${isEditing ? "editing" : label!.mode}${selected ? " is-selected" : ""}${relation && !isEditing ? " has-glyph" : ""} nodrag nopan`}
-        style={labelStyle(mid.x, mid.y, isEditing ? null : label)}
+        style={isEditing ? editingStyle(mid.x, mid.y) : labelStyle(mid.x, mid.y, label)}
         data-testid={`edge-label-${id}`}
         data-dependency={relation ? "true" : undefined}
         title={
@@ -103,9 +103,11 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
             value={data?.label ?? ""}
             placeholder="Edge label"
             testId="edge-label-input"
+            returnFocus={() => document.querySelector(`.react-flow__edge[data-id="${CSS.escape(id)}"]`)}
             onDone={(next) => {
               setEditing(null);
-              if (next !== null) updateEdgeData(id, { label: next.trim() || undefined });
+              const text = next?.trim() || undefined;
+              if (text !== (data?.label || undefined)) updateEdgeData(id, { label: text });
             }}
           />
         ) : label!.mode === "dot" ? (
@@ -266,6 +268,17 @@ function SettingsCard({
 }
 
 /** Placement is computed in flow px with the pill's exact metrics, so the box is set explicitly. */
+/**
+ * The label's editor never reads smaller than its CSS size: below 100% zoom it scales up by 1/zoom
+ * (`--edit-scale`, set in CSS from the canvas's zoom), centred on the label's spot.
+ */
+function editingStyle(x: number, y: number): CSSProperties {
+  return {
+    transform: `translate(${x}px, ${y}px) scale(var(--edit-scale, 1)) translate(-50%, -50%)`,
+    transformOrigin: "0 0",
+  };
+}
+
 function labelStyle(x: number, y: number, label: LabelPlacement | null): CSSProperties {
   const base: CSSProperties = { transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` };
   if (!label) return base;
