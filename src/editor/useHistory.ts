@@ -18,6 +18,15 @@ export interface HistoryApi {
   canRedo: boolean;
   /** Tag the next commit for coalescing (see EditOptions.merge). Call before mutating. */
   hint(mergeKey: string | undefined): void;
+  /**
+   * Opens a creation transaction (call before adding the node): the node, its connection and the name typed in
+   * its editor are one undo step under `tag`, however long the naming takes, unless another edit comes between.
+   */
+  begin(tag: string): void;
+  /** The editor committed (Enter, Esc, a click away): records what it wrote under `tag`, then closes it. */
+  end(tag: string): void;
+  /** The open creation transaction's tag, if any (an editor opened on that node joins it). */
+  open(): string | undefined;
   /** Flush the actual current snapshot, commit a replacement, then apply it once. */
   replace(next: CanvasSnapshot, mergeKey?: string, before?: CanvasSnapshot): void;
   /**
@@ -105,6 +114,27 @@ export function useHistory(
     [flush],
   );
 
+  const begin = useCallback(
+    (tag: string) => {
+      hint(tag);
+      ctl.begin(tag);
+    },
+    [hint, ctl],
+  );
+  const end = useCallback(
+    (tag: string) => {
+      // After the editor's own update has rendered (it's applied in the same event), so its name is recorded
+      // inside the transaction rather than after it closes.
+      window.setTimeout(() => {
+        if (ctl.openTransaction !== tag) return;
+        if (timer.current !== undefined || keyOf(latest.current) !== present(ctl.history).key) flush();
+        ctl.end(tag);
+      }, 0);
+    },
+    [ctl, flush],
+  );
+  const open = useCallback(() => ctl.openTransaction, [ctl]);
+
   const replace = useCallback(
     (snapshot: CanvasSnapshot, key?: string, before?: CanvasSnapshot) => {
       window.clearTimeout(timer.current);
@@ -138,6 +168,9 @@ export function useHistory(
     undo,
     redo,
     hint,
+    begin,
+    end,
+    open,
     replace,
     top,
     canUndo: canUndo(history) || pending,

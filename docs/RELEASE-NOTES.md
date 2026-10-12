@@ -8,7 +8,8 @@ Two habits change:
 
 - **Double-click quick-add opens the new node's name.** Pick a stencil and type: the words name the node, as after
   Alt+arrow, the "+" and a dropped connection. They used to reach the canvas, where a T added a text and an L went
-  live. One Ctrl+Z takes the node and its name.
+  live. One Ctrl+Z takes the node, its connection and their names, however long you take to type them (also after
+  Alt+arrow, the "+", a dropped connection, or a rail or Ctrl+K add named with Enter straight after).
 - **Shift+drag on empty canvas adds to the selection**, as Shift+click does. A plain drag still replaces it.
 
 Also:

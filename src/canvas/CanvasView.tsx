@@ -630,6 +630,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
    * typed meanwhile are kept for it (React Flow measures the card before showing it, and a hidden field can't
    * take focus).
    */
+  const endCreation = history.end;
   const pickNamed = useCallback(
     (make: () => NewNode | null, fallback: string) => {
       // Hold what's typed from now until the label editor can take it.
@@ -638,11 +639,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       if (!made) return void typing.stop();
       revealSelection(() => {
         const typed = typing.stop();
-        if (typed.done === "escape") return;
+        if (typed.done === "escape") return endCreation(made.merge);
         if (typed.done === "enter") {
           if (typed.text !== null)
             editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
-          return;
+          return endCreation(made.merge);
         }
         // In this same task: a key arriving before the editor had mounted would reach the canvas instead.
         flushSync(() =>
@@ -657,7 +658,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
         );
       }, 90);
     },
-    [editor, revealSelection],
+    [editor, revealSelection, endCreation],
   );
 
   /** For the editor's `nameNew` (menus and Ctrl+K: Insert node on an edge). */
@@ -858,8 +859,9 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           boxSet.current = null;
           boxBase.current = null;
           // React Flow shows its multi-selection frame (drag it, right-click it) from its own pick, which
-          // it sets after this; follow ours instead.
-          const any = !!boxPicked.current;
+          // it sets after this; follow ours instead: the combined selection, so a Shift-drag that adds nothing
+          // keeps the frame of what was already selected.
+          const any = set ? set.size > 0 : !!boxPicked.current;
           queueMicrotask(() => store.setState({ nodesSelectionActive: any }));
         }
         boxPicked.current = null;
@@ -1401,6 +1403,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       settleText: readOnly ? undefined : settleText,
       grow: editGestures ? growFromChip : undefined,
       hint: history.hint,
+      endCreation: history.end,
       reconnect: editGestures ? editor.reconnectEdge : undefined,
       boundaryResized: editGestures ? boundaryResized : undefined,
     }),
@@ -1414,6 +1417,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       growFromChip,
       editor,
       history.hint,
+      history.end,
       boundaryResized,
     ],
   );

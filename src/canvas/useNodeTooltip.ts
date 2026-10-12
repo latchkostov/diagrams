@@ -36,7 +36,9 @@ type TipData = Omit<NodeTip, "rect">;
 
 /**
  * Keyboard parity for the node tooltip: focusing a node shows it at once, blur hides it, Esc
- * dismisses it, and the focused (or hovered) node is described by it for screen readers.
+ * dismisses it, and the focused (or hovered) node is described by it for screen readers. A dismissed
+ * tip stays dismissed while focus comes back to the same node (Esc's focus restore, after React Flow's
+ * blur); focus moving to anything else re-arms it.
  */
 export function useNodeTipKeyboard(
   root: RefObject<HTMLElement | null>,
@@ -49,6 +51,8 @@ export function useNodeTipKeyboard(
   useEffect(() => {
     lookupRef.current = lookup;
   });
+  /** The node whose tip Esc dismissed, until focus moves somewhere else. */
+  const dismissed = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const el = root.current;
     if (!el) return;
@@ -56,11 +60,22 @@ export function useNodeTipKeyboard(
       t instanceof HTMLElement && t.matches(".react-flow__node-diagram[data-id]") ? t : null;
     const onFocus = (e: FocusEvent) => {
       const node = nodeOf(e.target);
+      if (node && node === dismissed.current) return;
+      dismissed.current = null;
       const data = node && lookupRef.current(node.dataset.id!);
       if (node && data) show(node, data, true);
     };
-    const onBlur = (e: FocusEvent) => nodeOf(e.target) && hide();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && hide();
+    const onBlur = (e: FocusEvent) => {
+      if (!nodeOf(e.target)) return;
+      hide();
+      // Focus going to another element re-arms the tip; a blur to nowhere (React Flow's, on Esc) doesn't.
+      if (e.relatedTarget) dismissed.current = null;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      hide();
+      dismissed.current = nodeOf(e.target);
+    };
     el.addEventListener("focusin", onFocus);
     el.addEventListener("focusout", onBlur);
     el.addEventListener("keydown", onKey);

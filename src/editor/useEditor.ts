@@ -179,6 +179,15 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     rf.getNodes().filter((n): n is DiagramFlowNode => isDiagram(n) && n.data.group === groupId);
   const hint = (merge?: string) => deps().history.hint(merge);
   /**
+   * Opens the creation transaction of a node about to be added (`new:<id>`): the node, its edge and the name
+   * typed in its editor are one undo step, however long the naming takes (useHistory's `begin`).
+   */
+  const beginCreation = (merge: string) => {
+    const h = deps().history;
+    if (h.begin) h.begin(merge);
+    else h.hint(merge);
+  };
+  /**
    * This editor's last Ctrl+D: the box it copied (`from`), where the copy went (`at`) and the copy's
    * selection. Ctrl+D again on that copy repeats the step, or the gap the person chose by moving the copy
    * first (Figma's smart duplicate). Per editor, so another diagram's ids never inherit it.
@@ -516,11 +525,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
 
     addNamed: (stencilId, at) => {
-      const s = getStencil(stencilId);
-      const id = uniqueId(stencilIdBase(s.id), new Set(rf.getNodes().map((n) => n.id)));
-      const merge = `new:${id}`;
-      hint(merge);
-      return { id: api.addNode(stencilId, at), edge: null, merge };
+      const id = api.addNode(stencilId, at);
+      return { id, edge: null, merge: `new:${id}` };
     },
 
     addNode: (stencilId, at) => {
@@ -531,6 +537,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const c =
         at ?? placeFree(deps().viewCenter(), { width, height }, [...ns.map(box), ...(deps().edgeMarks?.() ?? [])]);
       const id = uniqueId(stencilIdBase(s.id), new Set(ns.map((n) => n.id)));
+      // Its name, typed in the editor that may open next (quick-add, or Enter on it), joins the step that made it.
+      beginCreation(`new:${id}`);
       const node: DiagramFlowNode = {
         id,
         type: "diagram",
@@ -789,7 +797,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const [a, b] = req.at || isDownstream(toward) ? ends : [ends[1], ends[0]];
       const edge = newEdge(a, b, rf.getEdges());
       const merge = `new:${id}`;
-      hint(merge);
+      beginCreation(merge);
       addSettled(node);
       deps().setEdges((cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]);
       explainEdge(edge);
@@ -824,7 +832,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       const r = splitFlowEdge(es, edgeId, id);
       if (!r) return null;
       const merge = `new:${id}`;
-      hint(merge);
+      beginCreation(merge);
       addSettled(node);
       deps().setEdges(r.edges.map((x) => (x.selected ? { ...x, selected: false } : x)));
       return { id, edge: null, merge };
@@ -1168,7 +1176,13 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       return deps().prefs;
     },
     setPref: (key, value) => deps().setPref(key, value),
-    startEditing: (target) => deps().setEditing(target),
+    // An editor opened on a node still in its creation transaction (a rail or Ctrl+K "Add", then Enter) names it
+    // inside that step.
+    startEditing: (target) => {
+      const open = deps().history.open?.();
+      const joins = target.kind === "node" && !target.merge && open === `new:${target.id}`;
+      deps().setEditing(joins ? { ...target, merge: open } : target);
+    },
     openInspector: (field) => deps().openInspector(field),
     showShortcuts: () => deps().showShortcuts(),
     exportJson: () => {

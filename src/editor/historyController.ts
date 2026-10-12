@@ -19,10 +19,31 @@ export class HistoryController {
    * between them to observe.
    */
   private settled: FlowSelection;
+  /**
+   * An open creation transaction's tag (`new:<id>`): a node just made, waiting for the name typed in its editor.
+   * Commits under this tag merge into the step that made the node however long the naming takes. Any other
+   * commit (an edit in between), Undo, Redo or a replacement closes it, as does `end`.
+   */
+  private transaction: string | undefined;
 
   constructor(state: CanvasSnapshot, at: number) {
     this.history = createHistory(snapshotKey(state), state, at);
     this.settled = selectionOf(state);
+  }
+
+  /** Opens a creation transaction under `tag` (the next commits tagged so are the node's own step). */
+  begin(tag: string) {
+    this.transaction = tag;
+  }
+
+  /** Closes the creation transaction `tag`, if it's the open one. */
+  end(tag: string) {
+    if (this.transaction === tag) this.transaction = undefined;
+  }
+
+  /** The open creation transaction's tag, if any. */
+  get openTransaction(): string | undefined {
+    return this.transaction;
   }
 
   /** The canvas rendered `state` (its `key`): while it matches the present step, its selection is settled. */
@@ -37,7 +58,11 @@ export class HistoryController {
    */
   commit(state: CanvasSnapshot, mergeKey: string | undefined, at: number): boolean {
     const prev = this.history;
-    this.history = commit(prev, { key: snapshotKey(state), value: state, mergeKey, at, start: this.settled });
+    const key = snapshotKey(state);
+    // Another edit in between closes the creation: the name typed after it is a step of its own.
+    if (this.transaction !== undefined && mergeKey !== this.transaction && key !== present(prev).key)
+      this.transaction = undefined;
+    this.history = commit(prev, { key, value: state, mergeKey, at, start: this.settled }, undefined, this.transaction);
     this.settled = selectionOf(state);
     return this.history !== prev;
   }
@@ -55,6 +80,7 @@ export class HistoryController {
     selection: FlowSelection,
     at: number,
   ) {
+    this.transaction = undefined;
     this.history = commitReplacement(
       this.history,
       { key: snapshotKey(current), value: current, mergeKey: pendingMergeKey, at, start: this.settled },
@@ -67,6 +93,7 @@ export class HistoryController {
   step(direction: "undo" | "redo", current: FlowSelection): CanvasSnapshot | null {
     const step = stepWithSelection(this.history, direction, current);
     if (!step) return null;
+    this.transaction = undefined;
     this.history = step.history;
     this.settled = selectionOf(step.snapshot);
     return step.snapshot;

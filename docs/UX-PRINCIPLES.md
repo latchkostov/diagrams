@@ -91,8 +91,11 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   the search ranks as the stencil rail's does ("pg" finds PostgreSQL). From a double-click the pick lands on
   the spot, unconnected; from a dropped connection on the drop point; from Alt+arrow or the "+", one gap beside
   the node, under the faint outline shown while quick-add is open. Every pick arrives with its label editor open
-  (the name selected, so typing replaces it, never reaching the canvas's one-key shortcuts), and the node and its
-  name are one undo step. Menu and rail clicks don't open the name.
+  (the name selected, so typing replaces it, never reaching the canvas's one-key shortcuts). Menu and rail clicks
+  don't open the name. A **new node is one undo step** with its connection and the names typed in its editor
+  (node, subtitle, connection), however long the naming takes: a creation transaction opens when the node is made
+  and closes when its editor saves. The same holds for a node added from the rail or Ctrl+K and named with Enter
+  straight after. An edit in between (a nudge, another node) closes it, and the name is then a step of its own.
 - **The next node**: a single selected node shows one **"+"** on its downstream side (right, or below in a
   top-to-bottom diagram; another side when a neighbour or a label is there). Never a "+" on every node, never
   on hover. **Alt+→ / Alt+↓** add downstream (the new node is fed by the selected one), **Alt+← / Alt+↑**
