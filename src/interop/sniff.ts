@@ -23,27 +23,30 @@ export function looksLikeMermaid(text: string): boolean {
  * Infrastructure and spec files (docs/research/imports.md): cheap checks on the first 4,000 characters, so
  * recognising one never loads the YAML reader.
  */
-export type InfraSniff = "helm" | "asyncapi" | "kubernetes" | "compose" | "terraform";
+export type InfraSniff = "helm" | "asyncapi" | "kubernetes" | "compose" | "terraform" | "hcl";
 
 export function sniffInfra(text: string): InfraSniff | undefined {
   const head = text.slice(0, 4000);
   // JSON first: a diagram file (or anything else in JSON) that mentions Helm or AsyncAPI in its text stays itself.
   if (/^\s*\{/.test(head)) {
     if (/"format"\s*:\s*"diagrams\//.test(head)) return undefined;
-    return /^\s*\{\s*"asyncapi"\s*:\s*"[23]\./.test(head)
-      ? "asyncapi"
-      : /"format_version"/.test(head) && /"terraform_version"/.test(head)
-        ? "terraform"
-        : // Kubernetes JSON: apiVersion and kind in any order, anywhere (a ConfigMap's data may come first).
-          // Only a JSON object that is none of the above gets this one linear scan of the whole text.
-          /"apiVersion"\s*:\s*"/.test(text) && /"kind"\s*:\s*"/.test(text)
-          ? "kubernetes"
-          : undefined;
+    if (/^\s*\{\s*"asyncapi"\s*:\s*"[23]\./.test(head)) return "asyncapi";
+    // Terraform and Kubernetes JSON: their keys in any order, anywhere in the text (linear scans). A plan that
+    // manages Kubernetes objects mentions apiVersion and kind too; its root_module says it's Terraform.
+    const tf = /"terraform_version"\s*:\s*"/.test(text) && /"(?:format_version|lineage)"\s*:/.test(text);
+    const k8s = /"apiVersion"\s*:\s*"/.test(text) && /"kind"\s*:\s*"/.test(text);
+    return tf && (!k8s || /"(?:root_module|lineage)"\s*:/.test(text)) ? "terraform" : k8s ? "kubernetes" : undefined;
   }
   if (/^asyncapi:\s*['"]?[23]\./m.test(head)) return "asyncapi";
   if (/^apiVersion:/m.test(head) && /^kind:/m.test(head))
     // Only a Kubernetes manifest can be a Helm template.
     return /\{\{-?\s*(\.Values|\.Release|\.Chart|include ")/.test(head) ? "helm" : "kubernetes";
   if (/^services:/m.test(head)) return "compose";
+  // A binary plan file (a zip) or Terraform source: recognised, to say what to run instead.
+  if (
+    head.startsWith("PK\u0003\u0004") ||
+    /^(?:(?:resource|data|module|provider|variable|output)(?: +"[\w-]+")+|terraform|locals) *\{/m.test(head)
+  )
+    return "hcl";
   return undefined;
 }

@@ -39,8 +39,11 @@ export interface ImportComponent {
 
 /** Why a link was drawn: the setting name (never its value), or the file's own key. */
 export interface Evidence {
-  /** "setting": inferred from a setting's value; the rest are the file's own structure. */
-  source: "setting" | "depends_on" | "secrets" | "configs" | "ports" | "spec";
+  /**
+   * "setting": inferred from a setting's value; "resource": a resource that is a connection (a Terraform
+   * subscription or grant), listed with its address. The rest are the file's own structure.
+   */
+  source: "setting" | "resource" | "depends_on" | "secrets" | "configs" | "ports" | "spec";
   /** The setting's name ("SPRING_DATASOURCE_URL"). */
   name?: string;
   /** "reads", "writes", "couldn't tell what it reads or writes"… */
@@ -86,6 +89,8 @@ export interface ImportGraph {
   notes: string[];
   /** Entry traffic for an "Imported traffic" simulation: where messages start, so Go live shows them flow. */
   traffic?: ImportTraffic[];
+  /** The report's heading for inferred connections, when they don't come from settings. */
+  connectionsTitle?: string;
 }
 
 export interface ImportTraffic {
@@ -136,4 +141,6 @@ export interface ImportReport {
   notes: string[];
   /** The "Imported traffic" simulation's entry points, so the report says where messages start and how fast. */
   traffic?: { nodeId: string; label: string; messageType?: string; ratePerSec: number; seconds: number }[];
+  /** "Connections found in settings" unless the source says otherwise ("…from subscriptions, mappings and grants"). */
+  connectionsTitle?: string;
 }

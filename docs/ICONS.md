@@ -272,3 +272,9 @@ The Service Account stencil (GKE workload identity) uses Google Cloud's IAM icon
 | Icon file                 | Source                                   | Original asset                       |
 | ------------------------- | ---------------------------------------- | ------------------------------------ |
 | `gcp-service-account.svg` | Google Cloud (Iconify `gcp`), Apache-2.0 | `gcp:identity-and-access-management` |
+
+### Imports batch 4 (Terraform)
+
+No new stencil or icon. Every type on the Terraform table maps to a stencil already in the catalogue (AWS, Azure,
+Google Cloud and Confluent, plus CDN, Firewall / WAF, Scheduler and the generic stores), so nothing new needs
+attribution.

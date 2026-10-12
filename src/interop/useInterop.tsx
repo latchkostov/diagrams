@@ -52,7 +52,7 @@ import {
   preloadFormats,
   type ImportOutcome,
 } from "./formats";
-import type { ImportReport } from "./infra/graph";
+import type { ImportGraph, ImportReport } from "./infra/graph";
 import {
   clearUrlFragment,
   decodeShare,
@@ -166,6 +166,8 @@ type DialogState =
 interface Source {
   name: string;
   target?: SaveTarget;
+  /** The diagram this one is made from (Draw everything): it inherits that diagram's privacy. */
+  sourceSlug?: string;
 }
 
 /** The canvas's canonical form of a file (same as CanvasView's "edited" check). Loads with the canvas. */
@@ -189,7 +191,13 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
    * The last import's report, for the diagram it made: in memory only, until another diagram opens. `seen`:
    * that diagram has been open (the import itself switches to it).
    */
-  const [imported, setImported] = useState<{ slug: string; report: ImportReport; seen?: boolean } | null>(null);
+  const [imported, setImported] = useState<{
+    slug: string;
+    report: ImportReport;
+    /** Terraform's Draw everything, as data (never the source files). */
+    replay?: ImportGraph;
+    seen?: boolean;
+  } | null>(null);
   const [shownSlug, setShownSlug] = useState(slug);
   if (shownSlug !== slug) {
     setShownSlug(slug);
@@ -197,6 +205,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     else if (imported?.seen) setImported(null);
   }
   const report = imported?.slug === slug ? imported.report : undefined;
+  const replay = imported?.slug === slug ? imported.replay : undefined;
   if (dialog?.kind === "report" && !report) setDialog(null);
   // The diagram open right now (a save that finishes later compares against it).
   const openSlug = useRef(slug);
@@ -539,7 +548,11 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       let created: string | undefined;
       try {
         // Only our own format saves back to where it came from (a .drawio file is converted).
-        created = openDiagram(outcome.diagram, outcome.format === "native" ? source.target : undefined);
+        created = openDiagram(
+          outcome.diagram,
+          outcome.format === "native" ? source.target : undefined,
+          source.sourceSlug,
+        );
       } catch (err) {
         toast.error(`Couldn't import ${source.name}. ${message(err)}`);
         return;
@@ -547,7 +560,7 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
       setDialog(null);
       const r = outcome.report;
       if (r && created) {
-        setImported({ slug: created, report: r });
+        setImported({ slug: created, report: r, replay: outcome.replay });
         toast.info(r.summary, {
           action: { label: "Details", run: () => setDialog({ kind: "report" }), testId: "toast-import-details" },
           // Long enough to read when there's something to check.
@@ -1002,6 +1015,16 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
           report={report}
           isPrivate={() => !!privacy()}
           onMakePrivate={() => void setPrivate(true)}
+          replay={replay}
+          onReplay={(outcome) =>
+            // Draw everything: made from this diagram, so it keeps this one's privacy whatever New diagrams says.
+            handleOutcome(
+              outcome.ok === true && privacy()
+                ? { ...outcome, diagram: withPrivacyField(outcome.diagram, true) }
+                : outcome,
+              { name: report.source, sourceSlug: slug },
+            )
+          }
           onClose={() => setDialog(null)}
         />
       )}

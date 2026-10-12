@@ -43,13 +43,13 @@ View, File and Present become icon-only, so the bar fits at 1024px without scrol
 | File menu                    | Notes                                                                                                                                                                                                                                                                   |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Save** (Ctrl+S)            | Goes back to wherever the diagram came from or was last saved: the same device file (File System Access) or the same file in Google Drive, OneDrive or Dropbox. Otherwise it asks where to save (or downloads, in browsers without the API). Ctrl+Shift+S is "Save as". |
-| **Open…** (Ctrl+O)           | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`, docker-compose, Kubernetes and AsyncAPI `.yml` / `.yaml` / `.json`, several files at once. A draw.io file with several pages asks which page to open.                                                        |
+| **Open…** (Ctrl+O)           | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`, docker-compose, Kubernetes and AsyncAPI `.yml` / `.yaml` / `.json`, Terraform plan or state JSON (`terraform show -json`), several files at once. A draw.io file with several pages asks which page to open. |
 | Open from ▸ / Save to ▸      | Only when at least one cloud provider is configured (see "Storage providers" below); otherwise hidden completely, and **Save as…** stays a plain row. Each lists **This device** first, then the configured providers. Save to ▸ always makes a new file.               |
 | **Export PNG**               | 2×, whole diagram, independent of pan and zoom.                                                                                                                                                                                                                         |
 | **Copy share link**          | One click; the toast's **Details** opens the dialog (length, warning above 8k characters, native Share).                                                                                                                                                                |
 | **Copy link with password…** | Encrypts the diagram into a `#e=` link with a password (8+ characters, strength hint); see "Share links and embeds" below.                                                                                                                                              |
 | More formats ▸               | Diagram file (`.diagram.json`, lossless, simulations included) · Image… (PNG or SVG; scale and transparent background behind **Options**) · **Interactive HTML…** (one self-contained file, below) · draw.io · Mermaid file (`.mmd`) · Copy as Mermaid                  |
-| Import from ▸                | Paste text… (JSON, draw.io XML, Mermaid, docker-compose, Kubernetes or AsyncAPI, auto-detected) · Share link…                                                                                                                                                           |
+| Import from ▸                | Paste text… (JSON, draw.io XML, Mermaid, docker-compose, Kubernetes, AsyncAPI or Terraform JSON, auto-detected) · Share link…                                                                                                                                           |
 
 You can also drop files anywhere on the page to open them (several at once: a compose file with its overrides).
 
@@ -98,8 +98,8 @@ Batch 1 of the plan in `docs/research/imports.md` (which has the full mapping ta
   Kubernetes, AsyncAPI, Terraform JSON and Helm templates. Compose goes to the lazy `infra/pipeline.ts` chunk with
   the `yaml` package: reader (`compose.ts`) → `ImportGraph` (`graph.ts`: components, links with their
   evidence, groups, report lines) → stencils and relationships (`map.ts`, `stencils.ts`) → the three-step layout
-  (`layout.ts`) → `validateDiagram`. Kubernetes and AsyncAPI have their own readers on the same chunk; a Helm
-  template says to run `helm template`, and Terraform gets "isn't supported yet".
+  (`layout.ts`) → `validateDiagram`. Kubernetes, AsyncAPI and Terraform have their own readers on the same chunk;
+  a Helm template says to run `helm template`, and Terraform source (`.tf`) says to run `terraform show -json`.
 - **Several files.** Open… (`multiple`), a drop and the file input take every file. Files are grouped by format and
   the largest group imports: compose files merge the way Compose merges (base first, then `*.override.yml`);
   `.env` files beside them feed `env_file`. A group of diagram, draw.io or Mermaid files opens the first and says
@@ -135,9 +135,9 @@ Batch 1 of the plan in `docs/research/imports.md` (which has the full mapping ta
   no values in the output), `tests/e2e/imports.spec.ts`, the CSP walk, the bundle-split guard
   (`src/interop/infra/`, `yaml` and the report are never startup JavaScript) and the Lab's "Imported: compose"
   overlap audit. The sniffers and the wiring add 0.8 kB gzip to the entry.
-- **Copy.** The drop overlay lists `docker-compose.yml`, Kubernetes and AsyncAPI, the paste dialog names all three,
-  and the start card has one line, "Have a docker-compose, Kubernetes or AsyncAPI file? Drop it here." Terraform
-  joins the wording with the batch that imports it.
+- **Copy.** The drop overlay lists `docker-compose.yml`, Kubernetes, AsyncAPI and Terraform plan, the paste dialog
+  names all four, and the start card has one line, "Drop a docker-compose, Kubernetes, AsyncAPI or Terraform plan
+  here."
 
 ### Infrastructure imports: AsyncAPI 2.x and 3.x (`src/interop/infra/asyncapi.ts`)
 
@@ -219,7 +219,8 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
   - **Host names** (`k8sHosts.ts`) are parsed before anything is looked up: `svc`, `svc.ns`,
     `svc.ns.svc[.cluster.local]`, and StatefulSet pods by their ordinal (`db-0.db`, `db-0.db.data`). An explicit
     namespace that isn't in the files stays unresolved; it's never read as a local name. Names that look
-    in-cluster are never taken for outside APIs.
+    in-cluster are never taken for outside APIs. Workloads are indexed by kind and name (`WorkloadNames`), so a host
+    costs a few lookups however many workloads there are; its scaling test times resolution on its own.
 - **KEDA.** A ScaledObject's `kafka`, `rabbitmq`, `aws-sqs-queue` and `azure-servicebus` triggers draw the topic or
   queue with a **Message** to the workload it scales (`group` from `consumerGroup` or the subscription). The replica
   range goes in the report, and `minReplicaCount` above the Deployment's replicas becomes `replicas`. Other
@@ -249,6 +250,99 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
   Kubernetes part of `tests/e2e/imports.spec.ts` (Open… and drop, boundaries, the Ingress entry, config, secret
   and identity relationships, the KEDA consumer, report rows, Helm, no network) and the Lab's "Imported:
   Kubernetes" overlap audit. `bundleSplit.build.test.ts` names the Kubernetes reader.
+
+### Infrastructure imports: Terraform plan and state JSON (`src/interop/infra/terraform.ts`, `tfRefs.ts`, `tfTypes.ts`)
+
+Batch 4. Only `terraform show -json` output is read, a plan (`planned_values`, `resource_changes`, `configuration`)
+or a state (`values`), format version 1. HCL isn't parsed: a `.tf` file (by name or by its `resource "…" "…" {`
+blocks) says "Terraform source (.tf) isn't read. Run “terraform show -json plan.out” (or state) and import that.",
+a binary plan (a zip) says to run `terraform show -json plan.out > plan.json`, and a raw `.tfstate` says to run
+`terraform show -json`. Plain JSON, so no new dependency: the reader is about 10 kB gzip on the same lazy chunk,
+and the entry grows by about 240 B (the key-order-independent sniff, the format and the copy).
+
+- **Recognising it.** `"terraform_version"` with `"format_version"` (or a raw state's `"lineage"`) anywhere in a
+  JSON object, in any key order (`jq -S` puts them after a long `configuration`). A plan that manages Kubernetes
+  objects mentions `apiVersion` and `kind` too; its `root_module` says it's Terraform. A Kubernetes object whose
+  data holds a plan's text stays Kubernetes (escaped quotes never match).
+- **Components.** A whitelist of types (`tfTypes.ts`, the plan's table): AWS SQS, SNS, Kinesis, MSK, MQ,
+  EventBridge buses, Lambda, ECS services, Step Functions, load balancers, API Gateway, CloudFront, WAF,
+  DynamoDB, S3, ElastiCache, RDS and Aurora (by `engine`), Secrets Manager, Parameter Store and IAM roles; Azure
+  Service Bus, Event Hubs, Event Grid, Storage Queues, Function Apps, App Service, Container Apps, AKS, SQL,
+  PostgreSQL, Cosmos DB, Redis, Storage, Key Vault, App Configuration, managed identities, API Management,
+  Front Door, Application Gateway and Application Insights; Google Pub/Sub, Cloud Run, Cloud Functions, GKE,
+  Dataflow, Cloud SQL, Spanner, BigQuery, Cloud Storage, Firestore, Memorystore, Secret Manager, service accounts
+  and Cloud Scheduler; Confluent and Kafka topics. Labels are the resource's own name (`function_name`, `bucket`…)
+  unless it's sensitive or credential-shaped. `count` and `for_each` instances are one node, "×3". A data source
+  of a drawn type is drawn, "data source". A type that sounds like a component (`_function`, `_queue`,
+  `_cluster`…) is drawn as a guess with chips.
+- **Flows from glue resources** (`resource` evidence, listed in the report under "Connections from subscriptions,
+  mappings and grants" with the resource's address): SNS subscriptions (SQS, Lambda, an HTTPS endpoint as an
+  outside node named by its host only), Lambda event-source mappings (SQS, Kinesis, MSK with its consumer group,
+  DynamoDB streams), EventBridge rules and targets (a rule on a bus, or on the default bus; a scheduled rule is a
+  Scheduler), S3 notifications, SQS redrive policies and Lambda dead-letter targets (DLQ routes), load balancers
+  through listeners and target groups to their targets and ECS services, API Gateway integrations, Service Bus
+  subscriptions and queue forwarding (the subscription is the consumer group), Event Grid system topics and event
+  subscriptions (functions, queues, event hubs, webhooks), Pub/Sub subscriptions (push to Cloud Run or outside,
+  Cloud Storage, dead-letter topics), Cloud Functions triggers and Cloud Scheduler jobs. A route is its ends, its
+  kind, its consumer group and whether it carries dead letters (`links.ts`, shared by every reader): two
+  subscriptions forwarding one topic to one queue are two routes, and a dead-letter route beside an ordinary one is
+  its own.
+- **References as dependencies.** In a plan, each drawn resource's `configuration…expressions.*.references` are
+  followed (through module variables and outputs, cached, a cycle resolving to nothing, 256 hops and 200,000 steps
+  at most) to the drawn resources they name. Terraform lists `module.queues.a_arn` with its ancestor
+  `module.queues`; the ancestor is dropped, so only a reference to the whole module means every output. Each
+  reference and each target is expanded once per resource, and every target visited, cached or not, counts against
+  2,000,000 for the import (past that the report says some references weren't followed). The relationship: an IAM role or managed identity gives **Identity**, Secrets Manager or
+  Key Vault **Secret**, Parameter Store or App Configuration **Config**, anything else **Depends on**. An ECS
+  task definition passes its roles and secrets to its service. A state has no configuration: identities come from
+  `role`, `role_arn`, the task definition's roles and `identity.identity_ids`. `constant_value` is never read.
+- **Grants.** An IAM role policy (inline or attached) that names a secret or a parameter gives every component
+  running as that role a Secret or Config relationship. An Azure role assignment reads its role: a Data Receiver,
+  Reader or Subscriber on a queue, topic or hub is a flow to the principal; a Sender or Publisher a flow from it; a
+  Key Vault role a Secret relationship; anything else Depends on. A Key Vault access policy is a Secret
+  relationship. Principals are a component's own identity, or the components running as a user-assigned one.
+  Grants are collected once per role and store before they're expanded across the role's components, so thousands
+  of policies granting one secret cost one expansion.
+- **Identity is scoped.** Resources are keyed by file, module path and address. Joins by value use ARNs and ids
+  (Azure ids case-insensitively); a bare name joins only when exactly one resource in that file has it, so a
+  function name shared by two regions joins nothing and the mapping is listed. A value shared by more than 50
+  resources identifies none, in any order: its key is saturated for good (`tfIndex.ts`), never left as a partial
+  set. EventBridge rules are found by bus and name (a target that names no bus means the default one).
+- **Boundaries.** Modules (`module.streaming`, nested ones by full path), else Azure resource groups (the
+  resource's own, the one in its id, or its namespace's or server's), toned by provider. Several files are one
+  diagram, joined on ARNs; each file's resources stay its own.
+- **The report.** Not drawn, grouped by type with a reason ("aws_iam_policy ×14 · access and permissions",
+  "azurerm_servicebus_namespace shop · shown through its queues and topics", "random_password db · helper, not
+  infrastructure", "aws_s3_bucket_versioning v · part of aws_s3_bucket", "aws_sqs_queue legacy · destroyed by this
+  plan"), and a summary note ("7 supporting resources aren't drawn: access and permissions, parts of what's drawn,
+  monitoring, networking and helpers"). A plan adds "Plan: 28 to add, 0 to change, 1 to destroy". **Draw
+  everything**, beside the Not drawn heading, opens the same files again as a new diagram with every managed
+  resource as a node (its type as the subtitle); resources with no flows pack in a grid below the flows. That
+  diagram is read at import time and kept beside the report as data (names and connections, never the source
+  text), until another diagram opens. It's made from the import, so it keeps the import's privacy (Private, or
+  local-only) whatever **New diagrams are private** says, and the focus moves to its canvas.
+- **Values never leave the file.** Only a whitelist of attributes is read (names, ARNs, ids, `engine`,
+  `protocol`, endpoints, schedules, role names, principal ids), never one marked in `sensitive_values`, and never
+  `variables`, outputs or `constant_value`. What can reach the diagram: resource names, outside host names and
+  schedules. ARNs, ids, account numbers, principals, connection strings and URL userinfo or query strings don't.
+- **Bounded.** 10,000 resource instances per import, 100 read per resource, modules 32 deep (deeper ones are listed
+  under "Couldn't read"), expressions 16 deep and a million values visited, 2,000 module calls or outputs and 1,000
+  attributes per block (past those the report says some references weren't followed), 200 connection rows, and the
+  validator's node and edge budgets before any layout. Expressions are walked one frame per level of nesting, not one
+  per element, and the walk stops as soon as the budget is spent. `JSON.parse` is native; parsed objects are read with own
+  keys only, so `__proto__` stays a name.
+- **Tests.** `infra/terraform.test.ts` (both fixtures end to end, flows, dependencies through modules, grants,
+  boundaries, the report and Draw everything, overlap-free layout, the no-values leak test over both fixtures and
+  Draw everything, sensitive attributes, outside endpoints, glue across services, scoped names, the type table,
+  `.tf`, binary and raw-state messages, key order, 10,000 resources under `perfBudget`, deep modules, reference
+  cycles and long chains, prototype keys, linear patterns, and the review's cases: distinct subscription routes,
+  module-output ancestors, repeated references, grants across thousands of policies, saturated ARNs in either
+  order, rules per bus, an Object-named type, huge arrays), the Terraform part of `tests/e2e/imports.spec.ts`
+  (Open… and drop, SNS → SQS → Lambda, the module boundary, report rows and the supporting summary, Draw
+  everything, which keeps a manually private import private and focuses the new canvas, `.tf`, no network) and the
+  Lab's "Imported: Terraform (AWS plan)" and "(Azure state)" overlap
+  audits. `bundleSplit.build.test.ts` names the Terraform reader. Fixtures: `tests/fixtures/imports/terraform/`
+  (`aws-plan.json`, `azure-state.json`, self-written).
 
 ### draw.io (`src/interop/drawio/`)
 

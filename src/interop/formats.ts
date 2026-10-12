@@ -1,14 +1,14 @@
 import type { DiagramFile } from "../model/types";
 import { LIMITS, parseNative, tooLargeMessage, validateDiagram } from "./native";
 import type { DrawioDocument } from "./drawio/read";
-import type { ImportReport } from "./infra/graph";
+import type { ImportGraph, ImportReport } from "./infra/graph";
 import { looksLikeDrawio, looksLikeMermaid, sniffInfra } from "./sniff";
 import { loadOnce } from "../lib/lazyLoad";
 
 // One entry point for "here is some text (and maybe a file name): what is it, and what diagram
 // does it hold?" Used by Open file, drag-and-drop, paste and Google Drive. The draw.io and Mermaid
 // converters load when a file needs them (or when the File menu opens: preloadFormats), and so do the
-// infrastructure importers (docker-compose, Kubernetes, AsyncAPI) with their YAML reader.
+// infrastructure importers (docker-compose, Kubernetes, AsyncAPI, Terraform) with their YAML reader.
 
 const drawioReader = loadOnce(() => import("./drawio/read"));
 const mermaidReader = loadOnce(() => import("./mermaid/read"));
@@ -22,7 +22,7 @@ export function preloadFormats() {
     void load().catch(() => {});
 }
 
-export type FormatId = "native" | "drawio" | "mermaid" | "compose" | "asyncapi" | "kubernetes";
+export type FormatId = "native" | "drawio" | "mermaid" | "compose" | "asyncapi" | "kubernetes" | "terraform";
 
 export const FORMAT_LABEL: Record<FormatId, string> = {
   native: "Live Diagrams file",
@@ -31,17 +31,18 @@ export const FORMAT_LABEL: Record<FormatId, string> = {
   compose: "docker-compose file",
   asyncapi: "AsyncAPI document",
   kubernetes: "Kubernetes manifests",
+  terraform: "Terraform plan or state",
 };
 
 /** File-picker accept list. */
 export const OPEN_ACCEPT =
-  ".json,.diagram.json,.drawio,.xml,.mmd,.mermaid,.svg,.yaml,.yml,.env,application/json,application/xml,text/xml,text/plain,application/yaml,text/yaml";
+  ".json,.diagram.json,.drawio,.xml,.mmd,.mermaid,.svg,.yaml,.yml,.env,.tf,application/json,application/xml,text/xml,text/plain,application/yaml,text/yaml";
 
 export function detectFormat(text: string, fileName = ""): FormatId | undefined {
   const name = fileName.toLowerCase();
   const head = text.replace(/^\uFEFF/, "").trimStart();
   const infra = sniffInfra(head);
-  if (infra === "compose" || infra === "asyncapi" || infra === "kubernetes") return infra;
+  if (infra === "compose" || infra === "asyncapi" || infra === "kubernetes" || infra === "terraform") return infra;
   if (head.startsWith("{")) return infra ? undefined : "native";
   if (looksLikeDrawio(head)) return "drawio";
   if (looksLikeMermaid(head)) return "mermaid";
@@ -62,7 +63,18 @@ export function titleFromFileName(name: string): string {
 
 export type ImportOutcome =
   /** `report`: an infrastructure import's Import report, kept in memory (never in the file). */
-  | { ok: true; format: FormatId; diagram: DiagramFile; warnings: string[]; report?: ImportReport }
+  | {
+      ok: true;
+      format: FormatId;
+      diagram: DiagramFile;
+      warnings: string[];
+      report?: ImportReport;
+      /**
+       * Terraform's **Draw everything**: the same import with every resource as a node, already read, as data
+       * (names and connections, never the source text), drawn by the Import report.
+       */
+      replay?: ImportGraph;
+    }
   /** A draw.io file with several pages: the caller asks which one, then calls `pick`. */
   | { ok: "pages"; format: "drawio"; pages: { name: string; index: number }[]; pick: (index: number) => ImportOutcome }
   | { ok: false; error: string };
@@ -94,8 +106,8 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
   if (!text.trim()) return { ok: false, error: "There's nothing to import: the text is empty." };
   if (text.length > LIMITS.maxTextChars) return { ok: false, error: tooLargeMessage(text.length) };
   const format = detectFormat(text, fileName);
-  /** Recognised, but not imported (a Helm template, Terraform): the infrastructure reader says so plainly. */
-  const later = format ? undefined : sniffInfra(text);
+  /** Recognised, but not imported (a Helm template, Terraform source): the infrastructure reader says what to do. */
+  const later = format ? undefined : (sniffInfra(text) ?? (/\.tf$/i.test(fileName) ? "hcl" : undefined));
   const fallbackTitle = fileName ? titleFromFileName(fileName) : "Imported diagram";
   /** The loaded reader's own error type: its message is meant for the user. */
   let readerErrors: (new (message?: string) => Error)[] = [];
@@ -124,7 +136,7 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
       const { diagram, warnings } = reader.parseMermaid(text, fallbackTitle);
       return validated(format, diagram, warnings);
     }
-    if (format === "compose" || format === "asyncapi" || format === "kubernetes" || later) {
+    if (format === "compose" || format === "asyncapi" || format === "kubernetes" || format === "terraform" || later) {
       const reader = await infraReader();
       readerErrors = [reader.ImportError];
       return reader.importInfra(text, fileName, later, format);
@@ -136,7 +148,7 @@ export async function importText(text: string, fileName = ""): Promise<ImportOut
   return {
     ok: false,
     error:
-      "That doesn't look like a diagram we can read. Supported: Live Diagrams files (.diagram.json), draw.io (.drawio / .xml), Mermaid flowcharts (.mmd), docker-compose files, Kubernetes manifests and AsyncAPI documents.",
+      "That doesn't look like a diagram we can read. Supported: Live Diagrams files (.diagram.json), draw.io (.drawio / .xml), Mermaid flowcharts (.mmd), docker-compose files, Kubernetes manifests, AsyncAPI documents and Terraform plans (terraform show -json).",
   };
 }
 

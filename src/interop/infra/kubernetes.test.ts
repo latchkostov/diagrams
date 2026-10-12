@@ -7,8 +7,8 @@ import { detectFormat, importFiles, importText, type ImportOutcome } from "../fo
 import { sniffInfra } from "../sniff";
 import type { ImportReport } from "./graph";
 import { importKubernetes } from "./pipeline";
-import { HELM_TEMPLATE, MAX_RESOURCES, readKubernetes } from "./kubernetes";
-import { parseServiceHost } from "./k8sHosts";
+import { HELM_TEMPLATE, MAX_RESOURCES } from "./kubernetes";
+import { parseServiceHost, WorkloadNames } from "./k8sHosts";
 import { ENV_LIMITS, expandVars, OPAQUE } from "./k8sSettings";
 import { MAX_VALUE } from "./settings";
 import { TOO_MANY_ALIASES } from "./yaml";
@@ -944,24 +944,30 @@ stringData: { DB_HOST: db-b-from-secret }
     });
 
     it("resolves a host with no Service through an index, in linear time", () => {
-      const settings = Array.from({ length: 20 }, (_, i) => `{ name: H${i}_HOST, value: missing-${i} }`).join(", ");
-      const items = Array.from({ length: 2_000 }, (_, i) => ({
-        apiVersion: "apps/v1",
-        kind: "Deployment",
-        metadata: { name: `w${i}` },
-        spec: { template: { metadata: { labels: { team: "a", tier: "b" } }, spec: { containers: [] as unknown[] } } },
-      }));
-      const text = JSON.stringify({ apiVersion: "v1", kind: "List", items }).replaceAll(
-        '"containers":[]',
-        `"containers":[{"name":"a","image":"example/a","env":[${settings.replace(
-          /\{ name: (\w+), value: ([\w-]+) \}/g,
-          '{"name":"$1","value":"$2"}',
-        )}]}]`,
-      );
-      const started = performance.now();
-      const graph = readKubernetes([{ name: "list.json", text }]);
-      expect(performance.now() - started).toBeLessThan(perfBudget(2_000));
-      expect(graph.components).toHaveLength(2_000);
+      // Host resolution on its own (WorkloadNames, which the reader asks for every host in every setting), so
+      // parsing and the rest of the import can't hide it. A scan of the workloads per host would be quadratic: 4x
+      // the workloads and hosts would take 16x as long. Compared against a quarter of the input, not a wall-clock
+      // budget, so a slow or busy machine (CI with coverage) doesn't fail it; the fastest of a few runs evens out
+      // noise. Unresolved hosts are the worst case: every reading is tried and none is found.
+      const fastest = (n: number) => {
+        const names = new WorkloadNames<{ key: string }>();
+        for (let i = 0; i < n; i++) names.add("Deployment", "shop", `w${i}`, { key: `w${i}` });
+        const services = new Map<string, string[]>();
+        const hosts = Array.from({ length: n * 5 }, (_, i) => `missing-${i}`);
+        let best = Infinity;
+        for (let run = 0; run < 3; run++) {
+          const started = performance.now();
+          let found = 0;
+          for (const h of hosts) if (names.resolve(h, "shop", services)) found++;
+          best = Math.min(best, performance.now() - started);
+          expect(found).toBe(0);
+        }
+        expect(names.resolve(`w${n - 1}.shop.svc`, "other", services)).toEqual([`w${n - 1}`]);
+        return best;
+      };
+      fastest(2_000); // warm up the JIT
+      const ratio = fastest(8_000) / fastest(2_000);
+      expect(ratio).toBeLessThan(8);
     });
   });
 

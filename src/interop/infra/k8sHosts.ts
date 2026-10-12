@@ -54,3 +54,44 @@ export function strimziCluster(service: string): string | undefined {
   const m = /^([a-z0-9-]{1,200})-kafka-(?:bootstrap|brokers)$/.exec(service);
   return m?.[1];
 }
+
+/**
+ * The workloads a host can name, indexed by kind, namespace and name, and by namespace and name. Resolving a host
+ * is a few map lookups however many workloads there are: a scan per host would make imports quadratic.
+ */
+export class WorkloadNames<W extends { key: string }> {
+  private readonly byKind = new Map<string, W>();
+  private readonly byName = new Map<string, W>();
+
+  /** Adds a workload; the first one with a name in a namespace answers for that name, whatever its kind. */
+  add(kind: string, namespace: string, name: string, workload: W): void {
+    this.byKind.set(`${kind}\u0001${namespace}\u0001${name}`, workload);
+    const named = `${namespace}\u0001${name}`;
+    if (!this.byName.has(named)) this.byName.set(named, workload);
+  }
+
+  at(kind: string, namespace: string, name: string): W | undefined {
+    return this.byKind.get(`${kind}\u0001${namespace}\u0001${name}`);
+  }
+
+  named(namespace: string, name: string): W | undefined {
+    return this.byName.get(`${namespace}\u0001${name}`);
+  }
+
+  /**
+   * What `host`, read from namespace `from`, reaches: a Service's targets (`services`, by `namespace\u0001name`), a
+   * workload of that name, or a StatefulSet pod's StatefulSet. Undefined when it names nothing in the files.
+   */
+  resolve(host: string, from: string, services: ReadonlyMap<string, string[]>): string[] | undefined {
+    for (const h of parseServiceHost(host)) {
+      const ns = h.namespace ?? from;
+      // A StatefulSet pod ("db-0") behind its headless Service: the StatefulSet itself, else the Service's targets.
+      const sts = h.pod ? this.at("StatefulSet", ns, h.pod.replace(/-\d+$/, "")) : undefined;
+      if (sts) return [sts.key];
+      const w = this.named(ns, h.service);
+      const found = services.get(`${ns}\u0001${h.service}`) ?? (w ? [w.key] : undefined);
+      if (found) return found;
+    }
+    return undefined;
+  }
+}

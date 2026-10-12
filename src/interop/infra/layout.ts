@@ -17,6 +17,32 @@ const MARGIN = 24;
 const sizeOf = (n: DiagramNode) => estimateCardSize(n.label, n.sublabel);
 const boxOf = (n: DiagramNode): Box => ({ x: n.x, y: n.y, ...sizeOf(n) });
 
+/** More units than this with no flows at all go in a grid below the flows, not one tall column. */
+const PACK_OVER = 6;
+
+/**
+ * Units with no flow to or from anything (Terraform's Draw everything: policies, networks, helpers) would stack
+ * in the layered layout's first column. Past a few, they're packed in a grid under everything that flows.
+ */
+function packIsolated(
+  units: (Box & { id: string })[],
+  edges: { from: string; to: string }[],
+  at: Map<string, { x: number; y: number }>,
+): void {
+  const linked = new Set(edges.flatMap((e) => [e.from, e.to]));
+  const isolated = units.filter((u) => !linked.has(u.id) && at.has(u.id));
+  if (isolated.length <= PACK_OVER) return;
+  const placed = units.filter((u) => linked.has(u.id) && at.has(u.id)).map((u) => ({ ...u, ...at.get(u.id)! }));
+  const left = placed.length ? Math.min(...placed.map((b) => b.x)) : 40;
+  const top = placed.length ? Math.max(...placed.map((b) => b.y + b.height)) + 80 : 40;
+  const columns = Math.max(1, Math.ceil(Math.sqrt(isolated.length * 2)));
+  const cellW = Math.max(...isolated.map((u) => u.width)) + 48;
+  const cellH = Math.max(...isolated.map((u) => u.height)) + 40;
+  isolated.forEach((u, i) =>
+    at.set(u.id, { x: left + (i % columns) * cellW, y: top + Math.floor(i / columns) * cellH }),
+  );
+}
+
 export function layoutImport(diagram: DiagramFile): DiagramFile {
   const nodes = diagram.nodes.map((n) => ({ ...n }));
   const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -85,6 +111,7 @@ export function layoutImport(diagram: DiagramFile): DiagramFile {
     unitEdges.push({ from, to });
   }
   const at = layeredLayout({ nodes: units, edges: unitEdges, direction: "LR" });
+  packIsolated(units, unitEdges, at);
   for (const n of loose) Object.assign(n, at.get(n.id));
   const out: DiagramFile = { ...diagram, nodes };
   out.groups = groups.map((g) => {
