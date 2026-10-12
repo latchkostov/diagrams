@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 
 // Round 7 of the UX review (docs/DESIGN-REVIEW.md): Esc on a clicked node, toasts inside the canvas
-// pane, live view refitting around the Ask AI dock, readable hover cards, a shorter canvas menu, the
+// pane, live view refitting around the AI panel, readable hover cards, a shorter canvas menu, the
 // start card's one row of actions, and slow motion keeping the hop at work out from under the trace card.
 
 const KAFKA = "kafka-order-pipeline";
@@ -19,8 +19,8 @@ const apart = (a: Box, b: Box) =>
 const inside = (a: Box, b: Box) =>
   a.x >= b.x - 1 && a.y >= b.y - 1 && a.x + a.width <= b.x + b.width + 1 && a.y + a.height <= b.y + b.height + 1;
 
-async function openAskAi(page: Page) {
-  await page.getByTestId("ask-ai-toggle").click();
+async function openAiPanel(page: Page) {
+  await page.getByTestId("ai-rail-open").click();
   await expect(page.getByTestId("ai-dock")).toBeVisible({ timeout: 20_000 });
 }
 
@@ -52,14 +52,14 @@ test("Esc clears the selection of a node that was just clicked", async ({ page, 
 });
 
 for (const width of [1024, 1440]) {
-  test(`at ${width}px with Ask AI open, a toast stays in the canvas pane, clear of the dock and minimap`, async ({
+  test(`at ${width}px with the AI panel open, a toast stays in the canvas pane, clear of the dock and minimap`, async ({
     page,
     context,
   }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.setViewportSize({ width, height: 800 });
     await gotoCanvas(page, KAFKA);
-    await openAskAi(page);
+    await openAiPanel(page);
     await page.getByTestId("file-button").click();
     await page.getByTestId("export-share-link").click();
     const toast = page.getByTestId("toast");
@@ -71,17 +71,17 @@ for (const width of [1024, 1440]) {
   });
 }
 
-test("below 1680px Ask AI folds the stencils to their rail; opening them by hand wins", async ({ page }) => {
+test("below 1680px the AI panel folds the stencils to their rail; opening them by hand wins", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await gotoCanvas(page, KAFKA);
   await expect(page.getByTestId("palette-search")).toBeVisible();
-  await openAskAi(page);
+  await openAiPanel(page);
   await expect(page.getByTestId("palette-search")).toHaveCount(0);
   await page.getByTestId("palette-toggle").click();
   await expect(page.getByTestId("palette-search")).toBeVisible();
 });
 
-test("live view with a trace refits when Ask AI opens: every node stays in the pane", async ({ page }) => {
+test("live view with a trace refits when the AI panel opens: every node stays in the pane", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
   await expect(page.getByTestId("live-controls")).toBeVisible();
@@ -90,7 +90,7 @@ test("live view with a trace refits when Ask AI opens: every node stays in the p
   await page.getByTestId("live-more-menu").getByText("Next message", { exact: true }).click();
   await expect(page.getByTestId("trace-card")).toBeVisible();
   await expect.poll(() => allNodesInPane(page)).toBe(true);
-  await openAskAi(page);
+  await openAiPanel(page);
   await expect.poll(() => allNodesInPane(page), { timeout: 5000 }).toBe(true);
 });
 
@@ -128,21 +128,21 @@ test("the canvas right-click leaves out what the canvas controls already do", as
   await expect(page.getByTestId("context-menu").getByRole("menuitem")).toHaveCount(9);
 });
 
-test("the start card keeps one row of actions, clear of the canvas controls with Ask AI open", async ({ page }) => {
+test("the start card keeps one row of actions, clear of the canvas controls with the AI panel open", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto("./");
   await expect(page.getByTestId("start-card")).toBeVisible();
   const rows = async () => {
-    const ys = await Promise.all(["start-build-with-ai", "start-blank", "start-open"].map((t) => box(page, t)));
+    const ys = await Promise.all(["start-blank", "start-open"].map((t) => box(page, t)));
     return new Set(ys.map((b) => Math.round(b.y))).size;
   };
   // Polled: the card slides in.
   await expect.poll(rows).toBe(1);
   await expect(page.getByTestId("start-paste")).toBeVisible();
-  await page.getByTestId("start-build-with-ai").click();
-  await expect(page.getByTestId("ai-dock")).toBeVisible({ timeout: 20_000 });
-  // The panel says Build with AI now; the card doesn't repeat it.
-  await expect(page.getByTestId("start-build-with-ai")).toHaveCount(0);
+  await openAiPanel(page);
+  await expect.poll(rows).toBe(1);
   await expect.poll(async () => apart(await box(page, "start-card"), await box(page, "canvas-controls"))).toBe(true);
 });
 

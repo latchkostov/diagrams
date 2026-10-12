@@ -17,19 +17,39 @@ import {
   type SimulationSpec,
 } from "../index";
 import { checkSchema } from "../validation";
-import { diagramDiff } from "../../model/diagramDiff";
 import { LOCAL_ONLY_MESSAGE } from "../privacy";
 import type { ToolDef } from "./adapter";
+import { choicesFrom, type StencilChoice } from "../ui/apply";
+import { turnId } from "../ui/thread";
 
 export type ToolName = keyof typeof toolSchemas;
+
+/** One tool call that changed the diagram, as the AI panel records it. */
+export interface AgentChange {
+  tool: "edit_diagram" | "set_simulation" | "new_diagram";
+  /** The agent's own note (the input's `summary`), when it gave one. */
+  note?: string;
+  /** What changed, in words ("+2 nodes, +1 connection"). */
+  summary: string;
+  /** Ids added or changed (highlighted while the turn is hovered). */
+  changed: string[];
+  editor: EditorApi;
+  /** The history step the call made (its applyDiagram tag); none for a new diagram. */
+  historyKey?: string;
+  choices?: StencilChoice[];
+  warnings?: string[];
+}
+
+const noteOf = (input: Record<string, unknown>) =>
+  typeof input.summary === "string" && input.summary.trim() ? input.summary.trim().slice(0, 200) : undefined;
 
 /** What the tools need from the app; read at call time, so a remounted canvas is picked up. */
 export interface WebMcpHost {
   getEditor(): EditorApi | null;
   /** Rechecked per call, including callbacks retained across document switches. */
   canUseAi?(): boolean;
-  /** Shows the change (toast with Undo, a brief highlight). */
-  onApplied(summary: string, changed: readonly string[], editor: EditorApi): void;
+  /** Shows the change (toast with Undo, a brief highlight) and records it as a turn in the AI panel. */
+  onApplied(change: AgentChange): void;
   newDiagram(opts: { title?: string; direction?: "LR" | "TB" }): Promise<EditorApi | null>;
   shareLink(diagram: DiagramFile): Promise<{ url: string; length: number; warning?: string }>;
 }
@@ -63,8 +83,6 @@ function needEditor(host: WebMcpHost): EditorApi {
   if (!editor) throw new Error("The diagram is still loading. Try again in a moment.");
   return editor;
 }
-
-let callSeq = 0;
 
 function compact<T extends { results?: unknown[] }>(result: T): T {
   if (JSON.stringify(result).length <= OUTPUT_BUDGET || !result.results) return result;
@@ -107,12 +125,25 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       const summary = result.summary;
       if (dryRun)
         return compact({ ok: true, dryRun: true, summary, results: result.results, warnings: result.warnings });
-      editor.applyDiagram(result.diagram, { merge: `ai:webmcp:${++callSeq}` });
-      host.onApplied(
+      // Its own history tag: the AI panel offers Undo this change while this step is next.
+      const historyKey = `ai:${turnId()}`;
+      const diff = editor.applyDiagram(result.diagram, { merge: historyKey });
+      // Already as asked: no undo step, so no turn (a retry can't crowd real changes out of the thread).
+      if (!diff.hasChanges) return { ok: true, summary: "No change: the diagram already matched.", changed: false };
+      const choices = choicesFrom(result.results, ops ?? []).map((c) => ({
+        ...c,
+        node: result.diagram.nodes.find((n) => n.id === c.nodeId),
+      }));
+      host.onApplied({
+        tool: "edit_diagram",
+        note: noteOf(input),
         summary,
-        [...diagramDiff(before, result.diagram).added.ids, ...diagramDiff(before, result.diagram).updated.ids],
+        changed: [...diff.added.ids, ...diff.updated.ids],
         editor,
-      );
+        historyKey,
+        ...(choices.length ? { choices } : {}),
+        ...(result.warnings.length ? { warnings: result.warnings } : {}),
+      });
       return compact({
         ok: true,
         summary,
@@ -129,14 +160,23 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       const sims = before.simulations ?? [];
       const replaced = sims.some((s) => s.id === sim.id);
       const simulations = replaced ? sims.map((s) => (s.id === sim.id ? sim : s)) : [...sims, sim];
-      editor.applyDiagram({ ...before, simulations }, { merge: `ai:webmcp:${++callSeq}` });
-      host.onApplied(`${replaced ? "Updated" : "Added"} simulation “${sim.title}”`, [], editor);
+      const historyKey = `ai:${turnId()}`;
+      const diff = editor.applyDiagram({ ...before, simulations }, { merge: historyKey });
+      if (diff.hasChanges)
+        host.onApplied({
+          tool: "set_simulation",
+          note: noteOf(input),
+          summary: `${replaced ? "Updated" : "Added"} simulation “${sim.title}”`,
+          changed: [...new Set(sim.traffic.map((t) => t.node))],
+          editor,
+          historyKey,
+        });
       return {
         ok: true,
         id: sim.id,
         title: sim.title,
         summary: `${replaced ? "Replaced" : "Added"} simulation ${JSON.stringify(sim.title)}: ${sim.traffic.length} traffic, ${sim.timeline?.length ?? 0} events, ${sim.expectations?.length ?? 0} expectations.`,
-        undo: "One undo step reverts this call.",
+        ...(diff.hasChanges ? { undo: "One undo step reverts this call." } : { changed: false }),
         play: "The user plays it in live view (L), or from the command palette.",
       };
     },
@@ -148,6 +188,13 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       if (!editor) throw new Error("The new diagram didn't open. Try again.");
       if (host.canUseAi?.() === false) throw new Error(LOCAL_ONLY_MESSAGE);
       const d = editor.getDiagram();
+      host.onApplied({
+        tool: "new_diagram",
+        note: noteOf(input),
+        summary: `Started “${d.title}”`,
+        changed: [],
+        editor,
+      });
       return {
         ok: true,
         title: d.title,

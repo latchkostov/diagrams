@@ -247,6 +247,46 @@ quick to change things around [...] as well as be able to undo or revert things 
 tooling itself". Before this round the AI panel ("Build with AI") floated over the canvas, was reachable only
 from File, the canvas right-click and Ctrl+K, and worked only by copying a prompt to another tab.
 
+### Direction change: agents first, no API keys
+
+The owner, after round 6 shipped: AI here "was supposed to be something that we could primarily use with
+the browser built-in agents or anything that could browse our site and not for manual interactions", and
+"we don't accept API keys". So:
+
+- **Removed:** Connect a model (the header's key, "Or connect your own model…"), the Claude, OpenAI and
+  Gemini adapters and the agent loop that called them, key storage and its redaction. A one-time cleanup
+  on load deletes the key a visitor may have stored while that shipped.
+- **The panel shows what agents did.** Every WebMCP call that changes the diagram (`edit_diagram`,
+  `set_simulation`, `new_diagram`) is a turn: the agent's note (the tools' new optional `summary`), what
+  changed, Undo this change (bound to its own history step), Revert to here and the hover highlight,
+  recorded even while the panel is folded. Idle, the panel says how to use AI here ("Ask your browser's AI
+  assistant, or any agent that can use this page…") and a status line says whether this browser offers
+  the page's tools, linking agents that drive pages to llms.txt when it doesn't.
+- **No request box in the main view.** Without a model, a box that "sends" would be dishonest. The selection
+  right-click's Change with AI… became **Copy for AI**: the elements' ids and labels on the clipboard, for
+  the request the person gives their agent. It never opens a fake composer.
+- **Advanced** (closed by default, remembered) keeps the copy-and-paste flow, Explain and live Simulate,
+  fully working. **Build with AI** left the start card and the File menu; Ctrl+K keeps it as the one
+  discreet entry, opening Advanced on a blank diagram.
+- **Name:** it's the **AI panel**: "Ask AI" promised a conversation the panel no longer has.
+- **Folded in from the round-7 review:** the top bar's Ask AI button is gone (the bar is back to 7; the
+  always-visible rail, Ctrl+I, the canvas right-click and Ctrl+K open the panel, and with the panel now an
+  activity log there's no need to push it from the top bar). While the panel is open an AI change shows no
+  toast (the turn has the Undo; one Undo, not two). Stencil-choice chips leave a turn once its node changed
+  (undo, revert, an edit) instead of sitting there disabled. Advanced's placeholder names a node that's in
+  the diagram. The dock's frame is no longer a second landmark around the panel's region.
+- **Lead review:** an idle open panel spent about 360 px of a 1024 screen on explanation, so the panel
+  starts folded to its 40 px rail on a first visit (then stays as the person left it). An agent's change
+  never opens it or moves the canvas; while folded, the rail's spark shows a count of the agent changes not
+  yet seen in this diagram ("AI panel, 2 new changes"), cleared by opening the panel. No AI change toasts
+  while the panel is open, for any tool, and a toast left from a change made while folded goes when the
+  panel opens (its turn has the Undo). With Build with AI off the start card, round 7's rule hiding it
+  while the panel is open went too.
+
+Chrome: the top bar goes from 8 to 7, the start card and the File menu lose an item each, the node, edge
+and selection menus swap Change with AI… for Copy for AI (same count), and the panel's composer moves
+into Advanced.
+
 ### Decision: a docked column, beside the inspector
 
 **Ask AI** is a column at the window's right edge, outside the canvas: stencil rail | canvas | inspector |
@@ -303,7 +343,7 @@ change**; earlier turns offer **Revert to here** (one undo step, and a turn of i
 too). Hovering or focusing a turn outlines what it touched. **Clear conversation** is undoable from its
 toast. Caps: 40 turns; the newest 10 keep their snapshot for Revert.
 
-### Engines
+### Engines (superseded: see "Direction change" above)
 
 - **Your model** (optional): **Connect a model**: Claude (Haiku 5.5 by default, or Sonnet 5.5), OpenAI or
   Gemini, called from the browser with the user's key. The key stays in this browser ("Stored only in this

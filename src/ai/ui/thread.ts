@@ -1,4 +1,4 @@
-// The Ask AI conversation for one diagram: what was asked, what the AI answered, what changed, and the
+// The AI panel's conversation for one diagram: what agents (or pasted replies) changed and said, what changed, and the
 // diagram as it was after each change (for "Revert to here"). Stored in this browser only, per diagram,
 // under its own key: never part of the diagram file, its exports or share links. Pure functions plus a
 // small storage wrapper, so the caps are unit-tested.
@@ -34,8 +34,10 @@ export interface ThreadTurn {
    * only while that step is the one Undo would reverse.
    */
   historyKey?: string;
-  /** Which engine answered: the copy-paste flow or a connected model. */
+  /** Who made the change: "agent" (a browser agent through WebMCP) or "paste" (Advanced, copy and paste). */
   engine?: string;
+  /** For an agent's change, the tool it called (edit_diagram, set_simulation, new_diagram). */
+  tool?: string;
 }
 
 const PREFIX = "diagrams.ai-thread.v1:";
@@ -121,6 +123,7 @@ export function validTurn(raw: unknown): ThreadTurn | null {
   if (typeof t.reply === "string") turn.reply = t.reply;
   if (typeof t.summary === "string") turn.summary = t.summary;
   if (typeof t.engine === "string") turn.engine = t.engine;
+  if (typeof t.tool === "string") turn.tool = t.tool;
   if (typeof t.historyKey === "string") turn.historyKey = t.historyKey;
   if (t.undone === true) turn.undone = true;
   if (isStringArray(t.warnings)) turn.warnings = t.warnings;

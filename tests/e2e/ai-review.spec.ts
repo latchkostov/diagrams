@@ -4,7 +4,7 @@ import {
   SLUG,
   MOD,
   must,
-  openAskAi,
+  openAdvanced,
   nodeCount,
   installFakeModelContext,
   toolNames,
@@ -16,7 +16,7 @@ import {
 test("failed block 2 never commits block 1", async ({ page }) => {
   await gotoCanvas(page, SLUG);
   const before = await nodeCount(page);
-  await openAskAi(page);
+  await openAdvanced(page);
   for (const bad of ['[{"label":"missing op"}]', '[{"op":"connect",']) {
     await page
       .getByTestId("ai-reply")
@@ -29,7 +29,7 @@ test("failed block 2 never commits block 1", async ({ page }) => {
 
 test("typing defers parsing and immediate Apply validates the latest reply", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAskAi(page);
+  await openAdvanced(page);
   await page.evaluate(() => {
     const original = JSON.parse;
     const state = { reads: 0 };
@@ -56,19 +56,19 @@ test("typing defers parsing and immediate Apply validates the latest reply", asy
 
 test("layout-only replies apply and undo", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAskAi(page);
+  await openAdvanced(page);
   await page.getByTestId("ai-reply").fill('{"ops":[],"layout":"full"}');
   await page.getByTestId("ai-apply").click();
   await expect(page.getByTestId("ai-error")).toHaveCount(0);
   await expect(page.getByTestId("ai-turn-0-summary")).toContainText("layout");
-  await page.getByTestId("ai-toast-undo").click();
+  await page.getByTestId("ai-turn-0-undo").click();
   await expect(page.getByTestId("node-payments")).toBeVisible();
 });
 
 test("the dock sits beside the inspector, never over it, and Esc hands the keyboard back", async ({ page }) => {
   await gotoCanvas(page, SLUG);
   await page.getByTestId("node-payments").click();
-  await openAskAi(page);
+  await openAdvanced(page);
   const panel = must(await page.getByTestId("ai-dock").boundingBox(), "AI dock");
   const inspector = must(await page.getByTestId("inspector").boundingBox(), "inspector");
   const canvas = must(await page.getByTestId("canvas-wrap").boundingBox(), "canvas");
@@ -83,7 +83,7 @@ test("the dock sits beside the inspector, never over it, and Esc hands the keybo
 
 test("applied feedback and confidence warnings meet light-theme contrast", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAskAi(page);
+  await openAdvanced(page);
   await page.getByTestId("ai-reply").fill('[{"op":"add_node","kind":"gizmo","label":"Synthetic worker"}]');
   await page.getByTestId("ai-apply").click();
   await expect(page.getByTestId("ai-turn-0")).toBeVisible();
@@ -119,7 +119,7 @@ test("synthetic local example is excluded from tools and copied prompts, includi
   );
   await gotoCanvas(page, SLUG);
   await expect.poll(() => toolNames(page)).toHaveLength(6);
-  await openAskAi(page);
+  await openAdvanced(page);
   await page.evaluate(() => {
     history.pushState({}, "", "?view=canvas&example=synthetic-local");
     window.dispatchEvent(new PopStateEvent("popstate"));
@@ -142,7 +142,7 @@ test("synthetic local example is excluded from tools and copied prompts, includi
 test("stop and restart during availability opens only the latest dictation session", async ({ page }) => {
   await installFakeSpeech(page, { deferredAvailability: true });
   await gotoCanvas(page, SLUG);
-  await openAskAi(page);
+  await openAdvanced(page);
   const mic = page.getByTestId("ai-mic");
   await mic.click();
   await mic.click();
@@ -154,25 +154,25 @@ test("stop and restart during availability opens only the latest dictation sessi
   await expect.poll(async () => (await speechState(page)).active).toBe(0);
 });
 
-test("undo invalidates stencil choices and a changed node refuses an old choice", async ({ page }) => {
+test("undo removes a turn's stencil choices, and they stay gone after another turn", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAskAi(page);
+  await openAdvanced(page);
   await page.getByTestId("ai-reply").fill('[{"op":"add_node","kind":"function","label":"Synthetic function"}]');
   await page.getByTestId("ai-apply").click();
   const chip = page.getByTestId(/^ai-swap-.*-azure\.functions$/).first();
   await expect(chip).toBeEnabled();
-  await page.getByTestId("ai-toast-undo").click();
-  await expect(chip).toBeDisabled();
-  await expect(page.getByTestId(/^ai-choice-stale-/).first()).toContainText("Ask for a new turn");
+  await page.getByTestId("ai-turn-0-undo").click();
+  // Nothing left to swap: the chips go rather than sit there disabled.
+  await expect(chip).toHaveCount(0);
   await page.getByTestId("ai-reply").fill('[{"op":"add_node","kind":"function","label":"Replacement function"}]');
   await page.keyboard.press(`${MOD}+Enter`);
   await expect(page.getByTestId("ai-turn-1")).toBeVisible();
-  await expect(chip).toBeDisabled();
+  await expect(page.getByTestId("ai-turn-0").getByTestId(/^ai-swap-/)).toHaveCount(0);
 });
 
 test("a choice remains usable for another swap within its own turn", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAskAi(page);
+  await openAdvanced(page);
   await page.getByTestId("ai-reply").fill('[{"op":"add_node","kind":"function","label":"Synthetic function"}]');
   await page.getByTestId("ai-apply").click();
   const azure = page.getByTestId(/^ai-swap-.*-azure\.functions$/).first();
@@ -180,5 +180,6 @@ test("a choice remains usable for another swap within its own turn", async ({ pa
   const previous = page.getByTestId(/^ai-swap-.*-aws\.lambda$/).first();
   await expect(previous).toBeEnabled();
   await previous.click();
-  await expect(page.getByTestId("toast")).toContainText("Synthetic function is now AWS Lambda");
+  // Swapped to AWS Lambda: Azure Functions is one click away again.
+  await expect(page.getByTestId(/^ai-swap-.*-azure\.functions$/).first()).toBeVisible();
 });

@@ -10,7 +10,6 @@ import { Glyph } from "../interop/ui/glyphs";
 import { capacityOverlay } from "../live/capacityOverlay";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { groupByTheme, type ExampleThemeInfo } from "../examples/themes";
-import { AskAiButton } from "../ai/ui/AiMount";
 
 export interface ExampleOption {
   slug: string;
@@ -126,7 +125,6 @@ export function TopBar(p: Props) {
       <div className="topbar-spacer" />
 
       <div className="topbar-group" data-testid="topbar-actions">
-        {canvas && <AskAiButton />}
         <ViewMenu edges={canvas || lab} overlays={canvas} />
         <FileMenu
           api={p.interop}

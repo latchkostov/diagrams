@@ -1950,7 +1950,7 @@ select.insp-input {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  /* Clear of the canvas controls (bottom left) on a narrow pane, as with Ask AI open at 1024. */
+  /* Clear of the canvas controls (bottom left) on a narrow pane, as with the AI panel open at 1024. */
   width: min(468px, calc(100% - 128px));
   max-height: calc(100% - 48px);
   overflow: auto;

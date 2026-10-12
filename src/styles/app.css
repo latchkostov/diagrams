@@ -180,7 +180,7 @@ kbd {
   position: relative;
 }
 
-/* ---------- Ask AI dock (the panel itself is lazy: src/ai/ui/ai.css) ---------- */
+/* ---------- AI panel dock (the panel itself is lazy: src/ai/ui/ai.css) ---------- */
 
 .ai-dock,
 .ai-rail {
@@ -206,6 +206,7 @@ kbd {
 }
 
 .ai-rail-btn {
+  position: relative;
   width: 30px;
   height: 30px;
   display: grid;
@@ -221,13 +222,29 @@ kbd {
   border-color: color-mix(in oklab, var(--accent) 40%, transparent);
 }
 
-.btn.ai-topbar-btn svg {
-  color: var(--accent);
-}
-
 .ai-rail-btn:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+/* Agent changes made while the panel was folded. */
+.ai-rail-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  border: 2px solid var(--surface);
+  box-sizing: content-box;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .topbar {

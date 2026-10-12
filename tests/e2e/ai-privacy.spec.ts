@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 import { deflateRawSync } from "node:zlib";
 import { localOnlyFixture } from "../../src/lab/localOnlyFixture";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { SLUG, installFakeModelContext, toolNames, openAskAi } from "./ai-helpers";
+import { SLUG, installFakeModelContext, toolNames, openAdvanced, openAiPanel } from "./ai-helpers";
 
 async function installSyntheticRegistry(page: Page) {
   await installFakeModelContext(page);
@@ -25,7 +25,7 @@ async function installSyntheticRegistry(page: Page) {
 
 async function expectBlocked(page: Page) {
   await expect.poll(() => toolNames(page)).toEqual([]);
-  await openAskAi(page);
+  await openAdvanced(page);
   await expect(page.getByTestId("ai-privacy-note")).toContainText("Local-only");
   await page.getByTestId("ai-copy-prompt").click();
   const prompt = await page.evaluate(() => navigator.clipboard.readText());
@@ -125,39 +125,31 @@ test("paste with regenerated ids is caught by content, while an unrelated import
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(unrelated.title);
   await expect.poll(() => toolNames(page)).toHaveLength(6);
-  await openAskAi(page);
+  await openAdvanced(page);
   await expect(page.getByTestId("ai-privacy-note")).toHaveCount(0);
   await page.getByTestId("ai-copy-prompt").click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(unrelated.title);
   expectNoErrors(consoleErrors);
 });
 
-test("a connected model is never called for a local-only diagram", async ({ page, consoleErrors }) => {
+test("on a local-only diagram the AI panel says so, and Copy for AI copies nothing", async ({
+  page,
+  context,
+  consoleErrors,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await installSyntheticRegistry(page);
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      "diagrams.ai-model.v1",
-      JSON.stringify({ provider: "anthropic", model: "claude-haiku-5-5", key: "sk-ant-test-local-only-0000" }),
-    ),
-  );
-  let calls = 0;
-  for (const host of [
-    "https://api.anthropic.com/**",
-    "https://api.openai.com/**",
-    "https://generativelanguage.googleapis.com/**",
-  ])
-    await page.route(host, (route) => {
-      calls++;
-      return route.abort();
-    });
   await gotoCanvas(page, "synthetic-local");
-  await openAskAi(page);
+  await page.evaluate(() => navigator.clipboard.writeText("before"));
+  await openAiPanel(page);
   await expect(page.getByTestId("ai-privacy-note")).toContainText("Local-only");
-  await page.getByTestId("ai-request").fill("Rename everything");
-  await expect(page.getByTestId("ai-send")).toBeDisabled();
-  await page.getByTestId("ai-request").press("Enter");
-  await expect(page.getByTestId("ai-model-error")).toContainText("Local-only");
-  await page.waitForTimeout(300);
-  expect(calls).toBe(0);
+  await expect(page.getByTestId("ai-empty")).toContainText("AI is off for this diagram");
+  await expect(page.getByTestId("ai-agent-status")).toContainText("off for this local-only diagram");
+  await expect.poll(() => toolNames(page)).toEqual([]);
+  const node = localOnlyFixture.nodes[0];
+  await page.getByTestId(`node-${node.id}`).click({ button: "right" });
+  await page.getByTestId("context-menu-item-item.copy-for-ai").click();
+  await expect(page.getByTestId("toast")).toContainText("AI is off");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
   expectNoErrors(consoleErrors);
 });

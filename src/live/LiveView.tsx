@@ -502,7 +502,7 @@ function LiveSession({
     return () => window.clearTimeout(t);
   }, [cardOpen, fitView, reducedMotion, fitPadding, fitAll]);
 
-  // The Ask AI dock opened, closed or was resized: the pane changed width at its right edge. Refit the
+  // The AI panel opened, closed or was resized: the pane changed width at its right edge. Refit the
   // same way, or half the diagram stayed past the pane's edge (slow motion keeps its own camera).
   const dock = useAiDock();
   const dockKey = `${dock.open}:${dock.open ? Math.round(dock.width / 40) : 0}`;

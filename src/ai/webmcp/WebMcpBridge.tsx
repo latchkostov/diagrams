@@ -2,9 +2,11 @@ import { useMemo, useSyncExternalStore } from "react";
 import type { EditorApi } from "../../editor/types";
 import { paletteHost } from "../../palette/host";
 import { encodeShare, shareUrl, SHARE_WARN_LENGTH } from "../../interop/share";
-import { showApplied } from "../ui/feedback";
+import { panelShown, showApplied } from "../ui/feedback";
 import { useWebMcp } from "./useWebMcp";
-import type { WebMcpHost } from "./tools";
+import type { AgentChange, WebMcpHost } from "./tools";
+import { threads } from "../ui/threadStore";
+import { unseen } from "../ui/unseen";
 import { isLocalOnly } from "../../lib/localOnly";
 
 // Lazy-loaded by AiMount, only in the editor view and only when the browser has WebMCP. Renders nothing.
@@ -30,6 +32,33 @@ function nextEditor(previous: EditorApi | null, timeoutMs = 4000): Promise<Edito
   });
 }
 
+/**
+ * An agent's change: the highlight, and a turn in this diagram's AI panel thread (with Undo this change
+ * bound to its history step, and Revert to here). With the panel folded, a toast with Undo too, and a
+ * count on the rail; the panel never opens by itself.
+ */
+function recordChange(change: AgentChange): void {
+  // An agent never moves the person's view. new_diagram has no step to undo, so no toast.
+  if (change.historyKey) showApplied(change.summary, change.changed, change.editor, { turnUndo: true, reveal: false });
+  const documentId = paletteHost.get().canvas?.documentId;
+  if (!documentId) return;
+  if (!panelShown()) unseen.bump(documentId);
+  threads.append(documentId, {
+    kind: "change",
+    request: "",
+    ...(change.note ? { reply: change.note } : {}),
+    summary: change.summary,
+    changed: change.changed,
+    ...(change.choices ? { choices: change.choices } : {}),
+    ...(change.warnings ? { warnings: change.warnings } : {}),
+    // The snapshot (for Revert to here) is kept whether or not the change is an undo step (new_diagram isn't).
+    after: change.editor.getDiagram(),
+    ...(change.historyKey ? { historyKey: change.historyKey } : {}),
+    engine: "agent",
+    tool: change.tool,
+  });
+}
+
 export default function WebMcpBridge({
   live,
   onNewDiagram,
@@ -43,7 +72,7 @@ export default function WebMcpBridge({
     () => ({
       getEditor: currentEditor,
       canUseAi: () => !isLocalOnly(paletteHost.get().canvas),
-      onApplied: showApplied,
+      onApplied: recordChange,
       async newDiagram({ title, direction }) {
         const before = currentEditor();
         const opened = nextEditor(before);

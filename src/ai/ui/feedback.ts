@@ -1,8 +1,8 @@
 // What every AI change shows once applied: a toast with Undo and a brief highlight of what changed.
-// Shared by the Ask AI panel and the WebMCP tools.
+// Shared by the AI panel and the WebMCP tools.
 
 import type { EditorApi } from "../../editor/types";
-import { notify } from "../../interop/ui/toast";
+import { notify, toast } from "../../interop/ui/toast";
 
 const GROUP_PREFIX = "group:";
 const FLASH_MS = 1800;
@@ -73,14 +73,63 @@ ${edges.join(",\n")} { stroke: var(--accent); stroke-width: 2.5px; }`;
   markStyle = style;
 }
 
-/** "AI: +3 nodes, +2 connections" with Undo, and the highlight. */
-export function showApplied(summary: string, changed: readonly string[], editor: EditorApi): void {
-  notify(`AI: ${summary}`, {
-    kind: "success",
-    action: { label: "Undo", run: () => editor.undo(), testId: "ai-toast-undo" },
-  });
+/** The AI panel is on screen (its frame, even while the panel's own chunk is still loading). */
+export const panelShown = () => typeof document !== "undefined" && !!document.querySelector('[data-testid="ai-dock"]');
+
+let appliedToast: number | undefined;
+
+/** A polite status for screen readers when an AI change shows no toast (the toast has its own). */
+function announce(text: string): void {
+  let region = document.querySelector<HTMLElement>("[data-ai-announce]");
+  if (!region) {
+    region = document.createElement("div");
+    region.dataset.aiAnnounce = "";
+    region.dataset.testid = "ai-announce";
+    region.className = "sr-only";
+    region.setAttribute("role", "status");
+    region.setAttribute("aria-live", "polite");
+    document.body.appendChild(region);
+  }
+  // Emptied first, so the same words twice are read twice.
+  region.textContent = "";
+  const el = region;
+  requestAnimationFrame(() => (el.textContent = text));
+}
+
+export interface AppliedFeedback {
+  /** A turn in the thread offers Undo for exactly this step: with the panel open, no toast then. */
+  turnUndo: boolean;
+  /** Bring changed elements that are off screen into view: the person's own applies, never an agent's. */
+  reveal: boolean;
+}
+
+/**
+ * "AI: +3 nodes, +2 connections" with Undo, and the highlight. While the AI panel is open and the change
+ * is a turn there with its own Undo, the toast stays away (one Undo, not two) and a status announces it.
+ */
+export function showApplied(
+  summary: string,
+  changed: readonly string[],
+  editor: EditorApi,
+  { turnUndo, reveal }: AppliedFeedback,
+): void {
+  if (typeof document === "undefined") return;
+  if (turnUndo && panelShown()) announce(`AI: ${summary}`);
+  else {
+    const id = notify(`AI: ${summary}`, {
+      kind: "success",
+      action: { label: "Undo", run: () => editor.undo(), testId: "ai-toast-undo" },
+    });
+    appliedToast = turnUndo ? id : undefined;
+  }
   flashChanged(changed);
-  revealChanged(changed, editor);
+  if (reveal) revealChanged(changed, editor);
+}
+
+/** The panel opened: a toast for a change whose turn now carries the Undo goes. */
+export function dismissAppliedToast(): void {
+  if (appliedToast !== undefined) toast.dismiss(appliedToast);
+  appliedToast = undefined;
 }
 
 const canvasWrap = () => document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]');

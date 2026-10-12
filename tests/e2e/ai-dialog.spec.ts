@@ -1,7 +1,7 @@
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { MOD, SLUG, must, nodeCount, openAskAi, savedDiagram, settle } from "./ai-helpers";
+import { MOD, SLUG, must, nodeCount, openAdvanced, openAiPanel, savedDiagram, settle } from "./ai-helpers";
 
-// Ask AI without a connected model: describe, copy a prompt for your own chatbot, paste its reply, apply.
+// The AI panel's Advanced flow: describe, copy a prompt for any chatbot, paste its reply, apply.
 // Selectors are data-testid only. Uses the public Kafka example (ids from src/examples/kafka-order-pipeline.json).
 
 const GOOD = [
@@ -12,40 +12,40 @@ const GOOD = [
 ];
 const fenced = (v: unknown) => "Here are the ops:\n```json\n" + JSON.stringify(v, null, 2) + "\n```\nAnything else?";
 
-test.describe("Ask AI: copy and paste", () => {
+test.describe("AI panel: Advanced copy and paste", () => {
   test.beforeEach(async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("node-payments")).toBeVisible();
   });
 
-  test("opens from the top bar, the rail, the canvas right-click and the command palette", async ({
+  test("opens from the rail, Ctrl+I, the canvas right-click and the command palette", async ({
     page,
     consoleErrors,
   }) => {
-    await openAskAi(page);
-    await expect(page.getByTestId("ai-request")).toBeFocused();
-    await expect(page.getByTestId("ask-ai-toggle")).toHaveAttribute("aria-pressed", "true");
+    await openAiPanel(page);
+    await expect(page.getByTestId("ai-panel")).toBeFocused();
+
     await page.getByTestId("ai-collapse").click();
     await expect(page.getByTestId("ai-panel")).toHaveCount(0);
     // Folded, it's a slim rail that stays on screen; its button has the keyboard.
     await expect(page.getByTestId("ai-rail-open")).toBeFocused();
     await page.getByTestId("ai-rail-open").click();
-    await expect(page.getByTestId("ai-request")).toBeFocused();
-    await page.getByTestId("ask-ai-toggle").click();
+    await expect(page.getByTestId("ai-panel")).toBeFocused();
+    await page.keyboard.press(`${MOD}+i`);
     await expect(page.getByTestId("ai-panel")).toHaveCount(0);
     await settle(page);
 
     const box = must(await page.getByTestId("canvas-wrap").boundingBox(), "the canvas");
     await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: box.width / 2, y: 90 } });
-    await page.getByTestId("context-menu-item-canvas.ask-ai").click();
+    await page.getByTestId("context-menu-item-canvas.ai-panel").click();
     await expect(page.getByTestId("ai-panel")).toBeVisible();
     await page.getByTestId("ai-collapse").click();
     await expect(page.getByTestId("ai-panel")).toHaveCount(0);
 
     await page.keyboard.press(`${MOD}+k`);
-    await page.getByTestId("command-input").fill("ask ai");
-    await page.getByTestId("command-item-action:canvas.ask-ai").click();
+    await page.getByTestId("command-input").fill("ai panel");
+    await page.getByTestId("command-item-action:canvas.ai-panel").click();
     await expect(page.getByTestId("ai-panel")).toBeVisible();
     // The panel isn't modal: the diagram behind it stays usable.
     await page.getByTestId("node-shopper").click();
@@ -54,7 +54,7 @@ test.describe("Ask AI: copy and paste", () => {
   });
 
   test("copies a prompt with the diagram, the ops format, examples and the request", async ({ page }) => {
-    await openAskAi(page);
+    await openAdvanced(page);
     await page.getByTestId("ai-request").fill("Add a billing worker that writes to Postgres");
     await page.getByTestId("ai-copy-prompt").click();
     await expect(page.getByTestId("ai-copy-prompt")).toContainText("Copied");
@@ -71,15 +71,16 @@ test.describe("Ask AI: copy and paste", () => {
     consoleErrors,
   }) => {
     const before = await nodeCount(page);
-    await openAskAi(page);
+    await openAdvanced(page);
     await page.getByTestId("ai-request").fill("Billing reads orders and writes to Postgres");
     await page.getByTestId("ai-reply").fill(fenced(GOOD));
     await expect(page.getByTestId("ai-reply-status")).toHaveText("4 ops ready");
     await page.getByTestId("ai-apply").click();
 
     await expect(page.getByTestId("ai-error")).toHaveCount(0);
-    await expect(page.getByTestId("toast")).toContainText("AI: +2 nodes, +2 connections");
     await expect(page.getByTestId("ai-turn-0-summary")).toHaveText("+2 nodes, +2 connections");
+    // With the panel open the turn has the Undo: no second one on a toast.
+    await expect(page.getByTestId("toast")).toHaveCount(0);
     expect(await nodeCount(page)).toBe(before + 2);
     // The boxes clear for the next turn.
     await expect(page.getByTestId("ai-request")).toHaveValue("");
@@ -102,7 +103,7 @@ test.describe("Ask AI: copy and paste", () => {
     expect(saved.edges.some((e) => e.from === worker.id && e.to === db.id && e.kind === "sync")).toBe(true);
 
     // One undo step reverts the whole turn.
-    await page.getByTestId("ai-toast-undo").click();
+    await page.getByTestId("ai-turn-0-undo").click();
     await expect.poll(() => nodeCount(page)).toBe(before);
     await expect(page.getByTestId(`node-${worker.id}`)).toHaveCount(0);
     expectNoErrors(consoleErrors);
@@ -110,7 +111,7 @@ test.describe("Ask AI: copy and paste", () => {
 
   test("keeps turns: each change is its own undo step", async ({ page }) => {
     const before = await nodeCount(page);
-    await openAskAi(page);
+    await openAdvanced(page);
     await page.getByTestId("ai-reply").fill(JSON.stringify(GOOD));
     await page.getByTestId("ai-apply").click();
     await expect(page.getByTestId("ai-turn-0")).toBeVisible();
@@ -127,7 +128,7 @@ test.describe("Ask AI: copy and paste", () => {
     expect(await nodeCount(page)).toBe(before + 3);
 
     // Undo takes back only the second turn.
-    await page.getByTestId("ai-toast-undo").click();
+    await page.getByTestId("ai-turn-1-undo").click();
     await expect.poll(() => nodeCount(page)).toBe(before + 2);
   });
 
@@ -136,7 +137,7 @@ test.describe("Ask AI: copy and paste", () => {
     consoleErrors,
   }) => {
     const before = await nodeCount(page);
-    await openAskAi(page);
+    await openAdvanced(page);
     await page.getByTestId("ai-request").fill("Rename the payment service");
     const bad = [{ op: "update", target: "Payment", label: "Payments API" }];
     await page.getByTestId("ai-reply").fill(fenced(bad));
@@ -165,7 +166,7 @@ test.describe("Ask AI: copy and paste", () => {
   });
 
   test("explains a reply with no JSON", async ({ page }) => {
-    await openAskAi(page);
+    await openAdvanced(page);
     await page.getByTestId("ai-reply").fill("Sorry, I can't draw diagrams.");
     await expect(page.getByTestId("ai-reply-status")).toHaveText("There's no JSON in the reply.");
     await page.getByTestId("ai-apply").click();
@@ -174,7 +175,7 @@ test.describe("Ask AI: copy and paste", () => {
   });
 
   test("an unsure stencil shows its alternatives and swaps in one click", async ({ page }) => {
-    await openAskAi(page);
+    await openAdvanced(page);
     // "function" could be AWS Lambda, Azure Functions or Cloud Functions: the resolver isn't sure.
     await page
       .getByTestId("ai-reply")
@@ -190,7 +191,6 @@ test.describe("Ask AI: copy and paste", () => {
     );
     await expect(page.getByTestId(`ai-choice-${node.id}`)).toContainText("not sure");
     await page.getByTestId(`ai-swap-${node.id}-azure.functions`).click();
-    await expect(page.getByTestId("toast")).toContainText("resize-images is now Azure Functions");
     await expect
       .poll(async () => (await savedDiagram(page))?.nodes.find((n) => n.id === node.id)?.stencil)
       .toBe("azure.functions");
@@ -202,7 +202,7 @@ test.describe("Ask AI: copy and paste", () => {
 
 test("a full diagrams/v1 file without coordinates replaces the diagram, laid out", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAskAi(page);
+  await openAdvanced(page);
   const file = {
     format: "diagrams/v1",
     title: "Orders",
@@ -222,6 +222,6 @@ test("a full diagrams/v1 file without coordinates replaces the diagram, laid out
   await expect(page.getByTestId("ai-turn-0-summary")).toContainText("Replaced the diagram: 3 nodes, 2 connections");
   await expect.poll(() => nodeCount(page)).toBe(3);
   for (const id of ["api", "topic", "db"]) await expect(page.getByTestId(`node-${id}`)).toBeVisible();
-  await page.getByTestId("ai-toast-undo").click();
+  await page.getByTestId("ai-turn-0-undo").click();
   await expect(page.getByTestId("node-payments")).toBeVisible();
 });

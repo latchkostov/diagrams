@@ -27,7 +27,7 @@ Don't write coordinates. Send ops; the app resolves plain-word kinds to stencils
 - Refer to elements by id (preferred), by a `key` set earlier in the same batch, by exact label, by `"label (sublabel)"`, or a connection by `"From -> To"`. An ambiguous or unknown reference fails the batch with `candidates` and a `hint`.
 - Each added node reports the stencil chosen, with `confidence` and `alternatives`; change it with `{ "op": "update", "target": "<id>", "kind": "<stencil id>" }`.
 
-People without browser agents use the same ops in the app's **Ask AI** panel (docked beside every diagram; Ctrl+I): with their own Claude, OpenAI or Gemini key it edits through these ops directly, and without one it copies a prompt for ChatGPT, Claude or Gemini and applies the reply they paste back (ops, a whole diagram file, or a `set_simulation` input). File > Build with AI… starts a new diagram the same way.
+Each change an agent makes appears in the app's **AI panel** (docked beside every diagram; Ctrl+I) as a turn the person can undo or revert. Without a browser agent, the panel's **Advanced** section copies a prompt for any chatbot and applies the reply pasted back (ops, a whole diagram file, or a `set_simulation` input). The app never asks for or stores an API key.
 
 ## Tools for browsing agents (WebMCP)
 
@@ -38,6 +38,7 @@ In the diagram editor, browsers with WebMCP (`document.modelContext`) get these 
 - `edit_diagram`: apply a batch of ops in one undo step. `dryRun: true` validates without changing anything; `layout` is "auto", "full" or "none".
 - `set_simulation`: create or replace a simulation in plain units (traffic in messages per second, failures at given seconds, expectations).
 - `new_diagram`: start a new, empty diagram; the current one stays in the user's library. Ask the user first.
+- Every tool that changes the diagram (`edit_diagram`, `set_simulation`, `new_diagram`) takes an optional `summary`: one short sentence for the person ("Added a Redis cache in front of orders-db"). It's shown with the change in the AI panel, where the person can undo it or revert to any earlier change.
 - `get_share_link` (read-only): a link that opens the current diagram.
 
 Agents that drive the page directly can use the accessible names: the top bar's File, View and Present buttons, the stencil list's search box, the command palette (Ctrl+K / Cmd+K, "Search actions, nodes and stencils…") and the inspector's labelled fields.

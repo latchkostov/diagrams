@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://www.livediagrams.dev/schema/ops.v1.json",
   "title": "Diagrams edit ops (v1)",
-  "description": "Add, connect, change or remove diagram elements in one atomic step (one undo). Describe kinds in plain words ('.NET consumer', 'Kafka topic'); the app picks the icon and position. Put a whole request in one call. The same input as the WebMCP tool edit_diagram and the 'Ask AI' paste box (which also takes a bare array of ops).",
+  "description": "Add, connect, change or remove diagram elements in one atomic step (one undo). Describe kinds in plain words ('.NET consumer', 'Kafka topic'); the app picks the icon and position. Put a whole request in one call. The same input as the WebMCP tool edit_diagram and the AI panel's Advanced paste box (which also takes a bare array of ops).",
   "type": "object",
   "required": [
     "ops"
@@ -274,6 +274,11 @@
       "type": "boolean",
       "default": false,
       "description": "Validate and report without changing the diagram."
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "One short sentence for the person, e.g. 'Added a Redis cache in front of orders-db'. Shown with the change in the app's AI panel."
     }
   },
   "$defs": {
@@ -1349,6 +1354,11 @@
             "type": "boolean",
             "default": false,
             "description": "Validate and report without changing the diagram."
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "One short sentence for the person, e.g. 'Added a Redis cache in front of orders-db'. Shown with the change in the app's AI panel."
           }
         },
         "$defs": {
@@ -1609,6 +1619,11 @@
           "title": {
             "type": "string",
             "maxLength": 200
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "One short sentence for the person, e.g. 'Added a Redis cache in front of orders-db'. Shown with the change in the app's AI panel."
           },
           "replace": {
             "$ref": "#/$defs/Ref",
@@ -2048,6 +2063,11 @@
               "TB"
             ],
             "default": "LR"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "One short sentence for the person, e.g. 'Added a Redis cache in front of orders-db'. Shown with the change in the app's AI panel."
           }
         },
         "$defs": {

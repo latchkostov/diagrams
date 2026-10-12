@@ -1,7 +1,7 @@
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { MOD, SLUG, installFakeSpeech, openAskAi, speech, speechState } from "./ai-helpers";
+import { MOD, SLUG, installFakeSpeech, openAdvanced, speech, speechState } from "./ai-helpers";
 
-// Dictation in Ask AI, against a fake SpeechRecognition installed before the app loads.
+// Dictation in the AI panel's Advanced section, against a fake SpeechRecognition installed before the app loads.
 // Selectors are data-testid only.
 
 const mic = (page: import("@playwright/test").Page) => page.getByTestId("ai-mic");
@@ -10,7 +10,7 @@ test.describe("Dictate", () => {
   test("start, interim words, final words at the caret, stop", async ({ page, consoleErrors }) => {
     await installFakeSpeech(page);
     await gotoCanvas(page, SLUG);
-    await openAskAi(page);
+    await openAdvanced(page);
 
     await expect(mic(page)).toHaveAttribute("aria-label", "Dictate");
     await mic(page).click();
@@ -49,7 +49,7 @@ test.describe("Dictate", () => {
   test("Ctrl+Shift+M toggles it; Esc stops it before leaving the panel; Apply stops it", async ({ page }) => {
     await installFakeSpeech(page);
     await gotoCanvas(page, SLUG);
-    await openAskAi(page);
+    await openAdvanced(page);
     await page.keyboard.press(`${MOD}+Shift+M`);
     await expect(mic(page)).toHaveAttribute("aria-pressed", "true");
     await page.keyboard.press("Escape");
@@ -85,7 +85,7 @@ test.describe("Dictate", () => {
   test("a blocked microphone says how to fix it", async ({ page }) => {
     await installFakeSpeech(page, { deny: true });
     await gotoCanvas(page, SLUG);
-    await openAskAi(page);
+    await openAdvanced(page);
     await mic(page).click();
     await expect(page.getByTestId("ai-dictation-message")).toContainText("microphone is blocked");
     await expect(mic(page)).toHaveAttribute("aria-pressed", "false");
@@ -94,7 +94,7 @@ test.describe("Dictate", () => {
   test("no speech is a gentle note and listening goes on; on-device needs no note", async ({ page }) => {
     await installFakeSpeech(page, { onDevice: true });
     await gotoCanvas(page, SLUG);
-    await openAskAi(page);
+    await openAdvanced(page);
     await mic(page).click();
     await expect(page.getByTestId("ai-interim")).toContainText("Listening on this device");
     expect((await speechState(page)).config).toMatchObject({ processLocally: true });
@@ -107,13 +107,76 @@ test.describe("Dictate", () => {
   });
 });
 
+test.describe("the microphone goes off with the request box", () => {
+  test("folding Advanced stops listening for good: no restart after silence, nothing written", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await installFakeSpeech(page);
+    await gotoCanvas(page, SLUG);
+    await openAdvanced(page);
+    await mic(page).click();
+    await expect(page.getByTestId("ai-interim")).toContainText("Listening");
+    await expect.poll(async () => (await speechState(page)).active).toBe(1);
+
+    await page.getByTestId("ai-advanced-toggle").click();
+    await expect(page.getByTestId("ai-request")).toHaveCount(0);
+    await expect.poll(async () => (await speechState(page)).active).toBe(0);
+    await speech(page, "result", [["late words", true]]);
+    await speech(page, "silence");
+    await page.waitForTimeout(200);
+    expect((await speechState(page)).starts).toBe(1);
+
+    await page.getByTestId("ai-advanced-toggle").click();
+    await expect(mic(page)).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByTestId("ai-request")).toHaveValue("");
+    // And it starts again as usual.
+    await mic(page).click();
+    await expect.poll(async () => (await speechState(page)).active).toBe(1);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("folding Advanced while the microphone is still starting starts nothing", async ({ page }) => {
+    await installFakeSpeech(page, { deferredAvailability: true });
+    await gotoCanvas(page, SLUG);
+    await openAdvanced(page);
+    await mic(page).click();
+    await expect(page.getByTestId("ai-interim")).toContainText("Allow the microphone");
+    await page.getByTestId("ai-advanced-toggle").click();
+    await speech(page, "resolveAvailability");
+    await page.waitForTimeout(200);
+    expect(await speechState(page)).toMatchObject({ starts: 0, active: 0 });
+  });
+
+  test("folding the panel or opening another diagram stops it too", async ({ page }) => {
+    await installFakeSpeech(page);
+    await gotoCanvas(page, SLUG);
+    await openAdvanced(page);
+    await mic(page).click();
+    await expect.poll(async () => (await speechState(page)).active).toBe(1);
+    await page.getByTestId("ai-collapse").click();
+    await expect.poll(async () => (await speechState(page)).active).toBe(0);
+
+    await openAdvanced(page);
+    await mic(page).click();
+    await expect.poll(async () => (await speechState(page)).active).toBe(1);
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-new").click();
+    await expect(page.getByTestId("start-card")).toBeVisible();
+    await expect.poll(async () => (await speechState(page)).active).toBe(0);
+    await speech(page, "silence");
+    await page.waitForTimeout(200);
+    expect((await speechState(page)).starts).toBe(2);
+  });
+});
+
 test("the mic is hidden when the browser has no speech recognition", async ({ page, consoleErrors }) => {
   await page.addInitScript(() => {
     delete (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
     delete (window as unknown as Record<string, unknown>).SpeechRecognition;
   });
   await gotoCanvas(page, SLUG);
-  await openAskAi(page);
+  await openAdvanced(page);
   await expect(page.getByTestId("ai-request")).toBeVisible();
   await expect(mic(page)).toHaveCount(0);
   await page.keyboard.press(`${MOD}+Shift+M`);

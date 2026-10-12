@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { EditorApi } from "../../editor/types";
 import type { DiagramFile } from "../../model/types";
+import { diagramDiff } from "../../model/diagramDiff";
 import {
   errorResult,
   getModelContext,
@@ -106,8 +107,11 @@ describe("tools", () => {
     let d = diagram();
     const editor = {
       getDiagram: () => d,
+      // Like the editor: no step (and hasChanges false) when nothing changes.
       applyDiagram: vi.fn((next: DiagramFile) => {
-        d = next;
+        const diff = diagramDiff(d, next);
+        if (diff.hasChanges) d = next;
+        return diff;
       }),
     } as unknown as EditorApi;
     const host: WebMcpHost = {
@@ -151,18 +155,50 @@ describe("tools", () => {
             { op: "add_node", kind: "Kafka topic", label: "orders", key: "t" },
             { op: "connect", from: "orders-api", to: "t" },
           ],
+          summary: "Added an orders topic",
         })
       ).content[0].text,
     );
     expect(ok).toMatchObject({ ok: true, summary: "+1 node, +1 connection" });
     expect(editor.applyDiagram).toHaveBeenCalledTimes(1);
     expect(get().nodes).toHaveLength(2);
-    expect(host.onApplied).toHaveBeenCalledWith("+1 node, +1 connection", expect.any(Array), editor);
+    // The change is recorded for the AI panel: the agent's note, what changed, and its own history step.
+    expect(host.onApplied).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tool: "edit_diagram",
+        note: "Added an orders topic",
+        summary: "+1 node, +1 connection",
+        editor,
+        historyKey: expect.stringMatching(/^ai:/),
+      }),
+    );
+    const tag = (editor.applyDiagram as ReturnType<typeof vi.fn>).mock.calls[0][1] as { merge: string };
+    expect((host.onApplied as ReturnType<typeof vi.fn>).mock.calls[0][0].historyKey).toBe(tag.merge);
 
     const bad = await edit.execute({ ops: [{ op: "remove", targets: ["nope"] }] });
     expect(bad.isError).toBe(true);
     expect(JSON.parse(bad.content[0].text)).toMatchObject({ ok: false, applied: false });
     expect(editor.applyDiagram).toHaveBeenCalledTimes(1);
+  });
+
+  it("records no turn when the call changes nothing", async () => {
+    const { host } = fakeHost();
+    const tools = Object.fromEntries(buildTools(host).map((t) => [t.name, toModelContextTool(t)]));
+    const rename = { ops: [{ op: "update", target: "orders-api", props: { label: "orders" } }], layout: "none" };
+    await tools.edit_diagram.execute(rename);
+    expect(host.onApplied).toHaveBeenCalledTimes(1);
+    const same = JSON.parse((await tools.edit_diagram.execute(rename)).content[0].text);
+    expect(same).toMatchObject({ ok: true, changed: false });
+    expect(host.onApplied).toHaveBeenCalledTimes(1);
+
+    const sim = { title: "Storm", traffic: [{ from: "orders-api", pattern: "burst", count: 5 }] };
+    await tools.set_simulation.execute(sim);
+    expect(host.onApplied).toHaveBeenCalledTimes(2);
+    // The same simulation again, replacing itself.
+    const again = JSON.parse((await tools.set_simulation.execute({ ...sim, replace: "Storm" })).content[0].text);
+    expect(again).toMatchObject({ ok: true, changed: false });
+    expect(again.undo).toBeUndefined();
+    expect(host.onApplied).toHaveBeenCalledTimes(2);
   });
 
   it("describe_diagram returns text; get_share_link returns the host's link", async () => {

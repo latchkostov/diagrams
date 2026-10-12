@@ -1,10 +1,11 @@
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { MOD, SLUG, must, openAskAi } from "./ai-helpers";
+import { MOD, SLUG, must, openAdvanced, openAiPanel } from "./ai-helpers";
 
-// Ask AI adapts to where you are: an empty diagram (Build with AI), the editor, a selection (Change with
-// AI…) and live view (a scenario becomes a saved simulation; Explain is copy-only). Uses the public Kafka
-// example (ids from src/examples/kafka-order-pipeline.json).
+// The AI panel on every diagram screen: the idle state that says how to use AI here, Copy for AI for a
+// selection, and Advanced's copy-and-paste flow that adapts to the place (an empty diagram, the editor,
+// live view, where a scenario becomes a saved simulation and Explain is copy-only). Uses the public
+// Kafka example (ids from src/examples/kafka-order-pipeline.json).
 
 const clipboard = (page: Page) => page.evaluate(() => navigator.clipboard.readText());
 
@@ -17,39 +18,38 @@ test.beforeEach(async ({ context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 });
 
-test("the button is on every diagram screen and the panel fits each one", async ({ page, consoleErrors }) => {
-  // Start card: Build with AI.
+test("the button is on every diagram screen and the idle panel says how to use AI here", async ({
+  page,
+  consoleErrors,
+}) => {
+  // Start card.
   await page.goto("./");
   await expect(page.getByTestId("start-card")).toBeVisible();
-  await expect(page.getByTestId("ask-ai-toggle")).toBeVisible();
-  await openAskAi(page);
-  await expect(page.getByTestId("ai-empty")).toHaveAttribute("data-place", "create");
-  await expect(page.getByTestId("ai-empty")).toContainText("Build with AI");
-  await expect(page.getByTestId("ai-suggestion-0")).toContainText("An order pipeline on Kafka");
+  await expect(page.getByTestId("ai-rail")).toBeVisible();
+  await openAiPanel(page);
+  await expect(page.getByTestId("ai-empty")).toContainText("Ask your browser's AI assistant");
+  await expect(page.getByTestId("ai-empty")).toContainText("undo or revert");
+  // Advanced is closed by default; open, it describes a new diagram (no Explain on an empty one).
+  await expect(page.getByTestId("ai-request")).toHaveCount(0);
+  await openAdvanced(page);
   await expect(page.getByTestId("ai-intent-explain")).toHaveCount(0);
 
-  // Editor: change it, or explain it.
+  // Editor: Advanced is remembered open; it changes the diagram, or explains it.
   await gotoCanvas(page, SLUG);
   await expect(page.getByTestId("ai-panel")).toBeVisible();
-  await expect(page.getByTestId("ai-empty")).toHaveAttribute("data-place", "edit");
-  await expect(page.getByTestId("ai-empty")).toContainText("Change this diagram");
+  await expect(page.getByTestId("ai-request")).toBeVisible();
   await expect(page.getByTestId("ai-intent-change")).toHaveText("Change");
-  await page.getByTestId("ai-suggestion-1").click();
-  await expect(page.getByTestId("ai-request")).toHaveValue(/dead-letter queue/);
 
   // Live view: simulate a scenario.
   await goLive(page);
   await expect(page.getByTestId("ai-panel")).toBeVisible();
-  await expect(page.getByTestId("ask-ai-toggle")).toBeVisible();
-  await expect(page.getByTestId("ai-empty")).toHaveAttribute("data-place", "live");
-  await expect(page.getByTestId("ai-empty")).toContainText("Simulate a scenario");
   await expect(page.getByTestId("ai-intent-change")).toHaveText("Simulate");
   // Ctrl+I works in live view too: from inside the panel it folds it away.
   await page.getByTestId("ai-request").focus();
   await page.keyboard.press(`${MOD}+i`);
   await expect(page.getByTestId("ai-rail")).toBeVisible();
   await page.keyboard.press(`${MOD}+i`);
-  await expect(page.getByTestId("ai-request")).toBeFocused();
+  await expect(page.getByTestId("ai-panel")).toBeFocused();
 
   // Presenting hides it with the rest of the chrome.
   await page.keyboard.press("Escape");
@@ -60,48 +60,32 @@ test("the button is on every diagram screen and the panel fits each one", async 
   expectNoErrors(consoleErrors);
 });
 
-test("embeds have no Ask AI", async ({ page }) => {
+test("embeds have no AI panel", async ({ page }) => {
   await page.goto(`./?embed=1&example=${SLUG}`);
   await page.waitForLoadState("networkidle");
-  await expect(page.getByTestId("ask-ai-toggle")).toHaveCount(0);
+  await expect(page.getByTestId("ai-dock")).toHaveCount(0);
   await expect(page.getByTestId("ai-rail")).toHaveCount(0);
 });
 
-test("Change with AI… on a selection names it in the copied prompt", async ({ page }) => {
+test("Copy for AI puts the selection's ids and labels on the clipboard, for the person's agent", async ({ page }) => {
   await gotoCanvas(page, SLUG);
   await page.getByTestId("node-payments").click();
   await page.getByTestId("node-payment-db").click({ modifiers: [MOD === "Meta" ? "Meta" : "Control"] });
   await page.getByTestId("node-payment-db").click({ button: "right" });
-  await page.getByTestId("context-menu-item-item.change-with-ai").click();
-  await expect(page.getByTestId("ai-request")).toBeFocused();
-  await expect(page.getByTestId("ai-scope")).toContainText("2 selected");
-  await expect(page.getByTestId("ai-empty")).toContainText("Change the selection");
+  await page.getByTestId("context-menu-item-item.copy-for-ai").click();
+  await expect(page.getByTestId("toast")).toContainText("Copied 2 elements for your AI");
+  const text = await clipboard(page);
+  expect(text).toContain("In my Diagrams diagram");
+  expect(text).toMatch(/- node "payments" "[^"]+"/);
+  expect(text).toMatch(/- node "payment-db" "[^"]+"/);
 
-  await page.getByTestId("ai-request").fill("Run these with 3 replicas");
-  await page.getByTestId("ai-copy-prompt").click();
-  const prompt = await clipboard(page);
-  expect(prompt).toContain("The request is about these selected elements");
-  expect(prompt).toMatch(/node "payments" "[^"]+"/);
-  expect(prompt).toMatch(/node "payment-db" "[^"]+"/);
-  expect(prompt.indexOf('node "payments"')).toBeLessThan(prompt.indexOf("Run these with 3 replicas"));
-
-  // The chip is removable, and the prompt then covers the whole diagram.
-  await page.getByTestId("ai-scope-clear").click();
-  await expect(page.getByTestId("ai-scope")).toHaveCount(0);
-  await page.getByTestId("ai-copy-prompt").click();
-  await expect.poll(() => clipboard(page)).not.toContain("selected elements");
-
-  // A single node by right-click: its own name on the chip.
+  // One node by right-click: its own name in the toast.
   await page.getByTestId("node-inventory").click({ button: "right" });
-  await page.getByTestId("context-menu-item-item.change-with-ai").click();
-  await expect(page.getByTestId("ai-scope")).toContainText(/Inventory/i);
-  // The turn remembers what it was about.
-  await page.getByTestId("ai-request").fill("Three replicas");
-  await page
-    .getByTestId("ai-reply")
-    .fill(JSON.stringify([{ op: "update", target: "inventory", props: { replicas: 3 } }]));
-  await page.getByTestId("ai-apply").click();
-  await expect(page.getByTestId("ai-turn-0")).toContainText(/About Inventory/i);
+  await page.getByTestId("context-menu-item-item.copy-for-ai").click();
+  await expect(page.getByTestId("toast")).toContainText(/Copied “Inventory/i);
+  expect(await clipboard(page)).toMatch(/- node "inventory"/);
+  // It never opens the panel: the request goes to the person's agent.
+  await expect(page.getByTestId("ai-panel")).toHaveCount(0);
 });
 
 test("in live view a pasted scenario becomes a saved simulation that plays from the picker", async ({
@@ -110,7 +94,7 @@ test("in live view a pasted scenario becomes a saved simulation that plays from 
 }) => {
   await gotoCanvas(page, SLUG);
   await goLive(page);
-  await openAskAi(page);
+  await openAdvanced(page);
   await page.getByTestId("ai-request").fill("A storm of 40 orders, then payments goes down at 5 s");
   await page.getByTestId("ai-copy-prompt").click();
   const prompt = await clipboard(page);
@@ -128,7 +112,6 @@ test("in live view a pasted scenario becomes a saved simulation that plays from 
   await page.getByTestId("ai-apply").click();
   await expect(page.getByTestId("ai-error")).toHaveCount(0);
   await expect(page.getByTestId("ai-turn-0-summary")).toHaveText("Added simulation “AI storm”");
-  await expect(page.getByTestId("toast")).toContainText("Added simulation “AI storm”");
 
   // It's saved, in the picker, and playing.
   const picker = page.getByTestId("live-sim-picker");
@@ -139,14 +122,14 @@ test("in live view a pasted scenario becomes a saved simulation that plays from 
   await expect(page.getByTestId("live-clock")).toBeVisible();
 
   // One undo step takes it back out.
-  await page.getByTestId("ai-toast-undo").click();
+  await page.getByTestId("ai-turn-0-undo").click();
   await expect(picker).not.toContainText("AI storm");
   expectNoErrors(consoleErrors);
 });
 
 test("Explain is copy-only, and in live view it carries the running numbers", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await openAskAi(page);
+  await openAdvanced(page);
   await page.getByTestId("ai-intent-explain").click();
   await expect(page.getByTestId("ai-reply")).toHaveCount(0);
   await expect(page.getByTestId("ai-apply")).toHaveCount(0);
@@ -175,7 +158,7 @@ test("no overlap in the top bar or between canvas, inspector and dock at 1024", 
     await gotoCanvas(page, SLUG);
     await page.getByTestId("node-payments").click();
     for (const open of [false, true]) {
-      if (open) await openAskAi(page);
+      if (open) await openAdvanced(page);
       const items = await page.getByTestId("topbar").evaluate((bar) =>
         [...bar.querySelectorAll<HTMLElement>(":scope > *, [data-testid='topbar-actions'] > *")]
           .filter((el) => el.getAttribute("data-testid") !== "topbar-actions" && el.getBoundingClientRect().width > 0)
@@ -192,8 +175,6 @@ test("no overlap in the top bar or between canvas, inspector and dock at 1024", 
       const sorted = [...items].sort((a, b) => a.left - b.left);
       for (let i = 1; i < sorted.length; i++)
         expect(sorted[i].left, `${sorted[i - 1].id} | ${sorted[i].id}`).toBeGreaterThanOrEqual(sorted[i - 1].right);
-      // Icon-only below 1100 px, still named.
-      await expect(page.getByTestId("ask-ai-toggle")).toHaveAccessibleName("Ask AI");
 
       const canvas = must(await page.getByTestId("canvas-wrap").boundingBox(), "canvas");
       const inspector = must(await page.getByTestId("inspector").boundingBox(), "inspector");

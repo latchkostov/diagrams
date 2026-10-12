@@ -70,6 +70,8 @@ export interface DescribeOptions {
 }
 export interface SimulationSpec {
   title: string;
+  /** The agent's note for the person (shown in the AI panel); not part of the simulation. */
+  summary?: string;
   replace?: Ref;
   durationSec?: number;
   traffic: {

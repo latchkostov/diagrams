@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import type { LiveState } from "../../live/controller";
-import { aiPlace, emptyHeading, liveText, resolveScope, scopeText, suggestions } from "./context";
-import { buildExplainPrompt, buildFixPrompt, buildPrompt, buildSimulationPrompt } from "./prompt";
+import { aiPlace, liveText, referenceText, resolveScope } from "./context";
+import { buildExplainPrompt, buildFixPrompt, buildSimulationPrompt } from "./prompt";
 import { parseReply } from "./reply";
 import { planSteps, planTurn } from "./apply";
 
@@ -27,39 +27,23 @@ describe("context", () => {
     expect(aiPlace(null, false)).toBe("create");
     expect(aiPlace(diagram(), false)).toBe("edit");
     expect(aiPlace(diagram(), true)).toBe("live");
-    expect(emptyHeading("create", false).title).toBe("Build with AI");
-    expect(emptyHeading("live", false).title).toBe("Simulate a scenario");
-    expect(emptyHeading("edit", true).title).toBe("Change the selection");
   });
 
-  it("suggests short, fitting requests, with an explain chip outside an empty diagram", () => {
-    for (const [place, scoped] of [
-      ["create", false],
-      ["edit", false],
-      ["edit", true],
-      ["live", false],
-    ] as const) {
-      const chips = suggestions(place, scoped);
-      expect(chips.length).toBeGreaterThanOrEqual(3);
-      expect(chips.every((c) => c.label.length <= 28 && c.request.length > 0)).toBe(true);
-      expect(chips.some((c) => c.intent === "explain")).toBe(place !== "create");
-    }
-  });
-
-  it("names a selection's nodes, connections and boundaries as the request's targets", () => {
+  it("Copy for AI names a selection's nodes, connections and boundaries by id and label", () => {
     const scope = resolveScope(diagram(), ["api", "e2", "g1", "gone"]);
     expect(scope).toEqual([
       { id: "api", label: "orders-api", kind: "node" },
       { id: "e2", label: "write", kind: "connection" },
       { id: "g1", label: "Azure", kind: "boundary" },
     ]);
-    const text = scopeText(scope);
-    expect(text).toContain("selected elements");
-    expect(text).toContain('node "api" "orders-api"');
-    expect(scopeText([])).toBe("");
-    const prompt = buildPrompt({ request: "Scale it", describe: "nodes…", context: text });
-    expect(prompt.indexOf('node "api" "orders-api"')).toBeLessThan(prompt.indexOf("My request:"));
-    expect(prompt.indexOf('node "api" "orders-api"')).toBeGreaterThan(prompt.indexOf("Current diagram:"));
+    expect(referenceText("Shop", scope)).toBe(
+      [
+        'In my Diagrams diagram "Shop" (https://www.livediagrams.dev), these elements:',
+        '- node "api" "orders-api"',
+        '- connection "e2" "write"',
+        '- boundary "g1" "Azure"',
+      ].join("\n"),
+    );
   });
 
   it("describes what's running in live view", () => {

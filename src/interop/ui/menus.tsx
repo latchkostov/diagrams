@@ -4,8 +4,6 @@ import { formatAgo } from "../../lib/time";
 import type { Binding, Interop } from "../useInterop";
 import { Menu, type MenuEntry } from "./Menu";
 import { Glyph } from "./glyphs";
-import { Icon } from "../../components/Icon";
-import { buildWithAi } from "../../ai/ui/events";
 
 type Api = Omit<Interop, "layer">;
 
@@ -40,14 +38,6 @@ export function FileMenu({
         icon: <Glyph name="file" />,
         title: "New diagram",
         onSelect: onNewDiagram,
-      },
-      {
-        type: "item",
-        testId: "file-build-with-ai",
-        icon: <Icon name="ai" size={15} />,
-        title: "Build with AI…",
-        desc: "A new diagram, from a description",
-        onSelect: () => buildWithAi(onNewDiagram),
       },
       ...(onLibrary
         ? [

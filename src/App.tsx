@@ -47,7 +47,6 @@ import { Toaster } from "./interop/ui/Toaster";
 import { EmbedView } from "./interop/embed/EmbedView";
 import { CommandPalette } from "./palette/CommandPalette";
 import { AiMount } from "./ai/ui/AiMount";
-import { openAiPanel } from "./ai/ui/events";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -359,7 +358,6 @@ function MainApp() {
     onOpenFile: () => void interop.openFile(),
     onPaste: interop.openPaste,
     onLibrary: openLibrary,
-    onBuildWithAi: () => openAiPanel(),
   };
   const goTo = (view: View) => setUrl({ view, present: false });
 

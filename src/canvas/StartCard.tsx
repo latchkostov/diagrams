@@ -3,7 +3,6 @@ import { Icon } from "../components/Icon";
 import { DiagramThumbnail } from "../components/DiagramThumbnail";
 import type { Thumb } from "../lib/thumbnail";
 import type { ThemeSection } from "../examples/themes";
-import { useAiDock } from "../ai/ui/dock";
 
 export interface StartExample {
   slug: string;
@@ -37,8 +36,6 @@ export interface StartOptions {
   onPaste: () => void;
   /** Opens the full "Your diagrams" list. */
   onLibrary: () => void;
-  /** Build with AI: describe the diagram to Ask AI. */
-  onBuildWithAi?: () => void;
 }
 
 /** Recent diagrams shown on the card; the rest are one click away in Your diagrams. */
@@ -52,7 +49,6 @@ const RECENT_MAX = 3;
 export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: () => void }) {
   const recent = start.recent.slice(0, RECENT_MAX);
   const [allExamples, setAllExamples] = useState(false);
-  const dockOpen = useAiDock().open;
   const all = start.examples.flatMap((section) => section.items);
   const featured = all.filter((ex) => ex.featured);
   // With nothing featured (or nothing more to show), the card simply lists every example.
@@ -132,13 +128,7 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
         </ul>
       )}
 
-      {/* One row. Build with AI steps aside while Ask AI is open: the panel itself says it. */}
       <div className="start-actions">
-        {start.onBuildWithAi && !dockOpen && (
-          <button className="btn" onClick={start.onBuildWithAi} data-testid="start-build-with-ai">
-            <Icon name="ai" size={14} /> Build with AI
-          </button>
-        )}
         <button className="btn" onClick={onBlank} data-testid="start-blank">
           <Icon name="plus" size={14} /> Start blank
         </button>

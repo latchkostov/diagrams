@@ -1,4 +1,4 @@
-// The one way an Ask AI turn lands on the diagram, for a pasted reply and a connected model alike: one
+// The way a pasted reply (the AI panel's Advanced flow) lands on the diagram, like an agent's change: one
 // applyDiagram under a tag of its own (so the thread can tell when Undo would reverse exactly this
 // turn), the toast with Undo and the highlight, and the turn's record for the conversation.
 
@@ -16,7 +16,7 @@ export function commitPlan(
 ): TurnRecord {
   const historyKey = `ai:${turnId()}`;
   editor.applyDiagram(plan.next, { merge: historyKey });
-  showApplied(plan.summary, plan.changed, editor);
+  showApplied(plan.summary, plan.changed, editor, { turnUndo: true, reveal: true });
   return {
     kind: "change",
     ...record,

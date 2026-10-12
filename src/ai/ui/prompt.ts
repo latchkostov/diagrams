@@ -1,4 +1,4 @@
-// The prompts the "Ask AI" panel copies for the user's own chatbot (ChatGPT, Claude, Gemini).
+// The prompts the AI panel's Advanced section copies for any chatbot (ChatGPT, Claude and the like).
 // Pure: the caller passes the describe_diagram text, so this is easy to test and to reuse.
 
 import { opsSchema, set_simulationSchema, type AiError } from "../index";
