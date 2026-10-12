@@ -53,6 +53,7 @@ export function Toaster() {
       aria-live={t.kind === "error" ? "assertive" : "polite"}
       data-testid="toast"
       data-kind={t.kind}
+      data-toast
       data-editor-overlay
     >
       <span className="ix-toast-icon">

@@ -52,6 +52,140 @@ on the Kafka example, which stays clean under all eight checks.
 Also: `screenshots/round22/count-1280-light.png`, `card-batch3-1024-light.png`, `card-batch3-1440-dark.png`,
 `card-about-1280-light.png`, `inspector-finding-1280-light.png` and `card-clean-kafka-1280-light.png`.
 
+## Round 21: sharing, export, embed and privacy, together (2026-10-12)
+
+Private diagrams, password links, Interactive HTML, file exports, the three embeds, cloud saves, the skill's "which
+output?" and self-hosting each had their own review. This round walks them **together**, as someone with a work
+diagram would: can they pick the safe option quickly, and does every way out say who can open what it makes?
+
+**How.** The production build (`pnpm build`, `vite preview`), Chrome driven by Playwright, at 1280 × 800 light and
+1440 × 900 dark, mouse and keyboard only. One regular diagram (the Kafka example) and one Private diagram (a private
+copy of the Azure invoice example), both public. Screenshots are in `docs/screenshots/round21-sharing/`
+(`before-*` is the build before this round's fixes).
+
+### Which option should I use (as the app presents it now)
+
+| You want to…                                          | Use                                                  | Who can open it                                   | Private diagram      |
+| ----------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------- | -------------------- |
+| Send a work diagram to colleagues to look at and play | File ▸ Export as ▸ **Interactive HTML…**             | Anyone who has the file                           | Yes                  |
+| Let someone keep editing it                           | **Save** / Export as ▸ **Diagram file**              | Anyone who has the file                           | Yes                  |
+| A link for a few people                               | **Copy link with password…**                         | Anyone with the link and the password             | No (off, says why)   |
+| A quick link for a public or personal diagram         | **Copy share link**                                  | Anyone with the link                              | No (off, says why)   |
+| Show it in your intranet or app, behind its sign-in   | **Embed code…** ▸ **Your app supplies it (private)** | Whoever your app lets in; never in a URL          | Yes (the only embed) |
+| Show it on a public page (blog, docs)                 | **Embed code…** ▸ **In the link** / Example by name  | Anyone who can see the page                       | No                   |
+| A picture                                             | **Export PNG** / Export as ▸ **Image…**              | Anyone who has the file                           | Yes                  |
+| Keep it in your own cloud storage                     | **Save to ▸** Google Drive, OneDrive or Dropbox      | Your account, and whoever you share it with there | No (off, says why)   |
+
+For a work diagram the safe choices are, in order: Interactive HTML, the diagram file, a link with a password, an
+embed your app supplies. A company's own copy (docs/SELF-HOSTING.md) can remove the link rows altogether and start
+every diagram Private. The skill offers the same order (`skills/livediagrams/reference/outputs.md`).
+
+### What's good
+
+- **Private is easy to see and hard to undo by accident.** The lock badge beside the title, "This diagram is private"
+  under File ▸ Privacy, and one confirmation with **Keep private** as the default (`privacy-dialog-1280-light`).
+- **Interactive HTML and the password link already said who can open them**, in bold, and the private embed's promise
+  comes first in its callout (`html-dialog-1440-dark`, `password-dialog-1280-light`, `embed-host-1440-dark`).
+- **No gate leaks.** With the diagram Private, every link row is off, Embed code… opens on the private source only,
+  the right-click's Export ▸ matches (`private-rightclick-export-1280-light`), and no step of the walk made a URL.
+
+### Findings
+
+**High**
+
+1. **Copy share link didn't say who can open it.** It's one click, first among the sharing rows, and the link carries
+   the whole readable diagram. The row had no line, and the toast said "The diagram travels inside the link." Only
+   the Details dialog said "Anyone with the link gets their own editable copy" (`before-file-menu-1280-light`,
+   `before-share-toast-1280-light`). **Fixed:** the row says **Anyone with the link can open it**, the password row
+   **Only people with the password can open it**, and the toast **Share link copied. Anyone with the link can open the
+   diagram.** (`file-menu-1280-light`, `share-toast-1280-light`, `share-dialog-1440-dark`).
+2. **Embed ▸ In the link didn't say the diagram is public.** It's the default for any diagram of your own (not a
+   pristine example). The code holds the whole diagram, and the viewer offers "Open in Live Diagrams"; the dialog
+   said only "Paste this into a blog post, wiki or docs page" (`before-embed-inline-1280-light`). **Fixed:** one
+   callout, in the Interactive HTML dialog's pattern: **Anyone who can see the page can open this diagram.** It's
+   inside the code. For a work diagram, choose Your app supplies it (private). (`embed-inline-1280-light`). The
+   preview is 50 px shorter on that source, so the dialog still fits 1280 × 800.
+
+**Medium**
+
+3. **The keyboard skipped a Private diagram's off rows, so their reason was never heard.** The File menu's off rows
+   were native `disabled` buttons: the arrow keys and screen readers went straight from Privacy to Embed code….
+   **Fixed:** off rows are `aria-disabled` and stay in the arrow-key order (as the right-click menu's already were);
+   Enter on one does nothing (`keyboard-private-off-row-1280-dark`).
+4. **Contrast: the reason faded with its row.** The whole row was at 45% opacity, so "Private diagrams can't be
+   shared as links…" read at 1.9:1 in light and 2.1:1 in dark (`before-private-file-menu-1440-dark`). **Fixed:** the
+   icon and name fade; the reason stays at the muted text colour (5.2:1 light, 5.3:1 dark)
+   (`private-file-menu-1440-dark`).
+5. **Esc did nothing in the Share link dialog opened from the toast's Details.** Copy link (its autofocus) is off while
+   the link is made, so focus stayed on the toast and then the page, outside the dialog's keys. The Embed dialog did
+   the same for your own diagrams. **Fixed:** a dialog whose first action isn't ready focuses itself, then hands focus
+   to the action when it is, so Esc and Tab work at once.
+6. **Esc in the embed preview didn't close anything.** Tab goes into the preview (the real viewer, every node in turn),
+   where the dialog's Esc never arrives. **Fixed:** the preview stays a Tab stop, so keyboard users can try it (the
+   private embed has no Open viewer), and Esc inside it backs out one level, to the preview's frame in the dialog;
+   the next Esc closes the dialog, and Tab carries on from the frame. (The first fix took the preview out of the Tab
+   order; the code review rightly said that left keyboard users unable to try it.)
+7. **"Export a file instead" didn't say which file, and the safe way to share was never named.** Interactive HTML, the
+   option the skill recommends for work, sits two levels down (File ▸ Export as ▸), and nothing in the sharing rows,
+   the Privacy submenu or the Private dialog pointed to it (`before-privacy-dialog-1280-light`). **Fixed by
+   wording:** the off rows say **Private diagrams can't be shared as links. Export Interactive HTML instead.**, the
+   Privacy submenu's note **To share a private diagram, export Interactive HTML.**, and the Private dialog **To share
+   it, export Interactive HTML or the diagram file.** The refusal toast's action is now **Interactive HTML…** (it
+   exported the diagram file). Moving it up the menu is a proposal (below).
+
+**Low**
+
+8. **The Private dialog said "No share links or embed codes"**, but Embed code… is on for Private diagrams (the private
+   kind). **Fixed:** "No share links; embeds only where your own app supplies it" (`privacy-dialog-1280-light`).
+9. **One thing, three names.** The menu says Embed code…, the dialog was titled "Embed", and the privacy policy said
+   "Embed → Your app supplies it". The File menu's "Your app supplies it" sat in the monospace hint column, where file
+   extensions go. **Fixed:** the dialog is **Embed code**, the row's line reads **Your app supplies it (private)** (the
+   source's own name), and the policy and docs/EMBEDDING.md say **Embed code… ▸ Your app supplies it (private)**.
+10. **A Private diagram's off embed source looked like a choice.** "In the link" kept the normal ink; only a hover
+    tooltip said why (`before-private-embed-1280-light`). **Fixed:** off segments use the disabled ink, and the
+    subtitle says **A private diagram embeds only where your own app supplies it.** (`private-embed-1440-dark`).
+11. **The skill never mentioned links with a password**, so "I want a link" for a work diagram had only the open link.
+    **Fixed:** SKILL.md and outputs.md point to **File > Copy link with password…** in the app (no script makes one)
+    and say a Private diagram gets no link at all.
+12. **Focus fell to the page** after the Share link dialog opened from a toast's Details closed: the toast goes as its
+    button acts. **Fixed:** a dialog opened from a toast, or from nothing, gives the keyboard back to the canvas.
+13. **A password link could replace the diagram you moved to.** Moving to an example while its password was being
+    checked cancelled the result only once the example had downloaded; if the check finished first, the shared diagram
+    opened over the one you'd asked for. **Fixed:** the result is dropped (the prompt says "Another diagram opened…")
+    whenever another diagram is open _or asked for_. Found while chasing a flaky test, which now waits for the diagram
+    rather than the picker.
+
+After the code review (five findings, all fixed): the refusal toast's **Interactive HTML…** runs the same guarded
+command as the menu, so with no diagram on the canvas it says "Open a diagram on the canvas first." instead of failing
+silently, and the tests hold link making to check Esc while a link is pending and the refusal toast's action end to
+end.
+
+### Proposals (not built)
+
+- **One "Share…" chooser.** One File menu row (replacing Copy share link, Copy link with password… and Embed code…, so
+  the menu shrinks) opening a dialog that lists the ways out with who can open each, safest first: Interactive HTML,
+  Diagram file, Link with password, Embed in your app, then Share link and the public embed. A Private diagram shows
+  the first two and the private embed. It would make the decision map above the UI itself, but it ends Copy share
+  link's one-click habit, so it's the owner's call.
+- **The password link first.** Swap the two link rows, or make **Copy link with password…** the File menu's one link,
+  with "No password" inside its dialog. The vocabulary puts it under Copy share link today.
+- **Ask about Private at the moment it matters.** The first import of an infrastructure file (Terraform, Kubernetes,
+  docker-compose) could offer **New diagrams are private** once, beside the Import report's Make private.
+
+![Before: the File menu's link rows say nothing about who can open them](screenshots/round21-sharing/before-file-menu-1280-light.png)
+![After: each link row says who can open it](screenshots/round21-sharing/file-menu-1280-light.png)
+![After: the toast says it too](screenshots/round21-sharing/share-toast-1280-light.png)
+![After: Embed code, In the link](screenshots/round21-sharing/embed-inline-1280-light.png)
+![Before: a Private diagram's off rows, the reason faded (dark)](screenshots/round21-sharing/before-private-file-menu-1440-dark.png)
+![After: the reason stays readable, and the row is reached from the keyboard](screenshots/round21-sharing/keyboard-private-off-row-1280-dark.png)
+![After: the Private dialog names the way to share](screenshots/round21-sharing/privacy-dialog-1280-light.png)
+![After: a Private diagram's embed](screenshots/round21-sharing/private-embed-1440-dark.png)
+
+Also: `before-share-toast-1280-light.png`, `before-embed-inline-1280-light.png`, `before-privacy-dialog-1280-light.png`,
+`before-private-embed-1280-light.png`, `share-dialog-1440-dark.png`, `password-dialog-1280-light.png`,
+`embed-example-1440-dark.png`, `embed-host-1440-dark.png`, `html-dialog-1440-dark.png`, `privacy-menu-1280-light.png`,
+`private-file-menu-1440-dark.png` and `private-rightclick-export-1280-light.png`.
+
 ## Round 20: imports (batch 4, Terraform) (2026-10-12)
 
 Terraform plan and state JSON on the shared pipeline and report. Self-review against `docs/UX-PRINCIPLES.md` at

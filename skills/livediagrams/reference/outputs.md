@@ -10,12 +10,16 @@ they already said, and offer them in this order.
 | Image (PNG or SVG)    | only people who have the file | to open the app    | no             |
 | Share link            | **anyone who has the link**   | yes                | yes            |
 
+A **link with a password** (anyone with the link _and_ the password can open it) is made in the app only, never by a
+script here: open the diagram file at livediagrams.dev and use **File > Copy link with password…**.
+
 ## Choosing for the user
 
 - **Work and company diagrams.** If the user mentions their work, employer, team, a client or customer, or the
   system sounds internal (internal service names, real hosts, account or cluster names), recommend the
   Interactive HTML file or the diagram file. Set `"private": true` in the diagram: the app then keeps it on the
-  device when it's opened (no share links, no cloud saves, no AI tools).
+  device when it's opened (no share links, no cloud saves, no AI tools). If they want a link anyway, the safer one is a link
+  with a password, made in the app (above); a Private diagram gets no link at all.
 - **Private diagrams** (`"private": true`) never get a share link. `share-link.mjs` refuses them; don't build one by
   hand either. The HTML file and the diagram file are fine: handing over a file is the user's own choice.
 - **Public or personal diagrams** (a blog post, a tutorial, an open-source project): any output is fine. A share link

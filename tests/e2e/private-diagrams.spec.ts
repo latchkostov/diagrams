@@ -21,7 +21,7 @@ import {
 // Private diagrams (docs/DESIGN-REVIEW.md, round 12): the Private switch keeps a diagram on this device:
 // no share links or embeds, no cloud saves, no AI. Every diagram here is synthetic and public.
 
-const PRIVATE_SHARE = "Private diagrams can't be shared as links. Export a file instead.";
+const PRIVATE_SHARE = "Private diagrams can't be shared as links. Export Interactive HTML instead.";
 
 const work = (title: string) => ({
   format: "diagrams/v1",

@@ -24,6 +24,28 @@ clean unless it has one of these. New, in the **Checks card**:
   busy).
 - Agents' `check_diagram` reports them too, with their fixes as edit operations.
 
+## Sharing says who can open it (2026-10)
+
+Two small habit changes:
+
+- In the File menu, the arrow keys now **stop on rows that are off** (a Private diagram's link rows), so the keyboard
+  and screen readers hear why they're off. Enter on one does nothing.
+- When a link is refused for a Private diagram, the message's button is **Interactive HTML…** (it used to export the
+  diagram file).
+
+New:
+
+- **Every way a diagram leaves the app says who can open it**: Copy share link ("Anyone with the link can open it",
+  in the menu and its toast), Copy link with password… ("Only people with the password can open it"), and **Embed
+  code… ▸ In the link** ("Anyone who can see the page can open this diagram"). Interactive HTML and the private embed
+  already did.
+- A Private diagram's off rows, the Privacy submenu and the Private dialog name the way to share it: **Interactive
+  HTML** (or the diagram file). The reason under an off row stays readable in both themes.
+- The Embed dialog is titled **Embed code**, like its menu row, and Esc closes the Share link and Embed dialogs as soon
+  as they open. In the embed preview, Esc goes back to the dialog (the next Esc closes it).
+- A password link whose password is still being checked never opens over a diagram you moved to meanwhile.
+- The Agent Skill mentions **File > Copy link with password…** for a link only some people can open.
+
 ## Import Terraform plans and state (2026-10)
 
 No habit changes. New:

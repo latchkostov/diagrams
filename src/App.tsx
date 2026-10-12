@@ -266,6 +266,7 @@ function MainApp() {
   const interop = useInterop({
     view: url.view,
     slug,
+    requestedSlug: targetSlug,
     canvas: canvasRef,
     openDiagram,
     openShared,

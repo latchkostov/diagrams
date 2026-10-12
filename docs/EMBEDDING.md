@@ -11,7 +11,8 @@ Live Diagrams has three ways to put a diagram in someone else's page:
 With a host-supplied embed, your page fetches the diagram from your own server (with your own cookies and
 sign-in) and gives it to the viewer frame with `postMessage`. The diagram is never in a URL, never in the browser's
 storage and never sent to livediagrams.dev, which only serves the viewer's code. Private diagrams can be embedded
-this way (the Embed dialog offers nothing else for them).
+this way (**Embed code…** offers nothing else for them). The other two put the whole diagram in the page's code:
+anyone who can see the page can open it.
 
 Code: the frame is `src/interop/embed/HostEmbedView.tsx` (its rules in `hostProtocol.ts` and `hostReducer.ts`), the
 web component is `public/embed/live-diagram.js`, and the Embed dialog's snippets come from `hostSnippets.ts`.
@@ -170,8 +171,8 @@ site, which keeps every page on the current protocol.
 </script>
 ```
 
-Attach the `message` listener before setting `src`, so `ready` can't arrive first. The Embed dialog (**Embed ▸ Your
-app supplies it ▸ iframe + postMessage**) writes this for your diagram.
+Attach the `message` listener before setting `src`, so `ready` can't arrive first. **Embed code… ▸ Your app supplies
+it (private) ▸ iframe + postMessage** writes this for your diagram.
 
 ## Protocol reference (`livediagrams.embed.v1`)
 

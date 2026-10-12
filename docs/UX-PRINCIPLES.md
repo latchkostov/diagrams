@@ -206,6 +206,18 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   dialog always says **Anyone who has this file can open it.**, its one action is **Download HTML**, and the title,
   **Banner**, theme and simulations sit behind Options. A Private diagram can export it, as it can Save to this
   device. In the file: the banner on top, and a footer that says "Exported from Live Diagrams on <date>. Read-only."
+- **Who can open it.** Every way a diagram leaves the app says who can open what it makes, in these words, where
+  you choose it (the File menu's line, the dialog) and in its toast:
+  - Copy share link: **Anyone with the link can open it.**
+  - Copy link with password…: **Only people with the password can open it** (the dialog: anyone with the link and
+    the password).
+  - Interactive HTML…: **Anyone who has this file can open it.**
+  - Embed code… ▸ In the link: **Anyone who can see the page can open this diagram.** ▸ Your app supplies it
+    (private): **The diagram never leaves your app.**
+
+  For a work diagram the safe choices are, in order: Interactive HTML (read-only, offline), the diagram file, a link
+  with a password, and an embed your app supplies. The dialog is **Embed code**, as the menu row says.
+
 - **Storage**: where files live. **This device** (never "local", "computer" or "disk"; mid-sentence "this
   device"), **Google Drive**, **OneDrive** and **Dropbox** (never "Drive", "OneDrive Personal" or "Dropbox
   account"). The verbs are **Open…** (this device, Ctrl+O), **Open from ▸**, **Save** (Ctrl+S: back to where the
@@ -263,10 +275,11 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - **Build with AI** (Ctrl+K only) starts a new diagram from a description: a blank diagram with Advanced
   open. Never "Build with AI" for changing a diagram.
 - **Private** (never "local-only", "secret" or "confidential" in the UI) keeps a diagram on this device: no share
-  links or embeds, no cloud saves, no AI. The switch is **File ▸ Privacy ▸ Private diagram** (and Ctrl+K, "Make
-  this diagram private"); a **Private** lock badge sits beside the title, and its click opens the **Private
-  diagram** dialog, the one confirmation for **Make not private** (**Keep private** is the default). The link
-  rows stay, off, saying "Private diagrams can't be shared as links. Export a file instead."; the panel says
+  links or link embeds (only **Your app supplies it (private)**), no cloud saves, no AI. The switch is **File ▸
+  Privacy ▸ Private diagram** (and Ctrl+K, "Make this diagram private"); a **Private** lock badge sits beside the
+  title, and its click opens the **Private diagram** dialog, the one confirmation for **Make not private** (**Keep private** is the default). The link
+  rows stay, off (still reached by the arrow keys, `aria-disabled`), saying "Private diagrams can't be shared as
+  links. Export Interactive HTML instead."; the reason stays readable while the name fades; the panel says
   **AI is off for this private diagram** and offers **Allow the on-device model (stays on this device)**. Copies,
   duplicates, exports (`"private": true`) and pasted nodes stay private. **New diagrams are private** (File ▸
   Privacy ▸) is one remembered setting, off by default. The built-in local-only examples (development only) are
@@ -304,7 +317,7 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   - Checks run by themselves after edits pause, in idle time and off the main thread, so typing and dragging never
     wait. A diagram over 1,500 nodes is checked when the card opens. Private diagrams are checked too: it all stays
     on this device. Only the agents' `check_diagram` follows the AI rules.
-- Esc backs out one level: menu, dialog, selection, the Checks card, slow motion, trace, highlighted path, presentation, then live view.
+- Esc backs out one level: menu, the Embed dialog's preview (back to the dialog), dialog, selection, the Checks card, slow motion, trace, highlighted path, presentation, then live view.
   In a text field on the canvas it saves and leaves the field (Editing text, above). Esc never selects, and clearing a
   selection leaves keyboard focus where it was (on the node), never on the page.
 - **Undo toasts** ("Payments service left AKS · Undo", an agent's change, an applied fix) offer to reverse one change.

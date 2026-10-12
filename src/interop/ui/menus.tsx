@@ -202,7 +202,8 @@ export function FileMenu({
           testId: "export-share-link",
           icon: <Glyph name="link" />,
           title: "Copy share link",
-          desc: privacy ? PRIVATE_SHARE_MESSAGE : undefined,
+          // Who can open what it makes, in the words the dialogs use (docs/UX-PRINCIPLES.md, Who can open it).
+          desc: privacy ? PRIVATE_SHARE_MESSAGE : "Anyone with the link can open it",
           disabled: !!privacy,
           onSelect: () => void api.copyShareLink(),
         },
@@ -211,6 +212,7 @@ export function FileMenu({
           testId: "export-share-link-password",
           icon: <Glyph name="lock" />,
           title: "Copy link with password…",
+          desc: privacy ? undefined : "Only people with the password can open it",
           disabled: !!privacy,
           onSelect: () => void api.copyPasswordLink(),
         },
@@ -222,7 +224,7 @@ export function FileMenu({
         icon: <Glyph name="code" />,
         title: "Embed code…",
         // A private diagram still embeds in a page that supplies it: nothing of it goes in a URL.
-        hint: privacy || !SHARE_LINKS ? "Your app supplies it" : undefined,
+        desc: privacy || !SHARE_LINKS ? "Your app supplies it (private)" : undefined,
         onSelect: api.openEmbed,
       },
       { type: "separator" },
@@ -348,7 +350,7 @@ function privacyMenu(api: Api): MenuEntry[] {
       checkbox: true,
       onSelect: () => api.setNewDiagramsPrivate(!newDiagramsPrivate.get()),
     },
-    { type: "note", text: "Export a file to share a private diagram." },
+    { type: "note", text: "To share a private diagram, export Interactive HTML." },
   ];
 }
 

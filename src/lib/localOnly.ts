@@ -83,5 +83,5 @@ function aiMayChange(state: CanvasPrivacyState | null | undefined): boolean {
   return privacy === null || (privacy === "private" && !!state?.onDevice);
 }
 
-export const PRIVATE_SHARE_MESSAGE = "Private diagrams can't be shared as links. Export a file instead.";
+export const PRIVATE_SHARE_MESSAGE = "Private diagrams can't be shared as links. Export Interactive HTML instead.";
 export const PRIVATE_AI_OFF = "AI is off for this private diagram";

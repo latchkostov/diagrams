@@ -45,6 +45,6 @@ export const PRIVATE_BY_DEFAULT = __DEPLOYMENT_PRIVATE_BY_DEFAULT__;
 export const BRAND_NAME = __DEPLOYMENT_BRAND_NAME__;
 
 /** Why a link can't be made, when this copy makes none. */
-export const LINKS_OFF_MESSAGE = "Share links are turned off here. Export a file instead.";
+export const LINKS_OFF_MESSAGE = "Share links are turned off here. Export Interactive HTML instead.";
 /** Why a link someone sent didn't open, when this copy opens none. */
 export const LINK_OPEN_OFF_MESSAGE = "Opening shared links is turned off here. Ask for the diagram file instead.";

@@ -170,7 +170,7 @@ function MenuPanel({
   }, [top, left, width, parentLeft]);
 
   useEffect(() => {
-    if (focusFirst) panel.current?.querySelector<HTMLElement>("[data-menu-focus]:not(:disabled)")?.focus();
+    if (focusFirst) panel.current?.querySelector<HTMLElement>("[data-menu-focus]")?.focus();
     else panel.current?.focus();
     return () => window.clearTimeout(hoverTimer.current);
   }, [focusFirst]);
@@ -185,7 +185,7 @@ function MenuPanel({
   const onKeyDown = (e: ReactKeyboardEvent) => {
     if (e.target instanceof Node && !panel.current?.contains(e.target)) return;
     e.stopPropagation();
-    const items = [...(panel.current?.querySelectorAll<HTMLElement>("[data-menu-focus]:not(:disabled)") ?? [])];
+    const items = [...(panel.current?.querySelectorAll<HTMLElement>("[data-menu-focus]") ?? [])];
     const i = items.indexOf(document.activeElement as HTMLElement);
     const go = (n: number) => {
       e.preventDefault();
@@ -255,8 +255,11 @@ function MenuPanel({
                 aria-checked={entry.checked}
                 aria-haspopup={hasSub ? "menu" : undefined}
                 aria-expanded={hasSub ? isOpen : undefined}
-                disabled={entry.disabled}
+                // Off, not gone: still a stop for the arrow keys, so a keyboard or screen reader hears why it's off
+                // (a private diagram's link rows).
+                aria-disabled={entry.disabled || undefined}
                 onClick={() => {
+                  if (entry.disabled) return;
                   if (hasSub) return isOpen ? setSub(null) : openSub(k);
                   onCloseAll(true);
                   entry.onSelect?.();
