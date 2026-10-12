@@ -108,7 +108,7 @@ import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts
 import type { NewNode, Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
 import { flushSync } from "react-dom";
-import { LiveView, type LiveViewProps } from "../live/LiveView";
+import { LiveView, type LiveHandle, type LiveViewProps } from "../live/LiveView";
 import { CanvasFitContext } from "./canvasFit";
 import { LIVE_BAR_SPACE } from "../live/layout";
 import { safeStorage } from "../lib/storage";
@@ -228,6 +228,8 @@ export interface CanvasViewerOptions {
    * overlay-aware Fit view (useCanvasFit).
    */
   controls?: ReactNode;
+  /** Told how to drive live view from outside (the host-supplied embed's play, pause, speed and simulation). */
+  onLive?: (handle: LiveHandle) => void;
 }
 
 /** Minimap: notes show their tint; zones, text and shapes are outlines. */
@@ -2222,6 +2224,7 @@ function CanvasInner({
               <LiveView
                 readOnly={readOnly}
                 initial={viewer?.live}
+                onHandle={viewer?.onLive}
                 editor={readOnly ? undefined : editor}
                 diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
                 presenting={presenting}

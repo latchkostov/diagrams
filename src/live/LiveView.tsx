@@ -11,6 +11,7 @@ import { readLiveParams, writeLiveParams, type LiveParams } from "./urlParams";
 import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
 import { isRecordingActive } from "./record/framing";
 import type { LiveInputs } from "./capacityModel";
+import type { LiveController } from "./controller";
 
 // Live view's always-mounted part: the Live toggle, its keys (L, C) and the URL. The session itself (the
 // simulation, renderers, panels, slow motion, recording) and the edit-mode capacity heat map are their own
@@ -18,6 +19,19 @@ import type { LiveInputs } from "./capacityModel";
 
 const LiveSession = lazyComponent(() => import("./LiveSession").then((m) => m.LiveSession));
 const EditCapacity = lazyComponent(() => import("./LiveSession").then((m) => m.EditCapacity));
+
+/** A running live session, for a page that drives it from outside (the host-supplied embed). */
+export interface LiveSessionHandle {
+  controller: LiveController;
+  /** The live bar's own simulation switch: a saved simulation's id, or null for free play. It plays. */
+  selectSimulation(id: string | null): void;
+}
+
+/** Live view, driven from outside: how to go live, and the running session (null until it's up). */
+export interface LiveHandle {
+  goLive(): void;
+  session: LiveSessionHandle | null;
+}
 
 export interface LiveViewProps {
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
@@ -53,6 +67,8 @@ export interface LiveViewProps {
   onSaveDiagram?: (diagram: DiagramFile) => void;
   /** Temporarily fold the inspector while authoring without changing its saved preference. */
   onPanelChange?: (open: boolean) => void;
+  /** Told how to drive live view from outside, again whenever that changes (the host-supplied embed). */
+  onHandle?: (handle: LiveHandle) => void;
 }
 
 export function LiveView(props: LiveViewProps) {
@@ -77,6 +93,10 @@ export function LiveView(props: LiveViewProps) {
   const [ready, setReady] = useState(false);
   if (!ready && mounted && (initialized || empty)) setReady(true);
   if (!live && firstSession) setFirstSession(false);
+  // The running session reports itself (LiveSession's onSession) for a page that drives live view.
+  const [session, setSession] = useState<LiveSessionHandle | null>(null);
+  const onHandle = props.onHandle;
+  useEffect(() => onHandle?.({ goLive, session: live ? session : null }), [onHandle, goLive, live, session]);
 
   // "L" toggles live mode anywhere on the canvas.
   useEffect(() => {
@@ -160,6 +180,7 @@ export function LiveView(props: LiveViewProps) {
           {...props}
           params={firstSession ? params : { ...params, live: true, sim: null, speed: null, paused: false }}
           onExit={() => setLive(false)}
+          onSession={props.onHandle ? setSession : undefined}
         />
       )}
     </>
