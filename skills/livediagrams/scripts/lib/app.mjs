@@ -1006,7 +1006,14 @@ function placeNextTo(from, size, others, direction = "LR", side = "downstream") 
 * when nothing is free within `maxRings`, the centre wins (the view is simply full).
 * Takes and returns the new element's centre.
 */
-function placeFree(center, size, others, { margin = 32, step = 40, maxRings = 24 } = {}) {
+function placeFree(center, size, others, opts = {}) {
+	return findFree(center, size, others, opts) ?? center;
+}
+/**
+* The search behind `placeFree`, with failure made explicit: the free centre nearest `center` within
+* `maxRings` steps, or null when every candidate is taken.
+*/
+function findFree(center, size, others, { margin = 32, step = 40, maxRings = 24 } = {}) {
 	const fits = (cx, cy) => {
 		const b = {
 			x: cx - size.width / 2 - margin,
@@ -1036,7 +1043,7 @@ function placeFree(center, size, others, { margin = 32, step = 40, maxRings = 24
 			y: hit.y
 		};
 	}
-	return center;
+	return null;
 }
 //#endregion
 //#region src/ai/place.ts

@@ -28,7 +28,11 @@ function setup(selected: string[], opts: { marks?: Rect[]; textHeight?: number }
     ],
   });
   let nodes: FlowNode[] = flow.nodes.map((n) => ({ ...n, selected: selected.includes(n.id) }));
-  const rf = { getNodes: () => nodes, getEdges: () => flow.edges } as ReactFlowInstance<FlowNode, DiagramFlowEdge>;
+  const rf = {
+    getNodes: () => nodes,
+    getNode: (id: string) => nodes.find((n) => n.id === id),
+    getEdges: () => flow.edges,
+  } as ReactFlowInstance<FlowNode, DiagramFlowEdge>;
   const hint = vi.fn();
   const edgeMarks = vi.fn(() => opts.marks ?? []);
   const deps = {

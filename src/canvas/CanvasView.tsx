@@ -12,6 +12,7 @@ import {
   type DragEvent,
   type MouseEvent as ReactMouseEvent,
   type Ref,
+  type RefObject,
 } from "react";
 import {
   Background,
@@ -27,14 +28,21 @@ import {
   useNodesInitialized,
   useNodesState,
   useReactFlow,
+  useStore,
+  useStoreApi,
   type Connection,
+  type EdgeChange,
   type EdgeMouseHandler,
+  type NodeChange,
   type NodeMouseHandler,
   type NodeTypes,
   type EdgeTypes,
+  type OnConnectEnd,
+  type OnConnectStart,
   type OnNodeDrag,
   type FitViewOptions,
   type IsValidConnection,
+  type ReactFlowState,
 } from "@xyflow/react";
 import { getStencil } from "../stencils/registry";
 import { useSettings } from "../harness/settings";
@@ -53,7 +61,9 @@ import {
 import type { AnnotationKind, AnnotationShape, DiagramFile } from "../model/types";
 import { fromFlow, groupAt, toFlow, withEdgeAria, withEditingOnTop, withNodeAria, type DiagramMeta } from "./convert";
 import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
-import { useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
+import { overlayRects, useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
+import { panClearOf } from "./geometry/fit";
+import { union } from "./geometry/rect";
 import { canvasNodeTypes } from "./nodes/nodeTypes";
 import {
   ANNOTATION_COLORS,
@@ -70,11 +80,11 @@ import { Icon } from "../components/Icon";
 import { ContextMenu } from "../components/ContextMenu";
 import { ShortcutsDialog } from "../components/ShortcutsDialog";
 import { actionRegistry, type ActionContext, type MenuNode } from "../editor/actions";
-import { builtinActions, stencilMenu } from "../editor/builtinActions";
+import { builtinActions, quickAddMenu } from "../editor/builtinActions";
 import { useEditorPrefs } from "../editor/prefs";
 import { useHistory, type CanvasSnapshot } from "../editor/useHistory";
 import { useEditor } from "../editor/useEditor";
-import { useCanvasShortcuts } from "../editor/useCanvasShortcuts";
+import { inCanvas, useCanvasShortcuts } from "../editor/useCanvasShortcuts";
 import { formatCombo, isEditableTarget, shortcutKeys } from "../editor/shortcuts";
 import type { Selection, XYBox } from "../editor/types";
 import type { AnnotationFlowNode, DiagramFlowEdge, DiagramFlowNode, FlowNode, GroupFlowNode } from "./types";
@@ -90,6 +100,11 @@ import { FirstRunHint } from "./FirstRunHint";
 import { notify } from "../interop/ui/toast";
 import { useCanvasHost } from "../palette/canvasHost";
 import { useNoCanvasTextSelection } from "./useNoCanvasTextSelection";
+import { getRecentStencils, pushRecentStencil } from "../lib/recentStencils";
+import { connectHitAt, connectOver, connectTarget, edgesBetween, pickInBox, type BoxItem } from "./gestures";
+import { ConnectionLine } from "./ConnectionLine";
+import { captureTypeAhead } from "./typeAhead";
+import { GROUP_PREFIX } from "./types";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -101,6 +116,31 @@ const FIT_PRESENT: FitViewOptions = {
   padding: { top: "190px", right: "64px", bottom: "64px", left: "64px" },
   maxZoom: 1.6,
 };
+
+/** Editing: Shift+click and Ctrl/Cmd+click both toggle an item in the selection, as in other tools. */
+const MULTI_SELECT_KEYS = ["Shift", "Control", "Meta"];
+/** Editing: a plain drag on empty canvas draws the selection box, so only the middle button pans. */
+const PAN_MIDDLE = [1];
+
+/**
+ * The view's zoom as a CSS variable on the canvas (`--rf-zoom`), for sizes that must hold on screen at
+ * any zoom (the handles' hit areas). Re-renders only itself, and only when the zoom moves a step.
+ */
+function ZoomVar({ host }: { host: RefObject<HTMLElement | null> }) {
+  const zoom = useStore((s: ReactFlowState) => Math.round(s.transform[2] * 50) / 50);
+  useLayoutEffect(() => void host.current?.style.setProperty("--rf-zoom", String(zoom)), [host, zoom]);
+  return null;
+}
+
+/** Ids whose selected flag inside React Flow disagrees with the box's pick. */
+function staleBoxFlags(
+  s: Pick<ReactFlowState<FlowNode, DiagramFlowEdge>, "nodeLookup">,
+  picked: ReadonlySet<string>,
+): Set<string> {
+  const out = new Set<string>();
+  for (const n of s.nodeLookup.values()) if (!!n.selected !== picked.has(n.id)) out.add(n.id);
+  return out;
+}
 
 const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
 const HINT_KEY = "diagrams.firstRunHint.v1";
@@ -162,14 +202,15 @@ actionRegistry.register(builtinActions());
 
 function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, initial, start, onTitleChange }: Props) {
   const { theme, nodeVariant, edgeStyle } = useSettings();
-  const { screenToFlowPosition, fitView, getNodes, getNodesBounds, getViewport, setCenter } = useReactFlow<
-    FlowNode,
-    DiagramFlowEdge
-  >();
+  const { screenToFlowPosition, fitView, getNode, getNodes, getNodesBounds, getViewport, setCenter, setViewport } =
+    useReactFlow<FlowNode, DiagramFlowEdge>();
+  const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
   useNoCanvasTextSelection(wrapper);
-  /** The pointer over the canvas (client coords), for "T adds text here". */
+  /** The pointer over the canvas (client coords), for "T adds text here" and Ctrl+V. */
   const pointer = useRef<{ x: number; y: number } | null>(null);
+  /** The node under the pointer (Shift+2 with nothing selected zooms to it). */
+  const hovered = useRef<string | undefined>(undefined);
 
   const [{ original, flow, originalJson, loadedJson, identity }] = useState(() => {
     const original = initial ?? getOriginal(slug) ?? emptyDiagram();
@@ -291,6 +332,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     edgeMarks: () => edgeMarks(wrapper.current),
     fit,
     nodeSize: getNodeVariant(nodeVariant).size,
+    // Zoom to selection: never past 125% (no huge single node), clear of the panels.
+    zoomTo: (only, onlyEdges) => fitView_({ only, onlyEdges, maxZoom: 1.25, margin: 64, duration: 300 }),
+    hovered: () => hovered.current,
+    reveal: () => revealSelection(),
   });
 
   useCanvasShortcuts(editor, { enabled: !shortcutsOpen && !readOnly, onEscape: () => setMenu(null), live });
@@ -404,9 +449,256 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
     setTimeout(() => overlayFit({ maxZoom: FIT.maxZoom, duration: 350 }), 50);
   };
 
+  // Editing gestures (D4, D5): a drag on empty canvas draws the selection box, the wheel pans, and
+  // Space+drag or the middle button pan. Live view, presentation and embeds keep drag-to-pan.
+  const editGestures = !readOnly && !live && !presenting;
+
   // New edges float (sides picked from geometry); pin a side from the menu or inspector.
   const onConnect = useCallback((c: Connection) => void editor.connect(c.source, c.target), [editor]);
   const isValidConnection: IsValidConnection<DiagramFlowEdge> = useCallback((c) => c.source !== c.target, []);
+
+  /**
+   * Brings the selection into view (a pan, never a zoom) once React Flow has measured it, clear of the
+   * floating chrome (minimap, controls, hint), then runs `then`: a copy, a paste or a node added from a
+   * dropped connection may land off screen, under the inspector its selection opens, or under the
+   * minimap. `roomBelow` (flow px) keeps space for what hangs under the card (its label editor).
+   */
+  const keepInView = useRef<() => boolean>(() => false);
+  const revealSelection = useCallback(
+    (then?: () => void, roomBelow = 0) => {
+      const clearOfChrome = () => {
+        const el = wrapper.current;
+        if (!el) return;
+        const [tx, ty, k] = store.getState().transform;
+        const sel = union(
+          getNodes()
+            .filter((n) => n.selected && n.measured?.width)
+            .map((n) => ({
+              x: n.position.x * k + tx,
+              y: n.position.y * k + ty,
+              width: (n.measured?.width ?? 0) * k,
+              height: ((n.measured?.height ?? 0) + roomBelow) * k,
+            })),
+        );
+        if (!sel) return;
+        const pane = el.getBoundingClientRect();
+        const d = panClearOf(sel, overlayRects(el), { width: pane.width, height: pane.height });
+        if (d.dx || d.dy) void setViewport({ x: tx + d.dx, y: ty + d.dy, zoom: k }, { duration: motionMs(200) });
+      };
+      let frames = 30;
+      const step = () => {
+        const waiting = getNodes().some((n) => n.selected && !n.measured?.width);
+        if (waiting && --frames > 0) return void requestAnimationFrame(step);
+        // The editor opens at once (keys typed next belong to it); the view follows meanwhile, clearing
+        // the chrome once keep-in-view's own pan has landed.
+        then?.();
+        if (keepInView.current()) setTimeout(clearOfChrome, motionMs(250) + 30);
+        else clearOfChrome();
+      };
+      requestAnimationFrame(step);
+    },
+    [getNodes, setViewport, store],
+  );
+
+  // ---------------------------------------------------------------- connecting (D1, D2)
+  // While a connection is drawn: a crosshair throughout, the node a drop would connect to lit up (a
+  // drop anywhere on it connects), not-allowed over things that take no edges, and a "+" at the end
+  // of the line over empty canvas, where a drop opens quick-add for the next node.
+  const connecting = useRef<{ from: string; over: Element | null; stop: () => void } | null>(null);
+  const annotationKindOf = useCallback(
+    (id: string) => {
+      const n = getNode(id);
+      return n?.type === "annotation" ? (n as AnnotationFlowNode).data.kind : undefined;
+    },
+    [getNode],
+  );
+  const endConnecting = useCallback(() => {
+    const c = connecting.current;
+    connecting.current = null;
+    c?.stop();
+    connectOver.set(null);
+  }, []);
+  useEffect(() => endConnecting, [endConnecting]);
+  const onConnectStart: OnConnectStart = useCallback(
+    (_e, { nodeId }) => {
+      endConnecting();
+      if (!nodeId) return;
+      setMenu(null);
+      hideTip();
+      const wrap = wrapper.current;
+      wrap?.classList.add("is-connecting");
+      const state = { from: nodeId, over: null as Element | null, stop: () => {} };
+      const mark = (el: Element | null, on: boolean) => el?.classList.toggle("is-connect-target", on);
+      const onMove = (e: PointerEvent) => {
+        const el = e.target instanceof Element ? e.target : null;
+        const t = connectTarget(connectHitAt(el, annotationKindOf), nodeId);
+        const node = t.kind === "node" ? (el?.closest(".react-flow__node") ?? null) : null;
+        if (node !== state.over) {
+          mark(state.over, false);
+          mark(node, true);
+          state.over = node;
+        }
+        wrap?.classList.toggle("is-connect-invalid", t.kind === "invalid");
+        connectOver.set(t.kind);
+      };
+      document.addEventListener("pointermove", onMove, true);
+      state.stop = () => {
+        document.removeEventListener("pointermove", onMove, true);
+        mark(state.over, false);
+        wrap?.classList.remove("is-connecting", "is-connect-invalid");
+      };
+      connecting.current = state;
+    },
+    [endConnecting, hideTip, annotationKindOf],
+  );
+  const onConnectEnd: OnConnectEnd = useCallback(
+    (event, state) => {
+      const from = connecting.current?.from;
+      endConnecting();
+      // A drop on a handle (or near one) already connected in onConnect.
+      if (!from || state.isValid || readOnly) return;
+      const pt = "changedTouches" in event ? event.changedTouches[0] : event;
+      if (!pt) return;
+      const el = document.elementFromPoint(pt.clientX, pt.clientY);
+      const t = connectTarget(connectHitAt(el, annotationKindOf), from);
+      if (t.kind === "node") {
+        editor.connect(from, t.id);
+        return;
+      }
+      if (t.kind !== "canvas" || live) return;
+      // Empty canvas: quick-add there; the pick lands on the drop point, connected, ready to name.
+      const point = screenToFlowPosition({ x: pt.clientX, y: pt.clientY });
+      setMenu({
+        x: pt.clientX,
+        y: pt.clientY,
+        label: "Add a connected node",
+        testId: "quick-add",
+        searchable: "Add a node…",
+        items: quickAddMenu((s) => {
+          // Hold what's typed from now until the label editor can take it.
+          const typing = captureTypeAhead();
+          const id = editor.addNode(s.id, point);
+          editor.connect(from, id);
+          pushRecentStencil(s.id);
+          // In view, then its label editor (once the card is measured: React Flow hides it until then,
+          // and a hidden field can't take focus), starting from whatever was typed meanwhile.
+          revealSelection(() => {
+            const typed = typing.stop();
+            if (typed.done === "escape") return;
+            if (typed.done === "enter") {
+              if (typed.text !== null) editor.updateNode(id, { label: typed.text.trim() || s.label });
+              return;
+            }
+            editor.startEditing({ kind: "node", id, field: "label", text: typed.text ?? undefined });
+          }, 90);
+        }, getRecentStencils()),
+      });
+    },
+    [endConnecting, readOnly, annotationKindOf, editor, live, screenToFlowPosition, revealSelection],
+  );
+
+  // ---------------------------------------------------------------- selection box (D5)
+  // React Flow's own box picks only whole nodes and every edge they touch. Ours picks what it touches
+  // (Ctrl/Cmd held: only what's wholly inside), boundaries and zones only when wholly inside, and the
+  // edges whose both ends it picked. React Flow's selection changes are dropped while a box is drawn.
+  const contain = useRef(false);
+  const boxPicked = useRef<string | null>(null);
+  const boxSet = useRef<Set<string> | null>(null);
+  /**
+   * Sets the box's pick on the app's nodes. React Flow's own box code flips the selected flag on its
+   * internal copies before emitting the changes we drop, and keeps an internal copy as long as the app's
+   * node object is the same. `stale` (ids whose internal flag disagrees) get a fresh object, so React
+   * Flow re-reads them from the app's state and both agree.
+   */
+  const applyBoxPick = useCallback(
+    (set: ReadonlySet<string>, stale: ReadonlySet<string>) =>
+      setNodes((ns) =>
+        ns.map((n) => (!!n.selected === set.has(n.id) && !stale.has(n.id) ? n : { ...n, selected: set.has(n.id) })),
+      ),
+    [setNodes],
+  );
+  useEffect(() => {
+    if (!editGestures) return;
+    return store.subscribe((s, prev) => {
+      if (!s.userSelectionActive || !s.userSelectionRect) {
+        if (prev.userSelectionActive && !s.userSelectionActive) {
+          // React Flow's last pick may have flipped its own flags after ours: one source of truth.
+          const set = boxSet.current;
+          if (set) {
+            const stale = staleBoxFlags(s, set);
+            if (stale.size) applyBoxPick(set, stale);
+          }
+          boxSet.current = null;
+          // React Flow shows its multi-selection frame (drag it, right-click it) from its own pick, which
+          // it sets after this; follow ours instead.
+          const any = !!boxPicked.current;
+          queueMicrotask(() => store.setState({ nodesSelectionActive: any }));
+        }
+        boxPicked.current = null;
+        return;
+      }
+      if (s.userSelectionRect === prev.userSelectionRect && prev.userSelectionActive) return;
+      const r = s.userSelectionRect;
+      const [tx, ty, k] = s.transform;
+      const box = { x: (r.x - tx) / k, y: (r.y - ty) / k, width: r.width / k, height: r.height / k };
+      const items: BoxItem[] = [];
+      for (const n of s.nodeLookup.values()) {
+        const w = n.measured?.width ?? n.width ?? 0;
+        const h = n.measured?.height ?? n.height ?? 0;
+        if (n.hidden || n.selectable === false || !w || !h) continue;
+        const backdrop =
+          n.type === "boundary" || (n.type === "annotation" && (n as AnnotationFlowNode).data.kind === "zone");
+        items.push({ id: n.id, ...n.internals.positionAbsolute, width: w, height: h, backdrop });
+      }
+      const picked = pickInBox(items, box, contain.current);
+      const key = picked.join(" ");
+      const set = new Set(picked);
+      const stale = staleBoxFlags(s, set);
+      if (key === boxPicked.current && !stale.size) return;
+      const pickChanged = key !== boxPicked.current;
+      boxPicked.current = key;
+      boxSet.current = set;
+      applyBoxPick(set, stale);
+      if (!pickChanged) return;
+      const hiddenDeps = !dependencyVisibility.get();
+      const edgeSet = edgesBetween(
+        s.edges.filter((e) => !(hiddenDeps && isDependency(e.data))),
+        set,
+      );
+      // The same array when no edge's flag changes: the routes and their caches stay as they are.
+      setEdges((es) => {
+        let changed = false;
+        const next = es.map((e) => {
+          if (!!e.selected === edgeSet.has(e.id)) return e;
+          changed = true;
+          return { ...e, selected: edgeSet.has(e.id) };
+        });
+        return changed ? next : es;
+      });
+    });
+  }, [editGestures, store, setNodes, setEdges, applyBoxPick]);
+
+  // ---------------------------------------------------------------- Alt-drag duplicates (D9)
+  /** While an Alt-drag runs: original flow id → its copy. The drag moves the copies; the originals stay. */
+  const altCopies = useRef<Map<string, string> | null>(null);
+  const handleNodesChange = useCallback(
+    (changes: NodeChange<FlowNode>[]) => {
+      let next = changes;
+      if (store.getState().userSelectionActive) next = next.filter((c) => c.type !== "select");
+      const copies = altCopies.current;
+      if (copies)
+        next = next.map((c) => (c.type === "position" && copies.has(c.id) ? { ...c, id: copies.get(c.id)! } : c));
+      if (next.length) onNodesChange(next);
+    },
+    [store, onNodesChange],
+  );
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange<DiagramFlowEdge>[]) => {
+      const next = store.getState().userSelectionActive ? changes.filter((c) => c.type !== "select") : changes;
+      if (next.length) onEdgesChange(next);
+    },
+    [store, onEdgesChange],
+  );
 
   const onEdgeDoubleClick: EdgeMouseHandler<DiagramFlowEdge> = useCallback(
     (_e, edge) => setEditing({ kind: "edge", id: edge.id }),
@@ -416,16 +708,26 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   // Groups aren't React Flow parents, so carry their member nodes along manually.
   const dragOrigin = useRef<{ x: number; y: number; members: Map<string, { x: number; y: number }> } | null>(null);
   const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
-    (_e, node) => {
+    (e, node, dragged) => {
       setMenu(null);
       hideTip();
+      // Alt-drag: copies take the originals' place and move with the pointer; the originals stay.
+      if (editGestures && e.altKey) {
+        const made = editor.duplicateInPlace({
+          nodeIds: dragged.filter((n) => n.type !== "boundary").map((n) => n.id),
+          groupIds: dragged.filter(isGroupNode).map((n) => n.data.groupId),
+        });
+        if (made.size) altCopies.current = made;
+      }
       if (node.type !== "boundary") return;
+      const copies = altCopies.current;
       const members = new Map<string, { x: number; y: number }>();
       for (const n of nodes)
-        if (n.type === "diagram" && n.data.group === node.data.groupId) members.set(n.id, { ...n.position });
+        if (n.type === "diagram" && n.data.group === node.data.groupId)
+          members.set(copies?.get(n.id) ?? n.id, { ...n.position });
       dragOrigin.current = { x: node.position.x, y: node.position.y, members };
     },
-    [nodes, hideTip],
+    [nodes, hideTip, editGestures, editor],
   );
   const onNodeDrag: OnNodeDrag<FlowNode> = useCallback(
     (_e, node) => {
@@ -445,20 +747,78 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
     (_e, _node, dragged) => {
       dragOrigin.current = null;
-      const ids = new Set(dragged.filter((n) => n.type === "diagram").map((n) => n.id));
-      if (!ids.size) return;
-      setNodes((ns) =>
-        ns.map((n) => {
-          if (!ids.has(n.id) || n.type !== "diagram") return n;
-          const w = n.measured?.width ?? 0;
-          const h = n.measured?.height ?? 0;
-          const group = groupAt(ns, n.position.x + w / 2, n.position.y + h / 2);
-          return group === n.data.group ? n : { ...n, data: { ...n.data, group } };
+      const copies = altCopies.current;
+      altCopies.current = null;
+      const ids = new Set(dragged.filter((n) => n.type === "diagram").map((n) => copies?.get(n.id) ?? n.id));
+      if (ids.size)
+        setNodes((ns) =>
+          ns.map((n) => {
+            if (!ids.has(n.id) || n.type !== "diagram") return n;
+            const w = n.measured?.width ?? 0;
+            const h = n.measured?.height ?? 0;
+            const group = groupAt(ns, n.position.x + w / 2, n.position.y + h / 2);
+            return group === n.data.group ? n : { ...n, data: { ...n.data, group } };
+          }),
+        );
+      if (!copies) return;
+      // A copy dropped onto something moves to the nearest free place (nothing overlaps by default),
+      // once the drop has rendered.
+      const made = [...copies.values()];
+      requestAnimationFrame(() =>
+        editor.keepClear({
+          nodeIds: made.filter((id) => !id.startsWith(GROUP_PREFIX)),
+          groupIds: made.filter((id) => id.startsWith(GROUP_PREFIX)).map((id) => id.slice(GROUP_PREFIX.length)),
         }),
       );
     },
-    [setNodes],
+    [setNodes, editor],
   );
+
+  // ---------------------------------------------------------------- Space, Alt and the middle button (D4, D9)
+  // Space held: a drag pans from anywhere, even starting on a node (nodes don't drag meanwhile), with a
+  // grab cursor. Alt held over a selected node: the copy cursor (Alt-drag duplicates).
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  useEffect(() => {
+    const wrap = wrapper.current;
+    if (!editGestures || !wrap) return;
+    const setSpace = (on: boolean) => {
+      wrap.classList.toggle("is-space-pan", on);
+      setSpaceHeld(on);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Alt") wrap.classList.toggle("is-alt", e.type === "keydown");
+      if (e.code !== "Space") return;
+      if (e.type === "keyup") return setSpace(false);
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || isEditableTarget(e.target)) return;
+      if (!(e.target === document.body || inCanvas(e.target))) return;
+      // Not a page scroll, and not a key press on a focused node.
+      e.preventDefault();
+      setSpace(true);
+    };
+    const reset = () => {
+      wrap.classList.remove("is-alt");
+      setSpace(false);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKey);
+    window.addEventListener("blur", reset);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKey);
+      window.removeEventListener("blur", reset);
+      reset();
+    };
+  }, [editGestures]);
+
+  // The middle button pans (everywhere); it never starts the browser's autoscroll.
+  useEffect(() => {
+    const wrap = wrapper.current;
+    const noAutoscroll = (e: MouseEvent) => {
+      if (e.button === 1) e.preventDefault();
+    };
+    wrap?.addEventListener("mousedown", noAutoscroll);
+    return () => wrap?.removeEventListener("mousedown", noAutoscroll);
+  }, []);
 
   // ---------------------------------------------------------------- context menus
 
@@ -534,7 +894,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
       label: "Add a node",
       testId: "quick-add",
       searchable: "Add a node…",
-      items: stencilMenu("quick-add", (s) => ({ run: () => void editor.addNode(s.id, point) })),
+      items: quickAddMenu((s) => {
+        editor.addNode(s.id, point);
+        pushRecentStencil(s.id);
+      }, getRecentStencils()),
     });
   };
 
@@ -596,13 +959,46 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
   // Below ROOMY an open AI panel folds the stencils to their rail too, as live view does: at 1440 the
   // dock, the stencils and the inspector's rail left the diagram 780 px.
   const paletteHidden = paletteCollapsed || ((live || (narrow && aiDockOpen)) && !openedByHand.palette);
+  // The inspector waits for pointer-up (D5). Below 1680 px it opens with a selection and narrows the
+  // canvas: opening it under a drag (a box being drawn, a node being moved) would shift the canvas under
+  // the pointer. It follows `settledEmpty`, the selection as of the last pointer-up. A press costs no
+  // render (a ref); keys, undo and menus change it at once.
+  const pointerHeld = useRef(false);
+  const latestEmpty = useRef(nothingSelected);
+  const [settledEmpty, setSettledEmpty] = useState(nothingSelected);
+  useLayoutEffect(() => {
+    latestEmpty.current = nothingSelected;
+    if (!pointerHeld.current && settledEmpty !== nothingSelected) setSettledEmpty(nothingSelected);
+  }, [nothingSelected, settledEmpty]);
+  useEffect(() => {
+    const wrap = wrapper.current;
+    if (!editGestures || !wrap) return;
+    const hold = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      pointerHeld.current = true;
+      const up = () => {
+        pointerHeld.current = false;
+        // After the drop has painted: the inspector opening is its own frame, not the pointer-up's.
+        requestAnimationFrame(() => setTimeout(() => setSettledEmpty(latestEmpty.current), 0));
+        window.removeEventListener("pointerup", up, true);
+        window.removeEventListener("pointercancel", up, true);
+      };
+      window.addEventListener("pointerup", up, true);
+      window.addEventListener("pointercancel", up, true);
+    };
+    wrap.addEventListener("mousedown", hold, true);
+    return () => wrap.removeEventListener("mousedown", hold, true);
+  }, [editGestures]);
   const inspectorHidden =
     livePanelOpen ||
     !prefs.inspector ||
-    ((live || (narrow && nothingSelected) || (cramped && aiDockOpen)) && !openedByHand.inspector);
+    ((live || (narrow && settledEmpty) || (cramped && aiDockOpen)) && !openedByHand.inspector);
   // Below ROOMY the inspector opens with a selection and narrows the canvas: keep the selection
   // and its edges in view (a pan, never a zoom), once the pane has its new size.
   const keepSelectionInView = useKeepSelectionInView(wrapper, { style: edgeStyle, direction: meta.direction ?? "LR" });
+  useLayoutEffect(() => {
+    keepInView.current = keepSelectionInView;
+  });
   // A right-click that selected (and so opened the inspector) waits for its menu to close: moving
   // the view would close the menu under the pointer.
   const inspectorWasHidden = useRef(inspectorHidden);
@@ -729,7 +1125,11 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           data-toast-area
           tabIndex={-1}
           ref={wrapper}
-          onPointerMove={(e) => (pointer.current = { x: e.clientX, y: e.clientY })}
+          onPointerMove={(e) => {
+            pointer.current = { x: e.clientX, y: e.clientY };
+            // Ctrl/Cmd during a box selection: only what's wholly inside.
+            contain.current = e.ctrlKey || e.metaKey;
+          }}
           onPointerLeave={() => (pointer.current = null)}
           onDragOver={(e) => {
             if (e.dataTransfer.types.includes(STENCIL_DND_MIME) || e.dataTransfer.types.includes(ANNOTATION_DND_MIME)) {
@@ -743,9 +1143,12 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
           <ReactFlow<FlowNode, DiagramFlowEdge>
             nodes={ariaNodes}
             edges={ariaEdges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={handleEdgesChange}
             onConnect={onConnect}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
+            connectionLineComponent={ConnectionLine}
             isValidConnection={isValidConnection}
             connectionMode={ConnectionMode.Loose}
             connectionRadius={28}
@@ -766,6 +1169,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
               if (e || performance.now() - fitAt.current > FIT_MOVE_MS) showingAll.current = false;
             }}
             onNodeMouseEnter={(e, node) => {
+              hovered.current = node.type === "boundary" ? undefined : node.id;
               if (node.type === "diagram" && !editing)
                 showTip(e.currentTarget as Element, {
                   nodeId: node.id,
@@ -774,7 +1178,10 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                   stencil: node.data.stencil,
                 });
             }}
-            onNodeMouseLeave={hideTip}
+            onNodeMouseLeave={() => {
+              hovered.current = undefined;
+              hideTip();
+            }}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             colorMode={theme}
@@ -787,12 +1194,22 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
             snapToGrid={prefs.snap}
             snapGrid={[10, 10]}
             elevateNodesOnSelect={false}
-            nodesDraggable={!readOnly}
-            nodesConnectable={!readOnly}
+            // Space held: a drag pans even from a node, so nodes neither drag nor connect meanwhile.
+            nodesDraggable={!readOnly && !spaceHeld}
+            nodesConnectable={!readOnly && !spaceHeld}
             elementsSelectable={!readOnly}
-            // Embedded in a page: let the wheel scroll the page (pinch / Ctrl+wheel still zoom).
-            zoomOnScroll={!readOnly}
+            // The wheel and a two-finger swipe pan (Shift+wheel sideways); Ctrl/Cmd+wheel and pinch zoom
+            // at the pointer. Embedded in a page, the wheel scrolls the page (pinch / Ctrl+wheel zoom).
+            panOnScroll={!readOnly}
+            panOnScrollSpeed={1}
+            zoomOnScroll={false}
             preventScrolling={!readOnly}
+            // Editing: a drag on empty canvas draws the selection box (it picks what it touches), the
+            // middle button and Space+drag pan, Shift/Ctrl/Cmd+click toggle. Elsewhere a drag pans.
+            panOnDrag={editGestures ? PAN_MIDDLE : true}
+            selectionOnDrag={editGestures}
+            selectionKeyCode={editGestures ? null : "Shift"}
+            multiSelectionKeyCode={editGestures ? MULTI_SELECT_KEYS : undefined}
             zoomOnDoubleClick={false}
             deleteKeyCode={null}
             connectionLineType={
@@ -803,6 +1220,7 @@ function CanvasInner({ slug, presenting, onExitPresent, ref, readOnly = false, i
                   : ConnectionLineType.SmoothStep
             }
           >
+            <ZoomVar host={wrapper} />
             {prefs.grid && <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />}
             {!hideChrome && (
               <Controls

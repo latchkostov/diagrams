@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { placeFree, placeNextTo } from "./placement";
+import { boundsOf, clearOffset, COPY_MARGIN, findFree, isClear, placeCopy, placeFree, placeNextTo } from "./placement";
 
 const box = (x: number, y: number, width = 220, height = 72) => ({ x, y, width, height });
 const overlaps = (c: { x: number; y: number }, b: ReturnType<typeof box>, w = 220, h = 72) =>
@@ -57,5 +57,72 @@ describe("placeFree", () => {
   it("falls back to the centre when there's no room at all", () => {
     const wall = { x: -5000, y: -5000, width: 10000, height: 10000 };
     expect(placeFree({ x: 0, y: 0 }, size, [wall], { maxRings: 3 })).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("copies never land on anything (Ctrl+D, Ctrl+V, Alt-drag)", () => {
+  const moved = (b: ReturnType<typeof box>, d: { x: number; y: number }) => ({ ...b, x: b.x + d.x, y: b.y + d.y });
+
+  it("boundsOf and isClear", () => {
+    expect(boundsOf([box(0, 0, 10, 10), box(20, 30, 10, 10)])).toEqual({ x: 0, y: 0, width: 30, height: 40 });
+    expect(boundsOf([])).toBeNull();
+    expect(isClear(box(0, 0, 10, 10), [box(20, 0, 10, 10)])).toBe(true);
+    expect(isClear(box(0, 0, 10, 10), [box(20, 0, 10, 10)], 16)).toBe(false);
+  });
+
+  it("Ctrl+D: one gap beside the original in the flow direction", () => {
+    const original = box(0, 0);
+    const d = placeCopy(original, [original]);
+    expect(d.y).toBe(0);
+    expect(d.x).toBeGreaterThan(original.width);
+    expect(placeCopy(original, [original], "TB").x).toBe(0);
+    expect(placeCopy(original, [original], "TB").y).toBeGreaterThan(original.height);
+  });
+
+  it("Ctrl+D: steps across the flow past the next node, and clear of it by a margin", () => {
+    const original = box(0, 0);
+    const next = box(300, 0);
+    const below = box(300, 100);
+    const others = [original, next, below];
+    const copy = moved(original, placeCopy(original, others));
+    for (const o of others) expect(isClear(copy, [o], COPY_MARGIN - 1)).toBe(true);
+  });
+
+  it("Ctrl+V / Alt-drop: a clear spot stays, a taken one moves to the nearest free place", () => {
+    const there = box(0, 0);
+    expect(clearOffset(box(600, 600), [there])).toEqual({ x: 0, y: 0 });
+    const onTop = box(10, 10);
+    const d = clearOffset(onTop, [there]);
+    expect(isClear(moved(onTop, d), [there], COPY_MARGIN - 1)).toBe(true);
+    expect(Math.hypot(d.x, d.y)).toBeLessThan(200);
+  });
+
+  it("a second paste at the same spot steps clear of the first", () => {
+    const first = box(0, 0);
+    const second = moved(first, clearOffset(first, [first]));
+    expect(isClear(second, [first])).toBe(true);
+  });
+});
+
+describe("a failed search is never a silent overlap", () => {
+  it("findFree says null when nothing within reach is free", () => {
+    const wall = { x: -5000, y: -5000, width: 10000, height: 10000 };
+    expect(findFree({ x: 0, y: 0 }, { width: 10, height: 10 }, [wall], { maxRings: 3 })).toBeNull();
+  });
+
+  it("a 2000×2000 paste over four originals at its corners lands past them, not on them", () => {
+    const big = { x: 0, y: 0, width: 2000, height: 2000 };
+    const corners = [box(0, 0, 200, 200), box(1800, 0, 200, 200), box(0, 1800, 200, 200), box(1800, 1800, 200, 200)];
+    const d = clearOffset(big, corners);
+    expect(isClear({ ...big, x: big.x + d.x, y: big.y + d.y }, corners)).toBe(true);
+  });
+
+  it("a Ctrl+D copy with no side free and no room nearby still lands clear", () => {
+    const original = box(0, 0, 200, 100);
+    const crowd = [original];
+    for (let i = -12; i <= 12; i++)
+      for (let j = -12; j <= 12; j++) if (i || j) crowd.push(box(i * 230, j * 130, 200, 100));
+    const d = placeCopy(original, crowd);
+    expect(isClear({ ...original, x: d.x, y: d.y }, crowd)).toBe(true);
   });
 });

@@ -49,6 +49,36 @@ export function stencilMenu(
   }));
 }
 
+/** How many recently used stencils quick-add lists above the categories (menus stay ≤ 12 items). */
+const QUICK_ADD_RECENT = 3;
+
+/**
+ * Quick-add (double-click the canvas, or drop a connection on it): the recently used stencils first,
+ * then Category ▸ stencil. Search covers everything, each stencil once.
+ */
+export function quickAddMenu(pick: (s: Stencil) => void, recent: readonly string[] = []): MenuNode[] {
+  const recents = recent
+    .map((id) => stencils.find((s) => s.id === id))
+    .filter((s): s is Stencil => !!s)
+    .slice(0, QUICK_ADD_RECENT);
+  const all = stencilMenu("quick-add", (s) => ({ run: () => pick(s) }));
+  if (!recents.length) return all;
+  return [
+    { type: "header", label: "Recently used" },
+    ...recents.map((s): MenuItem => ({
+      type: "item",
+      id: `quick-add:recent:${s.id}`,
+      label: s.label,
+      stencil: s.id,
+      hint: s.vendor,
+      keywords: `${s.vendor} ${s.id} ${s.category}`,
+      run: () => pick(s),
+    })),
+    { type: "separator" },
+    ...all,
+  ];
+}
+
 const nodeCount = (ctx: ActionContext) => ctx.selection.nodeIds.length;
 const total = (ctx: ActionContext) =>
   ctx.selection.nodeIds.length + ctx.selection.groupIds.length + ctx.selection.edgeIds.length;
@@ -205,6 +235,20 @@ export function builtinActions(): Action[] {
       icon: "fit",
       shortcut: shortcutKeys("fit-view"),
       run: (ctx) => ctx.editor.fitView(),
+    },
+    {
+      id: "canvas.zoom-selection",
+      modes: ["edit", "live"],
+      // Shift+2 does it; the palette finds it. Menus stay within budget.
+      paletteOnly: true,
+      section: "view",
+      targets: ["canvas"],
+      label: "Zoom to selection",
+      icon: "fit",
+      shortcut: shortcutKeys("zoom-selection"),
+      enabled: (ctx) => ctx.selection.nodeIds.length + ctx.selection.groupIds.length + ctx.selection.edgeIds.length > 0,
+      hint: "Select something first",
+      run: (ctx) => void ctx.editor.zoomToSelection(),
     },
     {
       id: "canvas.view-options",

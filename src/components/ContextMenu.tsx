@@ -129,10 +129,16 @@ function leaves(items: MenuNode[], trail: string[] = []): { item: MenuItem; trai
 
 function search(items: MenuNode[], q: string): MenuNode[] {
   const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+  // A stencil listed twice (Recently used, and its category) is one result.
+  const seen = new Set<string>();
   return leaves(items)
     .filter(({ item, trail }) => {
       const hay = `${item.label} ${item.hint ?? ""} ${item.keywords ?? ""} ${trail.join(" ")}`.toLowerCase();
-      return tokens.every((t) => hay.includes(t));
+      if (!tokens.every((t) => hay.includes(t))) return false;
+      if (!item.stencil) return true;
+      if (seen.has(item.stencil)) return false;
+      seen.add(item.stencil);
+      return true;
     })
     .slice(0, MAX_RESULTS)
     .map(({ item }) => item);

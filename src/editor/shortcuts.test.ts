@@ -29,6 +29,9 @@ describe("shortcuts", () => {
 
   it("Shift+digit matches by physical key", () => {
     expect(shortcutFor({ ...key("!", { shiftKey: true }), code: "Digit1" })).toBe("fit-view");
+    // Shift+2 prints "@" on US layouts and "\"" on others: the physical digit decides.
+    expect(shortcutFor({ ...key("@", { shiftKey: true }), code: "Digit2" })).toBe("zoom-selection");
+    expect(shortcutFor({ ...key('"', { shiftKey: true }), code: "Digit2" })).toBe("zoom-selection");
     expect(shortcutFor({ ...key(")", { shiftKey: true }), code: "Digit0" })).toBe("zoom-100");
   });
 

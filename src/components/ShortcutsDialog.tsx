@@ -9,14 +9,20 @@ const MOUSE: [string, string][] = [
   ["Right-click", "Context menu for the canvas, a node, an edge or a boundary"],
   ["Double-click canvas", "Quick-add a stencil at the cursor"],
   ["Double-click node / edge", "Rename / edit label"],
-  ["Shift + drag", "Box-select"],
-  ["Ctrl / ⌘ + click", "Add to selection"],
-  ["Drag from a handle", "Connect to another node (any side)"],
+  ["Drag on the canvas", "Select what the box touches"],
+  ["Ctrl / ⌘ + drag on the canvas", "Select only what's inside"],
+  ["Shift / Ctrl / ⌘ + click", "Add to or take from the selection"],
+  ["Scroll, two-finger swipe", "Pan (Shift + scroll: sideways)"],
+  ["Ctrl / ⌘ + scroll, pinch", "Zoom"],
+  ["Space + drag, middle-drag", "Pan from anywhere"],
+  ["Drag from a handle", "Connect; on empty canvas, add a node"],
+  ["Alt + drag", "Duplicate"],
 ];
 
 /** Live view and presenting keys (handled by the live view and the app, not the editor). */
 const LIVE: [string, string][] = [
   ["L", "Go live / back to editing"],
+  ["Drag", "Pan the canvas"],
   ["C", "Show capacity: colour nodes by how busy they are"],
   ["Space", "Play or pause; continue after a note"],
   ["Esc", "Leave presentation, then live view"],

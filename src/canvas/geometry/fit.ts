@@ -122,3 +122,35 @@ export function panIntoView(want: Rect, must: Rect, viewport: Viewport, view: Re
   if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return null;
   return { x: viewport.x + dx, y: viewport.y + dy, zoom: z };
 }
+
+/**
+ * The smallest pan (screen px, to add to the viewport's x / y) that moves `sel` off every overlay it
+ * sits under (the minimap, the controls, a hint), keeping it inside `pane`. Tries each way past each
+ * overlay and takes the shortest that leaves `sel` clear of all of them. Zero when it's clear already,
+ * or when no single pan clears it.
+ */
+export function panClearOf(
+  sel: Rect,
+  overlays: readonly Rect[],
+  pane: { width: number; height: number },
+  gap = 12,
+): { dx: number; dy: number } {
+  const hit = (r: Rect) => overlays.some((o) => intersects(r, o));
+  if (!hit(sel)) return { dx: 0, dy: 0 };
+  const tries: { dx: number; dy: number }[] = [];
+  for (const o of overlays) {
+    if (!intersects(sel, o)) continue;
+    tries.push(
+      { dx: 0, dy: o.y - gap - (sel.y + sel.height) },
+      { dx: 0, dy: o.y + o.height + gap - sel.y },
+      { dx: o.x - gap - (sel.x + sel.width), dy: 0 },
+      { dx: o.x + o.width + gap - sel.x, dy: 0 },
+    );
+  }
+  const fits = (r: Rect) => r.x >= 0 && r.y >= 0 && r.x + r.width <= pane.width && r.y + r.height <= pane.height;
+  const ok = tries
+    .map((d) => ({ d, r: { ...sel, x: sel.x + d.dx, y: sel.y + d.dy } }))
+    .filter(({ r }) => fits(r) && !hit(r))
+    .sort((a, b) => Math.hypot(a.d.dx, a.d.dy) - Math.hypot(b.d.dx, b.d.dy));
+  return ok[0]?.d ?? { dx: 0, dy: 0 };
+}

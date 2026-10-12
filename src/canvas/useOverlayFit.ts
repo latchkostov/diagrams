@@ -37,16 +37,25 @@ export function overlayRects(root: HTMLElement): Rect[] {
   return out;
 }
 
-/** Flow-space rects of everything that should stay visible: nodes, groups, routes and labels. */
-function contentRects(s: State, opts: RouteOptions): Rect[] {
+/**
+ * Flow-space rects of everything that should stay visible: nodes, groups, routes and labels. With
+ * `only`, just those nodes and the routes and labels of the `onlyEdges` (zoom to selection).
+ */
+function contentRects(
+  s: State,
+  opts: RouteOptions,
+  only?: ReadonlySet<string>,
+  onlyEdges: ReadonlySet<string> = new Set(),
+): Rect[] {
   const out: Rect[] = [];
   for (const n of s.nodeLookup.values()) {
-    if (n.hidden) continue;
+    if (n.hidden || (only && !only.has(n.id))) continue;
     const w = n.measured?.width ?? n.width ?? 0;
     const h = n.measured?.height ?? n.height ?? 0;
     if (w && h) out.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: w, height: h });
   }
-  for (const r of selectRoutes(s, opts).values()) {
+  for (const [id, r] of selectRoutes(s, opts)) {
+    if (only && !onlyEdges.has(id)) continue;
     for (const p of r.points) out.push({ x: p.x - 2, y: p.y - 2, width: 4, height: 4 });
     if (r.label)
       out.push({
@@ -65,11 +74,16 @@ export function useOverlayFit(root: RefObject<HTMLElement | null>, opts: { style
   const { setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const routing = useRoutingOptions(opts);
   // Plain function: the React compiler memoises it (it reads root.current at call time).
-  return (o: FitOptions & { duration?: number } = {}) => {
+  return (o: FitOptions & { duration?: number; only?: ReadonlySet<string>; onlyEdges?: ReadonlySet<string> } = {}) => {
     const el = root.current;
     const s = store.getState() as State;
     if (!el || !s.width || !s.height) return;
-    const v = fitAvoiding(contentRects(s, routing), { width: s.width, height: s.height }, overlayRects(el), o);
+    const v = fitAvoiding(
+      contentRects(s, routing, o.only, o.onlyEdges),
+      { width: s.width, height: s.height },
+      overlayRects(el),
+      o,
+    );
     if (v) void setViewport(v, { duration: motionMs(o.duration ?? 0) });
   };
 }

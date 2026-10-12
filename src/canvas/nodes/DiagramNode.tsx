@@ -54,7 +54,8 @@ function DiagramNodeImpl({ id, data, selected }: NodeProps<DiagramFlowNode>) {
       )}
       {edit && (
         <NodeEditor
-          label={data.label}
+          label={edit.text ?? data.label}
+          typed={edit.text !== undefined}
           sublabel={data.sublabel ?? ""}
           focus={edit.field}
           onDone={(next) => {
@@ -73,11 +74,14 @@ function DiagramNodeImpl({ id, data, selected }: NodeProps<DiagramFlowNode>) {
 
 function NodeEditor({
   label,
+  typed = false,
   sublabel,
   focus,
   onDone,
 }: {
   label: string;
+  /** The label was typed before the editor opened: keep typing at its end rather than replacing it. */
+  typed?: boolean;
   sublabel: string;
   focus: "label" | "sublabel";
   onDone: (next: { label: string; sublabel: string } | null) => void;
@@ -93,7 +97,7 @@ function NodeEditor({
     done.current = true;
     onDone(next);
   };
-  useSelectOnMount(focus === "sublabel" ? second : first);
+  useSelectOnMount(focus === "sublabel" ? second : first, typed ? "end" : "all");
   const onKey = (e: KeyboardEvent) => {
     e.stopPropagation();
     if (e.key === "Enter") finish({ label: l, sublabel: s });

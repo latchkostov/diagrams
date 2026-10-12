@@ -100,7 +100,15 @@ export interface EditorApi {
 
   // ---- structure ----
   deleteElements(sel: Partial<Selection>): void;
+  /**
+   * Copies the selection beside itself, clear of everything (one gap in the flow direction, or the
+   * nearest free place). Again on the copy: the same step, or the gap chosen by moving the copy.
+   */
   duplicate(sel: Partial<Selection>): void;
+  /** Copies the selection onto itself, selected (Alt-drag drags the copies away). Old flow id → new. */
+  duplicateInPlace(sel: Partial<Selection>): Map<string, string>;
+  /** Moves the selection (with its boundaries' members) to the nearest place clear of other things. */
+  keepClear(sel: Partial<Selection>): void;
   align(nodeIds: string[], mode: AlignMode): void;
   distribute(nodeIds: string[], axis: Axis): void;
   /** Wraps nodes in a new boundary and starts renaming it. Returns the group id. */
@@ -121,9 +129,12 @@ export interface EditorApi {
   // ---- clipboard ----
   copy(sel: Partial<Selection>): void;
   cut(sel: Partial<Selection>): void;
-  /** Pastes the clipboard; `at` = top-left target in flow coords, default = offset from the source. */
+  /**
+   * Pastes the clipboard; `at` = top-left target in flow coords, default = centred on the pointer over
+   * the canvas (else the view's centre). Either way it lands clear of what's there.
+   */
   paste(at?: XY): Promise<void>;
-  /** Inserts a payload (e.g. from a system clipboard paste event). */
+  /** Inserts a payload (e.g. from a system clipboard paste event); placed as `paste`. */
   pastePayload(payload: ClipboardPayload, at?: XY): void;
   hasClipboard(): boolean;
 
@@ -136,6 +147,8 @@ export interface EditorApi {
   // ---- view / UI ----
   fitView(): void;
   zoomTo100(): void;
+  /** Fits the selection (or, with none, the node under the pointer) in view. False: nothing to zoom to. */
+  zoomToSelection(): boolean;
   prefs: EditorPrefs;
   setPref<K extends keyof EditorPrefs>(key: K, value: EditorPrefs[K]): void;
   startEditing(target: EditTarget): void;

@@ -168,12 +168,81 @@
   top: 32px;
 }
 
-/* Larger invisible hit area so connecting doesn't need pixel precision. */
+/* An invisible hit area of at least 20 px on screen at any zoom (--rf-zoom, set by the canvas), so
+   starting a connection needs no precision. It sits just outside the card, beside the dot, so a press
+   on the card near its edge still moves the node; and only on a hovered or selected node, so it never
+   takes clicks meant for an edge or the canvas next to a node. */
 .dn-handle.react-flow__handle::after {
+  --hit: max(23px, calc(20px / var(--rf-zoom, 1)));
   content: "";
   position: absolute;
-  inset: -7px;
-  border-radius: 50%;
+  display: none;
+  width: var(--hit);
+  height: var(--hit);
+  border-radius: 6px;
+}
+
+.dn:hover .dn-handle.react-flow__handle::after,
+.ann-shape:hover .dn-handle.react-flow__handle::after,
+.react-flow__node.selected .dn-handle.react-flow__handle::after {
+  display: block;
+}
+
+.dn-handle.react-flow__handle-left::after {
+  right: 50%;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.dn-handle.react-flow__handle-right::after {
+  left: 50%;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.dn-handle.react-flow__handle-top::after {
+  bottom: 50%;
+  left: 50%;
+  translate: -50% 0;
+}
+
+.dn-handle.react-flow__handle-bottom::after {
+  top: 50%;
+  left: 50%;
+  translate: -50% 0;
+}
+
+/* While connecting: the node a drop connects to wears the selection outline. */
+.react-flow__node.is-connect-target .nb.nb-card,
+.react-flow__node.is-connect-target .nb.nb-compact {
+  border-color: color-mix(in oklab, var(--accent) 70%, var(--node-border));
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--accent) 28%, transparent),
+    var(--node-shadow-hover);
+}
+
+.react-flow__node.is-connect-target .nb.nb-icon .nb-tile {
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent),
+    0 0 0 4px color-mix(in oklab, var(--accent) 28%, transparent);
+}
+
+.react-flow__node.is-connect-target .ann {
+  outline: 2px solid color-mix(in oklab, var(--accent) 70%, transparent);
+  outline-offset: 2px;
+}
+
+/* Over empty canvas the line ends in a "+": a drop there adds the next node. */
+.connect-add circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.connect-add path {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
 }
 
 .react-flow.connecting .dn-handle.react-flow__handle {
@@ -1940,6 +2009,40 @@ select.insp-input {
 
 .react-flow__minimap svg:active {
   cursor: grabbing;
+}
+
+/* Editing: the empty canvas is for selecting (a drag draws the box), so it shows the arrow; React
+   Flow's default for a selecting pane is the hand. Space held pans: grab, then grabbing. */
+.react-flow__pane.selection {
+  cursor: default;
+}
+
+.canvas-wrap.is-space-pan,
+.canvas-wrap.is-space-pan * {
+  cursor: grab !important;
+}
+
+.canvas-wrap.is-space-pan:active,
+.canvas-wrap.is-space-pan:active * {
+  cursor: grabbing !important;
+}
+
+/* One cursor for the whole connect drag (no flicker between pointer, move and grab over edges and
+   nodes), and not-allowed over a text, note or zone, which take no edges. */
+.canvas-wrap.is-connecting,
+.canvas-wrap.is-connecting * {
+  cursor: crosshair !important;
+}
+
+.canvas-wrap.is-connecting.is-connect-invalid,
+.canvas-wrap.is-connecting.is-connect-invalid * {
+  cursor: not-allowed !important;
+}
+
+/* Alt over a selected node: a drag copies it. */
+.canvas-wrap.is-alt .react-flow__node.selected,
+.canvas-wrap.is-alt .react-flow__node.selected * {
+  cursor: copy;
 }
 
 .react-flow__minimap svg {

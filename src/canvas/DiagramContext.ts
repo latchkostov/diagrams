@@ -2,7 +2,8 @@ import { createContext, useContext, type MouseEvent as ReactMouseEvent } from "r
 
 /** What is being edited inline on the canvas (F2, "Rename", "Edit label" ...). */
 export type EditTarget =
-  | { kind: "node"; id: string; field: "label" | "sublabel" }
+  /** `text`: typed before the editor opened (it starts with that, the caret at the end). */
+  | { kind: "node"; id: string; field: "label" | "sublabel"; text?: string }
   | { kind: "edge"; id: string }
   | { kind: "group"; id: string }
   | { kind: "annotation"; id: string };
