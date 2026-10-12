@@ -181,13 +181,11 @@ export function fileToDiagram(
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
+  // A file's boundary membership is deliberate: every placed node is kept outside the boundaries it
+  // doesn't name, unlike an added node, which joins its only neighbour's boundary.
   if (unplaced.length && unplaced.length === diagram.nodes.length)
-    diagram = placeNew(
-      diagram,
-      diagram.nodes.map((n) => n.id),
-      "full",
-    );
-  else if (unplaced.length) diagram = placeNew(diagram, unplaced, "incremental", unboxed);
+    diagram = placeNew(diagram, unplaced, "full", [], unplaced);
+  else if (unplaced.length) diagram = placeNew(diagram, unplaced, "incremental", unboxed, unplaced);
   else for (const id of unboxed) diagram = fitGroupToContents(diagram, id);
   try {
     checkBudget(diagram);

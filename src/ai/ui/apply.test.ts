@@ -4,6 +4,8 @@ import { diffDiagrams, failedRef, fileToDiagram, pickCandidate, planTurn, summar
 import { parseReply } from "./reply";
 import { buildFixPrompt, buildPrompt, describeError } from "./prompt";
 import type { DiagramOp } from "../index";
+import { overlaps } from "../../canvas/placement";
+import { estimateCardSize } from "../../canvas/nodes/size";
 
 const base = (): DiagramFile => ({
   format: "diagrams/v1",
@@ -216,5 +218,47 @@ describe("fileToDiagram positions", () => {
     if (!result.ok) throw new Error(result.error);
     const xs = result.diagram.nodes.map((n) => n.x);
     expect(new Set(xs).size).toBeGreaterThan(1);
+  });
+});
+
+describe("fileToDiagram boundary membership", () => {
+  const unplaced = () => ({
+    format: "diagrams/v1",
+    title: "Membership",
+    nodes: [
+      { id: "api", stencil: "generic.service", label: "API", group: "cloud" },
+      { id: "db", stencil: "postgres", label: "DB", group: "cloud" },
+      { id: "client", stencil: "generic.service", label: "Client" },
+    ],
+    edges: [
+      { id: "e1", from: "client", to: "api" },
+      { id: "e2", from: "api", to: "db" },
+    ],
+    groups: [{ id: "cloud", label: "Cloud" }],
+  });
+
+  it("keeps membership as written when it lays out a whole file", () => {
+    const result = fileToDiagram(unplaced());
+    if (!result.ok) throw new Error(result.error);
+    expect(result.diagram.nodes.map((n) => [n.id, n.group])).toEqual([
+      ["api", "cloud"],
+      ["db", "cloud"],
+      ["client", undefined],
+    ]);
+    const client = result.diagram.nodes[2];
+    const cloud = result.diagram.groups![0];
+    expect(overlaps({ ...client, ...estimateCardSize(client.label) }, cloud)).toBe(false);
+  });
+
+  it("keeps membership as written when it places some of a file's nodes", () => {
+    const file = unplaced();
+    const at = [
+      [100, 100],
+      [500, 100],
+    ];
+    file.nodes.slice(0, 2).forEach((n, i) => Object.assign(n, { x: at[i][0], y: at[i][1] }));
+    const result = fileToDiagram(file);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.diagram.nodes[2].group).toBeUndefined();
   });
 });

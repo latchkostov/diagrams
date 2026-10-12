@@ -51,6 +51,16 @@ describe("placement", () => {
     expect(result.nodes.slice(0, 2)).toEqual(d.nodes.slice(0, 2));
     expect(result.nodes[3].x).toBeGreaterThan(d.nodes[0].x);
   });
+  it.each(["auto", "full"] as const)("joins the only neighbour's boundary unless kept outside, in %s", (mode) => {
+    const d = diagram();
+    d.nodes[0].group = "g";
+    d.groups = [{ id: "g", label: "Cloud", x: 0, y: 0, width: 600, height: 400 }];
+    expect(placeNew(d, ["new"], mode).nodes[3].group).toBe("g");
+    const kept = placeNew(d, ["new"], mode, [], ["new"]);
+    expect(kept.nodes[3].group).toBeUndefined();
+    const n = kept.nodes[3];
+    expect(overlaps({ ...n, ...estimateCardSize(n.label) }, kept.groups![0])).toBe(false);
+  });
   it("fits only touched boundaries for incremental layout", () => {
     const d = diagram();
     d.nodes[3].group = "g";

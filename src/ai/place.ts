@@ -21,6 +21,11 @@ export function fitGroupToContents(diagram: DiagramFile, groupId: string): Diagr
  */
 export type PlaceMode = LayoutMode | "incremental";
 
+/**
+ * Gives the nodes in `newIds` positions and fits the boundaries they touch. A new node without a
+ * boundary joins its only neighbour's, unless it's in `keepOutside`: an op that took it out, or a
+ * whole file whose membership is as written.
+ */
 export function placeNew(
   diagram: DiagramFile,
   newIds: readonly string[],
