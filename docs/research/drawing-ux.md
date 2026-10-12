@@ -634,7 +634,22 @@ mixed selection.
 
 ---
 
-## Open questions for the user
+## Decisions (2026-10-12)
+
+The user delegated these overnight ("anything your research finds that makes sense, you can add"). The lead
+decided them with the recommendations below, in line with `docs/UX-PRINCIPLES.md`:
+
+1. **Wheel pans and drag selects ship together in batch 1, with no setting.** Ctrl/Cmd+wheel and pinch
+   zoom. Live, presentation and embeds keep drag-to-pan.
+2. **Esc commits a node label edit**, like annotations; Ctrl+Z reverts it.
+3. **Only nodes created by quick-add, drop-on-empty (D1) and Alt+arrow / "+" (D3) open their label
+   editor.** Rail and palette clicks don't.
+4. **A rail click with exactly one node selected adds the stencil after it, connected**, like Ctrl+K.
+   With no selection or several, it adds an unconnected node as today.
+5. **Boundaries grow on drop to contain a node dropped into them, and never shrink automatically.** Fit
+   to contents stays for shrinking.
+
+## Open questions for the user (answered above)
 
 1. **Wheel = pan (D4) and drag = select (D5).** Both match Figma, tldraw, Excalidraw and draw.io, but they
    change today's habits: wheel zooms and drag pans. Ship both together in batch 1, or keep wheel-zoom for
