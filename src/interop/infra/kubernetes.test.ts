@@ -944,25 +944,40 @@ stringData: { DB_HOST: db-b-from-secret }
     });
 
     it("resolves a host with no Service through an index, in linear time", () => {
-      const settings = Array.from({ length: 20 }, (_, i) => `{ name: H${i}_HOST, value: missing-${i} }`).join(", ");
-      const items = Array.from({ length: 2_000 }, (_, i) => ({
-        apiVersion: "apps/v1",
-        kind: "Deployment",
-        metadata: { name: `w${i}` },
-        spec: { template: { metadata: { labels: { team: "a", tier: "b" } }, spec: { containers: [] as unknown[] } } },
-      }));
-      const text = JSON.stringify({ apiVersion: "v1", kind: "List", items }).replaceAll(
-        '"containers":[]',
-        `"containers":[{"name":"a","image":"example/a","env":[${settings.replace(
-          /\{ name: (\w+), value: ([\w-]+) \}/g,
-          '{"name":"$1","value":"$2"}',
-        )}]}]`,
-      );
-      const started = performance.now();
-      const graph = readKubernetes([{ name: "list.json", text }]);
-      expect(performance.now() - started).toBeLessThan(perfBudget(2_000));
-      expect(graph.components).toHaveLength(2_000);
-    });
+      // 20 unresolved hosts in every workload. A scan of every workload per host would be quadratic: 4x the
+      // workloads would take 16x as long. Compared against a quarter of the input, not a wall-clock budget,
+      // so a slow or busy machine (CI with coverage) doesn't fail it; the fastest of a few runs evens out noise.
+      const settings = Array.from({ length: 20 }, (_, i) => `{"name":"H${i}_HOST","value":"missing-${i}"}`).join(",");
+      const list = (n: number) =>
+        JSON.stringify({
+          apiVersion: "v1",
+          kind: "List",
+          items: Array.from({ length: n }, (_, i) => ({
+            apiVersion: "apps/v1",
+            kind: "Deployment",
+            metadata: { name: `w${i}` },
+            spec: {
+              template: { metadata: { labels: { team: "a", tier: "b" } }, spec: { containers: [] as unknown[] } },
+            },
+          })),
+        }).replaceAll('"containers":[]', `"containers":[{"name":"a","image":"example/a","env":[${settings}]}]`);
+      const fastest = (text: string) => {
+        let best = Infinity;
+        for (let run = 0; run < 2; run++) {
+          const started = performance.now();
+          const graph = readKubernetes([{ name: "list.json", text }]);
+          best = Math.min(best, performance.now() - started);
+          expect(graph.components.length).toBeGreaterThan(0);
+        }
+        return best;
+      };
+      const small = list(150);
+      const large = list(600);
+      fastest(small); // warm up the parser and the JIT
+      const ratio = fastest(large) / fastest(small);
+      expect(ratio).toBeLessThan(8);
+      expect(readKubernetes([{ name: "list.json", text: large }]).components).toHaveLength(600);
+    }, 60_000);
   });
 
   describe("Kafka identity", () => {
