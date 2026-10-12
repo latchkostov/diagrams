@@ -7,6 +7,12 @@ import { encryptedPayloadFromHash, parseEncrypted } from "../passwordLink";
 import { UnlockDialog } from "../ui/lazyDialogs";
 import { Glyph } from "../ui/glyphs";
 import { notify } from "../ui/toast";
+import { lazyComponent } from "../../lib/lazyLoad";
+
+/** `?embed=1&host=1`: the page that embeds the viewer supplies the diagram (./HostEmbedView, its own chunk). */
+const HOST = new URLSearchParams(window.location.search).get("host") === "1";
+const HostEmbedView = lazyComponent(() => import("./HostEmbedView").then((m) => m.HostEmbedView));
+if (HOST) HostEmbedView.preload();
 
 // ?embed=1 — a clean, read-only viewer for <iframe> embeds: no top bar, fitted to the frame, pan and
 // zoom only, plus a subtle "Open in Live Diagrams" link. The diagram comes from `example=<slug>` or a
@@ -71,6 +77,11 @@ function resolve(): Promise<State> {
 }
 
 export function EmbedView() {
+  return HOST ? <HostEmbedView /> : <UrlEmbedView />;
+}
+
+/** The diagram comes from the URL: a public example by name, or a share payload in the fragment. */
+function UrlEmbedView() {
   const [state, setState] = useState<State>({ status: "loading" });
   // Only the latest navigation may apply: a slow example download (or a password unlock) that finishes
   // after a newer hash change, or after unmounting, is dropped, toast included.

@@ -135,7 +135,8 @@ type DialogState =
   | { kind: "password-link"; diagram: DiagramFile; source: string }
   /** A password link (#e=…) waiting for its password. */
   | { kind: "unlock"; token: string; session: number }
-  | { kind: "embed"; diagram: DiagramFile; source: string; example?: string }
+  /** `privateOnly`: a private diagram, offered only the embed whose diagram the host's page supplies. */
+  | { kind: "embed"; diagram: DiagramFile; source: string; example?: string; privateOnly?: boolean }
   | { kind: "image" }
   /** Interactive HTML: the diagram as it was when the dialog opened. */
   | { kind: "html"; diagram: DiagramFile }
@@ -380,19 +381,24 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
   const openEmbed = () =>
     attempt("create embed code", async () => {
       const source = slug;
-      if (!linkAllowed(source)) return;
       const d = current();
+      // A private diagram can still be embedded by a page that supplies it: nothing of it goes in a URL.
+      if (!linkStillAllowed(source)) {
+        setDialog({ kind: "embed", diagram: d, source, privateOnly: true });
+        return;
+      }
       // Embed by name only when the example is public and unedited (the viewer shows the original).
       const original = getOriginal(source);
       const shown = JSON.stringify(canvasRef.current?.getDiagram());
       const pristine = !!original && (await normalized(original)) === shown;
       // The check above can wait for code: the diagram may have become private since.
-      if (!linkAllowed(source)) return;
+      const privateNow = !linkStillAllowed(source);
       setDialog({
         kind: "embed",
         diagram: d,
         source,
-        example: isPublicExample(source) && pristine ? source : undefined,
+        example: !privateNow && isPublicExample(source) && pristine ? source : undefined,
+        privateOnly: privateNow,
       });
     });
 
@@ -780,16 +786,22 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
     dialog?.kind === "share" || dialog?.kind === "embed" || dialog?.kind === "password-link"
       ? dialog.source
       : undefined;
+  const linkDialogKind = dialog?.kind;
   useEffect(() => {
     if (linkDialogSource === undefined) return;
     const check = () => {
       if (canShareAsLink(privacyState(linkDialogSource))) return;
+      // The embed dialog keeps only the embed whose diagram the host supplies; the others close.
+      if (linkDialogKind === "embed") {
+        setDialog((d) => (d?.kind === "embed" ? { ...d, example: undefined, privateOnly: true } : d));
+        return;
+      }
       setDialog(null);
       toast.info(PRIVATE_SHARE_MESSAGE);
     };
     window.addEventListener(DIAGRAMS_CHANGED, check);
     return () => window.removeEventListener(DIAGRAMS_CHANGED, check);
-  }, [linkDialogSource, privacyState]);
+  }, [linkDialogSource, linkDialogKind, privacyState]);
 
   // The badge beside the title asks for the dialog: it explains, and turns Private off on confirmation.
   useEffect(() => {
@@ -961,6 +973,9 @@ export function useInterop({ view, slug, canvas: canvasRef, openDiagram, openSha
           diagram={dialog.diagram}
           example={dialog.example}
           allowed={() => linkStillAllowed(dialog.source)}
+          privateOnly={dialog.privateOnly}
+          fileName={`${baseName(dialog.diagram)}.diagram.json`}
+          onDownload={() => void exportNative()}
           onClose={() => setDialog(null)}
         />
       )}
@@ -1070,7 +1085,8 @@ function canvasActions(get: () => InteropApi): Action[] {
           item("export:png", "Export PNG", () => get().exportPng({ scale: 2 }), "2×"),
           item("export:share", "Copy share link", () => get().copyShareLink(), hint, privateNow),
           item("export:share-password", "Copy link with password…", () => get().copyPasswordLink(), hint, privateNow),
-          item("export:embed", "Embed code…", () => get().openEmbed(), hint, privateNow),
+          // A private diagram's embed is the one its host's page supplies (nothing of it goes in a URL).
+          item("export:embed", "Embed code…", () => get().openEmbed(), privateNow ? "Your app supplies it" : undefined),
           { type: "separator" },
           item("export:json", "Diagram file", () => get().exportNative(), ".diagram.json"),
           item("export:image", "Image…", () => get().openImageOptions(), "PNG or SVG"),

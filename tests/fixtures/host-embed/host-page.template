@@ -1,0 +1,28 @@
+<!doctype html>
+<!--
+  A host app's page for tests/e2e/host-embed.spec.ts, served by a test server on another origin than the
+  app. Not an .html file: Vite's dev server scans every .html in the project for dependencies, and this page's
+  placeholders can't resolve (they made the scan fail and the dev server skip pre-bundling). The test fills in the app's base URL and the <live-diagram> attributes. The page sends a strict CSP
+  (no inline scripts or styles), like a careful host would: the web component must work under it.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Orders platform: internal docs</title>
+    <link rel="stylesheet" href="/host.css" />
+    <script src="/host.js"></script>
+    <script type="module" src="__APP__embed/live-diagram.js"></script>
+  </head>
+  <body>
+    <main class="wrap" data-testid="host-main">
+      <p class="crumbs">Platform docs / Orders / Architecture</p>
+      <h1 data-testid="host-heading">How an order flows</h1>
+      <p>
+        This page lives behind our own sign-in. The diagram below is fetched from our server with this page's session;
+        Live Diagrams only draws it.
+      </p>
+      <live-diagram data-testid="host-diagram" __ATTRS__></live-diagram>
+      <p class="after" data-testid="host-after">Questions? #orders-platform.</p>
+    </main>
+  </body>
+</html>

@@ -81,6 +81,28 @@ describe("security headers", () => {
     expect(securityHeadersFor("/auth.html")["Content-Security-Policy"]).toContain("script-src 'self'");
   });
 
+  it("serves the <live-diagram> web component to other sites: CORS, cross-origin, cached for an hour", () => {
+    for (const path of ["/embed/live-diagram.js", "/tools/diagrams/embed/live-diagram.js"]) {
+      const h = securityHeadersFor(path);
+      expect(h["Access-Control-Allow-Origin"], path).toBe("*");
+      expect(h["Cross-Origin-Resource-Policy"], path).toBe("cross-origin");
+      expect(h["Cache-Control"], path).toBe("public, max-age=3600, stale-while-revalidate=86400");
+      expect(h["X-Content-Type-Options"], path).toBe("nosniff");
+    }
+    // Nothing else is opened up.
+    for (const path of ["/", "/assets/index.js", "/?embed=1&host=1", "/embed/", "/embed/x/y.js"])
+      expect(securityHeadersFor(path)["Access-Control-Allow-Origin"], path).toBeUndefined();
+  });
+
+  it("the host-supplied embed is framed by anyone, and still fetches only this site and the providers", () => {
+    const csp = securityHeadersFor("/?embed=1&host=1&hostOrigin=https%3A%2F%2Fapp.example.com")[
+      "Content-Security-Policy"
+    ];
+    expect(csp).toContain("frame-ancestors *");
+    expect(csp).toContain(`connect-src ${directive("connect-src", true).join(" ")}`);
+    expect(directive("connect-src", true)).toEqual(directive("connect-src", false));
+  });
+
   it("the Vercel rules route the same way as the preview server", () => {
     const rules = vercelConfig().headers;
     // Vercel's path-to-regexp source, as an anchored JS regex (the patterns here use only plain regex).
@@ -108,6 +130,8 @@ describe("security headers", () => {
       ["/privacy.html", {}],
       ["/skill/", {}],
       ["/livediagrams-skill.zip", {}],
+      ["/embed/live-diagram.js", {}],
+      ["/", { embed: "1", host: "1", hostOrigin: "https://app.example.com" }],
     ] as [string, Record<string, string>][]) {
       expect(headersFor(path, query), `${path}?${new URLSearchParams(query)}`).toEqual(
         securityHeadersFor(`${path}?${new URLSearchParams(query)}`),

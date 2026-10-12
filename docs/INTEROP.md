@@ -309,7 +309,18 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
 - `?embed=1&example=<slug>` (public examples only), `?embed=1#d=…` or `?embed=1#e=…` renders a read-only viewer: no top bar,
   fitted, pan and pinch-zoom only (the wheel scrolls the host page), no menus, shortcuts or autosave, and a
   subtle "Open in Diagrams" link. `live=1&sim=<id>` pass through for the live view.
-- The embed dialog previews the iframe, and its options (source, height, simulation) sit behind **Options**.
+- `?embed=1&host=1&hostOrigin=<origin>` is the **host-supplied embed** (`src/interop/embed/host*`,
+  `public/embed/live-diagram.js`; full reference in `docs/EMBEDDING.md`): the page that frames it fetches the diagram
+  from its own server and hands it over with `postMessage` (protocol `livediagrams.embed.v1`), so it's never in a
+  URL, in storage or on our side. The viewer reads messages only from `window.parent` at `hostOrigin`, replies only
+  to `hostOrigin` (never `"*"`), bounds sizes and rates, treats the diagram as private (no link out but a plain
+  "Made with Live Diagrams") and takes commands (play, pause, speed, simulation, fit, theme, highlight, load) and
+  reports events (node clicks, play state, simulation, auto-height). The `<live-diagram>` web component wraps it.
+- The embed dialog previews the iframe, and its options (height, simulation) sit behind **Options**. Its source
+  is **Example by name**, **In the link** or **Your app supplies it (private)**, with a web-component and an
+  iframe + `postMessage` snippet; the last one's preview gets the diagram by `postMessage` too. A Private or
+  local-only diagram opens the dialog with only that source (its Embed code… stays enabled, hinted "Your app
+  supplies it"): nothing of the diagram goes in the code.
 
 ### Interactive HTML (`src/export/`, `scripts/interactive-viewer.ts`)
 
@@ -448,7 +459,12 @@ violation. The dev server sends none (React Refresh's preamble is an inline scri
   the download hosts `*.1drv.com`, `*.microsoftpersonalcontent.com`, `*.sharepoint.com`) and Dropbox
   (`api.dropboxapi.com`, `content.dropboxapi.com`). No `data:`: exports decode their data URLs without fetch.
 - `frame-ancestors *` only for `?embed=1` (Vercel routes on the query with `has`/`missing`); the app itself
-  allows only this site to frame it.
+  allows only this site to frame it. The host-supplied embed (`?embed=1&host=1`) is one of these, and keeps
+  `connect-src` as it is: its diagram is posted by the host page, never fetched by the frame.
+- `/embed/*.js` (the `<live-diagram>` web component, loaded by other sites as a module script) also gets
+  `Access-Control-Allow-Origin: *`, `Cross-Origin-Resource-Policy: cross-origin` and
+  `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` (an unversioned URL: fixes land within the
+  hour). It runs under the host page's CSP: no eval, no inline styles (a constructed stylesheet).
 - `Referrer-Policy: strict-origin-when-cross-origin` (other sites see only the origin; a referrer-restricted
   Google API key still works), `X-Content-Type-Options: nosniff`, a `Permissions-Policy` that keeps the
   microphone (dictation) and display capture (Record video) and turns off location, payment, USB and serial (only
@@ -790,6 +806,7 @@ again.
 | `src/interop/useInterop.tsx`                               | Controller: File menu actions, shortcuts, drag-and-drop, share-hash handling, canvas menu actions               |
 | `src/interop/ui/*`                                         | File menu, dialogs, toasts (`notify`), drop overlay, glyphs                                                     |
 | `src/interop/embed/EmbedView.tsx`                          | `?embed=1` viewer                                                                                               |
+| `src/interop/embed/host*`, `public/embed/live-diagram.js`  | Host-supplied embed: protocol, reducer, live driver, auto-height, snippets; the web component                   |
 | `src/export/inject.ts`                                     | Interactive HTML: payload injection, escaping, icon subsetting, file name, the file's CSP                       |
 | `src/export/exportHtml.ts`, `HtmlExportDialog.tsx`         | Interactive HTML: fetch the template, gather icons, download; the dialog (lazy)                                 |
 | `src/export/viewerEntry.tsx`, `src/export/viewer/*`        | The exported file's viewer: storage sandbox, payload reader, icon map, page                                     |

@@ -67,7 +67,7 @@ const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ defa
 import { buildJourney } from "../trace/journey";
 import { useAiDock } from "../ai/ui/dock";
 
-import type { LiveViewProps } from "./LiveView";
+import type { LiveSessionHandle, LiveViewProps } from "./LiveView";
 
 // The live session: the simulation, its renderers and panels, slow motion and recording. It loads when live
 // view first turns on (or earlier, once the canvas is idle; see LiveView), never with the first view.
@@ -132,6 +132,8 @@ const FULL_FIT: FitViewOptions = {
 export interface SessionProps extends LiveViewProps {
   params: NonNullable<LiveViewProps["initial"]>;
   onExit: () => void;
+  /** Reports this session to a page that drives it from outside (null when it ends). */
+  onSession?: (session: LiveSessionHandle | null) => void;
 }
 
 export function LiveSession({
@@ -144,6 +146,7 @@ export function LiveSession({
   alwaysOn,
   onSaveDiagram,
   onPanelChange,
+  onSession,
 }: SessionProps) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { fitView, setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
@@ -722,6 +725,12 @@ export function LiveSession({
   }, [controller, startSlow]);
   // While slow motion plays, the card is its event list: the replayed journey, the hop being told.
   const slowState = slow.state;
+  // A page driving live view from outside (the host-supplied embed) gets the controller and the bar's switch.
+  useEffect(() => {
+    if (!onSession) return;
+    onSession({ controller, selectSimulation });
+    return () => onSession(null);
+  }, [onSession, controller, selectSimulation]);
   // Simulation switching uses the same availability as the registry's engine-changing actions.
   useLiveSessionHost(
     selectSimulation,

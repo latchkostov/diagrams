@@ -2,6 +2,22 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Private embeds: your app supplies the diagram (2026-10)
+
+Nothing you do today changes: embed codes made before work as they did. New:
+
+- **Embed code…** has a third source, **Your app supplies it (private)**. Your page loads a small script from
+  livediagrams.dev and fetches the diagram from your own server, behind your own sign-in, then hands it to the
+  viewer. The diagram never leaves your app: it isn't in any URL and never reaches livediagrams.dev, which only
+  provides the viewer.
+- Two ways in, both copied from the dialog: the `<live-diagram>` web component
+  (`<live-diagram src-json="/diagrams/orders.diagram.json" simulation="black-friday" autoplay>`), or a plain iframe
+  with a few lines of `postMessage`. **Diagram file** in the dialog saves the file to serve.
+- Your page can drive it (play, pause, speed, simulation, fit, theme, highlight nodes, load another diagram) and hear
+  from it (node clicks, play state, the height that fits the diagram). The reference is `docs/EMBEDDING.md`.
+- **Private diagrams can now be embedded this way.** Embed code… used to be off for them; it now opens with only
+  this source, since nothing of the diagram goes in the code. Share links and link embeds stay off for them.
+
 ## Agent Skill: asks what you want back, and makes Interactive HTML (2026-10)
 
 One habit changes for people who use the livediagrams Agent Skill: it **asks which output you want** before it hands

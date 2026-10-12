@@ -37,6 +37,17 @@ export default tseslint.config(
     languageOptions: { globals: globals.browser, sourceType: "script" },
   },
   {
+    // The host page that tests/e2e/host-embed.spec.ts serves on another origin.
+    files: ["tests/fixtures/**/*.js"],
+    languageOptions: { globals: globals.browser, sourceType: "script" },
+  },
+  {
+    // The <live-diagram> web component: a standalone ES module that runs on other sites' pages.
+    files: ["public/embed/**/*.js"],
+    languageOptions: { globals: globals.browser, sourceType: "module" },
+    rules: { "@typescript-eslint/no-unused-vars": ["error", { varsIgnorePattern: "^_" }] },
+  },
+  {
     files: ["tests/**/*.ts", "*.config.ts", "*.config.js", "scripts/**/*.ts", "skills/**/*.mjs"],
     languageOptions: { globals: globals.node },
   },

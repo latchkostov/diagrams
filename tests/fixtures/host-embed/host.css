@@ -1,0 +1,34 @@
+body {
+  margin: 0;
+  font:
+    15px/1.55 system-ui,
+    sans-serif;
+  color: #1d2433;
+  background: #f3f4f7;
+}
+.wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 32px 48px;
+}
+.crumbs {
+  margin: 0 0 6px;
+  color: #6b7385;
+  font-size: 13px;
+}
+h1 {
+  margin: 0 0 8px;
+  font-size: 26px;
+}
+live-diagram {
+  margin: 20px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 6px 24px rgb(0 0 0 / 0.08);
+  background: #fff;
+}
+.after {
+  color: #6b7385;
+}

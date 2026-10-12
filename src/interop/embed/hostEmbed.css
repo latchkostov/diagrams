@@ -1,0 +1,35 @@
+/* The host-supplied embed (HostEmbedView.tsx): the viewer's look, plus the host's highlight rings. */
+
+.hx-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 16px;
+  border: 2.5px solid var(--accent);
+  box-shadow: 0 0 0 5px color-mix(in oklab, var(--accent) 22%, transparent);
+  pointer-events: none;
+  z-index: 4;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hx-ring {
+    animation: hx-ring-in 0.24s ease-out;
+  }
+}
+
+@keyframes hx-ring-in {
+  from {
+    opacity: 0;
+    box-shadow: 0 0 0 14px color-mix(in oklab, var(--accent) 0%, transparent);
+  }
+}
+
+/* No arrow-out glyph: the link opens the site, not this diagram. */
+.hx-brand {
+  font-weight: 520;
+}
+
+/* While live, the control bar spans the bottom: the link sits just above its right end (LIVE_BAR_SPACE is 76px). */
+.hx[data-live] .hx-brand {
+  bottom: 84px;
+}

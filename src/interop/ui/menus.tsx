@@ -207,7 +207,8 @@ export function FileMenu({
         testId: "export-embed",
         icon: <Glyph name="code" />,
         title: "Embed code…",
-        disabled: !!privacy,
+        // A private diagram still embeds in a page that supplies it: nothing of it goes in a URL.
+        hint: privacy ? "Your app supplies it" : undefined,
         onSelect: api.openEmbed,
       },
       { type: "separator" },

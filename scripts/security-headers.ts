@@ -18,7 +18,9 @@ import type { Plugin } from "vite";
  *    OneDrive's file downloads come from pre-authenticated URLs on Microsoft's content hosts, hence the
  *    wildcards: *.1drv.com and *.microsoftpersonalcontent.com (personal), *.sharepoint.com (work or school).
  *  - frame-src: the embed dialog's preview (this site), the Google Picker and Identity Services frames.
- *  - frame-ancestors: embeds (`?embed=1`) may be framed by any site; the app itself only by this site.
+ *  - frame-ancestors: embeds (`?embed=1`, including the host-supplied `?embed=1&host=1`) may be framed by any
+ *    site; the app itself only by this site. The host-supplied embed keeps connect-src as it is: the page that
+ *    embeds it fetches the diagram and hands it over with postMessage, the frame never fetches it.
  *  - worker-src 'self': the live view's particle worker is a bundled file, never a blob.
  *  - img-src / media-src data: and blob:: exported images, thumbnails and recorded videos are made in the page.
  */
@@ -128,6 +130,19 @@ export const OPENER_POLICY = "same-origin-allow-popups";
 const isEmbed = (search: string) => new URLSearchParams(search).has("embed");
 const isAuthPage = (pathname: string) => /\/auth\.html$/.test(pathname);
 
+/**
+ * The `<live-diagram>` web component (public/embed/live-diagram.js) is loaded by other sites' pages as a module
+ * script, which browsers fetch with CORS: it must say any origin may read it, and that it may be embedded
+ * cross-origin. Its URL isn't versioned, so it's cached for an hour (then revalidated in the background) rather
+ * than for good: a fix reaches every page within the hour. It runs under the host page's own CSP, not ours.
+ */
+export const EMBED_SCRIPT_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Cross-Origin-Resource-Policy": "cross-origin",
+  "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+};
+const isEmbedScript = (pathname: string) => /\/embed\/[^/]+\.js$/.test(pathname);
+
 /** The headers for one request, the same as the Vercel rules below produce. */
 export function securityHeadersFor(url: string): Record<string, string> {
   const u = new URL(url, "http://localhost");
@@ -135,6 +150,7 @@ export function securityHeadersFor(url: string): Record<string, string> {
     ...COMMON_HEADERS,
     "Content-Security-Policy": contentSecurityPolicy({ embed: isEmbed(u.search) }),
     ...(isAuthPage(u.pathname) ? {} : { "Cross-Origin-Opener-Policy": OPENER_POLICY }),
+    ...(isEmbedScript(u.pathname) ? EMBED_SCRIPT_HEADERS : {}),
   };
 }
 
@@ -166,6 +182,7 @@ export function vercelConfig() {
         headers: pairs({ "Content-Security-Policy": contentSecurityPolicy({ embed: true }) }),
       },
       { source: "/((?!auth\\.html).*)", headers: pairs({ "Cross-Origin-Opener-Policy": OPENER_POLICY }) },
+      { source: "/embed/([^/]+\\.js)", headers: pairs(EMBED_SCRIPT_HEADERS) },
     ],
   };
 }
