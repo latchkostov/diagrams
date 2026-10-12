@@ -21,21 +21,25 @@ export function looksLikeMermaid(text: string): boolean {
 
 /**
  * Infrastructure and spec files (docs/research/imports.md): cheap checks on the first 4,000 characters, so
- * recognising one never loads the YAML reader. Helm templates come first: they look like Kubernetes YAML.
+ * recognising one never loads the YAML reader.
  */
 export type InfraSniff = "helm" | "asyncapi" | "kubernetes" | "compose" | "terraform";
 
 export function sniffInfra(text: string): InfraSniff | undefined {
   const head = text.slice(0, 4000);
-  if (/\{\{-?\s*(\.Values|include ")/.test(head)) return "helm";
-  if (/^\s*\{/.test(head))
-    return /"asyncapi"\s*:\s*"[23]\./.test(head)
+  // JSON first: a diagram file (or anything else in JSON) that mentions Helm or AsyncAPI in its text stays itself.
+  if (/^\s*\{/.test(head)) {
+    if (/"format"\s*:\s*"diagrams\//.test(head)) return undefined;
+    return /^\s*\{\s*"asyncapi"\s*:\s*"[23]\./.test(head)
       ? "asyncapi"
       : /"format_version"/.test(head) && /"terraform_version"/.test(head)
         ? "terraform"
         : undefined;
+  }
   if (/^asyncapi:\s*['"]?[23]\./m.test(head)) return "asyncapi";
-  if (/^apiVersion:/m.test(head)) return /^kind:/m.test(head) ? "kubernetes" : undefined;
+  if (/^apiVersion:/m.test(head) && /^kind:/m.test(head))
+    // Only a Kubernetes manifest can be a Helm template.
+    return /\{\{-?\s*(\.Values|include ")/.test(head) ? "helm" : "kubernetes";
   if (/^services:/m.test(head)) return "compose";
   return undefined;
 }

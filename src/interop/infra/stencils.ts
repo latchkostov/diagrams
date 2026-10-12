@@ -195,3 +195,31 @@ export function resolveStencil(hint: StencilHint): StencilPick | Skip {
     ),
   };
 }
+
+/**
+ * resolveStencil once per component for the whole import: the reader asks for a component's stencil many
+ * times (each connection checks both ends), and the mapping asks again for the report's confidence.
+ */
+const picks = new WeakMap<object, StencilPick | Skip>();
+export function pickFor(component: { hint: StencilHint }): StencilPick | Skip {
+  let pick = picks.get(component);
+  if (!pick) {
+    pick = resolveStencil(component.hint);
+    picks.set(component, pick);
+  }
+  return pick;
+}
+
+/**
+ * A build context or other location as safe text for a subtitle: no URL userinfo (`https://user:token@…`,
+ * `token@github.com/…`), no query string and no fragment, which is where tokens ride.
+ */
+export function withoutCredentials(location: string): string {
+  let text = location.trim().replace(/[?#].*$/s, "");
+  const scheme = /^[a-z][a-z0-9+.-]{0,15}:\/\//i.exec(text)?.[0] ?? "";
+  const rest = text.slice(scheme.length);
+  const slash = rest.indexOf("/");
+  const at = (slash < 0 ? rest : rest.slice(0, slash)).lastIndexOf("@");
+  text = scheme + (at >= 0 ? rest.slice(at + 1) : rest);
+  return text;
+}

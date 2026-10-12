@@ -156,6 +156,43 @@ test.describe("imports: docker-compose", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("keyboard: focus stays in the report after an action, and a name hands focus to its node", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    await drop(page, [{ name: "docker-compose.yml", text: COMPOSE }]);
+    await expectShop(page);
+    await page.getByTestId("toast-import-details").click();
+    const report = page.getByTestId("import-report");
+    await expect(report).toBeVisible();
+    // A chip removes itself: the focus moves to the row's Other…, and Esc still closes the report.
+    await page.getByTestId("import-report-chip-1-generic.external-api").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("import-report-guess-stencil-1")).toHaveText("External API");
+    await expect(page.getByTestId("import-report-other-1")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(report).toHaveCount(0);
+    // Make it private removes its button: Done takes the focus.
+    await page.keyboard.press("Control+k");
+    await page.getByTestId("command-input").fill("Import report");
+    await page.getByTestId("command-input").press("Enter");
+    await expect(report).toBeVisible();
+    await page.getByTestId("import-report-make-private").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("import-report-make-private")).toHaveCount(0);
+    await expect(page.getByTestId("import-report-done")).toBeFocused();
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    // A name selects its node and, once the report has closed, focuses it.
+    await page.getByTestId("import-report-guess-name-0").focus();
+    await page.keyboard.press("Enter");
+    await expect(report).toHaveCount(0);
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-id") ?? null))
+      .toBe("storefront");
+    expectNoErrors(consoleErrors);
+  });
+
   test("the YAML alias bomb fails fast with a clear message, and nothing is replaced", async ({
     page,
     consoleErrors,

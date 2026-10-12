@@ -169,3 +169,25 @@ describe("format detection", () => {
     expect(sniffInfra('{"asyncapi": "3.0.0"}')).toBe("asyncapi");
   });
 });
+
+describe("format detection keeps other formats intact", () => {
+  it("a diagram file that mentions Helm or AsyncAPI is still a diagram file", async () => {
+    const diagram = {
+      format: "diagrams/v1",
+      title: 'Helm {{ .Values.service }} and {{ include "x" }}',
+      description: '"asyncapi": "3.0.0"',
+      nodes: [{ id: "a", stencil: "generic.service", label: "{{ .Values.name }}", x: 0, y: 0 }],
+      edges: [],
+    };
+    const text = JSON.stringify(diagram);
+    expect(detectFormat(text)).toBe("native");
+    const outcome = await importText(text, "helm.diagram.json");
+    expect(outcome.ok).toBe(true);
+  });
+
+  it("only a Kubernetes manifest is read as a Helm template", () => {
+    expect(sniffInfra("apiVersion: v1\nkind: Service\nmetadata:\n  name: {{ .Values.name }}\n")).toBe("helm");
+    expect(detectFormat('flowchart LR\n  a{{"include \\"x\\" .Values"}} --> b\n')).toBe("mermaid");
+    expect(sniffInfra("services:\n  a:\n    image: x\n    labels: { t: '{{ .Values.x }}' }\n")).toBe("compose");
+  });
+});

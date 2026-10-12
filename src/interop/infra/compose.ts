@@ -2,7 +2,8 @@ import { getStencil } from "../../stencils/registry";
 import { inferRelation } from "../../stencils/relations";
 import type { EdgeRelation } from "../../model/types";
 import type { Evidence, ImportComponent, ImportGraph, ImportLink } from "./graph";
-import { resolveStencil, shortImage, imageStencil } from "./stencils";
+import { imageStencil, pickFor, shortImage, withoutCredentials } from "./stencils";
+import { LIMITS } from "../native";
 import { isOutsideHost, MAX_VALUE, productOf, readSetting } from "./settings";
 import { bare, ImportError, isMap, list, own, readYaml, str } from "./yaml";
 
@@ -181,29 +182,43 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
     if (path && !opened.has(baseName(path))) unread(`include ${path}`);
   }
 
-  // `extends`: a service in this file, or in another file opened with it.
-  const resolve = (name: string, from: Record<string, unknown>, depth = 0): Record<string, unknown> | undefined => {
-    const svc = normalizeService(own(from, name));
-    if (!svc) return undefined;
-    const ext = own(svc, "extends");
-    if (ext === undefined) return svc;
-    delete svc.extends;
-    const baseService = str(ext) ?? str(own(ext, "service"));
-    const file = str(own(ext, "file"));
-    if (!baseService || depth > 10) return svc;
-    let pool = from;
-    if (file) {
-      const other = opened.get(baseName(file));
+  // `extends`: a service in this file, or in another file opened with it. Each other file is parsed once and
+  // each resolved service is kept, so a web of extends costs one pass per service; a cycle stops where it closes.
+  const pools = new Map<string, Record<string, unknown> | undefined>([["", services]]);
+  const poolOf = (file: string) => {
+    const key = baseName(file);
+    if (!pools.has(key)) {
+      const other = opened.get(key);
       const doc = other && readYaml(other.text, other.name).find(isMap);
       const theirs = doc && own(doc, "services");
-      if (!isMap(theirs)) {
-        unread(`extends ${file}`);
-        return svc;
-      }
-      pool = theirs;
+      pools.set(key, isMap(theirs) ? theirs : undefined);
     }
-    const base = resolve(baseService, pool, depth + 1);
-    return base ? (merge(base, svc) as Record<string, unknown>) : svc;
+    return pools.get(key);
+  };
+  const resolved = new Map<string, Record<string, unknown> | undefined>();
+  const resolving = new Set<string>();
+  const resolve = (name: string, poolKey = "", depth = 0): Record<string, unknown> | undefined => {
+    const id = `${poolKey}\u0001${name}`;
+    if (resolved.has(id)) return resolved.get(id);
+    const svc = normalizeService(own(pools.get(poolKey), name));
+    if (!svc || resolving.has(id)) return svc;
+    resolving.add(id);
+    let out: Record<string, unknown> = svc;
+    const ext = own(svc, "extends");
+    if (ext !== undefined) {
+      delete svc.extends;
+      const baseService = str(ext) ?? str(own(ext, "service"));
+      const file = str(own(ext, "file"));
+      const from = file ? baseName(file) : poolKey;
+      if (file && !poolOf(file)) unread(`extends ${file}`);
+      else if (baseService && depth < 10) {
+        const base = resolve(baseService, from, depth + 1);
+        if (base) out = merge(base, svc) as Record<string, unknown>;
+      }
+    }
+    resolving.delete(id);
+    resolved.set(id, out);
+    return out;
   };
 
   for (const name of Object.keys(own(top, "volumes") && isMap(own(top, "volumes")) ? (top.volumes as object) : {}))
@@ -217,7 +232,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
     const c = byKey.get(key);
     if (!c) return "generic.service";
     if (c.stencil) return c.stencil;
-    const pick = resolveStencil(c.hint);
+    const pick = pickFor(c);
     return "id" in pick ? pick.id : "generic.service";
   };
   const add = (c: ImportComponent) => {
@@ -229,7 +244,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
   };
 
   for (const name of Object.keys(services)) {
-    const svc = resolve(name, services);
+    const svc = resolve(name);
     if (!svc) {
       g.notDrawn.push({ name, reason: "not a service definition" });
       continue;
@@ -263,7 +278,9 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
     if (isMap(environment))
       for (const k of Object.keys(environment)) {
         const v = str(environment[k]);
-        if (v !== undefined) env.set(k, v);
+        // A key with no value (`KEY:` or a bare `- KEY`) overrides env_file too: it isn't that setting.
+        if (v === undefined) env.delete(k);
+        else env.set(k, v);
       }
     const build = own(svc, "build");
     const context = str(build) ?? str(own(build, "context"));
@@ -274,7 +291,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
       sublabel: image
         ? shortImage(image.replaceAll(OPAQUE, "*")).slice(0, 80)
         : context
-          ? `built from ${context}`.slice(0, 80)
+          ? `built from ${withoutCredentials(context)}`.slice(0, 80)
           : undefined,
       hint: { name: name.slice(0, 120), image: image?.slice(0, 512), env: [...env.keys()].slice(0, 500) },
       ...(Number.isInteger(replicas) && replicas > 1 && replicas <= 10_000 ? { props: { replicas } } : {}),
@@ -308,6 +325,13 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
     ["topic", "queue", "stream"].includes(role(key)) || stencilOf(key) === "kafka.cluster";
   const isGateway = (key: string) => role(key) === "gateway";
 
+  /** The validator's edge budget, enforced while the graph is built (before any layout runs). */
+  const budget = () => {
+    if (flows.size + deps.size >= LIMITS.maxEdges)
+      throw new ImportError(
+        `It would draw more than ${LIMITS.maxEdges.toLocaleString("en")} connections, the most a diagram holds.`,
+      );
+  };
   const flow = (
     from: string,
     to: string,
@@ -315,6 +339,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
     evidence: Evidence,
     props?: Record<string, unknown>,
   ) => {
+    budget();
     const id = `${from}\u0001${to}`;
     if (from !== to && !flows.has(id))
       flows.set(id, { from, to, relation: "flow", kind, evidence, ...(props ? { props } : {}) });
@@ -326,6 +351,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
     evidence: Evidence,
     props?: Record<string, unknown>,
   ) => {
+    budget();
     const id = `${from}\u0001${to}\u0001${relation}`;
     if (from !== to && !deps.has(id)) deps.set(id, { from, to, relation, evidence, ...(props ? { props } : {}) });
   };
@@ -386,8 +412,9 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
       const kafka = !cluster || stencilOf(cluster) === "kafka.cluster";
       for (const t of topics)
         for (const name of t.topics) {
+          // A topic belongs to its cluster: the same name on two clusters is two topics (no invented path).
           const topic = add({
-            key: `\u0004${name}`,
+            key: `\u0004${cluster ?? ""}\u0001${name}`,
             label: name.slice(0, 120),
             hint: { name },
             stencil: kafka ? "kafka.topic" : "generic.topic",
@@ -450,14 +477,16 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
       secretNames.join(", ").length <= 32 ? secretNames.join(", ") : `${secretNames.length} secrets`;
 
   // A flow wins over a dependency for the same pair, including a flow through one of a cluster's topics.
-  const joined = (a: string, b: string) =>
-    [...flows.values()].some(
-      (f) =>
-        (f.from === a && f.to === b) ||
-        (f.from === b && f.to === a) ||
-        (f.from === a && topicCluster.get(f.to) === b) ||
-        (f.to === a && topicCluster.get(f.from) === b),
-    );
+  const pairs = new Set<string>();
+  for (const f of flows.values())
+    for (const [a, b] of [
+      [f.from, f.to],
+      [f.to, f.from],
+      [f.from, topicCluster.get(f.to)],
+      [f.to, topicCluster.get(f.from)],
+    ])
+      if (b !== undefined) pairs.add(`${a}\u0001${b}`);
+  const joined = (a: string, b: string) => pairs.has(`${a}\u0001${b}`);
   g.links = [
     ...flows.values(),
     ...[...deps.values()]

@@ -24,8 +24,10 @@ export function layoutImport(diagram: DiagramFile): DiagramFile {
   const deps = diagram.edges.filter((e) => relationOf(e) !== "flow");
   const inFlow = new Set(flows.flatMap((e) => [e.from, e.to]));
   /** Dependency targets: reached only by dependencies. Everything else takes part in the flow lane. */
-  const target = (n: DiagramNode) => !inFlow.has(n.id) && deps.some((e) => e.to === n.id);
-  const usersOf = (id: string) => deps.filter((e) => e.to === id && e.from !== id).map((e) => e.from);
+  const users = new Map<string, string[]>();
+  for (const e of deps) if (e.from !== e.to) users.set(e.to, [...(users.get(e.to) ?? []), e.from]);
+  const target = (n: DiagramNode) => !inFlow.has(n.id) && users.has(n.id);
+  const usersOf = (id: string) => users.get(id) ?? [];
 
   // Step 1: each boundary on its own, at the origin.
   const groups = diagram.groups ?? [];
@@ -68,9 +70,17 @@ export function layoutImport(diagram: DiagramFile): DiagramFile {
     ...[...blocks].map(([id, b]) => ({ id: `\u0001${id}`, x: 0, y: 0, width: b.width, height: b.height })),
     ...loose.map((n) => ({ id: n.id, x: 0, y: 0, ...sizeOf(n) })),
   ];
-  const unitEdges = flows
-    .map((e) => ({ from: unitOf(e.from), to: unitOf(e.to) }))
-    .filter((e, i, all) => e.from !== e.to && all.findIndex((o) => o.from === e.from && o.to === e.to) === i);
+  // One edge per pair of units, in one pass.
+  const seen = new Set<string>();
+  const unitEdges: { from: string; to: string }[] = [];
+  for (const e of flows) {
+    const from = unitOf(e.from);
+    const to = unitOf(e.to);
+    const pair = `${from}\u0002${to}`;
+    if (from === to || seen.has(pair)) continue;
+    seen.add(pair);
+    unitEdges.push({ from, to });
+  }
   const at = layeredLayout({ nodes: units, edges: unitEdges, direction: "LR" });
   for (const n of loose) Object.assign(n, at.get(n.id));
   const out: DiagramFile = { ...diagram, nodes };

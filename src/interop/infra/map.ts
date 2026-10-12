@@ -1,7 +1,8 @@
 import { DIAGRAM_FORMAT, type DiagramEdge, type DiagramFile, type DiagramNode } from "../../model/types";
 import { sanitizeSettings } from "../../model/relations";
 import type { ImportGraph, ImportReport, ReportConnection, ReportGuess } from "./graph";
-import { resolveStencil } from "./stencils";
+import { pickFor, withoutCredentials } from "./stencils";
+import { LIMITS } from "../native";
 import { layoutImport } from "./layout";
 import { ImportError } from "./yaml";
 
@@ -19,36 +20,47 @@ const slug = (s: string) =>
     .slice(0, 60) || "node";
 
 export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: ImportReport } {
-  if (g.components.length > MAX_DRAWN)
-    throw new ImportError(
-      `It would draw ${g.components.length.toLocaleString("en")} nodes; the most an import draws is ${MAX_DRAWN.toLocaleString("en")}.`,
-    );
-  const ids = new Map<string, string>();
+  // The budgets first: nothing is laid out for a graph the validator would refuse anyway.
+  const over = (n: number, max: number, what: string) => {
+    if (n > max)
+      throw new ImportError(
+        `It would draw ${n.toLocaleString("en")} ${what}; the most an import draws is ${max.toLocaleString("en")}.`,
+      );
+  };
+  over(g.components.length, MAX_DRAWN, "nodes");
+  over(g.links.length, LIMITS.maxEdges, "connections");
+  over(g.groups.length, LIMITS.maxGroups, "boundaries");
+  // One id space for nodes and boundaries, unique after normalizing ("Frontend" and "frontend" are two).
   const taken = new Set<string>();
-  const idFor = (key: string, label: string) => {
-    let base = slug(label);
-    if (key.startsWith("\u0004")) base = `topic-${base}`;
-    else if (key.startsWith("\u0003")) base = `ext-${base}`;
+  const unique = (base: string) => {
     let id = base;
     for (let i = 2; taken.has(id); i++) id = `${base}-${i}`;
     taken.add(id);
+    return id;
+  };
+  const ids = new Map<string, string>();
+  const idFor = (key: string, label: string) => {
+    const base = slug(label);
+    const id = unique(key.startsWith("\u0004") ? `topic-${base}` : key.startsWith("\u0003") ? `ext-${base}` : base);
     ids.set(key, id);
     return id;
   };
-  const groupIds = new Map(g.groups.map((gr) => [gr.key, `boundary-${slug(gr.label)}`]));
+  const groupIds = new Map(g.groups.map((gr) => [gr.key, unique(`boundary-${slug(gr.label)}`)]));
   const guesses: ReportGuess[] = [];
   const nodes: DiagramNode[] = g.components.map((c) => {
     const id = idFor(c.key, c.label);
+    // Subtitles carry evidence (an image, a build context), never anything credential-shaped.
+    const sublabel = c.sublabel && sanitizeSettings([{ key: withoutCredentials(c.sublabel) }])?.[0]?.key;
     let stencil = c.stencil;
     if (!stencil) {
-      const pick = resolveStencil(c.hint);
+      const pick = pickFor(c);
       stencil = "id" in pick ? pick.id : "generic.service";
       if ("id" in pick && pick.confidence !== "high")
         guesses.push({
           nodeId: id,
           label: c.label,
           stencil,
-          evidence: [c.sublabel, pick.evidence].filter(Boolean).join(" · ") || undefined,
+          evidence: [sublabel, pick.evidence].filter(Boolean).join(" · ") || undefined,
           alternatives: pick.alternatives,
         });
     }
@@ -57,7 +69,7 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
       id,
       stencil,
       label: c.label,
-      ...(c.sublabel ? { sublabel: c.sublabel } : {}),
+      ...(sublabel ? { sublabel } : {}),
       x: 0,
       y: 0,
       ...(group ? { group } : {}),

@@ -273,3 +273,105 @@ services:
     expect(() => readCompose([{ name: "x.yml", text: "services: {}\n" }])).toThrow(/no services/);
   });
 });
+
+describe("docker-compose import: review fixes", () => {
+  const compose = (text: string, name = "docker-compose.yml") => ok(importCompose([{ name, text }]));
+
+  it("keeps same-named topics on different clusters separate, and shares one per cluster", () => {
+    const { diagram: d } = compose(`
+services:
+  kafka-a: { image: apache/kafka }
+  kafka-b: { image: bitnami/kafka }
+  producer-a:
+    image: example/producer
+    environment: { KAFKA_BOOTSTRAP_SERVERS: "kafka-a:9092", OUTPUT_TOPIC: orders }
+  consumer-a:
+    image: example/consumer
+    environment: { KAFKA_BOOTSTRAP_SERVERS: "kafka-a:9092", INPUT_TOPIC: orders }
+  consumer-b:
+    image: example/consumer
+    environment: { KAFKA_BOOTSTRAP_SERVERS: "kafka-b:9092", INPUT_TOPIC: orders }
+`);
+    const topics = d.nodes.filter((n) => n.stencil === "kafka.topic");
+    expect(topics.map((t) => t.label)).toEqual(["orders", "orders"]);
+    const [onA, onB] = topics.map((t) => t.id);
+    expect(relationBetween(d, "producer-a", onA)).toBe("message");
+    expect(relationBetween(d, onA, "consumer-a")).toBe("message");
+    expect(relationBetween(d, onB, "consumer-b")).toBe("message");
+    // No path from producer-a to consumer-b through a shared topic.
+    expect(edge(d, onA, "consumer-b")).toBeUndefined();
+    expect(edge(d, "producer-a", onB)).toBeUndefined();
+  });
+
+  it("an environment key with no value unsets the env_file setting", async () => {
+    for (const environment of ["environment:\n      DATABASE_URL:", "environment:\n      - DATABASE_URL"]) {
+      const outcome = await importFiles([
+        {
+          name: "docker-compose.yml",
+          text: `services:\n  api:\n    image: example/api\n    env_file: api.env\n    ${environment}\n  db:\n    image: postgres\n`,
+        },
+        { name: "api.env", text: "DATABASE_URL=postgres://db:5432/app\n" },
+      ]);
+      const { diagram: d, report } = ok(outcome);
+      expect(edge(d, "api", "db"), environment).toBeUndefined();
+      expect(report.inferred).toEqual([]);
+    }
+  });
+
+  it("gives boundaries unique ids, whatever their names normalize to", () => {
+    const long = "n".repeat(70);
+    const { diagram: d, report } = compose(`
+services:
+  a: { image: redis, networks: [Frontend] }
+  b: { image: redis, networks: [frontend] }
+  c: { image: redis, networks: [${long}a] }
+  d: { image: redis, networks: [${long}b] }
+networks: { Frontend: {}, frontend: {}, ${long}a: {}, ${long}b: {} }
+`);
+    const ids = d.groups!.map((g) => g.id);
+    expect(new Set(ids).size).toBe(4);
+    expect(report.boundaries).toBe(4);
+    expect(new Set(d.nodes.map((n) => n.group)).size).toBe(4);
+  });
+
+  it("never puts credentials from a build context in a subtitle", () => {
+    const { diagram: d } = compose(`
+services:
+  app:
+    build: https://ghp_FAKEREVIEWTOKEN12345@github.com/acme/app.git#main:svc
+  worker:
+    build:
+      context: https://user:s3cret@git.example.com/acme/worker.git?access_token=abc
+`);
+    const out = JSON.stringify(d);
+    for (const secret of ["ghp_", "FAKEREVIEWTOKEN", "s3cret", "user:", "access_token"])
+      expect(out, secret).not.toContain(secret);
+    expect(d.nodes.find((n) => n.id === "app")?.sublabel).toBe("built from https://github.com/acme/app.git");
+  });
+
+  it("refuses a graph over the connection budget before laying anything out", () => {
+    const names = Array.from({ length: 400 }, (_, i) => `s${i}`);
+    const text = `services:\n${names.map((n) => `  ${n}:\n    image: example/x\n    depends_on: [${names.filter((o) => o !== n).join(", ")}]`).join("\n")}\n`;
+    const started = performance.now();
+    expect(() => importCompose([{ name: "docker-compose.yml", text }])).toThrow(/more than 20,000 connections/);
+    expect(performance.now() - started).toBeLessThan(5_000);
+  });
+
+  it("parses a shared extends file once, and stops at a cycle", () => {
+    const base = `services:\n  base:\n    image: example/base\n    environment: { CACHE_HOST: cache }\n${Array.from(
+      { length: 400 },
+      (_, i) => `  filler${i}:\n    image: example/filler\n    labels: { a: "${"x".repeat(100)}" }`,
+    ).join("\n")}\n`;
+    const app = `services:\n  cache: { image: redis }\n${Array.from(
+      { length: 200 },
+      (_, i) => `  s${i}:\n    extends: { file: ./common.yml, service: base }`,
+    ).join("\n")}\n  loop-a:\n    extends: loop-b\n  loop-b:\n    extends: loop-a\n    image: example/loop\n`;
+    const started = performance.now();
+    const outcome = importCompose([{ name: "docker-compose.yml", text: app }], [{ name: "common.yml", text: base }]);
+    expect(performance.now() - started).toBeLessThan(3_000);
+    const { diagram: d } = ok(outcome);
+    expect(relationBetween(d, "s0", "cache")).toBe("request");
+    expect(relationBetween(d, "s199", "cache")).toBe("request");
+    expect(d.nodes.find((n) => n.id === "loop-b")).toBeDefined();
+  });
+});

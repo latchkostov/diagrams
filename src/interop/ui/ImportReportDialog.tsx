@@ -1,11 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "./Dialog";
 import { Glyph } from "./glyphs";
 import { toast } from "./toast";
 import { paletteHost } from "../../palette/host";
 import { getStencil, stencils } from "../../stencils/registry";
 import { searchStencils } from "../../lib/stencilSearch";
-import { swapStencil } from "../../ai/ui/apply";
+import { DIAGRAMS_CHANGED } from "../../lib/diagramIO";
 import type { ImportReport, ReportGuess } from "../infra/graph";
 
 // The Import report (docs/research/imports.md § UX): what the import drew as a guess (with one-click stencil
@@ -37,27 +37,39 @@ export function ImportReportDialog({
   onClose: () => void;
 }) {
   const [, rerender] = useState(0);
-  const [madePrivate, setMadePrivate] = useState(false);
+  const done = useRef<HTMLButtonElement>(null);
+  // Privacy is read from the document itself, and the report follows it as it changes (here or in another tab).
+  useEffect(() => {
+    const changed = () => rerender((n) => n + 1);
+    window.addEventListener(DIAGRAMS_CHANGED, changed);
+    return () => window.removeEventListener(DIAGRAMS_CHANGED, changed);
+  }, []);
   const select = (nodeId: string) => {
     const host = paletteHost.get().canvas;
     if (!host?.editor.getNode(nodeId)) return toast.error("That node isn't in the diagram any more.");
     onClose();
-    host.focusNode(nodeId);
+    // Once the dialog has closed and the canvas is no longer inert, so the node can take the focus.
+    window.setTimeout(() => paletteHost.get().canvas?.focusNode(nodeId), 0);
   };
+  /** A chip: the editor's own stencil change, one undo step. */
   const swap = (nodeId: string, stencilId: string) => {
     const ed = editor();
     if (!ed?.getNode(nodeId)) return toast.error("That node isn't in the diagram any more.");
-    const plan = swapStencil(ed.getDiagram(), nodeId, stencilId);
-    if (!plan.ok) return toast.error(plan.error.error);
-    ed.applyDiagram(plan.next, { merge: `import:swap:${++swaps}` });
+    ed.updateNode(nodeId, { stencil: stencilId }, { merge: `import:swap:${++swaps}` });
     rerender((n) => n + 1);
   };
+  // One snapshot of the diagram per render, shared by every row.
+  const current = new Map(
+    editor()
+      ?.getDiagram()
+      .nodes.map((n) => [n.id, n.stencil]),
+  );
   const name = (nodeId: string, label: string, testId: string) => (
     <button className="link-btn ix-report-name" onClick={() => select(nodeId)} data-testid={testId} title="Select it">
       {label}
     </button>
   );
-  const privateNow = madePrivate || isPrivate();
+  const privateNow = isPrivate();
   return (
     <Dialog
       title="Import report"
@@ -78,7 +90,11 @@ export function ImportReportDialog({
                   className="link-btn"
                   onClick={() => {
                     onMakePrivate();
-                    setMadePrivate(true);
+                    rerender((n) => n + 1);
+                    // The button goes once it worked: the focus stays in the dialog.
+                    requestAnimationFrame(() => {
+                      if (!document.activeElement || document.activeElement === document.body) done.current?.focus();
+                    });
                   }}
                   data-testid="import-report-make-private"
                 >
@@ -88,7 +104,13 @@ export function ImportReportDialog({
             )}
           </span>
           <span className="ix-grow" />
-          <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="import-report-done">
+          <button
+            ref={done}
+            className="btn btn-primary"
+            onClick={onClose}
+            data-autofocus
+            data-testid="import-report-done"
+          >
             Done
           </button>
         </>
@@ -106,7 +128,14 @@ export function ImportReportDialog({
         {report.guesses.length > 0 && (
           <Section title="Check these guesses" count={report.guesses.length} testId="import-report-guesses">
             {report.guesses.map((g, i) => (
-              <GuessRow key={g.nodeId} guess={g} index={i} name={name} onSwap={swap} />
+              <GuessRow
+                key={g.nodeId}
+                guess={g}
+                index={i}
+                current={current.get(g.nodeId) ?? g.stencil}
+                name={name}
+                onSwap={swap}
+              />
             ))}
           </Section>
         )}
@@ -179,18 +208,20 @@ function Section({
 function GuessRow({
   guess,
   index,
+  current,
   name,
   onSwap,
 }: {
   guess: ReportGuess;
   index: number;
+  /** The node's stencil now (a chip, the inspector or Undo may have changed it). */
+  current: string;
   name: (nodeId: string, label: string, testId: string) => ReactNode;
   onSwap: (nodeId: string, stencilId: string) => void;
 }) {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
-  // The node's stencil now (a chip, the inspector or Undo may have changed it), else the import's pick.
-  const current = editorNode(guess.nodeId)?.stencil ?? guess.stencil;
+  const other = useRef<HTMLButtonElement>(null);
   const chips = [...new Set([guess.stencil, ...guess.alternatives])].filter((id) => id !== current);
   const found = query.trim()
     ? searchStencils(stencils, query)
@@ -205,6 +236,8 @@ function GuessRow({
         onSwap(guess.nodeId, id);
         setSearching(false);
         setQuery("");
+        // The chip just used goes away: keep the focus in this row (the dialog keeps its keys).
+        requestAnimationFrame(() => other.current?.focus());
       }}
       data-testid={testId}
     >
@@ -234,6 +267,7 @@ function GuessRow({
           />
         ) : (
           <button
+            ref={other}
             className="ix-report-chip is-other"
             onClick={() => setSearching(true)}
             data-testid={`import-report-other-${index}`}
@@ -246,5 +280,3 @@ function GuessRow({
     </li>
   );
 }
-
-const editorNode = (id: string) => editor()?.getNode(id);
