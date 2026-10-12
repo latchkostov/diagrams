@@ -85,29 +85,66 @@ describe("fixes", () => {
     expect(after.edges.find((e) => e.id === "new-dlq-route")?.props).toBeUndefined();
   });
 
-  it("agrees with the simulation: the warning's messages are dropped, and dead-lettered after the fix", () => {
+  describe("agrees with the simulation: a warning exactly when a seeded run loses messages", () => {
     const sim: Simulation = {
       id: "s",
       title: "Poison",
       seed: 3,
       traffic: [{ id: "t", node: "api", shape: { kind: "burst", count: 20 } }],
     };
-    const outcome = (d: DiagramFile) => {
-      const run = createSimulationRun(d, sim);
+    /** Plays `d` with 20 messages; what the queue dropped and dead-lettered, and whether the check warns. */
+    const outcome = (d: DiagramFile, played: Simulation = sim) => {
+      const run = createSimulationRun(d, played);
       run.setSpeed(8);
       for (let i = 0; i < 4000 && !run.state().done; i++) run.step(25);
-      const nodes = run.engine.snapshot().nodes;
-      return { dropped: nodes.q.dropped, deadLettered: nodes.q.deadLettered };
+      const q = run.engine.snapshot().nodes.q;
+      const warned = runChecks(d).findings.some((f) => f.id === "dead-letter:q" && f.severity === "warning");
+      return { dropped: q.dropped, deadLettered: q.deadLettered, warned };
     };
-    const d = base();
-    expect(outcome(d)).toEqual({ dropped: 20, deadLettered: 0 });
-    expect(outcome(applyFix(d, finding(d, "dead-letter:q")))).toEqual({ dropped: 0, deadLettered: 20 });
-    // Down instead of failing: no finding beyond the suggestion, and nothing is dropped (the broker holds it).
-    const down = base({
-      nodes: base().nodes.map((n) => (n.id === "worker" ? { ...n, props: {} } : n)),
-      simulations: [{ ...sim, timeline: [{ atMs: 0, action: { do: "status", node: "worker", status: "down" } }] }],
+    const dlqNode = { id: "dlq", stencil: "azure.service-bus.queue", label: "orders DLQ", x: 300, y: 300 };
+    const plus = (nodes: DiagramFile["nodes"], edges: DiagramFile["edges"], worker?: Record<string, unknown>) =>
+      base({
+        nodes: [...base().nodes.map((n) => (n.id === "worker" && worker ? { ...n, props: worker } : n)), ...nodes],
+        edges: [...base().edges, ...edges],
+      });
+
+    it("no dead-letter route: lost, and a warning", () => {
+      expect(outcome(base())).toEqual({ dropped: 20, deadLettered: 0, warned: true });
     });
-    expect(runChecks(down).findings.map((f) => `${f.severity}:${f.id}`)).toEqual(["suggestion:dead-letter:q"]);
+    it("after the fix: dead-lettered, and no warning", () => {
+      const d = base();
+      expect(outcome(applyFix(d, finding(d, "dead-letter:q")))).toEqual({
+        dropped: 0,
+        deadLettered: 20,
+        warned: false,
+      });
+    });
+    it("retrying in place still ends at the broker's limit: lost, and a warning", () => {
+      const d = plus([], [], { failureRate: 1, retry: "inplace" });
+      expect(outcome(d)).toEqual({ dropped: 20, deadLettered: 0, warned: true });
+    });
+    it("a consumer's own dead-letter edge catches nothing: lost, and a warning", () => {
+      const d = plus([dlqNode], [{ id: "w-dlq", from: "worker", to: "dlq", kind: "async", props: { dlq: true } }]);
+      expect(outcome(d)).toEqual({ dropped: 20, deadLettered: 0, warned: true });
+    });
+    it("a broker route whose filter takes nothing: lost, and a warning", () => {
+      const d = plus(
+        [dlqNode],
+        [{ id: "q-dlq", from: "q", to: "dlq", kind: "async", props: { dlq: true, filter: [] } }],
+      );
+      expect(outcome(d)).toEqual({ dropped: 20, deadLettered: 0, warned: true });
+    });
+    it("a consumer that goes down loses nothing (the broker holds its messages), and no warning", () => {
+      const d = plus([], [], {});
+      const outage: Simulation = {
+        ...sim,
+        timeline: [
+          { atMs: 0, action: { do: "status", node: "worker", status: "down" } },
+          { atMs: 3000, action: { do: "status", node: "worker", status: "up" } },
+        ],
+      };
+      expect(outcome({ ...d, simulations: [outage] }, outage)).toEqual({ dropped: 0, deadLettered: 0, warned: false });
+    });
   });
 
   it("Make … a message: the loop is gone", () => {

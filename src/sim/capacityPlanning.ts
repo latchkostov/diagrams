@@ -1,0 +1,138 @@
+import type { DiagramFile, DiagramNode, SimRole, Simulation, TrafficProfile } from "../model/types";
+import { stencilRole } from "../stencils/roles";
+import { analyzeCapacity, type NodeCapacity } from "./capacity";
+import { resolveProps } from "./defaults";
+import { allocateGroupReplicas, compileTopology } from "./topology";
+import type { NodeStatus } from "./types";
+import { resolveMultiplier } from "./units";
+
+// Capacity planning and its one-click fix, shared by live view's Show capacity (src/live/capacityModel.ts)
+// and the capacity check (src/checks/rules/capacity.ts), so the two never disagree. Pure, and free of the
+// simulation engine: the checks chunk loads it without playback.
+
+/** Utilization above this gets a fix; fixes aim for this much headroom (lands in green). */
+export const FIX_ABOVE = 0.9;
+export const FIX_TARGET = 0.55;
+
+const PARTITIONED: ReadonlySet<SimRole> = new Set(["topic", "stream"]);
+const roleOf = (n: DiagramNode): SimRole => stencilRole(n.stencil);
+
+/** Node props as a simulation sees them: the diagram's, then the saved setup's. */
+const planProps = (node: DiagramNode, sim: Simulation) =>
+  resolveProps(roleOf(node), node.label, { ...node.props, ...sim.setup?.props?.[node.id] });
+
+/** Every source sending steadily at `rate` (default: its own ratePerSec): free play as a simulation. */
+export function sourceTraffic(
+  d: DiagramFile,
+  rate: (node: DiagramNode) => number = (n) => resolveProps("source", n.label, n.props ?? {}).ratePerSec,
+): TrafficProfile[] {
+  return d.nodes
+    .filter((n) => roleOf(n) === "source")
+    .map((n) => ({
+      id: `src-${n.id}`,
+      node: n.id,
+      shape: { kind: "constant", ratePerSec: rate(n), durationMs: 60_000 },
+    }));
+}
+
+/** Analysis copy where gateways and stores are unlimited, as they are in playback. */
+export function planningSimulation(d: DiagramFile, sim: Simulation): Simulation {
+  const props = structuredClone(sim.setup?.props ?? {});
+  for (const n of d.nodes) {
+    const role = roleOf(n);
+    if (role === "gateway" || role === "store") props[n.id] = { ...props[n.id], latencyMs: 0 };
+  }
+  return { ...sim, setup: { ...sim.setup, props } };
+}
+
+export interface SizingChange {
+  nodeId: string;
+  key: "replicas" | "partitions";
+  /** Base values, as saved (before Capacity ×). */
+  from: number;
+  to: number;
+}
+
+/** The simulation with `changes` in its saved setup props. */
+export function withSizing(sim: Simulation, changes: readonly SizingChange[]): Simulation {
+  const next = structuredClone(sim);
+  const props = (next.setup ??= {}).props ?? {};
+  for (const c of changes) props[c.nodeId] = { ...props[c.nodeId], [c.key]: c.to };
+  next.setup.props = props;
+  return next;
+}
+
+export interface SizingOptions {
+  /** A node whose idle replicas need partitions, even under FIX_ABOVE (the busy top bottleneck). */
+  idle?: string;
+  /** The run's node statuses right now. */
+  status?: Readonly<Record<string, NodeStatus | undefined>>;
+  /** The largest replica or partition count to suggest. */
+  maxCount?: number;
+}
+
+/**
+ * The capacity fix: raise replicas on each of `nodes` (busiest first) at ≥ FIX_ABOVE so it lands around
+ * FIX_TARGET, and raise a topic's partitions when its consumer group needs more of them (including `idle`'s
+ * idle replicas). Values are base props, ready to save. Null when nothing changes, or when the change
+ * wouldn't land at FIX_TARGET (checked with the same analysis).
+ */
+export function sizingFix(
+  d: DiagramFile,
+  sim: Simulation,
+  nodes: readonly NodeCapacity[],
+  opts: SizingOptions = {},
+): SizingChange[] | null {
+  const max = opts.maxCount ?? 10_000;
+  const m = resolveMultiplier(sim.multipliers?.capacity);
+  const byId = new Map(d.nodes.map((n) => [n.id, n]));
+  const effective = new Map<string, number>();
+  const changes: SizingChange[] = [];
+  for (const n of nodes) {
+    if (n.role !== "processor" || !Number.isFinite(n.utilization) || n.utilization < FIX_ABOVE || !n.capacity) continue;
+    const active = Math.max(1, n.activeReplicas);
+    const wanted = Math.max(n.replicas, Math.ceil((active * n.utilization) / FIX_TARGET));
+    effective.set(n.id, wanted);
+    const from = planProps(byId.get(n.id)!, sim).replicas;
+    const to = Math.min(max, Math.max(from, Math.ceil(wanted / Math.max(m, 1e-9))));
+    if (to > from) changes.push({ nodeId: n.id, key: "replicas", from, to });
+  }
+  const needsPartitions = (id: string) => effective.has(id) || opts.idle === id;
+  for (const [brokerId, groups] of compileTopology(d).groups) {
+    const broker = byId.get(brokerId)!;
+    if (!PARTITIONED.has(roleOf(broker))) continue;
+    const from = planProps(broker, sim).partitions;
+    let to = from;
+    for (const group of groups) {
+      if (!group.members.some(needsPartitions)) continue;
+      const members = group.members.map((id) => ({
+        id,
+        role: roleOf(byId.get(id)!),
+        replicas: effective.get(id) ?? Math.max(1, Math.round(planProps(byId.get(id)!, sim).replicas * m)),
+      }));
+      const sufficient = (partitions: number) => {
+        const allocated = allocateGroupReplicas(roleOf(broker), partitions, members);
+        return members.every(
+          (member) => !needsPartitions(member.id) || (allocated.get(member.id) ?? 0) >= member.replicas,
+        );
+      };
+      // Nonprocessor members can consume a partition budget too. Search using the same allocator
+      // as playback, with an explicit bound rather than reconstructing processor-only groups.
+      let high = Math.max(from, 1);
+      while (high < max && !sufficient(high)) high = Math.min(max, high * 2);
+      if (!sufficient(high)) continue;
+      let low = from;
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        if (sufficient(mid)) high = mid;
+        else low = mid + 1;
+      }
+      to = Math.max(to, high);
+    }
+    if (to > from) changes.push({ nodeId: brokerId, key: "partitions", from, to });
+  }
+  if (!changes.length) return null;
+  const verified = analyzeCapacity(d, planningSimulation(d, withSizing(sim, changes)), { status: opts.status });
+  if ([...effective.keys()].some((id) => verified.nodes[id].utilization > FIX_TARGET + 1e-9)) return null;
+  return changes;
+}

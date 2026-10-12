@@ -1,86 +1,28 @@
 import type { DiagramOp } from "../../ai";
-import type { DiagramFile } from "../../model/types";
-import { analyzeCapacity, type NodeCapacity } from "../../sim/capacity";
-import { resolveProps } from "../../sim/defaults";
-import { allocateGroupReplicas, brokerRole } from "../../sim/topology";
+import type { NodeCapacity } from "../../sim/capacity";
+import { sizingFix } from "../../sim/capacityPlanning";
 import { formatRate, isBroker, type CheckContext } from "../context";
 import type { CheckFix, CheckRule } from "../types";
 
 // 7. capacity: the busiest processor or broker can't keep up at the diagram's own (free-play) rates: the
 // same analysis as live view's Show capacity, without going live. Saved simulations aren't checked: most
 // overload something on purpose, to tell a story, and live view's heat map is the place for those.
-// Gateways and stores are left out: their capacity is a single-lane planning estimate.
+// Gateways and stores are left out: their capacity is a single-lane planning estimate. Planning and the fix
+// are live view's own (src/sim/capacityPlanning.ts).
 
-/** Like live view's capacity fix: aim for this much utilization after the change. */
-const TARGET = 0.55;
-/** Edit ops take replicas and partitions up to this. */
-const MAX_COUNT = 10_000;
 const DEFAULT_RATE = 2;
 
-/** Partitions on `brokerId` so every member of its groups that includes `id` gets `replicas` consumers. */
-function partitionsFor(ctx: CheckContext, brokerId: string, id: string, replicas: number): number | undefined {
-  const broker = ctx.nodes.get(brokerId)!;
-  const role = ctx.role(brokerId);
-  const from = resolveProps(role, broker.label, broker.props ?? {}).partitions;
-  let need = from;
-  for (const group of ctx.topology.groups.get(brokerId) ?? []) {
-    if (!group.members.includes(id)) continue;
-    const members = group.members.map((m) => ({
-      id: m,
-      role: ctx.role(m),
-      replicas: m === id ? replicas : (ctx.capacity().nodes[m]?.replicas ?? 1),
-    }));
-    const enough = (p: number) => (allocateGroupReplicas(role, p, members).get(id) ?? 0) >= replicas;
-    let high = Math.max(from, 1);
-    while (high < MAX_COUNT && !enough(high)) high = Math.min(MAX_COUNT, high * 2);
-    if (!enough(high)) return undefined;
-    let low = from;
-    while (low < high) {
-      const mid = Math.floor((low + high) / 2);
-      if (enough(mid)) high = mid;
-      else low = mid + 1;
-    }
-    need = Math.max(need, high);
-  }
-  return need;
-}
-
-/** Raise the processor's replicas (and its topic's partitions, when they'd sit idle), checked by analysis. */
+/** Live view's capacity fix (src/sim/capacityPlanning.ts) for this one node, as edit ops. */
 function scaleFix(ctx: CheckContext, n: NodeCapacity): CheckFix | undefined {
-  if (n.role !== "processor" || !Number.isFinite(n.utilization) || !n.capacity) return undefined;
-  const active = Math.max(1, n.activeReplicas);
-  const replicas = Math.min(
-    MAX_COUNT,
-    Math.max(n.replicas + (n.idleReplicas ? 0 : 1), Math.ceil((active * n.utilization) / TARGET)),
-  );
-  const changes: { id: string; key: "replicas" | "partitions"; to: number }[] = [];
-  if (replicas > n.replicas) changes.push({ id: n.id, key: "replicas", to: replicas });
-  // A consumer reached only through topics or streams gets at most one replica per partition.
-  for (const [brokerId] of ctx.topology.restricted.has(n.id) ? ctx.topology.groups : []) {
-    if (!brokerRole(ctx.role(brokerId)) || ctx.role(brokerId) === "queue") continue;
-    if (!ctx.routes(brokerId).some((e) => e.to === n.id)) continue;
-    const broker = ctx.nodes.get(brokerId)!;
-    const from = resolveProps(ctx.role(brokerId), broker.label, broker.props ?? {}).partitions;
-    const to = partitionsFor(ctx, brokerId, n.id, replicas);
-    if (to === undefined) return undefined;
-    if (to > from) changes.push({ id: brokerId, key: "partitions", to });
-  }
-  if (!changes.length) return undefined;
-  // Only offer what fixes it: the same analysis, after the change.
-  const planned = ctx.planning();
-  const after: DiagramFile = {
-    ...planned,
-    nodes: planned.nodes.map((node) => {
-      const mine = changes.filter((c) => c.id === node.id);
-      return mine.length
-        ? { ...node, props: { ...node.props, ...Object.fromEntries(mine.map((c) => [c.key, c.to])) } }
-        : node;
-    }),
-  };
-  if (!(analyzeCapacity(after).nodes[n.id].utilization < 1)) return undefined;
-  const ops: DiagramOp[] = changes.map((c) => ({ op: "update", target: c.id, props: { [c.key]: c.to } }));
+  // Edit ops take replicas and partitions up to 10,000 (the op schema's bound).
+  const changes = sizingFix(ctx.diagram, ctx.planning(), [n], {
+    idle: n.idleReplicas > 0 ? n.id : undefined,
+    maxCount: 10_000,
+  });
+  if (!changes) return undefined;
+  const ops: DiagramOp[] = changes.map((c) => ({ op: "update", target: c.nodeId, props: { [c.key]: c.to } }));
   const words = changes.map((c) =>
-    c.key === "replicas" ? `replicas to ${c.to}` : `${ctx.name(c.id)} partitions to ${c.to}`,
+    c.key === "replicas" ? `replicas to ${c.to}` : `${ctx.name(c.nodeId)} partitions to ${c.to}`,
   );
   return { label: `Set ${words.join(" and ")}`, ops };
 }

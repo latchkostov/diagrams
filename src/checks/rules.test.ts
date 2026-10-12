@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramEdge, DiagramFile, DiagramNode, Simulation } from "../model/types";
+import { applyOps } from "../ai";
 import { runChecks } from "./run";
 import { stronglyConnected } from "./rules/syncCycle";
 import { deadLetterFor } from "./rules/deadLetter";
@@ -82,14 +83,47 @@ describe("dead-letter", () => {
     expect(ids({ ...queue(), simulations: [down] }, "dead-letter")).toEqual(["suggestion:q"]);
   });
 
-  it("is quiet when there's a dead-letter route: marked, inferred from a name, or out of the consumer", () => {
+  it("is quiet when the broker has a dead-letter route, marked or inferred from a name", () => {
     const dlq = node("dlq", "azure.service-bus.queue", undefined, "orders DLQ");
     expect(ids(queue({ failureRate: 1 }, [msg("q", "dlq", { dlq: true })], [dlq]), "dead-letter")).toEqual([]);
     expect(ids(queue({ failureRate: 1 }, [msg("q", "dlq")], [dlq]), "dead-letter")).toEqual([]);
+  });
+
+  it("a consumer's own dead-letter edge doesn't count: the broker's retries drop the messages", () => {
     const consumerSide = node("dlt", "kafka.topic", undefined, "worker errors");
     expect(
       ids(queue({ failureRate: 1 }, [msg("worker", "dlt", { dlq: true })], [consumerSide]), "dead-letter"),
-    ).toEqual([]);
+    ).toEqual(["warning:q"]);
+  });
+
+  it("a dead-letter route whose filter misses the failing types is no route; one that takes them is", () => {
+    const dlq = node("dlq", "azure.service-bus.queue", undefined, "orders DLQ");
+    const typed = (filter: string[]) =>
+      queue(
+        { failureRate: 1 },
+        [msg("q", "dlq", { dlq: true, filter }), msg("shop", "api")],
+        [dlq, node("shop", "client.browser", { messageType: "OrderPlaced" })],
+      );
+    const none = runChecks(typed([])).findings.find((f) => f.rule === "dead-letter")!;
+    expect(none).toMatchObject({ severity: "warning", elements: ["q", "worker", "q-dlq"] });
+    expect(none.message).toContain("orders's dead-letter route doesn't take “OrderPlaced”");
+    expect(none.fix).toEqual({
+      label: "Send every failed message to orders DLQ",
+      ops: [{ op: "update", target: "q-dlq", props: { filter: null } }],
+    });
+    expect(ids(typed(["Other*"]), "dead-letter")).toEqual(["warning:q"]);
+    expect(ids(typed(["Order*"]), "dead-letter")).toEqual([]);
+    // With no known traffic, a filter that takes nothing still takes nothing.
+    const unknown = queue({ failureRate: 1 }, [msg("q", "dlq", { dlq: true, filter: [] })], [dlq]);
+    expect(runChecks(unknown).findings[0].message).toContain("doesn't take any message");
+    // Only the first dead-letter route is used: a second one catches nothing.
+    const second = node("dlq2", "azure.service-bus.queue", undefined, "orders DLQ 2");
+    const d = queue(
+      { failureRate: 1 },
+      [msg("q", "dlq", { dlq: true, filter: [] }), msg("q", "dlq2", { dlq: true })],
+      [dlq, second],
+    );
+    expect(ids(d, "dead-letter")).toEqual(["warning:q"]);
   });
 
   it("topics and streams without failure evidence don't fire: projections replay from the log", () => {
@@ -135,6 +169,32 @@ describe("dead-letter", () => {
     });
     expect(of("rabbitmq.exchange")).toMatchObject({ kind: "rabbitmq.queue", label: "orders.dlq" });
     expect(of("azure.event-hubs")).toMatchObject({ kind: "generic.queue", label: "orders DLQ" });
+  });
+
+  it.each([
+    "azure.service-bus.queue",
+    "aws.sqs",
+    "kafka.topic",
+    "rabbitmq.queue",
+    "gcp.pubsub",
+    "pulsar.topic",
+    "azure.event-hubs",
+  ])("the fix for a %s with a 200-character name is a valid edit", (stencil) => {
+    const d = diagram(
+      [
+        node("api", "service.node"),
+        node("q", stencil, { maxDeliveryCount: 2 }, "n".repeat(200)),
+        node("w", "service.go", { failureRate: 1 }),
+      ],
+      [msg("api", "q"), msg("q", "w")],
+    );
+    const finding = runChecks(d).findings.find((f) => f.id === "dead-letter:q")!;
+    const add = finding.fix!.ops![0] as { label: string };
+    expect(add.label.length).toBeLessThanOrEqual(200);
+    expect(add.label).toMatch(/n(-dlq|\.dlq| DLQ|-DLQ)$/);
+    const applied = applyOps(d, finding.fix!.ops!);
+    expect(applied.errors).toEqual([]);
+    expect(runChecks(applied.diagram).findings.map((f) => f.id)).not.toContain("dead-letter:q");
   });
 });
 

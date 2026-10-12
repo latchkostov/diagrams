@@ -6,7 +6,10 @@ import type { CheckRule, Finding } from "../types";
 // on the loop, and timeouts and retries multiply around it. Strongly connected components over request
 // (sync) flows only; messages and dependencies don't count.
 
-/** Strongly connected components (Tarjan, iterative: linear time, no recursion depth). */
+/**
+ * Strongly connected components (Tarjan, iterative: no recursion depth). Linear: each node's targets come from
+ * `next` once, when the search first meets it, and are walked from the frame after that.
+ */
 export function stronglyConnected(ids: readonly string[], next: (id: string) => readonly string[]): string[][] {
   const index = new Map<string, number>();
   const low = new Map<string, number>();
@@ -16,14 +19,14 @@ export function stronglyConnected(ids: readonly string[], next: (id: string) => 
   let counter = 0;
   for (const root of ids) {
     if (index.has(root)) continue;
-    const work: { id: string; i: number }[] = [{ id: root, i: 0 }];
+    const work: { id: string; i: number; targets: readonly string[] }[] = [{ id: root, i: 0, targets: next(root) }];
     index.set(root, counter);
     low.set(root, counter++);
     stack.push(root);
     onStack.add(root);
     while (work.length) {
       const frame = work[work.length - 1];
-      const targets = next(frame.id);
+      const targets = frame.targets;
       if (frame.i < targets.length) {
         const to = targets[frame.i++];
         if (!index.has(to)) {
@@ -31,7 +34,7 @@ export function stronglyConnected(ids: readonly string[], next: (id: string) => 
           low.set(to, counter++);
           stack.push(to);
           onStack.add(to);
-          work.push({ id: to, i: 0 });
+          work.push({ id: to, i: 0, targets: next(to) });
         } else if (onStack.has(to)) low.set(frame.id, Math.min(low.get(frame.id)!, index.get(to)!));
         continue;
       }
@@ -99,7 +102,10 @@ export const syncCycle: CheckRule = {
     const diagramOrder = new Map(ids.map((id, i) => [id, i]));
     const findings: Finding[] = [];
     const edgeOrder = new Map(ctx.diagram.edges.map((e, i) => [e.id, i]));
-    for (const found of stronglyConnected(ids, (id) => (out.get(id) ?? []).map((e) => e.to))) {
+    // Adjacency built once: every edge is mapped and walked once.
+    const targets = new Map([...out].map(([id, edges]) => [id, edges.map((e) => e.to)]));
+    const none: readonly string[] = [];
+    for (const found of stronglyConnected(ids, (id) => targets.get(id) ?? none)) {
       // Diagram order, so the finding reads the same however the search met them.
       const component = found.sort((a, b) => diagramOrder.get(a)! - diagramOrder.get(b)!);
       const members = new Set(component);

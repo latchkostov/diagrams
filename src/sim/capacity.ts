@@ -28,6 +28,8 @@ export interface NodeCapacity {
 export interface CapacityAnalysis {
   nodes: Record<string, NodeCapacity>;
   bottleneck?: NodeCapacity;
+  /** The message types offered at each node (rate above zero). */
+  offeredTypes: Record<string, string[]>;
   suggestion: string;
   /** False for an amplifying/unbounded cycle or when the iteration/rate cap is reached. */
   converged: boolean;
@@ -360,5 +362,7 @@ export function analyzeCapacity(
     } else suggestion = `${bottleneck.label}: reduce latency or increase downstream consumer capacity.`;
   }
   if (!converged) suggestion += " Cycle demand did not converge; inspect feedback routes.";
-  return { nodes, bottleneck, suggestion, converged, iterations };
+  const offeredTypes: Record<string, string[]> = Object.create(null);
+  for (const [id, types] of rates) offeredTypes[id] = [...types].filter(([, rate]) => rate > 0).map(([type]) => type);
+  return { nodes, bottleneck, offeredTypes, suggestion, converged, iterations };
 }

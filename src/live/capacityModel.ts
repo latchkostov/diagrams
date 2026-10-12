@@ -12,7 +12,7 @@ import type { NodeStatus } from "../sim/types";
 import { resolveProps } from "../sim/defaults";
 import { autoScale, peakRate } from "../sim/scale";
 import { trafficWindow } from "../sim/simulation";
-import { allocateGroupReplicas, compileTopology } from "../sim/topology";
+import { planningSimulation, sizingFix, sourceTraffic, withSizing } from "../sim/capacityPlanning";
 import { resolveMultiplier, resolveScale } from "../sim/units";
 import { formatCount, formatRate } from "./format";
 
@@ -160,11 +160,7 @@ export function freePlaySimulation(d: DiagramFile, inputs: LiveInputs): Simulati
   return {
     id: "free-play",
     title: "Free play",
-    traffic: sourceIds(d).map((id) => ({
-      id: `src-${id}`,
-      node: id,
-      shape: { kind: "constant", ratePerSec: freeRate(d, id, inputs), durationMs: 60_000 },
-    })),
+    traffic: sourceTraffic(d, (n) => freeRate(d, n.id, inputs)),
     setup: { props: mergeProps(undefined, inputs.props) },
     multipliers: { traffic: inputs.traffic ?? 1, capacity: inputs.capacity ?? 1 },
     scale: inputs.scale,
@@ -281,19 +277,8 @@ function nodeText(n: NodeCapacity, status?: NodeHeat["status"]): string {
   return `${formatUtilization(n.utilization)} · ${formatRate(n.offered)} of ${formatRate(n.capacity)}`;
 }
 
-/** Analysis copy where gateways and stores are unlimited, as they are in playback. */
-export function planningSimulation(d: DiagramFile, sim: Simulation): Simulation {
-  const props = structuredClone(sim.setup?.props ?? {});
-  for (const n of d.nodes) {
-    const role = roleOf(n);
-    if (role === "gateway" || role === "store") props[n.id] = { ...props[n.id], latencyMs: 0 };
-  }
-  return { ...sim, setup: { ...sim.setup, props } };
-}
-
-/** Utilization above this gets a fix; fixes aim for this much headroom (lands in green). */
-const FIX_ABOVE = 0.9;
-const FIX_TARGET = 0.55;
+// Planning (gateways and stores unlimited) and the fix's sizing are shared with the capacity check.
+export { planningSimulation } from "../sim/capacityPlanning";
 
 const rank = (order: Map<string, number>) => (a: NodeHeat, b: NodeHeat) =>
   (b.utilization === a.utilization ? 0 : b.utilization > a.utilization ? 1 : -1) ||
@@ -311,7 +296,8 @@ export function rankedNodes(d: DiagramFile, nodes: Record<string, NodeHeat>): No
 /**
  * The one-click fix: raise replicas on every service at ≥ 90% so it lands around 55%, and raise a
  * topic's partitions when its consumer group needs more of them (including idle replicas on the
- * top bottleneck). Values are base props (before Capacity ×), ready to save.
+ * top bottleneck). Values are base props (before Capacity ×), ready to save. The sizing is shared with
+ * the capacity check (src/sim/capacityPlanning.ts).
  */
 export function computeFix(
   d: DiagramFile,
@@ -320,60 +306,15 @@ export function computeFix(
   top?: NodeHeat,
   status?: RunStatus,
 ) {
-  const m = resolveMultiplier(sim.multipliers?.capacity);
-  const byId = new Map(d.nodes.map((n) => [n.id, n]));
-  const effective = new Map<string, number>();
-  const changes: FixChange[] = [];
-  const ranked = rankedNodes(d, nodes);
-  for (const n of ranked) {
-    if (n.role !== "processor" || !Number.isFinite(n.utilization) || n.utilization < FIX_ABOVE || !n.capacity) continue;
-    const active = Math.max(1, n.activeReplicas);
-    const wanted = Math.max(n.replicas, Math.ceil((active * n.utilization) / FIX_TARGET));
-    effective.set(n.id, wanted);
-    const node = byId.get(n.id)!;
-    const from = baseProps(node, sim).replicas;
-    const to = Math.min(LIMITS.maxRatePerSec, Math.max(from, Math.ceil(wanted / Math.max(m, 1e-9))));
-    if (to > from) changes.push({ nodeId: n.id, label: n.label, key: "replicas", from, to });
-  }
   const busy = top && (top.level === "warn" || top.level === "hot" || top.level === "over");
-  const needsPartitions = (id: string) => effective.has(id) || (busy && top.id === id && top.idleReplicas > 0);
-  for (const [brokerId, groups] of compileTopology(d).groups) {
-    const broker = byId.get(brokerId)!;
-    if (!PARTITIONED.has(roleOf(broker))) continue;
-    const from = baseProps(broker, sim).partitions;
-    let to = from;
-    for (const group of groups) {
-      if (!group.members.some(needsPartitions)) continue;
-      const members = group.members.map((id) => ({
-        id,
-        role: roleOf(byId.get(id)!),
-        replicas: effective.get(id) ?? nodes[id]?.replicas ?? 1,
-      }));
-      const sufficient = (partitions: number) => {
-        const allocated = allocateGroupReplicas(roleOf(broker), partitions, members);
-        return members.every(
-          (member) => !needsPartitions(member.id) || (allocated.get(member.id) ?? 0) >= member.replicas,
-        );
-      };
-      // Nonprocessor members can consume a partition budget too. Search using the same allocator
-      // as playback, with an explicit bound rather than reconstructing processor-only groups.
-      let high = Math.max(from, 1);
-      while (high < LIMITS.maxRatePerSec && !sufficient(high)) high = Math.min(LIMITS.maxRatePerSec, high * 2);
-      if (!sufficient(high)) continue;
-      let low = from;
-      while (low < high) {
-        const mid = Math.floor((low + high) / 2);
-        if (sufficient(mid)) high = mid;
-        else low = mid + 1;
-      }
-      to = Math.max(to, high);
-    }
-    if (to > from) changes.push({ nodeId: brokerId, label: broker.label, key: "partitions", from, to });
-  }
-  if (!changes.length) return null;
-  const prospective = withFix(sim, { changes, label: "" });
-  const verified = analyzeCapacity(d, planningSimulation(d, prospective), { status });
-  if ([...effective.keys()].some((id) => verified.nodes[id].utilization > FIX_TARGET + 1e-9)) return null;
+  const sized = sizingFix(d, sim, rankedNodes(d, nodes), {
+    idle: busy && top.idleReplicas > 0 ? top.id : undefined,
+    status,
+    maxCount: LIMITS.maxRatePerSec,
+  });
+  if (!sized) return null;
+  const byId = new Map(d.nodes.map((n) => [n.id, n]));
+  const changes: FixChange[] = sized.map((c) => ({ ...c, label: byId.get(c.nodeId)!.label }));
   const phrase = (c: FixChange) => `${c.label} ${c.from} → ${c.to} ${c.key}`;
   const label =
     changes.length <= 2
@@ -467,11 +408,7 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
 
 /** Applies a fix to saved setup props (simulation) — returns a new simulation. */
 export function withFix(sim: Simulation, fix: CapacityFix): Simulation {
-  const next = structuredClone(sim);
-  const props = (next.setup ??= {}).props ?? {};
-  for (const c of fix.changes) props[c.nodeId] = { ...props[c.nodeId], [c.key]: c.to };
-  next.setup.props = props;
-  return next;
+  return withSizing(sim, fix.changes);
 }
 
 /** Drops the overrides a fix replaces, so the fix shows through. */

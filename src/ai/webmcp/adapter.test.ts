@@ -284,4 +284,31 @@ describe("tools", () => {
     expect(out.summary).toBe("40 warnings, 0 suggestions.");
     expect(out.more).toMatch(/more findings omitted/);
   });
+
+  it("check_diagram bounds a single large cycle finding", async () => {
+    const { host, editor } = fakeHost();
+    const n = 150;
+    const nodes: DiagramFile["nodes"] = Array.from({ length: n }, (_, i) => ({
+      id: `s${i}`,
+      stencil: "service.go",
+      label: `Service ${i} ${"x".repeat(500)}`,
+      x: i * 300,
+      y: 0,
+    }));
+    const edges: DiagramFile["edges"] = nodes.map((node, i) => ({
+      id: `e${i}`,
+      from: node.id,
+      to: nodes[(i + 1) % n].id,
+      kind: "sync",
+    }));
+    (editor as { getDiagram: () => DiagramFile }).getDiagram = () => ({ ...diagram(), nodes, edges });
+    const check = toModelContextTool(buildTools(host).find((t) => t.name === "check_diagram")!);
+    const text = (await check.execute({})).content[0].text;
+    expect(text.length).toBeLessThanOrEqual(1500);
+    const [finding] = JSON.parse(text).findings;
+    expect(finding).toMatchObject({
+      id: "sync-cycle:s0",
+      fix: { ops: [{ op: "update", target: "e149", kind: "async" }] },
+    });
+  });
 });

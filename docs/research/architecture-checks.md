@@ -194,8 +194,12 @@ Next batch (both asked for, and both need a little more model first):
   ([Microsoft][sb-dlq]). On Kafka the pattern is consumer-side: retry topics and a DLT (Spring's `@RetryableTopic`,
   Kafka Connect's `errors.deadletterqueue.topic.name`), and retry topics give up ordering ([Confluent][cf-err],
   [Spring][spring-rt]).
-- **Detects.** A broker (queue, topic or stream) with ordinary routes to processors, no DLQ route out of it or out
-  of those consumers (`compileTopology`'s `dlq` edges), and not itself a DLQ target.
+- **Detects.** A broker (queue, topic or stream) with ordinary routes to processors, no **effective** DLQ route,
+  and not itself a DLQ target. Effective is what playback does (`deadLetterRoutes` in `src/sim/topology.ts`, used by
+  the engine and the check): a message that runs out of deliveries takes the broker's first dead-letter route if
+  that route's filter accepts its type, and is dropped otherwise, whether the consumer requeues or retries in place.
+  A consumer's own dead-letter edge catches none of them. (Built in batch 1; the plan had counted consumer-side
+  routes too, which hid real loss.)
   - **Warning** when a consumer can fail in this diagram: `failureRate > 0`, or a saved simulation's setup or
     timeline sets a failure rate or takes it down.
   - **Suggestion** for a queue without that evidence: a command queue is where losing messages hurts most.
@@ -402,7 +406,7 @@ recount the numbers below.
 | `capacity`    | 1        | 1         | 100%      | 1 of 1 (100%)     | –             | Stays a Warning.                                                                            |
 | **All**       | **12**   | **10**    | **83%**   | **2 of 2 (100%)** | 8 of 10 (80%) |                                                                                             |
 
-**What the gate changed**
+**What the gate changed** (the review round in batch 1 re-ran it: the same 12 findings and verdicts)
 
 - `dead-letter`: a consumer that's down or paused is no longer failure evidence; only a failure rate is (on the node,
   or set by a saved simulation's setup or timeline). That removed the Kafka warning above: the rule went from 7 of 9
@@ -414,6 +418,12 @@ recount the numbers below.
   tiers, which is the demotion the gate asks for. Nothing in the model tells their misses from their hits (an email
   queue and a push queue look the same, and the Service Bus DLQ's handling is only in free text), so tightening
   further would cost true findings. **Ignore here** (with a reason) and **Turn off this check** cover them.
+- `dead-letter` after review: only an **effective** broker route suppresses it (see Detects above). A consumer's own
+  dead-letter edge no longer hides loss, and a broker route whose filter misses the failing types counts as no route
+  (its fix lets the route take every failed message). No example has either shape, so the table didn't change; unit
+  tests assert loss in a seeded run for each case.
+- `capacity` after review: planning and the fix are one shared module, `src/sim/capacityPlanning.ts`, used by live
+  view's Show capacity and by the check, so the two can't drift. The finding and its fix are unchanged.
 - Every Warning is at 100%. Batch 2's count under the title would show 2 warnings across all 16 examples.
 
 ### Agents: `check_diagram` (WebMCP)
@@ -514,9 +524,10 @@ schemas`). _UX gate: chrome budget, keyboard, Esc order, dark theme, 1280×800, 
   it. We have no telemetry, so this rests on the owner's own use and on issues people file.
 - **Fixes that surprise.** A fix adds or changes design. Mitigations: the button names the change, it's one undo
   step, the toast says what changed, and nothing is ever applied without a click.
-- **Rules drifting from the simulation.** Mitigation: they share `compileTopology`, `isDlqEdge` and
-  `analyzeCapacity`. A unit test asserts that `dead-letter`'s warning cases are exactly the cases where a seeded
-  run drops messages.
+- **Rules drifting from the simulation.** Mitigation: they share `compileTopology`, `isDlqEdge`, `deadLetterRoutes`,
+  `analyzeCapacity` and `capacityPlanning`. Unit tests (`src/checks/fixes.test.ts`) assert that `dead-letter` warns
+  exactly when a seeded run drops messages: no route, retry in place, a consumer-side route, a filter that takes
+  nothing (all lose messages and warn), the fix and a consumer that goes down (no loss, no warning).
 - **Boundary meaning is ambiguous** (network vs ownership). `shared-database` only fires when the store's boundary
   holds its owner. A future "Boundary kind" field could sharpen it; not proposed now.
 - **Performance on big diagrams.** Linear rules, idle-time runs, and on-open-only above 1,500 nodes. Measured in

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
-import { CHECK_LIMITS } from "../model/checks";
+import { CHECK_LIMITS, sanitizeChecks } from "../model/checks";
+import { perfBudget } from "../test/perfBudget";
 import { toFlow, fromFlow } from "../canvas/convert";
 import { importText } from "./formats";
 import { diagramToDrawio } from "./drawio/write";
@@ -108,5 +109,33 @@ describe("checks validation", () => {
     const r = validate({ off });
     expect(r.ok && r.diagram.checks?.off).toHaveLength(CHECK_LIMITS.maxOff);
     expect(r.ok && r.warnings[0]).toMatch(/Only the first 100 turned-off checks/);
+  });
+
+  it("reads only the first entries, so a hostile list costs no more than a full one", () => {
+    const many = 80_000;
+    const ids = new Set(["queue"]);
+    const hostile = {
+      off: Array.from({ length: many }, (_, i) => `rule-${i}`),
+      ignore: Array.from({ length: many }, (_, i) => ({ rule: `rule-${i % 7}`, target: "queue", reason: "x" })),
+    };
+    const repeated = { off: Array(many).fill("capacity"), ignore: Array(many).fill(checks.ignore[0]) };
+    const longReason = { ignore: [{ rule: "dead-letter", target: "queue", reason: " ".repeat(1_000_000) + "why" }] };
+    for (const input of [hostile, repeated, longReason]) {
+      const warnings: string[] = [];
+      const start = performance.now();
+      const out = sanitizeChecks(input, ids, warnings);
+      expect(performance.now() - start).toBeLessThan(perfBudget(50));
+      expect(out?.off?.length ?? 0).toBeLessThanOrEqual(CHECK_LIMITS.maxOff);
+      expect(out?.ignore?.length ?? 0).toBeLessThanOrEqual(CHECK_LIMITS.maxIgnores);
+    }
+    const warnings: string[] = [];
+    expect(sanitizeChecks(hostile, ids, warnings)).toEqual({
+      off: hostile.off.slice(0, CHECK_LIMITS.maxOff),
+      ignore: Array.from({ length: 7 }, (_, i) => ({ rule: `rule-${i}`, target: "queue", reason: "x" })),
+    });
+    expect(warnings).toEqual(["Only the first 100 turned-off checks and 2000 ignored findings were read."]);
+    expect(sanitizeChecks(repeated, ids, [])).toEqual({ off: ["capacity"], ignore: [checks.ignore[0]] });
+    // A reason of spaces doesn't survive as one.
+    expect(sanitizeChecks(longReason, ids, [])).toEqual({ ignore: [{ rule: "dead-letter", target: "queue" }] });
   });
 });

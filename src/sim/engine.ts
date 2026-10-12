@@ -5,7 +5,13 @@ import { resolveProps, type ResolvedProps } from "./defaults";
 import { Deque } from "./deque";
 import { createLineage, type Family } from "./lineage";
 import { mulberry32 } from "./rng";
-import { acceptsType, allocateGroupReplicas, compileTopology, type CompiledTopology } from "./topology";
+import {
+  acceptsType,
+  allocateGroupReplicas,
+  compileTopology,
+  deadLetterRoutes,
+  type CompiledTopology,
+} from "./topology";
 import { resolveScale, resolveMultiplier } from "./units";
 import type {
   EngineOptions,
@@ -859,14 +865,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         });
       }
       const edgeById = new Map<string, Edge>();
+      const deadLetter = deadLetterRoutes(compiled);
       for (const input of compiled.edges) {
         const from = nodes.get(input.from)!,
           to = nodes.get(input.to)!;
         const edge: Edge = { ...input, from, to, delivered: 0, active: 0 };
         edges.push(edge);
         edgeById.set(edge.id, edge);
-        if (edge.dlq) from.dlq ??= edge;
-        else from.outgoing.push(edge);
+        // The route the dead-letter check reads as effective (deadLetterRoutes, topology.ts).
+        if (deadLetter.get(from.id) === input) from.dlq = edge;
+        else if (!edge.dlq) from.outgoing.push(edge);
       }
       for (const [id, groups] of compiled.groups) {
         const node = nodes.get(id)!;
