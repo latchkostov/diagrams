@@ -16,6 +16,7 @@ import { RefIndex, ReplyRefs, refWords, type NewNodeAlias } from "../refs";
 import type { ScopeItem } from "../ui/context";
 import { incompleteness, inRequest, kindFor, leakedName, reconcileKinds } from "./replyChecks";
 import { relationFlow, requestRelations } from "./requestRelations";
+import { fillEdits } from "./requestEdits";
 
 /** At most this many ops per reply (checked in code: hard limits in a schema make small models odd). */
 export const MAX_OPS = 6;
@@ -91,7 +92,7 @@ export function toOps(reply: string, ctx: ReplyContext): Result {
   }
 }
 
-function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
+function convert(reply: CompactOp[], ctx: ReplyContext): DiagramOp[] {
   const { diagram } = ctx;
   const request = ctx.request ?? "";
   const index = new RefIndex(diagram);
@@ -99,6 +100,11 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
   const selected = ctx.scope?.length === 1 && ctx.scope[0].kind === "node" ? ctx.scope[0] : undefined;
   /** "this" as a rename, kind change or remove target: whatever is selected (a node, connection or boundary). */
   const selectedAny = ctx.scope?.length === 1 ? ctx.scope[0] : undefined;
+  // A rename's label or a kind change's kind the reply left out, from the request's own words ("Rename X
+  // to Y", "Make X a Y"), and an empty duplicate of a change dropped.
+  const raw = fillEdits(reply, request, (name) =>
+    THIS.test(name.trim()) ? selectedAny?.id : refs.existingId(name.trim()),
+  );
 
   // First pass: the nodes this reply adds. Their keys can't be an element id, and a key the model
   // wrote mustn't name an existing element or another new node.
@@ -191,6 +197,12 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
     added.push({ op: "add_node", kind: r, label: r, key });
     return key;
   };
+  /** "this" (or "it", "the selection"…) with nothing selected, no new node so named, and not in the request. */
+  const strayThis = (r: string) =>
+    !selectedAny &&
+    THIS.test(r) &&
+    !refs.strict(r) &&
+    !new RegExp(`(?:^|[^a-z0-9])${r.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:$|[^a-z0-9])`, "i").test(request);
   const edgeRef = (r: string) => {
     const parts = r.split("->");
     return parts.length === 2 ? `${ref(parts[0].trim())} -> ${ref(parts[1].trim())}` : ref(r);
@@ -220,6 +232,10 @@ function convert(raw: CompactOp[], ctx: ReplyContext): DiagramOp[] {
         break;
       case "connect": {
         if (!from || !to) throw new ReplyError(`${at} needs "from" and "to".`);
+        // "this" with nothing selected, in a request that never says it: nothing is meant (run 4 connected
+        // a webhook to "this"). The connection goes; whatever it left unconnected, the completeness check
+        // asks for.
+        if (strayThis(from) || strayThis(to)) break;
         const [a, b] = [endpoint(from), endpoint(to)];
         if (a === b)
           throw new ReplyError("A connection can't start and end at the same node; add the missing component first.");
@@ -327,16 +343,21 @@ function roleOf(ref: string, refs: ReplyRefs, diagram: DiagramFile): SimRole | u
 
 /**
  * A connection the request describes, drawn against the way its data flows, is turned, and only that
- * one: when the reply has exactly that pair reversed and not the right way. The way comes from the
- * shared, role-aware relation semantics, so a service "reading from Postgres" still calls it.
+ * one: when the reply has exactly that pair reversed and not the right way. Drawn both ways, the reversed
+ * one is dropped, unless the request describes that way too. The way comes from the shared, role-aware
+ * relation semantics, so a service "reading from Postgres" still calls it.
  */
 export function flipDescribed(ops: DiagramOp[], request: string, refs: ReplyRefs, diagram: DiagramFile) {
   const id = (r: string) => refs.existingId(r) ?? r;
   const connects = ops.filter((o): o is Connect => o.op === "connect");
-  for (const pair of describedPairs(request, refs, diagram)) {
+  const pairs = describedPairs(request, refs, diagram);
+  for (const pair of pairs) {
     const wrong = connects.filter((c) => id(c.from) === pair.to && id(c.to) === pair.from);
     const right = connects.some((c) => id(c.from) === pair.from && id(c.to) === pair.to);
     if (wrong.length === 1 && !right) [wrong[0].from, wrong[0].to] = [wrong[0].to, wrong[0].from];
+    // Drawn both ways, where the request describes one way only: the reversed one goes.
+    else if (wrong.length && right && !pairs.some((p) => p.from === pair.to && p.to === pair.from))
+      for (const w of wrong) if (ops.includes(w)) ops.splice(ops.indexOf(w), 1);
   }
 }
 

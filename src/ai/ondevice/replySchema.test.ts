@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import kafka from "../../examples/kafka-order-pipeline.json";
 import { checkJsonSchema } from "../../model/jsonSchema";
-import { ENUM_BUDGET, elementNames, KEY_PATTERN, replySchema } from "./replySchema";
+import { ENUM_BUDGET, elementNames, KEY_PATTERN, KEY_PATTERN_NOT_THIS, replySchema } from "./replySchema";
 
 const KAFKA = kafka as unknown as DiagramFile;
 const EMPTY: DiagramFile = { format: "diagrams/v1", title: "t", nodes: [], edges: [] };
@@ -53,6 +53,62 @@ describe("the reply schema for one request", () => {
     const empty = replySchema(EMPTY, "A browser calls a Node.js API");
     expect(valid(empty, reply({ op: "connect", from: "web", to: "api" }))).toBe(true);
     expect(valid(empty, reply({ op: "connect", from: "Web Browser", to: "api" }))).toBe(false);
+  });
+
+  it("typed: each op type requires its own fields (run 4's rename with no label, kind change with no kind)", () => {
+    const change = replySchema(KAFKA, "Make Orders database a MongoDB");
+    expect(valid(schema, reply({ op: "rename", target: "Payments service" }))).toBe(false);
+    expect(valid(schema, reply({ op: "rename", target: "Payments service", label: "" }))).toBe(false);
+    expect(valid(change, reply({ op: "change_kind", target: "Orders database" }))).toBe(false);
+    expect(
+      valid(
+        change,
+        reply({ op: "change_kind", target: "Orders database" }, { op: "rename", target: "Orders database" }),
+      ),
+    ).toBe(false);
+    expect(valid(change, reply({ op: "change_kind", target: "Orders database", kind: "MongoDB" }))).toBe(true);
+    // Other ops' fields don't fit: a rename carries no kind, a connect no target.
+    expect(valid(schema, reply({ op: "rename", target: "Payments service", label: "B", kind: "x" }))).toBe(false);
+    expect(valid(schema, reply({ op: "connect", from: "Payments service", target: "x" }))).toBe(false);
+    expect(valid(schema, reply({ op: "add", key: "q", kind: "queue" }))).toBe(false);
+    expect(
+      valid(
+        schema,
+        reply({
+          op: "insert_between",
+          key: "c",
+          kind: "Redis",
+          label: "c",
+          from: "Order service",
+          to: "Orders database",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      valid(schema, reply({ op: "insert_between", key: "c", kind: "Redis", label: "c", from: "Order service" })),
+    ).toBe(false);
+    expect(valid(schema, reply({ op: "remove", target: "Notification dedupe" }))).toBe(true);
+    // The rich tier, round 3's, still takes a bare op (the code's checks and fills are behind it).
+    expect(valid(replySchema(KAFKA, "x", [], "rich"), reply({ op: "rename", target: "Payments service" }))).toBe(true);
+  });
+
+  it('typed: with nothing selected, "this" is no name and no key; with a node selected it is the selection', () => {
+    const notThis = new RegExp(KEY_PATTERN_NOT_THIS);
+    for (const k of ["this"]) expect(notThis.test(k), k).toBe(false);
+    for (const k of ["t", "th", "thi", "thing", "thin", "tab", "this-queue", "thisx", "webhook", "a", "z9_-"])
+      expect(notThis.test(k), k).toBe(true);
+    expect(notThis.test("x".repeat(30))).toBe(true);
+    expect(notThis.test("x".repeat(31))).toBe(false);
+    expect(notThis.test(`this${"x".repeat(26)}`)).toBe(true);
+    const empty = replySchema(EMPTY, "An external partner sends a webhook");
+    expect(valid(empty, reply({ op: "connect", from: "webhook", to: "this" }))).toBe(false);
+    expect(valid(empty, reply({ op: "connect", from: "partner", to: "webhook" }))).toBe(true);
+    const kafka = replySchema(KAFKA, "Connect Payments service to Commerce metrics");
+    expect(valid(kafka, reply({ op: "connect", from: "Payments service", to: "this" }))).toBe(false);
+    const selected = replySchema(KAFKA, "Add a retry queue after this", [
+      { id: "payments", label: "Payments service", kind: "node" },
+    ]);
+    expect(valid(selected, reply({ op: "connect", from: "this", to: "retry" }))).toBe(true);
   });
 
   it("the enums tier drops anyOf and patterns; the plain tier is bounded strings only", () => {

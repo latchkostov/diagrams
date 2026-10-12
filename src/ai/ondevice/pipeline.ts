@@ -41,12 +41,13 @@ export const REPLY_SCHEMA = replySchema(
 };
 
 /**
- * The schema tier this browser accepts, learned per page: "rich" (enums, anyOf, patterns) until a
- * NotSupportedError says otherwise, then "enums", then "plain".
+ * The schema tier this browser accepts, learned per page: "typed" (each op type requiring its fields,
+ * enums, anyOf, patterns) until a NotSupportedError says otherwise, then "rich" (round 3's schema),
+ * "enums" and "plain".
  */
-let schemaTier: SchemaTier = "rich";
+let schemaTier: SchemaTier = "typed";
 /** For tests: start again from the richest tier. */
-export function resetSchemaTier(tier: SchemaTier = "rich") {
+export function resetSchemaTier(tier: SchemaTier = "typed") {
   schemaTier = tier;
 }
 export const currentSchemaTier = () => schemaTier;

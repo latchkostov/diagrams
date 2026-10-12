@@ -255,7 +255,8 @@ diagramEvals.push({
       ],
       expected: {
         nodes: [
-          { label: "Orders", stencil: "kafka.topic" },
+          // "Publish an event" names no broker: any topic, queue or stream passes.
+          { label: "Orders", stencil: "kafka.topic", accept: ["role:topic", "role:queue", "role:stream"] },
           // "billing and shipping consumers" names no language: any processor passes.
           { label: "Billing", stencil: "service.dotnet", accept: ["role:processor"] },
           { label: "Shipping", stencil: "service.python", accept: ["role:processor"] },

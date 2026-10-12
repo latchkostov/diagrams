@@ -894,3 +894,137 @@ describe("round 3 review: reconciliation leaves updates alone and knows identiti
     expect(node("shipping")?.stencil).toBe("service.java");
   });
 });
+
+describe("round 4: filled from the request, generic kinds, stray selections, pairing by label", () => {
+  const node = (d: DiagramFile, id: string) => d.nodes.find((n) => n.id === id);
+
+  it("edit-rename: a rename with no label takes the one the request gives", () => {
+    const { diagram } = apply(KAFKA, [{ op: "rename", target: "Payments service" }], {
+      request: "Rename Payments service to Billing service",
+    });
+    expect(node(diagram, "payments")?.label).toBe("Billing service");
+  });
+
+  it("edit-change: a kind change with no kind takes the request's, and the empty rename beside it goes", () => {
+    const r = toOps(
+      reply([
+        { op: "change_kind", target: "Orders database" },
+        { op: "rename", target: "Orders database" },
+      ]),
+      { diagram: KAFKA, request: "Make Orders database a MongoDB" },
+    );
+    expect(r).toMatchObject({ ok: true, ops: [{ op: "update", target: "order-db", kind: "MongoDB" }] });
+    if (r.ok) expect(r.ops).toHaveLength(1);
+  });
+
+  it("the wrong one of the two ops, for exactly what the request asks, is the right one", () => {
+    // A rename to the kind "make X a Y" asks for is that kind change (the typed schema makes a rename
+    // carry a label).
+    const kind = apply(KAFKA, [{ op: "rename", target: "Orders database", label: "MongoDB" }], {
+      request: "Make Orders database a MongoDB",
+    });
+    expect(node(kind.diagram, "order-db")).toMatchObject({ label: "Orders database", stencil: "mongodb" });
+    const rename = apply(KAFKA, [{ op: "change_kind", target: "Payments service", kind: "Billing service" }], {
+      request: "Rename Payments service to Billing service",
+    });
+    expect(node(rename.diagram, "payments")).toMatchObject({ label: "Billing service", stencil: "service.go" });
+  });
+
+  it("fills only a missing field, only for the element the request names, and never invents one", () => {
+    // A label the model wrote stays.
+    const kept = apply(KAFKA, [{ op: "rename", target: "Payments service", label: "Billing" }], {
+      request: "Rename Payments service to Billing service",
+    });
+    expect(node(kept.diagram, "payments")?.label).toBe("Billing");
+    // Another element than the request's: still the retry's to fix.
+    expect(
+      error(KAFKA, [{ op: "rename", target: "Inventory service" }], {
+        request: "Rename Payments service to Billing service",
+      }),
+    ).toMatch(/needs "target" and the new "label"/);
+    // "change X to Y" with a Y that names no technology says nothing certain about a kind.
+    expect(
+      error(KAFKA, [{ op: "change_kind", target: "Orders database" }], {
+        request: "Change Orders database to the old one",
+      }),
+    ).toMatch(/needs "target" and "kind"/);
+    // A selected node is "this" on both sides.
+    const sel = apply(KAFKA, [{ op: "change_kind", target: "this" }], {
+      request: "Make this a MongoDB",
+      scope: [{ id: "order-db", label: "Orders database", kind: "node" }],
+    });
+    expect(node(sel.diagram, "order-db")?.stencil).toBe("mongodb");
+  });
+
+  it("create-17: a generic kind loses to a label the request names that resolves confidently", () => {
+    const r = apply(
+      EMPTY,
+      [
+        { op: "add", key: "fd", kind: "Front Door", label: "Front Door" },
+        { op: "add", key: "app", kind: "service", label: "App Service" },
+        { op: "connect", from: "fd", to: "app" },
+      ],
+      { request: "Front Door routes to App Service" },
+    );
+    expect(r.node("App Service")?.stencil).toBe("azure.app-service");
+  });
+
+  it('create-23: "this" with nothing selected, in a request that never says it, is dropped', () => {
+    const partner = { op: "add", key: "partner", kind: "external partner", label: "Partner" };
+    const webhook = { op: "add", key: "webhook", kind: "webhook", label: "Webhook" };
+    const request = "An external partner sends a webhook";
+    const r = apply(
+      EMPTY,
+      [
+        partner,
+        webhook,
+        { op: "connect", from: "partner", to: "webhook" },
+        { op: "connect", from: "webhook", to: "this" },
+      ],
+      { request },
+    );
+    expect(r.edges).toEqual(["Partner -> Webhook"]);
+    // Dropped, it leaves the webhook unconnected: the completeness check asks the retry for it.
+    expect(error(EMPTY, [partner, webhook, { op: "connect", from: "webhook", to: "this" }], { request })).toMatch(
+      /nothing connects/,
+    );
+    // A new node the reply keyed "this" is still that node.
+    const keyed = apply(EMPTY, [{ ...partner, key: "this" }, webhook, { op: "connect", from: "this", to: "webhook" }], {
+      request,
+    });
+    expect(keyed.edges).toEqual(["Partner -> Webhook"]);
+  });
+
+  it("create-24: a Lambda labelled email_service is the service, so the email goes to the unmentioned queue", () => {
+    const r = apply(
+      EMPTY,
+      [
+        { op: "add", key: "email_service", kind: "Lambda", label: "email_service" },
+        { op: "add", key: "message_queue", kind: "SQS queue", label: "message_queue" },
+        { op: "connect", from: "email_service", to: "message_queue" },
+      ],
+      { request: "A service delivers email" },
+    );
+    expect(r.node("email_service")?.stencil).toBe("aws.lambda");
+    expect(r.node("message_queue")?.stencil).toBe("generic.email");
+    expect(r.edges).toEqual(["email_service -> message_queue"]);
+  });
+
+  it("create-10: drawn against the verb, the connection is turned; drawn both ways, the reversed one goes", () => {
+    const nodes = [
+      { op: "add", key: "pubsub", kind: "PubSub", label: "pubsub" },
+      { op: "add", key: "python", kind: "Python", label: "python" },
+    ];
+    const back = { op: "connect", from: "python", to: "pubsub" };
+    const forth = { op: "connect", from: "pubsub", to: "python" };
+    const request = "PubSub feeds Python";
+    expect(apply(EMPTY, [...nodes, back], { request }).edges).toEqual(["pubsub -> python"]);
+    expect(apply(EMPTY, [...nodes, back, forth], { request }).edges).toEqual(["pubsub -> python"]);
+    // Both ways asked for: both stay.
+    expect(
+      apply(EMPTY, [...nodes, back, forth], {
+        request: "PubSub feeds Python and Python publishes to PubSub",
+      }).edges.sort(),
+    ).toEqual(["pubsub -> python", "python -> pubsub"]);
+  });
+});
