@@ -62,6 +62,29 @@ export interface DiagramFile {
    * links, no cloud saves, no AI. Kept in the library's metadata while the diagram is in the browser.
    */
   private?: boolean;
+  /** Architecture checks a person turned off or ignored for this diagram (docs/research/architecture-checks.md). */
+  checks?: DiagramChecks;
+}
+
+// ---------- Architecture checks ----------
+
+/**
+ * What a person decided about this diagram's checks; travels with the file, so a team sees the same
+ * findings. Only people write it: no agent tool does.
+ */
+export interface DiagramChecks {
+  /** Rule ids turned off for this diagram, e.g. "dead-letter". */
+  off?: string[];
+  /** Single findings ignored here: a rule plus the element it's about, with an optional reason. */
+  ignore?: CheckIgnore[];
+}
+
+export interface CheckIgnore {
+  rule: string;
+  /** The finding's target element id (a node or connection). An ignore whose target is gone is dropped. */
+  target: string;
+  /** Why, in a few words ("Projection rebuilds from the log"). At most 200 characters. */
+  reason?: string;
 }
 
 // ---------- Annotations ----------

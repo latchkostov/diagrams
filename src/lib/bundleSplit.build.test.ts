@@ -22,6 +22,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["recording", /[/\\]src[/\\]live[/\\]record[/\\]Recorder\.tsx$/],
   ["slow motion", /[/\\]src[/\\]live[/\\]slowmo[/\\]/],
   ["the simulation engine", /[/\\]src[/\\]sim[/\\]engine\.ts$/],
+  ["the architecture checks", /[/\\]src[/\\]checks[/\\]/],
   ["the AI panel", /[/\\]src[/\\]ai[/\\]ui[/\\]AiPanel\.tsx$/],
   ["the command palette's search", /[/\\]src[/\\]palette[/\\]PaletteDialog\.tsx$/],
   ["the stencil search index", /[/\\]src[/\\]lib[/\\]stencilSearch\.ts$/],

@@ -25,6 +25,7 @@ describe("public/schema", () => {
     expect(ops.required).toEqual(["ops"]);
     expect(Object.keys(ops.$tools)).toEqual([
       "describe_diagram",
+      "check_diagram",
       "find_stencils",
       "edit_diagram",
       "set_simulation",

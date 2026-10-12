@@ -112,7 +112,7 @@ describe("local-only provenance and AI boundary", () => {
     diagram = localOnlyFixture;
     expect(describeForAi(editor, canvas)).toContain("Local-only");
     expect(describeForAi(editor, canvas)).not.toContain("SYNTHETIC_ORCHID_ROUTER");
-    for (const name of ["describe_diagram", "edit_diagram", "set_simulation", "get_share_link"]) {
+    for (const name of ["describe_diagram", "check_diagram", "edit_diagram", "set_simulation", "get_share_link"]) {
       await expect(Promise.resolve().then(() => tools.find((tool) => tool.name === name)!.run({}))).rejects.toThrow(
         "Local-only",
       );

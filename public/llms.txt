@@ -31,9 +31,10 @@ Each change an agent makes appears in the app's **AI panel** (docked beside ever
 
 ## Tools for browsing agents (WebMCP)
 
-In the diagram editor, browsers with WebMCP (`document.modelContext`) get these tools. They exist only while the editor is open; live view offers only `describe_diagram` and `get_share_link`.
+In the diagram editor, browsers with WebMCP (`document.modelContext`) get these tools. They exist only while the editor is open; live view offers only `describe_diagram`, `check_diagram` and `get_share_link`.
 
 - `describe_diagram` (read-only): the current diagram as compact text: ids, kinds, labels, connections, boundaries, simulations. Call it before editing.
+- `check_diagram` (read-only): likely design problems in the current diagram, each with the elements involved and, where there is one, a fix as `edit_diagram` ops. Four checks: `dead-letter` (failed messages are dropped: a broker with consumers and no dead-letter route), `no-reader` (a topic or queue nobody reads), `sync-cycle` (requests that go round in a circle) and `capacity` (a service that can't keep up at the diagram's own rates). Severity is `warning` (likely real) or `suggestion` (worth a look). Input: optional `rules` and `include` ("warnings" or "all"). To fix a finding, send its `fix.ops` to `edit_diagram` as they are; a fix with `needsChoice` needs the person to pick what to add. Findings the person ignored (the file's `checks`) aren't listed, and no tool can ignore one: only the person can.
 - `find_stencils` (read-only): search the stencil catalog.
 - `edit_diagram`: apply a batch of ops in one undo step. `dryRun: true` validates without changing anything; `layout` is "auto", "full" or "none".
 - `set_simulation`: create or replace a simulation in plain units (traffic in messages per second, failures at given seconds, expectations).

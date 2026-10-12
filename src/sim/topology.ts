@@ -139,6 +139,17 @@ export function compileTopology(diagram: DiagramFile, roleOf = stencilRole): Com
   return { edges, outgoing, groups, restricted };
 }
 
+/**
+ * Where each node's exhausted messages go: its first dead-letter route, as playback uses it (a message that runs
+ * out of deliveries travels it when its filter accepts the type, and is dropped otherwise). Only a broker's
+ * route catches failed deliveries; a processor's dead-letter edge is never used for them.
+ */
+export function deadLetterRoutes(compiled: CompiledTopology): Map<string, CompiledEdge> {
+  const routes = new Map<string, CompiledEdge>();
+  for (const edge of compiled.edges) if (edge.dlq && !routes.has(edge.from)) routes.set(edge.from, edge);
+  return routes;
+}
+
 /** Both consumers use the same normalized member budgets and stable assignment policy. */
 export function allocateGroupReplicas(
   role: SimRole,

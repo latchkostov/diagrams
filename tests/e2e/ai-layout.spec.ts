@@ -54,7 +54,7 @@ for (const width of [1024, 1440]) {
     await expect.poll(() => hintFits(page)).toBe(true);
     // An agent's change while the panel is folded: its toast (with Undo) stacks above the hint.
     await page.getByTestId("ai-collapse").click();
-    await expect.poll(async () => (await toolNames(page)).length).toBe(6);
+    await expect.poll(async () => (await toolNames(page)).length).toBe(7);
     await callTool(page, "edit_diagram", { ops: [{ op: "add_node", kind: "Redis cache", label: "cache" }] });
     await expect(page.getByTestId("toast")).toBeVisible();
     await expect.poll(async () => apart(await box(page, "toast"), await box(page, "first-run-hint"))).toBe(true);

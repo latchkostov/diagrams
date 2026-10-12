@@ -1,7 +1,17 @@
 import { nodeSimPropsSchema, edgeSimPropsSchema } from "./simProps";
 import { EDGE_RELATIONS, MAX_SETTINGS, MAX_SETTING_KEY } from "./relations";
+import { CHECK_LIMITS, CHECK_RULE_ID } from "./checks";
 import type { JsonSchema } from "./jsonSchema";
-import type { DiagramAnnotation, DiagramEdge, DiagramFile, DiagramGroup, DiagramNode, Simulation } from "./types";
+import type {
+  CheckIgnore,
+  DiagramChecks,
+  DiagramAnnotation,
+  DiagramEdge,
+  DiagramFile,
+  DiagramGroup,
+  DiagramNode,
+  Simulation,
+} from "./types";
 
 // Every field of the file format, its nodes, edges, boundaries, notes and simulations is listed here:
 // `satisfies Fields<T>` fails typecheck when a type gains a field the schema doesn't describe, and
@@ -52,8 +62,40 @@ function diagramSchema() {
         description:
           "true for a Private diagram: the app keeps it on the device (no share links, no cloud saves, no AI tools) and it stays private when opened again. Agents must not share or upload a file that has it.",
       },
+      checks: { $ref: "#/$defs/Checks" },
     } satisfies Fields<DiagramFile>,
     $defs: {
+      Checks: {
+        type: "object",
+        description:
+          "Architecture checks a person turned off or ignored for this diagram. Only people change it: agents report findings (check_diagram) and fix them, never silence them.",
+        properties: {
+          off: {
+            type: "array",
+            maxItems: CHECK_LIMITS.maxOff,
+            items: { type: "string", pattern: CHECK_RULE_ID.source },
+            description: "Rule ids turned off for this diagram, e.g. 'dead-letter'.",
+          },
+          ignore: {
+            type: "array",
+            maxItems: CHECK_LIMITS.maxIgnores,
+            items: {
+              type: "object",
+              required: ["rule", "target"],
+              properties: {
+                rule: { type: "string", pattern: CHECK_RULE_ID.source },
+                target: {
+                  type: "string",
+                  minLength: 1,
+                  maxLength: CHECK_LIMITS.maxTarget,
+                  description: "The finding's element id. Dropped when that element is removed.",
+                },
+                reason: str(CHECK_LIMITS.maxReason, "Why it's fine here."),
+              } satisfies Fields<CheckIgnore>,
+            },
+          },
+        } satisfies Fields<DiagramChecks>,
+      },
       Node: {
         type: "object",
         required: ["id", "stencil", "label", "x", "y"],

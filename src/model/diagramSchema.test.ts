@@ -116,6 +116,7 @@ const file: Required<DiagramFile> = {
   annotations: [annotation],
   layerOrder: ["shape", "api", "config"],
   private: true,
+  checks: { off: ["capacity"], ignore: [{ rule: "dead-letter", target: "api", reason: "Retries forever" }] },
 };
 
 describe("diagram.v1 schema", () => {
@@ -128,6 +129,18 @@ describe("diagram.v1 schema", () => {
 
   it("covers every field of the file, its nodes, boundaries, notes and simulations", () => {
     expect(() => check(file)).not.toThrow();
+  });
+
+  it("describes checks: rules turned off and findings ignored, bounded", () => {
+    expect(() => check(file.checks, "Checks")).not.toThrow();
+    expect(() => check({ ignore: [{ rule: "dead-letter" }] }, "Checks")).toThrow(/target/);
+    expect(() => check({ off: ["Dead Letter"] }, "Checks")).toThrow(/match/);
+    expect(() => check({ ignore: [{ rule: "capacity", target: "api", reason: "x".repeat(201) }] }, "Checks")).toThrow(
+      /reason/,
+    );
+    expect(() => check({ ignore: [{ rule: "capacity", target: "api", by: "agent" }] }, "Checks")).toThrow(
+      /unknown field by/,
+    );
   });
 
   it("is strict enough to notice a field it doesn't describe", () => {

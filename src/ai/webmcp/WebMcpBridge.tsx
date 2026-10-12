@@ -63,7 +63,7 @@ export default function WebMcpBridge({
   live,
   onNewDiagram,
 }: {
-  /** Live view or presenting: reading and sharing only. */
+  /** Live view or presenting: reading, checking and sharing only. */
   live: boolean;
   onNewDiagram: () => void;
 }) {

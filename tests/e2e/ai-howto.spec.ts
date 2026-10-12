@@ -5,7 +5,15 @@ import { SLUG, callTool, installFakeModelContext, openAiPanel } from "./ai-helpe
 // The idle AI panel answers "how do I use this?": where to type (not here), the ways to use AI, and,
 // with WebMCP, an honest status and the tools the page publishes. Selectors are data-testid only.
 
-const TOOLS = ["describe_diagram", "find_stencils", "edit_diagram", "set_simulation", "new_diagram", "get_share_link"];
+const TOOLS = [
+  "describe_diagram",
+  "check_diagram",
+  "find_stencils",
+  "edit_diagram",
+  "set_simulation",
+  "new_diagram",
+  "get_share_link",
+];
 const clipboard = (page: Page) => page.evaluate(() => navigator.clipboard.readText());
 
 test.beforeEach(async ({ context }) => {
@@ -26,9 +34,9 @@ test.describe("with WebMCP", () => {
   }) => {
     const status = page.getByTestId("ai-agent-status");
     await expect(status).toHaveAttribute("data-available", "1");
-    await expect(status).toHaveAttribute("data-tools", "6");
+    await expect(status).toHaveAttribute("data-tools", "7");
     await expect(page.getByTestId("ai-agent-status-text")).toHaveText(
-      "This page publishes 6 tools for AI agents in this browser (WebMCP).",
+      "This page publishes 7 tools for AI agents in this browser (WebMCP).",
     );
     await expect(page.getByTestId("ai-agent-status-hint")).toHaveText(
       "Your browser's assistant must support WebMCP to use them. Type your request there, not here.",
@@ -60,26 +68,26 @@ test.describe("with WebMCP", () => {
     expect((await callTool(page, "describe_diagram")).text).toContain("Inventory service");
   });
 
-  test("What agents can do here is collapsed, and lists the six tools", async ({ page }) => {
+  test("What agents can do here is collapsed, and lists the seven tools", async ({ page }) => {
     const list = page.getByTestId("ai-tools-list");
     await expect(page.getByTestId("ai-tools")).not.toHaveAttribute("open");
     await expect(list).toBeHidden();
     await page.getByTestId("ai-tools-toggle").click();
     await expect(list).toBeVisible();
     for (const name of TOOLS) await expect(page.getByTestId(`ai-tool-${name}`)).toContainText(name);
-    await expect(list.getByRole("listitem")).toHaveCount(6);
+    await expect(list.getByRole("listitem")).toHaveCount(7);
   });
 
-  test("in live view the status and the list say only reading and sharing are offered", async ({ page }) => {
+  test("in live view the status and the list say only reading, checking and sharing are offered", async ({ page }) => {
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("ai-agent-status-text")).toHaveText(
-      "This page publishes 2 tools for AI agents in this browser (WebMCP).",
+      "This page publishes 3 tools for AI agents in this browser (WebMCP).",
     );
     await expect(page.getByTestId("ai-example-request")).toHaveText(
       "Explain what happens to a message when it reaches Inventory service",
     );
     await page.getByTestId("ai-tools-toggle").click();
-    await expect(page.getByTestId("ai-tools-list").getByRole("listitem")).toHaveCount(2);
+    await expect(page.getByTestId("ai-tools-list").getByRole("listitem")).toHaveCount(3);
   });
 
   test("with a conversation, the how-to folds to one link", async ({ page }) => {

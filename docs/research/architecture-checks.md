@@ -1,6 +1,7 @@
 # Architecture checks: warnings with one-click fixes
 
-Research and plan, October 2026. Nothing here is built yet.
+Research and plan, October 2026. Batch 1 (the engine, four rules and `check_diagram`) is built; its precision
+gate, judged finding by finding on the examples, is in "Batch 1: precision gate" below.
 
 ## Summary
 
@@ -193,8 +194,12 @@ Next batch (both asked for, and both need a little more model first):
   ([Microsoft][sb-dlq]). On Kafka the pattern is consumer-side: retry topics and a DLT (Spring's `@RetryableTopic`,
   Kafka Connect's `errors.deadletterqueue.topic.name`), and retry topics give up ordering ([Confluent][cf-err],
   [Spring][spring-rt]).
-- **Detects.** A broker (queue, topic or stream) with ordinary routes to processors, no DLQ route out of it or out
-  of those consumers (`compileTopology`'s `dlq` edges), and not itself a DLQ target.
+- **Detects.** A broker (queue, topic or stream) with ordinary routes to processors, no **effective** DLQ route,
+  and not itself a DLQ target. Effective is what playback does (`deadLetterRoutes` in `src/sim/topology.ts`, used by
+  the engine and the check): a message that runs out of deliveries takes the broker's first dead-letter route if
+  that route's filter accepts its type, and is dropped otherwise, whether the consumer requeues or retries in place.
+  A consumer's own dead-letter edge catches none of them. (Built in batch 1; the plan had counted consumer-side
+  routes too, which hid real loss.)
   - **Warning** when a consumer can fail in this diagram: `failureRate > 0`, or a saved simulation's setup or
     timeline sets a failure rate or takes it down.
   - **Suggestion** for a queue without that evidence: a command queue is where losing messages hurts most.
@@ -361,11 +366,65 @@ A throwaway script (outside the repo, using the real `compileTopology`, `stencil
 | Single replica cutting entry → end paths          | 14                            | **4** (sync request path, self-hosted only)                                 |
 | Secret without identity                           | 8                             | **1 per diagram** (aggregated), 5 diagrams                                  |
 
-The two dead-letter warnings are real. The Kafka order pipeline's "Payments service goes down" takes a consumer
-down, and the Service Bus example's "Poison invoices" sets the ledger worker's failure rate to 1. In both, there's no
-DLQ route, so the simulation drops the messages that run out of deliveries. The refined rules give 2 to 3 findings on
-a busy example, and none on most. Before shipping, the owner should mark each refined finding on the examples as
-"would fix" or "wouldn't". A rule under 90% "would fix" becomes a Suggestion or goes.
+The prototype took the two dead-letter warnings to be real. Building batch 1 showed only one is: the Kafka order
+pipeline's "Payments service goes down" takes a consumer **down**, and a down consumer loses nothing, in the
+simulation or on Kafka: its group's messages wait on the topic (lag), and the example's own expectations say all 300
+payments arrive. Only a failure rate is evidence now (see below). The rest of the refined numbers held: 7 queue
+suggestions, 3 "dead letters pile up", 0 loops and 1 capacity warning. The refined rules give 1 to 3 findings on a
+busy example, and none on most.
+
+### Batch 1: precision gate
+
+Every finding the four batch 1 rules raise on the 16 public examples (`src/examples/*.json`, top level only),
+judged as a senior architect would: would I change the diagram as the finding asks? The list is pinned by
+`src/checks/examples.test.ts`, so a change to it is a change to this table. To re-judge, change a verdict here and
+recount the numbers below.
+
+| #   | Example                       | Finding (rule: target)              | Severity   | Verdict      | Why                                                                                                                                                                                                                              |
+| --- | ----------------------------- | ----------------------------------- | ---------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | azure-service-bus-integration | `dead-letter`: ledger-posting       | Warning    | Would fix    | "Poison invoices" makes the ledger worker fail every message. Its other input (invoice.commands) has a DLQ drawn; this subscription doesn't, so in the model its poison invoices vanish after 10 deliveries. Show where they go. |
+| 2   | azure-service-bus-integration | `dead-letter`: approval-workflow    | Suggestion | Would fix    | Invoices over 10,000 waiting for approval are the last thing to lose silently. The owner already gave invoice.commands a DLQ for the same reason.                                                                                |
+| 3   | aws-fanout                    | `dead-letter`: order-archive        | Suggestion | Would fix    | SQS to Lambda with no redrive policy: a poison batch retries until retention ends, then the archive has a gap. AWS's guidance gives every Lambda SQS source a DLQ.                                                               |
+| 4   | aws-fanout                    | `dead-letter`: order-receipts       | Suggestion | Would fix    | Its sublabel says "retry limit: 5", which only exists with a redrive policy: the DLQ is implied but not drawn (fulfillment-orders draws its own).                                                                                |
+| 5   | notification-fanout           | `dead-letter`: email                | Suggestion | Would fix    | Shipping emails are customer-facing. A template or SendGrid rejection should land where someone can see and replay it.                                                                                                           |
+| 6   | notification-fanout           | `dead-letter`: sms                  | Suggestion | Would fix    | Twilio rejections (bad numbers, carrier filtering) need a parking place, and the diagram's own "SMS outage" story is about this path.                                                                                            |
+| 7   | notification-fanout           | `dead-letter`: push                 | Suggestion | **Wouldn't** | Push is best-effort. A dead-lettered "your order shipped" push is stale by the time anyone replays it, so dropping is the right policy. Ignore, with that reason.                                                                |
+| 8   | rag-assistant                 | `dead-letter`: Ingest jobs          | Suggestion | Would fix    | A page whose embedding fails drops out of the index silently. A DLQ of failed ingest jobs is how you notice the index drifting.                                                                                                  |
+| 9   | aws-fanout                    | `no-reader`: fulfillment-orders-dlq | Suggestion | Would fix    | Nothing reads or alerts on it. "Redrive after 5 failed receives" says how messages get in, not how they get out. Add the alarm and redrive path.                                                                                 |
+| 10  | azure-service-bus-integration | `no-reader`: invoice.commands DLQ   | Suggestion | **Wouldn't** | The owner already wrote the answer in text: the DLQ says "operator replay" and Integration telemetry says "DLQ alerts". The right edit is a line to that existing node; **Add a reader…** would add a new one.                   |
+| 11  | outbox-saga-checkout          | `no-reader`: payments.commands.dlq  | Suggestion | Would fix    | "Replayable", but nothing replays it. A payment command parked there is a checkout stuck halfway through the saga; someone has to be told.                                                                                       |
+| 12  | iot-telemetry                 | `capacity`: Device state projector  | Warning    | Would fix    | At the diagram's own 2,000 readings/s, one projector (128 at once × 150 ms ≈ 853/s) runs at 234%. Free play shows a red bottleneck the design doesn't mean (Event Hubs triggers scale out per partition). **Set replicas to 5**. |
+| –   | kafka-order-pipeline          | `dead-letter`: orders.created.v1    | Warning    | **Wouldn't** | Raised only before tuning, while "goes down" counted as evidence. A down consumer leaves its messages on the topic (lag, not loss), in the simulation as on Kafka. Removed by tightening; not counted below.                     |
+
+**Numbers, after tightening**
+
+| Rule          | Findings | Would fix | Precision | Warnings          | Suggestions   | Outcome                                                                                     |
+| ------------- | -------- | --------- | --------- | ----------------- | ------------- | ------------------------------------------------------------------------------------------- |
+| `dead-letter` | 8        | 7         | 88%       | 1 of 1 (100%)     | 6 of 7 (86%)  | Tightened: only a failure rate is evidence. The part under 90% is already a Suggestion.     |
+| `no-reader`   | 3        | 2         | 67%       | none fired        | 2 of 3 (67%)  | All three are the dead-letter-queue variant, already a Suggestion. The Warning never fired. |
+| `sync-cycle`  | 0        | –         | –         | –                 | –             | No example has a loop of requests. Unit tests cover it; no precision to measure yet.        |
+| `capacity`    | 1        | 1         | 100%      | 1 of 1 (100%)     | –             | Stays a Warning.                                                                            |
+| **All**       | **12**   | **10**    | **83%**   | **2 of 2 (100%)** | 8 of 10 (80%) |                                                                                             |
+
+**What the gate changed** (the review round in batch 1 re-ran it: the same 12 findings and verdicts)
+
+- `dead-letter`: a consumer that's down or paused is no longer failure evidence; only a failure rate is (on the node,
+  or set by a saved simulation's setup or timeline). That removed the Kafka warning above: the rule went from 7 of 9
+  (78%) to 7 of 8 (88%), and its Warning tier from 1 of 2 to 1 of 1.
+- `capacity`: it reads the diagram as live view's capacity planning does, with gateways and stores unlimited. The raw
+  analysis had put Event Hubs at 30,000%, because the Databricks store behind it was costed as a single lane. Now
+  the finding is the projector, the same bottleneck live view shows.
+- The two rules still under 90% (`dead-letter` at 88%, `no-reader` at 67%) are under it only in their Suggestion
+  tiers, which is the demotion the gate asks for. Nothing in the model tells their misses from their hits (an email
+  queue and a push queue look the same, and the Service Bus DLQ's handling is only in free text), so tightening
+  further would cost true findings. **Ignore here** (with a reason) and **Turn off this check** cover them.
+- `dead-letter` after review: only an **effective** broker route suppresses it (see Detects above). A consumer's own
+  dead-letter edge no longer hides loss, and a broker route whose filter misses the failing types counts as no route
+  (its fix lets the route take every failed message). No example has either shape, so the table didn't change; unit
+  tests assert loss in a seeded run for each case.
+- `capacity` after review: planning and the fix are one shared module, `src/sim/capacityPlanning.ts`, used by live
+  view's Show capacity and by the check, so the two can't drift. The finding and its fix are unchanged.
+- Every Warning is at 100%. Batch 2's count under the title would show 2 warnings across all 16 examples.
 
 ### Agents: `check_diagram` (WebMCP)
 
@@ -465,12 +524,16 @@ schemas`). _UX gate: chrome budget, keyboard, Esc order, dark theme, 1280×800, 
   it. We have no telemetry, so this rests on the owner's own use and on issues people file.
 - **Fixes that surprise.** A fix adds or changes design. Mitigations: the button names the change, it's one undo
   step, the toast says what changed, and nothing is ever applied without a click.
-- **Rules drifting from the simulation.** Mitigation: they share `compileTopology`, `isDlqEdge` and
-  `analyzeCapacity`. A unit test asserts that `dead-letter`'s warning cases are exactly the cases where a seeded
-  run drops messages.
+- **Rules drifting from the simulation.** Mitigation: they share `compileTopology`, `isDlqEdge`, `deadLetterRoutes`,
+  `analyzeCapacity` and `capacityPlanning`. Unit tests (`src/checks/fixes.test.ts`) assert that `dead-letter` warns
+  exactly when a seeded run drops messages: no route, retry in place, a consumer-side route, a filter that takes
+  nothing (all lose messages and warn), the fix and a consumer that goes down (no loss, no warning).
 - **Boundary meaning is ambiguous** (network vs ownership). `shared-database` only fires when the store's boundary
   holds its owner. A future "Boundary kind" field could sharpen it; not proposed now.
-- **Performance on big diagrams.** Linear rules, idle-time runs, and on-open-only above 1,500 nodes.
+- **Performance on big diagrams.** Linear rules, idle-time runs, and on-open-only above 1,500 nodes. Measured in
+  batch 1: well under 50 ms for 1,500 nodes. The exception is `capacity` on a diagram with a feedback loop of flows:
+  the fixed point runs to its 256-iteration bound, about 0.3 s at 1,500 nodes. Batch 2 should run checks in idle
+  time (or a worker) for that reason.
 
 ## Open questions (with recommended defaults)
 

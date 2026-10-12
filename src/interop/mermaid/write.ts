@@ -1,4 +1,4 @@
-import type { AnnotationShape, DiagramFile, DiagramGroup } from "../../model/types";
+import type { AnnotationShape, DiagramChecks, DiagramFile, DiagramGroup } from "../../model/types";
 import { stencilExportShape, type ExportShape } from "../../stencils/exportShape";
 import { RELATION_META, isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { RELATION_STROKE } from "../drawio/write";
@@ -26,6 +26,8 @@ export interface MermaidMeta {
   syncDependencies?: number[];
   /** A private diagram: it stays private when the text is imported again. */
   private?: true;
+  /** Checks turned off and findings ignored (the file's `checks`). */
+  checks?: DiagramChecks;
 }
 
 /**
@@ -147,6 +149,7 @@ export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = 
         ? { syncDependencies: edges.flatMap((e, i) => (relations[i] && e.kind === "sync" ? [i] : [])) }
         : {}),
       ...(d.private ? { private: true as const } : {}),
+      ...(d.checks ? { checks: d.checks } : {}),
     };
     lines.push(`${META_PREFIX}${JSON.stringify(meta)}`);
   } else if (d.private) {

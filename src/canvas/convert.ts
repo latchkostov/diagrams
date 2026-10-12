@@ -9,6 +9,7 @@ import {
 } from "../model/types";
 import { implicitLabel, isDependency, relationOf } from "../model/relations";
 import { foregroundLayerOrder } from "../model/layers";
+import { pruneChecks } from "../model/checks";
 import { getStencil } from "../stencils/registry";
 import { annotationAriaLabel, annotationTitle, isConnectable } from "./annotations";
 import type { EditTarget } from "./DiagramContext";
@@ -25,7 +26,7 @@ import {
  * Everything in the file that isn't a node, edge or group, carried alongside the canvas state so
  * export / autosave / undo round-trip the whole file (saved simulations included, untouched).
  */
-export type DiagramMeta = Pick<DiagramFile, "title" | "description" | "direction" | "simulations">;
+export type DiagramMeta = Pick<DiagramFile, "title" | "description" | "direction" | "simulations" | "checks">;
 
 // ---------------------------------------------------------------- accessible names
 // React Flow renders nodes and edges as focusable elements named by `ariaLabel`, so every one
@@ -239,7 +240,13 @@ export function toFlow(d: DiagramFile): { meta: DiagramMeta; nodes: FlowNode[]; 
     nodes.splice(0, nodes.length, ...backdrops, ...foreground);
   }
   return {
-    meta: { title: d.title, description: d.description, direction: d.direction, simulations: d.simulations },
+    meta: {
+      title: d.title,
+      description: d.description,
+      direction: d.direction,
+      simulations: d.simulations,
+      ...(d.checks ? { checks: d.checks } : {}),
+    },
     nodes,
     edges: withEdgeAria(d.edges.map(edgeToFlow), (id) => labels.get(id) ?? id),
   };
@@ -309,7 +316,15 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
     ...(meta.simulations ? { simulations: meta.simulations } : {}),
     ...(annotations.length ? { annotations } : {}),
     ...(reordered ? { layerOrder } : {}),
+    // An ignore whose element is gone is dropped on save; the meta keeps it, so Undo brings both back.
+    ...withChecks(meta.checks, [out, outEdges, groups, annotations]),
   };
+}
+
+function withChecks(checks: DiagramMeta["checks"], lists: { id: string }[][]): Pick<DiagramFile, "checks"> {
+  if (!checks) return {};
+  const kept = pruneChecks(checks, new Set(lists.flatMap((list) => list.map((x) => x.id))));
+  return kept ? { checks: kept } : {};
 }
 
 /** Which group (file id) contains the centre of a box, smallest group wins. */

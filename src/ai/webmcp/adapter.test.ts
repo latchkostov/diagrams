@@ -123,11 +123,12 @@ describe("tools", () => {
     return { host, editor, get: () => d };
   };
 
-  it("has the six tools with their annotations, and a reduced live set", () => {
+  it("has the seven tools with their annotations, and a reduced live set", () => {
     const tools = buildTools(fakeHost().host);
     expect(tools.map((t) => t.name)).toEqual([...EDIT_TOOLS]);
     const by = Object.fromEntries(tools.map((t) => [t.name, t]));
     expect(by.describe_diagram.annotations).toEqual({ readOnlyHint: true, untrustedContentHint: true });
+    expect(by.check_diagram.annotations).toEqual({ readOnlyHint: true, untrustedContentHint: true });
     expect(by.edit_diagram.annotations).toEqual({ untrustedContentHint: true });
     expect(by.new_diagram.annotations).toEqual({ consequentialHint: true });
     expect(by.get_share_link.annotations).toEqual({ readOnlyHint: true });
@@ -135,7 +136,11 @@ describe("tools", () => {
       expect(t.description.length).toBeGreaterThan(20);
       expect(t.name).toMatch(/^[A-Za-z0-9_.-]{1,128}$/);
     }
-    expect(buildTools(fakeHost().host, LIVE_TOOLS).map((t) => t.name)).toEqual(["describe_diagram", "get_share_link"]);
+    expect(buildTools(fakeHost().host, LIVE_TOOLS).map((t) => t.name)).toEqual([
+      "describe_diagram",
+      "check_diagram",
+      "get_share_link",
+    ]);
   });
 
   it("edit_diagram applies once and reports; dryRun and failures change nothing", async () => {
@@ -209,6 +214,101 @@ describe("tools", () => {
     expect(JSON.parse((await tools.get_share_link.execute({})).content[0].text)).toEqual({
       url: "https://x/#d=1",
       length: 14,
+    });
+  });
+
+  it("check_diagram reports findings with fixes as edit_diagram ops, and changes nothing", async () => {
+    const { host, editor } = fakeHost();
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Checked",
+      nodes: [
+        { id: "api", stencil: "service.node", label: "Orders API", x: 0, y: 0 },
+        { id: "q", stencil: "aws.sqs", label: "orders", x: 300, y: 0 },
+        { id: "w", stencil: "aws.lambda", label: "Worker", x: 600, y: 0, props: { failureRate: 0.2 } },
+        { id: "t", stencil: "kafka.topic", label: "refunds", x: 300, y: 200 },
+      ],
+      edges: [
+        { id: "e1", from: "api", to: "q", kind: "async" },
+        { id: "e2", from: "q", to: "w", kind: "async" },
+        { id: "e3", from: "api", to: "t", kind: "async" },
+      ],
+      checks: { ignore: [{ rule: "no-reader", target: "t", reason: "Read by the data platform" }] },
+    };
+    (editor as { getDiagram: () => DiagramFile }).getDiagram = () => d;
+    const check = toModelContextTool(buildTools(host).find((t) => t.name === "check_diagram")!);
+    const out = JSON.parse((await check.execute({})).content[0].text);
+    expect(out).toMatchObject({
+      summary: "1 warning, 0 suggestions; 1 ignored.",
+      findings: [
+        {
+          id: "dead-letter:q",
+          rule: "dead-letter",
+          severity: "warning",
+          title: "Failed messages are dropped",
+          targets: ["q", "w"],
+          fix: {
+            label: "Add dead-letter queue",
+            ops: expect.arrayContaining([expect.objectContaining({ op: "add_node" })]),
+          },
+        },
+      ],
+    });
+    expect(out.hint).toMatch(/edit_diagram/);
+    // The fix's ops are edit_diagram's input as they are.
+    const edit = toModelContextTool(buildTools(host).find((t) => t.name === "edit_diagram")!);
+    (editor as { getDiagram: () => DiagramFile }).getDiagram = () => d;
+    const applied = JSON.parse((await edit.execute({ ops: out.findings[0].fix.ops })).content[0].text);
+    expect(applied).toMatchObject({ ok: true, summary: "+1 node, +1 connection" });
+    expect(host.onApplied).toHaveBeenCalledTimes(1);
+
+    const none = JSON.parse((await check.execute({ include: "warnings", rules: ["no-reader"] })).content[0].text);
+    expect(none).toEqual({ findings: [], summary: "Nothing to check. 1 check ran; 1 ignored." });
+    const bad = await check.execute({ rules: ["style"] });
+    expect(bad.isError).toBe(true);
+  });
+
+  it("check_diagram keeps to the output budget", async () => {
+    const { host, editor } = fakeHost();
+    const nodes: DiagramFile["nodes"] = [{ id: "api", stencil: "service.node", label: "API", x: 0, y: 0 }];
+    const edges: DiagramFile["edges"] = [];
+    for (let i = 0; i < 40; i++) {
+      nodes.push({ id: `t${i}`, stencil: "kafka.topic", label: `topic.number.${i}`, x: 300, y: i * 100 });
+      edges.push({ id: `e${i}`, from: "api", to: `t${i}`, kind: "async" });
+    }
+    (editor as { getDiagram: () => DiagramFile }).getDiagram = () => ({ ...diagram(), nodes, edges });
+    const check = toModelContextTool(buildTools(host).find((t) => t.name === "check_diagram")!);
+    const text = (await check.execute({})).content[0].text;
+    expect(text.length).toBeLessThanOrEqual(1500);
+    const out = JSON.parse(text);
+    expect(out.summary).toBe("40 warnings, 0 suggestions.");
+    expect(out.more).toMatch(/more findings omitted/);
+  });
+
+  it("check_diagram bounds a single large cycle finding", async () => {
+    const { host, editor } = fakeHost();
+    const n = 150;
+    const nodes: DiagramFile["nodes"] = Array.from({ length: n }, (_, i) => ({
+      id: `s${i}`,
+      stencil: "service.go",
+      label: `Service ${i} ${"x".repeat(500)}`,
+      x: i * 300,
+      y: 0,
+    }));
+    const edges: DiagramFile["edges"] = nodes.map((node, i) => ({
+      id: `e${i}`,
+      from: node.id,
+      to: nodes[(i + 1) % n].id,
+      kind: "sync",
+    }));
+    (editor as { getDiagram: () => DiagramFile }).getDiagram = () => ({ ...diagram(), nodes, edges });
+    const check = toModelContextTool(buildTools(host).find((t) => t.name === "check_diagram")!);
+    const text = (await check.execute({})).content[0].text;
+    expect(text.length).toBeLessThanOrEqual(1500);
+    const [finding] = JSON.parse(text).findings;
+    expect(finding).toMatchObject({
+      id: "sync-cycle:s0",
+      fix: { ops: [{ op: "update", target: "e149", kind: "async" }] },
     });
   });
 });

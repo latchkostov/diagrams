@@ -229,7 +229,7 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   WebMCP, **What agents can do here** (collapsed) lists the published tools, one line each. Once there are
   turns, the conversation takes over and all this folds to one link, **How to use AI here**.
 - The **status line** at the panel's foot is honest: WebMCP only means the page publishes its tools, so it
-  says "This page publishes 6 tools for AI agents in this browser (WebMCP)" and, muted, that the browser's
+  says "This page publishes 7 tools for AI agents in this browser (WebMCP)" and, muted, that the browser's
   assistant must support WebMCP and that requests are typed there, not here. Without WebMCP it points agents
   that drive pages to llms.txt. It never claims an assistant will use the tools.
 - Each change is a **turn** in the diagram's **conversation**: the agent's own note (the tools' optional

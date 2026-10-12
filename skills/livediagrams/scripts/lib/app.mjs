@@ -258,6 +258,67 @@ function looksLikeCredential(key) {
 	return /(?:^|[;:])\s*(?:Server|Data Source|AccountKey|SharedAccessKey|Password|User Id)\s*=[^;]+(?:;|$)/i.test(key) || /(?:^|[:/])(?:Bearer\s+|eyJ[\w-]+\.[\w-]+\.[\w-]+|(?:sk|ghp|github_pat|AKIA)[_-]?[\w-]{16,})/i.test(key.trim()) || /^[A-Za-z0-9+/_=-]{40,}$/.test(key.trim()) && /[A-Z]/.test(key) && /[a-z]/.test(key) && /\d/.test(key) || /:\/\/[^\s/]+:[^\s/]+@/.test(key);
 }
 //#endregion
+//#region src/model/checks.ts
+var CHECK_LIMITS = {
+	maxOff: 100,
+	maxIgnores: 2e3,
+	maxReason: 200,
+	maxTarget: 200
+};
+/** Rule ids are short kebab-case words ("dead-letter"). Unknown ones are kept: a newer app may have them. */
+var CHECK_RULE_ID = /^[a-z][a-z0-9-]{0,49}$/;
+var isObj$2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+/**
+* Valid `checks` for a file whose element ids are `ids`, or undefined when nothing is left. Bounded before any
+* work: only the first 100 `off` and 2,000 `ignore` entries are read (more is a warning), and deduplication
+* is a Set, so a hostile file costs no more than a full one. Malformed entries are dropped with a warning; an
+* ignore whose target is gone is dropped silently (it's stale, not wrong); a long reason is shortened.
+*/
+function sanitizeChecks(raw, ids, warnings) {
+	if (raw === void 0) return void 0;
+	if (!isObj$2(raw)) {
+		warnings.push("The checks field wasn't an object and was ignored.");
+		return;
+	}
+	let skipped = 0;
+	let truncated = false;
+	/** The first `max` entries of a list, or null (counted as malformed) when it isn't one. */
+	const bounded = (list, max) => {
+		if (list === void 0) return [];
+		if (!Array.isArray(list)) {
+			skipped++;
+			return null;
+		}
+		if (list.length > max) truncated = true;
+		return list.length > max ? list.slice(0, max) : list;
+	};
+	const off = /* @__PURE__ */ new Set();
+	for (const id of bounded(raw.off, CHECK_LIMITS.maxOff) ?? []) if (typeof id !== "string" || !CHECK_RULE_ID.test(id)) skipped++;
+	else off.add(id);
+	const ignore = /* @__PURE__ */ new Map();
+	for (const item of bounded(raw.ignore, CHECK_LIMITS.maxIgnores) ?? []) {
+		if (!isObj$2(item) || typeof item.rule !== "string" || !CHECK_RULE_ID.test(item.rule) || typeof item.target !== "string" || !item.target || item.target.length > CHECK_LIMITS.maxTarget || item.reason !== void 0 && typeof item.reason !== "string") {
+			skipped++;
+			continue;
+		}
+		const key = `${item.rule}\u0000${item.target}`;
+		if (!ids.has(item.target) || ignore.has(key)) continue;
+		const reason = typeof item.reason === "string" ? item.reason.slice(0, CHECK_LIMITS.maxReason * 4).trim().slice(0, CHECK_LIMITS.maxReason) : "";
+		ignore.set(key, {
+			rule: item.rule,
+			target: item.target,
+			...reason ? { reason } : {}
+		});
+	}
+	if (skipped) warnings.push(`${skipped} malformed check setting${skipped === 1 ? " was" : "s were"} ignored.`);
+	if (truncated) warnings.push(`Only the first ${CHECK_LIMITS.maxOff} turned-off checks and ${CHECK_LIMITS.maxIgnores} ignored findings were read.`);
+	if (!off.size && !ignore.size) return void 0;
+	return {
+		...off.size ? { off: [...off] } : {},
+		...ignore.size ? { ignore: [...ignore.values()] } : {}
+	};
+}
+//#endregion
 //#region src/interop/native.ts
 /**
 * Budgets for untrusted input (files, pastes, share links, Drive, storage). Generous for real
@@ -571,6 +632,16 @@ function validateDiagram(data) {
 			if (sims.length) d.simulations = sims;
 			else delete d.simulations;
 		}
+	}
+	if (d.checks !== void 0) {
+		const checks = sanitizeChecks(d.checks, /* @__PURE__ */ new Set([
+			...ids,
+			...edgeIds,
+			...groupIds,
+			...annotationIds
+		]), warnings);
+		if (checks) d.checks = checks;
+		else delete d.checks;
 	}
 	return {
 		ok: true,

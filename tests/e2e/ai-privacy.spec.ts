@@ -75,7 +75,7 @@ test("import and Duplicate persist local-only metadata and stay blocked after re
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await installSyntheticRegistry(page);
   await gotoCanvas(page, SLUG);
-  await expect.poll(() => toolNames(page)).toHaveLength(6);
+  await expect.poll(() => toolNames(page)).toHaveLength(7);
   await page.getByTestId("import-input").setInputFiles({
     name: "synthetic.diagram.json",
     mimeType: "application/json",
@@ -134,7 +134,7 @@ test("paste with regenerated ids is caught by content, while an unrelated import
     buffer: Buffer.from(JSON.stringify(unrelated)),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(unrelated.title);
-  await expect.poll(() => toolNames(page)).toHaveLength(6);
+  await expect.poll(() => toolNames(page)).toHaveLength(7);
   await openAdvanced(page);
   await expect(page.getByTestId("ai-privacy-note")).toHaveCount(0);
   await page.getByTestId("ai-copy-prompt").click();

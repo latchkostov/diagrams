@@ -3,6 +3,7 @@ import { propsProblem } from "../model/simProps";
 import { ANNOTATION_LIMITS, normalizeAnnotation } from "../model/annotations";
 import type { DiagramAnnotation } from "../model/types";
 import { isDependency, isEdgeRelation, sanitizeSettings } from "../model/relations";
+import { sanitizeChecks } from "../model/checks";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -306,6 +307,15 @@ export function validateDiagram(data: unknown): NativeResult {
       else delete d.simulations;
     }
   }
+  if (d.checks !== undefined) {
+    const checks = sanitizeChecks(
+      d.checks,
+      new Set([...ids, ...edgeIds, ...groupIds, ...annotationIds] as string[]),
+      warnings,
+    );
+    if (checks) d.checks = checks;
+    else delete d.checks;
+  }
   return { ok: true, diagram: d as unknown as DiagramFile, warnings };
 }
 
@@ -579,6 +589,7 @@ const KNOWN_TOP = new Set([
   "simulations",
   "annotations",
   "layerOrder",
+  "checks",
   // Never carried over from a stored original: exports add it from the diagram's privacy (withPrivacyField).
   "private",
 ]);

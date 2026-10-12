@@ -188,7 +188,7 @@ test("AI is off: no WebMCP tools, Copy for AI and copied prompts off; the on-dev
   await page.addInitScript(() => localStorage.setItem("diagrams.ai-ondevice.v1", "1"));
   await gotoCanvas(page, SLUG);
   await importDiagram(page, "Payments review");
-  await expect.poll(() => toolNames(page)).toHaveLength(6);
+  await expect.poll(() => toolNames(page)).toHaveLength(7);
   await makePrivate(page);
   await expect.poll(() => toolNames(page)).toEqual([]);
 

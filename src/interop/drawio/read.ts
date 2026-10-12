@@ -614,6 +614,14 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     ...(simulations ? { simulations } : {}),
     ...(annotations.length ? { annotations } : {}),
   };
+  if (meta.dg_checks) {
+    // Validated with the rest of the file (validateDiagram): unknown targets are dropped there.
+    try {
+      diagram.checks = JSON.parse(meta.dg_checks);
+    } catch {
+      warnings.push("Check settings in this file couldn't be read and were dropped.");
+    }
+  }
   if (meta.dg_layer_order) {
     try {
       const order = filterLayerOrder(JSON.parse(meta.dg_layer_order), diagram);

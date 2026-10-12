@@ -3,6 +3,7 @@
 
 import type { EditorApi } from "../../editor/types";
 import type { DiagramFile, StencilCategory } from "../../model/types";
+import type { CheckRuleId } from "../../model/checks";
 import {
   applyOps,
   buildSimulation,
@@ -57,6 +58,7 @@ export interface WebMcpHost {
 
 const TITLES: Record<ToolName, string> = {
   describe_diagram: "Describe the diagram",
+  check_diagram: "Check the diagram",
   find_stencils: "Find stencils",
   edit_diagram: "Edit the diagram",
   set_simulation: "Set a simulation",
@@ -93,6 +95,17 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
     describe_diagram(input) {
       checkSchema(input, toolSchemas.describe_diagram);
       return describeDiagram(needEditor(host).getDiagram(), input as DescribeOptions);
+    },
+
+    async check_diagram(input) {
+      checkSchema(input, toolSchemas.check_diagram);
+      needEditor(host);
+      const { rules, include } = input as { rules?: CheckRuleId[]; include?: "warnings" | "all" };
+      // The checks are a lazy chunk: loaded on the first call, never at startup.
+      const { runChecks, agentReport } = await import("../../checks");
+      // Read the diagram after the load: it may have become private (or another one opened) meanwhile.
+      const diagram = needEditor(host).getDiagram();
+      return agentReport(runChecks(diagram, rules ? { rules } : {}), include);
     },
 
     find_stencils(input) {
