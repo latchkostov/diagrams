@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { perfBudget } from "../../src/test/perfBudget";
 
 // Run simulations in the Checks card (docs/research/architecture-checks.md, batch 5): the saved simulations play in a
 // worker, the card says which one it's on, counts land on the findings, Stop, Esc, closing the card and an edit stop
@@ -290,6 +289,8 @@ test.describe("a long run", () => {
       if (playing) {
         await page.getByTestId("checks-run-simulations").click();
         await expect(status(page)).toHaveText(/^Playing/);
+        // They play in the simulations worker, not on this thread.
+        await expect.poll(() => page.workers().some((w) => /evidenceWorker/.test(w.url())), "the worker").toBe(true);
       }
       await box.click();
       await box.press("End");
@@ -318,8 +319,10 @@ test.describe("a long run", () => {
     await expect(box).toHaveValue(" i0xyz p1xyz i2xyz p3xyz i4xyz p5xyz");
     info.annotations.push({ type: "event-timing", description: JSON.stringify({ idle, playing }) });
     expect(await runStats(page)).toMatchObject({ started: 3, stopped: 3 });
-    // The simulations play in a worker: the same median keystroke, give or take noise. Played on the main thread,
-    // a minute of a 1,500-node simulation would hold a keystroke for seconds.
-    expect(median(playing)).toBeLessThanOrEqual(median(idle) * 1.25 + perfBudget(25));
+    // And typing was no slower for it: the same median keystroke, give or take noise. As the checks' typing test: the
+    // slack is relative to the idle phases (a busy machine slows both alike), and at least two steps of Event Timing's
+    // 8 ms resolution above its 16 ms floor. Played on the main thread, a minute of a 1,500-node simulation would
+    // hold a keystroke for seconds.
+    expect(median(playing)).toBeLessThanOrEqual(Math.max(median(idle) * 1.5, median(idle) + 16));
   });
 });

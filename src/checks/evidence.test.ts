@@ -575,7 +575,8 @@ describe("playSimulations", () => {
       { worker: false },
     );
     await expect(run.done).rejects.toBeInstanceOf(EvidenceStopped);
-    await new Promise((r) => setTimeout(r, 30));
+    // Turns of the event loop, where a slice would have run: none does.
+    for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
     expect(progress).toEqual(["Checkout rush"]);
   });
 
