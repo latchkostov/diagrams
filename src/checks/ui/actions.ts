@@ -3,6 +3,8 @@ import type { EditorApi } from "../../editor/types";
 import type { CheckIgnore, DiagramChecks } from "../../model/types";
 import { notify } from "../../interop/ui/toast";
 import { runChecks } from "../run";
+import { buildContext } from "../context";
+import { droppedFix } from "../rules/dropped";
 import type { CheckRuleId, Finding } from "../types";
 
 // What a person does with a finding, each one undo step: apply its fix (the same ops agents send through
@@ -20,7 +22,14 @@ let seq = 0;
 export function applyFix(editor: EditorApi, finding: Finding, option?: string): boolean {
   if (!finding.fix?.ops) return false;
   const current = editor.getDiagram();
-  const fresh = runChecks(current, { rules: [finding.rule] }).findings.find((f) => f.id === finding.id);
+  // `dropped` comes only from playing the simulations: its fix (a dead-letter route) is worked out again on its own.
+  const fresh =
+    finding.rule === "dropped"
+      ? (() => {
+          const fix = droppedFix(buildContext(current), finding.target);
+          return fix && { ...finding, fix };
+        })()
+      : runChecks(current, { rules: [finding.rule] }).findings.find((f) => f.id === finding.id);
   // One of the fix's other options, by its words (the same option worked out now).
   const chosen = option === undefined ? undefined : fresh?.fix?.options?.find((o) => o.label === option);
   const ops = option === undefined ? fresh?.fix?.ops : chosen?.ops;

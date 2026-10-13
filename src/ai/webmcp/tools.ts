@@ -100,12 +100,27 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
     async check_diagram(input) {
       checkSchema(input, toolSchemas.check_diagram);
       needEditor(host);
-      const { rules, include } = input as { rules?: CheckRuleId[]; include?: "warnings" | "all" };
+      const { rules, include, simulations } = input as {
+        rules?: CheckRuleId[];
+        include?: "warnings" | "all";
+        simulations?: boolean;
+      };
       // The checks are a lazy chunk: loaded on the first call, never at startup.
       const { runChecks, agentReport } = await import("../../checks");
       // Read the diagram after the load: it may have become private (or another one opened) meanwhile.
       const diagram = needEditor(host).getDiagram();
-      return agentReport(runChecks(diagram, rules ? { rules } : {}), include);
+      const result = runChecks(diagram, rules ? { rules } : {});
+      if (!simulations || !diagram.simulations?.length) return agentReport(result, include);
+      // Run simulations, as the Checks card does: in a worker, bounded (a minute of each, about 15 s in all).
+      const { playSimulations, withEvidence } = await import("../../checks/evidenceClient");
+      const evidence = await playSimulations(diagram, () => {}).done;
+      const merged = withEvidence(result, evidence, diagram.checks);
+      const wanted = (f: { rule: CheckRuleId }) => !rules || rules.includes(f.rule);
+      return agentReport(
+        { ...merged, findings: merged.findings.filter(wanted), ignored: merged.ignored.filter(wanted) },
+        include,
+        evidence,
+      );
     },
 
     find_stencils(input) {

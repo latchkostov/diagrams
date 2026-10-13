@@ -97,8 +97,8 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     path: "/src/canvas/checks/useChecks.ts",
     stub: () =>
       [
-        "const state = { result: null, stale: false, warnings: 0, byElement: new Map(), name: () => undefined };",
-        "const store = { subscribe: () => () => {}, get: () => state, getHot: () => null, setHot() {}, markStale() {} };",
+        "const state = { result: null, stale: false, warnings: 0, byElement: new Map(), name: () => undefined, evidence: { status: 'none' } };",
+        "const store = { subscribe: () => () => {}, get: () => state, getHot: () => null, setHot() {}, markStale() {}, runSimulations() {}, stopSimulations: () => false };",
         "export const useChecks = () => store;",
       ].join("\n"),
   },

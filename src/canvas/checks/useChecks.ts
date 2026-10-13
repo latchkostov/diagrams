@@ -3,6 +3,7 @@ import type { DiagramFile } from "../../model/types";
 import type { CheckResult, Finding } from "../../checks/types";
 import { createCheckScheduler, type CheckScheduler } from "./scheduler";
 import { runChecksOffThread } from "./runner";
+import { NO_EVIDENCE, SimulationRuns, type EvidenceSink, type EvidenceView, type SimContent } from "./simulationRuns";
 
 // The canvas's checks: re-run after edits pause, in idle time, off the main thread (runner.ts). The first
 // run waits for the canvas to settle. Diagrams over 1,500 nodes are checked only while the Checks card is
@@ -27,10 +28,19 @@ export interface ChecksState {
   byElement: ReadonlyMap<string, Finding[]>;
   /** A node's or connection's name as of the checked diagram (one index per result, never a full rebuild). */
   name(id: string): string | undefined;
+  /** Run simulations: whether there are any, the run in flight, or what the last one found. */
+  evidence: EvidenceView;
 }
 
 const noName = () => undefined;
-const EMPTY: ChecksState = { result: null, stale: false, warnings: 0, byElement: new Map(), name: noName };
+const EMPTY: ChecksState = {
+  result: null,
+  stale: false,
+  warnings: 0,
+  byElement: new Map(),
+  name: noName,
+  evidence: NO_EVIDENCE,
+};
 
 /** Names for the elements of `diagram`: a node's label, a connection's label or "From → To". */
 export function elementNames(diagram: DiagramFile | undefined): (id: string) => string | undefined {
@@ -61,20 +71,29 @@ export function summarizeResult(result: CheckResult | null, diagram?: DiagramFil
     warnings: result.findings.filter((f) => f.severity === "warning").length,
     byElement,
     name: elementNames(diagram),
+    evidence: NO_EVIDENCE,
   };
 }
+
+type Merge = (result: CheckResult, diagram: DiagramFile | undefined) => CheckResult;
 
 /**
  * The canvas's checks, outside React state: the canvas itself never re-renders for a result or a hovered row.
  * Only what shows them subscribes (the count, the card, the markers, the inspector's row). A result equal to the
  * last one notifies nobody (unless it ends a stale spell).
  */
-export class ChecksStore {
+export class ChecksStore implements EvidenceSink {
   private state: ChecksState = EMPTY;
   private json = "null";
   private hot: string | null = null;
   private enabled = true;
   private readonly listeners = new Set<() => void>();
+  /** The checks' own result and the diagram it's for; what shows adds the simulations' evidence to it. */
+  private checked: { result: CheckResult | null; diagram?: DiagramFile } = { result: null };
+  private evidence: EvidenceView = NO_EVIDENCE;
+  private merge: Merge | undefined;
+  /** Run simulations: its runs report here. */
+  readonly simulations: SimulationRuns = new SimulationRuns(this);
 
   readonly subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -88,7 +107,32 @@ export class ChecksStore {
     const json = JSON.stringify(result);
     if (json === this.json && !this.state.stale) return;
     this.json = json;
-    this.state = summarizeResult(result, diagram);
+    this.checked = { result, diagram };
+    this.rebuild(false);
+  }
+
+  /** What Run simulations has to show, and how to put its counts on a result (none while they're stale). */
+  setEvidence(view: EvidenceView, merge?: Merge) {
+    this.evidence = view;
+    if (merge === this.merge) {
+      // Progress ("Playing 2 of 5…"): the findings are as they were, so nothing is merged or indexed again.
+      this.state = { ...this.state, evidence: view };
+      this.emit();
+      return;
+    }
+    this.merge = merge;
+    this.rebuild(this.state.stale);
+  }
+
+  /** Plays the saved simulations (the card's Run simulations). */
+  readonly runSimulations = () => this.simulations.start();
+  /** Stops a run in flight: true if there was one. */
+  readonly stopSimulations = (): boolean => this.simulations.stop();
+
+  private rebuild(stale: boolean) {
+    const { result, diagram } = this.checked;
+    const shown = result && this.merge ? this.merge(result, diagram) : result;
+    this.state = { ...summarizeResult(shown, diagram), stale: !!shown && stale, evidence: this.evidence };
     this.emit();
   }
 
@@ -137,11 +181,20 @@ export function useChecks(opts: {
   read: () => DiagramFile;
   nodeCount: number;
   cardOpen: boolean;
+  /** What a simulation plays: an edit to it stops Run simulations and hides its counts. */
+  content: SimContent;
 }): ChecksStore {
-  const { enabled, revision, nodeCount, cardOpen } = opts;
+  const { enabled, revision, nodeCount, cardOpen, content } = opts;
   const [store] = useState(() => new ChecksStore());
   const [runs] = useState(() => new CheckRuns((r, d) => store.set(r, d)));
+  const sims = store.simulations;
   useEffect(() => runs.setRead(opts.read));
+  useEffect(() => sims.setRead(opts.read));
+  useEffect(() => sims.setContent(content), [content, sims]);
+  // Leaving editing (live view, presenting) or the canvas stops a run of the simulations.
+  useEffect(() => {
+    if (enabled) return () => void sims.stop();
+  }, [enabled, sims]);
   useEffect(() => store.setEnabled(enabled), [enabled, store]);
   const active = enabled && (nodeCount <= BIG_DIAGRAM || cardOpen);
   useEffect(() => {

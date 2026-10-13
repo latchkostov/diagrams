@@ -4,6 +4,7 @@ import type { DiagramFile } from "../model/types";
 import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import { RULES as ALL_RULES, runChecks } from "./run";
 import { buildContext } from "./context";
+import { collectEvidence } from "./evidence";
 
 const RULE_BY_ID = new Map(ALL_RULES.map((r) => [r.id, r]));
 
@@ -72,6 +73,32 @@ describe("checks on the public examples", () => {
         f.id,
       ).not.toContain(f.id);
     }
+  });
+});
+
+/**
+ * Run simulations on the same examples (docs/research/architecture-checks.md, "Batch 5: as built"): every saved
+ * simulation plays to its end, inside the minute, and none loses a message where a finding or `dropped` would say so.
+ * What they lose, they lose on purpose (their own expectations count on it), so it's planned, never a finding. A
+ * change here is a change to that table.
+ */
+const PLANNED: Record<string, string[]> = {
+  "azure-service-bus-integration": ["30 unread dlq in Poison invoices (expected)"],
+  "multi-region-active-active": ["96 dropped alb-us in Region outage and failover (down)"],
+};
+
+describe("simulation evidence on the public examples", () => {
+  it.each(Object.keys(EXPECTED))("%s", (slug) => {
+    const d = bySlug[slug];
+    const ev = collectEvidence(d);
+    expect(ev.played.map((p) => p.id)).toEqual((d.simulations ?? []).map((s) => s.id));
+    expect(ev.played.filter((p) => p.capped)).toEqual([]);
+    expect(ev.unplayed).toEqual([]);
+    expect(ev.byFinding).toEqual({});
+    expect(ev.findings).toEqual([]);
+    expect(ev.planned.map((p) => `${p.count} ${p.what} ${p.node} in ${p.simulation} (${p.why})`)).toEqual(
+      PLANNED[slug] ?? [],
+    );
   });
 });
 

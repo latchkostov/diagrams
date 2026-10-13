@@ -2,6 +2,8 @@ import type { DiagramOp } from "../ai";
 import type { CheckRuleId } from "../model/checks";
 import type { CheckResult, CheckSeverity, Finding } from "./types";
 import { summarize } from "./run";
+import type { Evidence } from "./evidence";
+import { evidenceText } from "./evidenceMerge";
 
 // check_diagram's output for agents: the findings with their fixes as edit_diagram ops, always under the
 // WebMCP tools' 1.5K-character budget. Every finding is bounded on its own (text clipped, targets listed up
@@ -20,6 +22,9 @@ const MAX_OPTIONS = 4;
 const MAX_OPTION = 80;
 /** Room kept for the `more` line. */
 const MORE_ROOM = 120;
+/** A finding's simulation counts, and the line saying what was played. */
+const MAX_EVIDENCE = 3;
+const MAX_SIMULATIONS = 300;
 
 export interface AgentFinding {
   id: string;
@@ -30,6 +35,8 @@ export interface AgentFinding {
   targets: string[];
   /** Elements beyond `targets`, left out for size. */
   moreTargets?: number;
+  /** What the saved simulations lost here (with `simulations: true`): "312 dropped in “Payments goes down”". */
+  evidence?: string[];
   fix?:
     | { label: string; ops: DiagramOp[]; others?: AgentFixOption[]; elsewhere?: string }
     | { label: string; needsChoice: string };
@@ -45,6 +52,8 @@ export interface AgentFixOption {
 export interface AgentReport {
   findings: AgentFinding[];
   summary: string;
+  /** With `simulations: true`: what was played, and what was lost on purpose (never a finding). */
+  simulations?: string;
   more?: string;
   hint?: string;
 }
@@ -105,14 +114,35 @@ function bounded(f: Finding): AgentFinding {
     message: clip(f.message, MAX_MESSAGE),
     targets,
     ...(f.elements.length > targets.length ? { moreTargets: f.elements.length - targets.length } : {}),
+    ...(f.evidence?.length
+      ? { evidence: f.evidence.slice(0, MAX_EVIDENCE).map((e) => clip(evidenceText(e), MAX_OPTION)) }
+      : {}),
     ...(fix ? { fix } : {}),
   };
+}
+
+/** "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 96 dropped at alb-us in …." */
+function playedLine(e: Evidence): string {
+  const n = e.played.length;
+  const parts = [
+    `Played ${n} saved simulation${n === 1 ? "" : "s"} (at most 60 s each${e.played.some((p) => p.capped) ? "; some stopped there" : ""}).`,
+    e.unplayed.length ? `Out of time before: ${e.unplayed.map((t) => `“${t}”`).join(", ")}.` : "",
+    e.planned.length
+      ? `On purpose, not findings: ${e.planned
+          .map(
+            (p) =>
+              `${p.count} ${p.what === "dropped" ? "dropped at" : "left unread in"} ${p.node} in “${p.simulation}”`,
+          )
+          .join("; ")}.`
+      : "",
+  ];
+  return clip(parts.filter(Boolean).join(" "), MAX_SIMULATIONS);
 }
 
 /** Smaller and smaller versions of a finding, for when even one doesn't fit. */
 function* shrink(full: AgentFinding): Generator<AgentFinding> {
   yield full;
-  const { message: _message, ...noMessage } = full;
+  const { message: _message, evidence: _evidence, ...noMessage } = full;
   yield noMessage;
   const total = full.targets.length + (full.moreTargets ?? 0);
   const one = {
@@ -127,9 +157,17 @@ function* shrink(full: AgentFinding): Generator<AgentFinding> {
   yield { ...bare, title: clip(full.title, 60) };
 }
 
-export function agentReport(result: CheckResult, include: "warnings" | "all" = "all"): AgentReport {
+export function agentReport(
+  result: CheckResult,
+  include: "warnings" | "all" = "all",
+  evidence?: Evidence,
+): AgentReport {
   const listed = result.findings.filter((f) => include === "all" || f.severity === "warning");
-  const report: AgentReport = { findings: [], summary: summarize(result) };
+  const report: AgentReport = {
+    findings: [],
+    summary: summarize(result),
+    ...(evidence ? { simulations: playedLine(evidence) } : {}),
+  };
   if (listed.some((f) => f.fix?.ops))
     report.hint =
       "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding." +
