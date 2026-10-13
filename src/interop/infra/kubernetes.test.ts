@@ -329,6 +329,103 @@ ${deployment("api", "example/api", "").replace(
   });
 });
 
+describe("Kubernetes import: Strimzi KafkaUser ACLs", () => {
+  /** A Kafka cluster in `shop` with two topics, a KafkaUser, and a workload that reads the user's Secret. */
+  const set = (opts: { prefix?: string; secret?: string; extraEnv?: string; acls?: string } = {}) => `---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata: { name: events, namespace: shop }
+spec:
+  kafka: { replicas: 3 }
+  entityOperator: { userOperator: { ${opts.prefix ? `secretPrefix: ${opts.prefix}` : ""} } }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata: { name: orders, namespace: shop, labels: { strimzi.io/cluster: events } }
+spec: { topicName: orders.v1 }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata: { name: payments, namespace: shop, labels: { strimzi.io/cluster: events } }
+spec: { topicName: payments.v1 }
+---
+apiVersion: v1
+kind: Secret
+metadata: { name: ${opts.secret ?? "orders-app"}, namespace: shop }
+data: { password: YWNsLWxlYWstdmFsdWU= }
+stringData: { sasl.jaas.config: acl-leak-value }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata: { name: orders-app, namespace: shop, labels: { strimzi.io/cluster: events } }
+spec:
+  authentication: { type: scram-sha-512 }
+  authorization:
+    type: simple
+    acls:
+${
+  opts.acls ??
+  `      - { resource: { type: topic, name: orders.v1, patternType: literal }, operations: [Write, Describe] }
+      - { resource: { type: topic, name: payments.v1 }, operation: Read }
+      - { resource: { type: group, name: orders-app-group }, operations: [Read] }
+      - { resource: { type: topic, name: audit., patternType: prefix }, operations: [Read] }
+      - { resource: { type: topic, name: orders.v1 }, operations: [Describe] }
+      - { type: deny, resource: { type: topic, name: secret-topic }, operations: [Read] }`
+}
+${deployment("orders-app", "example/orders", "", "shop").replace(
+  "          image: example/orders\n",
+  `          image: example/orders\n          env:\n            - { name: KAFKA_PASSWORD, valueFrom: { secretKeyRef: { name: ${opts.secret ?? "orders-app"}, key: password } } }\n${opts.extraEnv ?? ""}`,
+)}`;
+
+  it("a workload using a KafkaUser's Secret produces and consumes what its literal ACLs allow", () => {
+    const { diagram, report } = k8s(set());
+    expect(relationBetween(diagram, "orders-app", "topic-orders.v1")).toBe("message");
+    expect(relationBetween(diagram, "topic-payments.v1", "orders-app")).toBe("message");
+    // The one literal group ACL is the consumer group.
+    expect(edge(diagram, "topic-payments.v1", "orders-app")?.props).toEqual({ group: "orders-app-group" });
+    // Describe alone, a deny, and a prefix draw nothing; the prefix is said.
+    expect(diagram.nodes.map((n) => n.id)).not.toContain("topic-secret-topic");
+    expect(diagram.nodes.filter((n) => n.stencil === "kafka.topic")).toHaveLength(2);
+    expect(report.notes).toContain("orders-app (KafkaUser) may read topics starting “audit.”: not drawn");
+    expect(report.notDrawn).toContainEqual({ name: "KafkaUser orders-app", reason: "shown as its workloads' flows" });
+    // Each flow names the KafkaUser that allows it.
+    expect(
+      report.inferred.filter((c) => c.evidence === "KafkaUser orders-app").map((c) => `${c.from} → ${c.to}`),
+    ).toEqual(["orders-app → orders.v1", "payments.v1 → orders-app"]);
+  });
+
+  it("follows the cluster's secretPrefix, and lists a user no workload here uses", () => {
+    const prefixed = k8s(set({ prefix: "kafka-", secret: "kafka-orders-app" })).diagram;
+    expect(relationBetween(prefixed, "orders-app", "topic-orders.v1")).toBe("message");
+    // The prefix is set but the workload reads a Secret named like the user: not this user's credentials.
+    const { diagram, report } = k8s(set({ prefix: "kafka-" }));
+    expect(edge(diagram, "orders-app", "topic-orders.v1")).toBeUndefined();
+    expect(report.notDrawn).toContainEqual({
+      name: "KafkaUser orders-app",
+      reason: "its ACLs aren't drawn: no workload in these files uses its Secret",
+    });
+  });
+
+  it("adds nothing where settings already connect the pair", () => {
+    const { diagram } = k8s(
+      set({
+        extraEnv:
+          "            - { name: KAFKA_BOOTSTRAP_SERVERS, value: events-kafka-bootstrap.shop.svc:9092 }\n" +
+          "            - { name: INPUT_TOPIC, value: payments.v1 }\n            - { name: CONSUMER_GROUP, value: from-settings }\n",
+      }),
+    );
+    const into = diagram.edges.filter((e) => e.from === "topic-payments.v1" && e.to === "orders-app");
+    expect(into).toHaveLength(1);
+    expect(into[0].props).toEqual({ group: "from-settings" });
+  });
+
+  it("never reads the Secret's values", () => {
+    const outcome = importKubernetes([{ name: "kafka.yaml", text: set() }]);
+    const out = JSON.stringify(outcome);
+    for (const secret of ["YWNsLWxlYWstdmFsdWU", "acl-leak-value"]) expect(out, secret).not.toContain(secret);
+  });
+});
+
 describe("Kubernetes import: KEDA and Strimzi", () => {
   const strimzi = (version: string, ns = "kafka") => `---
 apiVersion: kafka.strimzi.io/${version}

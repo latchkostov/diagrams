@@ -955,6 +955,80 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       `Settings past the first ${ENV_LIMITS.maxSettings.toLocaleString("en")} weren't read for connections (ConfigMaps shared by many workloads count each time)`,
     );
 
+  // ------------------------------------------------ Strimzi KafkaUser ACLs: who may produce and consume
+  // The User Operator writes a KafkaUser's credentials to a Secret named after it (with the cluster's
+  // `userOperator.secretPrefix`) in its namespace, and a pod can only use Secrets in its own namespace: a workload that
+  // mounts or reads that Secret is that user. Its literal topic ACLs are flows (Write: it produces; Read: it
+  // consumes, in the group its literal group ACL names). Wildcards and prefixes, and users no workload here uses, are
+  // listed. Only the Secret's name is looked at, never its values.
+  const flowPairs = new Set([...links.flows.values()].map((f) => `${f.from}\u0001${f.to}`));
+  const aclFlow = (from: string, to: string, evidence: Evidence, props?: Record<string, unknown>) => {
+    if (flowPairs.has(`${from}\u0001${to}`)) return;
+    flowPairs.add(`${from}\u0001${to}`);
+    links.flow(from, to, "async", evidence, props);
+  };
+  for (const u of resources.filter((r) => r.group === "kafka.strimzi.io" && r.kind === "KafkaUser")) {
+    const authz = own(spec(u), "authorization");
+    const acls = list(own(authz, "acls")).slice(0, 500);
+    if (str(own(authz, "type")) !== "simple" || !acls.length) continue;
+    handled.add(u);
+    const cluster = str(own(own(meta(u), "labels"), "strimzi.io/cluster"))?.slice(0, 200);
+    const kafka = cluster ? strimzi.get(nsName(u.ns, cluster)) : undefined;
+    const prefix =
+      (kafka && str(own(own(own(spec(kafka), "entityOperator"), "userOperator"), "secretPrefix"))?.slice(0, 100)) || "";
+    const secret = `${prefix}${u.name}`;
+    const users = workloads.filter((w) => w.res.ns === u.ns && uses.get(w)?.secrets.has(secret)).map((w) => w.key);
+    if (!users.length) {
+      skip(u.kind, u.name, "its ACLs aren't drawn: no workload in these files uses its Secret");
+      continue;
+    }
+    const writes = new Set<string>();
+    const reads = new Set<string>();
+    const groups = new Set<string>();
+    const wide: string[] = [];
+    for (const acl of acls) {
+      if ((str(own(acl, "type")) ?? "allow").toLowerCase() === "deny") continue;
+      const resource = own(acl, "resource");
+      const type = (str(own(resource, "type")) ?? "").toLowerCase();
+      const name = str(own(resource, "name"))?.slice(0, 249);
+      const pattern = (str(own(resource, "patternType")) ?? "literal").toLowerCase();
+      const ops = [...list(own(acl, "operations")), own(acl, "operation")]
+        .map((o) => (str(o) ?? "").toLowerCase())
+        .filter(Boolean);
+      const all = ops.includes("all");
+      if (!name) continue;
+      if (type === "group") {
+        if (pattern === "literal" && name !== "*" && /^[\w.-]{1,249}$/.test(name)) groups.add(name);
+        continue;
+      }
+      if (type !== "topic") continue;
+      const read = all || ops.includes("read");
+      const write = all || ops.includes("write");
+      if (!read && !write) continue;
+      if (pattern !== "literal" || name === "*" || !/^[\w.-]{1,249}$/.test(name)) {
+        const what = name === "*" ? "every topic" : `topics starting “${name.replace(/[^\w.-]/g, "")}”`;
+        wide.push(`${read && write ? "read and write" : read ? "read" : "write"} ${what}`);
+        continue;
+      }
+      if (write) writes.add(name);
+      if (read) reads.add(name);
+    }
+    const id = clusterId(u.ns, cluster ?? "");
+    const group = groups.size === 1 ? { group: [...groups][0] } : undefined;
+    for (const name of writes) {
+      const topic = topicOn(id, name);
+      for (const w of users) aclFlow(w, topic, { source: "resource", name: `KafkaUser ${u.name}`, note: "writes" });
+    }
+    for (const name of reads) {
+      const topic = topicOn(id, name);
+      for (const w of users)
+        aclFlow(topic, w, { source: "resource", name: `KafkaUser ${u.name}`, note: "reads" }, group);
+    }
+    if (wide.length)
+      note(`${label(u.name)} (KafkaUser) may ${wide.slice(0, 3).join(", ")}${wide.length > 3 ? "…" : ""}: not drawn`);
+    skip(u.kind, u.name, "shown as its workloads' flows");
+  }
+
   // ------------------------------------------------ what isn't drawn, and why
   for (const r of resources) {
     if (handled.has(r)) continue;
