@@ -74,7 +74,7 @@ Paths below are relative to this skill's folder. Run the scripts with `node`.
      command**: you'd see it, and the transcript and shell history would keep it. Give the user the command to run
      in their own terminal, where it asks for the password without echoing it (twice). If they've set
      `LIVEDIAGRAMS_HTML_PASSWORD` in the environment you run in, you can run it yourself; never set it for them.
-     The file is `Diagram (password protected).html`. Details in
+     The file is `Diagram (password protected) <random>.html`. Details in
      [reference/outputs.md](reference/outputs.md#a-password-on-the-file).
    - Diagram file: it's done. It opens at livediagrams.dev with **File > Open…**, read in the browser.
    - Image: say how to make it in the app ([reference/outputs.md](reference/outputs.md#image)). Don't fake one.

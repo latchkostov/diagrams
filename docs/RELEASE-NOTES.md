@@ -11,7 +11,7 @@ No habit changes: the export is as it was unless you turn the new option on. New
   people with the password can open it.** Send the password separately.
 - The file is encrypted in your browser with the same crypto as links with a password (AES-256-GCM, the key from
   PBKDF2-SHA-256 at 600,000 iterations). Nothing of the diagram is readable without the password: not its title,
-  labels, notes, simulations or banner. It's named **Diagram (password protected).html**.
+  labels, notes, simulations or banner. It's named **Diagram (password protected)** and a few random letters, so two exports never share a name.
 - Opened, it asks for the password, says when it's wrong (try again as often as you like), and plays as before. It
   still works offline and makes no network requests. The password is never stored or sent, and it can't be
   recovered: if it's lost, export again.
@@ -20,7 +20,8 @@ No habit changes: the export is as it was unless you turn the new option on. New
 - It unlocks from disk (checked in Chromium, Firefox and WebKit, Safari's engine) and on `https://` hosts. A plain `http://` intranet host can't
   decrypt it: the prompt says to open the file from disk.
 - The Agent Skill's `export-html.mjs` takes `--password`. It never takes the password on the command line: it asks in
-  the terminal, or reads `LIVEDIAGRAMS_HTML_PASSWORD`. The skill offers the password for company content and never
+  the terminal, or reads `LIVEDIAGRAMS_HTML_PASSWORD`. `export-html.mjs` no longer replaces an existing file: a taken
+  name gets the next free one (it says which), and `--force` replaces. The skill offers the password for company content and never
   asks for it in the chat.
 
 ## Imports: big ones, replicas, KafkaUser ACLs (2026-10)

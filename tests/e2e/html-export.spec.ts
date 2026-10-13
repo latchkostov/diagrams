@@ -4,6 +4,8 @@ import { pathToFileURL } from "node:url";
 import type { Download, FrameLocator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, publicExamples } from "./fixtures";
 import { expectPlaying, filePayloadText, hostPage, KAFKA, watchedPage } from "./html-viewer";
+import { deflateRaw, textToBytes } from "../../src/interop/codec";
+import { encryptBytes } from "../../src/interop/passwordCrypto";
 
 // Interactive HTML export (src/export, docs/INTEROP.md): File ▸ Export as ▸ Interactive HTML… downloads one
 // self-contained file. Opened from file:// (and inside an <iframe>, sandboxed or not), it shows the diagram,
@@ -218,7 +220,8 @@ test.describe("Interactive HTML export", () => {
 test.describe("Interactive HTML with a password", () => {
   const PASSWORD = "plum orbit lantern 42";
   const WRONG = "plum orbit lantern 24";
-  const LOCKED_NAME = "Diagram (password protected).html";
+  /** The neutral title and a random suffix: nothing from the diagram, never the same twice. */
+  const LOCKED_NAME = /^Diagram \(password protected\) [a-z2-9]{5}\.html$/;
 
   /** Turns Require a password on and types `password`, checking the field as the password link's dialog has it. */
   async function requirePassword(page: Page, password: string) {
@@ -257,10 +260,10 @@ test.describe("Interactive HTML with a password", () => {
     );
     await expect(input).toHaveAttribute("aria-invalid", "true");
     await expect(input).toBeFocused();
-    expect(await input.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd])).toEqual([
-      0,
-      WRONG.length,
-    ]);
+    // The selection comes a frame after the message: wait for it before typing over it.
+    await expect
+      .poll(() => input.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd]))
+      .toEqual([0, WRONG.length]);
     // Typing replaces the selection and clears the message.
     await keyboard.type(PASSWORD);
     await expect(scope.getByTestId("viewer-password-error")).toHaveCount(0);
@@ -284,7 +287,7 @@ test.describe("Interactive HTML with a password", () => {
     await requirePassword(page, PASSWORD);
     const { download: file, path, html } = await download(page);
     // Named and titled for nothing in it.
-    expect(file.suggestedFilename()).toBe(LOCKED_NAME);
+    expect(file.suggestedFilename()).toMatch(LOCKED_NAME);
     await expect(page.getByTestId("toast").last()).toContainText("Only people with the password can open it");
 
     // Nothing of the diagram in the clear: not its title, banner, node or simulation names, or the icons it uses.
@@ -319,6 +322,26 @@ test.describe("Interactive HTML with a password", () => {
     expect(await viewer.page.evaluate(() => window.__violations ?? [])).toEqual([]);
     expect(viewer.errors).toEqual([]);
     await viewer.page.close();
+
+    // The right password, but what it decrypts to isn't a payload: the prompt says the file is damaged, never a blank
+    // or broken page.
+    const sealed = await encryptBytes(await deflateRaw(textToBytes("{ not json")), PASSWORD);
+    const damagedPath = test.info().outputPath("damaged-locked.html");
+    writeFileSync(
+      damagedPath,
+      html.replace(/"encrypted":"[^"]+"/, () => `"encrypted":"${sealed}"`),
+    );
+    const damaged = await watchedPage(context);
+    await damaged.page.goto(pathToFileURL(damagedPath).href);
+    await damaged.page.getByTestId("viewer-password-input").fill(PASSWORD);
+    await damaged.page.getByTestId("viewer-password-input").press("Enter");
+    await expect(damaged.page.getByTestId("viewer-password-error")).toHaveText(
+      "This file's diagram is damaged. Export it again from Live Diagrams.",
+      { timeout: 15_000 },
+    );
+    await expect(damaged.page.getByTestId("viewer-lock")).toBeVisible();
+    expect(damaged.errors).toEqual([]);
+    await damaged.page.close();
 
     // Where the browser has no WebCrypto (a page on plain http://), the prompt says so before asking.
     const insecure = await context.newPage();
@@ -363,7 +386,14 @@ test.describe("Interactive HTML with a password", () => {
       page.waitForEvent("download"),
       page.getByTestId("html-export-password-input").press("Enter"),
     ]);
-    expect(file.suggestedFilename()).toBe(LOCKED_NAME);
+    expect(file.suggestedFilename()).toMatch(LOCKED_NAME);
+    // Another protected export gets a name of its own: downloads to one folder never meet.
+    await openHtmlExport(page);
+    await page.getByTestId("html-export-password-toggle").check();
+    await page.getByTestId("html-export-password-input").fill(PASSWORD);
+    const again = await download(page);
+    expect(again.download.suggestedFilename()).toMatch(LOCKED_NAME);
+    expect(again.download.suggestedFilename()).not.toBe(file.suggestedFilename());
     const path = test.info().outputPath("private-locked.html");
     await file.saveAs(path);
     const html = readFileSync(path, "utf8");

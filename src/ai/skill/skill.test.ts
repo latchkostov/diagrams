@@ -765,11 +765,11 @@ describe("export-html.mjs", () => {
     );
     expect(r.code, r.err).toBe(0);
     expect(r.err).toBe("");
-    // Its name and title say nothing of the diagram.
-    const file = path.join(dir, htmlFileName(LOCKED_TITLE));
-    expect(r.out.trim().split("\n")[0]).toMatch(
-      /Diagram \(password protected\)\.html \([\d,]+ kB, password protected, plays "/,
-    );
+    // Its name and title say nothing of the diagram: the neutral title and a random suffix.
+    const first = r.out.trim().split("\n")[0];
+    expect(first).toMatch(/Diagram \(password protected\) [a-z2-9]{5}\.html \([\d,]+ kB, password protected, plays "/);
+    const file = first.replace(/ \([\d,]+ kB.*$/, "");
+    expect(path.dirname(file)).toBe(dir);
     expect(r.out).toMatch(/only people with the password can open it.*Send the password separately/);
     const html = readFileSync(file, "utf8");
     expect(html).toContain(`<title>${LOCKED_TITLE}</title>`);
@@ -796,6 +796,38 @@ describe("export-html.mjs", () => {
     await expect(unlockPayloadText(locked.encrypted, "quartz meadow tangle 18", 50_000_000)).rejects.toThrow(
       /doesn't open this file/,
     );
+  }, 60_000);
+
+  it("never replaces a file: protected exports get names of their own, a taken name the next free one", () => {
+    const dir = out("collide");
+    const env = { LIVEDIAGRAMS_HTML_PASSWORD: "quartz meadow tangle 81" };
+    const other = write({ ...read(kafka), title: "Another diagram" });
+    // Two different diagrams, protected, into one folder: two files, each still the one exported.
+    const a = runWith(env, "export-html.mjs", kafka, "--password", "--out", dir);
+    const b = runWith(env, "export-html.mjs", other, "--password", "--out", dir);
+    expect([a.code, b.code], a.err + b.err).toEqual([0, 0]);
+    const [fileA, fileB] = [a, b].map((r) => r.out.split("\n")[0].replace(/ \([\d,]+ kB.*$/, ""));
+    expect(fileA).not.toBe(fileB);
+    expect(readdirSync(dir).sort()).toEqual([path.basename(fileA), path.basename(fileB)].sort());
+    expect(readFileSync(fileA, "utf8")).not.toBe(readFileSync(fileB, "utf8"));
+    // A default name that's taken: the next free one, and the script says so.
+    const plain1 = run("export-html.mjs", kafka, "--out", dir);
+    const plain2 = run("export-html.mjs", kafka, "--out", dir);
+    expect([plain1.code, plain2.code]).toEqual([0, 0]);
+    expect(plain2.out).toContain(path.join(dir, "Kafka order pipeline (2).html"));
+    expect(plain2.err).toMatch(
+      /Kafka order pipeline\.html already exists there, so this one is Kafka order pipeline \(2\)\.html/,
+    );
+    // A named --out that exists: refused, untouched, unless --force.
+    const named = path.join(dir, "Kafka order pipeline.html");
+    const before = readFileSync(named, "utf8");
+    const refused = runWith(env, "export-html.mjs", kafka, "--password", "--out", named);
+    expect(refused.code).toBe(1);
+    expect(refused.err).toMatch(/already exists\. Nothing was written.*--force/);
+    expect(readFileSync(named, "utf8")).toBe(before);
+    const forced = runWith(env, "export-html.mjs", kafka, "--password", "--out", named, "--force");
+    expect(forced.code, forced.err).toBe(0);
+    expect(readFileSync(named, "utf8")).toContain(`<title>${LOCKED_TITLE}</title>`);
   }, 60_000);
 
   it("--password never takes the password from the command line, and needs one to write anything", () => {

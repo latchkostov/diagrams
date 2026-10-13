@@ -1,6 +1,6 @@
 import type { DiagramFile } from "../model/types";
 import { decryptBytes, encryptBytes } from "./passwordCrypto";
-import { MIN_PASSWORD_LENGTH } from "./passwordLink";
+import { MIN_PASSWORD_LENGTH, parseEncrypted, WRONG_LINK_PASSWORD, WrongPasswordError } from "./passwordLink";
 import { compressDiagram, diagramFromCompressed } from "./share";
 
 // Password links' encryption (the format and its parameters: ./passwordLink.ts; the WebCrypto work, shared with
@@ -17,6 +17,15 @@ export async function encodeEncryptedShare(d: DiagramFile, password: string): Pr
   return encryptBytes(await compressDiagram(d), password);
 }
 
+/** Opens a password link's token. Throws BadEncryptedLinkError or WrongPasswordError, in a link's words. */
 export async function decodeEncryptedShare(token: string, password: string): Promise<DiagramFile> {
-  return diagramFromCompressed(await decryptBytes(token, password));
+  parseEncrypted(token);
+  let bytes: Uint8Array;
+  try {
+    bytes = await decryptBytes(token, password);
+  } catch (err) {
+    if (err instanceof WrongPasswordError) throw new WrongPasswordError(WRONG_LINK_PASSWORD);
+    throw err;
+  }
+  return diagramFromCompressed(bytes);
 }

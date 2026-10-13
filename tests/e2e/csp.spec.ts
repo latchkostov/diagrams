@@ -209,7 +209,7 @@ test.describe("Content-Security-Policy", () => {
       page.waitForEvent("download", { timeout: 20_000 }),
       page.getByTestId("html-export-download").click(),
     ]);
-    expect(file.suggestedFilename()).toBe("Diagram (password protected).html");
+    expect(file.suggestedFilename()).toMatch(/^Diagram \(password protected\) [a-z2-9]{5}\.html$/);
     expect(await csp.violations()).toEqual([]);
   });
 

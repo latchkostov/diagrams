@@ -1,5 +1,5 @@
 import { useId, useState, type Ref } from "react";
-import { MIN_PASSWORD_LENGTH } from "../passwordLink";
+import { MIN_PASSWORD_LENGTH } from "../encryptedToken";
 import { passwordStrength } from "../passwordStrength";
 
 /**

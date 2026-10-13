@@ -12,9 +12,11 @@ import {
   PBKDF2_ITERATIONS,
   SALT_BYTES,
 } from "../interop/shareCrypto";
-import { bytesToText, inflateRaw } from "../interop/codec";
+import { bytesToText, deflateRaw, inflateRaw, textToBytes } from "../interop/codec";
+import { encryptBytes } from "../interop/passwordCrypto";
+import { unlockPayloadText } from "./lock";
 import { buildPayload, htmlFileName, injectLocked, LOCKED_TITLE, PAYLOAD_BLOCK, type ExportInput } from "./inject";
-import { lockPayload, MIN_PASSWORD_LENGTH, UnlockError, WRONG_FILE_PASSWORD } from "./lock";
+import { lockedFileName, lockPayload, MIN_PASSWORD_LENGTH, UnlockError, WRONG_FILE_PASSWORD } from "./lock";
 import { parsePayload, unlockPayload, type LockedFile } from "./viewer/payload";
 
 // Password-protected Interactive HTML (./lock.ts): the file carries the payload encrypted with password links' own
@@ -128,6 +130,13 @@ describe("password-protected Interactive HTML", () => {
     expect(htmlFileName(LOCKED_TITLE)).toBe("Diagram (password protected).html");
   });
 
+  it("names each protected file apart, from random bytes only: never the diagram, never twice the same", () => {
+    expect(lockedFileName(Uint8Array.from([0, 1, 2, 30, 31]))).toBe("Diagram (password protected) 234z2.html");
+    const names = new Set(Array.from({ length: 200 }, () => lockedFileName()));
+    expect(names.size).toBe(200);
+    for (const name of names) expect(name).toMatch(/^Diagram \(password protected\) [a-z2-9]{5}\.html$/);
+  });
+
   it("a wrong password fails with the file's own message, and can be retried", SLOW, async () => {
     const { locked } = await lockedFile();
     const wrong = await unlockPayload(locked, "quartz meadow tangle 18").catch((e: unknown) => e);
@@ -135,6 +144,62 @@ describe("password-protected Interactive HTML", () => {
     expect((wrong as UnlockError).wrong).toBe(true);
     expect((wrong as UnlockError).message).toBe(WRONG_FILE_PASSWORD);
     expect((await unlockPayload(locked, PASSWORD)).diagram.title).toBe(SECRET.title);
+  });
+
+  // The right password, but what it decrypts to is wrong: authenticated, so only a broken exporter (or someone who
+  // has the password) could make one. The viewer must still say so, never show a blank page.
+  /** `plain` encrypted with PASSWORD, as a locked file's block holds it. */
+  const sealed = async (plain: Uint8Array): Promise<LockedFile> => ({
+    token: await encryptBytes(plain, PASSWORD),
+    theme: "light",
+  });
+  const unlockError = (locked: LockedFile): Promise<UnlockError> =>
+    unlockPayload(locked, PASSWORD).then(
+      () => {
+        throw new Error("It opened");
+      },
+      (e: unknown) => e as UnlockError,
+    );
+
+  it("rejects authenticated invalid compressed data", SLOW, async () => {
+    const err = await unlockError(await sealed(textToBytes("not deflate at all, just text")));
+    expect(err).toBeInstanceOf(UnlockError);
+    expect(err.wrong).toBe(false);
+    expect(err.message).toMatch(/damaged/);
+  });
+
+  it("rejects authenticated invalid JSON, and an invalid diagram, with the viewer's own reason", SLOW, async () => {
+    const notJson = await unlockError(await sealed(await deflateRaw(textToBytes("{ not json"))));
+    expect(notJson).toBeInstanceOf(UnlockError);
+    expect(notJson.wrong).toBe(false);
+    expect(notJson.message).toMatch(/damaged/);
+
+    const payload = buildPayload(TEMPLATE, input);
+    const broken = { ...payload, diagram: { ...payload.diagram, nodes: "none" } };
+    const badDiagram = await unlockError(await sealed(await deflateRaw(textToBytes(JSON.stringify(broken)))));
+    expect(badDiagram).toBeInstanceOf(UnlockError);
+    expect(badDiagram.wrong).toBe(false);
+    expect(badDiagram.message).toBe(parsePayload(JSON.stringify(broken)).error);
+    expect(badDiagram.message).toBeTruthy();
+
+    // A locked block inside a locked block isn't a diagram either.
+    const nested = { version: 1, encrypted: "v1.a.b.c", theme: "light" };
+    const inner = await unlockError(await sealed(await deflateRaw(textToBytes(JSON.stringify(nested)))));
+    expect(inner).toBeInstanceOf(UnlockError);
+    expect(inner.message).toMatch(/damaged/);
+  });
+
+  it("enforces the encrypted payload inflation budget", SLOW, async () => {
+    const { locked } = await lockedFile();
+    const err = await unlockPayloadText(locked.token, PASSWORD, 1_000).then(
+      () => new UnlockError("It opened", true),
+      (e: unknown) => e as UnlockError,
+    );
+    expect(err).toBeInstanceOf(UnlockError);
+    expect(err.wrong).toBe(false);
+    expect(err.message).toMatch(/damaged/);
+    // The same file within budget opens.
+    expect(JSON.parse(await unlockPayloadText(locked.token, PASSWORD, 50_000_000)).version).toBe(1);
   });
 
   it("a damaged file says so (and isn't a wrong password)", SLOW, async () => {

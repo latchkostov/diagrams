@@ -53,9 +53,9 @@ const FORBIDDEN: [string, RegExp][] = [
   ["the particle worker", /[/\\]src[/\\]live[/\\]particleWorker\.ts$/],
   ["the AI panel and agent tools", /[/\\]src[/\\]ai[/\\](ui[/\\]AiPanel|webmcp|ondevice)/],
   ["cloud storage", /[/\\]src[/\\]interop[/\\](storage|gdrive)[/\\]/],
-  // Making or opening links. The password crypto itself (passwordCrypto.ts, and passwordLink.ts's token format) is
-  // in: a password-protected file decrypts with it (src/export/lock.ts).
-  ["share links", /[/\\]src[/\\]interop[/\\](share|shareCrypto)\.ts$/],
+  // Making or opening links. The password crypto itself (passwordCrypto.ts, encryptedToken.ts) is in: a
+  // password-protected file decrypts with it (src/export/lock.ts).
+  ["share links", /[/\\]src[/\\]interop[/\\](share|shareCrypto|passwordLink)\.ts$/],
   ["the example diagrams", /[/\\]src[/\\]examples[/\\][^/\\]+\.json$/],
   ["local-only examples", /[/\\]examples[/\\]private[/\\]|[/\\]localOnly\.dev\.ts$/],
   // Architecture checks are for editing: the engine, the Checks card and the checks worker never ship in a file.

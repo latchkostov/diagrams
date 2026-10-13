@@ -209,8 +209,8 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   - **Require a password** (a checkbox under that line, off by default) encrypts the file with the same field as Copy
     link with password… (at least 8 characters, the strength hint, Show; no confirm field). The line then says **Only
     people with the password can open it.** Send the password separately, and one line under the field says what's
-    encrypted and that the password can't be recovered. The file is named and titled **Diagram (password
-    protected)**; opened, it shows **This diagram is password-protected**, one field and **Open** (Enter), and a wrong
+    encrypted and that the password can't be recovered. The file is titled **Diagram (password protected)** and
+    named for it with a short random suffix ("Diagram (password protected) k7m2q.html"); opened, it shows **This diagram is password-protected**, one field and **Open** (Enter), and a wrong
     password says **That password doesn't open this file. Check it and try again.**
 - **Who can open it.** Every way a diagram leaves the app says who can open what it makes, in these words, where
   you choose it (the File menu's line, the dialog) and in its toast:

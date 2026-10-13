@@ -32,7 +32,7 @@ script here: open the diagram file at livediagrams.dev and use **File > Copy lin
 ## Interactive HTML file
 
 ```sh
-node scripts/export-html.mjs <file> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password]
+node scripts/export-html.mjs <file> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]
 ```
 
 One self-contained `.html` file, the same file as the app's **File > Export as > Interactive HTML…**: the diagram
@@ -44,6 +44,8 @@ about 1.2 MB.
 - It validates the diagram first, like `validate.mjs`, and refuses to write a file the viewer wouldn't open.
 - `--out`: a file ending in `.html`, or a folder for `<title>.html`. By default it writes `<title>.html` beside the
   diagram.
+- It never replaces a file: if the name is taken it writes the next free one (`<title> (2).html`) and says so on
+  stderr. A `--out` file that exists is refused; add `--force` to replace it.
 - `--theme`: `light` (default) or `dark`.
 - `--banner`: a line across the top, such as `"Confidential: internal use only"`. Add one for work diagrams.
 - `--title`: the page's title and file name (the diagram's title by default).
@@ -60,7 +62,7 @@ opens in any modern browser.
 
 `--password` encrypts the file the way the app's **Require a password** does (and its links with a password: AES-256-GCM,
 the key from PBKDF2-SHA-256 at 600,000 iterations). Nothing of the diagram is readable without the password, not
-even its title: the file is named `Diagram (password protected).html`. Opened, it asks for the password, says when
+even its title: the file is named `Diagram (password protected) <random>.html`, a few random letters so two never collide. Opened, it asks for the password, says when
 it's wrong, and decrypts in the browser, offline. It's still one file that makes no network requests.
 
 The password never goes on the command line: shell history, the process list and your transcript would keep it.

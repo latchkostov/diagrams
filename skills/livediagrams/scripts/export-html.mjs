@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"]
-//                                     [--title "text"] [--sim <id>] [--no-autoplay] [--password]
+//                                     [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]
 // Writes the diagram as one self-contained interactive HTML file, the same file as the app's
 // File > Export as > Interactive HTML…: read-only pan and zoom, and its simulations play. The file works offline,
 // makes no network requests (a strict Content-Security-Policy says so) and stores nothing in the browser. Only
@@ -13,11 +13,12 @@
 // password, not even its title or file name. The password never goes on the command line, where shell history, the
 // process list and an agent's transcript would keep it. It comes from the LIVEDIAGRAMS_HTML_PASSWORD environment
 // variable or, run in a terminal without it, from a prompt that doesn't echo (asked twice: a typo can't be undone).
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { checkFile } from "./lib/check.mjs";
 import {
+  lockedFileName,
   lockPayload,
   MIN_PASSWORD_LENGTH,
   parsePayload,
@@ -25,19 +26,12 @@ import {
   PAYLOAD_LIMITS,
   unlockPayloadText,
 } from "./lib/app.mjs";
-import {
-  buildPayload,
-  htmlFileName,
-  injectLocked,
-  injectPayload,
-  LOCKED_TITLE,
-  scriptSafeJson,
-} from "./lib/inject.mjs";
+import { buildPayload, htmlFileName, injectLocked, injectPayload, scriptSafeJson } from "./lib/inject.mjs";
 
 const USAGE =
-  'Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password]';
+  'Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]';
 const VALUED = ["--out", "--theme", "--banner", "--title", "--sim", "--exported-on"];
-const FLAGS = ["--no-autoplay", "--password"];
+const FLAGS = ["--no-autoplay", "--password", "--force"];
 const PASSWORD_ENV = "LIVEDIAGRAMS_HTML_PASSWORD";
 const NO_PASSWORD_ARG = `--password takes no value: a password on the command line stays in shell history and the process list. Set ${PASSWORD_ENV}, or run the command in a terminal to be asked for it.`;
 
@@ -182,12 +176,30 @@ else {
 }
 
 // --out: a file ending in .html, or a folder for <title>.html. By default, <title>.html beside the diagram. A
-// password-protected file's name says nothing of the diagram: "Diagram (password protected).html".
+// password-protected file's name says nothing of the diagram: "Diagram (password protected) <random>.html".
+// Nothing is ever replaced unless --force says so: a named --out that exists is refused, and a default name that's
+// taken gets the next free one, " (2)" and on, which the script says.
 const out = opts["--out"];
-const name = htmlFileName(password === undefined ? title : LOCKED_TITLE);
-const target = out && /\.html?$/i.test(out) ? out : path.join(out ?? path.dirname(file), name);
+const named = Boolean(out && /\.html?$/i.test(out));
+const wanted = named
+  ? out
+  : path.join(out ?? path.dirname(file), password === undefined ? htmlFileName(title) : lockedFileName());
+let target = wanted;
+if (!opts["--force"] && existsSync(target)) {
+  if (named)
+    fail(`${target} already exists. Nothing was written: choose another --out, or add --force to replace it.`, 1);
+  const ext = path.extname(wanted);
+  for (let n = 2; existsSync(target); n++) target = `${wanted.slice(0, -ext.length)} (${n})${ext}`;
+  console.error(`note: ${path.basename(wanted)} already exists there, so this one is ${path.basename(target)}.`);
+}
 mkdirSync(path.dirname(target), { recursive: true });
-writeFileSync(target, html);
+try {
+  // "wx": fails rather than replace a file that appeared since the check.
+  writeFileSync(target, html, { flag: opts["--force"] ? "w" : "wx" });
+} catch (err) {
+  if (err?.code === "EEXIST") fail(`${target} appeared while exporting. Nothing was written; run it again.`, 1);
+  throw err;
+}
 
 const kB = Math.max(1, Math.round(Buffer.byteLength(html) / 1000)).toLocaleString("en-US");
 const playing = start ? `, plays "${sims.find((s) => s.id === start)?.title ?? start}" when opened` : "";

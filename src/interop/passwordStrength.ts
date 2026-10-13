@@ -1,4 +1,4 @@
-import { MIN_PASSWORD_LENGTH } from "./passwordLink";
+import { MIN_PASSWORD_LENGTH } from "./encryptedToken";
 
 // The hint under Copy link with password…'s field (loads with that dialog, not with the app).
 

@@ -41,7 +41,7 @@ function exportHtml(diagramFile: string, ...args: string[]) {
   const dir = test.info().outputPath("skill");
   const r = run("export-html.mjs", diagramFile, "--out", dir, ...args);
   expect(r.code, r.err).toBe(0);
-  const path = r.out.split("\n")[0].replace(/ \(.*$/, "");
+  const path = r.out.split("\n")[0].replace(/ \([\d,]+ kB.*$/, "");
   return { path, html: readFileSync(path, "utf8"), out: r.out };
 }
 
@@ -113,7 +113,8 @@ test.describe("The agent skill's Interactive HTML export", () => {
       { encoding: "utf8", env: { ...process.env, LIVEDIAGRAMS_HTML_PASSWORD: password } },
     );
     expect(r.status, r.stderr).toBe(0);
-    const path = join(dir, "Diagram (password protected).html");
+    const path = r.stdout.split("\n")[0].replace(/ \([\d,]+ kB.*$/, "");
+    expect(path).toMatch(/Diagram \(password protected\) [a-z2-9]{5}\.html$/);
     expect(readFileSync(path, "utf8")).not.toContain("Kafka order pipeline");
 
     const url = pathToFileURL(path).href;
@@ -125,6 +126,12 @@ test.describe("The agent skill's Interactive HTML export", () => {
     await expect(viewer.page.getByTestId("viewer-password-error")).toContainText("doesn't open this file", {
       timeout: 15_000,
     });
+    // The wrong password is selected a frame later: wait for it, so typing replaces it.
+    const input = viewer.page.getByTestId("viewer-password-input");
+    await expect(input).toBeFocused();
+    await expect
+      .poll(() => input.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd]))
+      .toEqual([0, "not the password".length]);
     await viewer.page.keyboard.type(password);
     await viewer.page.keyboard.press("Enter");
     await expectPlaying(viewer.page);
@@ -208,7 +215,7 @@ test.describe("The agent skill's Interactive HTML export", () => {
       { cwd: dir, encoding: "utf8" },
     );
     expect(r.status, r.stderr).toBe(0);
-    const path = r.stdout.split("\n")[0].replace(/ \(.*$/, "");
+    const path = r.stdout.split("\n")[0].replace(/ \([\d,]+ kB.*$/, "");
     expect(path.startsWith(join(dir, "out"))).toBe(true);
 
     const url = pathToFileURL(path).href;

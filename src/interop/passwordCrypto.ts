@@ -1,20 +1,20 @@
 import { bytesToBase64Url, textToBytes } from "./codec";
 import {
-  ENCRYPTED_PARAM,
   ENCRYPTION_VERSION,
   IV_BYTES,
-  parseEncrypted,
+  parseToken,
   PBKDF2_ITERATIONS,
   SALT_BYTES,
+  TOKEN_ADDITIONAL_DATA,
   WrongPasswordError,
-} from "./passwordLink";
+} from "./encryptedToken";
 
-// The password encryption itself (the format and its parameters: ./passwordLink.ts): WebCrypto's PBKDF2 and
+// The password encryption itself (the token's format and parameters: ./encryptedToken.ts): WebCrypto's PBKDF2 and
 // AES-GCM, nothing else. Shared by password links (./shareCrypto.ts) and password-protected Interactive HTML files
 // (src/export/lock.ts), so both use exactly the same parameters. It knows nothing about links or files: it turns
 // bytes and a password into a `v1.…` token and back. Loaded on use.
 
-const AAD = textToBytes(`livediagrams:${ENCRYPTED_PARAM}:${ENCRYPTION_VERSION}`);
+const AAD = textToBytes(TOKEN_ADDITIONAL_DATA);
 
 const subtle = () => {
   const s = globalThis.crypto?.subtle;
@@ -65,9 +65,9 @@ export async function encryptBytes(
   ].join(".");
 }
 
-/** Decrypts a `v1.…` token. Throws BadEncryptedLinkError (bad token) or WrongPasswordError (GCM said no). */
+/** Decrypts a `v1.…` token. Throws BadTokenError (bad token) or WrongPasswordError (GCM said no). */
 export async function decryptBytes(token: string, password: string): Promise<Uint8Array> {
-  const { salt, iv, ciphertext } = parseEncrypted(token);
+  const { salt, iv, ciphertext } = parseToken(token);
   const key = await deriveKey(password, salt, "decrypt");
   try {
     return new Uint8Array(

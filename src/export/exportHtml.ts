@@ -11,16 +11,16 @@ import {
   FALLBACK_ICON,
   htmlFileName,
   injectLocked,
-  LOCKED_TITLE,
   templateStencilIcons,
   type ExportInput,
 } from "./inject";
-import { lockPayload } from "./lock";
+import { lockedFileName, lockPayload } from "./lock";
 
 // File ▸ Export as ▸ Interactive HTML…: the viewer template (fetched from this site, once, when someone first
 // exports), the icons the diagram uses (this site's own files), and the diagram, put together here and
 // downloaded. Nothing is uploaded: the file is made in the page. With a password, the payload is encrypted here too
-// (./lock.ts), and the file is named and titled LOCKED_TITLE: nothing of the diagram is readable without it.
+// (./lock.ts), and the file is titled LOCKED_TITLE and named for it with a random suffix: nothing of the diagram is
+// readable without the password.
 
 export type HtmlExportOptions = Omit<ExportInput, "diagram" | "iconSvgs" | "exportedOn"> & {
   /** Require a password: the file holds the payload encrypted with it (./lock.ts). Never stored or sent. */
@@ -74,8 +74,8 @@ export async function downloadInteractiveHtml(
   options: HtmlExportOptions,
 ): Promise<{ name: string; bytes: number }> {
   const html = await buildInteractiveHtml(diagram, options);
-  // A protected file's name says nothing of the diagram either.
-  const name = htmlFileName(options.password !== undefined ? LOCKED_TITLE : (options.title ?? diagram.title));
+  // A protected file's name says nothing of the diagram either, and a random suffix keeps two apart.
+  const name = options.password !== undefined ? lockedFileName() : htmlFileName(options.title ?? diagram.title);
   downloadText(html, name, "text/html");
   return { name, bytes: new Blob([html]).size };
 }

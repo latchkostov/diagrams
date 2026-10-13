@@ -4,7 +4,7 @@ import { Dialog } from "../interop/ui/Dialog";
 import { Disclosure } from "../interop/ui/dialogs";
 import { Glyph } from "../interop/ui/glyphs";
 import { PasswordField } from "../interop/ui/PasswordField";
-import { MIN_PASSWORD_LENGTH } from "../interop/passwordLink";
+import { MIN_PASSWORD_LENGTH } from "../interop/encryptedToken";
 import { exportInteractiveHtml, preloadTemplate } from "./exportHtml";
 import "./htmlExport.css";
 

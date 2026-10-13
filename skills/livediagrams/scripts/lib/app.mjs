@@ -1566,6 +1566,12 @@ function layoutDiagram(input, opts = {}) {
 		placedNotes
 	};
 }
+/** A password-protected file's page title and file name: neutral, since the diagram's own title is encrypted. */
+var LOCKED_TITLE = "Diagram (password protected)";
+/** `<title>.html`, with the characters file systems reject taken out. */
+function htmlFileName(title) {
+	return `${title.replace(/[\u0000-\u001f\u007f<>:"/\\|?*]+/g, " ").replace(/\s+/g, " ").trim().replace(/^\.+|\.+$/g, "").slice(0, 120).trim() || "diagram"}.html`;
+}
 //#endregion
 //#region src/interop/codec.ts
 var utf8 = new TextEncoder();
@@ -1629,37 +1635,43 @@ function base64UrlToBytes(s) {
 }
 var PBKDF2_ITERATIONS = 6e5;
 var MIN_PASSWORD_LENGTH = 8;
-/** The password didn't open the link: GCM authentication failed (a wrong password, or a changed link). */
+/** v1's additional data (see above). */
+var TOKEN_ADDITIONAL_DATA = `livediagrams:e:v1`;
+/**
+* The password didn't open the token: GCM authentication failed (a wrong password, or a changed token). Its carrier
+* may say so in its own words (a link, a file); the class is the same, so `instanceof` works everywhere.
+*/
 var WrongPasswordError = class extends Error {
-	constructor() {
-		super("That password doesn't open this link. Check it and try again.");
+	constructor(message = "That password doesn't open it. Check it and try again.") {
+		super(message);
 		this.name = "WrongPasswordError";
 	}
 };
-/** The link is malformed or made by a version of Diagrams this one doesn't know. Retrying won't help. */
-var BadEncryptedLinkError = class extends Error {
-	constructor(message) {
+/** The token is malformed, too long or from a newer version. Its carrier words the message. */
+var BadTokenError = class extends Error {
+	reason;
+	constructor(reason, message = `This encrypted diagram can't be read (${reason}).`) {
 		super(message);
-		this.name = "BadEncryptedLinkError";
+		this.name = "BadTokenError";
+		this.reason = reason;
 	}
 };
-var DAMAGED$2 = "This password-protected link is damaged or incomplete. Ask for the link again, and make sure it was copied in full.";
-/** Splits and checks a `v1.<salt>.<iv>.<ciphertext>` token; throws BadEncryptedLinkError. */
-function parseEncrypted(token) {
+/** Splits and checks a `v1.<salt>.<iv>.<ciphertext>` token; throws BadTokenError. */
+function parseToken(token) {
 	const t = token.trim();
-	if (t.length > LIMITS.maxTextChars) throw new BadEncryptedLinkError("This share link is too long to open.");
+	if (t.length > LIMITS.maxTextChars) throw new BadTokenError("too-long");
 	const parts = t.split(".");
 	const version = parts[0] ?? "";
-	if (/^v\d+$/.test(version) && version !== "v1") throw new BadEncryptedLinkError("This link was made by a newer version of Live Diagrams. Reload the page to update, then open the link again.");
-	if (version !== "v1" || parts.length !== 4 || parts.some((p) => !/^[A-Za-z0-9_-]+$/.test(p))) throw new BadEncryptedLinkError(DAMAGED$2);
+	if (/^v\d+$/.test(version) && version !== "v1") throw new BadTokenError("newer");
+	if (version !== "v1" || parts.length !== 4 || parts.some((p) => !/^[A-Za-z0-9_-]+$/.test(p))) throw new BadTokenError("damaged");
 	let decoded;
 	try {
 		decoded = parts.slice(1).map((p) => base64UrlToBytes(p));
 	} catch {
-		throw new BadEncryptedLinkError(DAMAGED$2);
+		throw new BadTokenError("damaged");
 	}
 	const [salt, iv, ciphertext] = decoded;
-	if (salt.length !== 16 || iv.length !== 12 || ciphertext.length < 17) throw new BadEncryptedLinkError(DAMAGED$2);
+	if (salt.length !== 16 || iv.length !== 12 || ciphertext.length < 17) throw new BadTokenError("damaged");
 	return {
 		version,
 		salt,
@@ -1669,7 +1681,7 @@ function parseEncrypted(token) {
 }
 //#endregion
 //#region src/interop/passwordCrypto.ts
-var AAD = textToBytes(`livediagrams:e:v1`);
+var AAD = textToBytes(TOKEN_ADDITIONAL_DATA);
 var subtle = () => {
 	const s = globalThis.crypto?.subtle;
 	if (!s) throw new Error("This browser can't encrypt or decrypt here (WebCrypto needs a secure https:// page). Try a current browser.");
@@ -1706,9 +1718,9 @@ async function encryptBytes(plain, password, fixed = {}) {
 		bytesToBase64Url(new Uint8Array(sealed))
 	].join(".");
 }
-/** Decrypts a `v1.…` token. Throws BadEncryptedLinkError (bad token) or WrongPasswordError (GCM said no). */
+/** Decrypts a `v1.…` token. Throws BadTokenError (bad token) or WrongPasswordError (GCM said no). */
 async function decryptBytes(token, password) {
-	const { salt, iv, ciphertext } = parseEncrypted(token);
+	const { salt, iv, ciphertext } = parseToken(token);
 	const key = await deriveKey(password, salt, "decrypt");
 	try {
 		return new Uint8Array(await subtle().decrypt({
@@ -1737,6 +1749,15 @@ var UnlockError = class extends Error {
 		this.wrong = wrong;
 	}
 };
+/** Letters and digits that can't be mistaken for each other (no 0/o, 1/l/i). */
+var SUFFIX_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";
+/**
+* A protected file's name: LOCKED_TITLE and a short random suffix ("Diagram (password protected) k7m2q.html"), so two
+* exports never share a name, yet nothing in it comes from the diagram (or says when it was made). `bytes`: tests.
+*/
+function lockedFileName(bytes = crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(5))) {
+	return htmlFileName(`${LOCKED_TITLE} ${[...bytes].map((b) => SUFFIX_ALPHABET[b % 31]).join("")}`);
+}
 /** The payload encrypted with `password`, as a password-protected file's data block holds it. */
 async function lockPayload(payload, password) {
 	if (password.length < 8) throw new Error(`Use a password of at least 8 characters.`);
@@ -1758,7 +1779,7 @@ async function unlockPayloadText(token, password, maxBytes) {
 		bytes = await decryptBytes(token, password);
 	} catch (err) {
 		if (err instanceof WrongPasswordError) throw new UnlockError(WRONG_FILE_PASSWORD, true);
-		if (err instanceof BadEncryptedLinkError) throw new UnlockError(DAMAGED$1);
+		if (err instanceof BadTokenError) throw new UnlockError(DAMAGED$1);
 		throw new UnlockError(globalThis.crypto?.subtle ? DAMAGED$1 : CANT_UNLOCK_HERE);
 	}
 	try {
@@ -1889,4 +1910,4 @@ function passwordStrength(password) {
 	};
 }
 //#endregion
-export { LIMITS, MIN_PASSWORD_LENGTH, PAYLOAD_LIMITS, annotationGeometryError, layoutDiagram, lockPayload, parsePayload, passwordStrength, simulationProblem, unlockPayloadText, validateDiagram };
+export { LIMITS, MIN_PASSWORD_LENGTH, PAYLOAD_LIMITS, annotationGeometryError, layoutDiagram, lockPayload, lockedFileName, parsePayload, passwordStrength, simulationProblem, unlockPayloadText, validateDiagram };

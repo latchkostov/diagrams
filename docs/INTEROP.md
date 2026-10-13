@@ -490,8 +490,9 @@ simulation picker, play and pause, speed, slow motion, trace and the rest of the
   additional data `livediagrams:e:v1`, as the same `v1.<salt>.<iv>.<ciphertext>` token. Nothing is copied: the link and
   the file call the same functions, and `src/export/lock.test.ts` checks WebCrypto is called identically for both.
   - **In the clear**, only: the viewer itself (the template, identical for every file), the theme (so the prompt paints
-    in it), the format version, the token, and the neutral name and `<title>` **Diagram (password protected)**
-    (`LOCKED_TITLE`; the dialog's title goes inside). The file's size shows roughly how big the diagram is. Private
+    in it), the format version, the token, and the neutral `<title>` **Diagram (password protected)** and a name of it with five
+    random letters and digits (`LOCKED_TITLE`, `lockedFileName`: "Diagram (password protected) k7m2q.html"; nothing
+    from the diagram or the time, and two exports never share a name). The dialog's title goes inside. The file's size shows roughly how big the diagram is. Private
     or not isn't visible either: the `"private"` flag is inside.
   - **Opening it** shows **This diagram is password-protected**, one field (focused) and **Open** (Enter). A wrong
     password says **That password doesn't open this file. Check it and try again.**, keeps what was typed, selected, and
@@ -571,13 +572,14 @@ writeFileSync(htmlFileName(diagram.title), html);
 ```
 
 **From the agent skill, offline.** `skills/livediagrams/scripts/export-html.mjs <file> [--out path] [--theme light|dark]
-[--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password]` makes the same kind of file on plain Node (20 or
+[--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]` makes the same kind of file on plain Node (20 or
 later, standard library only, no network): it validates the diagram with `validate.mjs`'s checks, then runs the
 bundled injection on the bundled template with the bundled icons, and checks the finished payload with the viewer's own
 `parsePayload` (size budgets, the diagram contract, icons, the 300-character banner) before writing anything, all in `skills/livediagrams/scripts/lib/`
 (`scripts/skill-viewer.ts`). `--exported-on YYYY-MM-DD` fixes the footer's date. `--password` encrypts it with the
 app's own `lockPayload` (bundled in `lib/app.mjs`), decrypts it once more to check, and names it `Diagram (password
-protected).html`. The password is never an argument (shell history, the process list and an agent's transcript keep
+protected) <random>.html`. It never replaces a file: a default name that's taken gets the next free one (" (2)", said on
+stderr), a named `--out` that exists is refused, and only `--force` replaces. The password is never an argument (shell history, the process list and an agent's transcript keep
 those): it comes from `LIVEDIAGRAMS_HTML_PASSWORD`, or a terminal prompt that doesn't echo and asks twice;
 `--password=…` or a value after it is refused, and so is a run with neither the variable nor a terminal.
 

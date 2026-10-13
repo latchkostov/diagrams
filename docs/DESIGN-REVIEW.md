@@ -19,7 +19,7 @@ from disk at those sizes and on a 390 px phone; mouse and keyboard. The Kafka ex
   the password separately, not with the file. (`dialog-password-ready-1280-light`), and the toast says the same
   (`toast-1280-light`). One line under the field says what's encrypted, that the password is never stored or sent, and
   that a lost one means exporting again.
-- **The file says nothing until it's opened.** It's named and titled **Diagram (password protected)**. The prompt is a
+- **The file says nothing until it's opened.** It's titled **Diagram (password protected)** and named for it with a random suffix. The prompt is a
   card in the dialogs' style: **This diagram is password-protected**, "It's checked in this file; nothing is sent
   anywhere.", one field (focused) and **Open** (`viewer-1280-light-locked`, `viewer-390-light-locked`). A wrong
   password says **That password doesn't open this file. Check it and try again.**, keeps the text selected so typing
@@ -34,6 +34,11 @@ from disk at those sizes and on a 390 px phone; mouse and keyboard. The Kafka ex
 
 ### What was off (fixed in this round)
 
+- **Protected exports overwrote each other** (the code review). Every one was named "Diagram (password
+  protected).html", so the skill's `export-html.mjs` into one folder replaced one diagram's file with another's. Each
+  name now ends in five random letters and digits (nothing from the diagram, nor the time), and the skill never replaces
+  a file: a taken default name gets the next free one, a named `--out` that exists is refused, `--force` replaces. The
+  browser never overwrote (downloads get " (1)"), but two files now tell themselves apart.
 - **The summary line wrapped.** "· password protected" at its end pushed it to two lines at 480 px, and repeated the
   line just under it. It's gone from the summary; the callout and the checkbox say it.
 - **After unlocking, the keyboard was nowhere.** The field it was in went away, so focus fell to the page and a screen
