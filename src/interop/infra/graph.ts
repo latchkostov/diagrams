@@ -1,4 +1,5 @@
 import type { DiagramGroup, EdgeRelation } from "../../model/types";
+import type { FormatId } from "../formats";
 
 // The intermediate graph every infrastructure reader builds (docs/research/imports.md § Pipeline). Readers
 // only describe what they found; shared code (resolveStencil, map.ts, layout.ts) turns hints into stencils,
@@ -121,6 +122,30 @@ export interface ReportConnection {
   guess?: boolean;
 }
 
+/** One boundary of a big import, in the report's picker. */
+export interface PickGroup {
+  /** An ImportGroup's key. */
+  key: string;
+  label: string;
+  /** Its members (the loose nodes it brings along aren't counted). */
+  nodes: number;
+  /** Flows to, from or inside it. */
+  flows: number;
+  /** In the drawing now. */
+  drawn: boolean;
+}
+
+/** A big import drawn in part (src/interop/infra/pick.ts): every boundary, and the whole import to draw another set. */
+export interface ImportPick {
+  format: FormatId;
+  /** Nodes in the whole import. */
+  total: number;
+  /** The most flows first. */
+  groups: PickGroup[];
+  /** The whole import, as data: names and connections, never the source text. */
+  graph: ImportGraph;
+}
+
 /**
  * The Import report: kept in memory while the diagram stays open in this tab. Never in the file, a share
  * link or an export.
@@ -143,4 +168,6 @@ export interface ImportReport {
   traffic?: { nodeId: string; label: string; messageType?: string; ratePerSec: number; seconds: number }[];
   /** "Connections found in settings" unless the source says otherwise ("…from subscriptions, mappings and grants"). */
   connectionsTitle?: string;
+  /** Too big to draw at once: the boundaries drawn, and the rest to pick from. */
+  pick?: ImportPick;
 }

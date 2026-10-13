@@ -11,6 +11,8 @@ import { pickFor, withoutCredentials } from "./stencils";
 import { LIMITS } from "../native";
 import { layoutImport } from "./layout";
 import { ImportError } from "./yaml";
+import { idClaimer } from "../../model/ids";
+import { MAX_DRAWN } from "./pick";
 
 // ImportGraph → diagram: stencils from the shared resolver, links to relationships, groups to boundaries,
 // then the three-step layout. The caller runs the result through validateDiagram, like every other import.
@@ -28,8 +30,7 @@ const capped = (lines: ReportLine[]): ReportLine[] =>
 /** How long the "Imported traffic" simulation sends. */
 export const TRAFFIC_SECONDS = 120;
 
-/** The importer's own cap: anything bigger isn't drawn (the validator's budget is the same). */
-export const MAX_DRAWN = 5_000;
+export { MAX_DRAWN };
 
 const slug = (s: string) =>
   s
@@ -38,7 +39,8 @@ const slug = (s: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "node";
 
-export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: ImportReport } {
+/** `total`: the whole import's nodes, when this graph is a pick of it ("287 of 1,240 nodes"). */
+export function graphToDiagram(g: ImportGraph, total?: number): { diagram: DiagramFile; report: ImportReport } {
   // The budgets first: nothing is laid out for a graph the validator would refuse anyway.
   const over = (n: number, max: number, what: string) => {
     if (n > max)
@@ -49,14 +51,9 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
   over(g.components.length, MAX_DRAWN, "nodes");
   over(g.links.length, LIMITS.maxEdges, "connections");
   over(g.groups.length, LIMITS.maxGroups, "boundaries");
-  // One id space for nodes and boundaries, unique after normalizing ("Frontend" and "frontend" are two).
-  const taken = new Set<string>();
-  const unique = (base: string) => {
-    let id = base;
-    for (let i = 2; taken.has(id); i++) id = `${base}-${i}`;
-    taken.add(id);
-    return id;
-  };
+  // One id space for nodes, connections and boundaries (#71), unique after normalizing ("Frontend" and "frontend"
+  // are two), from the shared allocator.
+  const unique = idClaimer();
   const ids = new Map<string, string>();
   const idFor = (key: string, label: string, prefix = "") => {
     const base = prefix + slug(label);
@@ -183,8 +180,12 @@ export function graphToDiagram(g: ImportGraph): { diagram: DiagramFile; report: 
     ...(simulation ? { simulations: [simulation] } : {}),
   });
   const n = (k: number, one: string, many = `${one}s`) => `${k.toLocaleString("en")} ${k === 1 ? one : many}`;
+  const drew =
+    total && total > nodes.length
+      ? `${nodes.length.toLocaleString("en")} of ${n(total, "node")}`
+      : n(nodes.length, "node");
   const summary =
-    `Imported “${g.title}” from ${g.format}: ${n(nodes.length, "node")}, ${n(edges.length, "connection")}.` +
+    `Imported “${g.title}” from ${g.format}: ${drew}, ${n(edges.length, "connection")}.` +
     (guesses.length ? ` ${n(guesses.length, "guess", "guesses")}.` : "");
   return {
     diagram,

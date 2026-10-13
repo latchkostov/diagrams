@@ -6,7 +6,7 @@ import { estimateCardSize } from "../../canvas/nodes/size";
 import { detectFormat, importFiles, importText, type ImportOutcome } from "../formats";
 import { sniffInfra } from "../sniff";
 import type { ImportReport } from "./graph";
-import { importKubernetes } from "./pipeline";
+import { importKubernetes, replayOutcome } from "./pipeline";
 import { HELM_TEMPLATE, MAX_RESOURCES } from "./kubernetes";
 import { parseServiceHost, WorkloadNames } from "./k8sHosts";
 import { ENV_LIMITS, expandVars, OPAQUE } from "./k8sSettings";
@@ -809,8 +809,19 @@ spec: { selector: { app: svc-${i} } }
 `,
     ).join("");
     const started = performance.now();
-    const { diagram } = k8s(docs);
+    const { report } = k8s(docs);
     expect(performance.now() - started).toBeLessThan(perfBudget(6_000));
+    // Over 300 nodes: the import draws some namespaces, and every one of them drawn is the whole set.
+    expect(report.nodes).toBeLessThanOrEqual(300);
+    const pick = report.pick!;
+    expect(pick.total).toBe(1_000);
+    const { diagram } = ok(
+      replayOutcome(
+        pick.graph,
+        pick.format,
+        pick.groups.map((g) => g.key),
+      ),
+    );
     expect(diagram.nodes).toHaveLength(1_000);
     expect(diagram.edges).toHaveLength(1_000);
     expect(diagram.groups).toHaveLength(20);

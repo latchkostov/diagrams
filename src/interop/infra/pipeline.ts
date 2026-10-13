@@ -7,6 +7,7 @@ import { HELM_TEMPLATE, readKubernetes } from "./kubernetes";
 import { readTerraform, TERRAFORM_BINARY, TERRAFORM_SOURCE } from "./terraform";
 import type { ImportGraph } from "./graph";
 import { graphToDiagram } from "./map";
+import { defaultPick, pickGraph, pickGroups } from "./pick";
 import { ImportError } from "./yaml";
 
 // One pipeline for every infrastructure source (docs/research/imports.md § Pipeline): reader → ImportGraph →
@@ -17,9 +18,15 @@ export { ImportError };
 /** At most this many files in one import. */
 export const MAX_FILES = 100;
 
-/** The shared tail of every infrastructure import: map, lay out, validate. */
-function outcomeOf(format: FormatId, graph: ImportGraph): ImportOutcome {
-  const { diagram, report } = graphToDiagram(graph);
+/**
+ * The shared tail of every infrastructure import: map, lay out, validate. A big import draws only some of its
+ * boundaries (`chosen`, else the ones with the most flows), and its report keeps the whole import to pick others.
+ */
+function outcomeOf(format: FormatId, full: ImportGraph, chosen?: readonly string[]): ImportOutcome {
+  const keys = chosen ?? defaultPick(full);
+  const graph = keys ? pickGraph(full, keys) : full;
+  const { diagram, report } = graphToDiagram(graph, keys && full.components.length);
+  if (keys) report.pick = { format, total: full.components.length, groups: pickGroups(full, keys), graph: full };
   const r = validateDiagram(diagram);
   return r.ok ? { ok: true, format, diagram: r.diagram, warnings: r.warnings, report } : { ok: false, error: r.error };
 }
@@ -54,10 +61,17 @@ export function importTerraform(files: readonly SourceFile[]): ImportOutcome {
   return outcome;
 }
 
-/** An import's replay (Terraform's Draw everything), drawn: the shared map, layout and validation. */
-export function replayOutcome(graph: ImportGraph): ImportOutcome {
+/**
+ * An import drawn again from its data: Terraform's Draw everything, or a big import's boundaries picked in the
+ * report (`chosen`). The shared map, layout and validation.
+ */
+export function replayOutcome(
+  graph: ImportGraph,
+  format: FormatId = "terraform",
+  chosen?: readonly string[],
+): ImportOutcome {
   try {
-    return outcomeOf("terraform", graph);
+    return outcomeOf(format, graph, chosen);
   } catch (err) {
     if (err instanceof ImportError) return { ok: false, error: err.message };
     throw err;

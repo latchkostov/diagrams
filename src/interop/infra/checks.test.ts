@@ -59,7 +59,10 @@ const EXPECTED: Record<string, string[]> = {
   "terraform aws-plan": ["suggestion no-reader:orders-dlq"],
   "terraform aws-plan, Draw everything": ["suggestion no-reader:orders-dlq"],
   "terraform azure-state": ["warning no-reader:billing-events", "suggestion dead-letter:billing-inbox"],
-  "terraform azure-state, Draw everything": ["warning no-reader:billing-events", "suggestion dead-letter:billing-inbox"],
+  "terraform azure-state, Draw everything": [
+    "warning no-reader:billing-events",
+    "suggestion dead-letter:billing-inbox",
+  ],
 };
 
 describe("checks on the import fixtures", () => {

@@ -744,6 +744,80 @@ test.describe("imports: Terraform", () => {
     expect(requests.filter((r) => r.type === "fetch" || r.type === "xhr")).toEqual([]);
   });
 
+  for (const theme of ["light", "dark"] as const)
+    test(`a long module address wraps between its parts and copies whole (1280, ${theme})`, async ({
+      page,
+      consoleErrors,
+    }) => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.emulateMedia({ colorScheme: theme });
+      await gotoCanvas(page, publicExamples[0].slug);
+      await drop(page, [TF_AWS]);
+      await expectAwsPlan(page);
+      await page.getByTestId("toast-import-details").click();
+      const address = "module.streaming.aws_lambda_event_source_mapping.analytics";
+      const evidence = page.getByTestId(/^import-report-setting-evidence-\d+$/).filter({ hasText: address });
+      await expect(evidence).toHaveCount(1);
+      await expect(evidence).toHaveText(address);
+      // Each rendered line, from where its characters sit.
+      const lines = await evidence.evaluate((el) => {
+        const out: string[] = [];
+        let top: number | undefined;
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode())
+          for (let i = 0; i < (n.textContent ?? "").length; i++) {
+            const r = document.createRange();
+            r.setStart(n, i);
+            r.setEnd(n, i + 1);
+            const t = Math.round(r.getBoundingClientRect().top);
+            if (top === undefined || Math.abs(t - top) > 2) out.push("");
+            top = t;
+            out[out.length - 1] += (n.textContent ?? "")[i];
+          }
+        return out;
+      });
+      expect(lines.join("")).toBe(address);
+      expect(lines.length, lines.join(" | ")).toBeGreaterThan(1);
+      // Never inside a name: every line but the last ends at a "." (or the next starts with "[").
+      for (let i = 0; i < lines.length - 1; i++)
+        expect(/[./]$/.test(lines[i]) || lines[i + 1].startsWith("["), lines.join(" | ")).toBe(true);
+      // Selected, it copies as one string: the break opportunities add no text.
+      const copied = await evidence.evaluate((el) => {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        const sel = getSelection();
+        if (!sel) return "";
+        sel.removeAllRanges();
+        sel.addRange(r);
+        return sel.toString();
+      });
+      expect(copied).toBe(address);
+      expectNoErrors(consoleErrors);
+    });
+
+  test("Draw everything is compact: fitted, its cards are readable, not specks in a tall column", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await gotoCanvas(page, publicExamples[0].slug);
+    await drop(page, [TF_AWS]);
+    await expectAwsPlan(page);
+    await page.getByTestId("toast-import-details").click();
+    await page.getByTestId("import-report-draw-everything").click();
+    await expect(page.getByTestId("diagram-title")).toHaveText("aws-plan (everything)");
+    await page.getByTestId("fit-view-button").click();
+    // The whole diagram fits the view at a scale where a card reads: the spread layout fitted at under a fifth.
+    const card = await page.getByTestId("node-msk-brokers").boundingBox();
+    expect(card?.width ?? 0).toBeGreaterThan(110);
+    // And the drawing uses the view's width, not a narrow strip down the middle.
+    const d = (await stored(page, "aws-plan (everything)")) as unknown as { nodes: { x: number; y: number }[] };
+    const xs = d.nodes.map((n) => n.x);
+    const ys = d.nodes.map((n) => n.y);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeLessThan(Math.max(...xs) - Math.min(...xs));
+    expectNoErrors(consoleErrors);
+  });
+
   for (const diagram of ["imported-terraform", "imported-terraform-azure"])
     test(`the Terraform import is overlap-free in the Lab's audit (${diagram})`, async ({ page }) => {
       await page.goto(`./?view=lab&preset=overlap-audit&diagram=${diagram}`);
@@ -751,4 +825,95 @@ test.describe("imports: Terraform", () => {
       for (const kind of ["label-node", "label-label", "node-node"])
         await expect(page.getByTestId(`audit-count-${kind}`)).toHaveAttribute("data-count", "0");
     });
+});
+
+/**
+ * A cluster too big to draw at once: `namespaces` of `size` Deployments, the first four calling along a chain (the
+ * most flows first). Generated here, so the fixture is plainly public.
+ */
+function bigCluster(namespaces = 40, size = 10): string {
+  const docs: string[] = [];
+  for (let n = 0; n < namespaces; n++) {
+    const ns = `team-${String(n).padStart(2, "0")}`;
+    const calls = n < 4 ? size - 1 - n : 0;
+    for (let w = 0; w < size; w++)
+      docs.push(`apiVersion: apps/v1
+kind: Deployment
+metadata: { name: w${w}-api, namespace: ${ns} }
+spec:
+  selector: { matchLabels: { app: w${w}-api } }
+  template:
+    metadata: { labels: { app: w${w}-api } }
+    spec:
+      containers:
+        - name: w${w}-api
+          image: example/w${w}
+          env: [${w < calls ? `{ name: NEXT_URL, value: "http://w${w + 1}-api:8080" }` : ""}]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: w${w}-api, namespace: ${ns} }
+spec: { selector: { app: w${w}-api } }`);
+  }
+  return docs.join("\n---\n");
+}
+
+test.describe("imports: big imports", () => {
+  test("a big import draws the boundaries with the most flows; the report picks others as a new diagram", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await gotoCanvas(page, publicExamples[0].slug);
+    await drop(page, [{ name: "cluster.yaml", text: bigCluster() }]);
+    // 400 workloads in 40 namespaces: 30 namespaces fit in 300 nodes, the four with flows first.
+    await expect(page.getByTestId("toast")).toContainText("300 of 400 nodes");
+    const title = (await page.getByTestId("diagram-title").textContent()) ?? "";
+    await expect(page.getByTestId("group-boundary-team-00")).toBeVisible();
+    await expect(page.getByTestId("group-boundary-team-39")).toHaveCount(0);
+    await page.getByTestId("toast-import-details").click();
+    const pick = page.getByTestId("import-report-pick");
+    await expect(pick).toBeVisible();
+    await expect(pick).toContainText("Boundaries (30 of 40 drawn)");
+    await expect(page.getByTestId("import-report-pick-lede")).toContainText("It has 400 nodes");
+    // The most flows first, each row with its nodes and flows; the drawn ones ticked.
+    await expect(page.getByTestId("import-report-pick-row-0")).toContainText("team-00");
+    await expect(page.getByTestId("import-report-pick-row-0")).toContainText("10 nodes · 9 flows");
+    await expect(page.getByTestId("import-report-pick-0")).toBeChecked();
+    await expect(page.getByTestId("import-report-pick-39")).not.toBeChecked();
+    // Nothing changed yet: nothing to draw.
+    const draw = page.getByTestId("import-report-pick-draw");
+    await expect(draw).toBeDisabled();
+    await expect(draw).toHaveText("Draw these (300 nodes)");
+    // Swap one: untick team-00 (keyboard), tick the last one.
+    await page.getByTestId("import-report-pick-0").focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByTestId("import-report-pick-0")).not.toBeChecked();
+    await page.getByTestId("import-report-pick-39").check();
+    await expect(draw).toBeEnabled();
+    await expect(draw).toHaveText("Draw these (300 nodes)");
+    await draw.click();
+    await expect(page.getByTestId("import-report")).toHaveCount(0);
+    await expect(page.getByTestId("toast")).toContainText("300 of 400 nodes");
+    await expect(page.getByTestId("group-boundary-team-39")).toBeVisible();
+    await expect(page.getByTestId("group-boundary-team-00")).toHaveCount(0);
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    // A new diagram: the first one is still there, as it was.
+    const all = await page.evaluate(() => {
+      const titles: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i) ?? "";
+        if (!key.startsWith("diagrams.doc.v1:")) continue;
+        const d = JSON.parse(localStorage.getItem(key) ?? "null");
+        titles.push((d?.doc ?? d?.diagram ?? d)?.title);
+      }
+      return titles;
+    });
+    expect(all.filter((t) => t === title)).toHaveLength(2);
+    // The new one's report keeps the picker, with its own boundaries ticked.
+    await page.getByTestId("toast-import-details").click();
+    await expect(page.getByTestId("import-report-pick-39")).toBeChecked();
+    await expect(page.getByTestId("import-report-pick-0")).not.toBeChecked();
+    expectNoErrors(consoleErrors);
+  });
 });

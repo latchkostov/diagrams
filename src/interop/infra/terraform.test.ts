@@ -212,6 +212,27 @@ describe("Terraform import: the AWS plan fixture", () => {
     }
   });
 
+  it("Draw everything is compact: no column spreads, and the cards fill a fair share of the canvas", () => {
+    for (const { diagram: d } of [aws(), azure()].map(everythingOf)) {
+      const boxes = d.nodes.map((n) => ({ x: n.x, y: n.y, group: n.group, ...estimateCardSize(n.label, n.sublabel) }));
+      // Neighbours in a column (one x, in one boundary or none) sit a row apart, not a boundary's height apart:
+      // the layered layout's pitch is its tallest unit's, which spread the first column 500 px a card.
+      const columns = new Map<string, number[]>();
+      for (const b of boxes)
+        columns.set(`${b.group ?? ""} ${b.x}`, [...(columns.get(`${b.group ?? ""} ${b.x}`) ?? []), b.y]);
+      for (const [x, ys] of columns) {
+        ys.sort((a, b) => a - b);
+        for (let i = 1; i < ys.length; i++)
+          expect(ys[i] - ys[i - 1], `${d.title}: column ${x}`).toBeLessThanOrEqual(160);
+      }
+      // The bounding box is at most 6 times the cards' own area (it was 28 times for the AWS plan).
+      const width = Math.max(...boxes.map((b) => b.x + b.width)) - Math.min(...boxes.map((b) => b.x));
+      const height = Math.max(...boxes.map((b) => b.y + b.height)) - Math.min(...boxes.map((b) => b.y));
+      const cards = boxes.reduce((sum, b) => sum + b.width * b.height, 0);
+      expect((width * height) / cards, d.title).toBeLessThan(6);
+    }
+  });
+
   it("never fetches anything", async () => {
     const fetch = vi.spyOn(globalThis, "fetch");
     await importFiles([AWS, AZURE]);
@@ -297,7 +318,23 @@ describe("Terraform import: values never leave the file", () => {
       const imported = ok(outcome);
       const all = everythingOf(imported);
       // The replay kept for Draw everything is data too: no source text, no values.
-      const out = JSON.stringify([imported, outcome.ok === true && outcome.warnings, all.diagram, all.report]);
+      // A pick of its boundaries keeps the whole import in its report (the picker): data too.
+      const picked = ok(
+        replayOutcome(
+          imported.replay!,
+          "terraform",
+          imported.replay!.groups.slice(0, 1).map((g) => g.key),
+        ),
+      );
+      expect(picked.report.pick?.graph).toBe(imported.replay);
+      const out = JSON.stringify([
+        imported,
+        outcome.ok === true && outcome.warnings,
+        all.diagram,
+        all.report,
+        picked.diagram,
+        picked.report,
+      ]);
       for (const secret of SECRETS) expect(out, `${files.map((f) => f.name)}: ${secret}`).not.toContain(secret);
     }
   });

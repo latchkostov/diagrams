@@ -19,28 +19,78 @@ const boxOf = (n: DiagramNode): Box => ({ x: n.x, y: n.y, ...sizeOf(n) });
 
 /** More units than this with no flows at all go in a grid below the flows, not one tall column. */
 const PACK_OVER = 6;
+/** Room between two units in a column, as the layered layout leaves between cards. */
+const ROW_GAP = 48;
+
+type Unit = Box & { id: string; label?: string; sublabel?: string };
 
 /**
- * Units with no flow to or from anything (Terraform's Draw everything: policies, networks, helpers) would stack
- * in the layered layout's first column. Past a few, they're packed in a grid under everything that flows.
+ * The layered layout spaces every row by its tallest unit, so one boundary block 450 px tall spreads every column
+ * of single cards 500 px apart. Each column is restacked by its own units' heights, in the same order, and centred
+ * on one line, so a chain still reads straight across.
  */
-function packIsolated(
-  units: (Box & { id: string })[],
+function compactColumns(units: Unit[], at: Map<string, { x: number; y: number }>): void {
+  const columns = new Map<number, Unit[]>();
+  for (const u of units) {
+    const p = at.get(u.id);
+    if (p) columns.set(p.x, [...(columns.get(p.x) ?? []), u]);
+  }
+  const height = (col: Unit[]) => col.reduce((h, u) => h + u.height, 0) + ROW_GAP * (col.length - 1);
+  const tallest = Math.max(0, ...[...columns.values()].map(height));
+  const top = Math.min(...units.filter((u) => at.has(u.id)).map((u) => at.get(u.id)!.y));
+  for (const col of columns.values()) {
+    col.sort((a, b) => at.get(a.id)!.y - at.get(b.id)!.y);
+    let y = top + (tallest - height(col)) / 2;
+    for (const u of col) {
+      at.set(u.id, { x: at.get(u.id)!.x, y: Math.round(y / 10) * 10 });
+      y += u.height + ROW_GAP;
+    }
+  }
+}
+
+/**
+ * The layered layout for one level (a boundary's members, or the blocks and loose nodes), compacted. Units with no
+ * flow (`linked` says which have one: Terraform's Draw everything has policies, networks, helpers), past a few,
+ * never enter it: they'd stack in its first column and spread it. They're packed in a grid under everything that
+ * flows instead.
+ */
+function laneLayout(
+  units: Unit[],
   edges: { from: string; to: string }[],
-  at: Map<string, { x: number; y: number }>,
-): void {
-  const linked = new Set(edges.flatMap((e) => [e.from, e.to]));
-  const isolated = units.filter((u) => !linked.has(u.id) && at.has(u.id));
-  if (isolated.length <= PACK_OVER) return;
-  const placed = units.filter((u) => linked.has(u.id) && at.has(u.id)).map((u) => ({ ...u, ...at.get(u.id)! }));
+  linked: (id: string) => boolean,
+): Map<string, { x: number; y: number }> {
+  const isolated = units.filter((u) => !linked(u.id));
+  const pack = isolated.length > PACK_OVER;
+  const lane = pack ? units.filter((u) => linked(u.id)) : units;
+  const at = lane.length ? layeredLayout({ nodes: lane, edges, direction: "LR" }) : new Map();
+  compactColumns(lane, at);
+  if (!pack) return at;
+  const placed = lane.map((u) => ({ ...u, ...at.get(u.id)! }));
   const left = placed.length ? Math.min(...placed.map((b) => b.x)) : 40;
   const top = placed.length ? Math.max(...placed.map((b) => b.y + b.height)) + 80 : 40;
-  const columns = Math.max(1, Math.ceil(Math.sqrt(isolated.length * 2)));
-  const cellW = Math.max(...isolated.map((u) => u.width)) + 48;
-  const cellH = Math.max(...isolated.map((u) => u.height)) + 40;
-  isolated.forEach((u, i) =>
-    at.set(u.id, { x: left + (i % columns) * cellW, y: top + Math.floor(i / columns) * cellH }),
-  );
+  // Cells as wide as the widest card; something much wider (a boundary with nothing flowing) takes several cells.
+  const widths = isolated.map((u) => u.width).sort((a, b) => a - b);
+  const median = widths[Math.floor(widths.length / 2)];
+  const cellW = Math.max(...widths.filter((w) => w <= median * 2)) + 48;
+  // Rows about as wide as the grid is tall, a little landscape (a screen), and never narrower than the lane above.
+  const area = isolated.reduce((sum, u) => sum + Math.ceil((u.width + 48) / cellW) * cellW * (u.height + 40), 0);
+  const laneWidth = placed.length ? Math.max(...placed.map((b) => b.x + b.width)) - left : 0;
+  const columns = Math.max(1, Math.floor(Math.max(laneWidth, Math.sqrt(area * 1.6)) / cellW));
+  let col = 0;
+  let y = top;
+  let rowH = 0;
+  for (const u of isolated) {
+    const span = Math.ceil((u.width + 48) / cellW);
+    if (col > 0 && col + span > columns) {
+      y += rowH + 40;
+      col = 0;
+      rowH = 0;
+    }
+    at.set(u.id, { x: left + col * cellW, y });
+    col += span;
+    rowH = Math.max(rowH, u.height);
+  }
+  return at;
 }
 
 export function layoutImport(diagram: DiagramFile): DiagramFile {
@@ -61,7 +111,11 @@ export function layoutImport(diagram: DiagramFile): DiagramFile {
   for (const group of groups) {
     const members = nodes.filter((n) => n.group === group.id);
     const lane = members.filter((n) => !target(n));
-    const pos = layeredLayout({ nodes: lane, edges: flows, direction: "LR" });
+    const pos = laneLayout(
+      lane.map((n) => ({ ...boxOf(n), id: n.id, label: n.label, sublabel: n.sublabel })),
+      flows,
+      (id) => inFlow.has(id),
+    );
     for (const n of lane) Object.assign(n, pos.get(n.id));
     const placed = lane.map(boxOf);
     const bottom = Math.max(0, ...placed.map((b) => b.y + b.height));
@@ -110,8 +164,12 @@ export function layoutImport(diagram: DiagramFile): DiagramFile {
     seen.add(pair);
     unitEdges.push({ from, to });
   }
-  const at = layeredLayout({ nodes: units, edges: unitEdges, direction: "LR" });
-  packIsolated(units, unitEdges, at);
+  // A block with flows inside belongs in the lane even when none leave it.
+  const linked = new Set([
+    ...unitEdges.flatMap((e) => [e.from, e.to]),
+    ...[...blocks.keys()].filter((g) => nodes.some((n) => n.group === g && inFlow.has(n.id))).map((g) => `${g}`),
+  ]);
+  const at = laneLayout(units, unitEdges, (id) => linked.has(id));
   for (const n of loose) Object.assign(n, at.get(n.id));
   const out: DiagramFile = { ...diagram, nodes };
   out.groups = groups.map((g) => {
