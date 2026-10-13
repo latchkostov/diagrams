@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { insertSpoken, isFatalSpeechError, mergeResults, speechErrorKind, speechErrorMessage } from "./dictation";
+import { speechServiceNote, speechServiceOwner } from "./useDictation";
 
 const final = (transcript: string) => ({ isFinal: true, transcript });
 const interim = (transcript: string) => ({ isFinal: false, transcript });
@@ -79,5 +80,21 @@ describe("speech errors", () => {
     expect(speechErrorMessage("aborted")).toBeNull();
     expect(isFatalSpeechError("denied")).toBe(true);
     expect(isFatalSpeechError("no-speech")).toBe(false);
+  });
+});
+
+describe("speechServiceNote", () => {
+  const CHROME =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
+  const EDGE = `${CHROME} Edg/141.0.0.0`;
+  const SAFARI =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15";
+  const FIREFOX = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0";
+
+  it("names the company whose service hears it, for the browser in use", () => {
+    expect(speechServiceNote(CHROME)).toBe("What you say may be sent to Google's speech service.");
+    expect(speechServiceOwner(EDGE)).toBe("Microsoft's");
+    expect(speechServiceOwner(SAFARI)).toBe("Apple's");
+    expect(speechServiceOwner(FIREFOX)).toBe("your browser's");
   });
 });

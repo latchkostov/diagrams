@@ -5,6 +5,10 @@ import type { CanvasHost } from "../palette/host";
 
 export const LOCAL_ONLY_MESSAGE =
   "Local-only diagrams are excluded from AI. Their contents cannot be described, edited or shared through AI tools.";
+/**
+ * What agents (the page's tools) and people are told when AI can't use the diagram. A built-in local-only example is
+ * always private, so tools say "Private" for it too; LOCAL_ONLY_MESSAGE is only the development examples' own note.
+ */
 export const PRIVATE_MESSAGE =
   "Private diagrams are excluded from AI. Their contents cannot be described, edited or shared through AI tools.";
 

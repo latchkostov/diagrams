@@ -9,7 +9,12 @@ export interface UrlState {
   present: boolean;
 }
 
-const VIEWS: readonly View[] = ["gallery", "canvas", "lab"];
+/**
+ * The Lab (previews, fixtures, evals, a box that stores pasted diagrams) is a development tool: in dev builds and the
+ * e2e build only. A production build has no Lab at all, and `?view=lab` opens the canvas.
+ */
+export const LAB = import.meta.env.DEV || import.meta.env.VITE_E2E === "1";
+const VIEWS: readonly View[] = LAB ? ["gallery", "canvas", "lab"] : ["gallery", "canvas"];
 
 // The diagram is the product: a bare URL opens the canvas (the stencil library is a tab).
 const viewOf = (p: URLSearchParams): View => {

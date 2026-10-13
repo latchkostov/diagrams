@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
-import { MOD, SLUG } from "./ai-helpers";
+import { MOD, SLUG, openAdvanced } from "./ai-helpers";
 
 // The privacy audit's fixes (docs/PRIVACY-AUDIT.md): what a private diagram must never leave behind in the address
 // bar, the browser's history, a request, a third party's script, a link embed or this browser's storage. Every
@@ -151,9 +151,55 @@ test.describe("requests and third parties", () => {
     // The provider's code is loaded once already, so a warm-up would have run by now: none did.
     expect(await preloads()).toBe(1);
   });
+
+  test("a warm-up still loading when the diagram turns private stops there", async ({ page }) => {
+    // Hold the provider's code, as a slow network would, while the diagram turns private.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const chunk = /testProvider-[\w-]+\.js$/;
+    await page.route(chunk, async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await importDiagram(page, work());
+    const loaded = page.waitForResponse(chunk);
+    await page.getByTestId("file-button").click();
+    await expect(page.getByTestId("file-privacy")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press(`${MOD}+k`);
+    await page.getByTestId("command-input").fill("private");
+    await page.getByTestId("command-item-action:file.private").click();
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    release();
+    await loaded;
+    // The module has run, and its warm-up was decided on, once a task has passed: no warm-up.
+    await page.evaluate(() => new Promise((r) => setTimeout(r)));
+    expect(await page.evaluate(() => (window as { __testStoragePreloads?: number }).__testStoragePreloads ?? 0)).toBe(
+      0,
+    );
+  });
 });
 
 test.describe("embeds", () => {
+  test("an embed reads the saved theme but writes nothing to storage", async ({ page, consoleErrors }) => {
+    await page.addInitScript(() => {
+      if (!sessionStorage.getItem("seeded")) {
+        sessionStorage.setItem("seeded", "1");
+        localStorage.setItem("diagrams.settings.v1", JSON.stringify({ theme: "dark" }));
+      }
+    });
+    await page.goto(`./?embed=1&example=${SLUG}`);
+    await expect(page.getByTestId("embed-view")).toBeVisible();
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark");
+    expect(await page.evaluate(() => Object.keys(localStorage).sort())).toEqual(["diagrams.settings.v1"]);
+    // Untouched: exactly what was saved before the embed opened.
+    expect(await page.evaluate(() => localStorage.getItem("diagrams.settings.v1"))).toBe('{"theme":"dark"}');
+    expectNoErrors(consoleErrors);
+  });
+
   test("a link embed refuses a diagram marked private, with no link out", async ({ page, consoleErrors }) => {
     const payload = deflateRawSync(Buffer.from(JSON.stringify(work({ private: true })))).toString("base64url");
     await page.goto(`./?embed=1#d=${payload}`);
@@ -190,9 +236,25 @@ test.describe("this browser's storage", () => {
     const slug = await importDiagram(page, work({ private: true }));
     // An AI conversation that names it (the panel keeps one per diagram).
     await page.evaluate((w) => localStorage.setItem("diagrams.ai-thread.v1:x", JSON.stringify({ turns: [w] })), WORD);
+    await page.evaluate(() => {
+      sessionStorage.setItem("diagrams.pendingStencils.v1", '["kafka.topic"]');
+      sessionStorage.setItem("other-app.state", "keep");
+    });
+    // Another tab, on the stencil library (its pending stencils wait for a canvas), that writes a diagram's words at
+    // the very moment it hears of the wipe, before the app's own listener runs: a late autosave.
     const other = await context.newPage();
-    await other.goto(`./?view=canvas&example=${slug}`);
-    await expect(other.getByTestId("diagram-title")).toHaveText("Quillfeather payroll");
+    await other.addInitScript((w) => {
+      addEventListener("storage", (e) => {
+        if (e.key === "diagrams.cleared.v1" && e.newValue)
+          localStorage.setItem("diagrams.autosave.v1:kafka-order-pipeline", JSON.stringify({ late: w }));
+      });
+    }, WORD);
+    await other.goto("./?view=gallery");
+    await expect(other.getByTestId("gallery-view")).toBeVisible();
+    await other.evaluate(() => {
+      sessionStorage.setItem("diagrams.pendingStencils.v1", '["kafka.topic"]');
+      sessionStorage.setItem("other-app.state", "keep");
+    });
 
     const openClear = async () => {
       await page.getByTestId("file-button").click();
@@ -213,8 +275,9 @@ test.describe("this browser's storage", () => {
     await Promise.all([page.waitForEvent("load"), page.getByTestId("clear-device-confirm").click()]);
     await otherReloads;
     await expect(page.getByTestId("canvas-view")).toBeVisible();
-    await expect(other.getByTestId("canvas-view")).toBeVisible();
-    // The app starts over on a blank diagram, and nothing of the old one is anywhere in storage.
+    await expect(other.getByTestId("gallery-view")).toBeVisible();
+    // The app starts over on a blank diagram, and nothing of the old one is anywhere in storage, the other tab's late
+    // write included; each tab's session storage loses the app's keys and keeps another app's.
     expect(page.url()).not.toContain(slug);
     await expect(page.getByTestId("diagram-title")).not.toHaveText("Quillfeather payroll");
     for (const p of [page, other]) {
@@ -226,9 +289,69 @@ test.describe("this browser's storage", () => {
       expect(stored.toLowerCase()).not.toContain(WORD);
       expect(stored).not.toContain("diagrams.library-entry.v1:");
       expect(stored).not.toContain("diagrams.ai-thread.v1:");
+      expect(stored).not.toContain("diagrams.autosave.v1:");
+      expect(await p.evaluate(() => Object.keys(sessionStorage))).toEqual(["other-app.state"]);
     }
     await other.close();
     expectNoErrors(consoleErrors);
+  });
+
+  test("Cancel and Esc keep everything: only the confirm button clears", async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    const slug = await importDiagram(page, work({ private: true }));
+    for (const close of ["cancel", "escape"]) {
+      await page.getByTestId("file-button").click();
+      await page.getByTestId("file-privacy").click();
+      await page.getByTestId("privacy-clear-device").click();
+      await expect(page.getByTestId("clear-device-dialog")).toBeVisible();
+      if (close === "escape") await page.keyboard.press("Escape");
+      else await page.getByTestId("clear-device-cancel").click();
+      await expect(page.getByTestId("clear-device-dialog")).toHaveCount(0);
+    }
+    await page.reload();
+    await expect(page.getByTestId("diagram-title")).toHaveText("Quillfeather payroll");
+    expect(await page.evaluate((s) => localStorage.getItem(`diagrams.library-entry.v1:${s}`), slug)).not.toBeNull();
+  });
+
+  test("making a diagram private offers to clear its AI conversation, with Undo", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, SLUG);
+    await importDiagram(page, work());
+    // A turn in its conversation: a reply pasted in Advanced and applied.
+    await openAdvanced(page);
+    await page
+      .getByTestId("ai-reply")
+      .fill('[{ "op": "add_node", "kind": "Kafka topic", "label": "quillfeather-runs" }]');
+    await page.getByTestId("ai-apply").click();
+    await expect(page.getByTestId("ai-turn-0")).toBeVisible();
+    const thread = () =>
+      page.evaluate(() =>
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("diagrams.ai-thread.v1:"))
+          .map((k) => localStorage.getItem(k))
+          .join(""),
+      );
+
+    await page.keyboard.press(`${MOD}+k`);
+    await page.getByTestId("command-input").fill("private");
+    await page.getByTestId("command-item-action:file.private").click();
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    await page.getByTestId("private-clear-conversation").click();
+    await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
+    expect((await thread()).toLowerCase()).not.toContain(WORD);
+    await page.getByTestId("private-clear-undo").click();
+    await expect(page.getByTestId("ai-turn-0")).toBeVisible();
+    expect((await thread()).toLowerCase()).toContain(WORD);
+    expectNoErrors(consoleErrors);
+  });
+
+  test("a diagram with no AI conversation turns private with a plain toast", async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    await importDiagram(page, work());
+    await page.keyboard.press(`${MOD}+k`);
+    await page.getByTestId("command-input").fill("private");
+    await page.getByTestId("command-item-action:file.private").click();
+    await expect(page.getByTestId("toast").last()).toContainText("Private: no share links");
+    await expect(page.getByTestId("private-clear-conversation")).toHaveCount(0);
   });
 });
 

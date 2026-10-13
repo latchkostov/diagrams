@@ -1,9 +1,9 @@
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
 import { Icon } from "../../components/Icon";
-import type { Dictation } from "./useDictation";
+import { speechServiceNote, type Dictation } from "./useDictation";
 
 // A request box with the dictation mic and everything dictation says: "Listening…", the words heard
-// so far, the note about where audio goes, and errors with how to fix them. One component, so every
+// so far, where the audio goes while the browser's speech service listens, and errors with how to fix them. One component, so every
 // box that takes speech gives the same feedback (Advanced's describe box, the on-device model's box).
 
 const MOD = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
@@ -13,6 +13,8 @@ export interface DictationFieldTestIds {
   mic: string;
   interim: string;
   message: string;
+  /** The standing line while the browser's speech service (not the device) listens. */
+  service: string;
 }
 
 export function DictationField({
@@ -96,6 +98,11 @@ export function DictationField({
           ) : (
             <span className="ai-listening">Listening{dictation.onDevice ? " on this device" : ""}…</span>
           )}
+        </p>
+      )}
+      {dictation.status === "listening" && !dictation.onDevice && (
+        <p className="ai-speech-service" data-testid={testIds.service}>
+          {speechServiceNote()}
         </p>
       )}
       {dictation.message && (

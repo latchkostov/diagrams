@@ -397,17 +397,6 @@ export function builtinActions(): Action[] {
       run: (ctx) => ctx.editor.redo(),
     },
     {
-      id: "canvas.export",
-      modes: ["edit", "live"],
-      section: "file",
-      targets: ["canvas"],
-      label: "Export",
-      icon: "download",
-      children: (ctx) => [
-        { type: "item", id: "export:json", label: "JSON", hint: "diagrams/v1", run: () => ctx.editor.exportJson() },
-      ],
-    },
-    {
       id: "canvas.shortcuts",
       modes: ["edit", "live"],
       // A canvas control and ? open the sheet already.

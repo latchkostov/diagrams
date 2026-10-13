@@ -57,7 +57,10 @@ describe("action registry", () => {
     expect(live("node")).not.toContain("item.delete");
     expect(live("edge")).toEqual(expect.arrayContaining(["edge.edit-label", "node.properties"]));
     expect(live("edge")).not.toContain("edge.reverse");
-    expect(live("canvas")).toEqual(expect.arrayContaining(["canvas.properties", "canvas.export"]));
+    expect(live("canvas")).toEqual(expect.arrayContaining(["canvas.properties"]));
+    // Exporting is the File menu's and the app's own Export ▸ (src/interop/useInterop.tsx), which marks a private
+    // diagram's file "private": true. The editor has no export of its own that could skip it.
+    expect(live("canvas")).not.toContain("canvas.export");
     expect(live("canvas")).not.toContain("canvas.add-node");
   });
 

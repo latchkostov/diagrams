@@ -10,7 +10,8 @@ import {
 
 // Dictation through the browser's Web Speech API. On-device recognition is used when the browser has
 // it (Chrome's `processLocally` + `SpeechRecognition.available()`); otherwise the browser's own speech
-// service transcribes, and we say so once. No keys, no servers of ours.
+// service transcribes, and the box says so the whole time it listens (speechServiceNote). No keys, no servers of
+// ours.
 
 interface RecognitionResultList {
   readonly length: number;
@@ -46,9 +47,20 @@ export function speechRecognition(): RecognitionCtor | undefined {
 
 export type DictationStatus = "idle" | "starting" | "listening";
 
-/** Shown once per browser when audio leaves the device. */
-const CLOUD_NOTE_KEY = "diagrams.ai.dictationNote.v1";
-export const CLOUD_NOTE = "Your browser's speech service transcribes this (in Chrome, Google).";
+/**
+ * Whose speech service hears what's said when recognition isn't on the device: the browser maker's (Chrome and other
+ * Chromium browsers send audio to Google, Edge to Microsoft, Safari to Apple), or the browser's, unnamed.
+ */
+export function speechServiceOwner(ua: string = globalThis.navigator?.userAgent ?? ""): string {
+  if (/\bEdg(e|A|iOS)?\//.test(ua)) return "Microsoft's";
+  if (/\b(Chrome|Chromium|CriOS)\//.test(ua)) return "Google's";
+  if (/\bSafari\//.test(ua) && /\bVersion\//.test(ua)) return "Apple's";
+  return "your browser's";
+}
+
+/** Shown by the mic every time the browser's speech service (not the device) is listening. */
+export const speechServiceNote = (ua?: string): string =>
+  `What you say may be sent to ${speechServiceOwner(ua)} speech service.`;
 /** A private diagram's dictation never goes to the browser's speech service. */
 export const PRIVATE_SPEECH_NOTE =
   "Dictation is off here: this browser would send your voice to its speech service, and this diagram is private.";
@@ -63,16 +75,6 @@ interface Ui {
   onDevice(on: boolean): void;
   read(): SpeechText;
   write(t: SpeechText): void;
-}
-
-function firstCloudUse(): boolean {
-  try {
-    if (localStorage.getItem(CLOUD_NOTE_KEY) === "1") return false;
-    localStorage.setItem(CLOUD_NOTE_KEY, "1");
-    return true;
-  } catch {
-    return true;
-  }
 }
 
 const clearError = (m: Message): Message => (m?.tone === "error" ? null : m);
@@ -137,7 +139,6 @@ function createSession(Ctor: RecognitionCtor, ui: Ui, onDeviceOnly: () => boolea
       if (kind === "language" && local) {
         local = false;
         ui.onDevice(false);
-        if (firstCloudUse()) ui.message({ tone: "info", text: CLOUD_NOTE });
         return;
       }
       const text = speechErrorMessage(kind);
@@ -200,7 +201,6 @@ function createSession(Ctor: RecognitionCtor, ui: Ui, onDeviceOnly: () => boolea
         }
         local = isLocal;
         ui.onDevice(isLocal);
-        if (!isLocal && firstCloudUse()) ui.message({ tone: "info", text: CLOUD_NOTE });
         open();
       });
     },
@@ -253,7 +253,7 @@ export interface Dictation {
   interim: string;
   /** Hearing sound right now (drives the level pulse). */
   hearing: boolean;
-  /** An inline message: a problem, or the one-time note about where audio goes. */
+  /** An inline message: a problem, or why dictation is off here. */
   message: Message;
   /** Recognition runs on this device. */
   onDevice: boolean;

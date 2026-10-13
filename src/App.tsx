@@ -42,6 +42,7 @@ import { useLibrary } from "./lib/useLibrary";
 import { newDiagramsPrivate } from "./lib/privacyPrefs";
 import { Icon } from "./components/Icon";
 import { formatAgo } from "./lib/time";
+import { stopStorageWrites } from "./lib/storage";
 import { lastCanvas, rememberCanvas } from "./lib/canvasBridge";
 import type { StartOptions } from "./canvas/StartCard";
 import { useInterop, useInteropCanvasActions } from "./interop/useInterop";
@@ -56,9 +57,14 @@ import { AI_PANEL } from "./lib/deployment";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
-// with the canvas), and the Lab never downloads unless someone opens ?view=lab.
+// with the canvas), and the Lab never downloads unless someone opens ?view=lab (dev and e2e builds only: a production
+// build has no Lab, LAB in ./lib/urlState).
 const GalleryView = lazy(() => import("./gallery/GalleryView").then((m) => ({ default: m.GalleryView })));
-const LabView = lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })));
+// The condition is spelled out (not LAB) so the bundler folds it here and drops the chunk from production builds.
+const LabView =
+  import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
+    ? lazy(() => import("./lab/LabView").then((m) => ({ default: m.LabView })))
+    : () => null;
 /** Your diagrams: loads when the app is idle, or when first opened. */
 const LibraryDialog = lazyComponent(
   () => import("./components/LibraryDialog").then((m) => m.LibraryDialog),
@@ -72,6 +78,7 @@ const EMBED = new URLSearchParams(window.location.search).has("embed");
 const EmbedView = lazyComponent(() => import("./interop/embed/EmbedView").then((m) => m.EmbedView));
 // The viewer always shows a canvas: fetch both at once rather than one after the other.
 if (EMBED) {
+  stopStorageWrites();
   EmbedView.preload();
   preloadCanvasView();
 }

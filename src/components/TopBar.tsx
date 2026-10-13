@@ -2,7 +2,7 @@ import { useSettings } from "../harness/settings";
 import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
 import { edgeStyles, type EdgeStyle } from "../harness/edgeStyles";
 import { Icon } from "./Icon";
-import type { View } from "../lib/urlState";
+import { LAB, type View } from "../lib/urlState";
 import type { Interop } from "../interop/useInterop";
 import { FileMenu, SaveStatus, SharedChip } from "../interop/ui/menus";
 import { Menu } from "../interop/ui/Menu";
@@ -54,10 +54,8 @@ export function TopBar(p: Props) {
   const s = useSettings();
   const canvas = p.view === "canvas";
   const lab = p.view === "lab";
-  // The Lab is a dev harness: linked from the top bar in dev builds only. Production keeps it
-  // reachable by URL (?view=lab) and shows the tab only while you're on it. The e2e build (VITE_E2E=1)
-  // keeps the dev behaviour so the suite can run against a production bundle.
-  const showLab = import.meta.env.DEV || import.meta.env.VITE_E2E === "1" || lab;
+  // The Lab is a dev harness: in dev builds and the e2e build (VITE_E2E=1) only; production has none (LAB).
+  const showLab = LAB;
 
   return (
     <header className="topbar" data-testid="topbar">

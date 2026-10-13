@@ -129,23 +129,20 @@ test.describe("production build under a sub-path", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("Lab is hidden from the nav but works by URL", async ({ page, consoleErrors }) => {
+  test("a production build has no Lab: ?view=lab opens the canvas, and its code never downloads", async ({
+    page,
+    consoleErrors,
+  }) => {
+    const scripts: string[] = [];
+    page.on("request", (r) => r.resourceType() === "script" && scripts.push(r.url()));
     await page.goto("./?view=gallery");
     await expect(page.getByTestId("gallery-view")).toBeVisible();
     await expect(page.getByTestId("view-lab")).toHaveCount(0);
     await page.goto("./?view=lab&preset=stress-10");
-    await expect(page.getByTestId("lab-view")).toBeVisible();
-    await expect(page.getByTestId("lab-render-time")).toHaveAttribute("data-ms", /^\d+$/);
-    await expect(page.getByTestId(/^node-n\d+$/)).toHaveCount(10);
-    // No private example presets in production.
-    const links = await page.getByTestId(/^lab-preset-link-example-/).evaluateAll((els) =>
-      els.map((e) => {
-        const id = e.getAttribute("data-testid");
-        if (!id) throw new Error("Example link has no test id");
-        return id.slice("lab-preset-link-example-".length);
-      }),
-    );
-    expect(links.sort()).toEqual(publicExamples.map((e) => e.slug).sort());
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await expect(page.getByTestId("lab-view")).toHaveCount(0);
+    await expect(page.getByTestId("view-lab")).toHaveCount(0);
+    expect(scripts.filter((u) => /LabView/.test(u))).toEqual([]);
     expectNoErrors(consoleErrors);
   });
 });

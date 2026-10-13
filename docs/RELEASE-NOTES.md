@@ -20,6 +20,16 @@ An end-to-end check of everything that could carry a diagram out of the page or 
 - **A link embed won't show a diagram marked private** (no app makes such a link; one made by hand or by an older
   copy now says the diagram is private, with no link out).
 - **Exported images leave out the Checks card's markers**, which carried the findings' words.
+- **Dictation says where your voice goes, every time.** While the browser's speech service listens (not the device),
+  a muted line by the mic says "What you say may be sent to Google's speech service." (Microsoft's in Edge, Apple's in
+  Safari). It used to say so once per browser.
+- **Making a diagram Private offers Clear conversation** when it has an AI conversation (one step, with Undo).
+- **Agents told no by a private diagram** hear "Private diagrams are excluded from AI…", not "Local-only…".
+- **The Lab (`?view=lab`) is gone from the published site**: it's a development tool, in dev and test builds only.
+  The on-device evals run from `pnpm dev`.
+- **Embeds write nothing to this browser's storage.** They still read your saved theme; a theme the host page sets
+  lasts as long as the embed.
+- The agent skill's HTML viewer (plugin 1.1.2) keeps a password-protected file's neutral title once it's open.
 
 New:
 

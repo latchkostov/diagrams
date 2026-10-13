@@ -82,14 +82,10 @@ const AI_TOOLING = {
   modules: [/\/ai\/webmcp\/(WebMcpBridge\.tsx|useWebMcp\.ts|adapter\.ts|tools\.ts)$/, /\/ai\/ui\/copyForAi\.ts$/],
   code: [] as RegExp[],
 };
-/** The on-device model: the AI panel's request box, and the Lab's evals that run it. */
+/** The on-device model: the AI panel's request box. (The Lab's evals that run it are in dev and e2e builds only.) */
 const ON_DEVICE = {
   strings: [] as string[],
-  modules: [
-    /\/ai\/ondevice\/(OnDeviceInput|OnDeviceEvals)\.tsx$/,
-    /\/ai\/ondevice\/(session|pipeline)\.ts$/,
-    /\/ai\/evals\/onDevice\.ts$/,
-  ],
+  modules: [/\/ai\/ondevice\/OnDeviceInput\.tsx$/, /\/ai\/ondevice\/(session|pipeline)\.ts$/],
   code: [] as RegExp[],
 };
 

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
-import { test, expect, gotoCanvas, gotoLab, expectNoErrors, publicExamples } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, publicExamples } from "./fixtures";
 import { installFakeModelContext, must, toolNames } from "./ai-helpers";
 import { expectHostEmbed, expectOnlyPrivateEmbed, serveHostPage } from "./self-host-helpers";
 
@@ -40,14 +40,11 @@ test.describe("self-hosted build with link opening off", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("the Lab has no on-device model evals: nothing there can run the model", async ({ page, consoleErrors }) => {
-    await gotoLab(page);
-    await expect(page.getByTestId(/^lab-preset-link-/).first()).toBeVisible();
-    await expect(page.getByTestId("lab-preset-link-ondevice-evals")).toHaveCount(0);
+  test("there's no Lab, so nothing there can run the model", async ({ page, consoleErrors }) => {
     await page.goto("./?view=lab&preset=ondevice-evals");
-    await expect(page.getByTestId("lab-view")).toBeVisible();
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await expect(page.getByTestId("lab-view")).toHaveCount(0);
     await expect(page.getByTestId("ondevice-evals")).toHaveCount(0);
-    await expect(page.getByTestId("ondevice-evals-run")).toHaveCount(0);
     expectNoErrors(consoleErrors);
   });
 

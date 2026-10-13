@@ -1,6 +1,6 @@
 import { DIAGRAM_FORMAT, type DiagramFile } from "../model/types";
 import { examples, getLoadedExample } from "../examples";
-import { LIMITS, parseNative, preserveUnknown, serializeNative, validateDiagram } from "../interop/native";
+import { LIMITS, parseNative, preserveUnknown, validateDiagram } from "../interop/native";
 import { notify } from "../interop/ui/toast";
 import { safeStorage } from "./storage";
 import { diagramThumb, isThumb, type Thumb } from "./thumbnail";
@@ -57,17 +57,6 @@ export type ParseResult = { ok: true; diagram: DiagramFile; warnings?: string[] 
 /** Validates an imported diagrams/v1 file (see src/interop/native.ts for the rules). */
 export function parseDiagram(text: string): ParseResult {
   return parseNative(text);
-}
-
-export function downloadDiagram(diagram: DiagramFile, slug: string) {
-  const blob = new Blob([serializeNative(diagram)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `${slug || "diagram"}.diagram.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 function read<T>(key: string): T | undefined {
@@ -424,10 +413,13 @@ export const CLEARED_KEY = "diagrams.cleared.v1";
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (event) => {
     if (event.key === CLEARED_KEY && event.newValue) {
-      // Everything was cleared in another tab: write nothing more (an autosave on the way out would bring a diagram
-      // back), and start over.
+      // Another tab is clearing everything: write nothing more, from now (an autosave on the way out would bring a
+      // diagram back), then sweep what this tab wrote before it heard, and start over (./clearDevice.ts).
       Storage.prototype.setItem = () => {};
-      window.location.reload();
+      void import("./clearDevice").then(
+        (m) => m.startOver(),
+        () => window.location.reload(),
+      );
     } else if (event.key?.startsWith(ENTRY_PREFIX) || event.key?.startsWith(DELETED_PREFIX)) changed();
   });
 }

@@ -27,7 +27,7 @@ Standards: strict TypeScript, ESLint (typescript-eslint strict, react-hooks, jsx
 `E2E_TARGET` picks what `chromium` runs against:
 
 - `build` (the default on CI): `vite preview` of a production build made with `VITE_E2E=1`. That flag keeps
-  the dev-only test hooks (the `?storage=test` provider, the Lab tab in the top bar) and nothing else, so
+  the dev-only test hooks (the `?storage=test` provider, the Lab, which production builds don't have) and nothing else, so
   the suite tests production React and the real bundle. The dev server then runs on `E2E_DEV_PORT`
   (default `E2E_PORT` + 1) for the `dev` project only.
 - `dev` (the default locally): the Vite dev server on `E2E_PORT`, shared with the `dev` project. No build,

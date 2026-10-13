@@ -28,6 +28,7 @@ import { detectFormat, FORMAT_LABEL } from "../formats";
 import { Dialog } from "./Dialog";
 import { copyText } from "./copyText";
 import { Glyph } from "./glyphs";
+import { clearDevice } from "../../lib/clearDevice";
 import { toast } from "./toast";
 
 const kb = (n: number) => (n < 1024 ? `${n} characters` : `${(n / 1024).toFixed(1)}k characters`);
@@ -766,12 +767,8 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
  * Cancel is the default button.
  */
 export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const clear = async () => {
-    setBusy(true);
-    const { clearDevice } = await import("../../lib/clearDevice");
-    clearDevice();
-  };
+  // The wipe's code comes with this dialog: confirming clears at once, with nothing left to download (so nothing to
+  // cancel, or to fail, after the click).
   return (
     <Dialog
       title="Clear everything on this device?"
@@ -783,12 +780,7 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
       footer={
         <>
           <span className="ix-grow" />
-          <button
-            className="btn btn-danger"
-            onClick={() => void clear()}
-            disabled={busy}
-            data-testid="clear-device-confirm"
-          >
+          <button className="btn btn-danger" onClick={clearDevice} data-testid="clear-device-confirm">
             Clear everything
           </button>
           <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="clear-device-cancel">

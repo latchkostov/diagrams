@@ -262,7 +262,7 @@ test.describe("dictation in the box", () => {
     await gotoCanvas(page, SLUG);
     await turnOn(page);
     await expect(page.getByTestId("ai-ondevice-speech-note")).toHaveText(
-      "Dictation may use your browser's speech service (in Chrome, Google).",
+      "Dictation: What you say may be sent to Google's speech service.",
     );
     await page.getByTestId("ai-ondevice-mic").click();
     await expect(page.getByTestId("ai-ondevice-dictation-message")).toHaveAttribute("role", "alert");

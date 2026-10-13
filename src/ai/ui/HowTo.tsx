@@ -4,7 +4,9 @@ import type { DiagramFile } from "../../model/types";
 import { copyText } from "../../interop/ui/copyText";
 import { notify } from "../../interop/ui/toast";
 import { publishedTools, TOOL_HELP } from "../webmcp/toolList";
-import { exampleRequest } from "./exampleRequest";
+import { exampleRequest, exampleToCopy } from "./exampleRequest";
+import { paletteHost } from "../../palette/host";
+import { PRIVATE_MESSAGE } from "../privacy";
 
 // How to use AI here: the idle AI panel's answer to "where do I type?". The panel has no request box of
 // its own (agents are the main path), so it says where to ask: the browser's AI assistant (with WebMCP),
@@ -30,7 +32,10 @@ export function HowTo({
   const example = exampleRequest(current, live);
 
   const copyExample = async () => {
-    if (!(await copyText(example))) return notify("The browser didn't allow copying. Try again.", { kind: "error" });
+    // Asked again now: the diagram may have turned private since this rendered.
+    const text = exampleToCopy(paletteHost.get().canvas, live);
+    if (text === null) return notify(PRIVATE_MESSAGE, { kind: "error" });
+    if (!(await copyText(text))) return notify("The browser didn't allow copying. Try again.", { kind: "error" });
     setCopied(true);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setCopied(false), 2000);

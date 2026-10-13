@@ -279,7 +279,9 @@ reading its events; the viewer harming the host page.
   else, and the viewer never fetches the diagram: the host page does, then posts it. The frame keeps it in memory
   only (not in `localStorage`, `sessionStorage` or IndexedDB) and marks it private (`"private": true`), so no
   share link, no embed code and no "Open in Live Diagrams" copy is ever made from it. The only link out is a plain
-  "Made with Live Diagrams" to the site. Embeds have no AI panel and no WebMCP tools. The frame's CSP allows
+  "Made with Live Diagrams" to the site. Embeds have no AI panel and no WebMCP tools. No embed writes to this site's
+  storage at all: it reads the person's saved theme, and a theme the host sets (or a panel folded) lasts as long as
+  the frame, in memory (`stopStorageWrites` in `src/lib/storage.ts`). The frame's CSP allows
   this site only (`script-src`, `connect-src` and `frame-src 'self'`): no storage provider's script, frame or endpoint,
   none of which an embed uses.
 - **`hostOrigin` locks the origin, from the URL, for the whole session.** We chose the URL parameter over "the first
@@ -289,6 +291,9 @@ reading its events; the viewer harming the host page.
   - it doesn't depend on `document.referrer` (a `no-referrer` host strips it) or `location.ancestorOrigins` (not in
     Firefox);
   - it costs the host nothing: the web component fills it in from `location.origin`.
+- **Serve the host page over https when you can.** `http://` host origins are accepted (some intranets have nothing
+  else), but a page served over plain http can be changed on the network on its way to the reader, and the viewer
+  trusts whatever that page hands it.
 
   It must be a plain `http(s)` origin (no path, query, credentials or wildcard); without one the viewer explains
   what's missing and does nothing.

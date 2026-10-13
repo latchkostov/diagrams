@@ -50,7 +50,7 @@ describe("AI review regressions", () => {
       const tool = tools.find((t) => t.name === name)!;
       const result = await tool.execute({ ops: [{ op: "remove", targets: ["a"] }] });
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("Local-only");
+      expect(result.content[0].text).toContain("Private diagrams are excluded from AI");
     }
     expect(getDiagram).not.toHaveBeenCalled();
     expect(applyDiagram).not.toHaveBeenCalled();

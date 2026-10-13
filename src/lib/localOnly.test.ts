@@ -113,8 +113,9 @@ describe("local-only provenance and AI boundary", () => {
     expect(describeForAi(editor, canvas)).toContain("Local-only");
     expect(describeForAi(editor, canvas)).not.toContain("SYNTHETIC_ORCHID_ROUTER");
     for (const name of ["describe_diagram", "check_diagram", "edit_diagram", "set_simulation", "get_share_link"]) {
+      // Agents hear the app's word for it: a local-only example is always private.
       await expect(Promise.resolve().then(() => tools.find((tool) => tool.name === name)!.run({}))).rejects.toThrow(
-        "Local-only",
+        "Private diagrams are excluded from AI",
       );
     }
     expect(shareLink).not.toHaveBeenCalled();

@@ -3,7 +3,7 @@ import { Icon } from "../../components/Icon";
 import type { TurnRecord } from "../ui/commitTurn";
 import type { ScopeItem } from "../ui/context";
 import { DictationField } from "../ui/DictationField";
-import { useDictation } from "../ui/useDictation";
+import { speechServiceNote, useDictation } from "../ui/useDictation";
 import type { OnDeviceStatus } from "./pipeline";
 import type { ModelAvailability } from "./promptApi";
 import { primedSession } from "./session";
@@ -18,8 +18,6 @@ const STATUS: Record<OnDeviceStatus, string> = {
   retrying: "Checking and trying again…",
   applying: "Applying…",
 };
-
-const SPEECH_NOTE = "Dictation may use your browser's speech service (in Chrome, Google).";
 
 export default function OnDeviceInput({
   availability,
@@ -184,6 +182,7 @@ export default function OnDeviceInput({
               mic: "ai-ondevice-mic",
               interim: "ai-ondevice-interim",
               message: "ai-ondevice-dictation-message",
+              service: "ai-ondevice-speech-service",
             }}
           />
           <div className="ai-composer-row">
@@ -205,9 +204,9 @@ export default function OnDeviceInput({
               </button>
             )}
           </div>
-          {speechLeaves && dictation.supported && !blocked && !privateDiagram && (
+          {speechLeaves && dictation.supported && !blocked && !privateDiagram && dictation.status === "idle" && (
             <p className="ai-ondevice-note" data-testid="ai-ondevice-speech-note">
-              {SPEECH_NOTE}
+              Dictation: {speechServiceNote()}
             </p>
           )}
         </>

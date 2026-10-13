@@ -38,6 +38,8 @@ import {
   type Privacy,
 } from "../lib/localOnly";
 import { newDiagramsPrivate } from "../lib/privacyPrefs";
+import { safeStorage } from "../lib/storage";
+import { AI_THREAD_PREFIX } from "../lib/aiThreadKey";
 import { LINK_OPEN, LINK_OPEN_OFF_MESSAGE, LINKS_OFF_MESSAGE, SHARE_LINKS } from "../lib/deployment";
 import { PRIVACY_REQUEST } from "../lib/usePrivacy";
 import { loadedCanvasActions } from "../canvas/loadCanvasView";
@@ -806,7 +808,12 @@ export function useInterop({
       if (isLibrarySlug(slug) || slug === DRAFT_SLUG) {
         setDiagramPrivate(slug, true);
         clearUrlFragment();
-        toast.success("Private: no share links, cloud saves or AI for this diagram.");
+        const text = "Private: no share links, cloud saves or AI for this diagram.";
+        // An earlier AI conversation stays unless the person clears it: the toast offers to (its own chunk).
+        const id = getDiagramIdentity(slug);
+        if (safeStorage.getItem(AI_THREAD_PREFIX + id))
+          void import("../ai/ui/clearOnPrivate").then((m) => m.offerToClearConversation(id, text));
+        else toast.success(text);
         return;
       }
       const d = current();
@@ -909,11 +916,14 @@ export function useInterop({
         }),
       );
       // Google's sign-in and picker scripts run in this page: never while a private diagram is on screen (it can't
-      // be saved to the cloud anyway). Open from ▸ a provider still loads them, on that click.
-      if (privacy()) return;
+      // be saved to the cloud anyway). Asked again once the provider's code has loaded, of the diagram open then: it
+      // may have turned private, or another one opened, meanwhile. Open from ▸ a provider still loads them, on that
+      // click.
+      const privateNow = () => isLocalOnly(getPrivacyFlags(openSlug.current));
+      if (privateNow()) return;
       for (const info of CLOUD_PROVIDERS)
         void info.load().then(
-          (p) => p.preload?.(),
+          (p) => privateNow() || p.preload?.(),
           () => {},
         );
     },
