@@ -186,6 +186,20 @@ describe("Terraform import: the AWS plan fixture", () => {
     expect(all.report.guesses).toEqual([]);
   });
 
+  it("Draw everything: a supporting resource refers to things as plain dependencies, never reading a secret", () => {
+    const { diagram: d } = everythingOf(aws());
+    // Policies, a secret's version and a password run as nothing and read nothing (secret-identity would read a
+    // Secret dependency from one as a service with no identity).
+    const supporting = new Set(d.nodes.filter((n) => /^(aws|random)_/.test(n.sublabel ?? "")).map((n) => n.id));
+    expect(supporting.size).toBeGreaterThan(5);
+    const from = d.edges.filter((e) => supporting.has(e.from));
+    expect(from.length).toBeGreaterThan(0);
+    for (const e of from) expect(relationOf(e), `${e.from} → ${e.to}`).toBe("depends");
+    // The components keep theirs.
+    expect(relationBetween(d, "order-handler", "orders-db-credentials")).toBe("secret");
+    expect(relationBetween(d, "order-handler", "order-handler-role")).toBe("identity");
+  });
+
   it("lays out without overlaps, every member inside its boundary", () => {
     const everything = [aws(), azure()].map(everythingOf);
     for (const { diagram: d } of [aws(), azure(), ...everything]) {
@@ -243,6 +257,16 @@ describe("Terraform import: the AWS plan fixture", () => {
 });
 
 describe("Terraform import: the Azure state fixture", () => {
+  it("says a store reached through a grant to the component's own identity is reached as its managed identity", () => {
+    for (const { diagram: d } of [azure(), everythingOf(azure())]) {
+      // The Function App's system-assigned identity is granted Key Vault Secrets User: no identity node, but the
+      // connection says how it signs in (and secret-identity reads it).
+      expect(edge(d, "billing-func", "shop-kv")).toMatchObject({ relation: "secret", label: "managed identity" });
+      // Flows from Data Receiver and Sender grants carry no label.
+      expect(edge(d, "billing-inbox", "billing-func")?.label).toBeUndefined();
+    }
+  });
+
   it("draws resource groups as boundaries, with Service Bus, Event Grid and Event Hubs flows", () => {
     const { diagram: d, report } = azure();
     expect(report.summary).toBe("Imported “azure-state” from Terraform state: 7 nodes, 7 connections.");

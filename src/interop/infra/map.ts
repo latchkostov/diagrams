@@ -122,6 +122,7 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
       from,
       to,
       ...(l.relation === "flow" ? { kind: l.kind ?? "async" } : { relation: l.relation }),
+      ...(l.label ? { label: l.label } : {}),
       ...(Object.keys(props).length ? { props } : {}),
     });
     // A setting's name, never its value; a credential-shaped name isn't shown either (sanitizeSettings).

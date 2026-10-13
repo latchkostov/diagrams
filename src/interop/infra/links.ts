@@ -76,11 +76,18 @@ export class Links {
       this.flows.set(id, { from, to, relation: "flow", kind, evidence, ...(props ? { props } : {}) });
   }
 
-  dep(from: string, to: string, relation: EdgeRelation, evidence: Evidence, props?: Record<string, unknown>) {
+  dep(
+    from: string,
+    to: string,
+    relation: EdgeRelation,
+    evidence: Evidence,
+    props?: Record<string, unknown>,
+    label?: string,
+  ) {
     this.budget();
     const id = `${from}\u0001${to}\u0001${relation}`;
     if (from !== to && !this.deps.has(id))
-      this.deps.set(id, { from, to, relation, evidence, ...(props ? { props } : {}) });
+      this.deps.set(id, { from, to, relation, evidence, ...(props ? { props } : {}), ...(label ? { label } : {}) });
   }
 
   /** A connection to `to`, as its stencil suggests: a dependency for typed stencils and brokers, else a Request. */

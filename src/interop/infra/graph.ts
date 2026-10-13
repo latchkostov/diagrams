@@ -57,6 +57,8 @@ export interface ImportLink {
   from: string;
   to: string;
   relation: EdgeRelation;
+  /** Shown on the connection: how a dependency is reached ("managed identity"). */
+  label?: string;
   /** Flows only: Message (async) or Request (sync). */
   kind?: "async" | "sync";
   props?: Record<string, unknown>;

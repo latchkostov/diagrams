@@ -586,6 +586,19 @@ changed. Where it does fire, unit tests pin it: an Ingress to a one-replica NGIN
 (**would fix**: it's kube-linter's case, on the only way in), and the same files with the count unset, above one or
 under an autoscaler with no floor of its own raise nothing.
 
+**Batch 4's rules on the same fixtures.** Batch 4 (`secret-identity`, `schema-registry`) landed while this was built.
+On the import fixtures as they were, `secret-identity` raised three findings, all false, and `schema-registry` none
+(the AsyncAPI import adds a registry when its messages use Avro or Protobuf).
+
+| Fixture                          | Finding (rule: target)                                  | Verdict      | Why, and what changed                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Terraform Azure state            | `secret-identity`: shop-kv (billing-func)               | **Wouldn't** | The Function App has a system-assigned identity, and its Secret relationship to the vault comes from a role assignment to that very identity ("Key Vault Secrets User"). The import knew and didn't say. It now labels a Secret or Config connection that comes from a grant to the component's own identity "managed identity", which the rule already reads as said. |
+| Terraform Azure, Draw everything | the same                                                | **Wouldn't** | Same, same fix.                                                                                                                                                                                                                                                                                                                                                        |
+| Terraform AWS, Draw everything   | `secret-identity`: orders/db-credentials (db, a helper) | **Wouldn't** | `db` is a `random_password` and a secret version, drawn only by Draw everything: they are the secret's value, not a service reading it. Supporting resources there now refer to things as plain Depends on, never Identity, Secret or Config.                                                                                                                          |
+
+Both fixes are in the import, not the rule: the rule's reading was right for what the diagrams said, and what they said
+was wrong or incomplete. With them, the findings on every import fixture are the ones before batch 4.
+
 ### Batch 4: precision gate
 
 The same judgment for `secret-identity` and `schema-registry`, on the same 16 public examples (top level only): would

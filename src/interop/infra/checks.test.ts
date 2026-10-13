@@ -5,7 +5,7 @@ import { runChecks } from "../../checks/run";
 import type { ImportOutcome } from "../formats";
 import { importAsyncApi, importCompose, importKubernetes, importTerraform, replayOutcome } from "./pipeline";
 
-// The architecture checks on every import fixture, as imported: the regression snapshot behind the "Imports"
+// The architecture checks on every import fixture, as imported (batch 4 rules included): the snapshot behind the "Imports"
 // addendum to docs/research/architecture-checks.md ("Batch 3: precision gate"). Each finding was judged there; a
 // change to this list is a change to that table.
 
