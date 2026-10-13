@@ -2,6 +2,19 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Full screen while presenting (2026-10)
+
+- **Presenting has a full-screen button**, beside **Exit presentation** (the corners icon), and **F** does the same.
+  The whole page goes full screen, so live view, slow motion, the trace and toasts keep working as they were. **F** or
+  **Esc** comes back; leaving with the browser's own Esc or F11 updates the button.
+- **Esc while full screen leaves full screen only.** The next Esc leaves the presentation, as before. Leaving the
+  presentation any other way (Exit presentation, Back) leaves full screen too.
+- Where the browser can't go full screen (iOS Safari, a page framed without `allow="fullscreen"`) there's no button.
+  Embeds and the Interactive HTML viewer have no presentation, so no full screen either.
+- **Exit presentation is easier to read** at rest (it was faint, below the contrast it needs), as is the new button.
+- The **Present** button's tooltip no longer says "full screen": presenting hides the editing chrome; full screen is
+  the new button.
+
 ## Privacy audit (2026-10)
 
 An end-to-end check of everything that could carry a diagram out of the page or keep it longer than you meant

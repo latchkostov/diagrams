@@ -336,13 +336,17 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
     expectations count on) is one muted **On purpose:** line, never a finding. Counts never raise a warning, never go in
     the file, and hide the moment an edit a simulation would see is made (**The diagram changed since the simulations
     played.**); moving or selecting things doesn't count, and Undo brings them back.
-- Esc backs out one level: menu, the Embed dialog's preview (back to the dialog), dialog, selection, simulations playing (Run simulations), the Checks card, slow motion, trace, highlighted path, presentation, then live view.
+- Esc backs out one level: full screen (the browser takes that Esc itself), menu, the Embed dialog's preview (back to the dialog), dialog, selection, simulations playing (Run simulations), the Checks card, slow motion, trace, highlighted path, presentation, then live view.
   In a text field on the canvas it saves and leaves the field (Editing text, above). Esc never selects, and clearing a
   selection leaves keyboard focus where it was (on the node), never on the page.
 - **Undo toasts** ("Payments service left AKS · Undo", an agent's change, an applied fix) offer to reverse one change.
   The moment anything else undoes or redoes (Ctrl+Z, the canvas's Undo), the toast goes: its button would reverse
   a different change.
 - **Present** is the top bar's button and Ctrl+K's "Present". Presenting puts keyboard focus on the canvas.
+  Presenting, **Full screen** (an icon button beside Exit presentation, or **F**) fills the screen and **Exit full
+  screen** (F or Esc) comes back; it follows the browser's own Esc and F11. It isn't shown where the browser can't go
+  full screen (an iframe without `allow="fullscreen"`, iOS Safari). Leaving the presentation leaves full screen too.
+  Embeds and the HTML viewer have no presentation, so no full screen.
 
 ## Mouse and trackpad
 

@@ -49,7 +49,8 @@ const LIVE: [string, string][] = [
   ["C", "Show capacity: colour services by how busy they are"],
   ["Space", "Play or pause; continue after a note"],
   ["← →", "Slow motion: step back or on, hop by hop"],
-  ["Esc", "Leave slow motion, presentation, then live view"],
+  ["F", "Presenting: full screen, or back"],
+  ["Esc", "Leave full screen, slow motion, presentation, then live view"],
 ];
 
 /** The AI panel (AiMount opens it; Advanced handles the rest). Advanced only with AI tools (src/lib/deployment.ts). */

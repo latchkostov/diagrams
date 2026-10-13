@@ -138,7 +138,7 @@ export function TopBar(p: Props) {
             className="btn btn-primary"
             onClick={p.onPresent}
             data-testid="present-toggle"
-            title="Present: full screen for meetings (Esc to leave)"
+            title="Present: the diagram alone, for meetings (Esc to leave)"
           >
             <Icon name="present" size={14} /> <span className="label-optional">Present</span>
           </button>

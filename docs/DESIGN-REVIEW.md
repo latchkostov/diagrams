@@ -1,5 +1,82 @@
 # Design review
 
+## Round 29: full screen while presenting (2026-10-13)
+
+A friend's request: "in presenter mode, we should have a toggle for full screen." Self-review against
+`docs/UX-PRINCIPLES.md` on the production build (`vite preview`) at 1024 × 768 and 1280 × 800 light and 1440 × 900
+dark, mouse and keyboard, on the public Kafka order pipeline. Screenshots are in `docs/screenshots/round29/`.
+
+- **No new chrome outside presenting.** The top bar, menus and Ctrl+K are unchanged. Presenting gains one icon button
+  beside **Exit presentation**, in its style: the same height, border and slightly quiet opacity (0.9), full on hover and focus
+  (`present-1280-light`, `present-hover-1280-light`, `fullscreen-on-focus-1280-light`). It sits left of Exit, so
+  Exit stays in the corner where people already reach for it.
+- **The icon says the state.** Corners out for **Full screen** and corners in for **Exit full screen**. That's also
+  the button's accessible name and its tooltip, which names the key: "Full screen (F)" (`fullscreen-on-1280-light`).
+  The name changes rather than `aria-pressed`, so a screen reader never hears "Exit full screen, pressed".
+- **F, because presentations use it.** It's free in presenting: L is Live, C is capacity, Space plays and the arrows
+  step slow motion. While editing, F does nothing (an editing shortcut would surprise; T adds text). The shortcuts
+  sheet's **Live and presenting** rows list it, and Esc's row now starts with full screen (`shortcuts-1280-light`).
+- **Esc stays one level.** Browsers take the first Esc themselves to leave full screen. Where one passes it on, the
+  app does the same and stops it there, so the same press never also leaves the presentation; the next Esc does.
+  The Esc order in the principles now starts with full screen. Leaving the presentation any other way (Exit
+  presentation, Back, opening another diagram) leaves full screen too.
+- **It follows the browser.** The button listens to `fullscreenchange`: leaving with the browser's Esc, F11 or its
+  own "Exit full screen" bar flips it back.
+- **The whole page goes full screen** (the document element), not the canvas. The live simulation, slow motion, the
+  trace card, dialogs and toasts (some portalled to `<body>`) keep working and stay on screen, and the theme's own
+  background fills it, so there's no `::backdrop` to style (`live-fullscreen-1440-dark`). A diagram shown whole is
+  refitted to the bigger pane; one the presenter zoomed into stays put.
+- **Not offered where it can't work.** When `document.fullscreenEnabled` is false (iOS Safari, an iframe without
+  `allow="fullscreen"`) there's no button and F does nothing: the bar is as it was (`unavailable-1280-light`).
+- **Embeds and the HTML viewer: no.** Neither has a presentation, so there's no presenter's full screen to offer. The
+  embed snippets don't gain `allow="fullscreen"`, and `docs/EMBEDDING.md` is unchanged.
+- **Policy.** The Permissions-Policy doesn't name `fullscreen`: its default allowlist is `self`, which is what the app
+  needs. `csp.spec.ts` now checks `allowsFeature("fullscreen")` and goes full screen under the policy with no
+  violation.
+
+### What was off (fixed in this round)
+
+- **The Live toggle sat 3 px from Exit presentation** while presenting, tighter than the 8 px between the bar's
+  buttons. It's 8 px from whichever is next to it, with or without the full-screen button (`live-present-1024-light`).
+- **"Present: full screen for meetings"** was the Present button's tooltip, but presenting only hides the editing
+  chrome. It's "Present: the diagram alone, for meetings (Esc to leave)" now; full screen is the new button.
+
+### After code review (PR #81)
+
+Seven P2s from the Codex review, in three themes. All verified; each fix has a test that fails without it.
+
+- **Esc's order depended on which listener was added first** (3 findings). Window capture listeners run in the order
+  they were added, so a layer listening from before the presentation (slow motion started first, say) got an Esc the
+  browser passed on before full screen did, and backed out of itself instead. The full-screen Esc is now one listener
+  added before any other code runs (`src/lib/fullscreenEscape.ts`, imported first by `src/main.tsx`), so it's first
+  by construction, whatever was entered first; it costs the entry 71 B gzip. Headless Chromium usually takes
+  Esc itself while full screen (as browsers do), so the tests send Esc to the page as a browser that passes it on
+  would: one with slow motion started before presenting, one with a stand-in layer that claims Esc. Both fail with the
+  listener added on the presentation's mount.
+- **A full-screen request still on its way when the presentation ended** (2 findings) arrived afterwards and left the
+  editor full screen with no button. Entering now checks, when it arrives, that the presentation is still on, and
+  leaves at once if not (unit test with a request held open).
+- **The icon read at 2.4:1 at rest** in the light theme (opacity 0.55). Exit presentation's words, at the same
+  opacity, read at 2.4:1 too. Both rest at 0.9 now: the icon at about 5:1 and the words above 4.5:1 in both themes,
+  measured as composited over the canvas by a test.
+- **The refit had no test.** One squeezes the pane and checks every node fits again after going full screen and after
+  coming back; another zooms by hand and checks the view is kept both ways (on a paused clock run past the refit).
+
+### Still open (owner's call)
+
+- Presenting doesn't go full screen by itself. It could on entry (a click on Present is a user gesture), but a
+  presenter sharing one window in a call often doesn't want the whole screen. One click or F is cheap.
+- There's no Ctrl+K entry for full screen: the button and F are on the presenter's screen already, and an entry
+  would only apply while presenting.
+
+![Presenting: full screen beside Exit presentation](screenshots/round29/present-1280-light.png)
+![Full screen, live, dark](screenshots/round29/live-fullscreen-1440-dark.png)
+![Where full screen isn't available: no button](screenshots/round29/unavailable-1280-light.png)
+![The shortcuts sheet's Live and presenting rows](screenshots/round29/shortcuts-1280-light.png)
+
+Also: `screenshots/round29/present-hover-1280-light.png`, `fullscreen-on-1280-light.png`,
+`fullscreen-on-focus-1280-light.png` and `live-present-1024-light.png`.
+
 ## Round 26: checks, batch 5: Run simulations (2026-10-12)
 
 The gate for **Run simulations** in the Checks card and the `dropped` suggestion (`docs/research/architecture-checks.md`,
