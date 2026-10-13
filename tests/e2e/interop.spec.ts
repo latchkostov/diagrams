@@ -240,7 +240,12 @@ test.describe("interop", () => {
     await expect(dialog).toBeVisible();
     const url = page.getByTestId("share-link-url");
     await expect(url).toHaveValue(/#d=[A-Za-z0-9_-]+$/);
-    const link = await url.inputValue();
+    // Copy link puts exactly that link on the clipboard, and it's the one that opens below.
+    await page.evaluate(() => navigator.clipboard.writeText("before"));
+    await page.getByTestId("share-link-copy").click();
+    await expect(page.getByTestId("toast").last()).toContainText("Share link copied.");
+    const link = await page.evaluate(() => navigator.clipboard.readText());
+    expect(link).toBe(await url.inputValue());
 
     const other = await context.newPage();
     await other.goto(link);

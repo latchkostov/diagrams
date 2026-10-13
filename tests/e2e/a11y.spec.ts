@@ -106,15 +106,27 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
     },
   },
   {
-    // With its public section open, so every row is scanned.
+    // From the keyboard, with its public section open (every row scanned), one row with a file hint focused and another
+    // hovered: the hint stays readable on the tinted row.
     name: "Share chooser",
     scope: "share-chooser",
     open: async (page) => {
       await gotoCanvas(page, KAFKA);
-      await page.getByTestId("file-button").click();
-      await page.getByTestId("file-share").click();
-      await page.getByTestId("share-public-toggle").click();
+      await page.getByTestId("file-button").focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("file-menu")).toBeVisible();
+      const share = page.getByTestId("file-share");
+      for (let i = 0; i < 12 && !(await share.evaluate((el) => el === document.activeElement)); i++)
+        await page.keyboard.press("ArrowDown");
+      await expect(share).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("share-option-html")).toBeFocused();
+      await page.keyboard.press("End");
+      await page.keyboard.press("Enter");
       await expect(page.getByTestId("share-option-embed-public")).toBeVisible();
+      await page.keyboard.press("Home");
+      await expect(page.getByTestId("share-option-html")).toBeFocused();
+      await page.getByTestId("share-option-file").hover();
     },
   },
   {

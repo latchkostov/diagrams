@@ -15,6 +15,27 @@ const MOD = process.platform === "darwin" ? "Meta" : "Control";
 const COMPOSE = readFileSync(join(process.cwd(), "tests", "fixtures", "imports", "compose", "docker-compose.yml"));
 
 /** Share…'s rows, in the order they're shown (and walked by the arrow keys). */
+/** A diagram of your own, kept in Your diagrams. Returns its slug. */
+async function importOwn(page: Page, title: string) {
+  await page.getByTestId("import-input").setInputFiles({
+    name: "plan.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        format: "diagrams/v1",
+        title,
+        nodes: [{ id: "intake", stencil: "generic.service", label: "Intake service", x: 0, y: 0 }],
+        edges: [],
+      }),
+    ),
+  });
+  await expect(page.getByTestId("diagram-title")).toHaveText(title);
+  return page.getByTestId("example-picker").inputValue();
+}
+
+/** The chooser's own chunk (or its source module on the dev server). */
+const CHOOSER_CHUNK = /\/(?:assets\/ShareChooser-[A-Za-z0-9_-]+\.js|src\/interop\/ui\/ShareChooser\.tsx)(?:\?.*)?$/;
+
 const rows = (page: Page) =>
   page
     .getByTestId("share-chooser")
@@ -27,6 +48,13 @@ async function makePrivate(page: Page) {
   await page.getByTestId("privacy-diagram").click();
   await expect(page.getByTestId("private-badge")).toBeVisible();
   await page.keyboard.press("Escape");
+}
+
+/** The Private diagram dialog's Make not private, from the badge. */
+async function makePrivateOff(page: Page) {
+  await page.getByTestId("private-badge").click();
+  await page.getByTestId("privacy-turn-off").click();
+  await expect(page.getByTestId("private-badge")).toHaveCount(0);
 }
 
 /** A docker-compose import: an infrastructure file, so it has an Import report (the toast's Details). */
@@ -341,5 +369,117 @@ test("a draw.io or diagram file import never asks: only infrastructure files hav
   // The offer is still unasked: the first infrastructure import's report makes it.
   await importCompose(page);
   await expect(page.getByTestId("import-report-offer")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+test(
+  "opening Share… exports nothing: only the row picked reads the diagram",
+  { tag: "@dev" },
+  async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, SLUG);
+    await importOwn(page, "Large plan");
+    // An export reads the stored original to keep fields the app doesn't know (getOriginal). The app's own renders read
+    // the same key, so only reads made by getOriginal count: the dev server keeps function names in stacks.
+    await page.evaluate(() => {
+      const w = window as unknown as { __exports: number };
+      w.__exports = 0;
+      const real = Storage.prototype.getItem;
+      Storage.prototype.getItem = function (key: string) {
+        if (key.startsWith("diagrams.doc.v1:") && /\bgetOriginal\b/.test(new Error().stack ?? "")) w.__exports++;
+        return real.call(this, key);
+      };
+    });
+    const exports = () => page.evaluate(() => (window as unknown as { __exports: number }).__exports);
+    await openShareChooser(page);
+    await expect(page.getByTestId("share-option-html")).toBeFocused();
+    expect(await exports()).toBe(0);
+    // Picking a row exports the diagram as it is now.
+    await page.getByTestId("share-option-html").click();
+    await expect(page.getByTestId("html-export-dialog")).toBeVisible();
+    expect(await exports()).toBeGreaterThan(0);
+    await page.keyboard.press("Escape");
+    expectNoErrors(consoleErrors);
+  },
+);
+
+test("Share… stays with its diagram: another one opening closes it, loaded or still downloading", async ({
+  page,
+  consoleErrors,
+}) => {
+  const downloads: string[] = [];
+  page.on("download", (d) => downloads.push(d.suggestedFilename()));
+  await gotoCanvas(page, SLUG);
+  await importOwn(page, "First plan");
+  await importOwn(page, "Second plan");
+
+  // Its code still downloading: Back opens the first diagram, and Share… for the second never appears.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  let requested = false;
+  await page.route(CHOOSER_CHUNK, async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-share").click();
+  await expect(page.getByTestId("lazy-dialog-loading")).toBeVisible();
+  expect(requested).toBe(true);
+  await page.goBack();
+  await expect(page.getByTestId("diagram-title")).toHaveText("First plan");
+  await expect(page.getByTestId("lazy-dialog")).toHaveCount(0);
+  const downloaded = page.waitForResponse((r) => CHOOSER_CHUNK.test(r.url()));
+  release();
+  await (await downloaded).finished();
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+  await page.unroute(CHOOSER_CHUNK);
+
+  // Loaded and open: Forward opens the second diagram, and Share… (for the first) closes.
+  await openShareChooser(page);
+  await page.goForward();
+  await expect(page.getByTestId("diagram-title")).toHaveText("Second plan");
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+  // Nothing acted on either diagram meanwhile.
+  await expect(page.getByTestId("html-export-dialog")).toHaveCount(0);
+  expect(downloads).toEqual([]);
+  expectNoErrors(consoleErrors);
+});
+
+test("a public embed closes when the diagram turns private in another tab: it never becomes the private kind", async ({
+  page,
+  context,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, SLUG);
+  const slug = await importOwn(page, "Public embed plan");
+  await openShareChooser(page);
+  await page.getByTestId("share-public-toggle").click();
+  await page.getByTestId("share-option-embed-public").click();
+  await expect(page.getByTestId("embed-inline-note")).toBeVisible();
+
+  const other = await context.newPage();
+  await gotoCanvas(other, slug);
+  await expect(other.getByTestId("diagram-title")).toHaveText("Public embed plan");
+  await makePrivate(other);
+  await other.close();
+
+  // Closed, saying why, with the safe way out: no host-supplied embed in its place.
+  await expect(page.getByTestId("embed-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("toast-private-export")).toBeVisible();
+
+  // Embed in your app, open when it turns private, stays as it is: the private kind, saying so.
+  await page.getByTestId("toast-dismiss").first().click();
+  await makePrivateOff(page);
+  await openShareChooser(page);
+  await page.getByTestId("share-option-embed").click();
+  await expect(page.getByTestId("embed-host-note")).toBeVisible();
+  const third = await context.newPage();
+  await gotoCanvas(third, slug);
+  await makePrivate(third);
+  await third.close();
+  await expect(page.getByTestId("embed-dialog")).toContainText("A private diagram embeds only where your own app");
+  await expect(page.getByTestId("embed-host-note")).toBeVisible();
+  await expect(page.getByTestId("embed-source-inline")).toHaveCount(0);
   expectNoErrors(consoleErrors);
 });

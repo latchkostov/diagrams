@@ -32,6 +32,12 @@
   background: var(--accent-soft);
 }
 
+/* On the tinted row the muted hint would fall under 4.5:1 in dark: one step darker. */
+.ix-share-option:hover .ix-share-hint,
+.ix-share-option:focus-visible .ix-share-hint {
+  color: var(--text-2);
+}
+
 .ix-share-icon {
   flex: none;
   width: 28px;

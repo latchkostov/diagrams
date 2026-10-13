@@ -205,6 +205,20 @@ Every entry point still works:
 - **The fold's `aria-controls` named an element that wasn't there** while folded. It's set only while open.
 - **At phone width the rows' file extensions squeezed their words** to three lines. Under 480 px they're hidden.
 
+### After code review (PR #83, five findings, all fixed)
+
+- **A public embed could turn into the private kind.** Open on a diagram another tab made private, Embed on a public
+  page swapped itself for the host-supplied embed: a different integration from the one picked. The dialog's kind is
+  now fixed when Share… opens it; a public one closes, with the refusal's **Interactive HTML…**, and Embed in your app
+  stays, saying the diagram is private.
+- **The file hints fell under 4.5:1 on a focused or hovered row** (both themes). They take the darker muted colour
+  there, and the a11y scan now opens Share… from the keyboard with one row focused and another hovered.
+- **Opening Share… exported the whole diagram and threw it away** (a big one, before the list could show). It checks
+  only that a diagram is on the canvas; the row picked reads it.
+- **Tests:** the share link's round trip copies with **Copy link** and opens what the clipboard holds, and Share… is
+  shown to close when another diagram opens (Back or Forward), whether loaded or still downloading. A dev-server test
+  counts the export's own read (`getOriginal`) to show opening Share… makes none.
+
 ### Decisions, so they can be revisited
 
 - **Esc from a dialog Share… opened closes it** and gives the keyboard back to where Share… was opened (the File

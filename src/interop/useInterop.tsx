@@ -136,17 +136,12 @@ type DialogState =
   /** File ▸ Share…: every way out, safest first, for `source` (it closes if another diagram opens). */
   | { kind: "chooser"; source: string }
   /**
-   * `scope`: Embed in your app (private) or Embed on a public page. `privateOnly`: a private diagram, offered only the
-   * embed whose diagram the host's page supplies.
+   * Embed code, for one kind: `private` (Embed in your app, the host-supplied embed; `privateDiagram` says the diagram
+   * is private) or `public` (in the link, or `example` by name). The kind never changes while it's open: a public one
+   * closes when its diagram turns private.
    */
-  | {
-      kind: "embed";
-      diagram: DiagramFile;
-      source: string;
-      scope: EmbedScope;
-      example?: string;
-      privateOnly?: boolean;
-    }
+  | { kind: "embed"; scope: "private"; diagram: DiagramFile; source: string; privateDiagram: boolean }
+  | { kind: "embed"; scope: "public"; diagram: DiagramFile; source: string; example?: string }
   | { kind: "image" }
   /** Interactive HTML: the diagram as it was when the dialog opened. */
   | { kind: "html"; diagram: DiagramFile }
@@ -404,12 +399,12 @@ export function useInterop({
   const copyPasswordLink = () => attempt("create a link with password", () => showPasswordLink(current(), slug));
 
   /**
-   * File ▸ Share… (the right-click's Export ▸ Share…, Ctrl+K): every way out, safest first. The diagram is read when
-   * a row is picked, so the chooser asks for none here; only that there is one on the canvas.
+   * File ▸ Share… (the right-click's Export ▸ Share…, Ctrl+K): every way out, safest first. Only that a diagram is on the
+   * canvas: the row picked reads it (a big diagram isn't converted just to show the list).
    */
   const openShareChooser = () =>
     attempt("share the diagram", () => {
-      current();
+      if (!canvasRef.current) throw new Error("Open a diagram on the canvas first.");
       setDialog({ kind: "chooser", source: slug });
     });
 
@@ -422,7 +417,7 @@ export function useInterop({
       const source = slug;
       const d = current();
       if (scope === "private") {
-        setDialog({ kind: "embed", diagram: d, source, scope, privateOnly: !linkStillAllowed(source) });
+        setDialog({ kind: "embed", scope, diagram: d, source, privateDiagram: !linkStillAllowed(source) });
         return;
       }
       if (!SHARE_LINKS || !linkAllowed(source)) return;
@@ -430,15 +425,14 @@ export function useInterop({
       const original = getOriginal(source);
       const shown = JSON.stringify(canvasRef.current?.getDiagram());
       const pristine = !!original && (await normalized(original)) === shown;
-      // The check above can wait for code: the diagram may have become private since.
-      const privateNow = !linkStillAllowed(source);
+      // The check above can wait for code: the diagram may have become private since. Then there's no public embed.
+      if (!linkAllowed(source)) return;
       setDialog({
         kind: "embed",
+        scope,
         diagram: d,
         source,
-        scope,
-        example: !privateNow && isPublicExample(source) && pristine ? source : undefined,
-        privateOnly: privateNow,
+        example: isPublicExample(source) && pristine ? source : undefined,
       });
     });
 
@@ -857,7 +851,8 @@ export function useInterop({
     dialog?.kind === "share" || dialog?.kind === "embed" || dialog?.kind === "password-link"
       ? dialog.source
       : undefined;
-  const linkDialogKind = dialog?.kind;
+  // Embed in your app stays open (it puts nothing in a URL); every other link dialog closes.
+  const linkDialogKind = dialog?.kind === "embed" ? `embed-${dialog.scope}` : dialog?.kind;
   // The refusal's Interactive HTML… acts later, on the diagram open then.
   const exportHtml = useRef(openHtmlExport);
   useLayoutEffect(() => {
@@ -867,9 +862,8 @@ export function useInterop({
     if (linkDialogSource === undefined) return;
     const check = () => {
       if (canShareAsLink(privacyState(linkDialogSource))) return;
-      // The embed dialog keeps only the embed whose diagram the host supplies; the others close.
-      if (linkDialogKind === "embed") {
-        setDialog((d) => (d?.kind === "embed" ? { ...d, example: undefined, privateOnly: true } : d));
+      if (linkDialogKind === "embed-private") {
+        setDialog((d) => (d?.kind === "embed" && d.scope === "private" ? { ...d, privateDiagram: true } : d));
         return;
       }
       setDialog(null);
@@ -1068,9 +1062,9 @@ export function useInterop({
         <EmbedDialog
           diagram={dialog.diagram}
           scope={dialog.scope}
-          example={dialog.example}
+          example={dialog.scope === "public" ? dialog.example : undefined}
           allowed={() => linkStillAllowed(dialog.source)}
-          privateOnly={dialog.privateOnly}
+          privateDiagram={dialog.scope === "private" && dialog.privateDiagram}
           fileName={`${baseName(dialog.diagram)}.diagram.json`}
           onDownload={() => void exportNative()}
           onClose={() => setDialog(null)}

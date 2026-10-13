@@ -322,7 +322,7 @@ export function EmbedDialog({
   scope,
   example,
   allowed,
-  privateOnly: privateDiagram = false,
+  privateDiagram = false,
   fileName,
   onDownload,
   onClose,
@@ -332,17 +332,17 @@ export function EmbedDialog({
   example?: string;
   /** Whether its document may still be shared as a link (asked again by every action). */
   allowed?: () => boolean;
-  /** A private diagram: only the host-supplied embed (nothing of the diagram goes in a URL). */
-  privateOnly?: boolean;
+  /** With `private`: the diagram is private, so this is the only embed it gets (its subtitle says so). */
+  privateDiagram?: boolean;
   /** The diagram file's name, as File > Diagram file saves it. */
   fileName: string;
   /** Saves the diagram file, for the host to serve. */
   onDownload: () => void;
   onClose: () => void;
 }) {
-  // Embed in your app, a private diagram and a copy deployed without share links (src/lib/deployment.ts) offer only
-  // the host-supplied embed: the sources that put the diagram in a URL aren't shown at all.
-  const privateOnly = privateDiagram || !SHARE_LINKS || scope === "private";
+  // The kind is the one Share… opened: Embed in your app is the host-supplied embed only, and so is every embed in a
+  // copy deployed without share links (src/lib/deployment.ts). Embed on a public page never offers it.
+  const privateOnly = scope === "private" || !SHARE_LINKS;
   const [payload, setPayload] = useState<string>();
   const [chosen, setChosen] = useState<EmbedSource>(privateOnly ? "host" : example ? "example" : "inline");
   const source: EmbedSource = privateOnly ? "host" : chosen;
