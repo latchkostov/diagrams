@@ -263,49 +263,48 @@ const COUNT_DRAWS = `(() => {
       return original.apply(this, args);
     };
   }
-  // Main-thread time in animation-frame callbacks (the live loop, React Flow, React), summed per frame: every
-  // callback of one frame gets the same timestamp.
-  window.__rafTime = new Map();
-  const raf = window.requestAnimationFrame.bind(window);
-  window.requestAnimationFrame = (cb) =>
-    raf((t) => {
-      const start = performance.now();
-      try {
-        cb(t);
-      } finally {
-        window.__rafTime.set(t, (window.__rafTime.get(t) ?? 0) + performance.now() - start);
-      }
-    });
+  // The page's own animation frames: the main thread's frame count, whatever the worker manages to draw.
+  window.__ticks = 0;
+  const tick = () => {
+    window.__ticks++;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 })();`;
 
 declare global {
   interface Window {
     __draws: number;
-    __rafTime: Map<number, number>;
+    __ticks: number;
   }
 }
 
 /**
- * Main-thread draw calls, frames drawn, and the main thread's time in animation-frame callbacks per frame (the
- * mean of all but the slowest fifth of frames: a stray long one, a GC or another tab, doesn't decide it; the
- * clock's 0.1 ms steps average out), over `ms` of live traffic.
+ * Main-thread draw calls, frames drawn, and the main thread's busy time per animation frame of the page (not per
+ * frame the worker drew: a worker starved of CPU draws fewer), over `ms` of live traffic.
+ * The busy time is Chrome's own count of every task on the page's main thread (CDP Performance `TaskDuration`):
+ * animation frames and the UI clock's updates every 125 ms, worker messages, React commits, style and layout. It
+ * is counted in the thread's CPU time, so other processes competing for the CPU don't add to it.
  */
 async function busyWindow(page: Page, ms: number) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Performance.enable", { timeDomain: "threadTicks" });
+  const taskSeconds = async () =>
+    (await cdp.send("Performance.getMetrics")).metrics.find((m) => m.name === "TaskDuration")?.value ?? 0;
   await page.evaluate(() => {
     window.__draws = 0;
-    window.__rafTime.clear();
   });
   const frames = await count(page, "frames");
+  const ticks = await page.evaluate(() => window.__ticks);
+  const busy = await taskSeconds();
   await page.waitForTimeout(ms);
+  const busyMs = ((await taskSeconds()) - busy) * 1000;
+  const pageFrames = (await page.evaluate(() => window.__ticks)) - ticks;
+  await cdp.detach();
   return {
     draws: await page.evaluate(() => window.__draws),
     frames: (await count(page, "frames")) - frames,
-    msPerFrame: await page.evaluate(() => {
-      const times = [...window.__rafTime.values()]
-        .sort((a, b) => a - b)
-        .slice(0, -Math.ceil(window.__rafTime.size / 5));
-      return times.reduce((a, b) => a + b, 0) / Math.max(times.length, 1);
-    }),
+    msPerFrame: busyMs / Math.max(pageFrames, 1),
     // Animations that would repaint (CSS) or recomposite (compositor) every frame while live: each
     // holds input a frame deeper (docs/BACKLOG.md). Transient transitions don't count.
     running: await page.evaluate(() =>
@@ -336,10 +335,12 @@ test.describe("live rendering stays off the main thread", () => {
     await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(40);
     const fallback = await busyWindow(page, 1500);
     expect(fallback.draws).toBeGreaterThan(fallback.frames);
-    // And the point of the worker: the main thread's share of a frame is well under the fallback's, which draws it
-    // all there (about half, measured). Both measured in the same run, so a busy machine slows both alike. Not a
-    // budget in ms.
-    expect(playing.msPerFrame, JSON.stringify({ worker: playing, main: fallback })).toBeLessThan(fallback.msPerFrame);
+    // And the point of the worker: the main thread's work per frame (all of it, not only the animation frames) is
+    // well under the fallback's, which draws it all there: about 0.4 to 0.6 of it, measured; 0.8 at most. Both
+    // measured in the same run, in thread CPU time. Not a budget in ms.
+    expect(playing.msPerFrame, JSON.stringify({ worker: playing, main: fallback })).toBeLessThan(
+      fallback.msPerFrame * 0.8,
+    );
     expectNoErrors(consoleErrors);
   });
 });

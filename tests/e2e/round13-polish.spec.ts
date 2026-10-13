@@ -183,12 +183,14 @@ test("an Undo toast goes because Ctrl+Z undoes, long before it would expire, and
   await page.mouse.move(p.x + p.width / 2 + 40, p.y + p.height / 2 + 60, { steps: 6 });
   await page.mouse.move(p.x + p.width / 2 + 60, p.y + p.height / 2 + 170, { steps: 12 });
   await page.mouse.up();
+  // An action toast lasts 6 s. Stop the page's clock at the drop, so its expiry can't fire however slow the run,
+  // then move it on just enough for the edit to settle into the history (350 ms). The toast is still there,
+  // frozen: if it goes after Ctrl+Z, Ctrl+Z took it. Logic, not a race against the 6 s.
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 50);
+  await page.clock.runFor(500);
   await expect(page.getByTestId("membership-undo")).toBeVisible();
   await expect(page.getByTestId("toast")).toContainText("left AKS");
   expect(inside(centre(await box(page, "node-payments")), await box(page, "group-aks"))).toBe(false);
-  // An action toast lasts 6 s. Stop the page's clock a second on (the edit settles into the history), so its
-  // expiry can't fire at all: if the toast goes now, Ctrl+Z took it. Logic, not a race against the 6 s.
-  await page.clock.pauseAt(new Date(Date.now() + 1000));
   await page.keyboard.press(`${MOD}+z`);
   await expect(page.getByTestId("toast")).toHaveCount(0);
   await page.clock.resume();

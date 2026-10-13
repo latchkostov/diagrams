@@ -46,6 +46,10 @@ Run them locally:
 - `E2E_PREBUILT=1` serves `tests/.output/e2e-dist` and `tests/.output/preview-dist` as they are (CI builds
   them in an earlier step).
 
+Every server listens on `127.0.0.1`, and Chrome resolves `localhost` there (`LOOPBACK` in
+`playwright.config.ts`): Vite otherwise bound `localhost` to `[::1]` on some machines while Chrome sometimes
+connected to `127.0.0.1`, and a request now and then failed with `net::ERR_CONNECTION_REFUSED`.
+
 Pick other ports to run beside another checkout. A server already listening is reused only when you chose
 its port explicitly, or locally on the default port. CI never reuses one, so it can't silently test a
 server from another checkout.
@@ -136,9 +140,10 @@ a timing test guards decides its form:
   blocks the thread, and Vitest's timeout can't stop it). An absolute ceiling only as a hang backstop, at the
   test timeout's scale.
 - **Real time** (frames, input, animation): compare with a baseline in the same run (keystrokes with checks held
-  against running; the worker renderer's main-thread time per frame against the main-thread fallback's), or count
-  frames and logic (transforms over 20 frames, not 500 ms; a paused page clock proves a toast went because of
-  Undo, not its expiry).
+  against running; the worker renderer's main-thread work per page frame against the main-thread fallback's, all
+  of it, from Chrome's own task time in thread CPU time, not only animation callbacks), or count frames and logic
+  (transforms over 20 frames, not 500 ms; a page clock paused at the drop proves a toast went because of Undo, not
+  its expiry).
 
 Every conversion is checked by a deliberate regression (make it quadratic, remove the bound) that the test must
 catch. An e2e test that clicks must wait for the layout it clicks into (a panel opening, a pan, a lazily loaded

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { auditLayout, countViolations } from "./audit";
 import { fitAvoiding } from "./fit";
 import { LABEL, pillWidth, placeLabels, wrapLines } from "./labels";
@@ -7,6 +7,13 @@ import { pointAlong, roundedPath } from "./path";
 import { slotOffset, spreadPorts } from "./ports";
 import { intersects, segmentHitsRect, simplify, type Point, type Rect } from "./rect";
 import { Router, routeDiagram, type RouteInput } from "./router";
+import { routeOrthogonal } from "./orthogonal";
+
+// The router's A* searches, counted (the real search runs).
+vi.mock("./orthogonal", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./orthogonal")>();
+  return { ...actual, routeOrthogonal: vi.fn(actual.routeOrthogonal) };
+});
 
 const card = (x: number, y: number, width = 220, height = 72): Rect => ({ x, y, width, height });
 const boxOf = (l: { x: number; y: number; width: number; height: number }): Rect => ({
@@ -440,10 +447,15 @@ describe("Router", () => {
     // multiply them). Each search's own cost is guarded in perf.test.ts; a hang still fails at the test's timeout.
     // Routing as a whole isn't linear by design (every search filters the diagram's cards), so no ratio here.
     const { nodes, edges } = grid(150);
+    const searches = vi.mocked(routeOrthogonal);
+    searches.mockClear();
     const router = new Router();
     const r = router.route({ nodes, edges });
     expect(r.size).toBe(149);
-    expect(router.lastRouted).toBe(149);
+    expect(searches).toHaveBeenCalledTimes(149);
+    // The same diagram again: every route is cached, no search runs.
+    router.route({ nodes, edges });
+    expect(searches).toHaveBeenCalledTimes(149);
     const v = auditLayout({
       nodes,
       edges: edges.map((e) => ({ ...e, points: r.get(e.id)!.points })),

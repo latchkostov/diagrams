@@ -297,9 +297,16 @@ test.describe("command palette", () => {
 
   test("fits a 1024px window without overlap, and works from the gallery", async ({ page, consoleErrors }) => {
     await page.setViewportSize({ width: 1024, height: 700 });
-    // A smaller window doesn't refit a diagram fitted to the larger one: Payments can be under the AI rail.
-    await fitDiagram(page);
-    await page.getByTestId("node-payments").click();
+    // A smaller window doesn't refit a diagram fitted to the larger one: Payments can be under the AI rail. A fit
+    // made before the canvas has taken the new width fits the old one, so fit until Payments is clear of the rail
+    // (a layout race, not a matter of time).
+    const payments = page.getByTestId("node-payments");
+    await expect(async () => {
+      await fitDiagram(page);
+      const [node, rail] = await Promise.all([payments.boundingBox(), page.getByTestId("ai-rail").boundingBox()]);
+      expect(node && (!rail || node.x + node.width <= rail.x)).toBeTruthy();
+    }).toPass({ timeout: 10_000 });
+    await payments.click();
     await openPalette(page);
     await input(page).fill("a");
     const box = await palette(page).boundingBox();

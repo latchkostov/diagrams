@@ -11,74 +11,54 @@ export const LINEAR_LIMIT = 24;
 export const QUADRATIC_LIMIT = 192;
 
 /**
- * Milliseconds per call of `run`, the fastest of `samples` after a warm-up. Each sample repeats the call until it
- * has run for at least `minMs`, so a call much shorter than the timer's resolution or a scheduler tick still
- * measures cleanly.
- */
-export function fastest(run: () => unknown, { samples = 5, minMs = 4 } = {}): number {
-  const reps = repsFor(run, minMs);
-  let best = Infinity;
-  for (let i = 0; i < samples; i++) best = Math.min(best, sample(run, reps));
-  return best;
-}
-
-/**
- * How much longer the large input takes than the small one: `fastest(large) / fastest(small)`. The samples of the
- * two sizes interleave, so a burst of load elsewhere slows both. With large = GROWTH_FACTOR × small, compare the
- * result against LINEAR_LIMIT.
+ * How much longer the large input takes than the small one, per call: the fastest of `samples` batches of each,
+ * after a warm-up. The batches of the two sizes interleave, so a burst of load elsewhere slows both, and each batch
+ * runs for at least `minMs` (see `calibrate`), so a call far shorter than the timer's resolution still measures
+ * cleanly. With large = GROWTH_FACTOR × small, compare the result against LINEAR_LIMIT.
  */
 export function growth(small: () => unknown, large: () => unknown, { samples = 5, minMs = 4 } = {}): number {
-  const smallReps = repsFor(small, minMs);
-  const largeReps = repsFor(large, minMs);
+  const smallReps = calibrate(small, minMs);
+  const largeReps = calibrate(large, minMs);
   let bestSmall = Infinity;
   let bestLarge = Infinity;
   for (let i = 0; i < samples; i++) {
-    bestSmall = Math.min(bestSmall, sample(small, smallReps));
-    bestLarge = Math.min(bestLarge, sample(large, largeReps));
+    bestSmall = Math.min(bestSmall, batch(small, smallReps) / smallReps);
+    bestLarge = Math.min(bestLarge, batch(large, largeReps) / largeReps);
   }
   return report(bestSmall, bestLarge);
 }
 
-/** The async form of `growth`, for work that awaits (an import through the format registry). */
-export async function growthAsync(
-  small: () => Promise<unknown>,
-  large: () => Promise<unknown>,
-  { samples = 3 } = {},
-): Promise<number> {
-  const time = async (run: () => Promise<unknown>) => {
-    const start = performance.now();
-    await run();
-    return performance.now() - start;
-  };
-  await small();
-  await large();
-  let bestSmall = Infinity;
-  let bestLarge = Infinity;
-  for (let i = 0; i < samples; i++) {
-    bestSmall = Math.min(bestSmall, await time(small));
-    bestLarge = Math.min(bestLarge, await time(large));
+/** The most calls in one batch: a call this cheap is a constant, whatever the batch measures. */
+export const MAX_REPS = 1_000_000;
+
+/**
+ * How many calls of `run` make a batch of at least `minMs`, after a warm-up. Measured on warmed-up batches,
+ * doubling (or more) until a batch reaches `minMs`, never from one cold call: a first call slowed by compiling or
+ * a collection would otherwise pick one repetition for a call that takes microseconds. At most MAX_REPS.
+ */
+export function calibrate(run: () => unknown, minMs: number): number {
+  batch(run, 3);
+  let reps = 1;
+  for (;;) {
+    const ms = batch(run, reps);
+    if (ms >= minMs || reps >= MAX_REPS) return reps;
+    reps = Math.min(MAX_REPS, reps * Math.max(2, Math.ceil(minMs / Math.max(ms, 0.01))));
   }
-  return report(bestSmall, bestLarge);
 }
 
 /** The ratio; GROWTH_LOG=1 prints each one with its timings (run with --silent=false). */
 function report(small: number, large: number): number {
-  const ratio = large / Math.max(small, 1e-6);
+  const ratio = large / Math.max(small, 1e-9);
   if ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.GROWTH_LOG)
-    console.log(`growth ${ratio.toFixed(1)}x (${small.toFixed(3)} ms -> ${large.toFixed(3)} ms)`);
+    console.log(`growth ${ratio.toFixed(1)}x (${small.toFixed(4)} ms -> ${large.toFixed(4)} ms)`);
   return ratio;
 }
 
-/** Warms `run` up and returns how many calls make a sample of at least `minMs`. */
-function repsFor(run: () => unknown, minMs: number): number {
-  const once = sample(run, 1);
-  return Math.max(1, Math.min(1_000, Math.ceil(minMs / Math.max(once, 1e-3))));
-}
-
-function sample(run: () => unknown, reps: number): number {
+/** Milliseconds for `reps` calls of `run`. */
+function batch(run: () => unknown, reps: number): number {
   const start = performance.now();
   for (let i = 0; i < reps; i++) run();
-  return (performance.now() - start) / reps;
+  return performance.now() - start;
 }
 
 /**
