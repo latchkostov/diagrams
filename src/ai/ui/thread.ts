@@ -7,6 +7,7 @@ import type { DiagramFile } from "../../model/types";
 import { validateDiagram } from "../../interop/native";
 import type { StencilChoice } from "./apply";
 import { AI_THREAD_PREFIX } from "../../lib/aiThreadKey";
+import { safeStorage } from "../../lib/storage";
 
 export interface ThreadTurn {
   id: string;
@@ -166,18 +167,13 @@ export function loadThread(documentId: string): ThreadTurn[] {
 /** Saves the capped thread; when storage is full, retries without snapshots. False when nothing could be saved. */
 export function saveThread(documentId: string, turns: readonly ThreadTurn[]): boolean {
   const key = keyFor(documentId);
-  try {
-    if (!turns.length) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify({ turns: capThread(turns) }));
-    return true;
-  } catch {
-    try {
-      localStorage.setItem(key, JSON.stringify({ turns: capThread(turns).map(({ after: _after, ...t }) => t) }));
-      return true;
-    } catch {
-      return false;
-    }
-  }
+  // Through safe storage, like every write: blocked or full storage is a false, never a throw, and a tab from before
+  // Clear everything on this device writes nothing (./lib/storage.ts).
+  if (!turns.length) return safeStorage.removeItem(key);
+  return (
+    safeStorage.setItem(key, JSON.stringify({ turns: capThread(turns) })) ||
+    safeStorage.setItem(key, JSON.stringify({ turns: capThread(turns).map(({ after: _after, ...t }) => t) }))
+  );
 }
 
 let seq = 0;

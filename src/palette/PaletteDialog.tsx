@@ -141,7 +141,7 @@ export function PaletteDialog({
       input.current?.focus();
       return;
     }
-    if (rememberable(c.id, isLocalOnly(paletteHost.get().canvas))) pushRecentCommand(c.id);
+    if (rememberable(c, isLocalOnly(paletteHost.get().canvas))) pushRecentCommand(c.id);
     closeRef.current();
     // After the palette has closed and handed focus back, so commands that move focus (rename) win.
     window.setTimeout(() => {

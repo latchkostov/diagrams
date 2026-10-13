@@ -406,21 +406,10 @@ function changed() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(DIAGRAMS_CHANGED));
 }
 
-/** Set (and removed at once) by Clear everything on this device (./clearDevice.ts): other tabs start over. */
-export const CLEARED_KEY = "diagrams.cleared.v1";
-
 // useLibrary subscribes to DIAGRAMS_CHANGED. Bridge per-entry storage events in other tabs.
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (event) => {
-    if (event.key === CLEARED_KEY && event.newValue) {
-      // Another tab is clearing everything: write nothing more, from now (an autosave on the way out would bring a
-      // diagram back), then sweep what this tab wrote before it heard, and start over (./clearDevice.ts).
-      Storage.prototype.setItem = () => {};
-      void import("./clearDevice").then(
-        (m) => m.startOver(),
-        () => window.location.reload(),
-      );
-    } else if (event.key?.startsWith(ENTRY_PREFIX) || event.key?.startsWith(DELETED_PREFIX)) changed();
+    if (event.key?.startsWith(ENTRY_PREFIX) || event.key?.startsWith(DELETED_PREFIX)) changed();
   });
 }
 

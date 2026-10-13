@@ -140,6 +140,7 @@ function reconnectMenu(ctx: ActionContext, end: EdgeEnd): MenuNode[] {
       .map((n): MenuItem => ({
         type: "item",
         id: `reconnect-${end}:${n.id}`,
+        documentScoped: true,
         label: n.label || n.id,
         paletteLabel: `Reconnect ${end === "source" ? "from" : "to"} › ${n.label || n.id}`,
         stencil: n.stencil,
@@ -152,6 +153,7 @@ function reconnectMenu(ctx: ActionContext, end: EdgeEnd): MenuNode[] {
       .map((a): MenuItem => ({
         type: "item",
         id: `reconnect-${end}:${a.id}`,
+        documentScoped: true,
         label: a.text || a.id,
         paletteLabel: `Reconnect ${end === "source" ? "from" : "to"} › ${a.text || a.id}`,
         icon: "shape-rect",
@@ -462,6 +464,7 @@ export function builtinActions(): Action[] {
           .map((n) => ({
             type: "item" as const,
             id: `connect:${n.id}`,
+            documentScoped: true,
             label: n.label || n.id,
             stencil: n.stencil,
             hint: n.sublabel,

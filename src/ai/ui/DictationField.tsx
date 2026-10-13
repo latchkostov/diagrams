@@ -100,9 +100,11 @@ export function DictationField({
           )}
         </p>
       )}
-      {dictation.status === "listening" && !dictation.onDevice && (
-        <p className="ai-speech-service" data-testid={testIds.service}>
-          {speechServiceNote()}
+      {/* A polite live region that stays mounted while the mic is offered: its text arrives when the browser's speech
+          service starts listening, so a screen reader hears it once per session (not with every word heard). */}
+      {showMic && (
+        <p className="ai-speech-service" role="status" data-testid={testIds.service}>
+          {dictation.status === "listening" && !dictation.onDevice ? speechServiceNote() : ""}
         </p>
       )}
       {dictation.message && (

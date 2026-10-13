@@ -540,6 +540,15 @@
   line-height: 1.4;
 }
 
+/* Empty, it takes no room but stays in the accessibility tree (a live region must exist before its text arrives). */
+.ai-speech-service:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 .ai-private-note {
   display: grid;
   gap: 4px;

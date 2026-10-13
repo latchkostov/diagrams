@@ -13,6 +13,9 @@ test.describe("Dictate", () => {
     await openAdvanced(page);
 
     await expect(mic(page)).toHaveAttribute("aria-label", "Dictate");
+    // A polite live region, there (and empty) before listening starts, so its words are announced when they arrive.
+    await expect(page.getByTestId("ai-speech-service")).toHaveAttribute("role", "status");
+    await expect(page.getByTestId("ai-speech-service")).toHaveText("");
     await mic(page).click();
     await expect(mic(page)).toHaveAttribute("aria-pressed", "true");
     await expect(mic(page)).toHaveAttribute("aria-label", "Stop dictating");
@@ -59,7 +62,7 @@ test.describe("Dictate", () => {
     await mic(page).click();
     await expect(mic(page)).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByTestId("ai-interim")).toHaveCount(0);
-    await expect(page.getByTestId("ai-speech-service")).toHaveCount(0);
+    await expect(page.getByTestId("ai-speech-service")).toHaveText("");
     // Every time, not once per browser: a reload and a new session say it again.
     await page.reload();
     await openAdvanced(page);
@@ -121,7 +124,7 @@ test.describe("Dictate", () => {
     await expect(page.getByTestId("ai-interim")).toContainText("Listening on this device");
     expect((await speechState(page)).config).toMatchObject({ processLocally: true });
     await expect(page.getByTestId("ai-dictation-message")).toHaveCount(0);
-    await expect(page.getByTestId("ai-speech-service")).toHaveCount(0);
+    await expect(page.getByTestId("ai-speech-service")).toHaveText("");
     await speech(page, "error", "no-speech");
     await speech(page, "silence");
     await expect(page.getByTestId("ai-dictation-message")).toContainText("Still listening");

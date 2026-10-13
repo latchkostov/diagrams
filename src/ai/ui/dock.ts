@@ -3,6 +3,7 @@
 // left it. Main bundle: keep it tiny.
 
 import { useSyncExternalStore } from "react";
+import { safeStorage } from "../../lib/storage";
 
 const KEY = "diagrams.ai-dock.v1";
 export const DOCK_MIN = 300;
@@ -45,11 +46,8 @@ export const aiDock = {
     const next = { ...current(), ...patch };
     if (next.open === current().open && next.width === current().width) return;
     state = next;
-    try {
-      localStorage.setItem(KEY, JSON.stringify(next));
-    } catch {
-      // Storage full or blocked: the setting lasts for this visit.
-    }
+    // Storage full or blocked: the setting lasts for this visit.
+    safeStorage.setItem(KEY, JSON.stringify(next));
     for (const l of listeners) l();
   },
   toggle() {

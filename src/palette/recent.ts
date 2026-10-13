@@ -25,9 +25,10 @@ export function pushRecentCommand(id: string, storage: Pick<Storage, "getItem" |
 }
 
 /**
- * Whether a run command is remembered: a private diagram's nodes and simulations never are. Their ids are the
- * diagram's own words, and this list outlives the diagram (it's one list for every diagram).
+ * Whether a run command is remembered: never one whose id carries a private diagram's own ids or words (its nodes,
+ * simulations, Connect to › and Reconnect › targets, marked `documentScoped` where they're made). This list outlives
+ * the diagram: it's one list for every diagram.
  */
-export function rememberable(id: string, privateDiagram: boolean): boolean {
-  return !(privateDiagram && (id.startsWith("node:") || id.startsWith("sim:")));
+export function rememberable(command: { documentScoped?: boolean }, privateDiagram: boolean): boolean {
+  return !(privateDiagram && command.documentScoped);
 }

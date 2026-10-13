@@ -120,10 +120,9 @@ describe("palette ranking", () => {
     expect(withRecentCommand(["a", "b", "c"], "d", 3)).toEqual(["d", "a", "b"]);
   });
 
-  it("never remembers a private diagram's nodes or simulations (their ids are its words)", () => {
-    expect(rememberable("node:payroll-ledger", true)).toBe(false);
-    expect(rememberable("sim:storm-payroll-ledger", true)).toBe(false);
-    expect(rememberable("action:export:drawio", true)).toBe(true);
-    expect(rememberable("node:payroll-ledger", false)).toBe(true);
+  it("never remembers a command marked as carrying a private diagram's words", () => {
+    expect(rememberable({ documentScoped: true }, true)).toBe(false);
+    expect(rememberable({ documentScoped: true }, false)).toBe(true);
+    expect(rememberable({}, true)).toBe(true);
   });
 });

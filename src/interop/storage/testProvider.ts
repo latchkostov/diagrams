@@ -7,6 +7,12 @@ import { OPENABLE, StorageError, type StorageEntry, type StorageProvider } from 
 // Tests read the files from localStorage (TEST_STORAGE_KEY) and can make the next call fail with
 // `localStorage.setItem("diagrams.test-storage.fail", "save" | "open")`, or slow down writes (see `slow`).
 
+/**
+ * Set as this module runs: whatever awaited its import (the File menu's warm-up decision) has run by the page's next
+ * task, so a test can tell the decision was made (tests/e2e/privacy-audit.spec.ts).
+ */
+if (typeof window !== "undefined") (window as { __testStorageLoaded?: boolean }).__testStorageLoaded = true;
+
 export const TEST_STORAGE_KEY = "diagrams.test-storage.v1";
 const FAIL_KEY = "diagrams.test-storage.fail";
 

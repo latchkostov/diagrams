@@ -73,6 +73,15 @@ function watchRequests(page: Page) {
   };
 }
 
+/** File ▸ Privacy ▸ Clear everything on this device…, up to its confirmation. */
+async function openClearDevice(page: Page) {
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").click();
+  await expect(page.getByTestId("file-privacy-menu")).toBeVisible();
+  await page.getByTestId("privacy-clear-device").click();
+  await expect(page.getByTestId("clear-device-dialog")).toBeVisible();
+}
+
 const appOrigin = () => new URL(test.info().project.use.baseURL ?? "http://localhost").origin;
 
 test.describe("the address bar and history", () => {
@@ -153,29 +162,32 @@ test.describe("requests and third parties", () => {
   });
 
   test("a warm-up still loading when the diagram turns private stops there", async ({ page }) => {
-    // Hold the provider's code, as a slow network would, while the diagram turns private.
+    // Hold the provider's code, as a slow network would, while the diagram turns private. Its URL is a chunk in a
+    // build and the module itself on the dev server.
     let release!: () => void;
     const held = new Promise<void>((resolve) => (release = resolve));
-    const chunk = /testProvider-[\w-]+\.js$/;
-    await page.route(chunk, async (route) => {
+    let intercepted = false;
+    await page.route(/\/testProvider(-[\w-]+\.js|\.ts)(\?.*)?$/, async (route) => {
+      intercepted = true;
       await held;
       await route.continue();
     });
     await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
     await expect(page.getByTestId("canvas-view")).toBeVisible();
     await importDiagram(page, work());
-    const loaded = page.waitForResponse(chunk);
     await page.getByTestId("file-button").click();
     await expect(page.getByTestId("file-privacy")).toBeVisible();
+    await expect.poll(() => intercepted).toBe(true);
     await page.keyboard.press("Escape");
     await page.keyboard.press(`${MOD}+k`);
     await page.getByTestId("command-input").fill("private");
     await page.getByTestId("command-item-action:file.private").click();
     await expect(page.getByTestId("private-badge")).toBeVisible();
     release();
-    await loaded;
-    // The module has run, and its warm-up was decided on, once a task has passed: no warm-up.
-    await page.evaluate(() => new Promise((r) => setTimeout(r)));
+    // The module has run: what awaited it (the warm-up decision) ran in the same turn, before this check's task.
+    await expect
+      .poll(() => page.evaluate(() => (window as { __testStorageLoaded?: boolean }).__testStorageLoaded))
+      .toBe(true);
     expect(await page.evaluate(() => (window as { __testStoragePreloads?: number }).__testStoragePreloads ?? 0)).toBe(
       0,
     );
@@ -236,48 +248,30 @@ test.describe("this browser's storage", () => {
     const slug = await importDiagram(page, work({ private: true }));
     // An AI conversation that names it (the panel keeps one per diagram).
     await page.evaluate((w) => localStorage.setItem("diagrams.ai-thread.v1:x", JSON.stringify({ turns: [w] })), WORD);
-    await page.evaluate(() => {
-      sessionStorage.setItem("diagrams.pendingStencils.v1", '["kafka.topic"]');
-      sessionStorage.setItem("other-app.state", "keep");
-    });
-    // Another tab, on the stencil library (its pending stencils wait for a canvas), that writes a diagram's words at
-    // the very moment it hears of the wipe, before the app's own listener runs: a late autosave.
-    const other = await context.newPage();
-    await other.addInitScript((w) => {
-      addEventListener("storage", (e) => {
-        if (e.key === "diagrams.cleared.v1" && e.newValue)
-          localStorage.setItem("diagrams.autosave.v1:kafka-order-pipeline", JSON.stringify({ late: w }));
+    const seedSession = (p: Page) =>
+      p.evaluate(() => {
+        sessionStorage.setItem("diagrams.pendingStencils.v1", '["kafka.topic"]');
+        sessionStorage.setItem("other-app.state", "keep");
       });
-    }, WORD);
+    await seedSession(page);
+    // Another tab, on the stencil library (its pending stencils wait for a canvas), that can't download any more of
+    // the app's code: stopping and starting over needs none.
+    const other = await context.newPage();
     await other.goto("./?view=gallery");
     await expect(other.getByTestId("gallery-view")).toBeVisible();
-    await other.evaluate(() => {
-      sessionStorage.setItem("diagrams.pendingStencils.v1", '["kafka.topic"]');
-      sessionStorage.setItem("other-app.state", "keep");
-    });
+    await other.route(/(clearDevice|dialogs|clearOnPrivate)[-.][^/]*$/, (route) => route.abort());
+    await seedSession(other);
 
-    const openClear = async () => {
-      await page.getByTestId("file-button").click();
-      await page.getByTestId("file-privacy").click();
-      await expect(page.getByTestId("file-privacy-menu")).toBeVisible();
-      await page.getByTestId("privacy-clear-device").click();
-      await expect(page.getByTestId("clear-device-dialog")).toBeVisible();
-    };
-    // Cancel is the default and keeps everything.
-    await openClear();
+    await openClearDevice(page);
+    // Cancel is the default.
     await expect(page.getByTestId("clear-device-cancel")).toBeFocused();
-    await page.getByTestId("clear-device-cancel").click();
-    await expect(page.getByTestId("clear-device-dialog")).toHaveCount(0);
-    expect(await page.evaluate((s) => localStorage.getItem(`diagrams.library-entry.v1:${s}`), slug)).not.toBeNull();
-
-    await openClear();
     const otherReloads = other.waitForEvent("load");
     await Promise.all([page.waitForEvent("load"), page.getByTestId("clear-device-confirm").click()]);
     await otherReloads;
     await expect(page.getByTestId("canvas-view")).toBeVisible();
     await expect(other.getByTestId("gallery-view")).toBeVisible();
-    // The app starts over on a blank diagram, and nothing of the old one is anywhere in storage, the other tab's late
-    // write included; each tab's session storage loses the app's keys and keeps another app's.
+    // The app starts over on a blank diagram, and nothing of the old one is anywhere in storage; each tab's session
+    // storage loses the app's keys and keeps another app's.
     expect(page.url()).not.toContain(slug);
     await expect(page.getByTestId("diagram-title")).not.toHaveText("Quillfeather payroll");
     for (const p of [page, other]) {
@@ -289,11 +283,79 @@ test.describe("this browser's storage", () => {
       expect(stored.toLowerCase()).not.toContain(WORD);
       expect(stored).not.toContain("diagrams.library-entry.v1:");
       expect(stored).not.toContain("diagrams.ai-thread.v1:");
-      expect(stored).not.toContain("diagrams.autosave.v1:");
       expect(await p.evaluate(() => Object.keys(sessionStorage))).toEqual(["other-app.state"]);
     }
     await other.close();
     expectNoErrors(consoleErrors);
+  });
+
+  test("a tab that hears of the wipe late writes nothing, and deletes nothing made since", async ({
+    page,
+    context,
+  }) => {
+    // A tab that misses both signals (a busy or throttled background tab): it learns at its next write.
+    const late = await context.newPage();
+    await late.addInitScript(() => {
+      addEventListener("storage", (e) => e.key === "diagrams.generation" && e.stopImmediatePropagation());
+      (window as { BroadcastChannel?: unknown }).BroadcastChannel = undefined;
+    });
+    await gotoCanvas(late, SLUG);
+    await gotoCanvas(page, SLUG);
+    await openClearDevice(page);
+    await Promise.all([page.waitForEvent("load"), page.getByTestId("clear-device-confirm").click()]);
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    // New work, after the wipe.
+    const fresh = await importDiagram(page, work());
+    const entry = `diagrams.library-entry.v1:${fresh}`;
+    expect(await page.evaluate((k) => localStorage.getItem(k), entry)).not.toBeNull();
+
+    // The late tab changes a setting (a write): it writes nothing, and starts over.
+    const reloads = late.waitForEvent("load");
+    await late.getByTestId("theme-toggle").click();
+    await reloads;
+    await expect(late.getByTestId("canvas-view")).toBeVisible();
+    expect(await page.evaluate((k) => localStorage.getItem(k), entry)).not.toBeNull();
+    await expect(page.getByTestId("diagram-title")).toHaveText("Quillfeather payroll");
+    await late.close();
+  });
+
+  test("a full storage still reaches every tab: the wipe frees the space its signal needs", async ({
+    page,
+    context,
+  }) => {
+    await gotoCanvas(page, SLUG);
+    const other = await context.newPage();
+    // Only the storage event can reach this tab.
+    await other.addInitScript(() => ((window as { BroadcastChannel?: unknown }).BroadcastChannel = undefined));
+    await other.goto("./?view=gallery");
+    await expect(other.getByTestId("gallery-view")).toBeVisible();
+    // Fill the browser's storage for this site with the app's own keys, to the last character.
+    const full = await page.evaluate(() => {
+      let size = 1 << 20;
+      for (let i = 0; size >= 1; i++) {
+        try {
+          localStorage.setItem(`diagrams.filler.${i}`, "x".repeat(size));
+        } catch {
+          size = Math.floor(size / 2);
+        }
+      }
+      try {
+        localStorage.setItem("diagrams.probe", "x");
+        return false;
+      } catch {
+        return true;
+      }
+    });
+    expect(full).toBe(true);
+    await openClearDevice(page);
+    const otherReloads = other.waitForEvent("load");
+    await Promise.all([page.waitForEvent("load"), page.getByTestId("clear-device-confirm").click()]);
+    await otherReloads;
+    expect(await page.evaluate(() => localStorage.getItem("diagrams.generation"))).not.toBeNull();
+    expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("diagrams.filler")))).toBe(
+      false,
+    );
+    await other.close();
   });
 
   test("Cancel and Esc keep everything: only the confirm button clears", async ({ page }) => {

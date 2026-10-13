@@ -1,55 +1,56 @@
-import { safeSessionStorage, safeStorage } from "./storage";
-import { CLEARED_KEY } from "./diagramIO";
+import { APP_PREFIX, GENERATION_KEY, stopStorageWrites } from "./storage";
 
 // File ▸ Privacy ▸ Clear everything on this device…: every key Live Diagrams keeps in this browser goes (Your
 // diagrams, edits to examples, the shared slot, AI conversations, file destinations, settings), then the app starts
-// over. Loaded with the confirmation dialog (and by another tab when it hears of a wipe), never at startup.
-//
-// Tabs share localStorage but hear of each other's writes late (the storage event), so the order matters:
+// over. It comes with the confirmation dialog, so confirming clears at once: nothing is left to download, cancel or
+// fail. Only this tab deletes; the others just stop (./storage.ts):
 //   1. this tab stops writing (its autosave on the way out included);
-//   2. it tells the others, which stop writing as they hear it (diagramIO's listener, synchronously), then sweep the
-//      app's keys themselves, which takes out anything they wrote before they heard, and start over;
-//   3. it sweeps, and starts over.
-// Each tab sweeps its own sessionStorage too: that's per tab, and a reload keeps it.
+//   2. it deletes every app key, which also frees the space the next step needs when storage is full;
+//   3. it writes a new storage generation, and says so on a BroadcastChannel too. Every other tab stops writing as it
+//      hears either, or at its next write at the latest (each write checks the generation), drops its own
+//      sessionStorage keys and reloads. None of them deletes anything shared, so nothing made after the wipe is lost.
+//   4. it drops its own sessionStorage keys, and starts over.
 
-/** Every key the app writes starts with this; a copy hosted beside other apps on one origin leaves theirs alone. */
-const APP_PREFIX = "diagrams.";
-
-/** Removes the app's keys from local and session storage. Returns how many it removed. */
-export function clearAppStorage(): number {
+/** Removes the app's keys from one storage, bypassing the write guards (this tab has stopped its own writers). */
+export function removeAppKeys(store: Storage): number {
   let removed = 0;
-  for (const store of [safeStorage, safeSessionStorage])
-    for (const key of store.keys()) if (key.startsWith(APP_PREFIX) && store.removeItem(key)) removed++;
+  for (let i = store.length - 1; i >= 0; i--) {
+    const key = store.key(i);
+    if (key?.startsWith(APP_PREFIX)) {
+      store.removeItem(key);
+      removed++;
+    }
+  }
   return removed;
 }
 
+/** A new storage generation: random, so it differs from every earlier one. */
+export const newGeneration = (): string => `${Date.now().toString(36)}.${Math.random().toString(36).slice(2)}`;
+
 /**
- * Clears everything (after the one confirmation), with the app's other tabs, and starts this tab afresh at the app's
- * plain address: what was in memory (undo, the clipboard, sign-ins) goes too.
+ * Clears everything (after the one confirmation) and starts this tab afresh at the app's plain address: what was in
+ * memory (undo, the clipboard, sign-ins) goes too.
  */
 export function clearDevice(): void {
-  const set = Storage.prototype.setItem;
-  blockStorageWrites();
+  stopStorageWrites();
+  const next = newGeneration();
   try {
-    // A new value every time, so every other tab hears it. The sweep below takes it out again.
-    set.call(localStorage, CLEARED_KEY, `${Date.now()}.${Math.random()}`);
+    removeAppKeys(localStorage);
+    localStorage.setItem(GENERATION_KEY, next);
   } catch {
-    // Storage blocked: there's nothing stored to clear either.
+    // Storage blocked: there's nothing stored to clear.
   }
-  clearAppStorage();
+  try {
+    const channel = new BroadcastChannel(GENERATION_KEY);
+    channel.postMessage(next);
+    channel.close();
+  } catch {
+    // No BroadcastChannel: the storage event and the check before every write still reach the other tabs.
+  }
+  try {
+    removeAppKeys(sessionStorage);
+  } catch {
+    // Blocked: nothing to drop.
+  }
   window.location.replace(window.location.pathname);
-}
-
-/** Another tab cleared everything. This one has already stopped writing; it sweeps (late writes too) and reloads. */
-export function startOver(): void {
-  clearAppStorage();
-  window.location.reload();
-}
-
-/**
- * Nothing more is written from this page: on the way out, an autosave (pagehide) would otherwise bring the open
- * diagram back. The next page starts with the browser's own storage again.
- */
-export function blockStorageWrites(proto: { setItem: Storage["setItem"] } = Storage.prototype): void {
-  proto.setItem = () => {};
 }

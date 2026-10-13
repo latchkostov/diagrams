@@ -38,8 +38,6 @@ import {
   type Privacy,
 } from "../lib/localOnly";
 import { newDiagramsPrivate } from "../lib/privacyPrefs";
-import { safeStorage } from "../lib/storage";
-import { AI_THREAD_PREFIX } from "../lib/aiThreadKey";
 import { LINK_OPEN, LINK_OPEN_OFF_MESSAGE, LINKS_OFF_MESSAGE, SHARE_LINKS } from "../lib/deployment";
 import { PRIVACY_REQUEST } from "../lib/usePrivacy";
 import { loadedCanvasActions } from "../canvas/loadCanvasView";
@@ -809,11 +807,14 @@ export function useInterop({
         setDiagramPrivate(slug, true);
         clearUrlFragment();
         const text = "Private: no share links, cloud saves or AI for this diagram.";
-        // An earlier AI conversation stays unless the person clears it: the toast offers to (its own chunk).
+        toast.success(text);
+        // An earlier AI conversation stays unless the person clears it: the toast offers to, when the conversation
+        // store (its own chunk) has one for this diagram, in storage or in memory only.
         const id = getDiagramIdentity(slug);
-        if (safeStorage.getItem(AI_THREAD_PREFIX + id))
-          void import("../ai/ui/clearOnPrivate").then((m) => m.offerToClearConversation(id, text));
-        else toast.success(text);
+        void import("../ai/ui/clearOnPrivate").then(
+          (m) => m.offerToClearConversation(id, text),
+          () => {},
+        );
         return;
       }
       const d = current();

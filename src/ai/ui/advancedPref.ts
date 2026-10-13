@@ -1,5 +1,7 @@
 // Whether the AI panel's Advanced section is open: closed by default, remembered in this browser.
 
+import { safeStorage } from "../../lib/storage";
+
 const OPEN_KEY = "diagrams.ai-advanced.v1";
 
 export function readAdvancedOpen(): boolean {
@@ -10,11 +12,8 @@ export function readAdvancedOpen(): boolean {
   }
 }
 
+/** Storage blocked or full: it lasts for this visit. */
 export function rememberAdvancedOpen(open: boolean): void {
-  try {
-    if (open) localStorage.setItem(OPEN_KEY, "1");
-    else localStorage.removeItem(OPEN_KEY);
-  } catch {
-    // Storage blocked: it lasts for this visit.
-  }
+  if (open) safeStorage.setItem(OPEN_KEY, "1");
+  else safeStorage.removeItem(OPEN_KEY);
 }

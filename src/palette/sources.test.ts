@@ -243,3 +243,29 @@ describe("palette sources", () => {
     );
   });
 });
+
+describe("document-scoped commands", () => {
+  it("every command whose id carries the diagram's ids says so: Connect to and Reconnect", async () => {
+    const { builtinActions } = await import("../editor/builtinActions");
+    const r = new ActionRegistry(builtinSections);
+    r.register(builtinActions());
+    const three = {
+      ...diagram,
+      nodes: [...diagram.nodes, { id: "cache", stencil: "redis", label: "Orders cache", x: 600, y: 0 }],
+    } as DiagramFile;
+    const editor = {
+      ...fakeEditor({ nodeIds: ["api"] }),
+      getDiagram: () => three,
+      getNode: (id: string) => three.nodes.find((n) => n.id === id),
+      getEdge: (id: string) => three.edges.find((e) => e.id === id),
+    } as unknown as EditorApi;
+    const commands = actionCommands(r, [
+      { target: "node", nodeId: "api", selection: editor.getSelection(), editor, mode: "edit" },
+      { target: "edge", edgeId: "e1", selection: editor.getSelection(), editor, mode: "edit" },
+    ]);
+    const carrying = commands.filter((c) => /:(api|db|cache)$/.test(c.id));
+    expect(carrying.map((c) => c.id)).toEqual(expect.arrayContaining(["action:connect:db"]));
+    expect(carrying.some((c) => c.id.startsWith("action:reconnect-"))).toBe(true);
+    for (const c of carrying) expect(c.documentScoped, c.id).toBe(true);
+  });
+});
