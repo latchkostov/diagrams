@@ -115,6 +115,8 @@ Batch 1 of the plan in `docs/research/imports.md` (which has the full mapping ta
   in memory only**: what reaches the diagram or the report is names (services, topics, variables, secrets) and the
   host names of outside services. URL userinfo is cut first, values over 2,048 characters are skipped, every
   pattern is linear, and interpolation uses the file's own `${VAR:-default}` only.
+- **Replicas** from `deploy.replicas` (or `scale`), one included, after the file's own `${VAR:-default}`; a service
+  that doesn't say has none, so the `single-point` check reads only what the file says.
 - **Boundaries** are the networks when they divide the services (two or more, and 80% of services on exactly one);
   a service on several goes where most of its connections are, and the report says so.
 - **The Import report** (`ui/ImportReportDialog.tsx`, lazy) opens from the toast's **Details** ("Imported “shop”
@@ -135,6 +137,33 @@ Batch 1 of the plan in `docs/research/imports.md` (which has the full mapping ta
   no values in the output), `tests/e2e/imports.spec.ts`, the CSP walk, the bundle-split guard
   (`src/interop/infra/`, `yaml` and the report are never startup JavaScript) and the Lab's "Imported: compose"
   overlap audit. The sniffers and the wiring add 0.8 kB gzip to the entry.
+- **Big imports** (`infra/pick.ts`, every format). The picker's entries are the boundaries and, when there is any,
+  **Not in a boundary** (everything in none: a Terraform root module, Users, outside services), so nothing is out of
+  reach. Past 300 nodes, an import with two or more entries draws the ones with the most flows, each added while the
+  drawing stays within 300, plus the loose nodes connected to them. The first one is taken even past 300, but no
+  entry is ever taken past 5,000 with its loose nodes: an oversized one is skipped and still listed, so a smaller one
+  opens; if none fits on its own the import says "No boundary in it fits in 5,000 nodes, the most an import draws."
+  The toast says "300 of 1,240 nodes", and the report's **Boundaries** section lists every entry, the most flows
+  first, with its nodes and flows and a checkbox, in a list that scrolls on its own. **Draw these (n nodes)** opens
+  the ticked ones as a new diagram titled by what it draws ("shop (team-05 and team-39)"), keeping the import's
+  privacy and, for Terraform, its Draw everything. While it can't (nothing changed, nothing ticked, over 5,000) it's
+  unavailable rather than disabled, so it stays in the Tab order, and a status line beside it, which the checkboxes
+  and the button are described by and screen readers announce politely, gives the ticked total and why. The report
+  keeps the whole import as data (names and connections, never the source text) for that, in memory only. An import
+  over 5,000 nodes with boundaries opens this way instead of failing; one without boundaries still fails with the
+  budget message. Tests: `infra/pick.test.ts` (the default pick, drawing a pick again, the ungrouped entry, an
+  oversized first boundary, loose nodes past the cap, over 5,000, Draw everything, titles, no values in the kept
+  import) and the big-import part of `tests/e2e/imports.spec.ts`.
+- **Layout of big and flat imports.** Each column is restacked by its own units' heights (the layered layout spaces
+  every row by the tallest unit, so one boundary spread every column), and centred on one line. Past six units with
+  no flow, inside a boundary or out, they skip the layered pass and pack in a grid under the flows, its rows about
+  as wide as it is tall and never narrower than the flows above. Columns are built by appending (linear; a fan-out
+  of thousands into one column is covered by a scaling test in `infra/layout.test.ts`).
+- **One connection per pair, enriched.** A dependency found twice (a reference, then a grant) stays one connection
+  and takes what the later source adds: a label it lacked ("managed identity"), settings it didn't name, and
+  evidence a person can trace (a resource or a setting) over the file's bare structure. A flow another source
+  implies (a KafkaUser ACL) joins the route between the same ends: one with no consumer group takes the new one's,
+  one that names its own keeps it, and only ends with no route get a new one (`Links.flowOrEnrich`).
 - **Copy.** The drop overlay lists `docker-compose.yml`, Kubernetes, AsyncAPI and Terraform plan, the paste dialog
   names all four, and the start card has one line, "Drop a docker-compose, Kubernetes, AsyncAPI or Terraform plan
   here."
@@ -186,7 +215,9 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
 - **Workloads** are found by their pod template, not their kind: Deployment, StatefulSet, DaemonSet, Pod, Argo
   Rollout, Knative Service, KEDA ScaledJob. The main container (not a known sidecar such as `istio-proxy`) gives
   the stencil through the compose image table, then its settings' names, then its name, then **Kubernetes
-  Deployment** as a guess with chips. `spec.replicas` gives `replicas`. A CronJob is a **Scheduler** subtitled with
+  Deployment** as a guess with chips. `spec.replicas` gives `replicas`, one included; left out, it stays unset (a
+  base an overlay or an autoscaler scales leaves it out). Under an HPA or a KEDA ScaledObject the manifest's own 1
+  is dropped, and the autoscaler's minimum, when the file sets it, is the count. A CronJob is a **Scheduler** subtitled with
   its schedule, so it sends in Live; a Job is a **Batch Job**. ZooKeeper and developer-tool images aren't drawn,
   as in compose.
 - **Services** aren't nodes: a request to one goes to every workload its selector matches. One with no matching
@@ -230,8 +261,20 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
   namespace and name, from a topic's `strimzi.io/cluster` label or a bootstrap host, whether or not its `Kafka`
   manifest was opened; a topic with no label is scoped to its namespace. A cluster with no
   topics is a Kafka Cluster node. Bootstrap hosts (`<cluster>-kafka-bootstrap.<ns>.svc`) name the cluster, so a
-  KEDA trigger and an `INPUT_TOPIC` meet on the same topic. KafkaConnect is drawn; KafkaUser, KafkaNodePool and
-  the rest are "part of Kafka". KafkaUser ACLs aren't read yet.
+  KEDA trigger and an `INPUT_TOPIC` meet on the same topic. KafkaConnect is drawn; KafkaNodePool and the rest are
+  "part of Kafka".
+- **KafkaUser ACLs** (`authorization.type: simple`). The User Operator writes a user's credentials to a Secret named
+  after it (with the cluster's `entityOperator.userOperator.secretPrefix`) in its namespace, and a pod can only use
+  Secrets in its own: a workload there that reads or mounts that Secret is the user. Its allowed literal topic ACLs
+  are flows, listed under the connections with "KafkaUser <name>": Write (or All) produces, Read consumes, in the
+  consumer group of its one literal group ACL. **A deny wins**, as Kafka applies it: a deny ACL for the operation (or
+  All) on the topic, by literal name, prefix or `*`, for any host or one, forbids the flow, and a denied group isn't
+  the consumer group. A pair the settings already connect gets no second edge, but a settings consumer with no group
+  takes the ACL's, so two consumers of one user share it in Live. Prefix and `*` allows, and allows for some hosts
+  only, are a note ("orders-app (KafkaUser) may read topics starting “audit.”: not drawn"), Describe-only ACLs draw
+  nothing, and a user no workload here uses is listed ("its ACLs aren't drawn: no workload in these files uses its
+  Secret"). Workloads are indexed by the Secrets they use (`SecretUsers`), so each user is one lookup. Only the
+  Secret's name is looked at, never its values.
 - **Report rows** name the namespace when there's more than one ("orders (staging)"), in the row and in its chips'
   accessible names, so two workloads with one name can be told apart. The canvas label stays short.
 - **Not drawn**, grouped by kind and reason: "ServiceMonitor orders-api · unknown kind (monitoring.coreos.com)",
@@ -240,8 +283,7 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
 - **Helm.** A chart's templates (`{{ .Values… }}`, `.Release`, `.Chart`, `include`) are refused with "This looks
   like a Helm template ({{ .Values… }}). Run “helm template” and import its output.", wherever the template is in
   the file. Among other files, it's listed as not read with the same hint.
-- **Not yet:** the 300-node picker of the plan (imports over 5,000 nodes still fail with the budget message) and
-  KafkaUser ACLs.
+- **Big imports** pick namespaces (see "Big imports" under docker-compose, which every format shares).
 - **Tests.** `infra/kubernetes.test.ts` (the fixture set end to end, the Secret-values leak test, KEDA, Strimzi in
   both versions, entry points, identities, host forms, not-drawn grouping, kubectl JSON and Lists, Helm, alias
   bomb, nesting, 2,000 documents under `perfBudget`, the resource cap, prototype keys, linear patterns, and the
@@ -302,7 +344,8 @@ and the entry grows by about 240 B (the key-order-independent sniff, the format 
   Key Vault role a Secret relationship; anything else Depends on. A Key Vault access policy is a Secret
   relationship. Principals are a component's own identity, or the components running as a user-assigned one.
   Grants are collected once per role and store before they're expanded across the role's components, so thousands
-  of policies granting one secret cost one expansion.
+  of policies granting one secret cost one expansion. A Secret or Config relationship that comes from a grant to a component's own (system-assigned)
+  identity is labelled "managed identity" on the canvas, since no identity node says it.
 - **Identity is scoped.** Resources are keyed by file, module path and address. Joins by value use ARNs and ids
   (Azure ids case-insensitively); a bare name joins only when exactly one resource in that file has it, so a
   function name shared by two regions joins nothing and the mapping is listed. A value shared by more than 50
@@ -311,15 +354,19 @@ and the entry grows by about 240 B (the key-order-independent sniff, the format 
 - **Boundaries.** Modules (`module.streaming`, nested ones by full path), else Azure resource groups (the
   resource's own, the one in its id, or its namespace's or server's), toned by provider. Several files are one
   diagram, joined on ARNs; each file's resources stay its own.
+- **Addresses wrap between their parts.** The report's evidence column and its "Couldn't read" names break after
+  "." and "/" and before "[" (`<wbr>`, so `module.streaming.aws_lambda_event_source_mapping.analytics` wraps after
+  `module.streaming.`, never inside a name) and can be selected and copied whole.
 - **The report.** Not drawn, grouped by type with a reason ("aws_iam_policy ×14 · access and permissions",
   "azurerm_servicebus_namespace shop · shown through its queues and topics", "random_password db · helper, not
   infrastructure", "aws_s3_bucket_versioning v · part of aws_s3_bucket", "aws_sqs_queue legacy · destroyed by this
   plan"), and a summary note ("7 supporting resources aren't drawn: access and permissions, parts of what's drawn,
   monitoring, networking and helpers"). A plan adds "Plan: 28 to add, 0 to change, 1 to destroy". **Draw
   everything**, beside the Not drawn heading, opens the same files again as a new diagram with every managed
-  resource as a node (its type as the subtitle); resources with no flows pack in a grid below the flows. That
+  resource as a node (its type as the subtitle), all of them up to 5,000 (past that, the boundaries with the most flows up to 5,000, and the picker for the rest); resources with no flows pack in a grid below the flows. That
   diagram is read at import time and kept beside the report as data (names and connections, never the source
-  text), until another diagram opens. It's made from the import, so it keeps the import's privacy (Private, or
+  text), until another diagram opens. The resources drawn only there (policies, a secret's version, a password)
+  refer to things as plain **Depends on**: they run as nothing and read nothing. It's made from the import, so it keeps the import's privacy (Private, or
   local-only) whatever **New diagrams are private** says, and the focus moves to its canvas.
 - **Values never leave the file.** Only a whitelist of attributes is read (names, ARNs, ids, `engine`,
   `protocol`, endpoints, schedules, role names, principal ids), never one marked in `sensitive_values`, and never

@@ -7,6 +7,7 @@ import { detectFormat, importFiles, importText, type ImportOutcome } from "../fo
 import type { ImportReport } from "./graph";
 import { importCompose } from "./pipeline";
 import { interpolate, readCompose } from "./compose";
+import { runChecks } from "../../checks/run";
 
 // docker-compose import against the self-written fixture (tests/fixtures/imports/compose), as
 // docs/research/imports.md § Mapping: docker-compose describes it.
@@ -265,6 +266,36 @@ services:
       { name: "ui", reason: "developer tool" },
       { name: "aws", reason: "emulates AWS; its services aren't known from the image" },
     ]);
+  });
+
+  it("writes the replica count the file sets, one included; unset stays unset", () => {
+    const { diagram } = compose(`
+services:
+  one: { image: example/one, deploy: { replicas: 1 } }
+  scaled: { image: example/scaled, scale: "1" }
+  three: { image: example/three, deploy: { replicas: "\${REPLICAS:-3}" } }
+  unset: { image: example/unset }
+  zero: { image: example/zero, deploy: { replicas: 0 } }
+  odd: { image: example/odd, deploy: { replicas: true } }
+`);
+    const replicas = Object.fromEntries(diagram.nodes.map((n) => [n.id, n.props?.replicas]));
+    expect(replicas).toMatchObject({ one: 1, scaled: 1, three: 3 });
+    for (const id of ["unset", "zero", "odd"]) expect(replicas[id], id).toBeUndefined();
+  });
+
+  it("single-point sees a one-replica proxy every request goes through, never an unset one", () => {
+    const proxy = (deploy: string) =>
+      compose(`
+services:
+  proxy: { image: "nginx:1.27", ports: ["443:443"], depends_on: [api]${deploy} }
+  api: { image: example/api, deploy: { replicas: 2 } }
+`).diagram;
+    const findings = (d: DiagramFile) =>
+      runChecks(d)
+        .findings.filter((f) => f.rule === "single-point")
+        .map((f) => `${f.severity} ${f.id}`);
+    expect(findings(proxy(", deploy: { replicas: 1 }"))).toEqual(["suggestion single-point:proxy"]);
+    expect(findings(proxy(""))).toEqual([]);
   });
 
   it("keeps one network as no boundary, and draws nothing for an empty file", () => {

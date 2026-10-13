@@ -2,6 +2,25 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Imports: big ones, replicas, KafkaUser ACLs (2026-10)
+
+One habit change: **a big import draws part of itself.** Past 300 nodes, a Kubernetes, Terraform, AsyncAPI or compose
+import with two or more boundaries draws the boundaries with the most flows, and the toast says so ("300 of 1,240
+nodes"). **Details** lists every boundary (and what's in none) with its nodes and flows, the drawn ones ticked;
+tick others and **Draw these** opens them as a new diagram named by what it draws (the first stays as it is). An
+import over 5,000 nodes, which used to fail, now opens this way when it has boundaries. **Draw everything** still
+draws every resource, up to 5,000. Also:
+
+- **Replicas.** A Deployment's `replicas: 1` (or compose's `deploy.replicas: 1`) is now written to the node, so the
+  "Every request goes through one …" check sees an imported single replica on the only way in. A count the file
+  leaves out stays unset, as before; under an HPA or KEDA, only the autoscaler's own minimum counts.
+- **Strimzi KafkaUser ACLs.** A workload that uses a KafkaUser's Secret gets that user's topic ACLs as flows: Write
+  produces, Read consumes (in its group ACL's consumer group). A deny ACL always wins: a flow it forbids is never
+  drawn. Prefix, wildcard and host-limited ACLs are listed in the report.
+- **Terraform.** Long module addresses in the report wrap between their parts and can be selected and copied whole.
+  **Draw everything** is compact: helpers pack in a grid instead of spreading the first column down the page. A
+  Function App that reads Key Vault through its own managed identity says "managed identity" on that connection.
+
 ## Checks: secrets and schemas (2026-10)
 
 No habit changes: the count under the title still shows warnings only. Two more checks, in the **Checks card**:

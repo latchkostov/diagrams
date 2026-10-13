@@ -172,6 +172,11 @@ No new top-bar control or menu level. The changes:
 - **Big imports.** Over **300** nodes to draw, the import asks first, as a multi-page draw.io file does: "This
   would draw 1,240 nodes. Pick what to import:" with checkboxes by namespace, Terraform module or AsyncAPI
   server, and the counts beside them.
+  - _As built (import follow-ups, October 2026):_ it doesn't ask first; it draws the boundaries with the most flows
+    (within 300 nodes) right away, so there's always a diagram, and the Import report's **Boundaries** section has
+    the checkboxes, with nodes and flows beside each, and **Draw these**, which opens the ticked ones as a new
+    diagram. Before this, nothing was picked: imports up to 5,000 nodes drew everything, and bigger ones failed
+    with the budget message. Any format with boundaries gets it (compose networks too).
 - **Private.** An import follows **New diagrams are private**, as opening any file from this device does. The
   report's foot adds "This diagram isn't private. **Make it private**" when it isn't, since infrastructure files
   are often work.
@@ -579,8 +584,8 @@ Each batch is its own PR and ends with the UX review gate (`docs/UX-PRINCIPLES.m
    - workloads by pod template, selectors, Ingress, ConfigMaps with key settings, Secrets
    - workload identity, namespaces, `kind: List` and owner folding
    - KEDA triggers, and Strimzi topics (`v1beta2` and `v1`)
-   - the 300-node picker
-   - KafkaUser ACLs only if they fit in the batch
+   - the 300-node picker (built in the import follow-ups, for every format: see "Big imports" above)
+   - KafkaUser ACLs only if they fit in the batch (built in the import follow-ups)
 
    _Gate: the fixture set, plus a `kubectl get all -o yaml`-style dump._
 

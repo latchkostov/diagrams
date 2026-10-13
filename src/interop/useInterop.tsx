@@ -581,7 +581,7 @@ export function useInterop({
         toast.info(r.summary, {
           action: { label: "Details", run: () => setDialog({ kind: "report" }), testId: "toast-import-details" },
           // Long enough to read when there's something to check.
-          duration: r.guesses.length || r.unread.length ? 7000 : undefined,
+          duration: r.guesses.length || r.unread.length || r.pick ? 7000 : undefined,
         });
         return;
       }

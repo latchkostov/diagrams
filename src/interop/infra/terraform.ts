@@ -338,6 +338,8 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
   const links = new Links(components);
   const drawn = (r: Resource) => components.has(r.key);
   const used = new Set<Resource>();
+  /** Drawn only by Draw everything: a policy, a secret's version, a password, a network. */
+  const extras = new Set<Resource>();
   /** Not drawn, grouped by type and reason. */
   const skipped = new Map<string, { type: string; reason: string; names: string[] }>();
   const skip = (type: string, name: string, reason: string) => {
@@ -381,6 +383,7 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     }
     if (everything && !(r.type === "aws_cloudwatch_event_rule" && first(r, ["schedule_expression"]))) {
       draw(r, guessOf(r.type)?.stencil ?? "generic.service", { note: r.type });
+      extras.add(r);
       if (GLUE.has(r.type)) used.add(r);
       continue;
     }
@@ -783,8 +786,10 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
   const spec: Evidence = { source: "spec" };
   /** Supporting types a component's references pass through: its task definition's roles and secrets. */
   const PASS_THROUGH = new Set(["aws_ecs_task_definition", "aws_launch_template", "aws_iam_instance_profile"]);
+  // A supporting resource runs as nothing and reads nothing: what it refers to is a plain dependency, never
+  // Identity, Secret or Config (which would also count it as a service reading secrets).
   const dependOn = (r: Resource, t: Resource) => {
-    if (drawn(t) && t !== r) links.dep(r.key, t.key, relationTo(r.key, t.key), spec);
+    if (drawn(t) && t !== r) links.dep(r.key, t.key, extras.has(r) ? "depends" : relationTo(r.key, t.key), spec);
   };
   /**
    * The resources `r` refers to, each reference and each target once however often the plan repeats them, a pass-
@@ -907,6 +912,8 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     }
   }
 
+  /** Components whose own (system-assigned) identity is a principal: they sign in as their managed identity. */
+  const ownIdentity = new Set<string>();
   /** Who an Azure principal id is: a component's own identity, or the components running as a user-assigned one. */
   const principalsOf = (r: Resource, attr: string): string[] => {
     let found = targets(r, attr, REFS_ONLY, (t) => drawn(t) || t.type === "azurerm_user_assigned_identity");
@@ -916,12 +923,17 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
       ]);
     return [
       ...new Set(
-        found.flatMap((t) =>
-          t.type === "azurerm_user_assigned_identity" ? (runsAs.get(t.key) ?? keys([t])) : keys([t]),
-        ),
+        found.flatMap((t) => {
+          if (t.type === "azurerm_user_assigned_identity") return runsAs.get(t.key) ?? keys([t]);
+          if (!extras.has(t)) ownIdentity.add(t.key);
+          return keys([t]);
+        }),
       ),
     ];
   };
+  /** A store reached by a grant to the component's own identity says so on the connection. */
+  const signsIn = (key: string, relation: string) =>
+    ownIdentity.has(key) && (relation === "secret" || relation === "config") ? "managed identity" : undefined;
   const MESSAGING = (key: string) =>
     ["topic", "queue", "stream"].includes(getStencil(components.stencilOf(key)).simRole);
   for (const a of resources.filter(is("azurerm_role_assignment"))) {
@@ -946,14 +958,15 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
         if (u === t) continue;
         if (MESSAGING(t) && /receiver|reader|subscriber|listen/i.test(role)) links.flow(t, u, "async", evidence, group);
         else if (MESSAGING(t) && /sender|publisher|writer|send/i.test(role)) links.flow(u, t, "async", evidence);
-        else links.dep(u, t, relationTo(u, t), evidence);
+        else links.dep(u, t, relationTo(u, t), evidence, undefined, signsIn(u, relationTo(u, t)));
       }
     used.add(a);
   }
   for (const p of resources.filter(is("azurerm_key_vault_access_policy"))) {
     const vaults = keys(targets(p, "key_vault_id", ["key_vault_id"], is("azurerm_key_vault")));
     const who = principalsOf(p, "object_id");
-    for (const v of vaults) for (const u of who) links.dep(u, v, "secret", resourceEvidence(p));
+    for (const v of vaults)
+      for (const u of who) links.dep(u, v, "secret", resourceEvidence(p), undefined, signsIn(u, "secret"));
     if (vaults.length && who.length) used.add(p);
   }
 

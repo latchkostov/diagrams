@@ -6,13 +6,14 @@ import { estimateCardSize } from "../../canvas/nodes/size";
 import { detectFormat, importFiles, importText, type ImportOutcome } from "../formats";
 import { sniffInfra } from "../sniff";
 import type { ImportReport } from "./graph";
-import { importKubernetes } from "./pipeline";
-import { HELM_TEMPLATE, MAX_RESOURCES } from "./kubernetes";
+import { importKubernetes, replayOutcome } from "./pipeline";
+import { HELM_TEMPLATE, MAX_RESOURCES, SecretUsers } from "./kubernetes";
 import { parseServiceHost, WorkloadNames } from "./k8sHosts";
 import { ENV_LIMITS, expandVars, OPAQUE } from "./k8sSettings";
 import { MAX_VALUE } from "./settings";
 import { TOO_MANY_ALIASES } from "./yaml";
 import { perfBudget } from "../../test/perfBudget";
+import { runChecks } from "../../checks/run";
 
 // Kubernetes import against the self-written fixture set (tests/fixtures/imports/k8s), as
 // docs/research/imports.md § Mapping: Kubernetes describes it, plus KEDA, Strimzi, entry points, identities,
@@ -110,6 +111,10 @@ describe("Kubernetes import: the fixture set", () => {
     expect(n("redis").stencil).toBe("redis.cache");
     expect(n("orders-api")).toMatchObject({ stencil: "generic.service", sublabel: "orders-api:2.3.0" });
     expect(n("orders-api").props).toEqual({ replicas: 3 });
+    // `replicas: 1` in the manifest is said, so single-point can read it; KEDA's own floor of 1 says it too.
+    expect(n("postgres").props).toEqual({ replicas: 1 });
+    expect(n("redis").props).toEqual({ replicas: 1 });
+    expect(n("payments-worker").props).toEqual({ replicas: 1 });
     expect(n("settlement-report")).toMatchObject({ stencil: "generic.scheduler", sublabel: "0 2 * * *" });
     expect(n("storefront")).toMatchObject({ stencil: "generic.service", sublabel: "no workload in these files" });
     expect(n("ingress-shop")).toMatchObject({ stencil: "nginx", label: "shop", sublabel: "shop.example.com" });
@@ -324,6 +329,205 @@ ${deployment("api", "example/api", "").replace(
   });
 });
 
+describe("Kubernetes import: Strimzi KafkaUser ACLs", () => {
+  /** A Kafka cluster in `shop` with two topics, a KafkaUser, and a workload that reads the user's Secret. */
+  const set = (opts: { prefix?: string; secret?: string; extraEnv?: string; acls?: string } = {}) => `---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata: { name: events, namespace: shop }
+spec:
+  kafka: { replicas: 3 }
+  entityOperator: { userOperator: { ${opts.prefix ? `secretPrefix: ${opts.prefix}` : ""} } }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata: { name: orders, namespace: shop, labels: { strimzi.io/cluster: events } }
+spec: { topicName: orders.v1 }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata: { name: payments, namespace: shop, labels: { strimzi.io/cluster: events } }
+spec: { topicName: payments.v1 }
+---
+apiVersion: v1
+kind: Secret
+metadata: { name: ${opts.secret ?? "orders-app"}, namespace: shop }
+data: { password: YWNsLWxlYWstdmFsdWU= }
+stringData: { sasl.jaas.config: acl-leak-value }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata: { name: orders-app, namespace: shop, labels: { strimzi.io/cluster: events } }
+spec:
+  authentication: { type: scram-sha-512 }
+  authorization:
+    type: simple
+    acls:
+${
+  opts.acls ??
+  `      - { resource: { type: topic, name: orders.v1, patternType: literal }, operations: [Write, Describe] }
+      - { resource: { type: topic, name: payments.v1 }, operation: Read }
+      - { resource: { type: group, name: orders-app-group }, operations: [Read] }
+      - { resource: { type: topic, name: audit., patternType: prefix }, operations: [Read] }
+      - { resource: { type: topic, name: orders.v1 }, operations: [Describe] }
+      - { type: deny, resource: { type: topic, name: secret-topic }, operations: [Read] }`
+}
+${deployment("orders-app", "example/orders", "", "shop").replace(
+  "          image: example/orders\n",
+  `          image: example/orders\n          env:\n            - { name: KAFKA_PASSWORD, valueFrom: { secretKeyRef: { name: ${opts.secret ?? "orders-app"}, key: password } } }\n${opts.extraEnv ?? ""}`,
+)}`;
+
+  it("a workload using a KafkaUser's Secret produces and consumes what its literal ACLs allow", () => {
+    const { diagram, report } = k8s(set());
+    expect(relationBetween(diagram, "orders-app", "topic-orders.v1")).toBe("message");
+    expect(relationBetween(diagram, "topic-payments.v1", "orders-app")).toBe("message");
+    // The one literal group ACL is the consumer group.
+    expect(edge(diagram, "topic-payments.v1", "orders-app")?.props).toEqual({ group: "orders-app-group" });
+    // Describe alone, a deny, and a prefix draw nothing; the prefix is said.
+    expect(diagram.nodes.map((n) => n.id)).not.toContain("topic-secret-topic");
+    expect(diagram.nodes.filter((n) => n.stencil === "kafka.topic")).toHaveLength(2);
+    expect(report.notes).toContain("orders-app (KafkaUser) may read topics starting “audit.”: not drawn");
+    expect(report.notDrawn).toContainEqual({ name: "KafkaUser orders-app", reason: "shown as its workloads' flows" });
+    // Each flow names the KafkaUser that allows it, under a heading that says so.
+    expect(report.connectionsTitle).toBe("Connections found in settings and KafkaUser ACLs");
+    expect(
+      report.inferred.filter((c) => c.evidence === "KafkaUser orders-app").map((c) => `${c.from} → ${c.to}`),
+    ).toEqual(["orders-app → orders.v1", "payments.v1 → orders-app"]);
+  });
+
+  it("follows the cluster's secretPrefix, and lists a user no workload here uses", () => {
+    const prefixed = k8s(set({ prefix: "kafka-", secret: "kafka-orders-app" })).diagram;
+    expect(relationBetween(prefixed, "orders-app", "topic-orders.v1")).toBe("message");
+    // The prefix is set but the workload reads a Secret named like the user: not this user's credentials.
+    const { diagram, report } = k8s(set({ prefix: "kafka-" }));
+    expect(edge(diagram, "orders-app", "topic-orders.v1")).toBeUndefined();
+    expect(report.notDrawn).toContainEqual({
+      name: "KafkaUser orders-app",
+      reason: "its ACLs aren't drawn: no workload in these files uses its Secret",
+    });
+  });
+
+  it("adds nothing where settings already connect the pair", () => {
+    const { diagram } = k8s(
+      set({
+        extraEnv:
+          "            - { name: KAFKA_BOOTSTRAP_SERVERS, value: events-kafka-bootstrap.shop.svc:9092 }\n" +
+          "            - { name: INPUT_TOPIC, value: payments.v1 }\n            - { name: CONSUMER_GROUP, value: from-settings }\n",
+      }),
+    );
+    const into = diagram.edges.filter((e) => e.from === "topic-payments.v1" && e.to === "orders-app");
+    expect(into).toHaveLength(1);
+    expect(into[0].props).toEqual({ group: "from-settings" });
+  });
+
+  it("never draws a flow a deny ACL forbids: literal, prefix and wildcard denies, and a denied group", () => {
+    const acls = (lines: string[]) => lines.map((l) => `      - ${l}`).join("\n");
+    const allows = [
+      "{ resource: { type: topic, name: orders.v1 }, operations: [Write] }",
+      "{ resource: { type: topic, name: payments.v1 }, operations: [Read] }",
+      "{ resource: { type: group, name: orders-app-group }, operations: [Read] }",
+    ];
+    // A deny for the same topic and operation wins over the allow (Kafka checks denies first).
+    let d = k8s(
+      set({
+        acls: acls([...allows, "{ type: deny, resource: { type: topic, name: orders.v1 }, operations: [Write] }"]),
+      }),
+    ).diagram;
+    expect(edge(d, "orders-app", "topic-orders.v1")).toBeUndefined();
+    expect(relationBetween(d, "topic-payments.v1", "orders-app")).toBe("message");
+    // A prefix deny, and a deny for All.
+    d = k8s(
+      set({
+        acls: acls([
+          ...allows,
+          "{ type: deny, resource: { type: topic, name: pay, patternType: prefix }, operations: [All] }",
+        ]),
+      }),
+    ).diagram;
+    expect(edge(d, "topic-payments.v1", "orders-app")).toBeUndefined();
+    expect(relationBetween(d, "orders-app", "topic-orders.v1")).toBe("message");
+    // A wildcard deny, even one for a single host, forbids everything it names.
+    d = k8s(
+      set({
+        acls: acls([
+          ...allows,
+          '{ type: deny, host: "10.0.0.9", resource: { type: topic, name: "*" }, operations: [Read, Write] }',
+        ]),
+      }),
+    ).diagram;
+    expect(d.edges.filter((e) => relationOf(e) === "flow")).toEqual([]);
+    // A denied group isn't the consumer group.
+    d = k8s(
+      set({
+        acls: acls([
+          ...allows,
+          "{ type: deny, resource: { type: group, name: orders-app-group }, operations: [Read] }",
+        ]),
+      }),
+    ).diagram;
+    expect(edge(d, "topic-payments.v1", "orders-app")?.props).toBeUndefined();
+  });
+
+  it("lists an allow for some hosts only instead of drawing it", () => {
+    const { diagram, report } = k8s(
+      set({ acls: '      - { host: "10.0.0.7", resource: { type: topic, name: orders.v1 }, operations: [Write] }' }),
+    );
+    expect(edge(diagram, "orders-app", "topic-orders.v1")).toBeUndefined();
+    expect(report.notes).toContain("orders-app (KafkaUser) may write orders.v1 from some hosts only: not drawn");
+  });
+
+  it("gives settings' ungrouped consumers the user's group, so two consumers share it rather than each get a copy", () => {
+    // Two workloads use the user's Secret: one names its input topic in a setting (no group), the other only
+    // through the ACL. Both read payments.v1 in the ACL's group, so Live shares messages between them.
+    const second = deployment("orders-app-2", "example/orders", "", "shop").replace(
+      "          image: example/orders\n",
+      "          image: example/orders\n          env:\n            - { name: KAFKA_PASSWORD, valueFrom: { secretKeyRef: { name: orders-app, key: password } } }\n",
+    );
+    const { diagram } = k8s(
+      set({
+        extraEnv:
+          "            - { name: KAFKA_BOOTSTRAP_SERVERS, value: events-kafka-bootstrap.shop.svc:9092 }\n" +
+          "            - { name: INPUT_TOPIC, value: payments.v1 }\n",
+      }) + second,
+    );
+    for (const w of ["orders-app", "orders-app-2"]) {
+      const into = diagram.edges.filter((e) => e.from === "topic-payments.v1" && e.to === w);
+      expect(into, w).toHaveLength(1);
+      expect(into[0].props, w).toEqual({ group: "orders-app-group" });
+    }
+  });
+
+  it("finds each KafkaUser's workloads through an index, in linear time", () => {
+    // The reader indexes workloads by the Secrets they use (SecretUsers) and asks it once per KafkaUser. A scan of
+    // the workloads per user would be quadratic: 8x the workloads and users would take 64x as long. Compared against
+    // an eighth of the input, not a wall-clock budget; the fastest of a few runs evens out noise. Users whose Secret
+    // nobody uses are the common case and the worst for a scan.
+    const fastest = (n: number) => {
+      let best = Infinity;
+      for (let run = 0; run < 3; run++) {
+        const started = performance.now();
+        const index = new SecretUsers();
+        for (let i = 0; i < n; i++) index.add(`ns-${i % 40}`, `own-${i}`, `w${i}`);
+        let found = 0;
+        for (let i = 0; i < n * 5; i++) found += index.get(`ns-${i % 40}`, `user-${i}`).length;
+        best = Math.min(best, performance.now() - started);
+        expect(found).toBe(0);
+        expect(index.get(`ns-${(n - 1) % 40}`, `own-${n - 1}`)).toEqual([`w${n - 1}`]);
+      }
+      return best;
+    };
+    fastest(1_000); // warm up the JIT
+    const ratio = fastest(8_000) / fastest(1_000);
+    expect(ratio).toBeLessThan(24);
+  });
+
+  it("never reads the Secret's values", () => {
+    const outcome = importKubernetes([{ name: "kafka.yaml", text: set() }]);
+    const out = JSON.stringify(outcome);
+    for (const secret of ["YWNsLWxlYWstdmFsdWU", "acl-leak-value"]) expect(out, secret).not.toContain(secret);
+  });
+});
+
 describe("Kubernetes import: KEDA and Strimzi", () => {
   const strimzi = (version: string, ns = "kafka") => `---
 apiVersion: kafka.strimzi.io/${version}
@@ -422,6 +626,72 @@ spec: { scaleTargetRef: { name: ghost }, triggers: [] }
     expect(report.notDrawn).toEqual([
       { name: "ScaledObject ghost", reason: "scales a workload that isn't in these files" },
     ]);
+  });
+});
+
+describe("Kubernetes import: replicas", () => {
+  const scaledTo = (n: number | "") => (n === "" ? "" : `  replicas: ${n}\n`);
+  /** An Ingress → web (NGINX) → api chain, with web's replicas and anything after it. */
+  const chain = (replicas: number | "", after = "") =>
+    `${deployment("web", "nginx:1.27").replace("spec:\n", `spec:\n${scaledTo(replicas)}`)}${deployment("api", "example/api")}
+---
+apiVersion: v1
+kind: Service
+metadata: { name: web }
+spec: { selector: { app: web } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: { name: shop }
+spec:
+  ingressClassName: traefik
+  rules: [{ http: { paths: [{ path: /, pathType: Prefix, backend: { service: { name: web, port: { number: 80 } } } }] } }]
+${after}`;
+  const replicasOf = (text: string) => node(k8s(text).diagram, "web")?.props?.replicas;
+  const hpa = (min: string) => `---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: web }
+spec: { scaleTargetRef: { kind: Deployment, name: web }, ${min}maxReplicas: 5 }
+`;
+  const keda = (min: string) => `---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata: { name: web }
+spec: { scaleTargetRef: { name: web }, ${min}triggers: [{ type: cpu, metadata: { value: "60" } }] }
+`;
+
+  it("writes the count the manifest sets, one included, and leaves an unset one unset", () => {
+    expect(replicasOf(chain(1))).toBe(1);
+    expect(replicasOf(chain(4))).toBe(4);
+    expect(replicasOf(chain(""))).toBeUndefined();
+    // Scaled to zero isn't a count to draw.
+    expect(replicasOf(chain(0))).toBeUndefined();
+  });
+
+  it("an autoscaler owns the count: only its own floor says one", () => {
+    // The manifest's 1 is the autoscaler's to change; a minimum it doesn't set isn't evidence either.
+    expect(replicasOf(chain(1, hpa("")))).toBeUndefined();
+    expect(replicasOf(chain(1, keda("")))).toBeUndefined();
+    expect(replicasOf(chain(1, keda("minReplicaCount: 0, ")))).toBeUndefined();
+    // Its floor, when the file sets it.
+    expect(replicasOf(chain("", hpa("minReplicas: 1, ")))).toBe(1);
+    expect(replicasOf(chain(1, keda("minReplicaCount: 1, ")))).toBe(1);
+    expect(replicasOf(chain(1, hpa("minReplicas: 2, ")))).toBe(2);
+    // A count above the floor stays, as before; a KEDA object and its HPA together keep the higher floor.
+    expect(replicasOf(chain(4, hpa("minReplicas: 2, ")))).toBe(4);
+    expect(replicasOf(chain(1, keda("minReplicaCount: 3, ") + hpa("minReplicas: 1, ")))).toBe(3);
+  });
+
+  it("single-point sees an imported one-replica gateway on the only way in, and nothing when it's unset", () => {
+    const findings = (text: string) =>
+      runChecks(k8s(text).diagram)
+        .findings.filter((f) => f.rule === "single-point")
+        .map((f) => `${f.severity} ${f.id}`);
+    expect(findings(chain(1))).toEqual(["suggestion single-point:web"]);
+    expect(findings(chain(""))).toEqual([]);
+    expect(findings(chain(2))).toEqual([]);
+    expect(findings(chain(1, hpa("")))).toEqual([]);
   });
 });
 
@@ -738,8 +1008,19 @@ spec: { selector: { app: svc-${i} } }
 `,
     ).join("");
     const started = performance.now();
-    const { diagram } = k8s(docs);
+    const { report } = k8s(docs);
     expect(performance.now() - started).toBeLessThan(perfBudget(6_000));
+    // Over 300 nodes: the import draws some namespaces, and every one of them drawn is the whole set.
+    expect(report.nodes).toBeLessThanOrEqual(300);
+    const pick = report.pick!;
+    expect(pick.total).toBe(1_000);
+    const { diagram } = ok(
+      replayOutcome(
+        pick.graph,
+        pick.format,
+        pick.groups.map((g) => g.key),
+      ),
+    );
     expect(diagram.nodes).toHaveLength(1_000);
     expect(diagram.edges).toHaveLength(1_000);
     expect(diagram.groups).toHaveLength(20);

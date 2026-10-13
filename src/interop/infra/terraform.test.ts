@@ -11,6 +11,7 @@ import { MAX_RESOURCES, readTerraform, TERRAFORM_BINARY, TERRAFORM_RAW_STATE, TE
 import { collectRefs, configPath, parseRef, TF_LIMITS, withoutAncestors, type RefBudget } from "./tfRefs";
 import { notDrawnReason, stencilOf } from "./tfTypes";
 import { perfBudget } from "../../test/perfBudget";
+import { runChecks } from "../../checks/run";
 
 // Terraform plan and state JSON (`terraform show -json`) against the self-written fixtures
 // (tests/fixtures/imports/terraform), as docs/research/imports.md § Mapping: Terraform describes it: the type
@@ -152,6 +153,8 @@ describe("Terraform import: the AWS plan fixture", () => {
       "orders → orders-projector · aws_lambda_event_source_mapping.orders_stream",
       "events-msk → analytics · module.streaming.aws_lambda_event_source_mapping.analytics",
       "orders-queue → orders-dlq · aws_sqs_queue.orders",
+      // The handler also refers to the secret itself: one connection, listed with the grant that allows it.
+      "order-handler → orders/db-credentials · aws_iam_role_policy.order_handler",
       "orders-projector → orders/db-credentials · aws_iam_role_policy.order_handler",
       "analytics → orders/db-credentials · aws_iam_role_policy.order_handler",
     ]);
@@ -186,6 +189,51 @@ describe("Terraform import: the AWS plan fixture", () => {
     expect(all.report.guesses).toEqual([]);
   });
 
+  it("a big plan picked in the report keeps Draw everything", () => {
+    // 40 modules of 10 queues: over 300, so the import draws some modules; the policy isn't drawn, so there's a
+    // Draw everything. Picking other modules opens a diagram whose report still has it.
+    const modules = Object.fromEntries(
+      Array.from({ length: 40 }, (_, m) => [
+        `module.m${m}`,
+        Array.from({ length: 10 }, (_, q) => ({
+          type: "aws_sqs_queue",
+          name: `q${q}`,
+          values: { name: `m${m}-q${q}`, arn: sqsArn(`m${m}-q${q}`) },
+        })),
+      ]),
+    );
+    const outcome = importTerraform([
+      { name: "big.json", text: state([{ type: "aws_iam_policy", name: "p", values: { name: "p" } }], modules) },
+    ]);
+    const { report, replay } = ok(outcome);
+    const pick = report.pick!;
+    expect(pick.total).toBe(400);
+    expect(replay).toBeDefined();
+    expect(pick.everything).toBe(replay);
+    const keys = pick.groups
+      .filter((g) => !g.drawn)
+      .map((g) => g.key)
+      .slice(0, 3);
+    const again = replayOutcome(pick.graph, pick.format, keys, pick.everything);
+    expect(ok(again).diagram.nodes).toHaveLength(30);
+    expect(again.ok === true && again.replay).toBe(replay);
+    expect(ok(again).report.pick?.everything).toBe(replay);
+  });
+
+  it("Draw everything: a supporting resource refers to things as plain dependencies, never reading a secret", () => {
+    const { diagram: d } = everythingOf(aws());
+    // Policies, a secret's version and a password run as nothing and read nothing (secret-identity would read a
+    // Secret dependency from one as a service with no identity).
+    const supporting = new Set(d.nodes.filter((n) => /^(aws|random)_/.test(n.sublabel ?? "")).map((n) => n.id));
+    expect(supporting.size).toBeGreaterThan(5);
+    const from = d.edges.filter((e) => supporting.has(e.from));
+    expect(from.length).toBeGreaterThan(0);
+    for (const e of from) expect(relationOf(e), `${e.from} → ${e.to}`).toBe("depends");
+    // The components keep theirs.
+    expect(relationBetween(d, "order-handler", "orders-db-credentials")).toBe("secret");
+    expect(relationBetween(d, "order-handler", "order-handler-role")).toBe("identity");
+  });
+
   it("lays out without overlaps, every member inside its boundary", () => {
     const everything = [aws(), azure()].map(everythingOf);
     for (const { diagram: d } of [aws(), azure(), ...everything]) {
@@ -212,6 +260,27 @@ describe("Terraform import: the AWS plan fixture", () => {
     }
   });
 
+  it("Draw everything is compact: no column spreads, and the cards fill a fair share of the canvas", () => {
+    for (const { diagram: d } of [aws(), azure()].map(everythingOf)) {
+      const boxes = d.nodes.map((n) => ({ x: n.x, y: n.y, group: n.group, ...estimateCardSize(n.label, n.sublabel) }));
+      // Neighbours in a column (one x, in one boundary or none) sit a row apart, not a boundary's height apart:
+      // the layered layout's pitch is its tallest unit's, which spread the first column 500 px a card.
+      const columns = new Map<string, number[]>();
+      for (const b of boxes)
+        columns.set(`${b.group ?? ""} ${b.x}`, [...(columns.get(`${b.group ?? ""} ${b.x}`) ?? []), b.y]);
+      for (const [x, ys] of columns) {
+        ys.sort((a, b) => a - b);
+        for (let i = 1; i < ys.length; i++)
+          expect(ys[i] - ys[i - 1], `${d.title}: column ${x}`).toBeLessThanOrEqual(160);
+      }
+      // The bounding box is at most 6 times the cards' own area (it was 28 times for the AWS plan).
+      const width = Math.max(...boxes.map((b) => b.x + b.width)) - Math.min(...boxes.map((b) => b.x));
+      const height = Math.max(...boxes.map((b) => b.y + b.height)) - Math.min(...boxes.map((b) => b.y));
+      const cards = boxes.reduce((sum, b) => sum + b.width * b.height, 0);
+      expect((width * height) / cards, d.title).toBeLessThan(6);
+    }
+  });
+
   it("never fetches anything", async () => {
     const fetch = vi.spyOn(globalThis, "fetch");
     await importFiles([AWS, AZURE]);
@@ -222,6 +291,85 @@ describe("Terraform import: the AWS plan fixture", () => {
 });
 
 describe("Terraform import: the Azure state fixture", () => {
+  it("keeps the managed-identity label when the app also refers to the vault itself (a plan, either order)", () => {
+    // The reference pass makes the Secret dependency first; the grant to the app's own identity comes after and must
+    // still say how it signs in (secret-identity reads the label).
+    const kvId = "/subscriptions/s/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/shop-kv";
+    const text = JSON.stringify({
+      format_version: "1.2",
+      terraform_version: "1.9.5",
+      planned_values: {
+        root_module: {
+          resources: [
+            resource({ type: "azurerm_key_vault", name: "kv", values: { name: "shop-kv", id: kvId } }, ""),
+            resource(
+              {
+                type: "azurerm_linux_function_app",
+                name: "billing",
+                values: { name: "billing-func", identity: [{ type: "SystemAssigned", principal_id: "p-1" }] },
+              },
+              "",
+            ),
+            resource(
+              {
+                type: "azurerm_role_assignment",
+                name: "reads",
+                values: { principal_id: "p-1", scope: kvId, role_definition_name: "Key Vault Secrets User" },
+              },
+              "",
+            ),
+          ],
+        },
+      },
+      configuration: {
+        root_module: {
+          resources: [
+            { address: "azurerm_key_vault.kv", type: "azurerm_key_vault", name: "kv", expressions: {} },
+            {
+              address: "azurerm_linux_function_app.billing",
+              type: "azurerm_linux_function_app",
+              name: "billing",
+              expressions: { app_settings: { references: ["azurerm_key_vault.kv.vault_uri", "azurerm_key_vault.kv"] } },
+            },
+            {
+              address: "azurerm_role_assignment.reads",
+              type: "azurerm_role_assignment",
+              name: "reads",
+              expressions: {
+                scope: { references: ["azurerm_key_vault.kv.id", "azurerm_key_vault.kv"] },
+                principal_id: {
+                  references: [
+                    "azurerm_linux_function_app.billing.identity[0].principal_id",
+                    "azurerm_linux_function_app.billing",
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    });
+    const { diagram, report } = tf(text, "plan.json");
+    expect(diagram.edges.filter((e) => e.from === "billing-func" && e.to === "shop-kv")).toEqual([
+      expect.objectContaining({ relation: "secret", label: "managed identity" }),
+    ]);
+    // One connection, listed with the grant that allows it.
+    expect(report.inferred.map((c) => `${c.from} → ${c.to} · ${c.evidence}`)).toContain(
+      "billing-func → shop-kv · azurerm_role_assignment.reads",
+    );
+    expect(runChecks(diagram).findings.map((f) => f.rule)).not.toContain("secret-identity");
+  });
+
+  it("says a store reached through a grant to the component's own identity is reached as its managed identity", () => {
+    for (const { diagram: d } of [azure(), everythingOf(azure())]) {
+      // The Function App's system-assigned identity is granted Key Vault Secrets User: no identity node, but the
+      // connection says how it signs in (and secret-identity reads it).
+      expect(edge(d, "billing-func", "shop-kv")).toMatchObject({ relation: "secret", label: "managed identity" });
+      // Flows from Data Receiver and Sender grants carry no label.
+      expect(edge(d, "billing-inbox", "billing-func")?.label).toBeUndefined();
+    }
+  });
+
   it("draws resource groups as boundaries, with Service Bus, Event Grid and Event Hubs flows", () => {
     const { diagram: d, report } = azure();
     expect(report.summary).toBe("Imported “azure-state” from Terraform state: 7 nodes, 7 connections.");
@@ -297,7 +445,23 @@ describe("Terraform import: values never leave the file", () => {
       const imported = ok(outcome);
       const all = everythingOf(imported);
       // The replay kept for Draw everything is data too: no source text, no values.
-      const out = JSON.stringify([imported, outcome.ok === true && outcome.warnings, all.diagram, all.report]);
+      // A pick of its boundaries keeps the whole import in its report (the picker): data too.
+      const picked = ok(
+        replayOutcome(
+          imported.replay!,
+          "terraform",
+          imported.replay!.groups.slice(0, 1).map((g) => g.key),
+        ),
+      );
+      expect(picked.report.pick?.graph).toBe(imported.replay);
+      const out = JSON.stringify([
+        imported,
+        outcome.ok === true && outcome.warnings,
+        all.diagram,
+        all.report,
+        picked.diagram,
+        picked.report,
+      ]);
       for (const secret of SECRETS) expect(out, `${files.map((f) => f.name)}: ${secret}`).not.toContain(secret);
     }
   });
