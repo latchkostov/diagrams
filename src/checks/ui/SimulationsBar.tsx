@@ -60,13 +60,18 @@ export function SimulationsBar({ host }: { host: SimulationsHost }) {
         ? "Stopped: the diagram changed."
         : v.stopped === "failed"
           ? "Couldn't play the simulations."
-          : v.stopped === "stop"
-            ? "Stopped."
-            : "";
+          : v.stopped === "timeout"
+            ? "Out of time: the simulations are too big to play here."
+            : v.stopped === "unsupported"
+              ? "This browser can't play them in the background, and the diagram is too big to play here."
+              : v.stopped === "stop"
+                ? "Stopped."
+                : "";
   else if (v.stale) text = "The diagram changed since the simulations played.";
-  else if (!v.played.length)
-    text = `Out of time: ${v.unplayed.length === 1 ? "the simulation is" : "the simulations are"} too big to play here.`;
-  else {
+  else if (!v.played.length) {
+    const what = v.unplayed.length + v.tooBig.length === 1 ? "simulation is" : "simulations are";
+    text = v.unplayed.length ? `Out of time: the ${what} too big to play here.` : `The ${what} too big to play here.`;
+  } else {
     const capped = v.played.filter((p) => p.capped).length;
     text = [
       `Played ${plural(v.played.length, "simulation")}`,
@@ -79,6 +84,11 @@ export function SimulationsBar({ host }: { host: SimulationsHost }) {
       notes.push({ key: `planned-${i}`, body: planned(p, host) });
     if (v.planned.length > MAX_NOTES)
       notes.push({ key: "more", body: `And ${v.planned.length - MAX_NOTES} more on purpose.` });
+    if (v.tooBig.length)
+      notes.push({
+        key: "too-big",
+        body: `${v.tooBig.length === 1 ? `“${v.tooBig[0]}” starts` : `${v.tooBig.length} start`} too much traffic to play here: not counted.`,
+      });
     if (v.unplayed.length)
       notes.push({
         key: "unplayed",

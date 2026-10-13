@@ -2,7 +2,7 @@ import type { DiagramOp } from "../ai";
 import type { CheckRuleId } from "../model/checks";
 import type { CheckResult, CheckSeverity, Finding } from "./types";
 import { summarize } from "./run";
-import type { Evidence } from "./evidence";
+import type { Evidence, PlannedLoss } from "./evidence";
 import { evidenceText } from "./evidenceMerge";
 
 // check_diagram's output for agents: the findings with their fixes as edit_diagram ops, always under the
@@ -122,13 +122,14 @@ function bounded(f: Finding): AgentFinding {
 }
 
 /** "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 96 dropped at alb-us in …." */
-function playedLine(e: Evidence): string {
+function playedLine(e: Evidence, planned: readonly PlannedLoss[]): string {
   const n = e.played.length;
   const parts = [
     `Played ${n} saved simulation${n === 1 ? "" : "s"} (at most 60 s each${e.played.some((p) => p.capped) ? "; some stopped there" : ""}).`,
     e.unplayed.length ? `Out of time before: ${e.unplayed.map((t) => `“${t}”`).join(", ")}.` : "",
-    e.planned.length
-      ? `On purpose, not findings: ${e.planned
+    e.tooBig.length ? `Too big to play here: ${e.tooBig.map((t) => `“${t}”`).join(", ")}.` : "",
+    planned.length
+      ? `On purpose, not findings: ${planned
           .map(
             (p) =>
               `${p.count} ${p.what === "dropped" ? "dropped at" : "left unread in"} ${p.node} in “${p.simulation}”`,
@@ -160,13 +161,14 @@ function* shrink(full: AgentFinding): Generator<AgentFinding> {
 export function agentReport(
   result: CheckResult,
   include: "warnings" | "all" = "all",
-  evidence?: Evidence,
+  /** With `simulations: true`: what played, and what withEvidence found was lost on purpose. */
+  simulations?: { evidence: Evidence; planned: readonly PlannedLoss[] },
 ): AgentReport {
   const listed = result.findings.filter((f) => include === "all" || f.severity === "warning");
   const report: AgentReport = {
     findings: [],
     summary: summarize(result),
-    ...(evidence ? { simulations: playedLine(evidence) } : {}),
+    ...(simulations ? { simulations: playedLine(simulations.evidence, simulations.planned) } : {}),
   };
   if (listed.some((f) => f.fix?.ops))
     report.hint =

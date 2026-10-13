@@ -53,6 +53,16 @@ Screenshots are in `docs/screenshots/round26/`.
 - **A simulation that takes a node down but expects nothing lost there** read as on purpose. An expectation of none now
   wins: the loss is a finding.
 
+### After code review (PR #76)
+
+- **Focus survived only half the time.** With no findings the line sat in the card's empty-state branch; a run that
+  added the first finding moved it to the other branch, React made a new link, and focus fell to the page. The line
+  now has one place in the card either way, and an e2e test presses Enter on it through both changes.
+- **The words for a run that can't play.** "This browser can't play them in the background, and the diagram is too
+  big to play here." (no worker, a large diagram), "Out of time: the simulations are too big to play here." (a worker
+  that outlasted its budget) and "“…” starts too much traffic to play here: not counted." (a simulation over the
+  start-work bound). Each says what happened and leaves Run simulations to try again.
+
 ### Still open (owner's call)
 
 - "Failed requests to … are lost" is a Suggestion without a fix: a queue in front and a retry upstream are both

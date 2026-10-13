@@ -50,6 +50,8 @@ export interface WebMcpHost {
   getEditor(): EditorApi | null;
   /** Rechecked per call, including callbacks retained across document switches. */
   canUseAi?(): boolean;
+  /** The open document's identity, for calls that wait: the same editor can open another diagram. */
+  documentId?(): string | undefined;
   /** Shows the change (toast with Undo, a brief highlight) and records it as a turn in the AI panel. */
   onApplied(change: AgentChange): void;
   newDiagram(opts: { title?: string; direction?: "LR" | "TB" }): Promise<EditorApi | null>;
@@ -79,6 +81,23 @@ function needEditor(host: WebMcpHost): EditorApi {
   return editor;
 }
 
+const CANCELLED = "The call was cancelled.";
+
+/**
+ * A guard for a call that waits: returns a check that throws, saying nothing about the diagram, unless the same
+ * diagram is still open in the same editor and AI tools may still read it (not made Private or local-only, and the
+ * copy still allows them).
+ */
+function sameDocument(host: WebMcpHost): () => void {
+  const editor = needEditor(host);
+  const doc = host.documentId?.();
+  return () => {
+    if (host.canUseAi?.() === false) throw new Error(LOCAL_ONLY_MESSAGE);
+    if (host.getEditor() !== editor || host.documentId?.() !== doc)
+      throw new Error("Another diagram was opened while its simulations played. Call check_diagram again.");
+  };
+}
+
 function compact<T extends { results?: unknown[] }>(result: T): T {
   if (JSON.stringify(result).length <= OUTPUT_BUDGET || !result.results) return result;
   const results = [...result.results];
@@ -97,7 +116,7 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       return describeDiagram(needEditor(host).getDiagram(), input as DescribeOptions);
     },
 
-    async check_diagram(input) {
+    async check_diagram(input, signal) {
       checkSchema(input, toolSchemas.check_diagram);
       needEditor(host);
       const { rules, include, simulations } = input as {
@@ -109,17 +128,39 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
       const { runChecks, agentReport } = await import("../../checks");
       // Read the diagram after the load: it may have become private (or another one opened) meanwhile.
       const diagram = needEditor(host).getDiagram();
-      const result = runChecks(diagram, rules ? { rules } : {});
-      if (!simulations || !diagram.simulations?.length) return agentReport(result, include);
-      // Run simulations, as the Checks card does: in a worker, bounded (a minute of each, about 15 s in all).
+      if (!simulations || !diagram.simulations?.length)
+        return agentReport(runChecks(diagram, rules ? { rules } : {}), include);
+      // Run simulations, as the Checks card does: in a worker, bounded (a minute of each, about 15 s in all). It takes
+      // seconds, so everything checked at the start is checked again before anything about the diagram goes back.
+      const still = sameDocument(host);
       const { playSimulations, withEvidence } = await import("../../checks/evidenceClient");
-      const evidence = await playSimulations(diagram, () => {}).done;
-      const merged = withEvidence(result, evidence, diagram.checks);
+      still();
+      const run = playSimulations(diagram, () => {});
+      const cancel = () => run.cancel();
+      signal?.addEventListener("abort", cancel);
+      let evidence;
+      try {
+        evidence = await run.done;
+      } catch (err) {
+        if (signal?.aborted) throw new Error(CANCELLED, { cause: err });
+        throw err;
+      } finally {
+        signal?.removeEventListener("abort", cancel);
+      }
+      if (signal?.aborted) throw new Error(CANCELLED);
+      still();
+      // Counts are classified against every check, then the reply keeps the rules asked for.
+      const { result, planned } = withEvidence(runChecks(diagram), evidence, diagram.checks);
       const wanted = (f: { rule: CheckRuleId }) => !rules || rules.includes(f.rule);
       return agentReport(
-        { ...merged, findings: merged.findings.filter(wanted), ignored: merged.ignored.filter(wanted) },
+        {
+          ...result,
+          findings: result.findings.filter(wanted),
+          ignored: result.ignored.filter(wanted),
+          ran: result.ran.filter((id) => !rules || rules.includes(id)),
+        },
         include,
-        evidence,
+        { evidence, planned },
       );
     },
 

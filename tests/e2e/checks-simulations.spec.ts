@@ -131,6 +131,29 @@ test("a deliberate outage is on purpose, not a finding", async ({ page }) => {
   await expect(page.getByTestId("inspector-field-sublabel")).toHaveValue("us-east-1 · 3 AZs");
 });
 
+test("focus stays on the link when a run adds the first finding, and when Run again takes it away", async ({
+  page,
+}) => {
+  await gotoCanvas(page, "aks-app-config-key-vault");
+  // us-east-1's API fails 2% of writes: no static finding, and a `dropped` one once the simulations play.
+  await importExample(page, "multi-region-active-active", "Flaky writes", (d) => {
+    const api = d.nodes.find((n) => n.id === "api-us");
+    if (api) api.props = { ...api.props, failureRate: 0.02 };
+  });
+  await openChecks(page);
+  await expect(page.getByTestId("checks-empty")).toBeVisible();
+  const link = page.getByTestId("checks-run-simulations");
+  await link.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("check-row-dropped:api-us")).toBeVisible();
+  await expect(link).toHaveText("Run again");
+  await expect(link).toBeFocused();
+  // Again: the counts go while it plays (no finding), and come back.
+  await page.keyboard.press("Enter");
+  await expect(status(page)).toHaveText(/^Played/);
+  await expect(link).toBeFocused();
+});
+
 test("no saved simulations, no Run simulations; and none in live view", async ({ page }) => {
   await gotoCanvas(page, "aks-app-config-key-vault");
   await importDiagram(page, {

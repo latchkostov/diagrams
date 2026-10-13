@@ -883,56 +883,73 @@ raises losses no other check explains. Engine: `src/checks/evidence.ts` (with `r
 
 - **Losses only; on purpose is a note, not a finding** (open question 3, as recommended). A saved simulation usually
   breaks or floods something to tell its story, so the run counts only messages lost: dropped (no dead-letter route, a
-  request to a node that's down or fails) and dead letters left unread in a queue `no-reader` already names. Never
-  backlog, lag or overload: on the 16 examples, 19 nodes back up past 100 messages in 12 of the 32 simulations, every
-  one the story (a rush, a throttle, a rebuild, an outage's lag). A loss is **on purpose** when the simulation takes
-  the node down or pauses it, sets a failure rate on it, or its own expectations count on it (`> 0`, `>= n` or `== n`
-  with n above 0, on that node's dropped, backlog or lag; an expectation of none, `== 0`, makes a loss evidence
-  instead). On purpose, it's one muted line under the summary ("On purpose: 96 dropped at Load balancer, which
-  “Region outage and failover” takes down", the node a link that selects it) and never a finding, a marker or a
-  count. At a broker the loss is the design's (messages that ran out of deliveries had nowhere to go), so it counts
-  unless an expectation says otherwise.
+  request to a node that's down or fails, a message published to a broker that's down) and dead letters left unread
+  in a queue `no-reader` names. Never backlog, lag or overload: on the 16 examples, 19 nodes back up past 100 messages
+  in 12 of the 32 simulations, every one the story (a rush, a throttle, a rebuild, an outage's lag). A loss is **on
+  purpose** when it happened while the simulation had that node down (or paused) or failing, tick by tick, from the
+  setup and the timeline actions it actually played (an outage scheduled after the losses, or past the minute,
+  excuses nothing), or when its own expectations count on it (`> 0`, `>= n` or `== n` with n above 0, on that node's
+  dropped, backlog or lag). An expectation of none (`== 0`) makes any loss there evidence. On purpose, it's one muted
+  line under the summary ("On purpose: 96 dropped at Load balancer, which “Region outage and failover” takes down",
+  the node a link that selects it) and never a finding, a marker or a count.
 - **Evidence never raises anything.** Counts never change a finding's severity, and `dropped` is always a Suggestion,
   so the warning count under the title never moves (still 2 across the 16 examples).
-- **Where counts go.** Losses at a broker go on its `dead-letter` finding; losses at a node a simulation takes down go
-  on its `single-point` finding (what one replica costs) when there is one; dead letters left unread go on the queue's
-  `no-reader` finding. Ignored findings get them too, for when Show again brings them back. Anything else that's lost,
-  and not on purpose, is `dropped:{node}`: at a broker, with dead-letter's fix ("Add dead-letter queue", worked out
-  again when clicked, as every fix is) and the consumers that failed there as its chips; at any other node, "Failed
-  requests to {node} are lost", without a fix (a queue in front, or a retry upstream, is a design choice). With
-  `dead-letter` turned off, losses at brokers raise nothing: `dropped` would bring back what was turned off.
-- **Bounded.** At most 60 s of simulated time per simulation, in fixed 100 ms steps; a pausing note is resumed at once.
-  At most 15 s of wall-clock time for the whole run: a simulation the budget cuts short is left out whole (never
-  half-counted), and the card says so ("Out of time before “Rush 3”: not counted"). The file format already caps a
-  diagram's scripted traffic at 200,000 messages, which bounds the work per simulated second. A simulation stopped at
-  the minute says so on its counts ("in the first minute of …"). Tests count steps (600 for a ten-minute simulation)
-  and drive the wall-clock budget with a clock of their own, never a millisecond budget.
-- **Deterministic.** Each simulation plays from its own seed in fixed steps, so the same diagram gives the same counts
-  however the work is sliced (a unit test plays one diagram whole, a step at a time and seven at a time, and compares).
-  The wall-clock budget only decides which simulations are counted, and says so.
+- **Counts, then what they mean.** The run keeps raw counts per simulation and node (all of a node's losses, the part
+  lost on purpose and why, what its expectations say); what they mean is decided each time a check result is shown
+  (`evidenceMerge.ts`), against the checks as they are then. So Turn off this check, Ignore here and turning a check
+  back on agree with a fresh run without playing again. The rules, in order: a loss the expectations count on is
+  planned, whatever finding is there; at a node that isn't a broker, a `single-point` finding takes the whole loss
+  (what one replica costs, outage included); otherwise the part lost on purpose is planned, and the rest is the
+  design's: at a broker on its `dead-letter` finding (nothing when that check is off: `dropped` would bring back what
+  was turned off), anywhere else, or at a broker without that finding, `dropped:{node}`. At a broker, that has
+  dead-letter's fix ("Add dead-letter queue", worked out again when clicked, as every fix is) and the consumers that
+  failed there as its chips; elsewhere, "Failed requests to {node} are lost", without a fix (a queue in front, or a
+  retry upstream, is a design choice). Dead letters left unread go on `no-reader`. Ignored findings get counts too,
+  for when Show again brings them back.
+- **Bounded.** At most 60 s of simulated time per simulation, one 10 ms engine tick at a time; a pausing note is
+  resumed at once. Before a simulation is built, its **start work** (the sampled messages its traffic and timeline
+  inject, times the most routes any node sends a copy down) must be under 10 million: a file at the format's limits
+  with an ordinary fan-out is far under it, a burst of 100,000 into 20,000 routes (two billion copies in a tick) isn't
+  played ("“…” starts too much traffic to play here: not counted"). At most 15 s of wall-clock time for the whole run,
+  read before each simulation, after building it, every 100 ticks and when it ends: one the budget cuts short or that
+  ends after it is left out whole, and the card says so ("Out of time before “Rush 3”: not counted"). The client also
+  terminates a worker that outlasts its budget by 5 s, for a tick that never ends. A simulation stopped at the minute
+  says so on its counts ("in the first minute of …"). Tests count ticks and slices and drive the budget with a clock of
+  their own.
+- **Deterministic.** Each simulation plays from its own seed, a tick at a time, so the same diagram gives the same
+  counts however the work is sliced (a unit test plays one diagram whole, a tick at a time and seven at a time, and
+  compares). The wall-clock budget only decides which simulations are counted, and says so.
 - **Cancellable, at once.** One run at a time, in a worker of its own that's terminated to stop it. Stop (the same
-  link, which keeps focus from Run simulations to Stop to Run again), **Esc** (one level: it stops the run, the next Esc
-  closes the card), closing the card, leaving editing (live view, presenting) and any edit a simulation would see each
-  stop it. Moving or selecting things doesn't: the controller compares references to each node's and connection's
-  data and to the simulations, never positions or the selection, without copying anything per change.
+  link, which keeps focus from Run simulations to Stop to Run again, at one place in the card whether or not there
+  are findings), **Esc** (one level: it stops the run, the next Esc closes the card), closing the card, leaving editing
+  (live view, presenting) and any edit a simulation would see each stop it. What a simulation sees is projected from
+  the canvas: each node's id, stencil, label and subtitle (a label names a node's messages and marks a dead-letter
+  queue) and props, each connection's ends, kind, relationship and props, and the simulations. Moving a node (even
+  out of a boundary), changing an attachment side or selecting things doesn't stop a run or hide its counts. Values
+  are compared by reference first and by content only when a reference changed, without copying anything per change.
 - **Stale with the diagram; never in the file.** The counts are worked out again, the same, from the file in seconds,
   they'd be wrong after any edit, and they'd leak into share links and exports, so they live in memory only, for the
   open diagram (closing and reopening the card keeps them). An edit a simulation would see hides them at once ("The
   diagram changed since the simulations played. Run again"); Undo back to what they were played on shows them again.
 - **Off the main thread.** The main thread posts the file and receives one progress message per simulation and the
-  result; where workers fail it plays here in 6 ms slices between frames. A progress message updates only the line:
-  nothing is merged or indexed again. The e2e test types in a finding's Ignore box (an edit would stop the run) over a
-  1,500-node diagram, alternating idle and playing three times each, and compares the medians (playing at most 1.25×
-  idle, plus `perfBudget(25)`), as the checks' own test does. It found one thing: a spinner in the card, whose blurred
-  background made the browser repaint the canvas behind it every frame (a median keystroke of 104 ms against 32 ms
-  idle). The card has no spinner; "Playing 2 of 5: “…”…" says it. On the production build, 18 keystrokes each way: a median of 48 ms idle and
-  48 ms playing.
+  result. A progress message updates only the line: nothing is merged or indexed again. Where workers fail, it plays
+  here, a tick at a time with the clock read between ticks, so a slice ends within a tick of its 6 ms; but only a
+  diagram of up to 300 nodes, whose preparation (the checks and the topology, which can't be sliced) is short, and
+  only simulations under a fiftieth of the start-work bound. Larger ones say the browser can't play them in the
+  background. The e2e test types in a finding's Ignore box (an edit would stop the run) over a 1,500-node diagram,
+  alternating idle and playing three times each, as the checks' own typing test does. It found one thing: a spinner
+  in the card, whose blurred background made the browser repaint the canvas behind it every frame (a median keystroke
+  three times the idle one). The card has no spinner; "Playing 2 of 5: “…”…" says it.
 - **Surfaces.** The card exists only while editing, so live view, presenting, embeds, read-only views and the exported
   HTML viewer have no Run simulations; the viewer template stubs the checks store with the run's two methods. The
   self-hosting switches don't touch it (it's local, like the checks), and `pnpm build:internal` builds it.
 - **Agents.** `check_diagram` takes `simulations: true` (off by default): the same worker and bounds, the counts as
   short lines on each finding (`evidence`, at most three) and one `simulations` line saying what played and what was
   lost on purpose, within the reply's 1.5K characters. It costs seconds on a large diagram, which is why it's opt-in.
+  Before anything goes back, everything checked at the start is checked again: the same diagram in the same editor
+  (and the same document in it), AI tools still allowed for it (not made Private or local-only, and the copy still
+  has them), and the call not cancelled; the call's abort signal stops the playback. If anything changed, the reply
+  says nothing about the diagram (as Copy link with password does since #70).
 - **What ships when.** Startup JavaScript: 22 bytes smaller gzip (the entry −28, the model's rule list +6). The canvas
   chunk +1.2 kB gzip (the run controller), the card +1.0 kB and 0.15 kB of CSS, the static engine +0.6 kB (the new
   rule's words), `check_diagram`'s report +0.3 kB. On the first click: the client (1.2 kB) and the merge (0.4 kB), then

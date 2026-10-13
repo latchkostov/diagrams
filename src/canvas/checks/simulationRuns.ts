@@ -1,8 +1,8 @@
 import type { DiagramFile } from "../../model/types";
 import type { CheckResult } from "../../checks/types";
 import type { Evidence, PlannedLoss, PlayedSimulation } from "../../checks/evidence";
-import type { EvidenceProgress, EvidenceRun } from "../../checks/evidenceClient";
-import type { DiagramFlowEdge, FlowNode } from "../types";
+import type { EvidenceProgress, EvidenceRun, WithEvidence } from "../../checks/evidenceClient";
+import type { DiagramFlowEdge, DiagramNodeData, FlowNode } from "../types";
 
 // Run simulations, for the Checks card (docs/research/architecture-checks.md, batch 5): on a click, the diagram's
 // saved simulations play headless in a worker (src/checks/evidenceClient.ts, a lazy chunk) and their counts go on
@@ -19,27 +19,44 @@ export interface SimContent {
 }
 
 /**
- * What a simulation plays, as references: every node's and connection's data (stencil, label, props, ends) and the
- * simulations. Positions, sizes, boundaries, annotations and the selection aren't in it, so moving or selecting
- * things changes nothing, while any edit to what plays does. A walk over the arrays, no copies; the state Undo brings
- * back has the very same references.
+ * What a simulation plays: each node's id, stencil, label, subtitle and props (a label names the messages a node sends,
+ * and marks a dead-letter queue), each connection's ends, kind, relationship and props, and the simulations. Not
+ * positions, sizes, boundaries, attachment sides, annotations or the selection: moving a node, even out of a
+ * boundary, or selecting things changes nothing a simulation sees. Values as they are, no copies: strings by value,
+ * objects by reference (Undo brings back the very same ones), and by content only when the reference changed.
  */
 export function basisOf(c: SimContent): unknown[] {
   const out: unknown[] = [c.meta.simulations];
-  for (const n of c.nodes) if (n.type === "diagram") out.push(n.id, n.data);
+  for (const n of c.nodes) {
+    if (n.type !== "diagram") continue;
+    const d = n.data as DiagramNodeData;
+    out.push(n.id, d.stencil, d.label, d.sublabel, d.props);
+  }
   out.push(null);
-  for (const e of c.edges) out.push(e.id, e.source, e.target, e.data);
+  for (const e of c.edges) out.push(e.id, e.source, e.target, e.data?.kind, e.data?.relation, e.data?.props);
   return out;
+}
+
+/** Equal for a simulation: the same value, or objects with the same content (a props object made again). */
+function same(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== "object" || typeof b !== "object") return false;
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 /** Whether `c` is what `basis` was taken from, as a simulation sees it (no copy made: it runs on every change). */
 export function matchesBasis(basis: readonly unknown[], c: SimContent): boolean {
   let i = 0;
-  const next = (v: unknown) => i < basis.length && basis[i++] === v;
+  const next = (...vs: unknown[]) => vs.every((v) => i < basis.length && same(basis[i++], v));
   if (!next(c.meta.simulations)) return false;
-  for (const n of c.nodes) if (n.type === "diagram" && !(next(n.id) && next(n.data))) return false;
+  for (const n of c.nodes) {
+    if (n.type !== "diagram") continue;
+    const d = n.data as DiagramNodeData;
+    if (!next(n.id, d.stencil, d.label, d.sublabel, d.props)) return false;
+  }
   if (!next(null)) return false;
-  for (const e of c.edges) if (!(next(e.id) && next(e.source) && next(e.target) && next(e.data))) return false;
+  for (const e of c.edges)
+    if (!next(e.id, e.source, e.target, e.data?.kind, e.data?.relation, e.data?.props)) return false;
   return i === basis.length;
 }
 
@@ -48,14 +65,16 @@ export type EvidenceView =
   /** The diagram has no saved simulations: no Run simulations. */
   | { status: "none" }
   /** Ready to run; `stopped` says why the last run ended early. */
-  | { status: "ready"; simulations: number; stopped?: "edit" | "stop" | "failed" }
+  | { status: "ready"; simulations: number; stopped?: "edit" | "stop" | "failed" | "timeout" | "unsupported" }
   | { status: "running"; index: number; total: number; title: string }
   | {
       status: "done";
       played: PlayedSimulation[];
       unplayed: string[];
+      tooBig: string[];
+      /** Filled in against the checks as they are now (withEvidence), as each result is shown. */
       planned: PlannedLoss[];
-      /** Findings with counts on them, `dropped` included. */
+      /** Shown findings with counts on them, `dropped` included (as planned). */
       counted: number;
       /** The diagram has changed since: the counts are hidden until it's back (Undo) or they run again. */
       stale: boolean;
@@ -76,7 +95,10 @@ if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && typeof window !
 
 /** Where the runs' results go: the canvas's checks store. */
 export interface EvidenceSink {
-  setEvidence(view: EvidenceView, merge?: (result: CheckResult, diagram: DiagramFile | undefined) => CheckResult): void;
+  setEvidence(
+    view: EvidenceView,
+    merge?: (result: CheckResult, diagram: DiagramFile | undefined) => WithEvidence,
+  ): void;
 }
 
 export class SimulationRuns {
@@ -87,7 +109,7 @@ export class SimulationRuns {
   private run: EvidenceRun | null = null;
   private evidence: { data: Evidence; client: Client } | null = null;
   private view: EvidenceView = NO_EVIDENCE;
-  private stopped: "edit" | "stop" | "failed" | undefined;
+  private stopped: "edit" | "stop" | "failed" | "timeout" | "unsupported" | undefined;
 
   constructor(
     private readonly sink: EvidenceSink,
@@ -155,10 +177,10 @@ export class SimulationRuns {
             this.evidence = { data, client };
             this.publish(false);
           },
-          (err: Error) => {
+          (err: Error & { reason?: "timeout" | "unsupported" }) => {
             if (this.run !== pending || err.name === "EvidenceStopped") return;
             this.run = null;
-            this.stopped = "failed";
+            this.stopped = err.name === "EvidenceUnavailable" && err.reason ? err.reason : "failed";
             this.publish(false);
           },
         );
@@ -194,13 +216,13 @@ export class SimulationRuns {
     const ev = this.evidence;
     if (ev && (count || stale)) {
       const { data, client } = ev;
-      const counted = Object.keys(data.byFinding).length + data.findings.length;
       this.view = {
         status: "done",
         played: data.played,
         unplayed: data.unplayed,
-        planned: data.planned,
-        counted,
+        tooBig: data.tooBig,
+        planned: [],
+        counted: 0,
         stale,
       };
       this.sink.setEvidence(

@@ -5,6 +5,7 @@ import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import { RULES as ALL_RULES, runChecks } from "./run";
 import { buildContext } from "./context";
 import { collectEvidence } from "./evidence";
+import { withEvidence } from "./evidenceMerge";
 
 const RULE_BY_ID = new Map(ALL_RULES.map((r) => [r.id, r]));
 
@@ -94,9 +95,12 @@ describe("simulation evidence on the public examples", () => {
     expect(ev.played.map((p) => p.id)).toEqual((d.simulations ?? []).map((s) => s.id));
     expect(ev.played.filter((p) => p.capped)).toEqual([]);
     expect(ev.unplayed).toEqual([]);
-    expect(ev.byFinding).toEqual({});
-    expect(ev.findings).toEqual([]);
-    expect(ev.planned.map((p) => `${p.count} ${p.what} ${p.node} in ${p.simulation} (${p.why})`)).toEqual(
+    expect(ev.tooBig).toEqual([]);
+    const shown = withEvidence(runChecks(d), ev, d.checks);
+    // No count on any finding, and no `dropped`: the same findings as the checks' own.
+    expect(shown.result).toEqual(runChecks(d));
+    expect(shown.counted).toBe(0);
+    expect(shown.planned.map((p) => `${p.count} ${p.what} ${p.node} in ${p.simulation} (${p.why})`)).toEqual(
       PLANNED[slug] ?? [],
     );
   });

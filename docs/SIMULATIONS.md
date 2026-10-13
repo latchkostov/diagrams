@@ -142,7 +142,7 @@ expectations. Edge `share` models optional branches; `retry` and `retryBackoffMs
 ## Played headless: Run simulations
 
 The Checks card's **Run simulations** plays every saved simulation without going live (`src/checks/evidence.ts`, in a
-worker): from its own seed, in fixed 100 ms steps, at most 60 s of simulated time each and about 15 s of wall-clock
+worker): from its own seed, a 10 ms tick at a time, at most 60 s of simulated time each and about 15 s of wall-clock
 time in all, resuming pausing notes at once. It counts only lost messages (dropped, and dead letters left unread) and
 puts them on the checks' findings. What a simulation loses on purpose (a node it takes down or makes fail, or what its
 own expectations count on) is reported as such, never as a finding: write an expectation of the loss (`dropped > 0`)

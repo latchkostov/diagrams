@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { DiagramFile } from "../../model/types";
 import type { CheckResult, Finding } from "../../checks/types";
+import type { WithEvidence } from "../../checks/evidenceMerge";
 import { createCheckScheduler, type CheckScheduler } from "./scheduler";
 import { runChecksOffThread } from "./runner";
 import { NO_EVIDENCE, SimulationRuns, type EvidenceSink, type EvidenceView, type SimContent } from "./simulationRuns";
@@ -75,7 +76,7 @@ export function summarizeResult(result: CheckResult | null, diagram?: DiagramFil
   };
 }
 
-type Merge = (result: CheckResult, diagram: DiagramFile | undefined) => CheckResult;
+type Merge = (result: CheckResult, diagram: DiagramFile | undefined) => WithEvidence;
 
 /**
  * The canvas's checks, outside React state: the canvas itself never re-renders for a result or a hovered row.
@@ -131,8 +132,14 @@ export class ChecksStore implements EvidenceSink {
 
   private rebuild(stale: boolean) {
     const { result, diagram } = this.checked;
-    const shown = result && this.merge ? this.merge(result, diagram) : result;
-    this.state = { ...summarizeResult(shown, diagram), stale: !!shown && stale, evidence: this.evidence };
+    // The counts are classified against this result: a check turned off or a finding ignored needs no new run.
+    const merged = result && this.merge ? this.merge(result, diagram) : undefined;
+    const shown = merged?.result ?? result;
+    const evidence =
+      merged && this.evidence.status === "done"
+        ? { ...this.evidence, planned: merged.planned, counted: merged.counted }
+        : this.evidence;
+    this.state = { ...summarizeResult(shown, diagram), stale: !!shown && stale, evidence };
     this.emit();
   }
 

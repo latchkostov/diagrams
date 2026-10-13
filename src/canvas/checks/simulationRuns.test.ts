@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import type { Evidence } from "../../checks/evidence";
 import type { EvidenceProgress } from "../../checks/evidenceClient";
-import { withEvidence } from "../../checks/evidenceMerge";
+import { withEvidence, type WithEvidence } from "../../checks/evidenceMerge";
 import type { CheckResult } from "../../checks/types";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { basisOf, matchesBasis, SimulationRuns, type EvidenceView, type SimContent } from "./simulationRuns";
@@ -30,10 +30,11 @@ const diagram: DiagramFile = {
 const EVIDENCE: Evidence = {
   played: [{ id: "s", title: "Payments goes down", playedMs: 9000, capped: false }],
   unplayed: [],
-  byFinding: { "dead-letter:q": [{ simulation: "Payments goes down", what: "dropped", count: 312 }] },
-  findings: [],
-  planned: [],
+  tooBig: [],
+  losses: [{ simulation: "Payments goes down", node: "q", broker: true, what: "dropped", count: 312 }],
+  dropped: [],
 };
+const COUNTS = [{ simulation: "Payments goes down", what: "dropped", count: 312 }];
 
 /** A client whose run the test finishes, fails or watches being cancelled. */
 function fakeClient() {
@@ -62,7 +63,7 @@ function fakeClient() {
 
 function setup() {
   const views: EvidenceView[] = [];
-  const merges: (((r: CheckResult, d: DiagramFile | undefined) => CheckResult) | undefined)[] = [];
+  const merges: (((r: CheckResult, d: DiagramFile | undefined) => WithEvidence) | undefined)[] = [];
   const { client, runs } = fakeClient();
   const sims = new SimulationRuns(
     {
@@ -92,8 +93,45 @@ describe("the content a simulation sees", () => {
     const renamed = { ...c, nodes: [node("a", { stencil: "service.node", label: "A2" }), c.nodes[1]] };
     expect(matchesBasis(basis, renamed)).toBe(false);
     expect(matchesBasis(basis, { ...c, edges: [] })).toBe(false);
-    expect(matchesBasis(basis, { ...c, meta: { simulations: [...SIMS] } })).toBe(false);
+    expect(matchesBasis(basis, { ...c, meta: { simulations: [{ ...SIMS[0], title: "Another" }] } })).toBe(false);
     expect(matchesBasis(basis, { ...c, nodes: [...c.nodes, node("z")] })).toBe(false);
+  });
+
+  it("compares what plays, not the data objects: a new boundary or attachment side is no edit; new props are", () => {
+    const props = { failureRate: 0.1 };
+    const c: SimContent = {
+      nodes: [node("a", { stencil: "service.node", label: "A", props }), node("b")],
+      edges: [edge("e", "a", "b")],
+      meta: { simulations: SIMS },
+    };
+    const basis = basisOf(c);
+    // Dragged into a boundary: its data object is replaced, with the same stencil, label and props.
+    const grouped = {
+      ...c,
+      nodes: [node("a", { stencil: "service.node", label: "A", props, group: "g1" }), c.nodes[1]],
+    };
+    expect(matchesBasis(basis, grouped)).toBe(true);
+    const sides = {
+      ...c,
+      edges: [{ ...c.edges[0], data: { ...c.edges[0].data!, sourceSide: "top" as const } } as DiagramFlowEdge],
+    };
+    expect(matchesBasis(basis, sides)).toBe(true);
+    // The same props, made again (an applied fix rebuilds every node): still the same to a simulation.
+    const remade = {
+      ...c,
+      nodes: [node("a", { stencil: "service.node", label: "A", props: { failureRate: 0.1 } }), c.nodes[1]],
+    };
+    expect(matchesBasis(basis, remade)).toBe(true);
+    const changed = {
+      ...c,
+      nodes: [node("a", { stencil: "service.node", label: "A", props: { failureRate: 0.2 } }), c.nodes[1]],
+    };
+    expect(matchesBasis(basis, changed)).toBe(false);
+    const async = {
+      ...c,
+      edges: [{ ...c.edges[0], data: { ...c.edges[0].data!, kind: "sync" as const } } as DiagramFlowEdge],
+    };
+    expect(matchesBasis(basis, async)).toBe(false);
   });
 });
 
@@ -112,8 +150,10 @@ describe("SimulationRuns", () => {
       status: "done",
       played: EVIDENCE.played,
       unplayed: [],
+      tooBig: [],
+      // What they mean is worked out against each check result as it's shown (the store does).
       planned: [],
-      counted: 1,
+      counted: 0,
       stale: false,
     });
   });
@@ -127,7 +167,7 @@ describe("SimulationRuns", () => {
     const merge = merges[merges.length - 1]!;
     const finding = { id: "dead-letter:q", rule: "dead-letter", severity: "warning", target: "q", elements: ["q"] };
     const result = { findings: [finding], ignored: [], off: [], ran: [] } as unknown as CheckResult;
-    expect(merge(result, diagram).findings[0].evidence).toEqual(EVIDENCE.byFinding["dead-letter:q"]);
+    expect(merge(result, diagram).result.findings[0].evidence).toEqual(COUNTS);
   });
 
   it("stops at once on an edit a simulation would see, not on a move or a selection", async () => {
@@ -215,10 +255,19 @@ describe("ChecksStore with evidence", () => {
     const store = new ChecksStore();
     const finding = { id: "dead-letter:q", rule: "dead-letter", severity: "warning", target: "q", elements: ["q"] };
     store.set({ findings: [finding], ignored: [], off: [], ran: ["dead-letter"] } as unknown as CheckResult, diagram);
-    const view: EvidenceView = { status: "done", played: [], unplayed: [], planned: [], counted: 1, stale: false };
+    const view: EvidenceView = {
+      status: "done",
+      played: [],
+      unplayed: [],
+      tooBig: [],
+      planned: [],
+      counted: 0,
+      stale: false,
+    };
     store.setEvidence(view, (r, d) => withEvidence(r, EVIDENCE, d?.checks));
     expect(store.get().result?.findings[0].evidence?.[0].count).toBe(312);
-    expect(store.get().evidence).toBe(view);
+    // The line's numbers come from the same classification as the rows.
+    expect(store.get().evidence).toEqual({ ...view, counted: 1 });
     store.setEvidence({ ...view, stale: true });
     expect(store.get().result?.findings[0].evidence).toBeUndefined();
     expect(store.get().warnings).toBe(1);

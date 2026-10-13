@@ -160,32 +160,32 @@ export function ChecksCard(p: ChecksCardProps) {
           Checking…
         </p>
       ) : r.findings.length ? (
-        <>
-          <p className="checks-note" data-testid="checks-summary">
-            {[
-              warnings.length ? plural(warnings.length, "warning") : "",
-              suggestions.length ? plural(suggestions.length, "suggestion") : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-          {sims}
-          {/* Arrow keys between the rows' heads (each row's head is a button). */}
-          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-          <div className="checks-list" onKeyDown={onListKeys}>
-            {group("Warnings", warnings, "warnings")}
-            {group("Suggestions", suggestions, "suggestions")}
-          </div>
-        </>
+        <p className="checks-note" data-testid="checks-summary">
+          {[
+            warnings.length ? plural(warnings.length, "warning") : "",
+            suggestions.length ? plural(suggestions.length, "suggestion") : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
       ) : (
         <p className="checks-note checks-empty" data-testid="checks-empty">
           <Icon name="check" size={14} />{" "}
           {r.ran.length
-            ? `${summarize({ ...r, ignored: [], off: [] }).replace(/\.$/, "")}.`
+            ? `${summarize({ ...r, ignored: [], off: [] }).replace(/.$/, "")}.`
             : "Nothing to check yet: add a node and its checks run as you draw."}
         </p>
       )}
-      {r && !r.findings.length && sims}
+      {/* One place in the tree, findings or none: a run that adds the first finding keeps focus on its link. */}
+      {r && sims}
+      {r && r.findings.length > 0 && (
+        // Arrow keys between the rows' heads (each row's head is a button).
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+        <div className="checks-list" onKeyDown={onListKeys}>
+          {group("Warnings", warnings, "warnings")}
+          {group("Suggestions", suggestions, "suggestions")}
+        </div>
+      )}
       {r && (
         <footer className="checks-foot">
           {r.ignored.length > 0 && (
