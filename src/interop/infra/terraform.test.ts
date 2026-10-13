@@ -10,7 +10,7 @@ import { importTerraform, replayOutcome } from "./pipeline";
 import { MAX_RESOURCES, readTerraform, TERRAFORM_BINARY, TERRAFORM_RAW_STATE, TERRAFORM_SOURCE } from "./terraform";
 import { collectRefs, configPath, parseRef, TF_LIMITS, withoutAncestors, type RefBudget } from "./tfRefs";
 import { notDrawnReason, stencilOf } from "./tfTypes";
-import { perfBudget } from "../../test/perfBudget";
+import { countingReads, growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { runChecks } from "../../checks/run";
 
 // Terraform plan and state JSON (`terraform show -json`) against the self-written fixtures
@@ -872,9 +872,10 @@ describe("Terraform import: what isn't Terraform JSON says what to run", () => {
 });
 
 describe("Terraform import: hostile input", () => {
-  it("reads a 10,000-resource state within budget, and refuses more", () => {
+  /** `n` queues, each with its function, the mapping between them and a policy attachment: 4n resources. */
+  const queueFunctions = (n: number) => {
     const resources: Res[] = [];
-    for (let i = 0; i < 2_500; i++) {
+    for (let i = 0; i < n; i++) {
       resources.push(
         { type: "aws_sqs_queue", name: `q${i}`, values: { name: `jobs-${i}`, arn: sqsArn(`jobs-${i}`) } },
         {
@@ -890,10 +891,36 @@ describe("Terraform import: hostile input", () => {
         { type: "aws_iam_role_policy_attachment", name: `a${i}`, values: { role: "shared" } },
       );
     }
+    return resources;
+  };
+
+  it("reads a state in linear time", () => {
+    // Eight times the resources take about eight times as long; matching each ARN or name against every resource
+    // would take sixty-four. A ratio against an eighth of the state, not a budget in ms. Each state is parsed once,
+    // so the ratio is the reader's: JSON.parse's linear time would hide it.
+    const parse = JSON.parse;
+    const parsed = new Map<string, unknown>();
+    const spy = vi.spyOn(JSON, "parse").mockImplementation((text: string, reviver) => {
+      if (reviver || text.length < 100_000) return parse(text, reviver) as unknown;
+      if (!parsed.has(text)) parsed.set(text, parse(text));
+      return parsed.get(text);
+    });
+    try {
+      const run = (n: number) => {
+        const text = state(queueFunctions(n));
+        expect(readTerraform([{ name: "big.json", text }]).links).toHaveLength(n);
+        return () => readTerraform([{ name: "big.json", text }]);
+      };
+      expect(growth(run(300), run(300 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
+    } finally {
+      spy.mockRestore();
+    }
+  }, 30_000);
+
+  it("reads a 10,000-resource state, and refuses more", () => {
+    const resources = queueFunctions(2_500);
     const text = state(resources);
-    const started = performance.now();
     const { diagram, report } = tf(text);
-    expect(performance.now() - started).toBeLessThan(perfBudget(6_000));
     expect(diagram.nodes).toHaveLength(5_000);
     expect(diagram.edges).toHaveLength(2_500);
     expect(report.notDrawn).toEqual([
@@ -938,9 +965,8 @@ describe("Terraform import: hostile input", () => {
       configuration: { root_module: { module_calls: { m1: { module: config } } } },
     });
     expect(address.length).toBeGreaterThan(0);
-    const started = performance.now();
+    // The bound is the depth limit, proved by what's read and the reason given for the rest, not by the clock.
     const { diagram, report } = tf(text, "deep.json");
-    expect(performance.now() - started).toBeLessThan(perfBudget(1_000));
     expect(diagram.nodes.map((n) => n.label)).toEqual(["top"]);
     expect(report.unread.length).toBeGreaterThan(0);
     expect(report.unread[0].reason).toBe(`modules nested more than ${TF_LIMITS.maxModuleDepth} deep aren't read`);
@@ -994,9 +1020,7 @@ describe("Terraform import: hostile input", () => {
         },
       },
     });
-    const started = performance.now();
     const { diagram, report } = tf(text, "chain.json");
-    expect(performance.now() - started).toBeLessThan(perfBudget(2_000));
     expect(relationBetween(diagram, "loop", "jobs")).toBeUndefined();
     expect(diagram.edges.filter((e) => e.from === "loop")).toEqual([]);
     // The chain is longer than the resolver follows: it stops, and the report says so.
@@ -1015,31 +1039,36 @@ describe("Terraform import: hostile input", () => {
   });
 
   it("runs its own patterns in linear time on adversarial input", () => {
-    for (const evil of [
-      "[".repeat(100_000),
-      '["'.repeat(50_000),
-      "module.".repeat(30_000),
-      "a.".repeat(50_000),
-      '"terraform_version":'.repeat(10_000),
-      'resource "a" '.repeat(10_000),
-    ]) {
-      const started = performance.now();
-      configPath(evil);
-      parseRef(evil);
-      sniffInfra(`{${evil}`);
-      sniffInfra(evil);
-      notDrawnReason(evil.slice(0, 4_000));
-      stencilOf(evil);
-      expect(performance.now() - started, evil.slice(0, 12)).toBeLessThan(perfBudget(250));
+    // Each hostile string against an eighth of it: a pattern that backtracks takes 64 times as long or more, a linear
+    // one about 8. A ratio, not a budget in ms, so a busy machine doesn't fail it.
+    for (const [unit, times] of [
+      ["[", 32_000],
+      ['["', 16_000],
+      ["module.", 8_000],
+      ["a.", 16_000],
+      ['"terraform_version":', 3_200],
+      ['resource "a" ', 3_200],
+    ] as const) {
+      const run = (n: number) => {
+        const evil = unit.repeat(n);
+        return () => {
+          configPath(evil);
+          parseRef(evil);
+          sniffInfra(`{${evil}`);
+          sniffInfra(evil);
+          notDrawnReason(evil.slice(0, 4_000));
+          stencilOf(evil);
+        };
+      };
+      expect(growth(run(times / GROWTH_FACTOR), run(times), { samples: 3 }), unit).toBeLessThan(LINEAR_LIMIT);
     }
   });
 
   it("deep JSON in a value is never walked", () => {
     const deep = `${"[".repeat(200_000)}${"]".repeat(200_000)}`;
     const text = `{"format_version":"1.0","terraform_version":"1.9.5","values":{"root_module":{"resources":[{"type":"aws_sqs_queue","name":"q","values":{"name":"jobs","tags":${deep}}}]}}}`;
-    const started = performance.now();
+    // Walking it would overflow the stack (or, iteratively, visit 200,000 levels): the outcome is the proof.
     expect(readTerraform([{ name: "deep.json", text }]).components.map((c) => c.label)).toEqual(["jobs"]);
-    expect(performance.now() - started).toBeLessThan(perfBudget(1_000));
   });
 });
 
@@ -1300,9 +1329,9 @@ describe("Terraform import: review findings", () => {
         },
       },
     });
-    const started = performance.now();
+    // Expanded each time, the repeats would be 50 × 2,000 × 500 = 50,000,000 targets, far past the import's work
+    // budget (TF_LIMITS.maxWork), and the report would say references weren't followed. No note is the proof.
     const graph = readTerraform([{ name: "repeat.json", text }]);
-    expect(performance.now() - started).toBeLessThan(perfBudget(2_000));
     expect(graph.links).toHaveLength(n);
     expect(graph.notes).toEqual([]);
   });
@@ -1326,20 +1355,16 @@ describe("Terraform import: review findings", () => {
           },
         ]).flat(),
       ]);
-    const fastest = (text: string) => {
-      let best = Infinity;
-      for (let run = 0; run < 2; run++) {
-        const started = performance.now();
-        readTerraform([{ name: "grants.json", text }]);
-        best = Math.min(best, performance.now() - started);
-      }
-      return best;
-    };
     const small = plan(250);
-    const large = plan(2_000);
-    fastest(small);
+    const large = plan(250 * GROWTH_FACTOR);
     // Once per role and secret: 8x the policies and users is about 8x the work, never 64x.
-    expect(fastest(large) / fastest(small)).toBeLessThan(24);
+    expect(
+      growth(
+        () => readTerraform([{ name: "grants.json", text: small }]),
+        () => readTerraform([{ name: "grants.json", text: large }]),
+        { samples: 3 },
+      ),
+    ).toBeLessThan(LINEAR_LIMIT);
     const g = readTerraform([{ name: "grants.json", text: large }]);
     expect(g.links.filter((l) => l.relation === "secret")).toHaveLength(2_000);
     expect(g.notDrawn).toEqual([]);
@@ -1393,10 +1418,10 @@ describe("Terraform import: review findings", () => {
 
   it("walks huge arrays in expressions one frame per level, and stops when the budget is spent", () => {
     const budget: RefBudget = { visits: TF_LIMITS.maxVisits - 10, steps: 0 };
-    const huge = new Array(1_000_000).fill({ references: ["aws_sqs_queue.q"] });
-    const started = performance.now();
-    const refs = collectRefs({ a: huge, b: { references: ["aws_sns_topic.t"] } }, budget);
-    expect(performance.now() - started).toBeLessThan(perfBudget(100));
+    // Counted, not timed: ten visits are left, so the walk reads about ten of the million elements, not all of them.
+    const huge = countingReads(new Array(1_000_000).fill({ references: ["aws_sqs_queue.q"] }));
+    const refs = collectRefs({ a: huge.items, b: { references: ["aws_sns_topic.t"] } }, budget);
+    expect(huge.reads()).toBeLessThanOrEqual(10);
     expect(budget.exhausted).toBe(true);
     expect(budget.visits).toBeLessThanOrEqual(TF_LIMITS.maxVisits + 1);
     expect(refs.get("b")).toBeUndefined();

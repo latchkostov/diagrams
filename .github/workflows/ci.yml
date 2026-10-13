@@ -14,7 +14,7 @@ permissions:
 
 env:
   # GitHub sets CI=true already; explicit because the suites depend on it (Playwright retries, workers and
-  # E2E_TARGET=build, Vitest timeouts, perfBudget scaling in src/test/perfBudget.ts).
+  # E2E_TARGET=build, Vitest timeouts).
   CI: "true"
 
 jobs:

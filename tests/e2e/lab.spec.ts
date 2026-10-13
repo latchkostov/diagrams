@@ -51,7 +51,9 @@ test.describe("lab", () => {
     await expect(page.getByTestId("lab-diagram-stats")).toContainText("150 nodes");
     const ms = Number(await page.getByTestId("lab-render-time").getAttribute("data-ms"));
     test.info().annotations.push({ type: "perf", description: `stress-150: stage ${ms} ms, wall ${wall} ms` });
-    expect(ms).toBeLessThan(5000);
+    // A hang backstop at the wait's own scale, not a speed budget: routing's cost is guarded by counts and ratios
+    // in src/canvas/geometry (docs/QUALITY.md § Timing in tests); the annotation records the time for trends.
+    expect(ms).toBeLessThan(15_000);
   });
 
   test("URL controls apply, and editing a control updates the URL", async ({ page }) => {

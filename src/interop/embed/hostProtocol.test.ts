@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SPEEDS as LIVE_SPEEDS } from "../../live/controller";
 import { exceedsDepth } from "../native";
 import {
@@ -195,13 +195,22 @@ describe("host embed: size bounds", () => {
     // 25 objects, each referring to the next twice: a tiny clone whose JSON would be 2^25 copies of the leaf.
     let node: Record<string, unknown> = { leaf: "x".repeat(10) };
     for (let i = 0; i < 25; i++) node = { a: node, b: node };
-    const started = performance.now();
-    expect(diagramText({ format: "diagrams/v1", nodes: [], edges: [], extra: node })).toEqual({
-      ok: false,
-      tooLarge: true,
-    });
-    // Stopped at the budget, not after building the JSON (which would take seconds and gigabytes).
-    expect(performance.now() - started).toBeLessThan(3000);
+    // Stopped at the budget, never serialised: building that JSON would take seconds and gigabytes. Proved by the
+    // serialiser never seeing it (a call fails at once), not by the clock.
+    const input = { format: "diagrams/v1", nodes: [], edges: [], extra: node };
+    const stringify = JSON.stringify;
+    const seen: unknown[] = [];
+    const spy = vi.spyOn(JSON, "stringify").mockImplementation(((value: unknown, replacer?: never, space?: number) => {
+      seen.push(value);
+      if (value === input || value === node) throw new Error("serialised the whole diagram");
+      return stringify(value, replacer, space);
+    }) as typeof JSON.stringify);
+    try {
+      expect(diagramText(input)).toEqual({ ok: false, tooLarge: true });
+      expect(seen.some((value) => value === input || value === node)).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("measures JSON size closely, and depth like the validator", () => {

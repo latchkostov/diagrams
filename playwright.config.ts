@@ -78,9 +78,16 @@ const DEV_ONLY = /@dev|library-regressions\.spec\.ts|ai-privacy\.spec\.ts/;
  * `vite build` directly (not `pnpm build`) so another lane's in-progress type errors don't block the suite;
  * tsc runs separately in `pnpm check`. Output goes to a scratch dir so the real dist/ is untouched.
  */
+/**
+ * Every server listens on IPv4 loopback, and the browser resolves `localhost` there. Left to themselves, Vite binds
+ * `localhost` to one address (`[::1]` on some machines) while Chrome's connections to `localhost` can go to the
+ * other: now and then a request was refused (net::ERR_CONNECTION_REFUSED) from a server that was up. Pages keep
+ * `localhost` as their origin, so the self-hosting host pages on 127.0.0.1 stay another origin.
+ */
+const LOOPBACK = "127.0.0.1";
 const viteBuild = (outDir: string) => `pnpm exec vite build --outDir ${outDir} --emptyOutDir --logLevel error`;
 const serve = (outDir: string, extra: string) =>
-  `${prebuilt ? "" : `${viteBuild(outDir)} && `}pnpm exec vite preview --outDir ${outDir} ${extra}`;
+  `${prebuilt ? "" : `${viteBuild(outDir)} && `}pnpm exec vite preview --outDir ${outDir} --host ${LOOPBACK} ${extra}`;
 
 const E2E_DIST = "tests/.output/e2e-dist";
 const PREVIEW_DIST = "tests/.output/preview-dist";
@@ -99,7 +106,7 @@ const selfHost = [
 const OWN_BUILD = /(subpath|self-host|self-host-locked)\.spec\.ts/;
 
 const devWebServer = {
-  command: `pnpm dev --port ${devServer.port} --strictPort`,
+  command: `pnpm dev --port ${devServer.port} --strictPort --host ${LOOPBACK}`,
   url: `http://localhost:${devServer.port}`,
   reuseExistingServer: devServer.explicit || !CI,
   timeout: 60_000,
@@ -129,6 +136,7 @@ export default defineConfig({
     : [["list"], ["html", { outputFolder: "./tests/.output/report", open: "never" }]],
   use: {
     baseURL: `http://localhost:${app.port}`,
+    launchOptions: { args: [`--host-resolver-rules=MAP localhost ${LOOPBACK}`] },
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",

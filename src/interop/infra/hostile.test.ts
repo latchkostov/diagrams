@@ -5,6 +5,7 @@ import { sniffInfra } from "../sniff";
 import { interpolate } from "./compose";
 import { parseUrl, readSetting } from "./settings";
 import { TOO_MANY_ALIASES } from "./yaml";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 
 // Everything an import reads is untrusted (docs/research/imports.md § Security and § Privacy): alias bombs,
 // deep nesting, prototype keys, adversarial patterns, credentials in values, and never a network request.
@@ -15,10 +16,10 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("hostile input", () => {
   it("rejects the YAML alias bomb quickly, saying why", async () => {
-    const started = performance.now();
+    // The bound is the alias limit, proved by the error it throws: without it the bomb expands to millions of values
+    // (and fails another way, or runs into the test's timeout).
     const outcome = await importText(read("hostile/yaml-bomb.yaml"), "yaml-bomb.yaml");
     expect(outcome).toEqual({ ok: false, error: TOO_MANY_ALIASES });
-    expect(performance.now() - started).toBeLessThan(1_000);
   });
 
   it("never fetches anything: not a remote $ref, an include or an env file", async () => {
@@ -74,28 +75,33 @@ x-tag: !!js/function "function () { return 1 }"
   });
 
   it("runs every pattern in linear time on adversarial input", () => {
-    const inputs = [
-      "a".repeat(100_000),
-      "${".repeat(50_000),
-      "$".repeat(100_000),
-      ":".repeat(100_000),
-      "http://" + "a.".repeat(50_000),
-      "postgres://" + "@".repeat(100_000),
-      "jdbc:" + "x://".repeat(25_000),
-      "_".repeat(100_000) + "TOPIC",
-      ",".repeat(100_000),
-    ];
-    for (const input of inputs) {
-      const started = performance.now();
-      readSetting(input, input);
-      readSetting("DATABASE_URL", input);
-      readSetting("KAFKA_BOOTSTRAP_SERVERS", input);
-      readSetting("INPUT_TOPICS", input);
-      parseUrl(input);
-      interpolate(input);
-      sniffInfra(input);
-      detectFormat(input);
-      expect(performance.now() - started, input.slice(0, 20)).toBeLessThan(250);
+    // Each hostile string against an eighth of it: a pattern that backtracks takes 64 times as long or more, a linear
+    // one about 8. A ratio, not a budget in ms, so a busy machine doesn't fail it.
+    for (const [head, unit, times, tail = ""] of [
+      ["", "a", 40_000],
+      ["", "${", 20_000],
+      ["", "$", 40_000],
+      ["", ":", 40_000],
+      ["http://", "a.", 20_000],
+      ["postgres://", "@", 40_000],
+      ["jdbc:", "x://", 10_000],
+      ["", "_", 40_000, "TOPIC"],
+      ["", ",", 40_000],
+    ] as const) {
+      const run = (n: number) => {
+        const input = head + unit.repeat(n) + tail;
+        return () => {
+          readSetting(input, input);
+          readSetting("DATABASE_URL", input);
+          readSetting("KAFKA_BOOTSTRAP_SERVERS", input);
+          readSetting("INPUT_TOPICS", input);
+          parseUrl(input);
+          interpolate(input);
+          sniffInfra(input);
+          detectFormat(input);
+        };
+      };
+      expect(growth(run(times / GROWTH_FACTOR), run(times), { samples: 3 }), head + unit).toBeLessThan(LINEAR_LIMIT);
     }
   });
 });

@@ -286,7 +286,7 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
 - **Big imports** pick namespaces (see "Big imports" under docker-compose, which every format shares).
 - **Tests.** `infra/kubernetes.test.ts` (the fixture set end to end, the Secret-values leak test, KEDA, Strimzi in
   both versions, entry points, identities, host forms, not-drawn grouping, kubectl JSON and Lists, Helm, alias
-  bomb, nesting, 2,000 documents under `perfBudget`, the resource cap, prototype keys, linear patterns, and the
+  bomb, nesting, 2,000 documents (and a linear-time ratio), the resource cap, prototype keys, linear patterns, and the
   review's cases: per-container environments, `envFrom` precedence, bounded expansion and the settings budget, DNS
   parsing, Kafka identity without manifests, owners that aren't drawn, JSON in any key order), the
   Kubernetes part of `tests/e2e/imports.spec.ts` (Open… and drop, boundaries, the Ingress entry, config, secret
@@ -381,7 +381,7 @@ and the entry grows by about 240 B (the key-order-independent sniff, the format 
 - **Tests.** `infra/terraform.test.ts` (both fixtures end to end, flows, dependencies through modules, grants,
   boundaries, the report and Draw everything, overlap-free layout, the no-values leak test over both fixtures and
   Draw everything, sensitive attributes, outside endpoints, glue across services, scoped names, the type table,
-  `.tf`, binary and raw-state messages, key order, 10,000 resources under `perfBudget`, deep modules, reference
+  `.tf`, binary and raw-state messages, key order, 10,000 resources (and a linear-time ratio), deep modules, reference
   cycles and long chains, prototype keys, linear patterns, and the review's cases: distinct subscription routes,
   module-output ancestors, repeated references, grants across thousands of policies, saturated ARNs in either
   order, rules per bus, an Object-named type, huge arrays), the Terraform part of `tests/e2e/imports.spec.ts`

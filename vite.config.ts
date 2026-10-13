@@ -162,7 +162,8 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     environment: "node",
-    // CI runners with coverage are several times slower; perf budgets scale too (src/test/perfBudget.ts).
+    // CI runners with coverage are several times slower. Timing tests compare sizes or count work instead of
+    // budgets in ms (docs/QUALITY.md § Timing in tests), so only the timeout scales.
     testTimeout: process.env.CI ? 40_000 : 5_000,
     css: { include: [/tokens\.css/] },
     typecheck: {

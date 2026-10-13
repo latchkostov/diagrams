@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { perfBudget } from "../test/perfBudget";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import {
   boundsOf,
   clearOffset,
@@ -225,18 +225,25 @@ describe("findClearTranslation (the one free-place search)", () => {
     const field = Array.from({ length: 3000 }, (_, i) =>
       box((i % 60) * 120 - 200, Math.floor(i / 60) * 30 - 200, 100, 20),
     );
-    const t = performance.now();
-    findClearTranslation(boxes, field, { budget: { tests: 50_000, accepts: 10 } });
-    expect(performance.now() - t).toBeLessThan(perfBudget(100));
+    const budget = { tests: 50_000, accepts: 10 };
+    const search = (maxRings: number) => () => findClearTranslation(boxes, field, { budget, maxRings });
+    expect(search(40)()).toBeNull();
+    // Measured against a one-ring search of the same field (indexing it, then eight spots): the budgeted 40-ring
+    // search costs a few times that, an unbounded one (every ring, every box) over a hundred. A comparison in the
+    // same run, not a budget in ms, so a busy machine doesn't fail it.
+    expect(growth(search(1), search(40))).toBeLessThan(LINEAR_LIMIT);
   });
 
   it("indexes obstacles once: hundreds of boxes against thousands of far obstacles stay fast", () => {
-    const boxes = Array.from({ length: 200 }, (_, i) => box((i % 20) * 300, Math.floor(i / 20) * 200));
-    const far = Array.from({ length: 5000 }, (_, i) => box(50_000 + (i % 100) * 300, (i / 100) * 200));
-    const blocker = box(-100, -100, 7000, 400);
-    const t = performance.now();
-    const d = findClearTranslation(boxes, [...far, blocker]);
-    expect(performance.now() - t).toBeLessThan(perfBudget(100));
-    expect(d).not.toBeNull();
+    // Eight times the boxes and the far obstacles against an eighth: indexed once, about 8 times the work; each box
+    // tested against every obstacle, 64. A ratio, not a budget in ms.
+    const scene = (n: number) => {
+      const boxes = Array.from({ length: n }, (_, i) => box((i % 20) * 300, Math.floor(i / 20) * 200));
+      const far = Array.from({ length: n * 25 }, (_, i) => box(50_000 + (i % 100) * 300, (i / 100) * 200));
+      const blocker = box(-100, -100, 7000, 400);
+      return () => findClearTranslation(boxes, [...far, blocker]);
+    };
+    expect(scene(200)()).not.toBeNull();
+    expect(growth(scene(25), scene(25 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
   });
 });

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLab, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLab, expectNoErrors, pageLoadTimeout } from "./fixtures";
 
 // Live view: the toggle, injection from the context menu, saved simulations, narration, the storm
 // flow, presentation mode and the Lab presets. Selectors are data-testid only. Runs are seeded, and
@@ -8,13 +8,22 @@ import { test, expect, gotoCanvas, gotoLab, expectNoErrors } from "./fixtures";
 const KAFKA = "kafka-order-pipeline";
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
 
-async function openNodeMenu(page: Page, nodeId: string, actionId?: string) {
-  // Fit or inspector resizing can dismiss a menu between opening it and choosing an action.
+/**
+ * Opens a node's menu and chooses `actionId` (or, with `click` false, waits for it to show). A Simulation action
+ * waits for the live session first: its code loads on first use (seconds on a busy dev server), and a menu opened
+ * before it arrives has no Simulation items and doesn't grow them. Then retried whole: a fit or the inspector
+ * resizing can dismiss the menu.
+ */
+async function openNodeMenu(page: Page, nodeId: string, actionId?: string, click = true) {
+  if (actionId?.startsWith("sim."))
+    await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(async () => {
     await page.getByTestId(`node-${nodeId}`).click({ button: "right" });
     await expect(page.getByTestId("context-menu")).toBeVisible({ timeout: 1000 });
-    if (actionId) await menuItem(page, actionId).click({ timeout: 1000 });
-  }).toPass({ timeout: 5000 });
+    if (!actionId) return;
+    if (click) await menuItem(page, actionId).click({ timeout: 1000 });
+    else await expect(menuItem(page, actionId)).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
 }
 
 const processed = async (page: Page, nodeId: string) =>
@@ -67,8 +76,7 @@ test.describe("live view", () => {
     await expect(page.getByTestId("live-controls")).toBeVisible();
     await expect(page.getByTestId("live-in-system")).toHaveAttribute("data-count", "0");
 
-    await openNodeMenu(page, "inventory");
-    await expect(menuItem(page, "sim.storm")).toBeVisible();
+    await openNodeMenu(page, "inventory", "sim.storm", false);
     await menuItem(page, "sim.inject").click();
     await menuItem(page, "sim.inject:10").click();
 
@@ -81,11 +89,9 @@ test.describe("live view", () => {
     await expect(page.getByTestId("live-in-system")).toHaveAttribute("data-count", "0");
 
     // Killing a node shows on its badge, and the event log can filter to it.
-    await openNodeMenu(page, "payments");
-    await menuItem(page, "sim.kill").click();
+    await openNodeMenu(page, "payments", "sim.kill");
     await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "down");
-    await openNodeMenu(page, "inventory");
-    await menuItem(page, "sim.behaviour").click();
+    await openNodeMenu(page, "inventory", "sim.behaviour");
     await menuItem(page, "sim.events").click();
     await expect(page.getByTestId("live-events")).toBeVisible();
     await expect(page.getByTestId("live-events-filter")).toHaveValue("inventory");
@@ -137,8 +143,7 @@ test.describe("live view", () => {
   test("Start a storm here creates a simulation that persists across reload", async ({ page, consoleErrors }) => {
     await page.goto("./?view=canvas&example=azure-service-bus-integration&live=1&traffic=0");
     await expect(page.getByTestId("live-controls")).toBeVisible();
-    await openNodeMenu(page, "ingest");
-    await menuItem(page, "sim.storm").click();
+    await openNodeMenu(page, "ingest", "sim.storm");
 
     const panel = page.getByTestId("sim-panel");
     await expect(panel).toBeVisible();
@@ -273,8 +278,7 @@ test.describe("live view", () => {
 
   test("timeline action controls have accessible names", async ({ page }) => {
     await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
-    await openNodeMenu(page, "inventory");
-    await menuItem(page, "sim.storm").click();
+    await openNodeMenu(page, "inventory", "sim.storm");
     await page.getByTestId("sim-panel-section-timeline-toggle").click();
     await page.getByTestId("sim-panel-add-step").click();
     const action = page.getByTestId("sim-panel-step-0-action");
@@ -332,8 +336,7 @@ test.describe("live view", () => {
   test("custom injection is a labelled modal that traps focus and restores it on close", async ({ page }) => {
     await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     const open = async () => {
-      await openNodeMenu(page, "inventory");
-      await menuItem(page, "sim.inject").click();
+      await openNodeMenu(page, "inventory", "sim.inject");
       await menuItem(page, "sim.inject:custom").click();
     };
     await open();
@@ -394,8 +397,7 @@ test.describe("live view", () => {
     // simulation (only under load, when it was still pending at install time).
     await page.clock.install();
     await page.goto("./?view=canvas&example=azure-service-bus-integration&live=1&traffic=0");
-    await openNodeMenu(page, "ingest");
-    await menuItem(page, "sim.storm").click();
+    await openNodeMenu(page, "ingest", "sim.storm");
     await page.getByTestId("sim-panel-title").fill("Immediate storm");
     await page.getByTestId("sim-panel-traffic-0-type").fill("ImmediateEvent");
     await page.getByTestId("sim-panel-traffic-0-count").fill("37");

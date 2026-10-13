@@ -178,7 +178,21 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
 
     await page.keyboard.press("Escape");
     await select(page, "hub");
-    await page.getByTestId("grow-chip-hub").click();
+    // Selecting opens the inspector, which narrows the canvas: the chip (right of the hub) can end up under it.
+    // Fit the diagram into what's left, and click once the chip is clear of the inspector (a layout race: the
+    // panel and the pan settle after the click that selected).
+    await fitDiagram(page);
+    const growChip = page.getByTestId("grow-chip-hub");
+    await expect
+      .poll(async () => {
+        const [chipBox, panel] = await Promise.all([
+          growChip.boundingBox(),
+          page.getByTestId("inspector").boundingBox(),
+        ]);
+        return !!chipBox && (!panel || chipBox.x + chipBox.width <= panel.x);
+      })
+      .toBe(true);
+    await growChip.click();
     await expect(page.getByTestId("quick-add")).toBeVisible();
     // The outline shows where it will land: right of the hub.
     const outline = await box(page.getByTestId("landing-outline"));

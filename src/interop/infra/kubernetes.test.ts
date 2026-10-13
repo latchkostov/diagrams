@@ -9,15 +9,33 @@ import type { ImportReport } from "./graph";
 import { importKubernetes, replayOutcome } from "./pipeline";
 import { HELM_TEMPLATE, MAX_RESOURCES, SecretUsers } from "./kubernetes";
 import { parseServiceHost, WorkloadNames } from "./k8sHosts";
-import { ENV_LIMITS, expandVars, OPAQUE } from "./k8sSettings";
+import { containerEnv, ENV_LIMITS, expandVars, newEnvBudget, OPAQUE } from "./k8sSettings";
 import { MAX_VALUE } from "./settings";
 import { TOO_MANY_ALIASES } from "./yaml";
-import { perfBudget } from "../../test/perfBudget";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { runChecks } from "../../checks/run";
 
 // Kubernetes import against the self-written fixture set (tests/fixtures/imports/k8s), as
 // docs/research/imports.md § Mapping: Kubernetes describes it, plus KEDA, Strimzi, entry points, identities,
 // what isn't drawn, and hostile input.
+
+/**
+ * While `parsed.cache` is set, each text is parsed once: a scaling test then times the reader, not the YAML library
+ * (whose time would hide a quadratic reader). Off everywhere else.
+ */
+const parsed = vi.hoisted(() => ({ cache: undefined as Map<string, unknown[]> | undefined }));
+vi.mock("./yaml", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./yaml")>();
+  return {
+    ...actual,
+    readYaml(text: string, fileName: string): unknown[] {
+      if (!parsed.cache) return actual.readYaml(text, fileName);
+      const docs = parsed.cache.get(text) ?? actual.readYaml(text, fileName);
+      parsed.cache.set(text, docs);
+      return docs;
+    },
+  };
+});
 
 const DIR = "tests/fixtures/imports/k8s";
 const FIXTURES = readdirSync(DIR)
@@ -502,23 +520,17 @@ ${deployment("orders-app", "example/orders", "", "shop").replace(
     // the workloads per user would be quadratic: 8x the workloads and users would take 64x as long. Compared against
     // an eighth of the input, not a wall-clock budget; the fastest of a few runs evens out noise. Users whose Secret
     // nobody uses are the common case and the worst for a scan.
-    const fastest = (n: number) => {
-      let best = Infinity;
-      for (let run = 0; run < 3; run++) {
-        const started = performance.now();
-        const index = new SecretUsers();
-        for (let i = 0; i < n; i++) index.add(`ns-${i % 40}`, `own-${i}`, `w${i}`);
-        let found = 0;
-        for (let i = 0; i < n * 5; i++) found += index.get(`ns-${i % 40}`, `user-${i}`).length;
-        best = Math.min(best, performance.now() - started);
-        expect(found).toBe(0);
-        expect(index.get(`ns-${(n - 1) % 40}`, `own-${n - 1}`)).toEqual([`w${n - 1}`]);
-      }
-      return best;
+    const run = (n: number) => () => {
+      const index = new SecretUsers();
+      for (let i = 0; i < n; i++) index.add(`ns-${i % 40}`, `own-${i}`, `w${i}`);
+      let found = 0;
+      for (let i = 0; i < n * 5; i++) found += index.get(`ns-${i % 40}`, `user-${i}`).length;
+      return { index, found };
     };
-    fastest(1_000); // warm up the JIT
-    const ratio = fastest(8_000) / fastest(1_000);
-    expect(ratio).toBeLessThan(24);
+    const { index, found } = run(8_000)();
+    expect(found).toBe(0);
+    expect(index.get(`ns-${7_999 % 40}`, "own-7999")).toEqual(["w7999"]);
+    expect(growth(run(1_000), run(1_000 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
   });
 
   it("never reads the Secret's values", () => {
@@ -952,32 +964,37 @@ metadata:
   });
 
   it("runs its own patterns in linear time on adversarial input", () => {
-    for (const evil of [
-      "$(".repeat(50_000),
-      "$$".repeat(50_000),
-      "{{" + " ".repeat(200_000),
-      "{{-".repeat(50_000),
-      "a-kafka-".repeat(10_000),
-      ".svc".repeat(30_000),
-    ]) {
-      const text = `${deployment("a", "example/a").replace(
+    // Each hostile value against an eighth of it: a pattern that backtracks takes 64 times as long or more, a linear
+    // one about 8 (parsing included). A ratio, not a budget in ms, so a busy machine doesn't fail it.
+    const manifest = (evil: string) =>
+      `${deployment("a", "example/a").replace(
         "          image: example/a\n",
         `          image: example/a\n          env: [{ name: X_URL, value: ${JSON.stringify(evil)} }, { name: KAFKA_BROKERS, value: ${JSON.stringify(evil)} }]\n`,
       )}---\napiVersion: v1\nkind: ConfigMap\nmetadata: { name: c }\ndata: { k: ${JSON.stringify(evil)} }\n`;
-      const started = performance.now();
-      importKubernetes([{ name: "evil.yaml", text }]);
-      expect(performance.now() - started, evil.slice(0, 12)).toBeLessThan(perfBudget(1_000));
+    for (const [unit, times, head = ""] of [
+      ["$(", 12_000],
+      ["$$", 12_000],
+      [" ", 48_000, "{{"],
+      ["{{-", 12_000],
+      ["a-kafka-", 2_400],
+      [".svc", 8_000],
+    ] as const) {
+      const run = (n: number) => {
+        const text = manifest(head + unit.repeat(n));
+        return () => importKubernetes([{ name: "evil.yaml", text }]);
+      };
+      expect(growth(run(times / GROWTH_FACTOR), run(times), { samples: 3 }), head + unit).toBeLessThan(LINEAR_LIMIT);
     }
   });
 
   it("the alias bomb fails fast, in a manifest too", async () => {
+    // The bound is the alias limit, proved by the error it throws: without it the bomb expands to millions of
+    // values and the test runs into its timeout.
     const bomb = readFileSync("tests/fixtures/imports/hostile/yaml-bomb.yaml", "utf8");
-    const started = performance.now();
     const outcome = await importText(
       `apiVersion: v1\nkind: ConfigMap\nmetadata: { name: x }\n${bomb.replace("services:", "data:")}`,
     );
     expect(outcome).toEqual({ ok: false, error: TOO_MANY_ALIASES });
-    expect(performance.now() - started).toBeLessThan(perfBudget(1_000));
   });
 
   it("refuses deep nesting", async () => {
@@ -989,9 +1006,10 @@ metadata:
     expect(outcome).toMatchObject({ ok: false, error: expect.stringMatching(/nested too deeply/) });
   });
 
-  it("reads 2,000 documents within budget, and refuses more", () => {
-    const docs = Array.from(
-      { length: 1_000 },
+  /** `n` Deployments, each with its Service in one of 20 namespaces, each calling the next one by its host. */
+  const chain = (n: number) =>
+    Array.from(
+      { length: n },
       (_, i) => `---
 apiVersion: apps/v1
 kind: Deployment
@@ -999,7 +1017,7 @@ metadata: { name: svc-${i}, namespace: ns-${i % 20} }
 spec:
   template:
     metadata: { labels: { app: svc-${i} } }
-    spec: { containers: [{ name: a, image: example/a, env: [{ name: NEXT_URL, value: "http://svc-${(i + 1) % 1_000}.ns-${(i + 1) % 20}" }] }] }
+    spec: { containers: [{ name: a, image: example/a, env: [{ name: NEXT_URL, value: "http://svc-${(i + 1) % n}.ns-${(i + 1) % 20}" }] }] }
 ---
 apiVersion: v1
 kind: Service
@@ -1007,9 +1025,26 @@ metadata: { name: svc-${i}, namespace: ns-${i % 20} }
 spec: { selector: { app: svc-${i} } }
 `,
     ).join("");
-    const started = performance.now();
+
+  it("reads documents in linear time", () => {
+    // Eight times the workloads, Services and hosts take about eight times as long; matching each host or selector
+    // against every workload would take sixty-four. A ratio, not a budget in ms, so a busy machine doesn't fail it.
+    // Each text is parsed once, so the ratio is the reader's: the YAML library's linear time would hide it.
+    parsed.cache = new Map();
+    try {
+      const run = (n: number) => {
+        const text = chain(n);
+        return () => importKubernetes([{ name: "big.yaml", text }]);
+      };
+      expect(growth(run(125), run(125 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
+    } finally {
+      parsed.cache = undefined;
+    }
+  }, 30_000);
+
+  it("reads 2,000 documents, and refuses more", () => {
+    const docs = chain(1_000);
     const { report } = k8s(docs);
-    expect(performance.now() - started).toBeLessThan(perfBudget(6_000));
     // Over 300 nodes: the import draws some namespaces, and every one of them drawn is the whole set.
     expect(report.nodes).toBeLessThanOrEqual(300);
     const pick = report.pick!;
@@ -1171,17 +1206,24 @@ stringData: { DB_HOST: db-b-from-secret }
     });
 
     it("a chain of doubling variables stays small and fast", () => {
-      const vars = [`{ name: V0, value: "${"x".repeat(64)}" }`];
-      for (let i = 1; i <= 40; i++) vars.push(`{ name: V${i}, value: "$(V${i - 1})$(V${i - 1})" }`);
-      vars.push('{ name: DB_URL, value: "http://$(V40)" }', '{ name: CACHE_HOST, value: "other" }');
-      const started = performance.now();
-      const { diagram, report } = k8s(
-        pods("api", [`{ name: api, image: example/api, env: [${vars.join(", ")}] }`]) + targets,
-      );
-      expect(performance.now() - started).toBeLessThan(perfBudget(1_000));
+      // Each variable doubles the one before: unbounded, the fortieth would be 64 × 2^40 characters. Bounded, every
+      // value stops at MAX_VALUE (OPAQUE past it), so eight times the chain costs about eight times the work, not
+      // 2^35 times. A ratio, not a budget in ms; the size of the result is the bound itself.
+      const container = (length: number) => {
+        const vars = [`{ name: V0, value: "${"x".repeat(64)}" }`];
+        for (let i = 1; i <= length; i++) vars.push(`{ name: V${i}, value: "$(V${i - 1})$(V${i - 1})" }`);
+        vars.push(`{ name: DB_URL, value: "http://$(V${length})" }`, '{ name: CACHE_HOST, value: "other" }');
+        return pods("api", [`{ name: api, image: example/api, env: [${vars.join(", ")}] }`]) + targets;
+      };
+      const { diagram, report } = k8s(container(40));
       expect(JSON.stringify([diagram, report]).length).toBeLessThan(50_000);
       // The bounded values don't stop the rest of the container's settings from being read.
       expect(relationBetween(diagram, "api", "other")).toBe("request");
+      const run = (length: number) => {
+        const text = container(length);
+        return () => importKubernetes([{ name: "chain.yaml", text }]);
+      };
+      expect(growth(run(5), run(5 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
     });
 
     it("budgets ConfigMap settings across workloads, and says so", () => {
@@ -1189,10 +1231,28 @@ stringData: { DB_HOST: db-b-from-secret }
       const many = Array.from({ length: 500 }, (_, i) =>
         pods(`w${i}`, ["{ name: a, image: example/a, envFrom: [{ configMapRef: { name: big } }] }"]),
       ).join("");
-      const started = performance.now();
       const { report } = k8s(`apiVersion: v1\nkind: ConfigMap\nmetadata: { name: big }\ndata:\n${data}\n${many}`);
-      expect(performance.now() - started).toBeLessThan(perfBudget(6_000));
       expect(report.notes.some((n) => n.startsWith("Settings past the first 100,000 weren't read"))).toBe(true);
+    });
+
+    it("stops reading a shared ConfigMap once the budget runs out, however many workloads share it", () => {
+      // Counted, not timed: every value a container reads from the ConfigMap is one read of its data. 500 workloads
+      // sharing 1,000 settings would be 500,000 reads; the budget stops at 100,000, and each container after that
+      // gives up at its first setting.
+      let reads = 0;
+      const data = new Proxy(Object.fromEntries(Array.from({ length: 1_000 }, (_, i) => [`K${i}`, `v${i}`])), {
+        get(target, key, receiver) {
+          if (typeof key === "string") reads++;
+          return Reflect.get(target, key, receiver) as unknown;
+        },
+      });
+      const sources = { configMap: () => data, secretKeys: () => undefined };
+      const container = { envFrom: [{ configMapRef: { name: "big" } }] };
+      const budget = newEnvBudget();
+      const envs = Array.from({ length: 500 }, () => containerEnv(container, sources, budget));
+      expect(envs.filter(Boolean)).toHaveLength(ENV_LIMITS.maxSettings / 1_000);
+      expect(budget.exhausted).toBe(true);
+      expect(reads).toBeLessThanOrEqual(ENV_LIMITS.maxSettings + 500);
     });
   });
 
@@ -1230,25 +1290,20 @@ stringData: { DB_HOST: db-b-from-secret }
       // the workloads and hosts would take 64x as long. Compared against an eighth of the input, not a wall-clock
       // budget, so a slow or busy machine (CI with coverage) doesn't fail it; the fastest of a few runs evens out
       // noise. Unresolved hosts are the worst case: every reading is tried and none is found.
-      const fastest = (n: number) => {
+      const resolveAll = (n: number) => {
         const names = new WorkloadNames<{ key: string }>();
         for (let i = 0; i < n; i++) names.add("Deployment", "shop", `w${i}`, { key: `w${i}` });
         const services = new Map<string, string[]>();
         const hosts = Array.from({ length: n * 5 }, (_, i) => `missing-${i}`);
-        let best = Infinity;
-        for (let run = 0; run < 3; run++) {
-          const started = performance.now();
+        expect(hosts.filter((h) => names.resolve(h, "shop", services))).toEqual([]);
+        expect(names.resolve(`w${n - 1}.shop.svc`, "other", services)).toEqual([`w${n - 1}`]);
+        return () => {
           let found = 0;
           for (const h of hosts) if (names.resolve(h, "shop", services)) found++;
-          best = Math.min(best, performance.now() - started);
-          expect(found).toBe(0);
-        }
-        expect(names.resolve(`w${n - 1}.shop.svc`, "other", services)).toEqual([`w${n - 1}`]);
-        return best;
+          return found;
+        };
       };
-      fastest(1_000); // warm up the JIT
-      const ratio = fastest(8_000) / fastest(1_000);
-      expect(ratio).toBeLessThan(24);
+      expect(growth(resolveAll(1_000), resolveAll(1_000 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
     });
   });
 

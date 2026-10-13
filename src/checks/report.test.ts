@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyOps } from "../ai";
 import type { DiagramFile } from "../model/types";
-import { perfBudget } from "../test/perfBudget";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import { agentReport, OUTPUT_BUDGET } from "./report";
 import { runChecks } from "./run";
 
@@ -68,20 +68,31 @@ describe("agentReport", () => {
   });
 
   it("keeps the longest prefix of many findings, in linear time", () => {
-    const d: DiagramFile = {
-      format: "diagrams/v1",
-      title: "Many",
-      nodes: [{ id: "api", stencil: "service.node", label: "API", x: 0, y: 0 }],
-      edges: [],
+    /** One service writing to `n` topics nobody reads: a finding each. */
+    const many = (n: number) => {
+      const d: DiagramFile = {
+        format: "diagrams/v1",
+        title: "Many",
+        nodes: [{ id: "api", stencil: "service.node", label: "API", x: 0, y: 0 }],
+        edges: [],
+      };
+      for (let i = 0; i < n; i++) {
+        d.nodes.push({ id: `t${i}`, stencil: "kafka.topic", label: `topic.${i}`, x: 300, y: i * 100 });
+        d.edges.push({ id: `e${i}`, from: "api", to: `t${i}`, kind: "async" });
+      }
+      return runChecks(d);
     };
-    for (let i = 0; i < 3_000; i++) {
-      d.nodes.push({ id: `t${i}`, stencil: "kafka.topic", label: `topic.${i}`, x: 300, y: i * 100 });
-      d.edges.push({ id: `e${i}`, from: "api", to: `t${i}`, kind: "async" });
-    }
-    const result = runChecks(d);
-    const start = performance.now();
+    // Eight times the findings against an eighth: about 8 times the work. Measuring the whole list and dropping
+    // findings until it fits would be 64. A ratio, not a budget in ms, so a busy machine doesn't fail it.
+    const small = many(375);
+    const result = many(375 * GROWTH_FACTOR);
+    expect(
+      growth(
+        () => agentReport(small),
+        () => agentReport(result),
+      ),
+    ).toBeLessThan(LINEAR_LIMIT);
     const out = agentReport(result);
-    expect(performance.now() - start).toBeLessThan(perfBudget(50));
     expect(JSON.stringify(out).length).toBeLessThanOrEqual(OUTPUT_BUDGET);
     expect(out.findings.map((f) => f.id)).toEqual(result.findings.slice(0, out.findings.length).map((f) => f.id));
     expect(out.more).toBe(

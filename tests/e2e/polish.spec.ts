@@ -16,19 +16,26 @@ const box = async (l: Locator) => {
 const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-/** Distinct viewport transforms seen over half a second after `act` (1 or 2 = it jumped, more = it animated). */
+/**
+ * Distinct viewport transforms after clicking `testId`: from the first frame the view moves, over the 20 frames
+ * after it (2 = it jumped, more = it animated). Counted in frames, not over a span of wall time, so a busy machine
+ * (fewer frames a second, a late first move) doesn't change the answer.
+ */
 async function transformsAfter(page: Page, testId: string) {
   return page.getByTestId("canvas-wrap").evaluate(async (wrap, id) => {
     const viewport = wrap.querySelector<HTMLElement>(".react-flow__viewport");
     const button = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
     if (!viewport || !button) throw new Error("missing viewport or button");
-    const seen = new Set([viewport.style.transform]);
+    const frame = () => new Promise((r) => requestAnimationFrame(r));
+    const before = viewport.style.transform;
+    const seen = new Set([before]);
     button.click();
-    const end = performance.now() + 500;
-    while (performance.now() < end) {
-      await new Promise((r) => requestAnimationFrame(r));
+    for (let i = 0; i < 300 && viewport.style.transform === before; i++) await frame();
+    for (let i = 0; i < 20; i++) {
       seen.add(viewport.style.transform);
+      await frame();
     }
+    seen.add(viewport.style.transform);
     return seen.size;
   }, testId);
 }
@@ -109,7 +116,7 @@ test.describe("polish", () => {
     expect(await transformsAfter(page, "fit-view-button")).toBeGreaterThan(2);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await panAway(page);
-    expect(await transformsAfter(page, "fit-view-button")).toBeLessThanOrEqual(2);
+    expect(await transformsAfter(page, "fit-view-button")).toBe(2);
   });
 
   test("React Flow's credit stays visible, clear of the live bar and the first-run hint", async ({ page }) => {

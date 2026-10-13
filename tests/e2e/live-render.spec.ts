@@ -1,5 +1,4 @@
 import type { Page } from "@playwright/test";
-import { perfBudget } from "../../src/test/perfBudget";
 import { test, expect, expectNoErrors, gotoLive, livePaint } from "./fixtures";
 
 // The live view draws its particles, the overlay above the edge label pills, the marching edges and
@@ -264,32 +263,48 @@ const COUNT_DRAWS = `(() => {
       return original.apply(this, args);
     };
   }
-  window.__loaf = [];
-  try {
-    new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__loaf.push(e.duration); })
-      .observe({ type: "long-animation-frame" });
-  } catch {}
+  // The page's own animation frames: the main thread's frame count, whatever the worker manages to draw.
+  window.__ticks = 0;
+  const tick = () => {
+    window.__ticks++;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 })();`;
 
 declare global {
   interface Window {
     __draws: number;
-    __loaf: number[];
+    __ticks: number;
   }
 }
 
-/** Main-thread draw calls, worker frames and long animation frames over `ms` of live traffic. */
+/**
+ * Main-thread draw calls, frames drawn, and the main thread's busy time per animation frame of the page (not per
+ * frame the worker drew: a worker starved of CPU draws fewer), over `ms` of live traffic.
+ * The busy time is Chrome's own count of every task on the page's main thread (CDP Performance `TaskDuration`):
+ * animation frames and the UI clock's updates every 125 ms, worker messages, React commits, style and layout. It
+ * is counted in the thread's CPU time, so other processes competing for the CPU don't add to it.
+ */
 async function busyWindow(page: Page, ms: number) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Performance.enable", { timeDomain: "threadTicks" });
+  const taskSeconds = async () =>
+    (await cdp.send("Performance.getMetrics")).metrics.find((m) => m.name === "TaskDuration")?.value ?? 0;
   await page.evaluate(() => {
     window.__draws = 0;
-    window.__loaf.length = 0;
   });
   const frames = await count(page, "frames");
+  const ticks = await page.evaluate(() => window.__ticks);
+  const busy = await taskSeconds();
   await page.waitForTimeout(ms);
+  const busyMs = ((await taskSeconds()) - busy) * 1000;
+  const pageFrames = (await page.evaluate(() => window.__ticks)) - ticks;
+  await cdp.detach();
   return {
     draws: await page.evaluate(() => window.__draws),
     frames: (await count(page, "frames")) - frames,
-    longFrames: await page.evaluate(() => window.__loaf.reduce((a, b) => a + b, 0)),
+    msPerFrame: busyMs / Math.max(pageFrames, 1),
     // Animations that would repaint (CSS) or recomposite (compositor) every frame while live: each
     // holds input a frame deeper (docs/BACKLOG.md). Transient transitions don't count.
     running: await page.evaluate(() =>
@@ -314,13 +329,18 @@ test.describe("live rendering stays off the main thread", () => {
     expect(playing.frames, "the worker kept drawing").toBeGreaterThan(20);
     expect(playing.draws, "main-thread canvas calls per 1.5 s").toBe(0);
     expect(playing.running).toEqual([]);
-    expect(playing.longFrames).toBeLessThan(perfBudget(150));
 
     // The fallback really is on the main thread: the same check counts its drawing.
     await goLive(page, "main");
     await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(40);
-    const fallback = await busyWindow(page, 1000);
+    const fallback = await busyWindow(page, 1500);
     expect(fallback.draws).toBeGreaterThan(fallback.frames);
+    // And the point of the worker: the main thread's work per frame (all of it, not only the animation frames) is
+    // well under the fallback's, which draws it all there: about 0.4 to 0.6 of it, measured; 0.8 at most. Both
+    // measured in the same run, in thread CPU time. Not a budget in ms.
+    expect(playing.msPerFrame, JSON.stringify({ worker: playing, main: fallback })).toBeLessThan(
+      fallback.msPerFrame * 0.8,
+    );
     expectNoErrors(consoleErrors);
   });
 });

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import { relationOf } from "../../model/relations";
 import { estimateCardSize } from "../../canvas/nodes/size";
@@ -8,6 +8,19 @@ import type { ImportReport } from "./graph";
 import { importCompose } from "./pipeline";
 import { interpolate, readCompose } from "./compose";
 import { runChecks } from "../../checks/run";
+import { layoutImport } from "./layout";
+import { readYaml } from "./yaml";
+import { Links } from "./links";
+
+// Counted, where the hostile tests below need it: what was parsed and laid out.
+vi.mock("./yaml", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./yaml")>();
+  return { ...actual, readYaml: vi.fn(actual.readYaml) };
+});
+vi.mock("./layout", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./layout")>();
+  return { ...actual, layoutImport: vi.fn(actual.layoutImport) };
+});
 
 // docker-compose import against the self-written fixture (tests/fixtures/imports/compose), as
 // docs/research/imports.md § Mapping: docker-compose describes it.
@@ -383,9 +396,17 @@ services:
   it("refuses a graph over the connection budget before laying anything out", () => {
     const names = Array.from({ length: 400 }, (_, i) => `s${i}`);
     const text = `services:\n${names.map((n) => `  ${n}:\n    image: example/x\n    depends_on: [${names.filter((o) => o !== n).join(", ")}]`).join("\n")}\n`;
-    const started = performance.now();
-    expect(() => importCompose([{ name: "docker-compose.yml", text }])).toThrow(/more than 20,000 connections/);
-    expect(performance.now() - started).toBeLessThan(5_000);
+    // Counted, not timed: the budget is checked as each connection is found, so the reader stops at the 20,001st of
+    // the 159,600 and nothing is laid out.
+    vi.mocked(layoutImport).mockClear();
+    const checks = vi.spyOn(Links.prototype as unknown as { budget(): void }, "budget");
+    try {
+      expect(() => importCompose([{ name: "docker-compose.yml", text }])).toThrow(/more than 20,000 connections/);
+      expect(checks.mock.calls.length).toBeLessThanOrEqual(20_001);
+    } finally {
+      checks.mockRestore();
+    }
+    expect(layoutImport).not.toHaveBeenCalled();
   });
 
   it("parses a shared extends file once, and stops at a cycle", () => {
@@ -397,9 +418,10 @@ services:
       { length: 200 },
       (_, i) => `  s${i}:\n    extends: { file: ./common.yml, service: base }`,
     ).join("\n")}\n  loop-a:\n    extends: loop-b\n  loop-b:\n    extends: loop-a\n    image: example/loop\n`;
-    const started = performance.now();
+    // Counted, not timed: 200 services extend one service of common.yml, which is parsed once, not 200 times.
+    vi.mocked(readYaml).mockClear();
     const outcome = importCompose([{ name: "docker-compose.yml", text: app }], [{ name: "common.yml", text: base }]);
-    expect(performance.now() - started).toBeLessThan(3_000);
+    expect(vi.mocked(readYaml).mock.calls.filter(([, name]) => name === "common.yml")).toHaveLength(1);
     const { diagram: d } = ok(outcome);
     expect(relationBetween(d, "s0", "cache")).toBe("request");
     expect(relationBetween(d, "s199", "cache")).toBe("request");

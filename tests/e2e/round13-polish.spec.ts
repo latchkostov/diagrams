@@ -172,6 +172,8 @@ test("an Undo toast goes because Ctrl+Z undoes, long before it would expire, and
   consoleErrors,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
+  // A page clock (it runs in step with real time until paused), so the toast's expiry can be held off below.
+  await page.clock.install();
   await gotoCanvas(page, KAFKA);
   // Drag Payments service out of its boundary: the toast says so, with Undo.
   const p = await box(page, "node-payments");
@@ -181,14 +183,17 @@ test("an Undo toast goes because Ctrl+Z undoes, long before it would expire, and
   await page.mouse.move(p.x + p.width / 2 + 40, p.y + p.height / 2 + 60, { steps: 6 });
   await page.mouse.move(p.x + p.width / 2 + 60, p.y + p.height / 2 + 170, { steps: 12 });
   await page.mouse.up();
+  // An action toast lasts 6 s. Stop the page's clock at the drop, so its expiry can't fire however slow the run,
+  // then move it on just enough for the edit to settle into the history (350 ms). The toast is still there,
+  // frozen: if it goes after Ctrl+Z, Ctrl+Z took it. Logic, not a race against the 6 s.
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 50);
+  await page.clock.runFor(500);
   await expect(page.getByTestId("membership-undo")).toBeVisible();
-  const shown = Date.now();
   await expect(page.getByTestId("toast")).toContainText("left AKS");
   expect(inside(centre(await box(page, "node-payments")), await box(page, "group-aks"))).toBe(false);
   await page.keyboard.press(`${MOD}+z`);
-  // An action toast lasts 6 s. It must be gone well before that, so its own expiry can't pass this test.
-  await expect(page.getByTestId("toast")).toHaveCount(0, { timeout: 1_500 });
-  expect(Date.now() - shown).toBeLessThan(4_000);
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+  await page.clock.resume();
   await expect
     .poll(async () => inside(centre(await box(page, "node-payments")), await box(page, "group-aks")))
     .toBe(true);
