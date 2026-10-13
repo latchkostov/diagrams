@@ -62,7 +62,7 @@ export function HowTo({
           <p className="ai-way-title">Your coding agent</p>
           <p className="ai-way-text">
             Claude Code, Codex or the Claude apps: install the Live Diagrams skill, then ask it to diagram something. It
-            replies with a share link.
+            replies with an HTML file, the diagram file or a link.
           </p>
           <a
             className="ai-way-action"

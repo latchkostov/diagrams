@@ -59,10 +59,11 @@ async function buildWith(env: Record<string, string>): Promise<Output> {
 const LINK_MAKING = {
   strings: [
     "Share link copied", // Copy share link, and the Share link dialog
-    "Link with password copied", // Copy link with password…
-    "In the link", // Embed code…'s source that puts the diagram in its URL (the private one stays)
-    "export-share-link", // the File menu's rows
-    "export:share", // the canvas right-click's (and so the palette's) commands
+    "Link with password copied", // Link with password…
+    "In the link", // Embed code's source that puts the diagram in its URL (the private one stays)
+    "share-option-password", // Share…'s Link with password…
+    "share-option-embed-public", // Share…'s public section: Embed on a public page…
+    "share-public-toggle", // …and the step that opens it
   ],
   modules: [] as RegExp[],
   code: [] as RegExp[],

@@ -1,16 +1,17 @@
 import { readFileSync } from "node:fs";
 import type { BrowserContext, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia } from "./fixtures";
 import { filePayload } from "./html-viewer";
 
-// Sharing, export, embed and privacy, reviewed together (docs/DESIGN-REVIEW.md, round 21): every way out says who
-// can open what it makes, a private diagram's off rows say why from the keyboard too, and Esc always closes.
-// Every diagram here is public or synthetic.
+// Sharing, export, embed and privacy, reviewed together (docs/DESIGN-REVIEW.md, rounds 21 and 27): every way out says
+// who can open what it makes, a private diagram says why its links are gone from the keyboard too, and Esc always
+// closes. Share… itself (its order, focus and public step) is tests/e2e/share-chooser.spec.ts. Every diagram here is
+// public or synthetic.
 
 const SLUG = "kafka-order-pipeline";
 const PRIVATE_SHARE = "Private diagrams can't be shared as links. Export Interactive HTML instead.";
 
-/** An edited diagram of your own (not a pristine example), so Embed code… opens on "In the link". Returns its slug. */
+/** An edited diagram of your own (not a pristine example), so the public embed is "In the link". Returns its slug. */
 async function importDiagram(page: Page, title: string) {
   await page.getByTestId("import-input").setInputFiles({
     name: "plan.diagram.json",
@@ -79,31 +80,36 @@ const releaseCompression = (page: Page) =>
     for (const go of window.__compress.release.splice(0)) go();
   });
 
-/** Copy share link, then the toast's Details: the Share link dialog, opened from a toast that goes as it acts. */
-async function shareDetails(page: Page) {
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("export-share-link").click();
-  await expect(page.getByTestId("toast-share-details")).toBeVisible();
-}
-
-test("the File menu says who can open each link, and so does the toast", async ({ page, context, consoleErrors }) => {
+test("Share… says who can open each way out, and so does the Share link toast", async ({
+  page,
+  context,
+  consoleErrors,
+}) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await gotoCanvas(page, SLUG);
-  await page.getByTestId("file-button").click();
-  await expect(page.getByTestId("export-share-link")).toContainText("Anyone with the link can open it");
-  await expect(page.getByTestId("export-share-link-password")).toContainText(
-    "Only people with the password can open it",
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-option-html")).toContainText("Anyone who has this file can open it");
+  await expect(page.getByTestId("share-option-file")).toContainText("Anyone who has this file can open and edit it");
+  await expect(page.getByTestId("share-option-embed")).toContainText("the diagram never leaves your app");
+  await expect(page.getByTestId("share-option-password")).toContainText("Only people with the password can open it");
+  await expect(page.getByTestId("share-public-toggle")).toContainText("anyone with the link can open it");
+  await page.getByTestId("share-public-toggle").click();
+  await expect(page.getByTestId("share-option-link")).toContainText("Public: anyone with the link can open it.");
+  await expect(page.getByTestId("share-option-embed-public")).toContainText(
+    "Public: anyone who can see the page can open it.",
   );
-  await page.getByTestId("export-share-link").click();
-  await expect(page.getByTestId("toast").last()).toContainText("Anyone with the link can open the diagram.");
-  await page.getByTestId("toast-share-details").click();
+  await page.getByTestId("share-option-link").click();
   const dialog = page.getByTestId("share-link-dialog");
   await expect(dialog).toBeVisible();
   await expect(page.getByTestId("share-link-copy")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("toast").last()).toContainText("Anyone with the link can open the diagram.");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/#d=/);
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  // The toast that opened it is gone: the keyboard comes back to the canvas, not the page.
-  await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+  // Share… handed over to the dialog: Esc closes it, and the keyboard goes back to the File button, not the page.
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+  await expect(page.getByTestId("file-button")).toBeFocused();
   expectNoErrors(consoleErrors);
 });
 
@@ -118,25 +124,23 @@ test("Esc closes the Share link and Embed dialogs while their link is still bein
   const dialog = page.getByTestId("share-link-dialog");
 
   // Pending: Copy link is off, so the dialog holds focus itself, and Esc closes it.
-  await shareDetails(page);
   await holdCompression(page);
-  await page.getByTestId("toast-share-details").click();
+  await shareVia(page, "link");
   await expect(dialog).toBeVisible();
   await expect.poll(() => heldCompressions(page)).toBeGreaterThan(0);
   await expect(page.getByTestId("share-link-copy")).toBeDisabled();
   await expect(dialog).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+  await expect(page.getByTestId("file-button")).toBeFocused();
   // The link made after it closed doesn't bring it back.
   await releaseCompression(page);
   await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)));
   await expect(dialog).toHaveCount(0);
 
   // Focus the person moved while it was pending stays where they put it when the link is ready.
-  await shareDetails(page);
   await holdCompression(page);
-  await page.getByTestId("toast-share-details").click();
+  await shareVia(page, "link");
   await expect(dialog).toBeFocused();
   await page.getByTestId("share-link-dialog-close").focus();
   await releaseCompression(page);
@@ -145,15 +149,14 @@ test("Esc closes the Share link and Embed dialogs while their link is still bein
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
 
-  // Embed code… ▸ In the link, for a diagram of your own: the same while its code is made.
+  // Embed on a public page, for a diagram of your own (in the link): the same while its code is made.
   await importDiagram(page, "Pending plan");
   const before = await heldCompressions(page);
   await holdCompression(page);
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("export-embed").click();
+  await shareVia(page, "embed-public");
   const embed = page.getByTestId("embed-dialog");
   await expect(embed).toBeVisible();
-  await expect(page.getByTestId("embed-source-inline")).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByTestId("embed-inline-note")).toBeVisible();
   await expect.poll(() => heldCompressions(page)).toBeGreaterThan(before);
   await expect(page.getByTestId("embed-copy")).toBeDisabled();
   await expect(embed).toBeFocused();
@@ -165,7 +168,7 @@ test("Esc closes the Share link and Embed dialogs while their link is still bein
   expectNoErrors(consoleErrors);
 });
 
-test("a link refused for a diagram made private meanwhile offers Interactive HTML", async ({
+test("a link dialog closed because the diagram turned private meanwhile offers Interactive HTML", async ({
   page,
   context,
   consoleErrors,
@@ -179,10 +182,9 @@ test("a link refused for a diagram made private meanwhile offers Interactive HTM
   const downloads: string[] = [];
   page.on("download", (d) => downloads.push(d.suggestedFilename()));
 
-  // Copy share link starts making the link; another tab makes the diagram private before it's done.
+  // Share link… starts making the link; another tab makes the diagram private before it's done.
   await holdCompression(page);
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("export-share-link").click();
+  await shareVia(page, "link");
   await expect.poll(() => heldCompressions(page)).toBeGreaterThan(0);
   const other = await context.newPage();
   await other.goto(`./?view=canvas&example=${slug}&storage=test`);
@@ -191,7 +193,9 @@ test("a link refused for a diagram made private meanwhile offers Interactive HTM
   await other.close();
   await releaseCompression(page);
 
-  // No link: the toast says why, and its one action opens Interactive HTML for this diagram (it downloads nothing).
+  // No link: the dialog closed, the toast says why, and its one action opens Interactive HTML for this diagram (it
+  // downloads nothing).
+  await expect(page.getByTestId("share-link-dialog")).toHaveCount(0);
   await expect(page.getByTestId("toast").filter({ hasText: PRIVATE_SHARE })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
   await expect(page.getByTestId("toast-private-export")).toHaveText("Interactive HTML…");
@@ -221,8 +225,7 @@ test("the refusal's Interactive HTML… explains itself when no diagram is open"
   await expect(page.getByTestId("canvas-view")).toBeVisible();
   const slug = await importDiagram(page, "Gone plan");
   await holdCompression(page);
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("export-share-link").click();
+  await shareVia(page, "link");
   await expect.poll(() => heldCompressions(page)).toBeGreaterThan(0);
   const other = await context.newPage();
   await other.goto(`./?view=canvas&example=${slug}&storage=test`);
@@ -242,7 +245,7 @@ test("the refusal's Interactive HTML… explains itself when no diagram is open"
   expectNoErrors(consoleErrors);
 });
 
-test("a private diagram's off link rows are reachable from the keyboard and say why", async ({
+test("a private diagram's Share… says why its links are gone, and how to change it, from the keyboard", async ({
   page,
   consoleErrors,
 }) => {
@@ -252,26 +255,34 @@ test("a private diagram's off link rows are reachable from the keyboard and say 
   await page.getByTestId("file-button").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("file-menu")).toBeVisible();
-  const link = page.getByTestId("export-share-link");
+  const share = page.getByTestId("file-share");
   for (let i = 0; i < 12; i++) {
-    if (await link.evaluate((el) => el === document.activeElement)) break;
+    if (await share.evaluate((el) => el === document.activeElement)) break;
     await page.keyboard.press("ArrowDown");
   }
-  await expect(link).toBeFocused();
-  await expect(link).toHaveAttribute("aria-disabled", "true");
-  await expect(link).toContainText(PRIVATE_SHARE);
-  // Off: Enter does nothing, and no link is made.
+  await expect(share).toBeFocused();
+  await expect(share).toContainText("Files, or an embed your app supplies");
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("file-menu")).toBeVisible();
-  await expect(page.getByTestId("share-link-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("share-chooser")).toBeVisible();
+  await expect(page.getByTestId("share-option-html")).toBeFocused();
+  // The arrows walk the rows it allows, then the line that says why the rest are off, with its way to change it.
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByTestId("export-share-link-password")).toBeFocused();
+  await expect(page.getByTestId("share-option-file")).toBeFocused();
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByTestId("export-embed")).toBeFocused();
-  await expect(page.getByTestId("export-embed")).toContainText("Your app supplies it (private)");
-  await page.keyboard.press("Escape");
-  await expect(page.getByTestId("file-menu")).toHaveCount(0);
-  await expect(page.getByTestId("file-button")).toBeFocused();
+  await expect(page.getByTestId("share-option-embed")).toBeFocused();
+  await expect(page.getByTestId("share-option-embed")).toContainText("Your app supplies it (private)");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByTestId("share-make-not-private")).toBeFocused();
+  await expect(page.getByTestId("share-private-note")).toContainText(
+    "Links and public embeds are off for a private diagram.",
+  );
+  // It asks first, in the one confirmation, whose default keeps it private.
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("privacy-dialog")).toBeVisible();
+  await expect(page.getByTestId("privacy-keep")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("privacy-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("private-badge")).toBeVisible();
 
   // The Privacy submenu and the dialog name the way to share it.
   await page.getByTestId("file-button").click();
@@ -286,18 +297,19 @@ test("a private diagram's off link rows are reachable from the keyboard and say 
   expectNoErrors(consoleErrors);
 });
 
-test("Embed code: In the link says who can open it, and the preview is a Tab stop Esc backs out of", async ({
+test("Embed code: the public one says who can open it, and each preview is a Tab stop Esc backs out of", async ({
   page,
   consoleErrors,
 }) => {
   await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
   await expect(page.getByTestId("canvas-view")).toBeVisible();
   await importDiagram(page, "Settlement plan");
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("export-embed").click();
+  // Share… ▸ Embed on a public page: a diagram of your own goes in the link, the one source, so there's no choice.
+  await shareVia(page, "embed-public");
   const dialog = page.getByTestId("embed-dialog");
   await expect(dialog).toBeVisible();
-  await expect(page.getByTestId("embed-source-inline")).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByTestId("embed-source-inline")).toHaveCount(0);
+  await expect(page.getByTestId("embed-host-note")).toHaveCount(0);
   await expect(page.getByTestId("embed-inline-note")).toContainText(
     "Anyone who can see the page can open this diagram.",
   );
@@ -312,9 +324,12 @@ test("Embed code: In the link says who can open it, and the preview is a Tab sto
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("embed-preview-area")).toBeFocused();
   await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
 
-  // Your app supplies it: the note gives way to the private promise, and its preview backs out the same way.
-  await page.getByTestId("embed-source-host").click();
+  // Share… ▸ Embed in your app: the private promise instead, and its preview backs out the same way.
+  await shareVia(page, "embed");
+  await expect(dialog).toBeVisible();
   await expect(page.getByTestId("embed-inline-note")).toHaveCount(0);
   await expect(page.getByTestId("embed-host-note")).toBeVisible();
   await expect(viewer.getByTestId("diagram-title")).toHaveText("Settlement plan", { timeout: 15_000 });

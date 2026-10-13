@@ -1,0 +1,160 @@
+/* File ▸ Share… (ShareChooser.tsx): loads with the chooser, never at startup. */
+
+.ix-share-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ix-share-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ix-share-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+
+.ix-share-option:hover,
+.ix-share-option:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* On the tinted row the muted hint would fall under 4.5:1 in dark: one step darker. */
+.ix-share-option:hover .ix-share-hint,
+.ix-share-option:focus-visible .ix-share-hint {
+  color: var(--text-2);
+}
+
+.ix-share-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+
+.ix-share-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ix-share-title {
+  font-weight: 560;
+}
+
+.ix-share-desc {
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.ix-share-desc strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ix-share-hint {
+  flex: none;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+/* A private diagram: one line saying why the links are gone, and how to change it. */
+.ix-share-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.ix-share-note svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--text-3);
+}
+
+.ix-share-note .link-btn {
+  font-size: inherit;
+}
+
+/* The public options: below a rule, folded behind one more step. */
+.ix-share-public {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.ix-share-public-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 4px 6px;
+  margin-left: -6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-2);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.ix-share-public-toggle strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ix-share-public-toggle:hover {
+  color: var(--text);
+}
+
+.ix-share-public-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.ix-share-public-toggle svg {
+  transition: transform 0.15s;
+}
+
+.ix-share-public-toggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ix-share-public-toggle svg {
+    transition: none;
+  }
+}
+
+/* A phone: the row's words need the width more than the file extension does. */
+@media (max-width: 480px) {
+  .ix-share-hint {
+    display: none;
+  }
+}

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia } from "./fixtures";
 import {
   MOD,
   SLUG,
@@ -132,17 +132,19 @@ test("share links are off, saying why, embeds are the private kind, and a privat
   await expect(page.getByTestId("example-picker")).toHaveValue(/^my-/);
   await expect(page.getByTestId("toast").last()).toContainText("private copy");
 
-  await page.getByTestId("file-button").click();
-  const link = page.getByTestId("export-share-link");
-  await expect(link).toBeDisabled();
-  await expect(link).toContainText(PRIVATE_SHARE);
+  // Share… lists only what a private diagram allows, and one line says why the links are gone.
+  await openShareChooser(page);
+  for (const id of ["share-option-html", "share-option-file", "share-option-embed"])
+    await expect(page.getByTestId(id)).toBeVisible();
+  for (const id of ["share-option-password", "share-public-toggle", "share-option-link"])
+    await expect(page.getByTestId(id)).toHaveCount(0);
+  await expect(page.getByTestId("share-private-note")).toContainText("off for a private diagram");
   // Embeds stay: the kind whose diagram the host's own page supplies (nothing of it goes in a URL).
-  await expect(page.getByTestId("export-embed")).toBeEnabled();
-  await expect(page.getByTestId("export-embed")).toContainText("Your app supplies it");
-  await page.getByTestId("export-embed").click();
+  await expect(page.getByTestId("share-option-embed")).toContainText("Your app supplies it (private)");
+  await page.getByTestId("share-option-embed").click();
   await expect(page.getByTestId("embed-dialog")).toBeVisible();
-  await expect(page.getByTestId("embed-source-host")).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByTestId("embed-source-inline")).toBeDisabled();
+  await expect(page.getByTestId("embed-dialog")).toContainText("A private diagram embeds only where your own app");
+  await expect(page.getByTestId("embed-source-inline")).toHaveCount(0);
   await expect(page.getByTestId("embed-host-note")).toBeVisible();
   await expect(page.getByTestId("embed-snippet")).toHaveValue(/<live-diagram /);
   expect(await page.getByTestId("embed-snippet").inputValue()).not.toMatch(/#[de]=|embed=1&example/);
@@ -150,11 +152,11 @@ test("share links are off, saying why, embeds are the private kind, and a privat
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("embed-dialog")).toHaveCount(0);
 
-  // The canvas right-click's Export ▸ shows them off too.
+  // The canvas right-click's Export ▸ Share… opens the same chooser, hinted Private.
   await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: 700, y: 60 } });
   await page.getByTestId("context-menu-item-canvas.export").hover();
-  await expect(page.getByTestId("context-menu-item-export:share")).toHaveAttribute("aria-disabled", "true");
-  await expect(page.getByTestId("context-menu-item-export:embed")).not.toHaveAttribute("aria-disabled", "true");
+  await expect(page.getByTestId("context-menu-item-export:share")).not.toHaveAttribute("aria-disabled", "true");
+  await expect(page.getByTestId("context-menu-item-export:share")).toContainText("Private");
   await expect(page.getByTestId("context-menu-item-export:json")).not.toHaveAttribute("aria-disabled", "true");
   expectNoErrors(consoleErrors);
 });
@@ -430,9 +432,7 @@ test("a share dialog left open closes when another tab makes the diagram private
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await gotoCanvas(page, SLUG);
   const slug = await importDiagram(page, "Shared plan");
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("export-share-link").click();
-  await page.getByTestId("toast-share-details").click();
+  await shareVia(page, "link");
   await expect(page.getByTestId("share-link-dialog")).toBeVisible();
 
   const other = await context.newPage();
@@ -442,9 +442,10 @@ test("a share dialog left open closes when another tab makes the diagram private
 
   await expect(page.getByTestId("share-link-dialog")).toHaveCount(0);
   await expect(page.getByTestId("toast").filter({ hasText: PRIVATE_SHARE })).toBeVisible();
-  // ...and the File menu's link rows here are off too.
-  await page.getByTestId("file-button").click();
-  await expect(page.getByTestId("export-share-link")).toBeDisabled();
+  // ...and Share… here lists no link rows now.
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-private-note")).toBeVisible();
+  await expect(page.getByTestId("share-public-toggle")).toHaveCount(0);
   await other.close();
   expectNoErrors(consoleErrors);
 });
@@ -589,8 +590,7 @@ test("a private diagram gets no password link: the rows are off, and an open dia
   await gotoCanvas(page, SLUG);
   const slug = await importDiagram(page, "Password plan");
   await page.evaluate(() => navigator.clipboard.writeText("before"));
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("export-share-link-password").click();
+  await shareVia(page, "password");
   await page.getByTestId("password-link-input").fill("plum orbit lantern 42");
   await page.evaluate(() => ((window as unknown as { __holdEncrypt: boolean }).__holdEncrypt = true));
   await page.getByTestId("password-link-copy").click();
@@ -611,13 +611,15 @@ test("a private diagram gets no password link: the rows are off, and an open dia
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
 
-  // Its menu rows are off, here and in the right-click's Export ▸.
-  await page.getByTestId("file-button").click();
-  await expect(page.getByTestId("export-share-link-password")).toBeDisabled();
+  // Share… here no longer offers it, from the File menu or the right-click's Export ▸.
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-option-password")).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: 700, y: 60 } });
   await page.getByTestId("context-menu-item-canvas.export").hover();
-  await expect(page.getByTestId("context-menu-item-export:share-password")).toHaveAttribute("aria-disabled", "true");
+  await page.getByTestId("context-menu-item-export:share").click();
+  await expect(page.getByTestId("share-chooser")).toBeVisible();
+  await expect(page.getByTestId("share-option-password")).toHaveCount(0);
   await other.close();
   expectNoErrors(consoleErrors);
 });

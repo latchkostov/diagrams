@@ -14,7 +14,7 @@ import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
-/** Copy link with password…: encrypts the diagram into the link with a password the user picks. */
+/** Share… ▸ Link with password…: encrypts the diagram into the link with a password the user picks. */
 export function PasswordLinkDialog({
   diagram,
   allowed,
@@ -83,7 +83,7 @@ export function PasswordLinkDialog({
 
   return (
     <Dialog
-      title="Copy link with password"
+      title="Link with password"
       subtitle="The diagram is encrypted in this browser before it goes into the link."
       icon={<Glyph name="lock" />}
       onClose={onClose}

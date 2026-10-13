@@ -86,7 +86,7 @@ function resolve(): Promise<State> {
     status: "error",
     message: slug
       ? `There's no example called “${slug}”.`
-      : "This embed doesn't say which diagram to show. Copy the embed code again from Export → Embed.",
+      : "This embed doesn't say which diagram to show. Copy the embed code again from File ▸ Share….",
   });
 }
 

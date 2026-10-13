@@ -12,7 +12,8 @@ they already said, and offer them in this order.
 | Share link            | **anyone who has the link**   | yes                | yes            |
 
 A **link with a password** (anyone with the link _and_ the password can open it) is made in the app only, never by a
-script here: open the diagram file at livediagrams.dev and use **File > Copy link with password…**.
+script here: open the diagram file at livediagrams.dev and use **File > Share… > Link with password…**. The app's
+Share… lists its ways out safest first too, with the public ones (the share link and a public embed) last.
 
 ## Choosing for the user
 

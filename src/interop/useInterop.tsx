@@ -41,7 +41,7 @@ import { newDiagramsPrivate } from "../lib/privacyPrefs";
 import { LINK_OPEN, LINK_OPEN_OFF_MESSAGE, LINKS_OFF_MESSAGE, SHARE_LINKS } from "../lib/deployment";
 import { PRIVACY_REQUEST } from "../lib/usePrivacy";
 import { loadedCanvasActions } from "../canvas/loadCanvasView";
-import { actionRegistry, type Action, type MenuNode } from "../editor/actions";
+import { actionRegistry, type Action, type MenuItem, type MenuNode } from "../editor/actions";
 import { LIMITS, preserveUnknown, serializeNative, tooLargeMessage } from "./native";
 import {
   drawioWriter,
@@ -53,15 +53,7 @@ import {
   type ImportOutcome,
 } from "./formats";
 import type { ImportGraph, ImportReport } from "./infra/graph";
-import {
-  clearUrlFragment,
-  decodeShare,
-  encodeShare,
-  SHARE_WARN_LENGTH,
-  shareUrl,
-  sharePayloadFromHash,
-  sharePayloadFromInput,
-} from "./share";
+import { clearUrlFragment, decodeShare, sharePayloadFromHash, sharePayloadFromInput } from "./share";
 import {
   BadEncryptedLinkError,
   encryptedPayloadFromHash,
@@ -86,10 +78,12 @@ import {
   preloadDialogs,
   PrivacyDialog,
   ClearDeviceDialog,
+  ShareChooserDialog,
   ShareDialog,
   StorageFilesDialog,
   UnlockDialog,
 } from "./ui/lazyDialogs";
+import type { EmbedScope } from "./ui/ShareChooser";
 import { DropOverlay } from "./ui/DropOverlay";
 
 // The import / export controller: every way a diagram enters or leaves the app goes through here
@@ -139,8 +133,15 @@ type DialogState =
   | { kind: "password-link"; diagram: DiagramFile; source: string }
   /** A password link (#e=…) waiting for its password. */
   | { kind: "unlock"; token: string; session: number }
-  /** `privateOnly`: a private diagram, offered only the embed whose diagram the host's page supplies. */
-  | { kind: "embed"; diagram: DiagramFile; source: string; example?: string; privateOnly?: boolean }
+  /** File ▸ Share…: every way out, safest first, for `source` (it closes if another diagram opens). */
+  | { kind: "chooser"; source: string }
+  /**
+   * Embed code, for one kind: `private` (Embed in your app, the host-supplied embed; `privateDiagram` says the diagram
+   * is private) or `public` (in the link, or `example` by name). The kind never changes while it's open: a public one
+   * closes when its diagram turns private.
+   */
+  | { kind: "embed"; scope: "private"; diagram: DiagramFile; source: string; privateDiagram: boolean }
+  | { kind: "embed"; scope: "public"; diagram: DiagramFile; source: string; example?: string }
   | { kind: "image" }
   /** Interactive HTML: the diagram as it was when the dialog opened. */
   | { kind: "html"; diagram: DiagramFile }
@@ -166,6 +167,13 @@ type DialogState =
       load: () => Promise<StorageEntry[]>;
       resolve: (entry: StorageEntry | undefined) => void;
     };
+
+/** Why no link was made (or a link dialog closed), with the safe way to share instead: Interactive HTML…. */
+function refuseLink(exportHtml: () => void) {
+  toast.info(SHARE_LINKS ? PRIVATE_SHARE_MESSAGE : LINKS_OFF_MESSAGE, {
+    action: { label: "Interactive HTML…", run: exportHtml, testId: "toast-private-export" },
+  });
+}
 
 /** Where an import came from, so "Save" can go back there (native files only). */
 interface Source {
@@ -305,7 +313,9 @@ export function useInterop({
     attempt("export the diagram", () => {
       const d = current();
       downloadText(serializeNative(d), `${baseName(d)}.diagram.json`, "application/json");
-      toast.success(`Exported ${d.nodes.length} nodes and ${d.edges.length} edges.`);
+      toast.success(
+        `Exported ${d.nodes.length} nodes and ${d.edges.length} edges. Anyone who has this file can open it.`,
+      );
     });
 
   const exportImage = (kind: "png" | "svg", opts: ImageExportOptions = {}) =>
@@ -364,9 +374,7 @@ export function useInterop({
    */
   const linkAllowed = (source: string = slug) => {
     if (canShareAsLink(privacyState(source))) return true;
-    toast.info(SHARE_LINKS ? PRIVATE_SHARE_MESSAGE : LINKS_OFF_MESSAGE, {
-      action: { label: "Interactive HTML…", run: () => void openHtmlExport(), testId: "toast-private-export" },
-    });
+    refuseLink(() => void openHtmlExport());
     return false;
   };
   const linkStillAllowed = (source: string) => canShareAsLink(privacyState(source));
@@ -379,61 +387,52 @@ export function useInterop({
     if (SHARE_LINKS && linkAllowed(source)) setDialog({ kind: "share", diagram: d, source });
   };
 
+  /** Share… ▸ Share link…: the dialog makes the link and copies it (Copy link, its one action). */
   const openShare = () => attempt("create a share link", () => showShare(current(), slug));
 
-  /** Copy link with password… for `d`, from `source`: only while that document may still be shared. */
+  /** Link with password… for `d`, from `source`: only while that document may still be shared. */
   const showPasswordLink = (d: DiagramFile, source: string) => {
     if (SHARE_LINKS && linkAllowed(source)) setDialog({ kind: "password-link", diagram: d, source });
   };
 
-  /** Copy link with password…: the dialog picks the password, encrypts and copies (rechecking the gate). */
+  /** Share… ▸ Link with password…: the dialog picks the password, encrypts and copies (rechecking the gate). */
   const copyPasswordLink = () => attempt("create a link with password", () => showPasswordLink(current(), slug));
 
-  /** One click: copy the link. The dialog (details, warnings, native share) is one step away. */
-  const copyShareLink = () =>
-    attempt("create a share link", async () => {
-      const source = slug;
-      if (!SHARE_LINKS || !linkAllowed(source)) return;
-      const d = current();
-      const url = shareUrl(await encodeShare(d));
-      // Encoding takes a moment: the diagram may have become private since (here or in another tab).
-      if (!linkAllowed(source)) return;
-      const details = {
-        label: "Details",
-        run: () => showShare(d, source),
-        testId: "toast-share-details",
-      };
-      if (!(await copyText(url))) return showShare(d, source);
-      if (url.length > SHARE_WARN_LENGTH) {
-        toast.info(
-          `Share link copied. Anyone with the link can open the diagram. It's long (${Math.round(url.length / 1000)}k characters): some apps cut long links off.`,
-          { action: details, duration: 9000 },
-        );
-      } else {
-        toast.success("Share link copied. Anyone with the link can open the diagram.", { action: details });
-      }
+  /**
+   * File ▸ Share… (the right-click's Export ▸ Share…, Ctrl+K): every way out, safest first. Only that a diagram is on the
+   * canvas: the row picked reads it (a big diagram isn't converted just to show the list).
+   */
+  const openShareChooser = () =>
+    attempt("share the diagram", () => {
+      if (!canvasRef.current) throw new Error("Open a diagram on the canvas first.");
+      setDialog({ kind: "chooser", source: slug });
     });
-  const openEmbed = () =>
+
+  /**
+   * Share… ▸ Embed in your app (`private`: the host's page supplies the diagram, nothing of it goes in a URL; every
+   * diagram, private ones too) or Embed on a public page (`public`: in the link, or an example by name).
+   */
+  const openEmbed = (scope: EmbedScope) =>
     attempt("create embed code", async () => {
       const source = slug;
       const d = current();
-      // A private diagram can still be embedded by a page that supplies it: nothing of it goes in a URL.
-      if (!linkStillAllowed(source)) {
-        setDialog({ kind: "embed", diagram: d, source, privateOnly: true });
+      if (scope === "private") {
+        setDialog({ kind: "embed", scope, diagram: d, source, privateDiagram: !linkStillAllowed(source) });
         return;
       }
+      if (!SHARE_LINKS || !linkAllowed(source)) return;
       // Embed by name only when the example is public and unedited (the viewer shows the original).
       const original = getOriginal(source);
       const shown = JSON.stringify(canvasRef.current?.getDiagram());
       const pristine = !!original && (await normalized(original)) === shown;
-      // The check above can wait for code: the diagram may have become private since.
-      const privateNow = !linkStillAllowed(source);
+      // The check above can wait for code: the diagram may have become private since. Then there's no public embed.
+      if (!linkAllowed(source)) return;
       setDialog({
         kind: "embed",
+        scope,
         diagram: d,
         source,
-        example: !privateNow && isPublicExample(source) && pristine ? source : undefined,
-        privateOnly: privateNow,
+        example: isPublicExample(source) && pristine ? source : undefined,
       });
     });
 
@@ -844,25 +843,31 @@ export function useInterop({
 
   // The privacy confirmation is about one document: another one opening (Back, a link, another tab's
   // navigation, even while the dialog's code is still downloading) closes it.
-  if (dialog?.kind === "privacy" && dialog.source !== slug) setDialog(null);
+  // So is Share…: its rows act on the diagram open now.
+  if ((dialog?.kind === "privacy" || dialog?.kind === "chooser") && dialog.source !== slug) setDialog(null);
 
   // A share or embed dialog left open closes when its document becomes private (here or in another tab).
   const linkDialogSource =
     dialog?.kind === "share" || dialog?.kind === "embed" || dialog?.kind === "password-link"
       ? dialog.source
       : undefined;
-  const linkDialogKind = dialog?.kind;
+  // Embed in your app stays open (it puts nothing in a URL); every other link dialog closes.
+  const linkDialogKind = dialog?.kind === "embed" ? `embed-${dialog.scope}` : dialog?.kind;
+  // The refusal's Interactive HTML… acts later, on the diagram open then.
+  const exportHtml = useRef(openHtmlExport);
+  useLayoutEffect(() => {
+    exportHtml.current = openHtmlExport;
+  });
   useEffect(() => {
     if (linkDialogSource === undefined) return;
     const check = () => {
       if (canShareAsLink(privacyState(linkDialogSource))) return;
-      // The embed dialog keeps only the embed whose diagram the host supplies; the others close.
-      if (linkDialogKind === "embed") {
-        setDialog((d) => (d?.kind === "embed" ? { ...d, example: undefined, privateOnly: true } : d));
+      if (linkDialogKind === "embed-private") {
+        setDialog((d) => (d?.kind === "embed" && d.scope === "private" ? { ...d, privateDiagram: true } : d));
         return;
       }
       setDialog(null);
-      toast.info(PRIVATE_SHARE_MESSAGE);
+      refuseLink(() => void exportHtml.current());
     };
     window.addEventListener(DIAGRAMS_CHANGED, check);
     return () => window.removeEventListener(DIAGRAMS_CHANGED, check);
@@ -886,13 +891,10 @@ export function useInterop({
     exportImage: (kind: "png" | "svg", opts: ImageExportOptions = {}) => exportImage(kind, opts),
     openImageOptions: () => setDialog({ kind: "image" }),
     openHtmlExport,
-    copyShareLink,
-    copyPasswordLink,
+    openShareChooser,
     exportDrawio,
     copyMermaid,
     downloadMermaid,
-    openShare,
-    openEmbed,
     save,
     saveAs: () => saveToDevice(true),
     saveTo,
@@ -1009,6 +1011,22 @@ export function useInterop({
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.kind === "chooser" && (
+        <ShareChooserDialog
+          privacy={() => privacyOf(privacyState(dialog.source))}
+          // Each row hands over to its own dialog (which replaces this one), or saves the file and closes.
+          onHtml={() => void openHtmlExport()}
+          onFile={() => {
+            setDialog(null);
+            void exportNative();
+          }}
+          onEmbed={(scope) => void openEmbed(scope)}
+          onPasswordLink={() => void copyPasswordLink()}
+          onShareLink={() => void openShare()}
+          onMakeNotPrivate={() => setDialog({ kind: "privacy", source: dialog.source })}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === "html" && <HtmlExportDialog diagram={dialog.diagram} onClose={() => setDialog(null)} />}
       {SHARE_LINKS && dialog?.kind === "share" && (
         <ShareDialog
@@ -1043,9 +1061,10 @@ export function useInterop({
       {dialog?.kind === "embed" && (
         <EmbedDialog
           diagram={dialog.diagram}
-          example={dialog.example}
+          scope={dialog.scope}
+          example={dialog.scope === "public" ? dialog.example : undefined}
           allowed={() => linkStillAllowed(dialog.source)}
-          privateOnly={dialog.privateOnly}
+          privateDiagram={dialog.scope === "private" && dialog.privateDiagram}
           fileName={`${baseName(dialog.diagram)}.diagram.json`}
           onDownload={() => void exportNative()}
           onClose={() => setDialog(null)}
@@ -1117,12 +1136,12 @@ export function useInteropCanvasActions(canvasRef: RefObject<CanvasHandle | null
  * the File menu exactly.
  */
 function canvasActions(get: () => InteropApi): Action[] {
-  const item = (id: string, label: string, run: () => unknown, hint?: string, disabled = false): MenuNode => ({
+  const item = (id: string, label: string, run: () => unknown, hint?: string, keywords?: string): MenuItem => ({
     type: "item",
     id,
     label,
     hint,
-    disabled,
+    keywords,
     run: () => void run(),
   });
   return [
@@ -1160,41 +1179,24 @@ function canvasActions(get: () => InteropApi): Action[] {
       order: 20,
       label: "Export",
       icon: "download",
-      children: () => {
-        const privateNow = !!get().privacy();
-        const hint = privateNow ? "Private" : undefined;
-        return [
-          item("export:png", "Export PNG", () => get().exportPng({ scale: 2 }), "2×"),
-          // Links gone (from the palette too) in a copy deployed without share links (src/lib/deployment.ts).
-          ...(SHARE_LINKS
-            ? [
-                item("export:share", "Copy share link", () => get().copyShareLink(), hint, privateNow),
-                item(
-                  "export:share-password",
-                  "Copy link with password…",
-                  () => get().copyPasswordLink(),
-                  hint,
-                  privateNow,
-                ),
-              ]
-            : []),
-          // A private diagram's embed is the one its host's page supplies (nothing of it goes in a URL); so is every
-          // embed in a copy without share links.
-          item(
-            "export:embed",
-            "Embed code…",
-            () => get().openEmbed(),
-            privateNow || !SHARE_LINKS ? "Your app supplies it" : undefined,
-          ),
-          { type: "separator" },
-          item("export:json", "Diagram file", () => get().exportNative(), ".diagram.json"),
-          item("export:image", "Image…", () => get().openImageOptions(), "PNG or SVG"),
-          item("export:html", "Interactive HTML…", () => get().openHtmlExport(), ".html"),
-          item("export:drawio", "draw.io", () => get().exportDrawio(), ".drawio"),
-          item("export:mermaid-download", "Mermaid file", () => get().downloadMermaid(), ".mmd"),
-          item("export:mermaid", "Copy as Mermaid", () => get().copyMermaid()),
-        ];
-      },
+      children: (): MenuNode[] => [
+        item("export:png", "Export PNG", () => get().exportPng({ scale: 2 }), "2×"),
+        // Every way out, safest first, each saying who can open it: the File menu's Share… (and so Ctrl+K's).
+        item(
+          "export:share",
+          "Share…",
+          () => get().openShareChooser(),
+          get().privacy() ? "Private" : undefined,
+          "link password embed public send",
+        ),
+        { type: "separator" },
+        item("export:json", "Diagram file", () => get().exportNative(), ".diagram.json"),
+        item("export:image", "Image…", () => get().openImageOptions(), "PNG or SVG"),
+        item("export:html", "Interactive HTML…", () => get().openHtmlExport(), ".html"),
+        item("export:drawio", "draw.io", () => get().exportDrawio(), ".drawio"),
+        item("export:mermaid-download", "Mermaid file", () => get().downloadMermaid(), ".mmd"),
+        item("export:mermaid", "Copy as Mermaid", () => get().copyMermaid()),
+      ],
     },
   ];
 }

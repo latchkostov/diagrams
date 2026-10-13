@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatCombo } from "../../editor/shortcuts";
 import { formatAgo } from "../../lib/time";
-import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
 import { LINK_OPEN, SHARE_LINKS } from "../../lib/deployment";
 import { newDiagramsPrivate } from "../../lib/privacyPrefs";
 import type { Binding, Interop } from "../useInterop";
@@ -178,11 +177,20 @@ export function FileMenu({
         onSelect: () => void api.saveAs(),
       });
     }
-    // Sharing and privacy together: a private diagram's link rows stay in place, off, saying why. A copy
-    // deployed without share links (src/lib/deployment.ts) has no link rows at all.
+    // Sharing and privacy together. Share… lists every way out, safest first, each saying who can open it; a private
+    // diagram (and a copy deployed without share links, src/lib/deployment.ts) gets only the ones it allows.
     const privacy = api.privacy();
     out.push(
       { type: "separator" },
+      {
+        type: "item",
+        testId: "file-share",
+        icon: <Glyph name="share" />,
+        title: "Share…",
+        desc:
+          privacy || !SHARE_LINKS ? "Files, or an embed your app supplies" : "Files, embeds and links, safest first",
+        onSelect: api.openShareChooser,
+      },
       {
         type: "item",
         testId: "file-privacy",
@@ -191,41 +199,6 @@ export function FileMenu({
         title: "Privacy",
         desc: privacy ? "This diagram is private" : undefined,
         submenu: () => privacyMenu(api),
-      },
-    );
-    // Links only where this copy makes them; Embed code… always: a page that supplies the diagram puts none of
-    // it in a URL, so a private diagram (and a copy without share links) offers just that kind of embed.
-    if (SHARE_LINKS)
-      out.push(
-        {
-          type: "item",
-          testId: "export-share-link",
-          icon: <Glyph name="link" />,
-          title: "Copy share link",
-          // Who can open what it makes, in the words the dialogs use (docs/UX-PRINCIPLES.md, Who can open it).
-          desc: privacy ? PRIVATE_SHARE_MESSAGE : "Anyone with the link can open it",
-          disabled: !!privacy,
-          onSelect: () => void api.copyShareLink(),
-        },
-        {
-          type: "item",
-          testId: "export-share-link-password",
-          icon: <Glyph name="lock" />,
-          title: "Copy link with password…",
-          desc: privacy ? undefined : "Only people with the password can open it",
-          disabled: !!privacy,
-          onSelect: () => void api.copyPasswordLink(),
-        },
-      );
-    out.push(
-      {
-        type: "item",
-        testId: "export-embed",
-        icon: <Glyph name="code" />,
-        title: "Embed code…",
-        // A private diagram still embeds in a page that supplies it: nothing of it goes in a URL.
-        desc: privacy || !SHARE_LINKS ? "Your app supplies it (private)" : undefined,
-        onSelect: api.openEmbed,
       },
       { type: "separator" },
       {

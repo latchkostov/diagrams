@@ -41,7 +41,9 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
  * The entry and every chunk index.html preloads with it (fetched in parallel, no round trip between them). The
  * diagram loader (native, codec, annotations, checks' model) sits in chunks of its own, preloaded: since the
  * password token module (src/interop/encryptedToken.ts) became a second static importer of native and codec, the
- * bundler no longer folds them into the entry.
+ * bundler no longer folds them into the entry. The privacy gates (src/lib/localOnly.ts) were a preloaded chunk of
+ * their own until the File menu stopped importing them (Share… replaced its link rows): the bundler folds them into
+ * the entry now, one request fewer at startup for the same code.
  */
 const STARTUP_CHUNKS = [
   "annotations",
@@ -51,7 +53,6 @@ const STARTUP_CHUNKS = [
   "examples",
   "index",
   "jsx-runtime",
-  "localOnly",
   "native",
   "preload-helper",
   "react",

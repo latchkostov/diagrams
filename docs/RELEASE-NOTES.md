@@ -15,6 +15,33 @@ Changes to habits people already have. The app has no "what's new" panel, so the
 - The **Present** button's tooltip no longer says "full screen": presenting hides the editing chrome; full screen is
   the new button.
 
+## Share…: every way out, safest first (2026-10)
+
+The File menu's link rows are one row, **Share…** (docs/DESIGN-REVIEW.md, round 27). Habit changes:
+
+- **Copy share link, Copy link with password… and Embed code… are gone from the File menu and the right-click's
+  Export ▸.** In their place, **Share…** opens a list of every way out, each saying who can open what it makes:
+  **Interactive HTML…**, **Diagram file**, **Embed in your app…** and **Link with password…** first, with the keyboard
+  on Interactive HTML.
+- **A public link takes one more step.** Share link… and Embed on a public page… are folded under **Public link or
+  embed · anyone with the link can open it**, last, and Share… opens folded every time. Share link… opens the Share
+  link dialog, where **Copy link** copies it (the toast says anyone with the link can open the diagram). There's no
+  one-click copy any more.
+- **Ctrl+K**: "Export › Share…", found by "share", "link", "password" or "embed".
+- **The password link's dialog is titled Link with password**, as its row is.
+- **Embed code opens on one kind**: Embed in your app shows only the private embed your app supplies; Embed on a
+  public page shows In the link (and Example by name for an unedited public example).
+- **A Private diagram's Share…** lists the two files and Embed in your app, with one line saying why links are off and
+  **Make it not private…**. A company's copy without share links lists those three and nothing else.
+- **Exporting the diagram file says who can open it** in its toast.
+
+New:
+
+- **The first Import report of an infrastructure file** (docker-compose, Kubernetes, AsyncAPI, Terraform) offers **New
+  diagrams are private**, unticked, under Make it private. It asks once; Clear everything on this device asks again. It
+  never turns on by itself.
+- The agent skill and `llms.txt` point to **File > Share… > Link with password…**.
+
 ## Privacy audit (2026-10)
 
 An end-to-end check of everything that could carry a diagram out of the page or keep it longer than you meant

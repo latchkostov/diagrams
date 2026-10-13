@@ -24,7 +24,7 @@ Paths below are relative to this skill's folder. Run the scripts with `node`.
    2. **Diagram file** (`.diagram.json`): to open and keep editing in Live Diagrams.
    3. **Image** (PNG or SVG): made in the app from the diagram file. No script here makes one.
    4. **Share link**: convenient, but anyone who has the link can open the diagram. For a link only some people
-      can open, the user opens the diagram file in the app and uses **File > Copy link with password…**.
+      can open, the user opens the diagram file in the app and uses **File > Share… > Link with password…**.
 
    If the user mentions work or a company, the system sounds internal, or the file already has `"private": true`,
    recommend the HTML file or the diagram file, and set `"private": true`. Never make a share link for a private

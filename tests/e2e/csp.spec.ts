@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page, Response } from "@playwright/test";
-import { test, expect, E2E_TARGET, gotoLab, pageLoadTimeout } from "./fixtures";
+import { test, expect, E2E_TARGET, gotoLab, pageLoadTimeout, shareVia } from "./fixtures";
 import { installFakeSpeech, openAdvanced } from "./ai-helpers";
 
 // The Content-Security-Policy and the other security headers (scripts/security-headers.ts), on the production
@@ -192,15 +192,13 @@ test.describe("Content-Security-Policy", () => {
     // The embed dialog previews the viewer in an iframe of this site (frame-src 'self').
     await page.goto(`./?view=canvas&example=${KAFKA}`);
     await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
-    await page.getByTestId("file-button").click();
-    await page.getByTestId("export-embed").click();
+    await shareVia(page, "embed-public");
     const frame = page.getByTestId("embed-preview").contentFrame();
     await expect(frame.getByTestId("node-shopper")).toBeVisible({ timeout: 15_000 });
     await page.getByTestId("embed-dialog-close").click();
 
     // A password link: made, opened, unlocked (WebCrypto runs under the policy).
-    await page.getByTestId("file-button").click();
-    await page.getByTestId("export-share-link-password").click();
+    await shareVia(page, "password");
     await page.getByTestId("password-link-input").fill("plum orbit lantern 42");
     await page.getByTestId("password-link-copy").click();
     const link = await page.getByTestId("password-link-url").inputValue({ timeout: 15_000 });

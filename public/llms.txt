@@ -52,7 +52,7 @@ To show a diagram inside a company's own app or intranet without any public URL,
 
 A **Private** diagram (`"private": true` in its file) stays on the person's device: it never gets a share link (with or without a password) or a link embed (a host-supplied embed is fine: nothing of it goes in a URL), isn't saved to cloud storage, and while one is open the page publishes no tools (and `get_share_link` refuses). Don't build a link for a file that has it; hand over the file.
 
-A password link is `https://www.livediagrams.dev/#e=v1.<salt>.<iv>.<ciphertext>` (each part base64url, unpadded): the same compressed payload, encrypted in the browser with AES-256-GCM (12-byte IV, additional data `livediagrams:e:v1`) under a key from PBKDF2-HMAC-SHA-256 (600,000 iterations, 16-byte salt) of the NFC-normalized password. The app asks for the password, opens it like a share link, then clears the fragment; `?embed=1#e=…` asks inside the frame. Only people make these (File > Copy link with password…); an agent should never put a password in a link or a message alongside it.
+A password link is `https://www.livediagrams.dev/#e=v1.<salt>.<iv>.<ciphertext>` (each part base64url, unpadded): the same compressed payload, encrypted in the browser with AES-256-GCM (12-byte IV, additional data `livediagrams:e:v1`) under a key from PBKDF2-HMAC-SHA-256 (600,000 iterations, 16-byte salt) of the NFC-normalized password. The app asks for the password, opens it like a share link, then clears the fragment; `?embed=1#e=…` asks inside the frame. Only people make these (File > Share… > Link with password…); an agent should never put a password in a link or a message alongside it.
 
 ## Agent Skill
 

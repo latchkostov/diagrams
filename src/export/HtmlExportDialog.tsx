@@ -142,7 +142,7 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
         <form
           className="ix-password ix-html-password"
           onSubmit={(e) => {
-            // Enter in the field downloads, as Enter in Copy link with password… copies.
+            // Enter in the field downloads, as Enter in Link with password… copies.
             e.preventDefault();
             download();
           }}

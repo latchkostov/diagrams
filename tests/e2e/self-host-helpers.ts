@@ -13,14 +13,29 @@ import { expect } from "./fixtures";
 const fixtures = join(process.cwd(), "tests", "fixtures", "host-embed");
 const fixture = (name: string) => readFileSync(join(fixtures, name), "utf8");
 
-/** File ▸ Embed code… offers only "Your app supplies it (private)": no source puts the diagram in a URL. */
-export async function expectOnlyPrivateEmbed(page: Page) {
+/**
+ * File ▸ Share… in a copy without share links: the two files and Embed in your app, safest first, and nothing else:
+ * no Link with password…, no public section, and no line about links (there are none to explain). Its embed offers
+ * only "Your app supplies it (private)": no source puts the diagram in a URL.
+ */
+export async function expectShareWithoutLinks(page: Page) {
   await page.getByTestId("file-button").click();
-  const item = page.getByTestId("export-embed");
-  await expect(item).toBeVisible();
-  await item.click();
+  await expect(page.getByTestId("file-share")).toContainText("Files, or an embed your app supplies");
+  await page.getByTestId("file-share").click();
+  await expect(page.getByTestId("share-chooser")).toBeVisible();
+  await expect(page.getByTestId("share-option-html")).toBeFocused();
+  for (const id of ["share-option-html", "share-option-file", "share-option-embed"])
+    await expect(page.getByTestId(id)).toBeVisible();
+  for (const id of [
+    "share-option-password",
+    "share-public-toggle",
+    "share-option-link",
+    "share-option-embed-public",
+    "share-private-note",
+  ])
+    await expect(page.getByTestId(id)).toHaveCount(0);
+  await page.getByTestId("share-option-embed").click();
   await expect(page.getByTestId("embed-dialog")).toBeVisible();
-  await expect(page.getByTestId("embed-source-host")).toHaveAttribute("aria-checked", "true");
   await expect(page.getByTestId("embed-source-inline")).toHaveCount(0);
   await expect(page.getByTestId("embed-source-example")).toHaveCount(0);
   await expect(page.getByTestId("embed-host-note")).toBeVisible();

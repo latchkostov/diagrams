@@ -197,10 +197,24 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   3-2-1 countdown, a pill with the time and **Stop** (or Esc), then **Your recording** with **Download**
   and **Discard** (undoable). With a simulation picked, the one option is to play it from the start
   and stop when it ends.
-- Same action, same name in the File menu and the right-click (e.g. Export PNG, Copy share link).
-- **Copy link with password…** sits right under Copy share link (File menu, right-click Export ▸, and the share
-  dialog). The password is at least 8 characters with a strength hint, and the dialog always says: send the
-  password separately; anyone with the link and the password can open it.
+- Same action, same name in the File menu and the right-click (e.g. Export PNG, Share…).
+- **Share…** (File menu, the right-click's Export ▸, Ctrl+K, which also finds it as "link") is the one way out that
+  lists every way out: a dialog, **Share**, whose rows each say who can open what they make, safest first. Never
+  "Publish", "Send" or "Copy link" for it. Its rows, in order:
+  1. **Interactive HTML…** (its password is in its own dialog), 2. **Diagram file** (saves at once), 3. **Embed in
+     your app…** (Your app supplies it (private)), 4. **Link with password…**, then, below a rule and folded behind
+     **Public link or embed · anyone with the link can open it**: **Share link…** and **Embed on a public page…**,
+     each saying **Public:** first. The public ones are never the default focus or what Enter first does: the
+     keyboard lands on Interactive HTML, the fold is one Tab stop that opens with Enter (and stays on it), and it
+     starts folded every time. The arrow keys, Home and End walk the rows.
+  - Each row hands over to the dialog that does it (Interactive HTML, Embed code, Link with password, Share
+    link), which replaces Share: Esc closes that dialog, and the keyboard goes back to where Share… was opened.
+  - A **Private** diagram lists only rows 1 to 3, and one line: **Links and public embeds are off for a private
+    diagram. Make it not private…** (the Private diagram dialog, Keep private its default). A copy built without
+    share links (docs/SELF-HOSTING.md) has rows 1 to 3 and nothing else; the gates in `src/lib/localOnly.ts` decide.
+  - **Link with password…** comes before the plain link wherever links are listed. Its password is at least 8
+    characters with a strength hint, and the dialog always says: send the password separately; anyone with the link
+    and the password can open it.
 - **Interactive HTML…** (File ▸ Export as ▸, the right-click's Export ▸, Ctrl+K) is the one self-contained file for
   sharing a diagram where a team already controls access; never "standalone", "offline page" or "web export". Its
   dialog always says **Anyone who has this file can open it.**, its one action is **Download HTML**, and the title,
@@ -214,16 +228,20 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
     password says **That password doesn't open this file. Check it and try again.**
 - **Who can open it.** Every way a diagram leaves the app says who can open what it makes, in these words, where
   you choose it (the File menu's line, the dialog) and in its toast:
-  - Copy share link: **Anyone with the link can open it.**
-  - Copy link with password…: **Only people with the password can open it** (the dialog: anyone with the link and
-    the password).
   - Interactive HTML…: **Anyone who has this file can open it.** With Require a password: **Only people with the
     password can open it.**
-  - Embed code… ▸ In the link: **Anyone who can see the page can open this diagram.** ▸ Your app supplies it
-    (private): **The diagram never leaves your app.**
+  - Diagram file: **Anyone who has this file can open and edit it.**
+  - Embed in your app… (Your app supplies it (private)): **The diagram never leaves your app.**
+  - Link with password…: **Only people with the password can open it** (the dialog: anyone with the link and the
+    password).
+  - Share link…: **Public: anyone with the link can open it.** (its toast: Share link copied. Anyone with the link can
+    open the diagram.)
+  - Embed on a public page… (in the link, or an example by name): **Public: anyone who can see the page can open
+    it.** (the dialog: Anyone who can see the page can open this diagram.)
 
   For a work diagram the safe choices are, in order: Interactive HTML (read-only, offline; with a password when it
-  may be forwarded beyond the team), the diagram file, a link with a password, and an embed your app supplies. The dialog is **Embed code**, as the menu row says.
+  may be forwarded beyond the team), the diagram file, an embed your app supplies, and a link with a password: Share's
+  order. Both embed rows open the dialog titled **Embed code**, each with only its own kind.
 
 - **Storage**: where files live. **This device** (never "local", "computer" or "disk"; mid-sentence "this
   device"), **Google Drive**, **OneDrive** and **Dropbox** (never "Drive", "OneDrive Personal" or "Dropbox
@@ -284,12 +302,16 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - **Private** (never "local-only", "secret" or "confidential" in the UI) keeps a diagram on this device: no share
   links or link embeds (only **Your app supplies it (private)**), no cloud saves, no AI. The switch is **File ▸
   Privacy ▸ Private diagram** (and Ctrl+K, "Make this diagram private"); a **Private** lock badge sits beside the
-  title, and its click opens the **Private diagram** dialog, the one confirmation for **Make not private** (**Keep private** is the default). The link
-  rows stay, off (still reached by the arrow keys, `aria-disabled`), saying "Private diagrams can't be shared as
-  links. Export Interactive HTML instead."; the reason stays readable while the name fades; the panel says
+  title, and its click opens the **Private diagram** dialog, the one confirmation for **Make not private** (**Keep private** is the default). Share…
+  lists only the files and the embed your app supplies, with one line saying why the links are off and **Make it not
+  private…** (the same dialog); a link dialog open when it turns private (here or in another tab) closes, saying "Private diagrams can't be
+  shared as links. Export Interactive HTML instead." with **Interactive HTML…** as its action; the panel says
   **AI is off for this private diagram** and offers **Allow the on-device model (stays on this device)**. Copies,
   duplicates, exports (`"private": true`) and pasted nodes stay private. **New diagrams are private** (File ▸
-  Privacy ▸) is one remembered setting, off by default. **Clear everything on this device…** (last in File ▸ Privacy ▸)
+  Privacy ▸) is one remembered setting, off by default, and never turned on by itself (Private turns AI off, and the
+  agents-first direction needs AI on): the first Import report of an infrastructure file (Terraform, Kubernetes,
+  docker-compose, AsyncAPI) offers it once, as a checkbox under **Make it private**, and never asks again (Clear
+  everything forgets that it asked). **Clear everything on this device…** (last in File ▸ Privacy ▸)
   is the one wipe: a confirmation that lists what goes and what stays, with **Cancel** the default. Making a diagram
   Private that has an AI conversation offers **Clear conversation** in its toast (one step, with Undo). The built-in local-only examples (development only) are
   always private, with their own wording.
@@ -339,7 +361,10 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
     expectations count on) is one muted **On purpose:** line, never a finding. Counts never raise a warning, never go in
     the file, and hide the moment an edit a simulation would see is made (**The diagram changed since the simulations
     played.**); moving or selecting things doesn't count, and Undo brings them back.
-- Esc backs out one level: full screen (the browser takes that Esc itself), menu, the Embed dialog's preview (back to the dialog), dialog, selection, simulations playing (Run simulations), the Checks card, slow motion, trace, highlighted path, presentation, then live view.
+- Esc backs out one level: full screen (the browser takes that Esc itself), menu, the Embed dialog's preview (back to
+  the dialog), dialog (a dialog opened from Share… replaces it, so Esc closes it, back to where Share… was opened),
+  selection, simulations playing (Run simulations), the Checks card, slow motion, trace, highlighted path,
+  presentation, then live view.
   In a text field on the canvas it saves and leaves the field (Editing text, above). Esc never selects, and clearing a
   selection leaves keyboard focus where it was (on the node), never on the page.
 - **Undo toasts** ("Payments service left AKS · Undo", an agent's change, an applied fix) offer to reverse one change.

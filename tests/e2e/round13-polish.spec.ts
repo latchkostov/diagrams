@@ -1,5 +1,14 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, pauseClock, waitForStableBox } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  pageLoadTimeout,
+  pauseClock,
+  shareVia,
+  waitForStableBox,
+} from "./fixtures";
 import {
   callTool,
   installFakeLanguageModel,
@@ -355,8 +364,7 @@ test("a password link's Done takes focus once the link is made", async ({ page, 
   test.slow(); // PBKDF2 at 600,000 iterations
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await gotoCanvas(page, KAFKA);
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("export-share-link-password").click();
+  await shareVia(page, "password");
   await page.getByTestId("password-link-input").fill("plum orbit lantern 42");
   await page.getByTestId("password-link-copy").click();
   await expect(page.getByTestId("password-link-done")).toBeFocused({ timeout: 20_000 });

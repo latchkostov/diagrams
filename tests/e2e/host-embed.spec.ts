@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import type { Frame, Page, Request } from "@playwright/test";
-import { test as base, expect, E2E_TARGET, expectNoErrors, pageLoadTimeout } from "./fixtures";
+import { test as base, expect, E2E_TARGET, expectNoErrors, pageLoadTimeout, shareVia } from "./fixtures";
 
 // Host-supplied embeds (docs/EMBEDDING.md): a page on another origin loads the <live-diagram> web component from
 // the app, fetches the diagram from its own server (with its own session cookie) and hands it to the viewer
@@ -697,11 +697,11 @@ test.describe("embed dialog: your app supplies the diagram", () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto("./?view=canvas&example=kafka-order-pipeline");
     await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
-    await page.getByTestId("file-button").click();
-    await page.getByTestId("export-embed").click();
+    // Share… ▸ Embed in your app: the host-supplied embed only, with no source that puts the diagram in a URL.
+    await shareVia(page, "embed");
     const dialog = page.getByTestId("embed-dialog");
     await expect(dialog).toBeVisible();
-    await page.getByTestId("embed-source-host").click();
+    await expect(page.getByTestId("embed-source-inline")).toHaveCount(0);
     await expect(page.getByTestId("embed-host-note")).toContainText(
       "The diagram never leaves your app. Live Diagrams only provides the viewer.",
     );
@@ -716,20 +716,15 @@ test.describe("embed dialog: your app supplies the diagram", () => {
     await expect(preview.contentFrame().getByTestId("host-embed-view")).toHaveAttribute("data-status", "ready");
     await expect(preview.contentFrame().getByTestId("node-payments")).toBeVisible();
 
-    // The radio groups are one Tab stop each; arrows move and select.
-    await expect(page.getByTestId("embed-source-host")).toHaveAttribute("tabindex", "0");
-    await expect(page.getByTestId("embed-source-inline")).toHaveAttribute("tabindex", "-1");
+    // The code's radio group is one Tab stop; arrows move and select.
+    await expect(page.getByTestId("embed-host-format-component")).toHaveAttribute("tabindex", "0");
+    await expect(page.getByTestId("embed-host-format-iframe")).toHaveAttribute("tabindex", "-1");
     await page.getByTestId("embed-host-format-component").focus();
     await page.keyboard.press("ArrowRight");
     await expect(page.getByTestId("embed-host-format-iframe")).toHaveAttribute("aria-checked", "true");
     await expect(page.getByTestId("embed-host-format-iframe")).toBeFocused();
     await page.keyboard.press("ArrowLeft");
     await expect(page.getByTestId("embed-host-format-component")).toHaveAttribute("aria-checked", "true");
-    await page.getByTestId("embed-source-host").focus();
-    await page.keyboard.press("ArrowLeft");
-    await expect(page.getByTestId("embed-source-inline")).toHaveAttribute("aria-checked", "true");
-    await page.keyboard.press("ArrowRight");
-    await expect(page.getByTestId("embed-source-host")).toHaveAttribute("aria-checked", "true");
     await page.getByTestId("embed-host-format-iframe").click();
     await expect(snippet).toHaveValue(/hostOrigin=" \+ encodeURIComponent\(location\.origin\)/);
     await expect(snippet).toHaveValue(/postMessage\(\{ protocol: PROTOCOL, type: "load", diagram/);

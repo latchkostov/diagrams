@@ -132,6 +132,147 @@ Seven P2s from the Codex review, in three themes. All verified; each fix has a t
 Also: `screenshots/round29/present-hover-1280-light.png`, `fullscreen-on-1280-light.png`,
 `fullscreen-on-focus-1280-light.png` and `live-present-1024-light.png`.
 
+## Round 27: Share…, safest first (2026-10-13)
+
+The gate for Round 21's three sharing proposals, which the owner approved: "the safe options up top. As long as we have
+a way to make it public, you can opt into having it public, but private should be the first option." One **Share…**
+chooser instead of three File menu rows, the password link above the plain link, and **New diagrams are private**
+offered at the first infrastructure import. Self-review against `docs/UX-PRINCIPLES.md` on the production build
+(`vite preview`), Chrome driven by Playwright, at 1024 × 768, 1280 × 800 light, 1440 × 900 dark and a 390 px phone,
+mouse and keyboard; and on a build with the internal switches (no share links, new diagrams Private). The Kafka example,
+a private copy of it, and the public docker-compose test fixture. Screenshots are in `docs/screenshots/round27/`
+(`before-*` is the build before this round).
+
+- **The File menu shrinks.** Copy share link, Copy link with password… and Embed code… are one row, **Share…** ("Files,
+  embeds and links, safest first"), beside Privacy: 11 rows to 9 (`before-file-menu-1280-light`,
+  `file-menu-1280-light`). The right-click's Export ▸ goes from three link rows to the same **Share…**
+  (`before-rightclick-export-1280-light`, `rightclick-export-1280-light`), and Ctrl+K finds it as "share" or "link".
+- **Safe first, and the keyboard lands there.** A dialog, **Share** ("Safest first. Each says who can open what it
+  makes."), with one row per way out, each saying who can open what it makes: **Interactive HTML…** ("Anyone who has
+  this file can open it. A password is optional."), **Diagram file**, **Embed in your app…** ("Your app supplies it
+  (private): the diagram never leaves your app.") and **Link with password…** (`chooser-1280-light`,
+  `chooser-1440-dark`, `chooser-1024-light`). Focus is on Interactive HTML, so Enter does the safest thing; the arrows,
+  Home and End walk the rows. No primary button: the list is the choice, as in the draw.io page picker.
+- **Public takes a deliberate step, every time.** Below a rule, one quiet line, **Public link or embed · anyone with the
+  link can open it**, folded. Enter (or a click) on it shows **Share link…** and **Embed on a public page…**, each
+  saying **Public:** first, and keeps the keyboard on the line, so nothing is made or copied by the step itself
+  (`chooser-public-1280-light`, `chooser-public-1440-dark`, `chooser-public-390-light`). Share… opens folded again each
+  time. Folded rather than just below the rule: there, ArrowDown from Link with password would walk straight into
+  Share link; folded, no key reaches a public row until the step is taken.
+- **A Private diagram lists what it allows, and says why.** Interactive HTML, Diagram file and Embed in your app, then
+  one line: **Links and public embeds are off for a private diagram. Make it not private…**, which opens the Private
+  diagram dialog (Keep private its default) (`chooser-private-1280-light`, `chooser-private-1440-dark`). The File menu
+  row says "Files, or an embed your app supplies" (`file-menu-private-1280-light`). The off rows of before, faded in
+  place (`before-private-file-menu-1440-dark`), are gone: the line says it once.
+- **Links off (a company's own copy): the three rows, nothing else.** No Link with password, no public line, and no
+  sentence about links, since this copy has none to explain (`chooser-internal-1280-light`). With only link opening
+  off, Share… is as on the public site.
+- **Each row reuses its dialog**, which takes Share's place. Embed code opens on one kind: Embed in your app shows only
+  the host-supplied embed, with no source switch (`embed-private-1280-light`); Embed on a public page shows In the
+  link, and Example by name for a pristine public example (`embed-public-1280-light`). The Share link dialog's Copy
+  link now says who can open it in its toast, as the one-click copy used to (`share-link-1280-light`).
+- **Ask about Private when it matters.** The first Import report of an infrastructure file shows, under **Make it
+  private**, an unticked **New diagrams are private · File ▸ Privacy** (`before-import-report-1280-light`,
+  `import-report-offer-1280-light`, `import-report-offer-1440-dark`). Ticked, it's that setting. It's asked once (the
+  report that shows it remembers that it asked), never while the setting is on (the internal build), and Clear
+  everything on this device asks again. It never turns on by itself: Private turns AI off.
+
+Every entry point still works:
+
+| Before                                           | Now                                                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| File ▸ Copy share link (one click, toast)        | File ▸ Share… ▸ Public link or embed ▸ Share link… (the dialog's Copy link)                                                     |
+| File ▸ Copy link with password…                  | File ▸ Share… ▸ Link with password…                                                                                             |
+| File ▸ Embed code…                               | File ▸ Share… ▸ Embed in your app…, or ▸ Public link or embed ▸ Embed on a public page…                                         |
+| Right-click Export ▸ the same three              | Right-click Export ▸ Share…                                                                                                     |
+| Ctrl+K "Export › Copy share link" (and the rest) | Ctrl+K "Export › Share…" (found by "share", "link", "password", "embed")                                                        |
+| A keyboard shortcut                              | There was none for Copy share link, and none is added                                                                           |
+| The refusal toast's Interactive HTML…            | Unchanged; a link dialog that closes because the diagram turned private now offers it too                                       |
+| WebMCP `get_share_link`                          | Unchanged for agents                                                                                                            |
+| The AI panel                                     | Nothing in it pointed at the rows; "Your coding agent" now says the skill replies with an HTML file, the diagram file or a link |
+
+### What was off (fixed in this round)
+
+- **One thing, two names.** The new row said Link with password… and its dialog was titled "Copy link with password",
+  as was the Share link dialog's alternative. The dialog, its loading frame and the alternative now say **Link with
+  password**.
+- **The Diagram file toast didn't say who can open it** ("Exported 15 nodes and 15 edges."). It adds "Anyone who has
+  this file can open it." From Share… the row saves at once, so the toast is where it's said after the click.
+- **A link dialog closed by a diagram turning private said why, but offered nothing.** The plain refusal now carries
+  **Interactive HTML…**, like the refusal that used to follow a one-click copy.
+- **The public embed's note pointed at a source its dialog no longer had** ("choose Your app supplies it"). It says
+  "use Share… ▸ Embed in your app."
+- **The fold's `aria-controls` named an element that wasn't there** while folded. It's set only while open.
+- **At phone width the rows' file extensions squeezed their words** to three lines. Under 480 px they're hidden.
+
+### After code review (PR #83, five findings, all fixed)
+
+- **A public embed could turn into the private kind.** Open on a diagram another tab made private, Embed on a public
+  page swapped itself for the host-supplied embed: a different integration from the one picked. The dialog's kind is
+  now fixed when Share… opens it; a public one closes, with the refusal's **Interactive HTML…**, and Embed in your app
+  stays, saying the diagram is private.
+- **The file hints fell under 4.5:1 on a focused or hovered row** (both themes). They take the darker muted colour
+  there, and the a11y scan now opens Share… from the keyboard with one row focused and another hovered.
+- **Opening Share… exported the whole diagram and threw it away** (a big one, before the list could show). It checks
+  only that a diagram is on the canvas; the row picked reads it.
+- **Tests:** the share link's round trip copies with **Copy link** and opens what the clipboard holds, and Share… is
+  shown to close when another diagram opens (Back or Forward), whether loaded or still downloading. A dev-server test
+  counts the export's own read (`getOriginal`) to show opening Share… makes none.
+
+### Decisions, so they can be revisited
+
+- **Esc from a dialog Share… opened closes it** and gives the keyboard back to where Share… was opened (the File
+  button), rather than returning to Share…: picking a row is the choice, and a dialog that closes after its action
+  (Download HTML) would otherwise bring the chooser back.
+- **Refusal toasts keep pointing at Interactive HTML…**, the first row, not at Share…: one click to the safe way.
+- **The offer lives in the report**, not the import toast, whose one action is Details. "Asked once" means shown once:
+  an import whose report is never opened hasn't asked.
+- **Bundle.** The chooser is its own chunk (1.6 kB gzip, and 0.7 kB of CSS), warmed with the other dialogs when the
+  File menu opens. The entry grew 54 B gzip (102,658 to 102,712): the one-click copy's code left it, and the privacy
+  gates (`src/lib/localOnly.ts`), already loaded at startup as a preloaded chunk, now sit in the entry, one request
+  fewer (`src/lib/bundleSplit.build.test.ts`'s pinned list says so).
+
+### Which option should I use (as Share… lists it)
+
+| You want to…                                          | Where                                                       | Who can open it                                   | Private diagram |
+| ----------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------- | --------------- |
+| Send a work diagram to colleagues to look at and play | Share… ▸ **Interactive HTML…**                              | Anyone who has the file                           | Yes             |
+| …and it may be forwarded beyond them                  | Share… ▸ **Interactive HTML…** ▸ **Require a password**     | Anyone with the file and the password             | Yes             |
+| Let someone keep editing it                           | Share… ▸ **Diagram file** (or Save)                         | Anyone who has the file                           | Yes             |
+| Show it in your intranet or app, behind its sign-in   | Share… ▸ **Embed in your app…**                             | Whoever your app lets in; never in a URL          | Yes             |
+| A link for a few people                               | Share… ▸ **Link with password…**                            | Anyone with the link and the password             | No (says why)   |
+| A quick link for a public or personal diagram         | Share… ▸ Public link or embed ▸ **Share link…**             | Anyone with the link                              | No (says why)   |
+| Show it on a public page (blog, docs)                 | Share… ▸ Public link or embed ▸ **Embed on a public page…** | Anyone who can see the page                       | No (says why)   |
+| A picture                                             | **Export PNG** / Export as ▸ **Image…**                     | Anyone who has the file                           | Yes             |
+| Keep it in your own cloud storage                     | **Save to ▸** Google Drive, OneDrive or Dropbox             | Your account, and whoever you share it with there | No (says why)   |
+
+A company's own copy without share links (docs/SELF-HOSTING.md) lists only the two files and Embed in your app. The
+skill offers the same order (`skills/livediagrams/reference/outputs.md`).
+
+### Still open (owner's call)
+
+- **Copy share link's one-click habit is gone**, as Round 21 said it would be: a public link is now File, Share…, the
+  public line, Share link…, Copy link. That's the deliberate step; a shortcut or a palette command straight to it
+  would undo it.
+- **Pictures and cloud saves aren't in Share….** They stay File ▸ Export PNG / Export as and Save to ▸; adding them
+  would make Share… a second File menu.
+- **`public/privacy.html` keeps its effective date**: it now names Share… and orders the ways out safest first, but no
+  practice changed.
+
+![Before: three link rows, the plain link first](screenshots/round27/before-file-menu-1280-light.png)
+![After: one Share… row](screenshots/round27/file-menu-1280-light.png)
+![Share…: safe first, the keyboard on Interactive HTML](screenshots/round27/chooser-1280-light.png)
+![The public line, opened from the keyboard, dark](screenshots/round27/chooser-public-1440-dark.png)
+![A Private diagram: what it allows, and why](screenshots/round27/chooser-private-1280-light.png)
+![A copy without share links](screenshots/round27/chooser-internal-1280-light.png)
+![The first Import report offers New diagrams are private](screenshots/round27/import-report-offer-1280-light.png)
+
+Also: `screenshots/round27/before-rightclick-export-1280-light.png`, `before-private-file-menu-1440-dark.png`,
+`before-import-report-1280-light.png`, `rightclick-export-1280-light.png`, `file-menu-private-1280-light.png`,
+`chooser-1440-dark.png`, `chooser-1024-light.png`, `chooser-public-1280-light.png`, `chooser-public-390-light.png`,
+`chooser-private-1440-dark.png`, `embed-private-1280-light.png`, `embed-public-1280-light.png`,
+`share-link-1280-light.png`, `password-link-1280-light.png` and `import-report-offer-1440-dark.png`.
+
 ## Round 26: checks, batch 5: Run simulations (2026-10-12)
 
 The gate for **Run simulations** in the Checks card and the `dropped` suggestion (`docs/research/architecture-checks.md`,
@@ -267,6 +408,8 @@ from disk at those sizes and on a 390 px phone; mouse and keyboard. The Kafka ex
   canvas didn't read. The swap's path is normalized, and `src/export/template.build.test.ts` checks there's one copy.
 
 ### Which option should I use (round 21's map, with the password)
+
+Superseded by round 27's map, as Share… lists the ways out.
 
 | You want to…                                          | Use                                                  | Who can open it                                   | Private diagram      |
 | ----------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------- | -------------------- |
@@ -606,7 +749,7 @@ command as the menu, so with no diagram on the canvas it says "Open a diagram on
 silently, and the tests hold link making to check Esc while a link is pending and the refusal toast's action end to
 end.
 
-### Proposals (not built)
+### Proposals (all three built in round 27, at the owner's direction)
 
 - **One "Share…" chooser.** One File menu row (replacing Copy share link, Copy link with password… and Embed code…, so
   the menu shrinks) opening a dialog that lists the ways out with who can open each, safest first: Interactive HTML,

@@ -4,7 +4,7 @@ import { MIN_PASSWORD_LENGTH, parseEncrypted, WRONG_LINK_PASSWORD, WrongPassword
 import { compressDiagram, diagramFromCompressed } from "./share";
 
 // Password links' encryption (the format and its parameters: ./passwordLink.ts; the WebCrypto work, shared with
-// password-protected Interactive HTML files: ./passwordCrypto.ts). Loaded on use: by Copy link with password… and
+// password-protected Interactive HTML files: ./passwordCrypto.ts). Loaded on use: by Link with password… and
 // by the password prompt.
 
 export * from "./passwordLink";

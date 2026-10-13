@@ -12,10 +12,11 @@ Everything. A self-hosted copy built with `pnpm build:internal`:
   each person's device. Nothing is uploaded: there's no backend to upload to, yours or ours.
 - **Talks only to your origin.** The app makes no requests to livediagrams.dev or anyone else. It has no analytics,
   no telemetry and no fonts or icons from a CDN. The Content-Security-Policy (below) makes the browser enforce this.
-- **Makes no links.** Share links, links with a password and embed codes that carry the diagram are gone from the
-  menus, the right-click and Ctrl+K, and their code isn't in the build (`src/lib/deployment.build.test.ts` checks).
-  **Embed code…** stays, offering only the private embed, where your own page supplies the diagram
-  ([below](#embedding-internal-diagrams)).
+- **Makes no links.** Share links, links with a password and embed codes that carry the diagram are gone from
+  **File ▸ Share…** (the right-click's Export ▸ Share… and Ctrl+K open the same dialog), and their code isn't in the
+  build (`src/lib/deployment.build.test.ts` checks). Share… lists **Interactive HTML…**, **Diagram file** and **Embed
+  in your app…**, the private embed where your own page supplies the diagram ([below](#embedding-internal-diagrams)),
+  and nothing else: no Link with password…, no public section, and no line about links being off.
 - **Offers nothing to outside AI.** No tools for browser agents (WebMCP), no Copy for AI and no copied prompts.
 - **Starts new diagrams Private.** People can still turn that setting off in File ▸ Privacy.
 - **Exports stay files.** Diagram file, PNG, SVG, draw.io, Mermaid and **Interactive HTML** are made in the page and
@@ -67,7 +68,7 @@ build. Changing one means building again. `src/lib/deployment.ts` is the one pla
 
 | Variable                   | `pnpm build`  | `pnpm build:internal` | What it does                                                                                                                                                                                                                           |
 | -------------------------- | ------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_DISABLE_SHARE_LINKS` | off           | **1**                 | No share links, links with a password or embeds that carry the diagram in their URL: not in the File menu, the right-click or Ctrl+K, and agents get no `get_share_link`. Embed code… offers only the private embed.                   |
+| `VITE_DISABLE_SHARE_LINKS` | off           | **1**                 | No share links, links with a password or embeds that carry the diagram in their URL: Share… lists the two files and Embed in your app… only (no public section), and agents get no `get_share_link`.                                   |
 | `VITE_DISABLE_LINK_OPEN`   | off           | off                   | Links people send (`#d=`, `#e=`) don't open, in the app or in an embed: the address bar is cleared and a message says so. File ▸ Import from ▸ Share link… goes too. Private embeds (`?embed=1&host=1`) still work: they open no link. |
 | `VITE_DISABLE_AI_TOOLS`    | off           | **1**                 | No tools for browser agents (WebMCP), no Copy for AI, no Advanced (copied prompts) and no Build with AI. The AI panel keeps only the on-device model.                                                                                  |
 | `VITE_DISABLE_ONDEVICE`    | off           | off                   | No on-device model (Chrome's built-in one). With AI tools off as well, there's no AI panel at all.                                                                                                                                     |
@@ -211,8 +212,8 @@ IIS serves only file types it knows. If a font or a JSON file answers 404, add i
 
 Use **private embeds** ([EMBEDDING.md](EMBEDDING.md)) to show a diagram in your wiki, intranet or internal app: your
 page fetches the diagram file from your own server, with your page's sign-in, and hands it to the viewer with
-`postMessage`. Nothing of the diagram goes in a URL, and your copy only serves the viewer. In File ▸ Embed code…, a
-copy built without share links offers just this one: **Your app supplies it (private)**.
+`postMessage`. Nothing of the diagram goes in a URL, and your copy only serves the viewer. It's **File ▸ Share… ▸ Embed
+in your app…**: a copy built without share links offers no other embed.
 
 ```html
 <script type="module" src="https://diagrams.example.com/embed/live-diagram.js"></script>
