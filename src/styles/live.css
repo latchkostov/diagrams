@@ -71,10 +71,16 @@
   animation: lv-breathe 1.8s ease-in-out infinite;
 }
 
+/* Clear of Exit presentation (24 px in, about 184 px wide), with the bar's 8 px gap. */
 .lv-toggle.is-presenting {
   top: 24px;
-  right: 210px;
+  right: 216px;
   opacity: 0.75;
+}
+
+/* And of the full-screen button (34 px and a gap), where the browser offers full screen. */
+.canvas-view:has(.present-fs) .lv-toggle.is-presenting {
+  right: 258px;
 }
 
 .lv-toggle.is-presenting:hover {
@@ -2225,7 +2231,8 @@ details[open] > summary .lv-disclosure-chevron {
 }
 
 [data-lv-recording] .lv-toggle,
-[data-lv-recording] .present-exit {
+[data-lv-recording] .present-exit,
+[data-lv-recording] .present-fs {
   visibility: hidden;
 }
 

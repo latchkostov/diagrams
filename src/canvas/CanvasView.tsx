@@ -138,6 +138,8 @@ import { checksPanel, useChecksPanel } from "./checks/checksPanel";
 import { useChecks } from "./checks/useChecks";
 import { ChecksCardView, ChecksMarkersView, DiagramCardMeta, SelectionFindings } from "./checks/ChecksViews";
 import { useBelow } from "./checks/useBelow";
+import { PresentFullscreen } from "./PresentFullscreen";
+import { useFullscreen } from "../lib/fullscreen";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -614,6 +616,26 @@ function CanvasInner({
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refit on mode changes only
   }, [presenting, live, fitView]);
+  // Full screen on or off while presenting resizes the pane: a diagram shown whole is refitted to it.
+  const fullscreen = useFullscreen();
+  const lastFullscreen = useRef(fullscreen);
+  useEffect(() => {
+    if (lastFullscreen.current === fullscreen) return;
+    lastFullscreen.current = fullscreen;
+    if (!presenting || !showingAll.current) return;
+    const id = setTimeout(
+      () =>
+        overlayFit({
+          maxZoom: FIT_PRESENT.maxZoom,
+          margin: 64,
+          insets: live ? { bottom: LIVE_BAR_SPACE } : undefined,
+          duration: 350,
+        }),
+      80,
+    );
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit when full screen changes only
+  }, [fullscreen]);
   // First fit once every node is measured (React Flow's own fit can't see the overlays).
   const nodesReady = useNodesInitialized();
   const firstFit = useRef(false);
@@ -2298,9 +2320,12 @@ function CanvasInner({
           {checksOn && checksCard && <ChecksCardView store={checks} host={checksHost} top={checksTop} />}
 
           {presenting && (
-            <button className="present-exit" onClick={onExitPresent} data-testid="present-exit">
-              <Icon name="close" size={14} /> Exit presentation <kbd>Esc</kbd>
-            </button>
+            <div className="present-bar">
+              <PresentFullscreen />
+              <button className="present-exit" onClick={onExitPresent} data-testid="present-exit">
+                <Icon name="close" size={14} /> Exit presentation <kbd>Esc</kbd>
+              </button>
+            </div>
           )}
 
           {contentCount === 0 && !hideChrome && !live && start && !startDismissed ? (

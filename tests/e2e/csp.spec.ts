@@ -92,9 +92,16 @@ test.describe("Content-Security-Policy", () => {
         displayCapture: d.featurePolicy?.allowsFeature("display-capture"),
         camera: d.featurePolicy?.allowsFeature("camera"),
         geolocation: d.featurePolicy?.allowsFeature("geolocation"),
+        fullscreen: d.featurePolicy?.allowsFeature("fullscreen"),
       };
     });
-    expect(allowed).toEqual({ microphone: true, displayCapture: true, camera: true, geolocation: false });
+    expect(allowed).toEqual({
+      microphone: true,
+      displayCapture: true,
+      camera: true,
+      geolocation: false,
+      fullscreen: true,
+    });
 
     // PNG, then SVG (html-to-image: fonts and icons inlined as data: URLs, rendered through blob: and data:).
     await page.getByTestId("file-button").click();
@@ -158,6 +165,17 @@ test.describe("Content-Security-Policy", () => {
     );
     expect(ready, "the recorded video didn't load (media-src)").toBe(true);
 
+    expect(await csp.violations()).toEqual([]);
+  });
+
+  test("presenting full screen", async ({ page }) => {
+    const csp = await watch(page);
+    expectPolicy(await page.goto(`./?view=canvas&example=${KAFKA}&present=1`));
+    // Full screen is the default allowlist's 'self': the policy doesn't need to name it.
+    await page.getByTestId("present-fullscreen").click({ timeout: pageLoadTimeout() });
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement === document.documentElement)).toBe(true);
+    await page.getByTestId("present-exit").click();
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
     expect(await csp.violations()).toEqual([]);
   });
 

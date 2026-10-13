@@ -1310,11 +1310,35 @@
   font-size: 16px;
 }
 
-.present-exit {
+/* Presenting: full screen (when the browser allows it), then Exit presentation, in the top-right corner. */
+.present-bar {
   position: absolute;
   top: 24px;
   right: 24px;
   z-index: 6;
+  display: flex;
+  gap: 8px;
+}
+
+.present-fs {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.present-fs:hover,
+.present-fs:focus-visible {
+  opacity: 1;
+}
+
+.present-exit {
   display: inline-flex;
   align-items: center;
   gap: 8px;
