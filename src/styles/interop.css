@@ -1305,3 +1305,26 @@ code.ix-report-why {
   font-size: inherit;
   font-weight: 560;
 }
+
+/* The first Import report's one-time offer: New diagrams are private, under Make it private. */
+.ix-report-offer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--text-2);
+}
+
+.ix-report-offer input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.ix-report-offer-where {
+  color: var(--text-3);
+}
+
+.ix-report-offer-where::before {
+  content: "·";
+  margin-right: 6px;
+}

@@ -106,6 +106,18 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
     },
   },
   {
+    // With its public section open, so every row is scanned.
+    name: "Share chooser",
+    scope: "share-chooser",
+    open: async (page) => {
+      await gotoCanvas(page, KAFKA);
+      await page.getByTestId("file-button").click();
+      await page.getByTestId("file-share").click();
+      await page.getByTestId("share-public-toggle").click();
+      await expect(page.getByTestId("share-option-embed-public")).toBeVisible();
+    },
+  },
+  {
     name: "library dialog",
     scope: "library-dialog",
     open: async (page) => {

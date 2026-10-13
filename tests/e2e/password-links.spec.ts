@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, publicExamples, expectNoErrors, pageLoadTimeout } from "./fixtures";
+import { test, expect, gotoCanvas, publicExamples, expectNoErrors, pageLoadTimeout, shareVia } from "./fixtures";
 
 // Password links (#e=v1.<salt>.<iv>.<ciphertext>, src/interop/shareCrypto.ts). Selectors are data-testid only.
 
@@ -66,8 +66,7 @@ const release = (page: Page, step: CryptoStep) =>
 
 async function makePasswordLink(page: Page, slug: string): Promise<string> {
   await gotoCanvas(page, slug);
-  await page.getByTestId("file-button").click();
-  await page.getByTestId("export-share-link-password").click();
+  await shareVia(page, "password");
   const dialog = page.getByTestId("password-link-dialog");
   await expect(dialog).toBeVisible();
   await expect(page.getByTestId("password-link-note")).toContainText("Send the password separately");
@@ -195,8 +194,7 @@ test.describe("password links", () => {
     const ex = publicExamples[0];
     await gotoCanvas(page, ex.slug);
     await page.evaluate(() => navigator.clipboard.writeText("before"));
-    await page.getByTestId("file-button").click();
-    await page.getByTestId("export-share-link-password").click();
+    await shareVia(page, "password");
     await hold(page, "encrypt");
     await page.getByTestId("password-link-input").fill("first password here");
     await page.getByTestId("password-link-copy").click();
@@ -416,9 +414,7 @@ test.describe("password links", () => {
     };
     await page.setViewportSize({ width: 1024, height: 768 });
     await gotoCanvas(page, publicExamples[1].slug);
-    await page.getByTestId("file-button").click();
-    await page.getByTestId("export-share-link").click();
-    await page.getByTestId("toast-share-details").click();
+    await shareVia(page, "link");
     const share = ["share-link-native", "share-link-password", "share-link-open", "share-link-copy"];
     await expect(page.getByTestId("share-link-copy")).toBeEnabled();
     await inside("share-link-dialog", share);

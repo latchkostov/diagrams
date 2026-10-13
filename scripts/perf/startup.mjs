@@ -148,12 +148,10 @@ const INTERACTIONS = [
     },
   ],
   [
-    "share dialog",
+    "share chooser",
     async (page) => {
       await page.getByTestId("file-button").click();
-      await page.getByTestId("export-share-link").click();
-      await page.getByTestId("toast-share-details").waitFor();
-      return interaction(page, tid("share-link-dialog"), () => page.getByTestId("toast-share-details").click());
+      return interaction(page, tid("share-chooser"), () => page.getByTestId("file-share").click());
     },
   ],
   [

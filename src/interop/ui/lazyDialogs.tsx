@@ -57,7 +57,15 @@ export const ShareDialog = lazyComponent(
   LINKS ? () => import("./dialogs").then((m) => m.ShareDialog) : linksOff,
   loadingDialog("Share link"),
 );
-export const EmbedDialog = lazyComponent(() => import("./dialogs").then((m) => m.EmbedDialog), loadingDialog("Embed"));
+export const EmbedDialog = lazyComponent(
+  () => import("./dialogs").then((m) => m.EmbedDialog),
+  loadingDialog("Embed code"),
+);
+/** File ▸ Share…: every way out, safest first; each of its rows opens one of the dialogs here, or saves the file. */
+export const ShareChooserDialog = lazyComponent(
+  () => import("./ShareChooser").then((m) => m.ShareChooser),
+  loadingDialog("Share"),
+);
 export const ImageDialog = lazyComponent(
   () => import("./dialogs").then((m) => m.ImageDialog),
   loadingDialog("Export image"),
@@ -90,7 +98,7 @@ export const HtmlExportDialog = lazyComponent(
 /** Password links: the dialogs and the strength hint. */
 export const PasswordLinkDialog = lazyComponent(
   LINKS ? () => import("./passwordDialogs").then((m) => m.PasswordLinkDialog) : linksOff,
-  loadingDialog("Copy link with password"),
+  loadingDialog("Link with password"),
 );
 export const UnlockDialog = lazyComponent(
   () => import("./passwordDialogs").then((m) => m.UnlockDialog),
@@ -110,6 +118,7 @@ export const StorageFilesDialog = lazyComponent(
 /** Warms every dialog the File menu and the canvas's Export menu can open. */
 export function preloadDialogs() {
   for (const dialog of [
+    ShareChooserDialog,
     ...(LINKS ? [ShareDialog, PasswordLinkDialog] : []),
     EmbedDialog,
     ImageDialog,

@@ -1,7 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, publicExamples, expectNoErrors, waitForStableViewport } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  publicExamples,
+  expectNoErrors,
+  openShareChooser,
+  waitForStableViewport,
+} from "./fixtures";
 
 // Infrastructure imports, batch 1: docker-compose (docs/research/imports.md). Open…, drop, the Import report
 // and its stencil chips, hostile input, no network, and privacy. Selectors are data-testid only.
@@ -706,8 +714,9 @@ test.describe("imports: Terraform", () => {
     await page.reload();
     await expect(page.getByTestId("diagram-title")).toHaveText("aws-plan (everything)");
     await expect(page.getByTestId("private-badge")).toBeVisible();
-    await page.getByTestId("file-button").click();
-    await expect(page.getByTestId("export-share-link")).toBeDisabled();
+    await openShareChooser(page);
+    await expect(page.getByTestId("share-private-note")).toBeVisible();
+    await expect(page.getByTestId("share-public-toggle")).toHaveCount(0);
     await page.keyboard.press("Escape");
     expectNoErrors(consoleErrors);
   });

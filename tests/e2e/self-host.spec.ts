@@ -3,7 +3,7 @@ import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, publicExamples } from "./fixtures";
 import { installFakeLanguageModel, installFakeModelContext, must, toolNames } from "./ai-helpers";
-import { expectHostEmbed, expectOnlyPrivateEmbed, serveHostPage } from "./self-host-helpers";
+import { expectHostEmbed, expectShareWithoutLinks, serveHostPage } from "./self-host-helpers";
 
 /**
  * A self-hosted copy (docs/SELF-HOSTING.md), built as `pnpm build:internal` builds it, with a brand name: project
@@ -97,14 +97,14 @@ test.describe("self-hosted build", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("Embed code… offers only the private embed, and a host page shows a diagram it supplies", async ({
+  test("Share… offers the files and the private embed only, and a host page shows a diagram it supplies", async ({
     page,
     baseURL,
     consoleErrors,
   }) => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
-    await expectOnlyPrivateEmbed(page);
+    await expectShareWithoutLinks(page);
 
     const diagram = JSON.parse(readFileSync(`src/examples/${SLUG}.json`, "utf8"));
     const host = await serveHostPage(new URL("./", must(baseURL, "the app")).href, diagram);
@@ -131,14 +131,12 @@ test.describe("self-hosted build", () => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
 
-    // The File menu: no link rows at all (not just disabled), Privacy and the exports stay, and Embed code…, whose
-    // only embed is the one the host's page supplies (nothing of the diagram goes in a URL).
+    // The File menu: Share… (whose rows are the files and the embed the host's page supplies), Privacy and the
+    // exports; no link rows anywhere.
     await page.getByTestId("file-button").click();
     await expect(page.getByTestId("file-privacy")).toBeVisible();
     await expect(page.getByTestId("export-png")).toBeVisible();
-    await expect(page.getByTestId("export-embed")).toContainText("Your app supplies it");
-    for (const id of ["export-share-link", "export-share-link-password"])
-      await expect(page.getByTestId(id)).toHaveCount(0);
+    await expect(page.getByTestId("file-share")).toBeVisible();
     // Opening a link someone sent is still offered.
     await page.getByTestId("file-import-from").click();
     await expect(page.getByTestId("import-share-link")).toBeVisible();
@@ -150,18 +148,21 @@ test.describe("self-hosted build", () => {
     await page.getByTestId("context-menu-item-canvas.export").hover();
     await expect(page.getByTestId("context-menu-item-export:json")).toBeVisible();
     await expect(page.getByTestId("context-menu-item-export:html")).toBeVisible();
-    await expect(page.getByTestId("context-menu-item-export:embed")).toBeVisible();
-    for (const id of ["export:share", "export:share-password"])
-      await expect(page.getByTestId(`context-menu-item-${id}`)).toHaveCount(0);
+    // Share… there opens the same chooser, without links.
+    await page.getByTestId("context-menu-item-export:share").click();
+    await expect(page.getByTestId("share-chooser")).toBeVisible();
+    await expect(page.getByTestId("share-option-password")).toHaveCount(0);
+    await expect(page.getByTestId("share-public-toggle")).toHaveCount(0);
     await page.keyboard.press("Escape");
+    await expect(page.getByTestId("share-chooser")).toHaveCount(0);
 
     // Ctrl+K: no link commands and no AI tools (Copy for AI needs a selection, so select a node first).
     await page.getByTestId(`node-${kafka.nodeIds[0]}`).click();
     await openPalette(page);
     expect(await paletteCount(page, "html", "Interactive HTML")).toBeGreaterThan(0);
+    expect(await paletteCount(page, "share", "Share…")).toBe(1);
     expect(await paletteCount(page, "share", "share link")).toBe(0);
-    expect(await paletteCount(page, "password", "Copy link with password")).toBe(0);
-    expect(await paletteCount(page, "embed", "Embed code")).toBe(1);
+    expect(await paletteCount(page, "password", "with password")).toBe(0);
     expect(await paletteCount(page, "ai", "AI panel")).toBeGreaterThan(0);
     expect(await paletteCount(page, "ai", "Copy for AI")).toBe(0);
     expect(await paletteCount(page, "build", "Build with AI")).toBe(0);
@@ -220,6 +221,36 @@ test.describe("self-hosted build", () => {
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-privacy").click();
     await expect(page.getByTestId("privacy-new-diagrams")).toHaveAttribute("aria-checked", "false");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("an infrastructure import starts Private here: its report offers nothing, and Share… has no link to explain", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, SLUG);
+    await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
+    await page.getByTestId("import-input").setInputFiles({
+      name: "docker-compose.yml",
+      mimeType: "application/yaml",
+      buffer: readFileSync("tests/fixtures/imports/compose/docker-compose.yml"),
+    });
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    await page.getByTestId("toast-import-details").click();
+    await expect(page.getByTestId("import-report")).toBeVisible();
+    // New diagrams are private is already on in this copy: the one-time offer (and Make it private) don't show.
+    await expect(page.getByTestId("import-report-offer")).toHaveCount(0);
+    await expect(page.getByTestId("import-report-make-private")).toHaveCount(0);
+    await page.getByTestId("import-report-done").click();
+    // A private diagram in a copy without links: the same three rows, and no line about links (there are none here).
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-share").click();
+    await expect(page.getByTestId("share-chooser")).toBeVisible();
+    for (const id of ["share-option-html", "share-option-file", "share-option-embed"])
+      await expect(page.getByTestId(id)).toBeVisible();
+    for (const id of ["share-option-password", "share-public-toggle", "share-private-note"])
+      await expect(page.getByTestId(id)).toHaveCount(0);
+    await page.keyboard.press("Escape");
     expectNoErrors(consoleErrors);
   });
 

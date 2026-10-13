@@ -1,0 +1,345 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import type { Page } from "@playwright/test";
+import { test, expect, gotoCanvas, expectNoErrors, openShareChooser } from "./fixtures";
+
+// File ▸ Share… (docs/DESIGN-REVIEW.md, round 27): one row in the File menu opens every way out, each saying who can
+// open what it makes. The private and controlled ones come first and take the keyboard; the public ones sit last,
+// behind a deliberate step; a Private diagram lists only what it allows. The first Import report of an
+// infrastructure file offers New diagrams are private, once. The self-hosted builds (no share links) are checked in
+// self-host.spec.ts and self-host-locked.spec.ts, which run against those builds (expectShareWithoutLinks).
+// Every diagram here is public or synthetic.
+
+const SLUG = "kafka-order-pipeline";
+const MOD = process.platform === "darwin" ? "Meta" : "Control";
+const COMPOSE = readFileSync(join(process.cwd(), "tests", "fixtures", "imports", "compose", "docker-compose.yml"));
+
+/** Share…'s rows, in the order they're shown (and walked by the arrow keys). */
+const rows = (page: Page) =>
+  page
+    .getByTestId("share-chooser")
+    .getByTestId(/^share-(option-|public-toggle$|make-not-private$)/)
+    .evaluateAll((els) => els.map((el) => (el as HTMLElement).dataset.testid));
+
+async function makePrivate(page: Page) {
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").click();
+  await page.getByTestId("privacy-diagram").click();
+  await expect(page.getByTestId("private-badge")).toBeVisible();
+  await page.keyboard.press("Escape");
+}
+
+/** A docker-compose import: an infrastructure file, so it has an Import report (the toast's Details). */
+async function importCompose(page: Page) {
+  await page
+    .getByTestId("import-input")
+    .setInputFiles({ name: "docker-compose.yml", mimeType: "application/yaml", buffer: COMPOSE });
+  await expect(page.getByTestId("diagram-title")).toHaveText("shop");
+  await page.getByTestId("toast-import-details").click();
+  await expect(page.getByTestId("import-report")).toBeVisible();
+}
+
+test("one File menu row, and Share… lists the safe ways first, with the keyboard on the first", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("file-button").click();
+  const menu = page.getByTestId("file-menu");
+  await expect(menu.getByTestId("file-share")).toContainText("Files, embeds and links, safest first");
+  // The three link rows it replaced are gone.
+  for (const id of ["export-share-link", "export-share-link-password", "export-embed"])
+    await expect(page.getByTestId(id)).toHaveCount(0);
+  await page.getByTestId("file-share").click();
+  await expect(page.getByTestId("share-chooser")).toBeVisible();
+
+  expect(await rows(page)).toEqual([
+    "share-option-html",
+    "share-option-file",
+    "share-option-embed",
+    "share-option-password",
+    "share-public-toggle",
+  ]);
+  await expect(page.getByTestId("share-option-html")).toBeFocused();
+  // The arrows walk the rows (Home and End too), and stop at either end.
+  await page.keyboard.press("ArrowUp");
+  await expect(page.getByTestId("share-option-html")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByTestId("share-option-file")).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(page.getByTestId("share-public-toggle")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByTestId("share-public-toggle")).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(page.getByTestId("share-option-html")).toBeFocused();
+
+  // Enter on the first row: Interactive HTML, which hands over to its own dialog. Esc closes that, and the keyboard
+  // goes back to the File button (one level each, never to the page).
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("html-export-dialog")).toBeVisible();
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("html-export-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("file-button")).toBeFocused();
+
+  // Esc on Share… itself closes it.
+  await openShareChooser(page);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+  await expect(page.getByTestId("file-button")).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
+
+test("the public ways out take a deliberate step, every time", async ({ page, context, consoleErrors }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await gotoCanvas(page, SLUG);
+  await page.evaluate(() => navigator.clipboard.writeText("before"));
+  await openShareChooser(page);
+  const toggle = page.getByTestId("share-public-toggle");
+  // Folded: neither public row is there, so no key can reach one.
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(toggle).toContainText("Public link or embed");
+  for (const id of ["share-option-link", "share-option-embed-public"])
+    await expect(page.getByTestId(id)).toHaveCount(0);
+  // Enter on the first row is never a public one, and Tab from it doesn't skip ahead to one either.
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("share-option-file")).toBeFocused();
+
+  // The step: Enter on the toggle shows them, the keyboard stays on the toggle, and nothing is made or copied.
+  await page.keyboard.press("End");
+  await expect(toggle).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(toggle).toBeFocused();
+  await expect(page.getByTestId("share-public-options")).toBeVisible();
+  expect(await rows(page)).toEqual([
+    "share-option-html",
+    "share-option-file",
+    "share-option-embed",
+    "share-option-password",
+    "share-public-toggle",
+    "share-option-link",
+    "share-option-embed-public",
+  ]);
+  await expect(page.getByTestId("share-option-link")).toContainText("Public:");
+  await expect(page.getByTestId("share-option-embed-public")).toContainText("Public:");
+  await expect(page.getByTestId("share-link-dialog")).toHaveCount(0);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
+
+  // Opened again, Share… starts folded: the step is taken each time.
+  await page.keyboard.press("Escape");
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-public-toggle")).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByTestId("share-option-link")).toHaveCount(0);
+
+  // Embed on a public page: a pristine public example embeds by name, or in the link; never the private source here.
+  await page.getByTestId("share-public-toggle").click();
+  await page.getByTestId("share-option-embed-public").click();
+  await expect(page.getByTestId("embed-dialog")).toBeVisible();
+  await expect(page.getByTestId("embed-source-example")).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByTestId("embed-source-inline")).toBeVisible();
+  await expect(page.getByTestId("embed-host-note")).toHaveCount(0);
+  // One Tab stop; the arrows move and select.
+  await page.getByTestId("embed-source-example").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByTestId("embed-source-inline")).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByTestId("embed-inline-note")).toContainText("Share… ▸ Embed in your app");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("embed-dialog")).toHaveCount(0);
+  expectNoErrors(consoleErrors);
+});
+
+test("Diagram file saves at once; Embed in your app opens the private embed only", async ({ page, consoleErrors }) => {
+  await gotoCanvas(page, SLUG);
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-option-file")).toContainText(".diagram.json");
+  const [file] = await Promise.all([page.waitForEvent("download"), page.getByTestId("share-option-file").click()]);
+  expect(file.suggestedFilename()).toBe(`${SLUG}.diagram.json`);
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+
+  await openShareChooser(page);
+  await page.getByTestId("share-option-embed").click();
+  await expect(page.getByTestId("embed-dialog")).toBeVisible();
+  await expect(page.getByTestId("embed-host-note")).toBeVisible();
+  for (const id of ["embed-source-example", "embed-source-inline", "embed-open"])
+    await expect(page.getByTestId(id)).toHaveCount(0);
+  expect(await page.getByTestId("embed-snippet").inputValue()).not.toMatch(/#[de]=|embed=1&example/);
+  await page.keyboard.press("Escape");
+  expectNoErrors(consoleErrors);
+});
+
+test("a Private diagram's Share… lists only what it allows, says why, and how to change it", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, SLUG);
+  await makePrivate(page);
+  await page.getByTestId("file-button").click();
+  await expect(page.getByTestId("file-share")).toContainText("Files, or an embed your app supplies");
+  await page.getByTestId("file-share").click();
+  await expect(page.getByTestId("share-chooser")).toBeVisible();
+  expect(await rows(page)).toEqual([
+    "share-option-html",
+    "share-option-file",
+    "share-option-embed",
+    "share-make-not-private",
+  ]);
+  await expect(page.getByTestId("share-option-html")).toBeFocused();
+  await expect(page.getByTestId("share-private-note")).toHaveText(
+    "Links and public embeds are off for a private diagram. Make it not private…",
+  );
+
+  // How to change it: the Private diagram dialog, its one confirmation. Made not private, Share… lists them all.
+  await page.getByTestId("share-make-not-private").click();
+  await expect(page.getByTestId("privacy-dialog")).toBeVisible();
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+  await page.getByTestId("privacy-turn-off").click();
+  await expect(page.getByTestId("private-badge")).toHaveCount(0);
+  await openShareChooser(page);
+  await expect(page.getByTestId("share-private-note")).toHaveCount(0);
+  await expect(page.getByTestId("share-option-password")).toBeVisible();
+  await expect(page.getByTestId("share-public-toggle")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+test("made private in another tab while Share… is open, its link rows go and the keyboard stays in it", async ({
+  page,
+  context,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, SLUG);
+  // A diagram of your own (an example would become a private copy, leaving this one as it is).
+  await page.getByTestId("import-input").setInputFiles({
+    name: "plan.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        format: "diagrams/v1",
+        title: "Turning plan",
+        nodes: [{ id: "intake", stencil: "generic.service", label: "Intake service", x: 0, y: 0 }],
+        edges: [],
+      }),
+    ),
+  });
+  await expect(page.getByTestId("diagram-title")).toHaveText("Turning plan");
+  const slug = await page.getByTestId("example-picker").inputValue();
+  await openShareChooser(page);
+  await page.getByTestId("share-public-toggle").click();
+  await page.getByTestId("share-option-link").focus();
+
+  const other = await context.newPage();
+  await gotoCanvas(other, slug);
+  await expect(other.getByTestId("diagram-title")).toHaveText("Turning plan");
+  await makePrivate(other);
+  await other.close();
+
+  for (const id of ["share-option-password", "share-public-toggle", "share-option-link"])
+    await expect(page.getByTestId(id)).toHaveCount(0);
+  await expect(page.getByTestId("share-private-note")).toBeVisible();
+  await expect(page.getByTestId("share-option-html")).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
+
+test("the right-click's Export ▸ Share… and Ctrl+K open the same chooser", async ({ page, consoleErrors }) => {
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: 700, y: 60 } });
+  await page.getByTestId("context-menu-item-canvas.export").hover();
+  for (const id of ["export:share-password", "export:embed"])
+    await expect(page.getByTestId(`context-menu-item-${id}`)).toHaveCount(0);
+  await page.getByTestId("context-menu-item-export:share").click();
+  await expect(page.getByTestId("share-chooser")).toBeVisible();
+  await expect(page.getByTestId("share-option-html")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+
+  // Ctrl+K: "link" finds it too (people look for the link).
+  await page.getByTestId("canvas-wrap").click({ position: { x: 700, y: 420 } });
+  await page.keyboard.press(`${MOD}+k`);
+  await expect(page.getByTestId("command-input")).toBeFocused();
+  await page.getByTestId("command-input").fill("share link");
+  const command = page.getByTestId("command-item-action:export:share");
+  await expect(command).toContainText("Share…");
+  await command.click();
+  await expect(page.getByTestId("share-chooser")).toBeVisible();
+  await expect(page.getByTestId("share-option-html")).toBeFocused();
+  await page.keyboard.press("Escape");
+  expectNoErrors(consoleErrors);
+});
+
+test("the first Import report offers New diagrams are private, once; Clear everything asks again", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, SLUG);
+  await importCompose(page);
+  // Beside Make it private, off: it never turns on by itself.
+  await expect(page.getByTestId("import-report-make-private")).toBeVisible();
+  const offer = page.getByTestId("import-report-new-private");
+  await expect(offer).toBeVisible();
+  await expect(offer).not.toBeChecked();
+  await expect(page.getByTestId("import-report-offer")).toContainText("New diagrams are private");
+  await page.getByTestId("import-report-done").click();
+  await expect(page.getByTestId("private-badge")).toHaveCount(0);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").click();
+  await expect(page.getByTestId("privacy-new-diagrams")).toHaveAttribute("aria-checked", "false");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+
+  // Asked once: the next import's report (after a reload too) doesn't ask again.
+  await page.reload();
+  await expect(page.getByTestId("canvas-view")).toBeVisible();
+  await importCompose(page);
+  await expect(page.getByTestId("import-report-make-private")).toBeVisible();
+  await expect(page.getByTestId("import-report-offer")).toHaveCount(0);
+  await page.getByTestId("import-report-done").click();
+
+  // Clear everything on this device forgets that it asked.
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").click();
+  await page.getByTestId("privacy-clear-device").click();
+  await expect(page.getByTestId("clear-device-dialog")).toBeVisible();
+  await Promise.all([page.waitForEvent("load"), page.getByTestId("clear-device-confirm").click()]);
+  await gotoCanvas(page, SLUG);
+  await importCompose(page);
+  await expect(page.getByTestId("import-report-offer")).toBeVisible();
+
+  // Ticked, it's the File ▸ Privacy setting: the next import starts Private.
+  await page.getByTestId("import-report-new-private").check();
+  await page.getByTestId("import-report-done").click();
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").click();
+  await expect(page.getByTestId("privacy-new-diagrams")).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page
+    .getByTestId("import-input")
+    .setInputFiles({ name: "docker-compose.yml", mimeType: "application/yaml", buffer: COMPOSE });
+  await expect(page.getByTestId("private-badge")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+test("a draw.io or diagram file import never asks: only infrastructure files have an Import report", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("import-input").setInputFiles({
+    name: "plan.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        format: "diagrams/v1",
+        title: "Plain plan",
+        nodes: [{ id: "intake", stencil: "generic.service", label: "Intake service", x: 0, y: 0 }],
+        edges: [],
+      }),
+    ),
+  });
+  await expect(page.getByTestId("diagram-title")).toHaveText("Plain plan");
+  await expect(page.getByTestId("toast-import-details")).toHaveCount(0);
+  // The offer is still unasked: the first infrastructure import's report makes it.
+  await importCompose(page);
+  await expect(page.getByTestId("import-report-offer")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});

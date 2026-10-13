@@ -4,7 +4,7 @@ import { passwordStrength } from "../passwordStrength";
 
 /**
  * A new password: the field, its strength hint underneath and Show. One pattern wherever a diagram is encrypted
- * with a password (Copy link with password… and Interactive HTML's Require a password): at least
+ * with a password (Link with password… and Interactive HTML's Require a password): at least
  * MIN_PASSWORD_LENGTH characters, the hint under the field, and Show rather than a second field to confirm it.
  * Test ids: `<testId>-input`, `-strength` and `-show`.
  */

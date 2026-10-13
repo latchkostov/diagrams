@@ -25,9 +25,11 @@ in the browser. There is no account and no server.
   CDC, IoT), data and AI (an event-driven Snowflake platform with reverse ETL, nightly batch ELT, GCP streaming
   analytics, a RAG assistant), cloud serverless, integration (webhooks, notifications, Service Bus) and
   reliability (outbox and saga, multi-region active/active). Each has two saved simulations.
-- **Sharing.** Your diagrams are stored locally. Export to PNG, SVG, draw.io and Mermaid, and import draw.io and
-  Mermaid. Share links carry the whole diagram in the URL, an embed mode makes a read-only viewer, and Record
-  saves a simulation as a video. Google Drive works once it's configured (see `docs/INTEROP.md`).
+- **Sharing.** Your diagrams are stored locally. **File ▸ Share…** lists every way out, safest first, each saying
+  who can open it: an Interactive HTML file (with a password if you like), the diagram file, an embed your own app
+  supplies, a link with a password, and, one deliberate step further, a public share link or embed. Export to PNG,
+  SVG, draw.io and Mermaid, import draw.io and Mermaid, and Record saves a simulation as a video. Google Drive works
+  once it's configured (see `docs/INTEROP.md`).
 
 ## Use with your AI agent
 

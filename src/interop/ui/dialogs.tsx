@@ -86,7 +86,7 @@ export function ShareDialog({
   diagram: DiagramFile;
   /** Whether its document may still be shared as a link (asked again by every action). */
   allowed?: () => boolean;
-  /** Copy link with password… (the same diagram, encrypted). */
+  /** Link with password… (the same diagram, encrypted). */
   onPasswordLink?: () => void;
   onClose: () => void;
 }) {
@@ -109,7 +109,7 @@ export function ShareDialog({
 
   const copy = async () => {
     if (!gate(allowed, onClose)) return;
-    if (url && (await copyText(url))) toast.success("Share link copied.");
+    if (url && (await copyText(url))) toast.success("Share link copied. Anyone with the link can open the diagram.");
     else toast.error("Couldn't copy automatically. Select the link and copy it.");
   };
 
@@ -198,7 +198,7 @@ export function ShareDialog({
                   }}
                   data-testid="share-link-password"
                 >
-                  <Glyph name="lock" size={13} /> Copy link with password…
+                  <Glyph name="lock" size={13} /> Link with password…
                 </button>
               </>
             )}
@@ -227,7 +227,7 @@ export function ShareDialog({
 }
 
 /**
- * A segmented radio group's keys, as a ref callback: arrows (and Home, End) move to the next enabled choice and
+ * A segmented radio group's keys, as a ref callback: arrows (and Home, End) move to the next choice and
  * select it. With `tabIndex` 0 on the checked radio only, the group is one Tab stop. A native listener, because
  * the dialog keeps keys from bubbling past its panel (Dialog.tsx), so React's onKeyDown never sees them (the same
  * pattern as the Interactive HTML dialog's Theme).
@@ -237,23 +237,20 @@ function radioKeys<T extends string>(
   current: T,
   select: (value: T) => void,
   testId: (value: T) => string,
-  enabled: (value: T) => boolean = () => true,
 ) {
   return (group: HTMLDivElement | null) => {
     if (!group) return;
     const onKey = (e: KeyboardEvent) => {
       const step = ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 } as Record<string, number>)[e.key];
       if (step === undefined && e.key !== "Home" && e.key !== "End") return;
-      const usable = values.filter(enabled);
-      if (!usable.length) return;
       e.preventDefault();
-      const at = usable.indexOf(current);
+      const at = values.indexOf(current);
       const next =
         e.key === "Home"
-          ? usable[0]
+          ? values[0]
           : e.key === "End"
-            ? usable[usable.length - 1]
-            : usable[(Math.max(at, 0) + step + usable.length) % usable.length];
+            ? values[values.length - 1]
+            : values[(Math.max(at, 0) + step + values.length) % values.length];
       select(next);
       group.querySelector<HTMLElement>(`[data-testid="${testId(next)}"]`)?.focus();
     };
@@ -315,9 +312,14 @@ function HostPreview({
   return <iframe ref={refs} src={src} title="Embed preview" data-testid="embed-preview" />;
 }
 
-/** Embed code: an <iframe> of the read-only viewer, or a viewer your own app supplies, with a live preview. */
+/**
+ * Embed code: an <iframe> of the read-only viewer, or a viewer your own app supplies, with a live preview. Share…
+ * opens it for one kind: `private` (Embed in your app: the host-supplied embed only) or `public` (Embed on a public
+ * page: in the link, or an example by name).
+ */
 export function EmbedDialog({
   diagram,
+  scope,
   example,
   allowed,
   privateOnly: privateDiagram = false,
@@ -326,6 +328,7 @@ export function EmbedDialog({
   onClose,
 }: {
   diagram: DiagramFile;
+  scope: "private" | "public";
   example?: string;
   /** Whether its document may still be shared as a link (asked again by every action). */
   allowed?: () => boolean;
@@ -337,9 +340,9 @@ export function EmbedDialog({
   onDownload: () => void;
   onClose: () => void;
 }) {
-  // A copy deployed without share links (src/lib/deployment.ts) offers only the host-supplied embed, and the
-  // sources that put the diagram in a URL aren't shown at all.
-  const privateOnly = privateDiagram || !SHARE_LINKS;
+  // Embed in your app, a private diagram and a copy deployed without share links (src/lib/deployment.ts) offer only
+  // the host-supplied embed: the sources that put the diagram in a URL aren't shown at all.
+  const privateOnly = privateDiagram || !SHARE_LINKS || scope === "private";
   const [payload, setPayload] = useState<string>();
   const [chosen, setChosen] = useState<EmbedSource>(privateOnly ? "host" : example ? "example" : "inline");
   const source: EmbedSource = privateOnly ? "host" : chosen;
@@ -395,7 +398,8 @@ export function EmbedDialog({
     else toast.error("Couldn't copy automatically. Select the code and copy it.");
   };
 
-  const sources: EmbedSource[] = !SHARE_LINKS ? ["host"] : example ? ["example", "inline", "host"] : ["inline", "host"];
+  // The public embed's two sources, when the diagram is an unedited public example; one source shows no choice.
+  const sources: EmbedSource[] = privateOnly ? ["host"] : example ? ["example", "inline"] : ["inline"];
   const sourceButton = (value: EmbedSource, label: string) => (
     <button
       role="radio"
@@ -403,8 +407,6 @@ export function EmbedDialog({
       tabIndex={source === value ? 0 : -1}
       className={source === value ? "is-on" : ""}
       onClick={() => setChosen(value)}
-      disabled={privateOnly && value !== "host"}
-      title={privateOnly && value !== "host" ? PRIVATE_SHARE_MESSAGE : undefined}
       data-testid={`embed-source-${value}`}
     >
       {label}
@@ -465,28 +467,23 @@ export function EmbedDialog({
         </>
       }
     >
-      <div
-        ref={radioKeys(
-          sources,
-          source,
-          setChosen,
-          (v) => `embed-source-${v}`,
-          (v) => !privateOnly || v === "host",
-        )}
-        className="ix-seg"
-        role="radiogroup"
-        aria-label="Where the diagram comes from"
-      >
-        {SHARE_LINKS && example && sourceButton("example", "Example by name")}
-        {SHARE_LINKS && sourceButton("inline", "In the link")}
-        {sourceButton("host", "Your app supplies it (private)")}
-      </div>
+      {SHARE_LINKS && sources.length > 1 && (
+        <div
+          ref={radioKeys(sources, source, setChosen, (v) => `embed-source-${v}`)}
+          className="ix-seg"
+          role="radiogroup"
+          aria-label="Where the diagram comes from"
+        >
+          {sourceButton("example", "Example by name")}
+          {sourceButton("inline", "In the link")}
+        </div>
+      )}
       {source === "inline" && (
         <div className="ix-callout" data-testid="embed-inline-note">
           <Glyph name="info" size={15} />
           <span>
             <strong>Anyone who can see the page can open this diagram.</strong> It&apos;s inside the code. For a work
-            diagram, choose Your app supplies it (private).
+            diagram, use Share… ▸ Embed in your app.
           </span>
         </div>
       )}

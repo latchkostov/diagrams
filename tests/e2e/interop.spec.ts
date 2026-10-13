@@ -1,7 +1,17 @@
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, gotoLab, publicExamples, expectNoErrors, gotoLive } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoGallery,
+  gotoLab,
+  publicExamples,
+  expectNoErrors,
+  gotoLive,
+  shareVia,
+} from "./fixtures";
 
 // Import / export / storage (src/interop). Selectors are data-testid only.
 
@@ -126,14 +136,7 @@ test.describe("interop", () => {
     await gotoCanvas(page, publicExamples[0].slug);
     await openFile(page);
     const menu = page.getByTestId("file-menu");
-    for (const id of [
-      "file-save",
-      "file-open",
-      "export-png",
-      "export-share-link",
-      "file-more-formats",
-      "file-import-from",
-    ]) {
+    for (const id of ["file-save", "file-open", "export-png", "file-share", "file-more-formats", "file-import-from"]) {
       await expect(menu.getByTestId(id)).toBeVisible();
     }
     // No VITE_GOOGLE_CLIENT_ID in the test build: no Drive rows at all (not even disabled ones).
@@ -231,13 +234,9 @@ test.describe("interop", () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const ex = publicExamples[1];
     await gotoCanvas(page, ex.slug);
-    await openFile(page);
-    await page.getByTestId("export-share-link").click();
-    // Copied: the toast offers details; if the clipboard was refused, the dialog opens directly.
-    const details = page.getByTestId("toast-share-details");
+    // Share… ▸ Public link or embed ▸ Share link…: the dialog shows the link and copies it.
+    await shareVia(page, "link");
     const dialog = page.getByTestId("share-link-dialog");
-    await expect(details.or(dialog)).toBeVisible();
-    if (await details.isVisible()) await details.click();
     await expect(dialog).toBeVisible();
     const url = page.getByTestId("share-link-url");
     await expect(url).toHaveValue(/#d=[A-Za-z0-9_-]+$/);
@@ -295,7 +294,7 @@ test.describe("interop", () => {
 
   test("embed dialog previews the viewer and copies an iframe", async ({ page }) => {
     await gotoCanvas(page, publicExamples[0].slug);
-    await fileItem(page, "export-embed");
+    await shareVia(page, "embed-public");
     await expect(page.getByTestId("embed-dialog")).toBeVisible();
     await expect(page.getByTestId("embed-snippet")).toHaveValue(/^<iframe src=".*embed=1/);
     await expect(page.getByTestId("embed-preview")).toBeAttached();

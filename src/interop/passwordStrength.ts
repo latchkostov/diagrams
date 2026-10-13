@@ -1,6 +1,6 @@
 import { MIN_PASSWORD_LENGTH } from "./encryptedToken";
 
-// The hint under Copy link with password…'s field (loads with that dialog, not with the app).
+// The hint under Link with password…'s field (loads with that dialog, not with the app).
 
 export type PasswordLevel = "short" | "weak" | "fair" | "strong";
 

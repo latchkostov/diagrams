@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import { test, expect, gotoCanvas, expectNoErrors, publicExamples } from "./fixtures";
 import { installFakeModelContext, must, toolNames } from "./ai-helpers";
-import { expectHostEmbed, expectOnlyPrivateEmbed, serveHostPage } from "./self-host-helpers";
+import { expectHostEmbed, expectShareWithoutLinks, serveHostPage } from "./self-host-helpers";
 
 /**
  * A self-hosted copy with every switch off (docs/SELF-HOSTING.md): project "locked" in playwright.config.ts
@@ -27,7 +27,7 @@ test.describe("self-hosted build with link opening off", () => {
   test("a private embed still works: it opens no link", async ({ page, baseURL, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
-    await expectOnlyPrivateEmbed(page);
+    await expectShareWithoutLinks(page);
 
     // ?embed=1&host=1 from a host page: the page supplies the diagram, so link opening being off doesn't matter.
     const diagram = JSON.parse(readFileSync(`src/examples/${other.slug}.json`, "utf8"));

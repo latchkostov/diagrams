@@ -209,6 +209,23 @@ export async function gotoCanvas(page: Page, slug: string) {
   await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
 }
 
+/** File ▸ Share…: every way out, safest first. Waits for the chooser (its code loads on first use). */
+export async function openShareChooser(page: Page) {
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-share").click();
+  await expect(page.getByTestId("share-chooser")).toBeVisible();
+}
+
+/** Share…'s rows: the private and controlled ones, then the public ones (behind their own step). */
+export type ShareOption = "html" | "file" | "embed" | "password" | "link" | "embed-public";
+
+/** File ▸ Share… ▸ one row. The public ones (`link`, `embed-public`) take the deliberate step that shows them first. */
+export async function shareVia(page: Page, option: ShareOption) {
+  await openShareChooser(page);
+  if (option === "link" || option === "embed-public") await page.getByTestId("share-public-toggle").click();
+  await page.getByTestId(`share-option-${option}`).click();
+}
+
 /** Opens `url` (a live view: `live=1`) and waits for the live controls. */
 export async function gotoLive(page: Page, url: string) {
   await page.goto(url);

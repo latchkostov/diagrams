@@ -6,6 +6,8 @@ import { paletteHost } from "../../palette/host";
 import { getStencil, stencils } from "../../stencils/registry";
 import { searchStencils } from "../../lib/stencilSearch";
 import { DIAGRAMS_CHANGED } from "../../lib/diagramIO";
+import { newDiagramsPrivate, useNewDiagramsPrivate } from "../../lib/privacyPrefs";
+import { safeStorage } from "../../lib/storage";
 import type { ImportGraph, ImportPick, ImportReport, ReportGuess } from "../infra/graph";
 import type { ImportOutcome } from "../formats";
 import { MAX_DRAWN, pickedNodes } from "../infra/pick";
@@ -13,6 +15,12 @@ import { MAX_DRAWN, pickedNodes } from "../infra/pick";
 // The Import report (docs/research/imports.md § UX): what the import drew as a guess (with one-click stencil
 // chips), the connections it found in settings and the variable behind each, what it chose not to draw and
 // what it couldn't read. Nothing is dropped silently: a Terraform import can be drawn again with every resource. It lives in memory while the diagram stays open.
+
+/**
+ * Set once an Import report has offered **New diagrams are private** (the first infrastructure import whose report
+ * is opened): it's asked once, never again. Clear everything forgets it with every other app key.
+ */
+const PRIVATE_OFFERED_KEY = "diagrams.newDiagramsPrivateOffered.v1";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en")} ${n === 1 ? one : many}`;
 
@@ -129,6 +137,13 @@ export function ImportReportDialog({
     </button>
   );
   const privateNow = isPrivate();
+  // Ask about Private when it matters: the first report offers New diagrams are private, beside Make it private.
+  // Only while it's off, and once: it never turns on by itself (Private turns AI off, so it stays a choice).
+  const [offer] = useState(() => !newDiagramsPrivate.get() && safeStorage.getItem(PRIVATE_OFFERED_KEY) !== "1");
+  useEffect(() => {
+    if (offer) safeStorage.setItem(PRIVATE_OFFERED_KEY, "1");
+  }, [offer]);
+  const newPrivate = useNewDiagramsPrivate();
   return (
     <Dialog
       title="Import report"
@@ -160,6 +175,18 @@ export function ImportReportDialog({
                   Make it private
                 </button>
               </>
+            )}
+            {offer && (
+              <label className="ix-report-offer" data-testid="import-report-offer">
+                <input
+                  type="checkbox"
+                  checked={newPrivate}
+                  onChange={(e) => newDiagramsPrivate.set(e.target.checked)}
+                  data-testid="import-report-new-private"
+                />
+                New diagrams are private
+                <span className="ix-report-offer-where">File ▸ Privacy</span>
+              </label>
             )}
           </span>
           <span className="ix-grow" />

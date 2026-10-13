@@ -130,7 +130,7 @@
           <strong>Save</strong> and <strong>Open</strong> use files on your device, which only your browser touches.
         </li>
         <li>
-          <strong>Interactive HTML</strong> (File → Export as → Interactive HTML…) is made in your browser and
+          <strong>Interactive HTML</strong> (File → Share… → <em>Interactive HTML…</em>, the first way out it lists; also File → Export as) is made in your browser and
           downloaded to your device; it's never uploaded to us. The file holds everything it shows (the diagram, its
           simulations, icons and fonts) and makes no network requests when opened: not to this site, not for fonts,
           not to anyone. It writes nothing to the browser's storage. Anyone who has the file can open it, so keep it
@@ -146,14 +146,15 @@
           file and the password can open it, so send the password separately.
         </li>
         <li>
-          <strong>Share links</strong> carry the diagram inside the link, after the <code>#</code>. Browsers never send
-          that part to a server, so the diagram travels only to whoever you send the link to. Anyone who has the
-          link can open the diagram, and chats and email keep it, so use a link with a password for anything
-          internal. Opening a link takes the diagram out of the address bar, but your browser's history (and any
-          history sync) may still list the link as it was first visited.
+          <strong>Embeds your own app supplies</strong> (File → Share… → <em>Embed in your app…</em>) show a diagram inside
+          your website or intranet without putting it anywhere public. Your page fetches the diagram from your own
+          server, with your own sign-in, and hands it to the viewer frame from this site in the browser. The diagram
+          then exists only in that page and in the frame's memory while it's open: it's never put in a URL, never
+          written to the browser's storage and never sent to us. This site only serves the viewer's code; it has no
+          way to see what it draws. The viewer talks only to the page that embeds it, at the address that page names.
         </li>
         <li>
-          <strong>Links with a password</strong> (File → Copy link with password…) carry the diagram encrypted
+          <strong>Links with a password</strong> (File → Share… → <em>Link with password…</em>) carry the diagram encrypted
           (AES-256-GCM, with a key derived from your password by PBKDF2-SHA-256 at 600,000 iterations). The encryption
           and decryption happen in your browser; the password and the readable diagram are never sent anywhere.
           Anyone with both the link and the password can open it, so send the password separately. Once opened, the
@@ -161,12 +162,11 @@
           as it was first visited.
         </li>
         <li>
-          <strong>Embeds your own app supplies</strong> (File → Embed code… → <em>Your app supplies it (private)</em>) show a diagram inside
-          your website or intranet without putting it anywhere public. Your page fetches the diagram from your own
-          server, with your own sign-in, and hands it to the viewer frame from this site in the browser. The diagram
-          then exists only in that page and in the frame's memory while it's open: it's never put in a URL, never
-          written to the browser's storage and never sent to us. This site only serves the viewer's code; it has no
-          way to see what it draws. The viewer talks only to the page that embeds it, at the address that page names.
+          <strong>Share links</strong> (File → Share… → <em>Public link or embed</em> → <em>Share link…</em>, last and folded away, like the public embed) carry the diagram inside the link, after the <code>#</code>. Browsers never send
+          that part to a server, so the diagram travels only to whoever you send the link to. Anyone who has the
+          link can open the diagram, and chats and email keep it, so use a link with a password for anything
+          internal. Opening a link takes the diagram out of the address bar, but your browser's history (and any
+          history sync) may still list the link as it was first visited.
         </li>
         <li>
           <strong>AI features</strong> act only when you use them. Chrome's built-in model runs on your device. An AI
@@ -182,7 +182,7 @@
       <h2 id="private-diagrams">Private diagrams</h2>
       <p>
         For work diagrams, or anything you'd rather keep to yourself, mark a diagram <strong>Private</strong> (File →
-        Privacy → Private diagram, or turn on <em>New diagrams are private</em>). A lock beside its title shows it's
+        Privacy → Private diagram, or turn on <em>New diagrams are private</em>, which the first import of an infrastructure file offers once). A lock beside its title shows it's
         on. A private diagram:
       </p>
       <ul>

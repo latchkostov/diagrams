@@ -60,8 +60,10 @@ for (const width of [1024, 1440]) {
     await page.setViewportSize({ width, height: 800 });
     await gotoCanvas(page, KAFKA);
     await openAiPanel(page);
+    // Any toast: Copy as Mermaid's.
     await page.getByTestId("file-button").click();
-    await page.getByTestId("export-share-link").click();
+    await page.getByTestId("file-more-formats").click();
+    await page.getByTestId("export-mermaid").click();
     const toast = page.getByTestId("toast");
     await expect(toast).toBeVisible();
     await expect.poll(async () => inside(await box(page, "toast"), await box(page, "canvas-wrap"))).toBe(true);

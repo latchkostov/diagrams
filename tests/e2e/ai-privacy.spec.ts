@@ -3,7 +3,7 @@
 import type { Page } from "@playwright/test";
 import { deflateRawSync } from "node:zlib";
 import { localOnlyFixture } from "../../src/lab/localOnlyFixture";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, openShareChooser } from "./fixtures";
 import {
   SLUG,
   fakeModel,
@@ -211,13 +211,15 @@ test("a local-only diagram gets no link: plain or with a password; its embed is 
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await installSyntheticRegistry(page);
   await gotoCanvas(page, "synthetic-local");
-  await page.getByTestId("file-button").click();
-  for (const item of ["export-share-link", "export-share-link-password"])
-    await expect(page.getByTestId(item)).toBeDisabled();
+  // Share… lists no link rows and no public section, and says why (it can't be changed: always private).
+  await openShareChooser(page);
+  for (const item of ["share-option-password", "share-public-toggle", "share-make-not-private"])
+    await expect(page.getByTestId(item)).toHaveCount(0);
+  await expect(page.getByTestId("share-private-note")).toContainText("always private");
   // The embed whose diagram the host's page supplies puts nothing of it in a URL.
-  await page.getByTestId("export-embed").click();
-  await expect(page.getByTestId("embed-source-host")).toHaveAttribute("aria-checked", "true");
-  await expect(page.getByTestId("embed-source-inline")).toBeDisabled();
+  await page.getByTestId("share-option-embed").click();
+  await expect(page.getByTestId("embed-host-note")).toBeVisible();
+  await expect(page.getByTestId("embed-source-inline")).toHaveCount(0);
   await page.getByTestId("embed-copy").click();
   expect(await page.evaluate(() => navigator.clipboard.readText().catch(() => ""))).toContain("<live-diagram ");
   await page.keyboard.press("Escape");

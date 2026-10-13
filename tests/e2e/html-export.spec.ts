@@ -233,7 +233,7 @@ test.describe("Interactive HTML with a password", () => {
     await expect(page.getByTestId("html-export-protected")).toContainText("Send the password separately");
     await expect(page.getByTestId("html-export-anyone")).toHaveCount(0);
     await expect(page.getByTestId("html-export-password-note")).toContainText("can’t be recovered");
-    // Too short: no download yet. The same hint and Show as Copy link with password….
+    // Too short: no download yet. The same hint and Show as Link with password….
     await page.getByTestId("html-export-password-input").fill("short");
     await expect(page.getByTestId("html-export-password-strength")).toHaveAttribute("data-level", "short");
     await expect(page.getByTestId("html-export-download")).toBeDisabled();

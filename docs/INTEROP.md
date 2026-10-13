@@ -40,18 +40,37 @@ level). The canvas right-click menu has the same actions. The top bar is: view t
 **View** (node and edge style; it replaced the two selects), **File**, **Present** and theme. Below 1100px,
 View, File and Present become icon-only, so the bar fits at 1024px without scrolling.
 
-| File menu                    | Notes                                                                                                                                                                                                                                                                   |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Save** (Ctrl+S)            | Goes back to wherever the diagram came from or was last saved: the same device file (File System Access) or the same file in Google Drive, OneDrive or Dropbox. Otherwise it asks where to save (or downloads, in browsers without the API). Ctrl+Shift+S is "Save as". |
-| **Open…** (Ctrl+O)           | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`, docker-compose, Kubernetes and AsyncAPI `.yml` / `.yaml` / `.json`, Terraform plan or state JSON (`terraform show -json`), several files at once. A draw.io file with several pages asks which page to open. |
-| Open from ▸ / Save to ▸      | Only when at least one cloud provider is configured (see "Storage providers" below); otherwise hidden completely, and **Save as…** stays a plain row. Each lists **This device** first, then the configured providers. Save to ▸ always makes a new file.               |
-| **Export PNG**               | 2×, whole diagram, independent of pan and zoom.                                                                                                                                                                                                                         |
-| **Copy share link**          | One click; the toast's **Details** opens the dialog (length, warning above 8k characters, native Share).                                                                                                                                                                |
-| **Copy link with password…** | Encrypts the diagram into a `#e=` link with a password (8+ characters, strength hint); see "Share links and embeds" below.                                                                                                                                              |
-| More formats ▸               | Diagram file (`.diagram.json`, lossless, simulations included) · Image… (PNG or SVG; scale and transparent background behind **Options**) · **Interactive HTML…** (one self-contained file, below) · draw.io · Mermaid file (`.mmd`) · Copy as Mermaid                  |
-| Import from ▸                | Paste text… (JSON, draw.io XML, Mermaid, docker-compose, Kubernetes, AsyncAPI or Terraform JSON, auto-detected) · Share link…                                                                                                                                           |
+| File menu               | Notes                                                                                                                                                                                                                                                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Save** (Ctrl+S)       | Goes back to wherever the diagram came from or was last saved: the same device file (File System Access) or the same file in Google Drive, OneDrive or Dropbox. Otherwise it asks where to save (or downloads, in browsers without the API). Ctrl+Shift+S is "Save as".                                        |
+| **Open…** (Ctrl+O)      | `.diagram.json`, `.drawio`, `.xml`, `.drawio.svg`, `.mmd`, docker-compose, Kubernetes and AsyncAPI `.yml` / `.yaml` / `.json`, Terraform plan or state JSON (`terraform show -json`), several files at once. A draw.io file with several pages asks which page to open.                                        |
+| Open from ▸ / Save to ▸ | Only when at least one cloud provider is configured (see "Storage providers" below); otherwise hidden completely, and **Save as…** stays a plain row. Each lists **This device** first, then the configured providers. Save to ▸ always makes a new file.                                                      |
+| **Share…**              | Every way out, each saying who can open what it makes, safest first (`src/interop/ui/ShareChooser.tsx`, loaded on use): Interactive HTML… · Diagram file · Embed in your app… · Link with password… · then, folded behind **Public link or embed**: Share link… · Embed on a public page…. See "Share…" below. |
+| Privacy ▸               | Private diagram (this one) · New diagrams are private · Clear everything on this device…                                                                                                                                                                                                                       |
+| **Export PNG**          | 2×, whole diagram, independent of pan and zoom.                                                                                                                                                                                                                                                                |
+| Export as ▸             | Diagram file (`.diagram.json`, lossless, simulations included) · Image… (PNG or SVG; scale and transparent background behind **Options**) · **Interactive HTML…** (one self-contained file, below) · draw.io · Mermaid file (`.mmd`) · Copy as Mermaid                                                         |
+| Import from ▸           | Paste text… (JSON, draw.io XML, Mermaid, docker-compose, Kubernetes, AsyncAPI or Terraform JSON, auto-detected) · Share link…                                                                                                                                                                                  |
 
 You can also drop files anywhere on the page to open them (several at once: a compose file with its overrides).
+
+**Share…** One File menu row (and the right-click's Export ▸ Share…, and Ctrl+K, where "link" finds it) replaced
+Copy share link, Copy link with password… and Embed code…. Its dialog lists the private and controlled ways first and
+gives the first one the keyboard: **Interactive HTML…** (its password in its own dialog), **Diagram file** (saves at
+once), **Embed in your app…** (the host-supplied embed only) and **Link with password…**. The public ones sit below a
+rule, folded behind **Public link or embed · anyone with the link can open it** (one Tab stop; Enter opens it and
+keeps the keyboard there; folded again every time): **Share link…** (the Share link dialog, whose Copy link copies)
+and **Embed on a public page…** (Embed code with In the link, or Example by name for a pristine public example). Each
+row opens the dialog that already does it, which takes Share's place. A Private diagram lists the first three and
+one line, "Links and public embeds are off for a private diagram. **Make it not private…**"; a copy built without share
+links lists the first three only. Every row asks `src/lib/localOnly.ts`'s gates again when it acts, so a diagram that
+turns private while Share… is open loses its link rows at once (and a link dialog already open closes, with
+**Interactive HTML…** in its toast). Agents keep `get_share_link` (WebMCP), unchanged.
+
+**Ask about Private when it matters.** The first Import report of an infrastructure file (docker-compose, Kubernetes,
+AsyncAPI, Terraform) shows **New diagrams are private** as a checkbox under its **Make it private**, unticked, while
+that setting is off. It's asked once: the report that shows it sets `diagrams.newDiagramsPrivateOffered.v1`, so no
+later report asks again, and Clear everything on this device forgets it with every other key. It never turns the
+setting on by itself: a Private diagram blocks the AI tools.
 
 **Where imports go.** Files open into the single "Imported" slot (examples are never overwritten).
 Share links open into a separate **Shared** slot, so a link someone sends you never replaces your own
@@ -459,11 +478,11 @@ and the entry grows by about 240 B (the key-order-independent sniff, the format 
   to `hostOrigin` (never `"*"`), bounds sizes and rates, treats the diagram as private (no link out but a plain
   "Made with Live Diagrams") and takes commands (play, pause, speed, simulation, fit, theme, highlight, load) and
   reports events (node clicks, play state, simulation, auto-height). The `<live-diagram>` web component wraps it.
-- The embed dialog previews the iframe, and its options (height, simulation) sit behind **Options**. Its source
-  is **Example by name**, **In the link** or **Your app supplies it (private)**, with a web-component and an
-  iframe + `postMessage` snippet; the last one's preview gets the diagram by `postMessage` too. A Private or
-  local-only diagram opens the dialog with only that source (its Embed code… stays enabled, hinted "Your app
-  supplies it"): nothing of the diagram goes in the code.
+- The embed dialog (**Embed code**) previews the iframe, and its options (height, simulation) sit behind **Options**.
+  Share… opens it for one kind: **Embed in your app…** is **Your app supplies it (private)** only, with a
+  web-component and an iframe + `postMessage` snippet, whose preview gets the diagram by `postMessage` too; **Embed
+  on a public page…** is **In the link**, or **Example by name** too for a pristine public example. A Private or
+  local-only diagram (and a copy without share links) gets only the first: nothing of the diagram goes in the code.
 
 ### Interactive HTML (`src/export/`, `scripts/interactive-viewer.ts`)
 
@@ -481,7 +500,7 @@ simulation picker, play and pause, speed, slow motion, trace and the rest of the
   like Diagram file: it's the person's explicit action, like saving to this device. The file is made in the page;
   nothing is uploaded.
 - **Require a password** (`src/export/lock.ts`; a checkbox in the dialog, off by default) is for a file that may be
-  forwarded beyond the team (email, chat, a shared drive). The field is Copy link with password…'s own
+  forwarded beyond the team (email, chat, a shared drive). The field is Link with password…'s own
   (`src/interop/ui/PasswordField.tsx`: at least 8 characters, the strength hint, Show; no confirm field), and the
   dialog's line becomes **Only people with the password can open it.** The whole payload (the diagram with its title,
   labels, notes, properties and simulations, the icons it uses, the banner, the options and the export date) is
