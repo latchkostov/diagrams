@@ -7,7 +7,7 @@ A friend's request: "in presenter mode, we should have a toggle for full screen.
 dark, mouse and keyboard, on the public Kafka order pipeline. Screenshots are in `docs/screenshots/round29/`.
 
 - **No new chrome outside presenting.** The top bar, menus and Ctrl+K are unchanged. Presenting gains one icon button
-  beside **Exit presentation**, in its style: the same height, border and muted opacity, full on hover and focus
+  beside **Exit presentation**, in its style: the same height, border and slightly quiet opacity (0.9), full on hover and focus
   (`present-1280-light`, `present-hover-1280-light`, `fullscreen-on-focus-1280-light`). It sits left of Exit, so
   Exit stays in the corner where people already reach for it.
 - **The icon says the state.** Corners out for **Full screen** and corners in for **Exit full screen**. That's also
@@ -40,6 +40,27 @@ dark, mouse and keyboard, on the public Kafka order pipeline. Screenshots are in
   buttons. It's 8 px from whichever is next to it, with or without the full-screen button (`live-present-1024-light`).
 - **"Present: full screen for meetings"** was the Present button's tooltip, but presenting only hides the editing
   chrome. It's "Present: the diagram alone, for meetings (Esc to leave)" now; full screen is the new button.
+
+### After code review (PR #81)
+
+Seven P2s from the Codex review, in three themes. All verified; each fix has a test that fails without it.
+
+- **Esc's order depended on which listener was added first** (3 findings). Window capture listeners run in the order
+  they were added, so a layer listening from before the presentation (slow motion started first, say) got an Esc the
+  browser passed on before full screen did, and backed out of itself instead. The full-screen Esc is now one listener
+  added before any other code runs (`src/lib/fullscreenEscape.ts`, imported first by `src/main.tsx`), so it's first
+  by construction, whatever was entered first; it costs the entry 71 B gzip. Headless Chromium usually takes
+  Esc itself while full screen (as browsers do), so the tests send Esc to the page as a browser that passes it on
+  would: one with slow motion started before presenting, one with a stand-in layer that claims Esc. Both fail with the
+  listener added on the presentation's mount.
+- **A full-screen request still on its way when the presentation ended** (2 findings) arrived afterwards and left the
+  editor full screen with no button. Entering now checks, when it arrives, that the presentation is still on, and
+  leaves at once if not (unit test with a request held open).
+- **The icon read at 2.4:1 at rest** in the light theme (opacity 0.55). Exit presentation's words, at the same
+  opacity, read at 2.4:1 too. Both rest at 0.9 now: the icon at about 5:1 and the words above 4.5:1 in both themes,
+  measured as composited over the canvas by a test.
+- **The refit had no test.** One squeezes the pane and checks every node fits again after going full screen and after
+  coming back; another zooms by hand and checks the view is kept both ways (on a paused clock run past the refit).
 
 ### Still open (owner's call)
 

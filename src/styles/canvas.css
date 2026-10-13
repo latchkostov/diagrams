@@ -1329,7 +1329,8 @@
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--text-2);
-  opacity: 0.55;
+  /* Quiet, yet readable at rest: the glyph keeps 3:1 and Exit's words 4.5:1 in both themes (present.spec.ts). */
+  opacity: 0.9;
   transition: opacity 0.15s;
 }
 
@@ -1350,7 +1351,7 @@
   color: var(--text-2);
   font-size: 12.5px;
   font-weight: 550;
-  opacity: 0.55;
+  opacity: 0.9;
   transition: opacity 0.15s;
 }
 

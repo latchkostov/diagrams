@@ -68,6 +68,39 @@ describe("toggleFullscreen", () => {
   });
 });
 
+describe("toggleFullscreen, when the presentation ends while full screen is on its way", () => {
+  it("leaves full screen as soon as it arrives", async () => {
+    const doc = fakeDocument();
+    let arrive = () => {};
+    vi.mocked(doc.documentElement.requestFullscreen).mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          arrive = () => {
+            doc.fullscreenElement = doc.documentElement;
+            resolve();
+          };
+        }),
+    );
+    let presenting = true;
+    const pending = toggleFullscreen(doc, () => presenting);
+    // The presentation ends: nothing is full screen yet, so there's nothing to leave.
+    presenting = false;
+    exitFullscreen(doc);
+    expect(doc.exitFullscreen).not.toHaveBeenCalled();
+    arrive();
+    await pending;
+    expect(doc.exitFullscreen).toHaveBeenCalledTimes(1);
+    expect(isFullscreen(doc)).toBe(false);
+  });
+
+  it("stays full screen while still presenting", async () => {
+    const doc = fakeDocument();
+    await toggleFullscreen(doc, () => true);
+    expect(doc.exitFullscreen).not.toHaveBeenCalled();
+    expect(isFullscreen(doc)).toBe(true);
+  });
+});
+
 describe("exitFullscreen", () => {
   it("leaves full screen, and does nothing when not in it", async () => {
     const doc = fakeDocument();

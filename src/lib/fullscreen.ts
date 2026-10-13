@@ -23,10 +23,18 @@ const snapshot = () => isFullscreen();
 /** True while the page is full screen, however it got there or left (the button, F, Esc, F11). */
 export const useFullscreen = (): boolean => useSyncExternalStore(subscribe, snapshot, () => false);
 
-/** Enters or leaves full screen. A refusal (no user gesture, a policy) changes nothing and throws nothing. */
-export function toggleFullscreen(doc: Document = document): Promise<void> {
+/**
+ * Enters or leaves full screen. A refusal (no user gesture, a policy) changes nothing and throws nothing. Entering
+ * takes a moment: when `wanted` says no by the time it has (the presentation ended meanwhile), it leaves again.
+ */
+export function toggleFullscreen(doc: Document = document, wanted: () => boolean = () => true): Promise<void> {
   if (doc.fullscreenElement) return doc.exitFullscreen().catch(() => {});
-  return doc.documentElement.requestFullscreen().catch(() => {});
+  return doc.documentElement.requestFullscreen().then(
+    () => {
+      if (!wanted()) exitFullscreen(doc);
+    },
+    () => {},
+  );
 }
 
 export function exitFullscreen(doc: Document = document): void {

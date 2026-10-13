@@ -11,6 +11,7 @@ Changes to habits people already have. The app has no "what's new" panel, so the
   presentation any other way (Exit presentation, Back) leaves full screen too.
 - Where the browser can't go full screen (iOS Safari, a page framed without `allow="fullscreen"`) there's no button.
   Embeds and the Interactive HTML viewer have no presentation, so no full screen either.
+- **Exit presentation is easier to read** at rest (it was faint, below the contrast it needs), as is the new button.
 - The **Present** button's tooltip no longer says "full screen": presenting hides the editing chrome; full screen is
   the new button.
 

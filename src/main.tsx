@@ -1,3 +1,5 @@
+// First, so its Esc listener is the first on the window (see the module).
+import "./lib/fullscreenEscape";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@fontsource-variable/mona-sans/wdth.css";
