@@ -137,20 +137,33 @@ Batch 1 of the plan in `docs/research/imports.md` (which has the full mapping ta
   no values in the output), `tests/e2e/imports.spec.ts`, the CSP walk, the bundle-split guard
   (`src/interop/infra/`, `yaml` and the report are never startup JavaScript) and the Lab's "Imported: compose"
   overlap audit. The sniffers and the wiring add 0.8 kB gzip to the entry.
-- **Big imports** (`infra/pick.ts`, every format). Past 300 nodes, an import with two or more boundaries draws the
-  ones with the most flows, each added while the drawing stays within 300 (the first always), plus the loose nodes
-  (Users, outside services) connected to them. The toast says "300 of 1,240 nodes", and the report's **Boundaries**
-  section lists them all, the most flows first, with their nodes and flows and a checkbox each, in a list that
-  scrolls on its own. **Draw these (n nodes)** opens the ticked ones as a new diagram, keeping the import's privacy,
-  as Draw everything does (it's off until the ticks change, and past 5,000 nodes). The report keeps the whole import
-  as data (names and connections, never the source text) for that, in memory only. An import over 5,000 nodes with
-  boundaries opens this way instead of failing; one without boundaries still fails with the budget message. Tests:
-  `infra/pick.test.ts` (the default pick, drawing a pick again, loose nodes, over 5,000, no values in the kept import)
-  and the big-import part of `tests/e2e/imports.spec.ts`.
+- **Big imports** (`infra/pick.ts`, every format). The picker's entries are the boundaries and, when there is any,
+  **Not in a boundary** (everything in none: a Terraform root module, Users, outside services), so nothing is out of
+  reach. Past 300 nodes, an import with two or more entries draws the ones with the most flows, each added while the
+  drawing stays within 300, plus the loose nodes connected to them. The first one is taken even past 300, but no
+  entry is ever taken past 5,000 with its loose nodes: an oversized one is skipped and still listed, so a smaller one
+  opens; if none fits on its own the import says "No boundary in it fits in 5,000 nodes, the most an import draws."
+  The toast says "300 of 1,240 nodes", and the report's **Boundaries** section lists every entry, the most flows
+  first, with its nodes and flows and a checkbox, in a list that scrolls on its own. **Draw these (n nodes)** opens
+  the ticked ones as a new diagram titled by what it draws ("shop (team-05 and team-39)"), keeping the import's
+  privacy and, for Terraform, its Draw everything. While it can't (nothing changed, nothing ticked, over 5,000) it's
+  unavailable rather than disabled, so it stays in the Tab order, and a status line beside it, which the checkboxes
+  and the button are described by and screen readers announce politely, gives the ticked total and why. The report
+  keeps the whole import as data (names and connections, never the source text) for that, in memory only. An import
+  over 5,000 nodes with boundaries opens this way instead of failing; one without boundaries still fails with the
+  budget message. Tests: `infra/pick.test.ts` (the default pick, drawing a pick again, the ungrouped entry, an
+  oversized first boundary, loose nodes past the cap, over 5,000, Draw everything, titles, no values in the kept
+  import) and the big-import part of `tests/e2e/imports.spec.ts`.
 - **Layout of big and flat imports.** Each column is restacked by its own units' heights (the layered layout spaces
   every row by the tallest unit, so one boundary spread every column), and centred on one line. Past six units with
   no flow, inside a boundary or out, they skip the layered pass and pack in a grid under the flows, its rows about
-  as wide as it is tall and never narrower than the flows above.
+  as wide as it is tall and never narrower than the flows above. Columns are built by appending (linear; a fan-out
+  of thousands into one column is covered by a scaling test in `infra/layout.test.ts`).
+- **One connection per pair, enriched.** A dependency found twice (a reference, then a grant) stays one connection
+  and takes what the later source adds: a label it lacked ("managed identity"), settings it didn't name, and
+  evidence a person can trace (a resource or a setting) over the file's bare structure. A flow another source
+  implies (a KafkaUser ACL) joins the route between the same ends: one with no consumer group takes the new one's,
+  one that names its own keeps it, and only ends with no route get a new one (`Links.flowOrEnrich`).
 - **Copy.** The drop overlay lists `docker-compose.yml`, Kubernetes, AsyncAPI and Terraform plan, the paste dialog
   names all four, and the start card has one line, "Drop a docker-compose, Kubernetes, AsyncAPI or Terraform plan
   here."
@@ -254,10 +267,14 @@ Batch 3. Our own reader on the same lazy chunk (about 6.7 kB gzip with the share
   after it (with the cluster's `entityOperator.userOperator.secretPrefix`) in its namespace, and a pod can only use
   Secrets in its own: a workload there that reads or mounts that Secret is the user. Its allowed literal topic ACLs
   are flows, listed under the connections with "KafkaUser <name>": Write (or All) produces, Read consumes, in the
-  consumer group of its one literal group ACL. A pair the settings already connect gets no second edge. Prefix and
-  `*` ACLs are a note ("orders-app (KafkaUser) may read topics starting “audit.”: not drawn"), deny and
-  Describe-only ACLs draw nothing, and a user no workload here uses is listed ("its ACLs aren't drawn: no workload
-  in these files uses its Secret"). Only the Secret's name is looked at, never its values.
+  consumer group of its one literal group ACL. **A deny wins**, as Kafka applies it: a deny ACL for the operation (or
+  All) on the topic, by literal name, prefix or `*`, for any host or one, forbids the flow, and a denied group isn't
+  the consumer group. A pair the settings already connect gets no second edge, but a settings consumer with no group
+  takes the ACL's, so two consumers of one user share it in Live. Prefix and `*` allows, and allows for some hosts
+  only, are a note ("orders-app (KafkaUser) may read topics starting “audit.”: not drawn"), Describe-only ACLs draw
+  nothing, and a user no workload here uses is listed ("its ACLs aren't drawn: no workload in these files uses its
+  Secret"). Workloads are indexed by the Secrets they use (`SecretUsers`), so each user is one lookup. Only the
+  Secret's name is looked at, never its values.
 - **Report rows** name the namespace when there's more than one ("orders (staging)"), in the row and in its chips'
   accessible names, so two workloads with one name can be told apart. The canvas label stays short.
 - **Not drawn**, grouped by kind and reason: "ServiceMonitor orders-api · unknown kind (monitoring.coreos.com)",
@@ -346,7 +363,7 @@ and the entry grows by about 240 B (the key-order-independent sniff, the format 
   plan"), and a summary note ("7 supporting resources aren't drawn: access and permissions, parts of what's drawn,
   monitoring, networking and helpers"). A plan adds "Plan: 28 to add, 0 to change, 1 to destroy". **Draw
   everything**, beside the Not drawn heading, opens the same files again as a new diagram with every managed
-  resource as a node (its type as the subtitle); resources with no flows pack in a grid below the flows. That
+  resource as a node (its type as the subtitle), all of them up to 5,000 (past that, the boundaries with the most flows up to 5,000, and the picker for the rest); resources with no flows pack in a grid below the flows. That
   diagram is read at import time and kept beside the report as data (names and connections, never the source
   text), until another diagram opens. The resources drawn only there (policies, a secret's version, a password)
   refer to things as plain **Depends on**: they run as nothing and read nothing. It's made from the import, so it keeps the import's privacy (Private, or

@@ -7,7 +7,7 @@ import { HELM_TEMPLATE, readKubernetes } from "./kubernetes";
 import { readTerraform, TERRAFORM_BINARY, TERRAFORM_SOURCE } from "./terraform";
 import type { ImportGraph } from "./graph";
 import { graphToDiagram } from "./map";
-import { defaultPick, pickGraph, pickGroups } from "./pick";
+import { defaultPick, MAX_DRAWN, PICK_OVER, pickedTitle, pickGraph, pickGroups } from "./pick";
 import { ImportError } from "./yaml";
 
 // One pipeline for every infrastructure source (docs/research/imports.md § Pipeline): reader → ImportGraph →
@@ -20,11 +20,24 @@ export const MAX_FILES = 100;
 
 /**
  * The shared tail of every infrastructure import: map, lay out, validate. A big import draws only some of its
- * boundaries (`chosen`, else the ones with the most flows), and its report keeps the whole import to pick others.
+ * boundaries (`chosen`, else the ones with the most flows within `budget` nodes), and its report keeps the whole
+ * import to pick others. A pick someone chose is titled by what it draws, so it isn't taken for the first drawing.
  */
-function outcomeOf(format: FormatId, full: ImportGraph, chosen?: readonly string[]): ImportOutcome {
-  const keys = chosen ?? defaultPick(full);
-  const graph = keys ? pickGraph(full, keys) : full;
+export function outcomeOf(
+  format: FormatId,
+  full: ImportGraph,
+  { chosen, budget = PICK_OVER }: { chosen?: readonly string[]; budget?: number } = {},
+): ImportOutcome {
+  const keys = chosen ?? defaultPick(full, budget);
+  if (keys && !keys.length)
+    throw new ImportError(
+      `No boundary in it fits in ${MAX_DRAWN.toLocaleString("en")} nodes, the most an import draws.`,
+    );
+  const graph = !keys
+    ? full
+    : chosen
+      ? { ...pickGraph(full, keys), title: pickedTitle(full, keys) }
+      : pickGraph(full, keys);
   const { diagram, report } = graphToDiagram(graph, keys && full.components.length);
   if (keys) report.pick = { format, total: full.components.length, groups: pickGroups(full, keys), graph: full };
   const r = validateDiagram(diagram);
@@ -55,6 +68,8 @@ export function importTerraform(files: readonly SourceFile[]): ImportOutcome {
   if (outcome.ok === true && outcome.report?.notDrawn.length)
     try {
       outcome.replay = readTerraform(files, { everything: true });
+      // A pick drawn from the report keeps Draw everything.
+      if (outcome.report.pick) outcome.report.pick.everything = outcome.replay;
     } catch (err) {
       if (!(err instanceof ImportError)) throw err;
     }
@@ -62,16 +77,25 @@ export function importTerraform(files: readonly SourceFile[]): ImportOutcome {
 }
 
 /**
- * An import drawn again from its data: Terraform's Draw everything, or a big import's boundaries picked in the
- * report (`chosen`). The shared map, layout and validation.
+ * An import drawn again from its data, with the shared map, layout and validation:
+ * - Terraform's **Draw everything** (no `chosen`): the whole graph, every resource, unless it's over MAX_DRAWN;
+ *   then the boundaries with the most flows up to MAX_DRAWN, and the picker for the rest;
+ * - a big import's boundaries picked in the report (`chosen`). `everything` is the import's Draw everything graph,
+ *   kept so the new diagram's report still offers it.
  */
 export function replayOutcome(
   graph: ImportGraph,
   format: FormatId = "terraform",
   chosen?: readonly string[],
+  everything?: ImportGraph,
 ): ImportOutcome {
   try {
-    return outcomeOf(format, graph, chosen);
+    const outcome = outcomeOf(format, graph, chosen ? { chosen } : { budget: MAX_DRAWN });
+    if (outcome.ok === true && everything && outcome.report?.notDrawn.length) {
+      outcome.replay = everything;
+      if (outcome.report.pick) outcome.report.pick.everything = everything;
+    }
+    return outcome;
   } catch (err) {
     if (err instanceof ImportError) return { ok: false, error: err.message };
     throw err;

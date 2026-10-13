@@ -11,6 +11,7 @@ import { MAX_RESOURCES, readTerraform, TERRAFORM_BINARY, TERRAFORM_RAW_STATE, TE
 import { collectRefs, configPath, parseRef, TF_LIMITS, withoutAncestors, type RefBudget } from "./tfRefs";
 import { notDrawnReason, stencilOf } from "./tfTypes";
 import { perfBudget } from "../../test/perfBudget";
+import { runChecks } from "../../checks/run";
 
 // Terraform plan and state JSON (`terraform show -json`) against the self-written fixtures
 // (tests/fixtures/imports/terraform), as docs/research/imports.md § Mapping: Terraform describes it: the type
@@ -152,6 +153,8 @@ describe("Terraform import: the AWS plan fixture", () => {
       "orders → orders-projector · aws_lambda_event_source_mapping.orders_stream",
       "events-msk → analytics · module.streaming.aws_lambda_event_source_mapping.analytics",
       "orders-queue → orders-dlq · aws_sqs_queue.orders",
+      // The handler also refers to the secret itself: one connection, listed with the grant that allows it.
+      "order-handler → orders/db-credentials · aws_iam_role_policy.order_handler",
       "orders-projector → orders/db-credentials · aws_iam_role_policy.order_handler",
       "analytics → orders/db-credentials · aws_iam_role_policy.order_handler",
     ]);
@@ -184,6 +187,37 @@ describe("Terraform import: the AWS plan fixture", () => {
     });
     expect(importTerraform([AWS]).ok === true && JSON.stringify(aws().report)).not.toContain("replay");
     expect(all.report.guesses).toEqual([]);
+  });
+
+  it("a big plan picked in the report keeps Draw everything", () => {
+    // 40 modules of 10 queues: over 300, so the import draws some modules; the policy isn't drawn, so there's a
+    // Draw everything. Picking other modules opens a diagram whose report still has it.
+    const modules = Object.fromEntries(
+      Array.from({ length: 40 }, (_, m) => [
+        `module.m${m}`,
+        Array.from({ length: 10 }, (_, q) => ({
+          type: "aws_sqs_queue",
+          name: `q${q}`,
+          values: { name: `m${m}-q${q}`, arn: sqsArn(`m${m}-q${q}`) },
+        })),
+      ]),
+    );
+    const outcome = importTerraform([
+      { name: "big.json", text: state([{ type: "aws_iam_policy", name: "p", values: { name: "p" } }], modules) },
+    ]);
+    const { report, replay } = ok(outcome);
+    const pick = report.pick!;
+    expect(pick.total).toBe(400);
+    expect(replay).toBeDefined();
+    expect(pick.everything).toBe(replay);
+    const keys = pick.groups
+      .filter((g) => !g.drawn)
+      .map((g) => g.key)
+      .slice(0, 3);
+    const again = replayOutcome(pick.graph, pick.format, keys, pick.everything);
+    expect(ok(again).diagram.nodes).toHaveLength(30);
+    expect(again.ok === true && again.replay).toBe(replay);
+    expect(ok(again).report.pick?.everything).toBe(replay);
   });
 
   it("Draw everything: a supporting resource refers to things as plain dependencies, never reading a secret", () => {
@@ -257,6 +291,75 @@ describe("Terraform import: the AWS plan fixture", () => {
 });
 
 describe("Terraform import: the Azure state fixture", () => {
+  it("keeps the managed-identity label when the app also refers to the vault itself (a plan, either order)", () => {
+    // The reference pass makes the Secret dependency first; the grant to the app's own identity comes after and must
+    // still say how it signs in (secret-identity reads the label).
+    const kvId = "/subscriptions/s/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/shop-kv";
+    const text = JSON.stringify({
+      format_version: "1.2",
+      terraform_version: "1.9.5",
+      planned_values: {
+        root_module: {
+          resources: [
+            resource({ type: "azurerm_key_vault", name: "kv", values: { name: "shop-kv", id: kvId } }, ""),
+            resource(
+              {
+                type: "azurerm_linux_function_app",
+                name: "billing",
+                values: { name: "billing-func", identity: [{ type: "SystemAssigned", principal_id: "p-1" }] },
+              },
+              "",
+            ),
+            resource(
+              {
+                type: "azurerm_role_assignment",
+                name: "reads",
+                values: { principal_id: "p-1", scope: kvId, role_definition_name: "Key Vault Secrets User" },
+              },
+              "",
+            ),
+          ],
+        },
+      },
+      configuration: {
+        root_module: {
+          resources: [
+            { address: "azurerm_key_vault.kv", type: "azurerm_key_vault", name: "kv", expressions: {} },
+            {
+              address: "azurerm_linux_function_app.billing",
+              type: "azurerm_linux_function_app",
+              name: "billing",
+              expressions: { app_settings: { references: ["azurerm_key_vault.kv.vault_uri", "azurerm_key_vault.kv"] } },
+            },
+            {
+              address: "azurerm_role_assignment.reads",
+              type: "azurerm_role_assignment",
+              name: "reads",
+              expressions: {
+                scope: { references: ["azurerm_key_vault.kv.id", "azurerm_key_vault.kv"] },
+                principal_id: {
+                  references: [
+                    "azurerm_linux_function_app.billing.identity[0].principal_id",
+                    "azurerm_linux_function_app.billing",
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    });
+    const { diagram, report } = tf(text, "plan.json");
+    expect(diagram.edges.filter((e) => e.from === "billing-func" && e.to === "shop-kv")).toEqual([
+      expect.objectContaining({ relation: "secret", label: "managed identity" }),
+    ]);
+    // One connection, listed with the grant that allows it.
+    expect(report.inferred.map((c) => `${c.from} → ${c.to} · ${c.evidence}`)).toContain(
+      "billing-func → shop-kv · azurerm_role_assignment.reads",
+    );
+    expect(runChecks(diagram).findings.map((f) => f.rule)).not.toContain("secret-identity");
+  });
+
   it("says a store reached through a grant to the component's own identity is reached as its managed identity", () => {
     for (const { diagram: d } of [azure(), everythingOf(azure())]) {
       // The Function App's system-assigned identity is granted Key Vault Secrets User: no identity node, but the

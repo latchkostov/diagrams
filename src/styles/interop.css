@@ -1280,6 +1280,19 @@ code.ix-report-why {
   border-block: 1px solid var(--line);
 }
 
+/* "Draw these" while it can't: dimmed like a disabled button, still focusable. */
+.ix-dialog .ix-report-pick-foot .btn[aria-disabled="true"] {
+  opacity: 0.5;
+}
+
+.ix-report-pick-status {
+  color: var(--text-3);
+}
+
+.ix-report-pick-status.is-over {
+  color: var(--text-2, var(--text));
+}
+
 .ix-report-pick-foot {
   display: flex;
   align-items: center;

@@ -15,8 +15,8 @@ fixtures and two generated inputs (a 40-namespace cluster, a KafkaUser set), wri
   most flows first (`pick-report-1280-light`). The list scrolls on its own after seven rows, so **Draw these (300
   nodes)** sits right under it and the rest of the report stays in reach: at first, 40 rows pushed the button and
   every other section below the fold. The button is a secondary one (Done stays the dialog's one primary action),
-  off until the ticks change, and counts what it would draw as you tick (`pick-report-changed-1280-light`: 310).
-  It opens a new diagram, like Draw everything, so the first drawing is never lost. Dark (`pick-report-1280-dark`)
+  unavailable until the ticks change, and counts what it would draw as you tick (`pick-report-changed-1280-light`:
+  310). It opens a new diagram, like Draw everything, so the first drawing is never lost. Dark (`pick-report-1280-dark`)
   and 1024 (`pick-report-1024-light`) read the same. Checkboxes are real inputs: Space ticks them, and the e2e test
   drives one from the keyboard.
 - **"Boundary", not "namespace" or "module".** The section is the same for every format, and boundary is the
@@ -50,11 +50,23 @@ fixtures and two generated inputs (a 40-namespace cluster, a KafkaUser set), wri
 - Batch 4's `secret-identity` raised three false findings on the Terraform fixtures (see the "Imports" addendum in
   `docs/research/architecture-checks.md`); the import now says what it knew.
 
+### After code review (fixed)
+
+- **Draw everything draws everything again** (up to 5,000): the picker had made it draw an automatic 300.
+- **Nothing is out of reach.** Components in no boundary (a Terraform root module) are one more entry, **Not in a
+  boundary**; before, a large root module could only come along with a boundary it connected to.
+- **An oversized boundary no longer blocks the import.** The first entry used to be taken whatever its size, so one
+  over 5,000 failed the whole import; it's skipped and listed now, and a smaller one opens.
+- **The picker speaks.** A status line beside the button ("310 nodes ticked.", "5,200 nodes ticked, over the 5,000 an
+  import draws: untick some.") is announced politely and describes the checkboxes and the button, which is now
+  unavailable rather than disabled, so it stays in the Tab order.
+- **A picked diagram is named by what it draws** ("shop (team-05 and team-39)"), so Your diagrams doesn't list two
+  with one title, and a picked Terraform diagram keeps Draw everything.
+- **Deny ACLs win**, as in Kafka; allows for some hosts only are listed, not drawn. Two consumers of one KafkaUser
+  share its group in Live. A managed-identity label survives an earlier reference to the vault.
+
 ### Still open (owner's call)
 
-- A big import's first drawing has the source's title ("team-00 and 39 more namespaces"), and a picked one keeps it,
-  so Your diagrams lists two with one title. Naming them by what's drawn would be longer; Draw everything's
-  "(everything)" suffix is the precedent if it's wanted.
 - A picked diagram of 300 nodes doesn't fit 1280 × 800 at the canvas's smallest zoom (`pick-canvas-1280-light`).
   That's the size, not the layout: 300 is the plan's threshold, and a lower one would draw less by default.
 - A KafkaUser's Secret is drawn "not in these files", which is true (Strimzi makes it) but could say "made by

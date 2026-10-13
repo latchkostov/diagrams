@@ -99,6 +99,23 @@ const NOT_A_COMPONENT = new Set([
   "TriggerAuthentication",
   "ClusterTriggerAuthentication",
 ]);
+/**
+ * Workloads by the Secrets they use, indexed once while the reader goes through them: a KafkaUser's workloads are
+ * one lookup, not a scan of every workload for every user.
+ */
+export class SecretUsers {
+  private readonly by = new Map<string, string[]>();
+  add(ns: string, secret: string, key: string): void {
+    const k = `${ns}\u0001${secret}`;
+    const list = this.by.get(k);
+    if (list) list.push(key);
+    else this.by.set(k, [key]);
+  }
+  get(ns: string, secret: string): readonly string[] {
+    return this.by.get(`${ns}\u0001${secret}`) ?? [];
+  }
+}
+
 /** Strimzi kinds that are part of a Kafka cluster, not components of their own. */
 const PART_OF_KAFKA = new Set([
   "KafkaNodePool",
@@ -959,76 +976,110 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
   // The User Operator writes a KafkaUser's credentials to a Secret named after it (with the cluster's
   // `userOperator.secretPrefix`) in its namespace, and a pod can only use Secrets in its own namespace: a workload that
   // mounts or reads that Secret is that user. Its literal topic ACLs are flows (Write: it produces; Read: it
-  // consumes, in the group its literal group ACL names). Wildcards and prefixes, and users no workload here uses, are
-  // listed. Only the Secret's name is looked at, never its values.
-  const flowPairs = new Set([...links.flows.values()].map((f) => `${f.from}\u0001${f.to}`));
-  const aclFlow = (from: string, to: string, evidence: Evidence, props?: Record<string, unknown>) => {
-    if (flowPairs.has(`${from}\u0001${to}`)) return;
-    flowPairs.add(`${from}\u0001${to}`);
-    links.flow(from, to, "async", evidence, props);
-    g.connectionsTitle = "Connections found in settings and KafkaUser ACLs";
+  // consumes, in the group its literal group ACL names), unless a deny ACL forbids them: Kafka applies a matching deny
+  // first, so a denied flow is never drawn. ACLs for some hosts only, wildcards and prefixes, and users no workload
+  // here uses, are listed. Only the Secret's name is looked at, never its values.
+  const bySecret = new SecretUsers();
+  for (const w of workloads) for (const name of uses.get(w)?.secrets.keys() ?? []) bySecret.add(w.res.ns, name, w.key);
+  type Op = "read" | "write";
+  interface Acl {
+    deny: boolean;
+    type: string;
+    name: string;
+    pattern: string;
+    ops: Set<string>;
+    anyHost: boolean;
+  }
+  const aclOf = (acl: unknown): Acl | undefined => {
+    const resource = own(acl, "resource");
+    const name = str(own(resource, "name"))?.slice(0, 249);
+    if (!name) return undefined;
+    const host = str(own(acl, "host"));
+    return {
+      deny: (str(own(acl, "type")) ?? "allow").toLowerCase() === "deny",
+      type: (str(own(resource, "type")) ?? "").toLowerCase(),
+      name,
+      pattern: (str(own(resource, "patternType")) ?? "literal").toLowerCase(),
+      ops: new Set(
+        [...list(own(acl, "operations")), own(acl, "operation")]
+          .map((o) => (str(o) ?? "").toLowerCase())
+          .filter(Boolean),
+      ),
+      anyHost: host === undefined || host.trim() === "*",
+    };
   };
+  /** Does this deny cover `op` on the resource `type` named `name`? A deny for any host counts everywhere. */
+  const forbids = (d: Acl, type: string, name: string, op: Op) =>
+    d.type === type &&
+    (d.ops.has("all") || d.ops.has(op)) &&
+    (d.name === "*" || (d.pattern === "prefix" ? name.startsWith(d.name) : d.name === name));
+  const plain = (name: string) => name !== "*" && /^[\w.-]{1,249}$/.test(name);
+  let aclFlows = false;
   for (const u of resources.filter((r) => r.group === "kafka.strimzi.io" && r.kind === "KafkaUser")) {
     const authz = own(spec(u), "authorization");
-    const acls = list(own(authz, "acls")).slice(0, 500);
+    const acls = list(own(authz, "acls"))
+      .slice(0, 500)
+      .map(aclOf)
+      .filter((a): a is Acl => !!a);
     if (str(own(authz, "type")) !== "simple" || !acls.length) continue;
     handled.add(u);
     const cluster = str(own(own(meta(u), "labels"), "strimzi.io/cluster"))?.slice(0, 200);
     const kafka = cluster ? strimzi.get(nsName(u.ns, cluster)) : undefined;
     const prefix =
       (kafka && str(own(own(own(spec(kafka), "entityOperator"), "userOperator"), "secretPrefix"))?.slice(0, 100)) || "";
-    const secret = `${prefix}${u.name}`;
-    const users = workloads.filter((w) => w.res.ns === u.ns && uses.get(w)?.secrets.has(secret)).map((w) => w.key);
+    const users = bySecret.get(u.ns, `${prefix}${u.name}`);
     if (!users.length) {
       skip(u.kind, u.name, "its ACLs aren't drawn: no workload in these files uses its Secret");
       continue;
     }
+    const denies = acls.filter((a) => a.deny);
+    const allowed = (type: string, name: string, op: Op) => !denies.some((d) => forbids(d, type, name, op));
     const writes = new Set<string>();
     const reads = new Set<string>();
     const groups = new Set<string>();
     const wide: string[] = [];
-    for (const acl of acls) {
-      if ((str(own(acl, "type")) ?? "allow").toLowerCase() === "deny") continue;
-      const resource = own(acl, "resource");
-      const type = (str(own(resource, "type")) ?? "").toLowerCase();
-      const name = str(own(resource, "name"))?.slice(0, 249);
-      const pattern = (str(own(resource, "patternType")) ?? "literal").toLowerCase();
-      const ops = [...list(own(acl, "operations")), own(acl, "operation")]
-        .map((o) => (str(o) ?? "").toLowerCase())
-        .filter(Boolean);
-      const all = ops.includes("all");
-      if (!name) continue;
-      if (type === "group") {
-        if (pattern === "literal" && name !== "*" && /^[\w.-]{1,249}$/.test(name)) groups.add(name);
+    for (const a of acls) {
+      if (a.deny) continue;
+      const all = a.ops.has("all");
+      if (a.type === "group") {
+        if (a.anyHost && a.pattern === "literal" && plain(a.name) && (all || a.ops.has("read")))
+          if (allowed("group", a.name, "read")) groups.add(a.name);
         continue;
       }
-      if (type !== "topic") continue;
-      const read = all || ops.includes("read");
-      const write = all || ops.includes("write");
+      if (a.type !== "topic") continue;
+      const read = all || a.ops.has("read");
+      const write = all || a.ops.has("write");
       if (!read && !write) continue;
-      if (pattern !== "literal" || name === "*" || !/^[\w.-]{1,249}$/.test(name)) {
-        const what = name === "*" ? "every topic" : `topics starting “${name.replace(/[^\w.-]/g, "")}”`;
-        wide.push(`${read && write ? "read and write" : read ? "read" : "write"} ${what}`);
+      const verb = read && write ? "read and write" : read ? "read" : "write";
+      if (a.pattern !== "literal" || !plain(a.name)) {
+        wide.push(`${verb} ${a.name === "*" ? "every topic" : `topics starting “${a.name.replace(/[^\w.-]/g, "")}”`}`);
         continue;
       }
-      if (write) writes.add(name);
-      if (read) reads.add(name);
+      // Allowed from some hosts only: whether these workloads run there isn't in the files.
+      if (!a.anyHost) {
+        wide.push(`${verb} ${a.name} from some hosts only`);
+        continue;
+      }
+      if (write && allowed("topic", a.name, "write")) writes.add(a.name);
+      if (read && allowed("topic", a.name, "read")) reads.add(a.name);
     }
     const id = clusterId(u.ns, cluster ?? "");
-    const group = groups.size === 1 ? { group: [...groups][0] } : undefined;
+    const group = groups.size === 1 ? [...groups][0] : undefined;
+    const evidence = (note: string): Evidence => ({ source: "resource", name: `KafkaUser ${u.name}`, note });
     for (const name of writes) {
       const topic = topicOn(id, name);
-      for (const w of users) aclFlow(w, topic, { source: "resource", name: `KafkaUser ${u.name}`, note: "writes" });
+      for (const w of users) links.flowOrEnrich(w, topic, "async", evidence("writes"));
     }
     for (const name of reads) {
       const topic = topicOn(id, name);
-      for (const w of users)
-        aclFlow(topic, w, { source: "resource", name: `KafkaUser ${u.name}`, note: "reads" }, group);
+      for (const w of users) links.flowOrEnrich(topic, w, "async", evidence("reads"), group);
     }
+    if (writes.size || reads.size) aclFlows = true;
     if (wide.length)
       note(`${label(u.name)} (KafkaUser) may ${wide.slice(0, 3).join(", ")}${wide.length > 3 ? "…" : ""}: not drawn`);
     skip(u.kind, u.name, "shown as its workloads' flows");
   }
+  if (aclFlows) g.connectionsTitle = "Connections found in settings and KafkaUser ACLs";
 
   // ------------------------------------------------ what isn't drawn, and why
   for (const r of resources) {

@@ -43,6 +43,8 @@ export class Components {
 export class Links {
   readonly flows = new Map<string, ImportLink>();
   readonly deps = new Map<string, ImportLink>();
+  /** Flow route ids by their ends and kind, so a later reader can find and enrich a route without a scan. */
+  private readonly routes = new Map<string, Set<string>>();
   /** A topic's cluster: a flow through one of its topics joins a service with the cluster too. */
   readonly topicCluster = new Map<string, string>();
 
@@ -66,14 +68,50 @@ export class Links {
       );
   }
 
+  // A route is its ends, its kind, its consumer group and whether it carries dead letters: two subscriptions
+  // forwarding to one queue are two groups, and a DLQ route beside an ordinary one is a route of its own.
+  private static routeId(from: string, to: string, kind: string, props?: Record<string, unknown>) {
+    const group = typeof props?.group === "string" ? props.group : "";
+    return `${from}\u0001${to}\u0001${kind}\u0001${group}\u0001${props?.dlq === true ? "dlq" : ""}`;
+  }
+  private static pairId = (from: string, to: string, kind: string) => `${from}\u0001${to}\u0001${kind}`;
+
+  private setFlow(id: string, link: ImportLink) {
+    this.flows.set(id, link);
+    const pair = Links.pairId(link.from, link.to, link.kind ?? "async");
+    let ids = this.routes.get(pair);
+    if (!ids) this.routes.set(pair, (ids = new Set()));
+    ids.add(id);
+  }
+
   flow(from: string, to: string, kind: "async" | "sync", evidence: Evidence, props?: Record<string, unknown>) {
     this.budget();
-    // A route is its ends, its kind, its consumer group and whether it carries dead letters: two subscriptions
-    // forwarding to one queue are two groups, and a DLQ route beside an ordinary one is a route of its own.
-    const group = typeof props?.group === "string" ? props.group : "";
-    const id = `${from}\u0001${to}\u0001${kind}\u0001${group}\u0001${props?.dlq === true ? "dlq" : ""}`;
+    const id = Links.routeId(from, to, kind, props);
     if (from !== to && !this.flows.has(id))
-      this.flows.set(id, { from, to, relation: "flow", kind, evidence, ...(props ? { props } : {}) });
+      this.setFlow(id, { from, to, relation: "flow", kind, evidence, ...(props ? { props } : {}) });
+  }
+
+  /**
+   * A flow another source also implies (a KafkaUser's ACL): a route between the same ends that names no consumer
+   * group takes this one's group, and one that names its own keeps it. Only when nothing joins the ends yet is it a
+   * route of its own. Either way, one edge per consumer group, never a second one for the same ends.
+   */
+  flowOrEnrich(from: string, to: string, kind: "async" | "sync", evidence: Evidence, group?: string) {
+    if (from === to) return;
+    const ids = [...(this.routes.get(Links.pairId(from, to, kind)) ?? [])].filter(
+      (id) => this.flows.get(id)?.props?.dlq !== true,
+    );
+    if (!ids.length) return this.flow(from, to, kind, evidence, group ? { group } : undefined);
+    if (!group) return;
+    const named = ids.filter((id) => typeof this.flows.get(id)!.props?.group === "string");
+    if (named.length) return;
+    // The ungrouped route takes the group: re-keyed, so a later flow in that group finds it.
+    const old = this.flows.get(ids[0])!;
+    const props = { ...old.props, group };
+    this.flows.delete(ids[0]);
+    this.routes.get(Links.pairId(from, to, kind))!.delete(ids[0]);
+    const id = Links.routeId(from, to, kind, props);
+    if (!this.flows.has(id)) this.setFlow(id, { ...old, props });
   }
 
   dep(
@@ -85,9 +123,20 @@ export class Links {
     label?: string,
   ) {
     this.budget();
+    if (from === to) return;
     const id = `${from}\u0001${to}\u0001${relation}`;
-    if (from !== to && !this.deps.has(id))
+    const known = this.deps.get(id);
+    if (!known) {
       this.deps.set(id, { from, to, relation, evidence, ...(props ? { props } : {}), ...(label ? { label } : {}) });
+      return;
+    }
+    // One dependency per pair and relation, enriched by what a later source adds: a label it didn't have (how it
+    // signs in), settings it didn't name, and evidence a person can trace (a resource or a setting) over the file's
+    // bare structure.
+    if (label && !known.label) known.label = label;
+    if (props) known.props = { ...props, ...known.props };
+    const traceable = (e: Evidence) => e.source === "resource" || e.source === "setting";
+    if (traceable(evidence) && !traceable(known.evidence)) known.evidence = evidence;
   }
 
   /** A connection to `to`, as its stencil suggests: a dependency for typed stencils and brokers, else a Request. */

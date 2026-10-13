@@ -29,11 +29,14 @@ type Unit = Box & { id: string; label?: string; sublabel?: string };
  * of single cards 500 px apart. Each column is restacked by its own units' heights, in the same order, and centred
  * on one line, so a chain still reads straight across.
  */
-function compactColumns(units: Unit[], at: Map<string, { x: number; y: number }>): void {
+export function compactColumns(units: Unit[], at: Map<string, { x: number; y: number }>): void {
   const columns = new Map<number, Unit[]>();
   for (const u of units) {
     const p = at.get(u.id);
-    if (p) columns.set(p.x, [...(columns.get(p.x) ?? []), u]);
+    if (!p) continue;
+    const col = columns.get(p.x);
+    if (col) col.push(u);
+    else columns.set(p.x, [u]);
   }
   const height = (col: Unit[]) => col.reduce((h, u) => h + u.height, 0) + ROW_GAP * (col.length - 1);
   const tallest = Math.max(0, ...[...columns.values()].map(height));

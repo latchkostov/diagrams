@@ -7,7 +7,7 @@ import { detectFormat, importFiles, importText, type ImportOutcome } from "../fo
 import { sniffInfra } from "../sniff";
 import type { ImportReport } from "./graph";
 import { importKubernetes, replayOutcome } from "./pipeline";
-import { HELM_TEMPLATE, MAX_RESOURCES } from "./kubernetes";
+import { HELM_TEMPLATE, MAX_RESOURCES, SecretUsers } from "./kubernetes";
 import { parseServiceHost, WorkloadNames } from "./k8sHosts";
 import { ENV_LIMITS, expandVars, OPAQUE } from "./k8sSettings";
 import { MAX_VALUE } from "./settings";
@@ -418,6 +418,107 @@ ${deployment("orders-app", "example/orders", "", "shop").replace(
     const into = diagram.edges.filter((e) => e.from === "topic-payments.v1" && e.to === "orders-app");
     expect(into).toHaveLength(1);
     expect(into[0].props).toEqual({ group: "from-settings" });
+  });
+
+  it("never draws a flow a deny ACL forbids: literal, prefix and wildcard denies, and a denied group", () => {
+    const acls = (lines: string[]) => lines.map((l) => `      - ${l}`).join("\n");
+    const allows = [
+      "{ resource: { type: topic, name: orders.v1 }, operations: [Write] }",
+      "{ resource: { type: topic, name: payments.v1 }, operations: [Read] }",
+      "{ resource: { type: group, name: orders-app-group }, operations: [Read] }",
+    ];
+    // A deny for the same topic and operation wins over the allow (Kafka checks denies first).
+    let d = k8s(
+      set({
+        acls: acls([...allows, "{ type: deny, resource: { type: topic, name: orders.v1 }, operations: [Write] }"]),
+      }),
+    ).diagram;
+    expect(edge(d, "orders-app", "topic-orders.v1")).toBeUndefined();
+    expect(relationBetween(d, "topic-payments.v1", "orders-app")).toBe("message");
+    // A prefix deny, and a deny for All.
+    d = k8s(
+      set({
+        acls: acls([
+          ...allows,
+          "{ type: deny, resource: { type: topic, name: pay, patternType: prefix }, operations: [All] }",
+        ]),
+      }),
+    ).diagram;
+    expect(edge(d, "topic-payments.v1", "orders-app")).toBeUndefined();
+    expect(relationBetween(d, "orders-app", "topic-orders.v1")).toBe("message");
+    // A wildcard deny, even one for a single host, forbids everything it names.
+    d = k8s(
+      set({
+        acls: acls([
+          ...allows,
+          '{ type: deny, host: "10.0.0.9", resource: { type: topic, name: "*" }, operations: [Read, Write] }',
+        ]),
+      }),
+    ).diagram;
+    expect(d.edges.filter((e) => relationOf(e) === "flow")).toEqual([]);
+    // A denied group isn't the consumer group.
+    d = k8s(
+      set({
+        acls: acls([
+          ...allows,
+          "{ type: deny, resource: { type: group, name: orders-app-group }, operations: [Read] }",
+        ]),
+      }),
+    ).diagram;
+    expect(edge(d, "topic-payments.v1", "orders-app")?.props).toBeUndefined();
+  });
+
+  it("lists an allow for some hosts only instead of drawing it", () => {
+    const { diagram, report } = k8s(
+      set({ acls: '      - { host: "10.0.0.7", resource: { type: topic, name: orders.v1 }, operations: [Write] }' }),
+    );
+    expect(edge(diagram, "orders-app", "topic-orders.v1")).toBeUndefined();
+    expect(report.notes).toContain("orders-app (KafkaUser) may write orders.v1 from some hosts only: not drawn");
+  });
+
+  it("gives settings' ungrouped consumers the user's group, so two consumers share it rather than each get a copy", () => {
+    // Two workloads use the user's Secret: one names its input topic in a setting (no group), the other only
+    // through the ACL. Both read payments.v1 in the ACL's group, so Live shares messages between them.
+    const second = deployment("orders-app-2", "example/orders", "", "shop").replace(
+      "          image: example/orders\n",
+      "          image: example/orders\n          env:\n            - { name: KAFKA_PASSWORD, valueFrom: { secretKeyRef: { name: orders-app, key: password } } }\n",
+    );
+    const { diagram } = k8s(
+      set({
+        extraEnv:
+          "            - { name: KAFKA_BOOTSTRAP_SERVERS, value: events-kafka-bootstrap.shop.svc:9092 }\n" +
+          "            - { name: INPUT_TOPIC, value: payments.v1 }\n",
+      }) + second,
+    );
+    for (const w of ["orders-app", "orders-app-2"]) {
+      const into = diagram.edges.filter((e) => e.from === "topic-payments.v1" && e.to === w);
+      expect(into, w).toHaveLength(1);
+      expect(into[0].props, w).toEqual({ group: "orders-app-group" });
+    }
+  });
+
+  it("finds each KafkaUser's workloads through an index, in linear time", () => {
+    // The reader indexes workloads by the Secrets they use (SecretUsers) and asks it once per KafkaUser. A scan of
+    // the workloads per user would be quadratic: 8x the workloads and users would take 64x as long. Compared against
+    // an eighth of the input, not a wall-clock budget; the fastest of a few runs evens out noise. Users whose Secret
+    // nobody uses are the common case and the worst for a scan.
+    const fastest = (n: number) => {
+      let best = Infinity;
+      for (let run = 0; run < 3; run++) {
+        const started = performance.now();
+        const index = new SecretUsers();
+        for (let i = 0; i < n; i++) index.add(`ns-${i % 40}`, `own-${i}`, `w${i}`);
+        let found = 0;
+        for (let i = 0; i < n * 5; i++) found += index.get(`ns-${i % 40}`, `user-${i}`).length;
+        best = Math.min(best, performance.now() - started);
+        expect(found).toBe(0);
+        expect(index.get(`ns-${(n - 1) % 40}`, `own-${n - 1}`)).toEqual([`w${n - 1}`]);
+      }
+      return best;
+    };
+    fastest(1_000); // warm up the JIT
+    const ratio = fastest(8_000) / fastest(1_000);
+    expect(ratio).toBeLessThan(24);
   });
 
   it("never reads the Secret's values", () => {

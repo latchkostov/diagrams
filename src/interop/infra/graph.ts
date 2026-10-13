@@ -146,6 +146,8 @@ export interface ImportPick {
   groups: PickGroup[];
   /** The whole import, as data: names and connections, never the source text. */
   graph: ImportGraph;
+  /** Terraform: the import's Draw everything graph, so a picked diagram's report still offers it. */
+  everything?: ImportGraph;
 }
 
 /**

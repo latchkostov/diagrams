@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "./Dialog";
 import { Glyph } from "./glyphs";
 import { toast } from "./toast";
@@ -188,7 +188,11 @@ export function ImportReportDialog({
           <PickSection
             pick={report.pick}
             onDraw={(keys) =>
-              void drawAgain((p) => p.replayOutcome(report.pick!.graph, report.pick!.format, keys), onReplay, onClose)
+              void drawAgain(
+                (p) => p.replayOutcome(report.pick!.graph, report.pick!.format, keys, report.pick!.everything),
+                onReplay,
+                onClose,
+              )
             }
           />
         )}
@@ -303,6 +307,9 @@ function PickSection({ pick, onDraw }: { pick: ImportPick; onDraw: (keys: string
   const same =
     keys.length === pick.groups.filter((g) => g.drawn).length &&
     pick.groups.every((g) => g.drawn === chosen.has(g.key));
+  const statusId = useId();
+  const over = count > MAX_DRAWN;
+  const unavailable = !keys.length || over || same;
   const toggle = (key: string, on: boolean) =>
     setChosen((prev) => {
       const next = new Set(prev);
@@ -331,6 +338,7 @@ function PickSection({ pick, onDraw }: { pick: ImportPick; onDraw: (keys: string
                 type="checkbox"
                 checked={chosen.has(g.key)}
                 onChange={(e) => toggle(g.key, e.target.checked)}
+                aria-describedby={statusId}
                 data-testid={`import-report-pick-${i}`}
               />
               <Breakable text={g.label} />
@@ -343,20 +351,34 @@ function PickSection({ pick, onDraw }: { pick: ImportPick; onDraw: (keys: string
         ))}
       </ul>
       <div className="ix-report-pick-foot">
+        {/* Unavailable rather than disabled: it stays in the Tab order, and says why with the status beside it. */}
         <button
           className="btn"
-          disabled={!keys.length || count > MAX_DRAWN || same}
-          onClick={() => onDraw(keys)}
+          aria-disabled={unavailable || undefined}
+          aria-describedby={statusId}
+          onClick={() => {
+            if (!unavailable) onDraw(keys);
+          }}
           title="Opens a new diagram with the ticked boundaries; this one stays as it is"
           data-testid="import-report-pick-draw"
         >
           Draw these ({count.toLocaleString("en")} {count === 1 ? "node" : "nodes"})
         </button>
-        {count > MAX_DRAWN && (
-          <span className="ix-report-muted" data-testid="import-report-pick-over">
-            At most {MAX_DRAWN.toLocaleString("en")}: untick some.
-          </span>
-        )}
+        {/* Announced as the ticks change: the total, and why the button is unavailable when it is. */}
+        <span
+          id={statusId}
+          role="status"
+          className={over ? "ix-report-pick-status is-over" : "ix-report-pick-status"}
+          data-testid="import-report-pick-status"
+        >
+          {over
+            ? `${count.toLocaleString("en")} nodes ticked, over the ${MAX_DRAWN.toLocaleString("en")} an import draws: untick some.`
+            : !keys.length
+              ? "Nothing ticked."
+              : same
+                ? `${count.toLocaleString("en")} nodes ticked: these are drawn.`
+                : `${count.toLocaleString("en")} nodes ticked.`}
+        </span>
       </div>
     </section>
   );

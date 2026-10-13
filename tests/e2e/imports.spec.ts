@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, publicExamples, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, publicExamples, expectNoErrors, waitForStableViewport } from "./fixtures";
 
 // Infrastructure imports, batch 1: docker-compose (docs/research/imports.md). Open…, drop, the Import report
 // and its stencil chips, hostile input, no network, and privacy. Selectors are data-testid only.
@@ -807,9 +807,20 @@ test.describe("imports: Terraform", () => {
     await page.getByTestId("import-report-draw-everything").click();
     await expect(page.getByTestId("diagram-title")).toHaveText("aws-plan (everything)");
     await page.getByTestId("fit-view-button").click();
+    // Measured once Fit's animation has finished, not part-way through it.
+    await waitForStableViewport(page);
     // The whole diagram fits the view at a scale where a card reads: the spread layout fitted at under a fifth.
     const card = await page.getByTestId("node-msk-brokers").boundingBox();
+    const view = await page.getByTestId("canvas-view").boundingBox();
     expect(card?.width ?? 0).toBeGreaterThan(110);
+    // And the card is in the fitted view.
+    expect(card && view).toBeTruthy();
+    if (card && view) {
+      expect(card.x).toBeGreaterThanOrEqual(view.x);
+      expect(card.y).toBeGreaterThanOrEqual(view.y);
+      expect(card.x + card.width).toBeLessThanOrEqual(view.x + view.width);
+      expect(card.y + card.height).toBeLessThanOrEqual(view.y + view.height);
+    }
     // And the drawing uses the view's width, not a narrow strip down the middle.
     const d = (await stored(page, "aws-plan (everything)")) as unknown as { nodes: { x: number; y: number }[] };
     const xs = d.nodes.map((n) => n.x);
@@ -881,17 +892,28 @@ test.describe("imports: big imports", () => {
     await expect(page.getByTestId("import-report-pick-row-0")).toContainText("10 nodes · 9 flows");
     await expect(page.getByTestId("import-report-pick-0")).toBeChecked();
     await expect(page.getByTestId("import-report-pick-39")).not.toBeChecked();
-    // Nothing changed yet: nothing to draw.
+    // Nothing changed yet: nothing to draw, and the status (announced politely) says why.
     const draw = page.getByTestId("import-report-pick-draw");
+    const status = page.getByTestId("import-report-pick-status");
     await expect(draw).toBeDisabled();
     await expect(draw).toHaveText("Draw these (300 nodes)");
+    await expect(status).toHaveAttribute("role", "status");
+    await expect(status).toHaveText("300 nodes ticked: these are drawn.");
+    // Unavailable, not disabled: it stays in the Tab order, described by the status, as each checkbox is.
+    const describedBy = await draw.getAttribute("aria-describedby");
+    expect(describedBy).toBe(await status.getAttribute("id"));
+    await expect(page.getByTestId("import-report-pick-0")).toHaveAttribute("aria-describedby", describedBy ?? "");
+    await draw.focus();
+    await expect(draw).toBeFocused();
     // Swap one: untick team-00 (keyboard), tick the last one.
     await page.getByTestId("import-report-pick-0").focus();
     await page.keyboard.press("Space");
     await expect(page.getByTestId("import-report-pick-0")).not.toBeChecked();
+    await expect(status).toHaveText("290 nodes ticked.");
     await page.getByTestId("import-report-pick-39").check();
     await expect(draw).toBeEnabled();
     await expect(draw).toHaveText("Draw these (300 nodes)");
+    await expect(status).toHaveText("300 nodes ticked.");
     await draw.click();
     await expect(page.getByTestId("import-report")).toHaveCount(0);
     await expect(page.getByTestId("toast")).toContainText("300 of 400 nodes");
@@ -909,7 +931,9 @@ test.describe("imports: big imports", () => {
       }
       return titles;
     });
-    expect(all.filter((t) => t === title)).toHaveLength(2);
+    expect(all.filter((t) => t === title)).toHaveLength(1);
+    // Named by what it draws, so the two aren't taken for each other.
+    await expect(page.getByTestId("diagram-title")).toHaveText(`${title} (team-01, team-02 and 28 more)`);
     // The new one's report keeps the picker, with its own boundaries ticked.
     await page.getByTestId("toast-import-details").click();
     await expect(page.getByTestId("import-report-pick-39")).toBeChecked();
