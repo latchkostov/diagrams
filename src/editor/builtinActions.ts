@@ -53,6 +53,10 @@ export function stencilMenu(
   }));
 }
 
+/** Run or Stop simulations applies: editing a diagram with saved simulations, where checks run. */
+const simulationsShown = (ctx: ActionContext) =>
+  checksPanel.isAvailable() && !!editingRuns() && !!ctx.editor.getDiagram?.().simulations?.length;
+
 /** How many recently used stencils quick-add lists above the categories (menus stay ≤ 12 items). */
 const QUICK_ADD_RECENT = 3;
 
@@ -283,21 +287,31 @@ export function builtinActions(): Action[] {
       hint: (ctx) => (ctx.editor.getDiagram?.().nodes.length ? undefined : "Add something to check first"),
       run: () => checksPanel.open(),
     },
+    // The Checks card's Run simulations, while editing a diagram with saved ones: Run opens the card and plays them
+    // there; while they play, Stop takes its place. Two actions, each keeping the intent it was shown with: a menu or
+    // the palette left open past the run's end never turns a Stop into a new run (nor a Run into a restart).
     {
-      // The Checks card's Run simulations, while editing a diagram with saved ones: it opens the card and plays them
-      // there; while they play, it stops them.
       id: "canvas.run-simulations",
       section: "arrange",
       targets: ["canvas"],
-      label: () => (editingRuns()?.isRunning() ? "Stop simulations" : "Run simulations"),
+      label: "Run simulations",
       icon: "bolt",
-      when: (ctx) => checksPanel.isAvailable() && !!editingRuns() && !!ctx.editor.getDiagram?.().simulations?.length,
+      when: (ctx) => simulationsShown(ctx) && !editingRuns()!.isRunning(),
       run: () => {
         const runs = editingRuns();
-        if (!runs || runs.stop()) return;
+        if (!runs || runs.isRunning()) return;
         checksPanel.open();
         runs.start();
       },
+    },
+    {
+      id: "canvas.stop-simulations",
+      section: "arrange",
+      targets: ["canvas"],
+      label: "Stop simulations",
+      icon: "bolt",
+      when: (ctx) => simulationsShown(ctx) && editingRuns()!.isRunning(),
+      run: () => void editingRuns()?.stop(),
     },
     {
       id: "canvas.fit",

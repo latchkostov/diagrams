@@ -79,6 +79,8 @@ async function palette(page: Page, text: string) {
 
 const RUN_ITEM = "context-menu-item-canvas.run-simulations";
 const RUN_COMMAND = "command-item-action:canvas.run-simulations";
+const STOP_ITEM = "context-menu-item-canvas.stop-simulations";
+const STOP_COMMAND = "command-item-action:canvas.stop-simulations";
 
 /** A topic whose consumer retries in place while a saved simulation takes it down: messages are lost at the topic. */
 const inPlace = (): Diagram => ({
@@ -261,6 +263,7 @@ test("no saved simulations, no Run simulations; and none in live view", async ({
   await palette(page, "Run simulations");
   await expect(page.getByTestId("command-list")).toBeVisible();
   await expect(page.getByTestId(RUN_COMMAND)).toHaveCount(0);
+  await expect(page.getByTestId(STOP_COMMAND)).toHaveCount(0);
   await page.keyboard.press("Escape");
   await gotoCanvas(page, "multi-region-active-active");
   await openChecks(page);
@@ -356,14 +359,15 @@ test.describe("a long run", () => {
   test("Ctrl+K and the canvas right-click stop it the same way, and play it again", async ({ page }) => {
     await page.getByTestId("checks-close").click();
     await expect(card(page)).toHaveCount(0);
-    // The right-click: the card opens and it plays; while it plays the row is Stop simulations.
+    // The right-click: the card opens and it plays; while it plays Stop simulations takes Run's place.
     await canvasMenu(page);
     await page.getByTestId(RUN_ITEM).click();
     await expect(card(page)).toBeVisible();
     await expect(status(page)).toHaveText(/^Playing 1 of 3/);
     await canvasMenu(page);
-    await expect(page.getByTestId(RUN_ITEM)).toHaveText(/Stop simulations/);
-    await page.getByTestId(RUN_ITEM).click();
+    await expect(page.getByTestId(RUN_ITEM)).toHaveCount(0);
+    await expect(page.getByTestId(STOP_ITEM)).toHaveText(/Stop simulations/);
+    await page.getByTestId(STOP_ITEM).click();
     await expect(status(page)).toHaveText("Stopped.");
     expect(await runStats(page)).toMatchObject({ started: 1, finished: 0, stopped: 1 });
 
@@ -372,10 +376,56 @@ test.describe("a long run", () => {
     await page.getByTestId(RUN_COMMAND).click();
     await expect(status(page)).toHaveText(/^Playing 1 of 3/);
     await palette(page, "Stop simulations");
-    await expect(page.getByTestId(RUN_COMMAND)).toContainText("Stop simulations");
-    await page.getByTestId(RUN_COMMAND).click();
+    await expect(page.getByTestId(STOP_COMMAND)).toContainText("Stop simulations");
+    await expect(page.getByTestId(RUN_COMMAND)).toHaveCount(0);
+    await page.getByTestId(STOP_COMMAND).click();
     await expect(status(page)).toHaveText("Stopped.");
     expect(await runStats(page)).toMatchObject({ started: 2, finished: 0, stopped: 2 });
+  });
+
+  test("leaving editing, another view or another diagram stops a run Ctrl+K started; Run plays the canvas shown", async ({
+    page,
+  }) => {
+    // Going live stops it, and live view offers neither row.
+    await palette(page, "Run simulations");
+    await page.getByTestId(RUN_COMMAND).click();
+    await expect(status(page)).toHaveText(/^Playing 1 of 3/);
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await expect.poll(async () => (await runStats(page)).stopped).toBe(1);
+    await palette(page, "simulations");
+    await expect(page.getByTestId("command-list")).toBeVisible();
+    await expect(page.getByTestId(RUN_COMMAND)).toHaveCount(0);
+    await expect(page.getByTestId(STOP_COMMAND)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+
+    // Back to editing: Ctrl+K plays them again, opening the card.
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    await palette(page, "Run simulations");
+    await page.getByTestId(RUN_COMMAND).click();
+    await expect(card(page)).toBeVisible();
+    await expect(status(page)).toHaveText(/^Playing 1 of 3: “Rush 1”/);
+
+    // Another view takes the canvas away: that stops it too.
+    await page.getByTestId("view-gallery").click();
+    await expect(page.getByTestId("gallery-view")).toBeVisible();
+    await expect.poll(async () => (await runStats(page)).stopped).toBe(2);
+    await page.getByTestId("view-canvas").click();
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+
+    // Another diagram, opened while one plays: the run stops, and Run simulations plays the new diagram's.
+    await palette(page, "Run simulations");
+    await page.getByTestId(RUN_COMMAND).click();
+    await expect(status(page)).toHaveText(/^Playing 1 of 3/);
+    await importDiagram(page, inPlace());
+    await expect.poll(async () => (await runStats(page)).stopped).toBe(3);
+    await page.getByTestId("canvas-view").click({ position: { x: 900, y: 120 } });
+    await palette(page, "Run simulations");
+    await page.getByTestId(RUN_COMMAND).click();
+    await expect(status(page)).toHaveText("Played 1 simulation · counts on 1 finding");
+    await expect(page.getByTestId("check-row-dropped:topic")).toBeVisible();
+    expect(await runStats(page)).toMatchObject({ started: 4, finished: 1, stopped: 3 });
   });
 
   test("typing is as responsive while simulations play as with none playing", async ({ page }, info) => {

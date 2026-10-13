@@ -1034,6 +1034,12 @@ The owner reviewed batches 4 and 5. Four decisions, applied in one change (UX re
    bundles the actions with the checks stubbed) gains nothing. Startup JavaScript: unchanged (1 byte smaller gzip);
    the canvas chunk +155 B, the checks worker +147 B (the identity rule), the card 47 B smaller (no `dropped` fix
    path). The self-hosting switches don't touch it (it's local), and `pnpm build:internal` builds it.
+   - **After code review (PR #82).** The first version was one row that toggled, deciding at the click: a menu or
+     Ctrl+K left open while a run ended showed **Stop simulations** and, clicked, started a new run. Run and Stop are
+     now two actions (`canvas.run-simulations`, `canvas.stop-simulations`), shown one at a time, each keeping the
+     intent it was shown with: a late Stop stops nothing, a late Run doesn't restart one playing. An e2e test starts a
+     run from Ctrl+K and stops it by going live, by another view and by opening another diagram, then checks Run
+     simulations plays the canvas shown (it fails if the first canvas's runs stay registered).
 4. **`entry-gateway`'s gap: decided, no change.** It stays quiet when the diagram draws no gateway at all. In the
    batch 3 gate, 3 of the 4 such hits were diagrams leaving the gateway out on purpose. **Owner's call (2026-10-13):
    keep it quiet; precision over recall.**

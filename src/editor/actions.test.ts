@@ -154,77 +154,126 @@ describe("action registry", () => {
 });
 
 describe("Run simulations on the canvas right-click and in Ctrl+K", () => {
-  it("only while editing a diagram with saved simulations: opens the Checks card and plays, or stops a run", async () => {
+  async function setup() {
     const { builtinActions } = await import("./builtinActions");
     const { checksPanel } = await import("../canvas/checks/checksPanel");
     const { setEditingRuns } = await import("../canvas/checks/editingRuns");
     const r = new ActionRegistry(builtinSections);
     r.register(builtinActions());
-    let simulations: unknown[] | undefined = [{ id: "s", title: "Rush" }];
-    const editor = {
-      getDiagram: () => ({ nodes: [{ id: "a" }, { id: "b" }], edges: [], simulations }),
-    } as unknown as EditorApi;
+    const diagram = {
+      nodes: [{ id: "a" }, { id: "b" }],
+      edges: [],
+      simulations: [{ id: "s", title: "Rush" }] as unknown[],
+    };
+    const editor = { getDiagram: () => diagram } as unknown as EditorApi;
     const menu = (surface?: "menu" | "palette", mode?: "edit" | "live") =>
       r.build({ ...ctx("canvas"), editor, surface, mode }).flatMap((i) => (i.type === "item" ? [i] : []));
-    const item = (surface?: "menu" | "palette", mode?: "edit" | "live") =>
-      menu(surface, mode).find((i) => i.id === "canvas.run-simulations");
-    let running = false;
+    const item = (id: string, surface?: "menu" | "palette", mode?: "edit" | "live") =>
+      menu(surface, mode).find((i) => i.id === id);
+    const state = { running: false };
     const runs = {
-      isRunning: () => running,
-      start: vi.fn(() => void (running = true)),
+      isRunning: () => state.running,
+      start: vi.fn(() => void (state.running = true)),
       stop: vi.fn(() => {
-        const was = running;
-        running = false;
+        const was = state.running;
+        state.running = false;
         return was;
       }),
     };
     // Opening the card notes what had focus: no page here.
     vi.stubGlobal("HTMLElement", function HTMLElement() {});
     checksPanel.setAvailable(true);
+    const done = () => {
+      setEditingRuns(null);
+      checksPanel.setAvailable(false);
+      vi.unstubAllGlobals();
+    };
+    return { checksPanel, setEditingRuns, diagram, menu, item, state, runs, done };
+  }
+  const RUN = "canvas.run-simulations";
+  const STOP = "canvas.stop-simulations";
+
+  it("only while editing a diagram with saved simulations: Run opens the Checks card and plays, Stop stops", async () => {
+    const { checksPanel, setEditingRuns, diagram, menu, item, state, runs, done } = await setup();
     try {
       // No editing canvas's runs (the HTML viewer, an embed, read-only): nothing.
-      expect(item()).toBeUndefined();
+      expect(item(RUN)).toBeUndefined();
       setEditingRuns(runs);
-      expect(item()).toMatchObject({ label: "Run simulations", icon: "bolt" });
-      expect(item("palette")).toMatchObject({ label: "Run simulations" });
+      expect(item(RUN)).toMatchObject({ label: "Run simulations", icon: "bolt" });
+      expect(item(RUN, "palette")).toMatchObject({ label: "Run simulations" });
+      expect(item(STOP)).toBeUndefined();
       // Right after Check diagram, and the canvas menu stays within its 12 rows.
       const ids = menu().map((i) => i.id);
-      expect(ids.indexOf("canvas.run-simulations")).toBe(ids.indexOf("canvas.check-diagram") + 1);
+      expect(ids.indexOf(RUN)).toBe(ids.indexOf("canvas.check-diagram") + 1);
       expect(ids.length).toBeLessThanOrEqual(10);
       // Never in live view's menus, nor where checks don't apply (presenting, live), nor without simulations.
-      expect(item(undefined, "live")).toBeUndefined();
+      expect(item(RUN, undefined, "live")).toBeUndefined();
       checksPanel.setAvailable(false);
-      expect(item("palette")).toBeUndefined();
+      expect(item(RUN, "palette")).toBeUndefined();
       checksPanel.setAvailable(true);
-      simulations = [];
-      expect(item("palette")).toBeUndefined();
-      simulations = [{ id: "s", title: "Rush" }];
+      const saved = diagram.simulations;
+      diagram.simulations = [];
+      expect(item(RUN, "palette")).toBeUndefined();
+      diagram.simulations = saved;
 
-      // It opens the Checks card, then plays them there.
+      // Run opens the Checks card, then plays them there.
       expect(checksPanel.isOpen()).toBe(false);
-      item("palette")!.run!();
+      item(RUN, "palette")!.run!();
       expect(checksPanel.isOpen()).toBe(true);
       expect(runs.start).toHaveBeenCalledTimes(1);
-      // While they play it's Stop, which stops them and leaves the card open.
-      expect(item()).toMatchObject({ label: "Stop simulations" });
-      item()!.run!();
-      expect(runs.stop).toHaveBeenCalled();
-      expect(running).toBe(false);
+      // While they play, Stop takes Run's place, in the same row; it stops them and leaves the card open.
+      expect(item(RUN)).toBeUndefined();
+      const ids2 = menu().map((i) => i.id);
+      expect(ids2.indexOf(STOP)).toBe(ids2.indexOf("canvas.check-diagram") + 1);
+      expect(item(STOP)).toMatchObject({ label: "Stop simulations", icon: "bolt" });
+      item(STOP, "palette")!.run!();
+      expect(state.running).toBe(false);
       expect(runs.start).toHaveBeenCalledTimes(1);
       expect(checksPanel.isOpen()).toBe(true);
-      // The card already open: it plays again, in place.
-      item()!.run!();
+      // The card already open: Run plays again, in place.
+      item(RUN)!.run!();
       expect(runs.start).toHaveBeenCalledTimes(2);
 
       // Leaving editing clears them; another canvas's clear leaves these alone.
       setEditingRuns(null, { isRunning: () => false, start() {}, stop: () => false });
-      expect(item()).toBeDefined();
+      expect(item(STOP)).toBeDefined();
       setEditingRuns(null, runs);
-      expect(item()).toBeUndefined();
+      expect(item(RUN)).toBeUndefined();
+      expect(item(STOP)).toBeUndefined();
     } finally {
-      setEditingRuns(null);
-      checksPanel.setAvailable(false);
-      vi.unstubAllGlobals();
+      done();
+    }
+  });
+
+  it("a row keeps the intent it was shown with: a Stop left open past the run's end never starts one", async () => {
+    const { checksPanel, setEditingRuns, item, state, runs, done } = await setup();
+    try {
+      setEditingRuns(runs);
+      item(RUN)!.run!();
+      expect(runs.start).toHaveBeenCalledTimes(1);
+      // The menu (or Ctrl+K) is built while they play, and stays open...
+      const stop = item(STOP, "palette")!;
+      expect(stop.label).toBe("Stop simulations");
+      // ...while the run ends by itself, and the card is closed.
+      state.running = false;
+      checksPanel.close();
+      stop.run!();
+      expect(runs.start).toHaveBeenCalledTimes(1);
+      expect(state.running).toBe(false);
+      expect(checksPanel.isOpen()).toBe(false);
+
+      // And a Run left open while one starts elsewhere (the card's link) doesn't restart it.
+      const run = item(RUN)!;
+      runs.start();
+      expect(runs.start).toHaveBeenCalledTimes(2);
+      run.run!();
+      expect(runs.start).toHaveBeenCalledTimes(2);
+      // Only the stale Stop above called stop(), and found nothing playing.
+      expect(runs.stop).toHaveBeenCalledTimes(1);
+      expect(runs.stop.mock.results[0].value).toBe(false);
+      expect(state.running).toBe(true);
+    } finally {
+      done();
     }
   });
 });
