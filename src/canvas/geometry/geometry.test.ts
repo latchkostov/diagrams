@@ -7,7 +7,6 @@ import { pointAlong, roundedPath } from "./path";
 import { slotOffset, spreadPorts } from "./ports";
 import { intersects, segmentHitsRect, simplify, type Point, type Rect } from "./rect";
 import { Router, routeDiagram, type RouteInput } from "./router";
-import { perfBudget } from "../../test/perfBudget";
 
 const card = (x: number, y: number, width = 220, height = 72): Rect => ({ x, y, width, height });
 const boxOf = (l: { x: number; y: number; width: number; height: number }): Rect => ({
@@ -426,19 +425,25 @@ describe("Router", () => {
     expect(loop.points.length).toBeGreaterThan(3);
   });
 
-  it("routes a 150-node grid quickly", () => {
-    const nodes = Array.from({ length: 150 }, (_, i) => ({
-      id: `n${i}`,
-      rect: card((i % 10) * 400, Math.floor(i / 10) * 140),
-    }));
-    const edges = nodes
-      .slice(1)
-      .map((n, i) => ({ id: `e${i}`, source: nodes[i].id, target: n.id, label: `edge ${i}` }));
-    const t0 = performance.now();
-    const r = routeDiagram({ nodes, edges });
-    const ms = performance.now() - t0;
+  it("routes a 150-node grid with one search per connection", () => {
+    const grid = (n: number) => {
+      const nodes = Array.from({ length: n }, (_, i) => ({
+        id: `n${i}`,
+        rect: card((i % 10) * 400, Math.floor(i / 10) * 140),
+      }));
+      const edges = nodes
+        .slice(1)
+        .map((n, i) => ({ id: `e${i}`, source: nodes[i].id, target: n.id, label: `edge ${i}` }));
+      return { nodes, edges };
+    };
+    // Counted, not timed: one A* search per connection (a second pass, or rerouting the rest after each one, would
+    // multiply them). Each search's own cost is guarded in perf.test.ts; a hang still fails at the test's timeout.
+    // Routing as a whole isn't linear by design (every search filters the diagram's cards), so no ratio here.
+    const { nodes, edges } = grid(150);
+    const router = new Router();
+    const r = router.route({ nodes, edges });
     expect(r.size).toBe(149);
-    expect(ms).toBeLessThan(perfBudget(1500));
+    expect(router.lastRouted).toBe(149);
     const v = auditLayout({
       nodes,
       edges: edges.map((e) => ({ ...e, points: r.get(e.id)!.points })),

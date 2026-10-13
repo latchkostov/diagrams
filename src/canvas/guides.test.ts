@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { guideIndex, nudgeOnGrid, snapMove, type Box, type SnapOptions } from "./guides";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
 const card = (x: number, y: number, width = 120, height = 40): Box => ({ x, y, width, height });
 const opts: SnapOptions = { threshold: 6, reach: 600, guides: true, grid: 10 };
@@ -135,18 +136,39 @@ describe("snapMove: equal spacing", () => {
 });
 
 describe("guideIndex", () => {
-  it("indexes 150 nodes and snaps each move in well under a millisecond", () => {
-    const boxes = Array.from({ length: 150 }, (_, i) =>
-      card((i % 15) * 360 + 40, Math.floor(i / 15) * 120 + 40, 127, 35),
-    );
-    const t0 = performance.now();
-    const index = guideIndex(boxes);
-    const built = performance.now() - t0;
-    const t1 = performance.now();
+  // Rows of 15 cards, 120 px apart, and a drag across the middle of them.
+  const grid = (n: number) =>
+    Array.from({ length: n }, (_, i) => card((i % 15) * 360 + 40, Math.floor(i / 15) * 120 + 40, 127, 35));
+  const drag = (index: ReturnType<typeof guideIndex>) => {
     for (let i = 0; i < 200; i++) snapMove(index, card(1000 + i * 3, 500 + i, 127, 35), { ...opts, reach: 2000 });
-    const perMove = (performance.now() - t1) / 200;
-    expect(built).toBeLessThan(50);
-    expect(perMove).toBeLessThan(1);
+  };
+
+  it("indexes nodes in n log n time", () => {
+    // Eight times the nodes against an eighth: a sort is about 8 to 10 times the work, comparing every pair 64. A
+    // ratio, not a budget in ms, so a busy machine doesn't fail it.
+    const small = grid(150);
+    const large = grid(150 * GROWTH_FACTOR);
+    expect(
+      growth(
+        () => guideIndex(small),
+        () => guideIndex(large),
+      ),
+    ).toBeLessThan(LINEAR_LIMIT);
+  });
+
+  it("snaps each move in linear time: no pass over every pair of nodes", () => {
+    // A move reads the cards along its lines and the gaps between neighbours: eight times the cards, about eight
+    // times the work per move. Comparing every pair of cards to find equal gaps would be sixty-four. A ratio, not
+    // the old "under a millisecond", so a busy machine doesn't fail it.
+    const small = guideIndex(grid(150));
+    const large = guideIndex(grid(150 * GROWTH_FACTOR));
+    expect(
+      growth(
+        () => drag(small),
+        () => drag(large),
+        { samples: 3 },
+      ),
+    ).toBeLessThan(LINEAR_LIMIT);
   });
 });
 

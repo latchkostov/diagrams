@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, expectNoErrors, fitDiagram } from "./fixtures";
+import { test, expect, gotoCanvas, gotoGallery, expectNoErrors, fitDiagram, waitForStableViewport } from "./fixtures";
 
 // Command palette (Ctrl/Cmd+K). Selectors are data-testid only. Uses the public Kafka example
 // (ids from src/examples/kafka-order-pipeline.json).
@@ -111,9 +111,15 @@ test.describe("command palette", () => {
     await expect.poll(() => counts(page)).toEqual({ nodes: before.nodes + 1, edges: before.edges + 1 });
     await expect(page.getByTestId("inspector-field-label")).toHaveValue("PostgreSQL");
 
-    // It lands to the right of the source node.
-    const source = await page.getByTestId("node-payments").boundingBox();
-    const added = await page.getByTestId(/^node-postgres/).boundingBox();
+    // It lands to the right of the source node. The view pans to show it: wait for the pan to settle, then read
+    // both cards in one frame (two reads in a row could straddle a frame of the pan).
+    await waitForStableViewport(page);
+    const [source, added] = await page.evaluate(() =>
+      ['[data-testid="node-payments"]', '[data-testid^="node-postgres"]'].map((sel) => {
+        const r = document.querySelector(sel)?.getBoundingClientRect();
+        return r ? { x: r.x, width: r.width } : null;
+      }),
+    );
     if (!source || !added) throw new Error("Expected both nodes on screen");
     expect(added.x).toBeGreaterThan(source.x + source.width);
 
@@ -197,17 +203,22 @@ test.describe("command palette", () => {
       const viewport = wrap.querySelector<HTMLElement>(".react-flow__viewport");
       const command = document.querySelector<HTMLElement>('[data-testid="command-item-node:inventory"]');
       if (!viewport || !command) throw new Error("Missing viewport or command");
-      const seen = new Set([viewport.style.transform]);
+      // From the first frame the view moves, the 20 frames after it: counted in frames, not over a span of wall
+      // time, so a busy machine (fewer frames a second, a late first move) doesn't change the answer.
+      const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+      const before = viewport.style.transform;
+      const seen = new Set([before]);
       command.click();
-      const until = performance.now() + 500;
-      while (performance.now() < until) {
-        await new Promise((resolve) => requestAnimationFrame(resolve));
+      for (let i = 0; i < 300 && viewport.style.transform === before; i++) await frame();
+      for (let i = 0; i < 20; i++) {
         seen.add(viewport.style.transform);
+        await frame();
       }
+      seen.add(viewport.style.transform);
       return seen.size;
     });
-    expect(changes).toBeGreaterThan(1);
-    expect(changes).toBeLessThanOrEqual(2);
+    // It moved, in one jump: the transform before and the one after.
+    expect(changes).toBe(2);
   });
 
   test("prefixes narrow to actions, nodes or stencils, and the footer buttons type them", async ({

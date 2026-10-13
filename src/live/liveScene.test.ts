@@ -1,5 +1,4 @@
-import { describe, expect, it } from "vitest";
-import { perfBudget } from "../test/perfBudget";
+import { describe, expect, it, vi } from "vitest";
 import { LiveScene, MAX_SEGMENTS, SAMPLE_BUDGET, type FlowStoreLike } from "./liveScene";
 
 // The scene against a fake React Flow DOM: paths are read on every scan, sampled only when needed
@@ -115,13 +114,13 @@ describe("LiveScene paths", () => {
     );
     scene.takeChanges();
     for (const p of edges.values()) p.d = p.d + " L70 0";
-    const started = performance.now();
+    // Counted, not timed: one rebuild of the march for all thousand moved edges. A rebuild per moved edge (each
+    // copying and keying every edge) was the quadratic one that took seconds.
+    const rebuild = vi.spyOn(scene as unknown as { setMarch(e: unknown[]): void }, "setMarch");
     scene.refresh();
-    const elapsed = performance.now() - started;
+    expect(rebuild).toHaveBeenCalledTimes(1);
     const march = scene.takeChanges()?.march ?? [];
     expect(march).toHaveLength(n);
     expect(march.every((e) => e.d.endsWith(" L70 0"))).toBe(true);
-    // Linear: a thousand moved edges take milliseconds, not the seconds a quadratic rebuild took.
-    expect(elapsed).toBeLessThan(perfBudget(200));
   });
 });

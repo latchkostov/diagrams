@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fitAxis, scaleAcross, tidyLayout, TIDY_GAP, type TidyBox } from "./tidy";
 import { spreadOverlaps } from "./arrange";
-import { perfBudget } from "../test/perfBudget";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT, QUADRATIC_LIMIT } from "../test/complexity";
 
 const card = (id: string, x: number, y: number, label?: string): TidyBox => ({
   id,
@@ -126,22 +126,44 @@ describe("tidyLayout", () => {
   });
 
   it("stays fast on a large selection among many obstacles, even when it can't find room", () => {
-    // 200 selected nodes in a chain, 600 others, and a note covering where the tidied layout would go.
-    const nodes = Array.from({ length: 200 }, (_, i) => card(`s${i}`, (i % 20) * 300, Math.floor(i / 20) * 200));
-    const edges = nodes.slice(1).map((n, i) => ({ from: nodes[i].id, to: n.id }));
-    const others = [
-      ...Array.from({ length: 600 }, (_, i) => ({
-        x: 20000 + (i % 30) * 300,
-        y: (i / 30) * 200,
-        width: 220,
-        height: 72,
-      })),
-      { x: -500, y: -500, width: 80000, height: 3000 },
-    ];
-    const t = performance.now();
+    // `n` selected nodes in a chain, 3n others, and a note covering where the tidied layout would go.
+    const scene = (n: number) => {
+      const nodes = Array.from({ length: n }, (_, i) => card(`s${i}`, (i % 20) * 300, Math.floor(i / 20) * 200));
+      const edges = nodes.slice(1).map((m, i) => ({ from: nodes[i].id, to: m.id }));
+      const others = [
+        ...Array.from({ length: n * 3 }, (_, i) => ({
+          x: 20000 + (i % 30) * 300,
+          y: (i / 30) * 200,
+          width: 220,
+          height: 72,
+        })),
+        { x: -500, y: -500, width: 80000, height: 3000 },
+      ];
+      return { nodes, edges, others };
+    };
+    const { nodes, edges, others } = scene(200);
     const r = tidyLayout({ nodes, edges, others });
-    expect(performance.now() - t).toBeLessThan(perfBudget(1500));
     if (r) expect(placed(nodes, r).some((b) => others.some((o) => overlaps(b, o)))).toBe(false);
+    // Measured against the same tidy with nothing in the way (the layout alone): failing to find room costs a few
+    // times that, since the search stops at the first box that clashes and at its budget. Testing every box at
+    // every one of the 6,560 spots costs hundreds of times more. A comparison in the same run, not a budget in ms.
+    expect(
+      growth(
+        () => tidyLayout({ nodes, edges }),
+        () => tidyLayout({ nodes, edges, others }),
+        { samples: 3 },
+      ),
+    ).toBeLessThan(LINEAR_LIMIT);
+    // And eight times the selection and the obstacles: about 8 times the work at most.
+    const small = scene(25);
+    const large = scene(25 * GROWTH_FACTOR);
+    expect(
+      growth(
+        () => tidyLayout(small),
+        () => tidyLayout(large),
+        { samples: 3 },
+      ),
+    ).toBeLessThan(LINEAR_LIMIT);
   });
 });
 
@@ -178,12 +200,23 @@ describe("align and distribute never stack nodes", () => {
     expect(out.get("b")!.x).toBe(260);
   });
 
-  it("a thousand boxes aligned onto one spot spread in a few milliseconds", () => {
-    const row = Array.from({ length: 1000 }, (_, i) => ({ id: `b${i}`, x: i * 300, y: 0, width: 220, height: 72 }));
-    const aligned = new Map(row.map((b) => [b.id, { x: 0, y: 0 }]));
-    const t = performance.now();
+  it("a thousand boxes aligned onto one spot spread in one pass", () => {
+    const line = (n: number) => {
+      const row = Array.from({ length: n }, (_, i) => ({ id: `b${i}`, x: i * 300, y: 0, width: 220, height: 72 }));
+      return { row, aligned: new Map(row.map((b) => [b.id, { x: 0, y: 0 }])) };
+    };
+    // One pass, each box against the ones before it: quadratic by design, 64 times the work for 8 times the boxes.
+    // Spreading again until nothing overlaps would be cubic, 512. A ratio, not a budget in ms.
+    const small = line(125);
+    const large = line(125 * GROWTH_FACTOR);
+    expect(
+      growth(
+        () => spreadOverlaps(small.row, small.aligned, "h"),
+        () => spreadOverlaps(large.row, large.aligned, "h"),
+      ),
+    ).toBeLessThan(QUADRATIC_LIMIT);
+    const { row, aligned } = large;
     const out = spreadOverlaps(row, aligned, "h");
-    expect(performance.now() - t).toBeLessThan(perfBudget(60));
     const xs = row.map((b) => out.get(b.id)!.x);
     // In their order, each one gap past the one before.
     expect(xs.slice(0, 3)).toEqual([0, 260, 520]);

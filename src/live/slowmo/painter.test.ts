@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { perfBudget } from "../../test/perfBudget";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { DEFAULT_TOKENS, type OverlayView, type Rect } from "../particleRenderer";
 import { SlowPainter } from "./painter";
 import type { SlowFrame } from "./script";
@@ -103,7 +103,7 @@ function paintFrame(
     obstacles: () => ({ hard, soft }),
   } satisfies OverlayView;
   for (let i = 0; i < times; i++) painter.paint(view);
-  return { painter, calls };
+  return { painter, calls, view };
 }
 
 describe("slow motion labels", () => {
@@ -128,22 +128,26 @@ describe("slow motion labels", () => {
     },
   );
 
-  it("places the offsets of a long journey on a large diagram within a frame's budget", () => {
-    // 1,000 node cards on a 1440×900 pane, 100 of them visited: one index of the obstacles per frame,
-    // not one per offset.
-    const nodes: Record<string, Rect> = {};
-    for (let i = 0; i < 1000; i++)
-      nodes[`n${i}`] = { x: (i % 40) * 36, y: Math.floor(i / 40) * 36, width: 24, height: 16 };
-    const frame: SlowFrame = {
-      ...emptyFrame,
-      visited: Array.from({ length: 100 }, (_, i) => ({ node: `n${i * 10}`, real: i * 10 })),
+  it("places the offsets of a long journey with one index of the obstacles per frame, not one per offset", () => {
+    // Node cards on a pane that grows with them, a tenth of them visited. Indexing the obstacles once per frame
+    // keeps a frame linear in the cards and offsets; an index (or a scan) per offset multiplies the two, so eight
+    // times the diagram would take sixty-four times as long. Compared against an eighth of the diagram, not a
+    // frame's budget in ms, so a busy machine (CI with coverage) doesn't fail it.
+    const journey = (n: number) => {
+      const nodes: Record<string, Rect> = {};
+      for (let i = 0; i < n; i++)
+        nodes[`n${i}`] = { x: (i % 40) * 96, y: Math.floor(i / 40) * 48, width: 24, height: 16 };
+      const frame: SlowFrame = {
+        ...emptyFrame,
+        visited: Array.from({ length: n / 10 }, (_, i) => ({ node: `n${i * 10}`, real: i * 10 })),
+      };
+      const height = Math.ceil(n / 40) * 48 + 200;
+      const { painter, view } = paintFrame(frame, nodes, Object.values(nodes), [], { width: 40 * 96, height });
+      // The work being measured: offsets really are placed among the cards.
+      expect(painter.labels.filter((l) => l.kind === "offset")).toHaveLength(n / 10);
+      return () => painter.paint(view);
     };
-    const hard = Object.values(nodes);
-    paintFrame(frame, nodes, hard, [], { width: 1440, height: 900 });
-    const times = 10;
-    const started = performance.now();
-    paintFrame(frame, nodes, hard, [], { width: 1440, height: 900, times });
-    expect((performance.now() - started) / times).toBeLessThan(perfBudget(8));
+    expect(growth(journey(250), journey(250 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
   });
 
   it("leaves offsets and retry chips out when there is no safe spot", () => {

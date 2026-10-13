@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { CHECK_LIMITS, sanitizeChecks } from "../model/checks";
-import { perfBudget } from "../test/perfBudget";
+import { countingReads, growth, GROWTH_FACTOR } from "../test/complexity";
 import { toFlow, fromFlow } from "../canvas/convert";
 import { importText } from "./formats";
 import { diagramToDrawio } from "./drawio/write";
@@ -119,15 +119,29 @@ describe("checks validation", () => {
       ignore: Array.from({ length: many }, (_, i) => ({ rule: `rule-${i % 7}`, target: "queue", reason: "x" })),
     };
     const repeated = { off: Array(many).fill("capacity"), ignore: Array(many).fill(checks.ignore[0]) };
-    const longReason = { ignore: [{ rule: "dead-letter", target: "queue", reason: " ".repeat(1_000_000) + "why" }] };
-    for (const input of [hostile, repeated, longReason]) {
-      const warnings: string[] = [];
-      const start = performance.now();
-      const out = sanitizeChecks(input, ids, warnings);
-      expect(performance.now() - start).toBeLessThan(perfBudget(50));
+    // Counted, not timed: of 80,000 entries, only the first of each list are read.
+    for (const input of [hostile, repeated]) {
+      const off = countingReads(input.off);
+      const ignore = countingReads<unknown>(input.ignore);
+      const out = sanitizeChecks({ off: off.items, ignore: ignore.items }, ids, []);
+      expect(off.reads()).toBeLessThanOrEqual(CHECK_LIMITS.maxOff);
+      expect(ignore.reads()).toBeLessThanOrEqual(CHECK_LIMITS.maxIgnores);
       expect(out?.off?.length ?? 0).toBeLessThanOrEqual(CHECK_LIMITS.maxOff);
       expect(out?.ignore?.length ?? 0).toBeLessThanOrEqual(CHECK_LIMITS.maxIgnores);
     }
+    // A long reason is cut before it's trimmed: a million characters cost what an eighth of them does. Trimming it
+    // whole would cost eight times as much. A ratio, not a budget in ms.
+    const reason = (n: number) => ({
+      ignore: [{ rule: "dead-letter", target: "queue", reason: " ".repeat(n) + "why" }],
+    });
+    const small = reason(1_000_000 / GROWTH_FACTOR);
+    const large = reason(1_000_000);
+    expect(
+      growth(
+        () => sanitizeChecks(small, ids, []),
+        () => sanitizeChecks(large, ids, []),
+      ),
+    ).toBeLessThan(GROWTH_FACTOR / 2);
     const warnings: string[] = [];
     expect(sanitizeChecks(hostile, ids, warnings)).toEqual({
       off: hostile.off.slice(0, CHECK_LIMITS.maxOff),
@@ -136,6 +150,7 @@ describe("checks validation", () => {
     expect(warnings).toEqual(["Only the first 100 turned-off checks and 2000 ignored findings were read."]);
     expect(sanitizeChecks(repeated, ids, [])).toEqual({ off: ["capacity"], ignore: [checks.ignore[0]] });
     // A reason of spaces doesn't survive as one.
-    expect(sanitizeChecks(longReason, ids, [])).toEqual({ ignore: [{ rule: "dead-letter", target: "queue" }] });
+    // Cut to its first characters, all spaces: no reason left.
+    expect(sanitizeChecks(large, ids, [])).toEqual({ ignore: [{ rule: "dead-letter", target: "queue" }] });
   });
 });

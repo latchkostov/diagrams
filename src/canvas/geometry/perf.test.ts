@@ -1,5 +1,5 @@
 // Routing benchmark over the public examples, the obstacle course and the 150-node stress preset.
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import { stressDiagram } from "../../lab/generators";
 import { obstacleCourseDiagram } from "../../lab/routingDiagrams";
@@ -7,7 +7,29 @@ import { estimateCardSize } from "../nodes/size";
 import { groupHeaderRect, Router, type RouteInput } from "./router";
 import { routeOrthogonal } from "./orthogonal";
 import { nudgeRoutes } from "./nudge";
-import { perfBudget } from "../../test/perfBudget";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+
+/**
+ * Reads of the padded obstacles the router makes (every `inflate`d box), while `rectReads.on`; past `limit` the
+ * read throws, so a runaway search fails at once instead of crawling through a billion counted reads.
+ */
+const rectReads = vi.hoisted(() => ({ on: false, count: 0, limit: Infinity }));
+vi.mock("./rect", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./rect")>();
+  return {
+    ...actual,
+    inflate: (...args: Parameters<typeof actual.inflate>) => {
+      const box = actual.inflate(...args);
+      if (!rectReads.on) return box;
+      return new Proxy(box, {
+        get(target, key, receiver) {
+          if (++rectReads.count > rectReads.limit) throw new Error(`more than ${rectReads.limit} obstacle reads`);
+          return Reflect.get(target, key, receiver) as unknown;
+        },
+      });
+    },
+  };
+});
 
 function offsetRoute(count: number) {
   const side = Math.sqrt(count);
@@ -38,16 +60,33 @@ function separatedRoutes(count: number) {
 }
 
 it("routes distinct obstacle coordinates without rescanning obstacles per grid cell", () => {
-  const start = performance.now();
-  expect(offsetRoute(400).ok).toBe(true);
-  expect(performance.now() - start).toBeLessThan(perfBudget(1500));
+  // Counted, not timed (the count doesn't depend on the machine): 400 obstacles at distinct coordinates make a grid
+  // of about a million cells. The occupancy sweep reads each obstacle a few times, and the hugging penalty reads the
+  // ones on a link's own ruler: about six million reads in all. Testing every obstacle at every cell the search
+  // looks at would be over a billion.
+  rectReads.on = true;
+  rectReads.count = 0;
+  rectReads.limit = 20_000_000;
+  try {
+    expect(offsetRoute(400).ok).toBe(true);
+  } finally {
+    rectReads.on = false;
+  }
 });
 
 it("nudges separated pinned routes without an all-pairs pass", () => {
-  const routes = separatedRoutes(30_000);
-  const start = performance.now();
-  expect(nudgeRoutes(routes, [])).toEqual(routes);
-  expect(performance.now() - start).toBeLessThan(perfBudget(1000));
+  // Eight times the routes against an eighth: sorting them is about 8 to 10 times the work, comparing every pair
+  // 64. A ratio, not a budget in ms, so a busy machine doesn't fail it.
+  const small = separatedRoutes(3_750);
+  const large = separatedRoutes(3_750 * GROWTH_FACTOR);
+  expect(nudgeRoutes(large, [])).toEqual(large);
+  expect(
+    growth(
+      () => nudgeRoutes(small, []),
+      () => nudgeRoutes(large, []),
+      { samples: 3 },
+    ),
+  ).toBeLessThan(LINEAR_LIMIT);
 });
 
 const files = import.meta.glob<DiagramFile>("../../examples/*.json", { eager: true, import: "default" });

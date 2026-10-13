@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport } from "./fixtures";
-import { perfBudget } from "../../src/test/perfBudget";
 
 // Architecture checks in the editor: the count under the title, the Checks card (from the count, the canvas
 // right-click, Ctrl+K and the View menu), fixes, Ignore and Turn off (kept in the file), markers while the card
@@ -399,7 +398,11 @@ test("typing a label is as responsive while checks run as with them held", async
   info.annotations.push({ type: "event-timing", description: JSON.stringify({ held, running, runs }) });
   // Checks ran while the second set was typed: one after nearly every key (each pause outlasts the debounce).
   expect(runs).toBeGreaterThanOrEqual(8);
-  // And typing was no slower for it: the same median keystroke, give or take noise. Checks on the main thread
-  // (capacity's loop alone runs to its bound here) would add their whole run to the keystrokes they meet.
-  expect(median(running)).toBeLessThanOrEqual(median(held) * 1.25 + perfBudget(25));
+  // They ran in the checks worker, not on this thread.
+  expect(page.workers().length, "the checks worker").toBeGreaterThan(0);
+  // And typing was no slower for it: the same median keystroke, give or take noise. The slack is relative to the
+  // held phase (a busy machine slows both alike), and at least two steps of Event Timing's 8 ms resolution above
+  // its 16 ms floor. Checks on the main thread (capacity's loop alone runs to its bound here) would add their whole
+  // run, many times that, to the keystrokes they meet.
+  expect(median(running)).toBeLessThanOrEqual(Math.max(median(held) * 1.5, median(held) + 16));
 });

@@ -1,6 +1,5 @@
 import type { Page } from "@playwright/test";
-import { perfBudget } from "../../src/test/perfBudget";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, waitForStableBox } from "./fixtures";
 
 // Interaction performance guards (dev server, so React runs in development mode: tagged @dev, which
 // playwright.config.ts runs in the "dev" project).
@@ -9,10 +8,13 @@ import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox } from "./fi
 //  - Render counts: a fake React DevTools hook (installed before React loads) counts, per component
 //    name, the components that rendered in each commit. Hovering a menu must re-render only the menu
 //    rows whose highlight changed, never the canvas or the whole menu.
-//  - Long frames: a long-animation-frame observer. Budgets are generous (and scale on CI, see
-//    src/test/perfBudget.ts) so they catch a regression, not a busy machine.
+//  - Long frames: a long-animation-frame observer, as a backstop for a frozen page only (FROZEN). The counts are
+//    the guard: they don't depend on the machine, where a frame budget in ms failed on a busy one (docs/QUALITY.md
+//    § Timing in tests).
 
 const SLUG = "kafka-order-pipeline";
+/** A frame this long is a hung page, not a slow machine. */
+const FROZEN = 5_000;
 
 /** Counts renders per component name, commit by commit (dev builds keep names and profiler timings). */
 const RENDER_HOOK = `(() => {
@@ -112,9 +114,13 @@ async function plainItems(page: Page, menuTestId: string, itemPrefix: string): P
 async function openDiagram(page: Page, live = false) {
   if (live) {
     await page.goto(`./?view=canvas&example=${SLUG}&live=1`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    // The live session's code loads on first use: seconds on a busy dev server.
+    await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   } else await gotoCanvas(page, SLUG);
   await waitForStableBox(page.getByTestId("node-gateway"));
+  // Code loaded in idle time (the dialogs, the AI panel) re-renders the canvas once when it arrives: let it land
+  // before measuring, or a busy machine (where idle comes late) counts that commit as the hover's.
+  await page.waitForLoadState("networkidle");
 }
 
 /** Right-clicks the empty canvas above the diagram. */
@@ -158,7 +164,7 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     expect(counts.MenuRow ?? 0, JSON.stringify(counts)).toBeGreaterThan(0);
     expect(counts.MenuRow ?? 0, JSON.stringify(counts)).toBeLessThanOrEqual(moves * 2 * 2);
     expect(counts.MenuList ?? 0).toBeLessThanOrEqual(moves * 2);
-    expect(longest).toBeLessThan(perfBudget(200));
+    expect(longest).toBeLessThan(FROZEN);
     expectNoErrors(consoleErrors);
   });
 
@@ -172,7 +178,7 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     });
     expect(counts.MenuRow ?? 0, JSON.stringify(counts)).toBeGreaterThan(0);
     expect(counts.MenuRow ?? 0, JSON.stringify(counts)).toBeLessThanOrEqual(presses * 2 * 2);
-    expect(longest).toBeLessThan(perfBudget(200));
+    expect(longest).toBeLessThan(FROZEN);
     expectNoErrors(consoleErrors);
   });
 
@@ -189,7 +195,7 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     expect(counts.Row ?? 0, JSON.stringify(counts)).toBeGreaterThan(0);
     expect(counts.Row ?? 0, JSON.stringify(counts)).toBeLessThanOrEqual(moves * 2 * 2);
     expect(counts.PaletteDialog ?? 0).toBeLessThanOrEqual(moves * 2);
-    expect(longest).toBeLessThan(perfBudget(200));
+    expect(longest).toBeLessThan(FROZEN);
     expectNoErrors(consoleErrors);
   });
 
@@ -241,7 +247,7 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     // The live badges re-render at the UI clock regardless; the menu itself must stay row-granular.
     expect(counts.MenuRow ?? 0, JSON.stringify(counts)).toBeGreaterThan(0);
     expect(counts.MenuRow ?? 0, JSON.stringify(counts)).toBeLessThanOrEqual(moves * 2 * 2);
-    expect(longest).toBeLessThan(perfBudget(250));
+    expect(longest).toBeLessThan(FROZEN);
     expectNoErrors(consoleErrors);
   });
 });

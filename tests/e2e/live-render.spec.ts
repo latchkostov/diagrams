@@ -1,5 +1,4 @@
 import type { Page } from "@playwright/test";
-import { perfBudget } from "../../src/test/perfBudget";
 import { test, expect, expectNoErrors, gotoLive, livePaint } from "./fixtures";
 
 // The live view draws its particles, the overlay above the edge label pills, the marching edges and
@@ -264,32 +263,49 @@ const COUNT_DRAWS = `(() => {
       return original.apply(this, args);
     };
   }
-  window.__loaf = [];
-  try {
-    new PerformanceObserver((l) => { for (const e of l.getEntries()) window.__loaf.push(e.duration); })
-      .observe({ type: "long-animation-frame" });
-  } catch {}
+  // Main-thread time in animation-frame callbacks (the live loop, React Flow, React), summed per frame: every
+  // callback of one frame gets the same timestamp.
+  window.__rafTime = new Map();
+  const raf = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = (cb) =>
+    raf((t) => {
+      const start = performance.now();
+      try {
+        cb(t);
+      } finally {
+        window.__rafTime.set(t, (window.__rafTime.get(t) ?? 0) + performance.now() - start);
+      }
+    });
 })();`;
 
 declare global {
   interface Window {
     __draws: number;
-    __loaf: number[];
+    __rafTime: Map<number, number>;
   }
 }
 
-/** Main-thread draw calls, worker frames and long animation frames over `ms` of live traffic. */
+/**
+ * Main-thread draw calls, frames drawn, and the main thread's time in animation-frame callbacks per frame (the
+ * mean of all but the slowest fifth of frames: a stray long one, a GC or another tab, doesn't decide it; the
+ * clock's 0.1 ms steps average out), over `ms` of live traffic.
+ */
 async function busyWindow(page: Page, ms: number) {
   await page.evaluate(() => {
     window.__draws = 0;
-    window.__loaf.length = 0;
+    window.__rafTime.clear();
   });
   const frames = await count(page, "frames");
   await page.waitForTimeout(ms);
   return {
     draws: await page.evaluate(() => window.__draws),
     frames: (await count(page, "frames")) - frames,
-    longFrames: await page.evaluate(() => window.__loaf.reduce((a, b) => a + b, 0)),
+    msPerFrame: await page.evaluate(() => {
+      const times = [...window.__rafTime.values()]
+        .sort((a, b) => a - b)
+        .slice(0, -Math.ceil(window.__rafTime.size / 5));
+      return times.reduce((a, b) => a + b, 0) / Math.max(times.length, 1);
+    }),
     // Animations that would repaint (CSS) or recomposite (compositor) every frame while live: each
     // holds input a frame deeper (docs/BACKLOG.md). Transient transitions don't count.
     running: await page.evaluate(() =>
@@ -314,13 +330,16 @@ test.describe("live rendering stays off the main thread", () => {
     expect(playing.frames, "the worker kept drawing").toBeGreaterThan(20);
     expect(playing.draws, "main-thread canvas calls per 1.5 s").toBe(0);
     expect(playing.running).toEqual([]);
-    expect(playing.longFrames).toBeLessThan(perfBudget(150));
 
     // The fallback really is on the main thread: the same check counts its drawing.
     await goLive(page, "main");
     await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(40);
-    const fallback = await busyWindow(page, 1000);
+    const fallback = await busyWindow(page, 1500);
     expect(fallback.draws).toBeGreaterThan(fallback.frames);
+    // And the point of the worker: the main thread's share of a frame is well under the fallback's, which draws it
+    // all there (about half, measured). Both measured in the same run, so a busy machine slows both alike. Not a
+    // budget in ms.
+    expect(playing.msPerFrame, JSON.stringify({ worker: playing, main: fallback })).toBeLessThan(fallback.msPerFrame);
     expectNoErrors(consoleErrors);
   });
 });

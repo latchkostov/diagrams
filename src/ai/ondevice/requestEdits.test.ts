@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { perfBudget } from "../../test/perfBudget";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { betweenIntent } from "./compactOps";
 import { splitClauses, tokenize } from "./requestClauses";
 import { editIntents, fillEdits } from "./requestEdits";
@@ -182,24 +182,31 @@ describe("the shared clause tokenizer", () => {
   });
 
   it("stays linear on long adversarial input", () => {
-    const pad = " ".repeat(20_000);
-    const inputs = [
-      `rename ${pad}X`,
-      `make ${pad}X`,
-      `a${pad}should`,
-      `between ${pad}X`,
-      `change ${pad}to${pad}`,
-      "“".repeat(20_000),
-      `rename X to Y${"!".repeat(20_000)}z`,
-      "and ".repeat(5_000),
-      `${"rename ".repeat(3_000)}to`,
-    ];
-    const t0 = performance.now();
-    for (const s of inputs) {
-      editIntents(s);
-      requestRelations(s);
-      betweenIntent(s);
+    // Each input against one an eighth as long: a pattern that backtracks takes 64 times as long or more, linear
+    // about 8. A ratio, not a budget in ms, so a busy machine doesn't fail it.
+    const inputs = (n: number) => {
+      const pad = " ".repeat(n);
+      return [
+        `rename ${pad}X`,
+        `make ${pad}X`,
+        `a${pad}should`,
+        `between ${pad}X`,
+        `change ${pad}to${pad}`,
+        "“".repeat(n),
+        `rename X to Y${"!".repeat(n)}z`,
+        "and ".repeat(n / 4),
+        `${"rename ".repeat((n * 3) / 20)}to`,
+      ];
+    };
+    const small = inputs(2_500);
+    const large = inputs(2_500 * GROWTH_FACTOR);
+    for (const [i, input] of large.entries()) {
+      const run = (s: string) => () => {
+        editIntents(s);
+        requestRelations(s);
+        betweenIntent(s);
+      };
+      expect(growth(run(small[i]), run(input), { samples: 3 }), input.slice(0, 12)).toBeLessThan(LINEAR_LIMIT);
     }
-    expect(performance.now() - t0).toBeLessThan(perfBudget(300));
   });
 });

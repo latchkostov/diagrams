@@ -7,7 +7,7 @@ import { detectFormat, importFiles, importText, type ImportOutcome } from "../fo
 import type { ImportReport } from "./graph";
 import { importAsyncApi } from "./pipeline";
 import { createSimulationRun } from "../../sim/simulation";
-import { perfBudget } from "../../test/perfBudget";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { Refs } from "./asyncapiRefs";
 import { runChecks } from "../../checks/run";
 import { applyOps } from "../../ai";
@@ -510,29 +510,50 @@ info: { title: Big, version: "1" }
   const doc = (name: string, text: string) => ({ name, text });
 
   it("reads a channel's messages once, however many operations select from it", () => {
-    const messages = Array.from({ length: 10_000 }, (_, i) => `      m${i}: { name: M${i} }`).join("\n");
-    const ops = Array.from(
-      { length: 1_000 },
-      (_, i) =>
-        `  o${i}: { action: send, channel: { $ref: "#/channels/c" }, messages: [{ $ref: "#/channels/c/messages/m${i}" }] }`,
-    ).join("\n");
-    const text = `${header}channels:\n  c:\n    address: c\n    messages:\n${messages}\noperations:\n${ops}\n`;
-    const started = performance.now();
-    const { diagram: d } = ok(importAsyncApi([doc("big.yaml", text)]));
-    expect(performance.now() - started).toBeLessThan(perfBudget(3_000));
-    expect(d.edges.filter((e) => e.from === "big")).toHaveLength(1_000);
+    // Counted, not timed: every value the reader follows goes through Refs.resolve. Reading the channel's 2,000
+    // messages again for each operation that selects from it would add 2,000 reads per operation; reading them
+    // once leaves each operation a few reads of its own.
+    const resolves = (operations: number) => {
+      const messages = Array.from({ length: 2_000 }, (_, i) => `      m${i}: { name: M${i} }`).join("\n");
+      const ops = Array.from(
+        { length: operations },
+        (_, i) =>
+          `  o${i}: { action: send, channel: { $ref: "#/channels/c" }, messages: [{ $ref: "#/channels/c/messages/m${i}" }] }`,
+      ).join("\n");
+      const text = `${header}channels:\n  c:\n    address: c\n    messages:\n${messages}\noperations:\n${ops}\n`;
+      const resolve = vi.spyOn(Refs.prototype, "resolve");
+      try {
+        const { diagram: d } = ok(importAsyncApi([doc("big.yaml", text)]));
+        expect(d.edges.filter((e) => e.from === "big")).toHaveLength(operations);
+        return resolve.mock.calls.length;
+      } finally {
+        resolve.mockRestore();
+      }
+    };
+    const few = resolves(100);
+    const many = resolves(1_000);
+    expect((many - few) / 900).toBeLessThan(20);
   });
 
   it("lists remote references once each in linear time, and the report caps them", () => {
-    // The scan alone, on 60,000 distinct remote refs (parsing that much YAML is the library's time, not ours).
-    const schemas: Record<string, unknown> = {};
-    for (let i = 0; i < 60_000; i++) schemas[`s${i}`] = { $ref: `https://example.com/s${i}.json` };
-    const refs = new Refs(new Map());
-    const started = performance.now();
-    refs.scan({ file: "x.yaml", root: { components: { schemas } }, v2: false });
-    refs.scan({ file: "x.yaml", root: { components: { schemas } }, v2: false });
-    expect(performance.now() - started).toBeLessThan(perfBudget(1_000));
-    expect(refs.unread).toHaveLength(60_000);
+    // The scan alone (parsing that much YAML is the library's time, not ours), twice over the same distinct remote
+    // refs: the second pass finds each one listed already. Checking the list for each ref would be quadratic: eight
+    // times the refs would take sixty-four times as long. Compared against an eighth of the refs, not a budget in ms.
+    const scanTwice = (n: number) => {
+      const schemas: Record<string, unknown> = {};
+      for (let i = 0; i < n; i++) schemas[`s${i}`] = { $ref: `https://example.com/s${i}.json` };
+      const root = { components: { schemas } };
+      return () => {
+        const refs = new Refs(new Map());
+        refs.scan({ file: "x.yaml", root, v2: false });
+        refs.scan({ file: "x.yaml", root, v2: false });
+        return refs;
+      };
+    };
+    const small = scanTwice(4_000);
+    const large = scanTwice(4_000 * GROWTH_FACTOR);
+    expect(large().unread).toHaveLength(32_000);
+    expect(growth(small, large, { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
     // End to end: the report lists 200 and counts the rest.
     const many = Array.from({ length: 1_500 }, (_, i) => `    s${i}: { $ref: "https://example.com/s${i}.json" }`).join(
       "\n",

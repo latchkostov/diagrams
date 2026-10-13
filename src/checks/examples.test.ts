@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyOps } from "../ai";
 import type { DiagramFile } from "../model/types";
-import { perfBudget } from "../test/perfBudget";
+import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import { RULES as ALL_RULES, runChecks } from "./run";
 import { buildContext } from "./context";
 
@@ -77,13 +77,13 @@ describe("checks on the public examples", () => {
 
 describe("performance", () => {
   /**
-   * 100 pipelines of 15 (1,500 nodes; real diagrams are wide, not hundreds of hops deep): a client, then
-   * services and queues. `loops` closes a loop of requests in each.
+   * `count` pipelines of 15 (100 make 1,500 nodes; real diagrams are wide, not hundreds of hops deep): a client,
+   * then services and queues. `loops` closes a loop of requests in each.
    */
-  function pipelines(loops: boolean): DiagramFile {
+  function pipelines(loops: boolean, count = 100): DiagramFile {
     const nodes: DiagramFile["nodes"] = [];
     const edges: DiagramFile["edges"] = [];
-    for (let p = 0; p < 100; p++)
+    for (let p = 0; p < count; p++)
       for (let i = 0; i < 15; i++) {
         const id = `p${p}n${i}`;
         const stencil = i === 0 ? "client.browser" : i % 3 === 1 ? "aws.sqs" : "service.go";
@@ -94,66 +94,81 @@ describe("performance", () => {
       }
     return { format: "diagrams/v1", title: "Big", nodes, edges };
   }
-  /** The fastest of a few runs: the budget guards complexity, not a busy machine. */
-  const timed = (run: () => unknown) => {
-    let best = Infinity;
-    for (let i = 0; i < 5; i++) {
-      const start = performance.now();
-      run();
-      best = Math.min(best, performance.now() - start);
-    }
-    return best;
-  };
+  // Eight times the diagram against an eighth of it (about 190 and 1,500 nodes): linear is about 8, quadratic 64.
+  // Ratios, not budgets in ms, so a busy machine (CI with coverage) doesn't fail them. The plan's 50 ms for a
+  // 1,500-node diagram is measured by scripts/perf, not asserted here.
 
-  it("checks a 1,500-node diagram in well under 100 ms", () => {
-    const d = pipelines(false);
-    expect(runChecks(d).findings.length).toBeGreaterThan(0);
-    // About 20 ms alone, inside the plan's 50 ms; the margin is for a busy parallel test run.
-    expect(timed(() => runChecks(d))).toBeLessThan(perfBudget(100));
+  it("checks a 1,500-node diagram in linear time, every rule", () => {
+    const small = pipelines(false, 13);
+    const large = pipelines(false, 13 * GROWTH_FACTOR);
+    expect(runChecks(large).findings.length).toBeGreaterThan(0);
+    expect(
+      growth(
+        () => runChecks(small),
+        () => runChecks(large),
+      ),
+    ).toBeLessThan(LINEAR_LIMIT);
   });
 
   it("the structural rules stay linear on a loop-rich 1,500-node diagram", () => {
     // Capacity is left out here: a feedback loop of flows makes its fixed point run to its 256-iteration bound.
-    const d = pipelines(true);
     const rules = ["dead-letter", "no-reader", "sync-cycle"] as const;
-    expect(runChecks(d, { rules }).findings.filter((f) => f.rule === "sync-cycle")).toHaveLength(100);
-    expect(timed(() => runChecks(d, { rules }))).toBeLessThan(perfBudget(50));
+    const small = pipelines(true, 13);
+    const large = pipelines(true, 13 * GROWTH_FACTOR);
+    expect(runChecks(large, { rules }).findings.filter((f) => f.rule === "sync-cycle")).toHaveLength(104);
+    expect(
+      growth(
+        () => runChecks(small, { rules }),
+        () => runChecks(large, { rules }),
+      ),
+    ).toBeLessThan(LINEAR_LIMIT);
   });
 
   it("cycle detection stays linear in high fan-out: parallel requests and a hub", () => {
     const rules = ["dead-letter", "no-reader", "sync-cycle"] as const;
-    const parallel: DiagramFile = {
+    const parallel = (count: number): DiagramFile => ({
       format: "diagrams/v1",
       title: "Parallel",
       nodes: [
         { id: "a", stencil: "service.go", label: "A", x: 0, y: 0 },
         { id: "b", stencil: "service.go", label: "B", x: 300, y: 0 },
       ],
-      edges: Array.from({ length: 20_000 }, (_, i) => ({
+      edges: Array.from({ length: count }, (_, i) => ({
         id: `e${i}`,
         from: i % 2 ? "a" : "b",
         to: i % 2 ? "b" : "a",
         kind: "sync" as const,
       })),
-    };
-    const hub: DiagramFile = {
+    });
+    const hub = (count: number): DiagramFile => ({
       format: "diagrams/v1",
       title: "Hub",
-      nodes: Array.from({ length: 5_000 }, (_, i) => ({
+      nodes: Array.from({ length: count }, (_, i) => ({
         id: `n${i}`,
         stencil: "service.go",
         label: `Node ${i}`,
         x: (i % 70) * 300,
         y: Math.floor(i / 70) * 200,
       })),
-      edges: Array.from({ length: 4_999 }, (_, i) => [
+      edges: Array.from({ length: count - 1 }, (_, i) => [
         { id: `out${i}`, from: "n0", to: `n${i + 1}`, kind: "sync" as const },
         { id: `in${i}`, from: `n${i + 1}`, to: "n0", kind: "sync" as const },
       ]).flat(),
-    };
-    for (const d of [parallel, hub]) {
-      expect(runChecks(d, { rules }).findings.map((f) => f.id)).toEqual([`sync-cycle:${d.nodes[0].id}`]);
-      expect(timed(() => runChecks(d, { rules }))).toBeLessThan(perfBudget(100));
+    });
+    for (const [make, count] of [
+      [parallel, 20_000],
+      [hub, 5_000],
+    ] as const) {
+      const small = make(count / GROWTH_FACTOR);
+      const large = make(count);
+      expect(runChecks(large, { rules }).findings.map((f) => f.id)).toEqual([`sync-cycle:${large.nodes[0].id}`]);
+      expect(
+        growth(
+          () => runChecks(small, { rules }),
+          () => runChecks(large, { rules }),
+        ),
+        large.title,
+      ).toBeLessThan(LINEAR_LIMIT);
     }
   });
 });

@@ -3,7 +3,7 @@ import type { DiagramFile } from "../../model/types";
 import kafka from "../../examples/kafka-order-pipeline.json";
 import { applyOps } from "../index";
 import { toOps } from "./compactOps";
-import { perfBudget } from "../../test/perfBudget";
+import { countingReads, growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 
 const KAFKA = kafka as unknown as DiagramFile;
 const EMPTY: DiagramFile = { format: "diagrams/v1", title: "t", nodes: [], edges: [] };
@@ -363,9 +363,10 @@ describe("toOps: direction", () => {
 });
 
 describe("toOps: cost", () => {
-  it("one reference index per reply: a big diagram stays fast", () => {
-    const n = 5000;
-    const big: DiagramFile = {
+  it("one reference index per reply: a big diagram stays linear", () => {
+    // An index of the diagram's names per reference, not per reply, would be quadratic: eight times the diagram
+    // would take sixty-four times as long. A ratio against an eighth of the diagram, not a budget in ms.
+    const sized = (n: number): DiagramFile => ({
       ...EMPTY,
       nodes: Array.from({ length: n }, (_, i) => ({
         id: `n${i}`,
@@ -374,18 +375,22 @@ describe("toOps: cost", () => {
         x: (i % 100) * 300,
         y: Math.floor(i / 100) * 200,
       })),
-      edges: Array.from({ length: 20000 }, (_, i) => ({ id: `e${i}`, from: `n${i % n}`, to: `n${(i * 7 + 1) % n}` })),
-    };
+      edges: Array.from({ length: n * 4 }, (_, i) => ({ id: `e${i}`, from: `n${i % n}`, to: `n${(i * 7 + 1) % n}` })),
+    });
     const ops = Array.from({ length: 6 }, (_, i) => ({
       op: "connect",
       from: `Node ${2 * i}`,
       to: `Node ${2 * i + 1}`,
     }));
-    const t0 = performance.now();
-    const r = toOps(reply(ops), { diagram: big, request: "Node 0 consumes Node 1 and the rest" });
-    const ms = performance.now() - t0;
-    expect(r.ok).toBe(true);
-    expect(ms).toBeLessThan(perfBudget(400));
+    const convert = (diagram: DiagramFile) => () =>
+      toOps(reply(ops), { diagram, request: "Node 0 consumes Node 1 and the rest" });
+    expect(growth(convert(sized(625)), convert(sized(625 * GROWTH_FACTOR)))).toBeLessThan(LINEAR_LIMIT);
+    // And one index, counted: building it reads each node once. An index per reference (twelve here) would read
+    // every node twelve times, a cost the ratio can't see (it's linear in the diagram too).
+    const big = sized(5_000);
+    const nodes = countingReads(big.nodes);
+    expect(convert({ ...big, nodes: nodes.items })().ok).toBe(true);
+    expect(nodes.reads()).toBeLessThanOrEqual(3 * big.nodes.length);
   });
 });
 
@@ -1108,13 +1113,17 @@ describe("round 4 review: negation, exact duplicates, requested responses, robus
     );
   });
 
-  it("a long adversarial request converts within budget", () => {
-    const pad = " ".repeat(20_000);
+  it("a long adversarial request converts in linear time", () => {
+    // Against a request an eighth as long: a pattern that backtracks takes 64 times as long or more, linear about 8.
     const add = [{ op: "add", key: "q", kind: "queue", label: "q" }];
-    const t0 = performance.now();
-    for (const request of [`rename ${pad}X`, `make ${pad}X`, `between ${pad}X`, `a${pad}should`])
-      toOps(reply(add), { diagram: EMPTY, request });
-    expect(performance.now() - t0).toBeLessThan(perfBudget(500));
+    const run = (n: number) => {
+      const pad = " ".repeat(n);
+      return () => {
+        for (const request of [`rename ${pad}X`, `make ${pad}X`, `between ${pad}X`, `a${pad}should`])
+          toOps(reply(add), { diagram: EMPTY, request });
+      };
+    };
+    expect(growth(run(2_500), run(2_500 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
   });
 });
 

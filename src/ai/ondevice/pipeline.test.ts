@@ -217,16 +217,23 @@ describe("runOnDevice", () => {
 
   it("when every reply hangs it gives up with a timeout instead of waiting forever", async () => {
     const hang = () => ({ prompt: vi.fn(() => new Promise<string>(() => undefined)), destroy: vi.fn() });
-    const t0 = Date.now();
-    const r = await runOnDevice({
-      session: hang(),
-      freshSession: async () => hang(),
-      diagram,
-      request: "Add a DLQ",
-      replyTimeoutMs: 20,
-    });
-    expect(r).toMatchObject({ ok: false, error: TIMED_OUT, attempts: 2 });
-    expect(Date.now() - t0).toBeLessThan(2000);
+    // On a fake clock: two replies of 20 ms each, and nothing waits longer than that (the default timeout is
+    // seconds). Advancing a little past 40 ms settles it, however busy the machine is.
+    vi.useFakeTimers();
+    try {
+      let settled: unknown;
+      void runOnDevice({
+        session: hang(),
+        freshSession: async () => hang(),
+        diagram,
+        request: "Add a DLQ",
+        replyTimeoutMs: 20,
+      }).then((r) => (settled = r));
+      await vi.advanceTimersByTimeAsync(100);
+      expect(settled).toMatchObject({ ok: false, error: TIMED_OUT, attempts: 2 });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("a fresh session that never arrives also times out", async () => {

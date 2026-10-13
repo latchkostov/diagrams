@@ -95,9 +95,8 @@ Keep single tests short: a shard can't finish before its longest test. Split a l
 (`lab.spec.ts` and `layout.spec.ts` take every Nth preset or fixture per test) rather than raising its timeout.
 
 A newer push to the same branch cancels the running workflow. `CI=true` keeps its meaning: Playwright
-retries (2), three workers and `E2E_TARGET=build`, longer Vitest timeouts, and scaled perf budgets
-(`src/test/perfBudget.ts`). Retries keep a flaky test from blocking a merge, but the job summary lists
-every test that needed one: treat those as bugs.
+retries (2), three workers and `E2E_TARGET=build`, and longer Vitest timeouts. Retries keep a flaky test from
+blocking a merge, but the job summary lists every test that needed one: treat those as bugs.
 
 ### Nightly
 
@@ -116,6 +115,34 @@ test with how many of its runs failed and the first error line (`scripts/e2e-fai
 run. It uses the workflow's `GITHUB_TOKEN` with `issues: write` in that job only (`contents: read`
 elsewhere). Close the issue once the cause is fixed. Each job uploads its JSON report
 (`nightly-results-<suite>-<n>`), and its HTML report and traces when it fails.
+
+## Timing in tests
+
+No test asserts a budget in milliseconds: a busy machine or CI with coverage fails it, and a retry hides it. What
+a timing test guards decides its form:
+
+- **Complexity** (it must stay linear): compare two sizes in the same run, never a clock. The small input is an
+  eighth of the large (`GROWTH_FACTOR`), and the ratio must stay under 24 (`LINEAR_LIMIT`: linear is about 8,
+  quadratic 64), or 192 (`QUADRATIC_LIMIT`) for work that is quadratic by design. `growth()` in
+  `src/test/complexity.ts` warms up, repeats calls too short to time, interleaves the sizes and takes the fastest
+  of several runs. `GROWTH_LOG=1` (with `--silent=false`) prints each ratio. When the library's own time (YAML or
+  JSON parsing) would hide ours, parse once and time the rest (`kubernetes.test.ts`, `terraform.test.ts`).
+- **Better still, count the work**: reads (`countingReads()`, a Proxy), calls (`vi.spyOn`), searches, rebuilds.
+  Counts don't depend on the machine, and they see a regression a ratio can't (an index rebuilt per lookup is
+  linear in the diagram too).
+- **Hostile input** (ReDoS, alias bombs, deep nesting, budgets): prove the bound itself. The limit's error is
+  thrown, the reads stop at the cap, the serialiser never sees the object, or a ratio shows the pattern is linear
+  (keep hostile sizes small enough that a quadratic pattern fails the ratio in seconds: a backtracking regex
+  blocks the thread, and Vitest's timeout can't stop it). An absolute ceiling only as a hang backstop, at the
+  test timeout's scale.
+- **Real time** (frames, input, animation): compare with a baseline in the same run (keystrokes with checks held
+  against running; the worker renderer's main-thread time per frame against the main-thread fallback's), or count
+  frames and logic (transforms over 20 frames, not 500 ms; a paused page clock proves a toast went because of
+  Undo, not its expiry).
+
+Every conversion is checked by a deliberate regression (make it quadratic, remove the bound) that the test must
+catch. An e2e test that clicks must wait for the layout it clicks into (a panel opening, a pan, a lazily loaded
+menu), not for time.
 
 ## Accessibility
 
