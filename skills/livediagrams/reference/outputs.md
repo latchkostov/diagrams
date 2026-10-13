@@ -6,6 +6,7 @@ they already said, and offer them in this order.
 | Output                | Who can open it               | Needs the internet | Editable       |
 | --------------------- | ----------------------------- | ------------------ | -------------- |
 | Interactive HTML file | only people who have the file | no                 | no (read-only) |
+| …with a password      | only people with the password | no                 | no (read-only) |
 | Diagram file          | only people who have the file | to open the app    | yes            |
 | Image (PNG or SVG)    | only people who have the file | to open the app    | no             |
 | Share link            | **anyone who has the link**   | yes                | yes            |
@@ -18,7 +19,8 @@ script here: open the diagram file at livediagrams.dev and use **File > Copy lin
 - **Work and company diagrams.** If the user mentions their work, employer, team, a client or customer, or the
   system sounds internal (internal service names, real hosts, account or cluster names), recommend the
   Interactive HTML file or the diagram file. Set `"private": true` in the diagram: the app then keeps it on the
-  device when it's opened (no share links, no cloud saves, no AI tools). If they want a link anyway, the safer one is a link
+  device when it's opened (no share links, no cloud saves, no AI tools). Offer a password on the HTML file too
+  (below): files get forwarded, and with one nobody can read it without the password. If they want a link anyway, the safer one is a link
   with a password, made in the app (above); a Private diagram gets no link at all.
 - **Private diagrams** (`"private": true`) never get a share link. `share-link.mjs` refuses them; don't build one by
   hand either. The HTML file and the diagram file are fine: handing over a file is the user's own choice.
@@ -30,7 +32,7 @@ script here: open the diagram file at livediagrams.dev and use **File > Copy lin
 ## Interactive HTML file
 
 ```sh
-node scripts/export-html.mjs <file> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay]
+node scripts/export-html.mjs <file> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]
 ```
 
 One self-contained `.html` file, the same file as the app's **File > Export as > Interactive HTML…**: the diagram
@@ -42,6 +44,8 @@ about 1.2 MB.
 - It validates the diagram first, like `validate.mjs`, and refuses to write a file the viewer wouldn't open.
 - `--out`: a file ending in `.html`, or a folder for `<title>.html`. By default it writes `<title>.html` beside the
   diagram.
+- It never replaces a file: if the name is taken it writes the next free one (`<title> (2).html`) and says so on
+  stderr. A `--out` file that exists is refused; add `--force` to replace it.
 - `--theme`: `light` (default) or `dark`.
 - `--banner`: a line across the top, such as `"Confidential: internal use only"`. Add one for work diagrams.
 - `--title`: the page's title and file name (the diagram's title by default).
@@ -53,6 +57,29 @@ about 1.2 MB.
 Tell the user where the file is and that only people who have it can open it, so they should share it where their
 team already controls access (SharePoint, Confluence, an intranet, a private repository) or open it from disk. It
 opens in any modern browser.
+
+### A password on the file
+
+`--password` encrypts the file the way the app's **Require a password** does (and its links with a password: AES-256-GCM,
+the key from PBKDF2-SHA-256 at 600,000 iterations). Nothing of the diagram is readable without the password, not
+even its title: the file is named `Diagram (password protected) <random>.html`, a few random letters so two never collide. Opened, it asks for the password, says when
+it's wrong, and decrypts in the browser, offline. It's still one file that makes no network requests.
+
+The password never goes on the command line: shell history, the process list and your transcript would keep it.
+The script refuses `--password=…` and a value after `--password`. It reads the password from:
+
+1. `LIVEDIAGRAMS_HTML_PASSWORD`, if it's set in the environment the script runs in; else
+2. a prompt in the terminal that doesn't echo what's typed, asked twice (a typo can't be undone).
+
+So, for a password:
+
+- **Don't ask for it in the chat** and don't make one up. Give the user the command to run in their own terminal:
+  `node <skill folder>/scripts/export-html.mjs <file> --password`. It asks them for it.
+- Run it yourself only when `LIVEDIAGRAMS_HTML_PASSWORD` is already set where you run commands (the user set it).
+  Never set it yourself or echo it.
+- At least 8 characters; several random words work well. The script warns about one that's easy to guess.
+- Tell the user to send the password separately from the file, and that it can't be recovered: if it's lost, they
+  export again. Anyone with the file and the password can open it.
 
 ## Diagram file
 

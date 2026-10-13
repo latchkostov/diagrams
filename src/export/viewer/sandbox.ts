@@ -9,9 +9,10 @@ import { readPayload } from "./payload";
 // CSP (SharePoint's, say) may refuse; the main-thread path works everywhere the page does.
 markWorkerUnsupported();
 
-// The exported theme, through the app's own settings (read once, when the viewer mounts).
+// The exported theme, through the app's own settings (read once, when the viewer mounts). A password-protected
+// file carries its theme in the clear, so its password prompt already paints in it.
 const payload = readPayload();
-const theme = payload.ok ? payload.options.theme : "light";
+const theme = payload.ok ? payload.options.theme : (payload.locked?.theme ?? "light");
 localStorage.setItem(STORAGE_KEY, JSON.stringify({ theme }));
 document.documentElement.dataset.theme = theme;
 document.documentElement.style.colorScheme = theme;

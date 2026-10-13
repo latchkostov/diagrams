@@ -41,7 +41,7 @@ function exportHtml(diagramFile: string, ...args: string[]) {
   const dir = test.info().outputPath("skill");
   const r = run("export-html.mjs", diagramFile, "--out", dir, ...args);
   expect(r.code, r.err).toBe(0);
-  const path = r.out.split("\n")[0].replace(/ \(.*$/, "");
+  const path = r.out.split("\n")[0].replace(/ \([\d,]+ kB.*$/, "");
   return { path, html: readFileSync(path, "utf8"), out: r.out };
 }
 
@@ -91,6 +91,51 @@ test.describe("The agent skill's Interactive HTML export", () => {
     await expect(viewer.page.getByTestId("viewer-banner")).toHaveText(BANNER);
     await expect(viewer.page.getByTestId("viewer-footer")).toContainText("Exported from Live Diagrams on");
     expect(viewer.requests.filter((r) => !r.startsWith("data:"))).toEqual([url]);
+    expect(await viewer.page.evaluate(() => window.__violations ?? [])).toEqual([]);
+    expect(viewer.errors).toEqual([]);
+    await viewer.page.close();
+  });
+
+  test("--password: the released viewer asks for it, then plays, with zero requests", async ({ context }) => {
+    test.setTimeout(90_000);
+    const password = "plum orbit lantern 42";
+    const dir = test.info().outputPath("skill-locked");
+    // The password from the environment, never an argument.
+    const r = spawnSync(
+      process.execPath,
+      [
+        join(SCRIPTS, "export-html.mjs"),
+        join(process.cwd(), "src", "examples", `${KAFKA}.json`),
+        "--password",
+        "--out",
+        dir,
+      ],
+      { encoding: "utf8", env: { ...process.env, LIVEDIAGRAMS_HTML_PASSWORD: password } },
+    );
+    expect(r.status, r.stderr).toBe(0);
+    const path = r.stdout.split("\n")[0].replace(/ \([\d,]+ kB.*$/, "");
+    expect(path).toMatch(/Diagram \(password protected\) [a-z2-9]{5}\.html$/);
+    expect(readFileSync(path, "utf8")).not.toContain("Kafka order pipeline");
+
+    const url = pathToFileURL(path).href;
+    const viewer = await watchedPage(context);
+    await viewer.page.goto(url);
+    await expect(viewer.page.getByTestId("viewer-password-input")).toBeFocused();
+    await viewer.page.keyboard.type("not the password");
+    await viewer.page.keyboard.press("Enter");
+    await expect(viewer.page.getByTestId("viewer-password-error")).toContainText("doesn't open this file", {
+      timeout: 15_000,
+    });
+    // The wrong password is selected a frame later: wait for it, so typing replaces it.
+    const input = viewer.page.getByTestId("viewer-password-input");
+    await expect(input).toBeFocused();
+    await expect
+      .poll(() => input.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd]))
+      .toEqual([0, "not the password".length]);
+    await viewer.page.keyboard.type(password);
+    await viewer.page.keyboard.press("Enter");
+    await expectPlaying(viewer.page);
+    expect(viewer.requests.filter((u) => !u.startsWith("data:"))).toEqual([url]);
     expect(await viewer.page.evaluate(() => window.__violations ?? [])).toEqual([]);
     expect(viewer.errors).toEqual([]);
     await viewer.page.close();
@@ -170,7 +215,7 @@ test.describe("The agent skill's Interactive HTML export", () => {
       { cwd: dir, encoding: "utf8" },
     );
     expect(r.status, r.stderr).toBe(0);
-    const path = r.stdout.split("\n")[0].replace(/ \(.*$/, "");
+    const path = r.stdout.split("\n")[0].replace(/ \([\d,]+ kB.*$/, "");
     expect(path.startsWith(join(dir, "out"))).toBe(true);
 
     const url = pathToFileURL(path).href;

@@ -194,6 +194,25 @@ test.describe("Content-Security-Policy", () => {
     expect(await csp.violations()).toEqual([]);
   });
 
+  test("Interactive HTML with a password: the template fetched and the file encrypted under the policy", async ({
+    page,
+  }) => {
+    const csp = await watch(page);
+    await page.goto(`./?view=canvas&example=${KAFKA}`);
+    await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-more-formats").click();
+    await page.getByTestId("export-html").click();
+    await page.getByTestId("html-export-password-toggle").check();
+    await page.getByTestId("html-export-password-input").fill("plum orbit lantern 42");
+    const [file] = await Promise.all([
+      page.waitForEvent("download", { timeout: 20_000 }),
+      page.getByTestId("html-export-download").click(),
+    ]);
+    expect(file.suggestedFilename()).toMatch(/^Diagram \(password protected\) [a-z2-9]{5}\.html$/);
+    expect(await csp.violations()).toEqual([]);
+  });
+
   test("the Permissions-Policy names only features this browser knows: no 'Unrecognized feature' warning", async ({
     page,
   }) => {

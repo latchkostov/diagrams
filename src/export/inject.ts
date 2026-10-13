@@ -10,6 +10,8 @@
 //   <script type="application/json" id="diagram">__LIVE_DIAGRAMS_PAYLOAD__</script>
 //       the placeholder this module fills.
 // Data blocks never run, so neither the payload nor the icons change the CSP: the hashes stay valid.
+// A password-protected file's block holds a LockedPayload instead: the payload encrypted (by src/export/lock.ts,
+// which is async and uses WebCrypto; this module stays pure) and the theme.
 
 import type { DiagramFile } from "../model/types";
 
@@ -44,6 +46,20 @@ export interface ExportPayload {
   icons: Record<string, string>;
   options: ViewerOptions;
 }
+
+/**
+ * A password-protected file's data block (src/export/lock.ts): the whole ExportPayload, encrypted, and the theme
+ * (so the password prompt paints in it). Nothing else of the diagram is in the file.
+ */
+export interface LockedPayload {
+  version: typeof PAYLOAD_VERSION;
+  /** A password link's `v1.<salt>.<iv>.<ciphertext>` token (src/interop/passwordLink.ts) of the payload. */
+  encrypted: string;
+  theme: "light" | "dark";
+}
+
+/** A password-protected file's page title and file name: neutral, since the diagram's own title is encrypted. */
+export const LOCKED_TITLE = "Diagram (password protected)";
 
 export interface ExportInput {
   diagram: DiagramFile;
@@ -145,17 +161,26 @@ export function buildPayload(template: string, input: ExportInput): ExportPayloa
  * before the script runs, already has the right background). Throws if the template isn't one.
  */
 export function injectPayload(template: string, payload: ExportPayload): string {
+  return fill(template, scriptSafeJson(payload), payload.diagram.title, payload.options.theme);
+}
+
+/**
+ * A password-protected file: the template with only `locked` in its data block, a neutral `<title>` (LOCKED_TITLE)
+ * and the theme. No title, label, note, icon or option of the diagram is left readable.
+ */
+export function injectLocked(template: string, locked: LockedPayload): string {
+  return fill(template, scriptSafeJson(locked), LOCKED_TITLE, locked.theme);
+}
+
+function fill(template: string, json: string, title: string, theme: "light" | "dark"): string {
   const at = template.indexOf(PAYLOAD_BLOCK);
   if (at < 0 || template.indexOf(PAYLOAD_BLOCK, at + 1) >= 0)
     throw new Error("This isn't an interactive viewer template: it needs exactly one payload placeholder.");
-  const block = PAYLOAD_BLOCK.replace(PAYLOAD_PLACEHOLDER, () => scriptSafeJson(payload));
+  const block = PAYLOAD_BLOCK.replace(PAYLOAD_PLACEHOLDER, () => json);
   const head = template
     .slice(0, at)
-    .replace(/<title>[^<]*<\/title>/, () => `<title>${escapeHtml(payload.diagram.title)}</title>`)
-    .replace(
-      /(<html\b[^>]*\bdata-theme=")[a-z]+(")/,
-      (_, open: string, close: string) => open + payload.options.theme + close,
-    );
+    .replace(/<title>[^<]*<\/title>/, () => `<title>${escapeHtml(title)}</title>`)
+    .replace(/(<html\b[^>]*\bdata-theme=")[a-z]+(")/, (_, open: string, close: string) => open + theme + close);
   return head + block + template.slice(at + PAYLOAD_BLOCK.length);
 }
 

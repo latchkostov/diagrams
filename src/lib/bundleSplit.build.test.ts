@@ -37,6 +37,32 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["React Flow", /[/\\]@xyflow[/\\]/],
 ];
 
+/**
+ * The entry and every chunk index.html preloads with it (fetched in parallel, no round trip between them). The
+ * diagram loader (native, codec, annotations, checks' model) sits in chunks of its own, preloaded: since the
+ * password token module (src/interop/encryptedToken.ts) became a second static importer of native and codec, the
+ * bundler no longer folds them into the entry.
+ */
+const STARTUP_CHUNKS = [
+  "annotations",
+  "catalog",
+  "checks",
+  "codec",
+  "examples",
+  "index",
+  "jsx-runtime",
+  "localOnly",
+  "native",
+  "preload-helper",
+  "react",
+  "react-dom",
+  "registry",
+  "relations",
+  "size",
+  "storage",
+  "toast",
+];
+
 /** Not in the canvas's first view either: they load when used, or once the canvas is idle. */
 const NOT_WITH_CANVAS = NOT_AT_STARTUP.filter(
   ([what]) => !["the canvas", "React Flow", "the stencil search index"].includes(what),
@@ -107,6 +133,22 @@ const canvasChunk = () => {
 describe("production bundle split", () => {
   it("keeps code that isn't needed for the first view out of the startup JavaScript", () => {
     expect(found(bundled(startup()), NOT_AT_STARTUP)).toEqual([]);
+  });
+
+  it("loads the diagram loader at startup, preloaded with the entry, never as a lazy chunk", () => {
+    // Opening any diagram (a stored one, a share link, an example, an embed) reads and checks it first, so the
+    // loader and what it imports must arrive with the entry, never one round trip later.
+    const set = startup();
+    const ids = bundled(set).map((id) => id.replaceAll("\\", "/"));
+    for (const module of ["src/interop/native.ts", "src/interop/codec.ts", "src/model/annotations.ts"])
+      expect(
+        ids.some((id) => id.endsWith(module)),
+        module,
+      ).toBe(true);
+    // The startup chunks, pinned: the bundler moving a module into the entry or out of it (as the password token
+    // module once moved the loader into chunks of its own, still preloaded) changes this list, and has to be
+    // looked at. The names are the bundler's; update the list deliberately, checking the network panel.
+    expect([...set].map((c) => c.name).sort()).toEqual(STARTUP_CHUNKS);
   });
 
   it("loads the canvas without the live session, the converters or the dialogs", () => {

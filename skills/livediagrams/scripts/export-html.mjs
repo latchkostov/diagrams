@@ -1,23 +1,39 @@
 #!/usr/bin/env node
 // Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"]
-//                                     [--title "text"] [--sim <id>] [--no-autoplay]
+//                                     [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]
 // Writes the diagram as one self-contained interactive HTML file, the same file as the app's
 // File > Export as > Interactive HTML…: read-only pan and zoom, and its simulations play. The file works offline,
 // makes no network requests (a strict Content-Security-Policy says so) and stores nothing in the browser. Only
 // people who have the file can open it. This script makes no network requests either: the viewer, the injection
 // and the icons are bundled in ./lib (`pnpm skill:release`). Before writing, it checks the finished payload with
 // the viewer's own rules, so it never writes a file the viewer would refuse or show with something missing.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+//
+// --password encrypts the file, as the app's Require a password does (the same code and parameters as the app's
+// links with a password): the file opens on a password prompt, and nothing of the diagram is readable without the
+// password, not even its title or file name. The password never goes on the command line, where shell history, the
+// process list and an agent's transcript would keep it. It comes from the LIVEDIAGRAMS_HTML_PASSWORD environment
+// variable or, run in a terminal without it, from a prompt that doesn't echo (asked twice: a typo can't be undone).
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { checkFile } from "./lib/check.mjs";
-import { parsePayload } from "./lib/app.mjs";
-import { buildPayload, htmlFileName, injectPayload, scriptSafeJson } from "./lib/inject.mjs";
+import {
+  lockedFileName,
+  lockPayload,
+  MIN_PASSWORD_LENGTH,
+  parsePayload,
+  passwordStrength,
+  PAYLOAD_LIMITS,
+  unlockPayloadText,
+} from "./lib/app.mjs";
+import { buildPayload, htmlFileName, injectLocked, injectPayload, scriptSafeJson } from "./lib/inject.mjs";
 
 const USAGE =
-  'Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay]';
+  'Usage: node scripts/export-html.mjs <file.diagram.json> [--out <path>] [--theme light|dark] [--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password] [--force]';
 const VALUED = ["--out", "--theme", "--banner", "--title", "--sim", "--exported-on"];
-const FLAGS = ["--no-autoplay"];
+const FLAGS = ["--no-autoplay", "--password", "--force"];
+const PASSWORD_ENV = "LIVEDIAGRAMS_HTML_PASSWORD";
+const NO_PASSWORD_ARG = `--password takes no value: a password on the command line stays in shell history and the process list. Set ${PASSWORD_ENV}, or run the command in a terminal to be asked for it.`;
 
 function fail(message, code = 2) {
   console.error(message);
@@ -33,9 +49,11 @@ for (let i = 0; i < args.length; i++) {
     if (i + 1 >= args.length) fail(`${a} needs a value.\n${USAGE}`);
     opts[a] = args[++i];
   } else if (FLAGS.includes(a)) opts[a] = true;
+  else if (a.startsWith("--password=")) fail(NO_PASSWORD_ARG);
   else if (a.startsWith("--")) fail(`Unknown option ${a}.\n${USAGE}`);
   else files.push(a);
 }
+if (opts["--password"] && files.length > 1) fail(NO_PASSWORD_ARG);
 if (files.length !== 1) fail(USAGE);
 const [file] = files;
 const theme = opts["--theme"] ?? "light";
@@ -98,17 +116,96 @@ if (problem) {
   console.error(`Can't export ${file}: the viewer wouldn't show the file as made. ${problem}`);
   process.exit(1);
 }
-const html = injectPayload(template, payload);
+/** One line typed without echo (a terminal only). Ctrl+C cancels. */
+function askHidden(question) {
+  const { stdin, stderr } = process;
+  stderr.write(question);
+  stdin.setRawMode(true);
+  stdin.setEncoding("utf8");
+  stdin.resume();
+  return new Promise((resolve) => {
+    let value = "";
+    const finish = (result) => {
+      stdin.off("data", onData);
+      stdin.setRawMode(false);
+      stdin.pause();
+      stderr.write("\n");
+      if (result === null) fail("Cancelled. Nothing was written.", 130);
+      resolve(result);
+    };
+    const onData = (chunk) => {
+      if (chunk.startsWith("\u001b")) return; // arrow keys and the like
+      for (const ch of chunk) {
+        if (ch === "\r" || ch === "\n" || ch === "\u0004") return finish(value);
+        if (ch === "\u0003") return finish(null);
+        if (ch === "\u007f" || ch === "\b") value = [...value].slice(0, -1).join("");
+        else if (ch >= " ") value += ch;
+      }
+    };
+    stdin.on("data", onData);
+  });
+}
 
-// --out: a file ending in .html, or a folder for <title>.html. By default, <title>.html beside the diagram.
+/** The password, from the environment or a prompt: never from argv (see the header). */
+async function readPassword() {
+  const fromEnv = process.env[PASSWORD_ENV];
+  if (fromEnv) return fromEnv;
+  if (!process.stdin.isTTY)
+    fail(`--password needs the password in ${PASSWORD_ENV}, or a terminal to ask for it in. Nothing was written.`);
+  const first = await askHidden(`Password for the HTML file (at least ${MIN_PASSWORD_LENGTH} characters): `);
+  if (first.length >= MIN_PASSWORD_LENGTH) {
+    const again = await askHidden("The same password again: ");
+    if (again !== first) fail("The two passwords don't match. Nothing was written.", 1);
+  }
+  return first;
+}
+
+const password = opts["--password"] ? await readPassword() : undefined;
+let html;
+if (password === undefined) html = injectPayload(template, payload);
+else {
+  if (password.length < MIN_PASSWORD_LENGTH)
+    fail(`Use a password of at least ${MIN_PASSWORD_LENGTH} characters. Nothing was written.`, 1);
+  const strength = passwordStrength(password);
+  if (strength.level === "weak") console.error(`warning: ${strength.hint}`);
+  const locked = await lockPayload(payload, password);
+  // Never write a file its own password wouldn't open: decrypt it again, as the viewer will.
+  const opened = await unlockPayloadText(locked.encrypted, password, PAYLOAD_LIMITS.totalChars * 3);
+  if (opened !== JSON.stringify(payload)) fail(`Can't export ${file}: the encrypted file didn't open again.`, 1);
+  html = injectLocked(template, locked);
+}
+
+// --out: a file ending in .html, or a folder for <title>.html. By default, <title>.html beside the diagram. A
+// password-protected file's name says nothing of the diagram: "Diagram (password protected) <random>.html".
+// Nothing is ever replaced unless --force says so: a named --out that exists is refused, and a default name that's
+// taken gets the next free one, " (2)" and on, which the script says.
 const out = opts["--out"];
-const target = out && /\.html?$/i.test(out) ? out : path.join(out ?? path.dirname(file), htmlFileName(title));
+const named = Boolean(out && /\.html?$/i.test(out));
+const wanted = named
+  ? out
+  : path.join(out ?? path.dirname(file), password === undefined ? htmlFileName(title) : lockedFileName());
+let target = wanted;
+if (!opts["--force"] && existsSync(target)) {
+  if (named)
+    fail(`${target} already exists. Nothing was written: choose another --out, or add --force to replace it.`, 1);
+  const ext = path.extname(wanted);
+  for (let n = 2; existsSync(target); n++) target = `${wanted.slice(0, -ext.length)} (${n})${ext}`;
+  console.error(`note: ${path.basename(wanted)} already exists there, so this one is ${path.basename(target)}.`);
+}
 mkdirSync(path.dirname(target), { recursive: true });
-writeFileSync(target, html);
+try {
+  // "wx": fails rather than replace a file that appeared since the check.
+  writeFileSync(target, html, { flag: opts["--force"] ? "w" : "wx" });
+} catch (err) {
+  if (err?.code === "EEXIST") fail(`${target} appeared while exporting. Nothing was written; run it again.`, 1);
+  throw err;
+}
 
 const kB = Math.max(1, Math.round(Buffer.byteLength(html) / 1000)).toLocaleString("en-US");
 const playing = start ? `, plays "${sims.find((s) => s.id === start)?.title ?? start}" when opened` : "";
-console.log(`${target} (${kB} kB${playing})`);
+console.log(`${target} (${kB} kB${password === undefined ? "" : ", password protected"}${playing})`);
 console.log(
-  "Private: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.",
+  password === undefined
+    ? "Private: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access."
+    : "Password protected: only people with the password can open it; nothing of the diagram is readable without it. Send the password separately. It can't be recovered: if it's lost, export again. The file works offline and makes no network requests.",
 );

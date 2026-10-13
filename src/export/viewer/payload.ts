@@ -1,13 +1,32 @@
 import type { DiagramFile } from "../../model/types";
 import { LIMITS, tooLargeMessage, validateDiagram } from "../../interop/native";
 import { PAYLOAD_VERSION, type ViewerOptions } from "../inject";
+import { UnlockError, unlockPayloadText } from "../lock";
 
 // The exported file's payload: the `#diagram` data block that src/export/inject.ts filled. Read once, and
 // checked like every other way a diagram comes in (validateDiagram): the file may have been edited by hand.
+// A password-protected file's block is locked (src/export/lock.ts): the viewer asks for the password, and
+// unlockPayload decrypts it into the same payload, checked the same way.
+
+/** A password-protected file, before its password: the encrypted payload and the theme to paint the prompt in. */
+export interface LockedFile {
+  token: string;
+  theme: "light" | "dark";
+}
 
 export type ViewerPayload =
-  | { ok: true; diagram: DiagramFile; icons: Record<string, string>; options: ViewerOptions }
-  | { ok: false; error: string };
+  | {
+      ok: true;
+      diagram: DiagramFile;
+      icons: Record<string, string>;
+      options: ViewerOptions;
+      error?: undefined;
+      locked?: undefined;
+    }
+  | { ok: false; error: string; locked?: undefined }
+  | { ok: false; error?: undefined; locked: LockedFile };
+
+export type OpenPayload = Extract<ViewerPayload, { ok: true }>;
 
 let cached: ViewerPayload | undefined;
 
@@ -22,6 +41,8 @@ export const PAYLOAD_LIMITS = {
   totalChars: LIMITS.maxTextChars + 4_000_000,
 };
 
+const DAMAGED = "This file's diagram is damaged. Export it again from Live Diagrams.";
+
 /** The payload's text checked and parsed (exported for the unit test). */
 export function parsePayload(source: string | null | undefined): ViewerPayload {
   if (source && source.length > PAYLOAD_LIMITS.totalChars) return { ok: false, error: tooLargeMessage(source.length) };
@@ -32,11 +53,23 @@ export function parsePayload(source: string | null | undefined): ViewerPayload {
   try {
     raw = JSON.parse(text);
   } catch {
-    return { ok: false, error: "This file's diagram is damaged. Export it again from Live Diagrams." };
+    return { ok: false, error: DAMAGED };
   }
-  const p = raw as Partial<{ version: unknown; diagram: unknown; icons: unknown; options: Partial<ViewerOptions> }>;
+  const p = raw as Partial<{
+    version: unknown;
+    diagram: unknown;
+    icons: unknown;
+    options: Partial<ViewerOptions>;
+    encrypted: unknown;
+    theme: unknown;
+  }>;
   if (p?.version !== PAYLOAD_VERSION)
     return { ok: false, error: "This file comes from a newer version of Live Diagrams and can't be shown here." };
+  // Password-protected: nothing to check until it's unlocked (the token's own format is checked then).
+  if (p.encrypted !== undefined)
+    return typeof p.encrypted === "string" && p.encrypted
+      ? { ok: false, locked: { token: p.encrypted, theme: p.theme === "dark" ? "dark" : "light" } }
+      : { ok: false, error: DAMAGED };
   const diagramChars = JSON.stringify(p.diagram ?? null).length;
   if (diagramChars > PAYLOAD_LIMITS.diagramChars) return { ok: false, error: tooLargeMessage(diagramChars) };
   const result = validateDiagram(p.diagram);
@@ -67,4 +100,17 @@ export function parsePayload(source: string | null | undefined): ViewerPayload {
 
 export function readPayload(): ViewerPayload {
   return (cached ??= parsePayload(document.getElementById("diagram")?.textContent));
+}
+
+/**
+ * A password-protected file's payload, decrypted with `password` and checked like any other (it then becomes what
+ * readPayload returns). Throws an UnlockError (src/export/lock.ts): `wrong` for a wrong password.
+ */
+export async function unlockPayload(locked: LockedFile, password: string): Promise<OpenPayload> {
+  // UTF-8 takes at most 3 bytes per character the payload may have.
+  const text = await unlockPayloadText(locked.token, password, PAYLOAD_LIMITS.totalChars * 3);
+  const payload = parsePayload(text);
+  if (!payload.ok) throw new UnlockError(payload.error ?? DAMAGED);
+  cached = payload;
+  return payload;
 }

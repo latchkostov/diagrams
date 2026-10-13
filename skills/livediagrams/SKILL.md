@@ -19,7 +19,8 @@ Paths below are relative to this skill's folder. Run the scripts with `node`.
    [reference/outputs.md](reference/outputs.md)):
    1. **Interactive HTML file** (recommended for anything internal or company-related): one file that opens in
       any browser and plays the simulations. It's private, works offline and makes no network requests: only
-      people who have the file can open it.
+      people who have the file can open it. For company content, also offer **a password on the file**, so that
+      if it's forwarded (email, chat, a shared drive) nobody can read it without the password.
    2. **Diagram file** (`.diagram.json`): to open and keep editing in Live Diagrams.
    3. **Image** (PNG or SVG): made in the app from the diagram file. No script here makes one.
    4. **Share link**: convenient, but anyone who has the link can open the diagram. For a link only some people
@@ -69,6 +70,12 @@ Paths below are relative to this skill's folder. Run the scripts with `node`.
 7. **Make the output they chose.**
    - HTML: `node scripts/export-html.mjs <file>` (add `--banner "Confidential"` for work diagrams). It
      prints the path of `<title>.html`.
+   - HTML with a password: add `--password`. **Never ask for the password in the chat, and never put it in a
+     command**: you'd see it, and the transcript and shell history would keep it. Give the user the command to run
+     in their own terminal, where it asks for the password without echoing it (twice). If they've set
+     `LIVEDIAGRAMS_HTML_PASSWORD` in the environment you run in, you can run it yourself; never set it for them.
+     The file is `Diagram (password protected) <random>.html`. Details in
+     [reference/outputs.md](reference/outputs.md#a-password-on-the-file).
    - Diagram file: it's done. It opens at livediagrams.dev with **File > Open…**, read in the browser.
    - Image: say how to make it in the app ([reference/outputs.md](reference/outputs.md#image)). Don't fake one.
    - Share link: `node scripts/share-link.mjs <file>` prints it.

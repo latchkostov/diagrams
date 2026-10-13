@@ -130,7 +130,15 @@
           downloaded to your device; it's never uploaded to us. The file holds everything it shows (the diagram, its
           simulations, icons and fonts) and makes no network requests when opened: not to this site, not for fonts,
           not to anyone. It writes nothing to the browser's storage. Anyone who has the file can open it, so keep it
-          where your team already controls access.
+          where your team already controls access, or require a password.
+        </li>
+        <li>
+          <strong>Interactive HTML with a password</strong> (<em>Require a password</em> in the same dialog) encrypts
+          everything in the file that belongs to the diagram (its title, labels, notes, simulations and banner) the
+          same way as a link with a password, below. The file's page title says only "Diagram (password
+          protected)", and its name adds a few random letters. Opening it asks for the password and decrypts in the browser, offline; the password is never
+          stored or sent anywhere, and it can't be recovered, so a lost password means exporting again. Anyone with the
+          file and the password can open it, so send the password separately.
         </li>
         <li>
           <strong>Share links</strong> carry the diagram inside the link, after the <code>#</code>. Browsers never send
@@ -184,8 +192,8 @@
           again (the file says <code>"private": true</code>).
         </li>
         <li>
-          can still be exported as a file, an Interactive HTML file included: that's your own action, like saving it to
-          this device.
+          can still be exported as a file, an Interactive HTML file included (with or without a password): that's your
+          own action, like saving it to this device.
         </li>
       </ul>
       <p>What Private can't do, honestly:</p>

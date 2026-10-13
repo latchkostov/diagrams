@@ -36,7 +36,7 @@ our order pipeline" and it writes a `.diagram.json` file, checks it, and asks wh
 
 - an **interactive HTML file** (recommended for work and company diagrams): the app's Interactive HTML export, made
   offline by the skill's `export-html.mjs`. It plays the simulations, works offline, makes no network requests, and
-  only people who have the file can open it;
+  only people who have the file can open it (with `--password`, only those who also have the password);
 - the **diagram file**, to keep editing at livediagrams.dev;
 - an **image**, which it tells you how to export from the app;
 - a **share link**, where anyone who has the link can open the diagram. Private diagrams never get one.

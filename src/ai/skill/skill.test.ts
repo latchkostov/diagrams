@@ -19,13 +19,16 @@ import {
   type ReleaseFs,
 } from "../../../scripts/skill-viewer";
 import {
+  buildPayload,
   exportHtml,
   FALLBACK_ICON,
   htmlFileName,
+  LOCKED_TITLE,
   PAYLOAD_BLOCK,
   templateStencilIcons,
   type ExportInput,
 } from "../../export/inject";
+import { unlockPayloadText } from "../../export/lock";
 import { decodeShare, encodeShare, sharePayloadFromInput } from "../../interop/share";
 import { parseNative } from "../../interop/native";
 import { layoutDiagram } from "./layout";
@@ -37,7 +40,16 @@ const examples = publicExamples(root);
 let n = 0;
 
 function run(script: string, ...args: string[]) {
-  const r = spawnSync(process.execPath, [path.join(skill, "scripts", script), ...args], { encoding: "utf8" });
+  return runWith({}, script, ...args);
+}
+/** `run` with extra environment variables (and none of the shell's LIVEDIAGRAMS_HTML_PASSWORD). */
+function runWith(env: Record<string, string>, script: string, ...args: string[]) {
+  const base = { ...process.env };
+  delete base.LIVEDIAGRAMS_HTML_PASSWORD;
+  const r = spawnSync(process.execPath, [path.join(skill, "scripts", script), ...args], {
+    encoding: "utf8",
+    env: { ...base, ...env },
+  });
   return { code: r.status, out: r.stdout, err: r.stderr };
 }
 function write(value: unknown): string {
@@ -734,6 +746,125 @@ describe("export-html.mjs", () => {
     expect(existsSync(path.join(root, "src", "examples", "Kafka order pipeline.html"))).toBe(false);
     expect(readdirSync(tmp).filter((f) => f.endsWith(".html"))).toEqual([]);
   });
+
+  it("--password: the app's encryption, the password from the environment, nothing readable in the file", async () => {
+    const diagram = read(kafka);
+    const password = "quartz meadow tangle 81";
+    const dir = out("locked");
+    const r = runWith(
+      { LIVEDIAGRAMS_HTML_PASSWORD: password },
+      "export-html.mjs",
+      kafka,
+      "--password",
+      "--out",
+      dir,
+      "--banner",
+      "Confidential: internal use only",
+      "--exported-on",
+      "2026-10-12",
+    );
+    expect(r.code, r.err).toBe(0);
+    expect(r.err).toBe("");
+    // Its name and title say nothing of the diagram: the neutral title and a random suffix.
+    const first = r.out.trim().split("\n")[0];
+    expect(first).toMatch(/Diagram \(password protected\) [a-z2-9]{5}\.html \([\d,]+ kB, password protected, plays "/);
+    const file = first.replace(/ \([\d,]+ kB.*$/, "");
+    expect(path.dirname(file)).toBe(dir);
+    expect(r.out).toMatch(/only people with the password can open it.*Send the password separately/);
+    const html = readFileSync(file, "utf8");
+    expect(html).toContain(`<title>${LOCKED_TITLE}</title>`);
+    for (const text of [diagram.title, "Confidential", ...diagram.nodes.map((n: { label: string }) => n.label)])
+      expect(html.includes(text), text).toBe(false);
+    // The policy and script are the template's; the block is the token and the theme.
+    expect(csp(html)).toBe(csp(committedTemplate));
+    expect(blocks(html, "script").slice(-1)).toEqual(blocks(committedTemplate, "script").slice(-1));
+    const block = /<script type="application\/json" id="diagram">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? "";
+    const locked = JSON.parse(block) as { version: number; encrypted: string; theme: string };
+    expect(Object.keys(locked).sort()).toEqual(["encrypted", "theme", "version"]);
+    // The app's own decryption opens it into the payload the app would have made.
+    const text = await unlockPayloadText(locked.encrypted, password, 50_000_000);
+    expect(JSON.parse(text)).toEqual(
+      buildPayload(committedTemplate, {
+        diagram,
+        iconSvgs: committedIcons,
+        theme: "light",
+        banner: "Confidential: internal use only",
+        startSimulation: "black-friday",
+        exportedOn: "2026-10-12",
+      }),
+    );
+    await expect(unlockPayloadText(locked.encrypted, "quartz meadow tangle 18", 50_000_000)).rejects.toThrow(
+      /doesn't open this file/,
+    );
+  }, 60_000);
+
+  it("never replaces a file: protected exports get names of their own, a taken name the next free one", () => {
+    const dir = out("collide");
+    const env = { LIVEDIAGRAMS_HTML_PASSWORD: "quartz meadow tangle 81" };
+    const other = write({ ...read(kafka), title: "Another diagram" });
+    // Two different diagrams, protected, into one folder: two files, each still the one exported.
+    const a = runWith(env, "export-html.mjs", kafka, "--password", "--out", dir);
+    const b = runWith(env, "export-html.mjs", other, "--password", "--out", dir);
+    expect([a.code, b.code], a.err + b.err).toEqual([0, 0]);
+    const [fileA, fileB] = [a, b].map((r) => r.out.split("\n")[0].replace(/ \([\d,]+ kB.*$/, ""));
+    expect(fileA).not.toBe(fileB);
+    expect(readdirSync(dir).sort()).toEqual([path.basename(fileA), path.basename(fileB)].sort());
+    expect(readFileSync(fileA, "utf8")).not.toBe(readFileSync(fileB, "utf8"));
+    // A default name that's taken: the next free one, and the script says so.
+    const plain1 = run("export-html.mjs", kafka, "--out", dir);
+    const plain2 = run("export-html.mjs", kafka, "--out", dir);
+    expect([plain1.code, plain2.code]).toEqual([0, 0]);
+    expect(plain2.out).toContain(path.join(dir, "Kafka order pipeline (2).html"));
+    expect(plain2.err).toMatch(
+      /Kafka order pipeline\.html already exists there, so this one is Kafka order pipeline \(2\)\.html/,
+    );
+    // A named --out that exists: refused, untouched, unless --force.
+    const named = path.join(dir, "Kafka order pipeline.html");
+    const before = readFileSync(named, "utf8");
+    const refused = runWith(env, "export-html.mjs", kafka, "--password", "--out", named);
+    expect(refused.code).toBe(1);
+    expect(refused.err).toMatch(/already exists\. Nothing was written.*--force/);
+    expect(readFileSync(named, "utf8")).toBe(before);
+    const forced = runWith(env, "export-html.mjs", kafka, "--password", "--out", named, "--force");
+    expect(forced.code, forced.err).toBe(0);
+    expect(readFileSync(named, "utf8")).toContain(`<title>${LOCKED_TITLE}</title>`);
+  }, 60_000);
+
+  it("--password never takes the password from the command line, and needs one to write anything", () => {
+    const dir = out("refused");
+    const inArgs = run("export-html.mjs", kafka, "--password=hunter2hunter2", "--out", dir);
+    expect(inArgs.code).toBe(2);
+    expect(inArgs.err).toMatch(/takes no value.*shell history.*LIVEDIAGRAMS_HTML_PASSWORD/);
+    const asNext = run("export-html.mjs", kafka, "--password", "hunter2hunter2", "--out", dir);
+    expect(asNext.code).toBe(2);
+    expect(asNext.err).toMatch(/takes no value/);
+    // No variable and no terminal to ask in (stdin is a pipe here).
+    const none = run("export-html.mjs", kafka, "--password", "--out", dir);
+    expect(none.code).toBe(2);
+    expect(none.err).toMatch(/needs the password in LIVEDIAGRAMS_HTML_PASSWORD, or a terminal/);
+    const short = runWith(
+      { LIVEDIAGRAMS_HTML_PASSWORD: "short" },
+      "export-html.mjs",
+      kafka,
+      "--password",
+      "--out",
+      dir,
+    );
+    expect(short.code).toBe(1);
+    expect(short.err).toMatch(/at least 8 characters/);
+    expect(existsSync(dir)).toBe(false);
+    // A guessable one works, with the strength hint's warning.
+    const weak = runWith(
+      { LIVEDIAGRAMS_HTML_PASSWORD: "password1" },
+      "export-html.mjs",
+      kafka,
+      "--password",
+      "--out",
+      dir,
+    );
+    expect(weak.code, weak.err).toBe(0);
+    expect(weak.err).toMatch(/^warning: Easy to guess/);
+  }, 60_000);
 
   it("uses nothing that could reach the network", () => {
     for (const f of ["export-html.mjs", "lib/inject.mjs", "lib/check.mjs"]) {

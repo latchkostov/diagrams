@@ -7,8 +7,10 @@ import { DEPLOYMENT_VARIABLES, INTERNAL_DEFAULTS } from "../../scripts/deploymen
 
 // The self-hosting switches (src/lib/deployment.ts) remove code, not just menu rows: real builds of the app with
 // and without them. A copy built without share links carries no code that makes a link (the dialogs, the
-// encryption, the agents' get_share_link); one without AI tools carries no WebMCP and no Copy for AI; one without
-// the on-device model carries no request box for it. The public build keeps all of it (so the checks can fail).
+// encryption's dialog, the agents' get_share_link); one without AI tools carries no WebMCP and no Copy for AI; one
+// without the on-device model carries no request box for it. The public build keeps all of it (so the checks can
+// fail). A password-protected Interactive HTML file is a file, not a link: every build makes one, so the encryption
+// and the password field's strength hint stay in all of them.
 
 interface Output {
   code: string;
@@ -61,10 +63,15 @@ const LINK_MAKING = {
     "In the link", // Embed code…'s source that puts the diagram in its URL (the private one stays)
     "export-share-link", // the File menu's rows
     "export:share", // the canvas right-click's (and so the palette's) commands
-    "Try four or more random words", // the password's strength hint
   ],
   modules: [] as RegExp[],
-  /** WebCrypto's encrypt (opening a password link only decrypts). */
+  code: [] as RegExp[],
+};
+/** Interactive HTML's Require a password: a file, so in every build (its field and hint are the password link's). */
+const FILE_PASSWORD = {
+  strings: ["Require a password", "Try four or more random words", "Diagram (password protected)"],
+  modules: [] as RegExp[],
+  /** WebCrypto's encrypt. */
   code: [/\.encrypt\(/],
 };
 /** AI that reads the diagram outside the app: what a build without AI tools must not carry. */
@@ -151,6 +158,11 @@ describe("self-hosting switches in the production build", () => {
     expect(found(internal, ON_DEVICE).sort()).toEqual(all(ON_DEVICE));
     // Not even an unused file of them: the bundler's leftovers for dropped imports are removed.
     expect(internal.files.filter((f) => /WebMcpBridge|copyForAi/.test(f))).toEqual([]);
+  });
+
+  it("every build exports password-protected Interactive HTML (a file, not a link)", () => {
+    for (const out of [publicBuild, internal, locked])
+      expect(found(out, FILE_PASSWORD).sort()).toEqual(all(FILE_PASSWORD));
   });
 
   it("names the page and the top bar after VITE_BRAND_NAME", () => {
