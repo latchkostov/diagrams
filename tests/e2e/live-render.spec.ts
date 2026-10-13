@@ -216,11 +216,13 @@ for (const renderer of ["worker", "main"] as const) {
       page,
       consoleErrors,
     }) => {
-      // Waiting, the controller still hands out fresh snapshots, at the same simulated time.
-      await page.goto(
+      // Waiting, the controller still hands out fresh snapshots, at the same simulated time. (The pausing note comes
+      // 4 s into the simulation: half a second at 8×, once the session is up.)
+      await gotoLive(
+        page,
         `./?view=canvas&example=${KAFKA}&sim=payments-outage&speed=8${renderer === "main" ? "&renderer=main" : ""}`,
       );
-      await expect(page.getByTestId("live-note-continue")).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId("live-note-continue")).toBeVisible();
       await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
       await expect(page.getByTestId("rf__wrapper")).toHaveAttribute("data-live-still", "1");
       // The note's camera fit animates first; then the ants hold still (marching, they never would).
@@ -321,6 +323,9 @@ test.describe("live rendering stays off the main thread", () => {
     page,
     consoleErrors,
   }) => {
+    // Two live page loads (the worker path, then the fallback), each of which may take the page-load budget on a busy
+    // dev server (nightly #78: 14 s and 12 s, out of 30).
+    test.slow();
     await page.addInitScript(COUNT_DRAWS);
     await goLive(page, "worker");
     await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(40);
@@ -345,9 +350,8 @@ test.describe("live rendering stays off the main thread", () => {
   });
 });
 
-/** The fallback took over on fresh canvases: particles and the march paint, the dot breathes in CSS. */
+/** The fallback took over on fresh canvases (once live view is up): particles and the march paint, the dot breathes in CSS. */
 async function handedOver(page: Page) {
-  await expect(page.getByTestId("live-controls")).toBeVisible();
   await expect(canvas(page)).toHaveAttribute("data-renderer", "main", { timeout: 15_000 });
   await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(10);
   await expect.poll(() => livePaint(page, "base")).toBeGreaterThan(100);
@@ -359,7 +363,7 @@ test.describe("a particle worker that can't start hands over to the main thread"
   test("its script never arrives (an error event)", async ({ page }) => {
     // A proxy, a CSP on worker-src, a broken deploy.
     await page.route(/particleWorker/, (route) => route.abort());
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
     await handedOver(page);
   });
 
@@ -372,7 +376,7 @@ test.describe("a particle worker that can't start hands over to the main thread"
         return new Real(url, options);
       } as unknown as typeof Worker;
     });
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
     await handedOver(page);
     expectNoErrors(consoleErrors);
   });
@@ -383,7 +387,7 @@ test.describe("a particle worker that can't start hands over to the main thread"
         throw new DOMException("Cannot transfer", "InvalidStateError");
       };
     });
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
     await handedOver(page);
     expectNoErrors(consoleErrors);
   });

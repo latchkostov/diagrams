@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLab, expectNoErrors, pageLoadTimeout } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLab, expectNoErrors, pageLoadTimeout, gotoLive } from "./fixtures";
 
 // Live view: the toggle, injection from the context menu, saved simulations, narration, the storm
 // flow, presentation mode and the Lab presets. Selectors are data-testid only. Runs are seeded, and
@@ -72,8 +72,7 @@ test.describe("live view", () => {
     page,
     consoleErrors,
   }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=4`);
     await expect(page.getByTestId("live-in-system")).toHaveAttribute("data-count", "0");
 
     await openNodeMenu(page, "inventory", "sim.storm", false);
@@ -101,7 +100,7 @@ test.describe("live view", () => {
 
   test("a saved simulation runs to done with every expectation passing", async ({ page, consoleErrors }) => {
     test.setTimeout(60_000);
-    await page.goto(`./?view=canvas&example=${KAFKA}&sim=black-friday&speed=8`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=black-friday&speed=8`);
     await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
     await expect(page.getByTestId("live-timeline")).toBeVisible();
     await expect(page.getByTestId("expectation-stock")).toHaveAttribute("data-status", "pending");
@@ -124,8 +123,8 @@ test.describe("live view", () => {
   });
 
   test("a pausing note waits for Continue", async ({ page, consoleErrors }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&sim=payments-outage&speed=8`);
-    await expect(page.getByTestId("live-note-continue")).toBeVisible({ timeout: 15_000 });
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=payments-outage&speed=8`);
+    await expect(page.getByTestId("live-note-continue")).toBeVisible();
     await expect(page.getByTestId("live-note")).toContainText("Payments is offline");
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "waiting");
     const clock = page.getByTestId("live-clock");
@@ -141,8 +140,7 @@ test.describe("live view", () => {
   });
 
   test("Start a storm here creates a simulation that persists across reload", async ({ page, consoleErrors }) => {
-    await page.goto("./?view=canvas&example=azure-service-bus-integration&live=1&traffic=0");
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, "./?view=canvas&example=azure-service-bus-integration&live=1&traffic=0");
     await openNodeMenu(page, "ingest", "sim.storm");
 
     const panel = page.getByTestId("sim-panel");
@@ -188,7 +186,7 @@ test.describe("live view", () => {
     page,
     consoleErrors,
   }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&present=1&sim=black-friday`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&present=1&sim=black-friday`);
     await expect(page.getByTestId("present-exit")).toBeVisible();
     await expect(page.getByTestId("topbar")).toHaveCount(0);
     await expect(page.getByTestId("live-controls")).toBeVisible();
@@ -209,8 +207,7 @@ test.describe("live view", () => {
   });
 
   test("Trace this path dims everything that isn't downstream", async ({ page, consoleErrors }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await page.getByTestId("edge-label-order-events-to-payments").click({ button: "right" });
     await menuItem(page, "sim.trace").click();
     await expect(page.getByTestId("live-trace")).toBeVisible();
@@ -259,8 +256,7 @@ test.describe("live view", () => {
   });
 
   test("keyboard focus exposes detailed metrics and their description", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     const node = page.getByTestId("node-inventory");
     await node.evaluate((el) => el.closest<HTMLElement>("[data-id]")?.focus());
     await expect(page.getByTestId("node-detail-inventory")).toBeVisible();
@@ -277,7 +273,7 @@ test.describe("live view", () => {
   });
 
   test("timeline action controls have accessible names", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openNodeMenu(page, "inventory", "sim.storm");
     await page.getByTestId("sim-panel-section-timeline-toggle").click();
     await page.getByTestId("sim-panel-add-step").click();
@@ -293,7 +289,7 @@ test.describe("live view", () => {
   test("leaving live authoring restores the inspector preference", async ({ page }) => {
     // Three full page loads: give it room when the whole suite shares one dev server.
     test.setTimeout(60_000);
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openNodeMenu(page, "inventory", "sim.storm");
     await expect(page.getByTestId("sim-panel")).toBeVisible();
     // The authoring panel starts below the Live toggle, so leaving live view stays one click away.
@@ -307,7 +303,7 @@ test.describe("live view", () => {
     // Below 1680px the inspector waits for a selection; the preference itself survived.
     await page.getByTestId("node-inventory").click();
     await expect(page.getByTestId("inspector-title")).toBeVisible();
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openNodeMenu(page, "inventory", "sim.storm");
     await page.getByTestId("example-picker").selectOption("azure-service-bus-integration");
     await expect
@@ -334,7 +330,7 @@ test.describe("live view", () => {
   });
 
   test("custom injection is a labelled modal that traps focus and restores it on close", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     const open = async () => {
       await openNodeMenu(page, "inventory", "sim.inject");
       await menuItem(page, "sim.inject:custom").click();
@@ -365,7 +361,7 @@ test.describe("live view", () => {
   });
 
   test("scrubbing previews without replaying until pointer or keyboard release", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&sim=black-friday&paused=1`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=black-friday&paused=1`);
     const input = page.getByTestId("live-timeline-input");
     const clock = page.getByTestId("live-clock");
     await expect(input).toBeVisible();
@@ -396,7 +392,7 @@ test.describe("live view", () => {
     // clearTimeout couldn't cancel: it fired after Save with a stale diagram and erased the new
     // simulation (only under load, when it was still pending at install time).
     await page.clock.install();
-    await page.goto("./?view=canvas&example=azure-service-bus-integration&live=1&traffic=0");
+    await gotoLive(page, "./?view=canvas&example=azure-service-bus-integration&live=1&traffic=0");
     await openNodeMenu(page, "ingest", "sim.storm");
     await page.getByTestId("sim-panel-title").fill("Immediate storm");
     await page.getByTestId("sim-panel-traffic-0-type").fill("ImmediateEvent");
@@ -427,7 +423,7 @@ test.describe("live view", () => {
   });
 
   test("Esc backs out of the simulation panel one level at a time, then leaves live", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await page.getByTestId("live-more").click();
     await page.getByTestId("live-edit-sims").click();
     await expect(page.getByTestId("sim-panel")).toBeVisible();
@@ -450,8 +446,7 @@ test.describe("live view", () => {
   });
 
   test("live node menus lead with live actions and stay within the chrome budget", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await page.getByTestId("node-inventory").click({ button: "right" });
     await expect(menuItem(page, "sim.inject")).toBeVisible();
     // Editing that doesn't fit a running simulation waits for edit mode.
@@ -572,7 +567,7 @@ test.describe("live view", () => {
   });
 
   test("timeline markers jump to their moment: the outage note, then back to the start", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
     await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "0");
     // The status change and its note share 4.0s: the note sits stacked on top; either one jumps there.
     const down = page.getByTestId("live-marker-2");
@@ -593,7 +588,7 @@ test.describe("live view", () => {
   });
 
   test("Tab reaches timeline markers and Enter jumps to a named event", async ({ page, consoleErrors }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
     await page.getByTestId("live-sim-picker").focus();
     for (let i = 0; i < 12; i++) {
       if (await page.getByTestId("live-marker-2").evaluate((el) => el === document.activeElement)) break;
@@ -609,7 +604,7 @@ test.describe("live view", () => {
 
   test("a narrow bar folds the expectation dots into a summary that lists each result", async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 768 });
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
     await page.getByTestId("live-capacity").click();
     await expect(page.getByTestId("capacity-panel")).toBeVisible();
     await expect(page.getByTestId("live-expectations")).toBeHidden();
@@ -643,8 +638,7 @@ test.describe("live overlap (UX gate 3)", () => {
   for (const width of [1024, 1440]) {
     test(`at ${width}px the bar, the Inputs panel and the event log never cover each other`, async ({ page }) => {
       await page.setViewportSize({ width, height: 768 });
-      await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
-      await expect(page.getByTestId("live-controls")).toBeVisible();
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
       await page.getByTestId("live-capacity").click();
       await expect(page.getByTestId("capacity-panel")).toBeVisible();
       await page.getByTestId("live-more").click();

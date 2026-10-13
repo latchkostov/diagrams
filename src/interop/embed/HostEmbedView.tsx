@@ -154,6 +154,8 @@ export function HostEmbedView() {
   const [state, setState] = useState<HostState>(initialHostState);
   const stateRef = useRef(state);
   const fitRef = useRef<() => void>(() => {});
+  /** This page has said `ready`: once per page load, however often the effect below runs. */
+  const announced = useRef(false);
   const { set: setSetting } = useSettings();
 
   /** The only way out: to the parent window, at the locked origin. Never "*". */
@@ -219,7 +221,12 @@ export function HostEmbedView() {
       for (const effect of effects) apply(effect);
     };
     window.addEventListener("message", onMessage);
-    post({ type: "ready", version: 1 });
+    // Once per page load. The page answers `ready` with its current diagram (a reloaded frame needs it again), so
+    // a second one from the same page loads it twice: StrictMode runs this effect twice in development.
+    if (!announced.current) {
+      announced.current = true;
+      post({ type: "ready", version: 1 });
+    }
     return () => window.removeEventListener("message", onMessage);
   }, [origin, framed, post, driver, setSetting]);
 

@@ -292,7 +292,7 @@ test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
 const LONG = "Node 0.12, renamed to something wider than any card";
 
 /** The page's check-run counts and switch (dev and e2e builds: `window.__checks`, src/canvas/checks/useChecks.ts). */
-type CheckRunStats = { started: number; finished: number; held: boolean };
+type CheckRunStats = { started: number; finished: number; held: boolean; skipped: number };
 const runStats = (page: Page) =>
   page.evaluate(() => ({ ...(window as unknown as { __checks: CheckRunStats }).__checks }));
 const holdChecks = (page: Page, held: boolean) =>
@@ -360,7 +360,43 @@ test("typing a label is as responsive while checks run as with them held", async
       return out;
     });
 
-  /** Types `text` a key at a time, pausing long enough for a check to start between keys. */
+  // Each check run as it comes due (started, or held back), told at once: `started` and `skipped` become setters
+  // that call out to the test before the run goes on. (A poll couldn't hear of a run on the main thread until it
+  // had finished, and the next key would never meet it.)
+  let onDue = () => {};
+  await page.exposeFunction("__checkDue", () => onDue());
+  await page.evaluate(() => {
+    const stats = (window as unknown as { __checks: Record<string, unknown> }).__checks;
+    const announce = (window as unknown as { __checkDue: () => void }).__checkDue;
+    for (const key of ["started", "skipped"]) {
+      let value = stats[key];
+      Object.defineProperty(stats, key, {
+        enumerable: true,
+        get: () => value,
+        set: (next) => {
+          value = next;
+          announce();
+        },
+      });
+    }
+  });
+  /** Resolves when the next run comes due; a backstop at the scale of the first run's wait, for a run that never does. */
+  const nextDue = () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    return Promise.race([
+      new Promise<void>((resolve) => (onDue = resolve)),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("no check run came due")), 60_000);
+      }),
+    ]).finally(() => clearTimeout(timer));
+  };
+
+  /**
+   * Types `text` a key at a time, each as the last one's check run comes due (the edits paused for the debounce, and
+   * the page went idle): so every key but the first meets a run as it starts. Not a pause in ms: a busy page goes
+   * idle later, and a key typed before then put the run off again (nightly #78: 3 runs for 10 keys). The last key's
+   * run coming due is the phase's end: by then (the debounce alone is 400 ms) its Event Timing entry is in.
+   */
   async function phase(held: boolean, text: string) {
     await holdChecks(page, held);
     // A run left over from the last phase finishes first.
@@ -368,11 +404,10 @@ test("typing a label is as responsive while checks run as with them held", async
     await takeSamples();
     const before = await runStats(page);
     for (const ch of text) {
+      const due = nextDue();
       await page.keyboard.type(ch);
-      await page.waitForTimeout(450);
+      await due;
     }
-    // Event Timing reports a little after the paint.
-    await page.waitForTimeout(300);
     const after = await runStats(page);
     const samples = await takeSamples();
     // Keystrokes under the reporting threshold took under 16 ms.
@@ -396,8 +431,8 @@ test("typing a label is as responsive while checks run as with them held", async
   await holdChecks(page, false);
   await expect(label).toHaveValue(`${LONG} h0xyz r1xyz h2xyz r3xyz`);
   info.annotations.push({ type: "event-timing", description: JSON.stringify({ held, running, runs }) });
-  // Checks ran while the second set was typed: one after nearly every key (each pause outlasts the debounce).
-  expect(runs).toBeGreaterThanOrEqual(8);
+  // Checks ran while the second set was typed: one after every key.
+  expect(runs).toBeGreaterThanOrEqual(12);
   // They ran in the checks worker, not on this thread.
   expect(page.workers().length, "the checks worker").toBeGreaterThan(0);
   // And typing was no slower for it: the same median keystroke, give or take noise. The slack is relative to the

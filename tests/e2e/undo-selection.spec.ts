@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
-import { must, nodeCount, openAdvanced } from "./ai-helpers";
+import { callTool, installFakeModelContext, must, nodeCount, openAdvanced, toolNames } from "./ai-helpers";
 
 // Undo and the selection (docs/UX-PRINCIPLES.md): Undo selects what the undone step changed, as it was
 // before; Redo what it changed, as it is after; undoing an add keeps the selection it can. The inspector
@@ -250,6 +250,78 @@ test.describe("undo and the selection", () => {
     await savedWhen(page, (s) => node(s, "api").label === "Orders API");
     await expectSelected(page, ["node-api"]);
     expectNoErrors(consoleErrors);
+  });
+
+  // The test above failed on the nightly's dev server (#78): quick-add opened over the pointer left on Cache, a check
+  // result re-rendered the canvas, the menu moved off the pointer (placed again against the shorter list), and the
+  // pointer leaving it cleared the highlight, so Enter picked nothing. Each cause on its own:
+
+  test("quick-add's Enter picks the top match, not the row that slid under a resting pointer", async ({ page }) => {
+    await page.getByTestId("node-cache").click();
+    await page.keyboard.press("Alt+ArrowRight");
+    const menu = page.getByTestId("quick-add");
+    await expect(menu).toBeVisible();
+    await waitForStableViewport(page);
+    const row = (stencil: string) => menu.getByTestId(`context-menu-item-quick-add:${stencil}`);
+    const rows = menu.getByTestId(/^context-menu-item-quick-add:/);
+    // "rds" lists MySQL second: point at it.
+    const search = menu.getByTestId("quick-add-search");
+    await search.fill("rds");
+    await expect(rows.nth(1)).toHaveAttribute("data-testid", "context-menu-item-quick-add:mysql");
+    await row("mysql").hover();
+    await expect(row("mysql")).toHaveAttribute("data-active", "true");
+    // "mysql" puts it first, and Cloud SQL slides under the pointer, which hasn't moved.
+    await search.fill("mysql");
+    await expect(rows.nth(1)).toHaveAttribute("data-testid", "context-menu-item-quick-add:gcp.cloud-sql");
+    // Once the browser has worked out what's under the pointer now, the top match still leads.
+    await expect.poll(() => row("gcp.cloud-sql").evaluate((el) => el.matches(":hover"))).toBe(true);
+    await expect(row("mysql")).toHaveAttribute("data-active", "true");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await page.keyboard.press("Enter");
+    const d = await savedWhen(page, (s) => s.nodes.length === SEED.nodes.length + 1);
+    expect(d.nodes.filter((n) => !SEED.nodes.some((s) => s.id === n.id)).map((n) => n.stencil)).toEqual(["mysql"]);
+  });
+
+  test("quick-add stays where it opened while the canvas changes, and keeps its highlight as the pointer leaves", async ({
+    page,
+  }) => {
+    // An agent's tools (WebMCP), to change the diagram while the menu is open.
+    await installFakeModelContext(page);
+    await page.reload();
+    await expect(page.getByTestId("node-billing")).toBeVisible();
+    await expect.poll(() => toolNames(page)).toContain("edit_diagram");
+    await waitForStableViewport(page);
+    await page.getByTestId("node-cache").click();
+    await page.keyboard.press("Alt+ArrowRight");
+    const menu = page.getByTestId("quick-add");
+    await expect(menu).toBeVisible();
+    await waitForStableViewport(page);
+    // Placed against the whole list, so it fits whatever is typed: low in the view here, so held up from the outline.
+    const at = async () => {
+      const { x, y } = must(await menu.boundingBox(), "quick-add");
+      return { x, y };
+    };
+    const opened = await at();
+    await page.keyboard.type("postgres");
+    const top = menu.getByTestId("context-menu-item-quick-add:postgres");
+    await expect(top).toHaveAttribute("data-active", "true");
+    // An agent adds a node meanwhile: the canvas renders again round the open menu, which stays put.
+    const before = await nodeCount(page);
+    const res = await callTool(page, "edit_diagram", {
+      summary: "Added a worker",
+      ops: [{ op: "add_node", kind: "Go service", label: "Ledger worker", key: "w" }],
+    });
+    expect(res.isError).toBe(false);
+    await expect.poll(() => nodeCount(page)).toBe(before + 1);
+    await expect(menu).toBeVisible();
+    expect(await at()).toEqual(opened);
+    // The pointer leaves for the canvas's empty top-left corner: the search keeps its highlight, which Enter picks.
+    const wrap = must(await page.getByTestId("canvas-wrap").boundingBox(), "the canvas");
+    await page.mouse.move(wrap.x + 24, wrap.y + wrap.height / 2);
+    await expect(top).toHaveAttribute("data-active", "true");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("node-editor-label")).toBeFocused();
   });
 
   test("undo from the keyboard moves focus to what it selected; from the toolbar, focus stays", async ({

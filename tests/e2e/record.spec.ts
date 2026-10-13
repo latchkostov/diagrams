@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLive } from "./fixtures";
 
 // Record video: the live view's "⋯ › Record video…" and canvas right-click. Real share prompts can't
 // be automated, so getDisplayMedia is stubbed with a canvas stream (captureStream) and, in most
@@ -126,7 +126,7 @@ test.describe("record video", () => {
     consoleErrors,
   }) => {
     await stubCapture(page, { prompt: "pending" });
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openRecord(page);
     await page.getByTestId("record-start").click();
     await page.evaluate(() => {
@@ -144,7 +144,7 @@ test.describe("record video", () => {
 
   test("cancellation during asynchronous framing cannot create a recorder", async ({ page, consoleErrors }) => {
     await stubCapture(page, { frame: "pending" });
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openRecord(page);
     await page.getByTestId("record-start").click();
     await expect.poll(() => rec(page, "framing")).toBeTruthy();
@@ -161,7 +161,7 @@ test.describe("record video", () => {
   for (const failure of ["failEncoder", "failTrack"] as const) {
     test(`${failure}: failure stops capture and permits retry`, async ({ page, consoleErrors }) => {
       await stubCapture(page);
-      await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
       await openRecord(page);
       await page.getByTestId("record-start").click();
       await expect.poll(() => rec(page, "started"), { timeout: 6000 }).toBe(true);
@@ -184,7 +184,7 @@ test.describe("record video", () => {
     consoleErrors,
   }) => {
     await stubCapture(page, { frame: "fail" });
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openRecord(page);
     await page.getByTestId("record-start").click();
     await expect(page.getByTestId("record-scope")).toContainText("everything you shared");
@@ -203,7 +203,7 @@ test.describe("record video", () => {
 
   test("successive discards release both video URLs and Undo restores only its own clip", async ({ page }) => {
     await stubCapture(page);
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await page.clock.install();
     const urls: string[] = [];
     for (let i = 0; i < 2; i++) {
@@ -230,8 +230,7 @@ test.describe("record video", () => {
   });
   test("start → countdown → indicator → stop → review → download", async ({ page, consoleErrors }) => {
     await stubCapture(page);
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=${OUTAGE}&paused=1`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=${OUTAGE}&paused=1`);
     await openRecord(page);
     await page.getByTestId("record-opt-from-start").uncheck();
     await page.getByTestId("record-start").click();
@@ -268,8 +267,7 @@ test.describe("record video", () => {
 
   test("Esc stops; Discard can be undone; the canvas right-click offers Record too", async ({ page }) => {
     await stubCapture(page);
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     // An empty spot on the canvas (between the nodes and the live bar).
     await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: 600, y: 600 } });
     await page.getByTestId("context-menu-item-sim.record").click();
@@ -300,7 +298,7 @@ test.describe("record video", () => {
 
   test("Esc during the countdown cancels without recording", async ({ page }) => {
     await stubCapture(page);
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openRecord(page);
     await page.getByTestId("record-start").click();
     await expect(page.getByTestId("record-countdown")).toBeVisible();
@@ -314,7 +312,7 @@ test.describe("record video", () => {
 
   test("Esc after the countdown but before the recorder starts cancels cleanly", async ({ page, consoleErrors }) => {
     await stubCapture(page);
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     // A paused clock holds the two frames between the countdown's end and the recorder's start.
     await page.clock.install();
     await page.clock.pauseAt(new Date(Date.now() + 1000));
@@ -347,7 +345,7 @@ test.describe("record video", () => {
 
   test("a refused share prompt explains itself and nothing breaks", async ({ page, consoleErrors }) => {
     await stubCapture(page, { prompt: "deny" });
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openRecord(page);
     await page.getByTestId("record-start").click();
     await expect(page.getByTestId("record-error")).toContainText("wasn't allowed");
@@ -361,7 +359,7 @@ test.describe("record video", () => {
 
   test("a browser that can't capture says so and can't start", async ({ page }) => {
     await stubCapture(page, { prompt: "missing" });
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openRecord(page);
     await expect(page.getByTestId("record-unsupported")).toContainText("can't record a tab");
     await expect(page.getByTestId("record-start")).toBeDisabled();
@@ -373,7 +371,7 @@ test.describe("record video", () => {
   test("from the start: the simulation restarts at 0:00 and the recording stops when it ends", async ({ page }) => {
     test.slow();
     await stubCapture(page);
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=${OUTAGE}&speed=8`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=${OUTAGE}&speed=8`);
     await expect(page.getByTestId("live-clock")).not.toHaveAttribute("data-ms", "0");
     await openRecord(page);
     await expect(page.getByTestId("record-opt-from-start")).toBeChecked();
@@ -386,7 +384,7 @@ test.describe("record video", () => {
 
   test("the browser's real recorder writes a WebM that players can measure", async ({ page }) => {
     await stubCapture(page, { realRecorder: true });
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openRecord(page);
     await page.getByTestId("record-start").click();
     await expect(page.getByTestId("record-elapsed")).toHaveText("0:02", { timeout: 8_000 });

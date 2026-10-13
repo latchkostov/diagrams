@@ -169,6 +169,24 @@ export const viewportTransform = (page: Page) =>
     .getByTestId("canvas-wrap")
     .evaluate((wrap) => wrap.querySelector<HTMLElement>(".react-flow__viewport")?.style.transform ?? "");
 
+/**
+ * Pauses an installed page clock (`page.clock.install()`) where it stands. Until paused it runs in step with real
+ * time, and `pauseAt` can't go back: a time read from the page is behind the clock by the time `pauseAt` arrives
+ * (more so on a busy machine; a margin of 50 ms failed on CI, nightly #78), so no margin is safe. `pauseAt` stops
+ * the clock before it refuses a time in the past, so a refusal leaves it standing: read it again, standing, and
+ * pause there.
+ */
+export async function pauseClock(page: Page) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await page.clock.pauseAt(await page.evaluate(() => Date.now()));
+      return;
+    } catch (e) {
+      if (attempt >= 3 || !String(e).includes("Cannot fast-forward to the past")) throw e;
+    }
+  }
+}
+
 export function expectNoErrors(errors: string[]) {
   expect(errors, errors.join("\n")).toEqual([]);
 }

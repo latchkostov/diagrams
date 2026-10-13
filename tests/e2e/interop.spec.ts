@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, gotoLab, publicExamples, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoGallery, gotoLab, publicExamples, expectNoErrors, gotoLive } from "./fixtures";
 
 // Import / export / storage (src/interop). Selectors are data-testid only.
 
@@ -358,7 +358,7 @@ test.describe("interop", () => {
     const slug = "kafka-order-pipeline";
     const sim = JSON.parse(readFileSync(join(process.cwd(), "src/examples", `${slug}.json`), "utf8")).simulations[0]
       .id as string;
-    await page.goto(`./?view=canvas&example=${slug}&sim=${sim}&live=1&speed=2&paused=1`);
+    await gotoLive(page, `./?view=canvas&example=${slug}&sim=${sim}&live=1&speed=2&paused=1`);
     await expect(page.getByTestId("canvas-view")).toBeVisible();
     await page.getByTestId("present-toggle").click();
     await expect(page.getByTestId("present-exit")).toBeVisible();

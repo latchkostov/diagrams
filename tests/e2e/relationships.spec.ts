@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLab, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoLab, expectNoErrors, gotoLive } from "./fixtures";
 
 /**
  * Relationships (docs/research/diagram-semantics.md): dependencies are dotted, carry a glyph and no
@@ -219,8 +219,7 @@ test.describe("relationships", () => {
   });
 
   test("live view draws no traffic on dependency edges and dims them", async ({ page, consoleErrors }) => {
-    await page.goto(`./?view=canvas&example=${SLUG}&live=1`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
     // Flows light up as messages travel them...
     await expect.poll(() => liveState(page, "fd-to-api"), { timeout: 10_000 }).toBe("active");
     // ...while dependencies stay idle the whole time and recede.
