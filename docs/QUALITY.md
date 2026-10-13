@@ -143,11 +143,13 @@ a timing test guards decides its form:
   against running; the worker renderer's main-thread work per page frame against the main-thread fallback's, all
   of it, from Chrome's own task time in thread CPU time, not only animation callbacks), or count frames and logic
   (transforms over 20 frames, not 500 ms; a page clock paused at the drop proves a toast went because of Undo, not
-  its expiry).
+  its expiry). Pause a page clock where it stands with `pauseClock()` (`tests/e2e/fixtures.ts`): a `pauseAt()` a
+  margin ahead races a clock that runs in step with real time until paused.
 
 Every conversion is checked by a deliberate regression (make it quadratic, remove the bound) that the test must
 catch. An e2e test that clicks must wait for the layout it clicks into (a panel opening, a pan, a lazily loaded
-menu), not for time.
+menu), not for time. A page opened in live view (`live=1`, `sim=`) waits for its live session with `gotoLive()`: the
+session's code loads on first use, after the canvas's, and takes seconds on a busy dev server (nightly #78).
 
 ## Accessibility
 

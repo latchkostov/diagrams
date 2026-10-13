@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, gotoLive } from "./fixtures";
 
 // A node's inline editor (double-click) is the topmost thing on the canvas: no neighbouring card,
 // edge label, live particle canvas, metric badge or hover breakdown paints over it, in edit mode or live.
@@ -58,8 +58,7 @@ test.describe("inline node editor stacking", () => {
     page,
     consoleErrors,
   }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&speed=4`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&speed=4`);
     // Traffic has reached the topic, so it has a lag badge and a breakdown.
     await expect
       .poll(async () => Number(await page.getByTestId("node-badge-order-events").getAttribute("data-processed")))

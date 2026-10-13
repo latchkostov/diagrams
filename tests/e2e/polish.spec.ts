@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, viewportTransform, waitForStableViewport } from "./fixtures";
+import { test, expect, gotoCanvas, viewportTransform, waitForStableViewport, gotoLive } from "./fixtures";
 
 // Polish and reliability: the selection stays in view when the inspector opens, the live bar
 // names the simulation being edited, edge labels sit under particles while live, viewport
@@ -78,7 +78,7 @@ test.describe("polish", () => {
   });
 
   test("the live bar shows the simulation open in the editor, not free play", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
     await page.getByTestId("live-more").click();
     await page.getByTestId("live-edit-sims").click();
@@ -137,7 +137,7 @@ test.describe("polish", () => {
   });
 
   test("Continuous traffic has one icon in the live menu and the right-click menu", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await page.getByTestId("live-more").click();
     const fromBar = await page
       .getByTestId("live-traffic")

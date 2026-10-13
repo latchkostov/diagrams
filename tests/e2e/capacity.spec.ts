@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, gotoLive } from "./fixtures";
 
 // Inputs & capacity: the presenter's what-if flow (Black Friday at 3×, the heat map, Apply fix),
 // undo, "Save to simulation" across a reload, the heat map in edit mode, and real units.
@@ -11,8 +11,7 @@ const TRAFFIC_3X = "14";
 const level = (page: Page, nodeId: string) => page.getByTestId(`capacity-label-${nodeId}`);
 
 async function openBlackFridayInputs(page: Page) {
-  await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
-  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
   await page.getByTestId("live-sim-picker").selectOption("black-friday");
   await page.getByTestId("live-capacity").click();
   await expect(page.getByTestId("capacity-panel")).toBeVisible();
@@ -164,8 +163,7 @@ test.describe("inputs & capacity", () => {
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("capacity-layer")).toHaveCount(0);
     await expect(page.getByTestId("bottleneck-callout")).toHaveCount(0);
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await expect(page.getByTestId("bottleneck-callout")).toHaveCount(0);
   });
 
@@ -220,7 +218,7 @@ test.describe("inputs & capacity", () => {
   });
 
   test("idle replicas behind too few partitions say so, and the fix adds partitions", async ({ page }) => {
-    await page.goto("./?view=canvas&example=iot-telemetry&live=1&sim=hot-spot&paused=1");
+    await gotoLive(page, "./?view=canvas&example=iot-telemetry&live=1&sim=hot-spot&paused=1");
     await page.getByTestId("live-capacity").click();
     await expect(page.getByTestId("bottleneck-headline")).toHaveText("Device state projector: 63 of 64 replicas idle");
     await expect(page.getByTestId("capacity-idle-hot")).toContainText("63/64 idle");
@@ -371,8 +369,7 @@ test.describe("entry points (sixth review)", () => {
 
 test.describe("outages in the run (UX gate 3)", () => {
   test("the callout says Payments is down during the outage, and healthy again after", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
-    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
     await page.keyboard.press("c");
     const headline = page.getByTestId("bottleneck-headline");
     await expect(headline).toHaveText("Healthy: every service has headroom");
@@ -442,7 +439,7 @@ test.describe("fourth review capacity regressions", () => {
   });
 
   test("free-play Save rejects folded rates over the native limit", async ({ page }) => {
-    await page.goto(`./?view=canvas&example=${KAFKA}&live=1&paused=1`);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
     await page.getByTestId("live-capacity").click();
     await page.getByTestId("capacity-rate-shopper").fill("2k");
     await page.getByTestId("capacity-rate-shopper").press("Enter");

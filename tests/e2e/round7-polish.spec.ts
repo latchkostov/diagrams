@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, gotoLive } from "./fixtures";
 
 // Round 7 of the UX review (docs/DESIGN-REVIEW.md): Esc on a clicked node, toasts inside the canvas
 // pane, live view refitting around the AI panel, readable hover cards, a shorter canvas menu, the
@@ -83,8 +83,7 @@ test("below 1680px the AI panel folds the stencils to their rail; opening them b
 
 test("live view with a trace refits when the AI panel opens: every node stays in the pane", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
-  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
   await page.getByTestId("live-more").click();
   await page.getByTestId("live-trace-message").click();
   await page.getByTestId("live-more-menu").getByText("Next message", { exact: true }).click();
@@ -150,8 +149,7 @@ test("the start card keeps one row of actions, clear of the canvas controls with
 test("slow motion keeps the hop at work out from under the trace card", async ({ page }) => {
   test.slow();
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto(`./?view=canvas&example=${KAFKA}&live=1`);
-  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
   await page.getByTestId("live-more").click();
   await page.getByTestId("live-trace-message").click();
   await page.getByTestId("live-more-menu").getByText("Next message, in slow motion").click();

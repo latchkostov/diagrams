@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, gotoLab, waitForStableBox } from "./fixtures";
+import { test, expect, gotoCanvas, gotoGallery, gotoLab, waitForStableBox, gotoLive } from "./fixtures";
 import { installFakeModelContext } from "./ai-helpers";
 
 /**
@@ -44,8 +44,7 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
   {
     name: "live mode",
     open: async (page) => {
-      await page.goto(`./?view=canvas&example=${KAFKA}&live=1&paused=1`);
-      await expect(page.getByTestId("live-controls")).toBeVisible();
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
     },
   },
   {
@@ -120,7 +119,7 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
     name: "trace card",
     scope: "trace-card",
     open: async (page) => {
-      await page.goto(`./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=8`);
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0&speed=8`);
       await page.getByTestId("live-more").click();
       await page.getByTestId("live-trace-message").click();
       await page.getByTestId("live-trace-next").click();
@@ -133,7 +132,7 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
     name: "sequence dialog",
     scope: "sequence-dialog",
     open: async (page) => {
-      await page.goto(`./?view=canvas&example=${KAFKA}&live=1&speed=8`);
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&speed=8`);
       await page.getByTestId("live-more").click();
       await page.getByTestId("live-trace-message").click();
       await page.getByTestId("live-trace-next").click();
@@ -167,7 +166,7 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
     name: "Inputs & capacity panel",
     scope: "capacity-panel",
     open: async (page) => {
-      await page.goto(`./?view=canvas&example=${KAFKA}&live=1&paused=1&sim=black-friday`);
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1&sim=black-friday`);
       await page.getByTestId("live-capacity").click();
       await expect(page.getByTestId("capacity-rate-shopper")).toBeVisible();
     },

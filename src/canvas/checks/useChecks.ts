@@ -221,11 +221,11 @@ export function useChecks(opts: {
 }
 
 /**
- * Counts of the canvas's check runs (started on the main thread, finished with a result), and a switch that
- * holds them. Development and e2e builds put them on `window.__checks`, so a test can prove checks ran while it
- * measured, and compare the same typing with them held.
+ * Counts of the canvas's check runs (started on the main thread, finished with a result, or held: due while the
+ * switch held them), and the switch. Development and e2e builds put them on `window.__checks`, so a test can prove
+ * checks ran while it measured, and compare the same typing with them held, paced alike (a key once a run is due).
  */
-export const checkRunStats = { started: 0, finished: 0, held: false };
+export const checkRunStats = { started: 0, finished: 0, held: false, skipped: 0 };
 if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && typeof window !== "undefined")
   (window as unknown as { __checks: typeof checkRunStats }).__checks = checkRunStats;
 
@@ -242,7 +242,10 @@ export class CheckRuns {
     scheduler?: (task: () => Promise<void>) => CheckScheduler,
   ) {
     const task = async () => {
-      if (checkRunStats.held) return;
+      if (checkRunStats.held) {
+        checkRunStats.skipped++;
+        return;
+      }
       const gen = this.generation;
       const diagram = this.read();
       checkRunStats.started++;

@@ -485,6 +485,20 @@ test.describe("host-supplied embeds: timing and requests", () => {
     );
   const titled = (title: string) => ({ ...hostDiagram(), title });
 
+  test(
+    "the viewer says ready once, so the element loads its diagram once",
+    { tag: "@dev" },
+    async ({ page, baseURL, servers }) => {
+      // On the dev server, where React's StrictMode runs effects twice: the viewer said `ready` twice there, and the
+      // element, answering each with its current diagram (as a reloaded frame needs), loaded it twice (nightly #78).
+      test.slow();
+      await emptyHost(page, servers, baseURL ?? "");
+      expect(await loadVia(page, [titled("Once")])).toEqual(["loaded:Once"]);
+      // Both of a doubled `ready` come before the first `loaded`: the frame sends them as it starts.
+      expect(await events(page, "ready")).toHaveLength(1);
+    },
+  );
+
   test("commands sent right after loaded, before the live session is up, still apply", async ({
     page,
     baseURL,
@@ -597,11 +611,54 @@ test.describe("host-supplied embeds: timing and requests", () => {
     consoleErrors,
   }) => {
     test.slow();
+    // The host page's fetch of the held response, wrapped to say when the element is done with it: aborted (a newer
+    // load cancels it), or its body read to the end. Either way the element decides at once (in the same task), so
+    // anything that decision sends to the viewer goes before whatever the page sends next.
+    await page.addInitScript(() => {
+      if (window !== window.top) return;
+      const w = window as unknown as { __slowSettled: boolean };
+      w.__slowSettled = false;
+      const settled = () => void (w.__slowSettled = true);
+      const fetch0 = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input), location.href);
+        if (url.pathname !== "/api/diagrams/slow.json") return fetch0(input, init);
+        let res: Response;
+        try {
+          res = await fetch0(input, init);
+        } catch (e) {
+          settled();
+          throw e;
+        }
+        if (!res.body) {
+          settled();
+          return res;
+        }
+        const body = res.body.pipeThrough(new TransformStream({ flush: settled }));
+        return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
+      };
+    });
     const host = await emptyHost(page, servers, baseURL ?? "", `src-json="/api/diagrams/slow.json"`);
     // The fetch is held; the host supplies a newer diagram meanwhile.
     expect(await loadVia(page, [titled("Newer")])).toEqual(["loaded:Newer"]);
+    // What the viewer hears from here on.
+    const frame = await embedFrame(page);
+    await frame.evaluate((protocol) => {
+      const w = window as unknown as { __heard: string[] };
+      w.__heard = [];
+      window.addEventListener("message", (e: MessageEvent<{ protocol?: string; type?: string }>) => {
+        if (e.data?.protocol === protocol) w.__heard.push(String(e.data.type));
+      });
+    }, PROTOCOL);
     host.release();
-    await page.waitForTimeout(1500);
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __slowSettled: boolean }).__slowSettled))
+      .toBe(true);
+    // Then a command: the viewer hears it and nothing before it (the stale diagram, had it been sent, would be).
+    await call(page, "fit");
+    await expect
+      .poll(() => frame.evaluate(() => (window as unknown as { __heard: string[] }).__heard))
+      .toEqual(["fit"]);
     await expect(view(page).getByTestId("diagram-title")).toHaveText("Newer");
     expect((await events(page, "loaded")).map((e) => e.detail.title)).toEqual(["Newer"]);
 

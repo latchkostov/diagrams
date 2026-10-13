@@ -1,5 +1,13 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox, waitForStableViewport } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  pauseClock,
+  waitForStableBox,
+  waitForStableViewport,
+} from "./fixtures";
 
 // Editor UX: context menus, keyboard, undo / redo, clipboard, inspector, arrange.
 // Selectors are data-testid only. Uses the Kafka example (ids from src/examples/kafka-order-pipeline.json).
@@ -128,6 +136,39 @@ test.describe("editor", () => {
     await expect(page.getByTestId("context-menu")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("context-menu")).toHaveCount(0);
+  });
+
+  test("hovering a row the keys highlighted opens its submenu", async ({ page }) => {
+    await openCanvasMenu(page);
+    await page.keyboard.press("ArrowDown");
+    await expect(menuItem(page, "canvas.add-node")).toHaveAttribute("data-active", "true");
+    await menuItem(page, "canvas.add-node").hover();
+    await expect(page.getByTestId("context-menu-sub")).toBeVisible();
+  });
+
+  test("a submenu hover cut short by leaving quick-add starts again on the way back", async ({ page }) => {
+    // A page clock, paused below, holds the hover's delay (110 ms): the pointer leaves before it is up, by logic.
+    await page.clock.install();
+    await page.getByTestId("node-inventory").click();
+    await page.keyboard.press("Alt+ArrowRight");
+    const menu = page.getByTestId("quick-add");
+    await expect(menu).toBeVisible();
+    await waitForStableViewport(page);
+    const family = menu.getByTestId(/^context-menu-item-quick-add:cat:/).first();
+    const sub = page.getByTestId("quick-add-sub");
+    const wrap = await requiredBox(page.getByTestId("canvas-wrap"));
+    await pauseClock(page);
+    await family.hover();
+    await expect(family).toHaveAttribute("data-active", "true");
+    // Off the menu before the delay is up: no submenu, however long after. The search keeps its highlight.
+    await page.mouse.move(wrap.x + 20, wrap.y + 20);
+    await page.clock.runFor(1000);
+    await expect(sub).toHaveCount(0);
+    await expect(family).toHaveAttribute("data-active", "true");
+    // Back on the highlighted family: its delay starts again, and its submenu opens.
+    await family.hover();
+    await page.clock.runFor(200);
+    await expect(sub).toBeVisible();
   });
 
   test("rename a node from its context menu", async ({ page }) => {

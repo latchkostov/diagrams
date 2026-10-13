@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors } from "./fixtures";
+import { test, expect, expectNoErrors, gotoLive } from "./fixtures";
 
 // Record video captures the tab, so whatever the compositor shows is in the video, worker canvases
 // included. A real tab capture, accepted automatically (full Chromium's headless mode supports it).
@@ -34,8 +34,7 @@ async function goLive(page: Page, renderer: "worker" | "main") {
       return stream;
     };
   });
-  await page.goto(`./?view=canvas&example=${KAFKA}&live=1${renderer === "main" ? "&renderer=main" : ""}`);
-  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1${renderer === "main" ? "&renderer=main" : ""}`);
   await expect(canvas(page)).toHaveAttribute("data-renderer", renderer);
   await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(40);
 }

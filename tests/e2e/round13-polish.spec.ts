@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, waitForStableBox } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, pauseClock, waitForStableBox } from "./fixtures";
 import {
   callTool,
   installFakeLanguageModel,
@@ -175,7 +175,9 @@ test("an Undo toast goes because Ctrl+Z undoes, long before it would expire, and
   // A page clock (it runs in step with real time until paused), so the toast's expiry can be held off below.
   await page.clock.install();
   await gotoCanvas(page, KAFKA);
-  // Drag Payments service out of its boundary: the toast says so, with Undo.
+  // Drag Payments service out of its boundary: the toast says so, with Undo. (Once the opening fit has finished:
+  // measured while the view still moves, the drag starts beside the node and moves nothing.)
+  await waitForStableBox(page.getByTestId("node-payments"));
   const p = await box(page, "node-payments");
   expect(inside(centre(p), await box(page, "group-aks"))).toBe(true);
   await page.mouse.move(p.x + p.width / 2, p.y + p.height / 2);
@@ -186,7 +188,7 @@ test("an Undo toast goes because Ctrl+Z undoes, long before it would expire, and
   // An action toast lasts 6 s. Stop the page's clock at the drop, so its expiry can't fire however slow the run,
   // then move it on just enough for the edit to settle into the history (350 ms). The toast is still there,
   // frozen: if it goes after Ctrl+Z, Ctrl+Z took it. Logic, not a race against the 6 s.
-  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 50);
+  await pauseClock(page);
   await page.clock.runFor(500);
   await expect(page.getByTestId("membership-undo")).toBeVisible();
   await expect(page.getByTestId("toast")).toContainText("left AKS");

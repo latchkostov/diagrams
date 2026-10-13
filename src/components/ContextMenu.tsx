@@ -77,6 +77,9 @@ export function ContextMenu({
     typing.current = null;
     return t;
   }, []);
+  // The same anchor while the menu stays put: the list places itself whenever its anchor changes, so a new one on
+  // every render moved a searchable menu that typing had shortened (from under the pointer: nightly #78).
+  const anchor = useMemo(() => ({ x, y, flipX }), [x, y, flipX]);
 
   useEffect(() => {
     const previousFocus = invoker.current;
@@ -105,7 +108,7 @@ export function ContextMenu({
     <div ref={layer} className="cm-layer" data-editor-overlay onContextMenu={(e) => e.preventDefault()}>
       <MenuList
         items={items}
-        anchor={{ x, y, flipX }}
+        anchor={anchor}
         depth={0}
         searchable={searchable}
         takeTypeAhead={takeTypeAhead}
@@ -180,6 +183,12 @@ function MenuList(p: ListProps) {
   const [active, setActive] = useState(() => (p.activateFirst ? shown.findIndex(selectable) : -1));
   const [open, setOpen] = useState<{ index: number; anchor: Anchor; viaKeyboard: boolean } | null>(null);
   const hoverTimer = useRef<number | undefined>(undefined);
+  /**
+   * The row the pointer last moved onto (its item's id), apart from the highlight, which keys and the search move
+   * too: moving onto a row hovers it, highlighted already or not; moving within it doesn't start its delay again.
+   * Leaving the menu forgets it, so coming back hovers again.
+   */
+  const pointerOn = useRef<string | null>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Place once, against the full list, flipping / clamping at the viewport edges.
@@ -343,11 +352,19 @@ function MenuList(p: ListProps) {
 
   // Rows are memoized: moving the highlight re-renders the two rows that changed, not the menu.
   // Their callbacks are stable and reach the latest handlers through a ref.
-  const handlers = useRef({ hover, activate, onKeyDown });
+  /** The pointer moved on row `index`: hover it if it moved there from elsewhere. */
+  const pointerMove = (index: number) => {
+    const item = shown[index];
+    if (!selectable(item) || pointerOn.current === item.id) return;
+    pointerOn.current = item.id;
+    hover(index);
+  };
+
+  const handlers = useRef({ pointerMove, activate, onKeyDown });
   useLayoutEffect(() => {
-    handlers.current = { hover, activate, onKeyDown };
+    handlers.current = { pointerMove, activate, onKeyDown };
   });
-  const rowEnter = useCallback((i: number) => handlers.current.hover(i), []);
+  const rowEnter = useCallback((i: number) => handlers.current.pointerMove(i), []);
   const rowClick = useCallback((i: number) => handlers.current.activate(i, false), []);
   const rowKeyDown = useCallback((e: ReactKeyboardEvent) => handlers.current.onKeyDown(e), []);
   const rowRef = useCallback((i: number, el: HTMLDivElement | null) => {
@@ -377,7 +394,10 @@ function MenuList(p: ListProps) {
         onKeyDown={onKeyDown}
         onMouseLeave={() => {
           window.clearTimeout(hoverTimer.current);
-          if (!open) setActive(-1);
+          pointerOn.current = null;
+          // A search keeps its highlight: it is what Enter picks, and the pointer wandering off mustn't undo the
+          // typing (it did, and Enter in quick-add's search did nothing).
+          if (!open && !p.searchable) setActive(-1);
         }}
       >
         {p.searchable && (
@@ -489,7 +509,9 @@ const MenuRow = memo(function MenuRow({
       className={`cm-item${active ? " is-active" : ""}${n.disabled ? " is-disabled" : ""}${n.danger ? " is-danger" : ""}${open ? " is-open" : ""}`}
       data-testid={`context-menu-item-${n.id}`}
       data-active={active || undefined}
-      onMouseEnter={() => !n.disabled && onEnter(index)}
+      // The pointer moving on a row hovers it; a row arriving under a pointer at rest doesn't (mouseenter would:
+      // typing in quick-add's search slid another stencil under the pointer, and Enter added that one instead).
+      onMouseMove={() => !n.disabled && onEnter(index)}
       onMouseDown={(e) => e.preventDefault()}
       onKeyDown={onKeyDown}
       onClick={() => onClick(index)}

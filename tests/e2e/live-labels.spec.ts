@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, livePaint } from "./fixtures";
+import { test, expect, expectNoErrors, livePaint, gotoLive } from "./fixtures";
 
 // While live, edge label pills sit above the particles: busy edges stay readable. A dot passing
 // behind a pill is drawn dimmed on the overlay canvas, never at full strength over the text.
@@ -30,8 +30,7 @@ async function pillShot(page: Page): Promise<Buffer> {
 }
 
 test("edge label pills stay on top of the particles while live", async ({ page, consoleErrors }, testInfo) => {
-  await page.goto(`./?view=canvas&example=${SLUG}&live=1`);
-  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
   await expect(page.getByTestId(`edge-label-${EDGE}`)).toBeVisible();
   const play = page.getByTestId("live-play");
 
