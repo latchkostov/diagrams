@@ -945,8 +945,8 @@ stringData: { DB_HOST: db-b-from-secret }
 
     it("resolves a host with no Service through an index, in linear time", () => {
       // Host resolution on its own (WorkloadNames, which the reader asks for every host in every setting), so
-      // parsing and the rest of the import can't hide it. A scan of the workloads per host would be quadratic: 4x
-      // the workloads and hosts would take 16x as long. Compared against a quarter of the input, not a wall-clock
+      // parsing and the rest of the import can't hide it. A scan of the workloads per host would be quadratic: 8x
+      // the workloads and hosts would take 64x as long. Compared against an eighth of the input, not a wall-clock
       // budget, so a slow or busy machine (CI with coverage) doesn't fail it; the fastest of a few runs evens out
       // noise. Unresolved hosts are the worst case: every reading is tried and none is found.
       const fastest = (n: number) => {
@@ -965,9 +965,9 @@ stringData: { DB_HOST: db-b-from-secret }
         expect(names.resolve(`w${n - 1}.shop.svc`, "other", services)).toEqual([`w${n - 1}`]);
         return best;
       };
-      fastest(2_000); // warm up the JIT
-      const ratio = fastest(8_000) / fastest(2_000);
-      expect(ratio).toBeLessThan(8);
+      fastest(1_000); // warm up the JIT
+      const ratio = fastest(8_000) / fastest(1_000);
+      expect(ratio).toBeLessThan(24);
     });
   });
 

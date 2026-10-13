@@ -218,8 +218,8 @@ describe("batch 3 rules scale linearly", () => {
     return best;
   };
 
-  it("four times the diagram (375 to 1,500 nodes) takes about four times as long, never sixteen", () => {
-    const small = pipelines(25);
+  it("eight times the diagram (about 190 to 1,500 nodes) takes about eight times as long, never sixty-four", () => {
+    const small = pipelines(13);
     const big = pipelines(100);
     expect(big.nodes.length).toBe(1_501);
     const count = (d: DiagramFile) => {
@@ -235,8 +235,8 @@ describe("batch 3 rules scale linearly", () => {
       "single-point": 100,
     });
     const ratio = fastest(() => runChecks(big, { rules: RULES })) / fastest(() => runChecks(small, { rules: RULES }));
-    // Linear is 4; quadratic would be 16. The margin is for timer noise on small numbers.
-    expect(ratio).toBeLessThan(8);
+    // Linear is about 8; quadratic would be about 64. The margin is for timer noise (CI with coverage).
+    expect(ratio).toBeLessThan(24);
   });
 
   /** Half the nodes start a request into one shared chain made of the other half: one finding, many starts. */
@@ -276,12 +276,12 @@ describe("batch 3 rules scale linearly", () => {
       [sharedTail, "sync-chain"],
       [crowd, "entry-gateway"],
     ] as const) {
-      const small = build(376);
+      const small = build(188);
       const big = build(1_504);
       expect(runChecks(big, { rules: [rule] }).findings, rule).toHaveLength(1);
       const ratio =
         fastest(() => runChecks(big, { rules: [rule] })) / fastest(() => runChecks(small, { rules: [rule] }));
-      expect(ratio, rule).toBeLessThan(8);
+      expect(ratio, rule).toBeLessThan(24);
     }
   });
 });
@@ -352,8 +352,8 @@ describe("batch 4 rules scale linearly", () => {
     return () => rules.map((id) => RULE_BY_ID.get(id)!.detect(ctx));
   };
 
-  it("four times the diagram (375 to 1,500 nodes) takes about four times as long, never sixteen", () => {
-    const small = pipelines(25);
+  it("eight times the diagram (about 190 to 1,500 nodes) takes about eight times as long, never sixty-four", () => {
+    const small = pipelines(13);
     const big = pipelines(100);
     expect(big.nodes.length).toBe(1_500);
     const findings = runChecks(big, { rules: RULES }).findings;
@@ -363,8 +363,8 @@ describe("batch 4 rules scale linearly", () => {
     expect(findings[0].fix).toBeUndefined();
     expect(findings[1].title).toBe("200 services read secrets without an identity");
     const ratio = fastest(detect(big, RULES)) / fastest(detect(small, RULES));
-    // Linear is 4; quadratic would be 16. The margin is for timer noise on small numbers.
-    expect(ratio).toBeLessThan(8);
+    // Linear is about 8; quadratic would be about 64. The margin is for timer noise (CI with coverage).
+    expect(ratio).toBeLessThan(24);
   });
 
   /** Each rule on a diagram that's mostly what it reads: services reading vaults, or Avro topics and their clients. */
@@ -418,10 +418,10 @@ describe("batch 4 rules scale linearly", () => {
   });
 
   it.each(RULES)("%s stays linear on a diagram made mostly of what it reads", (rule) => {
-    const small = dense(rule, 375);
+    const small = dense(rule, 188);
     const big = dense(rule, 1_500);
     expect(runChecks(big, { rules: [rule] }).findings).toHaveLength(1);
     const ratio = fastest(detect(big, [rule])) / fastest(detect(small, [rule]));
-    expect(ratio, rule).toBeLessThan(8);
+    expect(ratio, rule).toBeLessThan(24);
   });
 });
