@@ -105,6 +105,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             to,
             kind: op.kind ?? "async",
             ...(op.label !== undefined ? { label: op.label } : {}),
+            ...(op.relation ? { relation: op.relation } : {}),
           });
           Object.assign(result, { id, from, to });
           break;

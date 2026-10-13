@@ -1,12 +1,22 @@
 // Pure TypeScript contract shared by the editor, tool adapters and Node consumers.
 import type { DiagramFile, DiagramGroup, MetricField } from "../model/types";
+import type { DependencyRelation } from "../model/relations";
 
 export type Ref = string;
 export type LayoutMode = "auto" | "full" | "none";
 export type NodeProps = Record<string, unknown>;
 export type DiagramOp =
   | { op: "add_node"; kind: string; label: string; sublabel?: string; key?: string; in?: Ref; props?: NodeProps }
-  | { op: "connect"; from: Ref; to: Ref; label?: string; kind?: "async" | "sync"; key?: string }
+  | {
+      op: "connect";
+      from: Ref;
+      to: Ref;
+      label?: string;
+      kind?: "async" | "sync";
+      /** Absent: a flow. Otherwise a dependency: drawn dotted, carries no traffic. */
+      relation?: DependencyRelation;
+      key?: string;
+    }
   | {
       op: "update";
       target: Ref;

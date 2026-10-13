@@ -2,6 +2,22 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Checks: secrets and schemas (2026-10)
+
+No habit changes: the count under the title still shows warnings only. Two more checks, in the **Checks card**:
+
+- **{n} services read secrets without an identity** (a suggestion, once per diagram): services with a Secret
+  dependency on Key Vault, Secrets Manager, Secret Manager or Vault, and no Identity dependency. The fix, **Add a
+  managed identity** (an IAM role on AWS, a service account on Google Cloud), adds one identity and connects each
+  service to it; **One for each service** gives each its own. It stays quiet where the diagram already says how they
+  sign in ("managed identity" on the vault, say), and for Vault read by services on no cloud.
+- **Avro on {topic}, but no schema registry** (a warning): a Kafka topic whose content type or label says Avro or
+  Protobuf, in a diagram with no schema registry. **Add Schema Registry** adds one with a Depends on from each producer
+  and consumer. AsyncAPI imports already add the registry, so they're flagged only if it's taken out.
+- Both fixes only add: dependencies carry no traffic, so the simulation plays exactly as before.
+- Agents' `edit_diagram` can now draw a dependency: `connect` takes an optional `relation` (`secret`, `identity`,
+  `config`, `telemetry`, `deploy`, `depends`). Without it, a connection is a flow, as before.
+
 ## Ids: one per element, so edits never hit the wrong thing (2026-10)
 
 No habit changes. A fix for files that give two elements one id, usually a node and a connection (hand- or

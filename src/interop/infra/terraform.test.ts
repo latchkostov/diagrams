@@ -1171,11 +1171,11 @@ describe("Terraform import: review findings", () => {
       }
       return best;
     };
-    const small = plan(500);
+    const small = plan(250);
     const large = plan(2_000);
     fastest(small);
-    // Once per role and secret: 4x the policies and users is about 4x the work, never 16x.
-    expect(fastest(large) / fastest(small)).toBeLessThan(8);
+    // Once per role and secret: 8x the policies and users is about 8x the work, never 64x.
+    expect(fastest(large) / fastest(small)).toBeLessThan(24);
     const g = readTerraform([{ name: "grants.json", text: large }]);
     expect(g.links.filter((l) => l.relation === "secret")).toHaveLength(2_000);
     expect(g.notDrawn).toEqual([]);

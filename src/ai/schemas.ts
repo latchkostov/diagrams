@@ -1,6 +1,7 @@
 // JSON Schema draft 2020-12. Shared by paste, WebMCP and static schema generation.
 import { aiNodePropsSchema, simPropsPatchSchema } from "../model/simProps";
 import { CHECK_RULES } from "../model/checks";
+import { DEPENDENCY_RELATIONS } from "../model/relations";
 export type { JsonSchema } from "../model/jsonSchema";
 import type { JsonSchema } from "../model/jsonSchema";
 /** An agent's note for the person, on every tool that changes the diagram: shown with the change. */
@@ -63,7 +64,7 @@ export const check_diagramSchema: JsonSchema = {
         items: { type: "string", enum: [...CHECK_RULES] },
         maxItems: CHECK_RULES.length,
         description:
-          "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), sync-chain (requests chained too deep), shared-database (a service uses another's database), entry-gateway (a client goes around the gateway), capacity (a service can't keep up at the diagram's rates), single-point (every request goes through one replica).",
+          "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), sync-chain (requests chained too deep), shared-database (a service uses another's database), entry-gateway (a client goes around the gateway), capacity (a service can't keep up at the diagram's rates), single-point (every request goes through one replica), secret-identity (services read secrets without an identity), schema-registry (Avro or Protobuf on Kafka without a schema registry).",
       },
       include: {
         type: "string",
@@ -171,6 +172,12 @@ export const edit_diagramSchema: JsonSchema = {
                   enum: ["async", "sync"],
                   default: "async",
                   description: "async = messages/events; sync = request/response, writes to a database.",
+                },
+                relation: {
+                  type: "string",
+                  enum: DEPENDENCY_RELATIONS,
+                  description:
+                    "Leave out for a flow. A dependency instead (dotted, carries no traffic): secret, identity, config, telemetry, deploy or depends, e.g. a service -> Key Vault is secret.",
                 },
                 key: {
                   type: "string",

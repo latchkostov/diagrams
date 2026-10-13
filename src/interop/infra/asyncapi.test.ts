@@ -9,6 +9,8 @@ import { importAsyncApi } from "./pipeline";
 import { createSimulationRun } from "../../sim/simulation";
 import { perfBudget } from "../../test/perfBudget";
 import { Refs } from "./asyncapiRefs";
+import { runChecks } from "../../checks/run";
+import { applyOps } from "../../ai";
 
 // AsyncAPI 2.x and 3.x import against the self-written fixtures (tests/fixtures/imports/asyncapi and hostile),
 // as docs/research/imports.md § Mapping: AsyncAPI describes them.
@@ -552,5 +554,62 @@ ${many}
 operations: { s: { action: send, channel: { $ref: "#/channels/c" } } }
 `;
     expect(() => importAsyncApi([doc("enum.yaml", text)])).not.toThrow();
+  });
+});
+
+describe("AsyncAPI import: schema formats for the schema-registry check", () => {
+  /** One Kafka app sending and one receiving on payments.v1, the message described by `message`. */
+  const docs = (message: string) =>
+    ["send", "receive"].map((action) => ({
+      name: `${action}.yaml`,
+      text: `asyncapi: 3.0.0
+info: { title: ${action === "send" ? "Payments" : "Ledger"}, version: "1" }
+servers: { main: { host: "kafka.internal:9092", protocol: kafka } }
+channels: { payments: { address: payments.v1, messages: { PaymentTaken: ${message} } } }
+operations: { op: { action: ${action}, channel: { $ref: "#/channels/payments" } } }
+`,
+    }));
+
+  it("writes the channel's contentType from a message's content type or its payload's schema format", () => {
+    const protobuf = ok(importAsyncApi(docs(`{ name: PaymentTaken, contentType: application/x-protobuf }`)));
+    expect(node(protobuf.diagram, "topic-payments.v1")?.props).toEqual({ contentType: "application/x-protobuf" });
+    const avro = ok(
+      importAsyncApi(
+        docs(
+          `{ name: PaymentTaken, payload: { schemaFormat: "application/vnd.apache.avro+json;version=1.9.0", schema: { type: record, name: P, fields: [] } } }`,
+        ),
+      ),
+    );
+    expect(node(avro.diagram, "topic-payments.v1")?.props).toEqual({ contentType: "application/vnd.apache.avro+json" });
+    const json = ok(importAsyncApi(docs(`{ name: PaymentTaken, contentType: application/json }`)));
+    expect(node(json.diagram, "topic-payments.v1")?.props).toBeUndefined();
+  });
+
+  it("the import's own registry keeps the check quiet; without it, the check warns from contentType and adds one", () => {
+    const { diagram: d } = ok(importAsyncApi(docs(`{ name: PaymentTaken, contentType: application/x-protobuf }`)));
+    const registry = d.nodes.find((n) => n.stencil === "kafka.schema-registry")!;
+    expect(registry).toBeDefined();
+    expect(runChecks(d, { rules: ["schema-registry"] }).findings).toEqual([]);
+    // Taken out by hand: the topic's contentType is what the check reads (its label says nothing of Protobuf).
+    const without: DiagramFile = {
+      ...d,
+      nodes: d.nodes.filter((n) => n !== registry),
+      edges: d.edges.filter((e) => e.from !== registry.id && e.to !== registry.id),
+    };
+    const [finding] = runChecks(without, { rules: ["schema-registry"] }).findings;
+    expect(finding).toMatchObject({
+      id: "schema-registry:topic-payments.v1",
+      severity: "warning",
+      title: "Protobuf on payments.v1, but no schema registry",
+    });
+    const fixed = applyOps(without, finding.fix!.ops!);
+    expect(fixed.errors).toEqual([]);
+    expect(
+      fixed.diagram.edges
+        .filter((e) => relationOf(e) === "depends")
+        .map((e) => e.from)
+        .sort(),
+    ).toEqual(["ledger", "payments"]);
+    expect(runChecks(fixed.diagram, { rules: ["schema-registry"] }).findings).toEqual([]);
   });
 });

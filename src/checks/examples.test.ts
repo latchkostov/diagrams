@@ -2,12 +2,16 @@ import { describe, expect, it } from "vitest";
 import { applyOps } from "../ai";
 import type { DiagramFile } from "../model/types";
 import { perfBudget } from "../test/perfBudget";
-import { runChecks } from "./run";
+import { RULES as ALL_RULES, runChecks } from "./run";
+import { buildContext } from "./context";
+
+const RULE_BY_ID = new Map(ALL_RULES.map((r) => [r.id, r]));
 
 // The regression snapshot over the 16 public examples (top level only; never ./private). Each finding here
-// was judged in docs/research/architecture-checks.md ("Batch 1: precision gate", "Batch 3: precision gate"); a
-// change to this list is a change to those tables. The batch 3 rules (sync-chain, shared-database,
-// entry-gateway, single-point) raise nothing on them, by the gate's tightening.
+// was judged in docs/research/architecture-checks.md ("Batch 1: precision gate", "Batch 3: precision gate",
+// "Batch 4: precision gate"); a change to this list is a change to those tables. The batch 3 rules (sync-chain,
+// shared-database, entry-gateway, single-point) raise nothing on them, by the gate's tightening; of batch 4's,
+// secret-identity raises one (notification-fanout) and schema-registry none.
 
 const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: true, import: "default" });
 const bySlug = Object.fromEntries(
@@ -35,6 +39,7 @@ const EXPECTED: Record<string, string[]> = {
     "suggestion dead-letter:email-q",
     "suggestion dead-letter:sms-q",
     "suggestion dead-letter:push-q",
+    "suggestion secret-identity:key-vault",
   ],
   "outbox-saga-checkout": ["suggestion no-reader:payments-dlq"],
   "rag-assistant": ["suggestion dead-letter:ingest-q"],
@@ -213,8 +218,8 @@ describe("batch 3 rules scale linearly", () => {
     return best;
   };
 
-  it("four times the diagram (375 to 1,500 nodes) takes about four times as long, never sixteen", () => {
-    const small = pipelines(25);
+  it("eight times the diagram (about 190 to 1,500 nodes) takes about eight times as long, never sixty-four", () => {
+    const small = pipelines(13);
     const big = pipelines(100);
     expect(big.nodes.length).toBe(1_501);
     const count = (d: DiagramFile) => {
@@ -230,8 +235,8 @@ describe("batch 3 rules scale linearly", () => {
       "single-point": 100,
     });
     const ratio = fastest(() => runChecks(big, { rules: RULES })) / fastest(() => runChecks(small, { rules: RULES }));
-    // Linear is 4; quadratic would be 16. The margin is for timer noise on small numbers.
-    expect(ratio).toBeLessThan(8);
+    // Linear is about 8; quadratic would be about 64. The margin is for timer noise (CI with coverage).
+    expect(ratio).toBeLessThan(24);
   });
 
   /** Half the nodes start a request into one shared chain made of the other half: one finding, many starts. */
@@ -271,12 +276,152 @@ describe("batch 3 rules scale linearly", () => {
       [sharedTail, "sync-chain"],
       [crowd, "entry-gateway"],
     ] as const) {
-      const small = build(376);
+      const small = build(188);
       const big = build(1_504);
       expect(runChecks(big, { rules: [rule] }).findings, rule).toHaveLength(1);
       const ratio =
         fastest(() => runChecks(big, { rules: [rule] })) / fastest(() => runChecks(small, { rules: [rule] }));
-      expect(ratio, rule).toBeLessThan(8);
+      expect(ratio, rule).toBeLessThan(24);
     }
+  });
+});
+
+describe("batch 4 rules scale linearly", () => {
+  const RULES = ["secret-identity", "schema-registry"] as const;
+  /**
+   * `n` pipelines of 15 nodes, all feeding both findings: three Azure services reading one Key Vault each (one
+   * with an identity already, one with two vaults), an Avro topic and a Protobuf topic with two producers and
+   * three consumers, a config store with a secret reference, and a few bystanders.
+   */
+  function pipelines(n: number): DiagramFile {
+    const nodes: DiagramFile["nodes"] = [];
+    const edges: DiagramFile["edges"] = [];
+    const flow = (from: string, to: string) => edges.push({ id: `${from}-${to}`, from, to, kind: "async" });
+    const dep = (from: string, to: string, relation: "secret" | "identity" | "config") =>
+      edges.push({ id: `${from}-${to}`, from, to, relation });
+    for (let p = 0; p < n; p++) {
+      const id = (name: string) => `${name}${p}`;
+      const at = (i: number) => ({ x: i * 300, y: p * 200 });
+      const add = (name: string, stencil: string, i: number, extra: Partial<DiagramFile["nodes"][number]> = {}) =>
+        nodes.push({ id: id(name), stencil, label: `${name} ${p}`, ...at(i), ...extra });
+      add("fn", "azure.functions", 0);
+      add("app", "azure.container-apps", 1);
+      add("api", "azure.app-service", 2);
+      add("kv", "azure.key-vault", 3);
+      add("kv2-", "azure.key-vault", 4);
+      add("mi", "azure.managed-identity", 5);
+      add("cfg", "azure.app-config", 6);
+      add("orders", "kafka.topic", 7, { props: { contentType: "application/vnd.apache.avro" } });
+      add("events", "kafka.topic", 8, { sublabel: "Protobuf" });
+      add("w1-", "service.java", 9);
+      add("w2-", "service.go", 10);
+      add("r1-", "service.node", 11);
+      add("r2-", "service.python", 12);
+      add("r3-", "kafka.connect", 13);
+      add("db", "postgres", 14);
+      dep(id("fn"), id("kv"), "secret");
+      dep(id("app"), id("kv"), "secret");
+      dep(id("app"), id("kv2-"), "secret");
+      dep(id("api"), id("kv"), "secret");
+      dep(id("api"), id("mi"), "identity");
+      dep(id("cfg"), id("kv"), "secret");
+      dep(id("api"), id("cfg"), "config");
+      flow(id("w1-"), id("orders"));
+      flow(id("w2-"), id("events"));
+      flow(id("orders"), id("r1-"));
+      flow(id("orders"), id("r2-"));
+      flow(id("events"), id("r3-"));
+      flow(id("r3-"), id("db"));
+    }
+    return { format: "diagrams/v1", title: "Big", nodes, edges };
+  }
+  /** The fastest of a few runs (after a warm-up): the ratio guards complexity, not a busy machine. */
+  const fastest = (run: () => unknown) => {
+    run();
+    let best = Infinity;
+    for (let i = 0; i < 7; i++) {
+      const start = performance.now();
+      run();
+      best = Math.min(best, performance.now() - start);
+    }
+    return best;
+  };
+  /** The rules alone, on a context built beforehand: the shared context is linear and would hide a rule's cost. */
+  const detect = (d: DiagramFile, rules: readonly (typeof RULES)[number][]) => {
+    const ctx = buildContext(d);
+    return () => rules.map((id) => RULE_BY_ID.get(id)!.detect(ctx));
+  };
+
+  it("eight times the diagram (about 190 to 1,500 nodes) takes about eight times as long, never sixty-four", () => {
+    const small = pipelines(13);
+    const big = pipelines(100);
+    expect(big.nodes.length).toBe(1_500);
+    const findings = runChecks(big, { rules: RULES }).findings;
+    // One aggregated finding each, naming every service and topic.
+    expect(findings.map((f) => f.id)).toEqual(["schema-registry:orders0", "secret-identity:kv0"]);
+    expect(findings[0].elements).toHaveLength(700);
+    expect(findings[0].fix).toBeUndefined();
+    expect(findings[1].title).toBe("200 services read secrets without an identity");
+    const ratio = fastest(detect(big, RULES)) / fastest(detect(small, RULES));
+    // Linear is about 8; quadratic would be about 64. The margin is for timer noise (CI with coverage).
+    expect(ratio).toBeLessThan(24);
+  });
+
+  /** Each rule on a diagram that's mostly what it reads: services reading vaults, or Avro topics and their clients. */
+  function dense(rule: (typeof RULES)[number], n: number): DiagramFile {
+    const nodes: DiagramFile["nodes"] = [];
+    const edges: DiagramFile["edges"] = [];
+    const groups: NonNullable<DiagramFile["groups"]> = [];
+    for (let p = 0; nodes.length < n; p++) {
+      const at = (i: number) => ({ x: i * 300, y: p * 200 });
+      if (rule === "secret-identity") {
+        nodes.push({ id: `kv${p}`, stencil: "azure.key-vault", label: `Vault ${p}`, ...at(0) });
+        // Each function in a boundary of its own: where a fix puts each one's identity is looked up per service.
+        for (let i = 1; i < 5; i++) {
+          const group = `g${p}-${i}`;
+          groups.push({ id: group, label: `App ${p}.${i}`, ...at(i), width: 280, height: 140 });
+          nodes.push({ id: `fn${p}-${i}`, stencil: "azure.functions", label: `Function ${p}.${i}`, group, ...at(i) });
+          edges.push({ id: `s${p}-${i}`, from: `fn${p}-${i}`, to: `kv${p}`, relation: "secret" });
+        }
+      } else {
+        nodes.push({ id: `w${p}`, stencil: "service.java", label: `Writer ${p}`, ...at(0) });
+        nodes.push({ id: `r${p}`, stencil: "service.go", label: `Reader ${p}`, ...at(1) });
+        for (let i = 1; i < 14; i++) {
+          nodes.push({
+            id: `t${p}-${i}`,
+            stencil: "kafka.topic",
+            label: `topic ${p}.${i}`,
+            sublabel: "Avro",
+            ...at(i),
+          });
+          edges.push({ id: `w${p}-${i}`, from: `w${p}`, to: `t${p}-${i}`, kind: "async" });
+          edges.push({ id: `r${p}-${i}`, from: `t${p}-${i}`, to: `r${p}`, kind: "async" });
+        }
+      }
+    }
+    return { format: "diagrams/v1", title: "Dense", nodes, edges, groups };
+  }
+
+  it.each(RULES)("%s reads each boundary a bounded number of times, however many there are", (rule) => {
+    // A scan of every boundary per service is quadratic, yet too cheap to show in a timing ratio at 1,500 nodes:
+    // count the reads instead.
+    const d = dense(rule, 1_500);
+    let reads = 0;
+    d.groups = new Proxy(d.groups!, {
+      get(target, key, receiver) {
+        if (typeof key === "string" && /^\d+$/.test(key)) reads++;
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    expect(runChecks(d, { rules: [rule] }).findings).toHaveLength(1);
+    expect(reads).toBeLessThanOrEqual(10 * Math.max(d.groups.length, 1));
+  });
+
+  it.each(RULES)("%s stays linear on a diagram made mostly of what it reads", (rule) => {
+    const small = dense(rule, 188);
+    const big = dense(rule, 1_500);
+    expect(runChecks(big, { rules: [rule] }).findings).toHaveLength(1);
+    const ratio = fastest(detect(big, [rule])) / fastest(detect(small, [rule]));
+    expect(ratio, rule).toBeLessThan(24);
   });
 });

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 
-// The batch 3 checks in the Checks card (docs/research/architecture-checks.md, "Batch 3"): a service using
+// The batch 3 and 4 checks in the Checks card (docs/research/architecture-checks.md, "Batch 3"): a service using
 // another's database (a warning, fixed by asking the owner) and a client going around the gateway (a suggestion,
 // with other gateways as chips). The fixture is tests/fixtures/checks/checkout-shortcuts.diagram.json.
 // data-testid only.
@@ -91,5 +91,82 @@ test("a client going around the gateway: the fix goes through it, a chip adds an
   await expect(bypass).toHaveCount(0);
   await expect(page.getByTestId("edge-app-orders")).toHaveCount(0);
   expect(await nodes.count()).toBe(before);
+  expectNoErrors(consoleErrors);
+});
+
+// Batch 4 (docs/research/architecture-checks.md, "Batch 4"): Avro on Kafka with no schema registry (a warning) and
+// services reading Key Vault without an identity (a suggestion, with one identity per service as a chip). The
+// fixture is tests/fixtures/checks/payments-ledger.diagram.json.
+const LEDGER = readFileSync(new URL("../fixtures/checks/payments-ledger.diagram.json", import.meta.url));
+const REGISTRY = "schema-registry:payments";
+const IDENTITY = "secret-identity:kv";
+
+async function openLedger(page: Page) {
+  await gotoCanvas(page, "aks-app-config-key-vault");
+  await page.getByTestId("import-input").setInputFiles({
+    name: "payments-ledger.diagram.json",
+    mimeType: "application/json",
+    buffer: LEDGER,
+  });
+  await expect(page.getByTestId("diagram-title")).toHaveText("Payments ledger");
+  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await page.getByTestId("checks-count").click();
+  await expect(card(page)).toBeVisible();
+  await expect(page.getByTestId("checks-summary")).toHaveText("1 warning · 1 suggestion");
+}
+
+test("Avro without a schema registry: Add Schema Registry, in one undo step", async ({ page, consoleErrors }) => {
+  await openLedger(page);
+  const warning = row(page, REGISTRY);
+  await expect(warning).toHaveAttribute("data-severity", "warning");
+  await expect(warning).toContainText("Avro on payments.v1, but no schema registry");
+  await expect(warning).toContainText("Payments API writes it and Ledger writer reads it");
+  await expect(page.getByTestId("check-marker-payments")).toHaveAttribute("data-severity", "warning");
+
+  const nodes = page.getByTestId(/^node-(?!tooltip$|editor-)/);
+  const before = await nodes.count();
+  await page.getByTestId(`check-fix-${REGISTRY}`).click();
+  await expect(page.getByTestId("toast")).toContainText("Added Schema Registry");
+  await expect.poll(() => nodes.count()).toBe(before + 1);
+  await expect(warning).toHaveCount(0);
+  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  // The flow is as it was: the topic still feeds the ledger writer.
+  await expect(page.getByTestId("edge-payments-ledger")).toHaveCount(1);
+
+  await page.getByTestId("check-fix-undo").click();
+  await expect.poll(() => nodes.count()).toBe(before);
+  await expect(warning).toBeVisible();
+  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  expectNoErrors(consoleErrors);
+});
+
+test("services reading secrets without an identity: a chip gives each its own, from the keyboard", async ({
+  page,
+  consoleErrors,
+}) => {
+  await openLedger(page);
+  const suggestion = row(page, IDENTITY);
+  await expect(suggestion).toHaveAttribute("data-severity", "suggestion");
+  await expect(suggestion).toContainText("2 services read secrets without an identity");
+  await expect(page.getByTestId(`check-fix-${IDENTITY}`)).toHaveText(/Add a managed identity/);
+  await expect(page.getByTestId(`check-fix-option-0-${IDENTITY}`)).toHaveText("One for each service");
+
+  const nodes = page.getByTestId(/^node-(?!tooltip$|editor-)/);
+  const before = await nodes.count();
+  await page.getByTestId(`check-fix-option-0-${IDENTITY}`).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("toast")).toContainText("Added Payments API identity, Ledger writer identity");
+  await expect.poll(() => nodes.count()).toBe(before + 2);
+  await expect(suggestion).toHaveCount(0);
+  // Focus moves on to the finding that's left, never to the page.
+  await expect(page.getByTestId(`check-select-${REGISTRY}`)).toBeFocused();
+
+  // Undo, then the button: one shared identity.
+  await page.getByTestId("check-fix-undo").click();
+  await expect.poll(() => nodes.count()).toBe(before);
+  await page.getByTestId(`check-fix-${IDENTITY}`).click();
+  await expect(page.getByTestId("toast")).toContainText("Added Managed Identity");
+  await expect.poll(() => nodes.count()).toBe(before + 1);
+  await expect(suggestion).toHaveCount(0);
   expectNoErrors(consoleErrors);
 });
