@@ -279,8 +279,9 @@ reading its events; the viewer harming the host page.
   else, and the viewer never fetches the diagram: the host page does, then posts it. The frame keeps it in memory
   only (not in `localStorage`, `sessionStorage` or IndexedDB) and marks it private (`"private": true`), so no
   share link, no embed code and no "Open in Live Diagrams" copy is ever made from it. The only link out is a plain
-  "Made with Live Diagrams" to the site. Embeds have no AI panel and no WebMCP tools. The frame's CSP keeps
-  `connect-src 'self'` plus the storage providers (none of which an embed calls).
+  "Made with Live Diagrams" to the site. Embeds have no AI panel and no WebMCP tools. The frame's CSP allows
+  this site only (`script-src`, `connect-src` and `frame-src 'self'`): no storage provider's script, frame or endpoint,
+  none of which an embed uses.
 - **`hostOrigin` locks the origin, from the URL, for the whole session.** We chose the URL parameter over "the first
   valid `load` locks it":
   - the viewer can announce `ready` to an exact origin: it never needs `postMessage(…, "*")`, not even once;

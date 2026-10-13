@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { catalog } from "../stencils/catalog";
 import { flatten, MAX_RESULTS, parseQuery, rank, recencyBoost, type Command } from "./rank";
 import { stencilScore } from "./sources";
-import { withRecentCommand } from "./recent";
+import { rememberable, withRecentCommand } from "./recent";
 
 const action = (id: string, label: string, extra: Partial<Command> = {}): Command => ({
   id: `action:${id}`,
@@ -118,5 +118,12 @@ describe("palette ranking", () => {
   it("keeps the recent list de-duplicated and capped", () => {
     expect(withRecentCommand(["a", "b", "c"], "b")).toEqual(["b", "a", "c"]);
     expect(withRecentCommand(["a", "b", "c"], "d", 3)).toEqual(["d", "a", "b"]);
+  });
+
+  it("never remembers a private diagram's nodes or simulations (their ids are its words)", () => {
+    expect(rememberable("node:payroll-ledger", true)).toBe(false);
+    expect(rememberable("sim:storm-payroll-ledger", true)).toBe(false);
+    expect(rememberable("action:export:drawio", true)).toBe(true);
+    expect(rememberable("node:payroll-ledger", false)).toBe(true);
   });
 });

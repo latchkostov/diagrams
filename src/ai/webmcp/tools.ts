@@ -246,6 +246,7 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
     async new_diagram(input) {
       checkSchema(input, toolSchemas.new_diagram);
       const { title, direction } = input as { title?: string; direction?: "LR" | "TB" };
+      if (host.canUseAi?.() === false) throw new Error(LOCAL_ONLY_MESSAGE);
       const editor = await host.newDiagram({ title, direction });
       if (!editor) throw new Error("The new diagram didn't open. Try again.");
       if (host.canUseAi?.() === false) throw new Error(LOCAL_ONLY_MESSAGE);

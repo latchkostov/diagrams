@@ -120,7 +120,10 @@
       <ul>
         <li>
           Diagrams you make or open are kept in your browser's local storage on your device. They're never uploaded
-          to us. Delete one in <em>Your diagrams</em>, or clear the site's data in your browser to delete them all.
+          to us. Delete one in <em>Your diagrams</em> (its AI conversation goes with it), or delete everything with
+          File → Privacy → <em>Clear everything on this device…</em>: every diagram, your edits to examples, AI
+          conversations and settings that Live Diagrams keeps in this browser. Files you saved or exported stay where
+          they are.
         </li>
         <li>
           <strong>Save</strong> and <strong>Open</strong> use files on your device, which only your browser touches.
@@ -136,7 +139,8 @@
           <strong>Interactive HTML with a password</strong> (<em>Require a password</em> in the same dialog) encrypts
           everything in the file that belongs to the diagram (its title, labels, notes, simulations and banner) the
           same way as a link with a password, below. The file's page title says only "Diagram (password
-          protected)", and its name adds a few random letters. Opening it asks for the password and decrypts in the browser, offline; the password is never
+          protected)", even once it's open (browsers keep page titles in their history), and its name adds a few
+          random letters. Opening it asks for the password and decrypts in the browser, offline; the password is never
           stored or sent anywhere, and it can't be recovered, so a lost password means exporting again. Anyone with the
           file and the password can open it, so send the password separately.
         </li>
@@ -144,7 +148,8 @@
           <strong>Share links</strong> carry the diagram inside the link, after the <code>#</code>. Browsers never send
           that part to a server, so the diagram travels only to whoever you send the link to. Anyone who has the
           link can open the diagram, and chats and email keep it, so use a link with a password for anything
-          internal.
+          internal. Opening a link takes the diagram out of the address bar, but your browser's history (and any
+          history sync) may still list the link as it was first visited.
         </li>
         <li>
           <strong>Links with a password</strong> (File → Copy link with password…) carry the diagram encrypted
@@ -166,7 +171,9 @@
           <strong>AI features</strong> act only when you use them. Chrome's built-in model runs on your device. An AI
           agent in your browser, or a chatbot you paste a prompt into, sees a diagram only when you ask it to; that's
           your own tool, under its own terms. Live Diagrams never sends your diagrams to an AI service itself, and never
-          uses them to train AI models.
+          uses them to train AI models. <strong>Dictation</strong> (the mic) uses your browser's own speech
+          recognition: in Chrome that's usually Google's speech service, which receives the audio, unless the browser
+          can recognise speech on the device. The first time it uses the service, the app says so.
         </li>
       </ul>
 
@@ -178,10 +185,14 @@
       </p>
       <ul>
         <li>
-          can't be shared as a link or embedded by link, so it never ends up in a URL, a chat or your browser history.
-          It can still be embedded in your own app the private way, where your page supplies it (see above);
+          can't be shared as a link or embedded by link, so it never ends up in a URL, a chat or your browser history
+          (its simulations' names stay out of the address bar too, and a link made some other way won't show in an
+          embed). It can still be embedded in your own app the private way, where your page supplies it (see above);
         </li>
-        <li>isn't saved to Google Drive, OneDrive or Dropbox;</li>
+        <li>
+          isn't saved to Google Drive, OneDrive or Dropbox, and Google's scripts aren't loaded for it: opening the File
+          menu while it's open loads nothing from Google;
+        </li>
         <li>
           is off-limits to AI: the page offers no tools to AI agents while it's open, and Copy for AI and copied
           prompts are off. Chrome's built-in model runs on your device, so you can allow it for a private diagram;
@@ -233,7 +244,7 @@
       <h2 id="cloud-storage">Cloud storage (only if you choose it)</h2>
       <p>
         Where the File menu offers Google Drive, OneDrive or Dropbox, you can save to and open from your own account
-        there. Nothing is contacted until you pick one. For all three:
+        there. Nothing of your diagrams is sent to one until you pick it. For all three:
       </p>
       <ul>
         <li>You sign in on the provider's own page, in a pop-up. Live Diagrams never sees your password.</li>
@@ -270,7 +281,8 @@
         <li>
           <strong>Where it goes.</strong> File contents go directly between your browser and Google's servers. Nothing
           goes through our servers; we have none. Opening the File menu where Google Drive is offered loads Google's
-          sign-in and picker scripts from Google, so a click can open them straight away; Google's own
+          sign-in and picker scripts from Google, so a click can open them straight away (not while a private diagram
+          is open: then they load only if you choose Open from → Google Drive); Google's own
           <a href="https://policies.google.com/privacy">privacy policy</a> covers what Google receives.
         </li>
         <li>

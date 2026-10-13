@@ -52,6 +52,11 @@ export const testProvider: StorageProvider<Ref> = {
   icon: "stack",
   folder: "this browser (testing only)",
   isConfigured: () => true,
+  // Counts the File menu's warm-ups, as Google Drive's loads its scripts then (tests/e2e/privacy-audit.spec.ts).
+  preload: () => {
+    const w = window as { __testStoragePreloads?: number };
+    w.__testStoragePreloads = (w.__testStoragePreloads ?? 0) + 1;
+  },
   signIn: async () => {
     signedIn = true;
   },

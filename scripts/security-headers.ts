@@ -59,16 +59,19 @@ const DROPBOX = {
 export const PROVIDER_CONNECT = [...GOOGLE.connect, ...MICROSOFT.connect, ...DROPBOX.connect];
 
 export function cspDirectives({ embed }: { embed: boolean }): [string, string[]][] {
+  // An embed (a link's, an example's or one its host page supplies) never saves, opens or signs in anywhere: it
+  // talks to this site only, so no storage provider's script, frame or endpoint is allowed in it.
+  const providers = <T>(list: readonly T[]): T[] => (embed ? [] : [...list]);
   return [
     ["default-src", ["'self'"]],
-    ["script-src", ["'self'", ...GOOGLE.script]],
-    ["style-src", ["'self'", "'unsafe-inline'", ...GOOGLE.style]],
+    ["script-src", ["'self'", ...providers(GOOGLE.script)]],
+    ["style-src", ["'self'", "'unsafe-inline'", ...providers(GOOGLE.style)]],
     ["img-src", ["'self'", "data:", "blob:"]],
     ["font-src", ["'self'", "data:"]],
-    ["connect-src", ["'self'", ...PROVIDER_CONNECT]],
+    ["connect-src", ["'self'", ...providers(PROVIDER_CONNECT)]],
     ["media-src", ["'self'", "blob:"]],
     ["worker-src", ["'self'"]],
-    ["frame-src", ["'self'", ...GOOGLE.frame]],
+    ["frame-src", ["'self'", ...providers(GOOGLE.frame)]],
     ["frame-ancestors", [embed ? "*" : "'self'"]],
     ["form-action", ["'self'"]],
     ["base-uri", ["'self'"]],

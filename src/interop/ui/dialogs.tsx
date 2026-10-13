@@ -761,6 +761,55 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
   );
 }
 
+/**
+ * File ▸ Privacy ▸ Clear everything on this device…: says what goes and what stays, then clears and starts over.
+ * Cancel is the default button.
+ */
+export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const clear = async () => {
+    setBusy(true);
+    const { clearDevice } = await import("../../lib/clearDevice");
+    clearDevice();
+  };
+  return (
+    <Dialog
+      title="Clear everything on this device?"
+      subtitle="Live Diagrams forgets everything it keeps in this browser, then starts over."
+      icon={<Glyph name="alert" />}
+      onClose={onClose}
+      testId="clear-device-dialog"
+      width={480}
+      footer={
+        <>
+          <span className="ix-grow" />
+          <button
+            className="btn btn-danger"
+            onClick={() => void clear()}
+            disabled={busy}
+            data-testid="clear-device-confirm"
+          >
+            Clear everything
+          </button>
+          <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="clear-device-cancel">
+            Cancel
+          </button>
+        </>
+      }
+    >
+      <ul className="ix-privacy-list" data-testid="clear-device-list">
+        <li>Every diagram in Your diagrams, private ones included, and your edits to examples</li>
+        <li>A diagram opened from a link, AI conversations, and where files were saved</li>
+        <li>Your settings</li>
+      </ul>
+      <p className="ix-muted">
+        Files you saved or exported, and copies in Google Drive, OneDrive or Dropbox, stay where they are. This
+        can&apos;t be undone. Other tabs of Live Diagrams start over too.
+      </p>
+    </Dialog>
+  );
+}
+
 /** A draw.io file with several pages: pick one. */
 export function PagesDialog({
   fileName,

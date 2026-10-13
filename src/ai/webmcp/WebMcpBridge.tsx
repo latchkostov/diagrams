@@ -4,6 +4,7 @@ import { paletteHost } from "../../palette/host";
 import { encodeShare, shareUrl, SHARE_WARN_LENGTH } from "../../interop/share";
 import { panelShown, showApplied } from "../ui/feedback";
 import { useWebMcp } from "./useWebMcp";
+import { openNewDiagram } from "./newDiagram";
 import type { AgentChange, WebMcpHost } from "./tools";
 import { threads } from "../ui/threadStore";
 import { unseen } from "../ui/unseen";
@@ -13,25 +14,6 @@ import { LINKS_OFF_MESSAGE, SHARE_LINKS } from "../../lib/deployment";
 // Lazy-loaded by AiMount, only in the editor view and only when the browser has WebMCP. Renders nothing.
 
 const currentEditor = (): EditorApi | null => paletteHost.get().canvas?.editor ?? null;
-
-/** Resolves with the editor of the diagram that opens after `start` (or the current one after a while). */
-function nextEditor(previous: EditorApi | null, timeoutMs = 4000): Promise<EditorApi | null> {
-  return new Promise((resolve) => {
-    const check = () => {
-      const e = currentEditor();
-      if (e && e !== previous) {
-        off();
-        clearTimeout(timer);
-        resolve(e);
-      }
-    };
-    const off = paletteHost.subscribe(check);
-    const timer = setTimeout(() => {
-      off();
-      resolve(currentEditor());
-    }, timeoutMs);
-  });
-}
 
 /**
  * An agent's change: the highlight, and a turn in this diagram's AI panel thread (with Undo this change
@@ -75,17 +57,17 @@ export default function WebMcpBridge({
       canUseAi: () => canUseAiTools(paletteHost.get().canvas),
       documentId: () => paletteHost.get().canvas?.documentId,
       onApplied: recordChange,
-      async newDiagram({ title, direction }) {
-        const before = currentEditor();
-        const opened = nextEditor(before);
-        onNewDiagram();
-        const editor = await opened;
-        if (!editor || !(title || direction)) return editor;
-        editor.updateMeta({ ...(title ? { title } : {}), ...(direction ? { direction } : {}) });
-        // The edit lands on the next render (and may promote the draft into Your diagrams).
-        await new Promise((r) => setTimeout(r, 60));
-        return currentEditor() ?? editor;
-      },
+      newDiagram: (meta) =>
+        openNewDiagram(
+          {
+            currentEditor,
+            canUseAi: () => canUseAiTools(paletteHost.get().canvas),
+            subscribe: paletteHost.subscribe,
+            open: onNewDiagram,
+            settle: () => new Promise((r) => setTimeout(r, 60)),
+          },
+          meta,
+        ),
       async shareLink(diagram) {
         // Never published without share links (./toolList.ts); folded at build time, so no encoder ships.
         if (!SHARE_LINKS) throw new Error(LINKS_OFF_MESSAGE);

@@ -289,7 +289,8 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   links. Export Interactive HTML instead."; the reason stays readable while the name fades; the panel says
   **AI is off for this private diagram** and offers **Allow the on-device model (stays on this device)**. Copies,
   duplicates, exports (`"private": true`) and pasted nodes stay private. **New diagrams are private** (File ▸
-  Privacy ▸) is one remembered setting, off by default. The built-in local-only examples (development only) are
+  Privacy ▸) is one remembered setting, off by default. **Clear everything on this device…** (last in File ▸ Privacy ▸)
+  is the one wipe: a confirmation that lists what goes and what stays, with **Cancel** the default. The built-in local-only examples (development only) are
   always private, with their own wording.
 - **Dictate** is the mic in Advanced's describe box (Ctrl+Shift+M): **Listening…** while on, interim words shown
   lighter; **Stop dictating** to end. It's hidden where the browser has no speech recognition.

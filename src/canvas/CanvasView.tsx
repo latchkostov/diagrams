@@ -2236,6 +2236,7 @@ function CanvasInner({
                 diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
                 presenting={presenting}
                 simulations={meta.simulations}
+                privateDiagram={privacy !== null}
                 onLiveChange={onLiveChange}
                 onPanelChange={setLivePanelOpen}
                 onSaveDiagram={

@@ -2,6 +2,34 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Privacy audit (2026-10)
+
+An end-to-end check of everything that could carry a diagram out of the page or keep it longer than you meant
+(`docs/PRIVACY-AUDIT.md`). Habit changes:
+
+- **A password-protected Interactive HTML file keeps its neutral title once it's open.** The tab says **Diagram
+  (password protected)**, not the diagram's name: browsers keep page titles in their history, and sync it.
+- **A private diagram's simulation stays out of the address bar.** Live view still adds `live=1`, but no longer the
+  simulation's id (ids can be made from the diagram's words, as a storm's is), so a reload of a private diagram plays
+  freely rather than that simulation.
+- **Deleting a diagram deletes its AI conversation too** (Undo puts it back), and a shared diagram replaced by another
+  link takes its conversation with it.
+- **Ctrl+K doesn't remember a private diagram's nodes or simulations** among its recent commands.
+- **Copy Mermaid and draw.io on a private diagram** no longer suggest mermaid.live or app.diagrams.net: the toast says
+  to keep it where your team controls access.
+- **A link embed won't show a diagram marked private** (no app makes such a link; one made by hand or by an older
+  copy now says the diagram is private, with no link out).
+- **Exported images leave out the Checks card's markers**, which carried the findings' words.
+
+New:
+
+- **File ▸ Privacy ▸ Clear everything on this device…** deletes everything Live Diagrams keeps in this browser (every
+  diagram, private ones included, edits to examples, AI conversations, file destinations and settings), after one
+  confirmation (**Cancel** is the default), then starts over. Other open tabs start over too. Files you saved or
+  exported, and cloud copies, stay where they are.
+- Opening the File menu no longer warms up Google Drive's scripts while a private diagram is open.
+- Embeds' Content-Security-Policy allows this site only: no storage provider's scripts, frames or endpoints.
+
 ## Run simulations in the Checks card (2026-10)
 
 No habit changes: nothing plays until you ask, and the count under the title is as it was. New:

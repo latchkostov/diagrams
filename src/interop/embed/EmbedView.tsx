@@ -29,6 +29,15 @@ type State =
   /** `toast`: also announce the error (a failed download, not a bad link). */
   | { status: "error"; message: string; toast?: boolean };
 
+/**
+ * A diagram marked private never shows in a link embed: no app makes such a link (Private diagrams get none), so one
+ * was made by hand or before the diagram turned private, and an embed puts it in someone's page for anyone to see.
+ */
+const PRIVATE_EMBED_MESSAGE =
+  "This diagram is private, so it can't be shown in an embed. Ask its owner for an Interactive HTML file instead.";
+const embeddable = (diagram: DiagramFile, ready: State): State =>
+  diagram.private ? { status: "error", message: PRIVATE_EMBED_MESSAGE } : ready;
+
 function resolve(): Promise<State> {
   const params = new URLSearchParams(window.location.search);
   const base = `${window.location.origin}${window.location.pathname}`;
@@ -47,12 +56,13 @@ function resolve(): Promise<State> {
   const payload = sharePayloadFromHash(window.location.hash);
   if (payload) {
     return decodeShare(payload).then(
-      (diagram) => ({
-        status: "ready",
-        diagram,
-        key: `d:${payload.length}:${payload.slice(-16)}`,
-        openHref: `${base}#d=${payload}`,
-      }),
+      (diagram) =>
+        embeddable(diagram, {
+          status: "ready",
+          diagram,
+          key: `d:${payload.length}:${payload.slice(-16)}`,
+          openHref: `${base}#d=${payload}`,
+        }),
       (err) => ({ status: "error", message: err instanceof Error ? err.message : String(err) }),
     );
   }
@@ -173,13 +183,15 @@ function UrlEmbedView() {
                 const diagram = await decodeEncryptedShare(state.token, password);
                 if (request !== navigation.current || session !== unlockSession.current) return;
                 const base = `${window.location.origin}${window.location.pathname}`;
-                setState({
-                  status: "ready",
-                  diagram,
-                  key: `e:${state.token.length}:${state.token.slice(-16)}`,
-                  // Still encrypted: opening it in the app asks for the password again.
-                  openHref: `${base}#e=${state.token}`,
-                });
+                setState(
+                  embeddable(diagram, {
+                    status: "ready",
+                    diagram,
+                    key: `e:${state.token.length}:${state.token.slice(-16)}`,
+                    // Still encrypted: opening it in the app asks for the password again.
+                    openHref: `${base}#e=${state.token}`,
+                  }),
+                );
               }}
               onClose={() => {
                 unlockSession.current++;

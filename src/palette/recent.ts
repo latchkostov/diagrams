@@ -23,3 +23,11 @@ export function withRecentCommand(list: readonly string[], id: string, max = REC
 export function pushRecentCommand(id: string, storage: Pick<Storage, "getItem" | "setItem"> = safeStorage) {
   storage.setItem(RECENT_COMMANDS_KEY, JSON.stringify(withRecentCommand(getRecentCommands(storage), id)));
 }
+
+/**
+ * Whether a run command is remembered: a private diagram's nodes and simulations never are. Their ids are the
+ * diagram's own words, and this list outlives the diagram (it's one list for every diagram).
+ */
+export function rememberable(id: string, privateDiagram: boolean): boolean {
+  return !(privateDiagram && (id.startsWith("node:") || id.startsWith("sim:")));
+}

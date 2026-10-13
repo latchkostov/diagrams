@@ -6,6 +6,7 @@ import { safeStorage } from "./storage";
 import { diagramThumb, isThumb, type Thumb } from "./thumbnail";
 import { isLocalOnly, privacyOf } from "./localOnly";
 import { newDiagramsPrivate } from "./privacyPrefs";
+import { AI_THREAD_PREFIX } from "./aiThreadKey";
 
 // Where diagrams live in the browser.
 //
@@ -116,6 +117,7 @@ export function setShared(d: DiagramFile, target?: SaveTarget) {
 
 export function clearShared() {
   memoryTargets.delete(SHARED_SLUG);
+  safeStorage.removeItem(AI_THREAD_PREFIX + getDiagramIdentity(SHARED_SLUG));
   safeStorage.removeItem(SHARED_KEY);
   safeStorage.removeItem(AUTOSAVE_PREFIX + SHARED_SLUG);
   changed();
@@ -230,8 +232,12 @@ export function getDiagramIdentity(slug: string): string {
     : `legacy:${key}`;
 }
 
-/** One storage write publishes a diagram and its destination together. Handles are identity-bound. */
+/**
+ * One storage write publishes a diagram and its destination together. Handles are identity-bound. The document it
+ * replaces goes with its AI conversation (keyed by its session id), which nothing could show again.
+ */
 function replaceDocument(slug: string, diagram: DiagramFile, target?: SaveTarget, sessionId = randomHex(4)) {
+  const replaced = getDiagramIdentity(slug);
   storeSession(slotKey(slug)!, {
     sessionFormat: SESSION_FORMAT,
     sessionId,
@@ -242,6 +248,7 @@ function replaceDocument(slug: string, diagram: DiagramFile, target?: SaveTarget
   if (target && inMemoryOnly(target)) memoryTargets.set(slug, { sessionId, target });
   // If this removal fails, the stale autosave still can't show: it carries the old session id.
   safeStorage.removeItem(AUTOSAVE_PREFIX + slug);
+  if (replaced !== sessionId) safeStorage.removeItem(AI_THREAD_PREFIX + replaced);
 }
 
 export function getSaveTarget(slug: string): SaveTarget | undefined {
@@ -410,10 +417,18 @@ function changed() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(DIAGRAMS_CHANGED));
 }
 
+/** Set (and removed at once) by Clear everything on this device (./clearDevice.ts): other tabs start over. */
+export const CLEARED_KEY = "diagrams.cleared.v1";
+
 // useLibrary subscribes to DIAGRAMS_CHANGED. Bridge per-entry storage events in other tabs.
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (event) => {
-    if (event.key?.startsWith(ENTRY_PREFIX) || event.key?.startsWith(DELETED_PREFIX)) changed();
+    if (event.key === CLEARED_KEY && event.newValue) {
+      // Everything was cleared in another tab: write nothing more (an autosave on the way out would bring a diagram
+      // back), and start over.
+      Storage.prototype.setItem = () => {};
+      window.location.reload();
+    } else if (event.key?.startsWith(ENTRY_PREFIX) || event.key?.startsWith(DELETED_PREFIX)) changed();
   });
 }
 
@@ -490,6 +505,16 @@ function readIndex(): StoredEntry[] {
     else if ((record as { deleted?: unknown } | null)?.deleted === true) entries.delete(slug);
   }
   return [...entries.values()].filter((entry) => !isDeleted(entry.slug));
+}
+
+/**
+ * The all-in-one index from before per-entry records is written once (migrateLegacySlot) with every entry then, title
+ * and thumbnail included. A deleted diagram leaves it: its own record (restored by Undo) is what lists it.
+ */
+function dropFromLegacyIndex(slug: string): void {
+  const entries = readLegacyIndex();
+  if (safeStorage.getItem(LIBRARY_KEY) && entries.some((e) => e.slug === slug))
+    writeIndex(entries.filter((e) => e.slug !== slug));
 }
 
 /** Publish only this diagram's entry, without a cross-tab read/modify/write race. */
@@ -719,11 +744,16 @@ export function deleteLibraryDiagram(slug: string): () => boolean {
   const entry =
     indexed && current ? summarize(slug, current, Date.now(), indexed.createdAt, flagsOf(indexed)) : indexed;
   const memory = memoryTargets.get(slug);
+  // Its AI conversation goes with it (it holds the diagram's words and copies of it); Undo puts it back.
+  const threadKey = AI_THREAD_PREFIX + getDiagramIdentity(slug);
+  const thread = safeStorage.getItem(threadKey);
   // The index goes first: if it can't be written, nothing is deleted.
   if (!safeStorage.setItem(deletedKey(slug), JSON.stringify({ slug, deleted: true }))) throw new Error(STORAGE_FULL);
   safeStorage.removeItem(key);
   safeStorage.removeItem(AUTOSAVE_PREFIX + slug);
   safeStorage.removeItem(entryKey(slug));
+  safeStorage.removeItem(threadKey);
+  dropFromLegacyIndex(slug);
   memoryTargets.delete(slug);
   changed();
   return () => {
@@ -731,6 +761,7 @@ export function deleteLibraryDiagram(slug: string): () => boolean {
       const writes: [string, string | null][] = [];
       if (doc !== null) writes.push([key, doc]);
       if (autosave !== null) writes.push([AUTOSAVE_PREFIX + slug, autosave]);
+      if (thread !== null) writes.push([threadKey, thread]);
       if (entry) writes.push([entryKey(slug), JSON.stringify(entry)]);
       writes.push([deletedKey(slug), null]);
       commitWrites(writes);

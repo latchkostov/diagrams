@@ -298,6 +298,44 @@ describe("Your diagrams (the library)", () => {
     expect(io.getSaveTarget(slug)).toEqual(device);
   });
 
+  it("deleting a diagram deletes its AI conversation too, and Undo puts it back", () => {
+    const slug = io.createLibraryDiagram(good);
+    const other = io.createLibraryDiagram({ ...good, title: "Other" });
+    const thread = `diagrams.ai-thread.v1:${io.getDiagramIdentity(slug)}`;
+    const otherThread = `diagrams.ai-thread.v1:${io.getDiagramIdentity(other)}`;
+    storage.setItem(thread, JSON.stringify({ turns: [{ request: "Add the payroll ledger" }] }));
+    storage.setItem(otherThread, "{}");
+    const undo = io.deleteLibraryDiagram(slug);
+    expect(storage.getItem(thread)).toBeNull();
+    expect(storage.getItem(otherThread)).toBe("{}");
+    expect(undo()).toBe(true);
+    expect(storage.getItem(thread)).toContain("payroll ledger");
+  });
+
+  it("deleting a diagram takes its title out of the old all-in-one index too; Undo still lists it", () => {
+    const slug = io.createLibraryDiagram({ ...good, title: "Payroll ledger" });
+    io.migrateLegacySlot();
+    // A browser that used the app before per-entry records: the old index lists the diagram by title.
+    storage.setItem(io.LIBRARY_KEY, JSON.stringify({ format: "diagrams/library/v1", entries: io.listLibrary() }));
+    expect(storage.getItem(io.LIBRARY_KEY)).toContain("Payroll ledger");
+    const undo = io.deleteLibraryDiagram(slug);
+    expect(storage.getItem(io.LIBRARY_KEY)).not.toContain("Payroll ledger");
+    expect(undo()).toBe(true);
+    expect(io.listLibrary().map((e) => e.title)).toEqual(["Payroll ledger"]);
+  });
+
+  it("a shared diagram replaced or cleared takes its AI conversation with it", () => {
+    io.setShared(good);
+    const first = `diagrams.ai-thread.v1:${io.getDiagramIdentity(io.SHARED_SLUG)}`;
+    storage.setItem(first, "{}");
+    io.setShared({ ...good, title: "Next" });
+    expect(storage.getItem(first)).toBeNull();
+    const second = `diagrams.ai-thread.v1:${io.getDiagramIdentity(io.SHARED_SLUG)}`;
+    storage.setItem(second, "{}");
+    io.clearShared();
+    expect(storage.getItem(second)).toBeNull();
+  });
+
   it("a delete that can't update the index deletes nothing", () => {
     const slug = io.createLibraryDiagram(good);
     storage.quotaBytes = 5;

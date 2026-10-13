@@ -85,6 +85,7 @@ import {
   PasteDialog,
   preloadDialogs,
   PrivacyDialog,
+  ClearDeviceDialog,
   ShareDialog,
   StorageFilesDialog,
   UnlockDialog,
@@ -145,6 +146,8 @@ type DialogState =
   | { kind: "html"; diagram: DiagramFile }
   /** Turning Private off for `source`, the document it was opened for (it closes if another one opens). */
   | { kind: "privacy"; source: string }
+  /** File ▸ Privacy ▸ Clear everything on this device…: the one confirmation. */
+  | { kind: "clear-device" }
   | { kind: "paste" }
   /** The Import report of the diagram open now (an infrastructure import, this tab). */
   | { kind: "report" }
@@ -326,18 +329,20 @@ export function useInterop({
   const exportDrawio = () =>
     attempt("export to draw.io", async () => {
       const d = current();
-      const [{ diagramToDrawio }, { inlineIcons }] = await Promise.all([drawioWriter(), import("./icons")]);
+      const [{ diagramToDrawio, drawioExported }, { inlineIcons }] = await Promise.all([
+        drawioWriter(),
+        import("./icons"),
+      ]);
       const xml = diagramToDrawio(d, { iconSvg: await inlineIcons(d) });
       downloadText(xml, `${baseName(d)}.drawio`, "application/vnd.jgraph.mxfile");
-      toast.success("Exported a .drawio file. Open it at app.diagrams.net or in draw.io Desktop.");
+      toast.success(drawioExported(d));
     });
 
   const copyMermaid = () =>
     attempt("copy Mermaid", async () => {
       const d = current();
-      const text = (await mermaidWriter()).diagramToMermaid(d);
-      if (await copyText(text))
-        toast.success("Mermaid flowchart copied. Paste it into GitHub, Notion, Obsidian or mermaid.live.");
+      const { diagramToMermaid, mermaidCopied } = await mermaidWriter();
+      if (await copyText(diagramToMermaid(d))) toast.success(mermaidCopied(d));
       else throw new Error("The browser blocked clipboard access. Use Download .mmd instead.");
     });
 
@@ -890,6 +895,7 @@ export function useInterop({
     privacy,
     setPrivate,
     setNewDiagramsPrivate: (on: boolean) => newDiagramsPrivate.set(on),
+    openClearDevice: () => setDialog({ kind: "clear-device" }),
     /**
      * What the File menu's commands need, loaded as it opens: the dialogs, the draw.io and Mermaid converters,
      * and the configured providers' code and scripts (nothing configured: no provider loads).
@@ -902,6 +908,9 @@ export function useInterop({
           preloadFormats();
         }),
       );
+      // Google's sign-in and picker scripts run in this page: never while a private diagram is on screen (it can't
+      // be saved to the cloud anyway). Open from ▸ a provider still loads them, on that click.
+      if (privacy()) return;
       for (const info of CLOUD_PROVIDERS)
         void info.load().then(
           (p) => p.preload?.(),
@@ -996,6 +1005,7 @@ export function useInterop({
       {dialog?.kind === "privacy" && (
         <PrivacyDialog onTurnOff={() => void confirmNotPrivate(dialog.source)} onClose={() => setDialog(null)} />
       )}
+      {dialog?.kind === "clear-device" && <ClearDeviceDialog onClose={() => setDialog(null)} />}
       {SHARE_LINKS && dialog?.kind === "password-link" && (
         <PasswordLinkDialog
           diagram={dialog.diagram}

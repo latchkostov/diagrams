@@ -351,6 +351,13 @@ function privacyMenu(api: Api): MenuEntry[] {
       onSelect: () => api.setNewDiagramsPrivate(!newDiagramsPrivate.get()),
     },
     { type: "note", text: "To share a private diagram, export Interactive HTML." },
+    { type: "separator" },
+    {
+      type: "item",
+      testId: "privacy-clear-device",
+      title: "Clear everything on this device…",
+      onSelect: () => api.openClearDevice(),
+    },
   ];
 }
 

@@ -224,9 +224,9 @@ export function ViewerApp() {
       <LockedView
         locked={payload.locked}
         onOpen={(open) => {
-          // Before the canvas first renders: its icons, and the page's real title (it stays in this tab only).
+          // Before the canvas first renders: its icons. The page keeps its neutral title: browsers keep a page's
+          // title in their history (and sync it), and the title is part of what the password protects.
           addIcons(open.icons);
-          document.title = open.diagram.title;
           setUnlocked(true);
           setPayload(open);
         }}

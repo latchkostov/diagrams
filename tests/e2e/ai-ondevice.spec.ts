@@ -127,6 +127,24 @@ test("a reply that doesn't fit is retried once with the error, then applied", as
   expect(lm.prompts[1]).toMatch(/^That failed: /);
 });
 
+test("without clone(), each request starts a fresh session: nothing of one request reaches the next", async ({
+  page,
+}) => {
+  const queue = modelReply("Added a queue", [{ op: "add", kind: "queue", label: "billing-queue" }]);
+  await installFakeLanguageModel(page, { replies: [DLQ, queue], noClone: true });
+  await gotoCanvas(page, SLUG);
+  await turnOn(page);
+  await ask(page, "Add a dead-letter queue after Inventory service");
+  await expect(page.getByTestId("ai-turn-0")).toHaveAttribute("data-engine", "on-device");
+  const first = (await fakeModel(page)).creates;
+  await ask(page, "Add a billing queue");
+  await expect(page.getByTestId("ai-turn-1")).toHaveAttribute("data-engine", "on-device");
+  const lm = await fakeModel(page);
+  expect(lm.prompts).toHaveLength(2);
+  // The second request ran in a session of its own, not the first one's (which held its prompt).
+  expect(lm.creates).toBeGreaterThan(first);
+});
+
 test("two bad replies apply nothing and say so", async ({ page }) => {
   const bad = modelReply("", [{ op: "connect", from: "Nowhere", to: "Inventory service" }]);
   await installFakeLanguageModel(page, { replies: [bad, bad] });

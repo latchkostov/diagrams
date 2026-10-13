@@ -242,6 +242,8 @@ export interface FakeModelOptions {
   deferCreate?: boolean;
   /** A download reports 0, 0.5, 1 this many ms apart. */
   downloadStepMs?: number;
+  /** Sessions without clone(), as an older Prompt API had. */
+  noClone?: boolean;
 }
 
 /**
@@ -296,9 +298,13 @@ export function installFakeLanguageModel(page: Page, opts: FakeModelOptions = {}
         await new Promise((r) => setTimeout(r, 30));
         return reply;
       },
-      async clone() {
-        return session();
-      },
+      ...(o.noClone
+        ? {}
+        : {
+            async clone() {
+              return session();
+            },
+          }),
       destroy() {
         state.destroyed++;
       },

@@ -6,6 +6,7 @@
 import type { DiagramFile } from "../../model/types";
 import { validateDiagram } from "../../interop/native";
 import type { StencilChoice } from "./apply";
+import { AI_THREAD_PREFIX } from "../../lib/aiThreadKey";
 
 export interface ThreadTurn {
   id: string;
@@ -40,7 +41,7 @@ export interface ThreadTurn {
   tool?: string;
 }
 
-const PREFIX = "diagrams.ai-thread.v1:";
+const PREFIX = AI_THREAD_PREFIX;
 /** Turns kept per diagram, and how many of the newest keep their "after" snapshot. */
 export const MAX_TURNS = 40;
 export const MAX_SNAPSHOTS = 10;
