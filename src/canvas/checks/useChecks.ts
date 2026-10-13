@@ -5,6 +5,7 @@ import type { WithEvidence } from "../../checks/evidenceMerge";
 import { createCheckScheduler, type CheckScheduler } from "./scheduler";
 import { runChecksOffThread } from "./runner";
 import { NO_EVIDENCE, SimulationRuns, type EvidenceSink, type EvidenceView, type SimContent } from "./simulationRuns";
+import { setEditingRuns } from "./editingRuns";
 
 // The canvas's checks: re-run after edits pause, in idle time, off the main thread (runner.ts). The first
 // run waits for the canvas to settle. Diagrams over 1,500 nodes are checked only while the Checks card is
@@ -198,9 +199,15 @@ export function useChecks(opts: {
   useEffect(() => runs.setRead(opts.read));
   useEffect(() => sims.setRead(opts.read));
   useEffect(() => sims.setContent(content), [content, sims]);
-  // Leaving editing (live view, presenting) or the canvas stops a run of the simulations.
+  // Leaving editing (live view, presenting) or the canvas stops a run of the simulations. While editing, Ctrl+K and
+  // the canvas right-click can run them too.
   useEffect(() => {
-    if (enabled) return () => void sims.stop();
+    if (!enabled) return;
+    setEditingRuns(sims);
+    return () => {
+      setEditingRuns(null, sims);
+      sims.stop();
+    };
   }, [enabled, sims]);
   useEffect(() => store.setEnabled(enabled), [enabled, store]);
   const active = enabled && (nodeCount <= BIG_DIAGRAM || cardOpen);

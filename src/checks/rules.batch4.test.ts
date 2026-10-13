@@ -115,7 +115,7 @@ describe("secret-identity", () => {
       ],
     );
 
-  it("raises one suggestion per diagram, naming every service, with a managed identity as the fix", () => {
+  it("raises one suggestion per diagram, naming every service, with a managed identity for each as the fix", () => {
     const [finding, ...rest] = of(azure(), "secret-identity");
     expect(rest).toEqual([]);
     expect(finding).toMatchObject({
@@ -128,49 +128,58 @@ describe("secret-identity", () => {
     expect(finding.message).toBe(
       "Orders API and Confirmation read secrets from orders-kv, but the diagram doesn't say what they sign in as. With a managed identity, they get in with no stored credential to leak or rotate.",
     );
+    // Each service its own identity (least privilege); one shared identity is the chip.
     expect(finding.fix).toEqual({
-      label: "Add a managed identity",
+      label: "Add managed identities",
       ops: [
         {
           op: "add_node",
           kind: "azure.managed-identity",
-          label: "Managed Identity",
+          label: "Orders API identity",
           sublabel: "workload identity",
           key: "new-identity-1",
         },
         { op: "connect", from: "api", to: "new-identity-1", relation: "identity" },
-        { op: "connect", from: "fn", to: "new-identity-1", relation: "identity" },
+        {
+          op: "add_node",
+          kind: "azure.managed-identity",
+          label: "Confirmation identity",
+          sublabel: "workload identity",
+          key: "new-identity-2",
+        },
+        { op: "connect", from: "fn", to: "new-identity-2", relation: "identity" },
       ],
       options: [
         {
-          label: "Add a managed identity for each service",
-          short: "One for each service",
+          label: "Add one shared managed identity",
+          short: "One shared identity",
           ops: [
             {
               op: "add_node",
               kind: "azure.managed-identity",
-              label: "Orders API identity",
+              label: "Managed Identity",
               sublabel: "workload identity",
               key: "new-identity-1",
             },
             { op: "connect", from: "api", to: "new-identity-1", relation: "identity" },
-            {
-              op: "add_node",
-              kind: "azure.managed-identity",
-              label: "Confirmation identity",
-              sublabel: "workload identity",
-              key: "new-identity-2",
-            },
-            { op: "connect", from: "fn", to: "new-identity-2", relation: "identity" },
+            { op: "connect", from: "fn", to: "new-identity-1", relation: "identity" },
           ],
         },
       ],
     });
   });
 
-  it("the fix adds one shared identity; the chip one for each service; both clear the finding", () => {
+  it("the fix adds one identity for each service; the chip one shared; both clear the finding", () => {
     const d = azure();
-    const shared = fixed(d, "secret-identity");
+    const each = fixed(d, "secret-identity");
+    const own = newNodes(d, each);
+    expect(own.map((n) => n.label)).toEqual(["Orders API identity", "Confirmation identity"]);
+    expect(each.edges.filter((e) => relationOf(e) === "identity").map((e) => [e.from, e.to])).toEqual([
+      ["api", own[0].id],
+      ["fn", own[1].id],
+    ]);
+    expect(ids(each, "secret-identity")).toEqual([]);
+    const shared = fixed(d, "secret-identity", "Add one shared managed identity");
     const [identity] = newNodes(d, shared);
     expect(identity).toMatchObject({ stencil: "azure.managed-identity", label: "Managed Identity" });
     expect(shared.edges.filter((e) => e.to === identity.id).map((e) => [e.from, relationOf(e)])).toEqual([
@@ -178,12 +187,15 @@ describe("secret-identity", () => {
       ["fn", "identity"],
     ]);
     expect(ids(shared, "secret-identity")).toEqual([]);
-    const each = fixed(d, "secret-identity", "Add a managed identity for each service");
-    expect(newNodes(d, each).map((n) => n.label)).toEqual(["Orders API identity", "Confirmation identity"]);
-    expect(ids(each, "secret-identity")).toEqual([]);
   });
 
   it("a fix changes no traffic: a seeded run delivers the same to every node, for the button and the chip", () => {
+    // The button gives each service its own identity; the chip shares one. Both play as before.
+    const [finding] = of(azure(), "secret-identity");
+    expect([finding.fix?.label, ...(finding.fix?.options ?? []).map((o) => o.label)]).toEqual([
+      "Add managed identities",
+      "Add one shared managed identity",
+    ]);
     expect(preservesDelivery(azure(), "secret-identity")).toBe(2);
   });
 
@@ -192,15 +204,14 @@ describe("secret-identity", () => {
     d.groups = [box("az", "azure")];
     for (const n of d.nodes) if (n.id !== "web") n.group = "az";
     enclose(d);
-    const shared = fixed(d, "secret-identity");
-    expect(newNodes(d, shared)[0].group).toBe("az");
+    expect(newNodes(d, fixed(d, "secret-identity")).map((n) => n.group)).toEqual(["az", "az"]);
+    expect(newNodes(d, fixed(d, "secret-identity", "Add one shared managed identity"))[0].group).toBe("az");
     // Services in different boundaries: each identity of its own goes with its service; the shared one in neither.
     d.groups.push(box("fns", "azure"));
     d.nodes.find((n) => n.id === "fn")!.group = "fns";
     enclose(d);
-    expect(newNodes(d, fixed(d, "secret-identity"))[0].group).toBeUndefined();
-    const each = fixed(d, "secret-identity", "Add a managed identity for each service");
-    expect(newNodes(d, each).map((n) => n.group)).toEqual(["az", "fns"]);
+    expect(newNodes(d, fixed(d, "secret-identity")).map((n) => n.group)).toEqual(["az", "fns"]);
+    expect(newNodes(d, fixed(d, "secret-identity", "Add one shared managed identity"))[0].group).toBeUndefined();
 
     const k = diagram(
       [
@@ -290,7 +301,24 @@ describe("secret-identity", () => {
     expect(finding.message).toMatch(/read secrets from kv and sm.*With a workload identity/);
     expect(finding.fix?.label).toBe("Add workload identities");
     const after = fixed(d, "secret-identity");
-    expect(newNodes(d, after).map((n) => n.stencil)).toEqual(["azure.managed-identity", "aws.iam-role"]);
+    expect(newNodes(d, after).map((n) => [n.stencil, n.label])).toEqual([
+      ["azure.managed-identity", "fn identity"],
+      ["aws.iam-role", "l identity"],
+    ]);
+    // One service per cloud: sharing would add the same identities, so there's no chip.
+    expect(finding.fix?.options).toBeUndefined();
+    // Two on Azure: the chip shares one per cloud.
+    d.nodes.push(node("fn2", "azure.functions"));
+    d.edges.push(dep("fn2", "kv", "secret"));
+    const [two] = of(d, "secret-identity");
+    expect(two.fix?.options?.map((o) => [o.label, o.short])).toEqual([
+      ["Add one shared identity per cloud", "One shared per cloud"],
+    ]);
+    const shared = fixed(d, "secret-identity", "Add one shared identity per cloud");
+    expect(newNodes(d, shared).map((n) => [n.stencil, n.label])).toEqual([
+      ["azure.managed-identity", "Managed Identity"],
+      ["aws.iam-role", "l identity"],
+    ]);
   });
 
   it("config stores, Kubernetes Secrets, people and flows don't count", () => {
@@ -349,17 +377,28 @@ describe("secret-identity", () => {
     expect(of(d, "secret-identity")[0].target).toBe("kv2");
   });
 
-  it("stays within one edit batch: too many services for one step give no fix, and the row says so", () => {
+  it("stays within one edit batch: one each falls back to shared, then to no fix, and the row says why", () => {
     const many = (n: number) =>
       diagram(
         [node("kv", "azure.key-vault"), ...Array.from({ length: n }, (_, i) => node(`fn${i}`, "azure.functions"))],
         Array.from({ length: n }, (_, i) => dep(`fn${i}`, "kv", "secret")),
       );
-    // 60: the shared identity fits (61 ops), one each doesn't (120), so no chip.
-    const [sixty] = of(many(60), "secret-identity");
-    expect(sixty.fix?.ops).toHaveLength(61);
-    expect(sixty.fix?.options).toBeUndefined();
-    expect(applyOps(many(60), sixty.fix!.ops!).errors).toEqual([]);
+    // 50: one each fits exactly (100 ops), with the shared chip.
+    const [fifty] = of(many(50), "secret-identity");
+    expect(fifty.fix?.label).toBe("Add managed identities");
+    expect(fifty.fix?.ops).toHaveLength(100);
+    expect(fifty.fix?.options?.[0].ops).toHaveLength(51);
+    expect(fifty.message).not.toMatch(/too big/);
+    expect(applyOps(many(50), fifty.fix!.ops!).errors).toEqual([]);
+    // 51: one each doesn't fit (102 ops), the shared identity does (52): the button shares one and says why.
+    const [over] = of(many(51), "secret-identity");
+    expect(over.fix?.label).toBe("Add one shared managed identity");
+    expect(over.fix?.ops).toHaveLength(52);
+    expect(over.fix?.options).toBeUndefined();
+    expect(over.message).toMatch(
+      /One for each service is too big a change for one step \(an edit batch\), so the fix adds one they share\.$/,
+    );
+    expect(applyOps(many(51), over.fix!.ops!).errors).toEqual([]);
     // 120: nothing fits.
     const [lots] = of(many(120), "secret-identity");
     expect(lots.title).toBe("120 services read secrets without an identity");
@@ -377,7 +416,8 @@ describe("secret-identity", () => {
     const report = agentReport(runChecks(azure(), { rules: ["secret-identity"] }));
     expect(JSON.stringify(report).length).toBeLessThanOrEqual(1500);
     const [f] = report.findings;
-    expect(f.fix && "ops" in f.fix && f.fix.others?.[0].label).toBe("Add a managed identity for each service");
+    expect(f.fix && "ops" in f.fix && f.fix.label).toBe("Add managed identities");
+    expect(f.fix && "ops" in f.fix && f.fix.others?.[0].label).toBe("Add one shared managed identity");
   });
 });
 

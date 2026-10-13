@@ -79,6 +79,8 @@
 
 .check-row {
   display: grid;
+  /* One column that never grows past the card: a long fix label wraps instead of widening the row. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   padding: 10px 12px 10px 10px;
 }
@@ -211,9 +213,14 @@
 }
 
 .check-actions .btn {
-  height: 28px;
-  padding: 0 10px;
+  height: auto;
+  min-height: 28px;
+  min-width: 0;
+  padding: 4px 10px;
   font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+  text-align: start;
 }
 
 .check-actions .check-more {

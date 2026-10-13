@@ -53,6 +53,27 @@ New:
 - Opening the File menu no longer warms up Google Drive's scripts while a private diagram is open.
 - Embeds' Content-Security-Policy allows this site only: no storage provider's scripts, frames or endpoints.
 
+## Checks: the owner's decisions (2026-10)
+
+Habit changes:
+
+- **Services reading secrets without an identity: the fix now gives each service its own identity** ("Add managed
+  identities", one named for each service), so each signs in only to what it reads. The chip under it, **One shared identity**,
+  adds one they share, as the button used to. Past 50 services one each is too big for one step: the button adds the
+  shared one and the row says why. Agents get the per-service ops in `fix.ops` and the shared one in `fix.others`.
+- **Run simulations reports; it doesn't fix.** **Messages are lost at …** no longer offers **Add dead-letter queue**
+  (nor does `check_diagram`): it says what was lost, where and how many. The static check **Failed messages are
+  dropped** still offers that fix, counts or not.
+
+New:
+
+- **Run simulations from Ctrl+K and the canvas right-click** (after Check diagram), while editing a diagram with saved
+  simulations. It opens the Checks card if it's closed, then plays; while they play the same row is **Stop
+  simulations**. Never in live view, presenting, embeds, read-only views or exported files.
+
+Unchanged, on purpose: **{client} calls {service} directly** stays quiet when the diagram draws no gateway at all.
+Most diagrams that leave it out do so on purpose.
+
 ## Run simulations in the Checks card (2026-10)
 
 No habit changes: nothing plays until you ask, and the count under the title is as it was. New:

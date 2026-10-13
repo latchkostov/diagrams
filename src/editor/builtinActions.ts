@@ -15,6 +15,7 @@ import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";
 import type { AlignMode } from "./arrange";
 import { shortcutKeys } from "./shortcuts";
 import { checksPanel } from "../canvas/checks/checksPanel";
+import { editingRuns } from "../canvas/checks/editingRuns";
 import { capacityOverlay } from "../live/capacityOverlay";
 import { isFlowEdgeTarget, relationshipAction } from "./relationActions";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
@@ -51,6 +52,10 @@ export function stencilMenu(
       })),
   }));
 }
+
+/** Run or Stop simulations applies: editing a diagram with saved simulations, where checks run. */
+const simulationsShown = (ctx: ActionContext) =>
+  checksPanel.isAvailable() && !!editingRuns() && !!ctx.editor.getDiagram?.().simulations?.length;
 
 /** How many recently used stencils quick-add lists above the categories (menus stay ≤ 12 items). */
 const QUICK_ADD_RECENT = 3;
@@ -281,6 +286,32 @@ export function builtinActions(): Action[] {
       enabled: (ctx) => !!ctx.editor.getDiagram?.().nodes.length,
       hint: (ctx) => (ctx.editor.getDiagram?.().nodes.length ? undefined : "Add something to check first"),
       run: () => checksPanel.open(),
+    },
+    // The Checks card's Run simulations, while editing a diagram with saved ones: Run opens the card and plays them
+    // there; while they play, Stop takes its place. Two actions, each keeping the intent it was shown with: a menu or
+    // the palette left open past the run's end never turns a Stop into a new run (nor a Run into a restart).
+    {
+      id: "canvas.run-simulations",
+      section: "arrange",
+      targets: ["canvas"],
+      label: "Run simulations",
+      icon: "bolt",
+      when: (ctx) => simulationsShown(ctx) && !editingRuns()!.isRunning(),
+      run: () => {
+        const runs = editingRuns();
+        if (!runs || runs.isRunning()) return;
+        checksPanel.open();
+        runs.start();
+      },
+    },
+    {
+      id: "canvas.stop-simulations",
+      section: "arrange",
+      targets: ["canvas"],
+      label: "Stop simulations",
+      icon: "bolt",
+      when: (ctx) => simulationsShown(ctx) && editingRuns()!.isRunning(),
+      run: () => void editingRuns()?.stop(),
     },
     {
       id: "canvas.fit",

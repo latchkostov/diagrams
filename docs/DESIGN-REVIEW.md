@@ -1,5 +1,60 @@
 # Design review
 
+## Round 28: checks, the owner's decisions (2026-10-13)
+
+The gate for the owner's four decisions on the checks (`docs/research/architecture-checks.md`, "Owner's decisions
+(2026-10-13)"): one identity per service by default, Run simulations never fixing, Run simulations from Ctrl+K and the
+canvas right-click, and `entry-gateway` staying quiet without a drawn gateway (no change). Self-review against
+`docs/UX-PRINCIPLES.md` on the production build (`vite preview`) at 1024 × 768 and 1280 × 800 light and 1440 × 900
+dark, public examples only: Notification fan-out (two services read Key Vault), Kafka order pipeline as it is, and
+Kafka order pipeline with its payments consumer retrying in place (the one change that makes a simulation lose
+messages). Screenshots are in `docs/screenshots/round28/`.
+
+- **One primary action per surface holds.** The identity row's one button is now one identity for each service, **Add
+  managed identities**; sharing is the quiet chip under it, **or One shared identity** (`identity-each-1280-light`).
+  Applied, the toast names what it added ("Added Email sender identity, SMS rate limiter identity · Undo"), and each
+  identity lands beside its service in the boundary they share (`identity-each-applied-1280-light`).
+- **Run simulations reports; the static checks fix.** "Messages are lost at orders.created.v1" says what was lost,
+  where and how many, with the topic and the consumer that failed as chips, and no button and no fix chips: the row
+  ends at ⋯ (`dropped-no-fix-1280-light`). A count on a static finding keeps that finding's own fix.
+- **Context over chrome.** Run simulations reaches Ctrl+K (`palette-run-1280-light`) and the canvas right-click, under
+  Check diagram with the simulations' bolt (`canvas-menu-run-1280-light`), only while editing a diagram with saved
+  simulations. No top-bar control, no View menu row: View holds toggles, and Run simulations is an action. From either
+  place the card opens and the run plays in it, so the result reads where it always did
+  (`palette-run-played-1280-light`); while it plays the same row says **Stop simulations**.
+- **Budget.** The canvas menu has 11 rows of its 12 on a diagram with saved simulations (Add node here, Annotate, AI
+  panel, Paste here, Select all, Auto-layout, Check diagram, Run simulations, Diagram properties, Show, Export), 10
+  without. The next row there means folding one.
+- **Words.** "Run simulations" and "Stop simulations" match the card's link (which says "Stop" beside its own status
+  line). "One shared identity" says the difference from the button; with services on two clouds it's "One shared per
+  cloud".
+- **Widths and themes.** At 1024 the 290 px card keeps the button on one line (`identity-each-1024-light`); dark reads
+  as light does (`identity-each-1440-dark`).
+
+### What was off (fixed in this round)
+
+- **A long fix label widened the row past the card.** The first label, "Add a managed identity for each service", was
+  wider than the 290 px card's row: the row grew, and the message and chips were cut off at the card's right edge, at
+  1280 and worse at 1024. Two fixes: the label is the plural, "Add managed identities" (IAM roles, service accounts;
+  the chip says what's different), and a row is now one column that never grows past the card, its fix button
+  wrapping its words instead (`checks.css`). The second also covers any long label to come ("Go through …" with a
+  long gateway name).
+
+### Still open (owner's call)
+
+- A run started from Ctrl+K or the right-click doesn't move focus to the card's link. Its status line is a polite live
+  region, so progress is still announced, and Esc on the canvas stops it first, as from the card.
+- The canvas right-click is one row from its budget.
+
+![The identity row: one each, or one shared](screenshots/round28/identity-each-1280-light.png)
+![Applied: an identity for each service](screenshots/round28/identity-each-applied-1280-light.png)
+![Run simulations finds a loss and offers no fix](screenshots/round28/dropped-no-fix-1280-light.png)
+![Ctrl+K: Run simulations](screenshots/round28/palette-run-1280-light.png)
+![The canvas right-click: Run simulations under Check diagram](screenshots/round28/canvas-menu-run-1280-light.png)
+
+Also: `screenshots/round28/identity-each-1024-light.png`, `identity-each-1440-dark.png` and
+`palette-run-played-1280-light.png`.
+
 ## Round 29: full screen while presenting (2026-10-13)
 
 A friend's request: "in presenter mode, we should have a toggle for full screen." Self-review against

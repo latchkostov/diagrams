@@ -5,6 +5,7 @@ import { evidenceText, withEvidence } from "./evidenceMerge";
 import { EvidenceStopped, EvidenceUnavailable, MAIN_THREAD_NODES, playSimulations } from "./evidenceClient";
 import { buildContext } from "./context";
 import { runChecks } from "./run";
+import { agentReport } from "./report";
 
 // Run simulations (docs/research/architecture-checks.md, batch 5): the saved simulations played headless, their
 // losses counted, then classified against the checks as they are (counts on the findings they bear out, `dropped` for
@@ -96,6 +97,7 @@ describe("simulation evidence", () => {
       elements: ["api"],
       title: "Failed requests to Payments API are lost",
     });
+    // Run simulations reports what happened and where; it never offers a fix (the static checks do).
     expect(f.fix).toBeUndefined();
     expect(f.evidence).toHaveLength(1);
     // About half of 40 fail, from the seed.
@@ -137,7 +139,7 @@ describe("simulation evidence", () => {
     ],
   });
 
-  it("raises `dropped` at a broker that loses messages no static finding explains, with the dead-letter fix", () => {
+  it("raises `dropped` at a broker that loses messages no static finding explains, with no fix", () => {
     // No failure rate anywhere, so the static check is quiet, but the deliveries in flight run out and are lost.
     const d = inPlace();
     expect(runChecks(d).findings).toEqual([]);
@@ -150,10 +152,31 @@ describe("simulation evidence", () => {
     expect(f.message).toBe(
       "Messages Payments kept failing ran out of deliveries and were lost: orders has no dead-letter queue.",
     );
-    expect(f.fix?.label).toBe("Add dead-letter queue");
+    // What happened and where, never a fix: no button, no chips (the static dead-letter check offers that one).
+    expect(f.fix).toBeUndefined();
     expect(f.evidence![0].count).toBeGreaterThan(0);
     // The node the simulation takes down drops nothing itself: deliveries wait at the topic.
     expect(s.planned).toEqual([]);
+  });
+
+  it("never offers a fix: check_diagram's `dropped` findings have none, and counts leave static fixes as they were", () => {
+    // At a broker ("Messages are lost at …") and at a service ("Failed requests to … are lost").
+    for (const d of [inPlace(), flaky()]) {
+      const s = shown(d);
+      const report = agentReport(s.result, "all", { evidence: collectEvidence(d), planned: s.planned });
+      const dropped = report.findings.filter((f) => f.rule === "dropped");
+      expect(dropped, d.title).toHaveLength(1);
+      expect(dropped[0].evidence, d.title).toHaveLength(1);
+      expect(dropped[0], d.title).not.toHaveProperty("fix");
+      // No fix anywhere, so no hint about sending one.
+      expect(report.hint, d.title).toBeUndefined();
+    }
+    // A count on a static finding: its fix is dead-letter's own, as the checks worked it out.
+    const d = queued();
+    const [counted] = shown(d).result.findings;
+    expect(counted.evidence).toHaveLength(1);
+    expect(counted.fix?.label).toBe("Add dead-letter queue");
+    expect(counted.fix).toEqual(runChecks(d).findings[0].fix);
   });
 
   it("counts what an outage of the only way through loses on its single-point finding", () => {
