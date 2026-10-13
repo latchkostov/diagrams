@@ -95,7 +95,7 @@ test("a client going around the gateway: the fix goes through it, a chip adds an
 });
 
 // Batch 4 (docs/research/architecture-checks.md, "Batch 4"): Avro on Kafka with no schema registry (a warning) and
-// services reading Key Vault without an identity (a suggestion, with one identity per service as a chip). The
+// services reading Key Vault without an identity (a suggestion: one identity per service, one shared as a chip). The
 // fixture is tests/fixtures/checks/payments-ledger.diagram.json.
 const LEDGER = readFileSync(new URL("../fixtures/checks/payments-ledger.diagram.json", import.meta.url));
 const REGISTRY = "schema-registry:payments";
@@ -140,7 +140,7 @@ test("Avro without a schema registry: Add Schema Registry, in one undo step", as
   expectNoErrors(consoleErrors);
 });
 
-test("services reading secrets without an identity: a chip gives each its own, from the keyboard", async ({
+test("services reading secrets without an identity: the fix gives each its own; a chip shares one", async ({
   page,
   consoleErrors,
 }) => {
@@ -148,12 +148,13 @@ test("services reading secrets without an identity: a chip gives each its own, f
   const suggestion = row(page, IDENTITY);
   await expect(suggestion).toHaveAttribute("data-severity", "suggestion");
   await expect(suggestion).toContainText("2 services read secrets without an identity");
-  await expect(page.getByTestId(`check-fix-${IDENTITY}`)).toHaveText(/Add a managed identity/);
-  await expect(page.getByTestId(`check-fix-option-0-${IDENTITY}`)).toHaveText("One for each service");
+  await expect(page.getByTestId(`check-fix-${IDENTITY}`)).toHaveText(/Add managed identities$/);
+  await expect(page.getByTestId(`check-fix-option-0-${IDENTITY}`)).toHaveText("One shared identity");
 
+  // The button, from the keyboard: an identity for each service (least privilege).
   const nodes = page.getByTestId(/^node-(?!tooltip$|editor-)/);
   const before = await nodes.count();
-  await page.getByTestId(`check-fix-option-0-${IDENTITY}`).focus();
+  await page.getByTestId(`check-fix-${IDENTITY}`).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("toast")).toContainText("Added Payments API identity, Ledger writer identity");
   await expect.poll(() => nodes.count()).toBe(before + 2);
@@ -161,10 +162,10 @@ test("services reading secrets without an identity: a chip gives each its own, f
   // Focus moves on to the finding that's left, never to the page.
   await expect(page.getByTestId(`check-select-${REGISTRY}`)).toBeFocused();
 
-  // Undo, then the button: one shared identity.
+  // Undo, then the chip: one shared identity.
   await page.getByTestId("check-fix-undo").click();
   await expect.poll(() => nodes.count()).toBe(before);
-  await page.getByTestId(`check-fix-${IDENTITY}`).click();
+  await page.getByTestId(`check-fix-option-0-${IDENTITY}`).click();
   await expect(page.getByTestId("toast")).toContainText("Added Managed Identity");
   await expect.poll(() => nodes.count()).toBe(before + 1);
   await expect(suggestion).toHaveCount(0);

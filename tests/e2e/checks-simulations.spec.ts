@@ -61,6 +61,58 @@ type RunStats = { started: number; finished: number; stopped: number };
 const runStats = (page: Page) =>
   page.evaluate(() => ({ ...(window as unknown as { __simulations: RunStats }).__simulations }));
 
+/** The canvas right-click on empty canvas, right of a diagram laid out in one tall column. */
+async function canvasMenu(page: Page) {
+  const wrap = page.getByTestId("canvas-wrap");
+  const box = await wrap.boundingBox();
+  if (!box) throw new Error("Expected the canvas on screen");
+  await wrap.click({ button: "right", position: { x: box.width - 200, y: box.height / 2 } });
+  await expect(page.getByTestId("context-menu")).toBeVisible();
+}
+
+/** Ctrl+K, searching for `text`. */
+async function palette(page: Page, text: string) {
+  await page.keyboard.press(`${MOD}+k`);
+  await expect(page.getByTestId("command-palette")).toBeVisible();
+  await page.keyboard.type(text);
+}
+
+const RUN_ITEM = "context-menu-item-canvas.run-simulations";
+const RUN_COMMAND = "command-item-action:canvas.run-simulations";
+
+/** A topic whose consumer retries in place while a saved simulation takes it down: messages are lost at the topic. */
+const inPlace = (): Diagram => ({
+  title: "Retries in place",
+  nodes: [
+    { id: "shop", stencil: "client.browser", label: "Shop", x: 0, y: 0 },
+    { id: "topic", stencil: "kafka.topic", label: "orders", x: 0, y: 200 },
+    {
+      id: "pay",
+      stencil: "service.go",
+      label: "Payments",
+      x: 0,
+      y: 400,
+      props: { retry: "inplace", retryBackoffMs: 500, concurrency: 8 },
+    },
+  ],
+  edges: [
+    { id: "e1", from: "shop", to: "topic", kind: "async" },
+    { id: "e2", from: "topic", to: "pay", kind: "async" },
+  ],
+  simulations: [
+    {
+      id: "outage",
+      title: "Payments goes down",
+      seed: 3,
+      traffic: [{ id: "t", node: "shop", shape: { kind: "constant", ratePerSec: 40, durationMs: 4000 } }],
+      timeline: [
+        { atMs: 2000, action: { do: "status", node: "pay", status: "down" } },
+        { atMs: 8000, action: { do: "status", node: "pay", status: "up" } },
+      ],
+    },
+  ],
+});
+
 test("Run simulations: progress, counts on the finding, an edit hides them and Undo brings them back", async ({
   page,
   consoleErrors,
@@ -153,6 +205,41 @@ test("focus stays on the link when a run adds the first finding, and when Run ag
   await expect(link).toBeFocused();
 });
 
+test("Run simulations from Ctrl+K and the canvas right-click: opens the card and plays; what it finds has no fix", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, "aks-app-config-key-vault");
+  await importDiagram(page, inPlace());
+  await expect(card(page)).toHaveCount(0);
+
+  // Ctrl+K, with the card closed: it opens the card, then plays.
+  await page.getByTestId("canvas-view").click({ position: { x: 900, y: 120 } });
+  await palette(page, "Run simulations");
+  await page.getByTestId(RUN_COMMAND).click();
+  await expect(card(page)).toBeVisible();
+  await expect(status(page)).toHaveText("Played 1 simulation · counts on 1 finding");
+  // Run simulations says what happened and where, and offers no fix: no button, no chips.
+  const lost = page.getByTestId("check-row-dropped:topic");
+  await expect(lost).toContainText("Messages are lost at orders");
+  await expect(page.getByTestId("check-evidence-dropped:topic")).toHaveText(/dropped in “Payments goes down”/);
+  await expect(page.getByTestId("check-fix-dropped:topic")).toHaveCount(0);
+  await expect(page.getByTestId("check-fix-option-0-dropped:topic")).toHaveCount(0);
+  expect(await runStats(page)).toMatchObject({ started: 1, finished: 1 });
+
+  // The canvas right-click, with the card closed again: the same.
+  await page.getByTestId("checks-close").click();
+  await expect(card(page)).toHaveCount(0);
+  await canvasMenu(page);
+  await expect(page.getByTestId(RUN_ITEM)).toHaveText(/Run simulations/);
+  await page.getByTestId(RUN_ITEM).click();
+  await expect(card(page)).toBeVisible();
+  await expect.poll(async () => (await runStats(page)).finished).toBe(2);
+  await expect(status(page)).toHaveText("Played 1 simulation · counts on 1 finding");
+  await expect(lost).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
 test("no saved simulations, no Run simulations; and none in live view", async ({ page }) => {
   await gotoCanvas(page, "aks-app-config-key-vault");
   await importDiagram(page, {
@@ -170,12 +257,21 @@ test("no saved simulations, no Run simulations; and none in live view", async ({
   await openChecks(page);
   await expect(page.getByTestId("checks-summary")).toBeVisible();
   await expect(page.getByTestId("checks-simulations")).toHaveCount(0);
+  // Nor in Ctrl+K.
+  await palette(page, "Run simulations");
+  await expect(page.getByTestId("command-list")).toBeVisible();
+  await expect(page.getByTestId(RUN_COMMAND)).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await gotoCanvas(page, "multi-region-active-active");
   await openChecks(page);
   await expect(page.getByTestId("checks-run-simulations")).toBeVisible();
   await page.getByTestId("live-toggle").click();
   await expect(page.getByTestId("live-controls")).toBeVisible();
   await expect(page.getByTestId("checks-run-simulations")).toHaveCount(0);
+  // Live view's Ctrl+K plays a simulation live; it has no Run simulations.
+  await palette(page, "simulations");
+  await expect(page.getByTestId("command-list")).toBeVisible();
+  await expect(page.getByTestId(RUN_COMMAND)).toHaveCount(0);
 });
 
 /**
@@ -255,6 +351,31 @@ test.describe("a long run", () => {
     await page.getByTestId("inspector-field-label").fill("Renamed");
     await expect(status(page)).toHaveText("Stopped: the diagram changed.");
     expect(await runStats(page)).toMatchObject({ finished: 0, stopped: 4 });
+  });
+
+  test("Ctrl+K and the canvas right-click stop it the same way, and play it again", async ({ page }) => {
+    await page.getByTestId("checks-close").click();
+    await expect(card(page)).toHaveCount(0);
+    // The right-click: the card opens and it plays; while it plays the row is Stop simulations.
+    await canvasMenu(page);
+    await page.getByTestId(RUN_ITEM).click();
+    await expect(card(page)).toBeVisible();
+    await expect(status(page)).toHaveText(/^Playing 1 of 3/);
+    await canvasMenu(page);
+    await expect(page.getByTestId(RUN_ITEM)).toHaveText(/Stop simulations/);
+    await page.getByTestId(RUN_ITEM).click();
+    await expect(status(page)).toHaveText("Stopped.");
+    expect(await runStats(page)).toMatchObject({ started: 1, finished: 0, stopped: 1 });
+
+    // Ctrl+K: Run simulations, then Stop simulations.
+    await palette(page, "Run simulations");
+    await page.getByTestId(RUN_COMMAND).click();
+    await expect(status(page)).toHaveText(/^Playing 1 of 3/);
+    await palette(page, "Stop simulations");
+    await expect(page.getByTestId(RUN_COMMAND)).toContainText("Stop simulations");
+    await page.getByTestId(RUN_COMMAND).click();
+    await expect(status(page)).toHaveText("Stopped.");
+    expect(await runStats(page)).toMatchObject({ started: 2, finished: 0, stopped: 2 });
   });
 
   test("typing is as responsive while simulations play as with none playing", async ({ page }, info) => {

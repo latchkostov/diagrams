@@ -15,6 +15,7 @@ import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";
 import type { AlignMode } from "./arrange";
 import { shortcutKeys } from "./shortcuts";
 import { checksPanel } from "../canvas/checks/checksPanel";
+import { editingRuns } from "../canvas/checks/editingRuns";
 import { capacityOverlay } from "../live/capacityOverlay";
 import { isFlowEdgeTarget, relationshipAction } from "./relationActions";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
@@ -281,6 +282,22 @@ export function builtinActions(): Action[] {
       enabled: (ctx) => !!ctx.editor.getDiagram?.().nodes.length,
       hint: (ctx) => (ctx.editor.getDiagram?.().nodes.length ? undefined : "Add something to check first"),
       run: () => checksPanel.open(),
+    },
+    {
+      // The Checks card's Run simulations, while editing a diagram with saved ones: it opens the card and plays them
+      // there; while they play, it stops them.
+      id: "canvas.run-simulations",
+      section: "arrange",
+      targets: ["canvas"],
+      label: () => (editingRuns()?.isRunning() ? "Stop simulations" : "Run simulations"),
+      icon: "bolt",
+      when: (ctx) => checksPanel.isAvailable() && !!editingRuns() && !!ctx.editor.getDiagram?.().simulations?.length,
+      run: () => {
+        const runs = editingRuns();
+        if (!runs || runs.stop()) return;
+        checksPanel.open();
+        runs.start();
+      },
     },
     {
       id: "canvas.fit",

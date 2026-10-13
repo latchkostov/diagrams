@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ActionRegistry, builtinSections, type ActionContext, type MenuNode } from "./actions";
 import type { EditorApi } from "./types";
 
@@ -150,5 +150,81 @@ describe("action registry", () => {
     ]);
     expect(ids(r.build(ctx("node")))).toEqual(["ok"]);
     console.error = err;
+  });
+});
+
+describe("Run simulations on the canvas right-click and in Ctrl+K", () => {
+  it("only while editing a diagram with saved simulations: opens the Checks card and plays, or stops a run", async () => {
+    const { builtinActions } = await import("./builtinActions");
+    const { checksPanel } = await import("../canvas/checks/checksPanel");
+    const { setEditingRuns } = await import("../canvas/checks/editingRuns");
+    const r = new ActionRegistry(builtinSections);
+    r.register(builtinActions());
+    let simulations: unknown[] | undefined = [{ id: "s", title: "Rush" }];
+    const editor = {
+      getDiagram: () => ({ nodes: [{ id: "a" }, { id: "b" }], edges: [], simulations }),
+    } as unknown as EditorApi;
+    const menu = (surface?: "menu" | "palette", mode?: "edit" | "live") =>
+      r.build({ ...ctx("canvas"), editor, surface, mode }).flatMap((i) => (i.type === "item" ? [i] : []));
+    const item = (surface?: "menu" | "palette", mode?: "edit" | "live") =>
+      menu(surface, mode).find((i) => i.id === "canvas.run-simulations");
+    let running = false;
+    const runs = {
+      isRunning: () => running,
+      start: vi.fn(() => void (running = true)),
+      stop: vi.fn(() => {
+        const was = running;
+        running = false;
+        return was;
+      }),
+    };
+    // Opening the card notes what had focus: no page here.
+    vi.stubGlobal("HTMLElement", function HTMLElement() {});
+    checksPanel.setAvailable(true);
+    try {
+      // No editing canvas's runs (the HTML viewer, an embed, read-only): nothing.
+      expect(item()).toBeUndefined();
+      setEditingRuns(runs);
+      expect(item()).toMatchObject({ label: "Run simulations", icon: "bolt" });
+      expect(item("palette")).toMatchObject({ label: "Run simulations" });
+      // Right after Check diagram, and the canvas menu stays within its 12 rows.
+      const ids = menu().map((i) => i.id);
+      expect(ids.indexOf("canvas.run-simulations")).toBe(ids.indexOf("canvas.check-diagram") + 1);
+      expect(ids.length).toBeLessThanOrEqual(10);
+      // Never in live view's menus, nor where checks don't apply (presenting, live), nor without simulations.
+      expect(item(undefined, "live")).toBeUndefined();
+      checksPanel.setAvailable(false);
+      expect(item("palette")).toBeUndefined();
+      checksPanel.setAvailable(true);
+      simulations = [];
+      expect(item("palette")).toBeUndefined();
+      simulations = [{ id: "s", title: "Rush" }];
+
+      // It opens the Checks card, then plays them there.
+      expect(checksPanel.isOpen()).toBe(false);
+      item("palette")!.run!();
+      expect(checksPanel.isOpen()).toBe(true);
+      expect(runs.start).toHaveBeenCalledTimes(1);
+      // While they play it's Stop, which stops them and leaves the card open.
+      expect(item()).toMatchObject({ label: "Stop simulations" });
+      item()!.run!();
+      expect(runs.stop).toHaveBeenCalled();
+      expect(running).toBe(false);
+      expect(runs.start).toHaveBeenCalledTimes(1);
+      expect(checksPanel.isOpen()).toBe(true);
+      // The card already open: it plays again, in place.
+      item()!.run!();
+      expect(runs.start).toHaveBeenCalledTimes(2);
+
+      // Leaving editing clears them; another canvas's clear leaves these alone.
+      setEditingRuns(null, { isRunning: () => false, start() {}, stop: () => false });
+      expect(item()).toBeDefined();
+      setEditingRuns(null, runs);
+      expect(item()).toBeUndefined();
+    } finally {
+      setEditingRuns(null);
+      checksPanel.setAvailable(false);
+      vi.unstubAllGlobals();
+    }
   });
 });

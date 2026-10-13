@@ -320,6 +320,9 @@ Batch 4 (both asked for; they needed a little more model first, see "Batch 4: as
   call becomes a call to it); the vendor family's new gateways are chips under it ("or Firewall / WAF · Kong
   Gateway"), each inserting one gateway that every direct caller shares. Only when that keeps every flow as it was
   (plain connections of one kind); otherwise no fix, and the row says why (see "Batch 3: as built").
+- **The gap: a diagram that draws no gateway at all.** A client calling a self-hosted service directly, with no way in
+  drawn anywhere, stays quiet. In the batch 3 gate, 3 of the 4 such hits were diagrams leaving the gateway out on
+  purpose. **Owner's call (2026-10-13): keep it quiet; precision over recall.** No code changed.
 
 #### 7. `capacity`: {node} can't keep up
 
@@ -387,10 +390,14 @@ Batch 4 (both asked for; they needed a little more model first, see "Batch 4: as
   ("managed identity", "workload identity", "IAM role", "service account", "IRSA" on the vault, the service or the
   Secret dependency) keep it quiet. People (`client.*`) don't count, nor does anything a dependency points at. The
   finding's target is the first vault in the file, so moving nodes keeps an ignore. Its elements are the vaults and
-  the services, not their Secret dependencies (as chips they only repeated them). The fix adds one identity per
-  cloud ("Add a managed identity"), in the services' boundary when they share one, and a chip gives each service its
-  own ("One for each service"). The GCP stencil was already in the catalogue (imports batch 3), so it's the Google
-  Cloud identity.
+  the services, not their Secret dependencies (as chips they only repeated them). As batch 4 built it, the fix added
+  one identity per cloud ("Add a managed identity"), in the services' boundary when they share one, and a chip gave
+  each service its own ("One for each service"). The GCP stencil was already in the catalogue (imports batch 3), so
+  it's the Google Cloud identity.
+- **Owner's call (2026-10-13): one identity per service by default** (least privilege). The button gives each service
+  its own ("Add managed identities", each in its service's boundary); the chip shares one ("One
+  shared identity"; with services on two clouds, "One shared per cloud", offered only when a cloud has more than one
+  service, since otherwise it would add the same identities). See "Owner's decisions (2026-10-13)".
 
 #### 10. `schema-registry`: Avro on {topic}, but no schema registry
 
@@ -678,7 +685,7 @@ diagrams, as every AI tool is.
 - `TOOL_HELP`: "Finds likely design problems (lost messages, unread topics, overload) and how to fix them."
 - **Simulation evidence** (batch 5): `simulations: true` plays the saved simulations as the card's Run simulations
   does (a worker, a minute of each, about 15 s in all) and adds their counts and `dropped` findings, within the same
-  budget. Off by default: it costs seconds where the checks cost milliseconds.
+  budget. A `dropped` finding never carries a `fix` (owner's call, 2026-10-13). Off by default: it costs seconds where the checks cost milliseconds.
 - **Ignoring stays a person's call.** No tool writes `checks.ignore`. An agent that silences warnings is the
   failure mode to avoid.
 - The skill (`skills/livediagrams/`) gets the rule table, so coding agents can run the same checks on a
@@ -844,12 +851,15 @@ while building:
   any add into a boundary does. No id-sharing guard: ids are unique on load and ops resolve by kind (#71). The fixes
   allocate no ids themselves (`applyOps` does, for what they add); they name only batch keys. A fix is offered
   only while it fits the operation schema: at most 100 ops in the batch and ids of 200 characters or less; past that
-  the row says it's too big a change for one step (unit tests: 60 services get the shared identity but no per-service
-  chip, 120 get no fix). The op count is checked before any op is built, and the boundary a new node goes in is an
+  the row says it's too big a change for one step (unit tests as built: 60 services got the shared identity but no
+  per-service chip, 120 got no fix; since the owner's decisions, 50 get one each with the shared chip, 51 get the
+  shared one with the row saying why, 120 get no fix). The op count is checked before any op is built, and the boundary a new node goes in is an
   indexed lookup, so a diagram with a boundary per service doesn't read every boundary per service (a test counts
   the reads).
-- **Agents.** The per-service identities are a chip, so agents get them as `fix.others` while they fit beside the
-  default's ops, else named in `fix.elsewhere`, within the reply's 1.5K-character budget (`agentReport` as in batch 3).
+- **Agents.** The chip's ops go to agents as `fix.others` while they fit beside the default's ops, else named in
+  `fix.elsewhere`, within the reply's 1.5K-character budget (`agentReport` as in batch 3). As built that was the
+  per-service identities; since the owner's decisions the per-service ones are `fix.ops` and the shared one is
+  `fix.others`.
 - **The stencil.** The brief asked for a Google Cloud service account stencil; the catalogue has had one,
   `gcp.service-account`, since imports batch 3 (Kubernetes manifests). Its icon is Google Cloud's IAM icon from the
   Iconify `gcp` set (`gcp:identity-and-access-management`, Apache-2.0, listed in `docs/ICONS.md`), like every GCP
@@ -901,10 +911,10 @@ raises losses no other check explains. Engine: `src/checks/evidence.ts` (with `r
   planned, whatever finding is there; at a node that isn't a broker, a `single-point` finding takes the whole loss
   (what one replica costs, outage included); otherwise the part lost on purpose is planned, and the rest is the
   design's: at a broker on its `dead-letter` finding (nothing when that check is off: `dropped` would bring back what
-  was turned off), anywhere else, or at a broker without that finding, `dropped:{node}`. At a broker, that has
-  dead-letter's fix ("Add dead-letter queue", worked out again when clicked, as every fix is) and the consumers that
-  failed there as its chips; elsewhere, "Failed requests to {node} are lost", without a fix (a queue in front, or a
-  retry upstream, is a design choice). Dead letters left unread go on `no-reader`. Ignored findings get counts too,
+  was turned off), anywhere else, or at a broker without that finding, `dropped:{node}`. At a broker it's "Messages
+  are lost at {node}", with the consumers that failed there as its chips; elsewhere, "Failed requests to {node} are
+  lost". As built, the broker's finding had dead-letter's fix ("Add dead-letter queue"); since the owner's decisions
+  neither has a fix (see "Owner's decisions (2026-10-13)"). Dead letters left unread go on `no-reader`. Ignored findings get counts too,
   for when Show again brings them back.
 - **Bounded.** At most 60 s of simulated time per simulation, one 10 ms engine tick at a time; a pausing note is
   resumed at once. Before a simulation is built, its **start work** (the sampled messages its traffic and timeline
@@ -941,7 +951,8 @@ raises losses no other check explains. Engine: `src/checks/evidence.ts` (with `r
   in the card, whose blurred background made the browser repaint the canvas behind it every frame (a median keystroke
   three times the idle one). The card has no spinner; "Playing 2 of 5: “…”…" says it.
 - **Surfaces.** The card exists only while editing, so live view, presenting, embeds, read-only views and the exported
-  HTML viewer have no Run simulations; the viewer template stubs the checks store with the run's two methods. The
+  HTML viewer have no Run simulations; the viewer template stubs the checks store with the run's two methods. (Since
+  the owner's decisions, Ctrl+K and the canvas right-click run them too, with the same rules.) The
   self-hosting switches don't touch it (it's local, like the checks), and `pnpm build:internal` builds it.
 - **Agents.** `check_diagram` takes `simulations: true` (off by default): the same worker and bounds, the counts as
   short lines on each finding (`evidence`, at most three) and one `simulations` line saying what played and what was
@@ -983,6 +994,50 @@ reviewer meets in real diagrams (`src/checks/evidence.test.ts` covers each shape
 | multi-region-active-active, us-east-1's API failing 2% of writes      | `dropped:api-us`: 4 in “Region outage and failover”, 30 in “Both regions take writes”                            | Would look | Nothing in the design retries a failed checkout. Real clients often do; as a Suggestion it asks the question, and Ignore here answers it.                                                        |
 | aws-fanout with a simulation where the archive Lambda rejects 1 in 10 | `dead-letter:archive-q` becomes a Warning (static); no count                                                     | Right      | None of 300 orders failed three deliveries in a row: no loss to count, and the Warning stands on its failure rate.                                                                               |
 
+## Owner's decisions (2026-10-13)
+
+The owner reviewed batches 4 and 5. Four decisions, applied in one change (UX review: `docs/DESIGN-REVIEW.md`, round
+28):
+
+1. **`secret-identity`: one identity per service by default.** Least privilege: a service signs in only to what it
+   reads. The button gives each service its own ("Add managed identities", IAM roles or service accounts, each
+   named for its service; one service: "Add a managed identity"), each in its service's boundary. The plural keeps
+   the button on one line in the 290 px card; the first try, "Add a managed identity for each service", widened the
+   row past the card (see round 28). The chip shares one: **One shared identity**
+   ("Add one shared managed identity"), or with services on two clouds **One shared per cloud**. The chip shows only
+   where sharing differs, that is when a cloud has more than one service.
+   - **The op budget.** One each is two ops per service; shared is one per cloud plus one per service. Up to 50
+     services, one each fits the 100-op batch, with the chip. Past that, while shared still fits (up to 99 services
+     on one cloud), the button falls back to the shared identity and the row says why: "One for each service is too
+     big a change for one step (an edit batch), so the fix adds one they share." Past both, no fix, as before. That
+     was the simplest honest behaviour: the button always does what it says, and the row explains the one case
+     where it isn't the default.
+   - **Agents.** The per-service ops are `fix.ops`; the shared one is `fix.others` (or `fix.elsewhere` when it
+     doesn't fit the reply).
+   - **No traffic changes.** The seeded-simulation test plays both the button and the chip and finds every node
+     handling what it did, and the new identities nothing.
+2. **Run simulations never offers fixes.** "I see this as a tool that runs these simulations… offering fixes I think
+   is kind of confusing." The `dropped` findings it raises say what happened and where (the row, its count, and the
+   things involved as chips that select them), with no fix button, no fix chips and no `fix` in `check_diagram`'s
+   reply. That's both "Messages are lost at {node}" (which had dead-letter's fix) and "Failed requests to {node} are
+   lost" (which had none). The static rules keep their fixes, and a count on a static finding (dead-letter's, say)
+   leaves its fix as the check worked it out. `applyFix` no longer has a path for `dropped`, and the tool's
+   description tells agents those findings never carry a fix.
+3. **Run simulations from more places.** Ctrl+K and the canvas right-click (after Check diagram) have **Run
+   simulations**, under the card's rules: only while editing a diagram with saved simulations (never live view,
+   presenting, embeds, read-only views or the exported HTML viewer), it opens the Checks card if it's closed, then
+   plays; while they play the same row is **Stop simulations**. The View menu's Checks is a toggle among toggles, the
+   count under the title only opens the card, and the inspector's row only says what it found, so none of them got
+   it. With it the canvas menu is 11 rows of its 12 (the AI panel, Diagram properties and Export ▸ joined it since
+   batch 2), and only on a diagram with saved simulations. The actions reach the run controller through a tiny
+   module (`src/canvas/checks/editingRuns.ts`) that `useChecks` sets while checks apply, so the HTML viewer (which
+   bundles the actions with the checks stubbed) gains nothing. Startup JavaScript: unchanged (1 byte smaller gzip);
+   the canvas chunk +155 B, the checks worker +147 B (the identity rule), the card 47 B smaller (no `dropped` fix
+   path). The self-hosting switches don't touch it (it's local), and `pnpm build:internal` builds it.
+4. **`entry-gateway`'s gap: decided, no change.** It stays quiet when the diagram draws no gateway at all. In the
+   batch 3 gate, 3 of the 4 such hits were diagrams leaving the gateway out on purpose. **Owner's call (2026-10-13):
+   keep it quiet; precision over recall.**
+
 ## Explicitly not doing
 
 - **Style and completeness lint** (missing descriptions, unlabelled edges, orphan nodes, naming conventions).
@@ -1022,7 +1077,8 @@ reviewer meets in real diagrams (`src/checks/evidence.test.ts` covers each shape
 2. **`entry-gateway`: Warning or Suggestion?** _Default: Suggestion._ It fires on 4 examples that leave the gateway
    out on purpose. Revisit if the owner adds gateways to those examples. (Batch 3: it now fires only on a client
    that goes around a way in the diagram draws, so it raises nothing on the examples. A bypass is a stronger signal;
-   a Warning is the owner's call once it has fired in real use.)
+   a Warning is the owner's call once it has fired in real use.) A diagram that draws no gateway at all stays quiet:
+   owner's call (2026-10-13), keep it quiet; precision over recall.
 3. **Which traffic does `capacity` use when a diagram has saved simulations?** _Default: free-play rates only._
    Saved simulations often overload on purpose. Live's heat map covers them, and batch 5 adds them on demand.
    (Batch 5, as recommended: Run simulations counts only lost messages, never backlog or overload, and a loss a
