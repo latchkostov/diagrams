@@ -966,6 +966,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     if (flowPairs.has(`${from}\u0001${to}`)) return;
     flowPairs.add(`${from}\u0001${to}`);
     links.flow(from, to, "async", evidence, props);
+    g.connectionsTitle = "Connections found in settings and KafkaUser ACLs";
   };
   for (const u of resources.filter((r) => r.group === "kafka.strimzi.io" && r.kind === "KafkaUser")) {
     const authz = own(spec(u), "authorization");

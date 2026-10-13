@@ -1,5 +1,77 @@
 # Design review
 
+## Round 24: import follow-ups (2026-10-12)
+
+The gate for the import follow-ups: replicas, Round 20's two open items (long module addresses, Draw everything's
+spread), the picker for big imports, and Strimzi KafkaUser ACLs. Self-review against `docs/UX-PRINCIPLES.md` on the
+production build at 1024 × 768, 1280 × 800 and 1440 × 900, light and dark, mouse and keyboard, with the public import
+fixtures and two generated inputs (a 40-namespace cluster, a KafkaUser set), written in the tests.
+
+- **No new chrome.** Nothing in the top bar, a menu or the palette. The picker lives in the Import report, where
+  Draw everything already is, and only for an import that's too big; the toast says so in its own words ("300 of 400
+  nodes") and stays 7 s, as it does when there's something to check.
+- **The picker is one list and one button.** "Boundaries (30 of 40 drawn)", one line saying why only some are drawn
+  and what ticking does, then a row per boundary: its checkbox and name, and "10 nodes · 9 flows" on the right, the
+  most flows first (`pick-report-1280-light`). The list scrolls on its own after seven rows, so **Draw these (300
+  nodes)** sits right under it and the rest of the report stays in reach: at first, 40 rows pushed the button and
+  every other section below the fold. The button is a secondary one (Done stays the dialog's one primary action),
+  off until the ticks change, and counts what it would draw as you tick (`pick-report-changed-1280-light`: 310).
+  It opens a new diagram, like Draw everything, so the first drawing is never lost. Dark (`pick-report-1280-dark`)
+  and 1024 (`pick-report-1024-light`) read the same. Checkboxes are real inputs: Space ticks them, and the e2e test
+  drives one from the keyboard.
+- **"Boundary", not "namespace" or "module".** The section is the same for every format, and boundary is the
+  vocabulary's word for the box; each row's name says which namespace or module it is.
+- **Addresses wrap between their parts** (`report-terraform-wrap-1280-light`, `-1280-dark`, `-1024-light`):
+  `module.streaming.` / `aws_lambda_event_source_mapping.analytics` instead of `…mappi` / `ng.analytics`. The address
+  can now be selected (the app is otherwise unselectable) and copies as one string.
+- **Draw everything is compact.** The AWS plan's everything diagram fitted at under a fifth before (cards about 33 px
+  wide at 1280; Round 20's `terraform-everything-canvas-1440`); now it fits at a readable size
+  (`everything-aws-1280-light`): the flows on top, the module boundary first in its column, the helpers in a grid
+  below. The Azure state's helpers pack inside their resource group instead of one tall column
+  (`everything-azure-1280-light`). The cause was the layered layout spacing every row by its tallest unit (the
+  boundary), and helpers entering it before they were moved; both are fixed for every import, so the compose,
+  Kubernetes, AsyncAPI and Terraform imports were re-checked: each reads as before or straighter (Users and the
+  kafka block now centre on the shop block, `kubernetes-canvas-1440`), with no overlaps in the Lab's audits.
+- **KafkaUser ACLs** read like any found connection (`kafkauser-report-1280-light`): "orders-app → orders.v1
+  (writes) · KafkaUser orders-app", under "Connections found in settings and KafkaUser ACLs" (it said "in settings"
+  at first, which a KafkaUser isn't). A prefix ACL is one note; a user nothing here uses is a Not drawn row that
+  says why. On the canvas they're ordinary message flows (`kafkauser-canvas-1280-light`).
+- **"managed identity"** now shows on the Azure state's Function App → Key Vault connection
+  (`terraform-azure-canvas-1440`): the grant goes to the app's own identity, which has no node. Small, mono, on the
+  dependency's line, like other connection labels.
+
+### What was off (fixed in this round)
+
+- The picker's list pushed its button and the rest of the report out of view (above).
+- The first wording, "too many to draw at once", wasn't true: the picker draws up to 5,000. It now says "more than a
+  diagram reads well, so only some boundaries are drawn".
+- The grid the helpers pack into used a column count meant for cards, so 26 namespaces of ten made a strip 8,000 px
+  wide; rows are now sized by the grid's area, never narrower than the flows above.
+- Batch 4's `secret-identity` raised three false findings on the Terraform fixtures (see the "Imports" addendum in
+  `docs/research/architecture-checks.md`); the import now says what it knew.
+
+### Still open (owner's call)
+
+- A big import's first drawing has the source's title ("team-00 and 39 more namespaces"), and a picked one keeps it,
+  so Your diagrams lists two with one title. Naming them by what's drawn would be longer; Draw everything's
+  "(everything)" suffix is the precedent if it's wanted.
+- A picked diagram of 300 nodes doesn't fit 1280 × 800 at the canvas's smallest zoom (`pick-canvas-1280-light`).
+  That's the size, not the layout: 300 is the plan's threshold, and a lower one would draw less by default.
+- A KafkaUser's Secret is drawn "not in these files", which is true (Strimzi makes it) but could say "made by
+  Strimzi".
+
+![The picker: boundaries by flows, the drawn ones ticked, 1280](screenshots/round24/pick-report-1280-light.png)
+![Ticks changed: Draw these counts 310 nodes](screenshots/round24/pick-report-changed-1280-light.png)
+![A long module address wraps after its module, dark](screenshots/round24/report-terraform-wrap-1280-dark.png)
+![Draw everything on the AWS plan, fitted at 1280](screenshots/round24/everything-aws-1280-light.png)
+![KafkaUser ACLs as connections in the report](screenshots/round24/kafkauser-report-1280-light.png)
+
+Also: `screenshots/round24/pick-report-1280-dark.png`, `pick-report-1024-light.png`, `pick-canvas-1280-light.png`,
+`report-terraform-wrap-1280-light.png`, `report-terraform-wrap-1024-light.png`, `everything-azure-1280-light.png`,
+`kafkauser-canvas-1280-light.png`, and the import canvases at 1440: `compose-canvas-1440.png`,
+`kubernetes-canvas-1440.png`, `asyncapi-canvas-1440.png`, `terraform-aws-canvas-1440.png` and
+`terraform-azure-canvas-1440.png`.
+
 ## Round 23: checks, batch 4 (2026-10-12)
 
 The gate for architecture checks batch 4: `secret-identity` and `schema-registry`, each with its fix

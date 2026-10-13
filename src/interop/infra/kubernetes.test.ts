@@ -388,7 +388,8 @@ ${deployment("orders-app", "example/orders", "", "shop").replace(
     expect(diagram.nodes.filter((n) => n.stencil === "kafka.topic")).toHaveLength(2);
     expect(report.notes).toContain("orders-app (KafkaUser) may read topics starting “audit.”: not drawn");
     expect(report.notDrawn).toContainEqual({ name: "KafkaUser orders-app", reason: "shown as its workloads' flows" });
-    // Each flow names the KafkaUser that allows it.
+    // Each flow names the KafkaUser that allows it, under a heading that says so.
+    expect(report.connectionsTitle).toBe("Connections found in settings and KafkaUser ACLs");
     expect(
       report.inferred.filter((c) => c.evidence === "KafkaUser orders-app").map((c) => `${c.from} → ${c.to}`),
     ).toEqual(["orders-app → orders.v1", "payments.v1 → orders-app"]);
