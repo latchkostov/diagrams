@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import { appBaseUrl, SHARE_WARN_LENGTH } from "../share";
 import { encodeEncryptedShare, encryptedShareUrl, MIN_PASSWORD_LENGTH, WrongPasswordError } from "../shareCrypto";
-import { passwordStrength } from "../passwordStrength";
+import { PasswordField } from "./PasswordField";
 import { Dialog } from "./Dialog";
 import { copyText } from "./copyText";
 import { Glyph } from "./glyphs";
@@ -33,7 +33,6 @@ export function PasswordLinkDialog({
     return false;
   };
   const [password, setPassword] = useState("");
-  const [show, setShow] = useState(false);
   // Each link is bound to the exact password it was encrypted with. An edit (or closing the dialog) makes
   // any encryption still running stale: its link is never shown or copied.
   const [request, setRequest] = useState<{ id: number; password: string }>();
@@ -55,9 +54,7 @@ export function PasswordLinkDialog({
     const el = document.activeElement;
     if (hasUrl && (!el || el === document.body)) done.current?.focus();
   }, [hasUrl]);
-  const strength = passwordStrength(password);
   const ok = password.length >= MIN_PASSWORD_LENGTH;
-  const hintId = useId();
 
   const create = async () => {
     if (!ok || busy || !stillAllowed()) return;
@@ -135,48 +132,17 @@ export function PasswordLinkDialog({
           void create();
         }}
       >
-        <label className="ix-password-field">
-          <span className="ix-form-label">Password</span>
-          <span className="ix-field-row">
-            <input
-              className="ix-input"
-              type={show ? "text" : "password"}
-              value={password}
-              onChange={(e) => {
-                latest.current++;
-                setRequest(undefined);
-                setError(undefined);
-                setPassword(e.target.value);
-              }}
-              autoComplete="new-password"
-              spellCheck={false}
-              minLength={MIN_PASSWORD_LENGTH}
-              aria-describedby={hintId}
-              data-autofocus
-              data-testid="password-link-input"
-            />
-          </span>
-        </label>
-        <div className="ix-meta-row">
-          <span
-            id={hintId}
-            className={`ix-strength is-${password ? strength.level : "empty"}`}
-            data-level={password ? strength.level : "empty"}
-            data-testid="password-link-strength"
-          >
-            {password ? strength.hint : `At least ${MIN_PASSWORD_LENGTH} characters. Several random words work well.`}
-          </span>
-          <span className="ix-grow" />
-          <label className="ix-check">
-            <input
-              type="checkbox"
-              checked={show}
-              onChange={(e) => setShow(e.target.checked)}
-              data-testid="password-link-show"
-            />
-            Show
-          </label>
-        </div>
+        <PasswordField
+          value={password}
+          onChange={(value) => {
+            latest.current++;
+            setRequest(undefined);
+            setError(undefined);
+            setPassword(value);
+          }}
+          testId="password-link"
+          firstFocus
+        />
       </form>
       {url && (
         <>

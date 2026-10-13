@@ -206,17 +206,24 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   dialog always says **Anyone who has this file can open it.**, its one action is **Download HTML**, and the title,
   **Banner**, theme and simulations sit behind Options. A Private diagram can export it, as it can Save to this
   device. In the file: the banner on top, and a footer that says "Exported from Live Diagrams on <date>. Read-only."
+  - **Require a password** (a checkbox under that line, off by default) encrypts the file with the same field as Copy
+    link with password… (at least 8 characters, the strength hint, Show; no confirm field). The line then says **Only
+    people with the password can open it.** Send the password separately, and one line under the field says what's
+    encrypted and that the password can't be recovered. The file is named and titled **Diagram (password
+    protected)**; opened, it shows **This diagram is password-protected**, one field and **Open** (Enter), and a wrong
+    password says **That password doesn't open this file. Check it and try again.**
 - **Who can open it.** Every way a diagram leaves the app says who can open what it makes, in these words, where
   you choose it (the File menu's line, the dialog) and in its toast:
   - Copy share link: **Anyone with the link can open it.**
   - Copy link with password…: **Only people with the password can open it** (the dialog: anyone with the link and
     the password).
-  - Interactive HTML…: **Anyone who has this file can open it.**
+  - Interactive HTML…: **Anyone who has this file can open it.** With Require a password: **Only people with the
+    password can open it.**
   - Embed code… ▸ In the link: **Anyone who can see the page can open this diagram.** ▸ Your app supplies it
     (private): **The diagram never leaves your app.**
 
-  For a work diagram the safe choices are, in order: Interactive HTML (read-only, offline), the diagram file, a link
-  with a password, and an embed your app supplies. The dialog is **Embed code**, as the menu row says.
+  For a work diagram the safe choices are, in order: Interactive HTML (read-only, offline; with a password when it
+  may be forwarded beyond the team), the diagram file, a link with a password, and an embed your app supplies. The dialog is **Embed code**, as the menu row says.
 
 - **Storage**: where files live. **This device** (never "local", "computer" or "disk"; mid-sentence "this
   device"), **Google Drive**, **OneDrive** and **Dropbox** (never "Drive", "OneDrive Personal" or "Dropbox

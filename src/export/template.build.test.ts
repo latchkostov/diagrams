@@ -59,6 +59,8 @@ describe("interactive viewer template", () => {
   it("leaves the editing-only panels out (stubs in their place)", () => {
     const real = (path: string) => modules.some((id) => id.endsWith(path));
     expect(EDITOR_ONLY.filter((p) => real(p.path)).map((p) => p.name)).toEqual([]);
+    // The icon map the viewer swaps in is one module, wherever the build runs (a Windows path once made two).
+    expect(modules.filter((id) => id.endsWith("/src/export/viewer/iconUrls.ts"))).toHaveLength(1);
     // The canvas and the live session themselves are there.
     expect(real("/src/canvas/CanvasView.tsx")).toBe(true);
     expect(real("/src/live/LiveSession.tsx")).toBe(true);

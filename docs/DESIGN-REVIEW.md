@@ -1,5 +1,91 @@
 # Design review
 
+## Round 25: Interactive HTML with a password (2026-10-12)
+
+The gate for **Require a password** in the Interactive HTML export and the file's password prompt
+(`src/export/lock.ts`, `docs/INTEROP.md`). Self-review against `docs/UX-PRINCIPLES.md` on the production build
+(`vite preview`), Chrome driven by Playwright, at 1024 × 768 and 1280 × 800 light and 1440 × 900 dark, and the file
+from disk at those sizes and on a 390 px phone; mouse and keyboard. The Kafka example only (public). Screenshots are in
+`docs/screenshots/round25/`.
+
+- **One control, where the choice is made.** A checkbox, **Require a password**, under the line that says who can open
+  the file, off by default (`dialog-1280-light`). It isn't behind Options: for a work diagram that may be forwarded it's
+  the decision that matters, and Options holds presentation (title, banner, theme, simulations). Checked, it shows the
+  password link's own field (`PasswordField`, shared now: at least 8 characters, the strength hint, Show, no confirm
+  field) and puts the keyboard in it (`dialog-password-empty-1280-light`). **Download HTML** stays the one action, off
+  until the password is long enough (`dialog-password-short-1280-light`), and Enter in the field downloads, as Enter in
+  Copy link with password… copies.
+- **Who can open it, said where it's chosen.** The line becomes **Only people with the password can open it.** Send
+  the password separately, not with the file. (`dialog-password-ready-1280-light`), and the toast says the same
+  (`toast-1280-light`). One line under the field says what's encrypted, that the password is never stored or sent, and
+  that a lost one means exporting again.
+- **The file says nothing until it's opened.** It's named and titled **Diagram (password protected)**. The prompt is a
+  card in the dialogs' style: **This diagram is password-protected**, "It's checked in this file; nothing is sent
+  anywhere.", one field (focused) and **Open** (`viewer-1280-light-locked`, `viewer-390-light-locked`). A wrong
+  password says **That password doesn't open this file. Check it and try again.**, keeps the text selected so typing
+  replaces it, and marks the field invalid (`viewer-1280-light-wrong`, `viewer-1440-dark-wrong`). The theme is the
+  file's, from the first paint.
+- **Once open, it's the same file.** The banner, footer, live bar and keys as before, and the page title becomes the
+  diagram's (`viewer-1280-light-unlocked`, `viewer-1440-dark-unlocked`).
+- **Widths and themes.** With Options open the dialog still fits 1280 × 800 (768 px tall) and scrolls its body at
+  1024 × 768 with the footer in view (`dialog-password-options-1024-light`). The weak hint reads in dark
+  (`dialog-password-weak-1440-dark`). Copy link with password… is unchanged by the shared field
+  (`password-link-1280-light`).
+
+### What was off (fixed in this round)
+
+- **The summary line wrapped.** "· password protected" at its end pushed it to two lines at 480 px, and repeated the
+  line just under it. It's gone from the summary; the callout and the checkbox say it.
+- **After unlocking, the keyboard was nowhere.** The field it was in went away, so focus fell to the page and a screen
+  reader heard nothing. The diagram (its `main`, named "Diagram: …") now takes focus, and the arrow keys pan at once.
+- **The prompt never opened in a sandboxed frame.** It was a `<form>`, and a frame sandboxed without `allow-forms` (as a
+  wiki may frame the file) never submits one: Enter and Open did nothing. It's Enter on the field and a plain button
+  now; `tests/e2e/html-export.spec.ts` unlocks a Private diagram's file in such a frame.
+- **On a page with no WebCrypto it asked anyway.** A file on a plain `http://` host can't decrypt; the prompt used to
+  say so only after a password. It says so first, with what to do (open it from disk), and Open stays off.
+- **Icons went missing after unlocking** (a Windows build only). The viewer build swapped in its icon map by a
+  backslashed path, so the bundle carried two copies of that module and the unlocked icons went into the one the
+  canvas didn't read. The swap's path is normalized, and `src/export/template.build.test.ts` checks there's one copy.
+
+### Which option should I use (round 21's map, with the password)
+
+| You want to…                                          | Use                                                  | Who can open it                                   | Private diagram      |
+| ----------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------- | -------------------- |
+| Send a work diagram to colleagues to look at and play | File ▸ Export as ▸ **Interactive HTML…**             | Anyone who has the file                           | Yes                  |
+| …and it may be forwarded beyond them                  | **Interactive HTML…** ▸ **Require a password**       | Anyone with the file and the password             | Yes                  |
+| Let someone keep editing it                           | **Save** / Export as ▸ **Diagram file**              | Anyone who has the file                           | Yes                  |
+| A link for a few people                               | **Copy link with password…**                         | Anyone with the link and the password             | No (off, says why)   |
+| A quick link for a public or personal diagram         | **Copy share link**                                  | Anyone with the link                              | No (off, says why)   |
+| Show it in your intranet or app, behind its sign-in   | **Embed code…** ▸ **Your app supplies it (private)** | Whoever your app lets in; never in a URL          | Yes (the only embed) |
+| Show it on a public page (blog, docs)                 | **Embed code…** ▸ **In the link** / Example by name  | Anyone who can see the page                       | No                   |
+| A picture                                             | **Export PNG** / Export as ▸ **Image…**              | Anyone who has the file                           | Yes                  |
+| Keep it in your own cloud storage                     | **Save to ▸** Google Drive, OneDrive or Dropbox      | Your account, and whoever you share it with there | No (off, says why)   |
+
+For a work diagram the safe choices are, in order: Interactive HTML (with a password when it may travel), the diagram
+file, a link with a password, an embed your app supplies. A company's own copy with links off keeps Require a password:
+it's a file (docs/SELF-HOSTING.md). The skill offers the same (`skills/livediagrams/reference/outputs.md`), and never
+asks for the password in the chat: the user types it in their own terminal.
+
+### Still open (owner's call)
+
+- **No agent tool sets or reads the password**, because none does for password links either: the page's WebMCP tools
+  can't make a link with a password or an Interactive HTML file at all. The skill's `--password` reads it from the
+  environment or a terminal prompt, never from an argument.
+- **A Diagram file with a password** would be the same crypto on the `.diagram.json`; not built, since the app's
+  Open would then need a prompt too.
+- **The file's size** still shows roughly how big the diagram is. Padding it would hide that at a cost in size; not
+  done.
+
+![The dialog with Require a password on, ready](screenshots/round25/dialog-password-ready-1280-light.png)
+![The file's prompt after a wrong password, dark](screenshots/round25/viewer-1440-dark-wrong.png)
+![The prompt on a phone](screenshots/round25/viewer-390-light-locked.png)
+![Unlocked: the same file, playing](screenshots/round25/viewer-1280-light-unlocked.png)
+
+Also: `screenshots/round25/dialog-1280-light.png`, `dialog-password-empty-1280-light.png`,
+`dialog-password-short-1280-light.png`, `dialog-password-weak-1440-dark.png`, `dialog-password-ready-1440-dark.png`,
+`dialog-password-options-1024-light.png`, `toast-1280-light.png`, `viewer-1280-light-locked.png`,
+`viewer-1280-light-wrong.png`, `viewer-1440-dark-unlocked.png` and `password-link-1280-light.png`.
+
 ## Round 24: import follow-ups (2026-10-12)
 
 The gate for the import follow-ups: replicas, Round 20's two open items (long module addresses, Draw everything's

@@ -11,6 +11,8 @@ var STENCIL_ICONS_OPEN = `<script type="application/json" id="ld-stencil-icons">
 var FALLBACK_ICON = "generic-box";
 /** The payload's format; the viewer refuses others. */
 var PAYLOAD_VERSION = 1;
+/** A password-protected file's page title and file name: neutral, since the diagram's own title is encrypted. */
+var LOCKED_TITLE = "Diagram (password protected)";
 /** JSON that is safe inside a `<script>` element: no `<` at all (so no `<\/script>` or `<!--`), no U+2028/9. */
 function scriptSafeJson(value) {
 	return JSON.stringify(value).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
@@ -82,10 +84,20 @@ function buildPayload(template, input) {
 * before the script runs, already has the right background). Throws if the template isn't one.
 */
 function injectPayload(template, payload) {
+	return fill(template, scriptSafeJson(payload), payload.diagram.title, payload.options.theme);
+}
+/**
+* A password-protected file: the template with only `locked` in its data block, a neutral `<title>` (LOCKED_TITLE)
+* and the theme. No title, label, note, icon or option of the diagram is left readable.
+*/
+function injectLocked(template, locked) {
+	return fill(template, scriptSafeJson(locked), LOCKED_TITLE, locked.theme);
+}
+function fill(template, json, title, theme) {
 	const at = template.indexOf(PAYLOAD_BLOCK);
 	if (at < 0 || template.indexOf(PAYLOAD_BLOCK, at + 1) >= 0) throw new Error("This isn't an interactive viewer template: it needs exactly one payload placeholder.");
-	const block = PAYLOAD_BLOCK.replace(PAYLOAD_PLACEHOLDER, () => scriptSafeJson(payload));
-	return template.slice(0, at).replace(/<title>[^<]*<\/title>/, () => `<title>${escapeHtml(payload.diagram.title)}</title>`).replace(/(<html\b[^>]*\bdata-theme=")[a-z]+(")/, (_, open, close) => open + payload.options.theme + close) + block + template.slice(at + PAYLOAD_BLOCK.length);
+	const block = PAYLOAD_BLOCK.replace(PAYLOAD_PLACEHOLDER, () => json);
+	return template.slice(0, at).replace(/<title>[^<]*<\/title>/, () => `<title>${escapeHtml(title)}</title>`).replace(/(<html\b[^>]*\bdata-theme=")[a-z]+(")/, (_, open, close) => open + theme + close) + block + template.slice(at + PAYLOAD_BLOCK.length);
 }
 /** One call: the finished file's text. */
 function exportHtml(template, input) {
@@ -121,4 +133,4 @@ function viewerCsp(scriptHash, styleHash) {
 	].join("; ");
 }
 //#endregion
-export { FALLBACK_ICON, PAYLOAD_BLOCK, PAYLOAD_PLACEHOLDER, PAYLOAD_VERSION, STENCIL_ICONS_OPEN, buildPayload, escapeHtml, exportHtml, htmlFileName, injectPayload, scriptSafeJson, subsetIcons, svgDataUri, templateStencilIcons, today, viewerCsp };
+export { FALLBACK_ICON, LOCKED_TITLE, PAYLOAD_BLOCK, PAYLOAD_PLACEHOLDER, PAYLOAD_VERSION, STENCIL_ICONS_OPEN, buildPayload, escapeHtml, exportHtml, htmlFileName, injectLocked, injectPayload, scriptSafeJson, subsetIcons, svgDataUri, templateStencilIcons, today, viewerCsp };

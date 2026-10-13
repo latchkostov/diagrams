@@ -19,7 +19,12 @@ Everything. A self-hosted copy built with `pnpm build:internal`:
 - **Offers nothing to outside AI.** No tools for browser agents (WebMCP), no Copy for AI and no copied prompts.
 - **Starts new diagrams Private.** People can still turn that setting off in File ▸ Privacy.
 - **Exports stay files.** Diagram file, PNG, SVG, draw.io, Mermaid and **Interactive HTML** are made in the page and
-  downloaded. The Interactive HTML file is self-contained and makes no requests when opened.
+  downloaded. The Interactive HTML file is self-contained and makes no requests when opened. Its **Require a
+  password** stays on with links off: it's a file, encrypted in the page with the same crypto as links with a
+  password, and nothing of the diagram is readable without the password. For a file that may be forwarded outside
+  the team, it's the safest way out ([INTEROP.md](INTEROP.md#interactive-html-srcexport-scriptsinteractive-viewerts)).
+  The file unlocks from disk or an `https://` host; on a plain `http://` intranet host the browser has no WebCrypto,
+  and the prompt says to open it from disk.
 
 What's left is up to you and your browsers:
 

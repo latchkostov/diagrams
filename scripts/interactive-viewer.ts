@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { build, type Plugin, type PluginOption, type Rollup, type ViteDevServer } from "vite";
+import { build, normalizePath, type Plugin, type PluginOption, type Rollup, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import { catalog } from "../src/stencils/catalog";
 import { PAYLOAD_BLOCK, STENCIL_ICONS_OPEN, viewerCsp } from "../src/export/inject";
@@ -53,7 +53,9 @@ const FORBIDDEN: [string, RegExp][] = [
   ["the particle worker", /[/\\]src[/\\]live[/\\]particleWorker\.ts$/],
   ["the AI panel and agent tools", /[/\\]src[/\\]ai[/\\](ui[/\\]AiPanel|webmcp|ondevice)/],
   ["cloud storage", /[/\\]src[/\\]interop[/\\](storage|gdrive)[/\\]/],
-  ["share links", /[/\\]src[/\\]interop[/\\](share|shareCrypto|passwordLink)\.ts$/],
+  // Making or opening links. The password crypto itself (passwordCrypto.ts, and passwordLink.ts's token format) is
+  // in: a password-protected file decrypts with it (src/export/lock.ts).
+  ["share links", /[/\\]src[/\\]interop[/\\](share|shareCrypto)\.ts$/],
   ["the example diagrams", /[/\\]src[/\\]examples[/\\][^/\\]+\.json$/],
   ["local-only examples", /[/\\]examples[/\\]private[/\\]|[/\\]localOnly\.dev\.ts$/],
   // Architecture checks are for editing: the engine, the Checks card and the checks worker never ship in a file.
@@ -135,8 +137,9 @@ function viewerSwaps(root: string): Plugin {
     name: "interactive-viewer-swaps",
     enforce: "pre",
     async resolveId(source, importer, options) {
+      // Forward slashes, as Vite ids are: a Windows path would make a second copy of the module (two icon maps).
       if (source === "./iconUrls" && importer && own(importer, "/src/stencils/registry.ts"))
-        return resolve(root, "src/export/viewer/iconUrls.ts");
+        return normalizePath(resolve(root, "src/export/viewer/iconUrls.ts"));
       // Development's content check for local-only examples: never in a file (a single bundle keeps a stub of
       // every module it reaches, used or not).
       if (source === "./localOnly.dev" && importer && own(importer, "/src/lib/localOnly.ts")) return NO_LOCAL;

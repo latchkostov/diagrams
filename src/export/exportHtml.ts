@@ -5,13 +5,27 @@ import { loadOnce } from "../lib/lazyLoad";
 import { downloadText } from "../interop/files";
 import { validateDiagram } from "../interop/native";
 import { toast } from "../interop/ui/toast";
-import { exportHtml, FALLBACK_ICON, htmlFileName, templateStencilIcons, type ExportInput } from "./inject";
+import {
+  buildPayload,
+  exportHtml,
+  FALLBACK_ICON,
+  htmlFileName,
+  injectLocked,
+  LOCKED_TITLE,
+  templateStencilIcons,
+  type ExportInput,
+} from "./inject";
+import { lockPayload } from "./lock";
 
 // File ▸ Export as ▸ Interactive HTML…: the viewer template (fetched from this site, once, when someone first
 // exports), the icons the diagram uses (this site's own files), and the diagram, put together here and
-// downloaded. Nothing is uploaded: the file is made in the page.
+// downloaded. Nothing is uploaded: the file is made in the page. With a password, the payload is encrypted here too
+// (./lock.ts), and the file is named and titled LOCKED_TITLE: nothing of the diagram is readable without it.
 
-export type HtmlExportOptions = Omit<ExportInput, "diagram" | "iconSvgs" | "exportedOn">;
+export type HtmlExportOptions = Omit<ExportInput, "diagram" | "iconSvgs" | "exportedOn"> & {
+  /** Require a password: the file holds the payload encrypted with it (./lock.ts). Never stored or sent. */
+  password?: string;
+};
 
 /** The template, relative to the page, so a build served from a sub-path finds its own. */
 const loadTemplate = loadOnce(async () => {
@@ -47,9 +61,11 @@ export async function buildInteractiveHtml(diagram: DiagramFile, options: HtmlEx
   // The same contract the viewer checks when it opens the file: never write one it would refuse.
   const checked = validateDiagram(diagram);
   if (!checked.ok) throw new Error(checked.error);
+  const { password, ...rest } = options;
   const template = await loadTemplate();
-  const iconsBySvg = await iconSvgs(diagram, templateStencilIcons(template));
-  return exportHtml(template, { ...options, diagram, iconSvgs: iconsBySvg });
+  const input: ExportInput = { ...rest, diagram, iconSvgs: await iconSvgs(diagram, templateStencilIcons(template)) };
+  if (password === undefined) return exportHtml(template, input);
+  return injectLocked(template, await lockPayload(buildPayload(template, input), password));
 }
 
 /** Builds and downloads it; returns the file's name and size in bytes. */
@@ -58,18 +74,23 @@ export async function downloadInteractiveHtml(
   options: HtmlExportOptions,
 ): Promise<{ name: string; bytes: number }> {
   const html = await buildInteractiveHtml(diagram, options);
-  const name = htmlFileName(options.title ?? diagram.title);
+  // A protected file's name says nothing of the diagram either.
+  const name = htmlFileName(options.password !== undefined ? LOCKED_TITLE : (options.title ?? diagram.title));
   downloadText(html, name, "text/html");
   return { name, bytes: new Blob([html]).size };
 }
 
 /** The dialog's Download: the file, with progress and the outcome in a toast (never a thrown error). */
 export async function exportInteractiveHtml(diagram: DiagramFile, options: HtmlExportOptions): Promise<void> {
-  const busy = toast.busy("Making the HTML file…");
+  const locked = options.password !== undefined;
+  const busy = toast.busy(locked ? "Encrypting the HTML file…" : "Making the HTML file…");
   try {
     const { name, bytes } = await downloadInteractiveHtml(diagram, options);
     toast.dismiss(busy);
-    toast.success(`Exported “${name}” (${Math.max(1, Math.round(bytes / 1000))} kB). Anyone who has it can open it.`);
+    const who = locked
+      ? "Only people with the password can open it. Send the password separately."
+      : "Anyone who has it can open it.";
+    toast.success(`Exported “${name}” (${Math.max(1, Math.round(bytes / 1000))} kB). ${who}`);
   } catch (err) {
     toast.dismiss(busy);
     toast.error(`Couldn't export the interactive HTML. ${err instanceof Error ? err.message : String(err)}`);

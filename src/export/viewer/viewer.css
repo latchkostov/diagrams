@@ -115,3 +115,73 @@ body,
   left: auto;
   right: 0;
 }
+
+/* A password-protected file's prompt (LockedView): one card in the middle of the page, in the dialogs' style. */
+.xv-lock {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  overflow: auto;
+  background: var(--stage-bg, var(--bg));
+}
+
+.xv-lock-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(420px, 100%);
+  padding: 22px 22px 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+}
+
+[data-theme="dark"] .xv-lock-card {
+  background: var(--surface-2);
+}
+
+.xv-lock-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.xv-lock-title {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.xv-lock-hint {
+  margin: 0 0 6px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.xv-lock-row {
+  display: flex;
+  gap: 8px;
+}
+
+.xv-lock-row .ix-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.xv-lock-row .btn {
+  flex: none;
+}
+
+/* Focused only to hand the keyboard to the diagram once a protected file is unlocked: no ring on the whole page. */
+.xv-canvas:focus {
+  outline: none;
+}

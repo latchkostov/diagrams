@@ -96,6 +96,44 @@ test.describe("The agent skill's Interactive HTML export", () => {
     await viewer.page.close();
   });
 
+  test("--password: the released viewer asks for it, then plays, with zero requests", async ({ context }) => {
+    test.setTimeout(90_000);
+    const password = "plum orbit lantern 42";
+    const dir = test.info().outputPath("skill-locked");
+    // The password from the environment, never an argument.
+    const r = spawnSync(
+      process.execPath,
+      [
+        join(SCRIPTS, "export-html.mjs"),
+        join(process.cwd(), "src", "examples", `${KAFKA}.json`),
+        "--password",
+        "--out",
+        dir,
+      ],
+      { encoding: "utf8", env: { ...process.env, LIVEDIAGRAMS_HTML_PASSWORD: password } },
+    );
+    expect(r.status, r.stderr).toBe(0);
+    const path = join(dir, "Diagram (password protected).html");
+    expect(readFileSync(path, "utf8")).not.toContain("Kafka order pipeline");
+
+    const url = pathToFileURL(path).href;
+    const viewer = await watchedPage(context);
+    await viewer.page.goto(url);
+    await expect(viewer.page.getByTestId("viewer-password-input")).toBeFocused();
+    await viewer.page.keyboard.type("not the password");
+    await viewer.page.keyboard.press("Enter");
+    await expect(viewer.page.getByTestId("viewer-password-error")).toContainText("doesn't open this file", {
+      timeout: 15_000,
+    });
+    await viewer.page.keyboard.type(password);
+    await viewer.page.keyboard.press("Enter");
+    await expectPlaying(viewer.page);
+    expect(viewer.requests.filter((u) => !u.startsWith("data:"))).toEqual([url]);
+    expect(await viewer.page.evaluate(() => window.__violations ?? [])).toEqual([]);
+    expect(viewer.errors).toEqual([]);
+    await viewer.page.close();
+  });
+
   test("a private diagram gets an HTML file, never a share link", async ({ context }) => {
     const file = test.info().outputPath("ledger.diagram.json");
     writeFileSync(

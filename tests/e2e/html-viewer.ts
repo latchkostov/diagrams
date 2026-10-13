@@ -11,14 +11,19 @@ import { expect, publicExamples } from "./fixtures";
 export const KAFKA = "kafka-order-pipeline";
 const kafkaNodes = publicExamples.find((e) => e.slug === KAFKA)?.nodeIds ?? [];
 
+/** The text of the file's #diagram data block. */
+export function filePayloadText(html: string): string {
+  const json = /<script type="application\/json" id="diagram">([\s\S]*?)<\/script>/.exec(html)?.[1];
+  if (!json) throw new Error("No payload in the file");
+  return json;
+}
+
 /** The payload the file carries (its #diagram data block). */
 export function filePayload(html: string): {
   diagram: { title: string; private?: boolean };
   options: { theme: "light" | "dark"; banner?: string; startSimulation: string | null; exportedOn: string };
 } {
-  const json = /<script type="application\/json" id="diagram">([\s\S]*?)<\/script>/.exec(html)?.[1];
-  if (!json) throw new Error("No payload in the file");
-  return JSON.parse(json);
+  return JSON.parse(filePayloadText(html));
 }
 
 declare global {

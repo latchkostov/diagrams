@@ -15,7 +15,9 @@ import { LIMITS } from "./native";
 // The additional data binds the version, so a link can't be relabelled as another version.
 
 // This module is the light part the app loads up front (recognising and checking a link); the WebCrypto
-// work is in ./shareCrypto.ts, loaded when a password link is made or opened.
+// work is in ./passwordCrypto.ts, loaded when a password link is made or opened (./shareCrypto.ts). A
+// password-protected Interactive HTML file (src/export/lock.ts) carries the same v1 token, made with the same
+// parameters, with the file's payload as its plaintext.
 
 export const ENCRYPTED_PARAM = "e";
 export const ENCRYPTION_VERSION = "v1";

@@ -1567,6 +1567,207 @@ function layoutDiagram(input, opts = {}) {
 	};
 }
 //#endregion
+//#region src/interop/codec.ts
+var utf8 = new TextEncoder();
+var utf8Decode = new TextDecoder("utf-8", { fatal: false });
+var textToBytes = (s) => utf8.encode(s);
+var bytesToText = (b) => utf8Decode.decode(b);
+var TooLargeError = class extends Error {};
+/** Pipes bytes through a (de)compressor, aborting once the output passes `maxBytes` (zip-bomb guard). */
+async function pipe(bytes, stream, maxBytes = Infinity) {
+	const reader = new Blob([bytes]).stream().pipeThrough(stream).getReader();
+	const chunks = [];
+	let total = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		total += value.length;
+		if (total > maxBytes) {
+			await reader.cancel().catch(() => {});
+			throw new TooLargeError(`It expands to more than ${Math.round(maxBytes / 1e6)} MB, which is too large to open.`);
+		}
+		chunks.push(value);
+	}
+	const out = new Uint8Array(total);
+	let at = 0;
+	for (const c of chunks) {
+		out.set(c, at);
+		at += c.length;
+	}
+	return out;
+}
+function compressionSupported() {
+	return typeof CompressionStream === "function" && typeof DecompressionStream === "function";
+}
+async function deflateRaw(bytes) {
+	if (!compressionSupported()) throw new Error("This browser can't compress data (CompressionStream is missing). Try a current Chrome, Edge, Firefox or Safari.");
+	return pipe(bytes, new CompressionStream("deflate-raw"));
+}
+/** Inflates raw DEFLATE, refusing outputs larger than `maxBytes`. */
+async function inflateRaw(bytes, maxBytes = Infinity) {
+	if (!compressionSupported()) throw new Error("This browser can't decompress data (DecompressionStream is missing). Try a current Chrome, Edge, Firefox or Safari.");
+	return pipe(bytes, new DecompressionStream("deflate-raw"), maxBytes);
+}
+function bytesToBase64(bytes) {
+	let bin = "";
+	const CHUNK = 32768;
+	for (let i = 0; i < bytes.length; i += CHUNK) bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+	return btoa(bin);
+}
+function base64ToBytes(b64) {
+	const clean = b64.replace(/\s+/g, "");
+	const bin = atob(clean);
+	const out = new Uint8Array(bin.length);
+	for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+	return out;
+}
+/** RFC 4648 §5 (URL- and filename-safe), unpadded. */
+var bytesToBase64Url = (bytes) => bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+function base64UrlToBytes(s) {
+	const std = s.replace(/-/g, "+").replace(/_/g, "/");
+	return base64ToBytes(std + "=".repeat((4 - std.length % 4) % 4));
+}
+var PBKDF2_ITERATIONS = 6e5;
+var MIN_PASSWORD_LENGTH = 8;
+/** The password didn't open the link: GCM authentication failed (a wrong password, or a changed link). */
+var WrongPasswordError = class extends Error {
+	constructor() {
+		super("That password doesn't open this link. Check it and try again.");
+		this.name = "WrongPasswordError";
+	}
+};
+/** The link is malformed or made by a version of Diagrams this one doesn't know. Retrying won't help. */
+var BadEncryptedLinkError = class extends Error {
+	constructor(message) {
+		super(message);
+		this.name = "BadEncryptedLinkError";
+	}
+};
+var DAMAGED$2 = "This password-protected link is damaged or incomplete. Ask for the link again, and make sure it was copied in full.";
+/** Splits and checks a `v1.<salt>.<iv>.<ciphertext>` token; throws BadEncryptedLinkError. */
+function parseEncrypted(token) {
+	const t = token.trim();
+	if (t.length > LIMITS.maxTextChars) throw new BadEncryptedLinkError("This share link is too long to open.");
+	const parts = t.split(".");
+	const version = parts[0] ?? "";
+	if (/^v\d+$/.test(version) && version !== "v1") throw new BadEncryptedLinkError("This link was made by a newer version of Live Diagrams. Reload the page to update, then open the link again.");
+	if (version !== "v1" || parts.length !== 4 || parts.some((p) => !/^[A-Za-z0-9_-]+$/.test(p))) throw new BadEncryptedLinkError(DAMAGED$2);
+	let decoded;
+	try {
+		decoded = parts.slice(1).map((p) => base64UrlToBytes(p));
+	} catch {
+		throw new BadEncryptedLinkError(DAMAGED$2);
+	}
+	const [salt, iv, ciphertext] = decoded;
+	if (salt.length !== 16 || iv.length !== 12 || ciphertext.length < 17) throw new BadEncryptedLinkError(DAMAGED$2);
+	return {
+		version,
+		salt,
+		iv,
+		ciphertext
+	};
+}
+//#endregion
+//#region src/interop/passwordCrypto.ts
+var AAD = textToBytes(`livediagrams:e:v1`);
+var subtle = () => {
+	const s = globalThis.crypto?.subtle;
+	if (!s) throw new Error("This browser can't encrypt or decrypt here (WebCrypto needs a secure https:// page). Try a current browser.");
+	return s;
+};
+async function deriveKey(password, salt, usage) {
+	const material = await subtle().importKey("raw", textToBytes(password.normalize("NFC")), "PBKDF2", false, ["deriveKey"]);
+	return subtle().deriveKey({
+		name: "PBKDF2",
+		hash: "SHA-256",
+		salt,
+		iterations: PBKDF2_ITERATIONS
+	}, material, {
+		name: "AES-GCM",
+		length: 256
+	}, false, [usage]);
+}
+/** Encrypts bytes with a password into a `v1.…` token. `salt` and `iv` are for test vectors only. */
+async function encryptBytes(plain, password, fixed = {}) {
+	const salt = fixed.salt ?? crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(16));
+	const iv = fixed.iv ?? crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(12));
+	if (salt.length !== 16 || iv.length !== 12) throw new Error("Wrong salt or IV length.");
+	const key = await deriveKey(password, salt, "encrypt");
+	const sealed = await subtle().encrypt({
+		name: "AES-GCM",
+		iv,
+		additionalData: AAD,
+		tagLength: 128
+	}, key, plain);
+	return [
+		"v1",
+		bytesToBase64Url(salt),
+		bytesToBase64Url(iv),
+		bytesToBase64Url(new Uint8Array(sealed))
+	].join(".");
+}
+/** Decrypts a `v1.…` token. Throws BadEncryptedLinkError (bad token) or WrongPasswordError (GCM said no). */
+async function decryptBytes(token, password) {
+	const { salt, iv, ciphertext } = parseEncrypted(token);
+	const key = await deriveKey(password, salt, "decrypt");
+	try {
+		return new Uint8Array(await subtle().decrypt({
+			name: "AES-GCM",
+			iv,
+			additionalData: AAD,
+			tagLength: 128
+		}, key, ciphertext));
+	} catch {
+		throw new WrongPasswordError();
+	}
+}
+//#endregion
+//#region src/export/lock.ts
+/** What the viewer says when a password doesn't open the file. */
+var WRONG_FILE_PASSWORD = "That password doesn't open this file. Check it and try again.";
+var DAMAGED$1 = "This file's diagram is damaged. Export it again from Live Diagrams.";
+/** Where the browser has no WebCrypto (a page on plain http://, or an old browser). */
+var CANT_UNLOCK_HERE = "This browser can't unlock the file here: it decrypts only on https:// pages and files opened from disk. Download the file and open it from disk, or use a current browser.";
+/** Why a file didn't open: `wrong` is a wrong password (try again); otherwise retrying won't help. */
+var UnlockError = class extends Error {
+	wrong;
+	constructor(message, wrong = false) {
+		super(message);
+		this.name = "UnlockError";
+		this.wrong = wrong;
+	}
+};
+/** The payload encrypted with `password`, as a password-protected file's data block holds it. */
+async function lockPayload(payload, password) {
+	if (password.length < 8) throw new Error(`Use a password of at least 8 characters.`);
+	const encrypted = await encryptBytes(await deflateRaw(textToBytes(JSON.stringify(payload))), password);
+	if (encrypted.length > LIMITS.maxTextChars) throw new Error("This diagram is too large to protect with a password.");
+	return {
+		version: 1,
+		encrypted,
+		theme: payload.options.theme
+	};
+}
+/**
+* The payload's JSON text from a locked file's token, refusing more than `maxBytes` once inflated. Throws an
+* UnlockError in the file's words: `wrong` for a wrong password, otherwise damaged or can't decrypt here.
+*/
+async function unlockPayloadText(token, password, maxBytes) {
+	let bytes;
+	try {
+		bytes = await decryptBytes(token, password);
+	} catch (err) {
+		if (err instanceof WrongPasswordError) throw new UnlockError(WRONG_FILE_PASSWORD, true);
+		if (err instanceof BadEncryptedLinkError) throw new UnlockError(DAMAGED$1);
+		throw new UnlockError(globalThis.crypto?.subtle ? DAMAGED$1 : CANT_UNLOCK_HERE);
+	}
+	try {
+		return bytesToText(await inflateRaw(bytes, maxBytes));
+	} catch {
+		throw new UnlockError(DAMAGED$1);
+	}
+}
+//#endregion
 //#region src/export/viewer/payload.ts
 /** Budgets for a file that may have been edited by hand: checked before anything is parsed or kept. */
 var PAYLOAD_LIMITS = {
@@ -1578,6 +1779,7 @@ var PAYLOAD_LIMITS = {
 	/** Everything: the diagram, its icons (a few kB each; 4 MB is far beyond any real diagram) and the options. */
 	totalChars: LIMITS.maxTextChars + 4e6
 };
+var DAMAGED = "This file's diagram is damaged. Export it again from Live Diagrams.";
 /** The payload's text checked and parsed (exported for the unit test). */
 function parsePayload(source) {
 	if (source && source.length > PAYLOAD_LIMITS.totalChars) return {
@@ -1595,13 +1797,23 @@ function parsePayload(source) {
 	} catch {
 		return {
 			ok: false,
-			error: "This file's diagram is damaged. Export it again from Live Diagrams."
+			error: DAMAGED
 		};
 	}
 	const p = raw;
 	if (p?.version !== 1) return {
 		ok: false,
 		error: "This file comes from a newer version of Live Diagrams and can't be shown here."
+	};
+	if (p.encrypted !== void 0) return typeof p.encrypted === "string" && p.encrypted ? {
+		ok: false,
+		locked: {
+			token: p.encrypted,
+			theme: p.theme === "dark" ? "dark" : "light"
+		}
+	} : {
+		ok: false,
+		error: DAMAGED
 	};
 	const diagramChars = JSON.stringify(p.diagram ?? null).length;
 	if (diagramChars > PAYLOAD_LIMITS.diagramChars) return {
@@ -1632,4 +1844,49 @@ function parsePayload(source) {
 	};
 }
 //#endregion
-export { LIMITS, PAYLOAD_LIMITS, annotationGeometryError, layoutDiagram, parsePayload, simulationProblem, validateDiagram };
+//#region src/interop/passwordStrength.ts
+/** A few of the most-guessed passwords and words (lowercase, digits and symbols stripped). */
+var COMMON = new Set("password passw0rd qwerty qwertyuiop asdfgh asdfghjkl letmein welcome iloveyou admin administrator monkey dragon football baseball sunshine princess master shadow superman trustno changeme secret diagram diagrams livediagrams abcdefgh abcdefg abcdef".split(" "));
+/**
+* A rough guess at how hard a password is to guess, for the hint under the field. The link is open to
+* unlimited offline guessing by whoever holds it, so length (several random words) matters most.
+*/
+function passwordStrength(password) {
+	const pw = password.normalize("NFC");
+	const chars = [...pw];
+	if (chars.length < 8) return {
+		level: "short",
+		hint: `Use at least 8 characters.`
+	};
+	const letters = pw.toLowerCase().replace(/[^a-z]/g, "");
+	const distinct = new Set(chars).size;
+	const sequential = "abcdefghijklmnopqrstuvwxyz01234567890".includes(pw.toLowerCase());
+	const commonCore = COMMON.has(letters) || COMMON.has(pw.toLowerCase());
+	const digitsOnly = /^\d+$/.test(pw);
+	const wordPlus = /^[A-Za-z]+[\d\W_]{0,6}$/.test(pw) && chars.length < 14;
+	if (commonCore || sequential || distinct <= 3 || digitsOnly && chars.length < 16 || wordPlus) return {
+		level: "weak",
+		hint: "Easy to guess. Try four or more random words."
+	};
+	let pool = 0;
+	if (/[a-z]/.test(pw)) pool += 26;
+	if (/[A-Z]/.test(pw)) pool += 26;
+	if (/\d/.test(pw)) pool += 10;
+	if (/[^A-Za-z0-9]/.test(pw)) pool += 33;
+	const words = pw.split(/[\s\-_.,+]+/).filter((w) => w.length >= 3).length;
+	const bits = Math.min(chars.length * Math.log2(Math.max(pool, 10)), distinct * 8);
+	if (words >= 4 && chars.length >= 20 || bits >= 80) return {
+		level: "strong",
+		hint: "Strong."
+	};
+	if (bits >= 50) return {
+		level: "fair",
+		hint: "Fair. Longer is stronger: try four or more random words."
+	};
+	return {
+		level: "weak",
+		hint: "Easy to guess. Try four or more random words."
+	};
+}
+//#endregion
+export { LIMITS, MIN_PASSWORD_LENGTH, PAYLOAD_LIMITS, annotationGeometryError, layoutDiagram, lockPayload, parsePayload, passwordStrength, simulationProblem, unlockPayloadText, validateDiagram };

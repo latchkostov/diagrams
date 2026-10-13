@@ -2,6 +2,27 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Interactive HTML with a password (2026-10)
+
+No habit changes: the export is as it was unless you turn the new option on. New:
+
+- **Require a password** in **File ▸ Export as ▸ Interactive HTML…** (off by default). The password field is the one
+  from Copy link with password… (at least 8 characters, a strength hint, Show), and the dialog then says **Only
+  people with the password can open it.** Send the password separately.
+- The file is encrypted in your browser with the same crypto as links with a password (AES-256-GCM, the key from
+  PBKDF2-SHA-256 at 600,000 iterations). Nothing of the diagram is readable without the password: not its title,
+  labels, notes, simulations or banner. It's named **Diagram (password protected).html**.
+- Opened, it asks for the password, says when it's wrong (try again as often as you like), and plays as before. It
+  still works offline and makes no network requests. The password is never stored or sent, and it can't be
+  recovered: if it's lost, export again.
+- Private diagrams can export it too, as they could without a password. So can a company's own copy with links
+  turned off: it's a file.
+- It unlocks from disk (checked in Chromium, Firefox and WebKit, Safari's engine) and on `https://` hosts. A plain `http://` intranet host can't
+  decrypt it: the prompt says to open the file from disk.
+- The Agent Skill's `export-html.mjs` takes `--password`. It never takes the password on the command line: it asks in
+  the terminal, or reads `LIVEDIAGRAMS_HTML_PASSWORD`. The skill offers the password for company content and never
+  asks for it in the chat.
+
 ## Imports: big ones, replicas, KafkaUser ACLs (2026-10)
 
 One habit change: **a big import draws part of itself.** Past 300 nodes, a Kubernetes, Terraform, AsyncAPI or compose

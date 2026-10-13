@@ -480,10 +480,38 @@ simulation picker, play and pause, speed, slow motion, trace and the rest of the
 - **Privacy.** Allowed for every diagram, Private ones and the development-only local-only examples included, exactly
   like Diagram file: it's the person's explicit action, like saving to this device. The file is made in the page;
   nothing is uploaded.
+- **Require a password** (`src/export/lock.ts`; a checkbox in the dialog, off by default) is for a file that may be
+  forwarded beyond the team (email, chat, a shared drive). The field is Copy link with password…'s own
+  (`src/interop/ui/PasswordField.tsx`: at least 8 characters, the strength hint, Show; no confirm field), and the
+  dialog's line becomes **Only people with the password can open it.** The whole payload (the diagram with its title,
+  labels, notes, properties and simulations, the icons it uses, the banner, the options and the export date) is
+  raw-DEFLATE compressed and encrypted with password links' crypto, `src/interop/passwordCrypto.ts`: PBKDF2-HMAC-SHA-256
+  at 600,000 iterations over a fresh 16-byte salt, AES-256-GCM with a fresh 12-byte IV, a 128-bit tag and the
+  additional data `livediagrams:e:v1`, as the same `v1.<salt>.<iv>.<ciphertext>` token. Nothing is copied: the link and
+  the file call the same functions, and `src/export/lock.test.ts` checks WebCrypto is called identically for both.
+  - **In the clear**, only: the viewer itself (the template, identical for every file), the theme (so the prompt paints
+    in it), the format version, the token, and the neutral name and `<title>` **Diagram (password protected)**
+    (`LOCKED_TITLE`; the dialog's title goes inside). The file's size shows roughly how big the diagram is. Private
+    or not isn't visible either: the `"private"` flag is inside.
+  - **Opening it** shows **This diagram is password-protected**, one field (focused) and **Open** (Enter). A wrong
+    password says **That password doesn't open this file. Check it and try again.**, keeps what was typed, selected, and
+    can be retried at once; there's no lockout (an offline file couldn't keep one), each try costs the 600,000
+    iterations instead. Once it opens, the icons join the viewer's icon map, the page title becomes the diagram's (in
+    that tab only), and focus moves to the diagram. The prompt is no `<form>`: a frame sandboxed without
+    `allow-forms` never submits one.
+  - **Nothing changes about the page:** the same CSP and hashes (WebCrypto and `DecompressionStream` need no
+    directive), zero requests, no storage, and the password is never kept or sent. A lost password can't be
+    recovered: export again.
+  - **Browsers.** WebCrypto needs a secure context. A file opened from disk is one in Chromium (checked in
+    `tests/e2e/html-export.spec.ts`, framed and sandboxed too), Firefox and Safari's WebKit (Firefox 157 and
+    Playwright's WebKit 27.2 on Windows, checked by hand: the prompt, a wrong password, then the diagram playing).
+    So is any `https://` host and `http://localhost`. A plain `http://` intranet host isn't: there the prompt says the
+    browser can't unlock the file here, and to open it from disk instead.
 - **What's in it.** The viewer (React, React Flow, the canvas and the live session, about 0.98 MB minified), its CSS,
   Mona Sans and Geist Mono (Latin, as data URIs; other scripts fall back to system fonts), the diagram JSON and
-  only the icons it uses (SVG data URIs). Template 1,220 kB raw / 415 kB gzip; the Kafka example exported with both
-  simulations and a banner 1,261 kB / 430 kB. The editing-only panels (inspector, stencil rail, start card,
+  only the icons it uses (SVG data URIs). Template 1,233 kB raw / 419 kB gzip (the password prompt and decryption
+  added 6.7 kB / 2.2 kB); the Kafka example exported with both simulations and a banner 1,261 kB / 430 kB, and with a
+  password about 1,250 kB (its payload is compressed before it's encrypted). The editing-only panels (inspector, stencil rail, start card,
   first-run hint, shortcuts sheet, simulation editor) are stubbed out of it: the read-only canvas never shows them.
 - **Zero requests.** A strict policy in a `<meta http-equiv="Content-Security-Policy">`: `default-src 'none'`,
   `script-src` and `style-src` each one `'sha256-…'` hash of the page's single inline script and style (no
@@ -543,11 +571,15 @@ writeFileSync(htmlFileName(diagram.title), html);
 ```
 
 **From the agent skill, offline.** `skills/livediagrams/scripts/export-html.mjs <file> [--out path] [--theme light|dark]
-[--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay]` makes the same kind of file on plain Node (20 or
+[--banner "text"] [--title "text"] [--sim <id>] [--no-autoplay] [--password]` makes the same kind of file on plain Node (20 or
 later, standard library only, no network): it validates the diagram with `validate.mjs`'s checks, then runs the
 bundled injection on the bundled template with the bundled icons, and checks the finished payload with the viewer's own
 `parsePayload` (size budgets, the diagram contract, icons, the 300-character banner) before writing anything, all in `skills/livediagrams/scripts/lib/`
-(`scripts/skill-viewer.ts`). `--exported-on YYYY-MM-DD` fixes the footer's date.
+(`scripts/skill-viewer.ts`). `--exported-on YYYY-MM-DD` fixes the footer's date. `--password` encrypts it with the
+app's own `lockPayload` (bundled in `lib/app.mjs`), decrypts it once more to check, and names it `Diagram (password
+protected).html`. The password is never an argument (shell history, the process list and an agent's transcript keep
+those): it comes from `LIVEDIAGRAMS_HTML_PASSWORD`, or a terminal prompt that doesn't echo and asks twice;
+`--password=…` or a value after it is refused, and so is a run with neither the variable nor a terminal.
 
 - `inject.mjs`: this module as plain JavaScript. Small and stable, so `pnpm schemas` keeps it current and the
   staleness test (`src/ai/skill/skill.test.ts`) compares it byte for byte.
@@ -956,6 +988,7 @@ again.
 | `src/interop/embed/host*`, `public/embed/live-diagram.js`  | Host-supplied embed: protocol, reducer, live driver, auto-height, snippets; the web component                   |
 | `src/export/inject.ts`                                     | Interactive HTML: payload injection, escaping, icon subsetting, file name, the file's CSP                       |
 | `src/export/exportHtml.ts`, `HtmlExportDialog.tsx`         | Interactive HTML: fetch the template, gather icons, download; the dialog (lazy)                                 |
-| `src/export/viewerEntry.tsx`, `src/export/viewer/*`        | The exported file's viewer: storage sandbox, payload reader, icon map, page                                     |
+| `src/export/lock.ts`, `src/interop/passwordCrypto.ts`      | Interactive HTML with a password: encrypt and decrypt the payload with password links' crypto                   |
+| `src/export/viewerEntry.tsx`, `src/export/viewer/*`        | The exported file's viewer: storage sandbox, payload reader, icon map, password prompt, page                    |
 | `scripts/interactive-viewer.ts`                            | Builds the viewer template (its own Vite build) and emits it beside the app                                     |
 | `src/styles/interop.css`                                   | Styles (prefixed `ix-`)                                                                                         |
