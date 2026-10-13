@@ -62,6 +62,7 @@ export default function WebMcpBridge({
           {
             currentEditor,
             canUseAi: () => canUseAiTools(paletteHost.get().canvas),
+            documentId: () => paletteHost.get().canvas?.documentId,
             subscribe: paletteHost.subscribe,
             open: onNewDiagram,
             settle: () => new Promise((r) => setTimeout(r, 60)),

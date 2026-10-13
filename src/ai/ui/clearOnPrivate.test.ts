@@ -25,7 +25,7 @@ describe("offerToClearConversation", () => {
   it("offers to clear a conversation kept only in memory, and clearing has Undo", () => {
     threads.append("doc-a", { kind: "change", request: "Add the payroll ledger", changed: [] });
     expect(threads.get("doc-a")).toHaveLength(1);
-    offerToClearConversation("doc-a", "Private: no share links, cloud saves or AI for this diagram.");
+    offerToClearConversation("doc-a", "Private: no share links, cloud saves or AI for this diagram.", () => true);
     const [, opts] = notify.mock.calls[0] as [string, { action: { label: string; run: () => void } }];
     expect(opts.action.label).toBe("Clear conversation");
     opts.action.run();
@@ -35,8 +35,14 @@ describe("offerToClearConversation", () => {
     expect(threads.get("doc-a")).toHaveLength(1);
   });
 
+  it("offers nothing once the person has moved on (another toast, another diagram, or not private)", () => {
+    threads.append("doc-c", { kind: "change", request: "Add the payroll ledger", changed: [] });
+    offerToClearConversation("doc-c", "Private", () => false);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
   it("offers nothing for a diagram with no conversation", () => {
-    offerToClearConversation("doc-b", "Private");
+    offerToClearConversation("doc-b", "Private", () => true);
     expect(notify).not.toHaveBeenCalled();
   });
 });

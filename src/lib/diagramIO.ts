@@ -489,13 +489,22 @@ function readIndex(): StoredEntry[] {
 }
 
 /**
- * The all-in-one index from before per-entry records is written once (migrateLegacySlot) with every entry then, title
- * and thumbnail included. A deleted diagram leaves it: its own record (restored by Undo) is what lists it.
+ * The all-in-one index from before per-entry records (written once, by migrateLegacySlot) holds every diagram's title
+ * and thumbnail as they were then. A delete retires it: each row listed only there gets its own record (never a deleted
+ * diagram's), then the index is written empty. Every tab writes the same empty index, so two tabs retiring it at once
+ * can't bring a row back (rewriting a filtered copy could: the later write restores what the earlier one removed).
  */
-function dropFromLegacyIndex(slug: string): void {
-  const entries = readLegacyIndex();
-  if (safeStorage.getItem(LIBRARY_KEY) && entries.some((e) => e.slug === slug))
-    writeIndex(entries.filter((e) => e.slug !== slug));
+function retireLegacyIndex(): void {
+  if (!safeStorage.getItem(LIBRARY_KEY)) return;
+  const rows = readLegacyIndex();
+  if (!rows.length) return;
+  for (const e of rows) {
+    if (isDeleted(e.slug) || safeStorage.getItem(entryKey(e.slug)) !== null) continue;
+    writeEntry(e);
+    // Deleted in another tab meanwhile (its marker is written first): take the record back out.
+    if (isDeleted(e.slug)) safeStorage.removeItem(entryKey(e.slug));
+  }
+  writeIndex([]);
 }
 
 /** Publish only this diagram's entry, without a cross-tab read/modify/write race. */
@@ -734,7 +743,7 @@ export function deleteLibraryDiagram(slug: string): () => boolean {
   safeStorage.removeItem(AUTOSAVE_PREFIX + slug);
   safeStorage.removeItem(entryKey(slug));
   safeStorage.removeItem(threadKey);
-  dropFromLegacyIndex(slug);
+  retireLegacyIndex();
   memoryTargets.delete(slug);
   changed();
   return () => {

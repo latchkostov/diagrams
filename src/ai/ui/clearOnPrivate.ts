@@ -7,10 +7,11 @@ import { threads } from "./threadStore";
 
 /**
  * Shows `text` (the "now private" toast) again with Clear conversation, when `documentId` has a conversation: the
- * store's, so one kept only in memory (storage full) counts too.
+ * store's, so one kept only in memory (storage full) counts too. `stillCurrent` says whether that toast is still the
+ * one showing, for the same diagram, still private: this code loads later, and by then the person may have moved on.
  */
-export function offerToClearConversation(documentId: string, text: string): void {
-  if (!threads.get(documentId).length) return;
+export function offerToClearConversation(documentId: string, text: string, stillCurrent: () => boolean): void {
+  if (!stillCurrent() || !threads.get(documentId).length) return;
   notify(text, {
     kind: "success",
     action: {

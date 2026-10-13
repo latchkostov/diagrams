@@ -6,13 +6,16 @@ import { openNewDiagram, type NewDiagramHost } from "./newDiagram";
 
 const fakeEditor = () => ({ updateMeta: vi.fn() }) as unknown as EditorApi & { updateMeta: ReturnType<typeof vi.fn> };
 
-function host(opts: { next?: EditorApi | null; ai?: boolean } = {}) {
+function host(opts: { next?: EditorApi | null; ai?: boolean; settle?: () => Promise<void> } = {}) {
   const before = fakeEditor();
   let current: EditorApi | null = before;
+  /** Each editor's document; another diagram opening is another document. */
+  const docs = new Map<EditorApi | null, string>([[before, "before"]]);
   const listeners = new Set<() => void>();
   const h: NewDiagramHost = {
     currentEditor: () => current,
     canUseAi: () => opts.ai ?? true,
+    documentId: () => docs.get(current) ?? "unknown",
     subscribe: (l) => {
       listeners.add(l);
       return () => listeners.delete(l);
@@ -20,11 +23,17 @@ function host(opts: { next?: EditorApi | null; ai?: boolean } = {}) {
     open: () => {
       if (opts.next === undefined) return;
       current = opts.next;
+      docs.set(opts.next, "new");
       for (const l of [...listeners]) l();
     },
-    settle: async () => {},
+    settle: opts.settle ?? (async () => {}),
   };
-  return { h, before };
+  /** Another diagram opens (the person picks one). */
+  const switchTo = (editor: EditorApi, doc: string) => {
+    docs.set(editor, doc);
+    current = editor;
+  };
+  return { h, before, switchTo };
 }
 
 describe("openNewDiagram", () => {
@@ -54,5 +63,28 @@ describe("openNewDiagram", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("never claims a diagram that replaced the new one while its title landed", async () => {
+    let settled!: () => void;
+    const next = fakeEditor();
+    const { h, switchTo } = host({ next, settle: () => new Promise<void>((r) => (settled = r)) });
+    const done = openNewDiagram(h, { title: "Orders" });
+    await vi.waitFor(() => expect(next.updateMeta).toHaveBeenCalled());
+    switchTo(fakeEditor(), "someone-elses");
+    settled();
+    expect(await done).toBeNull();
+  });
+
+  it("a draft that becomes an entry while its title lands is still the new diagram", async () => {
+    let settled!: () => void;
+    const next = fakeEditor();
+    const { h, switchTo } = host({ next, settle: () => new Promise<void>((r) => (settled = r)) });
+    const done = openNewDiagram(h, { title: "Orders" });
+    await vi.waitFor(() => expect(next.updateMeta).toHaveBeenCalled());
+    const promoted = fakeEditor();
+    switchTo(promoted, "new");
+    settled();
+    expect(await done).toBe(promoted);
   });
 });

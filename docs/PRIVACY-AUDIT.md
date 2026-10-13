@@ -166,6 +166,32 @@ A second Codex review (of the fixes above) found 7 P1 and 6 P2. All were real; a
   prompt and refuses destroyed ones; the test covers a success, a failure (its retry shares its request's session), a
   cancel, and another diagram in the same page, each in a session of its own, the earlier ones destroyed.
 
+## Third code review
+
+A third Codex review found 1 P1 and 5 P2. The P2s were real and are fixed; the P1 is the limit already written down
+below, and stays a limit, by the owner's rule that work made after a wipe is never lost.
+
+- **A write already past its check when the wipe lands can survive it** (P1). Another tab checks the generation, the
+  wipe deletes and writes the new one, then that tab's write lands. The candidate fix, one more sweep by the confirming
+  tab after writing the generation, can't be made safe: the late write arrives from another tab after a delay the page
+  can't bound, so the sweep would have to wait, and while it waits a tab that has already reloaded into the new
+  generation can write new work to the same keys (settings, an example's edits) with nothing to tell the two apart.
+  The only airtight fix is a generation stamped on every stored record (and every reader ignoring stale ones), which
+  is a format change across the whole app. It stays a documented limit; it needs another tab of the app open, writing
+  (an autosave a moment after an edit, an AI turn) in the few milliseconds between its own check and the wipe.
+- **The legacy index could get a deleted title back** (P2): two tabs deleting at once each rewrote a filtered copy of
+  the old all-in-one index, and the later write restored what the earlier one removed. A delete now retires that index:
+  rows listed only there get their own records (never a deleted diagram's), then the index is written empty, and
+  every tab writes the same empty index. Test: a second tab's delete landing in the middle of the first's.
+- **Exported HTML viewers would have reloaded with the app** (P2): importing the storage module registered the wipe
+  listeners. The app now joins the lifecycle explicitly (`startStorageLifecycle`, in `main.tsx`); the viewer never does.
+- **The delayed Clear conversation offer could land on the wrong diagram** (P2): the offer loads later, so it now goes
+  ahead only while the same toast is showing, for the same diagram, still private.
+- **`new_diagram` could claim a diagram opened while its title landed** (P2): it checks the document is the same one
+  after the title settles (a draft promoted to an entry keeps its identity), and reports that nothing opened otherwise.
+- **The full-storage test could fail to fill storage** (P2): it grows one fixed key to the last character and probes
+  with that same key, and a test runs it over several amounts already stored.
+
 ## How Clear everything works
 
 1. The confirming tab stops its own writers (its autosave on the way out included), deletes every app key from
@@ -175,9 +201,10 @@ A second Codex review (of the fixes above) found 7 P1 and 6 P2. All were real; a
    hears of the new one (the BroadcastChannel, or the storage event from the generation write) or finds it at its next
    write stops writing, drops its own sessionStorage keys and reloads. It never deletes shared storage, so nothing made
    after the wipe can be lost, and that path is startup code: nothing to download.
-3. One limit, by how browsers work: a tab reads localStorage from its own copy, which hears another tab's writes a few
-   milliseconds late. A write landing in that window, after the wipe and before the tab's copy has the new generation,
-   can survive. Closing it entirely would mean stamping every stored record with its generation.
+3. One limit: a write from another tab that passed its check just before the wipe (or read a generation its copy of
+   storage hadn't updated yet, a few milliseconds behind) can land after it and survive. Closing it entirely would mean
+   stamping every stored record with its generation; a later sweep can't tell such a write from new work (see the third
+   review). It needs another tab of the app writing in those milliseconds.
 
 ## Not issues (checked)
 

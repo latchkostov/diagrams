@@ -73,6 +73,33 @@ function watchRequests(page: Page) {
   };
 }
 
+/**
+ * Fills this site's storage to the last character by growing one app key (diagrams.filler): true when not one more
+ * character fits. Probing with the same key, one character longer, means a shorter key can't squeeze in after.
+ */
+const fillStorage = (page: Page) =>
+  page.evaluate(() => {
+    const key = "diagrams.filler";
+    const fits = (n: number) => {
+      try {
+        localStorage.setItem(key, "x".repeat(n));
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    let lo = 0;
+    let hi = 1;
+    while (fits(hi)) [lo, hi] = [hi, hi * 2];
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (fits(mid)) lo = mid;
+      else hi = mid;
+    }
+    fits(lo);
+    return !fits(lo + 1);
+  });
+
 /** File ▸ Privacy ▸ Clear everything on this device…, up to its confirmation. */
 async function openClearDevice(page: Page) {
   await page.getByTestId("file-button").click();
@@ -319,6 +346,19 @@ test.describe("this browser's storage", () => {
     await late.close();
   });
 
+  test("filling storage works whatever is stored already", async ({ page }) => {
+    await page.goto("./?view=gallery");
+    await expect(page.getByTestId("gallery-view")).toBeVisible();
+    for (const already of [0, 10_000, 1_000_000]) {
+      await page.evaluate((n) => {
+        localStorage.clear();
+        if (n) localStorage.setItem("other-app.data", "y".repeat(n));
+      }, already);
+      expect(await fillStorage(page), `${already} stored`).toBe(true);
+    }
+    await page.evaluate(() => localStorage.clear());
+  });
+
   test("a full storage still reaches every tab: the wipe frees the space its signal needs", async ({
     page,
     context,
@@ -329,23 +369,8 @@ test.describe("this browser's storage", () => {
     await other.addInitScript(() => ((window as { BroadcastChannel?: unknown }).BroadcastChannel = undefined));
     await other.goto("./?view=gallery");
     await expect(other.getByTestId("gallery-view")).toBeVisible();
-    // Fill the browser's storage for this site with the app's own keys, to the last character.
-    const full = await page.evaluate(() => {
-      let size = 1 << 20;
-      for (let i = 0; size >= 1; i++) {
-        try {
-          localStorage.setItem(`diagrams.filler.${i}`, "x".repeat(size));
-        } catch {
-          size = Math.floor(size / 2);
-        }
-      }
-      try {
-        localStorage.setItem("diagrams.probe", "x");
-        return false;
-      } catch {
-        return true;
-      }
-    });
+    // Fill the browser's storage for this site with an app key, to the last character.
+    const full = await fillStorage(page);
     expect(full).toBe(true);
     await openClearDevice(page);
     const otherReloads = other.waitForEvent("load");

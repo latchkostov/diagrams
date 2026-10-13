@@ -807,12 +807,17 @@ export function useInterop({
         setDiagramPrivate(slug, true);
         clearUrlFragment();
         const text = "Private: no share links, cloud saves or AI for this diagram.";
-        toast.success(text);
+        const shown = toast.success(text);
         // An earlier AI conversation stays unless the person clears it: the toast offers to, when the conversation
-        // store (its own chunk) has one for this diagram, in storage or in memory only.
+        // store (its own chunk) has one for this diagram, in storage or in memory only. Only while nothing has moved
+        // on: the same toast showing, for the same diagram, still private.
         const id = getDiagramIdentity(slug);
+        const stillCurrent = () =>
+          toast.current?.id === shown &&
+          getDiagramIdentity(openSlug.current) === id &&
+          isLocalOnly(getPrivacyFlags(openSlug.current));
         void import("../ai/ui/clearOnPrivate").then(
-          (m) => m.offerToClearConversation(id, text),
+          (m) => m.offerToClearConversation(id, text, stillCurrent),
           () => {},
         );
         return;

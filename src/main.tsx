@@ -9,6 +9,10 @@ import "./styles/gallery.css";
 import "./styles/canvas.css";
 import { SettingsProvider } from "./harness/SettingsProvider";
 import { App } from "./App";
+import { startStorageLifecycle } from "./lib/storage";
+
+// This page takes part in Clear everything on this device (the exported HTML viewer, its own entry, doesn't).
+startStorageLifecycle();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

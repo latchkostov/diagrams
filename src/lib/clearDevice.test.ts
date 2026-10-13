@@ -29,23 +29,27 @@ class MemoryStorage {
 
 let local: MemoryStorage;
 let session: MemoryStorage;
-let win: { location: { reload: ReturnType<typeof vi.fn>; replace: ReturnType<typeof vi.fn>; pathname: string } };
+let win: {
+  location: { reload: ReturnType<typeof vi.fn>; replace: ReturnType<typeof vi.fn>; pathname: string };
+  addEventListener: ReturnType<typeof vi.fn>;
+};
 
 beforeEach(() => {
   vi.resetModules();
   local = new MemoryStorage();
   session = new MemoryStorage();
-  win = { location: { reload: vi.fn(), replace: vi.fn(), pathname: "/" } };
+  win = { location: { reload: vi.fn(), replace: vi.fn(), pathname: "/" }, addEventListener: vi.fn() };
   vi.stubGlobal("localStorage", local);
   vi.stubGlobal("sessionStorage", session);
-  vi.stubGlobal("window", { ...win, addEventListener: vi.fn() });
+  vi.stubGlobal("window", win);
   vi.stubGlobal("BroadcastChannel", undefined);
 });
 
 describe("a tab from before Clear everything", () => {
   it("writes nothing once the generation has changed: it drops its own session keys and reloads", async () => {
     local.setItem("diagrams.generation", "first");
-    const { safeStorage } = await import("./storage");
+    const { safeStorage, startStorageLifecycle } = await import("./storage");
+    startStorageLifecycle();
     session.setItem("diagrams.pendingStencils.v1", "[]");
     session.setItem("other-app.state", "keep");
     expect(safeStorage.setItem("diagrams.settings.v1", "{}")).toBe(true);
@@ -61,6 +65,18 @@ describe("a tab from before Clear everything", () => {
     expect(local.getItem("diagrams.doc.v1:new")).toBe("new work");
     expect([...session.m.keys()]).toEqual(["other-app.state"]);
     expect(win.location.reload).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("outside the app (the exported HTML viewer)", () => {
+  it("storage never reloads the page or listens for wipes: only the app joins the lifecycle", async () => {
+    local.setItem("diagrams.generation", "first");
+    const { safeStorage } = await import("./storage");
+    local.setItem("diagrams.generation", "second");
+    safeStorage.setItem("diagrams.settings.v1", "{}");
+    expect(local.getItem("diagrams.settings.v1")).toBe("{}");
+    expect(win.location.reload).not.toHaveBeenCalled();
+    expect(win.addEventListener).not.toHaveBeenCalled();
   });
 });
 

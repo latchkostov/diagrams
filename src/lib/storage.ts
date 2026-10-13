@@ -4,10 +4,12 @@ type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem"> & Partial
 //
 // - An embed (`?embed`, the link's and the host-supplied one) reads the person's preferences but writes nothing:
 //   what it changes (a host's theme, a folded panel) lasts as long as the frame (stopStorageWrites).
-// - Clear everything on this device (./clearDevice.ts) gives the browser's storage a new generation. A tab that
-//   loaded before it writes nothing more: every write to localStorage checks the generation first, and a tab that
-//   finds it changed (or hears so) stops, drops its own sessionStorage keys and reloads (startOver). Only the tab
-//   where the person confirmed ever deletes shared storage, so work made after a wipe is never deleted by a late tab.
+// - In the app (startStorageLifecycle, called once by main.tsx; never by the exported HTML viewer, whose storage is
+//   its own memory), Clear everything on this device (./clearDevice.ts) gives the browser's storage a new generation.
+//   A tab that loaded before it writes nothing more: every write to localStorage checks the generation first, and a
+//   tab that finds it changed (or hears so) stops, drops its own sessionStorage keys and reloads (startOver). Only the
+//   tab where the person confirmed ever deletes shared storage, so work made after a wipe is never deleted by a late
+//   tab.
 
 /** The browser's storage generation: a new random value each time everything is cleared. */
 export const GENERATION_KEY = "diagrams.generation";
@@ -21,8 +23,8 @@ const generation = () => {
     return null;
   }
 };
-/** The generation this page loaded with. */
-const born = typeof window === "undefined" ? null : generation();
+/** The generation this page loaded with; undefined outside the app's lifecycle (tests, the exported viewer). */
+let born: string | null | undefined;
 /** Off in an embed, after Clear everything here, and in a tab from an earlier generation. */
 let writes = true;
 
@@ -48,11 +50,14 @@ function startOver(): void {
 
 /** Whether this page may write to localStorage now: not stopped, and still in the generation it loaded with. */
 function mayWrite(): boolean {
-  if (writes && generation() !== born) startOver();
+  if (writes && born !== undefined && generation() !== born) startOver();
   return writes;
 }
 
-if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+/** The app's page joins the storage generation it loaded with, and hears when another tab clears everything. */
+export function startStorageLifecycle(): void {
+  if (born !== undefined) return;
+  born = generation();
   window.addEventListener("storage", (e) => e.key === GENERATION_KEY && startOver());
   try {
     new BroadcastChannel(GENERATION_KEY).onmessage = startOver;
