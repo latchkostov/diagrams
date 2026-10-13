@@ -4,6 +4,7 @@ import type { EditorApi } from "../../editor/types";
 import { RULES } from "../run";
 import type { Finding } from "../types";
 import { applyFix, ignoreFinding, turnOff } from "./actions";
+import { evidenceText } from "../evidenceMerge";
 
 // One finding, in the Checks card and (compact) at the top of a selected node's or edge's inspector: what's
 // wrong, why, what it involves, and its one primary action, the fix. ⋯ has Ignore here, Turn off this check
@@ -31,6 +32,7 @@ export interface RowState {
 const ruleOf = (id: string) => RULES.find((r) => r.id === id);
 
 const MAX_CHIPS = 5;
+const MAX_EVIDENCE = 3;
 
 /**
  * After a fix from a row that had focus: the row goes with the next check, so focus moves on first, to the next
@@ -147,6 +149,20 @@ export function FindingRow({
           <span className="check-msg">{f.message}</span>
         </span>
       </button>
+      {f.evidence?.length ? (
+        // What the saved simulations showed here (Run simulations): one line each, the first few.
+        <ul className="check-evidence" aria-label="In the simulations" data-testid={t("evidence")}>
+          {f.evidence.slice(0, MAX_EVIDENCE).map((e, i) => (
+            // Two simulations may share a title: their place in the file tells them apart.
+            <li key={i}>{evidenceText(e)}</li>
+          ))}
+          {f.evidence.length > MAX_EVIDENCE && (
+            <li className="is-more">
+              and {f.evidence.length - MAX_EVIDENCE} more simulation{f.evidence.length - MAX_EVIDENCE === 1 ? "" : "s"}
+            </li>
+          )}
+        </ul>
+      ) : null}
       {!compact && (
         <details className="check-why" data-testid={t("why")}>
           <summary>Why</summary>

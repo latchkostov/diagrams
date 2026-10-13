@@ -1,10 +1,11 @@
 # Architecture checks: warnings with one-click fixes
 
-Research and plan, October 2026. Batches 1 to 4 are built: the engine, four rules and `check_diagram`, then the
+Research and plan, October 2026. Batches 1 to 5 are built: the engine, four rules and `check_diagram`, then the
 count, the Checks card, markers, the inspector row, fixes, Ignore and Turn off, then the other four starter rules,
-then `secret-identity` and `schema-registry`. Batch 1's precision gate, judged finding by finding on the examples, is
-in "Batch 1: precision gate" below; batch 2's notes are in "Batch 2: as built"; batch 3's and batch 4's gates and
-notes are in "Batch 3: precision gate", "Batch 3: as built", "Batch 4: precision gate" and "Batch 4: as built".
+then `secret-identity` and `schema-registry`, then **Run simulations**. Batch 1's precision gate, judged finding by
+finding on the examples, is in "Batch 1: precision gate" below; batch 2's notes are in "Batch 2: as built"; batch 3's
+and batch 4's gates and notes are in "Batch 3: precision gate", "Batch 3: as built", "Batch 4: precision gate" and
+"Batch 4: as built"; batch 5's, with its table, in "Batch 5: as built".
 
 ## Summary
 
@@ -32,7 +33,7 @@ rule that misses it.
 
 Checks use simulation results in one place only: **Can't keep up** reads `analyzeCapacity` at the diagram's own
 rates. It doesn't play the simulation: checks stay instant and deterministic. Replaying saved simulations for
-evidence ("312 messages were dropped here in _Payments goes down_") is a later, on-demand batch.
+evidence ("312 messages were dropped here in _Payments goes down_") is on demand: batch 5's **Run simulations**.
 
 ## How others do it
 
@@ -675,6 +676,9 @@ diagrams, as every AI tool is.
   - Ops that need a choice (a gateway) list the default; the agent can swap the `kind`.
   - **Add a consumer…** has no ops (the person picks); the tool says "needs a choice".
 - `TOOL_HELP`: "Finds likely design problems (lost messages, unread topics, overload) and how to fix them."
+- **Simulation evidence** (batch 5): `simulations: true` plays the saved simulations as the card's Run simulations
+  does (a worker, a minute of each, about 15 s in all) and adds their counts and `dropped` findings, within the same
+  budget. Off by default: it costs seconds where the checks cost milliseconds.
 - **Ignoring stays a person's call.** No tool writes `checks.ignore`. An agent that silences warnings is the
   failure mode to avoid.
 - The skill (`skills/livediagrams/`) gets the rule table, so coding agents can run the same checks on a
@@ -715,7 +719,7 @@ schemas`). _UX gate: chrome budget, keyboard, Esc order, dark theme, 1280×800, 
 4. **Rules that need more model.** _(Built; see "Batch 4: precision gate" and "Batch 4: as built".)_
    `secret-identity` (aggregated, plus a GCP service account stencil) and `schema-registry` (with the AsyncAPI
    import's `contentType`, see `imports.md`).
-5. **Simulation evidence (on demand).** In the Checks card, **Run simulations** plays each saved simulation
+5. **Simulation evidence (on demand).** _(Built; see "Batch 5: as built".)_ In the Checks card, **Run simulations** plays each saved simulation
    headless in a worker (deterministic, seeded, capped at 60 s simulated time) and attaches counts to findings
    ("312 dropped in _Payments goes down_"). It also adds `dropped` findings that the static rules can't see. Only
    on click: it costs seconds.
@@ -869,6 +873,116 @@ while building:
   for it). Vault's Kubernetes auth as a drawn identity: the catalogue has no Kubernetes service account stencil, which
   is why Vault on no cloud stays quiet.
 
+## Batch 5: as built
+
+**Run simulations**, in the Checks card: the diagram's saved simulations play headless in a worker, their lost messages
+are counted onto the findings they bear out ("24 dropped in “Payments service goes down”"), and a new rule, `dropped`,
+raises losses no other check explains. Engine: `src/checks/evidence.ts` (with `rules/dropped.ts`, `evidenceMerge.ts`,
+`evidenceWorker.ts` and `evidenceClient.ts`); canvas: `src/canvas/checks/simulationRuns.ts`; card:
+`src/checks/ui/SimulationsBar.tsx`. What was decided while building:
+
+- **Losses only; on purpose is a note, not a finding** (open question 3, as recommended). A saved simulation usually
+  breaks or floods something to tell its story, so the run counts only messages lost: dropped (no dead-letter route, a
+  request to a node that's down or fails, a message published to a broker that's down) and dead letters left unread
+  in a queue `no-reader` names. Never backlog, lag or overload: on the 16 examples, 19 nodes back up past 100 messages
+  in 12 of the 32 simulations, every one the story (a rush, a throttle, a rebuild, an outage's lag). A loss is **on
+  purpose** when it happened while the simulation had that node down (or paused) or failing, tick by tick, from the
+  setup and the timeline actions it actually played (an outage scheduled after the losses, or past the minute,
+  excuses nothing), or when its own expectations count on it (`> 0`, `>= n` or `== n` with n above 0, on that node's
+  dropped, backlog or lag). An expectation of none (`== 0`) makes any loss there evidence. On purpose, it's one muted
+  line under the summary ("On purpose: 96 dropped at Load balancer, which “Region outage and failover” takes down",
+  the node a link that selects it) and never a finding, a marker or a count.
+- **Evidence never raises anything.** Counts never change a finding's severity, and `dropped` is always a Suggestion,
+  so the warning count under the title never moves (still 2 across the 16 examples).
+- **Counts, then what they mean.** The run keeps raw counts per simulation and node (all of a node's losses, the part
+  lost on purpose and why, what its expectations say); what they mean is decided each time a check result is shown
+  (`evidenceMerge.ts`), against the checks as they are then. So Turn off this check, Ignore here and turning a check
+  back on agree with a fresh run without playing again. The rules, in order: a loss the expectations count on is
+  planned, whatever finding is there; at a node that isn't a broker, a `single-point` finding takes the whole loss
+  (what one replica costs, outage included); otherwise the part lost on purpose is planned, and the rest is the
+  design's: at a broker on its `dead-letter` finding (nothing when that check is off: `dropped` would bring back what
+  was turned off), anywhere else, or at a broker without that finding, `dropped:{node}`. At a broker, that has
+  dead-letter's fix ("Add dead-letter queue", worked out again when clicked, as every fix is) and the consumers that
+  failed there as its chips; elsewhere, "Failed requests to {node} are lost", without a fix (a queue in front, or a
+  retry upstream, is a design choice). Dead letters left unread go on `no-reader`. Ignored findings get counts too,
+  for when Show again brings them back.
+- **Bounded.** At most 60 s of simulated time per simulation, one 10 ms engine tick at a time; a pausing note is
+  resumed at once. Before a simulation is built, its **start work** (the sampled messages its traffic and timeline
+  inject, times the most routes any node sends a copy down) must be under 10 million: a file at the format's limits
+  with an ordinary fan-out is far under it, a burst of 100,000 into 20,000 routes (two billion copies in a tick) isn't
+  played ("“…” starts too much traffic to play here: not counted"). At most 15 s of wall-clock time for the whole run,
+  read before each simulation, after building it, every 100 ticks and when it ends: one the budget cuts short or that
+  ends after it is left out whole, and the card says so ("Out of time before “Rush 3”: not counted"). The client also
+  terminates a worker that outlasts its budget by 5 s, for a tick that never ends. A simulation stopped at the minute
+  says so on its counts ("in the first minute of …"). Tests count ticks and slices and drive the budget with a clock of
+  their own.
+- **Deterministic.** Each simulation plays from its own seed, a tick at a time, so the same diagram gives the same
+  counts however the work is sliced (a unit test plays one diagram whole, a tick at a time and seven at a time, and
+  compares). The wall-clock budget only decides which simulations are counted, and says so.
+- **Cancellable, at once.** One run at a time, in a worker of its own that's terminated to stop it. Stop (the same
+  link, which keeps focus from Run simulations to Stop to Run again, at one place in the card whether or not there
+  are findings), **Esc** (one level: it stops the run, the next Esc closes the card), closing the card, leaving editing
+  (live view, presenting) and any edit a simulation would see each stop it. What a simulation sees is projected from
+  the canvas: each node's id, stencil, label and subtitle (a label names a node's messages and marks a dead-letter
+  queue) and props, each connection's ends, kind, relationship and props, and the simulations. Moving a node (even
+  out of a boundary), changing an attachment side or selecting things doesn't stop a run or hide its counts. Values
+  are compared by reference first and by content only when a reference changed, without copying anything per change.
+- **Stale with the diagram; never in the file.** The counts are worked out again, the same, from the file in seconds,
+  they'd be wrong after any edit, and they'd leak into share links and exports, so they live in memory only, for the
+  open diagram (closing and reopening the card keeps them). An edit a simulation would see hides them at once ("The
+  diagram changed since the simulations played. Run again"); Undo back to what they were played on shows them again.
+- **Off the main thread.** The main thread posts the file and receives one progress message per simulation and the
+  result. A progress message updates only the line: nothing is merged or indexed again. Where workers fail, it plays
+  here, a tick at a time with the clock read between ticks, so a slice ends within a tick of its 6 ms; but only a
+  diagram of up to 300 nodes, whose preparation (the checks and the topology, which can't be sliced) is short, and
+  only simulations under a fiftieth of the start-work bound. Larger ones say the browser can't play them in the
+  background. The e2e test types in a finding's Ignore box (an edit would stop the run) over a 1,500-node diagram,
+  alternating idle and playing three times each, as the checks' own typing test does. It found one thing: a spinner
+  in the card, whose blurred background made the browser repaint the canvas behind it every frame (a median keystroke
+  three times the idle one). The card has no spinner; "Playing 2 of 5: “…”…" says it.
+- **Surfaces.** The card exists only while editing, so live view, presenting, embeds, read-only views and the exported
+  HTML viewer have no Run simulations; the viewer template stubs the checks store with the run's two methods. The
+  self-hosting switches don't touch it (it's local, like the checks), and `pnpm build:internal` builds it.
+- **Agents.** `check_diagram` takes `simulations: true` (off by default): the same worker and bounds, the counts as
+  short lines on each finding (`evidence`, at most three) and one `simulations` line saying what played and what was
+  lost on purpose, within the reply's 1.5K characters. It costs seconds on a large diagram, which is why it's opt-in.
+  Before anything goes back, everything checked at the start is checked again: the same diagram in the same editor
+  (and the same document in it), AI tools still allowed for it (not made Private or local-only, and the copy still
+  has them), and the call not cancelled; the call's abort signal stops the playback. If anything changed, the reply
+  says nothing about the diagram (as Copy link with password does since #70).
+- **What ships when.** Startup JavaScript: 22 bytes smaller gzip (the entry −28, the model's rule list +6). The canvas
+  chunk +1.2 kB gzip (the run controller), the card +1.0 kB and 0.15 kB of CSS, the static engine +0.6 kB (the new
+  rule's words), `check_diagram`'s report +0.3 kB. On the first click: the client (1.2 kB) and the merge (0.4 kB), then
+  the worker (35.5 kB: the simulation engine and the checks). The main-thread fallback shares the simulation runner
+  with the trace card, which moved it into a chunk of its own (9 kB, out of the trace card's 14 kB).
+- **Performance.** The 32 saved simulations of the 16 examples play in about 0.3 s in all (10 to 31 ms an example, in Node).
+  The e2e fixture, 1,500 nodes whose messages go round a loop for the whole minute, takes the production build's
+  worker about 3.2 s a simulation (9.5 to 9.9 s for three, the same counts each time).
+
+**The table.** Every count and finding Run simulations raises on the 16 public examples (top level only), as planned
+(every loss a finding or a count, backlog as evidence) and as built. `src/checks/examples.test.ts` pins the built
+evidence (no count, no finding, the two notes), so a change to it is a change to this table.
+
+| #   | Example                       | Simulation                    | As planned                                                                     | As built                  | Verdict          | Why                                                                                                                                                                                                |
+| --- | ----------------------------- | ----------------------------- | ------------------------------------------------------------------------------ | ------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | multi-region-active-active    | Region outage and failover    | `dropped:alb-us`: 96 dropped at us-east-1's Load balancer                      | A note: on purpose (down) | Noise as finding | The simulation takes the load balancer down to show the error blip before Route 53 fails over, and its expectation "A short error blip before failover" counts on it.                              |
+| 2   | azure-service-bus-integration | Poison invoices               | On `no-reader:dlq`: 30 left unread in invoice.commands DLQ                     | A note: on purpose        | Noise as count   | Its expectation "All 30 poison invoices are retained" is the story (quarantine for operator replay); batch 1 judged the finding itself wouldn't-fix for the same reason.                           |
+| 3   | iot-telemetry                 | Event Hubs partition hot spot | On `capacity:hot`: a backlog of 172 at Event Hubs                              | Not counted               | Noise            | It sets 64 replicas to show that partitions, not replicas, are the limit: overload on purpose, under a setup the finding (free play) doesn't share.                                                |
+| 4   | 10 more examples              | 11 more simulations           | 18 more backlogs over 100, up to 1,865 at the statement projection (a rebuild) | Not counted               | Noise            | Each is what its simulation is for: Black Friday, a throttle, a rebuild, an autoscaling lag, a bulk sync, an outage's lag. Live's heat map shows them as they play.                                |
+| –   | azure-service-bus-integration | Poison invoices               | Nothing on `dead-letter:posting-sub` (Warning)                                 | Nothing                   | Right            | The ledger worker fails every message, but this simulation sends only high-value invoices, through approval: none reach ledger-posting. No count isn't counter-evidence; the Warning stands alone. |
+
+As planned: 21 items, none worth showing. As built: no count and no `dropped` finding on the examples, and two notes,
+both right. The examples' simulations each tell a story on a diagram that already handles its failures, so a quiet
+result is the right one. It isn't quiet where something is lost: each row below is a public example with one change a
+reviewer meets in real diagrams (`src/checks/evidence.test.ts` covers each shape).
+
+| Variant (one change)                                                  | What Run simulations shows                                                                                       | Verdict    | Why                                                                                                                                                                                              |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| kafka-order-pipeline, Payments retries in place (1 s backoff)         | `dropped:order-events`: 24 dropped in “Payments service goes down”, chips orders.created.v1 and Payments service | Would fix  | The static checks are rightly quiet (a consumer that's down leaves its messages on the topic), but blocking retries use up the in-flight deliveries' attempts while it's down. A DLT keeps them. |
+| azure-service-bus-integration without invoice.commands' DLQ           | On `dead-letter:commands` (Warning): 30 dropped in “Poison invoices”                                             | Would fix  | It puts a number on the warning: the whole poison batch.                                                                                                                                         |
+| multi-region-active-active, us-east-1's API failing 2% of writes      | `dropped:api-us`: 4 in “Region outage and failover”, 30 in “Both regions take writes”                            | Would look | Nothing in the design retries a failed checkout. Real clients often do; as a Suggestion it asks the question, and Ignore here answers it.                                                        |
+| aws-fanout with a simulation where the archive Lambda rejects 1 in 10 | `dead-letter:archive-q` becomes a Warning (static); no count                                                     | Right      | None of 300 orders failed three deliveries in a row: no loss to count, and the Warning stands on its failure rate.                                                                               |
+
 ## Explicitly not doing
 
 - **Style and completeness lint** (missing descriptions, unlabelled edges, orphan nodes, naming conventions).
@@ -911,6 +1025,8 @@ while building:
    a Warning is the owner's call once it has fired in real use.)
 3. **Which traffic does `capacity` use when a diagram has saved simulations?** _Default: free-play rates only._
    Saved simulations often overload on purpose. Live's heat map covers them, and batch 5 adds them on demand.
+   (Batch 5, as recommended: Run simulations counts only lost messages, never backlog or overload, and a loss a
+   simulation causes on purpose is a note, not a finding. See "Batch 5: as built".)
 4. **Where do ignores live: in the file, or in this browser?** _Default: in the file (`checks`)._ A team sees the
    same findings, and a reason travels with the diagram.
 5. **Should agents be able to ignore findings?** _Default: no._ Only people can ignore or turn off checks.

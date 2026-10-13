@@ -324,7 +324,15 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   - Checks run by themselves after edits pause, in idle time and off the main thread, so typing and dragging never
     wait. A diagram over 1,500 nodes is checked when the card opens. Private diagrams are checked too: it all stays
     on this device. Only the agents' `check_diagram` follows the AI rules.
-- Esc backs out one level: menu, the Embed dialog's preview (back to the dialog), dialog, selection, the Checks card, slow motion, trace, highlighted path, presentation, then live view.
+  - **Run simulations** (a quiet link under the card's summary, only when the diagram has saved simulations) plays
+    them headless, a minute of each at most, and counts the messages they lose: "24 dropped in “Payments service goes
+    down”" under the finding it bears out, and **Messages are lost at …** (a Suggestion) where no other check says so.
+    While it plays the line says **Playing 2 of 5: “…”…** and the link is **Stop**; then **Run again**. It counts losses
+    only, never backlog, and what a simulation loses on purpose (a node it takes down or makes fail, what its own
+    expectations count on) is one muted **On purpose:** line, never a finding. Counts never raise a warning, never go in
+    the file, and hide the moment an edit a simulation would see is made (**The diagram changed since the simulations
+    played.**); moving or selecting things doesn't count, and Undo brings them back.
+- Esc backs out one level: menu, the Embed dialog's preview (back to the dialog), dialog, selection, simulations playing (Run simulations), the Checks card, slow motion, trace, highlighted path, presentation, then live view.
   In a text field on the canvas it saves and leaves the field (Editing text, above). Esc never selects, and clearing a
   selection leaves keyboard focus where it was (on the node), never on the page.
 - **Undo toasts** ("Payments service left AKS · Undo", an agent's change, an applied fix) offer to reverse one change.

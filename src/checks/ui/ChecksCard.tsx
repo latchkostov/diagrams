@@ -5,6 +5,7 @@ import { RULES, summarize } from "../run";
 import type { CheckResult, Finding } from "../types";
 import { turnOn, unignore } from "./actions";
 import { FindingRow, type RowHost, type RowState } from "./FindingRow";
+import { SimulationsBar, type SimulationsHost } from "./SimulationsBar";
 
 // The Checks card (docs/research/architecture-checks.md, "Where it shows"): opened on demand, under the
 // diagram card. Warnings first, then suggestions; each row selects what it involves, and its button is the
@@ -19,6 +20,8 @@ export interface ChecksCardProps extends RowHost {
   /** Distance from the canvas's top: just under the diagram card. */
   top: number;
   onClose(): void;
+  /** Run simulations: absent where it doesn't apply. */
+  simulations?: Omit<SimulationsHost, "name" | "reveal">;
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -97,6 +100,7 @@ export function ChecksCard(p: ChecksCardProps) {
       ? (p.editor.getDiagram().checks?.ignore ?? []).map((i) => [`${i.rule}:${i.target}`, i.reason])
       : [],
   );
+  const sims = p.simulations && <SimulationsBar host={{ ...p.simulations, name: p.state.name, reveal: p.reveal }} />;
   const warnings = r?.findings.filter((f) => f.severity === "warning") ?? [];
   const suggestions = r?.findings.filter((f) => f.severity === "suggestion") ?? [];
   const group = (title: string, list: Finding[], id: string) =>
@@ -131,7 +135,8 @@ export function ChecksCard(p: ChecksCardProps) {
       onKeyDown={(e) => {
         if (e.key !== "Escape" || e.defaultPrevented) return;
         e.stopPropagation();
-        p.onClose();
+        // One level at a time: simulations playing stop first, then the card closes.
+        if (!p.simulations?.stop()) p.onClose();
       }}
     >
       <header className="checks-head">
@@ -155,29 +160,31 @@ export function ChecksCard(p: ChecksCardProps) {
           Checking…
         </p>
       ) : r.findings.length ? (
-        <>
-          <p className="checks-note" data-testid="checks-summary">
-            {[
-              warnings.length ? plural(warnings.length, "warning") : "",
-              suggestions.length ? plural(suggestions.length, "suggestion") : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-          {/* Arrow keys between the rows' heads (each row's head is a button). */}
-          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-          <div className="checks-list" onKeyDown={onListKeys}>
-            {group("Warnings", warnings, "warnings")}
-            {group("Suggestions", suggestions, "suggestions")}
-          </div>
-        </>
+        <p className="checks-note" data-testid="checks-summary">
+          {[
+            warnings.length ? plural(warnings.length, "warning") : "",
+            suggestions.length ? plural(suggestions.length, "suggestion") : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
       ) : (
         <p className="checks-note checks-empty" data-testid="checks-empty">
           <Icon name="check" size={14} />{" "}
           {r.ran.length
-            ? `${summarize({ ...r, ignored: [], off: [] }).replace(/\.$/, "")}.`
+            ? `${summarize({ ...r, ignored: [], off: [] }).replace(/.$/, "")}.`
             : "Nothing to check yet: add a node and its checks run as you draw."}
         </p>
+      )}
+      {/* One place in the tree, findings or none: a run that adds the first finding keeps focus on its link. */}
+      {r && sims}
+      {r && r.findings.length > 0 && (
+        // Arrow keys between the rows' heads (each row's head is a button).
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+        <div className="checks-list" onKeyDown={onListKeys}>
+          {group("Warnings", warnings, "warnings")}
+          {group("Suggestions", suggestions, "suggestions")}
+        </div>
       )}
       {r && (
         <footer className="checks-foot">

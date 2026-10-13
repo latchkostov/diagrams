@@ -1,5 +1,87 @@
 # Design review
 
+## Round 26: checks, batch 5: Run simulations (2026-10-12)
+
+The gate for **Run simulations** in the Checks card and the `dropped` suggestion (`docs/research/architecture-checks.md`,
+"Batch 5: as built"). Self-review against `docs/UX-PRINCIPLES.md` on the production build (`vite preview`) at 1024 × 768
+and 1280 × 800 light and 1440 × 900 dark, mouse and keyboard. On the public examples as they are the run finds nothing
+to count (the right answer, see the plan's table), so the counts are shown on public examples with one change each: the
+Kafka order pipeline with its payments consumer retrying in place, and the invoice example without its commands DLQ. The
+playing state is shown on the e2e fixture (1,500 generated nodes), the only diagram whose run lasts long enough to see.
+Screenshots are in `docs/screenshots/round26/`.
+
+- **No new chrome.** No top-bar control, menu row or palette entry: one quiet link under the card's summary, only when
+  the diagram has saved simulations (`card-ready-1280-light`). The count under the title, the markers and the
+  inspector row are the checks' own, and a `dropped` finding uses them like any other (`inspector-dropped-1440-dark`).
+- **One primary action per surface holds.** In each row the fix is still the one button; Run simulations, Stop and Run
+  again are the same link, card-level and quieter (`card-dropped-1280-light`).
+- **Quiet by default holds.** Nothing plays until asked, the count under the title never moves (counts never raise a
+  warning), and a deliberate outage reads as what it is: "On purpose: 96 dropped at Load balancer, which “Region outage
+  and failover” takes down" (`card-on-purpose-1280-light`), muted, never a finding or a marker.
+- **Words.** The line says what it's doing ("Playing 1 of 3: “Rush 1”…", `card-playing-1280-light`), what it did
+  ("Played 2 simulations · counts on 1 finding"), and why it stopped ("Stopped.", "Stopped: the diagram changed.",
+  `card-stopped-esc-1280-light`). A count names its simulation in the app's quotes ("24 dropped in “Payments service goes
+  down”") and sits under the finding's message, set off by a thin rule; a run cut at the minute says "in the first
+  minute of". The new suggestion's title names the place ("Messages are lost at orders.created.v1") and its message the
+  consumer that failed and why it's lost.
+- **Stale is visible, never wrong.** An edit a simulation would see hides the counts at once and says so, with Run again
+  beside it (`card-stale-1280-light`); moving or selecting things doesn't, and Undo brings them back. After a fix, the
+  run's counts go with the diagram they were about (`fix-dropped-toast-1280-light`).
+- **Keyboard.** The link keeps focus from Run simulations to Stop to Run again. Esc stops a run first (one level), and
+  the next Esc closes the card; the Esc order in the principles says so. The line is a polite live region.
+- **Widths and themes.** At 1024 the 290 px card wraps the line and the row cleanly (`card-dropped-1024-light`); dark
+  reads as light does (`card-dropped-1440-dark`). A warning with a count reads as a suggestion with one does
+  (`card-counts-warning-1280-light`).
+
+### What was off (fixed in this round)
+
+- **A spinner cost every keystroke.** The first build had a small spinner beside "Playing…". The card's blurred
+  background made the browser repaint the canvas behind it every frame: typing in the card while it played took a
+  median 104 ms a key against 32 ms idle (the e2e comparison caught it). There's no spinner; the words say it's playing.
+- **Run simulations looked like a fix.** As an outlined button it matched the rows' fix buttons, a second primary
+  action. It's a link now, as Run again and Stop were.
+- **The icon meant something else.** Counts and the link had the traffic icon, which the hint bar under the canvas uses
+  for "Right-click anything". The counts are set off by a thin rule instead, with no icon.
+- **A topic's finding named every consumer.** "Messages are lost at orders.created.v1" had four chips (the topic and
+  all three consumers) though only Payments failed. It names the consumers that failed in the simulations that lost
+  messages there, in its chips and its message.
+- **"Load balancer" could be either.** The multi-region example has two nodes of that name; the on-purpose line named
+  one without saying which. The name is a link that selects the node it means.
+- **"Played 0 simulations · no messages lost".** When the time ran out before any simulation finished, the line said
+  nothing was lost. It says "Out of time: the simulations are too big to play here." (A run of the large fixture that fit:
+  `card-played-large-1280-light`.)
+- **A simulation that takes a node down but expects nothing lost there** read as on purpose. An expectation of none now
+  wins: the loss is a finding.
+
+### After code review (PR #76)
+
+- **Focus survived only half the time.** With no findings the line sat in the card's empty-state branch; a run that
+  added the first finding moved it to the other branch, React made a new link, and focus fell to the page. The line
+  now has one place in the card either way, and an e2e test presses Enter on it through both changes.
+- **The words for a run that can't play.** "This browser can't play them in the background, and the diagram is too
+  big to play here." (no worker, a large diagram), "Out of time: the simulations are too big to play here." (a worker
+  that outlasted its budget) and "“…” starts too much traffic to play here: not counted." (a simulation over the
+  start-work bound). Each says what happened and leaves Run simulations to try again.
+
+### Still open (owner's call)
+
+- "Failed requests to … are lost" is a Suggestion without a fix: a queue in front and a retry upstream are both
+  reasonable, and real clients often retry. Ignore here, with a reason, covers a diagram that means it.
+- Run simulations lives in the card only (no Ctrl+K entry or right-click row). The card is where its counts show; a
+  palette entry would be one more control for an occasional action.
+- The run stops at 15 s of wall-clock time. A diagram whose simulations don't fit gets the ones that did, and the card
+  says which didn't. Raising it is a trade against a busy laptop.
+
+![Ready: one quiet link under the summary](screenshots/round26/card-ready-1280-light.png)
+![Playing, with Stop](screenshots/round26/card-playing-1280-light.png)
+![Counts on a finding, and the new suggestion with its fix](screenshots/round26/card-dropped-1280-light.png)
+![A deliberate outage: on purpose, not a finding](screenshots/round26/card-on-purpose-1280-light.png)
+![An edit hides the counts](screenshots/round26/card-stale-1280-light.png)
+
+Also: `screenshots/round26/card-dropped-hover-1280-light.png`, `card-dropped-1024-light.png`,
+`card-dropped-1440-dark.png`, `inspector-dropped-1440-dark.png`, `card-counts-warning-1280-light.png`,
+`fix-dropped-toast-1280-light.png`, `card-stopped-esc-1280-light.png` and `card-played-large-1280-light.png`.
+
 ## Round 25: Interactive HTML with a password (2026-10-12)
 
 The gate for **Require a password** in the Interactive HTML export and the file's password prompt

@@ -2,6 +2,25 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Run simulations in the Checks card (2026-10)
+
+No habit changes: nothing plays until you ask, and the count under the title is as it was. New:
+
+- **Run simulations**, under the Checks card's summary when the diagram has saved simulations, plays each of them
+  without going live (a minute of simulated time each at most) and counts the messages they lose. The counts go under
+  the finding they bear out: "30 dropped in “Poison invoices”" under **Failed messages are dropped**.
+- Losses no other check explains are a new suggestion, **Messages are lost at …** (with **Add dead-letter queue** at a
+  queue or topic), or **Failed requests to … are lost**. It never adds a warning.
+- What a simulation loses on purpose (a node it takes down or makes fail, or what its own expectations count on) is a
+  muted **On purpose:** line, not a finding: an outage story isn't a design problem. Backlogs and overload aren't
+  counted at all; live view's capacity heat map shows them.
+- It plays in the background: **Playing 2 of 5: “…”…** says where it is, and typing and dragging don't wait. **Stop**,
+  **Esc**, closing the card, going live or an edit stop it at once. Moving or selecting things doesn't.
+- The counts are never saved in the file or shared. An edit hides them (**The diagram changed since the simulations
+  played. Run again**); Undo brings them back. Private diagrams can run them too: nothing leaves the device.
+- Agents: `check_diagram` takes `simulations: true` to do the same (off by default; it takes seconds on a large
+  diagram).
+
 ## Interactive HTML with a password (2026-10)
 
 No habit changes: the export is as it was unless you turn the new option on. New:

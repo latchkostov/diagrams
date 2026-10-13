@@ -102,6 +102,8 @@ export const CHECK_RULES = [
   "single-point",
   "secret-identity",
   "schema-registry",
+  // Only Run simulations raises it (src/checks/evidence.ts), never the checks that run as you edit.
+  "dropped",
 ] as const;
 export type CheckRuleId = (typeof CHECK_RULES)[number];
 export const isCheckRule = (v: unknown): v is CheckRuleId =>

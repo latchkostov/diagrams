@@ -73,6 +73,7 @@ export default function WebMcpBridge({
     () => ({
       getEditor: currentEditor,
       canUseAi: () => canUseAiTools(paletteHost.get().canvas),
+      documentId: () => paletteHost.get().canvas?.documentId,
       onApplied: recordChange,
       async newDiagram({ title, direction }) {
         const before = currentEditor();

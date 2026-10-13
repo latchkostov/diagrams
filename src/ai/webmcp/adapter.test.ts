@@ -268,6 +268,50 @@ describe("tools", () => {
     expect(bad.isError).toBe(true);
   });
 
+  it("check_diagram with simulations: true plays the saved simulations and counts what they lose", async () => {
+    const { host, editor } = fakeHost();
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Played",
+      nodes: [
+        { id: "web", stencil: "client.browser", label: "Web", x: 0, y: 0 },
+        { id: "q", stencil: "aws.sqs", label: "orders", x: 300, y: 0, props: { maxDeliveryCount: 2 } },
+        { id: "w", stencil: "aws.lambda", label: "Worker", x: 600, y: 0 },
+        { id: "api", stencil: "service.node", label: "Pay API", x: 300, y: 200, props: { failureRate: 0.5 } },
+      ],
+      edges: [
+        { id: "e1", from: "web", to: "q", kind: "async" },
+        { id: "e2", from: "q", to: "w", kind: "async" },
+        { id: "e3", from: "web", to: "api", kind: "sync" },
+      ],
+      simulations: [
+        {
+          id: "s",
+          title: "Bad batch",
+          seed: 7,
+          setup: { props: { w: { failureRate: 1 } } },
+          traffic: [{ id: "t", node: "web", shape: { kind: "burst", count: 10, spreadMs: 500 } }],
+        },
+      ],
+    };
+    (editor as { getDiagram: () => DiagramFile }).getDiagram = () => d;
+    const check = toModelContextTool(buildTools(host).find((t) => t.name === "check_diagram")!);
+    // Without it, nothing plays: no counts, no `dropped`.
+    const plain = JSON.parse((await check.execute({})).content[0].text);
+    expect(plain.findings.map((f: { id: string }) => f.id)).toEqual(["dead-letter:q"]);
+    expect(plain.simulations).toBeUndefined();
+    const text = (await check.execute({ simulations: true })).content[0].text;
+    expect(text.length).toBeLessThanOrEqual(1500);
+    const out = JSON.parse(text);
+    expect(out.simulations).toBe("Played 1 saved simulation (at most 60 s each).");
+    expect(out.findings.map((f: { id: string }) => f.id)).toEqual(["dead-letter:q", "dropped:api"]);
+    expect(out.findings[0].evidence).toEqual(["10 dropped in “Bad batch”"]);
+    expect(out.findings[1].evidence[0]).toMatch(/^\d+ dropped in “Bad batch”$/);
+    // Only the rules asked for.
+    const only = JSON.parse((await check.execute({ simulations: true, rules: ["dead-letter"] })).content[0].text);
+    expect(only.findings.map((f: { id: string }) => f.id)).toEqual(["dead-letter:q"]);
+  });
+
   it("check_diagram keeps to the output budget", async () => {
     const { host, editor } = fakeHost();
     const nodes: DiagramFile["nodes"] = [{ id: "api", stencil: "service.node", label: "API", x: 0, y: 0 }];

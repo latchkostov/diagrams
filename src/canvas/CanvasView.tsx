@@ -461,10 +461,12 @@ function CanvasInner({
    * queued behind a busy moment) goes on from there, not from the node the key event still targets.
    */
   const stepping = useRef<string | undefined>(undefined);
+  /** Stops Run simulations, if it's playing (set once the checks are, below): true if it was. */
+  const stopSimulations = useRef<() => boolean>(() => false);
   useCanvasShortcuts(editor, {
     enabled: !shortcutsOpen && !readOnly,
     onEscape: () => {
-      // Esc backs out one level: a menu, the selection, then the Checks card.
+      // Esc backs out one level: a menu, the selection, then simulations playing, then the Checks card.
       const sel = editor.getSelection();
       // Inside the card, the card handles Esc itself (a finding's options first, then the card).
       const inCard = !!document.activeElement?.closest('[data-testid="checks-card"]');
@@ -474,7 +476,8 @@ function CanvasInner({
         checksPanel.isOpen() &&
         !sel.nodeIds.length &&
         !sel.edgeIds.length &&
-        !sel.groupIds.length
+        !sel.groupIds.length &&
+        !stopSimulations.current()
       )
         checksPanel.close();
       setMenu(null);
@@ -502,7 +505,11 @@ function CanvasInner({
     read: () => editor.getDiagram(),
     nodeCount: nodes.length,
     cardOpen: checksCard,
+    content: hostRevision,
   });
+  useEffect(() => {
+    stopSimulations.current = checks.stopSimulations;
+  }, [checks]);
   const menuOpen = useRef(false);
   useEffect(() => {
     menuOpen.current = !!menu;

@@ -64,13 +64,19 @@ export const check_diagramSchema: JsonSchema = {
         items: { type: "string", enum: [...CHECK_RULES] },
         maxItems: CHECK_RULES.length,
         description:
-          "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), sync-chain (requests chained too deep), shared-database (a service uses another's database), entry-gateway (a client goes around the gateway), capacity (a service can't keep up at the diagram's rates), single-point (every request goes through one replica), secret-identity (services read secrets without an identity), schema-registry (Avro or Protobuf on Kafka without a schema registry).",
+          "Only these checks (default: all): dead-letter (failed messages are dropped), no-reader (nobody reads a topic or queue), sync-cycle (requests go round in a circle), sync-chain (requests chained too deep), shared-database (a service uses another's database), entry-gateway (a client goes around the gateway), capacity (a service can't keep up at the diagram's rates), single-point (every request goes through one replica), secret-identity (services read secrets without an identity), schema-registry (Avro or Protobuf on Kafka without a schema registry), dropped (messages a saved simulation loses that no other check explains; only with simulations: true).",
       },
       include: {
         type: "string",
         enum: ["warnings", "all"],
         default: "all",
         description: "warnings: likely real problems only; all: suggestions too.",
+      },
+      simulations: {
+        type: "boolean",
+        default: false,
+        description:
+          "Also play the diagram's saved simulations (each at most 60 s of simulated time, all within about 15 s) and report the messages they lose: counts on findings, and dropped findings. Losses a simulation causes on purpose aren't findings.",
       },
     },
   },
@@ -574,7 +580,7 @@ export const toolDescriptions = {
   describe_diagram:
     "Read the current diagram as compact text: nodes with ids, kinds and labels, connections, boundaries and simulations. Call before editing an existing diagram.",
   check_diagram:
-    "Find likely design problems in the current diagram (failed messages that are dropped, topics nobody reads, requests that go round in a circle or chain too deep, a service using another's database, a client going around the gateway, a service that can't keep up or that every request goes through), each naming its elements and, where one exists, a fix as edit_diagram ops. Read-only: apply a fix by sending its ops to edit_diagram. Findings the person ignored aren't listed; only the person can ignore one.",
+    "Find likely design problems in the current diagram (failed messages that are dropped, topics nobody reads, requests that go round in a circle or chain too deep, a service using another's database, a client going around the gateway, a service that can't keep up or that every request goes through), each naming its elements and, where one exists, a fix as edit_diagram ops. Read-only: apply a fix by sending its ops to edit_diagram. Findings the person ignored aren't listed; only the person can ignore one. With simulations: true it also plays the saved simulations and counts the messages they lose (slower: seconds on a large diagram).",
   find_stencils:
     "Search the stencil catalog (Kafka, Azure, AWS, GCP, databases, services…). Use when edit_diagram reported low confidence for a kind.",
   edit_diagram:

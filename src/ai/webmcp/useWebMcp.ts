@@ -25,6 +25,7 @@ export function useWebMcp(host: WebMcpHost, opts: { enabled: boolean; live: bool
     const proxy: WebMcpHost = {
       getEditor: () => hostRef.current.getEditor(),
       canUseAi: () => hostRef.current.canUseAi?.() !== false,
+      documentId: () => hostRef.current.documentId?.(),
       onApplied: (...a) => hostRef.current.onApplied(...a),
       newDiagram: (o) => hostRef.current.newDiagram(o),
       shareLink: (d) => hostRef.current.shareLink(d),

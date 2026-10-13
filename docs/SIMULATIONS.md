@@ -138,3 +138,13 @@ The public scenarios now save explicit scales. Kafka Black Friday sends 2,000 re
 so increasing partitions actually activates idle instances. Poison invoices demonstrate in-place
 retries with backoff. Other presentations sample batches and spikes while preserving their real-count
 expectations. Edge `share` models optional branches; `retry` and `retryBackoffMs` control broker retries.
+
+## Played headless: Run simulations
+
+The Checks card's **Run simulations** plays every saved simulation without going live (`src/checks/evidence.ts`, in a
+worker): from its own seed, a 10 ms tick at a time, at most 60 s of simulated time each and about 15 s of wall-clock
+time in all, resuming pausing notes at once. It counts only lost messages (dropped, and dead letters left unread) and
+puts them on the checks' findings. What a simulation loses on purpose (a node it takes down or makes fail, or what its
+own expectations count on) is reported as such, never as a finding: write an expectation of the loss (`dropped > 0`)
+when the loss is the story, and of none (`dropped == 0`) when it shouldn't happen. See
+`docs/research/architecture-checks.md`, "Batch 5: as built".

@@ -50,6 +50,22 @@ export interface Finding {
   /** Why it matters, in general. */
   rationale: string;
   fix?: CheckFix;
+  /**
+   * What the diagram's saved simulations showed here, when Run simulations has played them (src/checks/evidence.ts):
+   * "312 dropped in Payments goes down". Never in the file; gone when the diagram changes.
+   */
+  evidence?: FindingEvidence[];
+}
+
+/** One count from one saved simulation, in real messages. */
+export interface FindingEvidence {
+  /** The simulation's title. */
+  simulation: string;
+  /** dropped: lost (no dead-letter route, or nothing to take a request); unread: left in a queue nobody reads. */
+  what: "dropped" | "unread";
+  count: number;
+  /** The simulation was stopped at the 60 s cap: the count is for its first minute. */
+  capped?: boolean;
 }
 
 export interface CheckRule {
@@ -59,6 +75,8 @@ export interface CheckRule {
   /** Two lines: why it matters, and how it decides. */
   about: string;
   detect(ctx: CheckContext): Finding[];
+  /** Raised only by playing the saved simulations (Run simulations), never by the checks that run as you edit. */
+  onDemand?: boolean;
 }
 
 export interface CheckResult {

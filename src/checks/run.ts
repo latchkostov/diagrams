@@ -12,8 +12,12 @@ import { capacity } from "./rules/capacity";
 import { singlePoint } from "./rules/singlePoint";
 import { secretIdentity } from "./rules/secretIdentity";
 import { schemaRegistry } from "./rules/schemaRegistry";
+import { dropped } from "./rules/dropped";
 
-/** Every rule, in CHECK_RULES order (the order findings list them). */
+/**
+ * Every rule, in CHECK_RULES order (the order findings list them). `dropped` is raised only by Run simulations
+ * (src/checks/evidence.ts): it's here for its name and About, and never runs in `runChecks`.
+ */
 export const RULES: readonly CheckRule[] = [
   deadLetter,
   noReader,
@@ -25,6 +29,7 @@ export const RULES: readonly CheckRule[] = [
   singlePoint,
   secretIdentity,
   schemaRegistry,
+  dropped,
 ];
 
 export interface RunOptions {
@@ -38,24 +43,29 @@ export interface RunOptions {
  */
 export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckResult {
   const off = (diagram.checks?.off ?? []).filter(isCheckRule);
-  const ran = RULES.map((r) => r.id).filter((id) => !off.includes(id) && (!opts.rules || opts.rules.includes(id)));
+  const ran = RULES.filter((r) => !r.onDemand && !off.includes(r.id) && (!opts.rules || opts.rules.includes(r.id))).map(
+    (r) => r.id,
+  );
   const ctx = buildContext(diagram);
   const all = RULES.filter((r) => ran.includes(r.id)).flatMap((r) => r.detect(ctx));
   const ignores = new Set((diagram.checks?.ignore ?? []).map((i) => `${i.rule}:${i.target}`));
-  const rule = (f: Finding) => CHECK_RULES.indexOf(f.rule);
-  all.sort(
-    (a, b) =>
-      Number(a.severity === "suggestion") - Number(b.severity === "suggestion") ||
-      rule(a) - rule(b) ||
-      ctx.rank(a.target) - ctx.rank(b.target) ||
-      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
-  );
+  all.sort(findingOrder(ctx.rank));
   return {
     findings: all.filter((f) => !ignores.has(f.id)),
     ignored: all.filter((f) => ignores.has(f.id)),
     off: CHECK_RULES.filter((id) => off.includes(id)),
     ran,
   };
+}
+
+/** Warnings first, then rule order, then reading order (`rank`), then id: the order every list of findings uses. */
+export function findingOrder(rank: (id: string) => number): (a: Finding, b: Finding) => number {
+  const rule = (f: Finding) => CHECK_RULES.indexOf(f.rule);
+  return (a, b) =>
+    Number(a.severity === "suggestion") - Number(b.severity === "suggestion") ||
+    rule(a) - rule(b) ||
+    rank(a.target) - rank(b.target) ||
+    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
