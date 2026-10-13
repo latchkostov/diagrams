@@ -289,10 +289,14 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   links. Export Interactive HTML instead."; the reason stays readable while the name fades; the panel says
   **AI is off for this private diagram** and offers **Allow the on-device model (stays on this device)**. Copies,
   duplicates, exports (`"private": true`) and pasted nodes stay private. **New diagrams are private** (File ▸
-  Privacy ▸) is one remembered setting, off by default. The built-in local-only examples (development only) are
+  Privacy ▸) is one remembered setting, off by default. **Clear everything on this device…** (last in File ▸ Privacy ▸)
+  is the one wipe: a confirmation that lists what goes and what stays, with **Cancel** the default. Making a diagram
+  Private that has an AI conversation offers **Clear conversation** in its toast (one step, with Undo). The built-in local-only examples (development only) are
   always private, with their own wording.
 - **Dictate** is the mic in Advanced's describe box (Ctrl+Shift+M): **Listening…** while on, interim words shown
-  lighter; **Stop dictating** to end. It's hidden where the browser has no speech recognition.
+  lighter; **Stop dictating** to end. While the browser's speech service (not the device) listens, one muted line under
+  it says so every time: "What you say may be sent to Google's speech service." (Microsoft's in Edge, Apple's in
+  Safari, "your browser's" elsewhere). It's hidden where the browser has no speech recognition.
 - **Slow motion** (noun and mode) is a paced _replay_ of a trace: one message's recorded journey, node
   by node, while live waits frozen ("Slow motion · live paused" in the bar). Menus say **Watch … in slow
   motion**: the node right-click's **Watch one message in slow motion from here**, and **Next message, in

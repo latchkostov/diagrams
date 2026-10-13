@@ -1,5 +1,6 @@
 import type { DiagramFile, DiagramNode } from "../../model/types";
 import { getStencil } from "../../stencils/registry";
+import { canUseAiTools, type CanvasPrivacyState } from "../../lib/localOnly";
 
 // The idle AI panel's "Copy example request": a request someone can paste into their browser's AI
 // assistant, naming a real node of the diagram so it works as it is.
@@ -30,4 +31,12 @@ export function exampleRequest(diagram: DiagramFile | null, live = false): strin
   const store = nodes.find((n) => role(n) === "store");
   if (store) return `Add a Redis cache in front of ${label(store)}`;
   return `Add a Kafka topic after ${label(nodes[0])}`;
+}
+
+/**
+ * What Copy example request copies, read when it's clicked (the button is hidden for a private diagram, but a render
+ * can lag behind): null when AI tools may not read the diagram open now, else a request naming one of its nodes.
+ */
+export function exampleToCopy(canvas: CanvasPrivacyState | null | undefined, live = false): string | null {
+  return canUseAiTools(canvas) ? exampleRequest(canvas?.editor?.getDiagram() ?? null, live) : null;
 }

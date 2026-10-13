@@ -23,7 +23,8 @@ import { notify } from "../interop/ui/toast";
 import type { CommandPaletteProps } from "./CommandPalette";
 import { paletteHost } from "./host";
 import { flatten, GROUP_LABEL, PREFIXES, rank, type Command, type CommandGroup } from "./rank";
-import { getRecentCommands, pushRecentCommand } from "./recent";
+import { getRecentCommands, pushRecentCommand, rememberable } from "./recent";
+import { isLocalOnly } from "../lib/localOnly";
 import { collectCommands } from "./sources";
 import type { TypeAhead } from "../canvas/typeAhead";
 
@@ -140,7 +141,7 @@ export function PaletteDialog({
       input.current?.focus();
       return;
     }
-    pushRecentCommand(c.id);
+    if (rememberable(c, isLocalOnly(paletteHost.get().canvas))) pushRecentCommand(c.id);
     closeRef.current();
     // After the palette has closed and handed focus back, so commands that move focus (rename) win.
     window.setTimeout(() => {

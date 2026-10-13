@@ -234,6 +234,5 @@ export interface EditorApi {
   /** Opens the inspector, optionally focusing `inspector-field-<focusField>`. */
   openInspector(focusField?: string): void;
   showShortcuts(): void;
-  exportJson(): void;
   autoLayout(): void;
 }

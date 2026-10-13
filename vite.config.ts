@@ -48,7 +48,9 @@ export function noPrivateExamples(): Plugin {
 
 /** Fails a build that isn't the e2e build if a dev-only test hook ships (see E2E_BUILD). */
 function noTestHooks(): Plugin {
-  const isHook = (id: string) => /[/\\]interop[/\\]storage[/\\]testProvider\.ts$/.test(id);
+  // The test storage provider, and the Lab (a development tool whose Load JSON stores pasted diagrams).
+  const isHook = (id: string) =>
+    /[/\\]interop[/\\]storage[/\\]testProvider\.ts$/.test(id) || /[/\\]src[/\\]lab[/\\]LabView\.tsx$/.test(id);
   return {
     name: "no-test-hooks",
     apply: "build",

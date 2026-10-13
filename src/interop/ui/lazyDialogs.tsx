@@ -78,6 +78,10 @@ export const PrivacyDialog = lazyComponent(
   () => import("./dialogs").then((m) => m.PrivacyDialog),
   loadingDialog("Private diagram"),
 );
+export const ClearDeviceDialog = lazyComponent(
+  () => import("./dialogs").then((m) => m.ClearDeviceDialog),
+  loadingDialog("Clear everything"),
+);
 /** File ▸ Export as ▸ Interactive HTML… (src/export): the template itself downloads only when it opens. */
 export const HtmlExportDialog = lazyComponent(
   () => import("../../export/HtmlExportDialog").then((m) => m.HtmlExportDialog),

@@ -13,14 +13,21 @@ test.describe("Dictate", () => {
     await openAdvanced(page);
 
     await expect(mic(page)).toHaveAttribute("aria-label", "Dictate");
+    // A polite live region, there (and empty) before listening starts, so its words are announced when they arrive.
+    await expect(page.getByTestId("ai-speech-service")).toHaveAttribute("role", "status");
+    await expect(page.getByTestId("ai-speech-service")).toHaveText("");
     await mic(page).click();
     await expect(mic(page)).toHaveAttribute("aria-pressed", "true");
     await expect(mic(page)).toHaveAttribute("aria-label", "Stop dictating");
     await expect(page.getByTestId("ai-interim")).toContainText("Listening");
     const { config } = await speechState(page);
     expect(config).toMatchObject({ continuous: true, interimResults: true });
-    // First use of the browser's speech service: say where audio goes, once.
-    await expect(page.getByTestId("ai-dictation-message")).toContainText("speech service");
+    // The browser's speech service listens (not the device): the box says where the audio goes, the whole time.
+    // Playwright's Chromium names Google's.
+    await expect(page.getByTestId("ai-speech-service")).toHaveText(
+      "What you say may be sent to Google's speech service.",
+    );
+    await expect(page.getByTestId("ai-dictation-message")).toHaveCount(0);
 
     await speech(page, "result", [["a kafka topic orders", false]]);
     await expect(page.getByTestId("ai-interim")).toHaveText("a kafka topic orders");
@@ -55,6 +62,12 @@ test.describe("Dictate", () => {
     await mic(page).click();
     await expect(mic(page)).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByTestId("ai-interim")).toHaveCount(0);
+    await expect(page.getByTestId("ai-speech-service")).toHaveText("");
+    // Every time, not once per browser: a reload and a new session say it again.
+    await page.reload();
+    await openAdvanced(page);
+    await mic(page).click();
+    await expect(page.getByTestId("ai-speech-service")).toContainText("Google's speech service");
     expectNoErrors(consoleErrors);
   });
 
@@ -111,6 +124,7 @@ test.describe("Dictate", () => {
     await expect(page.getByTestId("ai-interim")).toContainText("Listening on this device");
     expect((await speechState(page)).config).toMatchObject({ processLocally: true });
     await expect(page.getByTestId("ai-dictation-message")).toHaveCount(0);
+    await expect(page.getByTestId("ai-speech-service")).toHaveText("");
     await speech(page, "error", "no-speech");
     await speech(page, "silence");
     await expect(page.getByTestId("ai-dictation-message")).toContainText("Still listening");

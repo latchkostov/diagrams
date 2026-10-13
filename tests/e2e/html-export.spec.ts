@@ -315,8 +315,8 @@ test.describe("Interactive HTML with a password", () => {
     await expectPlaying(viewer.page);
     await expect(viewer.page.getByTestId("viewer-banner")).toHaveText(BANNER);
     await expect(viewer.page.getByTestId("viewer-footer")).toContainText("Exported from Live Diagrams on");
-    // The real title, once unlocked, in this tab only.
-    await expect(viewer.page).toHaveTitle("Kafka order pipeline");
+    // Unlocked, the page keeps its neutral title: browsers keep titles in their history and sync it.
+    await expect(viewer.page).toHaveTitle("Diagram (password protected)");
 
     expect(viewer.requests.filter((r) => !r.startsWith("data:"))).toEqual([url]);
     expect(await viewer.page.evaluate(() => window.__violations ?? [])).toEqual([]);

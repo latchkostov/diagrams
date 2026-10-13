@@ -18,6 +18,11 @@ const GROUP_ORDER: CommandGroup[] = ["recent", "actions", "nodes", "simulations"
 export interface Command {
   /** Stable id; becomes `data-testid="command-item-<id>"` and the recents key. */
   id: string;
+  /**
+   * Its id carries the open diagram's own ids or words (Connect to ›, Reconnect ›, a node, a simulation): the palette
+   * never remembers it among recent commands for a private diagram (src/palette/recent.ts).
+   */
+  documentScoped?: boolean;
   group: Exclude<CommandGroup, "recent">;
   label: string;
   keywords?: string;

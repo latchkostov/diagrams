@@ -81,6 +81,11 @@ export interface MenuItem {
   searchable?: string;
   /** The command palette's name for this leaf when "Parent › leaf" would be ambiguous (nested submenus). */
   paletteLabel?: string;
+  /**
+   * Its id carries the open diagram's own ids or words (Connect to ›, Reconnect ›, a node, a simulation): the palette
+   * never remembers it among recent commands for a private diagram (src/palette/recent.ts).
+   */
+  documentScoped?: boolean;
 }
 
 export interface Action {

@@ -242,6 +242,8 @@ export interface FakeModelOptions {
   deferCreate?: boolean;
   /** A download reports 0, 0.5, 1 this many ms apart. */
   downloadStepMs?: number;
+  /** Sessions without clone(), as an older Prompt API had. */
+  noClone?: boolean;
 }
 
 /**
@@ -254,6 +256,10 @@ export function installFakeLanguageModel(page: Page, opts: FakeModelOptions = {}
       availability: o.availability ?? "available",
       replies: [...(o.replies ?? [])],
       prompts: [] as string[],
+      /** The session each prompt went to (by number, from 1 in creation order), and the sessions destroyed. */
+      promptSessions: [] as number[],
+      destroyedSessions: [] as number[],
+      sessions: 0,
       creates: 0,
       monitored: false,
       constraints: 0,
@@ -266,9 +272,13 @@ export function installFakeLanguageModel(page: Page, opts: FakeModelOptions = {}
       },
     };
     type Listener = (e: { loaded: number }) => void;
-    const session = (): object => ({
+    const session = (id = ++state.sessions): object => ({
       async prompt(input: string, options?: { signal?: AbortSignal; responseConstraint?: object }) {
+        // Chrome refuses a destroyed session's prompt; so does the fake, so a test can't miss one.
+        if (state.destroyedSessions.includes(id))
+          throw new DOMException("The session was destroyed.", "InvalidStateError");
         state.prompts.push(input);
+        state.promptSessions.push(id);
         if (options?.responseConstraint) state.constraints++;
         let reply = state.replies.shift() ?? '{"summary":"","ops":[]}';
         if (reply.startsWith("hold:")) {
@@ -296,11 +306,16 @@ export function installFakeLanguageModel(page: Page, opts: FakeModelOptions = {}
         await new Promise((r) => setTimeout(r, 30));
         return reply;
       },
-      async clone() {
-        return session();
-      },
+      ...(o.noClone
+        ? {}
+        : {
+            async clone() {
+              return session();
+            },
+          }),
       destroy() {
         state.destroyed++;
+        state.destroyedSessions.push(id);
       },
       contextUsage: 0,
       contextWindow: 9216,
@@ -346,6 +361,8 @@ export const fakeModel = (page: Page) =>
     return JSON.parse(JSON.stringify(s, (k, v: unknown) => (k === "held" || k === "createHeld" ? undefined : v))) as {
       availability: string;
       prompts: string[];
+      promptSessions: number[];
+      destroyedSessions: number[];
       creates: number;
       monitored: boolean;
       constraints: number;

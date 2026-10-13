@@ -59,7 +59,6 @@ import {
 import { toneLabel } from "../canvas/groupTones";
 import type { EdgeMark } from "../canvas/edgeMarks";
 import { getStencil } from "../stencils/registry";
-import { downloadDiagram, isOwnSlug } from "../lib/diagramIO";
 import { motionMs } from "../lib/motion";
 import { align, boundaryAround, distribute, spreadOverlaps, type Box, type Positions } from "./arrange";
 import { makePayload, parsePayload, remapPayload, type ClipboardPayload } from "./clipboard";
@@ -1188,17 +1187,6 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     openInspector: (field) => deps().openInspector(field),
     showShortcuts: () => deps().showShortcuts(),
-    exportJson: () => {
-      const d = diagram();
-      const slug = deps().slug;
-      const name = isOwnSlug(slug)
-        ? d.title
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)/g, "")
-        : slug;
-      downloadDiagram(d, name || "diagram");
-    },
     autoLayout: () => {
       const d = diagram();
       const pos = layeredLayout({ nodes: d.nodes, edges: d.edges, direction: d.direction });

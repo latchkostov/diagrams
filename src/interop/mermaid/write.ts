@@ -2,6 +2,7 @@ import type { AnnotationShape, DiagramChecks, DiagramFile, DiagramGroup } from "
 import { stencilExportShape, type ExportShape } from "../../stencils/exportShape";
 import { RELATION_META, isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { RELATION_STROKE } from "../drawio/write";
+import { PRIVATE_COPY_NOTE } from "../privateNote";
 
 // diagrams/v1 -> Mermaid flowchart. Async edges are dotted (-.->), sync edges solid (-->), boundaries
 // become subgraphs. A trailing `%% diagrams:` comment keeps our ids, stencils and tones so importing
@@ -83,6 +84,10 @@ const SHAPE_BRACKETS: Record<AnnotationShape, [string, string]> = {
   diamond: ["{", "}"],
   cylinder: ["[(", ")]"],
 };
+
+/** The toast after Copy Mermaid (here, not in the app's startup code). A private diagram's names no public site. */
+export const mermaidCopied = (d: DiagramFile): string =>
+  `Mermaid flowchart copied. ${d.private ? PRIVATE_COPY_NOTE : "Paste it into GitHub, Notion, Obsidian or mermaid.live."}`;
 
 export function diagramToMermaid(d: DiagramFile, opts: { metadata?: boolean } = {}): string {
   const makeId = idMaker();

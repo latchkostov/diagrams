@@ -298,6 +298,69 @@ describe("Your diagrams (the library)", () => {
     expect(io.getSaveTarget(slug)).toEqual(device);
   });
 
+  it("deleting a diagram deletes its AI conversation too, and Undo puts it back", () => {
+    const slug = io.createLibraryDiagram(good);
+    const other = io.createLibraryDiagram({ ...good, title: "Other" });
+    const thread = `diagrams.ai-thread.v1:${io.getDiagramIdentity(slug)}`;
+    const otherThread = `diagrams.ai-thread.v1:${io.getDiagramIdentity(other)}`;
+    storage.setItem(thread, JSON.stringify({ turns: [{ request: "Add the payroll ledger" }] }));
+    storage.setItem(otherThread, "{}");
+    const undo = io.deleteLibraryDiagram(slug);
+    expect(storage.getItem(thread)).toBeNull();
+    expect(storage.getItem(otherThread)).toBe("{}");
+    expect(undo()).toBe(true);
+    expect(storage.getItem(thread)).toContain("payroll ledger");
+  });
+
+  it("deleting a diagram takes its title out of the old all-in-one index too; Undo still lists it", () => {
+    const slug = io.createLibraryDiagram({ ...good, title: "Payroll ledger" });
+    io.migrateLegacySlot();
+    // A browser that used the app before per-entry records: the old index lists the diagram by title.
+    storage.setItem(io.LIBRARY_KEY, JSON.stringify({ format: "diagrams/library/v1", entries: io.listLibrary() }));
+    expect(storage.getItem(io.LIBRARY_KEY)).toContain("Payroll ledger");
+    const undo = io.deleteLibraryDiagram(slug);
+    expect(storage.getItem(io.LIBRARY_KEY)).not.toContain("Payroll ledger");
+    expect(undo()).toBe(true);
+    expect(io.listLibrary().map((e) => e.title)).toEqual(["Payroll ledger"]);
+  });
+
+  it("two tabs deleting at once can't bring a title back into the old index", () => {
+    // Three diagrams listed only in the old all-in-one index (a browser from before per-entry records).
+    const slugs = ["Payroll ledger", "Bonus run", "Expenses"].map((title) =>
+      io.createLibraryDiagram({ ...good, title }),
+    );
+    const rows = slugs.map((s) => JSON.parse(storage.getItem(`diagrams.library-entry.v1:${s}`)!));
+    for (const s of slugs) storage.removeItem(`diagrams.library-entry.v1:${s}`);
+    storage.setItem(io.LIBRARY_KEY, JSON.stringify({ format: "diagrams/library/v1", entries: rows }));
+    expect(io.listLibrary()).toHaveLength(3);
+    // This tab deletes the first; as it writes the old index, another tab deletes the second.
+    let raced = false;
+    storage.beforeWrite = (key) => {
+      if (key !== io.LIBRARY_KEY || raced) return;
+      raced = true;
+      io.deleteLibraryDiagram(slugs[1]);
+    };
+    io.deleteLibraryDiagram(slugs[0]);
+    storage.beforeWrite = undefined;
+    expect(raced).toBe(true);
+    const index = storage.getItem(io.LIBRARY_KEY)!;
+    expect(index).not.toContain("Payroll ledger");
+    expect(index).not.toContain("Bonus run");
+    expect(io.listLibrary().map((e) => e.title)).toEqual(["Expenses"]);
+  });
+
+  it("a shared diagram replaced or cleared takes its AI conversation with it", () => {
+    io.setShared(good);
+    const first = `diagrams.ai-thread.v1:${io.getDiagramIdentity(io.SHARED_SLUG)}`;
+    storage.setItem(first, "{}");
+    io.setShared({ ...good, title: "Next" });
+    expect(storage.getItem(first)).toBeNull();
+    const second = `diagrams.ai-thread.v1:${io.getDiagramIdentity(io.SHARED_SLUG)}`;
+    storage.setItem(second, "{}");
+    io.clearShared();
+    expect(storage.getItem(second)).toBeNull();
+  });
+
   it("a delete that can't update the index deletes nothing", () => {
     const slug = io.createLibraryDiagram(good);
     storage.quotaBytes = 5;

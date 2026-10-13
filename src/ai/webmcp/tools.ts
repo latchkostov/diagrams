@@ -18,7 +18,7 @@ import {
   type SimulationSpec,
 } from "../index";
 import { checkSchema } from "../validation";
-import { LOCAL_ONLY_MESSAGE } from "../privacy";
+import { PRIVATE_MESSAGE } from "../privacy";
 import type { ToolDef } from "./adapter";
 import { EDIT_TOOLS } from "./toolList";
 import { choicesFrom, type StencilChoice } from "../ui/apply";
@@ -75,7 +75,7 @@ export { EDIT_TOOLS, LIVE_TOOLS } from "./toolList";
 const OUTPUT_BUDGET = 1500;
 
 function needEditor(host: WebMcpHost): EditorApi {
-  if (host.canUseAi?.() === false) throw new Error(LOCAL_ONLY_MESSAGE);
+  if (host.canUseAi?.() === false) throw new Error(PRIVATE_MESSAGE);
   const editor = host.getEditor();
   if (!editor) throw new Error("The diagram is still loading. Try again in a moment.");
   return editor;
@@ -92,7 +92,7 @@ function sameDocument(host: WebMcpHost): () => void {
   const editor = needEditor(host);
   const doc = host.documentId?.();
   return () => {
-    if (host.canUseAi?.() === false) throw new Error(LOCAL_ONLY_MESSAGE);
+    if (host.canUseAi?.() === false) throw new Error(PRIVATE_MESSAGE);
     if (host.getEditor() !== editor || host.documentId?.() !== doc)
       throw new Error("Another diagram was opened while its simulations played. Call check_diagram again.");
   };
@@ -246,9 +246,10 @@ export function buildTools(host: WebMcpHost, names: readonly ToolName[] = EDIT_T
     async new_diagram(input) {
       checkSchema(input, toolSchemas.new_diagram);
       const { title, direction } = input as { title?: string; direction?: "LR" | "TB" };
+      if (host.canUseAi?.() === false) throw new Error(PRIVATE_MESSAGE);
       const editor = await host.newDiagram({ title, direction });
       if (!editor) throw new Error("The new diagram didn't open. Try again.");
-      if (host.canUseAi?.() === false) throw new Error(LOCAL_ONLY_MESSAGE);
+      if (host.canUseAi?.() === false) throw new Error(PRIVATE_MESSAGE);
       const d = editor.getDiagram();
       host.onApplied({
         tool: "new_diagram",

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { catalog } from "../stencils/catalog";
 import { flatten, MAX_RESULTS, parseQuery, rank, recencyBoost, type Command } from "./rank";
 import { stencilScore } from "./sources";
-import { withRecentCommand } from "./recent";
+import { rememberable, withRecentCommand } from "./recent";
 
 const action = (id: string, label: string, extra: Partial<Command> = {}): Command => ({
   id: `action:${id}`,
@@ -118,5 +118,11 @@ describe("palette ranking", () => {
   it("keeps the recent list de-duplicated and capped", () => {
     expect(withRecentCommand(["a", "b", "c"], "b")).toEqual(["b", "a", "c"]);
     expect(withRecentCommand(["a", "b", "c"], "d", 3)).toEqual(["d", "a", "b"]);
+  });
+
+  it("never remembers a command marked as carrying a private diagram's words", () => {
+    expect(rememberable({ documentScoped: true }, true)).toBe(false);
+    expect(rememberable({ documentScoped: true }, false)).toBe(true);
+    expect(rememberable({}, true)).toBe(true);
   });
 });

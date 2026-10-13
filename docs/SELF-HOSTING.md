@@ -31,8 +31,9 @@ What's left is up to you and your browsers:
 - **Cloud storage** (Google Drive, OneDrive, Dropbox) is off unless you set its `VITE_*` variables at build time
   ([INTEROP.md](INTEROP.md#storage-providers)). Leave them unset and no provider code loads.
 - **Chrome's built-in model** (the AI panel's on-device box) runs on the device. Chrome itself downloads that model
-  from Google once, and its dictation may use Chrome's online speech service. `VITE_DISABLE_ONDEVICE=1` removes the
-  box, its microphone and the Lab's model evals (and, with AI tools off too, the AI panel).
+  from Google once, and its dictation may use Chrome's online speech service (a line by the mic says so while it
+  does). `VITE_DISABLE_ONDEVICE=1` removes the box and its microphone (and, with AI tools off too, the AI panel).
+  No production build has the Lab (`?view=lab` opens the canvas).
 - **Links people send** (`#d=…`, from the public site, say) still open, because the diagram is inside the link and
   nothing is fetched. `VITE_DISABLE_LINK_OPEN=1` turns that off too.
 - **Browser extensions** can read any page they're allowed on. That's a browser-policy question, not an app one.
@@ -217,6 +218,9 @@ copy built without share links offers just this one: **Your app supplies it (pri
 <script type="module" src="https://diagrams.example.com/embed/live-diagram.js"></script>
 <live-diagram src-json="/wiki/diagrams/orders.diagram.json"></live-diagram>
 ```
+
+Serve the page that embeds it over https when you can: a page served over plain http can be changed on the network on
+its way to the reader, and the viewer trusts whatever that page hands it.
 
 Three things to set on your copy:
 

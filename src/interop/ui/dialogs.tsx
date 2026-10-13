@@ -28,6 +28,7 @@ import { detectFormat, FORMAT_LABEL } from "../formats";
 import { Dialog } from "./Dialog";
 import { copyText } from "./copyText";
 import { Glyph } from "./glyphs";
+import { clearDevice } from "../../lib/clearDevice";
 import { toast } from "./toast";
 
 const kb = (n: number) => (n < 1024 ? `${n} characters` : `${(n / 1024).toFixed(1)}k characters`);
@@ -757,6 +758,46 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
         <li>No AI: agents, Copy for AI and copied prompts can&apos;t read it</li>
       </ul>
       <p className="ix-muted">Made not private, it can be shared, saved to the cloud and read by AI again.</p>
+    </Dialog>
+  );
+}
+
+/**
+ * File ▸ Privacy ▸ Clear everything on this device…: says what goes and what stays, then clears and starts over.
+ * Cancel is the default button.
+ */
+export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
+  // The wipe's code comes with this dialog: confirming clears at once, with nothing left to download (so nothing to
+  // cancel, or to fail, after the click).
+  return (
+    <Dialog
+      title="Clear everything on this device?"
+      subtitle="Live Diagrams forgets everything it keeps in this browser, then starts over."
+      icon={<Glyph name="alert" />}
+      onClose={onClose}
+      testId="clear-device-dialog"
+      width={480}
+      footer={
+        <>
+          <span className="ix-grow" />
+          <button className="btn btn-danger" onClick={clearDevice} data-testid="clear-device-confirm">
+            Clear everything
+          </button>
+          <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="clear-device-cancel">
+            Cancel
+          </button>
+        </>
+      }
+    >
+      <ul className="ix-privacy-list" data-testid="clear-device-list">
+        <li>Every diagram in Your diagrams, private ones included, and your edits to examples</li>
+        <li>A diagram opened from a link, AI conversations, and where files were saved</li>
+        <li>Your settings</li>
+      </ul>
+      <p className="ix-muted">
+        Files you saved or exported, and copies in Google Drive, OneDrive or Dropbox, stay where they are. This
+        can&apos;t be undone. Other tabs of Live Diagrams start over too.
+      </p>
     </Dialog>
   );
 }

@@ -9,7 +9,7 @@ import { resolveScope } from "../ui/context";
 import { sameContent } from "../ui/thread";
 import { isAbort, runOnDevice, TIMED_OUT, type OnDeviceStatus } from "./pipeline";
 import type { ModelSession } from "./promptApi";
-import { primedSession } from "./session";
+import { primedSession, resetPrimedSession } from "./session";
 
 // One on-device request's life: read the diagram (after the privacy check), wait for the model, ask,
 // and commit only if the diagram is still the one asked about, still in the editor and still allowed to
@@ -136,6 +136,9 @@ export function useOnDeviceRequest({
       return false;
     } finally {
       if (session && session !== base) session.destroy();
+      // Without clone() the request ran in the page's primed session itself: drop it, so what this request put in its
+      // context (a diagram's words, a private one's included) never reaches the next request, on any diagram.
+      else if (session && session === base) resetPrimedSession();
       if (abort.current === controller) abort.current = null;
       setStatus(null);
     }

@@ -6,7 +6,7 @@ import { copyText } from "../../interop/ui/copyText";
 import { notify } from "../../interop/ui/toast";
 import { paletteHost } from "../../palette/host";
 import { isLocalOnly, privacyOf } from "../../lib/localOnly";
-import { LOCAL_ONLY_MESSAGE, describeForAi } from "../privacy";
+import { LOCAL_ONLY_MESSAGE, aiOffMessage, describeForAi } from "../privacy";
 import { failedRef, pickCandidate, planTurn } from "./apply";
 import { commitPlan, type TurnRecord } from "./commitTurn";
 import { aiPlace, liveText, type AiIntent } from "./context";
@@ -165,7 +165,7 @@ export function Advanced({
 
   const runPlan = (ed: EditorApi, p: ParsedReply, pastedReply: string) => {
     if (isLocalOnly(paletteHost.get().canvas)) {
-      setFailure({ error: { i: -1, error: LOCAL_ONLY_MESSAGE }, reply: pastedReply });
+      setFailure({ error: { i: -1, error: aiOffMessage(paletteHost.get().canvas) }, reply: pastedReply });
       return;
     }
     const plan = planTurn(ed.getDiagram(), p);
@@ -306,7 +306,13 @@ export function Advanced({
             disabled={privateDiagram}
             dictation={dictation}
             shortcut
-            testIds={{ input: "ai-request", mic: "ai-mic", interim: "ai-interim", message: "ai-dictation-message" }}
+            testIds={{
+              input: "ai-request",
+              mic: "ai-mic",
+              interim: "ai-interim",
+              message: "ai-dictation-message",
+              service: "ai-speech-service",
+            }}
           />
           <div className="ai-composer-row">
             <button

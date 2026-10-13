@@ -147,6 +147,7 @@ export function LiveSession({
   onSaveDiagram,
   onPanelChange,
   onSession,
+  privateDiagram,
 }: SessionProps) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { fitView, setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
@@ -227,11 +228,12 @@ export function LiveSession({
     else if (JSON.stringify(next) !== JSON.stringify(cur)) controller.setBase(next);
   }, [simulations, controller]);
 
-  // Mirror the live state into the URL (canvas only) so the address is a shareable live link.
+  // Mirror the live state into the URL (canvas only) so the address is a shareable live link. A private diagram
+  // can't be shared as one, and its simulation ids can carry its words: only `live=1` goes in its address.
   const simId = state.simulation && state.simulation.id !== draft?.id ? state.simulation.id : null;
   useEffect(() => {
-    if (editor) writeLiveParams(true, simId);
-  }, [editor, simId]);
+    if (editor) writeLiveParams(true, privateDiagram ? null : simId);
+  }, [editor, simId, privateDiagram]);
 
   // ---------------------------------------------------------------- spotlight (notes, trace)
 

@@ -23,3 +23,12 @@ export function withRecentCommand(list: readonly string[], id: string, max = REC
 export function pushRecentCommand(id: string, storage: Pick<Storage, "getItem" | "setItem"> = safeStorage) {
   storage.setItem(RECENT_COMMANDS_KEY, JSON.stringify(withRecentCommand(getRecentCommands(storage), id)));
 }
+
+/**
+ * Whether a run command is remembered: never one whose id carries a private diagram's own ids or words (its nodes,
+ * simulations, Connect to › and Reconnect › targets, marked `documentScoped` where they're made). This list outlives
+ * the diagram: it's one list for every diagram.
+ */
+export function rememberable(command: { documentScoped?: boolean }, privateDiagram: boolean): boolean {
+  return !(privateDiagram && command.documentScoped);
+}

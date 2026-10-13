@@ -155,6 +155,8 @@ const EDITING_ONLY = [
   // A selected edge's ends and the outline of where a node will land (flow building, D3 and D8).
   "edge-end",
   "landing-outline",
+  // The Checks card's markers: a review aid, and their tooltips carry the findings' words.
+  "check-markers",
 ];
 // SVG editing chrome (not an HTMLElement): the line an insert would split.
 const EDITING_ONLY_SVG = ["insert-line", "edge-end-line"];

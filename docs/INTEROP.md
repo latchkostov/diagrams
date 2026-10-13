@@ -497,8 +497,9 @@ simulation picker, play and pause, speed, slow motion, trace and the rest of the
   - **Opening it** shows **This diagram is password-protected**, one field (focused) and **Open** (Enter). A wrong
     password says **That password doesn't open this file. Check it and try again.**, keeps what was typed, selected, and
     can be retried at once; there's no lockout (an offline file couldn't keep one), each try costs the 600,000
-    iterations instead. Once it opens, the icons join the viewer's icon map, the page title becomes the diagram's (in
-    that tab only), and focus moves to the diagram. The prompt is no `<form>`: a frame sandboxed without
+    iterations instead. Once it opens, the icons join the viewer's icon map and focus moves to the diagram. The page
+    title stays **Diagram (password protected)**: browsers keep page titles in their history and sync it, and the
+    title is part of what the password protects (the diagram's name reaches screen readers through the canvas's label). The prompt is no `<form>`: a frame sandboxed without
     `allow-forms` never submits one.
   - **Nothing changes about the page:** the same CSP and hashes (WebCrypto and `DecompressionStream` need no
     directive), zero requests, no storage, and the password is never kept or sent. A lost password can't be

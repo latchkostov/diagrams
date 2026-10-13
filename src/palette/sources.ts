@@ -136,6 +136,7 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
           danger: node.danger,
           keywords: node.keywords,
           run: node.run,
+          documentScoped: node.documentScoped,
         });
         continue;
       }
@@ -150,6 +151,7 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
         drill: label,
         disabled: node.disabled,
         hint: node.hint,
+        documentScoped: node.documentScoped,
       });
       for (const { item, trail } of kids) {
         add({
@@ -168,6 +170,7 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
           keywords: [label, ...trail.slice(1), item.keywords ?? "", item.hint ?? ""].join(" ").trim(),
           idle: false,
           run: item.run,
+          documentScoped: node.documentScoped || item.documentScoped,
         });
       }
     }
@@ -219,6 +222,7 @@ export function collectCommands(input: SourceInput): Command[] {
     for (const n of diagram!.nodes) {
       out.push({
         id: `node:${n.id}`,
+        documentScoped: true,
         group: "nodes",
         label: n.label || n.id,
         hint: n.sublabel,
@@ -233,6 +237,7 @@ export function collectCommands(input: SourceInput): Command[] {
     for (const s of diagram!.simulations ?? []) {
       out.push({
         id: `sim:${s.id}`,
+        documentScoped: true,
         group: "simulations",
         label: `Run “${s.title}”`,
         icon: "bolt",

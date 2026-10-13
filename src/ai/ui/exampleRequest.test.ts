@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
-import { exampleRequest } from "./exampleRequest";
+import { exampleRequest, exampleToCopy } from "./exampleRequest";
 
 const diagram = (nodes: [string, string, string][], edges: [string, string, ("async" | "sync")?][] = []) =>
   ({
@@ -44,5 +44,22 @@ describe("exampleRequest", () => {
   it("asks for a whole diagram when there's nothing to name", () => {
     expect(exampleRequest(null)).toMatch(/^Draw a Kafka topic/);
     expect(exampleRequest(diagram([["x", "service.node", "  "]]))).toMatch(/^Draw /);
+  });
+});
+
+describe("exampleToCopy", () => {
+  const diagram = {
+    format: "diagrams/v1" as const,
+    title: "Payroll",
+    nodes: [{ id: "ledger", stencil: "postgres", label: "Payroll ledger", x: 0, y: 0 }],
+    edges: [],
+  };
+  const editor = { getDiagram: () => diagram };
+
+  it("reads the diagram open when it's clicked, and copies nothing from a private one", () => {
+    expect(exampleToCopy({ editor })).toContain("Payroll ledger");
+    expect(exampleToCopy({ editor, private: true })).toBeNull();
+    expect(exampleToCopy({ editor, private: true, onDevice: true })).toBeNull();
+    expect(exampleToCopy({ editor, localOnly: true })).toBeNull();
   });
 });

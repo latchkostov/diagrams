@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  COMMON_HEADERS,
   contentSecurityPolicy,
   cspDirectives,
   securityHeadersFor,
@@ -94,13 +95,20 @@ describe("security headers", () => {
       expect(securityHeadersFor(path)["Access-Control-Allow-Origin"], path).toBeUndefined();
   });
 
-  it("the host-supplied embed is framed by anyone, and still fetches only this site and the providers", () => {
+  it("the app's page names the same referrer policy, for a copy served without the headers", () => {
+    expect(read("index.html")).toContain(`<meta name="referrer" content="${COMMON_HEADERS["Referrer-Policy"]}" />`);
+  });
+
+  it("the host-supplied embed is framed by anyone, and talks to this site only (no storage provider)", () => {
     const csp = securityHeadersFor("/?embed=1&host=1&hostOrigin=https%3A%2F%2Fapp.example.com")[
       "Content-Security-Policy"
     ];
     expect(csp).toContain("frame-ancestors *");
-    expect(csp).toContain(`connect-src ${directive("connect-src", true).join(" ")}`);
-    expect(directive("connect-src", true)).toEqual(directive("connect-src", false));
+    for (const name of ["script-src", "connect-src", "frame-src"]) expect(directive(name, true)).toEqual(["'self'"]);
+    expect(directive("style-src", true)).toEqual(["'self'", "'unsafe-inline'"]);
+    expect(csp).not.toMatch(/google|microsoft|dropbox|1drv|sharepoint/);
+    // The app itself keeps them, for Save to and Open from.
+    expect(directive("connect-src", false).length).toBeGreaterThan(1);
   });
 
   it("the Vercel rules route the same way as the preview server", () => {

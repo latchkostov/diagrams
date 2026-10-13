@@ -2,6 +2,8 @@
 // model. On by default since round 3, at the owner's direction (the 80% bar reached by projection, not a
 // measured run yet: docs/research/on-device-model.md); turning it off is remembered.
 
+import { safeStorage } from "../../lib/storage";
+
 const KEY = "diagrams.ai-ondevice.v1";
 
 /** On where the model can run; Advanced turns it off. */
@@ -16,10 +18,7 @@ export function readOnDevice(): boolean {
   }
 }
 
+/** Storage blocked or full: it lasts for this visit. */
 export function rememberOnDevice(on: boolean): void {
-  try {
-    localStorage.setItem(KEY, on ? "1" : "0");
-  } catch {
-    // Storage blocked: it lasts for this visit.
-  }
+  safeStorage.setItem(KEY, on ? "1" : "0");
 }

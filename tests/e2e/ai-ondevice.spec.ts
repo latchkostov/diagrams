@@ -127,6 +127,45 @@ test("a reply that doesn't fit is retried once with the error, then applied", as
   expect(lm.prompts[1]).toMatch(/^That failed: /);
 });
 
+test("without clone(), every request gets a session of its own, the next diagram's included", async ({ page }) => {
+  const bad = modelReply("", [{ op: "connect", from: "Nowhere", to: "Inventory service" }]);
+  const queue = modelReply("Added a queue", [{ op: "add", kind: "queue", label: "billing-queue" }]);
+  await installFakeLanguageModel(page, { replies: [DLQ, bad, bad, "hang", queue], noClone: true });
+  await gotoCanvas(page, SLUG);
+  await turnOn(page);
+  /** The session that took each prompt so far. */
+  const sessions = async () => (await fakeModel(page)).promptSessions;
+
+  // Succeeds.
+  await ask(page, "Add a dead-letter queue after Inventory service");
+  await expect(page.getByTestId("ai-turn-0")).toHaveAttribute("data-engine", "on-device");
+  const [first] = await sessions();
+  // Fails (the reply and its one retry share a session: it's one request).
+  await ask(page, "Connect nowhere to inventory");
+  await expect(page.getByTestId("ai-ondevice-error")).toHaveText("Couldn't apply that. Try rephrasing.");
+  const [, second, retry] = await sessions();
+  expect(retry).toBe(second);
+  // Cancelled.
+  await ask(page, "Add a cache");
+  await expect.poll(async () => (await sessions()).length).toBe(4);
+  await page.getByTestId("ai-ondevice-stop").click();
+  await expect(page.getByTestId("ai-ondevice-send")).toBeVisible();
+  const third = (await sessions())[3];
+
+  // Another diagram, opened in the same page (the model's sessions live as long as the page): its request reaches
+  // none of those sessions, and they're all gone.
+  const title = await page.getByTestId("diagram-title").innerText();
+  await page.getByTestId("example-picker").selectOption("aws-fanout");
+  await expect(page.getByTestId("diagram-title")).not.toHaveText(title);
+  await expect(page.getByTestId("ai-ondevice")).toBeVisible();
+  await ask(page, "Add a billing queue");
+  await expect(page.getByTestId("ai-turn-0")).toHaveAttribute("data-engine", "on-device");
+  const lm = await fakeModel(page);
+  const fourth = lm.promptSessions[4];
+  expect(new Set([first, second, third, fourth]).size).toBe(4);
+  expect(lm.destroyedSessions).toEqual(expect.arrayContaining([first, second, third]));
+});
+
 test("two bad replies apply nothing and say so", async ({ page }) => {
   const bad = modelReply("", [{ op: "connect", from: "Nowhere", to: "Inventory service" }]);
   await installFakeLanguageModel(page, { replies: [bad, bad] });
@@ -244,7 +283,7 @@ test.describe("dictation in the box", () => {
     await gotoCanvas(page, SLUG);
     await turnOn(page);
     await expect(page.getByTestId("ai-ondevice-speech-note")).toHaveText(
-      "Dictation may use your browser's speech service (in Chrome, Google).",
+      "Dictation: What you say may be sent to Google's speech service.",
     );
     await page.getByTestId("ai-ondevice-mic").click();
     await expect(page.getByTestId("ai-ondevice-dictation-message")).toHaveAttribute("role", "alert");
