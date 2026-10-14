@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { LIMITS, tooLargeMessage } from "../native";
 import { fsAccessSupported, openWithPicker, saveWithPicker, writeHandle, type FileHandle } from "../files";
 import { StorageError, type StorageProvider } from "./types";
@@ -8,7 +9,7 @@ import { StorageError, type StorageProvider } from "./types";
 
 export const deviceProvider: StorageProvider<FileHandle> = {
   id: "device",
-  label: "This device",
+  label: t("storage.thisDevice"),
   icon: "device",
   isConfigured: () => true,
   signIn: async () => {},
@@ -16,18 +17,22 @@ export const deviceProvider: StorageProvider<FileHandle> = {
   isSignedIn: () => true,
 
   async open() {
-    if (!fsAccessSupported()) throw new StorageError("This browser can't open files from here.");
+    if (!fsAccessSupported()) throw new StorageError(t("storage.thisBrowserCantOpenFilesFromHere"));
     const picked = await openWithPicker();
     if (!picked?.[0]) return undefined;
     const { file, handle } = picked[0];
     // Check the size before reading anything into memory.
     if (file.size > LIMITS.maxTextChars)
-      throw new StorageError(`Couldn't import ${file.name}. ${tooLargeMessage(file.size)}`, undefined, true);
+      throw new StorageError(
+        t("fileToast.couldntImportValue0Value1", { value0: file.name, value1: tooLargeMessage(file.size) }),
+        undefined,
+        true,
+      );
     let text: string;
     try {
       text = await file.text();
     } catch {
-      throw new StorageError(`Couldn't read ${file.name}.`, undefined, true);
+      throw new StorageError(t("storage.couldntReadValue0", { value0: file.name }), undefined, true);
     }
     return { name: file.name, text, ref: handle };
   },

@@ -663,7 +663,7 @@
   background: var(--surface);
   color: var(--text);
   font-weight: 560;
-  text-align: left;
+  text-align: start;
 }
 
 .ix-page:hover,
@@ -1202,7 +1202,7 @@ p.ix-storage-state {
   flex: none;
   max-width: 55%;
   color: var(--text-3);
-  text-align: right;
+  text-align: end;
   overflow-wrap: anywhere;
 }
 
@@ -1277,7 +1277,7 @@ code.ix-report-why {
 .ix-report-section .ix-report-pick-list {
   max-height: 232px;
   overflow-y: auto;
-  padding-right: 6px;
+  padding-inline-end: 6px;
   border-block: 1px solid var(--line);
 }
 
@@ -1327,7 +1327,7 @@ code.ix-report-why {
 
 .ix-report-offer-where::before {
   content: "·";
-  margin-right: 6px;
+  margin-inline-end: 6px;
 }
 
 /* File names and extensions (".diagram.json") read left to right, in a right-to-left language too. */

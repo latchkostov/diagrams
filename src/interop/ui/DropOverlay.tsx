@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Glyph } from "./glyphs";
@@ -9,6 +10,7 @@ const hasFiles = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types]
  * stencil drags), and shows a full-window target while a file is over the page.
  */
 export function DropOverlay({ onFiles }: { onFiles: (files: File[]) => void }) {
+  useLocale();
   const [active, setActive] = useState(false);
   const depth = useRef(0);
   const onFilesRef = useRef(onFiles);
@@ -60,31 +62,31 @@ export function DropOverlay({ onFiles }: { onFiles: (files: File[]) => void }) {
         <span className="ix-drop-icon">
           <Glyph name="upload" size={26} />
         </span>
-        <strong>Drop to open</strong>
+        <strong>{t("fileDialog.dropToOpen")}</strong>
         <span className="ix-drop-formats">
           <span>
-            <Glyph name="json" size={14} /> .diagram.json
+            <Glyph name="json" size={14} /> {".diagram.json"}
           </span>
           <span>
-            <Glyph name="drawio" size={14} /> .drawio · .xml
+            <Glyph name="drawio" size={14} /> {".drawio · .xml"}
           </span>
           <span>
-            <Glyph name="mermaid" size={14} /> .mmd
+            <Glyph name="mermaid" size={14} /> {".mmd"}
           </span>
           <span>
-            <Glyph name="file" size={14} /> docker-compose.yml
+            <Glyph name="file" size={14} /> {"docker-compose.yml"}
           </span>
           <span>
-            <Glyph name="file" size={14} /> Kubernetes
+            <Glyph name="file" size={14} /> {"Kubernetes"}
           </span>
           <span>
-            <Glyph name="file" size={14} /> AsyncAPI
+            <Glyph name="file" size={14} /> {"AsyncAPI"}
           </span>
           <span>
-            <Glyph name="file" size={14} /> Terraform plan
+            <Glyph name="file" size={14} /> {t("fileType.terraformPlanOrState")}
           </span>
         </span>
-        <span className="ix-drop-hint">Opens as your diagram. Examples are never overwritten.</span>
+        <span className="ix-drop-hint">{t("fileDialog.dropHint")}</span>
       </div>
     </div>,
     document.body,

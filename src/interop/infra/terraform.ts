@@ -1,3 +1,5 @@
+import { formatList, formatNumber } from "../../i18n/format";
+import { t as tr } from "../../i18n";
 import type { EdgeRelation } from "../../model/types";
 import { sanitizeSettings } from "../../model/relations";
 import { inferRelation } from "../../stencils/relations";
@@ -100,15 +102,16 @@ function strings(inst: Instance, path: readonly string[]): string[] {
 }
 
 /** The report's summary line names supporting resources by these kinds (else "parts of what's drawn"). */
-const KINDS: Record<string, string> = {
-  "helper, not infrastructure": "helpers",
-  "access and permissions": "access and permissions",
-  networking: "networking",
-  monitoring: "monitoring",
-  "data source": "data sources",
-  "connects nothing in these files": "connections with no ends here",
-  "Terraform type not drawn": "other types",
-};
+const reasonKinds = () =>
+  new Map<string, string>([
+    [tr("importReason.helperNotInfrastructure"), tr("importKind.helpers")],
+    [tr("importReason.accessAndPermissions"), tr("importKind.accessAndPermissions")],
+    [tr("importReason.networking"), tr("importKind.networking")],
+    [tr("importReason.monitoring"), tr("importKind.monitoring")],
+    [tr("importReason.dataSource"), tr("importKind.dataSources")],
+    [tr("importReason.connectsNothingInTheseFiles"), tr("importKind.connectionsWithNoEndsHere")],
+    [tr("importReason.terraformTypeNotDrawn"), tr("importKind.otherTypes")],
+  ]);
 
 /** A path no value has: `targets` reads only the configuration's references. */
 const REFS_ONLY: readonly string[] = ["\u0000"];
@@ -131,19 +134,23 @@ function parse(f: SourceFile): Record<string, unknown> {
   try {
     doc = JSON.parse(text);
   } catch {
-    throw new ImportError(`${f.name} isn't valid JSON, so it wasn't read.`);
+    throw new ImportError(tr("importDetail.value0IsntValidJSONSoIt", { value0: f.name }));
   }
-  if (!isMap(doc)) throw new ImportError(`${f.name} isn't Terraform JSON.`);
+  if (!isMap(doc)) throw new ImportError(tr("importDetail.value0IsntTerraformJSON", { value0: f.name }));
   const version = own(doc, "format_version");
   if (version === undefined && own(doc, "lineage") !== undefined) throw new ImportError(TERRAFORM_RAW_STATE);
   if (typeof version !== "string" || !/^1(\.|$)/.test(version))
     throw new ImportError(
-      `${f.name} is Terraform JSON format ${typeof version === "string" ? version.slice(0, 12) : "(none)"}; only format 1 is read.`,
+      tr("importDetail.value0IsTerraformJSONFormatValue1", {
+        value0: f.name,
+        value1: typeof version === "string" ? version.slice(0, 12) : "(none)",
+      }),
     );
   return doc;
 }
 
 export function readTerraform(files: readonly SourceFile[], options: { everything?: boolean } = {}): ImportGraph {
+  const kindsByReason = reasonKinds();
   const everything = !!options.everything;
   const g: ImportGraph = {
     format: "Terraform",
@@ -155,7 +162,7 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     notDrawn: [],
     unread: [],
     notes: [],
-    connectionsTitle: "Connections from subscriptions, mappings and grants",
+    connectionsTitle: tr("importDetail.connectionsFromSubscriptionsMappingsAndGrants"),
   };
   const note = (text: string) => {
     if (!g.notes.includes(text) && g.notes.length < 200) g.notes.push(text);
@@ -182,7 +189,7 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
       const [mod, path, depth] = stack.pop()!;
       if (!isMap(mod)) continue;
       if (depth > TF_LIMITS.maxModuleDepth) {
-        unread(label(path), `modules nested more than ${TF_LIMITS.maxModuleDepth} deep aren't read`);
+        unread(label(path), tr("importDetail.modulesNestedMoreThanValue0Deep", { value0: TF_LIMITS.maxModuleDepth }));
         continue;
       }
       const resources = own(mod, "resources");
@@ -191,13 +198,11 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
         const name = str(own(r, "name")) ?? "";
         const mode = own(r, "mode") === "data" ? "data" : "managed";
         if (!TYPE.test(type) || !IDENT.test(name)) {
-          unread(label(str(own(r, "address")) ?? "a resource"), "no type or name");
+          unread(label(str(own(r, "address")) ?? "a resource"), tr("importDetail.noTypeOrName"));
           continue;
         }
         if (++instances > MAX_RESOURCES)
-          throw new ImportError(
-            `These files hold more than ${MAX_RESOURCES.toLocaleString("en")} resources; one import reads at most that many.`,
-          );
+          throw new ImportError(tr("importDetail.theseFilesHoldMoreThanValue0More", { value0: MAX_RESOURCES }));
         const local = `${mode === "data" ? "data." : ""}${type}.${name}`;
         const key = `${file}\u0001${path}\u0001${local}`;
         let res = byKey.get(key);
@@ -238,15 +243,14 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
       if (isMap(configuration)) {
         const config = new TfConfig(configuration, budget);
         for (const path of config.tooDeep)
-          unread(label(path), `modules nested more than ${TF_LIMITS.maxModuleDepth} deep aren't read`);
+          unread(label(path), tr("importDetail.modulesNestedMoreThanValue0Deep", { value0: TF_LIMITS.maxModuleDepth }));
         configs[file] = config;
       }
     }
   });
   for (const r of byKey.values()) r.refs = configs[r.file]?.refsOf(r.module, r.local);
   const resources = [...byKey.values()];
-  if (!resources.length && !destroyed.size)
-    throw new ImportError("There's nothing to draw: no Terraform resources were found.");
+  if (!resources.length && !destroyed.size) throw new ImportError(tr("importDetail.theresNothingToDrawNoTerraform"));
   g.format = kinds.size === 1 ? (kinds.has("plan") ? "Terraform plan" : "Terraform state") : "Terraform";
 
   // ------------------------------------------------ indexes: identity values → resources (in memory only)
@@ -378,7 +382,7 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
       continue;
     }
     if (r.mode === "data") {
-      skip(`data.${r.type}`, r.name, "data source");
+      skip(`data.${r.type}`, r.name, tr("importDetail.dataSource"));
       continue;
     }
     if (everything && !(r.type === "aws_cloudwatch_event_rule" && first(r, ["schedule_expression"]))) {
@@ -492,7 +496,7 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     const topics = keys(targets(s, "topic_arn", ["topic_arn"], is("aws_sns_topic")));
     const protocol = (first(s, ["protocol"]) ?? "").toLowerCase();
     if (/^(email|email-json|sms|application)$/.test(protocol)) {
-      skip(s.type, s.name, "an email, SMS or app subscription");
+      skip(s.type, s.name, tr("importDetail.anEmailSMSOrAppSubscription"));
       used.add(s);
       continue;
     }
@@ -975,44 +979,45 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     if (drawn(r) || used.has(r) || r.mode === "data") continue;
     if (GLUE.has(r.type)) {
       const reason = /^aws_iam_|_role_assignment$|_access_policy$/.test(r.type)
-        ? "access and permissions"
-        : "connects nothing in these files";
+        ? tr("importReason.accessAndPermissions")
+        : tr("importReason.connectsNothingInTheseFiles");
       skip(r.type, r.name, reason);
     }
   }
-  for (const [key, d] of destroyed) if (!byKey.has(key)) skip(d.type, d.name, "destroyed by this plan");
+  for (const [key, d] of destroyed) if (!byKey.has(key)) skip(d.type, d.name, tr("importDetail.destroyedByThisPlan"));
   const rows = [...skipped.values()].sort((a, b) => b.names.length - a.names.length || a.type.localeCompare(b.type));
   for (const { type, reason, names: n } of rows)
     g.notDrawn.push({
-      name: n.length === 1 ? `${type} ${n[0]}` : `${type} ×${n.length.toLocaleString("en")}`,
+      name: n.length === 1 ? `${type} ${n[0]}` : `${type} ×${formatNumber(n.length)}`,
       reason,
     });
-  if (!g.components.length)
-    throw new ImportError(
-      "There's nothing to draw: none of these resources is a component (queues, topics, functions, databases…).",
-    );
+  if (!g.components.length) throw new ImportError(tr("importDetail.theresNothingToDrawNoneOf"));
   g.links = links.list();
 
   // ------------------------------------------------ notes: the plan's changes, what's summarised, budgets
   if (kinds.has("plan") && changes.add + changes.change + changes.destroy)
-    note(`Plan: ${changes.add} to add, ${changes.change} to change, ${changes.destroy} to destroy`);
-  const supporting = rows.filter((r) => r.reason !== "destroyed by this plan");
+    note(
+      tr("importDetail.planValue0ToAddValue1To", {
+        value0: changes.add,
+        value1: changes.change,
+        value2: changes.destroy,
+      }),
+    );
+  const supporting = rows.filter((r) => r.reason !== tr("importDetail.destroyedByThisPlan"));
   const count = supporting.reduce((n, r) => n + r.names.length, 0);
   if (count) {
     // Broad kinds, the most common first: "access and permissions, networking and helpers".
     const kinds = new Map<string, number>();
     for (const r of supporting) {
-      const kind = Object.hasOwn(KINDS, r.reason) ? KINDS[r.reason] : "parts of what's drawn";
+      const kind = kindsByReason.get(r.reason) ?? tr("importKind.parts");
       kinds.set(kind, (kinds.get(kind) ?? 0) + r.names.length);
     }
     const reasons = [...kinds].sort((a, b) => b[1] - a[1]).map(([kind]) => kind);
-    const listed = reasons.length > 5 ? [...reasons.slice(0, 4), "more"] : reasons;
-    const joined = listed.length > 1 ? `${listed.slice(0, -1).join(", ")} and ${listed.at(-1)}` : listed[0];
-    note(
-      `${count.toLocaleString("en")} supporting ${count === 1 ? "resource isn't" : "resources aren't"} drawn: ${joined}`,
-    );
+    const listed = reasons.length > 5 ? [...reasons.slice(0, 4), tr("importKind.more")] : reasons;
+    const joined = formatList(listed);
+    note(tr("importDetail.supporting", { count, kinds: joined }));
   }
-  if (budget.exhausted) note("Some references weren't followed: the plan holds too many to read them all");
+  if (budget.exhausted) note(tr("importDetail.someReferencesWerentFollowedThePlan"));
 
   // ------------------------------------------------ boundaries: modules, else Azure resource groups
   const byComponent = new Map<string, Resource>();

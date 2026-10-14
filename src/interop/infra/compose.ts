@@ -1,3 +1,5 @@
+import { formatList } from "../../i18n/format";
+import { t as tr } from "../../i18n";
 import type { ImportGraph } from "./graph";
 import { imageStencil, shortImage, withoutCredentials } from "./stencils";
 import { MAX_VALUE } from "./settings";
@@ -149,12 +151,12 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
   let top: Record<string, unknown> = bare();
   for (const f of ordered) {
     const doc = readYaml(f.text, f.name).find(isMap);
-    if (!doc) throw new ImportError(`${f.name} doesn't hold a docker-compose file.`);
+    if (!doc) throw new ImportError(tr("importDetail.value0DoesntHoldADockercomposeFile", { value0: f.name }));
     top = merge(top, normalizeTop(doc)) as Record<string, unknown>;
   }
   const services = own(top, "services");
   if (!isMap(services) || !Object.keys(services).length)
-    throw new ImportError("It has no services to draw (docker-compose files list them under services:).");
+    throw new ImportError(tr("importDetail.itHasNoServicesToDraw"));
 
   const opened = new Map([...files, ...others].map((f) => [baseName(f.name), f]));
   const first = files[0]?.name ?? "docker-compose.yml";
@@ -219,7 +221,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
   };
 
   for (const name of Object.keys(own(top, "volumes") && isMap(own(top, "volumes")) ? (top.volumes as object) : {}))
-    g.notDrawn.push({ name, reason: "volume" });
+    g.notDrawn.push({ name, reason: tr("importDetail.volume") });
 
   // ------------------------------------------------ pass 1: what gets drawn
   const components = new Components(g.components);
@@ -232,7 +234,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
   for (const name of Object.keys(services)) {
     const svc = resolve(name);
     if (!svc) {
-      g.notDrawn.push({ name, reason: "not a service definition" });
+      g.notDrawn.push({ name, reason: tr("importDetail.notAServiceDefinition") });
       continue;
     }
     const profiles = list(own(svc, "profiles"))
@@ -240,7 +242,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
       .filter((p): p is string => !!p);
     if (profiles.length) {
       const names = profiles.map((p) => `“${p}”`).join(", ");
-      g.notDrawn.push({ name, reason: `only in profile${profiles.length > 1 ? "s" : ""} ${names}` });
+      g.notDrawn.push({ name, reason: tr("importDetail.profiles", { count: profiles.length, names }) });
       continue;
     }
     const rawImage = str(own(svc, "image"));
@@ -306,8 +308,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
       const [target, alias] = (str(link) ?? "").split(":");
       if (alias && byKey.has(target)) hosts.set(alias.toLowerCase(), target);
     }
-  if (!g.components.length)
-    throw new ImportError("There's nothing to draw: every service is in a profile or isn't a component.");
+  if (!g.components.length) throw new ImportError(tr("importDetail.theresNothingToDrawEveryService"));
 
   // ------------------------------------------------ pass 2: connections
   const links = new Links(components);
@@ -320,6 +321,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
     if (!secretNames.includes(name)) secretNames.push(name);
     return add({
       key: "\u0002secrets",
+      // eslint-disable-next-line local/no-literal-ui-text -- persisted diagram content, not UI copy
       label: "Compose secrets",
       hint: { name: "secrets" },
       stencil: "generic.secret-store",
@@ -376,6 +378,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
       if (!name) continue;
       const store = add({
         key: "\u0002configs",
+        // eslint-disable-next-line local/no-literal-ui-text -- persisted diagram content, not UI copy
         label: "Compose configs",
         hint: { name: "configs" },
         stencil: "generic.config-store",
@@ -386,6 +389,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
       dep(key, store, "config", { source: "configs" });
     }
     if (publishesWeb(own(svc, "ports"), isGateway(key))) {
+      // eslint-disable-next-line local/no-literal-ui-text -- persisted diagram content, not UI copy
       const users = add({ key: "\u0002users", label: "Users", hint: { name: "users" }, stencil: "client.user" });
       flow(users, key, "sync", { source: "ports" });
     }
@@ -419,7 +423,9 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
             return other !== undefined && home.get(topicCluster.get(other) ?? other) === n;
           }).length;
         net = nets.reduce((best, n) => (score(n) > score(best) ? n : best), nets[0]);
-        g.notes.push(`${info.key} is on ${nets.join(" and ")}; shown in ${net}`);
+        g.notes.push(
+          tr("importDetail.value0IsOnValue1ShownIn", { value0: info.key, value1: formatList(nets), value2: net }),
+        );
       }
       byKey.get(info.key)!.group = net;
     }

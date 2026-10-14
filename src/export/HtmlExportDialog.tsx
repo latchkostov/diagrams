@@ -1,3 +1,5 @@
+import { tRich } from "../i18n/rich";
+import { t, useLocale } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 import type { DiagramFile } from "../model/types";
 import { Dialog } from "../interop/ui/Dialog";
@@ -11,9 +13,9 @@ import "./htmlExport.css";
 const THEMES = ["light", "dark"] as const;
 
 /** The one line every Interactive HTML export shows (docs/UX-PRINCIPLES.md, Vocabulary). */
-export const ANYONE_WITH_FILE = "Anyone who has this file can open it.";
+export const ANYONE_WITH_FILE = () => t("htmlExport.anyone");
 /** …and the line it shows instead with Require a password on. */
-export const ONLY_WITH_PASSWORD = "Only people with the password can open it.";
+export const ONLY_WITH_PASSWORD = () => t("share.passwordDesc");
 
 /**
  * File ▸ Export as ▸ Interactive HTML…: one self-contained file to open in a browser or host where the team
@@ -22,6 +24,7 @@ export const ONLY_WITH_PASSWORD = "Only people with the password can open it.";
  * with password… (PasswordField).
  */
 export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; onClose: () => void }) {
+  useLocale();
   const sims = diagram.simulations ?? [];
   const [title, setTitle] = useState(diagram.title);
   const [banner, setBanner] = useState("");
@@ -45,10 +48,14 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
   const keptSims = sims.filter((s) => kept.includes(s.id));
   const startSim = keptSims.find((s) => s.id === start);
   const summary = [
-    theme === "dark" ? "Dark theme" : "Light theme",
-    sims.length ? `${keptSims.length} simulation${keptSims.length === 1 ? "" : "s"}` : "no simulations",
-    startSim ? `plays “${startSim.title}” when opened` : sims.length ? "opens without playing" : "",
-    banner.trim() ? "with a banner" : "",
+    theme === "dark" ? t("topbar.darkTheme") : t("topbar.lightTheme"),
+    sims.length ? t("htmlExport.simulationCount", { count: keptSims.length }) : t("htmlExport.noSimulations"),
+    startSim
+      ? t("htmlExport.playsWhenOpened", { title: startSim.title })
+      : sims.length
+        ? t("htmlExport.opensWithoutPlaying")
+        : "",
+    banner.trim() ? t("htmlExport.withABanner") : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -86,8 +93,8 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
 
   return (
     <Dialog
-      title="Interactive HTML"
-      subtitle="One file with the diagram and its simulations, to open in any browser. It makes no requests and needs no internet."
+      title={t("htmlExport.interactiveHTML")}
+      subtitle={t("htmlExport.oneFileWithTheDiagramAndIts")}
       icon={<Glyph name="play" />}
       onClose={onClose}
       testId="html-export-dialog"
@@ -96,7 +103,7 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
         <>
           <span className="ix-grow" />
           <button className="btn" onClick={onClose} data-testid="html-export-cancel">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             className="btn btn-primary"
@@ -105,7 +112,7 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
             data-testid="html-export-download"
             data-autofocus
           >
-            <Glyph name="download" size={14} /> Download HTML
+            <Glyph name="download" size={14} /> {t("htmlExport.downloadHTML")}
           </button>
         </>
       }
@@ -116,17 +123,12 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
       {locked ? (
         <div className="ix-callout" data-testid="html-export-protected">
           <Glyph name="lock" size={15} />
-          <span>
-            <strong>{ONLY_WITH_PASSWORD}</strong> Send the password separately, not with the file.
-          </span>
+          <span>{tRich("htmlExport.protectedNote", { b: (chunks) => <strong>{chunks}</strong> })}</span>
         </div>
       ) : (
         <div className="ix-callout" data-testid="html-export-anyone">
           <Glyph name="info" size={15} />
-          <span>
-            <strong>{ANYONE_WITH_FILE}</strong> Keep it where your team already controls access, such as SharePoint,
-            Confluence or a private repository.
-          </span>
+          <span>{tRich("htmlExport.accessNote", { b: (chunks) => <strong>{chunks}</strong> })}</span>
         </div>
       )}
       <label className="ix-check">
@@ -136,7 +138,7 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
           onChange={(e) => setLocked(e.target.checked)}
           data-testid="html-export-password-toggle"
         />
-        Require a password
+        {t("htmlExport.requireAPassword")}
       </label>
       {locked && (
         <form
@@ -155,15 +157,14 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
             inputRef={passwordInput}
           />
           <p className="ix-html-password-note" data-testid="html-export-password-note">
-            Encrypts the whole diagram, title included; only the file&rsquo;s size shows. The password is never stored
-            or sent and can&rsquo;t be recovered: if it&rsquo;s lost, export again.
+            {t("htmlExport.encryptsTheWholeDiagramTitleIncludedOnly")}
           </p>
         </form>
       )}
       <Disclosure testId="html-export-options">
         <div className="ix-form">
           <label className="ix-form-label" htmlFor="html-export-title">
-            Title
+            {t("fileDialog.title")}
           </label>
           <input
             id="html-export-title"
@@ -174,38 +175,38 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
             data-testid="html-export-title"
           />
           <label className="ix-form-label" htmlFor="html-export-banner">
-            Banner
+            {t("htmlExport.banner")}
           </label>
           <input
             id="html-export-banner"
             className="ix-input"
             value={banner}
             onChange={(e) => setBanner(e.target.value)}
-            placeholder="e.g. Confidential: internal use only"
+            placeholder={t("htmlExport.egConfidentialInternalUseOnly")}
             maxLength={300}
             data-testid="html-export-banner"
           />
-          <span className="ix-form-label">Theme</span>
+          <span className="ix-form-label">{t("htmlExport.theme")}</span>
           {/* A radio group: one Tab stop (the checked one), arrow keys move and select. */}
-          <div ref={themeKeys} className="ix-seg" role="radiogroup" aria-label="Theme">
-            {THEMES.map((t) => (
+          <div ref={themeKeys} className="ix-seg" role="radiogroup" aria-label={t("htmlExport.theme")}>
+            {THEMES.map((themeChoice) => (
               <button
-                key={t}
+                key={themeChoice}
                 role="radio"
-                aria-checked={theme === t}
-                tabIndex={theme === t ? 0 : -1}
-                className={theme === t ? "is-on" : ""}
-                onClick={() => setTheme(t)}
-                data-testid={`html-export-theme-${t}`}
+                aria-checked={theme === themeChoice}
+                tabIndex={theme === themeChoice ? 0 : -1}
+                className={theme === themeChoice ? "is-on" : ""}
+                onClick={() => setTheme(themeChoice)}
+                data-testid={`html-export-theme-${themeChoice}`}
               >
-                {t === "light" ? "Light" : "Dark"}
+                {themeChoice === "light" ? t("htmlExport.light") : t("htmlExport.dark")}
               </button>
             ))}
           </div>
           {sims.length > 0 && (
             <>
-              <span className="ix-form-label ix-form-top">Simulations</span>
-              <div className="ix-checks" role="group" aria-label="Simulations to include">
+              <span className="ix-form-label ix-form-top">{t("htmlExport.simulations")}</span>
+              <div className="ix-checks" role="group" aria-label={t("htmlExport.simulationsToInclude")}>
                 {sims.map((s) => (
                   <label key={s.id} className="ix-check">
                     <input
@@ -219,7 +220,7 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
                 ))}
               </div>
               <label className="ix-form-label" htmlFor="html-export-start">
-                When opened
+                {t("htmlExport.whenOpened")}
               </label>
               <select
                 id="html-export-start"
@@ -228,10 +229,10 @@ export function HtmlExportDialog({ diagram, onClose }: { diagram: DiagramFile; o
                 onChange={(e) => setStart(e.target.value)}
                 data-testid="html-export-start"
               >
-                <option value="">Show the diagram, not playing</option>
+                <option value="">{t("htmlExport.showTheDiagramNotPlaying")}</option>
                 {keptSims.map((s) => (
                   <option key={s.id} value={s.id}>
-                    Play “{s.title}”
+                    {t("fileDialog.play", { title: s.title })}
                   </option>
                 ))}
               </select>

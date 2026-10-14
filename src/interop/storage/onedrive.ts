@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { oneDriveConfig, type OneDriveConfig } from "./config";
 import { authorized, checkSize, jsonField, readTextCapped, type ClientDeps } from "./http";
 import {
@@ -84,15 +85,24 @@ export interface DriveItem {
 export function graphError(status: number, body: string, action: string): string {
   const code = jsonField(body, (j) => (j.error as { code?: unknown } | undefined)?.code);
   const message = jsonField(body, (j) => (j.error as { message?: unknown } | undefined)?.message);
-  if (status === 401) return `OneDrive sign-in expired while trying to ${action}. Please try again.`;
+  if (status === 401)
+    return t("cloud.oneDriveSigninExpiredWhileTryingToAction", { action: action.replaceAll(" ", "_") });
   if (status === 507 || code === "quotaLimitReached" || code === "insufficientStorage")
-    return "Your OneDrive is full, so the file couldn't be saved.";
+    return t("cloud.yourOneDriveIsFullSoTheFile");
   if (status === 403)
-    return `OneDrive refused to ${action}. Live Diagrams can only use files in its own folder (Apps › Diagrams).${message ? ` (${message})` : ""}`;
-  if (status === 404) return "That OneDrive file no longer exists, or it was moved out of the Diagrams folder.";
-  if (status === 409 || status === 412) return `The file changed in OneDrive while trying to ${action}. Try again.`;
-  if (status === 429 || status >= 500) return `OneDrive is busy right now (${status}). Try again in a moment.`;
-  return `Couldn't ${action} on OneDrive (${status}${message ? `: ${message}` : ""}).`;
+    return t("cloud.oneDriveRefusedToActionLiveDiagramsCan", {
+      action: action.replaceAll(" ", "_"),
+      value1: message ? ` (${message})` : "",
+    });
+  if (status === 404) return t("cloud.thatOneDriveFileNoLongerExistsOr");
+  if (status === 409 || status === 412)
+    return t("cloud.theFileChangedInOneDriveWhileTrying", { action: action.replaceAll(" ", "_") });
+  if (status === 429 || status >= 500) return t("cloud.oneDriveIsBusyRightNowStatusTry", { status: status });
+  return t("cloud.couldntValue0OnOneDriveValue1value2", {
+    value0: action.replaceAll(" ", "_"),
+    value1: status,
+    value2: message ? `: ${message}` : "",
+  });
 }
 
 const SELECT = "id,name,size,lastModifiedDateTime,webUrl,file";
@@ -133,12 +143,12 @@ export function createOneDriveClient(deps: ClientDeps) {
       const item = (await res.json()) as DriveItem;
       checkSize(item.size);
       const href = item["@microsoft.graph.downloadUrl"];
-      if (!href || !/^https:\/\//.test(href)) throw new StorageError("OneDrive didn't offer a download for that file.");
+      if (!href || !/^https:\/\//.test(href)) throw new StorageError(t("cloud.oneDriveDidntOfferADownloadForThat"));
       let file: Response;
       try {
         file = await deps.fetch(href, { method: "GET" });
       } catch {
-        throw new StorageError("Couldn't reach OneDrive to download the file. Check your connection.");
+        throw new StorageError(t("cloud.couldntReachOneDriveToDownloadTheFile"));
       }
       if (!file.ok) throw new StorageError(graphError(file.status, "", "download the file"), file.status);
       return { ...item, text: await readTextCapped(file) };
@@ -179,7 +189,7 @@ export function oneDriveProvider(
 ): StorageProvider<Ref> {
   const tokens: TokenSource = createTokenSource({
     interactive: async () => {
-      if (!config) throw new StorageError("OneDrive isn't configured for this site.");
+      if (!config) throw new StorageError(t("cloud.oneDriveIsntConfiguredForThisSite"));
       const code = await authorizeInPopup(LABEL, (p) => oneDriveAuthorizeUrl(config, p));
       return exchangeOneDriveCode(fetchFn, config, code);
     },

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import {
   useCallback,
   useEffect,
@@ -33,16 +34,14 @@ import {
   canShareAsLink,
   isLocalOnly,
   privacyOf,
-  PRIVATE_SHARE_MESSAGE,
   type CanvasPrivacyState,
   type Privacy,
 } from "../lib/localOnly";
 import { newDiagramsPrivate } from "../lib/privacyPrefs";
-import { LINK_OPEN, LINK_OPEN_OFF_MESSAGE, LINKS_OFF_MESSAGE, SHARE_LINKS } from "../lib/deployment";
+import { LINK_OPEN, SHARE_LINKS } from "../lib/deployment";
 import { PRIVACY_REQUEST } from "../lib/usePrivacy";
 import { loadedCanvasActions } from "../canvas/loadCanvasView";
-import { actionRegistry, type Action, type MenuItem, type MenuNode } from "../editor/actions";
-import { LIMITS, preserveUnknown, serializeNative, tooLargeMessage } from "./native";
+import { LIMITS, preserveUnknown, serializeNative } from "./native";
 import {
   drawioWriter,
   importFiles,
@@ -168,10 +167,16 @@ type DialogState =
       resolve: (entry: StorageEntry | undefined) => void;
     };
 
+/** An import's message download can fail before the operation has an error handler. */
+const loadFileMessages = () =>
+  import("./ui/fileMessages").catch(() => {
+    toast.error(t("fileDialog.loadFailed"));
+  });
+
 /** Why no link was made (or a link dialog closed), with the safe way to share instead: Interactive HTML…. */
 function refuseLink(exportHtml: () => void) {
-  toast.info(SHARE_LINKS ? PRIVATE_SHARE_MESSAGE : LINKS_OFF_MESSAGE, {
-    action: { label: "Interactive HTML…", run: exportHtml, testId: "toast-private-export" },
+  toast.info(SHARE_LINKS ? t("fileToast.privateLink") : t("fileToast.linksOff"), {
+    action: { label: t("export.html"), run: exportHtml, testId: "toast-private-export" },
   });
 }
 
@@ -294,34 +299,46 @@ export function useInterop({
   /** The open diagram as a file. A private one says so (`"private": true`), so it stays private when reopened. */
   const current = useCallback((): DiagramFile => {
     const d = canvasRef.current?.getDiagram();
-    if (!d) throw new Error("Open a diagram on the canvas first.");
+    if (!d) throw new Error(t("fileToast.openADiagramOnTheCanvasFirst"));
     return withPrivacyField(preserveUnknown(d, getOriginal(slug)), isLocalOnly(privacyState()));
   }, [canvasRef, slug, privacyState]);
 
   const baseName = useCallback((d: DiagramFile) => (isOwnSlug(slug) ? slugify(d.title) : slug), [slug]);
 
   /** Runs an action, turning any failure into a friendly toast. Called from handlers, never during render. */
-  const attempt = async (what: string, fn: () => Promise<void> | void) => {
+  const attempt = async (
+    what: string,
+    fn: (messages: Promise<typeof import("./ui/fileMessages")>) => Promise<void> | void,
+  ) => {
+    // Start the message download beside the operation, without awaiting before a system picker opens.
+    const messages = import("./ui/fileMessages");
+    messages.catch(() => {});
     try {
-      await fn();
+      await fn(messages);
     } catch (err) {
-      toast.error(err instanceof StorageError && err.standalone ? err.message : `Couldn't ${what}. ${message(err)}`);
+      const words = await messages.catch(() => undefined);
+      toast.error(
+        err instanceof StorageError && err.standalone
+          ? err.message
+          : words
+            ? words.fileFailure(what, message(err))
+            : t("fileDialog.loadFailed"),
+      );
     }
   };
 
   const exportNative = () =>
-    attempt("export the diagram", () => {
+    attempt("diagram", async (messages) => {
       const d = current();
       downloadText(serializeNative(d), `${baseName(d)}.diagram.json`, "application/json");
-      toast.success(
-        `Exported ${d.nodes.length} nodes and ${d.edges.length} edges. Anyone who has this file can open it.`,
-      );
+      const { nativeExported } = await messages;
+      toast.success(nativeExported(d.nodes.length, d.edges.length));
     });
 
   const exportImage = (kind: "png" | "svg", opts: ImageExportOptions = {}) =>
-    attempt(`export the ${kind.toUpperCase()}`, async () => {
+    attempt("image", async () => {
       const d = current();
-      const busy = toast.busy(`Rendering ${kind.toUpperCase()}…`);
+      const busy = toast.busy(t("fileToast.renderingValue0", { value0: kind.toUpperCase() }));
       const { renderDiagramImage } = await import("./image");
       // The picture carries its title, as presentation does (an untitled diagram has none to show).
       const title = d.title.trim();
@@ -333,11 +350,11 @@ export function useInterop({
       const suffix = kind === "png" ? `${opts.scale === 1 ? "" : "@2x"}${opts.transparent ? "-transparent" : ""}` : "";
       await downloadDataUrl(url, `${baseName(d)}${suffix}.${kind}`);
       toast.dismiss(busy);
-      toast.success(`Exported ${kind.toUpperCase()}.`);
+      toast.success(t("fileToast.exportedValue0", { value0: kind.toUpperCase() }));
     });
 
   const exportDrawio = () =>
-    attempt("export to draw.io", async () => {
+    attempt("drawio", async () => {
       const d = current();
       const [{ diagramToDrawio, drawioExported }, { inlineIcons }] = await Promise.all([
         drawioWriter(),
@@ -349,24 +366,23 @@ export function useInterop({
     });
 
   const copyMermaid = () =>
-    attempt("copy Mermaid", async () => {
+    attempt("copyMermaid", async () => {
       const d = current();
-      const { diagramToMermaid, mermaidCopied } = await mermaidWriter();
+      const { diagramToMermaid, mermaidCopied, mermaidClipboardDenied } = await mermaidWriter();
       if (await copyText(diagramToMermaid(d))) toast.success(mermaidCopied(d));
-      else throw new Error("The browser blocked clipboard access. Use Download .mmd instead.");
+      else throw new Error(mermaidClipboardDenied());
     });
 
   const downloadMermaid = () =>
-    attempt("export Mermaid", async () => {
+    attempt("mermaid", async () => {
       const d = current();
-      const { diagramToMermaid } = await mermaidWriter();
+      const { diagramToMermaid, mermaidDownloaded } = await mermaidWriter();
       downloadText(diagramToMermaid(d), `${baseName(d)}.mmd`, "text/plain");
-      toast.success("Exported a Mermaid .mmd file.");
+      toast.success(mermaidDownloaded());
     });
 
   /** Interactive HTML (src/export): every diagram, Private ones too, like a file saved to this device. */
-  const openHtmlExport = () =>
-    attempt("export the interactive HTML", () => setDialog({ kind: "html", diagram: current() }));
+  const openHtmlExport = () => attempt("html", () => setDialog({ kind: "html", diagram: current() }));
 
   /**
    * Share links and embeds: the one gate, asked every time a link is about to be made, copied, shown or
@@ -388,7 +404,7 @@ export function useInterop({
   };
 
   /** Share… ▸ Share link…: the dialog makes the link and copies it (Copy link, its one action). */
-  const openShare = () => attempt("create a share link", () => showShare(current(), slug));
+  const openShare = () => attempt("shareLink", () => showShare(current(), slug));
 
   /** Link with password… for `d`, from `source`: only while that document may still be shared. */
   const showPasswordLink = (d: DiagramFile, source: string) => {
@@ -396,15 +412,15 @@ export function useInterop({
   };
 
   /** Share… ▸ Link with password…: the dialog picks the password, encrypts and copies (rechecking the gate). */
-  const copyPasswordLink = () => attempt("create a link with password", () => showPasswordLink(current(), slug));
+  const copyPasswordLink = () => attempt("passwordLink", () => showPasswordLink(current(), slug));
 
   /**
    * File ▸ Share… (the right-click's Export ▸ Share…, Ctrl+K): every way out, safest first. Only that a diagram is on the
    * canvas: the row picked reads it (a big diagram isn't converted just to show the list).
    */
   const openShareChooser = () =>
-    attempt("share the diagram", () => {
-      if (!canvasRef.current) throw new Error("Open a diagram on the canvas first.");
+    attempt("share", () => {
+      if (!canvasRef.current) throw new Error(t("fileToast.openADiagramOnTheCanvasFirst"));
       setDialog({ kind: "chooser", source: slug });
     });
 
@@ -413,7 +429,7 @@ export function useInterop({
    * diagram, private ones too) or Embed on a public page (`public`: in the link, or an example by name).
    */
   const openEmbed = (scope: EmbedScope) =>
-    attempt("create embed code", async () => {
+    attempt("embed", async () => {
       const source = slug;
       const d = current();
       if (scope === "private") {
@@ -439,13 +455,14 @@ export function useInterop({
   // ---------------------------------------------------------------- save
 
   const saveToDevice = (as = false) =>
-    attempt("save the file", async () => {
+    attempt("save", async (messages) => {
       const d = current();
       const text = serializeNative(d);
       const name = `${baseName(d)}.diagram.json`;
       if (!fsSupported) {
+        const { downloadedFile } = await messages;
         downloadText(text, name, "application/json");
-        toast.success(`Downloaded ${name}. (This browser can't save over a file, so each save is a new download.)`);
+        toast.success(downloadedFile(name));
         return;
       }
       const identity = getDiagramIdentity(slug);
@@ -454,7 +471,7 @@ export function useInterop({
       if (existing && !as) {
         const file = await deviceProvider.save(existing, text);
         bind(slug, deviceTarget(file.ref, Date.now()), identity);
-        toast.success(`Saved to ${file.name}.`);
+        toast.success(t("fileToast.savedToValue0", { value0: file.name }));
         return;
       }
       const file = await deviceProvider.saveAs(name, text);
@@ -462,23 +479,18 @@ export function useInterop({
       // The destination binds to the diagram that started the save, even if another one is open now.
       const bound = bind(slug, deviceTarget(file.ref, Date.now()), identity);
       const stillOpen = openSlug.current === slug;
-      toast.success(
-        bound && stillOpen
-          ? `Saved to ${file.name}. Ctrl+S saves here again.`
-          : bound
-            ? `Saved “${d.title}” to ${file.name}. Ctrl+S saves it there again when it's open.`
-            : `Saved “${d.title}” to ${file.name}. The open diagram has changed; save it separately.`,
-      );
+      const { deviceSaved } = await messages;
+      toast.success(deviceSaved(file.name, d.title, bound, stillOpen));
     });
 
   /** Save to a cloud provider: over the file this diagram is bound to there, or (`asNew`) a new file. */
   const saveToCloud = (info: ProviderInfo, asNew = false) =>
-    attempt(`save to ${info.label}`, async () => {
+    attempt("save", async () => {
       const source = slug;
       if (!canSaveToCloud(privacyState(source))) {
-        toast.error(`Private diagrams aren't saved to ${info.label}. Save to this device instead.`, {
+        toast.error(t("fileToast.privateDiagramsArentSavedToValue0Save", { value0: info.label }), {
           action: {
-            label: "Save to this device",
+            label: t("fileToast.saveToThisDevice"),
             run: () => void saveToDevice(true),
             testId: "toast-private-save-device",
           },
@@ -493,7 +505,7 @@ export function useInterop({
       // token request and the upload carries it, so the captured public copy never lands.
       const cancel = new AbortController();
       const blocked = new StorageError(
-        `Not saved to ${info.label}: “${d.title}” became private. Save it to this device instead.`,
+        t("fileToast.notSavedToValue0Value1BecamePrivate", { value0: info.label, value1: d.title }),
         undefined,
         true,
       );
@@ -507,7 +519,7 @@ export function useInterop({
         const provider = await info.load();
         watch();
         cancel.signal.throwIfAborted();
-        busy = toast.busy(`Saving to ${info.label}…`);
+        busy = toast.busy(t("fileToast.savingToValue0", { value0: info.label }));
         const content = serializeNative(d);
         file =
           stored?.providerId === info.id && !asNew
@@ -526,12 +538,12 @@ export function useInterop({
       const url = file.url;
       toast.success(
         bound
-          ? `Saved to ${info.label} as ${file.name}.`
-          : `Saved “${d.title}” to ${info.label} as ${file.name}. The open diagram has changed; save it separately.`,
+          ? t("fileToast.savedToValue0AsValue1", { value0: info.label, value1: file.name })
+          : t("fileToast.savedValue0ToValue1AsValue2The", { value0: d.title, value1: info.label, value2: file.name }),
         url && /^https:\/\//.test(url)
           ? {
               action: {
-                label: `Open in ${info.label}`,
+                label: t("fileToast.openInValue0", { value0: info.label }),
                 run: () => window.open(url, "_blank", "noopener"),
                 testId: `toast-open-${info.id}`,
               },
@@ -557,9 +569,12 @@ export function useInterop({
   // ---------------------------------------------------------------- import
 
   const handleOutcome = useCallback(
-    (outcome: ImportOutcome, source: Source) => {
+    async (outcome: ImportOutcome, source: Source) => {
+      // Resolve messages before changing the document. A failed chunk leaves a paste/page dialog available to retry.
+      const words = await loadFileMessages();
+      if (!words) return;
       if (outcome.ok === false) {
-        toast.error(`Couldn't import ${source.name}. ${outcome.error}`);
+        toast.error(t("fileToast.couldntImportValue0Value1", { value0: source.name, value1: outcome.error }));
         return;
       }
       if (outcome.ok === "pages") {
@@ -575,7 +590,7 @@ export function useInterop({
           source.sourceSlug,
         );
       } catch (err) {
-        toast.error(`Couldn't import ${source.name}. ${message(err)}`);
+        toast.error(t("fileToast.couldntImportValue0Value1", { value0: source.name, value1: message(err) }));
         return;
       }
       setDialog(null);
@@ -583,17 +598,19 @@ export function useInterop({
       if (r && created) {
         setImported({ slug: created, report: r, replay: outcome.replay });
         toast.info(r.summary, {
-          action: { label: "Details", run: () => setDialog({ kind: "report" }), testId: "toast-import-details" },
+          action: {
+            label: t("fileToast.details"),
+            run: () => setDialog({ kind: "report" }),
+            testId: "toast-import-details",
+          },
           // Long enough to read when there's something to check.
           duration: r.guesses.length || r.unread.length || r.pick ? 7000 : undefined,
         });
         return;
       }
-      const note = outcome.warnings.length
-        ? ` ${outcome.warnings[0]}${outcome.warnings.length > 1 ? ` (+${outcome.warnings.length - 1} more)` : ""}`
-        : "";
-      const from = outcome.format === "native" ? "" : ` from ${outcome.format === "drawio" ? "draw.io" : "Mermaid"}`;
-      toast.info(`Imported “${outcome.diagram.title}”${from}.${note}`, { duration: note ? 7000 : undefined });
+      toast.info(words.importedFile(outcome.diagram.title, outcome.format, outcome.warnings), {
+        duration: outcome.warnings.length ? 7000 : undefined,
+      });
     },
     [openDiagram],
   );
@@ -602,18 +619,19 @@ export function useInterop({
   const importFileList = useCallback(
     async (files: readonly File[], target?: SaveTarget) => {
       if (!files.length) return;
-      const name = files.length === 1 ? files[0].name : `${files.length} files`;
+      const name = files.length === 1 ? files[0].name : t("fileToast.files", { count: files.length });
       // Check the size before reading anything into memory: the limit is for all of them together.
       const size = files.reduce((sum, f) => sum + f.size, 0);
       if (size > LIMITS.maxTextChars) {
-        toast.error(`Couldn't import ${name}. ${tooLargeMessage(size)}`);
+        const words = await loadFileMessages();
+        if (words) toast.error(words.importTooLarge(name, size));
         return;
       }
       let read: { name: string; text: string }[];
       try {
         read = await Promise.all(files.map(async (f) => ({ name: f.name, text: await f.text() })));
       } catch {
-        toast.error(`Couldn't read ${name}.`);
+        toast.error(t("fileToast.couldntReadName", { name: name }));
         return;
       }
       handleOutcome(await importFiles(read), { name, target: files.length === 1 ? target : undefined });
@@ -643,7 +661,7 @@ export function useInterop({
 
   /** Open… (Ctrl+O): this device's file picker (several files at once), or the file input where there's none. */
   const openFile = () =>
-    attempt("open the file", async () => {
+    attempt("open", async () => {
       if (!fsSupported) {
         fileInput.current?.click();
         return;
@@ -662,22 +680,22 @@ export function useInterop({
     if (id === DEVICE_PROVIDER) return openFile();
     const info = providerInfo(id);
     if (!info) return Promise.resolve();
-    return attempt(`open from ${info.label}`, async () => openFromProvider(info, await info.load()));
+    return attempt("open", async () => openFromProvider(info, await info.load()));
   };
 
   const importPasted = useCallback(
-    async (text: string) => handleOutcome(await importText(text), { name: "the pasted text" }),
+    async (text: string) => handleOutcome(await importText(text), { name: t("fileToast.pastedText") }),
     [handleOutcome],
   );
 
   const openSharePayload = useCallback(
     async (payload: string) => {
-      const busy = toast.busy("Opening the shared diagram…");
+      const busy = toast.busy(t("fileToast.openingTheSharedDiagram"));
       try {
         const d = await decodeShare(payload);
         setDialog(null);
         openShared(d);
-        toast.info(`Opened the shared diagram “${d.title}”. It's kept apart from your own diagrams.`);
+        toast.info(t("fileToast.openedTheSharedDiagramValue0ItsKept", { value0: d.title }));
       } catch (err) {
         toast.dismiss(busy);
         toast.error(message(err));
@@ -724,26 +742,25 @@ export function useInterop({
       if (session !== unlockSession.current) return;
       // Another diagram opened, or was asked for and is still downloading: the result never replaces it.
       if (openSlug.current !== from || requested.current !== asked)
-        throw new Error("Another diagram opened while this one was unlocking. Enter the password again to open it.");
+        throw new Error(t("fileToast.anotherDiagramOpenedWhileThisOneWas"));
       // Stored first: if that fails (storage full or blocked), the prompt shows why and the link stays.
       openShared(d);
       unlockSession.current++;
       // Opened: take the ciphertext out of the address bar and this tab's history entry.
       if (encryptedPayloadFromHash(window.location.hash) === token) clearUrlFragment();
       setDialog(null);
-      toast.info(`Opened the shared diagram “${d.title}”. It's kept apart from your own diagrams.`);
+      toast.info(t("fileToast.openedTheSharedDiagramValue0ItsKept", { value0: d.title }));
     },
     [openShared],
   );
 
   const openShareLinkInput = useCallback(
     (input: string) => {
-      if (!LINK_OPEN) return void toast.error(LINK_OPEN_OFF_MESSAGE);
+      if (!LINK_OPEN) return void toast.error(t("fileToast.linkOpenOff"));
       const token = encryptedPayloadFromInput(input);
       if (token) return void askForPassword(token);
       const payload = sharePayloadFromInput(input);
-      if (!payload)
-        return void toast.error("That doesn't look like a Live Diagrams share link (it should contain #d=… or #e=…).");
+      if (!payload) return void toast.error(t("fileToast.thatDoesntLookLikeALiveDiagrams"));
       void openSharePayload(payload);
     },
     [openSharePayload, askForPassword],
@@ -758,7 +775,7 @@ export function useInterop({
         const hash = window.location.hash;
         if (encryptedPayloadFromHash(hash) || sharePayloadFromHash(hash)) {
           clearUrlFragment();
-          toast.error(LINK_OPEN_OFF_MESSAGE);
+          toast.error(t("fileToast.linkOpenOff"));
         }
         return;
       }
@@ -782,10 +799,10 @@ export function useInterop({
 
   /** Shared banner: keep a copy of the shared diagram in Your diagrams. */
   const keepSharedCopy = () =>
-    attempt("keep a copy", () => {
+    attempt("copy", () => {
       const d = current();
       openDiagram(d, undefined, slug);
-      toast.success(`Saved a copy of “${d.title}” to Your diagrams.`);
+      toast.success(t("fileToast.savedACopyOfValue0ToYour", { value0: d.title }));
     });
 
   // ---------------------------------------------------------------- the Private switch
@@ -795,7 +812,7 @@ export function useInterop({
    * private copy in Your diagrams. Off: one confirmation first (the privacy dialog).
    */
   const setPrivate = (on: boolean) =>
-    attempt(on ? "make it private" : "change its privacy", () => {
+    attempt(on ? "private" : "privacy", () => {
       const kind = privacy();
       if (!on) {
         if (kind === "private") setDialog({ kind: "privacy", source: slug });
@@ -805,7 +822,7 @@ export function useInterop({
       if (isLibrarySlug(slug) || slug === DRAFT_SLUG) {
         setDiagramPrivate(slug, true);
         clearUrlFragment();
-        const text = "Private: no share links, cloud saves or AI for this diagram.";
+        const text = t("fileToast.private");
         const shown = toast.success(text);
         // An earlier AI conversation stays unless the person clears it: the toast offers to, when the conversation
         // store (its own chunk) has one for this diagram, in storage or in memory only. Only while nothing has moved
@@ -824,15 +841,15 @@ export function useInterop({
       const d = current();
       openDiagram(withPrivacyField(d, true), undefined, slug === SHARED_SLUG ? slug : undefined);
       clearUrlFragment();
-      toast.success(`Saved a private copy of “${d.title}” to Your diagrams.`);
+      toast.success(t("fileToast.savedAPrivateCopyOfValue0To", { value0: d.title }));
     });
 
   /** Turns Private off for `source` only: the document the confirmation was asked for. */
   const confirmNotPrivate = (source: string) =>
-    attempt("change its privacy", () => {
+    attempt("privacy", () => {
       setDialog(null);
       if (source !== openSlug.current) return;
-      if (setDiagramPrivate(source, false)) toast.success("This diagram is no longer private.");
+      if (setDiagramPrivate(source, false)) toast.success(t("fileToast.thisDiagramIsNoLongerPrivate"));
       // The badge that opened the dialog is gone with it: keep the keyboard on the canvas, not the page.
       requestAnimationFrame(() => {
         const active = document.activeElement;
@@ -994,7 +1011,7 @@ export function useInterop({
             setDialog(null);
             dialog.resolve(undefined);
             void dialog.provider.signOut();
-            toast.info(`Signed out of ${dialog.info.label}.`);
+            toast.info(t("fileToast.signedOutOfValue0", { value0: dialog.info.label }));
           }}
           onClose={() => {
             setDialog(null);
@@ -1054,7 +1071,7 @@ export function useInterop({
           onClose={() => {
             unlockSession.current++;
             setDialog(null);
-            toast.info("The password-protected diagram wasn't opened. Reload the page to enter the password.");
+            toast.info(t("fileToast.thePasswordprotectedDiagramWasntOpenedReloadThe"));
           }}
         />
       )}
@@ -1107,7 +1124,7 @@ export function useInterop({
 }
 
 export type Interop = ReturnType<typeof useInterop>;
-type InteropApi = Omit<Interop, "layer">;
+export type InteropApi = Omit<Interop, "layer">;
 
 /** Registers built-ins before extensions when an editable canvas attaches, without importing its rendering module. */
 export function useInteropCanvasActions(canvasRef: RefObject<CanvasHandle | null>, api: InteropApi) {
@@ -1121,82 +1138,8 @@ export function useInteropCanvasActions(canvasRef: RefObject<CanvasHandle | null
       canvasRef.current = handle;
       unregister.current?.();
       // A mounted canvas means its code has loaded, built-in actions included.
-      const builtins = handle ? loadedCanvasActions()?.builtinActions() : undefined;
-      unregister.current = handle
-        ? actionRegistry.register([...(builtins ?? []), ...canvasActions(() => apiRef.current)])
-        : undefined;
+      unregister.current = handle ? loadedCanvasActions()?.registerCanvasActions(() => apiRef.current) : undefined;
     },
     [canvasRef],
   );
-}
-
-/**
- * The canvas right-click "Export" submenu. Saving and opening stay in the File menu (and Ctrl+S /
- * Ctrl+O); the right-click keeps only what acts on the picture in front of you. Item names match
- * the File menu exactly.
- */
-function canvasActions(get: () => InteropApi): Action[] {
-  const item = (id: string, label: string, run: () => unknown, hint?: string, keywords?: string): MenuItem => ({
-    type: "item",
-    id,
-    label,
-    hint,
-    keywords,
-    run: () => void run(),
-  });
-  return [
-    {
-      // Ctrl+K only: the File menu's Privacy ▸ and the badge beside the title are the visible controls.
-      id: "file.private",
-      modes: ["edit", "live"],
-      section: "file",
-      targets: ["canvas"],
-      paletteOnly: true,
-      label: () => (get().privacy() ? "Make this diagram not private…" : "Make this diagram private"),
-      icon: "lock",
-      enabled: () => get().privacy() !== "local-only",
-      hint: () => (get().privacy() === "local-only" ? "Always private" : undefined),
-      run: () => void get().setPrivate(!get().privacy()),
-    },
-    {
-      // Ctrl+K only, while the open diagram has one: the import toast's Details is the visible way in.
-      id: "file.import-report",
-      modes: ["edit", "live"],
-      section: "file",
-      targets: ["canvas"],
-      paletteOnly: true,
-      label: "Import report",
-      icon: "info",
-      when: () => !!get().importReport,
-      run: () => get().openImportReport(),
-    },
-    {
-      // Replaces the editor's built-in JSON-only Export submenu.
-      id: "canvas.export",
-      modes: ["edit", "live"],
-      section: "file",
-      targets: ["canvas"],
-      order: 20,
-      label: "Export",
-      icon: "download",
-      children: (): MenuNode[] => [
-        item("export:png", "Export PNG", () => get().exportPng({ scale: 2 }), "2×"),
-        // Every way out, safest first, each saying who can open it: the File menu's Share… (and so Ctrl+K's).
-        item(
-          "export:share",
-          "Share…",
-          () => get().openShareChooser(),
-          get().privacy() ? "Private" : undefined,
-          "link password embed public send",
-        ),
-        { type: "separator" },
-        item("export:json", "Diagram file", () => get().exportNative(), ".diagram.json"),
-        item("export:image", "Image…", () => get().openImageOptions(), "PNG or SVG"),
-        item("export:html", "Interactive HTML…", () => get().openHtmlExport(), ".html"),
-        item("export:drawio", "draw.io", () => get().exportDrawio(), ".drawio"),
-        item("export:mermaid-download", "Mermaid file", () => get().downloadMermaid(), ".mmd"),
-        item("export:mermaid", "Copy as Mermaid", () => get().copyMermaid()),
-      ],
-    },
-  ];
 }

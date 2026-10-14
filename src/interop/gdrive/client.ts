@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { LIMITS, tooLargeMessage } from "../native";
 
 // Google Drive REST v3, the few calls we need, with an injected `fetch` and token source so the
@@ -60,14 +61,20 @@ function friendly(status: number, body: string, action: string): string {
   } catch {
     /* not JSON */
   }
-  if (status === 401) return `Google Drive sign-in expired while trying to ${action}. Please try again.`;
-  if (status === 403 && /storage|quota/i.test(reason))
-    return "Your Google Drive is full, so the file couldn't be saved.";
+  if (status === 401) return t("cloud.googleDriveSigninExpiredWhileTryingTo", { action: action.replaceAll(" ", "_") });
+  if (status === 403 && /storage|quota/i.test(reason)) return t("cloud.yourGoogleDriveIsFullSoThe");
   if (status === 403)
-    return `Google Drive refused to ${action}. Live Diagrams can only open files you pick with it or that it created.${reason ? ` (${reason})` : ""}`;
-  if (status === 404) return "That Google Drive file no longer exists, or Live Diagrams no longer has access to it.";
-  if (status === 429 || status >= 500) return `Google Drive is busy right now (${status}). Try again in a moment.`;
-  return `Couldn't ${action} on Google Drive (${status}${reason ? `: ${reason}` : ""}).`;
+    return t("cloud.googleDriveRefusedToActionLiveDiagrams", {
+      action: action.replaceAll(" ", "_"),
+      value1: reason ? ` (${reason})` : "",
+    });
+  if (status === 404) return t("cloud.thatGoogleDriveFileNoLongerExists");
+  if (status === 429 || status >= 500) return t("cloud.googleDriveIsBusyRightNowStatus", { status: status });
+  return t("cloud.couldntValue0OnGoogleDriveValue1value2", {
+    value0: action.replaceAll(" ", "_"),
+    value1: status,
+    value2: reason ? `: ${reason}` : "",
+  });
 }
 
 export function createDriveClient(deps: DriveClientDeps) {
@@ -87,7 +94,7 @@ export function createDriveClient(deps: DriveClientDeps) {
         });
       } catch (err) {
         if (init.signal?.aborted) throw init.signal.reason ?? err;
-        throw new DriveError(`Couldn't reach Google Drive to ${action}. Check your connection.`);
+        throw new DriveError(t("cloud.couldntReachGoogleDriveToActionCheck", { action: action.replaceAll(" ", "_") }));
       }
       if (res.ok) return res;
       if (res.status === 401 && attempt === 0) {

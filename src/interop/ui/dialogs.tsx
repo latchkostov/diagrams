@@ -1,3 +1,5 @@
+import { formatNumber } from "../../i18n/format";
+import { tRich } from "../../i18n/rich";
 import {
   useCallback,
   useEffect,
@@ -10,7 +12,6 @@ import {
 } from "react";
 import type { DiagramFile } from "../../model/types";
 import { embedSnippet, embedUrl, encodeShare, SHARE_WARN_LENGTH, shareUrl } from "../share";
-import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
 import { SHARE_LINKS } from "../../lib/deployment";
 import { hostEmbedUrl, iframeSnippet, SNIPPET_PROTOCOL, webComponentSnippet } from "../embed/hostSnippets";
 
@@ -21,7 +22,7 @@ import { hostEmbedUrl, iframeSnippet, SNIPPET_PROTOCOL, webComponentSnippet } fr
 function gate(allowed: (() => boolean) | undefined, onClose: () => void): boolean {
   if (!allowed || allowed()) return true;
   onClose();
-  toast.info(PRIVATE_SHARE_MESSAGE);
+  toast.info(t("fileToast.privateLink"));
   return false;
 }
 import { detectFormat, FORMAT_LABEL } from "../formats";
@@ -32,7 +33,7 @@ import { clearDevice } from "../../lib/clearDevice";
 import { toast } from "./toast";
 import { t, useLocale } from "../../i18n";
 
-const kb = (n: number) => (n < 1024 ? `${n} characters` : `${(n / 1024).toFixed(1)}k characters`);
+const kb = (n: number) => t("fileDialog.characters", { count: n });
 
 /**
  * Moves focus to `target` once `ready`, if the dialog's panel still holds it (its autofocus target was disabled
@@ -91,6 +92,7 @@ export function ShareDialog({
   onPasswordLink?: () => void;
   onClose: () => void;
 }) {
+  useLocale();
   const [url, setUrl] = useState<string>();
   const [error, setError] = useState<string>();
   useEffect(() => {
@@ -110,14 +112,14 @@ export function ShareDialog({
 
   const copy = async () => {
     if (!gate(allowed, onClose)) return;
-    if (url && (await copyText(url))) toast.success("Share link copied. Anyone with the link can open the diagram.");
-    else toast.error("Couldn't copy automatically. Select the link and copy it.");
+    if (url && (await copyText(url))) toast.success(t("fileDialog.shareLinkCopiedAnyoneWithTheLink"));
+    else toast.error(t("fileDialog.couldntCopyAutomaticallySelectTheLinkAnd"));
   };
 
   return (
     <Dialog
-      title="Share link"
-      subtitle="Anyone with the link can open it and keep an editable copy."
+      title={t("fileDialog.shareLink")}
+      subtitle={t("fileDialog.anyoneWithTheLinkCanOpenIt")}
       icon={<Glyph name="link" />}
       onClose={onClose}
       testId="share-link-dialog"
@@ -131,7 +133,7 @@ export function ShareDialog({
               }}
               data-testid="share-link-native"
             >
-              <Glyph name="share" size={14} /> Share…
+              <Glyph name="share" size={14} /> {t("file.share")}
             </button>
           )}
           <span className="ix-grow" />
@@ -146,7 +148,7 @@ export function ShareDialog({
               }}
               data-testid="share-link-open"
             >
-              <Glyph name="external" size={14} /> Open
+              <Glyph name="external" size={14} /> {t("fileDialog.open")}
             </a>
           )}
           <button
@@ -157,7 +159,7 @@ export function ShareDialog({
             data-testid="share-link-copy"
             data-autofocus
           >
-            <Glyph name="copy" size={14} /> Copy link
+            <Glyph name="copy" size={14} /> {t("fileDialog.copyLink")}
           </button>
         </>
       }
@@ -172,9 +174,9 @@ export function ShareDialog({
             <input
               className="ix-input ix-mono"
               readOnly
-              value={url ?? "Compressing…"}
+              value={url ?? t("common.loading")}
               onFocus={(e) => e.currentTarget.select()}
-              aria-label="Share link"
+              aria-label={t("fileDialog.shareLink")}
               data-testid="share-link-url"
             />
           </div>
@@ -184,10 +186,11 @@ export function ShareDialog({
             </span>
             <span>·</span>
             <span>
-              {diagram.nodes.length} nodes, {diagram.edges.length} edges
-              {diagram.simulations?.length
-                ? `, ${diagram.simulations.length} simulation${diagram.simulations.length === 1 ? "" : "s"}`
-                : ""}
+              {t("fileDialog.diagramCounts", {
+                nodes: diagram.nodes.length,
+                edges: diagram.edges.length,
+                simulations: diagram.simulations?.length ?? 0,
+              })}
             </span>
             {onPasswordLink && (
               <>
@@ -199,7 +202,7 @@ export function ShareDialog({
                   }}
                   data-testid="share-link-password"
                 >
-                  <Glyph name="lock" size={13} /> Link with password…
+                  <Glyph name="lock" size={13} /> {t("share.password")}
                 </button>
               </>
             )}
@@ -208,18 +211,13 @@ export function ShareDialog({
             <div className="ix-callout ix-callout-warn" data-testid="share-link-warning">
               <Glyph name="alert" size={15} />
               <span>
-                This link is long ({kb(url!.length)}). Some chat apps and email clients cut long links off. For big
-                diagrams, share the <strong>.diagram.json</strong> file instead (or save it to Google Drive and share
-                that).
+                {tRich("fileDialog.longLink", { length: kb(url!.length), b: (chunks) => <strong>{chunks}</strong> })}
               </span>
             </div>
           )}
           <div className="ix-callout">
             <Glyph name="info" size={15} />
-            <span>
-              The diagram lives inside the link itself (after the #), so it's never uploaded anywhere. Opening it never
-              overwrites the recipient's own diagrams.
-            </span>
+            <span>{t("fileDialog.theDiagramLivesInsideTheLinkItself")}</span>
           </div>
         </>
       )}
@@ -262,6 +260,8 @@ function radioKeys<T extends string>(
 
 /** Where an embed's diagram comes from: a public example by name, the diagram in the URL, or the host's page. */
 type EmbedSource = "example" | "inline" | "host";
+// Browser API names are unchanged across languages.
+const IFRAME_FORMAT = "iframe + postMessage";
 const FORMATS = ["component", "iframe"] as const;
 
 /**
@@ -310,7 +310,7 @@ function HostPreview({
     if (ready.current) send();
     return () => window.removeEventListener("message", onMessage);
   }, [src, diagram, simulation]);
-  return <iframe ref={refs} src={src} title="Embed preview" data-testid="embed-preview" />;
+  return <iframe ref={refs} src={src} title={t("fileDialog.embedPreview")} data-testid="embed-preview" />;
 }
 
 /**
@@ -341,6 +341,7 @@ export function EmbedDialog({
   onDownload: () => void;
   onClose: () => void;
 }) {
+  useLocale();
   // The kind is the one Share… opened: Embed in your app is the host-supplied embed only, and so is every embed in a
   // copy deployed without share links (src/lib/deployment.ts). Embed on a public page never offers it.
   const privateOnly = scope === "private" || !SHARE_LINKS;
@@ -395,8 +396,8 @@ export function EmbedDialog({
   const copy = async () => {
     // The host-supplied embed's code holds nothing of the diagram: there's no link to gate.
     if (!host && !gate(allowed, onClose)) return;
-    if (snippet && (await copyText(snippet))) toast.success("Embed code copied.");
-    else toast.error("Couldn't copy automatically. Select the code and copy it.");
+    if (snippet && (await copyText(snippet))) toast.success(t("fileDialog.embedCodeCopied"));
+    else toast.error(t("fileDialog.couldntCopyAutomaticallySelectTheCodeAnd"));
   };
 
   // The public embed's two sources, when the diagram is an unedited public example; one source shows no choice.
@@ -416,13 +417,13 @@ export function EmbedDialog({
 
   return (
     <Dialog
-      title="Embed code"
+      title={t("fileDialog.embedCode")}
       subtitle={
         privateDiagram
-          ? "A private diagram embeds only where your own app supplies it. Viewers can pan, zoom and play it."
+          ? t("fileDialog.aPrivateDiagramEmbedsOnlyWhereYour")
           : host
-            ? "Show this diagram inside your own app or intranet. Viewers can pan, zoom and play it, not edit it."
-            : "Paste this into a blog post, wiki or docs page. Viewers can pan and zoom, not edit."
+            ? t("fileDialog.showThisDiagramInsideYourOwnApp")
+            : t("fileDialog.pasteThisIntoABlogPostWiki")
       }
       icon={<Glyph name="code" />}
       onClose={onClose}
@@ -434,10 +435,10 @@ export function EmbedDialog({
             <button
               className="btn"
               onClick={onDownload}
-              title="Save the diagram file to serve from your app"
+              title={t("fileDialog.saveTheDiagramFileToServeFrom")}
               data-testid="embed-host-download"
             >
-              <Glyph name="download" size={14} /> Diagram file
+              <Glyph name="download" size={14} /> {t("export.file")}
             </button>
           )}
           <span className="ix-grow" />
@@ -452,7 +453,7 @@ export function EmbedDialog({
               }}
               data-testid="embed-open"
             >
-              <Glyph name="external" size={14} /> Open viewer
+              <Glyph name="external" size={14} /> {t("fileDialog.openViewer")}
             </a>
           )}
           <button
@@ -463,7 +464,7 @@ export function EmbedDialog({
             data-testid="embed-copy"
             data-autofocus
           >
-            <Glyph name="copy" size={14} /> Copy code
+            <Glyph name="copy" size={14} /> {t("fileDialog.copyCode")}
           </button>
         </>
       }
@@ -473,29 +474,22 @@ export function EmbedDialog({
           ref={radioKeys(sources, source, setChosen, (v) => `embed-source-${v}`)}
           className="ix-seg"
           role="radiogroup"
-          aria-label="Where the diagram comes from"
+          aria-label={t("fileDialog.whereTheDiagramComesFrom")}
         >
-          {sourceButton("example", "Example by name")}
-          {sourceButton("inline", "In the link")}
+          {sourceButton("example", t("embedDialog.exampleByName"))}
+          {sourceButton("inline", t("embedDialog.inTheLink"))}
         </div>
       )}
       {source === "inline" && (
         <div className="ix-callout" data-testid="embed-inline-note">
           <Glyph name="info" size={15} />
-          <span>
-            <strong>Anyone who can see the page can open this diagram.</strong> It&apos;s inside the code. For a work
-            diagram, use Share… ▸ Embed in your app.
-          </span>
+          <span>{tRich("embedDialog.publicNote", { b: (chunks) => <strong>{chunks}</strong> })}</span>
         </div>
       )}
       {host && (
         <div className="ix-callout" data-testid="embed-host-note">
           <Glyph name="lock" size={15} />
-          <span>
-            <strong>The diagram never leaves your app. Live Diagrams only provides the viewer.</strong> Serve the
-            diagram file from your app, behind its own sign-in; your page fetches it and hands it to the viewer. It's
-            never in a URL and never sent to livediagrams.dev.
-          </span>
+          <span>{tRich("embedDialog.hostNote", { b: (chunks) => <strong>{chunks}</strong> })}</span>
         </div>
       )}
       {host && (
@@ -503,7 +497,7 @@ export function EmbedDialog({
           ref={radioKeys(FORMATS, format, setFormat, (v) => `embed-host-format-${v}`)}
           className="ix-seg"
           role="radiogroup"
-          aria-label="Code"
+          aria-label={t("fileDialog.code")}
         >
           {FORMATS.map((value) => (
             <button
@@ -515,7 +509,7 @@ export function EmbedDialog({
               onClick={() => setFormat(value)}
               data-testid={`embed-host-format-${value}`}
             >
-              {value === "component" ? "Web component" : "iframe + postMessage"}
+              {value === "component" ? t("embedDialog.webComponent") : IFRAME_FORMAT}
             </button>
           ))}
         </div>
@@ -526,14 +520,14 @@ export function EmbedDialog({
         value={snippet}
         rows={host ? (format === "iframe" ? 10 : 3) : 4}
         onFocus={(e) => e.currentTarget.select()}
-        aria-label="Embed code"
+        aria-label={t("fileDialog.embedCode")}
         data-testid="embed-snippet"
       />
       <div
         ref={previewArea}
         className="ix-preview"
         tabIndex={-1}
-        aria-label="Embed preview"
+        aria-label={t("fileDialog.embedPreview")}
         style={{ height: host ? 300 : Math.min(height, source === "inline" ? 290 : 340) }}
         data-testid="embed-preview-area"
       >
@@ -543,19 +537,19 @@ export function EmbedDialog({
           <iframe
             ref={previewFrame}
             src={previewSrc}
-            title="Embed preview"
+            title={t("fileDialog.embedPreview")}
             loading="lazy"
             data-testid="embed-preview"
           />
         ) : (
-          <span className="ix-muted">Preparing preview…</span>
+          <span className="ix-muted">{t("fileDialog.preparingPreview")}</span>
         )}
       </div>
       <Disclosure testId="embed-options">
         <div className="ix-options">
           {host && (
             <label className="ix-select ix-embed-src">
-              <span>File in your app</span>
+              <span>{t("fileDialog.fileInYourApp")}</span>
               <input
                 value={srcJson}
                 onChange={(e) => setSrcJson(e.target.value)}
@@ -565,17 +559,18 @@ export function EmbedDialog({
             </label>
           )}
           <label className="ix-select">
-            <span>Height</span>
+            <span>{t("fileDialog.height")}</span>
             {host ? (
               <select
                 value={hostHeight}
                 onChange={(e) => setHostHeight(Number(e.target.value))}
                 data-testid="embed-height"
               >
-                <option value={0}>Fits the diagram</option>
+                <option value={0}>{t("fileDialog.fitsTheDiagram")}</option>
                 {[360, 480, 640, 800].map((h) => (
                   <option key={h} value={h}>
-                    {h}px
+                    {formatNumber(h)}
+                    {"px"}
                   </option>
                 ))}
               </select>
@@ -583,7 +578,8 @@ export function EmbedDialog({
               <select value={height} onChange={(e) => setHeight(Number(e.target.value))} data-testid="embed-height">
                 {[360, 480, 640, 800].map((h) => (
                   <option key={h} value={h}>
-                    {h}px
+                    {formatNumber(h)}
+                    {"px"}
                   </option>
                 ))}
               </select>
@@ -591,12 +587,12 @@ export function EmbedDialog({
           </label>
           {!!diagram.simulations?.length && (
             <label className="ix-select">
-              <span>Live</span>
+              <span>{t("fileDialog.live")}</span>
               <select value={sim} onChange={(e) => setSim(e.target.value)} data-testid="embed-sim">
-                <option value="">Static diagram</option>
+                <option value="">{t("fileDialog.staticDiagram")}</option>
                 {diagram.simulations.map((s) => (
                   <option key={s.id} value={s.id}>
-                    Play “{s.title}”
+                    {t("fileDialog.play", { title: s.title })}
                   </option>
                 ))}
               </select>
@@ -610,13 +606,14 @@ export function EmbedDialog({
 
 /** Paste a diagram: JSON, draw.io XML or Mermaid, auto-detected. */
 export function PasteDialog({ onImport, onClose }: { onImport: (text: string) => void; onClose: () => void }) {
+  useLocale();
   const [text, setText] = useState("");
   const format = text.trim() ? detectFormat(text) : undefined;
   const canRead = typeof navigator.clipboard?.readText === "function";
   return (
     <Dialog
-      title="Paste a diagram"
-      subtitle="Live Diagrams JSON, draw.io XML, a Mermaid flowchart, a docker-compose file, Kubernetes manifests, an AsyncAPI document or a Terraform plan (terraform show -json). The format is detected for you."
+      title={t("fileDialog.pasteADiagram")}
+      subtitle={t("fileDialog.liveDiagramsJSONDrawioXMLAMermaid")}
       icon={<Glyph name="clipboard" />}
       onClose={onClose}
       testId="paste-dialog"
@@ -628,18 +625,16 @@ export function PasteDialog({ onImport, onClose }: { onImport: (text: string) =>
               onClick={() =>
                 navigator.clipboard
                   .readText()
-                  .then(setText, () =>
-                    toast.error("The browser didn't allow reading the clipboard. Paste with Ctrl+V instead."),
-                  )
+                  .then(setText, () => toast.error(t("fileDialog.theBrowserDidntAllowReadingTheClipboard")))
               }
               data-testid="paste-from-clipboard"
             >
-              <Glyph name="clipboard" size={14} /> Read clipboard
+              <Glyph name="clipboard" size={14} /> {t("fileDialog.readClipboard")}
             </button>
           )}
           <span className="ix-grow" />
           <button className="btn" onClick={onClose} data-testid="paste-cancel">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             className="btn btn-primary"
@@ -647,7 +642,7 @@ export function PasteDialog({ onImport, onClose }: { onImport: (text: string) =>
             onClick={() => onImport(text)}
             data-testid="paste-submit"
           >
-            <Glyph name="upload" size={14} /> Import
+            <Glyph name="upload" size={14} /> {t("fileDialog.import")}
           </button>
         </>
       }
@@ -657,17 +652,22 @@ export function PasteDialog({ onImport, onClose }: { onImport: (text: string) =>
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={
+          // eslint-disable-next-line local/no-literal-ui-text -- diagram example code, not UI chrome
           "flowchart LR\n  web[Web app] -->|POST /orders| api[Order API]\n  api -.->|OrderPlaced| bus[(Service Bus)]"
         }
         spellCheck={false}
         rows={12}
-        aria-label="Diagram text"
+        aria-label={t("fileDialog.diagramText")}
         data-autofocus
         data-testid="paste-input"
       />
       <div className="ix-meta-row">
         <span className={`ix-badge${format ? " is-on" : ""}`} data-testid="paste-format">
-          {text.trim() ? (format ? `Detected: ${FORMAT_LABEL[format]}` : "Unrecognised format") : "Waiting for text"}
+          {text.trim()
+            ? format
+              ? t("fileDialog.detected", { format: FORMAT_LABEL[format] })
+              : t("fileDialog.unrecognisedFormat")
+            : t("fileDialog.waitingForText")}
         </span>
       </div>
     </Dialog>
@@ -676,11 +676,12 @@ export function PasteDialog({ onImport, onClose }: { onImport: (text: string) =>
 
 /** Open a share link someone sent you. */
 export function OpenLinkDialog({ onOpen, onClose }: { onOpen: (input: string) => void; onClose: () => void }) {
+  useLocale();
   const [value, setValue] = useState("");
   return (
     <Dialog
-      title="Open a share link"
-      subtitle="It opens in its own “Shared” slot, so your diagrams stay as they are."
+      title={t("fileDialog.openAShareLink")}
+      subtitle={t("fileDialog.itOpensInItsOwnSharedSlot")}
       icon={<Glyph name="link" />}
       onClose={onClose}
       testId="open-link-dialog"
@@ -689,7 +690,7 @@ export function OpenLinkDialog({ onOpen, onClose }: { onOpen: (input: string) =>
         <>
           <span className="ix-grow" />
           <button className="btn" onClick={onClose} data-testid="open-link-cancel">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             className="btn btn-primary"
@@ -697,7 +698,7 @@ export function OpenLinkDialog({ onOpen, onClose }: { onOpen: (input: string) =>
             onClick={() => onOpen(value)}
             data-testid="open-link-submit"
           >
-            Open
+            {t("fileDialog.open")}
           </button>
         </>
       }
@@ -712,8 +713,9 @@ export function OpenLinkDialog({ onOpen, onClose }: { onOpen: (input: string) =>
           className="ix-input ix-mono"
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          // eslint-disable-next-line local/no-literal-ui-text -- URL syntax
           placeholder="https://…/#d=…"
-          aria-label="Share link"
+          aria-label={t("fileDialog.shareLink")}
           data-autofocus
           data-testid="open-link-input"
         />
@@ -727,6 +729,7 @@ export function OpenLinkDialog({ onOpen, onClose }: { onOpen: (input: string) =>
  * File ▸ Privacy ▸ Private diagram open it). Keeping it private is the default button.
  */
 export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; onClose: () => void }) {
+  useLocale();
   useLocale();
   return (
     <Dialog
@@ -766,6 +769,7 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
  * Cancel is the default button.
  */
 export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
+  useLocale();
   useLocale();
   // The wipe's code comes with this dialog: confirming clears at once, with nothing left to download (so nothing to
   // cancel, or to fail, after the click).
@@ -811,10 +815,11 @@ export function PagesDialog({
   onPick: (index: number) => void;
   onClose: () => void;
 }) {
+  useLocale();
   return (
     <Dialog
-      title="Choose a page"
-      subtitle={`“${fileName}” has ${pages.length} pages. Which one should open?`}
+      title={t("fileDialog.chooseAPage")}
+      subtitle={t("fileDialog.pagesSubtitle", { name: fileName, count: pages.length })}
       icon={<Glyph name="drawio" />}
       onClose={onClose}
       testId="drawio-pages-dialog"
@@ -829,7 +834,7 @@ export function PagesDialog({
             data-testid={`drawio-page-${p.index}`}
             data-autofocus={p.index === 0 ? true : undefined}
           >
-            <span className="ix-page-num">{p.index + 1}</span>
+            <span className="ix-page-num">{formatNumber(p.index + 1)}</span>
             <span className="ix-page-name">{p.name}</span>
             <Glyph name="chevron-right" size={14} />
           </button>
@@ -842,13 +847,14 @@ export function PagesDialog({
 /** A small "Options" disclosure: secondary settings stay out of the way until asked for. */
 export function Disclosure({
   testId,
-  label = "Options",
+  label = t("fileDialog.options"),
   children,
 }: {
   testId: string;
   label?: string;
   children: ReactNode;
 }) {
+  useLocale();
   const [open, setOpen] = useState(false);
   return (
     <div className={`ix-disclosure${open ? " is-open" : ""}`}>
@@ -877,17 +883,21 @@ export function ImageDialog({
   onExport: (kind: "png" | "svg", opts: { scale: number; transparent: boolean; title: boolean }) => void;
   onClose: () => void;
 }) {
+  useLocale();
   const [kind, setKind] = useState<"png" | "svg">("png");
   const [scale, setScale] = useState(2);
   const [transparent, setTransparent] = useState(false);
   const [title, setTitle] = useState(true);
-  const summary =
-    (kind === "svg" ? "SVG, scalable" : `PNG, ${scale}× resolution${transparent ? ", transparent background" : ""}`) +
-    (title ? "" : ", without the title");
+  const summary = t("imageDialog.summary", {
+    kind,
+    scale: formatNumber(scale),
+    transparent: transparent ? "yes" : "no",
+    withTitle: title ? "yes" : "no",
+  });
   return (
     <Dialog
-      title="Export image"
-      subtitle="The whole diagram at full size, whatever part of it is on screen."
+      title={t("fileDialog.exportImage")}
+      subtitle={t("fileDialog.theWholeDiagramAtFullSizeWhatever")}
       icon={<Glyph name="image" />}
       onClose={onClose}
       testId="image-dialog"
@@ -896,7 +906,7 @@ export function ImageDialog({
         <>
           <span className="ix-grow" />
           <button className="btn" onClick={onClose} data-testid="image-cancel">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             className="btn btn-primary"
@@ -904,7 +914,7 @@ export function ImageDialog({
             data-testid="image-export"
             data-autofocus
           >
-            <Glyph name="download" size={14} /> Download {kind.toUpperCase()}
+            <Glyph name="download" size={14} /> {t("fileDialog.downloadFormat", { format: kind.toUpperCase() })}
           </button>
         </>
       }
@@ -914,8 +924,8 @@ export function ImageDialog({
       </div>
       <Disclosure testId="image-options">
         <div className="ix-form">
-          <span className="ix-form-label">Format</span>
-          <div className="ix-seg" role="radiogroup" aria-label="Format">
+          <span className="ix-form-label">{t("fileDialog.format")}</span>
+          <div className="ix-seg" role="radiogroup" aria-label={t("fileDialog.format")}>
             {(["png", "svg"] as const).map((k) => (
               <button
                 key={k}
@@ -929,7 +939,7 @@ export function ImageDialog({
               </button>
             ))}
           </div>
-          <span className="ix-form-label">Title</span>
+          <span className="ix-form-label">{t("fileDialog.title")}</span>
           <label className="ix-check">
             <input
               type="checkbox"
@@ -937,12 +947,12 @@ export function ImageDialog({
               onChange={(e) => setTitle(e.target.checked)}
               data-testid="image-title"
             />
-            Diagram title and description
+            {t("fileDialog.diagramTitleAndDescription")}
           </label>
           {kind === "png" && (
             <>
-              <span className="ix-form-label">Resolution</span>
-              <div className="ix-seg" role="radiogroup" aria-label="Resolution">
+              <span className="ix-form-label">{t("fileDialog.resolution")}</span>
+              <div className="ix-seg" role="radiogroup" aria-label={t("fileDialog.resolution")}>
                 {[1, 2, 3].map((n) => (
                   <button
                     key={n}
@@ -952,11 +962,11 @@ export function ImageDialog({
                     onClick={() => setScale(n)}
                     data-testid={`image-scale-${n}`}
                   >
-                    {n}×
+                    {formatNumber(n)}×
                   </button>
                 ))}
               </div>
-              <span className="ix-form-label">Background</span>
+              <span className="ix-form-label">{t("fileDialog.background")}</span>
               <label className="ix-check">
                 <input
                   type="checkbox"
@@ -964,7 +974,7 @@ export function ImageDialog({
                   onChange={(e) => setTransparent(e.target.checked)}
                   data-testid="image-transparent"
                 />
-                Transparent
+                {t("fileDialog.transparent")}
               </label>
             </>
           )}

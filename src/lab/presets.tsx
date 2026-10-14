@@ -9,6 +9,7 @@ import { textFieldsFixture } from "./textFieldsFixture";
 import { InspectorFocusLab } from "./InspectorFocusLab";
 import { TroubleCallout } from "../live/CapacityLayer";
 import "../styles/capacity.css";
+import { FilePrompts } from "./FilePrompts";
 // The Lab's preset registry. Every entry renders the *current* components with fixed data, so
 // opening ?view=lab&preset=<id> is a quick visual check of whatever you're working on.
 //
@@ -892,6 +893,23 @@ const tracePresets: Preset[] = [
 ];
 
 export const presets: readonly Preset[] = [
+  {
+    kind: "render",
+    id: "file-prompts",
+    title: "File provider prompts",
+    group: "Playground",
+    description: "Cloud sign-in, permission and file errors, without an account or network.",
+    controls: [
+      {
+        type: "select",
+        key: "scenario",
+        label: "Reply",
+        default: "blocked",
+        options: ["blocked", "admin", "denied", "expired", "full"].map((value) => ({ value, label: value })),
+      },
+    ],
+    render: ({ scenario }) => <FilePrompts scenario={String(scenario)} />,
+  },
   ...nodePresets,
   ...edgePresets,
   ...diagramPresets,

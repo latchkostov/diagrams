@@ -168,3 +168,29 @@ test("a simulation chosen while the live session downloads runs once it arrives"
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
   expectNoErrors(consoleErrors);
 });
+
+test("Your diagrams waits for operation messages before offering library actions", async ({ page }) => {
+  const messages = await gate(page, chunk("fileMessages", "src/interop/ui/fileMessages.ts"));
+  messages.fail = true;
+  await gotoCanvas(page, SLUG);
+  await openLibrary(page);
+  await expect(page.getByTestId("lazy-dialog-error")).toBeVisible();
+  await expect(page.getByTestId("library-dialog")).toHaveCount(0);
+  messages.fail = false;
+  messages.hold = false;
+  await page.getByTestId("lazy-dialog-retry").click();
+  await expect(page.getByTestId("library-dialog")).toBeVisible();
+});
+
+test("an oversized import still reports a failed message download", async ({ page, consoleErrors }) => {
+  const messages = await gate(page, chunk("fileMessages", "src/interop/ui/fileMessages.ts"));
+  messages.fail = true;
+  await gotoCanvas(page, SLUG);
+  await page
+    .getByTestId("import-input")
+    .setInputFiles({ name: "oversized.diagram.json", mimeType: "application/json", buffer: Buffer.alloc(8_000_001) });
+  await expect(page.getByTestId("toast")).toContainText("Couldn't download this part of the app");
+  await expect(page.getByTestId("node-payments")).toBeVisible();
+  // The request abort is deliberate; a pageerror would still expose an unhandled import rejection.
+  expectNoErrors(consoleErrors.filter((error) => error !== "console.error: Failed to load resource: net::ERR_FAILED"));
+});

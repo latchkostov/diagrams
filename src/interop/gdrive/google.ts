@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { createDriveClient, DriveError, type DriveClient } from "./client";
 import { DRIVE_SCOPE, driveConfig, PICKER_MIME_TYPES } from "./config";
 
@@ -83,11 +84,7 @@ function loadScript(src: string): Promise<void> {
       s.onload = () => resolve();
       s.onerror = () => {
         scripts.delete(src);
-        reject(
-          new DriveError(
-            "Couldn't load Google's sign-in script. Check your connection, or whether an ad blocker is blocking Google.",
-          ),
-        );
+        reject(new DriveError(t("cloud.couldntLoadGooglesSigninScriptCheckYour")));
       };
       document.head.appendChild(s);
     });
@@ -103,7 +100,7 @@ function loadPicker(): Promise<void> {
       new Promise<void>((resolve, reject) =>
         window.gapi!.load("picker", {
           callback: () => resolve(),
-          onerror: () => reject(new DriveError("Couldn't load the Google Picker.")),
+          onerror: () => reject(new DriveError(t("cloud.couldntLoadTheGooglePicker"))),
         }),
       ),
   );
@@ -128,8 +125,8 @@ function ensureTokenClient(): TokenClient | undefined {
         return p.reject(
           new DriveError(
             r.error === "access_denied"
-              ? "Google Drive access wasn't granted."
-              : `Google sign-in failed (${r.error_description ?? r.error ?? "no token"}).`,
+              ? t("cloud.googleDriveAccessWasntGranted")
+              : t("cloud.googleSigninFailedValue0", { value0: r.error_description ?? r.error ?? "no token" }),
           ),
         );
       token = { value: r.access_token, expires: Date.now() + (Number(r.expires_in) || 3600) * 1000 - 60_000 };
@@ -141,10 +138,10 @@ function ensureTokenClient(): TokenClient | undefined {
       p?.reject(
         new DriveError(
           e.type === "popup_closed"
-            ? "Google sign-in was closed before it finished."
+            ? t("cloud.googleSigninWasClosedBeforeItFinished")
             : e.type === "popup_failed_to_open"
-              ? "The Google sign-in window was blocked. Allow pop-ups for this site and try again."
-              : "Google sign-in failed.",
+              ? t("cloud.theGoogleSigninWindowWasBlockedAllow")
+              : t("cloud.googleSigninFailed"),
         ),
       );
     },
@@ -161,14 +158,14 @@ export function preloadDrive(): void {
 
 /** A valid access token, prompting the user (popup) if needed. Call from a click handler. */
 export async function getDriveToken(force = false): Promise<string> {
-  if (!driveConfig) throw new DriveError("Google Drive isn't configured for this site.");
+  if (!driveConfig) throw new DriveError(t("cloud.googleDriveIsntConfiguredForThisSite"));
   if (!force && token && token.expires > Date.now()) return token.value;
   if (!tokenClient) {
     await loadScript(GIS_SRC);
     ensureTokenClient();
   }
-  if (!tokenClient) throw new DriveError("Google sign-in isn't available right now.");
-  pending?.reject(new DriveError("Superseded by a newer sign-in request."));
+  if (!tokenClient) throw new DriveError(t("cloud.googleSigninIsntAvailableRightNow"));
+  pending?.reject(new DriveError(t("cloud.supersededByANewerSigninRequest")));
   return new Promise<string>((resolve, reject) => {
     pending = { resolve, reject };
     // Empty prompt: no account chooser / consent screen if the user already granted access.
@@ -189,7 +186,7 @@ export function driveClient(): DriveClient {
 
 /** Opens the Google Picker; resolves with the picked file, or undefined if cancelled. */
 export async function pickDriveFile(): Promise<{ id: string; name: string; mimeType: string } | undefined> {
-  if (!driveConfig) throw new DriveError("Google Drive isn't configured for this site.");
+  if (!driveConfig) throw new DriveError(t("cloud.googleDriveIsntConfiguredForThisSite"));
   const [accessToken] = await Promise.all([getDriveToken(), loadPicker()]);
   const g = window.google!;
   const view = new g.picker.DocsView(g.picker.ViewId.DOCS);

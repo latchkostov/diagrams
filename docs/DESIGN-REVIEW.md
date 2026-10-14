@@ -23,6 +23,19 @@ Production-build regressions cover double-click on cards, boundary labels/outlin
 keyboard and contextual naming, panel coordination and draft retention. The live naming regressions fail with
 the fix reverted; removing draft retention also fails its regression. Review used source and browser-test
 evidence, without a separate screenshot walkthrough.
+## File-dialog localization review (2026-10-14)
+
+Designer-agent review against the UX principles covered the remaining File dialogs and provider prompts.
+The existing chrome and progressive disclosure remain; image, HTML and embed settings stay behind Options.
+German and Arabic wording received a manual review. Production Chromium checks open every converted dialog
+in German, Arabic and the pseudo-locale at 1280 × 800 and audit wrapping, bounds and translated copy.
+
+Logical padding and alignment keep the dialogs readable in Arabic without reversing diagram content or code.
+Product names and file syntax stay intact; counts and sizes use Intl. No extra controls or explanatory copy
+were added. Library operations wait for their messages, and failed downloads leave a visible retry or error.
+
+Rejected translating generated diagram labels and shared agent diagnostics: those are content and API output.
+Rejected moving dialog messages into startup code: they load with the operations that use them.
 
 ## Round 35: external discovery (2026-10-14)
 

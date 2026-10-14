@@ -170,7 +170,7 @@ describe("Terraform import: the AWS plan fixture", () => {
     ]);
     expect(report.notes).toEqual([
       "Plan: 28 to add, 0 to change, 1 to destroy",
-      "7 supporting resources aren't drawn: access and permissions, parts of what's drawn, monitoring, networking and helpers",
+      "7 supporting resources aren't drawn: access and permissions, parts of what's drawn, monitoring, networking, and helpers",
     ]);
     expect(report.guesses).toEqual([]);
     expect(report.unread).toEqual([]);

@@ -675,7 +675,7 @@ test.describe("imports: Terraform", () => {
     const notes = page.getByTestId("import-report-note");
     await expect(notes.nth(0)).toHaveText("Plan: 28 to add, 0 to change, 1 to destroy.");
     await expect(notes.nth(1)).toHaveText(
-      "7 supporting resources aren't drawn: access and permissions, parts of what's drawn, monitoring, networking and helpers.",
+      "7 supporting resources aren't drawn: access and permissions, parts of what's drawn, monitoring, networking, and helpers.",
     );
     const notDrawn = page.getByTestId("import-report-not-drawn");
     await expect(notDrawn).toContainText("aws_iam_role_policy_attachment basic_logs");

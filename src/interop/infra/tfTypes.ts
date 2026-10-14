@@ -1,3 +1,4 @@
+import { t as tr } from "../../i18n";
 import type { DiagramGroup } from "../../model/types";
 
 // Terraform resource types → stencils (docs/research/imports.md § Mapping: Terraform). Data, with tests: a
@@ -173,43 +174,46 @@ export const GLUE = new Set([
 ]);
 
 /** Container types whose children are drawn: they're listed, not drawn themselves. */
-const CONTAINERS: Record<string, string> = {
-  azurerm_servicebus_namespace: "shown through its queues and topics",
-  azurerm_eventhub_namespace: "shown through its event hubs",
-  azurerm_mssql_server: "shown through its databases",
-  azurerm_resource_group: "not a component",
-  azurerm_service_plan: "hosting plan",
-  azurerm_app_service_plan: "hosting plan",
-  aws_ecs_cluster: "shown through its services",
-  aws_ecs_task_definition: "part of an ECS service",
-  aws_rds_cluster_instance: "part of the cluster",
-  aws_secretsmanager_secret_version: "a secret's value: never read",
-  azurerm_key_vault_secret: "a secret's value: never read",
-  azurerm_key_vault_key: "part of Key Vault",
-  azurerm_key_vault_certificate: "part of Key Vault",
-  azurerm_eventhub_consumer_group: "part of Event Hubs",
-  aws_kms_key: "encryption key",
-  aws_kms_alias: "encryption key",
-  google_project_service: "an enabled API",
+const CONTAINERS: Record<string, () => string> = {
+  azurerm_servicebus_namespace: () => tr("importReason.shownThroughItsQueuesAndTopics"),
+  azurerm_eventhub_namespace: () => tr("importReason.shownThroughItsEventHubs"),
+  azurerm_mssql_server: () => tr("importReason.shownThroughItsDatabases"),
+  azurerm_resource_group: () => tr("importDetail.notAComponent"),
+  azurerm_service_plan: () => tr("importReason.hostingPlan"),
+  azurerm_app_service_plan: () => tr("importReason.hostingPlan"),
+  aws_ecs_cluster: () => tr("importReason.shownThroughItsServices"),
+  aws_ecs_task_definition: () => tr("importReason.partOfAnECSService"),
+  aws_rds_cluster_instance: () => tr("importReason.partOfTheCluster"),
+  aws_secretsmanager_secret_version: () => tr("importReason.aSecretsValueNeverRead"),
+  azurerm_key_vault_secret: () => tr("importReason.aSecretsValueNeverRead"),
+  azurerm_key_vault_key: () => tr("importReason.partOfKeyVault"),
+  azurerm_key_vault_certificate: () => tr("importReason.partOfKeyVault"),
+  azurerm_eventhub_consumer_group: () => tr("importReason.partOfEventHubs"),
+  aws_kms_key: () => tr("importReason.encryptionKey"),
+  aws_kms_alias: () => tr("importReason.encryptionKey"),
+  google_project_service: () => tr("importReason.anEnabledAPI"),
 };
 
 /** Not drawn, by kind: the reason the report gives. First match wins; the table and glue come before these. */
-const SUPPORTING: [RegExp, string][] = [
+const SUPPORTING: [RegExp, () => string][] = [
   [
     /^(?:random|null|time|tls|local|archive|external|http|cloudinit|terraform)_|^terraform_data$/,
-    "helper, not infrastructure",
+    () => tr("importReason.helperNotInfrastructure"),
   ],
-  [/^aws_api_?gateway(?:v2)?_/, "part of API Gateway"],
-  [/^aws_a?lb_/, "part of a load balancer"],
+  [/^aws_api_?gateway(?:v2)?_/, () => tr("importReason.partOfAPIGateway")],
+  [/^aws_a?lb_/, () => tr("importReason.partOfALoadBalancer")],
   [
     /_iam_|^aws_iam|_policy(?:_|$)|_role_assignment|_role_definition|_access_policy|_permission|_authorization_rule|_sas$/,
-    "access and permissions",
+    () => tr("importReason.accessAndPermissions"),
   ],
   [
     /_vpc|_subnet|_security_group|_route|_nat_|_eip$|_internet_gateway|_network|_firewall_rule|_dns_|_record$|_endpoint$|_public_ip|_peering|_vpn|_zone$/,
-    "networking",
+    () => tr("importReason.networking"),
   ],
-  [/_log_group|_alarm|_metric|_diagnostic_setting|_monitor|_dashboard|_log_analytics/, "monitoring"],
+  [
+    /_log_group|_alarm|_metric|_diagnostic_setting|_monitor|_dashboard|_log_analytics/,
+    () => tr("importReason.monitoring"),
+  ],
 ];
 
 /** Names that sound like a component: drawn as a guess on a generic stencil, and listed with chips. */
@@ -233,9 +237,9 @@ export function guessOf(type: string): { stencil: string; alternatives: string[]
  * aws_s3_bucket), or its kind. Undefined: it sounds like a component (`guessOf`).
  */
 export function notDrawnReason(type: string): string | undefined {
-  if (Object.hasOwn(CONTAINERS, type)) return CONTAINERS[type];
+  if (Object.hasOwn(CONTAINERS, type)) return CONTAINERS[type]();
   const kind = SUPPORTING.find(([re]) => re.test(type))?.[1];
-  if (kind) return kind;
+  if (kind) return kind();
   // The longest drawn type this one extends: its settings, not a component of its own.
   let part = "";
   for (let i = type.lastIndexOf("_"); i > 0; i = type.lastIndexOf("_", i - 1)) {
@@ -245,12 +249,12 @@ export function notDrawnReason(type: string): string | undefined {
       break;
     }
   }
-  if (part) return `part of ${part}`;
-  return guessOf(type) ? undefined : "Terraform type not drawn";
+  if (part) return tr("importReason.partOf", { type: part });
+  return guessOf(type) ? undefined : tr("importDetail.terraformTypeNotDrawn");
 }
 
 /** Broad kinds of supporting resources, for the report's summary line. */
-export const SUPPORTING_KINDS = SUPPORTING.map(([, reason]) => reason);
+export const SUPPORTING_KINDS = () => SUPPORTING.map(([, reason]) => reason());
 
 /** The provider's tone for a boundary: from the type's prefix. */
 export function toneOf(type: string): DiagramGroup["tone"] {

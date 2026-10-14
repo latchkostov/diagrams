@@ -5,16 +5,14 @@ import { Icon } from "./Icon";
 import { InlineInput } from "./InlineInput";
 import { DiagramThumbnail } from "./DiagramThumbnail";
 import { NEARLY_FULL, storageUsage, type LibraryEntry } from "../lib/diagramIO";
-import { formatAgo } from "../lib/time";
+import { formatAgo, formatBytes, formatPercent, formatNumber } from "../i18n/format";
+import { t, useLocale } from "../i18n";
 
 /** Show the storage meter from this share of the budget (it always shows once nearly full). */
 const SHOW_USAGE_FROM = 0.5;
 
 /** Storage in bytes (UTF-16: two per character), as KB below a tenth of a megabyte. */
-const size = (chars: number) =>
-  chars * 2 < 100_000
-    ? `${Math.max(1, Math.round((chars * 2) / 1000))} KB`
-    : `${((chars * 2) / 1_000_000).toFixed(1)} MB`;
+const size = (chars: number) => formatBytes(chars * 2);
 const PAGE_SIZE = 20;
 
 export interface LibraryActions {
@@ -43,6 +41,7 @@ export function LibraryDialog({
   error?: string | null;
   undo?: { message: string; run: () => void } | null;
 }) {
+  useLocale();
   const [renaming, setRenaming] = useState<string | null>(null);
   const [page, setPage] = useState(() =>
     Math.floor(
@@ -86,8 +85,8 @@ export function LibraryDialog({
 
   return (
     <Dialog
-      title="Your diagrams"
-      subtitle="Kept in this browser. Save or export a diagram to keep a copy elsewhere."
+      title={t("topbar.yourDiagrams")}
+      subtitle={t("library.keptInThisBrowserSaveOrExport")}
       icon={<Glyph name="stack" />}
       onClose={onClose}
       testId="library-dialog"
@@ -99,15 +98,15 @@ export function LibraryDialog({
               className={`lib-usage${nearlyFull ? " is-full" : ""}`}
               data-testid="library-usage"
               data-ratio={usage.ratio.toFixed(3)}
-              title="Browsers give each site about 10 MB for everything it keeps."
+              title={t("library.browsersGiveEachSiteAbout10MB")}
             >
               <span className="lib-meter" aria-hidden>
                 <span style={{ width: `${Math.min(100, Math.max(2, usage.ratio * 100))}%` }} />
               </span>
               <span>
                 {nearlyFull
-                  ? `Storage almost full (${Math.round(usage.ratio * 100)}%). Delete or export diagrams you don't need.`
-                  : `${size(usage.used)} of about ${size(usage.budget)} used`}
+                  ? t("library.storageAlmostFullPercentDeleteOrExport", { percent: formatPercent(usage.ratio) })
+                  : t("library.usedOfAboutBudgetUsed", { used: size(usage.used), budget: size(usage.budget) })}
               </span>
             </div>
           )}
@@ -120,7 +119,7 @@ export function LibraryDialog({
             }}
             data-testid="library-new"
           >
-            <Icon name="plus" size={14} /> New diagram
+            <Icon name="plus" size={14} /> {t("file.new")}
           </button>
         </>
       }
@@ -140,16 +139,16 @@ export function LibraryDialog({
           <div role="status" data-testid="library-deletion">
             {undo.message}{" "}
             <button className="btn" data-testid="library-delete-undo" onClick={undo.run}>
-              Undo
+              {t("shortcuts.undo")}
             </button>
           </div>
         )}
         {entries.length === 0 ? (
           <p className="lib-empty" data-testid="library-empty">
-            No diagrams yet. Start a new one, or open a file from draw.io, Mermaid or Live Diagrams.
+            {t("library.noDiagramsYetStartANewOne")}
           </p>
         ) : (
-          <ul className="lib-list" aria-label="Your diagrams">
+          <ul className="lib-list" aria-label={t("topbar.yourDiagrams")}>
             {visible.map((e) => (
               <li
                 key={e.slug}
@@ -174,11 +173,11 @@ export function LibraryDialog({
                     <span>
                       {(e.private || e.localOnly) && (
                         <span className="lib-private" data-testid={`library-private-${e.slug}`}>
-                          <Icon name="lock" size={11} /> Private ·{" "}
+                          <Icon name="lock" size={11} /> {t("library.private")}{" "}
                         </span>
                       )}
-                      {e.slug === current ? "Open now · " : ""}
-                      {e.nodes} {e.nodes === 1 ? "node" : "nodes"} · edited {formatAgo(e.updatedAt)}
+                      {e.slug === current ? t("library.openNow") : ""}
+                      {t("start.recentDetail", { count: e.nodes, ago: formatAgo(e.updatedAt) })}
                     </span>
                   </span>
                 </button>
@@ -194,7 +193,7 @@ export function LibraryDialog({
                   >
                     <InlineInput
                       value={e.title}
-                      placeholder="Diagram title"
+                      placeholder={t("library.diagramTitle")}
                       testId="library-rename-input"
                       onDone={(next) => {
                         // Keyboard completion still owns the input. Blur has already
@@ -212,8 +211,8 @@ export function LibraryDialog({
                   <button
                     className="icon-btn icon-btn-quiet"
                     onClick={() => setRenaming(e.slug)}
-                    aria-label={`Rename ${e.title}`}
-                    title="Rename"
+                    aria-label={t("library.renameTitle", { title: e.title })}
+                    title={t("library.rename")}
                     data-testid={`library-rename-${e.slug}`}
                   >
                     <Icon name="edit" size={14} />
@@ -221,8 +220,8 @@ export function LibraryDialog({
                   <button
                     className="icon-btn icon-btn-quiet"
                     onClick={() => actions.onDuplicate(e.slug)}
-                    aria-label={`Duplicate ${e.title}`}
-                    title="Duplicate"
+                    aria-label={t("library.duplicateTitle", { title: e.title })}
+                    title={t("shortcuts.mouse.altDrag.does")}
                     data-testid={`library-duplicate-${e.slug}`}
                   >
                     <Icon name="duplicate" size={14} />
@@ -230,8 +229,8 @@ export function LibraryDialog({
                   <button
                     className="icon-btn icon-btn-quiet lib-delete"
                     onClick={() => actions.onDelete(e.slug)}
-                    aria-label={`Delete ${e.title}`}
-                    title="Delete (undoable)"
+                    aria-label={t("library.deleteTitle", { title: e.title })}
+                    title={t("library.deleteUndoable")}
                     data-testid={`library-delete-${e.slug}`}
                   >
                     <Icon name="trash" size={14} />
@@ -242,7 +241,7 @@ export function LibraryDialog({
           </ul>
         )}
         {entries.length > PAGE_SIZE && (
-          <div aria-label="Library pages">
+          <div aria-label={t("library.libraryPages")}>
             <button
               className="btn"
               data-testid="library-page-prev"
@@ -252,10 +251,14 @@ export function LibraryDialog({
                 setPage(shownPage - 1);
               }}
             >
-              Previous
+              {t("library.previous")}
             </button>
             <span role="status" data-testid="library-page-status">
-              {shownPage * PAGE_SIZE + 1}–{Math.min((shownPage + 1) * PAGE_SIZE, entries.length)} of {entries.length}
+              {t("library.firstlastOfCountPluralOneDiagramOther", {
+                first: formatNumber(shownPage * PAGE_SIZE + 1),
+                last: formatNumber(Math.min((shownPage + 1) * PAGE_SIZE, entries.length)),
+                count: entries.length,
+              })}
             </span>
             <button
               className="btn"
@@ -266,7 +269,7 @@ export function LibraryDialog({
                 setPage(shownPage + 1);
               }}
             >
-              Next
+              {t("library.next")}
             </button>
           </div>
         )}

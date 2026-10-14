@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // Local files: the File System Access API where available (Chrome / Edge: real "Save" back to the
 // same file, which also works inside a Google Drive for desktop or OneDrive synced folder), with
 // download + <input type=file> fallbacks for Firefox and Safari.
@@ -41,10 +42,17 @@ export function fsAccessSupported(): boolean {
   }
 }
 
-export const NATIVE_TYPE: PickerType = { description: "Live Diagrams file", accept: { "application/json": [".json"] } };
+export const NATIVE_TYPE: PickerType = {
+  get description() {
+    return t("fileType.native");
+  },
+  accept: { "application/json": [".json"] },
+};
 const OPEN_TYPES: PickerType[] = [
   {
-    description: "Live Diagrams, draw.io, Mermaid, docker-compose, Kubernetes, AsyncAPI and Terraform JSON files",
+    get description() {
+      return t("fileType.open");
+    },
     accept: {
       "application/json": [".json"],
       "application/xml": [".drawio", ".xml", ".svg"],
@@ -89,7 +97,7 @@ export async function saveWithPicker(
 export async function writeHandle(handle: FileHandle, text: string): Promise<void> {
   if (handle.queryPermission && (await handle.queryPermission({ mode: "readwrite" })) !== "granted") {
     if ((await handle.requestPermission?.({ mode: "readwrite" })) !== "granted")
-      throw new Error(`Permission to save “${handle.name}” wasn't granted.`);
+      throw new Error(t("fileDialog.permissionToSaveValue0WasntGranted", { value0: handle.name }));
   }
   const out = await handle.createWritable();
   await out.write(text);

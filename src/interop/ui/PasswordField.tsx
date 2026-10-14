@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useId, useState, type Ref } from "react";
 import { MIN_PASSWORD_LENGTH } from "../encryptedToken";
 import { passwordStrength } from "../passwordStrength";
@@ -22,13 +23,14 @@ export function PasswordField({
   firstFocus?: boolean;
   inputRef?: Ref<HTMLInputElement>;
 }) {
+  useLocale();
   const [show, setShow] = useState(false);
   const strength = passwordStrength(value);
   const hintId = useId();
   return (
     <>
       <label className="ix-password-field">
-        <span className="ix-form-label">Password</span>
+        <span className="ix-form-label">{t("passwordLink.password")}</span>
         <span className="ix-field-row">
           <input
             ref={inputRef}
@@ -52,7 +54,15 @@ export function PasswordField({
           data-level={value ? strength.level : "empty"}
           data-testid={`${testId}-strength`}
         >
-          {value ? strength.hint : `At least ${MIN_PASSWORD_LENGTH} characters. Several random words work well.`}
+          {value
+            ? strength.level === "short"
+              ? t("password.useAtLeastCountPluralOneCharacter", { count: MIN_PASSWORD_LENGTH })
+              : strength.level === "weak"
+                ? t("password.easyToGuessTryFourOrMore")
+                : strength.level === "fair"
+                  ? t("password.fairLongerIsStrongerTryFourOr")
+                  : t("password.strong")
+            : t("password.minimum", { count: MIN_PASSWORD_LENGTH })}
         </span>
         <span className="ix-grow" />
         <label className="ix-check">
@@ -62,7 +72,7 @@ export function PasswordField({
             onChange={(e) => setShow(e.target.checked)}
             data-testid={`${testId}-show`}
           />
-          Show
+          {t("password.show")}
         </label>
       </div>
     </>

@@ -1,3 +1,4 @@
+import { t as tr } from "../../i18n";
 import { validateDiagram } from "../native";
 import type { FormatId, ImportFile, ImportOutcome } from "../formats";
 import { sniffInfra, type InfraSniff } from "../sniff";
@@ -29,10 +30,7 @@ export function outcomeOf(
   { chosen, budget = PICK_OVER }: { chosen?: readonly string[]; budget?: number } = {},
 ): ImportOutcome {
   const keys = chosen ?? defaultPick(full, budget);
-  if (keys && !keys.length)
-    throw new ImportError(
-      `No boundary in it fits in ${MAX_DRAWN.toLocaleString("en")} nodes, the most an import draws.`,
-    );
+  if (keys && !keys.length) throw new ImportError(tr("importDetail.noBoundaryInItFitsIn", { value0: MAX_DRAWN }));
   const graph = !keys
     ? full
     : chosen
@@ -147,10 +145,10 @@ export async function importMany(
     name: f.name,
     reason:
       sniffInfra(f.text) === "helm"
-        ? "a Helm template: import “helm template” output instead"
+        ? tr("importDetail.aHelmTemplateImportHelmTemplate")
         : sniffInfra(f.text) === "hcl" || /\.tf$/i.test(f.name)
-          ? "Terraform source: import “terraform show -json” output instead"
-          : "not read: a different kind of file",
+          ? tr("importDetail.terraformSourceImportTerraformShowJson")
+          : tr("importDetail.notReadADifferentKindOf"),
   }));
   if (format === "compose" || format === "asyncapi" || format === "kubernetes" || format === "terraform") {
     try {

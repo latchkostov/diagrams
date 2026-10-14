@@ -1,3 +1,5 @@
+import { tRich } from "../../i18n/rich";
+import { t, useLocale } from "../../i18n";
 import { useEffect, useId, useRef, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import { appBaseUrl, SHARE_WARN_LENGTH } from "../share";
@@ -7,7 +9,6 @@ import { Dialog } from "./Dialog";
 import { copyText } from "./copyText";
 import { Glyph } from "./glyphs";
 import { toast } from "./toast";
-import { PRIVATE_SHARE_MESSAGE } from "../../lib/localOnly";
 
 // Password links (../shareCrypto.ts): one dialog makes them, one opens them. Both run WebCrypto in this
 // page; the password and the decrypted diagram never leave it.
@@ -25,11 +26,12 @@ export function PasswordLinkDialog({
   allowed?: () => boolean;
   onClose: () => void;
 }) {
+  useLocale();
   /** A diagram that turned private (here or in another tab) gets no link: the dialog closes and says why. */
   const stillAllowed = () => {
     if (!allowed || allowed()) return true;
     onClose();
-    toast.info(PRIVATE_SHARE_MESSAGE);
+    toast.info(t("fileToast.privateLink"));
     return false;
   };
   const [password, setPassword] = useState("");
@@ -77,14 +79,14 @@ export function PasswordLinkDialog({
     // Encrypting takes a moment: the diagram may have become private since (here or in another tab).
     if (!stillAllowed()) return;
     setMade({ password: pw, url: link });
-    if (await copyText(link)) toast.success("Link with password copied. Send the password separately.");
-    else toast.info("Couldn't copy automatically. Select the link and copy it.");
+    if (await copyText(link)) toast.success(t("passwordLink.linkWithPasswordCopiedSendThePassword"));
+    else toast.info(t("fileDialog.couldntCopyAutomaticallySelectTheLinkAnd"));
   };
 
   return (
     <Dialog
-      title="Link with password"
-      subtitle="The diagram is encrypted in this browser before it goes into the link."
+      title={t("passwordLink.linkWithPassword")}
+      subtitle={t("passwordLink.theDiagramIsEncryptedInThisBrowser")}
       icon={<Glyph name="lock" />}
       onClose={onClose}
       testId="password-link-dialog"
@@ -101,16 +103,16 @@ export function PasswordLinkDialog({
                 }}
                 data-testid="password-link-copy-again"
               >
-                <Glyph name="copy" size={14} /> Copy again
+                <Glyph name="copy" size={14} /> {t("passwordLink.copyAgain")}
               </button>
               <button ref={done} className="btn btn-primary" onClick={onClose} data-testid="password-link-done">
-                Done
+                {t("common.done")}
               </button>
             </>
           ) : (
             <>
               <button className="btn" onClick={onClose} data-testid="password-link-cancel">
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 className="btn btn-primary"
@@ -118,7 +120,8 @@ export function PasswordLinkDialog({
                 disabled={!ok || busy}
                 data-testid="password-link-copy"
               >
-                <Glyph name={busy ? "spinner" : "copy"} size={14} /> {busy ? "Encrypting…" : "Copy link"}
+                <Glyph name={busy ? "spinner" : "copy"} size={14} />{" "}
+                {busy ? t("passwordLink.encrypting") : t("fileDialog.copyLink")}
               </button>
             </>
           )}
@@ -151,13 +154,13 @@ export function PasswordLinkDialog({
             readOnly
             value={url}
             onFocus={(e) => e.currentTarget.select()}
-            aria-label="Link with password"
+            aria-label={t("passwordLink.linkWithPassword")}
             data-testid="password-link-url"
           />
           {url.length > SHARE_WARN_LENGTH && (
             <div className="ix-callout ix-callout-warn" data-testid="password-link-long">
               <Glyph name="alert" size={15} />
-              <span>This link is long. Some chat apps and email clients cut long links off.</span>
+              <span>{t("passwordLink.thisLinkIsLongSomeChatApps")}</span>
             </div>
           )}
         </>
@@ -169,10 +172,7 @@ export function PasswordLinkDialog({
       )}
       <div className="ix-callout" data-testid="password-link-note">
         <Glyph name="info" size={15} />
-        <span>
-          <strong>Send the password separately.</strong> Anyone with the link and the password can open it. Nothing is
-          uploaded, and a forgotten password can't be recovered.
-        </span>
+        <span>{tRich("passwordLink.note", { b: (chunks) => <strong>{chunks}</strong> })}</span>
       </div>
     </Dialog>
   );
@@ -189,6 +189,7 @@ export function UnlockDialog({
   unlock: (password: string) => Promise<void>;
   onClose: () => void;
 }) {
+  useLocale();
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -202,7 +203,7 @@ export function UnlockDialog({
     try {
       await unlock(password);
     } catch (err) {
-      setError(message(err));
+      setError(err instanceof WrongPasswordError ? t("passwordLink.wrongPassword") : message(err));
       setBusy(false);
       // Wrong password: keep it, selected, so a typo can be fixed or the whole thing retyped.
       if (err instanceof WrongPasswordError)
@@ -215,8 +216,8 @@ export function UnlockDialog({
 
   return (
     <Dialog
-      title="This diagram is password-protected"
-      subtitle="Enter the password you were given. It's checked in this browser; nothing is sent anywhere."
+      title={t("passwordLink.thisDiagramIsPasswordprotected")}
+      subtitle={t("passwordLink.enterThePasswordYouWereGivenIts")}
       icon={<Glyph name="lock" />}
       onClose={onClose}
       testId="password-prompt"
@@ -225,7 +226,7 @@ export function UnlockDialog({
         <>
           <span className="ix-grow" />
           <button className="btn" onClick={onClose} data-testid="password-prompt-cancel">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             className="btn btn-primary"
@@ -233,7 +234,7 @@ export function UnlockDialog({
             disabled={!password || busy}
             data-testid="password-prompt-submit"
           >
-            {busy && <Glyph name="spinner" size={14} />} {busy ? "Unlocking…" : "Open"}
+            {busy && <Glyph name="spinner" size={14} />} {busy ? t("passwordLink.unlocking") : t("fileDialog.open")}
           </button>
         </>
       }
@@ -255,7 +256,7 @@ export function UnlockDialog({
           ref={input}
           autoComplete="off"
           spellCheck={false}
-          aria-label="Password"
+          aria-label={t("passwordLink.password")}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
           data-autofocus

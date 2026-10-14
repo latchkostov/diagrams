@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { DiagramFile } from "../model/types";
 import { LIMITS, parseNative, tooLargeMessage, validateDiagram } from "./native";
 import type { DrawioDocument } from "./drawio/read";
@@ -25,13 +26,27 @@ export function preloadFormats() {
 export type FormatId = "native" | "drawio" | "mermaid" | "compose" | "asyncapi" | "kubernetes" | "terraform";
 
 export const FORMAT_LABEL: Record<FormatId, string> = {
-  native: "Live Diagrams file",
-  drawio: "draw.io diagram",
-  mermaid: "Mermaid flowchart",
-  compose: "docker-compose file",
-  asyncapi: "AsyncAPI document",
-  kubernetes: "Kubernetes manifests",
-  terraform: "Terraform plan or state",
+  get native() {
+    return t("fileType.native");
+  },
+  get drawio() {
+    return t("fileType.drawioDiagram");
+  },
+  get mermaid() {
+    return t("fileType.mermaidFlowchart");
+  },
+  get compose() {
+    return t("fileType.dockercomposeFile");
+  },
+  get asyncapi() {
+    return t("fileType.asyncAPIDocument");
+  },
+  get kubernetes() {
+    return t("fileType.kubernetesManifests");
+  },
+  get terraform() {
+    return t("fileType.terraformPlanOrState");
+  },
 };
 
 /** File-picker accept list. */

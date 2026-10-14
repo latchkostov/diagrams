@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { dropboxConfig, type DropboxConfig } from "./config";
 import { authorized, checkSize, headerSafeJson, jsonField, readTextCapped, type ClientDeps } from "./http";
 import {
@@ -72,16 +73,21 @@ export interface DropboxFile {
 
 export function dropboxError(status: number, body: string, action: string): string {
   const summary = jsonField(body, (j) => j.error_summary) || body.slice(0, 200);
-  if (status === 401) return `Dropbox sign-in expired while trying to ${action}. Please try again.`;
-  if (/insufficient_space/.test(summary)) return "Your Dropbox is full, so the file couldn't be saved.";
-  if (/not_found/.test(summary))
-    return "That Dropbox file no longer exists, or it was moved out of the Diagrams folder.";
-  if (/conflict/.test(summary)) return `The file changed in Dropbox while trying to ${action}. Try again.`;
+  if (status === 401)
+    return t("cloud.dropboxSigninExpiredWhileTryingToAction", { action: action.replaceAll(" ", "_") });
+  if (/insufficient_space/.test(summary)) return t("cloud.yourDropboxIsFullSoTheFile");
+  if (/not_found/.test(summary)) return t("cloud.thatDropboxFileNoLongerExistsOr");
+  if (/conflict/.test(summary))
+    return t("cloud.theFileChangedInDropboxWhileTrying", { action: action.replaceAll(" ", "_") });
   if (status === 400 && /scope|app_folder|permission/i.test(summary))
-    return `Dropbox refused to ${action}: the app isn't set up with the permissions Live Diagrams needs.`;
-  if (status === 403) return `Dropbox refused to ${action}.`;
-  if (status === 429 || status >= 500) return `Dropbox is busy right now (${status}). Try again in a moment.`;
-  return `Couldn't ${action} on Dropbox (${status}${summary ? `: ${summary}` : ""}).`;
+    return t("cloud.dropboxRefusedToActionTheAppIsnt", { action: action.replaceAll(" ", "_") });
+  if (status === 403) return t("cloud.dropboxRefusedToAction", { action: action.replaceAll(" ", "_") });
+  if (status === 429 || status >= 500) return t("cloud.dropboxIsBusyRightNowStatusTry", { status: status });
+  return t("cloud.couldntValue0OnDropboxValue1value2", {
+    value0: action.replaceAll(" ", "_"),
+    value1: status,
+    value2: summary ? `: ${summary}` : "",
+  });
 }
 
 const MAX_PAGES = 10;
@@ -172,7 +178,7 @@ export function dropboxProvider(
 ): StorageProvider<Ref> {
   const tokens: TokenSource = createTokenSource({
     interactive: async () => {
-      if (!config) throw new StorageError("Dropbox isn't configured for this site.");
+      if (!config) throw new StorageError(t("cloud.dropboxIsntConfiguredForThisSite"));
       const code = await authorizeInPopup(LABEL, (p) => dropboxAuthorizeUrl(config, p));
       return exchangeDropboxCode(fetchFn, config, code);
     },

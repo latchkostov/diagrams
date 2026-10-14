@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import type { GlyphName } from "../ui/glyphs";
 import { driveEnabled } from "../gdrive/config";
 import { dropboxConfig, oneDriveConfig } from "./config";
@@ -38,8 +39,12 @@ const once = <T>(fn: () => Promise<T>) => {
 
 export const DEVICE: ProviderInfo = {
   id: "device",
-  label: "This device",
-  inSentence: "this device",
+  get label() {
+    return t("storage.thisDevice");
+  },
+  get inSentence() {
+    return t("storage.thisDeviceInSentence");
+  },
   icon: "device",
   // Static: the system file picker needs the click it was opened from, with nothing to load first.
   load: () => Promise.resolve(deviceProvider as StorageProvider),
@@ -49,6 +54,7 @@ const CLOUD: (ProviderInfo & { flag: keyof ProviderFlags })[] = [
   {
     flag: "gdrive",
     id: "gdrive",
+    // eslint-disable-next-line local/no-literal-ui-text -- provider brand or test fixture name
     label: "Google Drive",
     inSentence: "Google Drive",
     icon: "drive",
@@ -57,6 +63,7 @@ const CLOUD: (ProviderInfo & { flag: keyof ProviderFlags })[] = [
   {
     flag: "onedrive",
     id: "onedrive",
+    // eslint-disable-next-line local/no-literal-ui-text -- provider brand or test fixture name
     label: "OneDrive",
     inSentence: "OneDrive",
     icon: "onedrive",
@@ -65,6 +72,7 @@ const CLOUD: (ProviderInfo & { flag: keyof ProviderFlags })[] = [
   {
     flag: "dropbox",
     id: "dropbox",
+    // eslint-disable-next-line local/no-literal-ui-text -- provider brand or test fixture name
     label: "Dropbox",
     inSentence: "Dropbox",
     icon: "dropbox",
@@ -77,6 +85,7 @@ const CLOUD: (ProviderInfo & { flag: keyof ProviderFlags })[] = [
         {
           flag: "test" as const,
           id: "test" as const,
+          // eslint-disable-next-line local/no-literal-ui-text -- provider brand or test fixture name
           label: "Test storage",
           inSentence: "Test storage",
           icon: "stack" as const,

@@ -1,3 +1,4 @@
+import { t as tr } from "../../i18n";
 import type { ReportLine } from "./graph";
 import { ImportError, isMap, own } from "./yaml";
 
@@ -69,7 +70,7 @@ export class Refs {
     let at: At = { value, doc };
     for (let depth = 0; isMap(at.value) && typeof own(at.value, "$ref") === "string"; depth++) {
       const ref = own(at.value, "$ref") as string;
-      if (++this.followed > REF_LIMITS.total) throw new ImportError("It has too many references ($ref) to follow.");
+      if (++this.followed > REF_LIMITS.total) throw new ImportError(tr("importDetail.itHasTooManyReferencesRef"));
       if (depth >= REF_LIMITS.depth) return void this.report(`$ref ${ref}`, "more than 32 references in a row");
       const hash = ref.indexOf("#");
       const file = hash < 0 ? ref : ref.slice(0, hash);

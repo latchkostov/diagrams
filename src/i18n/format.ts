@@ -41,3 +41,16 @@ export const formatDate = (
  * comes with every other language (so the entry doesn't carry it).
  */
 export const formatAgo = (at: number, now = Date.now()): string => (state.a ?? formatAgoEnglish)(at, now);
+
+/** Decimal byte units for exported files and browser storage. */
+export function formatBytes(bytes: number): string {
+  const mb = bytes >= 100_000;
+  const value = mb ? bytes / 1_000_000 : Math.max(1, Math.round(bytes / 1000));
+  return formatNumber(value, {
+    style: "unit",
+    unit: mb ? "megabyte" : "kilobyte",
+    unitDisplay: "short",
+    minimumFractionDigits: mb ? 1 : 0,
+    maximumFractionDigits: mb ? 1 : 0,
+  });
+}

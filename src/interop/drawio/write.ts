@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import type { DiagramAnnotation, DiagramFile, DiagramNode, Side } from "../../model/types";
 import { ANNOTATION_COLORS, annotationColor, textSizePx } from "../../canvas/annotations";
 import { foregroundLayerOrder } from "../../model/layers";
@@ -5,7 +6,6 @@ import { catalog } from "../../stencils/catalog";
 import { escapeXml } from "../xml";
 import { boxShape, groupStyle, imageShape, nativeShape, type DrawioShape } from "./mapping";
 import { isDependency, relationOf, type DependencyRelation } from "../../model/relations";
-import { PRIVATE_COPY_NOTE } from "../privateNote";
 
 /**
  * Dependency tints for draw.io (its canvas is light): the light-theme --rel-* tokens. With the dotted
@@ -96,7 +96,7 @@ const r = (v: number) => Math.round(v * 100) / 100;
 
 /** The toast after a draw.io export (here, not in the app's startup code). A private diagram's names no public site. */
 export const drawioExported = (d: DiagramFile): string =>
-  `Exported a .drawio file. ${d.private ? PRIVATE_COPY_NOTE : "Open it at app.diagrams.net or in draw.io Desktop."}`;
+  t("exportToast.drawio", { private: d.private ? "yes" : "no" });
 
 export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): string {
   const lines: string[] = [];

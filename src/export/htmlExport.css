@@ -16,7 +16,7 @@
 
 /* Require a password: the field (the password link's, src/interop/ui/PasswordField.tsx) and one line under it. */
 .ix-dialog .ix-html-password {
-  padding-left: 24px;
+  padding-inline-start: 24px;
 }
 
 .ix-dialog .ix-html-password-note {

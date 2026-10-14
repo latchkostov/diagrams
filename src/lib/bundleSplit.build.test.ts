@@ -8,6 +8,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["File operation messages", /[/\\]src[/\\]interop[/\\]ui[/\\]fileMessages\.ts$/],
+  ["canvas File actions", /[/\\]src[/\\]interop[/\\]fileActions\.ts$/],
   ["the draw.io converter", /[/\\]src[/\\]interop[/\\]drawio[/\\]/],
   ["the Mermaid converter", /[/\\]src[/\\]interop[/\\]mermaid[/\\]/],
   ["the infrastructure importers (compose reader)", /[/\\]src[/\\]interop[/\\]infra[/\\]/],
@@ -69,7 +71,7 @@ const STARTUP_CHUNKS = [
 
 /** Not in the canvas's first view either: they load when used, or once the canvas is idle. */
 const NOT_WITH_CANVAS = NOT_AT_STARTUP.filter(
-  ([what]) => !["the canvas", "React Flow", "the stencil search index"].includes(what),
+  ([what]) => !["the canvas", "React Flow", "the stencil search index", "canvas File actions"].includes(what),
 );
 
 let chunks: Rollup.OutputChunk[];

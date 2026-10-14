@@ -1,3 +1,4 @@
+import { t as tr } from "../../i18n";
 import { parseAllDocuments, type DocumentOptions, type ParseOptions, type SchemaOptions } from "yaml";
 import { LIMITS } from "../native";
 
@@ -35,25 +36,33 @@ export function readYaml(text: string, fileName: string): unknown[] {
   try {
     docs = parseAllDocuments(text, OPTIONS);
   } catch {
-    throw new ImportError(`${fileName} couldn't be read as YAML.`);
+    throw new ImportError(tr("importDetail.value0CouldntBeReadAsYAML", { value0: fileName }));
   }
   const list = Array.isArray(docs) ? docs : [docs];
   if (list.length > YAML_LIMITS.maxDocuments)
-    throw new ImportError(`${fileName} has more than ${YAML_LIMITS.maxDocuments.toLocaleString("en")} documents.`);
+    throw new ImportError(
+      tr("importDetail.value0HasMoreThanValue1Number", { value0: fileName, value1: YAML_LIMITS.maxDocuments }),
+    );
   const out: unknown[] = [];
   for (const doc of list) {
     const err = doc.errors[0];
     if (err) {
       const [line, col] = err.linePos?.[0] ? [err.linePos[0].line, err.linePos[0].col] : [];
       const what = err.message.split("\n")[0].replace(/ at line \d+, column \d+:?$/, "");
-      throw new ImportError(`${fileName} isn't valid YAML${line ? ` (line ${line}, column ${col})` : ""}: ${what}`);
+      throw new ImportError(
+        tr("importDetail.value0IsntValidYAMLvalue1Value2", {
+          value0: fileName,
+          value1: line ? ` (line ${line}, column ${col})` : "",
+          value2: what,
+        }),
+      );
     }
     let value: unknown;
     try {
       value = doc.toJS({ maxAliasCount: YAML_LIMITS.maxAliasCount });
     } catch (e) {
       if (e instanceof ReferenceError && /alias/i.test(e.message)) throw new ImportError(TOO_MANY_ALIASES);
-      throw new ImportError(`${fileName} couldn't be read as YAML.`);
+      throw new ImportError(tr("importDetail.value0CouldntBeReadAsYAML", { value0: fileName }));
     }
     checkBudget(value);
     if (value !== null && value !== undefined) out.push(value);
@@ -67,9 +76,9 @@ export function checkBudget(value: unknown): void {
   let seen = 0;
   while (stack.length) {
     const [v, depth] = stack.pop()!;
-    if (++seen > YAML_LIMITS.maxNodes) throw new ImportError("This file holds too many values to read.");
+    if (++seen > YAML_LIMITS.maxNodes) throw new ImportError(tr("importDetail.thisFileHoldsTooManyValues"));
     if (typeof v !== "object" || v === null) continue;
-    if (depth >= YAML_LIMITS.maxDepth) throw new ImportError("This file is nested too deeply to read.");
+    if (depth >= YAML_LIMITS.maxDepth) throw new ImportError(tr("importDetail.thisFileIsNestedTooDeeply"));
     for (const child of Array.isArray(v) ? v : Object.values(v)) stack.push([child, depth + 1]);
   }
 }

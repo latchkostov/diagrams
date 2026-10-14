@@ -1,3 +1,4 @@
+import { t as tr } from "../../i18n";
 import type { Evidence, ImportComponent, ImportGraph, ImportLink } from "./graph";
 import type { DiagramGroup } from "../../model/types";
 import { parseUrl } from "./settings";
@@ -160,13 +161,14 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     for (const root of readYaml(f.text, f.name)) {
       if (!isMap(root)) continue;
       const version = str(own(root, "asyncapi")) ?? "";
-      if (!/^[23]\./.test(version)) throw new ImportError(`${f.name} isn't an AsyncAPI 2.x or 3.x document.`);
+      if (!/^[23]\./.test(version))
+        throw new ImportError(tr("importDetail.value0IsntAnAsyncAPI2xOr", { value0: f.name }));
       const doc = { file: f.name, root, v2: version.startsWith("2.") };
       docs.push(doc);
       if (!byName.has(baseName(f.name))) byName.set(baseName(f.name), doc);
     }
   }
-  if (!docs.length) throw new ImportError("It has no AsyncAPI document to read.");
+  if (!docs.length) throw new ImportError(tr("importDetail.itHasNoAsyncAPIDocumentTo"));
 
   const g: ImportGraph = {
     format: "AsyncAPI",
@@ -184,7 +186,7 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
   for (const doc of docs) refs.scan(doc);
   let work = 0;
   const step = () => {
-    if (++work > WORK_BUDGET) throw new ImportError("It has too much to read in one import.");
+    if (++work > WORK_BUDGET) throw new ImportError(tr("importDetail.itHasTooMuchToRead"));
   };
 
   // ------------------------------------------------ servers: one boundary per host and protocol family
@@ -501,13 +503,15 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
 
     // Unused and undrawn: listed, never dropped silently.
     for (const [c, key] of indexOf(doc))
-      if (!usedChannels.has(c)) g.notDrawn.push({ name: key, reason: `no operation in ${title} uses it` });
+      if (!usedChannels.has(c))
+        g.notDrawn.push({ name: key, reason: tr("importDetail.noOperationInValue0UsesIt", { value0: title }) });
     const comps = refs.child(root, "components");
     const msgs = refs.child(comps, "messages");
     if (msgs && isMap(msgs.value))
       for (const k of Object.keys(msgs.value)) {
         const m = refs.resolve(msgs.value[k], msgs.doc);
-        if (m && !usedMessages.has(m.value)) g.notDrawn.push({ name: k, reason: "a message no channel uses" });
+        if (m && !usedMessages.has(m.value))
+          g.notDrawn.push({ name: k, reason: tr("importDetail.aMessageNoChannelUses") });
       }
     for (const [what, field] of [
       ["security scheme", "securitySchemes"],
@@ -517,7 +521,7 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
       if (n)
         g.notDrawn.push({
           name: `${title}: ${n} ${what}${n === 1 ? "" : "s"}`,
-          reason: "not components of the system",
+          reason: tr("importDetail.notComponentsOfTheSystem"),
         });
     }
   }
@@ -539,16 +543,18 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
         channel.producers.add(source.key);
         flow(source.key, channel.key, { dlq: true }, { source: "spec", name: "dead letters" });
         g.notes.push(
-          `${channel.address} is the dead-letter route of ${source.address} (${app.title} sends its failures there)`,
+          tr("importDetail.value0IsTheDeadletterRouteOf", {
+            value0: channel.address,
+            value1: source.address,
+            value2: app.title,
+          }),
         );
       } else {
         channel.producers.add(app.key);
         const only = names.size === 1 ? [...names][0] : undefined;
         app.sends.push({ channel: channel.key, message: only });
         flow(app.key, channel.key, only ? { emits: only } : {}, { source: "spec", name: "dead letters" });
-        g.notes.push(
-          `${app.title} sends to ${channel.address}: which input's failures go there couldn't be told, so it's drawn as an ordinary message`,
-        );
+        g.notes.push(tr("importDetail.value0SendsToValue1WhichInputs", { value0: app.title, value1: channel.address }));
       }
     }
 
@@ -560,7 +566,11 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     const exchanges = ch.kinds.filter((k) => k.exchange && k !== queue);
     if (queue && exchanges.length)
       g.notes.push(
-        `${ch.address} is a queue; ${exchanges[0].doc} sends to it through the exchange “${exchanges[0].exchange}”`,
+        tr("importDetail.value0IsAQueueValue1Sends", {
+          value0: ch.address,
+          value1: exchanges[0].doc,
+          value2: exchanges[0].exchange ?? "",
+        }),
       );
     add({
       key: ch.key,
@@ -579,7 +589,8 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
         : {}),
     });
     if (ch.server && ch.contentType) ch.server.avro = true;
-    if (ch.consumers.size && !ch.producers.size) g.notes.push(`${ch.address} has no producer in these files`);
+    if (ch.consumers.size && !ch.producers.size)
+      g.notes.push(tr("importDetail.value0HasNoProducerInThese", { value0: ch.address }));
   }
   const used = new Set([...channels.values()].map((c) => c.server?.id));
   g.groups = [...servers.values()]
@@ -593,12 +604,13 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     if (server.family !== "kafka" || (!server.registry && !server.avro)) continue;
     const registry = add({
       key: `\u0006${server.registry ?? server.id}`,
+      // eslint-disable-next-line local/no-literal-ui-text -- persisted diagram content, not UI copy
       label: server.registry ?? "Schema Registry",
       hint: { name: "schema registry" },
       stencil: "kafka.schema-registry",
     });
     if (!server.registry)
-      g.notes.push(`Schema Registry added: messages on ${server.host || "Kafka"} use Avro or Protobuf`);
+      g.notes.push(tr("importDetail.schemaRegistryAddedMessagesOnValue0", { value0: server.host || "Kafka" }));
     for (const c of channels.values()) {
       if (c.server !== server) continue;
       for (const user of [...c.producers, ...c.consumers]) {
@@ -633,8 +645,8 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     const why = g.unread[0];
     throw new ImportError(
       why
-        ? `Nothing in it could be drawn: ${why.name} (${why.reason}).`
-        : "Nothing in it could be drawn: no operation sends or receives on a channel.",
+        ? tr("importDetail.nothingInItCouldBeDrawn", { value0: why.name, value1: why.reason })
+        : tr("importDetail.nothingInItCouldBeDrawnMore"),
     );
   }
   g.title = apps.length === 1 ? apps[0].title : `${apps.length} services`;

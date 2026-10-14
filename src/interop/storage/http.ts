@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { LIMITS, tooLargeMessage } from "../native";
 import { StorageError } from "./types";
 
@@ -34,7 +35,9 @@ export async function authorized(
       });
     } catch (err) {
       if (init.signal?.aborted) throw init.signal.reason ?? err;
-      throw new StorageError(`Couldn't reach ${label} to ${action}. Check your connection.`);
+      throw new StorageError(
+        t("cloud.couldntReachLabelToActionCheckYour", { label: label, action: action.replaceAll(" ", "_") }),
+      );
     }
     if (res.ok) return res;
     if (res.status === 401 && attempt === 0) {
