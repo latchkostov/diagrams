@@ -214,9 +214,15 @@ export function LiveSession({
     if (!stopped) return;
     const hint = controller.trafficHint();
     if (!hint) return;
-    // Shown on the next task, not during this commit: a notice needs no synchronous re-render.
-    const id = window.setTimeout(() => flash(hint), 0);
-    return () => window.clearTimeout(id);
+    // Shown right after this commit, not during it (no synchronous re-render from the effect). A microtask, not a
+    // timer: a paused clock (presenting a frozen frame, a test's fake clock) must not hold the notice back.
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) flash(hint);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [state.traffic, controller, flash]);
 
   // ---------------------------------------------------------------- diagram edits while live
