@@ -211,6 +211,11 @@
       "use": "Susiejimas",
       "match": ["Susiejimai", "Susiejimas"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "užkarda",
+      "match": ["užkard", "ugniasien"],
+      "avoid": ["uždegimo siena", "užkrovimo siena", "ugnies sienos"]
     }
   },
   "keys": {

@@ -219,6 +219,9 @@
       "use": "Liên kết",
       "match": ["Liên kết"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "tường lửa"
     }
   },
   "keys": {

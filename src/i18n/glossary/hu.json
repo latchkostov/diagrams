@@ -210,6 +210,10 @@
       "use": "Kötés",
       "match": ["Kötések", "Kötés"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "tűzfal",
+      "match": ["A tűzfal"]
     }
   },
   "keys": {

@@ -205,6 +205,9 @@
       "use": "绑定",
       "match": ["绑定"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "防火墙"
     }
   },
   "keys": {

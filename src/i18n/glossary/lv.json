@@ -214,6 +214,11 @@
       "use": "Sasaiste",
       "match": ["Sasaistes", "Sasaiste"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "ugunsmūris",
+      "match": ["ugunsmūr"],
+      "avoid": ["ugunsdzēsības sien"]
     }
   },
   "keys": {

@@ -191,6 +191,10 @@
       "use": "Associação",
       "match": ["Associações", "Associação"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "firewall",
+      "avoid": ["paredes de segurança", "parede de segurança"]
     }
   },
   "keys": {

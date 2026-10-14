@@ -1372,7 +1372,7 @@
   "stencil.ciscoSecureFirewallDescription": "جدران الحماية Firepower Threat Defense و ASA (جدران الحماية الآمنة 1200, 3100 و 4200 سلسلة).",
   "stencil.checkpointQuantumDescription": "أمن قوة الكم بوابة (3920 فرع إلى 19100 مركز البيانات).",
   "stencil.subtitleSecurityGateway": "الأمن بوابة",
-  "stencil.juniperSrxDescription": "جدران إطفاء SRX ومركبات آمنة (فروع SRX345 إلى مركز بيانات SRX4600).",
+  "stencil.juniperSrxDescription": "جدران الحماية SRX ومركبات آمنة (فروع SRX345 إلى مركز بيانات SRX4600).",
   "stencil.subtitleFirewall": "جدار الحماية",
   "stencil.genericAdcDescription": "مراقب تسليم التطبيقات: أجهزة أجهزة أو افتراضية موازن التحميل التي تهدف إلى الصحة-عمليات التحقق.",
   "stencil.f5BigipDescription": "BIG-IP Local Traffic Manager على rSeries (r2600 إلى r10900) ، VELOS أو الطبعات الافتراضية.",

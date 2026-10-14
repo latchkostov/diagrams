@@ -217,6 +217,11 @@
       "use": "Bindning",
       "match": ["Bindningar", "Bindning"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "Brandväggar",
+      "match": ["brandvägg"],
+      "avoid": ["brannvägg"]
     }
   },
   "keys": {

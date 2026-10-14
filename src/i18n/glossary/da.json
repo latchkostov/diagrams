@@ -220,6 +220,9 @@
       "use": "Binding",
       "match": ["Bindinger", "Binding"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "firewall"
     }
   },
   "keys": {

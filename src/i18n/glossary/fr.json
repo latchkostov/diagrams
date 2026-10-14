@@ -189,6 +189,10 @@
       "use": "Liaison",
       "match": ["Liaison", "Liaisons"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "pare-feu",
+      "avoid": ["paroi de sécurité", "paroi de protection contre les incendies"]
     }
   },
   "keys": {

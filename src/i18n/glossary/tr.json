@@ -206,6 +206,10 @@
       "use": "Bağlama",
       "match": ["Bağlamalar", "Bağlama"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "güvenlik duvarı",
+      "match": ["güvenlik duvar"]
     }
   },
   "keys": {

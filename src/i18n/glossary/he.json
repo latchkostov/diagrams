@@ -213,6 +213,10 @@
       "use": "קישור",
       "match": ["קישורים", "קישור"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "חומת אש",
+      "match": ["חומות אש", "קירות אש"]
     }
   },
   "keys": {

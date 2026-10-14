@@ -1368,7 +1368,7 @@
   "stencil.genericNgfwName": "Фейървол (NGFW)",
   "stencil.genericNgfwDescription": "Устройство за защитна стена в стойката ви: разрешава или отказва всяко свързване, проверява какво позволява.",
   "stencil.subtitleAppliance": "устройство",
-  "stencil.paloaltoNgfwDescription": "PA-Series пожарни стени от следващо поколение (филиал на PA-440 към център за данни PA-5440).",
+  "stencil.paloaltoNgfwDescription": "PA-Series защитни стени от следващо поколение (филиал на PA-440 към център за данни PA-5440).",
   "stencil.fortinetFortigateDescription": "Следващото поколение защитни стени с вградена SD-WAN (FortiGate 70G до 3700F).",
   "stencil.ciscoSecureFirewallDescription": "Защитни защитни стени Firepower Threat Defense и ASA (серия Secure Firewall 1200, 3100 и 4200).",
   "stencil.checkpointQuantumDescription": "Защита на квантовите сили шлюз (3920 клон до 19100 център за данни).",

@@ -213,6 +213,11 @@
       "use": "Обвързване",
       "match": ["Обвързване", "Обвързвания"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "брандмауър",
+      "match": ["Фейървол", "защитн"],
+      "avoid": ["пожарни стени"]
     }
   },
   "keys": {

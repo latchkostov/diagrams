@@ -212,6 +212,11 @@
       "use": "Привязка",
       "match": ["Привязка", "Привязки"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "брандмауэр",
+      "match": ["брандмауэр", "межсетев"],
+      "avoid": ["фейрвал", "защитные стены"]
     }
   },
   "keys": {

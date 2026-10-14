@@ -189,7 +189,9 @@ export function StencilDrawer({
             {s.defaultSublabel && (
               <>
                 <dt>{t("gallery.newNodesSay")}</dt>
-                <dd className="mono">{stencilSubtitle(s)}</dd>
+                <dd className="mono" data-testid="drawer-default-subtitle">
+                  {s.defaultSublabel}
+                </dd>
               </>
             )}
             <dt>{t("view.node.iconOnly")}</dt>

@@ -206,6 +206,11 @@
       "use": "ارتباط",
       "match": ["ارتباط", "الارتباطات"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "جدار الحماية",
+      "match": ["جدار حماية", "جدران الحماية", "حائط الحماية"],
+      "avoid": ["جدران إطفاء"]
     }
   },
   "keys": {

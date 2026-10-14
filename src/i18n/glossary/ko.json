@@ -206,6 +206,9 @@
       "use": "바인딩",
       "match": ["바인딩"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "방화벽"
     }
   },
   "keys": {

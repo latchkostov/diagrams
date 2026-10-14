@@ -1,5 +1,15 @@
 # Release notes
 
+## Stencil catalog review fixes (2026-10-14)
+
+- Stencil details show the actual saved default under **New nodes say**, while catalog previews retain
+  translated subtitles. Add and New diagram therefore produce the text promised by the details.
+- Firewall names use network-security vocabulary in French and 13 other affected locales; all 37
+  language glossaries now guard names, subtitles and descriptions. Related descriptions use the same
+  terminology, including repaired French and Croatian SRX descriptions.
+- English and translated discovery share scoring and stable ranking. Exhaustive pseudo-locale checks
+  guard display lookups, and browser checks catch vertical clipping and caption overlaps in previews.
+
 ## Stencil catalog localization (2026-10-14)
 
 - Generic stencil names, subtitles, descriptions and vendor labels now follow the selected language

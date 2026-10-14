@@ -208,6 +208,9 @@
       "use": "バインディング",
       "match": ["バインディング"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "ファイアウォール"
     }
   },
   "keys": {

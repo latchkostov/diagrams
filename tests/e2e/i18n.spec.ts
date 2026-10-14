@@ -186,6 +186,7 @@ for (const code of ["de", "ja", "ar"] as const) {
     const drawer = page.getByTestId("stencil-drawer");
     await expect(drawer).toContainText(text["stencil.genericDatabaseDescription"]);
     await expect(drawer).toContainText(text["stencil.subtitleDatabase"]);
+    await expect(page.getByTestId("drawer-default-subtitle")).toHaveText("database");
     await expectNothingCut(drawer, `${code}: stencil details`);
     await expectSeparatePreviews(page);
     await page.keyboard.press("Escape");
@@ -194,6 +195,79 @@ for (const code of ["de", "ja", "ar"] as const) {
     expectNoErrors(consoleErrors);
   });
 }
+
+test("stencil details promise the subtitle created by Add and New diagram", async ({ page }) => {
+  await remember(page, "de");
+  await gotoCanvas(page, SLUG);
+  for (const action of ["drawer-add", "drawer-new"]) {
+    await page.goto("./?view=gallery");
+    await page.getByTestId("gallery-search").fill("generic.database");
+    await page.getByTestId("stencil-tile-generic.database").click();
+    const subtitle = page.getByTestId("drawer-default-subtitle");
+    await expect(subtitle).toHaveText("database");
+    const promised = await subtitle.innerText();
+    await page.getByTestId(action).click();
+    await page.getByTestId(action === "drawer-add" ? "node-database-1" : "node-database").click();
+    await expect(page.getByTestId("inspector-field-sublabel")).toHaveValue(promised);
+  }
+});
+
+for (const variant of ["card", "compact", "iconOnly"]) {
+  test(`wrapped catalog previews stay inside their stage and clear their captions: ${variant}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await remember(page, "en-XA");
+    await page.addInitScript((nodeVariant) => {
+      localStorage.setItem("diagrams.settings.v1", JSON.stringify({ nodeVariant }));
+    }, variant);
+    await page.goto("./?view=gallery");
+    for (const id of [
+      "generic.identity-provider",
+      "generic.secret-store",
+      "generic.vector-db",
+      "azure.service-bus.queue",
+    ]) {
+      await page.getByTestId("gallery-search").fill(id);
+      const stage = page.getByTestId(`tile-stage-${id}`);
+      await expect(stage).toContainText("[");
+      await expectNothingCut(stage, `wrapped ${variant} tile: ${id}`);
+      expect(await previewProblems(stage), `${variant}: ${id}`).toEqual([]);
+      await page.getByTestId(`stencil-tile-${id}`).click();
+      await expect(page.getByTestId("drawer-preview")).toBeVisible();
+      expect(await previewProblems(page.getByTestId("drawer-preview")), `drawer: ${id}`).toEqual([]);
+      await expectSeparatePreviews(page);
+      if (id === "generic.identity-provider" && variant === "iconOnly")
+        await page.screenshot({ path: "tests/.output/review-ux-gallery.png" });
+      await page.getByTestId("drawer-close").click();
+    }
+  });
+}
+
+test("the preview audit detects vertical clipping and overlap with its own figcaption", async ({ page }) => {
+  await remember(page, "en-XA");
+  await page.goto("./?view=gallery");
+  await page.getByTestId("gallery-search").fill("generic.identity-provider");
+  await page.getByTestId("stencil-tile-generic.identity-provider").click();
+  const stage = page.getByTestId("drawer-preview");
+  await expect(stage).toBeVisible();
+  expect(await previewProblems(stage)).toEqual([]);
+  // Use the actual rendered preview as the deliberately clipped fixture; no timing or screenshot oracle.
+  await stage.evaluate((el) => {
+    el.style.height = "24px";
+    el.style.overflow = "hidden";
+  });
+  expect(await previewProblems(stage)).toContainEqual(expect.stringContaining("vertical"));
+  await stage.evaluate((el) => el.removeAttribute("style"));
+  const caption = page.getByTestId("drawer-preview-iconOnly").getByTestId("node-caption");
+  const captionBox = await caption.boundingBox();
+  const figcaptionBox = await page.getByTestId("drawer-variant-iconOnly").boundingBox();
+  if (!captionBox || !figcaptionBox) throw new Error("Missing caption geometry");
+  await caption.evaluate((el, delta) => {
+    el.style.translate = `0 ${delta}px`;
+  }, figcaptionBox.y - captionBox.y);
+  expect(await previewProblems(stage)).toContainEqual(expect.stringContaining("figcaption overlap"));
+  await caption.evaluate((el) => el.removeAttribute("style"));
+  expect(await previewProblems(stage)).toEqual([]);
+});
 
 for (const code of ["de", "ar", "en-XA"]) {
   test.describe(`canvas chrome in ${code}`, () => {
@@ -1221,6 +1295,46 @@ async function expectSeparatePreviews(page: Page) {
       caption.y + caption.height <= compact.y,
     "the icon caption has its own space, including when the preview row wraps",
   ).toBe(true);
+}
+
+/** Preview stages must contain all their content, even where overflow is visible. Scrollable drawers may scroll. */
+async function previewProblems(stage: Locator): Promise<string[]> {
+  return stage.evaluate((root) => {
+    const problems: string[] = [];
+    const outer = root.getBoundingClientRect();
+    const name = (el: Element) => el.getAttribute("data-testid") ?? el.tagName.toLowerCase();
+    const intersects = (a: DOMRect, b: DOMRect) =>
+      a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    for (const el of root.querySelectorAll("*")) {
+      if (!(el instanceof HTMLElement) || !el.getClientRects().length) continue;
+      const box = el.getBoundingClientRect();
+      if (!box.width || !box.height) continue;
+      if (box.top < outer.top - 1 || box.bottom > outer.bottom + 1)
+        problems.push(`vertical stage overflow: ${name(el)}`);
+      for (let parent = el.parentElement; parent && root.contains(parent); parent = parent.parentElement) {
+        const style = getComputedStyle(parent);
+        if (style.overflowY !== "hidden" && style.overflowY !== "clip") continue;
+        const clip = parent.getBoundingClientRect();
+        if (box.top < clip.top - 1 || box.bottom > clip.bottom + 1)
+          problems.push(`vertical clipping: ${name(el)} in ${name(parent)}`);
+      }
+    }
+    for (const variant of ["card", "compact", "iconOnly"]) {
+      const figure = root.querySelector(`[data-testid="drawer-preview-${variant}"]`);
+      const figcaption = figure?.querySelector(`[data-testid="drawer-variant-${variant}"]`);
+      if (!figure || !figcaption) continue;
+      const captionBox = figcaption.getBoundingClientRect();
+      // All node descendants, including the absolutely positioned icon caption, must clear the figure caption.
+      const node = figure.firstElementChild;
+      if (!node) continue;
+      for (const el of node.querySelectorAll("*")) {
+        const box = el.getBoundingClientRect();
+        if (box.width && box.height && intersects(box, captionBox))
+          problems.push(`figcaption overlap: ${name(el)} in ${variant}`);
+      }
+    }
+    return problems;
+  });
 }
 
 /**

@@ -216,6 +216,10 @@
       "use": "Seos",
       "match": ["Seosed", "Seos"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "tulemüür",
+      "avoid": ["tuletõr"]
     }
   },
   "keys": {

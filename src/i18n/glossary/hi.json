@@ -235,6 +235,10 @@
       "use": "बाइंडिंग",
       "match": ["बाइंडिंग"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "फायरवॉल",
+      "match": ["फ़ायरवॉल"]
     }
   },
   "keys": {

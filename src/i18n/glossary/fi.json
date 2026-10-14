@@ -217,6 +217,11 @@
       "use": "Sidonta",
       "match": ["Sidonta", "Sidonnat"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "palomuuri",
+      "match": ["palomuur"],
+      "avoid": ["palonmuur"]
     }
   },
   "keys": {

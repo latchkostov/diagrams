@@ -216,6 +216,9 @@
       "use": "Legătură",
       "match": ["Legături", "Legătură"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "firewall"
     }
   },
   "keys": {

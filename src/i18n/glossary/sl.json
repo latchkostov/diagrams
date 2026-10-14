@@ -208,6 +208,10 @@
       "use": "Vezava",
       "match": ["Vezave", "Vezava"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "požarni zid",
+      "match": ["Firewall"]
     }
   },
   "keys": {

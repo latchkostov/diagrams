@@ -209,6 +209,9 @@
       "use": "繫結",
       "match": ["繫結"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "防火牆"
     }
   },
   "keys": {

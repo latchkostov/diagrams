@@ -181,6 +181,10 @@
     "binding": {
       "en": ["bindings?"],
       "note": "P2 broker allocation and routing vocabulary."
+    },
+    "firewall": {
+      "en": ["firewalls?"],
+      "note": "A network-security device or software that filters connections. Never a physical fire barrier or firefighting equipment. Keep branded product names intact; generic nouns and descriptions use the locale’s network terminology."
     }
   }
 }

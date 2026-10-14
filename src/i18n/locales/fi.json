@@ -1371,7 +1371,7 @@
   "stencil.subtitleAppliance": "laitteet",
   "stencil.paloaltoNgfwDescription": "PA-Series seuraavan sukupolven palomuurit (PA-440-osasto PA-5440-tietokeskukseen).",
   "stencil.fortinetFortigateDescription": "Seuraavan sukupolven palomuurit, joissa on sisäänrakennettu SD-WAN (FortiGate 70G-3700F).",
-  "stencil.ciscoSecureFirewallDescription": "Firepower Threat Defense ja ASA-palonmuurit (Secure Firewall 1200, 3100 ja 4200 sarjat).",
+  "stencil.ciscoSecureFirewallDescription": "Firepower Threat Defense ja ASA-palomuurit (Secure Firewall 1200, 3100 ja 4200 sarjat).",
   "stencil.checkpointQuantumDescription": "Kvanttivoiman turvallisuus yhdyskäytävä (3920 sivuliikkeeseen 19100 tietokeskukseen).",
   "stencil.subtitleSecurityGateway": "turvallisuus yhdyskäytävä",
   "stencil.juniperSrxDescription": "SRX:n palomuurit ja turvatut reitit (SRX345:n sivuliike SRX4600-tietokeskukseen).",

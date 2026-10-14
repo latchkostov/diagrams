@@ -197,6 +197,11 @@
       "use": "Enlace",
       "match": ["Enlaces", "Enlace"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "firewall",
+      "match": ["firewall", "cortafuegos"],
+      "avoid": ["paredes de seguridad", "pared de seguridad"]
     }
   },
   "keys": {

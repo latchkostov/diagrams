@@ -1372,7 +1372,7 @@
   "stencil.subtitleAppliance": "Apparat",
   "stencil.paloaltoNgfwDescription": "PA-Series nästa generations brandväggar (PA-440-gren till PA-5440-dataskärmen).",
   "stencil.fortinetFortigateDescription": "Nästa generationens brandväggar med inbyggd SD-WAN (FortiGate 70G till 3700F).",
-  "stencil.ciscoSecureFirewallDescription": "Firepower Threat Defense och ASA-brannväggar (Secure Firewall 1200, 3100 och 4200-serien).",
+  "stencil.ciscoSecureFirewallDescription": "Firepower Threat Defense och ASA-brandväggar (Secure Firewall 1200, 3100 och 4200-serien).",
   "stencil.checkpointQuantumDescription": "Quantum Force Security gateway (3920 filial till 19100 datacenter).",
   "stencil.subtitleSecurityGateway": "säkerhet gateway",
   "stencil.juniperSrxDescription": "SRX-brandväggar och säkra routrar (SRX345-gren till SRX4600-dataskärmen).",

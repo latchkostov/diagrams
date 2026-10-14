@@ -216,6 +216,10 @@
       "use": "Veza",
       "match": ["Veze", "Veza"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "zaštitni zid",
+      "avoid": ["feйrvolovi", "feйruvali", "važeći branovi"]
     }
   },
   "keys": {

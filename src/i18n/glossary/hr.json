@@ -215,6 +215,11 @@
       "use": "Veza",
       "match": ["Veze", "Veza"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "Firewall",
+      "match": ["vatrozid"],
+      "avoid": ["vatrogasnih zidova"]
     }
   },
   "keys": {
