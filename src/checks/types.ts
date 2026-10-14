@@ -4,6 +4,7 @@
 import type { DiagramOp } from "../ai";
 import type { CheckRuleId } from "../model/checks";
 import type { CheckContext } from "./context";
+import type { BrokerSpec } from "../model/brokers";
 
 export type { CheckRuleId } from "../model/checks";
 
@@ -11,6 +12,8 @@ export type { CheckRuleId } from "../model/checks";
 export type CheckSeverity = "warning" | "suggestion";
 
 export interface CheckFix {
+  /** Neutral broker vocabulary, translated only by the UI; label stays English for agents and workers. */
+  brokerChanges?: { text: string; name: string; spec: BrokerSpec; count: number }[];
   /** The button's words, naming the change ("Add dead-letter queue"). */
   label: string;
   /** The change as edit_diagram ops: one applyOps call, one undo step. Absent when it needs a choice. */
@@ -35,6 +38,9 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  /** Neutral rationale descriptor; rationale stays English for workers and agents. */
+  brokerRationale?: "no-reader";
+  brokerAssignment?: { text: string; spec: BrokerSpec; active: number; configured: number };
   /** `${rule}:${target}`: stable across renames and moves. */
   id: string;
   rule: CheckRuleId;

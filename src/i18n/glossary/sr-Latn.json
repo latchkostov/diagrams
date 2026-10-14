@@ -26,7 +26,7 @@
       "match": ["potrošač"],
       "avoid": ["korisnik"],
       "note": "korisnik means user",
-      "except": ["menu.setConsumerGroup"]
+      "except": ["menu.setConsumerGroup", "broker.group"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -84,7 +84,8 @@
     },
     "subscription": {
       "use": "pretplata",
-      "match": ["pretplat"]
+      "match": ["pretplat", "Pretplata", "Pretplate"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -185,6 +186,16 @@
     "annotation": {
       "use": "anotacija",
       "match": ["anotacij"]
+    },
+    "shard": {
+      "use": "Shardovi",
+      "match": ["Shardovi"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Veza",
+      "match": ["Veze", "Veza"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

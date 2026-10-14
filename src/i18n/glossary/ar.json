@@ -79,7 +79,8 @@
     },
     "subscription": {
       "use": "اشتراك",
-      "match": ["اشتراك"]
+      "match": ["اشتراك", "الاشتراكات"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -180,6 +181,16 @@
     "annotation": {
       "use": "تعليق توضيحي",
       "match": ["توضيحي"]
+    },
+    "shard": {
+      "use": "الأجزاء",
+      "match": ["الأجزاء"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "ارتباط",
+      "match": ["ارتباط", "الارتباطات"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

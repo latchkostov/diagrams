@@ -5,6 +5,8 @@ import { RULES } from "../run";
 import type { Finding } from "../types";
 import { applyFix, ignoreFinding, turnOff } from "./actions";
 import { evidenceText } from "../evidenceMerge";
+import { useLocale } from "../../i18n";
+import { presentFinding } from "../presentation";
 
 // One finding, in the Checks card and (compact) at the top of a selected node's or edge's inspector: what's
 // wrong, why, what it involves, and its one primary action, the fix. ⋯ has Ignore here, Turn off this check
@@ -55,7 +57,7 @@ function focusNeighbour(row: HTMLElement) {
 }
 
 export function FindingRow({
-  finding: f,
+  finding,
   host,
   state,
   compact = false,
@@ -68,6 +70,8 @@ export function FindingRow({
   compact?: boolean;
   testPrefix?: string;
 }) {
+  useLocale();
+  const f = presentFinding(finding);
   const [panel, setPanel] = useState<"menu" | "ignore" | "about" | null>(null);
   const [reason, setReason] = useState("");
   const more = useRef<HTMLButtonElement>(null);

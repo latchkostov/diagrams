@@ -84,7 +84,8 @@
     },
     "subscription": {
       "use": "abonelik",
-      "match": ["abonel"]
+      "match": ["abonel", "Abonelik", "Abonelikler"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -180,6 +181,16 @@
     "annotation": {
       "use": "ek açıklama",
       "match": ["açıklama"]
+    },
+    "shard": {
+      "use": "Shard’lar",
+      "match": ["Shard’lar"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Bağlama",
+      "match": ["Bağlamalar", "Bağlama"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

@@ -25,7 +25,8 @@
     "consumer": {
       "use": "konsumen",
       "match": ["konsumen"],
-      "except": ["menu.setConsumerGroup"]
+      "except": ["menu.setConsumerGroup", "broker.group"],
+      "note": " The canonical consumer-group label is kept in English."
     },
     "consumer group": {
       "use": "consumer group",
@@ -88,7 +89,8 @@
     },
     "subscription": {
       "use": "langganan",
-      "match": ["langganan", "subscription"]
+      "match": ["langganan", "subscription", "Langganan"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -194,6 +196,16 @@
     "annotation": {
       "use": "anotasi",
       "match": ["anotasi"]
+    },
+    "shard": {
+      "use": "Shard",
+      "match": ["Shard"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Binding",
+      "match": ["Binding"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

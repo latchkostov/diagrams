@@ -15,7 +15,7 @@ export function PlanningUpgrade({ editor, planning }: { editor: EditorApi; plann
   const previewButton = useRef<HTMLButtonElement>(null);
   const [preview, setPreview] = useState(false);
   const d = preview ? editor.getDiagram() : undefined;
-  const next = d && !d.planning ? upgradePlanning(d) : undefined;
+  const next = d && d.planning?.revision !== "p2" ? upgradePlanning(d) : undefined;
   const before = d && next ? analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))) : undefined;
   const after = next ? analyzeCapacity(next, planningSimulation(next, explanationSimulation(next))) : undefined;
   const legacy = d?.planning ? legacyExport(d) : undefined;
@@ -23,7 +23,9 @@ export function PlanningUpgrade({ editor, planning }: { editor: EditorApi; plann
   return (
     <section className="insp-section" data-testid="planning-model">
       <h3 className="insp-section-title">{t("planning.model")}</h3>
-      <p className="insp-note">{planning ? t("planning.current") : t("planning.legacy")}</p>
+      <p className="insp-note">
+        {planning?.revision === "p2" ? t("broker.current") : planning ? t("planning.current") : t("planning.legacy")}
+      </p>
       <button
         className="link-btn"
         data-testid="planning-preview"
@@ -31,11 +33,11 @@ export function PlanningUpgrade({ editor, planning }: { editor: EditorApi; plann
         onClick={() => setPreview(!preview)}
         aria-expanded={preview}
       >
-        {planning ? t("planning.legacyPreview") : t("planning.preview")}
+        {planning?.revision === "p2" ? t("planning.legacyPreview") : t("planning.preview")}
       </button>
       {d && next && before && after && (
         <div data-testid="planning-upgrade-preview">
-          <p>{t("planning.upgradePreview", { count: d.nodes.length })}</p>
+          <p>{t("broker.upgradePreview")}</p>
           <ul>
             {d.nodes.map((n) => (
               <li key={n.id}>
@@ -62,9 +64,14 @@ export function PlanningUpgrade({ editor, planning }: { editor: EditorApi; plann
       )}
       {legacy && (
         <div data-testid="planning-legacy-preview">
-          <p>{t("planning.losses", { fields: formatList(legacy.losses) })}</p>
+          <p>
+            {d?.planning?.revision === "p2"
+              ? t("broker.exportLoss")
+              : t("planning.losses", { fields: formatList(legacy.losses) })}
+          </p>
+          {d?.planning?.revision === "p2" && <p>{formatList(legacy.losses)}</p>}
           <button
-            className="btn btn-primary"
+            className={next ? "btn" : "btn btn-primary"}
             data-testid="planning-legacy-download"
             onClick={() =>
               downloadText(

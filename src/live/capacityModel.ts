@@ -4,6 +4,9 @@
 // with a one-click fix. All rates are real messages per second.
 
 import { flowEdges } from "../model/relations";
+import { assignmentLabel } from "../stencils/brokerVocabulary";
+import { brokerSpec } from "../model/brokers";
+import { t } from "../i18n/core";
 import type { DiagramFile, DiagramNode, SimRole, Simulation, TrafficShape } from "../model/types";
 import { SIM_LIMITS } from "../interop/native";
 import { stencilRole } from "../stencils/roles";
@@ -348,7 +351,14 @@ export function computeFix(
   if (!sized) return null;
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const changes: FixChange[] = sized.map((c) => ({ ...c, label: byId.get(c.nodeId)!.label }));
-  const phrase = (c: FixChange) => `${c.label} ${c.from} → ${c.to} ${c.key}`;
+  const phrase = (c: FixChange) =>
+    c.key === "partitions" && d.planning?.revision === "p2"
+      ? t("broker.fix", {
+          name: c.label,
+          kind: assignmentLabel(baseProps(d, byId.get(c.nodeId)!, sim).broker),
+          count: c.to,
+        })
+      : `${c.label} ${c.from} → ${c.to} ${c.key}`;
   const label =
     changes.length <= 2
       ? changes.map(phrase).join(", ")
@@ -442,7 +452,9 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
     // Not "can't keep up": nothing reads it. Partitions only cap the consumers in a group, so they can't help.
     headline = `Nobody reads ${top.label}`;
     detail = keeps(top.role)
-      ? "It keeps what's published, but nothing consumes it. Partitions can't change that: add a consumer."
+      ? d.planning?.revision === "p2"
+        ? t("broker.noReader")
+        : "It keeps what's published, but nothing consumes it. Partitions can't change that: add a consumer."
       : "Messages wait in it until a consumer takes them.";
     addConsumer = top.id;
   } else if (!Number.isFinite(top.utilization)) {
@@ -450,7 +462,9 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
     detail = "Its consumers can't take any of its messages.";
   } else if (top.idleReplicas > 0 && top.level !== "ok") {
     headline = `${top.label}: ${top.idleReplicas} of ${top.replicas} replicas idle`;
-    detail = `A consumer group can't use more consumers than partitions. ${top.text}`;
+    detail = top.assignment
+      ? `${t("broker.assigned", { active: top.activeReplicas, configured: top.replicas })} · ${assignmentLabel(top.assignment)}. ${top.text}`
+      : `A consumer group can't use more consumers than partitions. ${top.text}`;
   } else if (top.level === "over" || top.level === "hot") {
     const more = over.length > 1 ? ` and ${over.length - 1} more` : "";
     headline = `${top.label}${more} ${over.length > 1 ? "are" : "is"} ${top.level === "over" ? "over" : "near"} capacity`;
@@ -513,7 +527,7 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
   const notes = new Map<string, string>();
   const raised = d.nodes.filter(
     (n) =>
-      PARTITIONED.has(roleOf(n)) &&
+      brokerSpec(n.stencil, roleOf(n), d.planning)?.partitioned &&
       baseProps(d, n, sim, inputs.props[n.id]).partitions > baseProps(d, n, sim).partitions,
   );
   if (!raised.length) return notes;
@@ -528,7 +542,12 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
   for (const node of raised) {
     const groups = groupsOf.get(node.id) ?? [];
     if (!groups.length) {
-      notes.set(node.id, "Nobody reads it yet, so more partitions change nothing.");
+      notes.set(
+        node.id,
+        d.planning?.revision === "p2"
+          ? t("broker.noReader")
+          : "Nobody reads it yet, so more partitions change nothing.",
+      );
       continue;
     }
     const now = baseProps(d, node, sim, inputs.props[node.id]).partitions;
@@ -537,7 +556,9 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
     const which = groups.length > 1 ? "Its largest consumer group has" : "Its consumer group has";
     notes.set(
       node.id,
-      `${which} ${most} ${most === 1 ? "replica" : "replicas"}: partitions past ${most} add no speed.`,
+      d.planning?.revision === "p2"
+        ? t("broker.assignmentNote")
+        : `${which} ${most} ${most === 1 ? "replica" : "replicas"}: partitions past ${most} add no speed.`,
     );
   }
   return notes;
@@ -603,7 +624,8 @@ export const PRESETS: readonly { id: PresetId; label: string; hint: string }[] =
   { id: "double-partitions", label: "Double partitions", hint: "Every topic and stream gets 2× partitions" },
 ];
 
-const partitionedIds = (d: DiagramFile) => d.nodes.filter((n) => PARTITIONED.has(roleOf(n)));
+const partitionedIds = (d: DiagramFile) =>
+  d.nodes.filter((n) => brokerSpec(n.stencil, roleOf(n), d.planning)?.partitioned);
 
 /** What a preset does to the inputs. Presets combine (Black Friday on half the pods). */
 export function applyPreset(id: PresetId, inputs: LiveInputs, d: DiagramFile, base: Simulation | null): LiveInputs {
@@ -628,21 +650,24 @@ export function applyPreset(id: PresetId, inputs: LiveInputs, d: DiagramFile, ba
 export function isPresetActive(id: PresetId, inputs: LiveInputs, d: DiagramFile, base: Simulation | null): boolean {
   const traffic = inputs.traffic ?? resolveMultiplier(base?.multipliers?.traffic);
   const capacity = inputs.capacity ?? resolveMultiplier(base?.multipliers?.capacity);
-  const brokers = partitionedIds(d);
   const partitions = (n: DiagramNode) => inputs.props[n.id]?.partitions;
   switch (id) {
     case "normal":
       return (
         traffic === 1 &&
         capacity === 1 &&
-        brokers.every((n) => partitions(n) === undefined || partitions(n) === baseProps(d, n, base).partitions)
+        partitionedIds(d).every(
+          (n) => partitions(n) === undefined || partitions(n) === baseProps(d, n, base).partitions,
+        )
       );
     case "black-friday":
       return traffic === 5;
     case "half-pods":
       return capacity === 0.5;
-    case "double-partitions":
+    case "double-partitions": {
+      const brokers = partitionedIds(d);
       return brokers.length > 0 && brokers.every((n) => partitions(n) === baseProps(d, n, base).partitions * 2);
+    }
   }
 }
 

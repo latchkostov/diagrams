@@ -115,6 +115,11 @@
       "minimum": 1,
       "maximum": 10000
     },
+    "ingestUnits": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
     "ratePerSec": {
       "type": "number",
       "minimum": 0,
@@ -265,6 +270,13 @@
       "label": "Kafka Topic",
       "vendor": "Apache Kafka",
       "role": "topic",
+      "broker": {
+        "partitioned": true,
+        "assignment": "partitions",
+        "group": "group",
+        "ingestUnit": "MB/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "log",
         "event stream",
@@ -336,6 +348,13 @@
       "label": "Service Bus Topic",
       "vendor": "Azure",
       "role": "topic",
+      "broker": {
+        "partitioned": false,
+        "assignment": "subscriptions",
+        "group": "subscription",
+        "ingestUnit": "messages/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "sb",
         "asb",
@@ -349,6 +368,13 @@
       "label": "Event Hubs",
       "vendor": "Azure",
       "role": "stream",
+      "broker": {
+        "partitioned": true,
+        "assignment": "partitions",
+        "group": "group",
+        "ingestUnit": "throughput-units",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "eh",
         "eventhub",
@@ -361,6 +387,13 @@
       "label": "Event Grid",
       "vendor": "Azure",
       "role": "topic",
+      "broker": {
+        "partitioned": false,
+        "assignment": "subscriptions",
+        "group": "subscription",
+        "ingestUnit": "messages/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "eg",
         "events",
@@ -383,6 +416,13 @@
       "label": "RabbitMQ Exchange",
       "vendor": "RabbitMQ",
       "role": "topic",
+      "broker": {
+        "partitioned": false,
+        "assignment": "bindings",
+        "group": "binding",
+        "ingestUnit": "messages/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "amqp",
         "rmq",
@@ -416,6 +456,13 @@
       "label": "Amazon SNS",
       "vendor": "AWS",
       "role": "topic",
+      "broker": {
+        "partitioned": false,
+        "assignment": "subscriptions",
+        "group": "subscription",
+        "ingestUnit": "messages/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "simple notification service",
         "pubsub",
@@ -428,6 +475,13 @@
       "label": "Amazon EventBridge",
       "vendor": "AWS",
       "role": "topic",
+      "broker": {
+        "partitioned": false,
+        "assignment": "subscriptions",
+        "group": "subscription",
+        "ingestUnit": "messages/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "cloudwatch events",
         "event bus",
@@ -439,6 +493,13 @@
       "label": "Kinesis Data Streams",
       "vendor": "AWS",
       "role": "stream",
+      "broker": {
+        "partitioned": true,
+        "assignment": "shards",
+        "group": "group",
+        "ingestUnit": "MB/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "kds",
         "firehose",
@@ -450,6 +511,13 @@
       "label": "Pub/Sub",
       "vendor": "Google Cloud",
       "role": "topic",
+      "broker": {
+        "partitioned": false,
+        "assignment": "subscriptions",
+        "group": "subscription",
+        "ingestUnit": "messages/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "pubsub",
         "pub sub",
@@ -461,6 +529,13 @@
       "label": "NATS Subject",
       "vendor": "NATS",
       "role": "topic",
+      "broker": {
+        "partitioned": false,
+        "assignment": "subscriptions",
+        "group": "subscription",
+        "ingestUnit": "messages/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "jetstream"
       ]
@@ -470,6 +545,13 @@
       "label": "Redis Stream",
       "vendor": "Redis",
       "role": "stream",
+      "broker": {
+        "partitioned": true,
+        "assignment": "partitions",
+        "group": "group",
+        "ingestUnit": "MB/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "xadd",
         "stream"
@@ -480,6 +562,13 @@
       "label": "Confluent Cloud",
       "vendor": "Confluent",
       "role": "stream",
+      "broker": {
+        "partitioned": true,
+        "assignment": "partitions",
+        "group": "group",
+        "ingestUnit": "MB/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "cf",
         "confluent platform",
@@ -519,6 +608,13 @@
       "label": "Pulsar Topic",
       "vendor": "Apache Pulsar",
       "role": "topic",
+      "broker": {
+        "partitioned": true,
+        "assignment": "partitions",
+        "group": "group",
+        "ingestUnit": "MB/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "pulsar",
         "pubsub",
@@ -530,6 +626,13 @@
       "label": "MQTT Broker",
       "vendor": "MQTT",
       "role": "topic",
+      "broker": {
+        "partitioned": false,
+        "assignment": "subscriptions",
+        "group": "subscription",
+        "ingestUnit": "messages/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "mqtt",
         "mosquitto",
@@ -543,6 +646,13 @@
       "label": "Amazon MSK",
       "vendor": "AWS",
       "role": "stream",
+      "broker": {
+        "partitioned": true,
+        "assignment": "partitions",
+        "group": "group",
+        "ingestUnit": "MB/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "msk",
         "managed kafka",
@@ -2790,6 +2900,13 @@
       "label": "Topic",
       "vendor": "Generic",
       "role": "topic",
+      "broker": {
+        "partitioned": false,
+        "assignment": "subscriptions",
+        "group": "subscription",
+        "ingestUnit": "messages/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "pubsub",
         "pub sub",
@@ -3120,6 +3237,13 @@
       "label": "Event Store",
       "vendor": "Generic",
       "role": "stream",
+      "broker": {
+        "partitioned": true,
+        "assignment": "partitions",
+        "group": "group",
+        "ingestUnit": "MB/s",
+        "producerSizeUnit": "kB"
+      },
       "aliases": [
         "event sourcing",
         "eventstoredb",

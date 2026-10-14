@@ -84,7 +84,8 @@
     },
     "subscription": {
       "use": "구독",
-      "match": ["구독"]
+      "match": ["구독"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "오프셋",
@@ -180,6 +181,16 @@
     "annotation": {
       "use": "주석",
       "match": ["주석"]
+    },
+    "shard": {
+      "use": "샤드",
+      "match": ["샤드"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "바인딩",
+      "match": ["바인딩"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

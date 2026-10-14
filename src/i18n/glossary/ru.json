@@ -84,7 +84,8 @@
     },
     "subscription": {
       "use": "подписка",
-      "match": ["подписк"]
+      "match": ["подписк", "Подписка", "Подписки"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "смещение",
@@ -186,6 +187,16 @@
     "annotation": {
       "use": "аннотация",
       "match": ["аннотаци"]
+    },
+    "shard": {
+      "use": "Шарды",
+      "match": ["Шарды"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Привязка",
+      "match": ["Привязка", "Привязки"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

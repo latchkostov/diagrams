@@ -13,6 +13,7 @@ import {
   type DevicePreset,
   type DeviceSize,
 } from "../stencils/netDevices";
+import { brokerSpec, type BrokerSpec } from "../model/brokers";
 import type { NodeSimProps } from "./types";
 import { profileOf, resolvePreset, FAMILIES, PROCESSOR_LESSON, type ResolutionEvidence } from "../stencils/profiles";
 import type { PlanningModel } from "../model/types";
@@ -38,7 +39,7 @@ export interface ResolvedDevice {
 }
 
 export type ResolvedProps = Required<
-  Omit<NodeSimProps, "emits" | DeviceKey | "preset" | "presetRevision" | "connections" | "querySlots">
+  Omit<NodeSimProps, "emits" | DeviceKey | "preset" | "presetRevision" | "connections" | "querySlots" | "ingestUnits">
 > &
   Pick<NodeSimProps, "emits"> & {
     healthChecks: boolean;
@@ -46,6 +47,7 @@ export type ResolvedProps = Required<
     device?: ResolvedDevice;
     /** Metadata only: never changes dispatch or sampling units. */
     profile: ResolutionEvidence;
+    broker?: BrokerSpec & { messageKB?: number; ingestUnits?: number };
   };
 
 /** Ignore malformed free-form diagram props rather than poisoning the clock. `stencil` adds a device's presets. */
@@ -60,11 +62,9 @@ export function resolveProps(
   const profile = profileOf(stencil);
   const compatible = !!profile && FAMILIES[profile.family].roles.includes(role);
   const pinned =
-    planning?.revision === "p1" && compatible
-      ? resolvePreset(stencil, props.preset, props.presetRevision, props.size)
-      : undefined;
+    !!planning && compatible ? resolvePreset(stencil, props.preset, props.presetRevision, props.size) : undefined;
   props = {
-    ...(planning?.revision === "p1" && compatible && profile ? FAMILIES[profile.family].defaults : {}),
+    ...(!!planning && compatible && profile ? FAMILIES[profile.family].defaults : {}),
     ...pinned?.values,
     ...props,
   };
@@ -76,7 +76,17 @@ export function resolveProps(
   const devicePreset = device ? resolvePreset(stencil, "device-size", "1", device.size) : undefined;
   const evidencePreset = pinned ?? devicePreset;
   const ha = device?.ha ?? "standalone";
+  const broker = brokerSpec(stencil, role, planning);
+  const metadata = (key: string) =>
+    typeof props[key] === "number" && Number.isFinite(props[key]) && props[key] > 0 ? props[key] : undefined;
   return {
+    broker: broker
+      ? {
+          ...broker,
+          ...(metadata("messageKB") !== undefined ? { messageKB: metadata("messageKB") } : {}),
+          ...(metadata("ingestUnits") !== undefined ? { ingestUnits: metadata("ingestUnits") } : {}),
+        }
+      : undefined,
     profile: {
       family: profile?.family,
       revision: planning?.revision ?? "legacy",

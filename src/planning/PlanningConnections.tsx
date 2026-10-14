@@ -1,3 +1,4 @@
+import { groupLabel } from "../stencils/brokerVocabulary";
 import { memo } from "react";
 import { t, useLocale } from "../i18n";
 import { formatDuration, formatList, formatPercent } from "../i18n/format";
@@ -36,7 +37,13 @@ export const PlanningConnections = memo(function PlanningConnections({
                 ? t("planning.publishes", { name: nodes.get(row.peer)!.label })
                 : t("planning.calls", { name: nodes.get(row.peer)!.label })}
           </strong>
-          {row.group !== undefined && <p data-testid="planning-group">{t("planning.group", { name: row.group })}</p>}
+          {row.group !== undefined && (
+            <p data-testid="planning-group">
+              {row.broker?.partitioned !== false
+                ? t("planning.group", { name: row.group })
+                : t("broker.named", { kind: groupLabel(row.broker), name: row.group })}
+            </p>
+          )}
           {row.filter && <p>{t("planning.filter", { types: formatList(row.filter) })}</p>}
           {row.emits && <p>{t("planning.emits", { type: row.emits })}</p>}
           {row.share !== undefined && <p>{t("planning.share", { share: formatPercent(row.share) })}</p>}

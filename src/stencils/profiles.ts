@@ -1,3 +1,4 @@
+import { BROKERS, type BrokerSpec } from "../model/brokers";
 import type { SimRole } from "../model/types";
 import type { NodeSimProps } from "../sim/types";
 import { PROCESSOR_VALUES, deviceValues } from "../model/planningPresets";
@@ -50,6 +51,7 @@ export interface Preset {
 }
 export interface StencilProfile {
   family: FamilyId;
+  broker?: BrokerSpec;
 }
 export interface FamilySpec {
   roles: SimRole[];
@@ -59,7 +61,7 @@ export interface FamilySpec {
 }
 export interface ResolutionEvidence {
   family?: FamilyId;
-  revision: "legacy" | "p1";
+  revision: "legacy" | "p1" | "p2";
   preset?: string;
   presetRevision?: string;
   evidence: Preset["sources"];
@@ -350,7 +352,9 @@ export const FAMILIES: Record<FamilyId, FamilySpec> = {
   dependency: { roles: ["none", "processor", "source"], defaults: {}, settings: [], overLimit: "none" },
 };
 export function profileOf(stencil: string | undefined): StencilProfile | undefined {
-  return stencil && Object.hasOwn(PROFILES, stencil) ? PROFILES[stencil] : undefined;
+  return stencil && Object.hasOwn(PROFILES, stencil)
+    ? { ...PROFILES[stencil], ...(BROKERS[stencil] ? { broker: BROKERS[stencil] } : {}) }
+    : undefined;
 }
 export function resolvePreset(
   stencil: string | undefined,

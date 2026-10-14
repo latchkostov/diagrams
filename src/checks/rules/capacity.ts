@@ -1,3 +1,5 @@
+import { englishAssignmentLabel } from "../../model/brokers";
+import { resolveNodeProps } from "../../sim/defaults";
 import type { DiagramOp } from "../../ai";
 import type { NodeCapacity } from "../../sim/capacity";
 import { MAX_COUNT, sizingFix } from "../../sim/capacityPlanning";
@@ -26,10 +28,21 @@ function scaleFix(ctx: CheckContext, n: NodeCapacity): CheckFix | undefined {
   // A device's next size (and the throughput typed over its old one) is one change: say it as the size.
   const size = changes.find((c) => c.key === "size");
   if (size) return { label: `Use the ${SIZE_LABEL[size.to].toLowerCase()} size (${size.model})`, ops };
-  const words = changes.map((c) =>
-    c.key === "replicas" ? `replicas to ${c.to}` : `${ctx.name(c.nodeId)} partitions to ${c.to}`,
-  );
-  return { label: `Set ${words.join(" and ")}`, ops };
+  const brokerChanges: NonNullable<CheckFix["brokerChanges"]> = [];
+  const words = changes.map((c) => {
+    const spec =
+      c.key === "partitions" && ctx.diagram.planning?.revision === "p2"
+        ? resolveNodeProps(ctx.diagram, ctx.nodes.get(c.nodeId)!).broker
+        : undefined;
+    if (spec) {
+      const name = ctx.name(c.nodeId);
+      const text = `${name}: ${englishAssignmentLabel(spec)} → ${c.to}`;
+      brokerChanges.push({ text, name, spec, count: c.to as number });
+      return text;
+    }
+    return c.key === "replicas" ? `replicas to ${c.to}` : `${ctx.name(c.nodeId)} partitions to ${c.to}`;
+  });
+  return { label: `Set ${words.join(" and ")}`, ops, ...(brokerChanges.length ? { brokerChanges } : {}) };
 }
 
 export const capacity: CheckRule = {
@@ -89,9 +102,20 @@ export const capacity: CheckRule = {
     const load = finite
       ? `it gets ${formatRate(top.offered)} and handles ${formatRate(top.capacity)} (${Math.round(top.utilization * 100)}%)`
       : `it gets ${formatRate(top.offered)} and can't handle any`;
+    const brokerAssignment =
+      top.idleReplicas > 0 && top.assignment
+        ? {
+            text: `Assigned instances: ${top.activeReplicas} / ${top.replicas} · ${englishAssignmentLabel(top.assignment)}.`,
+            spec: top.assignment,
+            active: top.activeReplicas,
+            configured: top.replicas,
+          }
+        : undefined;
     const idle =
       top.idleReplicas > 0
-        ? ` ${top.idleReplicas} of its ${top.replicas} replicas sit idle: a consumer group can't use more consumers than partitions.`
+        ? top.assignment
+          ? ` ${brokerAssignment!.text}`
+          : ` ${top.idleReplicas} of its ${top.replicas} replicas sit idle: a consumer group can't use more consumers than partitions.`
         : "";
     const fix = scaleFix(ctx, top);
     return [
@@ -105,6 +129,7 @@ export const capacity: CheckRule = {
         message: `At ${rates}, ${load}: its backlog only grows.${idle}${analysis.converged ? "" : " A feedback loop didn't settle, so these are estimates."}`,
         rationale:
           "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
+        ...(brokerAssignment ? { brokerAssignment } : {}),
         ...(fix ? { fix } : {}),
       },
     ];

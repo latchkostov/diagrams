@@ -84,7 +84,8 @@
     },
     "subscription": {
       "use": "abonnement",
-      "match": ["abonnement"]
+      "match": ["abonnement", "Abonnement", "Abonnementer"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -191,6 +192,16 @@
     "annotation": {
       "use": "merknad",
       "match": ["merknad"]
+    },
+    "shard": {
+      "use": "Shards",
+      "match": ["Shards"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Binding",
+      "match": ["Bindinger", "Binding"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

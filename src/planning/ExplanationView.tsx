@@ -1,6 +1,7 @@
+import { assignmentLabel } from "../stencils/brokerVocabulary";
 import { useLayoutEffect, useRef } from "react";
 import { t, useLocale } from "../i18n";
-import { formatList, formatPercent } from "../i18n/format";
+import { formatList, formatNumber, formatPercent } from "../i18n/format";
 import type { Explanation } from "./explanation";
 import { explanationRate, formatProcessingSeconds } from "./format";
 
@@ -81,6 +82,12 @@ export function ExplanationView({
                   })
                 : t("planning.deviceSummary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })}
       </p>
+      {x.assignments.length > 0 && (
+        <p data-testid="broker-assignment">
+          {t("broker.assigned", { active: x.activeReplicas, configured: x.replicas })} ·{" "}
+          {x.assignments.map((a) => `${assignmentLabel(a.spec)}: ${formatNumber(a.count)}`).join("; ")}
+        </p>
+      )}
       <p data-testid="planning-contributors">
         {sources ? t("planning.incoming", { sources }) : t("planning.noTraffic")}
       </p>

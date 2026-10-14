@@ -116,7 +116,7 @@ describe("P1 planning contract", () => {
     run.engine.setNodeProps("orders", { concurrency: 12 });
     expect(run.engine.effectiveProps("orders").concurrency).toBe(12);
     runChecks(d, { rules: ["capacity"] });
-    expect(spy.mock.calls.filter((args) => args[1] === "Orders").every((args) => args[4]?.revision === "p1")).toBe(
+    expect(spy.mock.calls.filter((args) => args[1] === "Orders").every((args) => args[4]?.revision === "p2")).toBe(
       true,
     );
     spy.mockRestore();

@@ -11,6 +11,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { bundleModule, INJECT, injectModule } from "./skill-viewer";
 import type { DiagramFile } from "../src/model/types";
+import { BROKERS } from "../src/model/brokers";
 import { catalog } from "../src/stencils/catalog";
 import { STENCIL_ALIASES } from "../src/lib/stencilSearch";
 import { FAMILIES, familyOf } from "../src/lib/vendorFamilies";
@@ -41,6 +42,8 @@ const NODE_PROP_NOTES: Record<string, string> = {
     "immutable preset id: processor-lesson (assumption) or device-size (existing approximate size preset); resolved values are pinned alongside",
   presetRevision: "pinned preset revision (1 for P1); unsupported revisions are refused",
   connections: "store connection ceiling, distinct from active query slots; planning metadata, not enforced in P1",
+  ingestUnits:
+    "broker provisioned ingest units, in the profile's native unit; metadata only, no vendor hard ingest ceiling in P2",
   querySlots: "measured concurrent active queries; planning metadata, stores remain parallel in P1 playback",
   ratePerSec: "messages per second a source sends in free play (default 2)",
   messageType: 'what a source sends, e.g. "OrderPlaced"',
@@ -52,12 +55,14 @@ const NODE_PROP_NOTES: Record<string, string> = {
   retry: '"requeue" (default: back of the broker) or "inplace" (same slot, blocks it)',
   retryBackoffMs: "delay before a failed message is redelivered",
   maxDeliveryCount: "on a broker: attempts before a message is dead-lettered (default 3)",
-  partitions: "on a topic or stream: the most consumers per group that can be active",
+  partitions:
+    "p2 partitioned logs only: instance assignments per group (Kinesis: shards); ignored by subscription/binding fan-out; legacy and p1 retain role-based limits",
   emits:
     'a processor renames what it sends: "PaymentCompleted", or a map {"OrderPlaced": "PaymentRequested", "*": "Audited"}',
   size: 'network devices (routers, switches, firewalls, ADCs): "branch", "campus" or "datacentre", whose datasheet throughput and latency are the defaults',
   gbps: "network devices: throughput per unit in Gbps (default: the size preset's); any gateway given gbps gets this ceiling",
-  messageKB: "network devices: the average message in kB the throughput is converted with (default 64)",
+  messageKB:
+    "average payload in kB: devices convert throughput with it (default 64); brokers retain producer-size metadata only, without a default or ingest ceiling",
   ha: 'network devices: "standalone" (default), "active-standby" (one unit carries traffic) or "active-active" (units add up); replicas = units',
   failoverMs: "network devices: how long an active-standby pair stalls when a unit fails (default 1000)",
   healthChecks: "gateways: skip targets that are down (default true for ADCs, false otherwise)",
@@ -66,7 +71,7 @@ const EDGE_PROP_NOTES: Record<string, string> = {
   networkDelayMs:
     "physical one-way delay in ms (absent means unknown); metadata only in P1, never added to animation travelMs",
   group:
-    "consumer group, on an edge leaving a topic or stream: every group gets each message, edges in one group compete",
+    "consumer group (logs), subscription (pub/sub), or binding (exchange); each name gets a copy and readers sharing a name compete; queues always compete",
   groupOrigin:
     "inferred: the default group follows the consumer node id when copied or reconnected; omit for authored group names",
   dlq: "true marks a broker's dead-letter route (also inferred from a target labelled DLQ or dead-letter)",
@@ -127,6 +132,7 @@ function spec() {
       label: s.label,
       vendor: s.vendor,
       role: s.simRole,
+      ...(BROKERS[s.id] ? { broker: BROKERS[s.id] } : {}),
       ...(STENCIL_ALIASES[s.id]?.length ? { aliases: [...STENCIL_ALIASES[s.id]] } : {}),
     })),
   };

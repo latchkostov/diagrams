@@ -24,7 +24,8 @@
     "consumer": {
       "use": "צרכן",
       "match": ["צרכן", "צרכנ"],
-      "except": ["menu.setConsumerGroup"]
+      "except": ["menu.setConsumerGroup", "broker.group"],
+      "note": " The canonical consumer-group label is kept in English."
     },
     "consumer group": {
       "use": "Consumer Group",
@@ -81,7 +82,8 @@
     },
     "subscription": {
       "use": "מינוי",
-      "match": ["מינוי"]
+      "match": ["מינוי", "מינויים"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -181,6 +183,16 @@
     "annotation": {
       "use": "הערה",
       "match": ["הער", "ביאור"]
+    },
+    "shard": {
+      "use": "רסיסים",
+      "match": ["רסיסים"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "קישור",
+      "match": ["קישורים", "קישור"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

@@ -1,3 +1,4 @@
+import { resolveNodeProps } from "../../sim/defaults";
 import { isBroker, listNames } from "../context";
 import type { CheckRule, Finding } from "../types";
 import { isDeadLetterQueue } from "./deadLetter";
@@ -43,6 +44,7 @@ export const noReader: CheckRule = {
         // A topic or stream keeps what's published, read or not (lag is per consumer group, and it has none); a
         // queue's messages wait for a consumer. Live view's banner says the same (src/live/capacityModel.ts).
         const keeps = ctx.role(id) !== "queue";
+        const subscription = resolveNodeProps(ctx.diagram, node).broker?.partitioned === false;
         const one = producers.length === 1;
         const send = `${listNames(producers.map(ctx.name))} ${keeps ? (one ? "publishes" : "publish") : one ? "sends" : "send"}`;
         out.push({
@@ -57,9 +59,12 @@ export const noReader: CheckRule = {
             : keeps
               ? `${send} to ${name}, but nothing consumes it: it keeps every message, unread.`
               : `${send} to ${name}, but nothing consumes it: messages pile up.`,
-          rationale: keeps
-            ? "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that."
-            : "A queue with producers and no consumers only grows. Every queue should have a consumer that takes its messages.",
+          rationale: subscription
+            ? "No readers. Add a reader."
+            : keeps
+              ? "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that."
+              : "A queue with producers and no consumers only grows. Every queue should have a consumer that takes its messages.",
+          ...(subscription ? { brokerRationale: "no-reader" as const } : {}),
           fix: { label: "Add a consumer…", choice },
         });
       }

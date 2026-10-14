@@ -24,7 +24,8 @@
     "consumer": {
       "use": "καταναλωτής",
       "match": ["καταναλωτ"],
-      "except": ["menu.setConsumerGroup"]
+      "except": ["menu.setConsumerGroup", "broker.group"],
+      "note": " The canonical consumer-group label is kept in English."
     },
     "consumer group": {
       "use": "consumer group",
@@ -85,7 +86,8 @@
     },
     "subscription": {
       "use": "συνδρομή",
-      "match": ["συνδρομ"]
+      "match": ["συνδρομ", "Συνδρομή", "Συνδρομές"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -183,6 +185,16 @@
     "annotation": {
       "use": "σχολιασμός",
       "match": ["σχολιασμ", "σχολιάσ"]
+    },
+    "shard": {
+      "use": "Shards",
+      "match": ["Shards"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Δέσμευση",
+      "match": ["Δέσμευση", "Δεσμεύσεις"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

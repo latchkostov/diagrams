@@ -12,7 +12,11 @@ function materialized(d: DiagramFile, node: DiagramFile["nodes"][number], props:
     ...Object.fromEntries(
       Object.entries(resolved).filter(
         ([key, v]) =>
-          key !== "device" && key !== "profile" && v !== undefined && (typeof v !== "number" || Number.isFinite(v)),
+          key !== "device" &&
+          key !== "profile" &&
+          key !== "broker" &&
+          v !== undefined &&
+          (typeof v !== "number" || Number.isFinite(v)),
       ),
     ),
     ...(device
@@ -72,10 +76,10 @@ function normalizePersistence(d: DiagramFile): DiagramFile {
 
 /** Explicit opt-in preserves effective values in free play and every saved simulation context. */
 export function upgradePlanning(d: DiagramFile): DiagramFile {
-  if (d.planning) return structuredClone(d);
+  if (d.planning?.revision === "p2") return structuredClone(d);
   const next = normalizePersistence(d);
   next.format = "diagrams/v2";
-  next.planning = { revision: "p1" };
+  next.planning = { revision: "p2" };
   for (const node of next.nodes) {
     const family = profileOf(node.stencil)?.family;
     if (family && FAMILIES[family]?.roles.includes("processor"))

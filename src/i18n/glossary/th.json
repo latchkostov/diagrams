@@ -92,7 +92,8 @@
     "subscription": {
       "use": "ซับสคริปชัน",
       "keepEnglish": true,
-      "match": ["ซับสคริปชัน", "subscription"]
+      "match": ["ซับสคริปชัน", "subscription", "การสมัครรับข้อมูล"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -198,6 +199,16 @@
     "annotation": {
       "use": "คำอธิบายประกอบ",
       "match": ["คำอธิบายประกอบ"]
+    },
+    "shard": {
+      "use": "ชาร์ด",
+      "match": ["ชาร์ด"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "การผูก",
+      "match": ["การผูก"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

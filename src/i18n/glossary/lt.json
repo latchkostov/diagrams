@@ -83,7 +83,8 @@
     },
     "subscription": {
       "use": "prenumerata",
-      "match": ["prenumerat"]
+      "match": ["prenumerat", "Prenumerata", "Prenumeratos"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -185,6 +186,16 @@
     "annotation": {
       "use": "anotacija",
       "match": ["anotacij"]
+    },
+    "shard": {
+      "use": "Shardai",
+      "match": ["Shardai"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Susiejimas",
+      "match": ["Susiejimai", "Susiejimas"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

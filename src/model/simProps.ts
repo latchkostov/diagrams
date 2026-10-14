@@ -27,6 +27,7 @@ const nodeProperties = {
   presetRevision: { type: "string", enum: ["1"] },
   connections: cardinality,
   querySlots: cardinality,
+  ingestUnits: cardinality,
   ratePerSec: rate,
   latencyMs: time,
   concurrency: quantity,

@@ -1,3 +1,6 @@
+import { t, useLocale } from "../i18n";
+import { assignmentLabel } from "../stencils/brokerVocabulary";
+import type { BrokerSpec } from "../model/brokers";
 import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { useNodes, useStore } from "@xyflow/react";
 import type { FlowNode } from "../canvas/types";
@@ -43,7 +46,17 @@ export function CapacityChip({ heat }: { heat: NodeHeat }) {
 }
 
 /** "3/6 idle", with a hover explanation (the chip takes the pointer; the rest of the layer doesn't). */
-export function IdleChip({ id, idle, replicas }: { id: string; idle: number; replicas: number }) {
+export function IdleChip({
+  id,
+  idle,
+  replicas,
+  assignment,
+}: {
+  id: string;
+  idle: number;
+  replicas: number;
+  assignment?: BrokerSpec;
+}) {
   if (!(idle > 0)) return null;
   return (
     <span className="cap-idle" data-testid={`capacity-idle-${id}`} data-idle={idle}>
@@ -52,8 +65,7 @@ export function IdleChip({ id, idle, replicas }: { id: string; idle: number; rep
       </b>{" "}
       idle
       <span className="cap-idle-tip" role="tooltip">
-        {idle} of {replicas} replicas have no partition to read. A consumer group can&apos;t use more consumers than its
-        topic has partitions: add partitions, or run fewer replicas.
+        {assignmentLabel(assignment)} · {t("broker.assigned", { active: replicas - idle, configured: replicas })}
       </span>
     </span>
   );
@@ -102,6 +114,7 @@ const CapacityNode = memo(function CapacityNode({
   w: number;
   h: number;
 }) {
+  useLocale();
   return (
     <div
       className="lv-node"
@@ -112,7 +125,7 @@ const CapacityNode = memo(function CapacityNode({
       <CapacityRing heat={heat} />
       <div className="lv-strip">
         <CapacityChip heat={heat} />
-        <IdleChip id={heat.id} idle={heat.idleReplicas} replicas={heat.replicas} />
+        <IdleChip id={heat.id} idle={heat.idleReplicas} replicas={heat.replicas} assignment={heat.assignment} />
       </div>
     </div>
   );

@@ -23,7 +23,8 @@
     "consumer": {
       "use": "patērētājs",
       "match": ["patērētāj"],
-      "except": ["menu.setConsumerGroup"]
+      "except": ["menu.setConsumerGroup", "broker.group"],
+      "note": " The canonical consumer-group label is kept in English."
     },
     "consumer group": {
       "use": "consumer group",
@@ -80,7 +81,8 @@
     },
     "subscription": {
       "use": "abonements",
-      "match": ["abonement"]
+      "match": ["abonement", "Abonements", "Abonementi"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -182,6 +184,16 @@
     "annotation": {
       "use": "anotācija",
       "match": ["anotācij"]
+    },
+    "shard": {
+      "use": "Shardi",
+      "match": ["Shardi"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Sasaiste",
+      "match": ["Sasaistes", "Sasaiste"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

@@ -1,11 +1,18 @@
 # The diagrams/v1 file format
 
-Planning files additionally support `diagrams/v2` with `planning: { "revision": "p1" }` and
+Planning files additionally support `diagrams/v2` with `planning: { "revision": "p2" }` (or `p1` for the previous model) and
 <https://www.livediagrams.dev/schema/diagram.v2.json>. Legacy v1 retains legacy playback and omitted
 defaults. Never upgrade by merely changing the format marker: the app's explicit upgrade pins current
 effective values and previews compatibility. Presets store `preset` / `presetRevision`; unsupported
 revisions are refused. Physical `networkDelayMs`, store `connections` and `querySlots` are distinct
-metadata, not P1 execution controls.
+metadata, not execution controls.
+
+P2 logs (Kafka, Event Hubs and Kinesis) assign at most one instance per partition or shard in each consumer group.
+Subscription/binding fan-out (SNS, EventBridge, Service Bus Topic, Pub/Sub and exchanges) uses every configured
+instance; never add partitions there. `group` names a subscription or binding on these brokers. Each name gets a
+copy; readers with the same name compete. Queue readers always compete, and `dlq` routes never subscribe.
+`kafka.cluster` is infrastructure (`none`), not a topic hop. Producer size and ingest-unit metadata have no hard
+vendor ingest limits. Existing v1 and p1 documents keep their playback until explicitly upgraded.
 
 A diagram is one JSON file, `<name>.diagram.json`. This page covers what an agent needs. The full JSON Schemas
 are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file) and
@@ -13,7 +20,7 @@ are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file
 
 ## Top level
 
-- `format` (required): always `"diagrams/v1"`.
+- `format` (required): `"diagrams/v2"` with `planning: { "revision": "p2" }` for new planning diagrams; `"diagrams/v1"` for legacy playback.
 - `title` (required) and an optional `description` of one or two sentences.
 - `direction`: `"LR"` (left to right, the default) or `"TB"` (top to bottom). The layout follows it.
 - `nodes` and `edges` (required, may be empty), and optionally `groups`, `annotations` and `simulations`.
@@ -107,6 +114,7 @@ Every setting is optional, and live view works without any. Node `props`:
 - `presetRevision` ("1"): pinned preset revision (1 for P1); unsupported revisions are refused
 - `connections` (integer 1..10000): store connection ceiling, distinct from active query slots; planning metadata, not enforced in P1
 - `querySlots` (integer 1..10000): measured concurrent active queries; planning metadata, stores remain parallel in P1 playback
+- `ingestUnits` (integer 1..10000): broker provisioned ingest units, in the profile's native unit; metadata only, no vendor hard ingest ceiling in P2
 - `ratePerSec` (number 0..10000000): messages per second a source sends in free play (default 2)
 - `latencyMs` (number 0..600000): time to handle one message (processor 250, gateway 60, store 40 by default)
 - `concurrency` (number 0..10000): messages handled at once per replica (default 4)
@@ -116,12 +124,12 @@ Every setting is optional, and live view works without any. Node `props`:
 - `retry` ("requeue" | "inplace"): "requeue" (default: back of the broker) or "inplace" (same slot, blocks it)
 - `retryBackoffMs` (number 0..600000): delay before a failed message is redelivered
 - `maxDeliveryCount` (number 0..10000): on a broker: attempts before a message is dead-lettered (default 3)
-- `partitions` (number 0..10000): on a topic or stream: the most consumers per group that can be active
+- `partitions` (number 0..10000): p2 partitioned logs only: instance assignments per group (Kinesis: shards); ignored by subscription/binding fan-out; legacy and p1 retain role-based limits
 - `messageType` (string): what a source sends, e.g. "OrderPlaced"
 - `emits` (string or map): a processor renames what it sends: "PaymentCompleted", or a map {"OrderPlaced": "PaymentRequested", "*": "Audited"}
 - `size` ("branch" | "campus" | "datacentre"): network devices (routers, switches, firewalls, ADCs): "branch", "campus" or "datacentre", whose datasheet throughput and latency are the defaults
 - `gbps` (number 0..1000000): network devices: throughput per unit in Gbps (default: the size preset's); any gateway given gbps gets this ceiling
-- `messageKB` (number 0.01..1000000): network devices: the average message in kB the throughput is converted with (default 64)
+- `messageKB` (number 0.01..1000000): average payload in kB: devices convert throughput with it (default 64); brokers retain producer-size metadata only, without a default or ingest ceiling
 - `ha` ("standalone" | "active-standby" | "active-active"): network devices: "standalone" (default), "active-standby" (one unit carries traffic) or "active-active" (units add up); replicas = units
 - `failoverMs` (number 0..600000): network devices: how long an active-standby pair stalls when a unit fails (default 1000)
 - `healthChecks` (boolean): gateways: skip targets that are down (default true for ADCs, false otherwise)
@@ -132,7 +140,7 @@ Edge `props`:
 
 <!-- BEGIN GENERATED edge-props -->
 
-- `group` (string): consumer group, on an edge leaving a topic or stream: every group gets each message, edges in one group compete
+- `group` (string): consumer group (logs), subscription (pub/sub), or binding (exchange); each name gets a copy and readers sharing a name compete; queues always compete
 - `groupOrigin` ("inferred"): inferred: the default group follows the consumer node id when copied or reconnected; omit for authored group names
 - `share` (number 0..1): chance that this fan-out edge gets a copy
 - `dlq` (boolean): true marks a broker's dead-letter route (also inferred from a target labelled DLQ or dead-letter)

@@ -1,3 +1,4 @@
+import { useLocale } from "../i18n";
 import { edgeSemanticSignature } from "../model/relations";
 import { planningHost } from "../planning/host";
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -153,6 +154,7 @@ export function LiveSession({
   onSession,
   privateDiagram,
 }: SessionProps) {
+  const locale = useLocale();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { fitView, setViewport } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const { theme } = useSettings();
@@ -828,9 +830,9 @@ export function LiveSession({
     return status;
   }, [outageKey, planDiagram]);
   // Recomputed only when the plan or an outage changes (sliders, saves, edits, chaos), never per frame.
-  const capacity = useMemo(
-    () => (showCapacity || capacityOpen ? capacityView(planDiagram, plan, runStatus) : null),
-    [showCapacity, capacityOpen, planDiagram, plan, runStatus],
+  const { value: capacity } = useMemo(
+    () => ({ locale, value: showCapacity || capacityOpen ? capacityView(planDiagram, plan, runStatus) : null }),
+    [showCapacity, capacityOpen, planDiagram, plan, runStatus, locale],
   );
 
   // The panel shows the heat map for this session only; leaving live view restores the preference.
@@ -1416,23 +1418,34 @@ function sayConsumerAdded(editor: EditorApi, brokerId: string): void {
 }
 
 /** Edit mode's capacity heat map: the diagram's own rates and sizes, with the bottleneck callout. */
-export function EditCapacity({ editor, presenting }: { editor: EditorApi; presenting: boolean }) {
+export function EditCapacity({
+  editor,
+  presenting,
+  planning,
+}: {
+  editor: EditorApi;
+  presenting: boolean;
+  planning?: DiagramFile["planning"];
+}) {
+  const locale = useLocale();
   const nodes = useStore((st) => st.nodes);
   const edges = useStore((st) => st.edges);
   // Positions don't change capacity: key the analysis on what does.
   const structure = useMemo(
     () =>
       JSON.stringify([
+        planning?.revision,
         nodes.map((n) => (n.type === "diagram" ? [n.id, n.data.stencil, n.data.label, n.data.props ?? null] : n.id)),
         edges.map((e) => edgeSemanticSignature({ id: e.id, from: e.source, to: e.target, ...e.data })),
       ]),
-    [nodes, edges],
+    [nodes, edges, planning?.revision],
   );
-  const view = useMemo(() => {
-    if (!structure) return null;
-    const d = editor.getDiagram();
-    return capacityView(d, freePlaySimulation(d, emptyInputs()));
-  }, [structure, editor]);
+  const { value: view } = useMemo(() => {
+    const current = structure ? editor.getDiagram() : null;
+    // The editor's imperative metadata catches up in a layout effect, after this render's children.
+    const d = current ? { ...current, planning } : null;
+    return { locale, value: d ? capacityView(d, freePlaySimulation(d, emptyInputs())) : null };
+  }, [structure, editor, locale, planning]);
   const apply = useCallback(
     (fix: CapacityFix) => {
       const merge = "capacity:fix:" + Date.now();

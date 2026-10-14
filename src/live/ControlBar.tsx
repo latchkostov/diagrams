@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LiveState } from "./controller";
 import { SPEEDS } from "./controller";
@@ -17,6 +18,7 @@ import { liveMutationGuard } from "./liveActions";
  * one way out, not two buttons.
  */
 export function ControlBar({ state }: { state: LiveState }) {
+  useLocale();
   const ui = useLive();
   const c = ui.controller;
   const run = state.run;
@@ -122,7 +124,7 @@ export function ControlBar({ state }: { state: LiveState }) {
             onClick={() => ui.openCapacity(!ui.capacityOpen)}
             aria-pressed={ui.capacityOpen}
             aria-label="Inputs"
-            title="Inputs & capacity: traffic, replicas, partitions and bottlenecks"
+            title={t("broker.inputs")}
             data-testid="live-capacity"
           >
             <LiveIcon name="gauge" size={15} />

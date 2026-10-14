@@ -96,7 +96,8 @@
     "subscription": {
       "use": "सब्सक्रिप्शन",
       "keepEnglish": true,
-      "match": ["सब्सक्रिप्शन", "subscription"]
+      "match": ["सब्सक्रिप्शन", "subscription", "सदस्यता", "सदस्यताएँ"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "ऑफ़सेट",
@@ -209,6 +210,16 @@
       "use": "एनोटेशन",
       "keepEnglish": true,
       "match": ["एनोटेशन"]
+    },
+    "shard": {
+      "use": "शार्ड",
+      "match": ["शार्ड"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "बाइंडिंग",
+      "match": ["बाइंडिंग"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

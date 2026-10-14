@@ -81,7 +81,8 @@
     },
     "subscription": {
       "use": "naročnina",
-      "match": ["naročnin"]
+      "match": ["naročnin", "Naročnina", "Naročnine"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -182,6 +183,16 @@
     "annotation": {
       "use": "anotacija",
       "match": ["anotacij"]
+    },
+    "shard": {
+      "use": "Shardi",
+      "match": ["Shardi"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Vezava",
+      "match": ["Vezave", "Vezava"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

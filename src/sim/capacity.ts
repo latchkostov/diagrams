@@ -1,3 +1,4 @@
+import { englishAssignmentLabel, recordAssignment, type ConsumerAssignment, type BrokerSpec } from "../model/brokers";
 import type { DiagramFile, DiagramNode, SimRole, Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { resolveProps, type ResolvedProps } from "./defaults";
@@ -27,6 +28,7 @@ export interface NodeCapacity {
   replicas: number;
   activeReplicas: number;
   idleReplicas: number;
+  assignment?: BrokerSpec;
   /** A network device: its throughput ceiling sets the capacity (a gateway's otherwise isn't modeled). */
   device?: boolean;
 }
@@ -187,7 +189,7 @@ export function analyzeCapacity(
   );
   const outgoing = compiled.outgoing;
   const groups = new Map<string, ConsumerGroup[]>();
-  const assigned = new Map<string, number>();
+  const assigned = new Map<string, ConsumerAssignment>();
   for (const [id, compiledGroups] of compiled.groups) {
     const broker = entries.get(id)!;
     groups.set(
@@ -200,14 +202,22 @@ export function analyzeCapacity(
             const target = entries.get(id)!;
             return { id, role: target.role, replicas: target.replicas };
           }),
+          broker.props.broker?.partitioned ?? false,
         );
-        for (const [id, count] of allocations) assigned.set(id, Math.max(assigned.get(id) ?? 0, count));
+        for (const [id, count] of allocations) {
+          recordAssignment(
+            assigned,
+            id,
+            count,
+            broker.props.broker?.partitioned && diagram.planning?.revision === "p2" ? broker.props.broker : undefined,
+          );
+        }
         return { broker, edges: group.edges, allocations };
       }),
     );
   }
   for (const [id, entry] of entries) {
-    if (compiled.restricted.has(id)) entry.active = Math.min(entry.replicas, assigned.get(id) ?? 0);
+    if (compiled.restricted.has(id)) entry.active = Math.min(entry.replicas, assigned.get(id)?.count ?? 0);
   }
   const external: Rates = new Map();
   let capped = false;
@@ -358,6 +368,7 @@ export function analyzeCapacity(
       replicas: entry.replicas,
       activeReplicas: entry.active,
       idleReplicas: entry.replicas - entry.active,
+      ...(assigned.get(id)?.spec ? { assignment: assigned.get(id)!.spec } : {}),
       ...(entry.role === "gateway" && entry.props.device ? { device: true } : {}),
     };
   }
@@ -378,14 +389,17 @@ export function analyzeCapacity(
       .flat()
       .find(
         (group) =>
-          group.broker.role !== "queue" &&
+          group.broker.props.broker?.partitioned &&
           group.edges.some((edge) => edge.to === bottleneck.id) &&
           (group.allocations.get(bottleneck.id) ?? 0) < bottleneck.replicas,
       );
     if (constraint) {
       const broker = constraint.broker;
       const desired = [...constraint.allocations.keys()].reduce((sum, id) => sum + entries.get(id)!.replicas, 0);
-      suggestion = `${bottleneck.label}: ${bottleneck.idleReplicas} of ${bottleneck.replicas} replicas idle - add partitions to ${broker.input.sublabel ?? broker.input.label} (${broker.props.partitions} -> ${desired})`;
+      suggestion =
+        diagram.planning?.revision === "p2"
+          ? `${broker.input.sublabel ?? broker.input.label}: ${englishAssignmentLabel(broker.props.broker)} → ${desired}`
+          : `${bottleneck.label}: ${bottleneck.idleReplicas} of ${bottleneck.replicas} replicas idle - add partitions to ${broker.input.sublabel ?? broker.input.label} (${broker.props.partitions} -> ${desired})`;
     }
   } else if (bottleneck && bottleneck.utilization >= 1) {
     if (!Number.isFinite(bottleneck.utilization))

@@ -3,6 +3,48 @@
 The live view animates messages flowing through any diagram, driven only by the diagram itself:
 each node's stencil `simRole`, edge direction and `kind`, plus optional `props`. API: `src/sim/types.ts`.
 
+## Planning revision p2: logs and named routes
+
+New diagrams use `diagrams/v2` with `planning: { revision: "p2" }`. Existing v1 and p1 files keep
+exactly their previous broker allocation until the person previews and applies an explicit upgrade.
+The upgrade pins effective defaults and preserves groups, overrides and saved simulations; it can
+change broker capacity, which the preview lists. Undo restores the previous document/model. Legacy
+export warns that p2 allocation cannot be represented by the older model, even with pinned numbers.
+
+The small broker metadata table (`src/model/brokers.ts`, exposed through family profiles) resolves once
+with node settings. Playback, analysis and sizing share `allocateGroupReplicas`:
+
+| Broker                                       | Instance assignment                                     | Name on outgoing ordinary routes |
+| -------------------------------------------- | ------------------------------------------------------- | -------------------------------- |
+| Kafka topic, Event Hubs                      | At most one reader instance per partition in each group | Consumer group                   |
+| Kinesis                                      | At most one reader instance per shard in each group     | Consumer group                   |
+| SNS, EventBridge, Service Bus Topic, Pub/Sub | Every configured reader instance can work               | Subscription                     |
+| RabbitMQ exchange                            | Every configured reader instance can work               | Binding                          |
+| Queue                                        | Readers compete using their full configured fleet       | No group setting                 |
+
+Each group/subscription/binding name receives a copy; edges sharing the name compete for that copy.
+Duplicate edges do not allocate extra instances. Each assigned processor instance keeps all of its
+configured parallel slots. Explicit `dlq` routes are excluded from subscribers, assignment, capacity,
+capabilities and the group editor/readouts. `kafka.cluster` is infrastructure (`none`), not another topic:
+it has no partitions or consumer groups and imposes no second broker assignment.
+
+Non-partitioned fan-out has no broker-hop reservation cap, partition control, partition sizing fix or
+partition preset. Logs retain their existing assignment and pipeline reservations. Instant broker
+targets still acknowledge on arrival; travel remains animation rather than an ingest throughput limit.
+Inspector, Inputs, fixes and explanations use partitions, shards, subscriptions and bindings. The
+one shared node pool still prevents two subscriptions from inventing independent worker fleets.
+Uncapped reservations do not add physical network-device units: queue/subscription capacity uses the
+configured fleet and its finite throughput. Mixed incoming logs associate the displayed noun with the
+allocation supplying the reported count; each broker keeps its own group/subscription/binding lag heading.
+Planning revision changes invalidate open edit-mode capacity and live playback, including Undo when
+the graph itself is unchanged. Check/agent results stay deterministic English; broker descriptors translate
+in the UI, independently of worker execution.
+
+`messageKB` records a broker's producer payload size; `ingestUnits` records provisioning in its
+profile's native ingest unit. Both stay optional, have file-format validation, and round-trip to agent
+and HTML output. They impose no hard vendor ingest ceiling and offer no ineffective new controls.
+Kafka keys, ordering, share-group delivery, retention changes and the P4 retry overhaul are excluded.
+
 ## Planning revision p1
 
 `src/stencils/profiles.ts` explicitly maps every catalogue stencil to a behavioural family. Unknown
@@ -18,8 +60,8 @@ stored alongside the revision. Choosing a device size pins its throughput and se
 Node `replicas × concurrency` is one shared pool across all inputs. Consumer `group` stays on the
 edge; omitted legacy groups still use the edge id.
 
-Files without `planning` keep the legacy resolver and omitted defaults. New diagrams use
-`diagrams/v2` with `planning: { revision: "p1" }`. **Opening a v1 file never upgrades it.** Diagram
+Files without `planning` keep the legacy resolver and omitted defaults. P1 introduced
+`diagrams/v2` with `planning: { revision: "p1" }`; P2 is now the new-diagram default. **Opening a v1 file never upgrades it.** Diagram
 properties previews affected nodes and before/after capacity, then pins today's values in one undo
 step, preserving authored groups, relationships, overrides and saved simulations. Simulations inherit
 their document's revision. Unsupported model/preset revisions are refused, including setup/timeline
@@ -71,7 +113,7 @@ accept parallel work; no ineffective new controls are shown.
   consumer therefore drains at `activeReplicas × concurrency × 1000 ÷ latencyMs`, what capacity analysis, the heat
   map and the `capacity` check report (seeded ratios in `src/sim/drain.test.ts`: 0.95–1.0 with jitter, the tick's
   rounding included, exactly 1.0 without). Travel time is animation, never a throughput limit.
-- **A topic group never works on more than its partitions allow**, even at a consumer with free slots from other
+- **A partitioned log group never works on more than its partitions or shards allow**, even at a consumer with free slots from other
   inputs (a push input, another group): a delivery arriving while its group's `allocation × concurrency` slots at
   that node are taken is **staged** there, in a queue per group and consumer, and the next one joins the node's queue
   each time a group slot frees (or the group gets more): nothing rescans the backlog per tick. Staged deliveries
