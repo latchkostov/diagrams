@@ -89,7 +89,9 @@
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text);
-  transition: border-color 100ms, box-shadow 100ms;
+  transition:
+    border-color 100ms,
+    box-shadow 100ms;
 }
 
 .color-picker-input-wrap:focus-within {
@@ -163,7 +165,9 @@
   border-radius: 3px;
   border: 1px solid rgb(0 0 0 / 0.14);
   cursor: pointer;
-  transition: transform 80ms, box-shadow 80ms;
+  transition:
+    transform 80ms,
+    box-shadow 80ms;
   position: relative;
 }
 
@@ -178,7 +182,9 @@
 }
 
 .color-picker-swatch.is-active {
-  box-shadow: 0 0 0 1.5px var(--surface), 0 0 0 3px var(--accent);
+  box-shadow:
+    0 0 0 1.5px var(--surface),
+    0 0 0 3px var(--accent);
   z-index: 1;
 }
 
@@ -214,7 +220,11 @@
   background: var(--surface-2);
   color: var(--text-2);
   cursor: pointer;
-  transition: border-color 100ms, background-color 100ms, transform 80ms, box-shadow 80ms;
+  transition:
+    border-color 100ms,
+    background-color 100ms,
+    transform 80ms,
+    box-shadow 80ms;
   flex-shrink: 0;
 }
 

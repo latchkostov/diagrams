@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isValidHex,
-  normalizeHex,
-  QUICK_PALETTE,
-  THEME_PALETTE,
-  SPECTRUM_GRID,
-} from "./colorPalette";
+import { isValidHex, normalizeHex, QUICK_PALETTE, THEME_PALETTE, SPECTRUM_GRID } from "./colorPalette";
 
 describe("colorPalette", () => {
   describe("isValidHex", () => {

@@ -2385,7 +2385,10 @@ function CanvasInner({
                   n.type === "boundary"
                     ? toneColor[(n as GroupFlowNode).data.tone]
                     : n.type === "annotation" && (n as AnnotationFlowNode).data.kind !== "note"
-                      ? resolveAnnotationColor((n as AnnotationFlowNode).data.color, (n as AnnotationFlowNode).data.kind).hex
+                      ? resolveAnnotationColor(
+                          (n as AnnotationFlowNode).data.color,
+                          (n as AnnotationFlowNode).data.kind,
+                        ).hex
                       : "transparent"
                 }
               />

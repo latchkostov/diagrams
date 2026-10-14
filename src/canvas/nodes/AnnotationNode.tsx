@@ -10,13 +10,7 @@ import {
 import { Handle, NodeResizeControl, ResizeControlVariant, useReactFlow, type NodeProps } from "@xyflow/react";
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
 import type { AnnotationKind, AnnotationShape } from "../../model/types";
-import {
-  resolveAnnotationColor,
-  isConnectable,
-  isObstacle,
-  kindLabel,
-  minSize,
-} from "../annotations";
+import { resolveAnnotationColor, isConnectable, isObstacle, kindLabel, minSize } from "../annotations";
 import { useSelectOnMount } from "../../components/useSelectOnMount";
 import { editKeyAction, refocusAfterEdit } from "../../components/editKeys";
 import { keepInPane } from "../keepInPane";

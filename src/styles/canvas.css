@@ -1988,7 +1988,9 @@ select.insp-input {
   border: 1px solid color-mix(in oklab, var(--tone) 45%, transparent);
   background: color-mix(in oklab, var(--tone) 18%, var(--surface));
   cursor: pointer;
-  transition: transform 80ms, box-shadow 80ms;
+  transition:
+    transform 80ms,
+    box-shadow 80ms;
 }
 
 .insp-tone:hover {

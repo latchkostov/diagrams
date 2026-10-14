@@ -17,8 +17,7 @@ export const isHexColor = (v: unknown): v is string => typeof v === "string" && 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const member = <T extends string>(list: readonly T[], v: unknown): v is T =>
   typeof v === "string" && list.some((s) => s === v);
-export const isColorValue = (v: unknown): v is string =>
-  member(ANNOTATION_COLOR_IDS, v) || isHexColor(v);
+export const isColorValue = (v: unknown): v is string => member(ANNOTATION_COLOR_IDS, v) || isHexColor(v);
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Pure normalization for every untrusted annotation. Never mutates the input or asserts its type. */
