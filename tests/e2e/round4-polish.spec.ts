@@ -92,9 +92,11 @@ test.describe("round 4 polish", () => {
   });
 
   test("at 1024 the gallery folds the families that don't fit into the Vendor menu", async ({ page }) => {
+    // Roomy (nine families since Network vendors): every family has its chip.
+    await page.setViewportSize({ width: 1600, height: 900 });
     await gotoGallery(page);
-    // Roomy: every family has its chip.
     await expect(page.getByTestId("family-chip-generic")).toBeVisible();
+    await expect(page.getByTestId("family-chip-network")).toBeVisible();
     const foldedChips = () =>
       page.getByTestId(/^family-chip-/).evaluateAll((els) => els.filter((el) => el.hasAttribute("data-folded")).length);
     expect(await foldedChips()).toBe(0);
@@ -102,12 +104,15 @@ test.describe("round 4 polish", () => {
     const generic = page.getByTestId("family-chip-generic");
     await expect(generic).toHaveAttribute("data-folded", "1");
     await expect(generic).toBeHidden();
+    // The last families fold first: Network vendors goes before Generic & clients does.
+    await expect(page.getByTestId("family-chip-network")).toHaveAttribute("data-folded", "1");
     // What's left fits: the track no longer scrolls behind a fade.
     const fits = (el: HTMLElement) =>
       !!el.parentElement && el.parentElement.scrollWidth <= el.parentElement.clientWidth;
     expect(await page.getByTestId("family-chip-all").evaluate(fits)).toBe(true);
     // The folded families are in the Vendor menu; picking one gives it a chip again.
     await page.getByTestId("vendor-overflow").click();
+    await expect(page.getByTestId("context-menu-item-family:network")).toBeVisible();
     await page.getByTestId("context-menu-item-family:generic").click();
     await expect(page.getByTestId("vendor-menu")).toHaveCount(0);
     await expect(generic).toBeVisible();

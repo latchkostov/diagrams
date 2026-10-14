@@ -43,18 +43,20 @@ export const FAMILIES: readonly Family[] = [
     hint: "Hosted platforms: data, observability, identity, payments, messaging and AI APIs",
   },
   {
-    id: "network",
-    label: "Network vendors",
-    short: "Network",
-    hue: "#0E7490",
-    hint: "Routers, switches, firewalls and load balancers: Cisco, Juniper, Palo Alto, Fortinet, F5 and more",
-  },
-  {
     id: "generic",
     label: "Generic & clients",
     short: "Generic",
     hue: "#64748B",
     hint: "Vendor-neutral shapes, people, devices and partners",
+  },
+  // Last of the named families: a narrow window folds the last ones into the Vendor menu first, and Generic & clients
+  // (people, devices, plain shapes) is wanted in more diagrams than on-prem network gear.
+  {
+    id: "network",
+    label: "Network vendors",
+    short: "Network",
+    hue: "#0E7490",
+    hint: "Routers, switches, firewalls and load balancers: Cisco, Juniper, Palo Alto, Fortinet, F5 and more",
   },
   { id: "other", label: "Other", short: "Other", hue: "#8A94A6", hint: "Vendors without a family yet" },
 ];

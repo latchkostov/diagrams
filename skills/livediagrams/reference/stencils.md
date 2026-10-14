@@ -176,24 +176,6 @@ If nothing fits, use a `generic.*` stencil and say what it is in the label or su
 - `anthropic.claude`: Claude API (processor). Also: llm, claude, anthropic, ai
 - `tableau`: Tableau (sink). Also: bi, dashboard, visualization, reports
 
-## Network vendors
-
-- `cisco.isr`: Cisco ISR (gateway). Also: isr, router, 3825, 3845
-- `cisco.catalyst`: Cisco Catalyst (gateway). Also: catalyst, c9200, c9300, c9500
-- `cisco.nexus`: Cisco Nexus (gateway). Also: nexus, n9k, 9000, 93180
-- `cisco.secure-firewall`: Cisco Secure Firewall (gateway). Also: asa, ftd, firepower, fmc
-- `juniper.mx`: Juniper MX (gateway). Also: mx, mx204, mx304, mx480
-- `juniper.ex`: Juniper EX (gateway). Also: ex, ex2300, ex3400, ex4100
-- `juniper.qfx`: Juniper QFX (gateway). Also: qfx, qfx5120, qfx5130, qfx5220
-- `juniper.srx`: Juniper SRX (gateway). Also: srx, srx300, srx345, srx1500
-- `arista.switch`: Arista Switch (gateway). Also: arista, eos, 7050, 7280
-- `aruba.cx`: Aruba CX (gateway). Also: aruba, hpe, cx, 6100
-- `paloalto.ngfw`: Palo Alto NGFW (gateway). Also: palo, alto, pan, pa-440
-- `fortinet.fortigate`: FortiGate (gateway). Also: fortinet, fortigate, fortios, fgt
-- `checkpoint.quantum`: Check Point Quantum (gateway). Also: checkpoint, check point, quantum, gaia
-- `f5.bigip`: F5 BIG-IP (gateway). Also: f5, big-ip, bigip, ltm
-- `netscaler.adc`: NetScaler ADC (gateway). Also: netscaler, citrix, citrix adc, mpx
-
 ## Generic & clients
 
 - `load-balancer`: Load Balancer (gateway). Also: lb, balancer
@@ -237,3 +219,21 @@ If nothing fits, use a `generic.*` stencil and say what it is in the label or su
 - `client.partner`: Partner System (sink). Also: third party, 3rd party, external, api
 - `client.iot`: IoT Device (source). Also: device, sensor, edge, telemetry
 - `client.team`: Team (source). Also: users, people, group, team
+
+## Network vendors
+
+- `cisco.isr`: Cisco ISR (gateway). Also: isr, router, 3825, 3845
+- `cisco.catalyst`: Cisco Catalyst (gateway). Also: catalyst, c9200, c9300, c9500
+- `cisco.nexus`: Cisco Nexus (gateway). Also: nexus, n9k, 9000, 93180
+- `cisco.secure-firewall`: Cisco Secure Firewall (gateway). Also: asa, ftd, firepower, fmc
+- `juniper.mx`: Juniper MX (gateway). Also: mx, mx204, mx304, mx480
+- `juniper.ex`: Juniper EX (gateway). Also: ex, ex2300, ex3400, ex4100
+- `juniper.qfx`: Juniper QFX (gateway). Also: qfx, qfx5120, qfx5130, qfx5220
+- `juniper.srx`: Juniper SRX (gateway). Also: srx, srx300, srx345, srx1500
+- `arista.switch`: Arista Switch (gateway). Also: arista, eos, 7050, 7280
+- `aruba.cx`: Aruba CX (gateway). Also: aruba, hpe, cx, 6100
+- `paloalto.ngfw`: Palo Alto NGFW (gateway). Also: palo, alto, pan, pa-440
+- `fortinet.fortigate`: FortiGate (gateway). Also: fortinet, fortigate, fortios, fgt
+- `checkpoint.quantum`: Check Point Quantum (gateway). Also: checkpoint, check point, quantum, gaia
+- `f5.bigip`: F5 BIG-IP (gateway). Also: f5, big-ip, bigip, ltm
+- `netscaler.adc`: NetScaler ADC (gateway). Also: netscaler, citrix, citrix adc, mpx
