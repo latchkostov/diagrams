@@ -2,6 +2,16 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## External discovery (2026-10-14)
+
+- **Clients & external** brings External API, Webhook, Email, SMS, Mobile Push, Marketing Automation and LLM API
+  together with clients and vendor APIs in the stencil library and gallery. Quiet headings separate clients and
+  webhooks from called external systems.
+- **Iterable, Braze, Segment, Shopify, PayPal and Adyen** now have named stencils with reusable generic glyphs.
+  Search them by name or find integrations with “external”, “third party”, “API”, “SaaS”, “webhook” or “vendor API”,
+  including Ctrl+K and agents' `find_stencils`.
+- This adds discovery only: simulation roles stay as before; no vendor quotas, rate-limit defaults or endpoint editor.
+
 ## Editing reliability (2026-10-14)
 
 - The inspector stays folded during a drag even when another drop's deferred update is still waiting.

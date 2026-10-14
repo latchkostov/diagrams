@@ -2077,6 +2077,16 @@
       "simRole": "none",
       "description": "Cloud identity provider for SSO, MFA and user lifecycle.",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "sso",
         "oidc",
         "saml",
@@ -2093,6 +2103,16 @@
       "simRole": "none",
       "description": "Customer identity platform for login, social sign-in and tokens.",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "oauth",
         "oidc",
         "login",
@@ -2297,20 +2317,6 @@
       ]
     },
     {
-      "id": "client.partner",
-      "label": "Partner System",
-      "vendor": "Client",
-      "category": "clients",
-      "simRole": "sink",
-      "description": "External system or third-party API.",
-      "aliases": [
-        "third party",
-        "3rd party",
-        "external",
-        "api"
-      ]
-    },
-    {
       "id": "client.iot",
       "label": "IoT Device",
       "vendor": "Client",
@@ -2341,6 +2347,182 @@
       ]
     },
     {
+      "id": "generic.external-api",
+      "label": "External API",
+      "vendor": "Generic",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "A third-party HTTP API your system calls.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "http",
+        "rest"
+      ]
+    },
+    {
+      "id": "iterable",
+      "label": "Iterable",
+      "vendor": "Iterable",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "Customer engagement API for events, user profiles and cross-channel campaigns.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "engagement",
+        "campaigns"
+      ]
+    },
+    {
+      "id": "braze",
+      "label": "Braze",
+      "vendor": "Braze",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "Customer engagement API for user updates, events and messaging campaigns.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "engagement",
+        "campaigns"
+      ]
+    },
+    {
+      "id": "segment",
+      "label": "Segment",
+      "vendor": "Segment",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "Customer data API collecting events and routing them to connected destinations.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "customer data",
+        "tracking",
+        "analytics"
+      ]
+    },
+    {
+      "id": "shopify",
+      "label": "Shopify",
+      "vendor": "Shopify",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "Commerce API for store products, orders and customer data.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "commerce",
+        "store",
+        "orders"
+      ]
+    },
+    {
+      "id": "paypal",
+      "label": "PayPal",
+      "vendor": "PayPal",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "Payments API for checkout, payment capture and refunds.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "payments",
+        "checkout"
+      ]
+    },
+    {
+      "id": "adyen",
+      "label": "Adyen",
+      "vendor": "Adyen",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "Payments API for authorisation, capture and refunds across payment methods.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "payments",
+        "checkout"
+      ]
+    },
+    {
+      "id": "client.partner",
+      "label": "Partner System",
+      "vendor": "Client",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "External system or third-party API.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API"
+      ]
+    },
+    {
       "id": "stripe",
       "label": "Stripe",
       "vendor": "Stripe",
@@ -2348,6 +2530,16 @@
       "simRole": "sink",
       "description": "Payments API: charges, subscriptions and payouts.",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "payments",
         "billing",
         "checkout",
@@ -2362,6 +2554,16 @@
       "simRole": "sink",
       "description": "Communications API for SMS, voice and WhatsApp.",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "sms",
         "voice",
         "whatsapp",
@@ -2376,6 +2578,16 @@
       "simRole": "sink",
       "description": "Transactional and marketing email delivery API.",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "email",
         "mail",
         "smtp"
@@ -2389,6 +2601,16 @@
       "simRole": "sink",
       "description": "CRM platform receiving leads, accounts and events.",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "crm",
         "sfdc"
       ]
@@ -2401,6 +2623,16 @@
       "simRole": "sink",
       "description": "Marketing and CRM platform for contacts and campaigns.",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "crm",
         "marketing"
       ]
@@ -2413,10 +2645,19 @@
       "simRole": "sink",
       "description": "Team chat receiving alerts and notifications via webhooks or bots.",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "chat",
         "notifications",
         "alerts",
-        "webhook",
         "chatops"
       ]
     },
@@ -2442,6 +2683,16 @@
       "simRole": "processor",
       "description": "Hosted LLM API for chat, embeddings and tool calling.",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "llm",
         "gpt",
         "chatgpt",
@@ -2457,10 +2708,168 @@
       "simRole": "processor",
       "description": "Anthropic's hosted Claude models for chat, tool use and agents.",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "llm",
         "claude",
         "anthropic",
         "ai"
+      ]
+    },
+    {
+      "id": "generic.email",
+      "label": "Email",
+      "vendor": "Generic",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "Outbound email / notification delivery.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "mail",
+        "smtp",
+        "notification",
+        "sendgrid"
+      ]
+    },
+    {
+      "id": "generic.sms",
+      "label": "SMS",
+      "vendor": "Generic",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "Text message delivered to a phone number.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "text",
+        "message",
+        "otp",
+        "phone"
+      ]
+    },
+    {
+      "id": "generic.push",
+      "label": "Mobile Push",
+      "vendor": "Generic",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "Push notification to phones (APNs, FCM).",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "push",
+        "notification",
+        "apns",
+        "fcm",
+        "mobile"
+      ]
+    },
+    {
+      "id": "generic.marketing",
+      "label": "Marketing Automation",
+      "vendor": "Generic",
+      "category": "clients",
+      "simRole": "sink",
+      "description": "Campaigns and journeys driven by customer data (Braze, Customer.io, Iterable).",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "braze",
+        "customer.io",
+        "iterable",
+        "marketo",
+        "campaigns",
+        "crm"
+      ]
+    },
+    {
+      "id": "generic.webhook",
+      "label": "Webhook",
+      "vendor": "Generic",
+      "category": "clients",
+      "simRole": "source",
+      "description": "Inbound HTTP callback from another system.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "callback",
+        "http",
+        "hook"
+      ]
+    },
+    {
+      "id": "generic.llm",
+      "label": "LLM API",
+      "vendor": "Generic",
+      "category": "clients",
+      "simRole": "processor",
+      "description": "Any hosted or self-hosted large language model endpoint.",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "llm",
+        "ai",
+        "gpt",
+        "claude",
+        "model",
+        "genai"
       ]
     },
     {
@@ -2529,33 +2938,6 @@
       ]
     },
     {
-      "id": "generic.webhook",
-      "label": "Webhook",
-      "vendor": "Generic",
-      "category": "generic",
-      "simRole": "source",
-      "description": "Inbound HTTP callback from another system.",
-      "aliases": [
-        "callback",
-        "http",
-        "hook"
-      ]
-    },
-    {
-      "id": "generic.email",
-      "label": "Email",
-      "vendor": "Generic",
-      "category": "generic",
-      "simRole": "sink",
-      "description": "Outbound email / notification delivery.",
-      "aliases": [
-        "mail",
-        "smtp",
-        "notification",
-        "sendgrid"
-      ]
-    },
-    {
       "id": "github-actions",
       "label": "GitHub Actions",
       "vendor": "GitHub",
@@ -2585,35 +2967,6 @@
         "nightly",
         "cron job",
         "worker"
-      ]
-    },
-    {
-      "id": "generic.push",
-      "label": "Mobile Push",
-      "vendor": "Generic",
-      "category": "generic",
-      "simRole": "sink",
-      "description": "Push notification to phones (APNs, FCM).",
-      "aliases": [
-        "push",
-        "notification",
-        "apns",
-        "fcm",
-        "mobile"
-      ]
-    },
-    {
-      "id": "generic.sms",
-      "label": "SMS",
-      "vendor": "Generic",
-      "category": "generic",
-      "simRole": "sink",
-      "description": "Text message delivered to a phone number.",
-      "aliases": [
-        "text",
-        "message",
-        "otp",
-        "phone"
       ]
     },
     {
@@ -2705,38 +3058,6 @@
         "inference",
         "ai",
         "prediction"
-      ]
-    },
-    {
-      "id": "generic.llm",
-      "label": "LLM API",
-      "vendor": "Generic",
-      "category": "generic",
-      "simRole": "processor",
-      "description": "Any hosted or self-hosted large language model endpoint.",
-      "aliases": [
-        "llm",
-        "ai",
-        "gpt",
-        "claude",
-        "model",
-        "genai"
-      ]
-    },
-    {
-      "id": "generic.external-api",
-      "label": "External API",
-      "vendor": "Generic",
-      "category": "generic",
-      "simRole": "sink",
-      "description": "A third-party HTTP API your system calls.",
-      "aliases": [
-        "third party",
-        "3rd party",
-        "external",
-        "api",
-        "rest",
-        "saas"
       ]
     },
     {
@@ -3027,22 +3348,6 @@
         "token bucket",
         "quota",
         "rate limit"
-      ]
-    },
-    {
-      "id": "generic.marketing",
-      "label": "Marketing Automation",
-      "vendor": "Generic",
-      "category": "generic",
-      "simRole": "sink",
-      "description": "Campaigns and journeys driven by customer data (Braze, Customer.io, Iterable).",
-      "aliases": [
-        "braze",
-        "customer.io",
-        "iterable",
-        "marketo",
-        "campaigns",
-        "crm"
       ]
     }
   ]

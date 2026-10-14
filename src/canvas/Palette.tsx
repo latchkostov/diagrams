@@ -15,7 +15,7 @@ import { DEFAULT_NODE_VARIANT, getNodeVariant, type NodeVariantId } from "../har
 import { getStencil, stencils } from "../stencils/registry";
 import type { AnnotationKind, AnnotationShape, Stencil, StencilCategory } from "../model/types";
 import { StencilIcon } from "../components/StencilIcon";
-import { CATEGORY_ORDER, categoryLabel } from "../lib/categories";
+import { CATEGORY_ORDER, categoryLabel, clientSections } from "../lib/categories";
 import { familyCounts, familyOf, getFamily, isFamilyId, type FamilyId } from "../lib/vendorFamilies";
 import { searchStencils } from "../lib/stencilSearch";
 import { pushRecentStencil, useRecentStencils } from "../lib/recentStencils";
@@ -278,13 +278,24 @@ export const Palette = memo(function Palette({
                       <span className="palette-sec-count">{g.items.length}</span>
                     </button>
                   </h3>
-                  {open && (
-                    <div className="palette-grid">
-                      {g.items.map((s) => (
-                        <PaletteItem key={s.id} stencil={s} {...item} />
-                      ))}
-                    </div>
-                  )}
+                  {open && g.category === "clients"
+                    ? clientSections(g.items).map((section) => (
+                        <section key={section.id} data-testid={`palette-clients-${section.id}`}>
+                          <h4 className="palette-sec-static">{section.label}</h4>
+                          <div className="palette-grid">
+                            {section.items.map((s) => (
+                              <PaletteItem key={s.id} stencil={s} {...item} />
+                            ))}
+                          </div>
+                        </section>
+                      ))
+                    : open && (
+                        <div className="palette-grid">
+                          {g.items.map((s) => (
+                            <PaletteItem key={s.id} stencil={s} {...item} />
+                          ))}
+                        </div>
+                      )}
                 </section>
               );
             })}
