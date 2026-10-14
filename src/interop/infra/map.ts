@@ -1,3 +1,4 @@
+import { diagnostic } from "./graph";
 import { t as tr } from "../../i18n";
 import {
   DIAGRAM_FORMAT,
@@ -26,8 +27,8 @@ const capped = (lines: ReportLine[]): ReportLine[] =>
     : [
         ...lines.slice(0, MAX_REPORT_LINES),
         {
-          name: tr("importReport.more", { count: lines.length - MAX_REPORT_LINES }),
-          reason: tr("importDetail.notListed"),
+          name: diagnostic("importReport.more", { count: lines.length - MAX_REPORT_LINES }),
+          reason: diagnostic("importDetail.notListed"),
         },
       ];
 
@@ -183,7 +184,7 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
     edges,
     ...(simulation ? { simulations: [simulation] } : {}),
   });
-  const summary = tr("importReport.summary", {
+  const summary = diagnostic("importReport.summary", {
     title: g.title,
     format: g.format,
     total: total && total > nodes.length ? "part" : "all",
@@ -209,9 +210,9 @@ export function graphToDiagram(g: ImportGraph, total?: number): { diagram: Diagr
       unread: capped(g.unread),
       notes: [
         ...g.notes,
-        ...(unlisted ? [tr("importReport.unlisted", { count: unlisted })] : []),
+        ...(unlisted ? [diagnostic("importReport.unlisted", { count: unlisted })] : []),
         // eslint-disable-next-line local/no-literal-ui-text -- persisted diagram content, not UI copy
-        ...(simulation ? [tr("importReport.watchTraffic", { title: "Imported traffic" })] : []),
+        ...(simulation ? [diagnostic("importReport.watchTraffic", { title: "Imported traffic" })] : []),
       ],
       ...(traffic.length
         ? {

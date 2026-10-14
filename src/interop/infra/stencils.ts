@@ -1,4 +1,4 @@
-import { t as tr } from "../../i18n";
+import { diagnostic, type ImportText } from "./graph";
 import { catalog } from "../../stencils/catalog";
 import { namedStencil, resolveKind } from "../../ai/stencils";
 import type { StencilHint } from "./graph";
@@ -21,17 +21,17 @@ export interface StencilPick {
 
 /** An image that isn't drawn, and why (a fixed string for the report). */
 export interface Skip {
-  skip: string;
+  skip: ImportText;
 }
 
 const PART_OF_KAFKA = {
   get skip() {
-    return tr("importDetail.partOfKafka");
+    return diagnostic("importDetail.partOfKafka");
   },
 };
 const DEV_TOOL = {
   get skip() {
-    return tr("importDetail.developerTool");
+    return diagnostic("importDetail.developerTool");
   },
 };
 
@@ -113,7 +113,7 @@ const IMAGES: Record<string, string | Skip> = {
   adminer: DEV_TOOL,
   "localstack/localstack": {
     get skip() {
-      return tr("importDetail.emulatesAWSItsServicesArentKnown");
+      return diagnostic("importDetail.emulatesAWSItsServicesArentKnown");
     },
   },
 };

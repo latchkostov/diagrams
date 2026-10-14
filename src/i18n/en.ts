@@ -10,6 +10,7 @@
 // stays.
 
 const en = {
+  "importReport.namedCount": "{name} ×{count, number}",
   "importReport.aclWide":
     "{action, select, both {read and write} read {read} other {write}} {scope, select, all {every topic} other {topics starting “{name}”}}",
   "importReport.aclHosts":
@@ -65,18 +66,10 @@ const en = {
   "importDetail.supporting":
     "{count, plural, one {# supporting resource isn't drawn} other {# supporting resources aren't drawn}}: {kinds}",
   "importReason.partOf": "part of {type}",
-
   "cloud.value0SigninDidntReturnACodePlease": "{value0} sign-in didn't return a code. Please try again.",
   "cloud.value0SigninTimedOutPleaseTryAgain": "{value0} sign-in timed out. Please try again.",
   "cloud.theValue0SigninWindowWasClosedBefore": "The {value0} sign-in window was closed before it finished.",
-  "cloud.couldntValue0OnOneDriveValue1value2":
-    "{value0, select, read_the_file_details {Couldn't read the file details on OneDrive ({value1}{value2}).} download_the_file {Couldn't download the file on OneDrive ({value1}{value2}).} save_the_file {Couldn't save the file on OneDrive ({value1}{value2}).} update_the_file {Couldn't update the file on OneDrive ({value1}{value2}).} list_your_diagrams {Couldn't list your diagrams on OneDrive ({value1}{value2}).} read_the_file {Couldn't read the file on OneDrive ({value1}{value2}).} other {Couldn't complete the file operation on OneDrive ({value1}{value2}).}}",
   "cloud.oneDriveDidntOfferADownloadForThat": "OneDrive didn't offer a download for that file.",
-  "cloud.couldntReachOneDriveToDownloadTheFile": "Couldn't reach OneDrive to download the file. Check your connection.",
-  "cloud.couldntValue0OnDropboxValue1value2":
-    "{value0, select, read_the_file_details {Couldn't read the file details on Dropbox ({value1}{value2}).} download_the_file {Couldn't download the file on Dropbox ({value1}{value2}).} save_the_file {Couldn't save the file on Dropbox ({value1}{value2}).} update_the_file {Couldn't update the file on Dropbox ({value1}{value2}).} list_your_diagrams {Couldn't list your diagrams on Dropbox ({value1}{value2}).} read_the_file {Couldn't read the file on Dropbox ({value1}{value2}).} other {Couldn't complete the file operation on Dropbox ({value1}{value2}).}}",
-  "cloud.couldntValue0OnGoogleDriveValue1value2":
-    "{value0, select, read_the_file_details {Couldn't read the file details on Google Drive ({value1}{value2}).} download_the_file {Couldn't download the file on Google Drive ({value1}{value2}).} save_the_file {Couldn't save the file on Google Drive ({value1}{value2}).} update_the_file {Couldn't update the file on Google Drive ({value1}{value2}).} list_your_diagrams {Couldn't list your diagrams on Google Drive ({value1}{value2}).} read_the_file {Couldn't read the file on Google Drive ({value1}{value2}).} other {Couldn't complete the file operation on Google Drive ({value1}{value2}).}}",
   "fileDialog.makeNotPrivate": "Make this diagram not private…",
   "fileDialog.makePrivate": "Make this diagram private",
   "fileDialog.alwaysPrivate": "Always private",
@@ -97,7 +90,6 @@ const en = {
   "importDetail.itHasNoServicesToDraw": "It has no services to draw (docker-compose files list them under services:).",
   "importDetail.volume": "volume",
   "importDetail.notAServiceDefinition": "not a service definition",
-
   "importDetail.theresNothingToDrawEveryService":
     "There's nothing to draw: every service is in a profile or isn't a component.",
   "importDetail.value0IsOnValue1ShownIn": "{value0} is on {value1}; shown in {value2}",
@@ -118,7 +110,6 @@ const en = {
   "importDetail.nothingInItCouldBeDrawn": "Nothing in it could be drawn: {value0} ({value1}).",
   "importDetail.nothingInItCouldBeDrawnMore":
     "Nothing in it could be drawn: no operation sends or receives on a channel.",
-
   "importDetail.theseFilesHoldMoreThanValue0":
     "These files hold more than {value0, number} YAML documents; one import reads at most that many.",
   "importDetail.notAKubernetesResourceNoKind": "not a Kubernetes resource (no kind or apiVersion)",
@@ -164,7 +155,6 @@ const en = {
     "There's nothing to draw: none of these resources is a component (queues, topics, functions, databases…).",
   "importDetail.planValue0ToAddValue1To":
     "Plan: {value0, number} to add, {value1, number} to change, {value2, number} to destroy",
-
   "importDetail.someReferencesWerentFollowedThePlan":
     "Some references weren't followed: the plan holds too many to read them all",
   "importDetail.noBoundaryInItFitsIn":
@@ -254,7 +244,6 @@ const en = {
   "fileToast.openInValue0": "Open in {value0}",
   "fileToast.couldntImportValue0Value1": "Couldn't import {value0}. {value1}",
   "fileToast.details": "Details",
-
   "fileToast.couldntReadName": "Couldn't read {name}.",
   "fileToast.openingTheSharedDiagram": "Opening the shared diagram…",
   "fileToast.openedTheSharedDiagramValue0ItsKept":
@@ -297,40 +286,19 @@ const en = {
   "cloud.labelSigninIsBusyRightNowStatus": "{label} sign-in is busy right now ({status}). Try again in a moment.",
   "cloud.couldntReachLabelToActionCheckYour":
     "{action, select, read_the_file_details {Couldn't reach {label} to read the file details. Check your connection.} download_the_file {Couldn't reach {label} to download the file. Check your connection.} save_the_file {Couldn't reach {label} to save the file. Check your connection.} update_the_file {Couldn't reach {label} to update the file. Check your connection.} list_your_diagrams {Couldn't reach {label} to list your diagrams. Check your connection.} read_the_file {Couldn't reach {label} to read the file. Check your connection.} other {Couldn't reach {label} to complete the file operation. Check your connection.}}",
-  "cloud.oneDriveSigninExpiredWhileTryingToAction":
-    "{action, select, read_the_file_details {OneDrive sign-in expired while trying to read the file details. Please try again.} download_the_file {OneDrive sign-in expired while trying to download the file. Please try again.} save_the_file {OneDrive sign-in expired while trying to save the file. Please try again.} update_the_file {OneDrive sign-in expired while trying to update the file. Please try again.} list_your_diagrams {OneDrive sign-in expired while trying to list your diagrams. Please try again.} read_the_file {OneDrive sign-in expired while trying to read the file. Please try again.} other {OneDrive sign-in expired while trying to complete the file operation. Please try again.}}",
-  "cloud.yourOneDriveIsFullSoTheFile": "Your OneDrive is full, so the file couldn't be saved.",
   "cloud.oneDriveRefusedToActionLiveDiagramsCan":
     "{action, select, read_the_file_details {OneDrive refused to read the file details. Live Diagrams can only use files in its own folder.{value1}} download_the_file {OneDrive refused to download the file. Live Diagrams can only use files in its own folder.{value1}} save_the_file {OneDrive refused to save the file. Live Diagrams can only use files in its own folder.{value1}} update_the_file {OneDrive refused to update the file. Live Diagrams can only use files in its own folder.{value1}} list_your_diagrams {OneDrive refused to list your diagrams. Live Diagrams can only use files in its own folder.{value1}} read_the_file {OneDrive refused to read the file. Live Diagrams can only use files in its own folder.{value1}} other {OneDrive refused to complete the file operation. Live Diagrams can only use files in its own folder.{value1}}}",
-  "cloud.thatOneDriveFileNoLongerExistsOr":
-    "That OneDrive file no longer exists, or it was moved out of the app folder.",
-  "cloud.theFileChangedInOneDriveWhileTrying":
-    "{action, select, read_the_file_details {The file changed in OneDrive while trying to read the file details. Try again.} download_the_file {The file changed in OneDrive while trying to download the file. Try again.} save_the_file {The file changed in OneDrive while trying to save the file. Try again.} update_the_file {The file changed in OneDrive while trying to update the file. Try again.} list_your_diagrams {The file changed in OneDrive while trying to list your diagrams. Try again.} read_the_file {The file changed in OneDrive while trying to read the file. Try again.} other {The file changed in OneDrive while trying to complete the file operation. Try again.}}",
-  "cloud.oneDriveIsBusyRightNowStatusTry": "OneDrive is busy right now ({status}). Try again in a moment.",
   "cloud.oneDriveIsntConfiguredForThisSite": "OneDrive isn't configured for this site.",
-  "cloud.dropboxSigninExpiredWhileTryingToAction":
-    "{action, select, read_the_file_details {Dropbox sign-in expired while trying to read the file details. Please try again.} download_the_file {Dropbox sign-in expired while trying to download the file. Please try again.} save_the_file {Dropbox sign-in expired while trying to save the file. Please try again.} update_the_file {Dropbox sign-in expired while trying to update the file. Please try again.} list_your_diagrams {Dropbox sign-in expired while trying to list your diagrams. Please try again.} read_the_file {Dropbox sign-in expired while trying to read the file. Please try again.} other {Dropbox sign-in expired while trying to complete the file operation. Please try again.}}",
-  "cloud.yourDropboxIsFullSoTheFile": "Your Dropbox is full, so the file couldn't be saved.",
-  "cloud.thatDropboxFileNoLongerExistsOr": "That Dropbox file no longer exists, or it was moved out of the app folder.",
-  "cloud.theFileChangedInDropboxWhileTrying":
-    "{action, select, read_the_file_details {The file changed in Dropbox while trying to read the file details. Try again.} download_the_file {The file changed in Dropbox while trying to download the file. Try again.} save_the_file {The file changed in Dropbox while trying to save the file. Try again.} update_the_file {The file changed in Dropbox while trying to update the file. Try again.} list_your_diagrams {The file changed in Dropbox while trying to list your diagrams. Try again.} read_the_file {The file changed in Dropbox while trying to read the file. Try again.} other {The file changed in Dropbox while trying to complete the file operation. Try again.}}",
   "cloud.dropboxRefusedToActionTheAppIsnt":
     "{action, select, read_the_file_details {Dropbox refused to read the file details: the app isn't set up with the permissions Live Diagrams needs.} download_the_file {Dropbox refused to download the file: the app isn't set up with the permissions Live Diagrams needs.} save_the_file {Dropbox refused to save the file: the app isn't set up with the permissions Live Diagrams needs.} update_the_file {Dropbox refused to update the file: the app isn't set up with the permissions Live Diagrams needs.} list_your_diagrams {Dropbox refused to list your diagrams: the app isn't set up with the permissions Live Diagrams needs.} read_the_file {Dropbox refused to read the file: the app isn't set up with the permissions Live Diagrams needs.} other {Dropbox refused to complete the file operation: the app isn't set up with the permissions Live Diagrams needs.}}",
   "cloud.dropboxRefusedToAction":
     "{action, select, read_the_file_details {Dropbox refused to read the file details.} download_the_file {Dropbox refused to download the file.} save_the_file {Dropbox refused to save the file.} update_the_file {Dropbox refused to update the file.} list_your_diagrams {Dropbox refused to list your diagrams.} read_the_file {Dropbox refused to read the file.} other {Dropbox refused to complete the file operation.}}",
-  "cloud.dropboxIsBusyRightNowStatusTry": "Dropbox is busy right now ({status}). Try again in a moment.",
   "cloud.dropboxIsntConfiguredForThisSite": "Dropbox isn't configured for this site.",
   "cloud.openingValue0": "Opening {value0}…",
-  "cloud.googleDriveSigninExpiredWhileTryingTo":
-    "{action, select, read_the_file_details {Google Drive sign-in expired while trying to read the file details. Please try again.} download_the_file {Google Drive sign-in expired while trying to download the file. Please try again.} save_the_file {Google Drive sign-in expired while trying to save the file. Please try again.} update_the_file {Google Drive sign-in expired while trying to update the file. Please try again.} list_your_diagrams {Google Drive sign-in expired while trying to list your diagrams. Please try again.} read_the_file {Google Drive sign-in expired while trying to read the file. Please try again.} other {Google Drive sign-in expired while trying to complete the file operation. Please try again.}}",
-  "cloud.yourGoogleDriveIsFullSoThe": "Your Google Drive is full, so the file couldn't be saved.",
   "cloud.googleDriveRefusedToActionLiveDiagrams":
     "{action, select, read_the_file_details {Google Drive refused to read the file details. Live Diagrams can only open files you pick with it or that it created.{value1}} download_the_file {Google Drive refused to download the file. Live Diagrams can only open files you pick with it or that it created.{value1}} save_the_file {Google Drive refused to save the file. Live Diagrams can only open files you pick with it or that it created.{value1}} update_the_file {Google Drive refused to update the file. Live Diagrams can only open files you pick with it or that it created.{value1}} list_your_diagrams {Google Drive refused to list your diagrams. Live Diagrams can only open files you pick with it or that it created.{value1}} read_the_file {Google Drive refused to read the file. Live Diagrams can only open files you pick with it or that it created.{value1}} other {Google Drive refused to complete the file operation. Live Diagrams can only open files you pick with it or that it created.{value1}}}",
   "cloud.thatGoogleDriveFileNoLongerExists":
     "That Google Drive file no longer exists, or Live Diagrams no longer has access to it.",
-  "cloud.googleDriveIsBusyRightNowStatus": "Google Drive is busy right now ({status}). Try again in a moment.",
-  "cloud.couldntReachGoogleDriveToActionCheck":
-    "{action, select, read_the_file_details {Couldn't reach Google Drive to read the file details. Check your connection.} download_the_file {Couldn't reach Google Drive to download the file. Check your connection.} save_the_file {Couldn't reach Google Drive to save the file. Check your connection.} update_the_file {Couldn't reach Google Drive to update the file. Check your connection.} list_your_diagrams {Couldn't reach Google Drive to list your diagrams. Check your connection.} read_the_file {Couldn't reach Google Drive to read the file. Check your connection.} other {Couldn't reach Google Drive to complete the file operation. Check your connection.}}",
   "cloud.couldntLoadGooglesSigninScriptCheckYour":
     "Couldn't load Google's sign-in script. Check your connection, or whether an ad blocker is blocking Google.",
   "cloud.couldntLoadTheGooglePicker": "Couldn't load the Google Picker.",
@@ -345,7 +313,6 @@ const en = {
   "cloud.supersededByANewerSigninRequest": "Superseded by a newer sign-in request.",
   "fileToast.exportedNodesPluralOneNodeOtherNodes":
     "Exported {nodes, plural, one {# node} other {# nodes}} and {edges, plural, one {# edge} other {# edges}}. Anyone who has this file can open it.",
-  // File dialogs (lazy: English stays with the dialog that uses it).
   "fileDialog.characters": "{count, plural, one {# character} other {# characters}}",
   "fileDialog.longLink":
     "This link is long ({length}). Some chat apps and email clients cut long links off. For big diagrams, share the <b>.diagram.json</b> file instead (or save it to Google Drive and share that).",
@@ -502,17 +469,12 @@ const en = {
   "live.sourceRateLimit":
     "Continuous traffic needs a higher sampling scale for these source rates. Open Inputs and increase Messages per dot, or lower the source rates.",
   "live.sourceVolumeLimit": "Continuous traffic reached its 200,000 sampled-message budget. Restart to continue.",
-  // ------------------------------------------------------------------------------------------------ common
   "common.close": "Close",
   "common.cancel": "Cancel",
   "common.retry": "Retry",
   "common.loading": "Loading…",
   "common.done": "Done",
-
-  // Units (src/i18n/format.ts). Developers in most languages keep "msg/s".
   "format.rate": "{rate} msg/s",
-
-  // ------------------------------------------------------------------------------------------------ top bar
   "topbar.views": "View",
   "topbar.diagram": "Diagram",
   "topbar.stencils": "Stencils",
@@ -524,8 +486,6 @@ const en = {
   "topbar.toDark": "Switch to dark theme",
   "topbar.lightTheme": "Light theme",
   "topbar.darkTheme": "Dark theme",
-
-  // ------------------------------------------------------------------------------------------------ View menu
   "view.menu": "View options",
   "view.button": "View",
   "view.buttonTitle": "Node and edge style, and overlays",
@@ -541,8 +501,6 @@ const en = {
   "view.dependencies": "Show dependencies",
   "view.dependenciesDesc": "Config, secret, identity and other dotted edges",
   "view.language": "Language…",
-
-  // ------------------------------------------------------------------------------------------------ File menu
   "file.menu": "File",
   "file.buttonTitle": "Save, open, export and share",
   "file.new": "New diagram",
@@ -575,8 +533,6 @@ const en = {
   "file.privacyDesc": "This diagram is private",
   "file.exportPng": "Export PNG",
   "file.exportAs": "Export as",
-
-  // Storage: "This device" is the one word for the device (docs/UX-PRINCIPLES.md, Storage).
   "storage.thisDevice": "This device",
   "storage.thisDeviceMore": "This device…",
   "storage.thisDeviceInSentence": "this device",
@@ -587,8 +543,6 @@ const en = {
   "shared.chip": "Shared",
   "shared.keepTitle": "Keep a copy in Your diagrams",
   "shared.keep": "Save a copy",
-
-  // File ▸ Privacy
   "privacy.diagram": "Private diagram",
   "privacy.diagramAlways": "Always private: it comes from a local-only example",
   "privacy.diagramDesc": "No share links, cloud saves or AI",
@@ -596,23 +550,17 @@ const en = {
   "privacy.newDiagramsDesc": "Diagrams you start or bring in from this device",
   "privacy.note": "To share a private diagram, export Interactive HTML.",
   "privacy.clear": "Clear everything on this device…",
-
-  // File ▸ Export as
   "export.file": "Diagram file",
   "export.image": "Image…",
   "export.imageDesc": "PNG or SVG, size and background",
   "export.html": "Interactive HTML…",
   "export.mermaidFile": "Mermaid file",
   "export.copyMermaid": "Copy as Mermaid",
-
-  // ------------------------------------------------------------------------------------------------ presenting
   "present.exit": "Exit presentation",
   "present.fullScreen": "Full screen",
   "present.exitFullScreen": "Exit full screen",
   "present.fullScreenKey": "Full screen ({key})",
   "present.exitFullScreenKey": "Exit full screen ({key})",
-
-  // ------------------------------------------------------------------------------------------------ start card
   "start.title": "Draw a system, then watch messages flow through it",
   "start.ledeRecent": "Pick up where you left off, open an example, or start from a blank canvas.",
   "start.lede": "Open an example to explore, or start from a blank canvas.",
@@ -631,8 +579,6 @@ const en = {
   "start.privacy": "Privacy",
   "start.terms": "Terms",
   "start.recentDetail": "{count, plural, one {# node} other {# nodes}} · edited {ago}",
-
-  // ------------------------------------------------------------------------------------------------ Share…
   "share.title": "Share",
   "share.subtitle": "Safest first. Each says who can open what it makes.",
   "share.ways": "Ways to share",
@@ -652,8 +598,6 @@ const en = {
   "share.linkDesc": "<b>Public:</b> anyone with the link can open it.",
   "share.embedPublic": "Embed on a public page…",
   "share.embedPublicDesc": "<b>Public:</b> anyone who can see the page can open it.",
-
-  // ------------------------------------------------------------------------------------------------ privacy dialogs
   "privateDialog.title": "Private diagram",
   "privateDialog.subtitle": "It stays on this device. To share it, export Interactive HTML or the diagram file.",
   "privateDialog.more": "How privacy works",
@@ -672,8 +616,6 @@ const en = {
   "clear.settings": "Your settings, the language included",
   "clear.stays":
     "Files you saved or exported, and copies in Google Drive, OneDrive or Dropbox, stay where they are. This can't be undone. Other tabs of Live Diagrams start over too.",
-
-  // ------------------------------------------------------------------------------------------------ Language
   "language.title": "Language",
   "language.subtitle": "For menus, dialogs and messages. Your diagrams stay as you wrote them.",
   "language.browser": "Browser default",
@@ -685,8 +627,6 @@ const en = {
     "Translated by machine. Something reads wrong? <link>Suggest a better translation</link> on GitHub.",
   "language.palette": "Language…",
   "language.paletteKeywords": "language translation",
-
-  // ------------------------------------------------------------------------------------------------ shortcuts sheet
   "shortcuts.title": "Keyboard shortcuts",
   "shortcuts.footer": "Live Diagrams is free and open source, and your diagrams stay in your browser.",
   "shortcuts.privacy": "Privacy",
@@ -780,6 +720,14 @@ const en = {
   "shortcuts.mouse.boundary.does": "Join it (lit) or leave it (dashed)",
   "shortcuts.mouse.resize": "Drag a boundary's corner",
   "shortcuts.mouse.resize.does": "Resize; takes in what's now inside",
+  "cloud.operationFailed":
+    "{value0, select, read_the_file_details {Couldn't read the file details on {provider} ({value1}{value2}).} download_the_file {Couldn't download the file on {provider} ({value1}{value2}).} save_the_file {Couldn't save the file on {provider} ({value1}{value2}).} update_the_file {Couldn't update the file on {provider} ({value1}{value2}).} list_your_diagrams {Couldn't list your diagrams on {provider} ({value1}{value2}).} read_the_file {Couldn't read the file on {provider} ({value1}{value2}).} other {Couldn't complete the file operation on {provider} ({value1}{value2}).}}",
+  "cloud.signInExpired":
+    "{action, select, read_the_file_details {{provider} sign-in expired while trying to read the file details. Please try again.} download_the_file {{provider} sign-in expired while trying to download the file. Please try again.} save_the_file {{provider} sign-in expired while trying to save the file. Please try again.} update_the_file {{provider} sign-in expired while trying to update the file. Please try again.} list_your_diagrams {{provider} sign-in expired while trying to list your diagrams. Please try again.} read_the_file {{provider} sign-in expired while trying to read the file. Please try again.} other {{provider} sign-in expired while trying to complete the file operation. Please try again.}}",
+  "cloud.fileChanged":
+    "{action, select, read_the_file_details {The file changed in {provider} while trying to read the file details. Try again.} download_the_file {The file changed in {provider} while trying to download the file. Try again.} save_the_file {The file changed in {provider} while trying to save the file. Try again.} update_the_file {The file changed in {provider} while trying to update the file. Try again.} list_your_diagrams {The file changed in {provider} while trying to list your diagrams. Try again.} read_the_file {The file changed in {provider} while trying to read the file. Try again.} other {The file changed in {provider} while trying to complete the file operation. Try again.}}",
+  "cloud.busy": "{provider} is busy right now ({status}). Try again in a moment.",
+  "cloud.storageFull": "Your {provider} is full, so the file couldn't be saved.",
+  "cloud.fileMissing": "That {provider} file no longer exists, or it was moved out of the app folder.",
 } as const;
-
 export default en;

@@ -1,5 +1,24 @@
 import type { DiagramGroup, EdgeRelation } from "../../model/types";
 import type { FormatId } from "../formats";
+import type { ArgList } from "../../i18n";
+
+/** Language-neutral diagnostics. File content (labels, subtitles) stays separate. */
+type DiagnosticCode = keyof typeof import("../ui/importMessages").messages;
+export interface ImportList {
+  list: readonly ImportText[];
+}
+type Deferred<T> = T extends string
+  ? ImportText | ImportList
+  : T extends number
+    ? number
+    : { [P in keyof T]: Deferred<T[P]> };
+export type ImportMessage = { [K in DiagnosticCode]: { code: K; args: Deferred<ArgList<K>> } }[DiagnosticCode];
+/** Raw names and pre-existing reader diagnostics are literal data, never translated at import time. */
+export type ImportText = string | ImportMessage;
+export function diagnostic<K extends DiagnosticCode>(code: K, ...args: Deferred<ArgList<K>>): ImportMessage {
+  return { code, args } as ImportMessage;
+}
+export const diagnosticKey = (text: ImportText): string => (typeof text === "string" ? text : JSON.stringify(text));
 
 // The intermediate graph every infrastructure reader builds (docs/research/imports.md § Pipeline). Readers
 // only describe what they found; shared code (resolveStencil, map.ts, layout.ts) turns hints into stencils,
@@ -48,7 +67,7 @@ export interface Evidence {
   /** The setting's name ("SPRING_DATASOURCE_URL"). */
   name?: string;
   /** "reads", "writes", "couldn't tell what it reads or writes"… */
-  note?: string;
+  note?: ImportText;
   /** Direction guessed (a `*_TOPIC` that doesn't say whether it's read or written). */
   guess?: boolean;
 }
@@ -73,8 +92,8 @@ export interface ImportGroup {
 
 /** One report row: a name and a fixed reason ("only in profile “debug”", "not among the files you opened"). */
 export interface ReportLine {
-  name: string;
-  reason: string;
+  name: ImportText;
+  reason: ImportText;
 }
 
 export interface ImportGraph {
@@ -89,11 +108,11 @@ export interface ImportGraph {
   notDrawn: ReportLine[];
   unread: ReportLine[];
   /** Placement notes ("orders-api is on frontend and backend; shown in backend"). */
-  notes: string[];
+  notes: ImportText[];
   /** Entry traffic for an "Imported traffic" simulation: where messages start, so Go live shows them flow. */
   traffic?: ImportTraffic[];
   /** The report's heading for inferred connections, when they don't come from settings. */
-  connectionsTitle?: string;
+  connectionsTitle?: ImportText;
 }
 
 export interface ImportTraffic {
@@ -120,7 +139,7 @@ export interface ReportConnection {
   from: string;
   to: string;
   evidence: string;
-  note?: string;
+  note?: ImportText;
   guess?: boolean;
 }
 
@@ -156,7 +175,7 @@ export interface ImportPick {
  */
 export interface ImportReport {
   /** The import toast: “Imported “shop” from docker-compose: 15 nodes, 17 connections. 2 guesses.” */
-  summary: string;
+  summary: ImportText;
   format: string;
   source: string;
   title: string;
@@ -167,11 +186,11 @@ export interface ImportReport {
   inferred: ReportConnection[];
   notDrawn: ReportLine[];
   unread: ReportLine[];
-  notes: string[];
+  notes: ImportText[];
   /** The "Imported traffic" simulation's entry points, so the report says where messages start and how fast. */
   traffic?: { nodeId: string; label: string; messageType?: string; ratePerSec: number; seconds: number }[];
   /** "Connections found in settings" unless the source says otherwise ("…from subscriptions, mappings and grants"). */
-  connectionsTitle?: string;
+  connectionsTitle?: ImportText;
   /** Too big to draw at once: the boundaries drawn, and the rest to pick from. */
   pick?: ImportPick;
 }

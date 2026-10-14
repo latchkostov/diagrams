@@ -1,3 +1,5 @@
+import { presentReportLine } from "../ui/importMessages";
+import { formatImportMessage } from "../ui/importMessages";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
@@ -80,7 +82,9 @@ describe("Terraform import: the AWS plan fixture", () => {
   it("is recognised and imports as a Terraform plan", async () => {
     expect(detectFormat(AWS.text, AWS.name)).toBe("terraform");
     const outcome = ok(await importText(AWS.text, AWS.name));
-    expect(outcome.report.summary).toBe("Imported “aws-plan” from Terraform plan: 13 nodes, 16 connections.");
+    expect(formatImportMessage(outcome.report.summary!)).toBe(
+      "Imported “aws-plan” from Terraform plan: 13 nodes, 16 connections.",
+    );
     expect(outcome.report.format).toBe("Terraform plan");
   });
 
@@ -144,8 +148,12 @@ describe("Terraform import: the AWS plan fixture", () => {
 
   it("reports the connections with their resources, what isn't drawn, the plan's changes and a summary", () => {
     const { report } = aws();
-    expect(report.connectionsTitle).toBe("Connections from subscriptions, mappings and grants");
-    expect(report.inferred.map((c) => `${c.from} → ${c.to} · ${c.evidence}`)).toEqual([
+    expect(formatImportMessage(report.connectionsTitle!)).toBe("Connections from subscriptions, mappings and grants");
+    expect(
+      report.inferred
+        .map((line) => ({ ...line, ...(line.note ? { note: formatImportMessage(line.note) } : {}) }))
+        .map((c) => `${c.from} → ${c.to} · ${c.evidence}`),
+    ).toEqual([
       "nightly-rollup → orders-projector · aws_cloudwatch_event_target.nightly_rollup",
       "order-events → orders-queue · aws_sns_topic_subscription.orders_queue",
       "order-events → audit.example.com · aws_sns_topic_subscription.audit_webhook",
@@ -158,7 +166,7 @@ describe("Terraform import: the AWS plan fixture", () => {
       "orders-projector → orders/db-credentials · aws_iam_role_policy.order_handler",
       "analytics → orders/db-credentials · aws_iam_role_policy.order_handler",
     ]);
-    expect(report.notDrawn).toEqual([
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "aws_cloudwatch_log_group order_handler", reason: "monitoring" },
       { name: "aws_iam_role_policy_attachment basic_logs", reason: "access and permissions" },
       { name: "aws_kms_key msk", reason: "encryption key" },
@@ -168,12 +176,12 @@ describe("Terraform import: the AWS plan fixture", () => {
       { name: "aws_sqs_queue_policy orders", reason: "access and permissions" },
       { name: "random_password db", reason: "helper, not infrastructure" },
     ]);
-    expect(report.notes).toEqual([
+    expect(report.notes.map(formatImportMessage)).toEqual([
       "Plan: 28 to add, 0 to change, 1 to destroy",
       "7 supporting resources aren't drawn: access and permissions, parts of what's drawn, monitoring, networking, and helpers",
     ]);
     expect(report.guesses).toEqual([]);
-    expect(report.unread).toEqual([]);
+    expect(report.unread.map(presentReportLine)).toEqual([]);
   });
 
   it("Draw everything opens the same plan with every resource as a node", () => {
@@ -354,9 +362,11 @@ describe("Terraform import: the Azure state fixture", () => {
       expect.objectContaining({ relation: "secret", label: "managed identity" }),
     ]);
     // One connection, listed with the grant that allows it.
-    expect(report.inferred.map((c) => `${c.from} → ${c.to} · ${c.evidence}`)).toContain(
-      "billing-func → shop-kv · azurerm_role_assignment.reads",
-    );
+    expect(
+      report.inferred
+        .map((line) => ({ ...line, ...(line.note ? { note: formatImportMessage(line.note) } : {}) }))
+        .map((c) => `${c.from} → ${c.to} · ${c.evidence}`),
+    ).toContain("billing-func → shop-kv · azurerm_role_assignment.reads");
     expect(runChecks(diagram).findings.map((f) => f.rule)).not.toContain("secret-identity");
   });
 
@@ -372,7 +382,9 @@ describe("Terraform import: the Azure state fixture", () => {
 
   it("draws resource groups as boundaries, with Service Bus, Event Grid and Event Hubs flows", () => {
     const { diagram: d, report } = azure();
-    expect(report.summary).toBe("Imported “azure-state” from Terraform state: 7 nodes, 7 connections.");
+    expect(formatImportMessage(report.summary!)).toBe(
+      "Imported “azure-state” from Terraform state: 7 nodes, 7 connections.",
+    );
     expect(Object.fromEntries(d.nodes.map((n) => [n.id, [n.stencil, boundaryOf(d, n.id)]]))).toEqual({
       orders: ["azure.service-bus.topic", "rg-billing"],
       "billing-inbox": ["azure.service-bus.queue", "rg-billing"],
@@ -392,14 +404,16 @@ describe("Terraform import: the Azure state fixture", () => {
     expect(relationBetween(d, "billing-func", "billing-events")).toBe("message");
     expect(relationBetween(d, "billing-func", "shop-kv")).toBe("secret");
     expect(relationBetween(d, "billing-func", "billingfuncstore")).toBe("depends");
-    expect(report.inferred.find((c) => c.evidence === "azurerm_role_assignment.func_reads_inbox")?.note).toBe(
-      "Azure Service Bus Data Receiver",
-    );
+    expect(
+      report.inferred
+        .map((line) => ({ ...line, ...(line.note ? { note: formatImportMessage(line.note) } : {}) }))
+        .find((c) => c.evidence === "azurerm_role_assignment.func_reads_inbox")?.note,
+    ).toBe("Azure Service Bus Data Receiver");
   });
 
   it("lists namespaces, plans, groups and secret values as not drawn", () => {
     const { report } = azure();
-    expect(report.notDrawn).toEqual([
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "azurerm_resource_group ×2", reason: "not a component" },
       { name: "azurerm_eventhub_consumer_group analytics", reason: "part of Event Hubs" },
       { name: "azurerm_eventhub_namespace telemetry", reason: "shown through its event hubs" },
@@ -407,7 +421,9 @@ describe("Terraform import: the Azure state fixture", () => {
       { name: "azurerm_service_plan billing", reason: "hosting plan" },
       { name: "azurerm_servicebus_namespace shop", reason: "shown through its queues and topics" },
     ]);
-    expect(report.notes).toEqual(["7 supporting resources aren't drawn: parts of what's drawn"]);
+    expect(report.notes.map(formatImportMessage)).toEqual([
+      "7 supporting resources aren't drawn: parts of what's drawn",
+    ]);
   });
 });
 
@@ -594,7 +610,7 @@ describe("Terraform import: glue across services", () => {
       ]),
     );
     expect(d.edges.map((e) => `${e.from}→${e.to}`)).toEqual(["billing→jobs"]);
-    expect(report.notDrawn).toContainEqual({
+    expect(report.notDrawn.map(presentReportLine)).toContainEqual({
       name: "aws_cloudwatch_event_target lost",
       reason: "connects nothing in these files",
     });
@@ -713,7 +729,7 @@ describe("Terraform import: glue across services", () => {
     );
     // The ARN says which one; the bare name doesn't, and is listed rather than guessed.
     expect(d.edges.map((e) => `${e.from}→${e.to}`)).toEqual(["jobs→handler-2"]);
-    expect(report.notDrawn).toContainEqual({
+    expect(report.notDrawn.map(presentReportLine)).toContainEqual({
       name: "aws_lambda_event_source_mapping m",
       reason: "connects nothing in these files",
     });
@@ -736,16 +752,25 @@ describe("Terraform import: glue across services", () => {
     expect(node(d, "orders-db")?.stencil).toBe("postgres");
     expect(node(d, "ledger")?.stencil).toBe("aws.aurora");
     expect(node(d, "legacy-jobs")).toMatchObject({ stencil: "aws.sqs", sublabel: "data source" });
-    expect(report.notDrawn).toContainEqual({ name: "data.aws_iam_policy_document x", reason: "data source" });
-    expect(report.notDrawn).toContainEqual({ name: "aws_s3_bucket_versioning v", reason: "part of aws_s3_bucket" });
-    expect(report.notDrawn).toContainEqual({ name: "aws_route53_record r", reason: "networking" });
-    expect(report.notDrawn).toContainEqual({
+    expect(report.notDrawn.map(presentReportLine)).toContainEqual({
+      name: "data.aws_iam_policy_document x",
+      reason: "data source",
+    });
+    expect(report.notDrawn.map(presentReportLine)).toContainEqual({
+      name: "aws_s3_bucket_versioning v",
+      reason: "part of aws_s3_bucket",
+    });
+    expect(report.notDrawn.map(presentReportLine)).toContainEqual({
+      name: "aws_route53_record r",
+      reason: "networking",
+    });
+    expect(report.notDrawn.map(presentReportLine)).toContainEqual({
       name: "aws_batch_compute_environment batch",
       reason: "Terraform type not drawn",
     });
     // "_application" isn't a component word; "_environment" neither: listed. Nothing is dropped silently.
-    expect(report.notDrawn.map((r) => r.name)).toContain("aws_kinesis_analytics_application a");
-    expect(report.notDrawn.map((r) => r.name)).toContain("aws_mwaa_environment flows");
+    expect(report.notDrawn.map(presentReportLine).map((r) => r.name)).toContain("aws_kinesis_analytics_application a");
+    expect(report.notDrawn.map(presentReportLine).map((r) => r.name)).toContain("aws_mwaa_environment flows");
     expect(report.guesses).toEqual([]);
     const guessed = tf(state([{ type: "aws_opensearchserverless_collection_instance", name: "s", values: {} }]));
     expect(guessed.report.guesses).toEqual([
@@ -805,7 +830,7 @@ describe("Terraform import: what isn't Terraform JSON says what to run", () => {
     expect(await importText(raw, "terraform.tfstate")).toEqual({ ok: false, error: TERRAFORM_RAW_STATE });
     // Among other files, Terraform source is listed with the same hint.
     const outcome = ok(await importFiles([AWS, { name: "main.tf", text: hcl }]));
-    expect(outcome.report.unread).toContainEqual({
+    expect(outcome.report.unread.map(presentReportLine)).toContainEqual({
       name: "main.tf",
       reason: "Terraform source: import “terraform show -json” output instead",
     });
@@ -923,11 +948,14 @@ describe("Terraform import: hostile input", () => {
     const { diagram, report } = tf(text);
     expect(diagram.nodes).toHaveLength(5_000);
     expect(diagram.edges).toHaveLength(2_500);
-    expect(report.notDrawn).toEqual([
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "aws_iam_role_policy_attachment ×2,500", reason: "access and permissions" },
     ]);
-    expect(report.inferred.length).toBeLessThanOrEqual(200);
-    expect(report.notes).toContain("2,300 more connections like these aren't listed");
+    expect(
+      report.inferred.map((line) => ({ ...line, ...(line.note ? { note: formatImportMessage(line.note) } : {}) }))
+        .length,
+    ).toBeLessThanOrEqual(200);
+    expect(report.notes.map(formatImportMessage)).toContain("2,300 more connections like these aren't listed");
     const more = state([...resources, { type: "aws_sqs_queue", name: "one_too_many", values: {} }]);
     expect(() => importTerraform([{ name: "big.json", text: more }])).toThrow(/more than 10,000 resources/);
     expect(MAX_RESOURCES).toBe(10_000);
@@ -968,8 +996,10 @@ describe("Terraform import: hostile input", () => {
     // The bound is the depth limit, proved by what's read and the reason given for the rest, not by the clock.
     const { diagram, report } = tf(text, "deep.json");
     expect(diagram.nodes.map((n) => n.label)).toEqual(["top"]);
-    expect(report.unread.length).toBeGreaterThan(0);
-    expect(report.unread[0].reason).toBe(`modules nested more than ${TF_LIMITS.maxModuleDepth} deep aren't read`);
+    expect(report.unread.map(presentReportLine).length).toBeGreaterThan(0);
+    expect(formatImportMessage(report.unread[0].reason!)).toBe(
+      `modules nested more than ${TF_LIMITS.maxModuleDepth} deep aren't read`,
+    );
   });
 
   it("follows references through modules, stopping where they go round in a circle", () => {
@@ -1024,7 +1054,9 @@ describe("Terraform import: hostile input", () => {
     expect(relationBetween(diagram, "loop", "jobs")).toBeUndefined();
     expect(diagram.edges.filter((e) => e.from === "loop")).toEqual([]);
     // The chain is longer than the resolver follows: it stops, and the report says so.
-    expect(report.notes).toContain("Some references weren't followed: the plan holds too many to read them all");
+    expect(report.notes.map(formatImportMessage)).toContain(
+      "Some references weren't followed: the plan holds too many to read them all",
+    );
   });
 
   it("keeps __proto__ and constructor as plain names, and never pollutes prototypes", () => {
@@ -1160,7 +1192,7 @@ describe("Terraform type table", () => {
       ["aws_ecs_cluster", "shown through its services"],
       ["google_project_service", "an enabled API"],
     ])
-      expect(notDrawnReason(type), type).toBe(reason);
+      expect(formatImportMessage(notDrawnReason(type)!), type).toBe(reason);
     expect(notDrawnReason("aws_instance")).toBeUndefined();
   });
 
@@ -1333,7 +1365,7 @@ describe("Terraform import: review findings", () => {
     // budget (TF_LIMITS.maxWork), and the report would say references weren't followed. No note is the proof.
     const graph = readTerraform([{ name: "repeat.json", text }]);
     expect(graph.links).toHaveLength(n);
-    expect(graph.notes).toEqual([]);
+    expect(graph.notes.map(formatImportMessage)).toEqual([]);
   });
 
   it("deduplicates grants before expanding them across a role's users, in linear time", () => {
@@ -1367,9 +1399,9 @@ describe("Terraform import: review findings", () => {
     ).toBeLessThan(LINEAR_LIMIT);
     const g = readTerraform([{ name: "grants.json", text: large }]);
     expect(g.links.filter((l) => l.relation === "secret")).toHaveLength(2_000);
-    expect(g.notDrawn).toEqual([]);
+    expect(g.notDrawn.map(presentReportLine)).toEqual([]);
     // Well inside the work budget: no reference or grant was left unfollowed.
-    expect(g.notes).toEqual([]);
+    expect(g.notes.map(formatImportMessage)).toEqual([]);
   });
 
   it("an ARN shared by more than 50 resources resolves to nothing, in any order", () => {
@@ -1393,7 +1425,7 @@ describe("Terraform import: review findings", () => {
     ]) {
       const { diagram, report } = tf(state(order));
       expect(diagram.edges).toEqual([]);
-      expect(report.notDrawn).toContainEqual({
+      expect(report.notDrawn.map(presentReportLine)).toContainEqual({
         name: "aws_lambda_event_source_mapping m",
         reason: "connects nothing in these files",
       });
@@ -1407,7 +1439,10 @@ describe("Terraform import: review findings", () => {
       { type: "constructor", name: "x", values: { arn: "a" } },
       { type: "aws_sqs_queue", name: "q", values: { name: "jobs" } },
     ]);
-    expect(tf(text).report.notDrawn).toContainEqual({ name: "constructor x", reason: "Terraform type not drawn" });
+    expect(tf(text).report.notDrawn.map(presentReportLine)).toContainEqual({
+      name: "constructor x",
+      reason: "Terraform type not drawn",
+    });
     // And among several files, an import never throws past its outcome.
     const outcome = await importFiles([
       { name: "a.json", text },

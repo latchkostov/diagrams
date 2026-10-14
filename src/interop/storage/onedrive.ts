@@ -1,3 +1,5 @@
+import { cloudMessages, cloudNetwork } from "./cloudMessages";
+import type { CloudOperation } from "./types";
 import { t } from "../../i18n";
 import { oneDriveConfig, type OneDriveConfig } from "./config";
 import { authorized, checkSize, jsonField, readTextCapped, type ClientDeps } from "./http";
@@ -82,34 +84,28 @@ export interface DriveItem {
   "@microsoft.graph.downloadUrl"?: string;
 }
 
-export function graphError(status: number, body: string, action: string): string {
+export function graphError(status: number, body: string, action: CloudOperation): string {
   const code = jsonField(body, (j) => (j.error as { code?: unknown } | undefined)?.code);
   const message = jsonField(body, (j) => (j.error as { message?: unknown } | undefined)?.message);
-  if (status === 401)
-    return t("cloud.oneDriveSigninExpiredWhileTryingToAction", { action: action.replaceAll(" ", "_") });
+  if (status === 401) return cloudMessages.expired("OneDrive", action);
   if (status === 507 || code === "quotaLimitReached" || code === "insufficientStorage")
-    return t("cloud.yourOneDriveIsFullSoTheFile");
+    return cloudMessages.full("OneDrive");
   if (status === 403)
     return t("cloud.oneDriveRefusedToActionLiveDiagramsCan", {
-      action: action.replaceAll(" ", "_"),
+      action: action,
       value1: message ? ` (${message})` : "",
     });
-  if (status === 404) return t("cloud.thatOneDriveFileNoLongerExistsOr");
-  if (status === 409 || status === 412)
-    return t("cloud.theFileChangedInOneDriveWhileTrying", { action: action.replaceAll(" ", "_") });
-  if (status === 429 || status >= 500) return t("cloud.oneDriveIsBusyRightNowStatusTry", { status: status });
-  return t("cloud.couldntValue0OnOneDriveValue1value2", {
-    value0: action.replaceAll(" ", "_"),
-    value1: status,
-    value2: message ? `: ${message}` : "",
-  });
+  if (status === 404) return cloudMessages.missing("OneDrive");
+  if (status === 409 || status === 412) return cloudMessages.changed("OneDrive", action);
+  if (status === 429 || status >= 500) return cloudMessages.busy("OneDrive", status);
+  return cloudMessages.failed("OneDrive", action, status, message ? `: ${message}` : "");
 }
 
 const SELECT = "id,name,size,lastModifiedDateTime,webUrl,file";
 const MAX_PAGES = 10;
 
 export function createOneDriveClient(deps: ClientDeps) {
-  const call = (url: string, init: RequestInit, action: string) =>
+  const call = (url: string, init: RequestInit, action: CloudOperation) =>
     authorized(deps, LABEL, graphError, url, init, action);
 
   return {
@@ -118,7 +114,7 @@ export function createOneDriveClient(deps: ClientDeps) {
       const items: DriveItem[] = [];
       let url: string | undefined = `${GRAPH}/me/drive/special/approot/children?$select=${SELECT}&$top=200`;
       for (let page = 0; url && page < MAX_PAGES; page++) {
-        const res = await call(url, { method: "GET" }, "list your diagrams");
+        const res = await call(url, { method: "GET" }, "list_your_diagrams");
         const body = (await res.json()) as { value?: DriveItem[]; "@odata.nextLink"?: string };
         items.push(...(body.value ?? []));
         const next = body["@odata.nextLink"];
@@ -138,7 +134,7 @@ export function createOneDriveClient(deps: ClientDeps) {
       const res = await call(
         `${GRAPH}/me/drive/items/${encodeURIComponent(id)}?$select=id,name,size,@microsoft.graph.downloadUrl`,
         { method: "GET" },
-        "read the file",
+        "read_the_file",
       );
       const item = (await res.json()) as DriveItem;
       checkSize(item.size);
@@ -148,9 +144,9 @@ export function createOneDriveClient(deps: ClientDeps) {
       try {
         file = await deps.fetch(href, { method: "GET" });
       } catch {
-        throw new StorageError(t("cloud.couldntReachOneDriveToDownloadTheFile"));
+        throw new StorageError(cloudNetwork("OneDrive", "download_the_file"));
       }
-      if (!file.ok) throw new StorageError(graphError(file.status, "", "download the file"), file.status);
+      if (!file.ok) throw new StorageError(graphError(file.status, "", "download_the_file"), file.status);
       return { ...item, text: await readTextCapped(file) };
     },
 
@@ -159,7 +155,7 @@ export function createOneDriveClient(deps: ClientDeps) {
       const res = await call(
         `${GRAPH}/me/drive/special/approot:/${encodeURIComponent(name)}:/content?@microsoft.graph.conflictBehavior=rename`,
         { method: "PUT", headers: { "Content-Type": "application/json" }, body: text, signal },
-        "save the file",
+        "save_the_file",
       );
       return (await res.json()) as DriveItem;
     },
@@ -169,7 +165,7 @@ export function createOneDriveClient(deps: ClientDeps) {
       const res = await call(
         `${GRAPH}/me/drive/items/${encodeURIComponent(id)}/content`,
         { method: "PUT", headers: { "Content-Type": "application/json" }, body: text, signal },
-        "update the file",
+        "update_the_file",
       );
       return (await res.json()) as DriveItem;
     },

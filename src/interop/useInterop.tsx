@@ -168,9 +168,9 @@ type DialogState =
     };
 
 /** An import's message download can fail before the operation has an error handler. */
-const loadFileMessages = () =>
+const loadFileMessages = (valid: () => boolean = () => true) =>
   import("./ui/fileMessages").catch(() => {
-    toast.error(t("fileDialog.loadFailed"));
+    if (valid()) toast.error(t("fileDialog.loadFailed"));
   });
 
 /** Why no link was made (or a link dialog closed), with the safe way to share instead: Interactive HTML…. */
@@ -213,6 +213,17 @@ export function useInterop({
   isPublicExample,
 }: Options) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  // Dialog imports belong to the dialog that submitted them, including while operation messages download.
+  const importSession = useRef(0);
+  useLayoutEffect(() => {
+    importSession.current++;
+  }, [dialog]);
+  useEffect(
+    () => () => {
+      importSession.current++;
+    },
+    [],
+  );
   /**
    * The last import's report, for the diagram it made: in memory only, until another diagram opens. `seen`:
    * that diagram has been open (the import itself switches to it).
@@ -308,31 +319,31 @@ export function useInterop({
   /** Runs an action, turning any failure into a friendly toast. Called from handlers, never during render. */
   const attempt = async (
     what: string,
-    fn: (messages: Promise<typeof import("./ui/fileMessages")>) => Promise<void> | void,
+    fn: (notify: (show: (words: typeof import("./ui/fileMessages")) => void) => void) => Promise<void> | void,
   ) => {
     // Start the message download beside the operation, without awaiting before a system picker opens.
     const messages = import("./ui/fileMessages");
     messages.catch(() => {});
     try {
-      await fn(messages);
+      await fn((show) => {
+        // Notifications are best effort. They never delay a file operation or turn its success into failure.
+        void messages.then(show).catch(() => {});
+      });
     } catch (err) {
-      const words = await messages.catch(() => undefined);
-      toast.error(
-        err instanceof StorageError && err.standalone
-          ? err.message
-          : words
-            ? words.fileFailure(what, message(err))
-            : t("fileDialog.loadFailed"),
-      );
+      if (err instanceof StorageError && err.standalone) toast.error(err.message);
+      else
+        void messages.then(
+          (words) => toast.error(words.fileFailure(what, message(err))),
+          () => toast.error(message(err)),
+        );
     }
   };
 
   const exportNative = () =>
-    attempt("diagram", async (messages) => {
+    attempt("diagram", (notify) => {
       const d = current();
       downloadText(serializeNative(d), `${baseName(d)}.diagram.json`, "application/json");
-      const { nativeExported } = await messages;
-      toast.success(nativeExported(d.nodes.length, d.edges.length));
+      notify(({ nativeExported }) => toast.success(nativeExported(d.nodes.length, d.edges.length)));
     });
 
   const exportImage = (kind: "png" | "svg", opts: ImageExportOptions = {}) =>
@@ -455,14 +466,13 @@ export function useInterop({
   // ---------------------------------------------------------------- save
 
   const saveToDevice = (as = false) =>
-    attempt("save", async (messages) => {
+    attempt("save", async (notify) => {
       const d = current();
       const text = serializeNative(d);
       const name = `${baseName(d)}.diagram.json`;
       if (!fsSupported) {
-        const { downloadedFile } = await messages;
         downloadText(text, name, "application/json");
-        toast.success(downloadedFile(name));
+        notify(({ downloadedFile }) => toast.success(downloadedFile(name)));
         return;
       }
       const identity = getDiagramIdentity(slug);
@@ -479,8 +489,7 @@ export function useInterop({
       // The destination binds to the diagram that started the save, even if another one is open now.
       const bound = bind(slug, deviceTarget(file.ref, Date.now()), identity);
       const stillOpen = openSlug.current === slug;
-      const { deviceSaved } = await messages;
-      toast.success(deviceSaved(file.name, d.title, bound, stillOpen));
+      notify(({ deviceSaved }) => toast.success(deviceSaved(file.name, d.title, bound, stillOpen)));
     });
 
   /** Save to a cloud provider: over the file this diagram is bound to there, or (`asNew`) a new file. */
@@ -569,10 +578,10 @@ export function useInterop({
   // ---------------------------------------------------------------- import
 
   const handleOutcome = useCallback(
-    async (outcome: ImportOutcome, source: Source) => {
+    async (outcome: ImportOutcome, source: Source, valid: () => boolean = () => true) => {
       // Resolve messages before changing the document. A failed chunk leaves a paste/page dialog available to retry.
-      const words = await loadFileMessages();
-      if (!words) return;
+      const words = await loadFileMessages(valid);
+      if (!valid() || !words) return;
       if (outcome.ok === false) {
         toast.error(t("fileToast.couldntImportValue0Value1", { value0: source.name, value1: outcome.error }));
         return;
@@ -597,7 +606,8 @@ export function useInterop({
       const r = outcome.report;
       if (r && created) {
         setImported({ slug: created, report: r, replay: outcome.replay });
-        toast.info(r.summary, {
+        const { formatImportMessage } = words;
+        toast.info(formatImportMessage(r.summary), {
           action: {
             label: t("fileToast.details"),
             run: () => setDialog({ kind: "report" }),
@@ -684,7 +694,14 @@ export function useInterop({
   };
 
   const importPasted = useCallback(
-    async (text: string) => handleOutcome(await importText(text), { name: t("fileToast.pastedText") }),
+    async (text: string) => {
+      const session = ++importSession.current;
+      await handleOutcome(
+        await importText(text),
+        { name: t("fileToast.pastedText") },
+        () => session === importSession.current,
+      );
+    },
     [handleOutcome],
   );
 
@@ -1088,7 +1105,13 @@ export function useInterop({
         />
       )}
       {dialog?.kind === "paste" && (
-        <PasteDialog onImport={(t) => void importPasted(t)} onClose={() => setDialog(null)} />
+        <PasteDialog
+          onImport={(t) => void importPasted(t)}
+          onClose={() => {
+            importSession.current++;
+            setDialog(null);
+          }}
+        />
       )}
       {dialog?.kind === "report" && report && (
         <ImportReportDialog
@@ -1113,8 +1136,14 @@ export function useInterop({
         <PagesDialog
           fileName={dialog.fileName}
           pages={dialog.pages}
-          onPick={(i) => handleOutcome(dialog.pick(i), dialog.source)}
-          onClose={() => setDialog(null)}
+          onPick={(i) => {
+            const session = ++importSession.current;
+            return handleOutcome(dialog.pick(i), dialog.source, () => session === importSession.current);
+          }}
+          onClose={() => {
+            importSession.current++;
+            setDialog(null);
+          }}
         />
       )}
     </>

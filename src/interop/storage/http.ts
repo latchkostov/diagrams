@@ -1,4 +1,5 @@
-import { t } from "../../i18n";
+import type { CloudOperation } from "./types";
+import { cloudNetwork } from "./cloudMessages";
 import { LIMITS, tooLargeMessage } from "../native";
 import { StorageError } from "./types";
 
@@ -12,7 +13,7 @@ export interface ClientDeps {
 }
 
 /** Turns a failed response into the provider's readable message. */
-export type ErrorMapper = (status: number, body: string, action: string) => string;
+export type ErrorMapper = (status: number, body: string, action: CloudOperation) => string;
 
 /** Authorised fetch: Bearer token, one retry with a fresh token on 401, readable errors. */
 export async function authorized(
@@ -21,7 +22,7 @@ export async function authorized(
   mapError: ErrorMapper,
   url: string,
   init: RequestInit,
-  action: string,
+  action: CloudOperation,
 ): Promise<Response> {
   let token = await deps.getToken();
   for (let attempt = 0; ; attempt++) {
@@ -35,9 +36,7 @@ export async function authorized(
       });
     } catch (err) {
       if (init.signal?.aborted) throw init.signal.reason ?? err;
-      throw new StorageError(
-        t("cloud.couldntReachLabelToActionCheckYour", { label: label, action: action.replaceAll(" ", "_") }),
-      );
+      throw new StorageError(cloudNetwork(label, action));
     }
     if (res.ok) return res;
     if (res.status === 401 && attempt === 0) {

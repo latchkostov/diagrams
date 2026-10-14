@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { productOf, readSetting } from "./settings";
+import { diagnostic } from "./graph";
 import { imageStencil, repositoryOf, resolveStencil, shortImage } from "./stencils";
 
 describe("connections from settings", () => {
@@ -61,7 +62,7 @@ describe("resolveStencil", () => {
     expect(imageStencil("mariadb:11")).toBe("mysql");
     expect(imageStencil("jaegertracing/all-in-one:1.6")).toBe("jaeger");
     expect(imageStencil("otel/opentelemetry-collector-contrib")).toBe("opentelemetry");
-    expect(imageStencil("zookeeper")).toEqual({ skip: "part of Kafka" });
+    expect(imageStencil("zookeeper")).toEqual({ skip: diagnostic("importDetail.partOfKafka") });
   });
 
   it("is sure of an image, a framework or a role; guesses otherwise", () => {

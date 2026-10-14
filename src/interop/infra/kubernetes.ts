@@ -1,4 +1,4 @@
-import { formatList, formatNumber } from "../../i18n/format";
+import { diagnostic, diagnosticKey, type ImportText } from "./graph";
 import { t as tr } from "../../i18n";
 import type { Evidence, ImportComponent, ImportGraph } from "./graph";
 import { imageStencil, shortImage } from "./stencils";
@@ -191,7 +191,7 @@ const TLD = /^(?:com|net|org|io|dev|app|ai|co|cloud|eu|us|uk|de|fr|nl|ca|au|in|j
 const FOLDABLE = new Set(["Pod", "ReplicaSet", "Job"]);
 
 /** Every resource in the files: documents, and the items of `kind: List`. Values are read, never executed. */
-function readResources(files: readonly SourceFile[], unread: (name: string, reason: string) => void): Res[] {
+function readResources(files: readonly SourceFile[], unread: (name: string, reason: ImportText) => void): Res[] {
   const out: Res[] = [];
   let documents = 0;
   for (const f of files) {
@@ -213,13 +213,16 @@ function readResources(files: readonly SourceFile[], unread: (name: string, reas
       }
       const apiVersion = str(own(doc, "apiVersion"));
       if (!isMap(doc) || !kind || !apiVersion) {
-        unread(`${name}, document ${index}`, tr("importDetail.notAKubernetesResourceNoKind"));
+        unread(`${name}, document ${index}`, diagnostic("importDetail.notAKubernetesResourceNoKind"));
         continue;
       }
       const m = meta({ obj: doc });
       const resName = str(own(m, "name")) ?? str(own(m, "generateName"));
       if (!resName) {
-        unread(`${name}, document ${index}`, tr("importDetail.aValue0WithNoName", { value0: kind.slice(0, 60) }));
+        unread(
+          `${name}, document ${index}`,
+          diagnostic("importDetail.aValue0WithNoName", { value0: kind.slice(0, 60) }),
+        );
         continue;
       }
       if (out.length >= MAX_RESOURCES)
@@ -263,22 +266,22 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     unread: [],
     notes: [],
   };
-  const unread = (name: string, reason: string) => {
+  const unread = (name: string, reason: ImportText) => {
     if (g.unread.length < 10_000) g.unread.push({ name, reason });
   };
   const resources = readResources(files, unread);
   if (!resources.length) throw new ImportError(tr("importDetail.theresNothingToDrawNoKubernetes"));
 
   /** Not drawn, grouped by kind and reason: "ServiceMonitor orders-api", "PersistentVolumeClaim ×4". */
-  const skipped = new Map<string, { kind: string; reason: string; names: string[] }>();
-  const skip = (kind: string, name: string, reason: string) => {
-    const k = `${kind}\u0001${reason}`;
+  const skipped = new Map<string, { kind: string; reason: ImportText; names: string[] }>();
+  const skip = (kind: string, name: string, reason: ImportText) => {
+    const k = `${kind}\u0001${diagnosticKey(reason)}`;
     const entry = skipped.get(k) ?? { kind, reason, names: [] };
     entry.names.push(name);
     skipped.set(k, entry);
   };
-  const note = (text: string) => {
-    if (!g.notes.includes(text) && g.notes.length < 200) g.notes.push(text);
+  const note = (text: ImportText) => {
+    if (!g.notes.some((n) => diagnosticKey(n) === diagnosticKey(text)) && g.notes.length < 200) g.notes.push(text);
   };
 
   // ------------------------------------------------ indexes
@@ -336,7 +339,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     // Pods, ReplicaSets and Jobs from `kubectl get all` fold into the workload that owns them. Anything else an
     // owner makes (a Deployment an operator's custom resource manages) is drawn: the owner isn't.
     if (ownerWorkload(r)) {
-      skip(r.kind, r.name, tr("importDetail.foldedIntoItsOwner"));
+      skip(r.kind, r.name, diagnostic("importDetail.foldedIntoItsOwner"));
       continue;
     }
     const containers = list(own(p.pod, "containers")).filter(isMap);
@@ -538,7 +541,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
   for (const k of strimzi.values()) {
     handled.add(k);
     const id = clusterId(k.ns, k.name);
-    if (clustersWithTopics.has(id)) skip("Kafka", k.name, tr("importDetail.shownThroughItsTopics"));
+    if (clustersWithTopics.has(id)) skip("Kafka", k.name, diagnostic("importDetail.shownThroughItsTopics"));
     else clusterNode(id);
   }
 
@@ -556,7 +559,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       context: ns,
     });
     note(
-      tr("importDetail.value0AServiceWithValue1In", {
+      diagnostic("importDetail.value0AServiceWithValue1In", {
         value0: label(name),
         reason: why === NOT_IN_FILES ? "definition" : "workload",
       }),
@@ -784,15 +787,15 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     const job = so.kind === "ScaledJob";
     const w = job ? workloadNames.at(so.kind, so.ns, so.name) : scaled(so, own(s, "scaleTargetRef"));
     if (!w) {
-      skip(so.kind, so.name, tr("importDetail.scalesAWorkloadThatIsntIn"));
+      skip(so.kind, so.name, diagnostic("importDetail.scalesAWorkloadThatIsntIn"));
       continue;
     }
     const wl = label(w.res.name);
     const max = num(own(s, "maxReplicaCount")) ?? 100;
     const min = num(own(s, "minReplicaCount"));
-    if (job) note(tr("importDetail.value0RunsUpToValue1Jobs", { value0: wl, value1: max }));
+    if (job) note(diagnostic("importDetail.value0RunsUpToValue1Jobs", { value0: wl, value1: max }));
     else {
-      note(tr("importDetail.value0ScalesFromValue1ToValue2", { value0: wl, value1: min ?? 0, value2: max }));
+      note(diagnostic("importDetail.value0ScalesFromValue1ToValue2", { value0: wl, value1: min ?? 0, value2: max }));
       floor(w, min);
     }
     const scope = scopeFor(so.ns);
@@ -858,7 +861,11 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
         });
         links.flow(key, w.key, "async", evidence, !queue && subscription ? { group: subscription } : undefined);
       } else if (type)
-        skip(so.kind, so.name, tr("importDetail.value0TriggerScalingOnly", { value0: type.replace(/[^\w-]/g, "") }));
+        skip(
+          so.kind,
+          so.name,
+          diagnostic("importDetail.value0TriggerScalingOnly", { value0: type.replace(/[^\w-]/g, "") }),
+        );
     }
   }
   for (const hpa of resources.filter((r) => r.kind === "HorizontalPodAutoscaler")) {
@@ -866,14 +873,14 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     const s = spec(hpa);
     const w = scaled(hpa, own(s, "scaleTargetRef"));
     if (!w) {
-      skip(hpa.kind, hpa.name, tr("importDetail.scalesAWorkloadThatIsntIn"));
+      skip(hpa.kind, hpa.name, diagnostic("importDetail.scalesAWorkloadThatIsntIn"));
       continue;
     }
     const min = num(own(s, "minReplicas"));
     const max = num(own(s, "maxReplicas"));
     if (max !== undefined)
       note(
-        tr("importDetail.value0ScalesFromValue1ToValue2More", {
+        diagnostic("importDetail.value0ScalesFromValue1ToValue2More", {
           value0: label(w.res.name),
           value1: min ?? 1,
           value2: max,
@@ -979,7 +986,8 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       if (env) linkSettings(components, links, w.key, knownSettings(env), scope);
     }
   }
-  if (budget.exhausted) note(tr("importDetail.settingsPastTheFirstValue0Number", { value0: ENV_LIMITS.maxSettings }));
+  if (budget.exhausted)
+    note(diagnostic("importDetail.settingsPastTheFirstValue0Number", { value0: ENV_LIMITS.maxSettings }));
 
   // ------------------------------------------------ Strimzi KafkaUser ACLs: who may produce and consume
   // The User Operator writes a KafkaUser's credentials to a Secret named after it (with the cluster's
@@ -1038,7 +1046,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       (kafka && str(own(own(own(spec(kafka), "entityOperator"), "userOperator"), "secretPrefix"))?.slice(0, 100)) || "";
     const users = bySecret.get(u.ns, `${prefix}${u.name}`);
     if (!users.length) {
-      skip(u.kind, u.name, tr("importDetail.itsACLsArentDrawnNoWorkload"));
+      skip(u.kind, u.name, diagnostic("importDetail.itsACLsArentDrawnNoWorkload"));
       continue;
     }
     const denies = acls.filter((a) => a.deny);
@@ -1046,7 +1054,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     const writes = new Set<string>();
     const reads = new Set<string>();
     const groups = new Set<string>();
-    const wide: string[] = [];
+    const wide: ImportText[] = [];
     for (const a of acls) {
       if (a.deny) continue;
       const all = a.ops.has("all");
@@ -1062,7 +1070,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       const action = read && write ? "both" : read ? "read" : "write";
       if (a.pattern !== "literal" || !plain(a.name)) {
         wide.push(
-          tr("importReport.aclWide", {
+          diagnostic("importReport.aclWide", {
             action,
             scope: a.name === "*" ? "all" : "prefix",
             name: a.name.replace(/[^\w.-]/g, ""),
@@ -1072,7 +1080,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       }
       // Host constraints do not reveal which hosts these workloads run on.
       if (!a.anyHost) {
-        wide.push(tr("importReport.aclHosts", { action, name: a.name }));
+        wide.push(diagnostic("importReport.aclHosts", { action, name: a.name }));
         continue;
       }
       if (write && allowed("topic", a.name, "write")) writes.add(a.name);
@@ -1080,7 +1088,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     }
     const id = clusterId(u.ns, cluster ?? "");
     const group = groups.size === 1 ? [...groups][0] : undefined;
-    const evidence = (note: string): Evidence => ({ source: "resource", name: `KafkaUser ${u.name}`, note });
+    const evidence = (note: ImportText): Evidence => ({ source: "resource", name: `KafkaUser ${u.name}`, note });
     for (const name of writes) {
       const topic = topicOn(id, name);
       for (const w of users) links.flowOrEnrich(w, topic, "async", evidence("writes"));
@@ -1092,15 +1100,15 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     if (writes.size || reads.size) aclFlows = true;
     if (wide.length)
       note(
-        tr("importDetail.value0KafkaUserMayValue1value2NotDrawn", {
+        diagnostic("importDetail.value0KafkaUserMayValue1value2NotDrawn", {
           value0: label(u.name),
-          value1: formatList(wide.slice(0, 3)),
+          value1: { list: wide.slice(0, 3) },
           value2: wide.length > 3 ? "…" : "",
         }),
       );
-    skip(u.kind, u.name, tr("importDetail.shownAsItsWorkloadsFlows"));
+    skip(u.kind, u.name, diagnostic("importDetail.shownAsItsWorkloadsFlows"));
   }
-  if (aclFlows) g.connectionsTitle = tr("importReport.kafkaConnections");
+  if (aclFlows) g.connectionsTitle = diagnostic("importReport.kafkaConnections");
 
   // ------------------------------------------------ what isn't drawn, and why
   for (const r of resources) {
@@ -1108,25 +1116,28 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
     const id = nsName(r.ns, r.name);
     if (r.group === "" && r.kind === "Namespace") continue;
     if (r.group === "" && r.kind === "ConfigMap") {
-      if (!usedConfigs.has(id)) skip(r.kind, r.name, tr("importDetail.noWorkloadUsesIt"));
+      if (!usedConfigs.has(id)) skip(r.kind, r.name, diagnostic("importDetail.noWorkloadUsesIt"));
     } else if (r.group === "" && r.kind === "Secret") {
       const type = str(own(r.obj, "type")) ?? "";
       if (!usedSecrets.has(id))
         skip(
           r.kind,
           r.name,
-          Object.hasOwn(SECRET_TYPES, type) ? SECRET_TYPES[type] : tr("importDetail.noWorkloadUsesIt"),
+          Object.hasOwn(SECRET_TYPES, type) ? SECRET_TYPES[type] : diagnostic("importDetail.noWorkloadUsesIt"),
         );
     } else if (r.group === "" && r.kind === "ServiceAccount") {
-      if (!usedAccounts.has(id)) skip(r.kind, r.name, tr("importDetail.notAComponent"));
+      if (!usedAccounts.has(id)) skip(r.kind, r.name, diagnostic("importDetail.notAComponent"));
     } else if (r.group === "kafka.strimzi.io" && PART_OF_KAFKA.has(r.kind))
-      skip(r.kind, r.name, tr("importDetail.partOfKafka"));
-    else if (NOT_A_COMPONENT.has(r.kind)) skip(r.kind, r.name, tr("importDetail.notAComponent"));
-    else skip(r.kind, r.name, tr("importDetail.unknownKindValue0", { value0: r.group || "core" }));
+      skip(r.kind, r.name, diagnostic("importDetail.partOfKafka"));
+    else if (NOT_A_COMPONENT.has(r.kind)) skip(r.kind, r.name, diagnostic("importDetail.notAComponent"));
+    else skip(r.kind, r.name, diagnostic("importDetail.unknownKindValue0", { value0: r.group || "core" }));
   }
   for (const { kind, reason, names } of skipped.values())
     g.notDrawn.push({
-      name: names.length === 1 ? `${kind} ${names[0]}` : `${kind} ×${formatNumber(names.length)}`,
+      name:
+        names.length === 1
+          ? `${kind} ${names[0]}`
+          : diagnostic("importReport.namedCount", { name: kind, count: names.length }),
       reason,
     });
   if (!g.components.length) throw new ImportError(tr("importDetail.theresNothingToDrawTheseFiles"));

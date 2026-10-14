@@ -1,3 +1,5 @@
+import { formatImportMessage } from "../ui/importMessages";
+import { diagnostic } from "./graph";
 import { t as tr } from "../../i18n";
 import type { Evidence, ImportComponent, ImportGraph, ImportLink } from "./graph";
 import type { DiagramGroup } from "../../model/types";
@@ -504,14 +506,14 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     // Unused and undrawn: listed, never dropped silently.
     for (const [c, key] of indexOf(doc))
       if (!usedChannels.has(c))
-        g.notDrawn.push({ name: key, reason: tr("importDetail.noOperationInValue0UsesIt", { value0: title }) });
+        g.notDrawn.push({ name: key, reason: diagnostic("importDetail.noOperationInValue0UsesIt", { value0: title }) });
     const comps = refs.child(root, "components");
     const msgs = refs.child(comps, "messages");
     if (msgs && isMap(msgs.value))
       for (const k of Object.keys(msgs.value)) {
         const m = refs.resolve(msgs.value[k], msgs.doc);
         if (m && !usedMessages.has(m.value))
-          g.notDrawn.push({ name: k, reason: tr("importDetail.aMessageNoChannelUses") });
+          g.notDrawn.push({ name: k, reason: diagnostic("importDetail.aMessageNoChannelUses") });
       }
     for (const [what, field] of [
       ["security scheme", "securitySchemes"],
@@ -521,7 +523,7 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
       if (n)
         g.notDrawn.push({
           name: `${title}: ${n} ${what}${n === 1 ? "" : "s"}`,
-          reason: tr("importDetail.notComponentsOfTheSystem"),
+          reason: diagnostic("importDetail.notComponentsOfTheSystem"),
         });
     }
   }
@@ -543,7 +545,7 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
         channel.producers.add(source.key);
         flow(source.key, channel.key, { dlq: true }, { source: "spec", name: "dead letters" });
         g.notes.push(
-          tr("importDetail.value0IsTheDeadletterRouteOf", {
+          diagnostic("importDetail.value0IsTheDeadletterRouteOf", {
             value0: channel.address,
             value1: source.address,
             value2: app.title,
@@ -554,7 +556,9 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
         const only = names.size === 1 ? [...names][0] : undefined;
         app.sends.push({ channel: channel.key, message: only });
         flow(app.key, channel.key, only ? { emits: only } : {}, { source: "spec", name: "dead letters" });
-        g.notes.push(tr("importDetail.value0SendsToValue1WhichInputs", { value0: app.title, value1: channel.address }));
+        g.notes.push(
+          diagnostic("importDetail.value0SendsToValue1WhichInputs", { value0: app.title, value1: channel.address }),
+        );
       }
     }
 
@@ -566,7 +570,7 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     const exchanges = ch.kinds.filter((k) => k.exchange && k !== queue);
     if (queue && exchanges.length)
       g.notes.push(
-        tr("importDetail.value0IsAQueueValue1Sends", {
+        diagnostic("importDetail.value0IsAQueueValue1Sends", {
           value0: ch.address,
           value1: exchanges[0].doc,
           value2: exchanges[0].exchange ?? "",
@@ -590,7 +594,7 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     });
     if (ch.server && ch.contentType) ch.server.avro = true;
     if (ch.consumers.size && !ch.producers.size)
-      g.notes.push(tr("importDetail.value0HasNoProducerInThese", { value0: ch.address }));
+      g.notes.push(diagnostic("importDetail.value0HasNoProducerInThese", { value0: ch.address }));
   }
   const used = new Set([...channels.values()].map((c) => c.server?.id));
   g.groups = [...servers.values()]
@@ -610,7 +614,7 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
       stencil: "kafka.schema-registry",
     });
     if (!server.registry)
-      g.notes.push(tr("importDetail.schemaRegistryAddedMessagesOnValue0", { value0: server.host || "Kafka" }));
+      g.notes.push(diagnostic("importDetail.schemaRegistryAddedMessagesOnValue0", { value0: server.host || "Kafka" }));
     for (const c of channels.values()) {
       if (c.server !== server) continue;
       for (const user of [...c.producers, ...c.consumers]) {
@@ -645,7 +649,10 @@ export function readAsyncApi(files: readonly SourceFile[]): ImportGraph {
     const why = g.unread[0];
     throw new ImportError(
       why
-        ? tr("importDetail.nothingInItCouldBeDrawn", { value0: why.name, value1: why.reason })
+        ? tr("importDetail.nothingInItCouldBeDrawn", {
+            value0: formatImportMessage(why.name),
+            value1: formatImportMessage(why.reason),
+          })
         : tr("importDetail.nothingInItCouldBeDrawnMore"),
     );
   }

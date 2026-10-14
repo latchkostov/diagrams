@@ -1,4 +1,4 @@
-import { formatList } from "../../i18n/format";
+import { diagnostic } from "./graph";
 import { t as tr } from "../../i18n";
 import type { ImportGraph } from "./graph";
 import { imageStencil, shortImage, withoutCredentials } from "./stencils";
@@ -221,7 +221,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
   };
 
   for (const name of Object.keys(own(top, "volumes") && isMap(own(top, "volumes")) ? (top.volumes as object) : {}))
-    g.notDrawn.push({ name, reason: tr("importDetail.volume") });
+    g.notDrawn.push({ name, reason: diagnostic("importDetail.volume") });
 
   // ------------------------------------------------ pass 1: what gets drawn
   const components = new Components(g.components);
@@ -234,7 +234,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
   for (const name of Object.keys(services)) {
     const svc = resolve(name);
     if (!svc) {
-      g.notDrawn.push({ name, reason: tr("importDetail.notAServiceDefinition") });
+      g.notDrawn.push({ name, reason: diagnostic("importDetail.notAServiceDefinition") });
       continue;
     }
     const profiles = list(own(svc, "profiles"))
@@ -242,7 +242,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
       .filter((p): p is string => !!p);
     if (profiles.length) {
       const names = profiles.map((p) => `“${p}”`).join(", ");
-      g.notDrawn.push({ name, reason: tr("importDetail.profiles", { count: profiles.length, names }) });
+      g.notDrawn.push({ name, reason: diagnostic("importDetail.profiles", { count: profiles.length, names }) });
       continue;
     }
     const rawImage = str(own(svc, "image"));
@@ -424,7 +424,7 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
           }).length;
         net = nets.reduce((best, n) => (score(n) > score(best) ? n : best), nets[0]);
         g.notes.push(
-          tr("importDetail.value0IsOnValue1ShownIn", { value0: info.key, value1: formatList(nets), value2: net }),
+          diagnostic("importDetail.value0IsOnValue1ShownIn", { value0: info.key, value1: { list: nets }, value2: net }),
         );
       }
       byKey.get(info.key)!.group = net;

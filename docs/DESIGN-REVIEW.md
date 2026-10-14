@@ -23,6 +23,7 @@ Production-build regressions cover double-click on cards, boundary labels/outlin
 keyboard and contextual naming, panel coordination and draft retention. The live naming regressions fail with
 the fix reverted; removing draft retention also fails its regression. Review used source and browser-test
 evidence, without a separate screenshot walkthrough.
+
 ## File-dialog localization review (2026-10-14)
 
 Designer-agent review against the UX principles covered the remaining File dialogs and provider prompts.
@@ -3639,3 +3640,12 @@ one line that agents and copied prompts are off here. With the on-device model o
 menu entry at all. The brand name replaces "Live Diagrams" in the top bar and the page title only; the start card
 still says what the software is. A screenshot pass on the internal build (File menu, AI panel, a new Private diagram)
 found no clutter or dead ends; `tests/e2e/self-host.spec.ts` and `self-host-locked.spec.ts` cover each state.
+
+## File dialog review fixes — 2026-10-14
+
+The designer's source review found no blocking UX regressions. Saves, downloads and native pickers act
+independently of optional notifications. Cancel and Esc stop deferred dialog imports. Retained import
+diagnostics follow language changes while diagram content stays as written. Shared cloud errors keep
+provider-specific permission guidance and recovery steps. No controls, layout changes or focus targets
+were added, so the existing chrome budget and primary actions remain intact. Browser regression coverage
+checks these flows; this source review did not inspect layout or contrast.

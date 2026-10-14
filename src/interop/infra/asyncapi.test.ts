@@ -1,3 +1,5 @@
+import { presentReportLine } from "../ui/importMessages";
+import { formatImportMessage } from "../ui/importMessages";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
@@ -70,7 +72,7 @@ describe("AsyncAPI import: the three fixtures together", () => {
     expect(groupOf(d, "order-service")).toBeUndefined();
     expect(node(d, "schema-registry.shop.internal")?.stencil).toBe("kafka.schema-registry");
     expect(d.nodes).toHaveLength(12);
-    expect(report.notes).toContain(
+    expect(report.notes.map(formatImportMessage)).toContain(
       "order-notifications is a queue; Order service sends to it through the exchange “notifications”",
     );
   });
@@ -128,16 +130,18 @@ describe("AsyncAPI import: the three fixtures together", () => {
     expect(report.traffic).toEqual([
       { nodeId: "order-service", label: "Order service", messageType: "OrderPlaced", ratePerSec: 1, seconds: 120 },
     ]);
-    expect(report.notes).toContain("Go live and pick “Imported traffic” to watch messages flow");
+    expect(report.notes.map(formatImportMessage)).toContain(
+      "Go live and pick “Imported traffic” to watch messages flow",
+    );
   });
 
   it("lists what isn't drawn: schemas and security schemes, channels and messages nothing uses", () => {
     const { report } = all();
-    expect(report.notDrawn).toEqual([
+    expect(report.notDrawn.map(presentReportLine)).toEqual([
       { name: "Order service: 1 security scheme", reason: "not components of the system" },
       { name: "Order service: 1 payload schema", reason: "not components of the system" },
     ]);
-    expect(report.notes).toContain("payments.completed.v1 has no producer in these files");
+    expect(report.notes.map(formatImportMessage)).toContain("payments.completed.v1 has no producer in these files");
     const { report: unused } = ok(
       importAsyncApi([
         {
@@ -156,7 +160,7 @@ components:
         },
       ]),
     );
-    expect(unused.notDrawn).toEqual([
+    expect(unused.notDrawn.map(presentReportLine)).toEqual([
       { name: "idle", reason: "no operation in X uses it" },
       { name: "Orphan", reason: "a message no channel uses" },
     ]);
@@ -190,16 +194,16 @@ describe("AsyncAPI import: 2.x, 3.x details and joining", () => {
     expect(edge(d, "topic-email.sent", "notification-service")).toBeUndefined();
     // Alone, nothing feeds order-notifications: the traffic starts at the app.
     expect(report.traffic?.map((t) => [t.nodeId, t.messageType])).toEqual([["notification-service", "EmailSent"]]);
-    expect(report.notes).toContain("order-notifications has no producer in these files");
+    expect(report.notes.map(formatImportMessage)).toContain("order-notifications has no producer in these files");
   });
 
   it("imported alone, a consumed topic has no producer, and that's a report line", () => {
     const { diagram: d, report } = ok(importAsyncApi([SHIPPING]));
     expect(edge(d, "topic-orders.placed.v1", "shipping-service")).toBeDefined();
-    expect(report.notes).toContain("orders.placed.v1 has no producer in these files");
+    expect(report.notes.map(formatImportMessage)).toContain("orders.placed.v1 has no producer in these files");
     // Avro without a registry URL on the server still brings a Schema Registry, and says why.
     expect(d.nodes.some((n) => n.stencil === "kafka.schema-registry")).toBe(true);
-    expect(report.notes.some((n) => n.startsWith("Schema Registry added"))).toBe(true);
+    expect(report.notes.map(formatImportMessage).some((n) => n.startsWith("Schema Registry added"))).toBe(true);
   });
 
   it("keeps channels on different clusters apart, even with the same address", () => {
@@ -326,7 +330,7 @@ components: { messages: { Event: { name: SharedEvent } } }
         },
       ]),
     );
-    expect(report.unread).toEqual([
+    expect(report.unread.map(presentReportLine)).toEqual([
       { name: "$ref https://example.com/x.yaml#/M", reason: "a remote reference, never fetched: open that file too" },
     ]);
   });
@@ -351,7 +355,11 @@ ${chain}
         },
       ]),
     );
-    expect(report.unread.some((l) => l.reason === "more than 32 references in a row")).toBe(true);
+    expect(
+      report.unread
+        .map(presentReportLine)
+        .some((l) => formatImportMessage(l.reason!) === "more than 32 references in a row"),
+    ).toBe(true);
   });
 
   it("no value from a message schema or a server's security reaches the diagram", () => {
@@ -396,7 +404,7 @@ components: { messages: { Event: { name: SharedEvent } } }
     expect(channel?.stencil).toBe("kafka.topic");
     expect(edge(d, "app", channel?.id ?? "")?.props).toEqual({ emits: "SharedEvent" });
     expect(report.traffic?.[0].messageType).toBe("SharedEvent");
-    expect(report.unread).toEqual([]);
+    expect(report.unread.map(presentReportLine)).toEqual([]);
   });
 
   it("keeps a channel message's key when an operation selects it", () => {
@@ -472,7 +480,7 @@ operations:
     );
     expect(edge(d, "w", "topic-w.dlq")?.props).toEqual({ emits: "X" });
     expect(d.edges.some((e) => e.props?.dlq)).toBe(false);
-    expect(report.notes.some((n) => n.includes("couldn't be told"))).toBe(true);
+    expect(report.notes.map(formatImportMessage).some((n) => n.includes("couldn't be told"))).toBe(true);
   });
 
   it("delivers the imported traffic to Shipping and Notification in the simulation", () => {
@@ -499,7 +507,11 @@ operations: { s: { action: send, channel: { $ref: "#/channels/c" } } }
     const outcome = await importFiles([bad, { ...bad, name: "bad-2.yaml" }]);
     expect(outcome.ok).toBe(true);
     if (outcome.ok === true)
-      expect(outcome.report?.unread.some((l) => l.reason === "a malformed reference")).toBe(true);
+      expect(
+        outcome.report?.unread
+          .map(presentReportLine)
+          .some((l) => formatImportMessage(l.reason!) === "a malformed reference"),
+      ).toBe(true);
   });
 });
 
@@ -552,7 +564,7 @@ info: { title: Big, version: "1" }
     };
     const small = scanTwice(4_000);
     const large = scanTwice(4_000 * GROWTH_FACTOR);
-    expect(large().unread).toHaveLength(32_000);
+    expect(large().unread.map(presentReportLine)).toHaveLength(32_000);
     expect(growth(small, large, { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
     // End to end: the report lists 200 and counts the rest.
     const many = Array.from({ length: 1_500 }, (_, i) => `    s${i}: { $ref: "https://example.com/s${i}.json" }`).join(
@@ -565,8 +577,8 @@ components:
 ${many}
 `;
     const { report } = ok(importAsyncApi([doc("refs.yaml", text)]));
-    expect(report.unread).toHaveLength(201);
-    expect(report.unread.at(-1)).toEqual({ name: "1,300 more", reason: "not listed" });
+    expect(report.unread.map(presentReportLine)).toHaveLength(201);
+    expect(report.unread.map(presentReportLine).at(-1)).toEqual({ name: "1,300 more", reason: "not listed" });
   });
 
   it("walks a huge enum without overflowing the stack", () => {

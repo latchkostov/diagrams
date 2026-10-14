@@ -1,3 +1,4 @@
+import { formatImportMessage } from "./importMessages";
 import { formatNumber, formatRate, formatDuration } from "../../i18n/format";
 import { t as tr, useLocale } from "../../i18n";
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
@@ -210,8 +211,8 @@ export function ImportReportDialog({
         {drewLine(report)}
       </p>
       {report.notes.map((note) => (
-        <p key={note} className="ix-report-note" data-testid="import-report-note">
-          {note}.
+        <p key={JSON.stringify(note)} className="ix-report-note" data-testid="import-report-note">
+          {formatImportMessage(note)}.
         </p>
       ))}
       <div className="ix-report">
@@ -270,7 +271,11 @@ export function ImportReportDialog({
         )}
         {report.inferred.length > 0 && (
           <Section
-            title={report.connectionsTitle ?? tr("importReport.connectionsFoundInSettings")}
+            title={
+              report.connectionsTitle
+                ? formatImportMessage(report.connectionsTitle)
+                : tr("importReport.connectionsFoundInSettings")
+            }
             count={report.inferred.length}
             testId="import-report-settings"
           >
@@ -282,7 +287,7 @@ export function ImportReportDialog({
                   {c.note && (
                     <span className="ix-report-muted">
                       {" "}
-                      ({c.note}
+                      ({formatImportMessage(c.note)}
                       {c.guess ? tr("importReport.aGuess") : ""})
                     </span>
                   )}
@@ -315,8 +320,8 @@ export function ImportReportDialog({
           >
             {report.notDrawn.map((l, i) => (
               <li key={i} className="ix-report-row" data-testid={`import-report-not-drawn-${i}`}>
-                <span className="ix-report-what">{l.name}</span>
-                <span className="ix-report-why">{l.reason}</span>
+                <span className="ix-report-what">{formatImportMessage(l.name)}</span>
+                <span className="ix-report-why">{formatImportMessage(l.reason)}</span>
               </li>
             ))}
           </Section>
@@ -326,9 +331,9 @@ export function ImportReportDialog({
             {report.unread.map((l, i) => (
               <li key={i} className="ix-report-row" data-testid={`import-report-unread-${i}`}>
                 <span className="ix-report-what text-selectable">
-                  <Breakable text={l.name} />
+                  <Breakable text={formatImportMessage(l.name)} />
                 </span>
-                <span className="ix-report-why">{l.reason}</span>
+                <span className="ix-report-why">{formatImportMessage(l.reason)}</span>
               </li>
             ))}
           </Section>

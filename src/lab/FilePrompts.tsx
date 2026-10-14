@@ -28,7 +28,7 @@ export function FilePrompts({ scenario }: { scenario: string }) {
         ? authorizeError("OneDrive", "interaction_required", "AADSTS90094")
         : scenario === "denied"
           ? authorizeError("OneDrive", "access_denied")
-          : graphError(scenario === "full" ? 507 : 401, "", "download the file");
+          : graphError(scenario === "full" ? 507 : 401, "", "download_the_file");
   const [open, setOpen] = useState(true);
   return open ? (
     <Dialog

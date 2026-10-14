@@ -1,3 +1,5 @@
+import { cloudMessages } from "./cloudMessages";
+import type { CloudOperation } from "./types";
 import { t } from "../../i18n";
 import { dropboxConfig, type DropboxConfig } from "./config";
 import { authorized, checkSize, headerSafeJson, jsonField, readTextCapped, type ClientDeps } from "./http";
@@ -71,31 +73,25 @@ export interface DropboxFile {
   rev?: string;
 }
 
-export function dropboxError(status: number, body: string, action: string): string {
+export function dropboxError(status: number, body: string, action: CloudOperation): string {
   const summary = jsonField(body, (j) => j.error_summary) || body.slice(0, 200);
-  if (status === 401)
-    return t("cloud.dropboxSigninExpiredWhileTryingToAction", { action: action.replaceAll(" ", "_") });
-  if (/insufficient_space/.test(summary)) return t("cloud.yourDropboxIsFullSoTheFile");
-  if (/not_found/.test(summary)) return t("cloud.thatDropboxFileNoLongerExistsOr");
-  if (/conflict/.test(summary))
-    return t("cloud.theFileChangedInDropboxWhileTrying", { action: action.replaceAll(" ", "_") });
+  if (status === 401) return cloudMessages.expired("Dropbox", action);
+  if (/insufficient_space/.test(summary)) return cloudMessages.full("Dropbox");
+  if (/not_found/.test(summary)) return cloudMessages.missing("Dropbox");
+  if (/conflict/.test(summary)) return cloudMessages.changed("Dropbox", action);
   if (status === 400 && /scope|app_folder|permission/i.test(summary))
-    return t("cloud.dropboxRefusedToActionTheAppIsnt", { action: action.replaceAll(" ", "_") });
-  if (status === 403) return t("cloud.dropboxRefusedToAction", { action: action.replaceAll(" ", "_") });
-  if (status === 429 || status >= 500) return t("cloud.dropboxIsBusyRightNowStatusTry", { status: status });
-  return t("cloud.couldntValue0OnDropboxValue1value2", {
-    value0: action.replaceAll(" ", "_"),
-    value1: status,
-    value2: summary ? `: ${summary}` : "",
-  });
+    return t("cloud.dropboxRefusedToActionTheAppIsnt", { action: action });
+  if (status === 403) return t("cloud.dropboxRefusedToAction", { action: action });
+  if (status === 429 || status >= 500) return cloudMessages.busy("Dropbox", status);
+  return cloudMessages.failed("Dropbox", action, status, summary ? `: ${summary}` : "");
 }
 
 const MAX_PAGES = 10;
 
 export function createDropboxClient(deps: ClientDeps) {
-  const call = (url: string, init: RequestInit, action: string) =>
+  const call = (url: string, init: RequestInit, action: CloudOperation) =>
     authorized(deps, LABEL, dropboxError, url, init, action);
-  const rpc = (route: string, arg: unknown, action: string) =>
+  const rpc = (route: string, arg: unknown, action: CloudOperation) =>
     call(
       `${API}/${route}`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(arg) },
@@ -106,12 +102,12 @@ export function createDropboxClient(deps: ClientDeps) {
     /** The diagram-like files in the app folder ("" is its root), newest first. */
     async list(): Promise<DropboxFile[]> {
       const files: DropboxFile[] = [];
-      let res = await rpc("files/list_folder", { path: "", limit: 500 }, "list your diagrams");
+      let res = await rpc("files/list_folder", { path: "", limit: 500 }, "list_your_diagrams");
       for (let page = 0; ; page++) {
         const body = (await res.json()) as { entries?: DropboxFile[]; cursor?: string; has_more?: boolean };
         files.push(...(body.entries ?? []));
         if (!body.has_more || !body.cursor || page + 1 >= MAX_PAGES) break;
-        res = await rpc("files/list_folder/continue", { cursor: body.cursor }, "list your diagrams");
+        res = await rpc("files/list_folder/continue", { cursor: body.cursor }, "list_your_diagrams");
       }
       return files
         .filter((f) => f[".tag"] === "file" && OPENABLE.test(f.name))
@@ -124,7 +120,7 @@ export function createDropboxClient(deps: ClientDeps) {
       const res = await call(
         `${CONTENT}/files/download`,
         { method: "POST", headers: { "Dropbox-API-Arg": headerSafeJson({ path: id }) } },
-        "download the file",
+        "download_the_file",
       );
       let meta: DropboxFile | undefined;
       try {
@@ -151,7 +147,7 @@ export function createDropboxClient(deps: ClientDeps) {
           body: text,
           signal,
         },
-        mode === "add" ? "save the file" : "update the file",
+        mode === "add" ? "save_the_file" : "update_the_file",
       );
       return (await res.json()) as DropboxFile;
     },

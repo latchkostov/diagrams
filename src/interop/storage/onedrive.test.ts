@@ -169,11 +169,11 @@ describe("OneDrive client (Microsoft Graph)", () => {
     await expect(offline.c.update("1", "x")).rejects.toThrow("Couldn't reach OneDrive to update the file");
     const missing = client([{ status: 404, body: { error: { code: "itemNotFound", message: "gone" } } }]);
     await expect(missing.c.update("1", "x")).rejects.toThrow(/no longer exists/);
-    expect(graphError(507, "", "save the file")).toBe("Your OneDrive is full, so the file couldn't be saved.");
-    expect(graphError(403, '{"error":{"code":"accessDenied","message":"nope"}}', "save the file")).toMatch(
+    expect(graphError(507, "", "save_the_file")).toBe("Your OneDrive is full, so the file couldn't be saved.");
+    expect(graphError(403, '{"error":{"code":"accessDenied","message":"nope"}}', "save_the_file")).toMatch(
       /refused.*own folder.*nope/,
     );
-    expect(graphError(429, "", "save the file")).toMatch(/busy/);
-    expect(graphError(400, "not json", "save the file")).toBe("Couldn't save the file on OneDrive (400).");
+    expect(graphError(429, "", "save_the_file")).toMatch(/busy/);
+    expect(graphError(400, "not json", "save_the_file")).toBe("Couldn't save the file on OneDrive (400).");
   });
 });

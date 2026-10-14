@@ -1,3 +1,5 @@
+import { cloudMessages, cloudNetwork } from "../storage/cloudMessages";
+import type { CloudOperation } from "../storage/types";
 import { t } from "../../i18n";
 import { LIMITS, tooLargeMessage } from "../native";
 
@@ -54,34 +56,30 @@ export function multipartBody(metadata: object, content: string, contentType: st
   ].join("\r\n");
 }
 
-function friendly(status: number, body: string, action: string): string {
+function friendly(status: number, body: string, action: CloudOperation): string {
   let reason = "";
   try {
     reason = (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? "";
   } catch {
     /* not JSON */
   }
-  if (status === 401) return t("cloud.googleDriveSigninExpiredWhileTryingTo", { action: action.replaceAll(" ", "_") });
-  if (status === 403 && /storage|quota/i.test(reason)) return t("cloud.yourGoogleDriveIsFullSoThe");
+  if (status === 401) return cloudMessages.expired("Google Drive", action);
+  if (status === 403 && /storage|quota/i.test(reason)) return cloudMessages.full("Google Drive");
   if (status === 403)
     return t("cloud.googleDriveRefusedToActionLiveDiagrams", {
-      action: action.replaceAll(" ", "_"),
+      action: action,
       value1: reason ? ` (${reason})` : "",
     });
   if (status === 404) return t("cloud.thatGoogleDriveFileNoLongerExists");
-  if (status === 429 || status >= 500) return t("cloud.googleDriveIsBusyRightNowStatus", { status: status });
-  return t("cloud.couldntValue0OnGoogleDriveValue1value2", {
-    value0: action.replaceAll(" ", "_"),
-    value1: status,
-    value2: reason ? `: ${reason}` : "",
-  });
+  if (status === 429 || status >= 500) return cloudMessages.busy("Google Drive", status);
+  return cloudMessages.failed("Google Drive", action, status, reason ? `: ${reason}` : "");
 }
 
 export function createDriveClient(deps: DriveClientDeps) {
   const boundary = deps.boundary ?? (() => `diagrams-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`);
 
   /** Authorised fetch; retries once with a fresh token on 401. */
-  async function call(url: string, init: RequestInit, action: string): Promise<Response> {
+  async function call(url: string, init: RequestInit, action: CloudOperation): Promise<Response> {
     let token = await deps.getToken();
     for (let attempt = 0; ; attempt++) {
       // A cancelled write stops here, after the token (which may have meant a sign-in) and before the upload.
@@ -94,7 +92,7 @@ export function createDriveClient(deps: DriveClientDeps) {
         });
       } catch (err) {
         if (init.signal?.aborted) throw init.signal.reason ?? err;
-        throw new DriveError(t("cloud.couldntReachGoogleDriveToActionCheck", { action: action.replaceAll(" ", "_") }));
+        throw new DriveError(cloudNetwork("Google Drive", action));
       }
       if (res.ok) return res;
       if (res.status === 401 && attempt === 0) {
@@ -110,7 +108,7 @@ export function createDriveClient(deps: DriveClientDeps) {
       const res = await call(
         `${API}/${encodeURIComponent(id)}?fields=${FIELDS}&supportsAllDrives=true`,
         { method: "GET" },
-        "read the file details",
+        "read_the_file_details",
       );
       return (await res.json()) as DriveFile;
     },
@@ -121,7 +119,7 @@ export function createDriveClient(deps: DriveClientDeps) {
       const res = await call(
         `${API}/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`,
         { method: "GET" },
-        "download the file",
+        "download_the_file",
       );
       const size = Number(res.headers.get("Content-Length"));
       if (size > LIMITS.maxTextChars) {
@@ -166,7 +164,7 @@ export function createDriveClient(deps: DriveClientDeps) {
           body: multipartBody(meta, file.content, file.mimeType, b),
           signal,
         },
-        "save the file",
+        "save_the_file",
       );
       return (await res.json()) as DriveFile;
     },
@@ -187,7 +185,7 @@ export function createDriveClient(deps: DriveClientDeps) {
           body: multipartBody(meta, file.content, file.mimeType, b),
           signal,
         },
-        "update the file",
+        "update_the_file",
       );
       return (await res.json()) as DriveFile;
     },

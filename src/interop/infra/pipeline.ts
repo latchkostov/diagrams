@@ -1,3 +1,4 @@
+import { diagnostic } from "./graph";
 import { t as tr } from "../../i18n";
 import { validateDiagram } from "../native";
 import type { FormatId, ImportFile, ImportOutcome } from "../formats";
@@ -145,10 +146,10 @@ export async function importMany(
     name: f.name,
     reason:
       sniffInfra(f.text) === "helm"
-        ? tr("importDetail.aHelmTemplateImportHelmTemplate")
+        ? diagnostic("importDetail.aHelmTemplateImportHelmTemplate")
         : sniffInfra(f.text) === "hcl" || /\.tf$/i.test(f.name)
-          ? tr("importDetail.terraformSourceImportTerraformShowJson")
-          : tr("importDetail.notReadADifferentKindOf"),
+          ? diagnostic("importDetail.terraformSourceImportTerraformShowJson")
+          : diagnostic("importDetail.notReadADifferentKindOf"),
   }));
   if (format === "compose" || format === "asyncapi" || format === "kubernetes" || format === "terraform") {
     try {

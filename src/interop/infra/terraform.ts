@@ -1,4 +1,4 @@
-import { formatList, formatNumber } from "../../i18n/format";
+import { diagnostic, diagnosticKey, type ImportText } from "./graph";
 import { t as tr } from "../../i18n";
 import type { EdgeRelation } from "../../model/types";
 import { sanitizeSettings } from "../../model/relations";
@@ -103,14 +103,14 @@ function strings(inst: Instance, path: readonly string[]): string[] {
 
 /** The report's summary line names supporting resources by these kinds (else "parts of what's drawn"). */
 const reasonKinds = () =>
-  new Map<string, string>([
-    [tr("importReason.helperNotInfrastructure"), tr("importKind.helpers")],
-    [tr("importReason.accessAndPermissions"), tr("importKind.accessAndPermissions")],
-    [tr("importReason.networking"), tr("importKind.networking")],
-    [tr("importReason.monitoring"), tr("importKind.monitoring")],
-    [tr("importReason.dataSource"), tr("importKind.dataSources")],
-    [tr("importReason.connectsNothingInTheseFiles"), tr("importKind.connectionsWithNoEndsHere")],
-    [tr("importReason.terraformTypeNotDrawn"), tr("importKind.otherTypes")],
+  new Map<string, ImportText>([
+    ["importReason.helperNotInfrastructure", diagnostic("importKind.helpers")],
+    ["importReason.accessAndPermissions", diagnostic("importKind.accessAndPermissions")],
+    ["importReason.networking", diagnostic("importKind.networking")],
+    ["importReason.monitoring", diagnostic("importKind.monitoring")],
+    ["importDetail.dataSource", diagnostic("importKind.dataSources")],
+    ["importReason.connectsNothingInTheseFiles", diagnostic("importKind.connectionsWithNoEndsHere")],
+    ["importDetail.terraformTypeNotDrawn", diagnostic("importKind.otherTypes")],
   ]);
 
 /** A path no value has: `targets` reads only the configuration's references. */
@@ -162,12 +162,12 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     notDrawn: [],
     unread: [],
     notes: [],
-    connectionsTitle: tr("importDetail.connectionsFromSubscriptionsMappingsAndGrants"),
+    connectionsTitle: diagnostic("importDetail.connectionsFromSubscriptionsMappingsAndGrants"),
   };
-  const note = (text: string) => {
-    if (!g.notes.includes(text) && g.notes.length < 200) g.notes.push(text);
+  const note = (text: ImportText) => {
+    if (!g.notes.some((n) => diagnosticKey(n) === diagnosticKey(text)) && g.notes.length < 200) g.notes.push(text);
   };
-  const unread = (name: string, reason: string) => {
+  const unread = (name: string, reason: ImportText) => {
     if (g.unread.length < 10_000) g.unread.push({ name, reason });
   };
   const budget: RefBudget = newRefBudget();
@@ -189,7 +189,10 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
       const [mod, path, depth] = stack.pop()!;
       if (!isMap(mod)) continue;
       if (depth > TF_LIMITS.maxModuleDepth) {
-        unread(label(path), tr("importDetail.modulesNestedMoreThanValue0Deep", { value0: TF_LIMITS.maxModuleDepth }));
+        unread(
+          label(path),
+          diagnostic("importDetail.modulesNestedMoreThanValue0Deep", { value0: TF_LIMITS.maxModuleDepth }),
+        );
         continue;
       }
       const resources = own(mod, "resources");
@@ -198,7 +201,7 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
         const name = str(own(r, "name")) ?? "";
         const mode = own(r, "mode") === "data" ? "data" : "managed";
         if (!TYPE.test(type) || !IDENT.test(name)) {
-          unread(label(str(own(r, "address")) ?? "a resource"), tr("importDetail.noTypeOrName"));
+          unread(label(str(own(r, "address")) ?? "a resource"), diagnostic("importDetail.noTypeOrName"));
           continue;
         }
         if (++instances > MAX_RESOURCES)
@@ -243,7 +246,10 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
       if (isMap(configuration)) {
         const config = new TfConfig(configuration, budget);
         for (const path of config.tooDeep)
-          unread(label(path), tr("importDetail.modulesNestedMoreThanValue0Deep", { value0: TF_LIMITS.maxModuleDepth }));
+          unread(
+            label(path),
+            diagnostic("importDetail.modulesNestedMoreThanValue0Deep", { value0: TF_LIMITS.maxModuleDepth }),
+          );
         configs[file] = config;
       }
     }
@@ -345,9 +351,9 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
   /** Drawn only by Draw everything: a policy, a secret's version, a password, a network. */
   const extras = new Set<Resource>();
   /** Not drawn, grouped by type and reason. */
-  const skipped = new Map<string, { type: string; reason: string; names: string[] }>();
-  const skip = (type: string, name: string, reason: string) => {
-    const k = `${type}\u0001${reason}`;
+  const skipped = new Map<string, { type: string; reason: ImportText; names: string[] }>();
+  const skip = (type: string, name: string, reason: ImportText) => {
+    const k = `${type}\u0001${diagnosticKey(reason)}`;
     const entry = skipped.get(k) ?? { type, reason, names: [] };
     entry.names.push(name);
     skipped.set(k, entry);
@@ -382,7 +388,7 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
       continue;
     }
     if (r.mode === "data") {
-      skip(`data.${r.type}`, r.name, tr("importDetail.dataSource"));
+      skip(`data.${r.type}`, r.name, diagnostic("importDetail.dataSource"));
       continue;
     }
     if (everything && !(r.type === "aws_cloudwatch_event_rule" && first(r, ["schedule_expression"]))) {
@@ -496,7 +502,7 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     const topics = keys(targets(s, "topic_arn", ["topic_arn"], is("aws_sns_topic")));
     const protocol = (first(s, ["protocol"]) ?? "").toLowerCase();
     if (/^(email|email-json|sms|application)$/.test(protocol)) {
-      skip(s.type, s.name, tr("importDetail.anEmailSMSOrAppSubscription"));
+      skip(s.type, s.name, diagnostic("importDetail.anEmailSMSOrAppSubscription"));
       used.add(s);
       continue;
     }
@@ -979,16 +985,17 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
     if (drawn(r) || used.has(r) || r.mode === "data") continue;
     if (GLUE.has(r.type)) {
       const reason = /^aws_iam_|_role_assignment$|_access_policy$/.test(r.type)
-        ? tr("importReason.accessAndPermissions")
-        : tr("importReason.connectsNothingInTheseFiles");
+        ? diagnostic("importReason.accessAndPermissions")
+        : diagnostic("importReason.connectsNothingInTheseFiles");
       skip(r.type, r.name, reason);
     }
   }
-  for (const [key, d] of destroyed) if (!byKey.has(key)) skip(d.type, d.name, tr("importDetail.destroyedByThisPlan"));
+  for (const [key, d] of destroyed)
+    if (!byKey.has(key)) skip(d.type, d.name, diagnostic("importDetail.destroyedByThisPlan"));
   const rows = [...skipped.values()].sort((a, b) => b.names.length - a.names.length || a.type.localeCompare(b.type));
   for (const { type, reason, names: n } of rows)
     g.notDrawn.push({
-      name: n.length === 1 ? `${type} ${n[0]}` : `${type} ×${formatNumber(n.length)}`,
+      name: n.length === 1 ? `${type} ${n[0]}` : diagnostic("importReport.namedCount", { name: type, count: n.length }),
       reason,
     });
   if (!g.components.length) throw new ImportError(tr("importDetail.theresNothingToDrawNoneOf"));
@@ -997,27 +1004,31 @@ export function readTerraform(files: readonly SourceFile[], options: { everythin
   // ------------------------------------------------ notes: the plan's changes, what's summarised, budgets
   if (kinds.has("plan") && changes.add + changes.change + changes.destroy)
     note(
-      tr("importDetail.planValue0ToAddValue1To", {
+      diagnostic("importDetail.planValue0ToAddValue1To", {
         value0: changes.add,
         value1: changes.change,
         value2: changes.destroy,
       }),
     );
-  const supporting = rows.filter((r) => r.reason !== tr("importDetail.destroyedByThisPlan"));
+  const supporting = rows.filter(
+    (r) => diagnosticKey(r.reason) !== diagnosticKey(diagnostic("importDetail.destroyedByThisPlan")),
+  );
   const count = supporting.reduce((n, r) => n + r.names.length, 0);
   if (count) {
     // Broad kinds, the most common first: "access and permissions, networking and helpers".
-    const kinds = new Map<string, number>();
+    const kinds = new Map<string, { text: ImportText; count: number }>();
     for (const r of supporting) {
-      const kind = kindsByReason.get(r.reason) ?? tr("importKind.parts");
-      kinds.set(kind, (kinds.get(kind) ?? 0) + r.names.length);
+      const kind =
+        kindsByReason.get(typeof r.reason === "string" ? r.reason : r.reason.code) ?? diagnostic("importKind.parts");
+      const key = diagnosticKey(kind);
+      kinds.set(key, { text: kind, count: (kinds.get(key)?.count ?? 0) + r.names.length });
     }
-    const reasons = [...kinds].sort((a, b) => b[1] - a[1]).map(([kind]) => kind);
-    const listed = reasons.length > 5 ? [...reasons.slice(0, 4), tr("importKind.more")] : reasons;
-    const joined = formatList(listed);
-    note(tr("importDetail.supporting", { count, kinds: joined }));
+    const reasons = [...kinds.values()].sort((a, b) => b.count - a.count).map((kind) => kind.text);
+    const listed = reasons.length > 5 ? [...reasons.slice(0, 4), diagnostic("importKind.more")] : reasons;
+    const joined = { list: listed };
+    note(diagnostic("importDetail.supporting", { count, kinds: joined }));
   }
-  if (budget.exhausted) note(tr("importDetail.someReferencesWerentFollowedThePlan"));
+  if (budget.exhausted) note(diagnostic("importDetail.someReferencesWerentFollowedThePlan"));
 
   // ------------------------------------------------ boundaries: modules, else Azure resource groups
   const byComponent = new Map<string, Resource>();

@@ -240,8 +240,8 @@ for (const code of ["de", "ar", "en-XA"]) {
         ["blocked", "cloud.theLabelSigninWindowWasBlockedAllow", { label: "OneDrive" }],
         ["admin", "cloud.yourOrganizationsAdminHasToApproveLive", { label: "OneDrive" }],
         ["denied", "cloud.labelAccessWasntGrantedSoLiveDiagrams", { label: "OneDrive" }],
-        ["expired", "cloud.oneDriveSigninExpiredWhileTryingToAction", { action: "download_the_file" }],
-        ["full", "cloud.yourOneDriveIsFullSoTheFile", {}],
+        ["expired", "cloud.signInExpired", { provider: "OneDrive", action: "download_the_file" }],
+        ["full", "cloud.storageFull", { provider: "OneDrive" }],
       ] as const) {
         await page.goto(`./?view=lab&preset=file-prompts&scenario=${scenario}`);
         await expect(page.getByTestId("file-prompts-message")).toHaveText(words(key, values), {
@@ -272,6 +272,27 @@ const remember = (page: Page, code: string) =>
   page.addInitScript((c) => window.localStorage.setItem("diagrams.locale", c), code);
 
 test.describe("choosing a language", () => {
+  test("a cached import report follows a language change when reopened", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("import-input").setInputFiles({
+      name: "compose.yaml",
+      mimeType: "application/yaml",
+      buffer: Buffer.from("services:\n  api:\n    image: nginx\nvolumes:\n  data: {}\n"),
+    });
+    await page.getByTestId("toast-import-details").click();
+    await expect(page.getByTestId("import-report-not-drawn-0")).toContainText(en["importDetail.volume"]);
+    await page.getByTestId("import-report-done").click();
+    await openLanguage(page);
+    await page.getByTestId("language-option-ar").click();
+    await expect(page.getByTestId("language-option-ar")).toHaveAttribute("aria-checked", "true");
+    await page.getByTestId("language-done").click();
+    await page.keyboard.press("Control+k");
+    await page.getByTestId("command-input").fill(catalog("ar")["importReport.importReport"]);
+    await page.getByTestId("command-input").press("Enter");
+    await expect(page.getByTestId("import-report-not-drawn-0")).toContainText(catalog("ar")["importDetail.volume"]);
+    expectNoErrors(consoleErrors);
+  });
+
   test("View ▸ Language… switches the converted areas at once, and a reload keeps it", async ({
     page,
     consoleErrors,
