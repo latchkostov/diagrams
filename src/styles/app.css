@@ -272,7 +272,8 @@ kbd {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 12px 0 16px;
+  padding-block: 0;
+  padding-inline: 16px 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
   position: relative;
@@ -288,7 +289,7 @@ kbd {
   font-stretch: 110%;
   font-size: 15px;
   letter-spacing: -0.015em;
-  padding-right: 6px;
+  padding-inline-end: 6px;
 }
 
 .logo .logo-a {
@@ -319,9 +320,9 @@ kbd {
 }
 
 .topbar-group + .topbar-group {
-  padding-left: 10px;
-  margin-left: 4px;
-  border-left: 1px solid var(--line);
+  padding-inline-start: 10px;
+  margin-inline-start: 4px;
+  border-inline-start: 1px solid var(--line);
 }
 
 .segmented {
@@ -490,7 +491,8 @@ kbd {
   height: 100%;
   border: 0;
   background: transparent;
-  padding: 0 28px 0 10px;
+  padding-block: 0;
+  padding-inline: 10px 28px;
   font-weight: 550;
   cursor: pointer;
   max-width: 280px;
@@ -508,7 +510,7 @@ kbd {
 .select::after {
   content: "";
   position: absolute;
-  right: 11px;
+  inset-inline-end: 11px;
   top: 50%;
   width: 6px;
   height: 6px;
@@ -525,13 +527,13 @@ kbd {
 }
 
 .select-prefix {
-  padding-left: 10px;
+  padding-inline-start: 10px;
   color: var(--text-3);
   font-weight: 500;
 }
 
 .select-prefix + select {
-  padding-left: 6px;
+  padding-inline-start: 6px;
 }
 
 .select-quiet {
@@ -1067,4 +1069,27 @@ kbd {
 
 .lib-usage.is-full .lib-meter > span {
   background: var(--danger);
+}
+
+/* ---------- languages (src/i18n, docs/research/i18n.md § Layout) ---------- */
+
+/* Japanese and Chinese: no small kana or closing punctuation at a line's start. Korean breaks at spaces. */
+:root:lang(ja),
+:root:lang(zh) {
+  line-break: strict;
+}
+
+:root:lang(ko) {
+  word-break: keep-all;
+}
+
+/* Japanese: break between phrases, not inside one ("メッセージが" stays whole), where the browser can (Chrome 119+). */
+:root:lang(ja) {
+  word-break: auto-phrase;
+}
+
+/* Long compounds (German, Dutch, Finnish, Swedish, Danish, Norwegian, Hungarian, Greek) wrap instead of overflowing. */
+:root:is(:lang(de), :lang(nl), :lang(fi), :lang(sv), :lang(da), :lang(nb), :lang(hu), :lang(el))
+  :is(.ix-menu-desc, .ix-dialog-body, .ix-share-desc, .start-card p, .sc-row > span:first-child) {
+  hyphens: auto;
 }

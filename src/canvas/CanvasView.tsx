@@ -141,6 +141,7 @@ import { ChecksCardView, ChecksMarkersView, DiagramCardMeta, SelectionFindings }
 import { useBelow } from "./checks/useBelow";
 import { PresentFullscreen } from "./PresentFullscreen";
 import { useFullscreen } from "../lib/fullscreen";
+import { t } from "../i18n";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -2300,9 +2301,12 @@ function CanvasInner({
               !(privacy && !hideChrome)
             }
           >
-            <h1 data-testid="diagram-title">{meta.title}</h1>
+            {/* The person's own words: their direction is their own, whatever the language around them (dir="auto"). */}
+            <h1 data-testid="diagram-title" dir="auto">
+              {meta.title}
+            </h1>
             {privacy && !hideChrome && <PrivateBadge kind={privacy} />}
-            {meta.description && <p>{meta.description}</p>}
+            {meta.description && <p dir="auto">{meta.description}</p>}
             {/* Node and edge counts live in the inspector's diagram panel, not here too. */}
             {!hideChrome && (
               <DiagramCardMeta
@@ -2331,7 +2335,7 @@ function CanvasInner({
             <div className="present-bar">
               <PresentFullscreen />
               <button className="present-exit" onClick={onExitPresent} data-testid="present-exit">
-                <Icon name="close" size={14} /> Exit presentation <kbd>Esc</kbd>
+                <Icon name="close" size={14} /> {t("present.exit")} <kbd>Esc</kbd>
               </button>
             </div>
           )}

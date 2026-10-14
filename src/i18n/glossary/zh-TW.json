@@ -1,0 +1,71 @@
+{
+  "language": "zh-TW",
+  "register": "您",
+  "quotes": "「…」",
+  "notes": [
+    "Taiwan usage (Microsoft zh-TW): 檔案, 匯出, 匯入, 連結, 裝置, 預設, 資料夾, 瀏覽器, 選取, 設定, 復原.",
+    "Full-width punctuation ，。：；（）「」; a half-width space between Chinese and Latin words, numbers and placeholders (匯出 PNG, API 閘道).",
+    "Buttons and menu items are short verb or noun phrases as in Windows zh-TW (儲存, 另存新檔…, 匯出為); keep the ellipsis ….",
+    "The colour theme is 淺色模式/深色模式, so that 主題 only ever means a Kafka topic.",
+    "\"Your diagrams\" (the library) is 我的圖表 everywhere; \"Share\" is 共用, matching 共用連結."
+  ],
+  "terms": {
+    "topic": {
+      "use": "主題",
+      "match": ["主題", "topic"],
+      "note": "Kafka 主題; Topic also accepted. The app's colour theme is written 淺色/深色模式 to avoid the clash."
+    },
+    "queue": { "use": "佇列", "match": ["佇列"] },
+    "consumer": { "use": "消費者", "match": ["消費者"], "avoid": ["使用者"] },
+    "consumer group": { "use": "消費者群組", "match": ["消費者群組"] },
+    "producer": { "use": "生產者", "match": ["生產者"] },
+    "partition": { "use": "分割區", "match": ["分割區"] },
+    "broker": {
+      "use": "Broker",
+      "keepEnglish": true,
+      "match": ["broker"],
+      "avoid": ["代理"],
+      "note": "Kept in English; 代理 means proxy."
+    },
+    "dead-letter queue": {
+      "use": "死信佇列",
+      "match": ["死信佇列", "dlq"],
+      "avoid": ["無效字母"],
+      "note": "Microsoft/AWS machine output 無效字母佇列 is wrong."
+    },
+    "throughput": { "use": "吞吐量", "match": ["吞吐", "輸送量"] },
+    "latency": { "use": "延遲", "match": ["延遲"] },
+    "replica": { "use": "複本", "match": ["複本"] },
+    "load balancer": { "use": "負載平衡器", "match": ["負載平衡"] },
+    "gateway": { "use": "閘道", "match": ["閘道"] },
+    "cache": { "use": "快取", "match": ["快取"] },
+    "message": { "use": "訊息", "match": ["訊息"] },
+    "event": { "use": "事件", "match": ["事件"] },
+    "subscription": { "use": "訂閱", "match": ["訂閱"] },
+    "offset": { "use": "偏移量", "match": ["偏移"] },
+    "backlog": { "use": "積壓", "match": ["積壓"] },
+    "retry": { "use": "重試", "match": ["重試"] },
+    "diagram": { "use": "圖表", "match": ["圖表"] },
+    "node": { "use": "節點", "match": ["節點"] },
+    "edge": {
+      "use": "連線",
+      "match": ["連線"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (邊緣), not a connection."
+    },
+    "stencil": { "use": "樣板", "match": ["樣板"] },
+    "boundary": { "use": "邊界", "match": ["邊界"], "avoid": ["群組"] },
+    "simulation": { "use": "模擬", "match": ["模擬"] },
+    "live": { "use": "即時", "match": ["即時"] },
+    "present": { "use": "簡報", "match": ["簡報"] },
+    "embed": { "use": "內嵌", "match": ["內嵌", "嵌入"] },
+    "share link": { "use": "共用連結", "match": ["共用連結"] },
+    "export": { "use": "匯出", "match": ["匯出"], "avoid": ["导出", "導出"] },
+    "import": { "use": "匯入", "match": ["匯入"], "avoid": ["導入"] },
+    "private": { "use": "私人", "match": ["私人"], "avoid": ["機密"] },
+    "this device": { "use": "此裝置", "match": ["此裝置"], "avoid": ["設備", "本機"] },
+    "capacity": { "use": "容量", "match": ["容量"] },
+    "checks": { "use": "檢查", "match": ["檢查"] },
+    "annotation": { "use": "註解", "match": ["註解"] }
+  }
+}

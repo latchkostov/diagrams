@@ -17,8 +17,8 @@ export const DEPLOYMENT_SWITCHES = [
   "VITE_PRIVATE_BY_DEFAULT",
 ] as const;
 
-export type DeploymentVariable = (typeof DEPLOYMENT_SWITCHES)[number] | "VITE_BRAND_NAME";
-export const DEPLOYMENT_VARIABLES: DeploymentVariable[] = [...DEPLOYMENT_SWITCHES, "VITE_BRAND_NAME"];
+export type DeploymentVariable = (typeof DEPLOYMENT_SWITCHES)[number] | "VITE_BRAND_NAME" | "VITE_LOCALES";
+export const DEPLOYMENT_VARIABLES: DeploymentVariable[] = [...DEPLOYMENT_SWITCHES, "VITE_BRAND_NAME", "VITE_LOCALES"];
 
 /** `pnpm build:internal`'s defaults: no links made here, no AI tools, new diagrams Private. */
 export const INTERNAL_DEFAULTS: Partial<Record<DeploymentVariable, string>> = {
@@ -41,6 +41,10 @@ export interface Deployment {
   aiPanel: boolean;
   privateByDefault: boolean;
   brandName: string;
+  /** The languages offered, comma-separated, the default first; "" offers every one (src/i18n/locales). */
+  locales: string;
+  /** More than one language: View ▸ Language… and Ctrl+K's Language… exist. */
+  languageChoice: boolean;
 }
 
 const on = (value: string | undefined) => /^(1|true|yes|on)$/i.test((value ?? "").trim());
@@ -49,6 +53,17 @@ const on = (value: string | undefined) => /^(1|true|yes|on)$/i.test((value ?? ""
 export function brandName(value: string | undefined): string {
   const name = (value ?? "").replace(/\s+/g, " ").trim();
   return (name.length > BRAND_MAX ? name.slice(0, BRAND_MAX).trim() : name) || DEFAULT_BRAND;
+}
+
+/**
+ * VITE_LOCALES as the build reads it: language tags separated by commas or spaces, deduplicated, in order ("de, en"
+ * is "de,en"). Empty: every language. A tag that isn't one throws, so a typo never ships a copy without its language.
+ */
+export function localeList(value: string | undefined): string {
+  const tags = (value ?? "").split(/[\s,]+/).filter(Boolean);
+  for (const tag of tags)
+    if (!/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(tag)) throw new Error(`VITE_LOCALES: "${tag}" isn't a language tag`);
+  return [...new Set(tags)].join(",");
 }
 
 /**
@@ -80,6 +95,8 @@ export function readDeployment(env: Record<string, string | undefined>): Deploym
     aiPanel: !on(env.VITE_DISABLE_AI_TOOLS) || !on(env.VITE_DISABLE_ONDEVICE),
     privateByDefault: on(env.VITE_PRIVATE_BY_DEFAULT),
     brandName: brandName(env.VITE_BRAND_NAME),
+    locales: localeList(env.VITE_LOCALES),
+    languageChoice: !localeList(env.VITE_LOCALES) || localeList(env.VITE_LOCALES).includes(","),
   };
 }
 
@@ -92,6 +109,8 @@ export const DEPLOYMENT_KEYS: Record<keyof Deployment, string> = {
   aiPanel: "__DEPLOYMENT_AI_PANEL__",
   privateByDefault: "__DEPLOYMENT_PRIVATE_BY_DEFAULT__",
   brandName: "__DEPLOYMENT_BRAND_NAME__",
+  locales: "__DEPLOYMENT_LOCALES__",
+  languageChoice: "__DEPLOYMENT_LANGUAGE_CHOICE__",
 };
 
 /** Vite `define` entries: every constant, always, as a literal (a build without them would fail to run). */

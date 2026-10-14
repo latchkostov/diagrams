@@ -13,6 +13,8 @@ declare const __DEPLOYMENT_ON_DEVICE__: boolean;
 declare const __DEPLOYMENT_AI_PANEL__: boolean;
 declare const __DEPLOYMENT_PRIVATE_BY_DEFAULT__: boolean;
 declare const __DEPLOYMENT_BRAND_NAME__: string;
+declare const __DEPLOYMENT_LOCALES__: string;
+declare const __DEPLOYMENT_LANGUAGE_CHOICE__: boolean;
 
 /**
  * Share links, links with a password and embed codes made here (VITE_DISABLE_SHARE_LINKS=1 turns them off: the
@@ -43,6 +45,15 @@ export const PRIVATE_BY_DEFAULT = __DEPLOYMENT_PRIVATE_BY_DEFAULT__;
 
 /** The product's name in the top bar and the page title: VITE_BRAND_NAME, e.g. "Acme Diagrams (internal)". */
 export const BRAND_NAME = __DEPLOYMENT_BRAND_NAME__;
+
+/**
+ * The languages this copy offers (VITE_LOCALES, e.g. "de,en"), comma-separated, its default first; "" for every
+ * language (src/i18n/locales). One language is that language for everyone, with no Language choice.
+ */
+export const LOCALES = __DEPLOYMENT_LOCALES__;
+
+/** More than one language: the View menu's Language… and Ctrl+K's. */
+export const LANGUAGE_CHOICE = __DEPLOYMENT_LANGUAGE_CHOICE__;
 
 /** Why a link can't be made, when this copy makes none. */
 export const LINKS_OFF_MESSAGE = "Share links are turned off here. Export Interactive HTML instead.";

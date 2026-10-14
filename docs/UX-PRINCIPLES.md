@@ -388,6 +388,13 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   screen** (F or Esc) comes back; it follows the browser's own Esc and F11. It isn't shown where the browser can't go
   full screen (an iframe without `allow="fullscreen"`, iOS Safari). Leaving the presentation leaves full screen too.
   Embeds and the HTML viewer have no presentation, so no full screen.
+- **Language** (View ▸ **Language…**, Ctrl+K "Language…"; docs/I18N.md) is the app's language, never "locale" or
+  "translation" in the UI. The browser's language is the default (**Browser default**, first in the list, says which it
+  is now); a choice is kept in this browser and Clear everything forgets it. Languages are listed by their own name.
+  When the app isn't in English, the View menu's row also says "Language" in English, and Ctrl+K always matches
+  "language", so the way back is never in a language the person can't read. A machine-translated language says so in
+  the dialog, with **Suggest a better translation**. Translating never touches the diagram (labels, notes, titles),
+  product names or files. Right-to-left languages mirror the chrome, never the diagram.
 
 ## Mouse and trackpad
 

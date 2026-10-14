@@ -55,6 +55,8 @@ export const INTERNAL_ENV = {
   VITE_DISABLE_AI_TOOLS: "1",
   VITE_PRIVATE_BY_DEFAULT: "1",
   VITE_BRAND_NAME: "Acme Diagrams (internal)",
+  // Two languages, English and German (the Language dialog offers just those); the locked copy has one.
+  VITE_LOCALES: "en,de",
 };
 export const LOCKED_ENV = {
   VITE_DISABLE_SHARE_LINKS: "1",
@@ -62,6 +64,8 @@ export const LOCKED_ENV = {
   VITE_DISABLE_AI_TOOLS: "1",
   VITE_DISABLE_ONDEVICE: "1",
   VITE_PRIVATE_BY_DEFAULT: "1",
+  // One language: English for everyone, whatever the browser asks for, with no Language choice.
+  VITE_LOCALES: "en",
 };
 const skipPreview = process.env.E2E_SKIP_PREVIEW === "1";
 const prebuilt = process.env.E2E_PREBUILT === "1";

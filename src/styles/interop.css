@@ -96,7 +96,7 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  text-align: left;
+  text-align: start;
 }
 
 .ix-menu-item:focus-visible {
@@ -142,12 +142,11 @@
   text-overflow: ellipsis;
 }
 
+/* Wraps rather than cuts: a description in German or Finnish runs about 40% longer than in English. */
 .ix-menu-desc {
   font-size: 11.5px;
   color: var(--text-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 /* An unavailable row says why in full (e.g. a private diagram's share link). */
@@ -156,8 +155,8 @@
 }
 
 .ix-menu-kbd {
-  margin-left: auto;
-  padding-left: 10px;
+  margin-inline-start: auto;
+  padding-inline-start: 10px;
   border: 0;
   background: none;
   font-size: 11px;
@@ -167,7 +166,7 @@
 .ix-menu-chips {
   display: flex;
   gap: 4px;
-  padding-right: 6px;
+  padding-inline-end: 6px;
 }
 
 .ix-chip {
@@ -339,7 +338,8 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 18px 18px 6px 20px;
+  padding-block: 18px 6px;
+  padding-inline: 20px 18px;
 }
 
 .ix-dialog-icon {
@@ -510,7 +510,7 @@
 
 .ix-privacy-list {
   margin: 0 0 10px;
-  padding-left: 18px;
+  padding-inline-start: 18px;
   display: grid;
   gap: 4px;
   color: var(--text-2);
@@ -799,7 +799,8 @@
   align-items: center;
   gap: 6px;
   height: 32px;
-  padding: 0 4px 0 10px;
+  padding-block: 0;
+  padding-inline: 10px 4px;
   border-radius: 9px;
   border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--line));
   background: var(--accent-soft);
@@ -812,7 +813,7 @@
 
 .ix-shared-keep {
   height: 24px;
-  margin-left: 2px;
+  margin-inline-start: 2px;
   padding: 0 9px;
   border-radius: 6px;
   border: 0;
@@ -957,8 +958,8 @@ p.ix-storage-state {
 }
 
 .ix-menu-hint {
-  margin-left: auto;
-  padding-left: 10px;
+  margin-inline-start: auto;
+  padding-inline-start: 10px;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-3);
@@ -967,14 +968,14 @@ p.ix-storage-state {
 
 .ix-menu-chevron {
   display: grid;
-  margin-left: auto;
-  padding-left: 8px;
+  margin-inline-start: auto;
+  padding-inline-start: 8px;
   color: var(--text-3);
 }
 
 .ix-menu-hint + .ix-menu-kbd,
 .ix-menu-hint + .ix-menu-chevron {
-  margin-left: 0;
+  margin-inline-start: 0;
 }
 
 /* ---------- disclosure + small forms ---------- */
@@ -1044,8 +1045,8 @@ p.ix-storage-state {
 
 .ix-menu-check {
   display: grid;
-  margin-left: auto;
-  padding-left: 8px;
+  margin-inline-start: auto;
+  padding-inline-start: 8px;
   color: var(--accent);
 }
 
@@ -1327,4 +1328,16 @@ code.ix-report-why {
 .ix-report-offer-where::before {
   content: "·";
   margin-right: 6px;
+}
+
+/* File names and extensions (".diagram.json") read left to right, in a right-to-left language too. */
+.ix-menu-hint,
+.ix-share-hint {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* A right-to-left language (src/i18n): a submenu opens to the left, so its chevron points there. */
+[dir="rtl"] .ix-menu-chevron svg {
+  transform: scaleX(-1);
 }

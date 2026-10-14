@@ -26,6 +26,8 @@ import { flatten, GROUP_LABEL, PREFIXES, rank, type Command, type CommandGroup }
 import { getRecentCommands, pushRecentCommand, rememberable } from "./recent";
 import { isLocalOnly } from "../lib/localOnly";
 import { collectCommands } from "./sources";
+import { LANGUAGE_CHOICE } from "../lib/deployment";
+import { openLanguageDialog } from "../i18n/start";
 import type { TypeAhead } from "../canvas/typeAhead";
 
 const PAGE = 8;
@@ -79,6 +81,7 @@ export function PaletteDialog({
         currentSlug: opened.currentSlug,
         openDiagram: opened.onOpenDiagram,
         present: opened.onPresent,
+        language: LANGUAGE_CHOICE ? openLanguageDialog : undefined,
         sendStencilToCanvas: addToCurrentDiagram,
         onStencilUsed: pushRecentStencil,
         runSimulation: (simId) => {

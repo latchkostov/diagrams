@@ -1,0 +1,177 @@
+{
+  "language": "hu",
+  "register": "Ön (formal); buttons and menu items as -ás/-és nouns, as Microsoft's Hungarian UI (Mentés, Megnyitás)",
+  "quotes": "„…”",
+  "notes": [
+    "Commands and buttons are deverbal nouns (Mentés, Bezárás, Másolás); sentences address the person with Ön verb forms (húzzon, exportáljon).",
+    "Placeholders are introduced with a colon (Mentve ide: {where}) so no case ending has to attach to them.",
+    "A colour theme is téma; a Kafka topic is témakör, so the two never meet.",
+    "AI is MI (mesterséges intelligencia), as Microsoft's Hungarian UI writes it.",
+    "Your diagrams is the library name Saját diagramok everywhere."
+  ],
+  "terms": {
+    "topic": {
+      "use": "témakör",
+      "match": ["témakör"],
+      "note": "Microsoft's word for a Service Bus topic; téma is the app's colour theme."
+    },
+    "queue": {
+      "use": "üzenetsor",
+      "match": ["üzenetsor"]
+    },
+    "consumer": {
+      "use": "fogyasztó",
+      "match": ["fogyasztó"]
+    },
+    "consumer group": {
+      "use": "fogyasztói csoport",
+      "match": ["fogyasztói csoport"],
+      "note": "Microsoft's settled Event Hubs term."
+    },
+    "producer": {
+      "use": "termelő",
+      "match": ["termelő"],
+      "note": "As in the termelő-fogyasztó problem."
+    },
+    "partition": {
+      "use": "partíció",
+      "match": ["partíci"]
+    },
+    "broker": {
+      "use": "broker",
+      "match": ["broker"],
+      "keepEnglish": true
+    },
+    "dead-letter queue": {
+      "use": "kézbesíthetetlen üzenetek sora",
+      "match": ["kézbesíthetetlen", "dlq"]
+    },
+    "throughput": {
+      "use": "átviteli sebesség",
+      "match": ["átviteli"]
+    },
+    "latency": {
+      "use": "késleltetés",
+      "match": ["késleltet"]
+    },
+    "replica": {
+      "use": "replika",
+      "match": ["replik"]
+    },
+    "load balancer": {
+      "use": "terheléselosztó",
+      "match": ["terheléselosztó"]
+    },
+    "gateway": {
+      "use": "átjáró",
+      "match": ["átjáró"],
+      "note": "API-átjáró, as Microsoft."
+    },
+    "cache": {
+      "use": "gyorsítótár",
+      "match": ["gyorsítótár"]
+    },
+    "message": {
+      "use": "üzenet",
+      "match": ["üzenet"]
+    },
+    "event": {
+      "use": "esemény",
+      "match": ["esemény"]
+    },
+    "subscription": {
+      "use": "előfizetés",
+      "match": ["előfizet"]
+    },
+    "offset": {
+      "use": "offset",
+      "match": ["offset"],
+      "keepEnglish": true
+    },
+    "backlog": {
+      "use": "backlog",
+      "match": ["backlog"],
+      "keepEnglish": true
+    },
+    "retry": {
+      "use": "újra",
+      "match": ["újra"],
+      "note": "The button is Újra; running text újrapróbálkozás."
+    },
+    "diagram": {
+      "use": "diagram",
+      "match": ["diagram"]
+    },
+    "node": {
+      "use": "csomópont",
+      "match": ["csomópont"]
+    },
+    "edge": {
+      "use": "összekötő",
+      "match": ["összekötő"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "Visio's word for a connector. Not kapcsolat (kept for Relationship). A boundary's edge is its széle."
+    },
+    "stencil": {
+      "use": "rajzsablon",
+      "match": ["sablon"],
+      "note": "Visio's Hungarian word for a stencil."
+    },
+    "boundary": {
+      "use": "határ",
+      "match": ["határ"]
+    },
+    "simulation": {
+      "use": "szimuláció",
+      "match": ["szimuláci"]
+    },
+    "live": {
+      "use": "Live",
+      "match": ["live"],
+      "keepEnglish": true,
+      "note": "The mode name stays Live: Live nézet."
+    },
+    "present": {
+      "use": "bemutató",
+      "match": ["bemutat"]
+    },
+    "embed": {
+      "use": "beágyazás",
+      "match": ["beágyaz"]
+    },
+    "share link": {
+      "use": "megosztási link",
+      "match": ["megosztási link"],
+      "note": "link, as Google and most Hungarian UIs write it (shorter than hivatkozás); linkek, linkből."
+    },
+    "export": {
+      "use": "exportálás",
+      "match": ["export"]
+    },
+    "import": {
+      "use": "importálás",
+      "match": ["import"]
+    },
+    "private": {
+      "use": "privát",
+      "match": ["privát"]
+    },
+    "this device": {
+      "use": "ez az eszköz",
+      "match": ["eszköz"],
+      "note": "erre az eszközre, ezen az eszközön, erről az eszközről."
+    },
+    "capacity": {
+      "use": "kapacitás",
+      "match": ["kapacitás"]
+    },
+    "checks": {
+      "use": "ellenőrzések",
+      "match": ["ellenőrz"]
+    },
+    "annotation": {
+      "use": "annotáció",
+      "match": ["annotáci"]
+    }
+  }
+}

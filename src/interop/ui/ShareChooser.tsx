@@ -4,6 +4,8 @@ import { DIAGRAMS_CHANGED } from "../../lib/diagramIO";
 import type { Privacy } from "../../lib/localOnly";
 import { Dialog } from "./Dialog";
 import { Glyph, type GlyphName } from "./glyphs";
+import { t, useLocale } from "../../i18n";
+import { tRich } from "../../i18n/rich";
 import "./shareChooser.css";
 
 // File ▸ Share… (and the right-click's Export ▸ Share…, Ctrl+K): every way a diagram leaves the app, each saying who
@@ -102,6 +104,7 @@ export function ShareChooser({
   onMakeNotPrivate,
   onClose,
 }: ShareChooserProps) {
+  useLocale();
   const [, rerender] = useState(0);
   // The rows follow the diagram's privacy as it changes (the switch, a paste, another tab).
   useEffect(() => {
@@ -123,20 +126,20 @@ export function ShareChooser({
 
   return (
     <Dialog
-      title="Share"
-      subtitle="Safest first. Each says who can open what it makes."
+      title={t("share.title")}
+      subtitle={t("share.subtitle")}
       icon={<Glyph name="share" />}
       onClose={onClose}
       testId="share-chooser"
       width={540}
     >
-      <div ref={rowKeys} className="ix-share-list" role="group" aria-label="Ways to share">
+      <div ref={rowKeys} className="ix-share-list" role="group" aria-label={t("share.ways")}>
         <div ref={list} className="ix-share-group" data-testid="share-safe">
           <Option
             testId="share-option-html"
             icon="play"
-            title="Interactive HTML…"
-            desc="Anyone who has this file can open it. A password is optional."
+            title={t("share.html")}
+            desc={t("share.htmlDesc")}
             hint=".html"
             onPick={onHtml}
             first
@@ -144,24 +147,24 @@ export function ShareChooser({
           <Option
             testId="share-option-file"
             icon="json"
-            title="Diagram file"
-            desc="Anyone who has this file can open and edit it."
+            title={t("share.file")}
+            desc={t("share.fileDesc")}
             hint=".diagram.json"
             onPick={onFile}
           />
           <Option
             testId="share-option-embed"
             icon="code"
-            title="Embed in your app…"
-            desc="Your app supplies it (private): the diagram never leaves your app."
+            title={t("share.embed")}
+            desc={t("share.embedDesc")}
             onPick={() => onEmbed("private")}
           />
           {links && (
             <Option
               testId="share-option-password"
               icon="lock"
-              title="Link with password…"
-              desc="Only people with the password can open it."
+              title={t("share.password")}
+              desc={t("share.passwordDesc")}
               onPick={onPasswordLink}
             />
           )}
@@ -171,7 +174,7 @@ export function ShareChooser({
             <Glyph name="lock" size={13} />
             {privacy === "private" ? (
               <span>
-                Links and public embeds are off for a private diagram.{" "}
+                {t("share.privateOff")}{" "}
                 <button
                   type="button"
                   className="link-btn"
@@ -179,11 +182,11 @@ export function ShareChooser({
                   data-share-row
                   data-testid="share-make-not-private"
                 >
-                  Make it not private…
+                  {t("share.makeNotPrivate")}
                 </button>
               </span>
             ) : (
-              <span>Links and public embeds are off: this diagram is always private.</span>
+              <span>{t("share.alwaysPrivate")}</span>
             )}
           </p>
         )}
@@ -199,32 +202,22 @@ export function ShareChooser({
               data-testid="share-public-toggle"
             >
               <Glyph name="chevron-right" size={12} />
-              <span>
-                <strong>Public link or embed</strong> · anyone with the link can open it
-              </span>
+              <span>{tRich("share.public", { b: (chunks) => <strong>{chunks}</strong> })}</span>
             </button>
             {publicOpen && (
               <div id={publicId} className="ix-share-group" data-testid="share-public-options">
                 <Option
                   testId="share-option-link"
                   icon="link"
-                  title="Share link…"
-                  desc={
-                    <>
-                      <strong>Public:</strong> anyone with the link can open it.
-                    </>
-                  }
+                  title={t("share.link")}
+                  desc={tRich("share.linkDesc", { b: (chunks) => <strong>{chunks}</strong> })}
                   onPick={onShareLink}
                 />
                 <Option
                   testId="share-option-embed-public"
                   icon="code"
-                  title="Embed on a public page…"
-                  desc={
-                    <>
-                      <strong>Public:</strong> anyone who can see the page can open it.
-                    </>
-                  }
+                  title={t("share.embedPublic")}
+                  desc={tRich("share.embedPublicDesc", { b: (chunks) => <strong>{chunks}</strong> })}
                   onPick={() => onEmbed("public")}
                 />
               </div>

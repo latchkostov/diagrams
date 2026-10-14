@@ -1,0 +1,77 @@
+{
+  "language": "uk",
+  "register": "ви (lowercase)",
+  "quotes": "«…»",
+  "notes": [
+    "Buttons and menu commands use the infinitive, as Windows and macOS do in Ukrainian (Зберегти, Експортувати як, Закрити).",
+    "Address the person as ви, lowercase; avoid gendered past-tense forms where a neutral wording exists.",
+    "Quotes «…»; the apostrophe is ’ (U+2019): зв’язок, прив’язка; key names stay in English.",
+    "Diagram is діаграма (feminine); app names inside sentences go in «…» to keep the nominative («Ваші діаграми»).",
+    "AI is ШІ; app is застосунок (not додаток)."
+  ],
+  "terms": {
+    "topic": {
+      "use": "топік",
+      "match": ["топік"],
+      "avoid": [" тема", " теми", " тему", " темі"],
+      "note": "As dou.ua writes; тема is the colour theme. Avoid forms have a leading space so that «система» doesn't trip them."
+    },
+    "queue": { "use": "черга", "match": ["черг"] },
+    "consumer": { "use": "споживач", "match": ["споживач"] },
+    "consumer group": { "use": "група споживачів", "match": ["споживач", "consumer group"] },
+    "producer": { "use": "виробник", "match": ["виробник"], "note": "Pairs with споживач." },
+    "partition": { "use": "партиція", "match": ["партиці"] },
+    "broker": { "use": "брокер", "match": ["брокер"] },
+    "dead-letter queue": {
+      "use": "черга недоставлених повідомлень (DLQ)",
+      "match": ["недоставлен", "dlq"],
+      "note": "DLQ alone as the short label."
+    },
+    "throughput": { "use": "пропускна здатність", "match": ["пропускн"] },
+    "latency": { "use": "затримка", "match": ["затримк"] },
+    "replica": { "use": "репліка", "match": ["реплік"] },
+    "load balancer": { "use": "балансувальник навантаження", "match": ["балансувальник"] },
+    "gateway": { "use": "шлюз", "match": ["шлюз"], "note": "API-шлюз." },
+    "cache": { "use": "кеш", "match": ["кеш"] },
+    "message": { "use": "повідомлення", "match": ["повідомлен"] },
+    "event": { "use": "подія", "match": ["поді"] },
+    "subscription": { "use": "підписка", "match": ["підписк"] },
+    "offset": { "use": "зміщення", "match": ["зміщен", "offset"] },
+    "backlog": { "use": "необроблені повідомлення", "match": ["необроблен", "backlog"] },
+    "retry": { "use": "повтор", "match": ["повтор"], "note": "Button: Повторити. Redo is Повернути." },
+    "diagram": { "use": "діаграма", "match": ["діаграм"] },
+    "node": { "use": "вузол", "match": ["вузол", "вузл"], "note": "вузла, вузли, вузлів." },
+    "edge": {
+      "use": "зв’язок",
+      "match": ["зв’яз", "зв'яз"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary 'edge' is the border of a boundary (край), not a connection."
+    },
+    "stencil": { "use": "елемент", "match": ["елемент"], "note": "The rail is «Елементи»." },
+    "boundary": { "use": "межа", "match": ["меж"], "note": "межі, межу." },
+    "simulation": { "use": "симуляція", "match": ["симуляці"] },
+    "live": {
+      "use": "режим реального часу",
+      "match": ["реальн", "наживо", "live"],
+      "note": "The mode where messages flow."
+    },
+    "present": { "use": "презентація", "match": ["презентаці"] },
+    "embed": { "use": "вбудувати", "match": ["вбуд"], "note": "вбудовування (noun), вбудований." },
+    "share link": {
+      "use": "посилання для спільного доступу",
+      "match": ["посилан"],
+      "note": "Menu item: «Поділитися посиланням…»."
+    },
+    "export": { "use": "експорт", "match": ["експорт"] },
+    "import": { "use": "імпорт", "match": ["імпорт"] },
+    "private": {
+      "use": "приватна",
+      "match": ["приватн"],
+      "note": "Agrees with діаграма. Never секретна or конфіденційна; the Privacy menu is «Конфіденційність»."
+    },
+    "this device": { "use": "цей пристрій", "match": ["пристр"], "note": "на цьому пристрої, з цього пристрою." },
+    "capacity": { "use": "ємність", "match": ["ємніст"] },
+    "checks": { "use": "перевірки", "match": ["перевір"] },
+    "annotation": { "use": "анотація", "match": ["анотаці"] }
+  }
+}

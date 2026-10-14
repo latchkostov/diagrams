@@ -5,6 +5,7 @@ import { scoreStencil } from "../lib/stencilSearch";
 import { tokens } from "./fuzzy";
 import type { CanvasHost, LiveHost, SessionHost } from "./host";
 import type { Command } from "./rank";
+import { t } from "../i18n";
 
 /*
  * Where palette commands come from. Everything is derived from what the app already exposes: the
@@ -40,6 +41,8 @@ export interface SourceInput {
   runSimulation(id: string): void;
   /** The top bar's Present, so Ctrl+K finds it too (absent while presenting). */
   present?(): void;
+  /** View ▸ Language…, so Ctrl+K finds it too (absent in a copy built for one language). */
+  language?(): void;
 }
 
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
@@ -217,6 +220,16 @@ export function collectCommands(input: SourceInput): Command[] {
       run: input.present,
     });
   if (onCanvas) out.push(...actionCommands(input.registry, contextsFor(editor!, canvas.live ? "live" : "edit")));
+  if (input.language)
+    out.push({
+      id: "view:language",
+      group: "actions",
+      label: t("language.palette"),
+      icon: "sliders",
+      // The English words always, so it's found from a language the person can't read.
+      keywords: `${t("language.paletteKeywords")} language locale translation`,
+      run: input.language,
+    });
 
   if (onCanvas) {
     for (const n of diagram!.nodes) {

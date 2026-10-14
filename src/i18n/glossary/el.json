@@ -1,0 +1,76 @@
+{
+  "language": "el",
+  "register": "εσείς (plural courtesy form)",
+  "quotes": "«…»",
+  "notes": [
+    "Buttons and menu items use Microsoft's Greek noun forms (Αποθήκευση, Άνοιγμα…, Κλείσιμο); sentences address the person in the plural (Ανοίξτε, μπορείτε).",
+    "The question mark is the Greek ; (U+003B). Avoid the ano teleia · in running text: the UI uses · as a separator.",
+    "\"Your diagrams\" is «Τα διαγράμματά σας» everywhere; quoted with «…» when named inside a sentence.",
+    "θέμα is the colour theme (Ανοιχτόχρωμο θέμα); a Kafka topic stays \"topic\" in Latin.",
+    "Live (the mode) and AI, cloud stay in Latin, as Greek developers write them."
+  ],
+  "terms": {
+    "topic": { "use": "topic", "keepEnglish": true, "avoid": ["θέμα"], "note": "θέμα is the app's colour theme." },
+    "queue": { "use": "ουρά", "match": ["ουρ"] },
+    "consumer": { "use": "καταναλωτής", "match": ["καταναλωτ"] },
+    "consumer group": {
+      "use": "consumer group",
+      "keepEnglish": true,
+      "match": ["consumer group", "ομάδα καταναλωτών", "ομάδες καταναλωτών"]
+    },
+    "producer": { "use": "παραγωγός", "match": ["παραγωγ"] },
+    "partition": {
+      "use": "διαμέρισμα",
+      "match": ["διαμέρισ", "διαμερίσ", "partition"],
+      "note": "Microsoft's word; developers also say partition."
+    },
+    "broker": { "use": "broker", "keepEnglish": true, "match": ["broker", "μεσίτ"] },
+    "dead-letter queue": {
+      "use": "ουρά μη παραδοθέντων μηνυμάτων",
+      "match": ["μη παραδοθέντων", "dlq"],
+      "note": "DLQ as the short label."
+    },
+    "throughput": { "use": "ρυθμός διεκπεραίωσης", "match": ["διεκπεραίωσ"] },
+    "latency": { "use": "καθυστέρηση", "match": ["καθυστέρησ", "καθυστερήσ"] },
+    "replica": { "use": "αντίγραφο", "match": ["αντίγραφ", "αντιγράφ"] },
+    "load balancer": { "use": "εξισορροπητής φορτίου", "match": ["εξισορροπητ"] },
+    "gateway": { "use": "πύλη", "match": ["πύλ", "gateway"], "note": "πύλη API." },
+    "cache": { "use": "κρυφή μνήμη", "match": ["κρυφή μνήμη", "κρυφής μνήμης", "cache"] },
+    "message": { "use": "μήνυμα", "match": ["μήνυμ", "μηνύμ"] },
+    "event": { "use": "συμβάν", "match": ["συμβάν", "συμβάντ"] },
+    "subscription": { "use": "συνδρομή", "match": ["συνδρομ"] },
+    "offset": { "use": "offset", "keepEnglish": true },
+    "backlog": { "use": "backlog", "keepEnglish": true },
+    "retry": { "use": "Επανάληψη", "match": ["επανάληψ", "ξανά"] },
+    "diagram": {
+      "use": "διάγραμμα",
+      "match": ["διάγραμμ", "διαγράμμ", "διαγραμμ"],
+      "note": "neuter: το διάγραμμα, τα διαγράμματα."
+    },
+    "node": { "use": "κόμβος", "match": ["κόμβ"] },
+    "edge": {
+      "use": "σύνδεση",
+      "match": ["σύνδεσ", "συνδέσ"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (περίγραμμα), not a connection."
+    },
+    "stencil": { "use": "στένσιλ", "match": ["στένσιλ"], "note": "Visio's Greek word; indeclinable." },
+    "boundary": { "use": "όριο", "match": ["όριο", "όρια", "ορίου", "ορίων"], "note": "Never ομάδα (group)." },
+    "simulation": { "use": "προσομοίωση", "match": ["προσομοίωσ", "προσομοιώσ"] },
+    "live": { "use": "Live", "keepEnglish": true, "note": "The mode's name: προβολή Live." },
+    "present": { "use": "Παρουσίαση", "match": ["παρουσί", "παρουσι"] },
+    "embed": { "use": "ενσωμάτωση", "match": ["ενσωμάτ", "ενσωματ"] },
+    "share link": { "use": "σύνδεσμος κοινής χρήσης", "match": ["σύνδεσμ", "συνδέσμ"] },
+    "export": { "use": "Εξαγωγή", "match": ["εξαγωγ", "εξάγ", "εξαγάγ"] },
+    "import": { "use": "Εισαγωγή", "match": ["εισαγωγ", "εισάγ", "εισαγάγ"] },
+    "private": { "use": "ιδιωτικό", "match": ["ιδιωτικ"], "avoid": ["απόρρητο διάγραμμα", "εμπιστευτικ"] },
+    "this device": {
+      "use": "αυτή η συσκευή",
+      "match": ["αυτή η συσκευή", "αυτή τη συσκευή", "αυτής της συσκευής"],
+      "avoid": ["τοπικό δίσκο", "υπολογιστή"]
+    },
+    "capacity": { "use": "χωρητικότητα", "match": ["χωρητικότητ"] },
+    "checks": { "use": "Έλεγχοι", "match": ["έλεγχ", "ελέγχ"] },
+    "annotation": { "use": "σχολιασμός", "match": ["σχολιασμ", "σχολιάσ"] }
+  }
+}

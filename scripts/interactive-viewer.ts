@@ -6,6 +6,7 @@ import react from "@vitejs/plugin-react";
 import { catalog } from "../src/stencils/catalog";
 import { PAYLOAD_BLOCK, STENCIL_ICONS_OPEN, viewerCsp } from "../src/export/inject";
 import { deploymentDefines } from "./deployment-env";
+import { i18n } from "./i18n-plugin";
 
 /**
  * The Interactive HTML export's template (File ▸ Export as ▸ Interactive HTML…, docs/INTEROP.md): the viewer
@@ -257,7 +258,8 @@ async function buildTemplate(root: string, plugins: PluginOption[]): Promise<{ h
     // No environment variables (a prefix none has): none belongs in a file people pass around, and the
     // output stays fixed.
     envPrefix: "LIVE_DIAGRAMS_VIEWER_NEVER_",
-    plugins: [viewerSwaps(root), react(), ...plugins],
+    // The viewer stays English: its code calls t() like the app's, with no catalogs to switch to.
+    plugins: [viewerSwaps(root), i18n({ catalogs: false }), react(), ...plugins],
     define: {
       // A production build whatever the process says (the e2e build, Vitest), so the output never varies.
       "process.env.NODE_ENV": JSON.stringify("production"),

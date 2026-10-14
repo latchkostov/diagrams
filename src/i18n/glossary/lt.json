@@ -1,0 +1,178 @@
+{
+  "language": "lt",
+  "register": "jūs (formal plural, lowercase) in sentences; buttons and menu commands in the infinitive (Įrašyti, Atidaryti), as Microsoft's Lithuanian UI",
+  "quotes": "„…“",
+  "notes": [
+    "Commands are infinitives (Įrašyti, Atidaryti, Eksportuoti); sentences address the person as jūs (nutempkite, eksportuokite).",
+    "Consumer is gavėjas, never vartotojas (that is user); producer is siuntėjas to pair with it.",
+    "Topic is tema, so the colour theme is režimas (Šviesusis režimas), never tema.",
+    "AI is DI (dirbtinis intelektas). Plurals: one (1, 21…), few (2-9, 22…), other (0, 10-20…).",
+    "Your diagrams is the library name Jūsų diagramos everywhere; a spaced en dash (–) is the dash."
+  ],
+  "terms": {
+    "topic": {
+      "use": "tema",
+      "match": ["tem"],
+      "note": "The research's rendering. The colour theme is režimas to keep tema for topics."
+    },
+    "queue": {
+      "use": "eilė",
+      "match": ["eil"]
+    },
+    "consumer": {
+      "use": "gavėjas",
+      "match": ["gavėj", "consumer"],
+      "avoid": ["vartotoj"],
+      "note": "vartotojas means user."
+    },
+    "consumer group": {
+      "use": "consumer group",
+      "match": ["consumer group", "gavėjų grup"],
+      "keepEnglish": true
+    },
+    "producer": {
+      "use": "siuntėjas",
+      "match": ["siuntėj", "producer"],
+      "note": "Pairs with gavėjas; gamintojas reads as manufacturer."
+    },
+    "partition": {
+      "use": "skaidinys",
+      "match": ["skaidin"]
+    },
+    "broker": {
+      "use": "brokeris",
+      "match": ["broker"]
+    },
+    "dead-letter queue": {
+      "use": "nepristatytų pranešimų eilė",
+      "match": ["nepristatyt", "dlq"]
+    },
+    "throughput": {
+      "use": "pralaidumas",
+      "match": ["pralaidum"]
+    },
+    "latency": {
+      "use": "delsa",
+      "match": ["dels"]
+    },
+    "replica": {
+      "use": "replika",
+      "match": ["replik"]
+    },
+    "load balancer": {
+      "use": "apkrovos balansavimo priemonė",
+      "match": ["apkrovos balansav"]
+    },
+    "gateway": {
+      "use": "šliuzas",
+      "match": ["šliuz"]
+    },
+    "cache": {
+      "use": "talpykla",
+      "match": ["talpykl"]
+    },
+    "message": {
+      "use": "pranešimas",
+      "match": ["pranešim"]
+    },
+    "event": {
+      "use": "įvykis",
+      "match": ["įvyk"]
+    },
+    "subscription": {
+      "use": "prenumerata",
+      "match": ["prenumerat"]
+    },
+    "offset": {
+      "use": "offset",
+      "match": ["offset", "poslink"],
+      "keepEnglish": true
+    },
+    "backlog": {
+      "use": "backlog",
+      "match": ["backlog"],
+      "keepEnglish": true
+    },
+    "retry": {
+      "use": "kartoti",
+      "match": ["kartot", "dar kartą"],
+      "note": "The button is Kartoti, as Microsoft; running text bandyti dar kartą."
+    },
+    "diagram": {
+      "use": "diagrama",
+      "match": ["diagram"]
+    },
+    "node": {
+      "use": "mazgas",
+      "match": ["mazg"]
+    },
+    "edge": {
+      "use": "jungtis",
+      "match": ["jungt", "jungč"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "jungtis, jungtys, jungčių. A boundary's edge is its kraštas."
+    },
+    "stencil": {
+      "use": "trafaretas",
+      "match": ["trafaret"],
+      "note": "Visio's Lithuanian word."
+    },
+    "boundary": {
+      "use": "riba",
+      "match": ["rib"]
+    },
+    "simulation": {
+      "use": "simuliacija",
+      "match": ["simuliacij"]
+    },
+    "live": {
+      "use": "Live",
+      "match": ["live"],
+      "keepEnglish": true,
+      "note": "Live rodinys."
+    },
+    "present": {
+      "use": "pristatymas",
+      "match": ["pristat"],
+      "note": "Command Pristatyti."
+    },
+    "embed": {
+      "use": "įterpimas",
+      "match": ["įterp"]
+    },
+    "share link": {
+      "use": "bendrinimo saitas",
+      "match": ["bendrinimo sait"]
+    },
+    "export": {
+      "use": "eksportuoti",
+      "match": ["eksport"]
+    },
+    "import": {
+      "use": "importuoti",
+      "match": ["import"]
+    },
+    "private": {
+      "use": "privatus",
+      "match": ["privat", "privač"],
+      "note": "privati, privačią, privačios."
+    },
+    "this device": {
+      "use": "šis įrenginys",
+      "match": ["įrengin"],
+      "note": "šiame įrenginyje, iš šio įrenginio."
+    },
+    "capacity": {
+      "use": "pajėgumas",
+      "match": ["pajėgum"]
+    },
+    "checks": {
+      "use": "patikros",
+      "match": ["patikr"]
+    },
+    "annotation": {
+      "use": "anotacija",
+      "match": ["anotacij"]
+    }
+  }
+}

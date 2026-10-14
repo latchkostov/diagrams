@@ -4,6 +4,22 @@ import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import jsxA11y from "eslint-plugin-jsx-a11y";
+import local from "./eslint-rules/no-literal-ui-text.js";
+
+/**
+ * The areas converted to i18n (docs/I18N.md, "Build batches"): words people read go through src/i18n, and
+ * local/no-literal-ui-text keeps new hard-coded ones out. Add a file here when its batch converts it.
+ */
+const TRANSLATED = [
+  "src/canvas/StartCard.tsx",
+  "src/canvas/PresentFullscreen.tsx",
+  "src/components/TopBar.tsx",
+  "src/components/ShortcutsDialog.tsx",
+  "src/components/LanguageDialog.tsx",
+  "src/interop/ui/menus.tsx",
+  "src/interop/ui/ShareChooser.tsx",
+  "src/interop/ui/Dialog.tsx",
+];
 
 export default tseslint.config(
   {
@@ -32,6 +48,11 @@ export default tseslint.config(
     },
   },
   {
+    files: TRANSLATED,
+    plugins: { local },
+    rules: { "local/no-literal-ui-text": "error" },
+  },
+  {
     // The static pages' scripts (theme, sign-in redirect, skill page): plain browser scripts.
     files: ["public/**/*.js"],
     languageOptions: { globals: globals.browser, sourceType: "script" },
@@ -48,7 +69,14 @@ export default tseslint.config(
     rules: { "@typescript-eslint/no-unused-vars": ["error", { varsIgnorePattern: "^_" }] },
   },
   {
-    files: ["tests/**/*.ts", "*.config.ts", "*.config.js", "scripts/**/*.ts", "skills/**/*.mjs"],
+    files: [
+      "tests/**/*.ts",
+      "*.config.ts",
+      "*.config.js",
+      "scripts/**/*.ts",
+      "skills/**/*.mjs",
+      "eslint-rules/**/*.js",
+    ],
     languageOptions: { globals: globals.node },
   },
 );

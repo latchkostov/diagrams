@@ -1,0 +1,73 @@
+{
+  "language": "sk",
+  "register": "vy (formal, lowercase); buttons and menu items in the infinitive, as Microsoft Slovak does (Uložiť, Zavrieť)",
+  "quotes": "„…“",
+  "notes": [
+    "Buttons and commands in the infinitive (Uložiť, Exportovať, Zdieľať); descriptions address the person with vy.",
+    "Theme (light/dark) is „motív“, as in Microsoft Slovak, so „téma“ stays free for the Kafka topic.",
+    "A space before % and units (100 %, 1 px); keyboard key names stay in English.",
+    "„Vaše diagramy“ is the library's name, inflected in running text (vo Vašich diagramoch)."
+  ],
+  "terms": {
+    "topic": { "use": "téma", "match": ["tém"], "note": "Microsoft's word; the colour theme is „motív“, so no clash." },
+    "queue": { "use": "front", "match": ["front"], "note": "Microsoft Slovak: front (frontu, fronty)." },
+    "consumer": { "use": "konzument", "match": ["konzument"] },
+    "consumer group": {
+      "use": "consumer group",
+      "keepEnglish": true,
+      "match": ["consumer group"],
+      "note": "Kept in English, as the research recommends everywhere except cs, hu, sv, pt-PT."
+    },
+    "producer": { "use": "producent", "match": ["producent"] },
+    "partition": { "use": "partícia", "match": ["partíci"] },
+    "broker": { "use": "broker", "match": ["broker"] },
+    "dead-letter queue": {
+      "use": "front nedoručených správ",
+      "match": ["nedoručen", "dlq"],
+      "note": "DLQ as the short label."
+    },
+    "throughput": { "use": "priepustnosť", "match": ["priepustn"] },
+    "latency": { "use": "latencia", "match": ["latenci"] },
+    "replica": { "use": "replika", "match": ["replik"] },
+    "load balancer": { "use": "vyrovnávač zaťaženia", "match": ["vyrovnávač"] },
+    "gateway": { "use": "brána", "match": ["brán"] },
+    "cache": { "use": "vyrovnávacia pamäť", "match": ["vyrovnávac", "cache"] },
+    "message": { "use": "správa", "match": ["správ"] },
+    "event": { "use": "udalosť", "match": ["udalos"] },
+    "subscription": { "use": "predplatné", "match": ["predplatn"] },
+    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
+    "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
+    "retry": { "use": "skúsiť znova", "match": ["znova", "opakova"] },
+    "diagram": { "use": "diagram", "match": ["diagram"] },
+    "node": { "use": "uzol", "match": ["uzol", "uzl"], "note": "uzol, uzla, uzly, uzlov" },
+    "edge": {
+      "use": "spojenie",
+      "match": ["spojen"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary 'edge' is the boundary's border (okraj)."
+    },
+    "stencil": {
+      "use": "vzorkovnica",
+      "match": ["vzorkovn"],
+      "note": "Visio's Slovak word; one item is „prvok vzorkovnice“."
+    },
+    "boundary": { "use": "hranica", "match": ["hranic"] },
+    "simulation": { "use": "simulácia", "match": ["simulác"] },
+    "live": { "use": "naživo", "match": ["naživo"], "note": "zobrazenie naživo" },
+    "present": { "use": "prezentovať", "match": ["prezent"], "note": "Prezentovať, prezentácia" },
+    "embed": { "use": "vložiť", "match": ["vlož"], "note": "vloženie (noun), vložiť (verb)" },
+    "share link": { "use": "odkaz na zdieľanie", "match": ["odkaz"] },
+    "export": { "use": "exportovať", "match": ["export"] },
+    "import": { "use": "importovať", "match": ["import"] },
+    "private": {
+      "use": "súkromný",
+      "match": ["súkrom"],
+      "avoid": ["dôvern"],
+      "note": "súkromný diagram; súkromie (privacy)"
+    },
+    "this device": { "use": "toto zariadenie", "match": ["zariaden"], "avoid": ["počítač"] },
+    "capacity": { "use": "kapacita", "match": ["kapacit"] },
+    "checks": { "use": "kontroly", "match": ["kontrol"] },
+    "annotation": { "use": "anotácia", "match": ["anotáci"] }
+  }
+}

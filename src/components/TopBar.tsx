@@ -11,7 +11,9 @@ import { capacityOverlay } from "../live/capacityOverlay";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { checksPanel } from "../canvas/checks/checksPanel";
 import { groupByTheme, type ExampleThemeInfo } from "../examples/themes";
-import { BRAND_NAME } from "../lib/deployment";
+import { BRAND_NAME, LANGUAGE_CHOICE } from "../lib/deployment";
+import { getLocale, t } from "../i18n";
+import { loadI18n, openLanguageDialog } from "../i18n/start";
 
 export interface ExampleOption {
   slug: string;
@@ -25,11 +27,11 @@ export interface ExampleOption {
 /** The picker's groups: Your diagrams, then examples by theme (unthemed ones under "Examples"). */
 function pickerGroups(options: ExampleOption[]) {
   return [
-    { id: "yours", label: "Your diagrams", options: options.filter((o) => o.group === "yours") },
+    { id: "yours", label: t("topbar.yourDiagrams"), options: options.filter((o) => o.group === "yours") },
     ...groupByTheme(
       options.filter((o) => o.group === "examples"),
       (o) => o.theme?.id,
-    ).map((s) => ({ id: s.theme?.id ?? "examples", label: s.theme?.label ?? "Examples", options: s.items })),
+    ).map((s) => ({ id: s.theme?.id ?? "examples", label: s.theme?.label ?? t("topbar.examples"), options: s.items })),
   ];
 }
 
@@ -64,7 +66,7 @@ export function TopBar(p: Props) {
         <span>{BRAND_NAME}</span>
       </div>
 
-      <div className="segmented" role="tablist" aria-label="View">
+      <div className="segmented" role="tablist" aria-label={t("topbar.views")}>
         <button
           role="tab"
           aria-selected={canvas}
@@ -72,7 +74,7 @@ export function TopBar(p: Props) {
           onClick={() => p.onView("canvas")}
           data-testid="view-canvas"
         >
-          <Icon name="canvas" size={14} /> Diagram
+          <Icon name="canvas" size={14} /> {t("topbar.diagram")}
         </button>
         <button
           role="tab"
@@ -81,7 +83,7 @@ export function TopBar(p: Props) {
           onClick={() => p.onView("gallery")}
           data-testid="view-gallery"
         >
-          <Icon name="grid" size={14} /> Stencils
+          <Icon name="grid" size={14} /> {t("topbar.stencils")}
         </button>
         {showLab && (
           <button
@@ -90,8 +92,10 @@ export function TopBar(p: Props) {
             className={lab ? "is-on" : ""}
             onClick={() => p.onView("lab")}
             data-testid="view-lab"
+            // eslint-disable-next-line local/no-literal-ui-text -- the Lab is a development tool, in English
             title="Component lab: presets of the current code"
           >
+            {/* eslint-disable-next-line local/no-literal-ui-text -- a development tool */}
             <LabGlyph /> Lab
           </button>
         )}
@@ -99,7 +103,7 @@ export function TopBar(p: Props) {
 
       {canvas && (
         <label className="select">
-          <span className="sr-only">Diagram</span>
+          <span className="sr-only">{t("topbar.diagram")}</span>
           <select
             value={p.example}
             onChange={(e) => p.onExample(e.target.value)}
@@ -138,16 +142,16 @@ export function TopBar(p: Props) {
             className="btn btn-primary"
             onClick={p.onPresent}
             data-testid="present-toggle"
-            title="Present: the diagram alone, for meetings (Esc to leave)"
+            title={t("topbar.presentTitle")}
           >
-            <Icon name="present" size={14} /> <span className="label-optional">Present</span>
+            <Icon name="present" size={14} /> <span className="label-optional">{t("topbar.present")}</span>
           </button>
         )}
         <button
           className="icon-btn"
           onClick={() => s.set("theme", s.theme === "dark" ? "light" : "dark")}
-          aria-label={s.theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-          title={s.theme === "dark" ? "Light theme" : "Dark theme"}
+          aria-label={s.theme === "dark" ? t("topbar.toLight") : t("topbar.toDark")}
+          title={s.theme === "dark" ? t("topbar.lightTheme") : t("topbar.darkTheme")}
           data-testid="theme-toggle"
         >
           <Icon name={s.theme === "dark" ? "sun" : "moon"} />
@@ -157,30 +161,43 @@ export function TopBar(p: Props) {
   );
 }
 
+const nodeNames: Record<NodeVariantId, () => string> = {
+  card: () => t("view.node.card"),
+  compact: () => t("view.node.compact"),
+  iconOnly: () => t("view.node.iconOnly"),
+};
+const edgeNames: Record<EdgeStyle, () => string> = {
+  smoothstep: () => t("view.edge.smoothstep"),
+  bezier: () => t("view.edge.bezier"),
+  straight: () => t("view.edge.straight"),
+};
+
 /** Look options (node renderer, edge style): one menu button instead of two selects in the bar. */
 function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
   const s = useSettings();
   return (
     <Menu
-      label="View options"
+      label={t("view.menu")}
       testId="view-menu"
       width={240}
+      // The language list comes with the lazy half of the i18n runtime: fetched as the menu opens.
+      onOpen={LANGUAGE_CHOICE ? loadI18n : undefined}
       entries={() => [
-        { type: "section", label: "Nodes" },
-        ...Object.entries(nodeVariants).map(([id, v]) => ({
+        { type: "section", label: t("view.nodes") },
+        ...Object.keys(nodeVariants).map((id) => ({
           type: "item" as const,
           testId: `view-node-${id}`,
-          title: v.label,
+          title: nodeNames[id as NodeVariantId](),
           checked: s.nodeVariant === id,
           onSelect: () => s.set("nodeVariant", id as NodeVariantId),
         })),
         ...(edges
           ? [
-              { type: "section" as const, label: "Edges" },
+              { type: "section" as const, label: t("view.edges") },
               ...edgeStyles.map((e) => ({
                 type: "item" as const,
                 testId: `view-edge-${e.id}`,
-                title: e.label,
+                title: edgeNames[e.id](),
                 checked: s.edgeStyle === e.id,
                 onSelect: () => s.set("edgeStyle", e.id as EdgeStyle),
               })),
@@ -188,11 +205,13 @@ function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
           : []),
         ...(overlays
           ? [
-              { type: "section" as const, label: "Overlays" },
+              { type: "section" as const, label: t("view.overlays") },
               {
                 type: "item" as const,
                 testId: "capacity-overlay-toggle",
+                // eslint-disable-next-line local/no-literal-ui-text -- the live batch (docs/I18N.md): wording in flux
                 title: "Show capacity",
+                // eslint-disable-next-line local/no-literal-ui-text -- the live batch
                 desc: "Colour services by how busy they are",
                 shortcut: "C",
                 checked: capacityOverlay.get(),
@@ -201,19 +220,36 @@ function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
               {
                 type: "item" as const,
                 testId: "dependencies-toggle",
-                title: "Show dependencies",
-                desc: "Config, secret, identity and other dotted edges",
+                title: t("view.dependencies"),
+                desc: t("view.dependenciesDesc"),
                 checked: dependencyVisibility.get(),
                 onSelect: () => dependencyVisibility.toggle(),
               },
               {
                 type: "item" as const,
                 testId: "view-checks",
+                // eslint-disable-next-line local/no-literal-ui-text -- the checks batch (docs/I18N.md): wording in flux
                 title: "Checks",
+                // eslint-disable-next-line local/no-literal-ui-text -- the checks batch
                 desc: "Likely design problems, with fixes",
                 checked: checksPanel.isOpen(),
                 disabled: !checksPanel.isAvailable(),
                 onSelect: () => checksPanel.toggle(),
+              },
+            ]
+          : []),
+        // A copy built for one language (VITE_LOCALES) has no choice to offer.
+        ...(LANGUAGE_CHOICE
+          ? [
+              { type: "separator" as const },
+              {
+                type: "item" as const,
+                testId: "view-language",
+                title: t("view.language"),
+                // The English word too, so someone who can't read the language they landed in finds the way back.
+                // eslint-disable-next-line local/no-literal-ui-text -- deliberately English
+                desc: getLocale() === "en" ? undefined : "Language",
+                onSelect: openLanguageDialog,
               },
             ]
           : []),
@@ -222,11 +258,11 @@ function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
         <button
           className="btn"
           {...props}
-          aria-label="View options"
-          title="Node and edge style, and overlays"
+          aria-label={t("view.menu")}
+          title={t("view.buttonTitle")}
           data-testid="view-button"
         >
-          <Glyph name="sliders" size={14} /> <span className="label-optional">View</span>
+          <Glyph name="sliders" size={14} /> <span className="label-optional">{t("view.button")}</span>
           <span className="ix-caret">
             <Glyph name="chevron-down" size={12} />
           </span>

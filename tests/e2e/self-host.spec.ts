@@ -296,3 +296,38 @@ test.describe("self-hosted build", () => {
     expectNoErrors(consoleErrors);
   });
 });
+
+/** The Language dialog's rows, in order. */
+const languageRows = (page: Page) =>
+  page
+    .getByTestId("language-dialog")
+    .getByTestId(/^language-option-/)
+    .evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")));
+
+test.describe("self-hosted build with two languages (VITE_LOCALES=en,de)", () => {
+  test("the Language dialog offers just those, with no search for two", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, SLUG);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await page.getByTestId("view-button").click();
+    await page.getByTestId("view-language").click();
+    await expect(page.getByTestId("language-dialog")).toBeVisible();
+    expect(await languageRows(page)).toEqual(["language-option-browser", "language-option-de", "language-option-en"]);
+    await expect(page.getByTestId("language-search")).toHaveCount(0);
+    await page.getByTestId("language-option-de").click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+    await page.getByTestId("language-done").click();
+    expectNoErrors(consoleErrors);
+  });
+});
+
+test.describe("self-hosted build with two languages, for a French browser", () => {
+  test.use({ locale: "fr-FR" });
+
+  test("a language the copy doesn't offer falls back to its first", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, SLUG);
+    // VITE_LOCALES=en,de: English first, so a French browser reads English.
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.getByTestId("view-canvas")).toHaveText("Diagram");
+    expectNoErrors(consoleErrors);
+  });
+});

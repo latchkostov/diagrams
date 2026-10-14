@@ -1,0 +1,98 @@
+{
+  "$comment": "The shared term list every translation follows (docs/I18N.md). `en`: regular expressions (case-insensitive, whole words) that find the term in an English message. Each language's file (glossary/<code>.json) says how it renders each term: `use` (the form to write), `match` (stems the validator accepts in a translation, for inflected forms), `avoid` (forms that must not appear), and `keepEnglish` when developers in that language keep the English word. `doNotTranslate`: names that appear exactly as they are in every language.",
+  "doNotTranslate": [
+    "Live Diagrams",
+    "Kafka",
+    "Apache Kafka",
+    "Azure Service Bus",
+    "Service Bus",
+    "Event Hubs",
+    "AWS",
+    "Azure",
+    "Google Cloud",
+    "Cisco",
+    "Google Drive",
+    "OneDrive",
+    "Dropbox",
+    "GitHub",
+    "draw.io",
+    "Mermaid",
+    "JSON",
+    "XML",
+    "HTML",
+    "PNG",
+    "SVG",
+    "Terraform",
+    "Kubernetes",
+    "AsyncAPI",
+    "docker-compose",
+    "WebMCP",
+    ".diagram.json"
+  ],
+  "terms": {
+    "topic": {
+      "en": ["topics?"],
+      "note": "A Kafka or Service Bus topic: a named stream messages are published to. Never the word for a subject or a colour theme (the app has a light and dark theme)."
+    },
+    "queue": { "en": ["queues?"], "note": "A message queue (Service Bus, SQS, RabbitMQ)." },
+    "consumer": {
+      "en": ["consumers?"],
+      "note": "Reads messages from a topic or queue. Not the word for a user (Bulgarian потребител, Croatian korisnik mean user)."
+    },
+    "consumer group": { "en": ["consumer groups?"], "note": "Kafka consumer group." },
+    "producer": { "en": ["producers?"], "note": "Writes messages to a topic. Not a film producer." },
+    "partition": { "en": ["partitions?"], "note": "A Kafka topic partition." },
+    "broker": { "en": ["brokers?"], "note": "A message broker (Kafka broker). Not a proxy." },
+    "dead-letter queue": {
+      "en": ["dead-letter queues?", "dead letter queues?", "DLQs?"],
+      "note": "Where messages that can't be delivered go. Never a literal 'dead letter' or 'invalid letter of the alphabet'."
+    },
+    "throughput": { "en": ["throughput"], "note": "Messages handled per second." },
+    "latency": { "en": ["latency", "latencies"], "note": "Delay per message or request." },
+    "replica": { "en": ["replicas?"], "note": "A copy of a service or partition." },
+    "load balancer": { "en": ["load balancers?"] },
+    "gateway": { "en": ["gateways?"], "note": "An API gateway." },
+    "cache": { "en": ["caches?"] },
+    "message": { "en": ["messages?"], "note": "One message flowing through the diagram in Live." },
+    "event": { "en": ["events?"] },
+    "subscription": { "en": ["subscriptions?"] },
+    "offset": { "en": ["offsets?"], "note": "Kafka consumer offset." },
+    "backlog": { "en": ["backlogs?"], "note": "Messages waiting to be processed." },
+    "retry": { "en": ["retry", "retries"], "note": "Trying a failed message again." },
+    "diagram": { "en": ["diagrams?"], "note": "The document the person draws." },
+    "node": { "en": ["nodes?"], "note": "A box in the diagram (a service, a topic, a database)." },
+    "edge": { "en": ["edges?"], "note": "A connection between two nodes." },
+    "stencil": {
+      "en": ["stencils?"],
+      "note": "An item of the shape library (Visio's word): Kafka topic, PostgreSQL, API gateway."
+    },
+    "boundary": {
+      "en": ["boundary", "boundaries"],
+      "note": "The box around nodes that belong together (a cluster, a VPC). Never 'group'."
+    },
+    "simulation": { "en": ["simulations?"], "note": "A saved, scripted run replayed in Live." },
+    "live": {
+      "en": ["live view", "go live"],
+      "note": "The mode where messages flow. Many languages keep 'Live'."
+    },
+    "present": {
+      "en": ["present", "presentation", "presenting"],
+      "note": "Presentation mode: the diagram alone, for meetings."
+    },
+    "embed": { "en": ["embeds?", "embedded"], "note": "A diagram shown inside another page or app." },
+    "share link": { "en": ["share links?"], "note": "A link that opens the diagram (public)." },
+    "export": { "en": ["exports?", "exported", "exporting"] },
+    "import": { "en": ["imports?", "imported", "importing"] },
+    "private": {
+      "en": ["private"],
+      "note": "A diagram that stays on this device: no links, cloud saves or AI. Never 'secret' or 'confidential'."
+    },
+    "this device": { "en": ["this device"], "note": "Where files live locally. Never 'local', 'computer' or 'disk'." },
+    "capacity": { "en": ["capacity"], "note": "How busy services are (the heat map)." },
+    "checks": {
+      "en": ["checks"],
+      "note": "Design checks that find likely problems. Never 'lint', 'issues' or 'errors'."
+    },
+    "annotation": { "en": ["annotations?"], "note": "Text, notes, zones and shapes that document a diagram." }
+  }
+}

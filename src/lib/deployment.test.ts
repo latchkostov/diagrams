@@ -3,6 +3,7 @@ import {
   brandHtml,
   brandName,
   DEFAULT_BRAND,
+  localeList,
   DEPLOYMENT_KEYS,
   deploymentDefines,
   INTERNAL_DEFAULTS,
@@ -24,6 +25,8 @@ const PUBLIC: Deployment = {
   aiPanel: true,
   privateByDefault: false,
   brandName: DEFAULT_BRAND,
+  locales: "",
+  languageChoice: true,
 };
 
 describe("reading the switches", () => {
@@ -65,6 +68,15 @@ describe("reading the switches", () => {
     expect(brandName("x".repeat(80))).toHaveLength(60);
   });
 
+  it("the languages: tags in order, deduplicated; one language means no choice; a typo stops the build", () => {
+    expect(localeList(undefined)).toBe("");
+    expect(localeList(" de, en  de ")).toBe("de,en");
+    expect(localeList("pt-BR,sr-Latn")).toBe("pt-BR,sr-Latn");
+    expect(() => localeList("de,Deutsch")).toThrow(/isn't a language tag/);
+    expect(readDeployment({ VITE_LOCALES: "de,en" })).toEqual({ ...PUBLIC, locales: "de,en", languageChoice: true });
+    expect(readDeployment({ VITE_LOCALES: "de" })).toEqual({ ...PUBLIC, locales: "de", languageChoice: false });
+  });
+
   it("defines every constant as a literal, so the bundler can fold it", () => {
     const defines = deploymentDefines({ VITE_DISABLE_AI_TOOLS: "1", VITE_BRAND_NAME: 'Acme "R&D"' });
     expect(Object.keys(defines).sort()).toEqual(Object.values(DEPLOYMENT_KEYS).sort());
@@ -85,6 +97,8 @@ describe("this build (no switches set)", () => {
       aiPanel: deployment.AI_PANEL,
       privateByDefault: deployment.PRIVATE_BY_DEFAULT,
       brandName: deployment.BRAND_NAME,
+      locales: deployment.LOCALES,
+      languageChoice: deployment.LANGUAGE_CHOICE,
     }).toEqual(PUBLIC);
   });
 });

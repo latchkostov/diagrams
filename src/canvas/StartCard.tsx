@@ -3,6 +3,8 @@ import { Icon } from "../components/Icon";
 import { DiagramThumbnail } from "../components/DiagramThumbnail";
 import type { Thumb } from "../lib/thumbnail";
 import type { ThemeSection } from "../examples/themes";
+import { t, useLocale } from "../i18n";
+import { tRich } from "../i18n/rich";
 
 export interface StartExample {
   slug: string;
@@ -47,6 +49,7 @@ const RECENT_MAX = 3;
  * modal, no tour: it sits on the canvas and disappears as soon as there's a node.
  */
 export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: () => void }) {
+  useLocale();
   const recent = start.recent.slice(0, RECENT_MAX);
   const [allExamples, setAllExamples] = useState(false);
   const all = start.examples.flatMap((section) => section.items);
@@ -66,24 +69,20 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
   );
   return (
     <section className="start-card" data-testid="start-card" aria-labelledby="start-card-title">
-      <h2 id="start-card-title">Draw a system, then watch messages flow through it</h2>
-      <p className="start-lede">
-        {recent.length
-          ? "Pick up where you left off, open an example, or start from a blank canvas."
-          : "Open an example to explore, or start from a blank canvas."}
-      </p>
+      <h2 id="start-card-title">{t("start.title")}</h2>
+      <p className="start-lede">{recent.length ? t("start.ledeRecent") : t("start.lede")}</p>
 
       {recent.length > 0 && (
         <>
           <div className="start-heading">
-            <h3>Your diagrams</h3>
+            <h3>{t("start.yourDiagrams")}</h3>
             {start.recent.length > RECENT_MAX && (
               <button className="link-btn" onClick={start.onLibrary} data-testid="start-library">
-                All {start.recent.length}
+                {t("start.all", { count: start.recent.length })}
               </button>
             )}
           </div>
-          <ul className="start-examples" aria-label="Your diagrams">
+          <ul className="start-examples" aria-label={t("start.yourDiagrams")}>
             {recent.map((d) => (
               <StartRow
                 key={d.slug}
@@ -99,7 +98,7 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
       )}
 
       <div className="start-heading">
-        <h3>Examples</h3>
+        <h3>{t("start.examples")}</h3>
         {expandable && (
           <button
             className="link-btn start-all"
@@ -107,7 +106,7 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
             aria-expanded={allExamples}
             data-testid="start-all-examples"
           >
-            {allExamples ? "Fewer" : "All examples"}
+            {allExamples ? t("start.fewer") : t("start.allExamples")}
             {!allExamples && <Icon name="chevron-right" size={12} />}
           </button>
         )}
@@ -117,49 +116,52 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
         start.examples.map(({ theme, items }) => (
           <div key={theme?.id ?? ""} className="start-section" data-testid={`start-theme-${theme?.id ?? "other"}`}>
             {theme && <h4 className="start-theme">{theme.label}</h4>}
-            <ul className={`start-examples${expandable ? " is-compact" : ""}`} aria-label={theme?.label ?? "Examples"}>
+            <ul
+              className={`start-examples${expandable ? " is-compact" : ""}`}
+              aria-label={theme?.label ?? t("start.examples")}
+            >
               {items.map(exampleRow)}
             </ul>
           </div>
         ))
       ) : (
-        <ul className="start-examples" aria-label="Featured examples">
+        <ul className="start-examples" aria-label={t("start.featured")}>
           {featured.map(exampleRow)}
         </ul>
       )}
 
       {/* Teaches the infrastructure import in place (docs/research/imports.md): the one line it adds. */}
       <p className="start-note" data-testid="start-import-hint">
-        Drop a docker-compose, Kubernetes, AsyncAPI or Terraform plan here.
+        {t("start.importHint")}
       </p>
 
       <div className="start-actions">
         <button className="btn" onClick={onBlank} data-testid="start-blank">
-          <Icon name="plus" size={14} /> Start blank
+          <Icon name="plus" size={14} /> {t("start.blank")}
         </button>
         <button className="btn btn-ghost" onClick={start.onOpenFile} data-testid="start-open">
-          <Icon name="upload" size={14} /> Open a file…
+          <Icon name="upload" size={14} /> {t("start.open")}
         </button>
       </div>
       <p className="start-note">
-        Opens diagram files, draw.io and Mermaid. You can also drop a file anywhere, or{" "}
-        <button className="link-btn start-paste" onClick={start.onPaste} data-testid="start-paste">
-          paste text
-        </button>
-        .
+        {tRich("start.opens", {
+          paste: (chunks) => (
+            <button className="link-btn start-paste" onClick={start.onPaste} data-testid="start-paste">
+              {chunks}
+            </button>
+          ),
+        })}
       </p>
       {/* What this is and the policies, without signing in: the home page OAuth brand reviewers check. */}
       <footer className="start-about" data-testid="start-about">
-        <span>
-          <strong>Live Diagrams</strong> is a free, open-source diagram tool that runs in your browser.
-        </span>
+        <span>{tRich("start.about", { b: (chunks) => <strong>{chunks}</strong> })}</span>
         <span className="start-legal">
           <a href="privacy.html" target="_blank" rel="noopener" data-testid="start-privacy">
-            Privacy
+            {t("start.privacy")}
           </a>
           <span aria-hidden> · </span>
           <a href="terms.html" target="_blank" rel="noopener" data-testid="start-terms">
-            Terms
+            {t("start.terms")}
           </a>
         </span>
       </footer>

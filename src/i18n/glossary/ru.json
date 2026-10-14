@@ -1,0 +1,102 @@
+{
+  "language": "ru",
+  "register": "вы (lowercase)",
+  "quotes": "«…»",
+  "notes": [
+    "Buttons and menu commands use the infinitive, as Windows and macOS do in Russian (Сохранить, Экспортировать как, Закрыть).",
+    "Address the person as вы, lowercase; avoid gendered past-tense forms where a neutral wording exists.",
+    "Quotes «…»; an em dash with spaces ( — ) where English uses a colon for an explanation; key names stay in English.",
+    "Diagram is схема (feminine): «Приватная схема», «Новая схема»; app names inside sentences go in «…» to keep the nominative («Ваши схемы»).",
+    "AI is ИИ."
+  ],
+  "terms": {
+    "topic": {
+      "use": "топик",
+      "match": ["топик"],
+      "avoid": [" тема", " темы", " тему", " теме"],
+      "note": "As Yandex Cloud and Habr write; тема is Microsoft's word and also the colour theme. Avoid forms have a leading space so that «система» doesn't trip them."
+    },
+    "queue": { "use": "очередь", "match": ["очеред"] },
+    "consumer": { "use": "потребитель", "match": ["потребител"] },
+    "consumer group": {
+      "use": "группа потребителей",
+      "match": ["потребител", "consumer group"],
+      "note": "Inflects on группа: группы/группу/группой потребителей."
+    },
+    "producer": { "use": "производитель", "match": ["производител"] },
+    "partition": {
+      "use": "партиция",
+      "match": ["партици"],
+      "avoid": ["раздел"],
+      "note": "Not Microsoft's раздел, which the UI uses for a section."
+    },
+    "broker": { "use": "брокер", "match": ["брокер"] },
+    "dead-letter queue": {
+      "use": "очередь недоставленных сообщений (DLQ)",
+      "match": ["недоставленн", "dlq"],
+      "note": "DLQ alone as the short label."
+    },
+    "throughput": { "use": "пропускная способность", "match": ["пропускн"] },
+    "latency": { "use": "задержка", "match": ["задержк"] },
+    "replica": { "use": "реплика", "match": ["реплик"] },
+    "load balancer": { "use": "балансировщик нагрузки", "match": ["балансировщик"] },
+    "gateway": { "use": "шлюз", "match": ["шлюз"], "note": "API-шлюз." },
+    "cache": { "use": "кэш", "match": ["кэш"] },
+    "message": { "use": "сообщение", "match": ["сообщени"] },
+    "event": { "use": "событие", "match": ["событи"] },
+    "subscription": { "use": "подписка", "match": ["подписк"] },
+    "offset": { "use": "смещение", "match": ["смещени", "offset"] },
+    "backlog": { "use": "необработанные сообщения", "match": ["необработанн", "backlog"] },
+    "retry": {
+      "use": "повтор",
+      "match": ["повтор"],
+      "note": "Button: Повторить. Redo is Вернуть, so the two never collide."
+    },
+    "diagram": { "use": "схема", "match": ["схем"], "note": "Feminine. Not диаграмма (a chart in Russian UIs)." },
+    "node": { "use": "узел", "match": ["узел", "узл"], "note": "узла, узлы, узлов." },
+    "edge": {
+      "use": "связь",
+      "match": ["связ"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "Feminine. In shortcuts.mouse.boundary 'edge' is the border of a boundary (край), not a connection."
+    },
+    "stencil": {
+      "use": "элемент",
+      "match": ["элемент"],
+      "note": "Visio's Russian calls the collection «набор элементов»; one item is элемент. The rail is «Элементы»."
+    },
+    "boundary": { "use": "граница", "match": ["границ"] },
+    "simulation": { "use": "симуляция", "match": ["симуляци"] },
+    "live": {
+      "use": "режим реального времени",
+      "match": ["реальн", "live"],
+      "note": "The mode where messages flow; 'leave live view' is «выйти из режима реального времени»."
+    },
+    "present": {
+      "use": "презентация",
+      "match": ["презентац"],
+      "note": "The top-bar button is the noun «Презентация»."
+    },
+    "embed": { "use": "встроить", "match": ["встр"], "note": "встраивание (noun), встроенный." },
+    "share link": {
+      "use": "ссылка для общего доступа",
+      "match": ["ссыл"],
+      "note": "Menu item: «Поделиться ссылкой…» (shorter, as Google's Russian UIs)."
+    },
+    "export": { "use": "экспорт", "match": ["экспорт"] },
+    "import": { "use": "импорт", "match": ["импорт"] },
+    "private": {
+      "use": "приватная",
+      "match": ["приватн"],
+      "note": "Agrees with схема: «Приватная схема». Never секретная or конфиденциальная; the Privacy menu is «Конфиденциальность»."
+    },
+    "this device": {
+      "use": "это устройство",
+      "match": ["устройств"],
+      "note": "на этом устройстве, с этого устройства."
+    },
+    "capacity": { "use": "ёмкость", "match": ["ёмкост", "емкост"] },
+    "checks": { "use": "проверки", "match": ["проверк"] },
+    "annotation": { "use": "аннотация", "match": ["аннотаци"] }
+  }
+}

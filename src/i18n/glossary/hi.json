@@ -1,0 +1,95 @@
+{
+  "language": "hi",
+  "register": "आप",
+  "quotes": "“…”",
+  "notes": [
+    "Buttons and menu items use the polite imperative (सहेजें, खोलें, बंद करें) as Microsoft and Google Hindi UIs do.",
+    "Simple, everyday Hindi, not Sanskritized: technical terms are transliterated the way Indian developers read them (नोड, कैश, गेटवे, टॉपिक, एक्सपोर्ट).",
+    "Sentences end with the purna viram (।); ellipsis … and the · separator stay as in English.",
+    "Product names, file formats and key names stay in Latin script (Kafka, JSON, Ctrl, Esc)."
+  ],
+  "terms": {
+    "topic": {
+      "use": "टॉपिक",
+      "keepEnglish": true,
+      "match": ["टॉपिक", "topic"],
+      "avoid": ["विषय"],
+      "note": "Transliterated; विषय reads as a subject, and थीम is the colour theme."
+    },
+    "queue": { "use": "क्यू", "match": ["क्यू", "queue"] },
+    "consumer": {
+      "use": "कंज़्यूमर",
+      "keepEnglish": true,
+      "match": ["कंज़्यूमर", "कंज्यूमर", "consumer"],
+      "avoid": ["उपभोक्ता"],
+      "note": "उपभोक्ता is a shopper, not a message reader."
+    },
+    "consumer group": {
+      "use": "कंज़्यूमर ग्रुप",
+      "keepEnglish": true,
+      "match": ["कंज़्यूमर ग्रुप", "कंज्यूमर ग्रुप", "consumer group"]
+    },
+    "producer": { "use": "प्रोड्यूसर", "keepEnglish": true, "match": ["प्रोड्यूसर", "producer"] },
+    "partition": { "use": "पार्टिशन", "keepEnglish": true, "match": ["पार्टिशन", "partition"] },
+    "broker": { "use": "ब्रोकर", "keepEnglish": true, "match": ["ब्रोकर", "broker"] },
+    "dead-letter queue": {
+      "use": "डेड-लेटर क्यू",
+      "keepEnglish": true,
+      "match": ["डेड-लेटर क्यू", "डेड लेटर क्यू", "dlq", "dead-letter"]
+    },
+    "throughput": { "use": "थ्रूपुट", "keepEnglish": true, "match": ["थ्रूपुट", "throughput"] },
+    "latency": { "use": "लेटेंसी", "keepEnglish": true, "match": ["लेटेंसी", "latency"] },
+    "replica": { "use": "रेप्लिका", "keepEnglish": true, "match": ["रेप्लिका", "replica"] },
+    "load balancer": { "use": "लोड बैलेंसर", "keepEnglish": true, "match": ["लोड बैलेंसर", "load balancer"] },
+    "gateway": { "use": "गेटवे", "keepEnglish": true, "match": ["गेटवे", "gateway"] },
+    "cache": { "use": "कैश", "keepEnglish": true, "match": ["कैश", "cache"] },
+    "message": { "use": "संदेश", "match": ["संदेश"], "note": "Also UI messages (language.subtitle)." },
+    "event": { "use": "इवेंट", "keepEnglish": true, "match": ["इवेंट", "event"] },
+    "subscription": { "use": "सब्सक्रिप्शन", "keepEnglish": true, "match": ["सब्सक्रिप्शन", "subscription"] },
+    "offset": { "use": "ऑफ़सेट", "keepEnglish": true, "match": ["ऑफ़सेट", "ऑफसेट", "offset"] },
+    "backlog": { "use": "बैकलॉग", "keepEnglish": true, "match": ["बैकलॉग", "backlog"] },
+    "retry": { "use": "फिर से कोशिश", "match": ["फिर से कोशिश", "पुनः प्रयास", "रीट्राई"] },
+    "diagram": {
+      "use": "डायग्राम",
+      "keepEnglish": true,
+      "match": ["डायग्राम"],
+      "note": "Developers say डायग्राम; Microsoft's आरेख is too formal for this UI."
+    },
+    "node": { "use": "नोड", "keepEnglish": true, "match": ["नोड"] },
+    "edge": {
+      "use": "कनेक्शन",
+      "match": ["कनेक्शन"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "The line between two nodes. In shortcuts.mouse.boundary 'edge' is the boundary's rim (किनारा)."
+    },
+    "stencil": { "use": "स्टेंसिल", "keepEnglish": true, "match": ["स्टेंसिल"] },
+    "boundary": {
+      "use": "बाउंड्री",
+      "keepEnglish": true,
+      "match": ["बाउंड्री"],
+      "avoid": ["समूह", "ग्रुप"],
+      "note": "Transliterated so it doesn't read as a limit (सीमा); never 'group'."
+    },
+    "simulation": { "use": "सिमुलेशन", "keepEnglish": true, "match": ["सिमुलेशन"] },
+    "live": { "use": "लाइव", "keepEnglish": true, "match": ["लाइव", "live"] },
+    "present": {
+      "use": "प्रस्तुत करें",
+      "match": ["प्रस्तुत"],
+      "note": "प्रस्तुत करें for the button, प्रस्तुति for the mode (as PowerPoint)."
+    },
+    "embed": { "use": "एम्बेड", "keepEnglish": true, "match": ["एम्बेड"] },
+    "share link": { "use": "शेयर लिंक", "match": ["शेयर लिंक"], "note": "शेयर, as Google's Hindi UI; साझा is formal." },
+    "export": { "use": "एक्सपोर्ट", "keepEnglish": true, "match": ["एक्सपोर्ट"] },
+    "import": { "use": "इंपोर्ट", "keepEnglish": true, "match": ["इंपोर्ट", "इम्पोर्ट"] },
+    "private": { "use": "निजी", "match": ["निजी"], "avoid": ["गोपनीय", "गुप्त"] },
+    "this device": {
+      "use": "यह डिवाइस",
+      "match": ["डिवाइस"],
+      "avoid": ["कंप्यूटर", "लोकल डिस्क"],
+      "note": "Oblique: इस डिवाइस पर / इसी डिवाइस पर."
+    },
+    "capacity": { "use": "क्षमता", "match": ["क्षमता", "कैपेसिटी"] },
+    "checks": { "use": "जाँच", "match": ["जाँच", "जांच"], "avoid": ["त्रुटि"] },
+    "annotation": { "use": "एनोटेशन", "keepEnglish": true, "match": ["एनोटेशन"] }
+  }
+}

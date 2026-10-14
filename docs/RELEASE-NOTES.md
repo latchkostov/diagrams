@@ -2,6 +2,28 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Languages (2026-10)
+
+- **Live Diagrams opens in your browser's language**, in 37 languages beside English: Arabic, Bulgarian, Chinese
+  (Simplified and Traditional), Croatian, Czech, Danish, Dutch, Estonian, Finnish, French, German, Greek, Hebrew,
+  Hindi, Hungarian, Indonesian, Italian, Japanese, Korean, Latvian, Lithuanian, Norwegian, Polish, Portuguese (Brazil
+  and Portugal), Romanian, Russian, Serbian, Slovak, Slovenian, Spanish, Swedish, Thai, Turkish, Ukrainian and
+  Vietnamese. A browser set to English sees no change.
+- **View ▸ Language…** (and Ctrl+K, "Language…") picks one: every language by its own name, Browser default first. The
+  choice is kept in this browser; **Clear everything on this device…** forgets it, with the rest of your settings. When
+  the app isn't in English, the View menu's row also says "Language", in English, so it can always be found.
+- **What's translated so far:** the start card, the top bar, the File, View and presenting controls, Share…, the
+  keyboard shortcuts, and the Private diagram and Clear everything dialogs. The rest is English for now, area by area
+  (docs/I18N.md). **Your diagrams are never translated**: labels, notes and titles stay as you wrote them, and so do
+  product names (Kafka, PostgreSQL) and files.
+- **Machine-translated, and it says so.** The Language dialog links to a prefilled GitHub issue to suggest a better
+  translation.
+- **Arabic and Hebrew** read right to left: the top bar, menus and dialogs mirror; the diagram doesn't (it reads the
+  same for everyone).
+- Numbers, percentages and "5 min ago" follow the language (1.234 in German, "vor 5 Min."); English keeps its wording,
+  with thousands now grouped ("1,234 nodes").
+- **Self-hosting:** `VITE_LOCALES` limits a copy's languages or sets one for everyone (docs/SELF-HOSTING.md).
+
 ## On-prem network devices (2026-10)
 
 Routers, switches, firewalls and load balancers you'd have in your own racks (docs/DESIGN-REVIEW.md, round 31).
