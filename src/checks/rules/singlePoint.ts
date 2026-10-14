@@ -105,10 +105,6 @@ export const singlePoint: CheckRule = {
       if (!said && !busy) continue;
       const name = ctx.name(node.id);
       const who = listNames(entries.map(ctx.name));
-      // Two replicas, or as many as capacity planning sizes it to when it's busy, within the op schema's bound.
-      const { replicas: to, enough } = busy
-        ? redundancyFix(ctx.diagram, ctx.planning(), load)
-        : { replicas: 2, enough: true };
       if (device) {
         // A box, not a replica: the fix is a second unit as an active-standby pair, which keeps its capacity.
         findings.push({
@@ -130,6 +126,11 @@ export const singlePoint: CheckRule = {
         });
         continue;
       }
+      // Two replicas, or as many as capacity planning sizes it to when it's busy, within the op schema's bound. A
+      // device's fix is a pair whatever its load (above), so it never pays for this sizing.
+      const { replicas: to, enough } = busy
+        ? redundancyFix(ctx.diagram, ctx.planning(), load)
+        : { replicas: 2, enough: true };
       findings.push({
         id: `single-point:${node.id}`,
         rule: "single-point",

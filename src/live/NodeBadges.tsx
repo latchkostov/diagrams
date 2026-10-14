@@ -80,8 +80,9 @@ export function NodeBadges({
         const s = state.snapshot.nodes[n.id];
         if (!s || s.role === "none") return null;
         const peak = Math.max(20, s.backlog, peaks.values.get(n.id) ?? 0);
+        // Concurrency and units only show in the hover breakdown: resolve them for the hovered node alone.
         const props =
-          s.role === "processor" || s.role === "gateway"
+          hovered === n.id && (s.role === "processor" || s.role === "gateway")
             ? resolveProps(s.role, n.data.label, ui.controller.effectiveProps(n.id), n.data.stencil)
             : undefined;
         return (
@@ -92,7 +93,7 @@ export function NodeBadges({
             peak={peak}
             hovered={hovered === n.id}
             cap={capacity?.nodes[n.id]}
-            concurrency={s.role === "processor" ? props!.concurrency : 0}
+            concurrency={props?.concurrency ?? 0}
             units={props?.device && props.device.ha !== "standalone" ? HA_LABEL[props.device.ha] : undefined}
             groups={
               hovered === n.id && (s.role === "topic" || s.role === "stream") ? groupNames(diagram, n.id) : undefined

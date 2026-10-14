@@ -241,7 +241,8 @@ export function analyzeCapacity(
         : sum
           ? weights[index] / sum
           : 1 / candidates.length;
-      add(next, edge.to, emittedType(edge.emits, type), rate * fraction);
+      // A deny rule's share is blocked at the broker and goes no further.
+      if (!edge.deny) add(next, edge.to, emittedType(edge.emits, type), rate * fraction);
     });
   }
   function propagate(next: Rates, entry: Entry, type: string, rate: number, injected: boolean): void {
@@ -314,7 +315,9 @@ export function analyzeCapacity(
           .map(([type, rate]) => ({
             rate,
             consumers: [
-              ...new Set(group.edges.filter((edge) => acceptsType(edge.filter, type)).map((edge) => edge.to)),
+              ...new Set(
+                group.edges.filter((edge) => !edge.deny && acceptsType(edge.filter, type)).map((edge) => edge.to),
+              ),
             ],
           }))
           .filter((demand) => demand.consumers.length);

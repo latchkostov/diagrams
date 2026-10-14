@@ -340,7 +340,7 @@ function missingEnv(): never {
 export function unfinishedAt(trace: MessageTrace): string | undefined {
   const last = new Map<number, { node?: string; over: boolean }>();
   for (const s of trace.steps) {
-    const over = s.kind === "end" || s.kind === "drop" || s.kind === "park";
+    const over = s.kind === "end" || s.kind === "drop" || s.kind === "block" || s.kind === "park";
     const prev = last.get(s.id);
     last.set(s.id, { node: s.node ?? prev?.node, over });
   }

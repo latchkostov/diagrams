@@ -95,6 +95,8 @@ export type BeatKind =
   | "split"
   | "collapse"
   | "drop"
+  /** Stopped by a deny rule: the dot fades as for a drop, in neutral, with no failure flash. */
+  | "block"
   | "end";
 
 export type Tone = "plain" | "warn" | "danger" | "done";
@@ -676,11 +678,19 @@ export function buildScript(input: ScriptInput): SlowScript {
       case "drop": {
         flushCollapse(tr);
         atNode(tr, "drop", PACING.drop, r, r, {
-          // A deny rule's block is on purpose: it says so, rather than "Dropped".
-          caption: s.reason?.startsWith("blocked")
-            ? `Blocked · ${s.reason.slice("blocked ".length)}`
-            : `Dropped · ${s.reason ?? "lost"}`,
+          caption: `Dropped · ${s.reason ?? "lost"}`,
           tone: "danger",
+          rowKey: rowOf.get(i),
+        });
+        flushReplies(tr, tr.ready, tr.real);
+        tr.ended = true;
+        break;
+      }
+      case "block": {
+        flushCollapse(tr);
+        atNode(tr, "block", PACING.drop, r, r, {
+          caption: "Blocked by a deny rule",
+          tone: "plain",
           rowKey: rowOf.get(i),
         });
         flushReplies(tr, tr.ready, tr.real);
@@ -723,6 +733,7 @@ export function buildScript(input: ScriptInput): SlowScript {
   const writes = steps.filter((s) => s.kind === "arrive" && s.node && roleOf(s.node) === "store").length;
   const deadLettered = steps.some((s) => s.kind === "deadletter");
   const dropped = steps.some((s) => s.kind === "drop");
+  const blocked = steps.some((s) => s.kind === "block");
   const keptAt = steps.find((s) => s.kind === "park" && s.node && roleOf(s.node) !== "queue")?.node;
   const facts = [
     formatDuration(realTotal),
@@ -741,7 +752,15 @@ export function buildScript(input: ScriptInput): SlowScript {
     summary = `Still waiting at ${name(where)}${lag !== undefined && lag > 0 ? ` · ${held}` : ""}`;
   } else
     summary = [
-      deadLettered ? "Dead-lettered" : dropped ? "Dropped" : keptAt ? `Kept in ${name(keptAt)}, unread` : "Done",
+      deadLettered
+        ? "Dead-lettered"
+        : dropped
+          ? "Dropped"
+          : blocked
+            ? "Blocked by a deny rule"
+            : keptAt
+              ? `Kept in ${name(keptAt)}, unread`
+              : "Done",
       ...facts,
     ].join(" · ");
   const lastNode =
@@ -757,7 +776,14 @@ export function buildScript(input: ScriptInput): SlowScript {
     realFrom: realTotal,
     realTo: realTotal,
     caption: summary,
-    tone: unfinished || deadLettered || dropped ? (deadLettered || dropped ? "danger" : "warn") : "done",
+    tone:
+      unfinished || deadLettered || dropped
+        ? deadLettered || dropped
+          ? "danger"
+          : "warn"
+        : blocked
+          ? "plain"
+          : "done",
   });
   const duration = endBeat.start + endBeat.duration;
   const stops = [...new Set(beats.filter((b) => HOPS.has(b.kind)).map((b) => Math.round(b.start)))].sort(
@@ -867,6 +893,7 @@ const PRIORITY: Record<BeatKind, number> = {
   end: 6,
   dlq: 5,
   drop: 5,
+  block: 5,
   fail: 4,
   collapse: 4,
   retry: 3,
@@ -1073,7 +1100,8 @@ export function frameAt(script: SlowScript, t: number, diagram?: DiagramLike): S
         // The dot sits at the node while it works, waits, appends, splits or fails.
         const sinkFrom = b.sink ? b.duration - b.sink : Infinity;
         const sinking = local >= sinkFrom ? clamp((local - sinkFrom) / (b.sink ?? 1), 0, 1) : 0;
-        const fading = b.kind === "drop" ? (reduced ? clamp(local / PACING.reducedFade, 0, 1) : f) : sinking;
+        const fading =
+          b.kind === "drop" || b.kind === "block" ? (reduced ? clamp(local / PACING.reducedFade, 0, 1) : f) : sinking;
         if (b.anchor)
           frame.dots.push({
             key: `${b.i}`,
@@ -1086,7 +1114,7 @@ export function frameAt(script: SlowScript, t: number, diagram?: DiagramLike): S
             alpha: 1 - fading,
             trail: false,
           });
-        if (b.node && b.kind !== "wait" && b.kind !== "drop") {
+        if (b.node && b.kind !== "wait" && b.kind !== "drop" && b.kind !== "block") {
           const work =
             b.kind === "establish"
               ? 1

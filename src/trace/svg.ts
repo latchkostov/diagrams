@@ -205,8 +205,8 @@ export function toSvg(model: SequenceModel, theme: SequenceTheme, measure: Measu
       const h = ROW.note;
       const x = xs[index.get(item.over) ?? 0];
       const w = noteW(item.text);
-      const ink = item.tone === "danger" ? t.danger : t.warn;
-      const fill = item.tone === "danger" ? t.dangerSoft : t.warnSoft;
+      const ink = item.tone === "danger" ? t.danger : item.tone === "neutral" ? t.text2 : t.warn;
+      const fill = item.tone === "danger" ? t.dangerSoft : item.tone === "neutral" ? t.band : t.warnSoft;
       body.push(
         `<g data-testid="seq-note-${i}" data-tone="${item.tone}" data-node="${esc(item.over)}">`,
         `<text x="${n(PAD + GUTTER - 14)}" y="${n(y + h / 2 - 3)}" font-family="${esc(t.mono)}" font-size="10.5" fill="${t.text3}" text-anchor="end" dominant-baseline="middle">${esc(formatOffset(item.t))}</text>`,

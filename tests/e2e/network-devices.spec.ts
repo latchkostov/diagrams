@@ -93,4 +93,63 @@ test.describe("network devices", () => {
     await expect(page.getByTestId("node-badge-spine-1")).toHaveAttribute("data-processed", "0");
     expectNoErrors(consoleErrors);
   });
+
+  test("a deny rule is in the connection's accessible name", async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    await expect(page.getByTestId("relationship-wrapper-firewall-payments")).toHaveAttribute(
+      "aria-label",
+      /deny rule: blocked/,
+    );
+    await expect(page.getByTestId("relationship-wrapper-firewall-spine-1")).not.toHaveAttribute("aria-label", /deny/);
+  });
+
+  test("device settings stay editable as custom properties where no control shows them", async ({ page }) => {
+    // An ordinary gateway given a throughput keeps it in Custom properties, to see, change or remove.
+    await gotoCanvas(page, "multi-region-active-active");
+    await page.getByTestId("node-alb-us").click();
+    await page.getByTestId("inspector-section-node-properties").click();
+    await page.getByTestId("inspector-prop-new").fill("gbps");
+    await page.getByTestId("inspector-prop-add").click();
+    await expect(page.getByTestId("inspector-prop-remove-gbps")).toBeVisible();
+    // A device's own section shows it instead.
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("node-firewall").click();
+    await page.getByTestId("inspector-section-node-properties").click();
+    await expect(page.getByTestId("inspector-prop-remove-ha")).toHaveCount(0);
+    // A connection that isn't a firewall's has no rule control, so its deny stays a custom property.
+    await page.getByTestId("edge-label-web-1-payments").click();
+    await expect(page.getByTestId("inspector-field-rule")).toHaveCount(0);
+    await page.getByTestId("inspector-section-edge-advanced").click();
+    await page.getByTestId("inspector-prop-new").fill("deny");
+    await page.getByTestId("inspector-prop-add").click();
+    await expect(page.getByTestId("inspector-prop-remove-deny")).toBeVisible();
+  });
+
+  test("a failing-over pair says so legibly, and its hover breakdown names its units", async ({ page }) => {
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&sim=firewall-failover`);
+    const chip = page.getByTestId("node-failover-firewall");
+    await expect(chip).toBeVisible();
+    const contrast = await chip.evaluate((el) => {
+      const ctx = document.createElement("canvas").getContext("2d");
+      if (!ctx) throw new Error("Missing color context");
+      const luminance = (color: string) => {
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, 1, 1);
+        const [r, g, b] = Array.from(ctx.getImageData(0, 0, 1, 1).data)
+          .slice(0, 3)
+          .map((channel) => {
+            const c = channel / 255;
+            return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+          });
+        return r * 0.2126 + g * 0.7152 + b * 0.0722;
+      };
+      const fg = luminance(getComputedStyle(el).color);
+      const bg = luminance(getComputedStyle(el).backgroundColor);
+      return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+    });
+    expect(contrast).toBeGreaterThanOrEqual(4.5);
+    await page.getByTestId("node-firewall").hover();
+    await expect(page.getByTestId("node-detail-firewall")).toContainText("Active-standby pair");
+  });
 });

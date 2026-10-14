@@ -50,6 +50,21 @@ and 1440 × 900 dark, public examples only. Screenshots are in `docs/screenshots
 - **Live counts of blocked messages were sampled dots** ("2 blocked" for 20). They're real messages now, like every
   other count.
 
+### Code review (PR #86, first round)
+
+- **A deny rule leaked on two paths:** a broker's deliveries and dead letters went around it. Every downstream
+  delivery now goes through one place that blocks it, retries included, and capacity analysis blocks a broker's
+  denied share too.
+- **Blocked is its own outcome everywhere.** A trace step of its own kind, `block`, replaces "a drop with a special
+  reason". The journey counts it apart, the sequence diagram's note is neutral and its summary says "1 blocked by a deny
+  rule", slow motion ends on "Blocked by a deny rule" with no red flash, and the trace card says Blocked. A connection's
+  accessible name, and the Ctrl+Alt edge announcement, say "deny rule: blocked".
+- **A capacity multiplier no longer starts a failover.** Only a pair's own unit count going down during a run does.
+- **Fractional throughput keeps its remainder.** A 60/s ceiling plays at 60/s at every sampling scale, not 50.
+- **Custom properties hide a setting only where a control shows it.** An nginx with `gbps`, or a service's connection
+  with `deny`, keeps it there to see, change or remove.
+- **The "failing over" chip** uses `--warning-ink`: 4.5:1 or better in both themes (it was about 2.6:1 in light).
+
 ### Still open (owner's call)
 
 - At 1280 the gallery's family chips fold **Network vendors** (and Generic & clients, as before) into Vendor ▾'s

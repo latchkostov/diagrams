@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as planning from "../sim/capacityPlanning";
 import { applyOps } from "../ai";
 import { validateDiagram } from "../interop/native";
 import { checkJsonSchema } from "../model/jsonSchema";
@@ -10,6 +11,12 @@ import { runChecks } from "./run";
 // Checks on network devices (docs/research/network-infrastructure.md, "Checks"): a device is a box you run, so the
 // single-point check offers an HA pair; can't-keep-up reads its datasheet ceiling and offers a bigger size; and a
 // firewall's deny rule blocks on purpose, so no check (Run simulations included) calls it lost.
+
+// Spy on the replica sizing the single-point check asks for, passing calls through.
+vi.mock("../sim/capacityPlanning", async (original) => {
+  const actual = await original<typeof import("../sim/capacityPlanning")>();
+  return { ...actual, redundancyFix: vi.fn(actual.redundancyFix) };
+});
 
 let x = 0;
 const node = (id: string, stencil: string, props?: Record<string, unknown>): DiagramNode => ({
@@ -91,6 +98,15 @@ describe("can't keep up, on a network device", () => {
     expect(fixed.errors).toEqual([]);
     expect(fixed.diagram.nodes.find((n) => n.id === "fw")?.props).toEqual({ size: "campus" });
     expect(runChecks(fixed.diagram).findings.map((f) => f.rule)).not.toContain("capacity");
+  });
+
+  it("never sizes replicas for a device: its fix is a pair whatever the load", () => {
+    // Review round 1 (P2): the device branch ran after redundancyFix and threw its whole-graph sizing away.
+    const sizing = vi.mocked(planning.redundancyFix);
+    sizing.mockClear();
+    const finding = runChecks(busy()).findings.find((f) => f.rule === "single-point");
+    expect(finding?.severity).toBe("warning");
+    expect(sizing).not.toHaveBeenCalled();
   });
 
   it("offers no fix when no bigger size would do", () => {

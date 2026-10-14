@@ -178,9 +178,12 @@ const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
   none: [],
 };
 
-const DEVICE_KEYS = ["size", "gbps", "messageKB", "ha", "failoverMs", "healthChecks", "replicas", "latencyMs"];
-const SIM_KEYS = new Set<string>([...Object.keys(SIM_FIELDS), ...DEVICE_KEYS]);
-const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share", "settings", "deny"]);
+const SIM_KEYS = new Set<string>(Object.keys(SIM_FIELDS));
+// A setting leaves Custom properties only where a control for it shows: a device's own section, a firewall's rule.
+// Anywhere else (an nginx with a `gbps`, a service's connection with `deny`) it stays there, to see, change or remove.
+const DEVICE_KEYS = new Set<string>([...SIM_KEYS, "size", "gbps", "messageKB", "ha", "failoverMs", "healthChecks"]);
+const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share", "settings"]);
+const RULE_KEYS = new Set([...EDGE_KEYS, "deny"]);
 const SIDES: Side[] = ["top", "right", "bottom", "left"];
 
 export interface InspectorProps {
@@ -393,10 +396,14 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
         )}
       </Disclosure>
 
-      <Disclosure id="node-properties" title="Custom properties" count={customCount(props, SIM_KEYS)}>
+      <Disclosure
+        id="node-properties"
+        title="Custom properties"
+        count={customCount(props, device ? DEVICE_KEYS : SIM_KEYS)}
+      >
         <PropsEditor
           props={props}
-          hidden={SIM_KEYS}
+          hidden={device ? DEVICE_KEYS : SIM_KEYS}
           onSet={(patch) => editor.setNodeProps(node.id, patch)}
           onSetMerged={(patch, key) => editor.setNodeProps(node.id, patch, merge(`prop:${key}`))}
         />
@@ -621,7 +628,7 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
         <span className="insp-label">Custom properties</span>
         <PropsEditor
           props={props}
-          hidden={EDGE_KEYS}
+          hidden={rule ? RULE_KEYS : EDGE_KEYS}
           onSet={(patch) => editor.setEdgeProps(edge.id, patch)}
           onSetMerged={(patch, key) => editor.setEdgeProps(edge.id, patch, merge(`prop:${key}`))}
         />

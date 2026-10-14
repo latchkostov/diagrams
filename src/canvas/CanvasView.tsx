@@ -1923,7 +1923,14 @@ function CanvasInner({
             ?.focus({ preventScroll: true }),
         );
         revealSelection();
-        const said = edgeAriaLabel(labelOf(e.source), labelOf(e.target), e.data?.kind, e.data?.label, e.data?.relation);
+        const said = edgeAriaLabel(
+          labelOf(e.source),
+          labelOf(e.target),
+          e.data?.kind,
+          e.data?.label,
+          e.data?.relation,
+          e.data?.props?.deny === true,
+        );
         const settings = settingsSummary(edgeSettings(e.data));
         announce(
           `${said}.${settings ? ` ${settings}.` : ""} ${out ? "Outgoing" : "Incoming"} ${list.indexOf(e) + 1} of ${list.length}.`,

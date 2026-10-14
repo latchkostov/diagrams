@@ -205,6 +205,7 @@ export type TraceStepKind =
   | "retry" // broker `node` will redeliver it (delivery `attempt` failed)
   | "deadletter" // broker `node` gave up after `attempt` deliveries and sent it to its DLQ edge
   | "drop" // lost at `node` (down, no route); `reason` says why
+  | "block" // stopped at `node` by a deny rule on its way out: on purpose, never a loss
   | "park" // kept at `node`: a broker with no consumers (a dead-letter queue)
   | "end"; // consumed at `node` (a sink, a store, a final worker)
 
@@ -261,6 +262,8 @@ export interface TraceSummary {
   /** When it (or its latest copy to do so) was dead-lettered, simulation ms. Set when `deadLettered`. */
   deadLetteredAt?: number;
   dropped: boolean;
+  /** A deny rule stopped it (or a copy): on purpose, not a loss. */
+  blocked: boolean;
 }
 
 /** What the tracer is waiting for: the next message at a node (or anywhere), or the next dead letter. */

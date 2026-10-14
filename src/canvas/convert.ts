@@ -45,8 +45,11 @@ export function edgeAriaLabel(
   kind: "async" | "sync" | undefined,
   label?: string,
   relation?: EdgeRelation,
+  deny?: boolean,
 ): string {
-  return `${from} to ${to}, ${implicitLabel(relation ?? "flow", kind)}${label ? `: ${label}` : ""}`;
+  // A deny rule is said, as it's drawn: what's routed here is blocked.
+  const denied = deny && (relation ?? "flow") === "flow" ? ", deny rule: blocked" : "";
+  return `${from} to ${to}, ${implicitLabel(relation ?? "flow", kind)}${denied}${label ? `: ${label}` : ""}`;
 }
 
 const nodeAriaCopies = new WeakMap<object, FlowNode>();
@@ -82,7 +85,14 @@ const edgeAriaCopies = new WeakMap<object, DiagramFlowEdge>();
 export function withEdgeAria(edges: DiagramFlowEdge[], labelOf: (id: string) => string): DiagramFlowEdge[] {
   let changed = false;
   const out = edges.map((e) => {
-    const want = edgeAriaLabel(labelOf(e.source), labelOf(e.target), e.data?.kind, e.data?.label, e.data?.relation);
+    const want = edgeAriaLabel(
+      labelOf(e.source),
+      labelOf(e.target),
+      e.data?.kind,
+      e.data?.label,
+      e.data?.relation,
+      e.data?.props?.deny === true,
+    );
     if (e.ariaLabel === want) return e;
     changed = true;
     const cached = edgeAriaCopies.get(e);

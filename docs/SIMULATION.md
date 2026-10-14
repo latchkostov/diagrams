@@ -167,7 +167,8 @@ Routers, switches, firewalls and ADCs (`src/stencils/netDevices.ts`; research an
   - **The ceiling** is `gbps × 10⁹ ÷ 8 ÷ (messageKB × 1,000)` real messages/s per unit (`messageKB` defaults to 64:
     1 Gbps is 1,953 messages/s), times the units carrying traffic.
   - **In playback** a device admits at most its ceiling, as a token bucket in sampled dots (`ceiling × step ÷ scale`
-    per tick), and the rest waits in its backlog. Nothing is dropped for being over the ceiling.
+    per tick, banking at most one message plus a tick's worth, so fractional rates keep their remainder), and the rest
+    waits in its backlog. Nothing is dropped for being over the ceiling.
   - **In analysis** (`analyzeCapacity`) a device's capacity is the same ceiling, flagged `device: true`, so live view's
     heat map colours it. Other gateways stay unmodeled.
   - **Explicit throughput:** any gateway with an explicit `gbps` gets a ceiling too.
@@ -175,25 +176,33 @@ Routers, switches, firewalls and ADCs (`src/stencils/netDevices.ts`; research an
   - `standalone` (default): one box.
   - `active-standby`: one unit carries traffic whatever the count. Choosing it starts at two units.
   - `active-active`: units add up.
-  - **Failover:** when a props change leaves an active-standby pair (still up) with fewer units, it fails over. It holds
-    its traffic for `failoverMs` (default 3,000), logs a `status` event ("failing over to the standby (1 of 2 units
-    left)") and reports `failingOver: true` in its node state; then it drains. Nothing is dropped.
+  - **Failover:** when a props change lowers an active-standby pair's own `replicas` during a run (the pair still up,
+    at least one unit left), it fails over. It holds its traffic for `failoverMs` (default 3,000), logs a `status`
+    event ("failing over to the standby (1 of 2 units left)") and reports `failingOver: true` in its node state; then
+    it drains. Nothing is dropped.
   - **Clusters:** an active-active cluster losing a unit has no hold, only less capacity.
-  - **Not a failover:** the capacity multiplier changing units never triggers one, and a pair that's down drops what's
-    sent to it, like any node.
+  - **Not a failover:** the capacity multiplier changes effective units, never a pair's own count, so it never
+    triggers one, alone or in the same batch as other props. A unit missing at time zero (a simulation's setup) is
+    where the run starts. A pair that's down drops what's sent to it, like any node.
 - **Health checks.** With `healthChecks` (default on for ADC stencils, off for every other gateway), a gateway leaves
   targets whose status is `down` out of its round-robin while any other target is up, in playback and in analysis.
 
 ### Deny rules
 
-An edge's `deny: true` is a deny rule. A message the source node routes onto it (a gateway's round-robin pick among
-accepting edges, a fan-out copy, a store's change feed) is **blocked** at the source:
+An edge's `deny: true` is a deny rule. Every downstream delivery goes through one place in the engine, which blocks a
+message routed onto a denied edge at the edge's source: a gateway's round-robin pick among accepting edges, a fan-out
+copy, a store's change feed, a broker's delivery (a denied route is always ready and reserves no consumer slot, so a
+retried message offered again is blocked too) and a dead letter (a denied dead-letter route blocks the message; it's
+neither dead-lettered nor dropped). Replies and retries travel back and aren't deliveries.
 
 - **How it counts:** the node's `blocked` counter (in node state when above zero, and as an expectation metric), a
-  `block` event, and a trace step `drop` with reason "blocked by a deny rule".
+  `block` event, and a trace step of its own kind, `block`. The journey counts it in `blocked` (never `dropped`),
+  the sequence diagram shows a neutral "Blocked by a deny rule" note and "1 blocked by a deny rule" in its summary,
+  slow motion ends on "Blocked by a deny rule" with no failure flash, and the trace card's status reads Blocked.
 - **What it never counts as:** `dropped` or `failed`, so live view shows it as its own neutral badge (never the red
   count or a failure flash), and Run simulations never reports it as a loss.
-- **Capacity analysis** sends no demand down a denied edge.
+- **Capacity analysis** sends no demand down a denied edge, a broker's included (its share is blocked at the
+  broker), and a denied route never counts as a broker's consumer capacity.
 - **Filters make it a rulebase line:** "Deny: branch → payments" with `filter: ["PaymentAdmin"]` blocks only that
   type.
 
@@ -378,7 +387,7 @@ traced and an untraced run are identical.
 
 `engine.tracer` (`MessageTracer`, `src/sim/lineage.ts`) records a family's steps: `emit`, `copy`,
 `send` (edge, particle kind, arrival time), `arrive`, `start` / `done` (processing), `fail`, `retry`,
-`deadletter`, `drop`, `park` (kept by a broker with no consumers, such as a DLQ) and `end`. A trace is
+`deadletter`, `drop`, `block` (a deny rule stopped it), `park` (kept by a broker with no consumers, such as a DLQ) and `end`. A trace is
 done when no copy is still travelling, queued or in process (parked copies count as finished).
 
 - **What's recorded.** The followed family, plus a bounded history of recent ones

@@ -189,13 +189,15 @@ What's new:
     down (**Kill**) drops everything sent to it, as any node down does.
 - **Deny rules.** A connection's `deny: true` makes it a deny rule. What's routed onto it is **blocked** at the
   source node:
-  - **Counting:** a `blocked` counter, a `block` event, and a trace that ends "blocked by a deny rule". It's never
-    `dropped` or `failed`, so no red count, no failure flash, and no "Messages are lost" from Run simulations.
+  - **Counting:** a `blocked` counter, a `block` event, and a trace step of its own kind (`block`), so the journey,
+    the sequence diagram, slow motion and the trace card all say Blocked. It's never `dropped` or `failed`, so no red
+    count, no failure flash, and no "Messages are lost" from Run simulations.
   - **Which traffic:** a gateway routes by type (filters), so a rule with a filter is a rulebase line. "Deny:
     branch → payments" with `filter: ["PaymentAdmin"]` blocks only that type; without a filter, the rule takes its
     round-robin share.
   - **Where it shows:** the inspector offers the rule on connections leaving a firewall (the new ones and Firewall /
-    WAF). The engine honours `deny` on any connection, a service's fan-out included.
+    WAF). The engine honours `deny` on any connection and every delivery path (one place blocks them all): a
+    gateway's pick, a service's fan-out, a change feed, a broker's delivery, a redelivery and a dead letter.
 - **ADCs: spread and health checks.** An ADC round-robins across its targets, like any gateway. With `healthChecks`
   (on by default for ADC stencils, off for every other gateway, so nothing that exists changes), targets that are down
   get nothing while another is up, in playback and in analysis.

@@ -54,13 +54,12 @@ export interface SlowCard {
 function journeyStatus(
   j: Journey,
   diagram: DiagramLike,
-): { key: "flight" | "done" | "dlq" | "dropped" | "kept"; label: string; title?: string } {
+): { key: "flight" | "done" | "dlq" | "dropped" | "blocked" | "kept"; label: string; title?: string } {
   if (j.deadLettered) return { key: "dlq", label: "Dead-lettered" };
   if (!j.done) return { key: "flight", label: "In flight" };
-  // A deny rule's block is on purpose: every copy that ended did so at a rule.
-  const ends = j.rows.filter((r) => r.kind === "drop");
-  if (j.dropped && ends.every((r) => r.reason?.startsWith("blocked"))) return { key: "dropped", label: "Blocked" };
   if (j.dropped) return { key: "dropped", label: "Dropped" };
+  // A deny rule's block is on purpose: its own outcome, never a drop.
+  if (j.blocked) return { key: "blocked", label: "Blocked", title: "A deny rule stopped it: on purpose, not lost" };
   const at = j.kept.length ? diagram.nodes.find((n) => n.id === j.kept[0]) : undefined;
   if (at) {
     const queue = stencilRole(at.stencil) === "queue";
@@ -404,7 +403,11 @@ function Hop({
       break;
     case "drop":
       main = name(row.node);
-      sub = row.reason?.startsWith("blocked") ? row.reason : `dropped: ${row.reason ?? "lost"}`;
+      sub = `dropped: ${row.reason ?? "lost"}`;
+      break;
+    case "blocked":
+      main = name(row.node);
+      sub = "blocked by a deny rule";
       break;
     default: {
       main = name(row.node);
@@ -438,7 +441,13 @@ function Hop({
         style={tone === "plain" ? { background: messageColor(row.type) } : undefined}
         aria-hidden
       >
-        {row.kind === "fail" || row.kind === "drop" ? "✕" : row.kind === "deadletter" ? "!" : ""}
+        {row.kind === "fail" || row.kind === "drop"
+          ? "✕"
+          : row.kind === "deadletter"
+            ? "!"
+            : row.kind === "blocked"
+              ? "⊘"
+              : ""}
       </span>
       <span className="tr-what">
         <b>

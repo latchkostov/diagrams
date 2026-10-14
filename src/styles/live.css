@@ -321,7 +321,8 @@
 }
 
 .lv-metric.is-failover {
-  color: var(--status-paused);
+  /* Small amber words on a near-white pill: --warning-ink keeps 4.5:1 (--status-paused is about 2.6:1). */
+  color: var(--warning-ink);
   border-color: color-mix(in oklab, var(--status-paused) 45%, var(--line));
 }
 

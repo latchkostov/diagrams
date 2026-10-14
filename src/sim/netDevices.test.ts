@@ -6,6 +6,11 @@ import { resolveProps } from "./defaults";
 import { createEngine } from "./engine";
 import { createSimulationRun } from "./simulation";
 import type { SimEngine } from "./types";
+import { stencilRole } from "../stencils/roles";
+import { traceOnce } from "../trace/headless";
+import { buildJourney } from "../trace/journey";
+import { buildSequence } from "../trace/sequence";
+import { buildScript, frameAt } from "../live/slowmo/script";
 
 // Network devices in the simulation (docs/SIMULATION.md, "Network devices"): pass-through gateways with a
 // throughput ceiling from a size preset, HA pairs and clusters, firewall deny rules and ADC health checks.
@@ -287,7 +292,7 @@ describe("firewall deny rules", () => {
     run(sim, 2000);
     const trace = sim.tracer.current()!;
     expect(trace.done).toBe(true);
-    expect(trace.steps.at(-1)).toMatchObject({ kind: "drop", node: "fw", reason: "blocked by a deny rule" });
+    expect(trace.steps.at(-1)).toMatchObject({ kind: "block", node: "fw", reason: "deny rule" });
   });
 
   it("blocks a fan-out copy on a denied connection from a service", () => {
@@ -382,5 +387,191 @@ describe("ADC spread and health checks", () => {
     expect(analysis.nodes.a.offered).toBeCloseTo(40);
     expect(analysis.nodes.b.offered).toBe(0);
     expect(analyzeCapacity(pool("load-balancer"), sim).nodes.b.offered).toBeCloseTo(20);
+  });
+});
+
+describe("deny rules on every delivery path", () => {
+  // Review round 1 (P1): broker and dead-letter deliveries went around the rule.
+  it.each([
+    ["queue", "aws.sqs"],
+    ["topic", "kafka.topic"],
+    ["stream", "aws.kinesis"],
+  ])("blocks denied broker deliveries from a %s", (_role, stencil) => {
+    const d = diagram(
+      [node("broker", stencil), node("sink", "generic.email")],
+      [edge("broker", "sink", { deny: true })],
+    );
+    const sim = load(d);
+    sim.inject("broker", 5);
+    run(sim, 3000);
+    const { nodes, edges } = sim.snapshot();
+    expect(nodes.broker.blocked).toBe(5);
+    expect(nodes.sink.processed).toBe(0);
+    expect(edges["broker-sink"].delivered).toBe(0);
+    expect(nodes.broker.failed + nodes.broker.dropped + nodes.broker.deadLettered).toBe(0);
+    expect(sim.metrics().inSystem).toBe(0);
+    const sent: Simulation = {
+      id: "s",
+      title: "s",
+      traffic: [{ id: "t", node: "broker", shape: { kind: "constant", ratePerSec: 10, durationMs: 1000 } }],
+    };
+    expect(analyzeCapacity(d, sent).nodes.sink.offered).toBe(0);
+  });
+
+  it("blocks a broker delivery that a retry brings back", () => {
+    // Competing consumers: one always fails, so its deliveries come back and are offered again; the other route
+    // is denied. Nothing ever reaches the denied target, whichever way a message comes round.
+    const d = diagram(
+      [
+        node("queue", "aws.sqs", { maxDeliveryCount: 3 }),
+        node("worker", "generic.service", { failureRate: 1, latencyMs: 10 }),
+        node("sink", "generic.email"),
+      ],
+      [edge("queue", "worker"), edge("queue", "sink", { deny: true })],
+    );
+    const sim = load(d);
+    sim.inject("queue", 6);
+    run(sim, 5000);
+    const { nodes, edges } = sim.snapshot();
+    expect(nodes.worker.failed).toBeGreaterThan(0);
+    expect(nodes.queue.blocked).toBeGreaterThan(0);
+    expect(nodes.queue.blocked! + nodes.queue.dropped).toBe(6);
+    expect(edges["queue-sink"].delivered).toBe(0);
+    expect(nodes.sink.processed).toBe(0);
+    expect(sim.metrics().inSystem).toBe(0);
+  });
+
+  it("blocks a denied dead-letter route: not dead-lettered, not dropped", () => {
+    const d = diagram(
+      [
+        node("queue", "aws.sqs", { maxDeliveryCount: 2 }),
+        node("worker", "generic.service", { failureRate: 1, latencyMs: 10 }),
+        node("dlq", "aws.s3"),
+      ],
+      [edge("queue", "worker"), edge("queue", "dlq", { dlq: true, deny: true })],
+    );
+    const sim = load(d);
+    sim.inject("queue", 3);
+    run(sim, 5000);
+    const { nodes, edges } = sim.snapshot();
+    expect(nodes.queue.blocked).toBe(3);
+    expect(nodes.queue.deadLettered).toBe(0);
+    expect(nodes.queue.dropped).toBe(0);
+    expect(nodes.dlq.processed).toBe(0);
+    expect(edges["queue-dlq"].delivered).toBe(0);
+    expect(sim.metrics().inSystem).toBe(0);
+  });
+});
+
+describe("throughput ceiling, fractional rates", () => {
+  // Review round 1 (P1): capping credit at one message lost the fraction, so 60/s played as 50/s.
+  it.each([1, 3, 7])("plays a non-integral token rate at its full ceiling at scale %i", (scale) => {
+    const d = diagram(
+      [
+        node("users", "client.user"),
+        node("router", "generic.router", { gbps: 0.48, messageKB: 1000 }),
+        node("mail", "generic.email"),
+      ],
+      [edge("users", "router"), edge("router", "mail")],
+    );
+    const run20 = createSimulationRun(d, {
+      id: "s",
+      title: "s",
+      scale,
+      durationMs: 20_000,
+      traffic: [{ id: "t", node: "users", shape: { kind: "constant", ratePerSec: 120, durationMs: 20_000 } }],
+    });
+    expect(analyzeCapacity(d).nodes.router.capacity).toBeCloseTo(60);
+    for (let t = 0; t < 10_000; t += 10) run20.step(10);
+    const at10 = run20.engine.measure({ node: "router", field: "processed" })!;
+    for (let t = 0; t < 10_000; t += 10) run20.step(10);
+    const per = ((run20.engine.measure({ node: "router", field: "processed" })! - at10) * scale) / 10;
+    expect(per).toBeGreaterThan(57);
+    expect(per).toBeLessThan(63);
+  });
+});
+
+describe("capacity multipliers never fail over a pair", () => {
+  // Review round 1 (P1): a multiplier's lower unit count was taken for a failed unit.
+  const pair = () =>
+    diagram(
+      [
+        node("users", "client.user"),
+        node("fw", "generic.ngfw", { ...HUNDRED, ha: "active-standby", replicas: 2 }),
+        node("mail", "generic.email"),
+      ],
+      [edge("users", "fw"), edge("fw", "mail")],
+    );
+  const sim = (capacity: number): Simulation => ({
+    id: "s",
+    title: "s",
+    multipliers: { capacity },
+    setup: { props: { fw: { latencyMs: 2 } } },
+    traffic: [{ id: "t", node: "users", shape: { kind: "constant", ratePerSec: 20, durationMs: 3000 } }],
+  });
+
+  it("with setup overrides, at the start and after a restart", () => {
+    const r = createSimulationRun(pair(), sim(0.5));
+    for (const round of [0, 1]) {
+      if (round) r.restart();
+      for (let t = 0; t < 1000; t += 10) r.step(10);
+      const s = r.engine.snapshot();
+      expect(s.nodes.fw.failingOver, `round ${round}`).toBeUndefined();
+      expect(s.events.some((e) => e.text.includes("failing over"))).toBe(false);
+      expect(s.nodes.mail.processed, `round ${round}`).toBeGreaterThan(5);
+    }
+  });
+
+  it("when a multiplier and a patch change together mid-run, or the multiplier alone", () => {
+    const e = load(pair());
+    e.setTraffic(true);
+    run(e, 500);
+    e.setNodePropsBatch({ fw: { latencyMs: 1 } }, 0.5);
+    e.setCapacityMultiplier(0.4);
+    run(e, 100);
+    expect(e.snapshot().nodes.fw.failingOver).toBeUndefined();
+    // A real unit failure still fails over.
+    e.setNodeProps("fw", { replicas: 1 });
+    run(e, 100);
+    expect(e.snapshot().nodes.fw.failingOver).toBe(true);
+  });
+
+  it("treats a unit missing in a simulation's setup as the starting state", () => {
+    const r = createSimulationRun(pair(), { ...sim(1), setup: { props: { fw: { replicas: 1 } } } });
+    r.step(10);
+    expect(r.engine.snapshot().nodes.fw.failingOver).toBeUndefined();
+  });
+});
+
+describe("a blocked trace is its own outcome", () => {
+  const d = diagram(
+    [node("branch", "client.team"), node("fw", "paloalto.ngfw"), node("payments", "generic.service")],
+    [edge("branch", "fw"), edge("fw", "payments", { deny: true })],
+  );
+  const roleOf = (id: string) => stencilRole(d.nodes.find((n) => n.id === id)?.stencil ?? "");
+
+  it("in the journey, the sequence diagram and slow motion, never as a drop", () => {
+    const trace = traceOnce(d, { from: "branch" })!;
+    expect(trace.done).toBe(true);
+    const journey = buildJourney(trace, d);
+    expect(journey.blocked).toBe(1);
+    expect(journey.dropped).toBe(0);
+    expect(journey.rows.at(-1)).toMatchObject({ kind: "blocked", node: "fw" });
+    const sequence = buildSequence(trace, d);
+    expect(sequence.summary).toContain("1 blocked by a deny rule");
+    expect(sequence.summary).not.toContain("dropped");
+    const note = sequence.items.find((i) => i.kind === "note");
+    expect(note).toMatchObject({ text: "Blocked by a deny rule", tone: "neutral" });
+    const script = buildScript({ trace, diagram: d, roleOf });
+    expect(script.beats.some((b) => b.kind === "drop")).toBe(false);
+    expect(script.beats.find((b) => b.kind === "block")).toMatchObject({
+      caption: "Blocked by a deny rule",
+      tone: "plain",
+    });
+    const end = script.beats.at(-1)!;
+    expect(end.caption).toMatch(/^Blocked by a deny rule/);
+    expect(end.tone).toBe("plain");
+    for (let t = 0; t <= script.duration; t += 50)
+      expect(frameAt(script, t, d).flashes.filter((f) => f.kind === "drop")).toEqual([]);
   });
 });

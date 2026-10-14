@@ -74,6 +74,19 @@ describe("accessible names", () => {
     expect(edgeAriaLabel("A", "B", "sync")).toBe("A to B, request");
   });
 
+  it("says a deny rule in an edge's accessible name, as it's drawn", () => {
+    expect(edgeAriaLabel("Firewall", "Payments", "sync", "Deny: branch", "flow", true)).toBe(
+      "Firewall to Payments, request, deny rule: blocked: Deny: branch",
+    );
+    // A dependency carries nothing, so there's nothing to block.
+    expect(edgeAriaLabel("A", "B", "async", undefined, "config", true)).not.toContain("deny");
+    const denied = toFlow({
+      ...d,
+      edges: d.edges.map((e) => ({ ...e, props: { ...e.props, deny: true } })),
+    });
+    expect(withEdgeAria(denied.edges, (id) => id)[0].ariaLabel).toContain("deny rule: blocked");
+  });
+
   it("keeps names in sync after a rename, with stable identities", () => {
     const f = toFlow(d);
     expect(withNodeAria(f.nodes)).toBe(f.nodes); // nothing to refresh
