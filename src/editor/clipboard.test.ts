@@ -34,7 +34,7 @@ describe("clipboard", () => {
       ],
       edges: [...diagram.edges, { id: "bad-edge", from: "a", to: "bad0" }],
     };
-    const p = parsePayload(JSON.stringify(raw))!;
+    const p = parsePayload(JSON.stringify({ ...raw, format: CLIP_FORMAT }))!;
     expect(p.annotations?.map((a) => a.id)).toEqual(["shape", "long"]);
     expect(p.annotations?.[0]).toEqual({ ...shape, kind: "shape", text: "42" });
     expect(p.annotations?.[1].text).toHaveLength(LIMITS.maxAnnotationText);

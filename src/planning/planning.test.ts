@@ -6,7 +6,7 @@ import { upgradePlanning, legacyExport } from "./migration";
 import { createEngine } from "../sim/engine";
 import { createSimulationRun } from "../sim/simulation";
 import { analyzeCapacity } from "../sim/capacity";
-import { resolveProps } from "../sim/defaults";
+import { resolveProps, resolveLegacyProps } from "../sim/defaults";
 import * as defaults from "../sim/defaults";
 import { PROFILES, FAMILIES, PROCESSOR_LESSON } from "../stencils/profiles";
 import { catalog } from "../stencils/catalog";
@@ -28,7 +28,7 @@ describe("P1 planning contract", () => {
     try {
       PROCESSOR_LESSON.values.latencyMs = 900;
       const props = { preset: "processor-lesson", presetRevision: "1" };
-      expect(resolveProps("processor", "Orders", props, "service.dotnet").latencyMs).toBe(250);
+      expect(resolveLegacyProps("processor", "Orders", props, "service.dotnet").latencyMs).toBe(250);
       const d = planningFixture();
       d.nodes[1].props = {};
       const next = upgradePlanning(d);
@@ -43,7 +43,7 @@ describe("P1 planning contract", () => {
     expect(PROFILES["aws.sns"].family).toBe("pubsub");
     expect(PROFILES["kafka.cluster"].family).toBe("dependency");
     expect(PROFILES["postgres"].family).toBe("sql");
-    expect(resolveProps("processor", "Custom", {}, "unknown").profile.family).toBeUndefined();
+    expect(resolveLegacyProps("processor", "Custom", {}, "unknown").profile.family).toBeUndefined();
     expect(Object.values(FAMILIES).every((f) => f.settings.filter((s) => s.tier === "main").length <= 5)).toBe(true);
     expect(PROCESSOR_LESSON.sources.every((s) => s.evidence === "assumption" && !!s.unit)).toBe(true);
   });
@@ -72,7 +72,7 @@ describe("P1 planning contract", () => {
       next.step(100);
     }
     expect(next.snapshot()).toEqual(old.snapshot());
-    expect(resolveProps("processor", "Orders", {}, "service.dotnet").profile.revision).toBe("legacy");
+    expect(resolveLegacyProps("processor", "Orders", {}, "service.dotnet").profile.revision).toBe("legacy");
     expect(diagramDiff(d, upgraded).metaChanged).toBe(true);
   });
 
@@ -271,7 +271,7 @@ describe("P1 planning contract", () => {
   it("pins existing device size values and exposes their evidence without changing legacy playback", () => {
     const props = newPlanningProps("gateway", { revision: "p1" }, "f5.bigip")!;
     expect(props).toMatchObject({ preset: "device-size", presetRevision: "1", size: "campus" });
-    const old = resolveProps("gateway", "F5", {}, "f5.bigip");
+    const old = resolveLegacyProps("gateway", "F5", {}, "f5.bigip");
     const next = resolveProps("gateway", "F5", props, "f5.bigip", { revision: "p1" });
     expect(next.device).toEqual(old.device);
     expect(next.profile.evidence.find((s) => s.key === "gbps")).toMatchObject({ unit: "Gbps", evidence: "benchmark" });

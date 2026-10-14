@@ -13,6 +13,7 @@ import {
 } from "./topology";
 import type { NodeStatus } from "./types";
 import { resolveMultiplier } from "./units";
+import { iterationBound } from "./iterationBound";
 
 export interface NodeCapacity {
   status?: Exclude<NodeStatus, "up">;
@@ -60,7 +61,6 @@ interface ConsumerGroup {
 }
 type Rates = Map<string, Map<string, number>>;
 const RATE_CAP = 1e12;
-const ITERATION_CAP = 256;
 const serviceRate = (entry: Entry, replicas = entry.active): number => {
   if (!entry.up) return 0;
   if (entry.role === "processor") {
@@ -181,6 +181,10 @@ export function analyzeCapacity(
     });
   }
   const compiled = compileTopology(diagram);
+  const iterationCap = iterationBound(
+    entries.keys(),
+    compiled.edges.filter((edge) => !edge.deny && !edge.dlq),
+  );
   const outgoing = compiled.outgoing;
   const groups = new Map<string, ConsumerGroup[]>();
   const assigned = new Map<string, number>();
@@ -294,7 +298,7 @@ export function analyzeCapacity(
   let rates = external,
     converged = false,
     iterations = 0;
-  for (; iterations < ITERATION_CAP; iterations++) {
+  for (; iterations < iterationCap; iterations++) {
     connections = Object.create(null);
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {

@@ -145,14 +145,14 @@ describe("planning review regressions", () => {
       const first = c.getState();
       const spy = vi.spyOn(capacity, "analyzeCapacity");
       try {
-        const configured = configuredPlanning(d, first);
+        const configured = configuredPlanning(d, first)!;
         const x = configured.explanation("orders");
         const rows = configured.rows("orders");
         const calls = spy.mock.calls.length;
         for (let i = 0; i < 10; i++) {
           c.step();
           expect(c.getState().tweaks).toBe(first.tweaks);
-          const hover = configuredPlanning(structuredClone(d), c.getState());
+          const hover = configuredPlanning(structuredClone(d), c.getState())!;
           expect(hover).toBe(configured);
           expect(hover.explanation("orders")).toBe(x);
           expect(hover.rows("orders")).toBe(rows);
@@ -162,7 +162,7 @@ describe("planning review regressions", () => {
         expect(first.tweaks.get("orders")!.props.latencyMs).toBe(5000);
         expect(configuredPlanning(d, c.getState())).not.toBe(configured);
         c.setNodeStatus("orders", "down");
-        expect(configuredPlanning(d, c.getState()).explanation("orders")!.status).toBe("down");
+        expect(configuredPlanning(d, c.getState())!.explanation("orders")!.status).toBe("down");
       } finally {
         spy.mockRestore();
       }
@@ -246,7 +246,7 @@ describe("planning review regressions", () => {
     c.step();
     const spy = vi.spyOn(capacity, "analyzeCapacity");
     try {
-      const x = configuredPlanning(d, c.getState()).explanation("orders")!;
+      const x = configuredPlanning(d, c.getState())!.explanation("orders")!;
       expect(x.changes).toContainEqual({ nodeId: "orders", key: "replicas", from: 1, to: 12 });
       expect(spy.mock.calls.length).toBeGreaterThan(1);
       expect(spy.mock.calls.every((call) => call[2]?.status?.other === "down")).toBe(true);
@@ -284,7 +284,11 @@ describe("planning review regressions", () => {
   it("whole-file paste accepts private v2 and rejects unsupported revisions", () => {
     const d = upgradePlanning(planningFixture());
     d.private = true;
-    expect(parsePayload(serializeNative(d))).toMatchObject({ private: true, nodes: d.nodes, edges: d.edges });
+    expect(parsePayload(serializeNative(d))).toMatchObject({
+      private: true,
+      nodes: legacyExport(d).diagram.nodes,
+      edges: d.edges,
+    });
     expect(parsePayload(JSON.stringify({ ...d, planning: { revision: "future" } }))).toBeNull();
   });
 

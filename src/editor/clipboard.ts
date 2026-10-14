@@ -9,7 +9,11 @@ import {
 import { filterLayerOrder } from "../model/layers";
 import { uniqueId } from "./ids";
 import { normalizeAnnotation, annotationCoordinate } from "../model/annotations";
-import { LIMITS, exceedsDepth } from "../interop/native";
+import { LIMITS, exceedsDepth, validateDiagram } from "../interop/native";
+
+import { propsProblem, unsupportedPreset, invalidPlanningDelay } from "../model/simProps";
+import { clipboardNodes } from "../model/planning";
+import { remapConnection } from "../model/connectionDefaults";
 
 // Copy / paste on the saved-file level, so it is pure and the system clipboard carries plain
 // JSON that also pastes into another tab (or a text editor).
@@ -50,7 +54,7 @@ export function makePayload(
   const groups = (d.groups ?? []).filter((g) => gs.has(g.id));
   const ns = new Set(nodeIds);
   for (const n of d.nodes) if (n.group && gs.has(n.group)) ns.add(n.id);
-  const nodes = d.nodes.filter((n) => ns.has(n.id));
+  const nodes = clipboardNodes(d).filter((n) => ns.has(n.id));
   const annotations = (d.annotations ?? []).filter((a) => ns.has(a.id));
   if (!nodes.length && !groups.length && !annotations.length) return null;
   const edges = d.edges.filter((e) => ns.has(e.from) && ns.has(e.to));
@@ -81,7 +85,12 @@ export function parsePayload(text: string): ClipboardPayload | null {
   }
   if (!isObj(data) || (data.format !== CLIP_FORMAT && data.format !== DIAGRAM_FORMAT && data.format !== "diagrams/v2"))
     return null;
-  if (data.format === "diagrams/v2" && (!isObj(data.planning) || data.planning.revision !== "p1")) return null;
+  if (data.format !== CLIP_FORMAT) {
+    const result = validateDiagram(data);
+    if (!result.ok) return null;
+    data = { ...result.diagram, nodes: clipboardNodes(result.diagram), format: CLIP_FORMAT };
+  }
+  if (!isObj(data)) return null;
   if (!Array.isArray(data.nodes)) return null;
   if (exceedsDepth(data)) return null;
   for (const [list, max] of [
@@ -95,6 +104,7 @@ export function parsePayload(text: string): ClipboardPayload | null {
     (n): n is DiagramNode =>
       isObj(n) && typeof n.id === "string" && typeof n.stencil === "string" && isCoordinate(n.x) && isCoordinate(n.y),
   );
+  if (nodes.some((n) => n.props !== undefined && (unsupportedPreset(n.props) || propsProblem(n.props)))) return null;
   const used = new Set(nodes.map((n) => n.id));
   const annotations: DiagramAnnotation[] = [];
   for (const raw of Array.isArray(data.annotations) ? data.annotations : []) {
@@ -109,6 +119,7 @@ export function parsePayload(text: string): ClipboardPayload | null {
     (e): e is DiagramEdge =>
       isObj(e) && typeof e.id === "string" && ids.has(e.from as string) && ids.has(e.to as string),
   );
+  if (edges.some((e) => invalidPlanningDelay(e.props))) return null;
   const groups = (Array.isArray(data.groups) ? data.groups : []).filter(
     (g): g is DiagramGroup =>
       isObj(g) &&
@@ -179,7 +190,7 @@ export function remapPayload(p: ClipboardPayload, taken: TakenIds, offset: { x: 
   const edges = p.edges.map((e) => {
     const id = uniqueId(e.id, used);
     used.add(id);
-    return { ...structuredClone(e), id, from: nmap.get(e.from) ?? e.from, to: nmap.get(e.to) ?? e.to };
+    return { ...remapConnection(e, nmap), id };
   });
   return {
     format: CLIP_FORMAT,

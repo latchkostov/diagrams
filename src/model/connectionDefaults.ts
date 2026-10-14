@@ -21,10 +21,25 @@ export function connectionDefaults(
   const kind = authored.kind ?? inferKind(from.stencil, to.stencil);
   const role = from.stencil ? stencilRole(from.stencil) : undefined;
   const group = planning && kind === "async" && (role === "topic" || role === "stream") ? to.id : undefined;
-  const props = { ...(group ? { group } : {}), ...authored.props };
+  const props = {
+    ...(group && authored.props?.group === undefined ? { group, groupOrigin: "inferred" } : {}),
+    ...authored.props,
+  };
   return {
     kind,
     ...(authored.relation && authored.relation !== "flow" ? { relation } : {}),
     ...(Object.keys(props).length ? { props } : {}),
   };
+}
+
+/** Rewire inferred identity with its consumer; authored group names are stable across copies. */
+export function remapConnection(edge: DiagramEdge, ids: ReadonlyMap<string, string>): DiagramEdge {
+  const to = ids.get(edge.to) ?? edge.to;
+  const next = { ...structuredClone(edge), from: ids.get(edge.from) ?? edge.from, to };
+  if (next.props?.groupOrigin === "inferred") next.props.group = to;
+  return next;
+}
+
+export function connectionProps(before: DiagramEdge["props"], patch: NonNullable<DiagramEdge["props"]>) {
+  return { ...before, ...patch, ...("group" in patch ? { groupOrigin: undefined } : {}) };
 }

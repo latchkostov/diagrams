@@ -1,8 +1,8 @@
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { Page } from "@playwright/test";
-import { mkdirSync } from "node:fs";
 import { planningFixture } from "../../src/lab/planningFixture";
 import {
-  test,
+  test as base,
   expect,
   gotoCanvas,
   gotoLive,
@@ -12,11 +12,32 @@ import {
   STORAGE_KEYS,
 } from "./fixtures";
 
+const test = base.extend<{ isolatedScreenshots: undefined }>({
+  isolatedScreenshots: [
+    async ({ page }, use, testInfo) => {
+      const screenshot = page.screenshot.bind(page);
+      page.screenshot = async (options = {}) => {
+        if (options.path) {
+          const path = relative(testInfo.outputDir, resolve(options.path));
+          expect(isAbsolute(path)).toBe(false);
+          expect(path.split(sep)[0]).not.toBe("..");
+        }
+        return screenshot(options);
+      };
+      await use(undefined);
+    },
+    { auto: true },
+  ],
+});
+
 const SLUG = "kafka-order-pipeline";
 const KEY = STORAGE_KEYS.autosavePrefix + SLUG;
-const shots = "docs/screenshots/round36";
 
-async function seed(page: Page, kind: "orders" | "connections" | "no-reader" | "outage" = "orders", live = false) {
+async function seed(
+  page: Page,
+  kind: "orders" | "connections" | "no-reader" | "outage" | "many-groups" | "analysis-limit" = "orders",
+  live = false,
+) {
   await page.addInitScript(
     ([key, value]) => {
       if (!sessionStorage.getItem("p1-seeded")) {
@@ -27,12 +48,18 @@ async function seed(page: Page, kind: "orders" | "connections" | "no-reader" | "
     [KEY, JSON.stringify(planningFixture(kind))] as const,
   );
   if (live)
-    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1${kind === "outage" ? "&sim=outage&paused=1" : ""}`);
+    await gotoLive(
+      page,
+      `./?view=canvas&example=${SLUG}&live=1${kind === "outage" ? "&sim=outage&paused=1" : kind === "analysis-limit" ? "&paused=1&traffic=0" : ""}`,
+    );
   else await gotoCanvas(page, SLUG);
   await waitForStableViewport(page);
 }
 
-test("P1: Orders arithmetic and the 50% fix are keyboard accessible and undoable", async ({ page, consoleErrors }) => {
+test("P1: Orders arithmetic and the 50% fix are keyboard accessible and undoable", async ({
+  page,
+  consoleErrors,
+}, testInfo) => {
   await seed(page);
   await page.getByTestId("node-orders").click();
   const x = page.getByTestId("planning-explanation-orders");
@@ -51,8 +78,10 @@ test("P1: Orders arithmetic and the 50% fix are keyboard accessible and undoable
   await page.keyboard.press("Shift+Digit1");
   await waitForStableViewport(page);
   await x.getByTestId("planning-apply").scrollIntoViewIfNeeded();
-  mkdirSync(shots, { recursive: true });
-  await page.screenshot({ path: `${shots}/orders-inspector.png` });
+  await testInfo.attach("orders-inspector.png", {
+    body: await page.screenshot({ path: testInfo.outputPath("orders-inspector.png") }),
+    contentType: "image/png",
+  });
   await x.getByTestId("planning-apply").focus();
   await page.keyboard.press("Enter");
   await expect(x.getByTestId("planning-arithmetic")).toContainText("6 replicas × 4 slots");
@@ -65,7 +94,7 @@ test("P1: Orders arithmetic and the 50% fix are keyboard accessible and undoable
 test("P1: two policies share one pool; removing and reconnecting edges refresh the inspector", async ({
   page,
   consoleErrors,
-}) => {
+}, testInfo) => {
   await seed(page, "connections");
   await page.getByTestId("node-orders").click();
   await expect(page.getByTestId("planning-pool")).toHaveCount(1);
@@ -99,8 +128,10 @@ test("P1: two policies share one pool; removing and reconnecting edges refresh t
   await page.keyboard.press("Shift+Digit1");
   await waitForStableViewport(page);
   await page.getByTestId("planning-connection-call").scrollIntoViewIfNeeded();
-  mkdirSync(shots, { recursive: true });
-  await page.screenshot({ path: `${shots}/connections.png` });
+  await testInfo.attach("connections.png", {
+    body: await page.screenshot({ path: testInfo.outputPath("connections.png") }),
+    contentType: "image/png",
+  });
   // Reconnect through the existing keyboard action, then reselect the worker.
   await page.getByTestId("edge-consume").click();
   await page.keyboard.press("Control+k");
@@ -121,7 +152,7 @@ test("P1: two policies share one pool; removing and reconnecting edges refresh t
 test("P1: live hover and keyboard focus show the same configured explanation and observed units", async ({
   page,
   consoleErrors,
-}) => {
+}, testInfo) => {
   await seed(page, "orders", true);
   await page.getByTestId("node-orders").hover();
   const card = page.getByTestId("node-detail-orders");
@@ -140,13 +171,18 @@ test("P1: live hover and keyboard focus show the same configured explanation and
       bounds.y + bounds.height <= canvas.y + canvas.height,
   ).toBe(true);
   await pauseClock(page);
-  mkdirSync(shots, { recursive: true });
-  await page.screenshot({ path: `${shots}/orders-hover.png` });
+  await testInfo.attach("orders-hover.png", {
+    body: await page.screenshot({ path: testInfo.outputPath("orders-hover.png") }),
+    contentType: "image/png",
+  });
   // Canvas roving focus: click selects/focuses the node; moving off it keeps the focused explanation.
   await page.getByTestId("node-orders").click();
   await page.getByTestId("diagram-title").hover();
   await expect(card).toBeVisible();
   await expect(card).toHaveAttribute("role", "tooltip");
+  await expect(page.getByTestId("node-live-focus-orders")).toHaveAccessibleDescription(
+    /Orders handles ~1 req\/s.*receives 3 req\/s.*Observed now/,
+  );
   expectNoErrors(consoleErrors);
 });
 
@@ -158,7 +194,10 @@ test("P1: no-reader explains the producer and offers exactly one consumer action
   await expect(x.getByTestId("planning-arithmetic")).toContainText("nobody reads it");
   await expect(x.getByTestId("planning-contributors")).toContainText("Checkout: 3 msg/s");
   await expect(x.getByTestId("planning-apply")).toHaveText("Add a consumer");
-  await x.getByTestId("planning-apply").click();
+  await x.getByTestId("planning-apply").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  await expect(page.getByTestId("inspector-field-label")).toHaveValue("Order events consumer");
   await page.getByTestId("node-topic").click();
   await expect(x).toHaveCount(0);
   await page.getByTestId("undo-button").click();
@@ -170,15 +209,17 @@ test("P1: no-reader explains the producer and offers exactly one consumer action
 test("P1: model upgrade previews unchanged capacity, is undoable and exposes a legacy loss report", async ({
   page,
   consoleErrors,
-}) => {
+}, testInfo) => {
   await seed(page);
   await page.keyboard.press("Control+k");
   await page.keyboard.type("diagram properties");
   await page.keyboard.press("Enter");
   await page.getByTestId("planning-preview").click();
   await expect(page.getByTestId("planning-upgrade-preview")).toContainText("Orders: 1 msg/s → 1 msg/s");
-  mkdirSync(shots, { recursive: true });
-  await page.screenshot({ path: `${shots}/upgrade-preview.png` });
+  await testInfo.attach("upgrade-preview.png", {
+    body: await page.screenshot({ path: testInfo.outputPath("upgrade-preview.png") }),
+    contentType: "image/png",
+  });
   await page.getByTestId("planning-upgrade").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("planning-preview")).toBeFocused();
@@ -220,4 +261,72 @@ test("P1: tall hover cards stay within a short viewport", async ({ page }) => {
       return !!bounds && !!pane && bounds.y >= pane.y && bounds.y + bounds.height <= pane.y + pane.height;
     })
     .toBe(true);
+});
+
+test("P1: live group details stay reachable in a short viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 460 });
+  await seed(page, "many-groups", true);
+  await page.getByTestId("node-topic").click();
+  await page.getByTestId("diagram-title").hover();
+  const card = page.getByTestId("node-detail-topic");
+  await expect(card).toContainText("Throughput");
+  await expect(card).toContainText("Lag by consumer group");
+  await expect(card.getByTestId("live-lag-group-23")).toHaveCount(1);
+  await page.keyboard.press("F2");
+  const toggle = page.getByTestId("planning-live-details-toggle");
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("planning-live-counters")).toContainText("failed attempts");
+  await expect(page.getByTestId("planning-live-lag-group-23")).toBeVisible();
+});
+
+test("P1: a keyboard-focused hover card follows pan, zoom and pane resizing", async ({ page }) => {
+  await seed(page, "orders", true);
+  await page.getByTestId("node-orders").click();
+  await page.getByTestId("diagram-title").hover();
+  const card = page.getByTestId("node-detail-orders");
+  await expect(card).toBeVisible();
+  const check = async () => {
+    await expect
+      .poll(async () => {
+        const box = await card.boundingBox(),
+          pane = await page.getByTestId("canvas-wrap").boundingBox();
+        return (
+          !!box &&
+          !!pane &&
+          box.x >= pane.x &&
+          box.y >= pane.y &&
+          box.x + box.width <= pane.x + pane.width &&
+          box.y + box.height <= pane.y + pane.height
+        );
+      })
+      .toBe(true);
+  };
+  await check();
+  const canvas = await page.getByTestId("canvas-wrap").boundingBox();
+  if (!canvas) throw new Error("No canvas");
+  await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
+  await page.mouse.wheel(420, -250);
+  await waitForStableViewport(page);
+  await page.getByTestId("diagram-title").hover();
+  await check();
+  await page.setViewportSize({ width: 1000, height: 460 });
+  await check();
+  await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0, 240);
+  await page.keyboard.up("Control");
+  await waitForStableViewport(page);
+  await check();
+});
+
+test("P1: bounded planning retains keyboard-accessible current counters", async ({ page }) => {
+  await seed(page, "analysis-limit", true);
+  await page.getByTestId("node-orders").click();
+  await page.getByTestId("diagram-title").hover();
+  const card = page.getByTestId("node-detail-orders");
+  await expect(card.getByTestId("planning-unavailable")).toBeVisible();
+  await expect(card.getByTestId("planning-observed")).toContainText("Processed 0");
+  await expect(card.getByTestId("planning-observed")).toContainText("In flight 0");
+  await expect(page.getByTestId("node-live-focus-orders")).toHaveAccessibleDescription(/Processed 0.*In flight 0/);
 });

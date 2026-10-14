@@ -316,21 +316,27 @@ const diagramPresets: Preset[] = [
     description: "No nodes, no edges.",
     diagram: (): DiagramFile => ({ format: DIAGRAM_FORMAT, title: "Empty", nodes: [], edges: [] }),
   },
-  ...(["orders", "connections", "no-reader", "outage"] as const).map((kind): Preset => ({
-    kind: "diagram",
-    id: `planning-${kind}`,
-    get title() {
-      return kind === "orders"
-        ? t("planning.labOrders")
-        : kind === "connections"
-          ? t("planning.labConnections")
-          : kind === "outage"
-            ? t("planning.labOutage")
-            : t("planning.labNoReader");
-    },
-    group: "Diagrams",
-    diagram: () => planningFixture(kind),
-  })),
+  ...(["orders", "connections", "no-reader", "outage", "many-groups", "analysis-limit"] as const).map(
+    (kind): Preset => ({
+      kind: "diagram",
+      id: `planning-${kind}`,
+      get title() {
+        return kind === "orders"
+          ? t("planning.labOrders")
+          : kind === "connections"
+            ? t("planning.labConnections")
+            : kind === "analysis-limit"
+              ? t("planning.labAnalysisLimit")
+              : kind === "many-groups"
+                ? t("planning.labManyGroups")
+                : kind === "outage"
+                  ? t("planning.labOutage")
+                  : t("planning.labNoReader");
+      },
+      group: "Diagrams",
+      diagram: () => planningFixture(kind),
+    }),
+  ),
 ];
 
 // ---------- simulation ----------

@@ -176,6 +176,8 @@ export interface NodeSimProps {
 export interface EdgeSimProps {
   /** Consumer group for edges leaving a topic/stream. Edges sharing a group compete; default = edge id. */
   group?: string;
+  /** Inferred groups follow the consumer id when a connection is copied or reconnected. */
+  groupOrigin?: "inferred";
   /** Independent probability for a source/processor/store fan-out copy. Default 1. */
   share?: number;
   /** Marks this edge as the dead-letter path of its source broker. Also inferred when the target
@@ -315,6 +317,8 @@ export interface SimEngine {
   restore(checkpoint: EngineCheckpoint): void;
   /** Detached raw properties currently used by the engine, including runtime overrides. */
   effectiveProps(nodeId: string): Record<string, unknown>;
+  /** Immutable raw configuration snapshot, stable until a property change, load or restore. */
+  configuration(): Record<string, Record<string, unknown>>;
   /** Clock in ms; inSystem is sampled, pendingInjections counts scheduled batches (never scale it). */
   metrics(): { time: number; inSystem: number; pendingInjections: number };
   /** Read a sampled metric without copying node or rendering state. Runner expectations convert it. */

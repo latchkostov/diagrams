@@ -67,6 +67,8 @@ const EDGE_PROP_NOTES: Record<string, string> = {
     "physical one-way delay in ms (absent means unknown); metadata only in P1, never added to animation travelMs",
   group:
     "consumer group, on an edge leaving a topic or stream: every group gets each message, edges in one group compete",
+  groupOrigin:
+    "inferred: the default group follows the consumer node id when copied or reconnected; omit for authored group names",
   dlq: "true marks a broker's dead-letter route (also inferred from a target labelled DLQ or dead-letter)",
   filter: 'message types this edge accepts, e.g. ["Order*"] (a trailing * matches a prefix)',
   share: "chance that this fan-out edge gets a copy",

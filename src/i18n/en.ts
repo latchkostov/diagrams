@@ -474,6 +474,8 @@ const en = {
   "htmlExport.light": "Light",
   "htmlExport.dark": "Dark",
   "planning.labOutage": "Planning: consumer outage",
+  "planning.labAnalysisLimit": "Planning: explanation unavailable, current counters retained",
+  "planning.labManyGroups": "Planning: live consumer-group details",
   "planning.labOrders": "Planning: Orders",
   "planning.labConnections": "Planning: shared connections",
   "planning.labNoReader": "Planning: no reader",
@@ -497,7 +499,13 @@ const en = {
   "planning.pool":
     "One shared pool: {replicas, plural, one {# replica} other {# replicas}} × {slots, number} slots. All inputs share it.",
   "planning.noConnections": "No consumer, publisher or caller connections.",
+  "planning.analysisLimit":
+    "Throughput explanation is unavailable for this diagram. Simplify the diagram or reduce its consumer groups to see it.",
   "planning.heading": "Throughput explained",
+  "planning.liveDetails": "Live details",
+  "planning.liveCounters":
+    "Throughput {throughput}; processed {processed}; waiting {waiting}; in flight {inFlight}; failed attempts {failed}; dead-lettered {deadLettered}; dropped {dropped}; blocked by a deny rule {blocked}.",
+  "planning.liveLag": "Group {group} ({consumers}): {lag} waiting.",
   "planning.configured": "Configured estimate · editable assumptions",
   "planning.summary":
     "{name} handles ~{capacity} ({replicas, plural, one {# replica} other {# replicas}} × {slots, number} slots ÷ {seconds} s) and receives {offered}.",

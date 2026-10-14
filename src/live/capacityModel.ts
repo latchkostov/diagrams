@@ -10,7 +10,7 @@ import { stencilRole } from "../stencils/roles";
 import { analyzeCapacity, type NodeCapacity } from "../sim/capacity";
 import { brokerFeeds, compileTopology } from "../sim/topology";
 import type { NodeStatus } from "../sim/types";
-import { resolveProps } from "../sim/defaults";
+import { resolveNodeProps } from "../sim/defaults";
 import { autoScale, peakRate } from "../sim/scale";
 import { trafficWindow } from "../sim/simulation";
 import { planningSimulation, sizingFix, sourceTraffic, withSizing, type SizingChange } from "../sim/capacityPlanning";
@@ -56,16 +56,12 @@ const roleOf = (n: DiagramNode): SimRole => stencilRole(n.stencil);
 
 /** Node props as the simulation sees them: diagram props, then the saved setup, then overrides. */
 export function baseProps(
+  d: DiagramFile,
   node: DiagramNode,
   sim: Simulation | null | undefined,
   overrides?: Record<string, unknown>,
-): ReturnType<typeof resolveProps> {
-  return resolveProps(
-    roleOf(node),
-    node.label,
-    { ...node.props, ...sim?.setup?.props?.[node.id], ...overrides },
-    node.stencil,
-  );
+): ReturnType<typeof resolveNodeProps> {
+  return resolveNodeProps(d, node, { ...sim?.setup?.props?.[node.id], ...overrides });
 }
 
 /** Multiplies every rate (or count) of a traffic shape. */
@@ -158,7 +154,7 @@ export const sourceIds = (d: DiagramFile) => d.nodes.filter((n) => roleOf(n) ===
 function freeRate(d: DiagramFile, id: string, inputs: LiveInputs): number {
   const node = d.nodes.find((n) => n.id === id);
   if (!node) return 0;
-  return inputs.rates[id] ?? baseProps(node, null, inputs.props[id]).ratePerSec;
+  return inputs.rates[id] ?? baseProps(d, node, null, inputs.props[id]).ratePerSec;
 }
 
 /** Free play as a simulation (steady traffic at every source), so the analyzer sees the multipliers. */
@@ -517,7 +513,8 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
   const notes = new Map<string, string>();
   const raised = d.nodes.filter(
     (n) =>
-      PARTITIONED.has(roleOf(n)) && baseProps(n, sim, inputs.props[n.id]).partitions > baseProps(n, sim).partitions,
+      PARTITIONED.has(roleOf(n)) &&
+      baseProps(d, n, sim, inputs.props[n.id]).partitions > baseProps(d, n, sim).partitions,
   );
   if (!raised.length) return notes;
   const groupsOf = compileTopology(d).groups;
@@ -526,7 +523,7 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
   const replicas = (id: string) => {
     const member = byId.get(id)!;
     if (roleOf(member) !== "processor") return Infinity;
-    return Math.max(1, Math.round(baseProps(member, sim, inputs.props[id]).replicas * capacity));
+    return Math.max(1, Math.round(baseProps(d, member, sim, inputs.props[id]).replicas * capacity));
   };
   for (const node of raised) {
     const groups = groupsOf.get(node.id) ?? [];
@@ -534,7 +531,7 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
       notes.set(node.id, "Nobody reads it yet, so more partitions change nothing.");
       continue;
     }
-    const now = baseProps(node, sim, inputs.props[node.id]).partitions;
+    const now = baseProps(d, node, sim, inputs.props[node.id]).partitions;
     const most = Math.max(...groups.map((g) => g.members.reduce((sum, id) => sum + replicas(id), 0)));
     if (!(most < now)) continue;
     const which = groups.length > 1 ? "Its largest consumer group has" : "Its consumer group has";
@@ -623,7 +620,7 @@ export function applyPreset(id: PresetId, inputs: LiveInputs, d: DiagramFile, ba
       return { ...inputs, capacity: 0.5 };
     case "double-partitions":
       for (const n of partitionedIds(d))
-        props[n.id] = { ...props[n.id], partitions: baseProps(n, base).partitions * 2 };
+        props[n.id] = { ...props[n.id], partitions: baseProps(d, n, base).partitions * 2 };
       return { ...inputs, props };
   }
 }
@@ -638,14 +635,14 @@ export function isPresetActive(id: PresetId, inputs: LiveInputs, d: DiagramFile,
       return (
         traffic === 1 &&
         capacity === 1 &&
-        brokers.every((n) => partitions(n) === undefined || partitions(n) === baseProps(n, base).partitions)
+        brokers.every((n) => partitions(n) === undefined || partitions(n) === baseProps(d, n, base).partitions)
       );
     case "black-friday":
       return traffic === 5;
     case "half-pods":
       return capacity === 0.5;
     case "double-partitions":
-      return brokers.length > 0 && brokers.every((n) => partitions(n) === baseProps(n, base).partitions * 2);
+      return brokers.length > 0 && brokers.every((n) => partitions(n) === baseProps(d, n, base).partitions * 2);
   }
 }
 
@@ -724,7 +721,7 @@ export function freePlaySaveProps(d: DiagramFile, inputs: LiveInputs): Record<st
   if (capacity !== 1)
     for (const n of d.nodes) {
       // Capacity × scales what has capacity in units: a service's replicas and a network device's units.
-      const props = baseProps(n, null, inputs.props[n.id]);
+      const props = baseProps(d, n, null, inputs.props[n.id]);
       if (roleOf(n) !== "processor" && !props.device) continue;
       const replicas = Math.max(1, Math.round(props.replicas * capacity));
       out[n.id] = { ...out[n.id], replicas };

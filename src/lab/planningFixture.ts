@@ -1,7 +1,9 @@
 import type { DiagramFile } from "../model/types";
 
 /** P1's three deliberate lessons, shared by the Lab and production browser regressions. */
-export function planningFixture(kind: "orders" | "connections" | "no-reader" | "outage" = "orders"): DiagramFile {
+export function planningFixture(
+  kind: "orders" | "connections" | "no-reader" | "outage" | "many-groups" | "analysis-limit" = "orders",
+): DiagramFile {
   const d: DiagramFile = {
     format: "diagrams/v1",
     title: "Planning: shared capacity",
@@ -18,6 +20,10 @@ export function planningFixture(kind: "orders" | "connections" | "no-reader" | "
     ],
     edges: [{ id: "request", from: "checkout", to: "orders", kind: "sync", props: { travelMs: 0 } }],
   };
+  if (kind === "analysis-limit") {
+    d.edges = Array.from({ length: 513 }, (_, i) => ({ ...d.edges[0], id: `request-${i}` }));
+    return d;
+  }
   if (kind === "orders") return d;
   if (kind === "outage") {
     d.nodes[0].props!.ratePerSec = 6;
@@ -42,6 +48,21 @@ export function planningFixture(kind: "orders" | "connections" | "no-reader" | "
   }
   d.nodes.push({ id: "topic", stencil: "kafka.topic", label: "Order events", x: 320, y: 20 });
   d.edges = [{ id: "publish", from: "checkout", to: "topic", kind: "async", props: { travelMs: 0 } }];
+  if (kind === "many-groups") {
+    d.nodes = d.nodes.filter((n) => n.id !== "orders");
+    for (let i = 0; i < 24; i++) {
+      d.nodes.push({
+        id: `worker-${i}`,
+        stencil: "generic.service",
+        label: `Worker ${i}`,
+        x: 640 + (i % 4) * 320,
+        y: Math.floor(i / 4) * 140,
+        props: { status: "down" },
+      });
+      d.edges.push({ id: `read-${i}`, from: "topic", to: `worker-${i}`, props: { group: `group-${i}` } });
+    }
+    return d;
+  }
   if (kind === "no-reader") {
     d.nodes = d.nodes.filter((n) => n.id !== "orders");
     return d;

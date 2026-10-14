@@ -1,4 +1,5 @@
-import type { SimRole } from "../model/types";
+import type { DiagramFile, DiagramNode, SimRole } from "../model/types";
+import { stencilRole } from "../stencils/roles";
 import {
   DEFAULT_FAILOVER_MS,
   DEFAULT_MESSAGE_KB,
@@ -52,8 +53,8 @@ export function resolveProps(
   role: SimRole,
   label: string,
   props: Record<string, unknown>,
-  stencil?: string,
-  planning?: PlanningModel,
+  stencil: string | undefined,
+  planning: PlanningModel | undefined,
 ): ResolvedProps {
   const authored = props;
   const profile = profileOf(stencil);
@@ -126,6 +127,20 @@ export function resolveProps(
       typeof props.healthChecks === "boolean" ? props.healthChecks : role === "gateway" && device?.kind === "adc",
     ...(device ? { device } : {}),
   };
+}
+
+/** Resolve a node in its document; overrides remain partial updates. */
+export function resolveNodeProps(
+  d: DiagramFile,
+  node: DiagramNode,
+  overrides?: Record<string, unknown>,
+): ResolvedProps {
+  return resolveProps(stencilRole(node.stencil), node.label, { ...node.props, ...overrides }, node.stencil, d.planning);
+}
+
+/** Explicit legacy resolution for old-format probes and migration. */
+export function resolveLegacyProps(role: SimRole, label: string, props: Record<string, unknown>, stencil?: string) {
+  return resolveProps(role, label, props, stencil, undefined);
 }
 
 function resolveDevice(

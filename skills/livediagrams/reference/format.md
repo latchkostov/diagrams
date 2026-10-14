@@ -133,6 +133,7 @@ Edge `props`:
 <!-- BEGIN GENERATED edge-props -->
 
 - `group` (string): consumer group, on an edge leaving a topic or stream: every group gets each message, edges in one group compete
+- `groupOrigin` ("inferred"): inferred: the default group follows the consumer node id when copied or reconnected; omit for authored group names
 - `share` (number 0..1): chance that this fan-out edge gets a copy
 - `dlq` (boolean): true marks a broker's dead-letter route (also inferred from a target labelled DLQ or dead-letter)
 - `travelMs` (number 0..600000): time a message spends on the edge (default 300 for a message, 200 for a request); animation only, never a limit

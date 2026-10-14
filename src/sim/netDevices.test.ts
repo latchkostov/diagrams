@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DiagramEdge, DiagramFile, DiagramNode, Simulation } from "../model/types";
 import { messagesPerSec } from "../stencils/netDevices";
 import { analyzeCapacity } from "./capacity";
-import { resolveProps } from "./defaults";
+import { resolveLegacyProps } from "./defaults";
 import { createEngine } from "./engine";
 import { createSimulationRun } from "./simulation";
 import type { SimEngine } from "./types";
@@ -49,43 +49,43 @@ const HUNDRED = { gbps: 0.8, messageKB: 1000 };
 
 describe("presets", () => {
   it("resolves a device's size preset, and its own values over it", () => {
-    const campus = resolveProps("gateway", "fw", {}, "paloalto.ngfw");
+    const campus = resolveLegacyProps("gateway", "fw", {}, "paloalto.ngfw");
     expect(campus.device).toMatchObject({ kind: "firewall", size: "campus", gbps: 20, ha: "standalone" });
     expect(campus.device!.preset!.model).toBe("PA-3440");
     expect(campus.latencyMs).toBe(0.5);
     expect(campus.device!.perUnit).toBeCloseTo(messagesPerSec(20, 64));
-    const branch = resolveProps("gateway", "fw", { size: "branch", latencyMs: 2 }, "paloalto.ngfw");
+    const branch = resolveLegacyProps("gateway", "fw", { size: "branch", latencyMs: 2 }, "paloalto.ngfw");
     expect(branch.device).toMatchObject({ size: "branch", gbps: 1.2 });
     expect(branch.latencyMs).toBe(2);
-    expect(resolveProps("gateway", "fw", { gbps: 3 }, "paloalto.ngfw").device!.gbps).toBe(3);
+    expect(resolveLegacyProps("gateway", "fw", { gbps: 3 }, "paloalto.ngfw").device!.gbps).toBe(3);
   });
 
   it("falls back to the family's size when it doesn't come in the one asked for", () => {
     // Nexus is made for data centres only: no branch size.
-    expect(resolveProps("gateway", "leaf", { size: "branch" }, "cisco.nexus").device!.size).toBe("datacentre");
+    expect(resolveLegacyProps("gateway", "leaf", { size: "branch" }, "cisco.nexus").device!.size).toBe("datacentre");
   });
 
   it("starts an HA pair or cluster at two units", () => {
-    expect(resolveProps("gateway", "fw", { ha: "active-standby" }, "generic.ngfw").replicas).toBe(2);
-    expect(resolveProps("gateway", "fw", { ha: "active-active", replicas: 4 }, "generic.ngfw").replicas).toBe(4);
-    expect(resolveProps("gateway", "fw", {}, "generic.ngfw").replicas).toBe(1);
+    expect(resolveLegacyProps("gateway", "fw", { ha: "active-standby" }, "generic.ngfw").replicas).toBe(2);
+    expect(resolveLegacyProps("gateway", "fw", { ha: "active-active", replicas: 4 }, "generic.ngfw").replicas).toBe(4);
+    expect(resolveLegacyProps("gateway", "fw", {}, "generic.ngfw").replicas).toBe(1);
   });
 
   it("leaves other gateways as they were: no ceiling, no health checks", () => {
     for (const stencil of ["nginx", "load-balancer", "generic.firewall", "aws.elb"]) {
-      const props = resolveProps("gateway", "g", {}, stencil);
+      const props = resolveLegacyProps("gateway", "g", {}, stencil);
       expect(props.device, stencil).toBeUndefined();
       expect(props.healthChecks, stencil).toBe(false);
       expect(props.latencyMs, stencil).toBe(60);
     }
     // ...unless one is given a throughput.
-    expect(resolveProps("gateway", "g", { gbps: 1 }, "nginx").device?.perUnit).toBeCloseTo(messagesPerSec(1, 64));
+    expect(resolveLegacyProps("gateway", "g", { gbps: 1 }, "nginx").device?.perUnit).toBeCloseTo(messagesPerSec(1, 64));
   });
 
   it("turns health checks on for ADCs by default", () => {
-    expect(resolveProps("gateway", "lb", {}, "f5.bigip").healthChecks).toBe(true);
-    expect(resolveProps("gateway", "lb", { healthChecks: false }, "f5.bigip").healthChecks).toBe(false);
-    expect(resolveProps("gateway", "r", {}, "cisco.isr").healthChecks).toBe(false);
+    expect(resolveLegacyProps("gateway", "lb", {}, "f5.bigip").healthChecks).toBe(true);
+    expect(resolveLegacyProps("gateway", "lb", { healthChecks: false }, "f5.bigip").healthChecks).toBe(false);
+    expect(resolveLegacyProps("gateway", "r", {}, "cisco.isr").healthChecks).toBe(false);
   });
 });
 

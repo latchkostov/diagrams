@@ -1,3 +1,4 @@
+import { connectionProps } from "../model/connectionDefaults";
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { newPlanningProps } from "../model/planning";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
@@ -757,7 +758,15 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           if ("sourceSide" in patch) data.sourceSide = patch.sourceSide;
           if ("targetSide" in patch) data.targetSide = patch.targetSide;
           if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
-          return { ...e, source: patch.from ?? e.source, target: patch.to ?? e.target, data };
+          return {
+            ...e,
+            source: patch.from ?? e.source,
+            target: patch.to ?? e.target,
+            data:
+              patch.to && data.props?.groupOrigin === "inferred"
+                ? { ...data, props: { ...data.props, group: patch.to } }
+                : data,
+          };
         }),
       );
     },
@@ -768,7 +777,11 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           e.id === id
             ? {
                 ...e,
-                data: { kind: "async" as const, ...e.data, props: withoutUndefined({ ...e.data?.props, ...patch }) },
+                data: {
+                  kind: "async" as const,
+                  ...e.data,
+                  props: withoutUndefined(connectionProps(e.data?.props, patch)),
+                },
               }
             : e,
         ),

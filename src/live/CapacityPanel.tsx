@@ -133,7 +133,7 @@ export const CapacityPanel = memo(function CapacityPanel({
       brokers: heldRows.brokers.filter((id) => byId.has(id)),
     };
   }, [editing, heldRows, byId, selectedRows]);
-  const props = (n: DiagramNode) => baseProps(n, base, inputs.props[n.id]);
+  const props = (n: DiagramNode) => baseProps(diagram, n, base, inputs.props[n.id]);
   const notes = useMemo(() => partitionsNotes(diagram, base, inputs), [diagram, base, inputs]);
   const traffic = inputs.traffic ?? base?.multipliers?.traffic ?? 1;
   const capacity = inputs.capacity ?? base?.multipliers?.capacity ?? 1;

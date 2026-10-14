@@ -6,8 +6,8 @@ import { compileTopology } from "../sim/topology";
 import { explainNode } from "./explanation";
 import { capabilities } from "./capabilities";
 import { planningRun } from "./run";
+import { planningSignature } from "./budget";
 
-const signatures = new WeakMap<DiagramFile, string>();
 const entries = new Map<string, ReturnType<typeof compute>>();
 
 function compute(d: DiagramFile, state?: LiveState | null) {
@@ -17,7 +17,9 @@ function compute(d: DiagramFile, state?: LiveState | null) {
   const topology = compileTopology(d);
   const rows = new Map<string, ReturnType<typeof capabilities>>();
   const explanations = new Map<string, ReturnType<typeof explainNode>>();
+  const nodes = new Map(d.nodes.map((n) => [n.id, n]));
   return {
+    nodes,
     running: state?.running,
     inputs: state?.inputs,
     tweaks: state?.tweaks,
@@ -26,7 +28,7 @@ function compute(d: DiagramFile, state?: LiveState | null) {
     analysis,
     rows(id: string) {
       if (!rows.has(id)) {
-        const node = d.nodes.find((n) => n.id === id);
+        const node = nodes.get(id);
         rows.set(id, node ? capabilities(d, node, topology, analysis.resolved[id]) : []);
       }
       return rows.get(id)!;
@@ -40,11 +42,8 @@ function compute(d: DiagramFile, state?: LiveState | null) {
 
 /** A small shared cache for inspector and hover. Counters never identify configured planning work. */
 export function configuredPlanning(d: DiagramFile, state?: LiveState | null) {
-  let signature = signatures.get(d);
-  if (!signature) {
-    signature = JSON.stringify(d);
-    signatures.set(d, signature);
-  }
+  const signature = planningSignature(d, state);
+  if (signature === undefined) return undefined;
   const statusKey = JSON.stringify(
     Object.fromEntries(Object.entries(state?.snapshot.nodes ?? {}).map(([id, n]) => [id, n.status])),
   );

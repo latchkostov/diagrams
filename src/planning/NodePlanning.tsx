@@ -4,15 +4,13 @@ import type { DiagramFile } from "../model/types";
 import type { LiveState } from "../live/controller";
 import { LiveContext } from "../live/context";
 import { addConsumer } from "../live/addConsumer";
-import { analyzeCapacity } from "../sim/capacity";
-import { planningSimulation } from "../sim/capacityPlanning";
-import { explainNode } from "./explanation";
 import { configuredPlanning } from "./cache";
-import { planningRun } from "./run";
 import { ExplanationView } from "./ExplanationView";
 import { planningHost } from "./host";
 import { t, useLocale } from "../i18n";
-import { formatDuration, formatList, formatPercent } from "../i18n/format";
+import { PlanningConnections } from "./PlanningConnections";
+import { LiveDetails } from "./LiveDetails";
+import { formatRate } from "../i18n/format";
 
 const noSubscribe = () => () => {};
 const noState = () => null;
@@ -39,13 +37,40 @@ export function NodePlanning({
     live?.controller.getState ?? noState,
   );
   const state = provided ?? subscribed;
-  const configured = configuredPlanning(d, state);
-  const { analysis } = configured;
-  const rows = configured.rows(id);
-  const explanation = configured.explanation(id);
-  const node = d.nodes.find((n) => n.id === id);
-  if (!node) return null;
   const observed = state?.snapshot.nodes[id];
+  const configured = configuredPlanning(d, state);
+  if (!configured && hover)
+    return (
+      <div className="planning-explanation">
+        <p className="insp-note" data-testid="planning-unavailable">
+          {t("planning.analysisLimit")}
+        </p>
+        {observed && (
+          <p data-testid="planning-observed">
+            {observed.role === "processor"
+              ? t("planning.observedProcessor", {
+                  throughput: formatRate(observed.throughput),
+                  waiting: observed.backlog,
+                  processed: observed.processed,
+                  inFlight: observed.inFlight,
+                })
+              : t("planning.observed", { throughput: formatRate(observed.throughput), waiting: observed.backlog })}
+          </p>
+        )}
+      </div>
+    );
+  if (!configured)
+    return (
+      <>
+        <p className="insp-note" data-testid="planning-unavailable">
+          {t("planning.analysisLimit")}
+        </p>
+        {!hover && observed && <LiveDetails metrics={observed} diagram={d} />}
+      </>
+    );
+  const explanation = configured.explanation(id);
+  const node = configured.nodes.get(id);
+  if (!node) return null;
   const x = explanation && {
     ...explanation,
     ...(observed
@@ -69,10 +94,7 @@ export function NodePlanning({
     // Recompute from the latest graph; never apply stale cached counts. Changes share one undo step.
     const current = editor.getDiagram();
     const latest = live?.controller.getState() ?? state;
-    const sim = planningRun(current, latest);
-    const status = Object.fromEntries(Object.entries(latest?.snapshot.nodes ?? {}).map(([id, n]) => [id, n.status]));
-    const analysis = analyzeCapacity(current, planningSimulation(current, sim), { status });
-    const fresh = explainNode(current, id, { sim, analysis });
+    const fresh = configuredPlanning(current, latest)?.explanation(id);
     if (!fresh?.changes) return;
     if (live?.applyCapacityFix) {
       live.applyCapacityFix({
@@ -95,7 +117,7 @@ export function NodePlanning({
       for (const c of fresh.changes) editor.setNodeProps(c.nodeId, { [c.key]: c.to }, { merge });
     }
   };
-  if (hover) return x ? <ExplanationView explanation={x} name={node.label} /> : null;
+  if (hover) return x ? <ExplanationView explanation={x} name={node.label} hover /> : null;
   return (
     <>
       {x && (
@@ -109,42 +131,8 @@ export function NodePlanning({
           />
         </section>
       )}
-      <section className="insp-section" aria-label={t("planning.connections")} data-testid="planning-connections">
-        <h3 className="insp-section-title">{t("planning.connections")}</h3>
-        {Number.isFinite(analysis.resolved[id].concurrency) && (
-          <p className="insp-note" data-testid="planning-pool">
-            {t("planning.pool", { replicas: analysis.nodes[id].replicas, slots: analysis.resolved[id].concurrency })}
-          </p>
-        )}
-        {!rows.length && <p className="insp-note">{t("planning.noConnections")}</p>}
-        {rows.map((row) => (
-          <div
-            className="planning-connection"
-            key={row.edge}
-            data-testid={`planning-connection-${row.edge}`}
-            data-capability={row.kind}
-          >
-            <strong>
-              {row.kind === "consumes"
-                ? t("planning.consumes", { name: d.nodes.find((n) => n.id === row.peer)!.label })
-                : row.kind === "publishes"
-                  ? t("planning.publishes", { name: d.nodes.find((n) => n.id === row.peer)!.label })
-                  : t("planning.calls", { name: d.nodes.find((n) => n.id === row.peer)!.label })}
-            </strong>
-            {row.group !== undefined && <p data-testid="planning-group">{t("planning.group", { name: row.group })}</p>}
-            {row.filter && <p>{t("planning.filter", { types: formatList(row.filter) })}</p>}
-            {row.emits && <p>{t("planning.emits", { type: row.emits })}</p>}
-            {row.share !== undefined && <p>{t("planning.share", { share: formatPercent(row.share) })}</p>}
-            {row.retry && (
-              <p>
-                {row.retry === "requeue"
-                  ? t("planning.requeue", { duration: formatDuration(row.retryBackoffMs ?? 0) })
-                  : t("planning.inplace", { duration: formatDuration(row.retryBackoffMs ?? 0) })}
-              </p>
-            )}
-          </div>
-        ))}
-      </section>
+      <PlanningConnections configured={configured} id={id} />
+      {observed && <LiveDetails metrics={observed} diagram={d} />}
     </>
   );
 }

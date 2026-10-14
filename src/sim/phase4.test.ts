@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramEdge, DiagramFile, DiagramNode, SimRole, Simulation, TrafficShape } from "../model/types";
 import { createEngine } from "./engine";
-import { resolveProps } from "./defaults";
+import { resolveLegacyProps } from "./defaults";
 import { createSimulationRun, autoScale } from "./simulation";
 import { realNodeMetrics, realSnapshot, toRealUnits, toSimulatedUnits } from "./units";
 import * as topology from "./topology";
@@ -366,9 +366,13 @@ describe("replica assignments and parallelism", () => {
 
 describe("seeded jitter and probability shares", () => {
   it("defaults to 0.2, clamps malformed props, and resolves retry defaults", () => {
-    expect(resolveProps("processor", "P", {})).toMatchObject({ jitter: 0.2, retry: "requeue", retryBackoffMs: 0 });
+    expect(resolveLegacyProps("processor", "P", {})).toMatchObject({
+      jitter: 0.2,
+      retry: "requeue",
+      retryBackoffMs: 0,
+    });
     expect(
-      resolveProps("processor", "P", { jitter: 5, replicas: -2, retry: "invalid", retryBackoffMs: -2 }),
+      resolveLegacyProps("processor", "P", { jitter: 5, replicas: -2, retry: "invalid", retryBackoffMs: -2 }),
     ).toMatchObject({ jitter: 1, replicas: 1, retry: "requeue", retryBackoffMs: 0 });
   });
   it.each(["processor", "gateway", "store"] as const)(

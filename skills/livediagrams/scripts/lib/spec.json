@@ -222,6 +222,12 @@
     "group": {
       "type": "string"
     },
+    "groupOrigin": {
+      "type": "string",
+      "enum": [
+        "inferred"
+      ]
+    },
     "share": {
       "type": "number",
       "minimum": 0,

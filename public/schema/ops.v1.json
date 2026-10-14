@@ -492,6 +492,16 @@
             "null"
           ]
         },
+        "groupOrigin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "inferred",
+            null
+          ]
+        },
         "share": {
           "type": [
             "number",
@@ -924,6 +934,16 @@
                 "type": [
                   "string",
                   "null"
+                ]
+              },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
                 ]
               },
               "share": {
@@ -1376,6 +1396,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -1818,6 +1848,16 @@
                 "type": [
                   "string",
                   "null"
+                ]
+              },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
                 ]
               },
               "share": {
@@ -2561,6 +2601,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -3166,6 +3216,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -3595,6 +3655,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -4006,6 +4076,16 @@
                 "type": [
                   "string",
                   "null"
+                ]
+              },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
                 ]
               },
               "share": {

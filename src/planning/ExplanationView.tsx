@@ -10,21 +10,22 @@ export function ExplanationView({
   name,
   apply,
   disabledReason,
+  hover = false,
 }: {
   explanation: Explanation;
   name: string;
   apply?: () => void;
   disabledReason?: string;
+  hover?: boolean;
 }) {
   useLocale();
   const heading = useRef<HTMLDivElement>(null);
   const focusAfterApply = useRef(false);
   useLayoutEffect(() => {
-    const field = heading.current
-      ?.closest("[data-check-fallback-scope]")
-      ?.querySelector<HTMLElement>('[data-testid="inspector-field-label"]');
+    const scope = heading.current?.closest("[data-check-fallback-scope]");
     return () => {
-      if (focusAfterApply.current) field?.focus();
+      if (focusAfterApply.current)
+        queueMicrotask(() => scope?.querySelector<HTMLElement>('[data-testid="inspector-field-label"]')?.focus());
     };
   }, []);
   useLayoutEffect(() => {
@@ -53,8 +54,8 @@ export function ExplanationView({
       className="planning-explanation"
       ref={heading}
       tabIndex={-1}
-      role="region"
-      aria-label={t("planning.heading")}
+      role={hover ? undefined : "region"}
+      aria-label={hover ? undefined : t("planning.heading")}
       data-testid={`planning-explanation-${x.id}`}
       data-reason={x.reason}
       data-fix-id={x.fixId}

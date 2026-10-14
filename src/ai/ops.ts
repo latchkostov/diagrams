@@ -1,3 +1,4 @@
+import { connectionProps } from "../model/connectionDefaults";
 import { splitEdge } from "../model/edgeSplit";
 import type { DiagramFile, DiagramNode } from "../model/types";
 import { uniqueId, stencilIdBase } from "../editor/ids";
@@ -182,7 +183,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
               throw new Error("Connection kind must be async or sync.");
             if (op.kind !== undefined) e.kind = op.kind as "async" | "sync";
             if (op.label !== undefined) e.label = op.label;
-            if (op.props) e.props = mergeProps(e.props, op.props);
+            if (op.props) e.props = mergeProps(e.props, connectionProps(e.props, op.props));
           } else if (g) {
             touched.add(g.id);
             if (op.kind !== undefined || op.in !== undefined || op.props || op.sublabel !== undefined)

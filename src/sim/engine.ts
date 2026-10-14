@@ -172,6 +172,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   };
   const nodes = new Map<string, Node>();
   let planning: DiagramFile["planning"];
+  let configuration: Record<string, Record<string, unknown>> | undefined;
   const edges: Edge[] = [];
   let trips: Trip[] = [];
   let drawn = 0;
@@ -450,6 +451,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const [id, patch] of Object.entries(patches)) {
       const node = nodes.get(id);
       if (!node) continue;
+      configuration = undefined;
       if ("replicas" in patch) units.set(node, node.props.replicas);
       const previous = node.props;
       for (const [key, value] of Object.entries(patch)) {
@@ -1050,8 +1052,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const restore = checkpoints.get(checkpoint);
       if (!restore) throw new Error("Checkpoint belongs to another engine");
       restore();
+      configuration = undefined;
     },
     effectiveProps: (nodeId) => structuredClone(nodes.get(nodeId)?.rawProps ?? {}),
+    configuration: () =>
+      (configuration ??= Object.fromEntries([...nodes].map(([id, node]) => [id, structuredClone(node.rawProps)]))),
     metrics: () => ({ time, inSystem, pendingInjections: injections.length }),
     measure(metric) {
       if ("system" in metric) return inSystem;
@@ -1077,6 +1082,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     },
     load(diagram: DiagramFile): void {
       planning = diagram.planning;
+      configuration = undefined;
       topology++;
       nodes.clear();
       edges.length = 0;

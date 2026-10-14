@@ -50,6 +50,13 @@ var SIM_LIMITS = {
 	count: 1e4,
 	timeMs: 6e5
 };
+/** Compatibility is shared by files and clipboard fragments, including saved patches. */
+function unsupportedPreset(props) {
+	if (!props || typeof props !== "object" || Array.isArray(props)) return false;
+	const p = props;
+	if (p.preset === void 0 && p.presetRevision === void 0) return false;
+	return p.preset !== "processor-lesson" && p.preset !== "device-size" || p.presetRevision !== "1";
+}
 var rate$1 = {
 	type: "number",
 	minimum: 0,
@@ -135,6 +142,10 @@ var nodeProperties = {
 };
 var edgeProperties = {
 	group: { type: "string" },
+	groupOrigin: {
+		type: "string",
+		enum: ["inferred"]
+	},
 	share: fraction,
 	dlq: { type: "boolean" },
 	travelMs: time$1,
@@ -151,6 +162,18 @@ var nodeSimPropsSchema = {
 	additionalProperties: true,
 	properties: nodeProperties
 };
+/** P1 edge metadata uses the same bounds at both file and clipboard boundaries. */
+function invalidPlanningDelay(props) {
+	if (!props || typeof props !== "object" || Array.isArray(props)) return false;
+	const value = props.networkDelayMs;
+	if (value === void 0) return false;
+	try {
+		checkJsonSchema(value, edgeProperties.networkDelayMs, "networkDelayMs");
+		return false;
+	} catch {
+		return true;
+	}
+}
 var aiProperties = {
 	...nodeProperties,
 	concurrency: cardinality,
@@ -474,10 +497,6 @@ function exceedsDepth(value, max = LIMITS.maxDepth) {
 var tooLargeMessage = (chars) => `It's too large to open (${(chars / 1e6).toFixed(1)} MB; the limit is ${LIMITS.maxTextChars / 1e6} MB).`;
 var isObj$1 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var isNum$1 = (v) => typeof v === "number" && Number.isFinite(v);
-var unsupportedPreset = (props) => {
-	if (!isObj$1(props) || props.preset === void 0 && props.presetRevision === void 0) return false;
-	return props.preset !== "processor-lesson" && props.preset !== "device-size" || props.presetRevision !== "1";
-};
 /**
 * Upgrades from older formats, keyed by the format they read. Each step returns the next format's
 * raw object; `migrate` chains them until it reaches DIAGRAM_FORMAT. Empty today: v1 is the first
@@ -583,13 +602,13 @@ function validateDiagram(data) {
 			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
 			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
 				ok: false,
-				error: t(122, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+				error: t(504, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
 			};
 			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
 				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
 				if (action?.do === "props" && unsupportedPreset(action.props)) return {
 					ok: false,
-					error: t(122, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+					error: t(504, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
 				};
 			}
 		}
@@ -684,7 +703,7 @@ function validateDiagram(data) {
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
 		if (unsupportedPreset(out.props)) return {
 			ok: false,
-			error: t(122, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+			error: t(504, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
 		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
@@ -759,21 +778,13 @@ function validateDiagram(data) {
 		if (out.sourceSide !== void 0 && !SIDES.has(out.sourceSide)) delete out.sourceSide;
 		if (out.targetSide !== void 0 && !SIDES.has(out.targetSide)) delete out.targetSide;
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
-		if (isObj$1(out.props) && out.props.networkDelayMs !== void 0) try {
-			checkJsonSchema(out.props.networkDelayMs, {
-				type: "number",
-				minimum: 0,
-				maximum: SIM_LIMITS.timeMs
-			}, "networkDelayMs");
-		} catch {
-			return {
-				ok: false,
-				error: t(72, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
-					id: e.id,
-					limit: SIM_LIMITS.timeMs
-				})
-			};
-		}
+		if (invalidPlanningDelay(out.props)) return {
+			ok: false,
+			error: t(449, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+				id: e.id,
+				limit: SIM_LIMITS.timeMs
+			})
+		};
 		const deny = out.props?.deny;
 		if (deny !== void 0 && typeof deny !== "boolean") {
 			warnings.push(`Edge "${e.id}" had a deny rule that wasn't true or false (${String(JSON.stringify(deny)).slice(0, 40)}); it's read as deny, so what's routed there is blocked. Set it to false to allow.`);

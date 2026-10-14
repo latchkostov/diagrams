@@ -1,5 +1,63 @@
 # PR #98 review disposition
 
+## Round 3 (2026-10-14)
+
+Review: `.reviews/20261014-131908/REPORT.md` (10 P1, 7 P2). All findings confirmed;
+three repeated reports share fixes. No findings rejected. Rebased onto master after #96;
+the released plugin is 1.1.12, exactly one patch above master's 1.1.11.
+
+| #   | Priority | Finding                      | Disposition and regression evidence                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --- | -------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | P1       | Accessible explanation       | Fixed: hover uses an unlabelled wrapper. The node's computed accessible description includes capacity, demand and observed counters.                                                                                                                                                                                                                                                                                                                                  |
+| 2   | P1       | Diagram context              | Fixed: `resolveNodeProps(diagram, node, overrides)` and every live capacity helper require the diagram. Raw resolution requires an explicit revision argument; legacy probes use a named legacy resolver. Sparse active-active F5, Capacity ×2 and Save agree on two units.                                                                                                                                                                                           |
+| 3   | P1       | Clipboard validation         | Fixed: whole files go through native validation; fragments share preset compatibility and property bounds. Future revisions, unknown presets and out-of-range concurrency are rejected.                                                                                                                                                                                                                                                                               |
+| 4   | P1       | Historical live tweaks       | Fixed: stable engine configuration snapshots drive planning. Publications reconcile overwritten property/status keys, preserving unrelated tweaks and previous immutable publications. Inputs, diagram edits, timeline and seek regressions.                                                                                                                                                                                                                          |
+| 5   | P1       | Partial migration            | Fixed: setup and timeline remain authored patches, with only dependent device values pinned. A latency action leaves an Inputs concurrency override at eight through upgrade and downgrade; existing seeded device parity tests still pass.                                                                                                                                                                                                                           |
+| 6   | P1       | Geometry cache key           | Fixed: key uses node/connection semantics and effective planning configuration, excluding geometry, annotations and document metadata. Twenty moves reuse the same analysis and sizing result, with unchanged solver call counts.                                                                                                                                                                                                                                     |
+| 7   | P1       | Render work bound            | Fixed: preflight caps nodes, edges, nested reads, text, routing/type comparisons and broker flow work before serialization, topology or solving. Oversized graphs show a recovery hint while retaining observed counters; DAG work stops at dependency depth and cycles retain the fixed cap. Operation counts prove zero solver/property reads for huge input, bounded nested reads rejection of dense cycles, and exactly two passes for capped one-hop DAG demand. |
+| 8   | P1       | Sparse whole-file playback   | Fixed: source preset values are materialized before revision-free paste. Resolved replicas, capacity and 60 seeded playback steps agree for whole-file and selection paste into legacy documents.                                                                                                                                                                                                                                                                     |
+| 9   | P1       | Unsupported presets in paste | Confirmed duplicate of #3. Includes a system-clipboard editor paste regression proving no node/edge mutation.                                                                                                                                                                                                                                                                                                                                                         |
+| 10  | P1       | Overwritten tweaks           | Confirmed duplicate of #4. The explanation uses current engine latency and capacity; unrelated failure settings remain saveable.                                                                                                                                                                                                                                                                                                                                      |
+| 11  | P2       | Compacted metrics            | Fixed: Properties exposes expandable Live details with throughput, processed/waiting/in-flight, failures, dead letters, drops, blocked traffic and every consumer-group lag. Keyboard browser regression uses a short viewport with 24 groups.                                                                                                                                                                                                                        |
+| 12  | P2       | Add-consumer focus           | Fixed: cleanup resolves the surviving Label after selection commits instead of retaining a removed input. Enter activation focuses the new consumer's Label.                                                                                                                                                                                                                                                                                                          |
+| 13  | P2       | Inferred group remapping     | Fixed: inferred group origin is tracked separately; a model-level remapper follows consumer IDs. Authored group edits clear inference and retain their names. Copied and newly connected policies share one subscription.                                                                                                                                                                                                                                             |
+| 14  | P2       | Connection render complexity | Fixed: a shared node lookup map and memoized connection panel keep live counters separate. A thousand peer rows use bounded ID comparisons; counter publications retain cached rows and analysis.                                                                                                                                                                                                                                                                     |
+| 15  | P2       | v2 preset materialization    | Confirmed duplicate of #8. Clipboard uses the shared small preset values, keeping profiles and explanations out of the first canvas bundle.                                                                                                                                                                                                                                                                                                                           |
+| 16  | P2       | Screenshot isolation         | Fixed: captures use `testInfo.outputPath()` and report attachments. An automatic fixture rejects screenshot writes outside the individual test output before writing; documentation images are refreshed only by explicitly copying reviewed attachments.                                                                                                                                                                                                             |
+| 17  | P2       | Hover viewport changes       | Fixed: open cards subscribe to viewport transforms and observe pane size; placement respects counter-scaling and restores full text when room returns. Browser regression pans, zooms and resizes a keyboard-focused card.                                                                                                                                                                                                                                            |
+
+### Implementation choices
+
+- A worker was not needed for the rejected oversized inputs: the conservative synchronous preflight
+  refuses them before any solver work. This keeps the available explanation immediate and gives large
+  diagrams an explicit unavailable state. Increasing the supported planning budget would require another
+  complexity review or moving analysis to a worker.
+- Scrollable interactive hover cards were rejected after browser tests showed that tall cards can cover
+  nodes, and the UX review found pointer-gap and canvas-shortcut conflicts. Full live details instead
+  use the existing Properties surface, behind one disclosure; the hover keeps its compact arithmetic.
+- The first canvas bundle briefly failed its split guard when clipboard imported the persistence
+  normalizer. Clipboard now materializes the shared small preset constants without loading profiles.
+
+### Verification
+
+- Focused regressions pass, including actual native/clipboard compatibility, sparse seeded playback,
+  operation counts, engine reconciliation and browser keyboard/viewport behavior. Deliberate reversions
+  failed their assertions; local logs are under `tests/.output/round3-mutations/`.
+- Full unit run: 460 files passed; 5,561 tests passed, four skipped, no type errors. A concurrent run
+  hit existing five-second import timeouts in `actions.test.ts` and `liveRenderer.test.ts`; the full
+  rerun alone passed. Timeout settings were not changed.
+- Production Chromium: all 184 tests passed, with no retries, across planning, live, capacity, all four
+  checks specs, inspector, HTML export, private-diagram and interop, plus accessibility and CSP. Explicit
+  ports 6080–6084 were used; Playwright stopped its servers and no listeners remained.
+- Production build and startup chunk guard passed. Entry budget: 103.6 kB gzip / 123.5 kB allowed.
+  Generated schemas and the released skill viewer match the source. i18n validation passed with no
+  errors; the new planning messages use the existing English fallback in untranslated catalogs.
+- Earlier failures were corrected: paste shape expectations, nullable cache types, a static canvas
+  import, accessible-description wording, hover interactions, and missing observed counters when the
+  planning budget is exceeded. Lint, typecheck and format are run last before the signed commit.
+
+## Round 2
+
 Review: `.reviews/20261014-124138/REPORT.md` (13 P1, 7 P2). All findings verified; none rejected.
 Repeated findings share fixes and regression coverage.
 

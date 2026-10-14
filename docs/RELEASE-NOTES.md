@@ -1,5 +1,17 @@
 # Release notes
 
+## Planning P1 round 3 fixes (2026-10-14)
+
+- Large or dense diagrams get a bounded, explicit unavailable explanation instead of blocking selection;
+  moving nodes reuses the configured plan and sizing result. Current-run counters remain available when an explanation cannot be computed.
+- Explanations follow the engine's current settings after Inputs changes, timeline actions and seeking.
+  Upgrade and legacy export retain partial timeline edits, and sparse P1 paste preserves playback.
+- Paste rejects unsupported preset revisions and invalid planning settings. Copied inferred consumer groups
+  follow the new consumer IDs while authored names stay intact.
+- Screen readers receive the numerical explanation. Add a consumer keeps keyboard focus on the new Label;
+  open hover cards follow pan, zoom and resize. Full observed counters and group lag are available under
+  Live details in Properties, including when the hover is compact.
+
 ## Planning P1 review fixes (2026-10-14)
 
 - Private diagrams keep their flag in legacy downloads, alongside native JSON and Interactive HTML.

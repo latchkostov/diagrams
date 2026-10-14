@@ -1,5 +1,20 @@
 # Design review
 
+## Planning P1 round 3 UX gate (2026-10-14)
+
+The required designer-agent source review found that the work-limit message needed a recovery hint,
+interactive hover cards needed pointer-gap/wheel/keyboard handling, and direct focus in a test did not
+prove natural keyboard access. The unavailable message now suggests simplifying the diagram or its
+consumer groups. After browser testing, full metrics live in Properties behind a Live details disclosure;
+compact hover cards remain informational and do not intercept node clicks or canvas keys. F2 opens
+Properties, Enter expands details, and all 24 lag groups remain visible in the short-viewport regression.
+
+Add a consumer resolves the surviving Label after the selected panel mounts; Enter activation is covered.
+The hover's unlabelled planning wrapper exposes numerical descendants in the node's accessible description.
+Open cards follow pan/zoom and pane resizing. No global controls were added. The one primary action stays
+Apply/Add a consumer, connections remain read-only, and observed details are secondary and collapsed by default.
+Test screenshots are isolated report attachments; explicitly copy reviewed attachments to refresh documentation.
+
 ## Round 36: properties in live view (2026-10-14)
 
 A designer-agent source and interaction-test review checked naming, panel coordination, view-only gates and
@@ -32,7 +47,7 @@ Upgrade focuses the surviving preview button. Tall hover cards show compact arit
 Properties for full details. Placement measures both sides and bounds the final screen coordinates after scaling.
 No global controls were added. Existing Checks cards follow node configuration so arithmetic and its primary action
 remain ahead of structural findings and their ignore/off actions. Browser regressions cover keyboard focus and
-short-viewport bounds; synthetic screenshots are refreshed by the planning suite.
+short-viewport bounds. Historical synthetic screenshots remain in the documentation; new captures are isolated report attachments.
 
 ## Round 36: planning P1 (2026-10-14)
 

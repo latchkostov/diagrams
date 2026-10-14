@@ -1,5 +1,5 @@
-import { hoverTop } from "./hoverPlacement";
 import { t } from "../i18n";
+import { hoverTop } from "./hoverPlacement";
 import { flowEdges } from "../model/relations";
 import { memo, useEffect, useLayoutEffect, useState, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
@@ -173,6 +173,7 @@ interface BadgeProps {
 
 const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency, units, groups, cap }: BadgeProps) {
   const domNode = useStore((store) => store.domNode);
+  const transform = useStore((store) => (hovered ? store.transform : null));
   const tooltipId = `live-node-detail-${encodeURIComponent(node.id)}`;
   useLayoutEffect(() => {
     if (!hovered || !domNode) return;
@@ -183,7 +184,9 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
       const pane = domNode.getBoundingClientRect(),
         box = card.getBoundingClientRect();
       const zoom = card.offsetWidth ? box.width / card.offsetWidth : 1;
-      tooltip.style.maxWidth = `${Math.max(0, pane.width - 24)}px`;
+      const detailScale = tooltip.offsetWidth ? tooltip.getBoundingClientRect().width / tooltip.offsetWidth : zoom;
+      tooltip.style.maxWidth = `${Math.max(0, pane.width - 24) / detailScale}px`;
+      tooltip.classList.remove("is-compact");
       if (tooltip.getBoundingClientRect().height > pane.height - 24) tooltip.classList.add("is-compact");
       tooltip.style.left = "0px";
       tooltip.style.bottom = "auto";
@@ -197,12 +200,14 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
     place();
     const observer = new ResizeObserver(place);
     observer.observe(tooltip);
+    observer.observe(domNode);
     return () => observer.disconnect();
-  }, [hovered, domNode, node.id, tooltipId]);
+  }, [hovered, domNode, node.id, tooltipId, transform, node.position.x, node.position.y]);
   useEffect(() => {
     if (!hovered || !domNode) return;
     const el = domNode.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(node.id)}"]`);
     if (!el) return;
+    el.dataset.testid = `node-live-focus-${node.id}`;
     const previous = el.getAttribute("aria-describedby");
     el.setAttribute("aria-describedby", [previous, tooltipId].filter(Boolean).join(" "));
     return () => {
@@ -362,7 +367,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
               {Object.entries(s.lag)
                 .sort((a, b) => b[1] - a[1])
                 .map(([g, v]) => (
-                  <div key={g} className="lv-lag-row">
+                  <div key={g} className="lv-lag-row" data-testid={`live-lag-${g}`}>
                     <span>{groups.get(g) ?? g}</span>
                     <i style={{ "--w": `${Math.min(100, (v / Math.max(1, s.backlog)) * 100)}%` } as CSSProperties} />
                     <b className="mono">{formatCount(v)}</b>

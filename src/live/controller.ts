@@ -62,6 +62,7 @@ export interface LiveState {
   scale: number;
   run: SimulationRunState | null;
   tweaks: ReadonlyMap<string, NodeTweak>;
+  configuration: Record<string, Record<string, unknown>>;
   /** Bumps whenever the engine is rebuilt (restart, new simulation, structural edit). */
   generation: number;
   /** The message trace: what's followed (its journey so far) or what's awaited. Null when not tracing. */
@@ -206,6 +207,19 @@ export class LiveController {
   /** Rebuilds the published state and tells subscribers. Called by actions and the UI clock. */
   publish(): void {
     const snapshot = this.realSnapshot();
+    const configuration = this.engine.configuration();
+    // Inputs, diagram edits, timeline actions and seeking can supersede a live tweak.
+    // Keep only keys still present in the engine, preserving unrelated tweaks and old snapshots.
+    for (const [id, tweak] of this.tweaks) {
+      const props = Object.fromEntries(
+        Object.entries(tweak.props).filter(([key, value]) => valueKey(value) === valueKey(configuration[id]?.[key])),
+      );
+      const status = tweak.status === snapshot.nodes[id]?.status ? tweak.status : undefined;
+      if (Object.keys(props).length === Object.keys(tweak.props).length && status === tweak.status) continue;
+      this.tweaks = new Map(this.tweaks);
+      if (Object.keys(props).length || status) this.tweaks.set(id, { props, ...(status ? { status } : {}) });
+      else this.tweaks.delete(id);
+    }
     this.state = {
       scale: resolveScale(snapshot.scale),
       playing: this.playing,
@@ -217,6 +231,7 @@ export class LiveController {
       snapshot,
       run: this.runState,
       tweaks: this.tweaks,
+      configuration,
       generation: this.generation,
       trace: this.readTrace(),
     };
@@ -832,6 +847,7 @@ export class LiveController {
       this.engine,
       (id) => this.diagram.nodes.find((n) => n.id === id),
       this.opts.roleOf ?? stencilRole,
+      this.diagram.planning,
     );
     this.checkpoints = [];
     this.captureCheckpoint(true);

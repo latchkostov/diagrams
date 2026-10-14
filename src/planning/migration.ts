@@ -27,6 +27,25 @@ function materialized(d: DiagramFile, node: DiagramFile["nodes"][number], props:
   };
 }
 
+/** Pin only authored patch keys, plus defaults whose resolution changes with those keys. */
+function materializedPatch(
+  d: DiagramFile,
+  node: DiagramFile["nodes"][number],
+  context: Record<string, unknown>,
+  patch: Record<string, unknown>,
+) {
+  const values = materialized(d, node, context);
+  const keys = new Set(Object.keys(patch));
+  // A device size/preset changes throughput and service time. HA changes legacy unit defaults.
+  if ("size" in patch || "preset" in patch || "presetRevision" in patch) {
+    for (const key of ["gbps", "latencyMs"]) if (!(key in context)) keys.add(key);
+  }
+  if ("ha" in patch && !("replicas" in context)) keys.add("replicas");
+  return Object.fromEntries(
+    [...keys].filter((key) => key in values).map((key) => [key, values[key as keyof typeof values]]),
+  );
+}
+
 /** Node, setup and cumulative timeline contexts all resolve against the original document. */
 function normalizePersistence(d: DiagramFile): DiagramFile {
   const next = structuredClone(d);
@@ -36,7 +55,7 @@ function normalizePersistence(d: DiagramFile): DiagramFile {
     const contexts = new Map(d.nodes.map((n) => [n.id, { ...n.props, ...sim.setup?.props?.[n.id] }]));
     for (const [id, props] of Object.entries(sim.setup?.props ?? {})) {
       const node = byId.get(id);
-      if (node) sim.setup!.props![id] = materialized(d, node, { ...node.props, ...props });
+      if (node) sim.setup!.props![id] = materializedPatch(d, node, { ...node.props, ...props }, props);
     }
     for (const step of [...(sim.timeline ?? [])].sort((a, b) => a.atMs - b.atMs)) {
       if (step.action.do !== "props") continue;
@@ -45,7 +64,7 @@ function normalizePersistence(d: DiagramFile): DiagramFile {
       if (!node) continue;
       const context = { ...contexts.get(id), ...props };
       contexts.set(id, context);
-      step.action.props = materialized(d, node, context);
+      step.action.props = materializedPatch(d, node, context, props);
     }
   }
   return next;
@@ -61,7 +80,7 @@ export function upgradePlanning(d: DiagramFile): DiagramFile {
     const family = profileOf(node.stencil)?.family;
     if (family && FAMILIES[family]?.roles.includes("processor"))
       Object.assign(node.props!, { preset: PROCESSOR_LESSON.id, presetRevision: PROCESSOR_LESSON.revision });
-    if (resolveProps(stencilRole(node.stencil), node.label, node.props!, node.stencil).device)
+    if (resolveProps(stencilRole(node.stencil), node.label, node.props!, node.stencil, undefined).device)
       Object.assign(node.props!, { preset: "device-size", presetRevision: "1" });
   }
   return next;

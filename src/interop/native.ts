@@ -1,5 +1,5 @@
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
-import { propsProblem, SIM_LIMITS } from "../model/simProps";
+import { propsProblem, SIM_LIMITS, unsupportedPreset, invalidPlanningDelay } from "../model/simProps";
 
 // The simulation settings' bounds, for the editors that share this chunk (the inspector, the Inputs panel).
 export { SIM_LIMITS };
@@ -8,7 +8,6 @@ import type { DiagramAnnotation } from "../model/types";
 import { isDependency, isEdgeRelation, isRelationOrigin, sanitizeSettings } from "../model/relations";
 import { sanitizeChecks } from "../model/checks";
 import { idClaimer } from "../model/ids";
-import { checkJsonSchema } from "../model/jsonSchema";
 import { t } from "../i18n/core";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
@@ -63,10 +62,6 @@ export const tooLargeMessage = (chars: number) =>
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
-const unsupportedPreset = (props: unknown): boolean => {
-  if (!isObj(props) || (props.preset === undefined && props.presetRevision === undefined)) return false;
-  return (props.preset !== "processor-lesson" && props.preset !== "device-size") || props.presetRevision !== "1";
-};
 
 /**
  * Upgrades from older formats, keyed by the format they read. Each step returns the next format's
@@ -326,17 +321,8 @@ export function validateDiagram(data: unknown): NativeResult {
     if (out.sourceSide !== undefined && !SIDES.has(out.sourceSide as string)) delete out.sourceSide;
     if (out.targetSide !== undefined && !SIDES.has(out.targetSide as string)) delete out.targetSide;
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
-    if (isObj(out.props) && out.props.networkDelayMs !== undefined) {
-      try {
-        checkJsonSchema(
-          out.props.networkDelayMs,
-          { type: "number", minimum: 0, maximum: SIM_LIMITS.timeMs },
-          "networkDelayMs",
-        );
-      } catch {
-        return { ok: false, error: t("planning.delayInvalid", { id: e.id, limit: SIM_LIMITS.timeMs }) };
-      }
-    }
+    if (invalidPlanningDelay(out.props))
+      return { ok: false, error: t("planning.delayInvalid", { id: e.id, limit: SIM_LIMITS.timeMs }) };
     // A deny rule fails closed: anything that isn't true or false is read as deny, never as allow, and said.
     const deny = (out.props as Record<string, unknown> | undefined)?.deny;
     if (deny !== undefined && typeof deny !== "boolean") {
