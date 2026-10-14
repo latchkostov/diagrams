@@ -197,16 +197,46 @@ describe("capacity view", () => {
     expect(planned.headline).toBe("Healthy: every service has headroom");
     const down = capacityView(KAFKA, outage, { payments: "down" });
     expect(down.headline).toBe("Payments service is down");
-    expect(down.detail).toMatch(/fail until it's back/);
+    // Fed only by a topic: its messages wait there (F-6), they don't fail.
+    expect(down.detail).toBe("Messages wait in orders.created.v1 until it's back.");
     expect(down.tone).toBe("over");
     expect(down.top?.id).toBe("payments");
     expect(down.nodes.payments).toMatchObject({ status: "down", level: "over" });
-    expect(down.nodes.payments.text).toMatch(/^Down · /);
+    expect(down.nodes.payments.text).toMatch(/^Down · .* waiting in orders.created.v1$/);
     const paused = capacityView(KAFKA, outage, { payments: "paused", inventory: "down" });
     expect(paused.headline).toBe("Inventory service and 1 more are down or paused");
     expect(paused.nodes.payments.text).toMatch(/^Paused · .* waiting$/);
     // Revived in the run: back to the plan.
     expect(capacityView(KAFKA, outage, { payments: "up" }).headline).toBe(planned.headline);
+  });
+
+  it("a down service that requests are pushed to fails them; one behind a broker makes them wait", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Down",
+      nodes: [
+        { id: "web", stencil: "client.browser", label: "Web", x: 0, y: 0 },
+        { id: "api", stencil: "service.dotnet", label: "Orders API", x: 0, y: 0 },
+        { id: "q", stencil: "aws.sqs", label: "orders", x: 0, y: 0 },
+        { id: "worker", stencil: "service.go", label: "Fulfilment worker", x: 0, y: 0 },
+      ],
+      edges: [
+        { id: "a", from: "web", to: "api", kind: "sync" },
+        { id: "b", from: "api", to: "q", kind: "async" },
+        { id: "c", from: "q", to: "worker", kind: "async" },
+      ],
+    };
+    const sim = freePlaySimulation(d, emptyInputs());
+    const api = capacityView(d, sim, { api: "down" });
+    expect(api.detail).toBe("Messages sent to it fail until it's back.");
+    expect(api.nodes.api.text).toMatch(/failing$/);
+    const worker = capacityView(d, sim, { worker: "down" });
+    expect(worker.headline).toBe("Fulfilment worker is down");
+    expect(worker.detail).toBe("Messages wait in orders until it's back.");
+    expect(worker.nodes.worker.text).toBe("Down · 2/s waiting in orders");
+    expect(capacityView(d, sim, { worker: "down", api: "down" }).detail).toBe(
+      "Messages sent to them fail until they're back.",
+    );
   });
 
   it("a diagram's own down node is an outage in edit mode too, and a run can revive it", () => {

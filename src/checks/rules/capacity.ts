@@ -61,6 +61,31 @@ export const capacity: CheckRule = {
       ? `the diagram's own rates (${unset.length === sources.length ? "" : "sources without a rate send "}${formatRate(DEFAULT_RATE)}${unset.length === sources.length ? " per source" : ""})`
       : "the diagram's own rates";
     const name = ctx.name(top.id);
+    // Saved down or paused: that's an outage, not a sizing problem, and more replicas won't help.
+    const status = ctx.diagram.nodes.find((n) => n.id === top.id)?.props?.status;
+    if (status === "down" || status === "paused") {
+      const brokers = ctx
+        .incoming(top.id)
+        .filter((e) => !e.dlq)
+        .map((e) => e.from);
+      const waits = brokers.length > 0 && brokers.every((id) => isBroker(ctx, id));
+      const where = [...new Set(brokers.map((id) => ctx.name(id)))].join(" and ");
+      return [
+        {
+          id: `capacity:${top.id}`,
+          rule: "capacity",
+          severity: "warning",
+          target: top.id,
+          elements: [top.id],
+          title: `${name} is ${status}`,
+          message: `It's saved ${status}, so it handles nothing: ${
+            waits || status === "paused" ? `messages wait${waits ? ` in ${where}` : ""}` : "messages sent to it fail"
+          } until it's back.`,
+          rationale:
+            "A service saved down or paused starts that way in live view. Behind a topic or queue its messages wait; pushed to it, they fail.",
+        },
+      ];
+    }
     const finite = Number.isFinite(top.utilization);
     const load = finite
       ? `it gets ${formatRate(top.offered)} and handles ${formatRate(top.capacity)} (${Math.round(top.utilization * 100)}%)`
