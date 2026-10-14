@@ -1,6 +1,7 @@
 import type { DiagramOp } from "../../ai";
 import type { NodeCapacity } from "../../sim/capacity";
 import { MAX_COUNT, sizingFix } from "../../sim/capacityPlanning";
+import { brokerFeeds } from "../../sim/topology";
 import { formatRate, isBroker, type CheckContext } from "../context";
 import { SIZE_LABEL } from "../../stencils/netDevices";
 import type { CheckFix, CheckRule } from "../types";
@@ -64,12 +65,10 @@ export const capacity: CheckRule = {
     // Saved down or paused: that's an outage, not a sizing problem, and more replicas won't help.
     const status = ctx.diagram.nodes.find((n) => n.id === top.id)?.props?.status;
     if (status === "down" || status === "paused") {
-      const brokers = ctx
-        .incoming(top.id)
-        .filter((e) => !e.dlq && !e.deny)
-        .map((e) => e.from);
-      const waits = brokers.length > 0 && brokers.every((id) => isBroker(ctx, id));
-      const where = [...new Set(brokers.map((id) => ctx.name(id)))].join(" and ");
+      // Where its messages are, as playback delivers them (brokerFeeds, shared with the live callouts).
+      const brokers = brokerFeeds(ctx.topology, (id) => (ctx.nodes.has(id) ? ctx.role(id) : undefined)).get(top.id);
+      const waits = !!brokers;
+      const where = (brokers ?? []).map((id) => ctx.name(id)).join(" and ");
       return [
         {
           id: `capacity:${top.id}`,

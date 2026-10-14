@@ -32,4 +32,22 @@ describe("capacity: a node saved down", () => {
     const [finding] = runChecks(diagram("api"), { rules: ["capacity"] }).findings;
     expect(finding.message).toBe("It's saved down, so it handles nothing: messages sent to it fail until it's back.");
   });
+
+  it("a broker fed by a topic waits there even when an incoming dependency comes from a service", () => {
+    const d = diagram("worker");
+    d.nodes.find((n) => n.id === "q")!.stencil = "kafka.topic";
+    d.nodes.find((n) => n.id === "worker")!.stencil = "aws.sqs";
+    d.nodes.push({ id: "sink", stencil: "generic.email", label: "Sink", x: 0, y: 0 });
+    d.edges.push({ id: "delivery", from: "worker", to: "sink" });
+    // Both the topic and queue have no capacity during this outage; put the saved-down queue first in their tie.
+    d.nodes.unshift(
+      d.nodes.splice(
+        d.nodes.findIndex((n) => n.id === "worker"),
+        1,
+      )[0],
+    );
+    d.edges.push({ id: "dependency", from: "api", to: "worker", relation: "config" });
+    const [finding] = runChecks(d, { rules: ["capacity"] }).findings;
+    expect(finding.message).toBe("It's saved down, so it handles nothing: messages wait in orders until it's back.");
+  });
 });

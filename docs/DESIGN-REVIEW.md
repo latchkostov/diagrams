@@ -1,5 +1,20 @@
 # Design review
 
+## Round 32 follow-up: second review fixes (2026-10-14)
+
+The designer-agent source review found two remaining gaps: edge inert-property removal needed a surviving field as
+its focus fallback, and a saved-down node on first live mount still needed an empty announcement region before its
+text changed. Both were fixed, with production Chromium regressions for node and edge removal, and a DOM mutation
+check for the initial announcement. That check fails if the region starts populated.
+
+The callout adds no controls: one action and the quiet dismiss stay. Trouble hidden by Inputs keeps its first useful
+turn, unrelated overloads cannot hide observed lag, and flat backlog stops being called rising. The 1024 px fallback
+and 1440 px canvas with the AI panel open are checked against the title card's actual bounds; both trouble and
+capacity callouts use the measured space beside it. Warnings, the heat map and checks share incoming-delivery
+semantics, so a down broker fed by another broker correctly says its messages wait upstream.
+
+Review triage and regression details: [second review fixes](research/sim-truth-review-round2.md).
+
 ## Round 32: the simulation tells the truth (2026-10-13)
 
 The gate for items 1–6 of the simulation flows review (`docs/research/sim-flows-review.md`): consumers that drain at

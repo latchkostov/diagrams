@@ -8,7 +8,7 @@ import type { DiagramFile, DiagramNode, SimRole, Simulation, TrafficShape } from
 import { SIM_LIMITS } from "../interop/native";
 import { stencilRole } from "../stencils/roles";
 import { analyzeCapacity, type NodeCapacity } from "../sim/capacity";
-import { compileTopology } from "../sim/topology";
+import { brokerFeeds, compileTopology } from "../sim/topology";
 import type { NodeStatus } from "../sim/types";
 import { resolveProps } from "../sim/defaults";
 import { autoScale, peakRate } from "../sim/scale";
@@ -386,11 +386,10 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
   const routes = compiled.outgoing;
   const nodes: Record<string, NodeHeat> = {};
   /** The brokers feeding a node, when every flow into it comes from one (dead-letter routes and deny rules aside). */
-  const fedByBrokers = (id: string): string[] | undefined => {
-    const from = compiled.edges.filter((e) => e.to === id && !e.dlq && !e.deny).map((e) => byId.get(e.from));
-    if (!from.length || from.some((n) => !n || !BROKERS.has(roleOf(n)))) return undefined;
-    return [...new Set(from.map((n) => n!.label || n!.id))];
-  };
+  // Where a down node's messages are, as playback delivers them (brokerFeeds, shared with the live callout).
+  const feeds = brokerFeeds(compiled, (id) => (byId.has(id) ? roleOf(byId.get(id)!) : undefined));
+  const fedByBrokers = (id: string): string[] | undefined =>
+    feeds.get(id)?.map((b) => byId.get(b)?.label || b) ?? undefined;
   for (const [id, n] of Object.entries(analysis.nodes)) {
     // A network device is a gateway with a real ceiling (its datasheet's throughput).
     const modeled = isModeled(n.role) || !!n.device;
@@ -401,7 +400,7 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
     // down or paused is out of capacity whatever its role.
     const limited = (modeled && n.capacity !== Infinity) || (!!st && n.role !== "none");
     const level = limited ? heatLevel(n.utilization, n.offered) : "idle";
-    const waitsIn = st && !BROKERS.has(n.role) ? fedByBrokers(id) : undefined;
+    const waitsIn = st ? fedByBrokers(id) : undefined;
     nodes[id] = {
       ...n,
       modeled,

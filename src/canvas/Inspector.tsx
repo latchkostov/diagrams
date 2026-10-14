@@ -677,7 +677,22 @@ function InertNote({ name, text, onRemove }: { name: string; text: string; onRem
   return (
     <p className="insp-note insp-inert" data-testid={`inspector-inert-${name}`}>
       {text}{" "}
-      <button type="button" className="insp-link" onClick={onRemove} data-testid={`inspector-inert-${name}-remove`}>
+      <button
+        type="button"
+        className="insp-link"
+        onClick={(event) => {
+          // Removing the note removes this button too. Keep keyboard focus in its surviving section.
+          if (document.activeElement === event.currentTarget) {
+            const section = event.currentTarget.closest("section");
+            const target =
+              section?.querySelector<HTMLElement>("button[aria-expanded]") ??
+              section?.querySelector<HTMLElement>("input:not(:disabled), select:not(:disabled)");
+            target?.focus();
+          }
+          onRemove();
+        }}
+        data-testid={`inspector-inert-${name}-remove`}
+      >
         Remove
       </button>
     </p>

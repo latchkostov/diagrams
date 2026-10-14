@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { createEngine } from "../sim/engine";
 import { realSnapshot } from "../sim/units";
-import { TroubleWatcher, pickTrouble, type Trouble } from "./observedTrouble";
+import { TroubleWatcher, pickTrouble, troubleLeads, type Trouble } from "./observedTrouble";
 import { GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
 
 // What playback shows going wrong, read from seeded runs: rising lag, lost messages, a node that's down.
@@ -125,13 +125,33 @@ describe("which trouble the callout shows", () => {
   });
   it("each cause once per run, until it's dismissed or over", () => {
     const memory = { shown: new Set<string>(), ended: new Set<string>(), dismissed: new Set<string>() };
-    expect(pickTrouble([t("a"), t("b")], memory)?.key).toBe("a");
-    expect(pickTrouble([t("a"), t("b")], memory)?.key).toBe("a");
+    const show = (current: Trouble[]) => {
+      const pick = pickTrouble(current, memory);
+      if (pick) memory.shown.add(pick.key);
+      return pick?.key;
+    };
+    expect(show([t("a"), t("b")])).toBe("a");
+    expect(show([t("a"), t("b")])).toBe("a");
     memory.dismissed.add("a");
-    expect(pickTrouble([t("a"), t("b")], memory)?.key).toBe("b");
+    expect(show([t("a"), t("b")])).toBe("b");
     // b is over, then back: not shown again in this run.
-    expect(pickTrouble([t("a")], memory)).toBeUndefined();
-    expect(pickTrouble([t("a"), t("b")], memory)).toBeUndefined();
+    expect(show([t("a")])).toBeUndefined();
+    expect(show([t("a"), t("b")])).toBeUndefined();
+  });
+
+  it("a cause never on screen (hidden behind a panel) keeps its turn when it comes back", () => {
+    const memory = { shown: new Set<string>(), ended: new Set<string>(), dismissed: new Set<string>() };
+    // Picked but not shown: the Inputs panel was open.
+    expect(pickTrouble([t("down:worker")], memory)?.key).toBe("down:worker");
+    expect(pickTrouble([], memory)).toBeUndefined();
+    expect(pickTrouble([t("down:worker")], memory)?.key).toBe("down:worker");
+  });
+
+  it("while the history is short (a seek), a shown lag isn't over: it comes back once seen again", () => {
+    const memory = { shown: new Set(["lag:q"]), ended: new Set<string>(), dismissed: new Set<string>() };
+    expect(pickTrouble([], memory, false)).toBeUndefined();
+    expect(memory.ended.has("lag:q")).toBe(false);
+    expect(pickTrouble([t("lag:q")], memory)?.key).toBe("lag:q");
   });
 });
 
@@ -213,4 +233,100 @@ it("a down consumer behind a queue waits there, whatever a firewall's deny rule 
     d,
   );
   expect(down.detail).toBe("Messages wait in orders until it's back (7 so far).");
+});
+
+describe("second review", () => {
+  const up = { status: "up" as const, lag: {}, dropped: 0 };
+
+  it("a short run that drops a message says so, without ten seconds of history", () => {
+    const d = diagram(2);
+    const watcher = new TroubleWatcher();
+    watcher.observe({ time: 0, nodes: { q: { ...up, lag: { queue: 0 } }, worker: up } }, d);
+    const seen = watcher.observe(
+      { time: 1_800, nodes: { q: { ...up, lag: { queue: 0 } }, worker: { ...up, dropped: 1 } } },
+      d,
+    );
+    expect(seen.map((x) => x.key)).toEqual(["dropping:worker"]);
+  });
+
+  it("a backlog that levels off is not reported as rising", () => {
+    const d = diagram(2);
+    const watcher = new TroubleWatcher();
+    const lagAt = (t: number) => (t <= 5_000 ? (t / 5_000) * 200 : 200);
+    for (let t = 0; t <= 16_000; t += 1_000) {
+      const seen = watcher.observe({ time: t, nodes: { q: { ...up, lag: { queue: lagAt(t) } }, worker: up } }, d);
+      if (t >= 9_000) expect(seen, `at ${t}`).toEqual([]);
+    }
+  });
+
+  it("a down queue fed by a topic: its messages wait in the topic, as playback keeps them", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Chain",
+      nodes: [
+        { id: "web", stencil: "client.browser", label: "Web", x: 0, y: 0 },
+        { id: "topic", stencil: "kafka.topic", label: "orders", x: 0, y: 0 },
+        { id: "q", stencil: "aws.sqs", label: "fulfil", x: 0, y: 0 },
+        { id: "worker", stencil: "service.go", label: "Worker", x: 0, y: 0 },
+      ],
+      edges: [
+        { id: "a", from: "web", to: "topic", kind: "async" },
+        { id: "b", from: "topic", to: "q", kind: "async" },
+        { id: "c", from: "q", to: "worker", kind: "async" },
+      ],
+    };
+    const [down] = new TroubleWatcher().observe(
+      {
+        time: 1_000,
+        nodes: { web: up, topic: { ...up, lag: { b: 29 } }, q: { ...up, status: "down" }, worker: up },
+      },
+      d,
+    );
+    expect(down.detail).toBe("Messages wait in orders until it's back (29 so far).");
+  });
+
+  it("outage details stay linear with thousands of down consumers on one topic", () => {
+    const build = (n: number) => {
+      const d: DiagramFile = { format: "diagrams/v1", title: "Wide", nodes: [], edges: [] };
+      d.nodes.push({ id: "topic", stencil: "kafka.topic", label: "t", x: 0, y: 0 });
+      const nodes: Record<string, { status: "up" | "down"; lag: Record<string, number>; dropped: number }> = {
+        topic: { status: "up", lag: {}, dropped: 0 },
+      };
+      for (let i = 0; i < n; i++) {
+        d.nodes.push({ id: `c${i}`, stencil: "service.go", label: `c${i}`, x: 0, y: 0 });
+        d.edges.push({ id: `e${i}`, from: "topic", to: `c${i}`, kind: "async" });
+        nodes[`c${i}`] = { status: "down", lag: {}, dropped: 0 };
+      }
+      const watcher = new TroubleWatcher();
+      let time = 0;
+      watcher.observe({ time, nodes }, d);
+      return () => watcher.observe({ time: (time += 1_000), nodes }, d);
+    };
+    expect(growth(build(150), build(150 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+  });
+});
+
+describe("the trouble callout and the capacity callout", () => {
+  const lag = (node: string, related: string[]): Trouble => ({
+    key: `lag:${node}`,
+    kind: "lag",
+    node,
+    headline: "",
+    announce: "",
+    detail: "",
+    action: { kind: "inputs" },
+    related,
+  });
+  it("a lag the plan diagnoses (its broker or its consumer over capacity, nobody reading it) stays with the plan", () => {
+    expect(troubleLeads(lag("q", ["worker"]), { tone: "over", top: { id: "worker" } })).toBe(false);
+    expect(troubleLeads(lag("q", ["worker"]), { tone: "hot", top: { id: "q" } })).toBe(false);
+    expect(troubleLeads(lag("q", []), { tone: "warn", addConsumer: "q" })).toBe(false);
+  });
+  it("an unrelated overload elsewhere never hides it; other causes always lead", () => {
+    expect(troubleLeads(lag("queue-b", ["worker-b"]), { tone: "over", top: { id: "service-a" } })).toBe(true);
+    expect(troubleLeads(lag("q", ["worker"]), { tone: "ok", top: { id: "worker" } })).toBe(true);
+    expect(troubleLeads({ ...lag("q", []), key: "down:q", kind: "down" }, { tone: "over", top: { id: "q" } })).toBe(
+      true,
+    );
+  });
 });

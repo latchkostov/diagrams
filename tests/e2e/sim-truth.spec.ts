@@ -116,6 +116,7 @@ test.describe("the simulation tells the truth", () => {
     await expect(page.getByTestId("inspector-inert-concurrency")).toContainText("Concurrency 8 is kept in the file");
     await page.getByTestId("inspector-inert-concurrency-remove").click();
     await expect(page.getByTestId("inspector-inert-concurrency")).toHaveCount(0);
+    await expect(page.getByTestId("inspector-section-node-simulation")).toBeFocused();
     await savedWhen(page, (s) => s.nodes.find((n) => n.id === "gw")?.props?.concurrency === undefined);
     // A service → database edge: no Consumer group, no Dead-letter path; its stray group is noted.
     await page.getByTestId("edge-label-api-db").click();
@@ -123,6 +124,10 @@ test.describe("the simulation tells the truth", () => {
     await expect(page.getByTestId("inspector-field-group")).toHaveCount(0);
     await expect(page.getByTestId("inspector-field-dlq")).toHaveCount(0);
     await expect(page.getByTestId("inspector-inert-group")).toBeVisible();
+    await page.getByTestId("inspector-inert-group-remove").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("inspector-inert-group")).toHaveCount(0);
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
     // Out of a topic both are there.
     await page.getByTestId("edge-label-topic-billing").click();
     await expect(page.getByTestId("inspector-field-group")).toBeVisible();
@@ -138,6 +143,12 @@ test.describe("the simulation tells the truth", () => {
     // The heat map is off: no callout yet.
     await expect(page.getByTestId("bottleneck-callout")).toHaveCount(0);
     await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
+    await expect(page.getByTestId("trouble-announce")).toBeEmpty();
+    await page.evaluate(() => {
+      const region = document.querySelector('[data-testid="trouble-announce"]');
+      if (!region) throw new Error("The empty live region must already be mounted");
+      (window as unknown as { troubleRegion: Element }).troubleRegion = region;
+    });
     await expect(async () => {
       await page.getByTestId("node-payments").click({ button: "right" });
       await page.getByTestId("context-menu-item-sim.kill").click({ timeout: 1000 });
@@ -146,6 +157,14 @@ test.describe("the simulation tells the truth", () => {
     const callout = page.getByTestId("trouble-callout");
     await expect(callout).toHaveAttribute("data-kind", "down");
     await expect(page.getByTestId("trouble-headline")).toHaveText("Payments service is down");
+    await expect(page.getByTestId("trouble-announce")).toHaveText("Payments service is down");
+    expect(
+      await page.evaluate(
+        () =>
+          document.querySelector('[data-testid="trouble-announce"]') ===
+          (window as unknown as { troubleRegion: Element }).troubleRegion,
+      ),
+    ).toBe(true);
     // Its messages wait in the topic: they don't fail.
     await expect(page.getByTestId("trouble-detail")).toContainText(
       "Messages wait in orders.created.v1 until it's back",
@@ -296,4 +315,71 @@ test("on a narrow canvas (1024, AI panel open) the callout keeps its words and b
   }
   const card = await box("diagram-card");
   expect((await box("trouble-callout")).y).toBeGreaterThanOrEqual(card.y + card.height);
+});
+
+test("at 1440 with the AI panel open, the callout occupies the room beside the title card", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&sim=payments-outage&paused=1`);
+  await page.getByTestId("ai-rail-open").click();
+  await expect(page.getByTestId("ai-panel")).toBeVisible();
+  await page.getByTestId("live-marker-2").click();
+  const callout = page.getByTestId("trouble-callout");
+  await expect(callout).toBeVisible();
+  const clearOfTitle = async (id: string) => {
+    const card = await page.getByTestId("diagram-card").boundingBox();
+    const box = await page.getByTestId(id).boundingBox();
+    const canvas = await page.getByTestId("canvas-wrap").boundingBox();
+    if (!card || !box || !canvas) throw new Error("Expected the canvas, card and callout");
+    expect(box.x >= card.x + card.width || box.y >= card.y + card.height).toBe(true);
+    expect(box.x + box.width).toBeLessThanOrEqual(canvas.x + canvas.width);
+  };
+  await expect(() => clearOfTitle("trouble-callout")).toPass();
+  await page.getByTestId("trouble-dismiss").click();
+  await page.keyboard.press("c");
+  await expect(page.getByTestId("bottleneck-callout")).toBeVisible();
+  await expect(() => clearOfTitle("bottleneck-callout")).toPass();
+});
+
+test("a saved-down node on first live mount announces through a change to the mounted region", async ({ page }) => {
+  await seed(page, {
+    format: "diagrams/v1",
+    title: "Outage",
+    nodes: [{ id: "worker", stencil: "service.go", label: "Worker", x: 0, y: 0, props: { status: "down" } }],
+    edges: [],
+  });
+  await page.evaluate(() => {
+    const observed = window as unknown as { announcementChanged: boolean };
+    observed.announcementChanged = false;
+    const observer = new MutationObserver((records) => {
+      if (
+        records.some((r) => r.target instanceof Element && r.target.getAttribute("data-testid") === "trouble-announce")
+      ) {
+        observed.announcementChanged = true;
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true });
+  });
+  await page.getByTestId("live-toggle").click();
+  await expect(page.getByTestId("trouble-announce")).toHaveText("Worker is down");
+  expect(await page.evaluate(() => (window as unknown as { announcementChanged: boolean }).announcementChanged)).toBe(
+    true,
+  );
+});
+
+test("an outage hidden behind Inputs does not consume the callout's turn", async ({ page }) => {
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&sim=payments-outage&paused=1`);
+  await page.getByTestId("live-capacity").click();
+  await expect(page.getByTestId("capacity-panel")).toBeVisible();
+  await page.getByTestId("live-marker-2").click();
+  await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "down");
+  await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
+  // The recovery note is the visible marker at this timestamp; seeking there also applies its preceding status.
+  await page.getByTestId("live-marker-4").click();
+  await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "up");
+  await page.getByTestId("capacity-close").click();
+  await expect(page.getByTestId("capacity-panel")).toHaveCount(0);
+  await page.getByTestId("node-payments").click({ button: "right" });
+  await page.getByTestId("context-menu-item-sim.kill").click();
+  await expect(page.getByTestId("trouble-headline")).toHaveText("Payments service is down");
 });

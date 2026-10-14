@@ -1,6 +1,6 @@
 import type { DiagramFile, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
-import { compileTopology, type CompiledEdge, type CompiledGroup } from "../sim/topology";
+import { brokerFeeds, compileTopology, type CompiledGroup } from "../sim/topology";
 import type { NodeStatus } from "../sim/types";
 import { formatCount } from "./format";
 import { brokerList, waitDetail } from "./capacityModel";
@@ -32,6 +32,8 @@ export interface Trouble {
   announce: string;
   detail: string;
   action: TroubleAction;
+  /** A rising lag's consumers that don't keep up (to match the capacity callout's diagnosis). */
+  related?: string[];
 }
 
 /** What the watcher reads of a node: a real-unit snapshot's node (RealSimSnapshot["nodes"][id]). */
@@ -73,6 +75,13 @@ export class TroubleWatcher {
     this.last = undefined;
   }
 
+  /** Whether the history spans the window: until then a trend can't be seen, so its absence proves nothing. */
+  get warm(): boolean {
+    const first = this.samples[0],
+      last = this.samples.at(-1);
+    return !!first && !!last && last.time - first.time >= WINDOW_MS - SAMPLE_MS;
+  }
+
   observe(frame: WatchedFrame, diagram: DiagramFile): Trouble[] {
     const last = this.samples.at(-1);
     // A jump (a seek, a restart, a stalled tab) isn't a trend: start the history again.
@@ -105,10 +114,10 @@ interface Shape {
   order: Map<string, number>;
   name: (id: string) => string;
   role: Map<string, SimRole>;
-  /** Flow routes into each node, dead-letter routes aside. */
-  into: Map<string, CompiledEdge[]>;
-  /** Nodes some flow reaches (deny rules and dead-letter routes aside). */
-  fed: Set<string>;
+  /** How messages reach each node (brokerFeeds): the brokers that keep them while it's down, or null if pushed. */
+  feeds: Map<string, string[] | null>;
+  /** Each consumer's groups, with their broker: what waits for it is their lag. */
+  memberships: Map<string, { broker: string; group: string }[]>;
   /** Targets of a broker's dead-letter route, as playback classifies them (an explicit `dlq: false` included). */
   deadLetterTargets: Set<string>;
   /** Brokers with a dead-letter route of their own. */
@@ -123,29 +132,27 @@ function shapeOf(d: DiagramFile): Shape {
   const labels = new Map(d.nodes.map((n) => [n.id, n.label || n.id]));
   const role = new Map(d.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
   const compiled = compileTopology(d);
-  const into = new Map<string, CompiledEdge[]>();
   const deadLetterTargets = new Set<string>(),
     hasDeadLetterRoute = new Set<string>();
-  for (const e of compiled.edges) {
-    // A deny rule delivers nothing: it feeds no one, and its target is no consumer of it.
-    if (e.deny) continue;
-    if (e.dlq) {
-      if (BROKERS.has(role.get(e.from)!)) {
-        deadLetterTargets.add(e.to);
-        hasDeadLetterRoute.add(e.from);
-      }
-      continue;
+  for (const e of compiled.edges)
+    if (e.dlq && !e.deny && BROKERS.has(role.get(e.from)!)) {
+      deadLetterTargets.add(e.to);
+      hasDeadLetterRoute.add(e.from);
     }
-    const list = into.get(e.to) ?? [];
-    list.push(e);
-    into.set(e.to, list);
-  }
+  const memberships = new Map<string, { broker: string; group: string }[]>();
+  for (const [broker, groups] of compiled.groups)
+    for (const group of groups)
+      for (const member of group.members) {
+        const list = memberships.get(member) ?? [];
+        list.push({ broker, group: group.name });
+        memberships.set(member, list);
+      }
   const shape: Shape = {
     order: new Map(d.nodes.map((n, i) => [n.id, i])),
     name: (id) => labels.get(id) ?? id,
     role,
-    into,
-    fed: new Set(into.keys()),
+    feeds: brokerFeeds(compiled, (id) => role.get(id)),
+    memberships,
     deadLetterTargets,
     hasDeadLetterRoute,
     groups: compiled.groups,
@@ -160,6 +167,8 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
   const oldest = samples[0];
   const middle = samples[Math.floor(samples.length / 2)];
   const previous = samples.at(-2);
+  // Still rising lately, not only overall: a backlog that levels off stops being "rising".
+  const recent = samples.at(-3) ?? oldest;
   const spanned = oldest && frame.time - oldest.time >= WINDOW_MS - SAMPLE_MS;
   // Lag must rise by more than noise: a few dots at this scale, and a fifth of what was there.
   const threshold = (before: number) => Math.max(10, 3 * (frame.scale ?? 1), 0.2 * before);
@@ -168,21 +177,18 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
     const r = d.role.get(id);
     if (!r || r === "none" || r === "source") continue;
     if (n.status === "down") {
-      const into = d.into.get(id) ?? [];
-      const brokers =
-        into.length && into.every((e) => BROKERS.has(d.role.get(e.from)!)) ? [...new Set(into.map((e) => e.from))] : [];
+      const feeds = d.feeds.get(id);
       let detail: string;
-      if (BROKERS.has(r)) detail = "Messages sent to it are dropped until it's back.";
-      else if (brokers.length) {
-        // What waits for it: each feeding broker's lag in the groups it belongs to (a queue's whole backlog).
-        const waiting = brokers.reduce((sum, b) => {
-          const lags = frame.nodes[b]?.lag ?? {};
-          let lag = 0;
-          for (const g of d.groups.get(b) ?? []) if (g.members.includes(id)) lag += lags[g.name] ?? 0;
-          return sum + lag;
-        }, 0);
-        detail = waitDetail(brokers.map(name), waiting);
-      } else detail = d.fed.has(id) ? "Messages sent to it fail until it's back." : "";
+      if (feeds) {
+        // What waits for it: its groups' lag at the brokers that feed it (a queue's whole backlog).
+        let waiting = 0;
+        for (const { broker, group } of d.memberships.get(id) ?? []) waiting += frame.nodes[broker]?.lag[group] ?? 0;
+        detail = waitDetail(feeds.map(name), waiting);
+      } else if (feeds === null)
+        detail = BROKERS.has(r)
+          ? "Messages sent to it are dropped until it's back."
+          : "Messages sent to it fail until it's back.";
+      else detail = "";
       out.push({
         key: `down:${id}`,
         kind: "down",
@@ -194,8 +200,8 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
       });
       continue;
     }
-    if (!spanned) continue;
-    const lost = n.dropped - (oldest.dropped.get(id) ?? 0);
+    // Loss needs no long history: a short run that drops one message says so.
+    const lost = oldest && frame.time > oldest.time ? n.dropped - (oldest.dropped.get(id) ?? 0) : 0;
     if (lost > 0) {
       const broker = BROKERS.has(r);
       out.push({
@@ -211,12 +217,20 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
       });
       continue;
     }
+    if (!spanned) continue;
     // A dead-letter queue keeps what it gets on purpose, read or not: its backlog is no trouble.
     if (!BROKERS.has(r) || (n.noConsumer && r !== "queue") || d.deadLetterTargets.has(id)) continue;
     const now = maxLag(n),
       before = oldest.lag.get(id) ?? 0,
       mid = middle.lag.get(id) ?? 0;
-    if (now - before < threshold(before) || mid < before || now < mid || now < (previous?.lag.get(id) ?? 0)) continue;
+    if (
+      now - before < threshold(before) ||
+      mid < before ||
+      now < mid ||
+      now < (previous?.lag.get(id) ?? 0) ||
+      now <= (recent.lag.get(id) ?? 0)
+    )
+      continue;
     if (n.noConsumer) {
       out.push({
         key: `lag:${id}`,
@@ -247,22 +261,55 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
           ? `${readers} ${behind.members.length > 1 ? "don't" : "doesn't"} keep up with it.`
           : "Its consumers don't keep up with it.",
       action: { kind: "inputs" },
+      related: behind?.members ?? [],
     });
   }
   return out.sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || d.order.get(a.node)! - d.order.get(b.node)!);
 }
 
+/** What the callout remembers in one run: causes shown, causes over after being shown, causes dismissed. */
+export interface TroubleMemory {
+  shown: Set<string>;
+  ended: Set<string>;
+  dismissed: Set<string>;
+}
+
 /**
- * Which trouble the callout shows: the worst one not dismissed and not already shown and over in this run (each
- * cause once per run). `seen` and `ended` are the caller's, kept per run; this updates them.
+ * Notes which shown causes are over now. While the watcher\'s history is short (just after a seek or a restart),
+ * a trend it can\'t see yet isn\'t over: rising lag and losses are only ended once it\'s warm again.
  */
-export function pickTrouble(
-  current: readonly Trouble[],
-  memory: { shown: Set<string>; ended: Set<string>; dismissed: Set<string> },
-): Trouble | undefined {
+export function noteEnded(current: readonly Trouble[], memory: TroubleMemory, warm = true): void {
   const keys = new Set(current.map((t) => t.key));
-  for (const key of memory.shown) if (!keys.has(key)) memory.ended.add(key);
-  const pick = current.find((t) => !memory.dismissed.has(t.key) && !memory.ended.has(t.key));
-  if (pick) memory.shown.add(pick.key);
-  return pick;
+  for (const key of memory.shown) if (!keys.has(key) && (warm || key.startsWith("down:"))) memory.ended.add(key);
+}
+
+/** The worst cause not dismissed and not over after being shown in this run. Reads the memory only. */
+export function selectTrouble(current: readonly Trouble[], memory: TroubleMemory): Trouble | undefined {
+  return current.find((t) => !memory.dismissed.has(t.key) && !memory.ended.has(t.key));
+}
+
+/**
+ * Which trouble the callout would show (each cause once per run): notes what\'s over, then selects. Showing it is
+ * separate: only a callout actually on screen marks its cause shown (`memory.shown.add`), so one hidden behind a
+ * panel or a presentation keeps its turn.
+ */
+export function pickTrouble(current: readonly Trouble[], memory: TroubleMemory, warm = true): Trouble | undefined {
+  noteEnded(current, memory, warm);
+  return selectTrouble(current, memory);
+}
+
+/**
+ * Whether the trouble leads the capacity callout when both could show: always, unless it\'s a rising lag the plan
+ * already diagnoses with its own action: the same broker (nobody reads it, or it\'s the bottleneck) or one of the
+ * consumers behind it over capacity. An unrelated overload elsewhere never hides it.
+ */
+export function troubleLeads(
+  trouble: Trouble,
+  view: { tone: string; top?: { id: string }; addConsumer?: string } | null,
+): boolean {
+  if (!view || trouble.kind !== "lag") return true;
+  if (view.addConsumer === trouble.node) return false;
+  const top = view.top?.id;
+  const overloaded = view.tone === "over" || view.tone === "hot";
+  return !(overloaded && !!top && (top === trouble.node || !!trouble.related?.includes(top)));
 }

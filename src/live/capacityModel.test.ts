@@ -248,6 +248,14 @@ describe("capacity view", () => {
     expect(capacityView(d, blackFriday, { payments: "up" }).headline).not.toMatch(/down/);
   });
 
+  it("a down broker fed by another broker waits there, just like a down consumer", () => {
+    const d = small();
+    d.nodes.find((n) => n.id === "worker")!.stencil = "aws.sqs";
+    const view = capacityView(d, freePlaySimulation(d, emptyInputs()), { worker: "down" });
+    expect(view.detail).toBe("Messages wait in orders.created until it's back.");
+    expect(view.nodes.worker.waitsIn).toEqual(["orders.created"]);
+  });
+
   it("Kafka Black Friday makes sense with zero input: busy but healthy, databases stay neutral", () => {
     const view = capacityView(KAFKA, blackFriday);
     expect(view.nodes.payments).toMatchObject({ level: "warn", text: "78% · 2k/s of 2.6k/s" });

@@ -222,6 +222,8 @@ interface TroubleProps {
   /** Runs the trouble's action; omitted (no button) where it can't run here. */
   onAction?: (action: TroubleAction) => void;
   onDismiss: () => void;
+  /** The callout is on screen with this cause (once per cause). */
+  onShown?: (key: string) => void;
   /** Floating over the canvas (top centre). */
   floating?: boolean;
   disabledHint?: string;
@@ -231,8 +233,10 @@ interface TroubleProps {
  * What playback shows going wrong (src/live/observedTrouble.ts): a node down, messages lost, a lag that keeps
  * rising. It comes on its own, with one action, and goes when dismissed or when the trouble ends.
  */
-export function TroubleCallout({ trouble, onAction, onDismiss, floating, disabledHint }: TroubleProps) {
+export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating, disabledHint }: TroubleProps) {
   const action = TROUBLE_ACTIONS[trouble.action.kind];
+  // On screen: this cause has had its turn this run (one hidden behind a panel or a presentation hasn't).
+  useEffect(() => onShown?.(trouble.key), [onShown, trouble.key]);
   const box = useRef<HTMLDivElement>(null);
   const placement = useFloatingPlacement(box, !!floating);
   // Focus inside the callout when it goes (dismissed, revived, the trouble over) returns to the canvas, never <body>.
@@ -260,10 +264,6 @@ export function TroubleCallout({ trouble, onAction, onDismiss, floating, disable
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) focused.current = false;
       }}
     >
-      {/* The cause, once: the headline's counts change every second and would be read out each time. */}
-      <span className="sr-only" role="status" data-testid="trouble-announce">
-        {trouble.announce}
-      </span>
       <span className="cap-callout-dot" aria-hidden />
       <div className="cap-callout-text">
         <strong data-testid="trouble-headline">{trouble.headline}</strong>
@@ -303,7 +303,11 @@ const CALLOUT_MIN = 420;
  * never squeeze or clip. Follows the canvas and the card as they resize.
  */
 function useFloatingPlacement(box: RefObject<HTMLElement | null>, floating: boolean) {
-  const [place, setPlace] = useState<{ below: boolean; top: number }>({ below: false, top: 0 });
+  // Beside the card: centred in the room right of it (never on it, whatever the canvas centre); below: under it.
+  const [place, setPlace] = useState<{ below: boolean; top: number; left?: number; room?: number }>({
+    below: false,
+    top: 0,
+  });
   useLayoutEffect(() => {
     const el = box.current;
     const parent = el?.offsetParent;
@@ -315,7 +319,13 @@ function useFloatingPlacement(box: RefObject<HTMLElement | null>, floating: bool
       const room = c ? p.right - 16 - (c.right + 16) : p.width - 32;
       const below = !!c && room < CALLOUT_MIN;
       const top = c ? Math.round(c.bottom - p.top + 8) : 0;
-      setPlace((old) => (old.below === below && old.top === top ? old : { below, top }));
+      const left = c && !below ? Math.round(c.right - p.left + 16 + room / 2) : undefined;
+      const width = c && !below ? Math.floor(room) : undefined;
+      setPlace((old) =>
+        old.below === below && old.top === top && old.left === left && old.room === width
+          ? old
+          : { below, top, left, room: width },
+      );
     };
     measure();
     const watch = new ResizeObserver(measure);
@@ -325,6 +335,10 @@ function useFloatingPlacement(box: RefObject<HTMLElement | null>, floating: bool
   }, [box, floating]);
   return {
     below: place.below,
-    style: place.below ? ({ "--callout-top": `${place.top}px` } as CSSProperties) : undefined,
+    style: place.below
+      ? ({ "--callout-top": `${place.top}px` } as CSSProperties)
+      : place.left !== undefined && place.room !== undefined
+        ? ({ left: place.left, maxWidth: place.room, minWidth: Math.min(340, place.room) } as CSSProperties)
+        : undefined,
   };
 }

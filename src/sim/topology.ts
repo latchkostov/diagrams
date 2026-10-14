@@ -180,3 +180,23 @@ export function allocateGroupReplicas(
     role === "queue" ? budgets.reduce((sum, member) => sum + member.replicas, 0) : partitions,
   );
 }
+
+/**
+ * How messages reach each node, as playback delivers them: for a node every flow route into which comes from a
+ * queue, topic or stream (dead-letter routes and deny rules aside), the brokers that keep its messages while it's
+ * down (they stop delivering to it); `null` for a node something pushes to (a down node fails or drops what's pushed).
+ * Nodes no flow reaches aren't listed. The live callout, the capacity callout and the `capacity` check share it.
+ */
+export function brokerFeeds(compiled: CompiledTopology, roleOf: (id: string) => SimRole | undefined) {
+  const indexed = new Map<string, Set<string> | null>();
+  for (const edge of compiled.edges) {
+    if (edge.dlq || edge.deny) continue;
+    const role = roleOf(edge.from);
+    const known = indexed.get(edge.to);
+    if (known === null) continue;
+    if (role === undefined || !brokerRole(role)) indexed.set(edge.to, null);
+    else if (!known) indexed.set(edge.to, new Set([edge.from]));
+    else known.add(edge.from);
+  }
+  return new Map([...indexed].map(([id, brokers]) => [id, brokers ? [...brokers] : null]));
+}

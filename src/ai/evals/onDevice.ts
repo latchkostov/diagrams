@@ -6,6 +6,7 @@
 import type { DiagramFile } from "../../model/types";
 import { validateDiagram } from "../../interop/native";
 import { getStencil } from "../../stencils/registry";
+import { compileTopology } from "../../sim/topology";
 import kafka from "../../examples/kafka-order-pipeline.json";
 import { REPLY_TIMEOUT_MS, runOnDevice, withTimeout } from "../ondevice/pipeline";
 import type { DiagramOp } from "../index";
@@ -64,7 +65,13 @@ const editCases: OnDeviceCase[] = [
     // Off the topic Inventory service reads: an edge out of the service would copy every message it handles.
     check: (b, a) =>
       addedNear(b, a, messaging, { from: "order-events" }) ??
-      (added(b, a).some((n) => hasEdge(a, "inventory", n.id)) ? "the dead-letter queue hangs off the service" : null),
+      (added(b, a).some((n) => hasEdge(a, "inventory", n.id))
+        ? "the dead-letter queue hangs off the service"
+        : compileTopology(a).edges.some(
+              (e) => e.from === "order-events" && e.dlq && !e.deny && added(b, a).some((n) => n.id === e.to),
+            )
+          ? null
+          : "the new queue isn't a dead-letter route"),
   },
   {
     id: "edit-rename",

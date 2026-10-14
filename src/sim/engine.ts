@@ -51,9 +51,11 @@ interface Group {
   allocations: Map<string, number>;
   activeByNode: Record<string, number>;
   /** Deliveries that arrived and hold one of the group's slots at each consumer (waiting or in work). */
-  heldByNode: Record<string, number>;
+  heldByNode: Map<string, number>;
   /** Per consumer: deliveries that arrived while all of the group's slots there were held, in arrival order. */
-  staged: Record<string, Deque<Work>>;
+  staged: Map<string, Deque<Work>>;
+  /** Per consumer: the longest travel time of the group's routes to it (deny rules aside), for its pipeline. */
+  travelTo: Map<string, number>;
   members: string[];
   limit: number;
 }
@@ -197,7 +199,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         let work = node.working.find((w) => test(w.message)) ?? node.pending.find((w) => test(w.message));
         if (!work && node.staged)
           for (const group of groupsByConsumer.get(node.id) ?? []) {
-            work = group.staged[node.id]?.find((w) => test(w.message));
+            work = group.staged.get(node.id)?.find((w) => test(w.message));
             if (work) break;
           }
         if (work) return { message: work.message, node: node.id };
@@ -362,19 +364,29 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
    * an edge that takes `travelMs`. A delivery takes its slot when it arrives, not when it leaves the broker: the
    * slots themselves, plus enough on the way to keep them busy (units × travel ÷ service time, rounded up), plus a
    * prefetch of one so jitter doesn't leave a slot idle. So travel time animates but never limits throughput, and a
-   * consumer drains at the rate capacity analysis reports. A target with no service time (a broker, a sink, a 0 ms
-   * service) is never the limit.
+   * consumer drains at the rate capacity analysis reports. A target that finishes on arrival (a broker, a sink) or a
+   * 0 ms store or gateway is never the limit.
    */
   function outstanding(units: number, target: Node, travelMs: number): number {
     if (!(units > 0)) return 0;
     const processor = target.role === "processor";
-    if (units === Infinity || (!processor && !(target.props.latencyMs > 0))) return Infinity;
+    // Only processors, stores and gateways work on what arrives; the rest (sinks, brokers, decorative nodes) finish
+    // on arrival whatever latency they have saved, so they never limit a delivery.
+    const works = processor || target.role === "store" || target.role === "gateway";
+    if (units === Infinity || !works || (!processor && !(target.props.latencyMs > 0))) return Infinity;
     // A sampled dot costs `scale` messages of a processor's service budget (see tick): it works on units ÷ scale dots
     // at a time, so only that many (and what's on the way to them) are held for it. The rest is lag at the broker.
     // A 0 ms service is paced as one tick, so a burst can't pull a whole backlog onto the edge at once.
     const busy = processor ? units / scale : units;
     const service = processor ? Math.max(STEP, target.props.latencyMs) : target.props.latencyMs;
     return Math.ceil(busy) + Math.ceil((busy * Math.max(STEP, travelMs)) / service) + 1;
+  }
+
+  /** The longest travel time to each consumer over a group's routes, deny rules aside: indexed once per load. */
+  function travelByConsumer(routes: readonly { to: string; deny: boolean; travelMs: number }[]): Map<string, number> {
+    const travel = new Map<string, number>();
+    for (const edge of routes) if (!edge.deny) travel.set(edge.to, Math.max(travel.get(edge.to) ?? 0, edge.travelMs));
+    return travel;
   }
 
   function refreshGroupLimit(group: Group): void {
@@ -384,10 +396,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     group.limit = group.members.reduce((sum, id) => {
       const target = nodes.get(id)!;
-      let travel = 0;
-      for (const edge of group.edges) if (edge.to === target && !edge.deny) travel = Math.max(travel, edge.travelMs);
       const units = (group.allocations.get(id) ?? 0) * (target.role === "processor" ? target.props.concurrency : 1);
-      return sum + outstanding(units, target, travel);
+      return sum + outstanding(units, target, group.travelTo.get(id) ?? 0);
     }, 0);
   }
 
@@ -511,7 +521,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function admit(node: Node, work: Work): void {
     const group = work.delivery?.group;
     if (group && !work.held && !hold(group, node, work)) {
-      (group.staged[node.id] ??= new Deque()).push(work);
+      let queue = group.staged.get(node.id);
+      if (!queue) group.staged.set(node.id, (queue = new Deque()));
+      queue.push(work);
       node.staged++;
       return;
     }
@@ -523,9 +535,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
    * reassignment can leave a group no slots at a node while deliveries are on their way to it.
    */
   function hold(group: Group, node: Node, work: Work): boolean {
-    const held = group.heldByNode[node.id] ?? 0;
+    const held = group.heldByNode.get(node.id) ?? 0;
     if (held > 0 && held >= groupUnits(group, node)) return false;
-    group.heldByNode[node.id] = held + 1;
+    group.heldByNode.set(node.id, held + 1);
     work.held = true;
     return true;
   }
@@ -535,13 +547,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (!work.held) return;
     work.held = false;
     const { group, edge } = work.delivery!;
-    group.heldByNode[edge.to.id]--;
+    group.heldByNode.set(edge.to.id, (group.heldByNode.get(edge.to.id) ?? 1) - 1);
     unstage(group, edge.to);
   }
 
   /** Staged deliveries of `group` at `node` join its queue, in arrival order, while the group has slots there. */
   function unstage(group: Group, node: Node): void {
-    const waiting = group.staged[node.id];
+    const waiting = group.staged.get(node.id);
     while (waiting?.length && hold(group, node, waiting.peek()!)) {
       node.staged--;
       node.pending.push(waiting.shift()!);
@@ -922,8 +934,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         group.active = 0;
         group.cursor = 0;
         group.activeByNode = Object.create(null);
-        group.heldByNode = Object.create(null);
-        group.staged = Object.create(null);
+        group.heldByNode = new Map();
+        group.staged = new Map();
       }
     }
     for (const edge of edges) {
@@ -981,7 +993,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           Object.setPrototypeOf(node.pending, Deque.prototype);
           for (const group of node.groups) {
             Object.setPrototypeOf(group.pending, Deque.prototype);
-            for (const queue of Object.values(group.staged)) Object.setPrototypeOf(queue, Deque.prototype);
+            for (const queue of group.staged.values()) Object.setPrototypeOf(queue, Deque.prototype);
+            // structuredClone gives dictionaries Object.prototype back: a consumer called "constructor" must stay a key.
+            Object.setPrototypeOf(group.activeByNode, null);
           }
           nodes.set(id, node);
         }
@@ -1102,8 +1116,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           cursor: 0,
           allocations: new Map(),
           activeByNode: Object.create(null),
-          heldByNode: Object.create(null),
-          staged: Object.create(null),
+          heldByNode: new Map(),
+          staged: new Map(),
+          travelTo: travelByConsumer(group.edges),
         }));
       }
       indexGroups();

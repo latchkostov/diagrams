@@ -37,7 +37,7 @@ import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "./layout";
 import { CapacityPanel } from "./CapacityPanel";
 import { BottleneckCallout, CapacityLayer, TroubleCallout } from "./CapacityLayer";
 import { addConsumer, addDeadLetterQueue } from "./addConsumer";
-import type { Trouble, TroubleAction } from "./observedTrouble";
+import { troubleLeads, type Trouble, type TroubleAction } from "./observedTrouble";
 import { useObservedTrouble } from "./useObservedTrouble";
 import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
 import { useLiveSessionHost } from "../palette/host";
@@ -886,7 +886,7 @@ export function LiveSession({
   // ---------------------------------------------------------------- what playback shows going wrong
 
   // The run's trouble the plan can't see (a node down, messages lost, a lag that keeps rising), for the callout.
-  const { trouble, dismiss: dismissTrouble } = useObservedTrouble(controller);
+  const { trouble, dismiss: dismissTrouble, shown: troubleShown } = useObservedTrouble(controller);
   const runTroubleAction = useCallback(
     (action: TroubleAction) => {
       if (slowRef.current?.session.active) return;
@@ -902,6 +902,23 @@ export function LiveSession({
     },
     [controller, addReader, editor, flash, showEvents, openCapacity, revealAdded],
   );
+  // Only while editing in live view (never presenting, recording, embedded or in the Lab, heat map or not). With the
+  // heat map on, a callout is already there: trouble leads it, unless the plan diagnoses the same lag (troubleLeads).
+  const troubleOnScreen =
+    trouble &&
+    editor &&
+    !presenting &&
+    !capturing &&
+    !capacityOpen &&
+    (!showCapacity || troubleLeads(trouble, capacity))
+      ? trouble
+      : undefined;
+  const troubleAnnouncement = useRef<HTMLSpanElement>(null);
+  const announcement = troubleOnScreen?.announce ?? "";
+  useEffect(() => {
+    // Even a run that starts with trouble mounts an empty region before its announcement changes.
+    if (troubleAnnouncement.current) troubleAnnouncement.current.textContent = announcement;
+  }, [announcement]);
   // Editing the diagram (a consumer, a dead-letter queue) needs the editor; reviving and reading don't.
   const troubleActionHere = (t: Trouble) =>
     !presenting && (editor || (t.action.kind !== "add-consumer" && t.action.kind !== "add-dlq"));
@@ -1208,22 +1225,14 @@ export function LiveSession({
             </button>
           </div>
         )}
-        {trouble &&
-        // Only while editing in live view: never presenting, recording, embedded or in the Lab, heat map or not.
-        !!editor &&
-        !presenting &&
-        !capturing &&
-        !capacityOpen &&
-        // With the heat map on, a callout is already there: trouble leads it, unless the plan already says the
-        // same thing with its own action (over capacity, nobody reads it).
-        (!showCapacity ||
-          !capacity ||
-          trouble.kind !== "lag" ||
-          (capacity.tone !== "over" && capacity.tone !== "hot" && !capacity.addConsumer)) ? (
+        {/* Mounted empty first, so the cause is heard when it's written; it changes only with the cause. */}
+        <span ref={troubleAnnouncement} className="sr-only" role="status" data-testid="trouble-announce" />
+        {troubleOnScreen ? (
           <TroubleCallout
-            trouble={trouble}
+            trouble={troubleOnScreen}
+            onShown={troubleShown}
             floating
-            onAction={troubleActionHere(trouble) ? runTroubleAction : undefined}
+            onAction={troubleActionHere(troubleOnScreen) ? runTroubleAction : undefined}
             onDismiss={dismissTrouble}
             disabledHint={liveMutationGuard(() => slow.session.active).hint()}
           />

@@ -4,7 +4,7 @@ import gcp from "../examples/gcp-streaming-analytics.json";
 import { analyzeCapacity } from "./capacity";
 import { createEngine } from "./engine";
 import { DEFAULT_TRAVEL_MS } from "./topology";
-import { GROWTH_FACTOR } from "../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
 
 // A consumer behind a broker drains at the rate capacity analysis reports: its slots are taken when a delivery
 // arrives, not while it travels (docs/research/sim-flows-review.md, F-1). Seeded runs, compared as ratios and
@@ -237,4 +237,68 @@ it("a deny rule in a topic's group takes no slot and stages nothing: the allowed
   // Half the round robin is blocked at once; the rest drains at billing's 16/s, or all of it if that's less.
   const rate = (nodes.billing.processed - start) / 30;
   expect(rate / analyzeCapacity(d).nodes.billing.capacity).toBeGreaterThan(0.95);
+});
+
+describe("second review", () => {
+  it("a sink's saved latency changes nothing (the inspector calls it inert): a topic still delivers at once", () => {
+    const run = (latencyMs?: number) => {
+      const engine = createEngine({ seed: 1 });
+      engine.load({
+        format: "diagrams/v1",
+        title: "Sink",
+        nodes: [
+          node("checkout", "client.browser", { ratePerSec: 100 }),
+          node("broker", "kafka.topic", { partitions: 1 }),
+          node("mail", "generic.email", latencyMs === undefined ? undefined : { latencyMs }),
+        ],
+        edges: [edge("checkout", "broker"), edge("broker", "mail")],
+      });
+      engine.setTraffic(true);
+      for (let t = 0; t < 30_000; t += 100) engine.step(100);
+      const s = engine.snapshot();
+      return { processed: s.nodes.mail.processed, lag: s.nodes.broker.backlog };
+    };
+    expect(run(2_000)).toEqual(run());
+  });
+
+  it("refreshing a group's limits reads each consumer's travel time from an index (linear in consumers)", () => {
+    const engineWith = (n: number) => {
+      const d: DiagramFile = {
+        format: "diagrams/v1",
+        title: "Wide",
+        nodes: [node("broker", "kafka.topic")],
+        edges: [],
+      };
+      for (let i = 0; i < n; i++) {
+        d.nodes.push(node(`c${i}`, "service.go"));
+        d.edges.push({ ...edge("broker", `c${i}`, { group: "g" }), id: `e${i}` });
+      }
+      const engine = createEngine({ seed: 1 });
+      engine.load(d);
+      let scale = 1;
+      // A scale change refreshes every group's limit.
+      return () => engine.setScale((scale = scale === 1 ? 2 : 1));
+    };
+    expect(growth(engineWith(150), engineWith(150 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+  });
+
+  it.each(["constructor", "__proto__"])("a consumer called %s survives a checkpoint round trip mid-delivery", (id) => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Constructor",
+      nodes: [node("broker", "aws.sqs"), node(id, "service.go", { latencyMs: 100 })],
+      edges: [edge("broker", id)],
+    };
+    const engine = createEngine({ seed: 1 });
+    engine.load(d);
+    engine.inject("broker", 3);
+    engine.step(150);
+    const checkpoint = engine.checkpoint();
+    engine.restore(checkpoint);
+    expect(() => {
+      for (let t = 0; t < 3_000; t += 10) engine.step(10);
+    }).not.toThrow();
+    const consumer = Object.entries(engine.frame().nodes).find(([key]) => key === id)?.[1];
+    expect(consumer?.processed).toBe(3);
+  });
 });

@@ -2,6 +2,18 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Simulation review follow-up (2026-10)
+
+- A saved sink latency really does nothing: topic delivery stays immediate. Large consumer groups refresh their
+  delivery limits without rescanning all routes, and outage details use indexed memberships.
+- Live reports losses in short runs, keeps an ongoing lag warning after seeking, and stops calling a flat backlog
+  rising. A warning hidden behind Inputs keeps its turn; an unrelated capacity diagnosis no longer hides it.
+- A down broker fed by another broker says its messages wait there, matching playback and the heat map.
+- Trouble announcements update an already mounted live region, callouts stay clear of the title with the AI panel
+  open, and removing a saved inert setting keeps keyboard focus in the inspector.
+- Checkpoint restoration preserves consumer IDs such as `constructor`; the on-device DLQ eval requires a route
+  playback actually classifies as dead-letter.
+
 ## The simulation tells the truth (2026-10)
 
 From the simulation flows review (docs/research/sim-flows-review.md, items 1–6; docs/DESIGN-REVIEW.md, round 32).
