@@ -1,4 +1,5 @@
-import type { SimRole } from "../model/types";
+import type { DiagramFile, DiagramNode, SimRole } from "../model/types";
+import { stencilRole } from "../stencils/roles";
 import {
   DEFAULT_FAILOVER_MS,
   DEFAULT_MESSAGE_KB,
@@ -13,6 +14,8 @@ import {
   type DeviceSize,
 } from "../stencils/netDevices";
 import type { NodeSimProps } from "./types";
+import { profileOf, resolvePreset, FAMILIES, PROCESSOR_LESSON, type ResolutionEvidence } from "../stencils/profiles";
+import type { PlanningModel } from "../model/types";
 
 /** Only these roles spend service time, including paused and resumed work. */
 export const hasServiceTime = (role: SimRole): boolean =>
@@ -34,11 +37,15 @@ export interface ResolvedDevice {
   perUnit: number;
 }
 
-export type ResolvedProps = Required<Omit<NodeSimProps, "emits" | DeviceKey>> &
+export type ResolvedProps = Required<
+  Omit<NodeSimProps, "emits" | DeviceKey | "preset" | "presetRevision" | "connections" | "querySlots">
+> &
   Pick<NodeSimProps, "emits"> & {
     healthChecks: boolean;
     /** Gateways with a throughput ceiling: network device stencils, or any gateway given `gbps`. */
     device?: ResolvedDevice;
+    /** Metadata only: never changes dispatch or sampling units. */
+    profile: ResolutionEvidence;
   };
 
 /** Ignore malformed free-form diagram props rather than poisoning the clock. `stencil` adds a device's presets. */
@@ -46,15 +53,43 @@ export function resolveProps(
   role: SimRole,
   label: string,
   props: Record<string, unknown>,
-  stencil?: string,
+  stencil: string | undefined,
+  planning: PlanningModel | undefined,
 ): ResolvedProps {
+  const authored = props;
+  const profile = profileOf(stencil);
+  const compatible = !!profile && FAMILIES[profile.family].roles.includes(role);
+  const pinned =
+    planning?.revision === "p1" && compatible
+      ? resolvePreset(stencil, props.preset, props.presetRevision, props.size)
+      : undefined;
+  props = {
+    ...(planning?.revision === "p1" && compatible && profile ? FAMILIES[profile.family].defaults : {}),
+    ...pinned?.values,
+    ...props,
+  };
   const number = (key: string, fallback: number, min = 0, max = Infinity) => {
     const value = props[key];
     return typeof value === "number" && Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
   };
   const device = role === "gateway" ? resolveDevice(props, number, stencil) : undefined;
+  const devicePreset = device ? resolvePreset(stencil, "device-size", "1", device.size) : undefined;
+  const evidencePreset = pinned ?? devicePreset;
   const ha = device?.ha ?? "standalone";
   return {
+    profile: {
+      family: profile?.family,
+      revision: planning?.revision ?? "legacy",
+      preset: pinned?.id,
+      presetRevision: pinned?.revision,
+      evidence: (evidencePreset?.sources ?? (role === "processor" ? PROCESSOR_LESSON.sources : [])).map((source) => ({
+        ...source,
+        ...(authored[source.key] !== undefined && authored[source.key] !== evidencePreset?.values[source.key]
+          ? { evidence: "assumption" as const, note: "Configured workload assumption." }
+          : {}),
+      })),
+      units: "real",
+    },
     ratePerSec: number("ratePerSec", 2),
     latencyMs: hasServiceTime(role)
       ? number(
@@ -92,6 +127,20 @@ export function resolveProps(
       typeof props.healthChecks === "boolean" ? props.healthChecks : role === "gateway" && device?.kind === "adc",
     ...(device ? { device } : {}),
   };
+}
+
+/** Resolve a node in its document; overrides remain partial updates. */
+export function resolveNodeProps(
+  d: DiagramFile,
+  node: DiagramNode,
+  overrides?: Record<string, unknown>,
+): ResolvedProps {
+  return resolveProps(stencilRole(node.stencil), node.label, { ...node.props, ...overrides }, node.stencil, d.planning);
+}
+
+/** Explicit legacy resolution for old-format probes and migration. */
+export function resolveLegacyProps(role: SimRole, label: string, props: Record<string, unknown>, stencil?: string) {
+  return resolveProps(role, label, props, stencil, undefined);
 }
 
 function resolveDevice(

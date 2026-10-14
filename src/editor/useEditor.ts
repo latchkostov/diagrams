@@ -1,4 +1,6 @@
+import { connectionProps } from "../model/connectionDefaults";
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { newPlanningProps } from "../model/planning";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
 import { flushSync } from "react-dom";
 import {
@@ -29,8 +31,8 @@ import {
 import { foregroundLayerOrder } from "../model/layers";
 import { notify } from "../interop/ui/toast";
 import { isDependency, relationOf, RELATION_META, type DependencyRelation } from "../model/relations";
-import { inferRelation, reinferRelations, relationChangeText } from "../stencils/relations";
-import { inferKind } from "../stencils/edgeKind";
+import { reinferRelations, relationChangeText } from "../stencils/relations";
+import { connectionDefaults } from "../model/connectionDefaults";
 import {
   boundsOf,
   clearOffset,
@@ -458,17 +460,13 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     b: { id: string; stencil?: string },
     existing: readonly DiagramFlowEdge[],
   ): DiagramFlowEdge => {
-    const relation = inferRelation(a.stencil, b.stencil);
     return {
       // Its ends too: a node not yet in React Flow's store is in no other list.
       id: uniqueId("e", new Set([...takenIds(), a.id, b.id, ...existing.map((e) => e.id)])),
       source: a.id,
       target: b.id,
       type: "flow",
-      data:
-        relation === "flow"
-          ? { kind: inferKind(a.stencil, b.stencil) }
-          : { kind: "async", relation, relationOrigin: "inferred" },
+      data: connectionDefaults(a, b, deps().meta.planning),
     };
   };
   /**
@@ -606,7 +604,13 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         type: "diagram",
         position: { x: snap10(c.x - width / 2), y: snap10(c.y - height / 2) },
         selected: true,
-        data: { stencil: s.id, label: s.label, sublabel: s.defaultSublabel, group: groupAt(ns, c.x, c.y) },
+        data: {
+          stencil: s.id,
+          label: s.label,
+          sublabel: s.defaultSublabel,
+          group: groupAt(ns, c.x, c.y),
+          props: newPlanningProps(s.simRole, deps().meta.planning, s.id),
+        },
       };
       addSettled(node);
       deps().setEdges((cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)));
@@ -754,7 +758,15 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           if ("sourceSide" in patch) data.sourceSide = patch.sourceSide;
           if ("targetSide" in patch) data.targetSide = patch.targetSide;
           if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
-          return { ...e, source: patch.from ?? e.source, target: patch.to ?? e.target, data };
+          return {
+            ...e,
+            source: patch.from ?? e.source,
+            target: patch.to ?? e.target,
+            data:
+              patch.to && data.props?.groupOrigin === "inferred"
+                ? { ...data, props: { ...data.props, group: patch.to } }
+                : data,
+          };
         }),
       );
     },
@@ -765,7 +777,11 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           e.id === id
             ? {
                 ...e,
-                data: { kind: "async" as const, ...e.data, props: withoutUndefined({ ...e.data?.props, ...patch }) },
+                data: {
+                  kind: "async" as const,
+                  ...e.data,
+                  props: withoutUndefined(connectionProps(e.data?.props, patch)),
+                },
               }
             : e,
         ),
@@ -843,7 +859,12 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         data = { ...src.data, props: src.data.props && structuredClone(src.data.props) };
       } else {
         const s = getStencil(req.stencil ?? "");
-        data = { stencil: s.id, label: s.label, sublabel: s.defaultSublabel };
+        data = {
+          stencil: s.id,
+          label: s.label,
+          sublabel: s.defaultSublabel,
+          props: newPlanningProps(s.simRole, deps().meta.planning, s.id),
+        };
       }
       // Where: the drop point (a dropped connection, centred on it), else one gap beside the node that way.
       const toward = req.toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
@@ -898,7 +919,13 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         type: "diagram",
         position: { x: snap10(c.x - size.width / 2), y: snap10(c.y - size.height / 2) },
         selected: true,
-        data: { stencil: s.id, label: s.label, sublabel: s.defaultSublabel, group: groupAt(ns, c.x, c.y) },
+        data: {
+          stencil: s.id,
+          label: s.label,
+          sublabel: s.defaultSublabel,
+          group: groupAt(ns, c.x, c.y),
+          props: newPlanningProps(s.simRole, deps().meta.planning, s.id),
+        },
       };
       const r = splitFlowEdge(es, edgeId, id, takenIds().add(id));
       if (!r) return null;

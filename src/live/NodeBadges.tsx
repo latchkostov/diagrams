@@ -1,5 +1,7 @@
+import { t } from "../i18n";
+import { hoverTop } from "./hoverPlacement";
 import { flowEdges } from "../model/relations";
-import { memo, useEffect, useState, type CSSProperties } from "react";
+import { memo, useEffect, useLayoutEffect, useState, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
 import type { DiagramFile, SimRole } from "../model/types";
 import type { NodeSimState } from "../sim/types";
@@ -13,6 +15,7 @@ import { LiveIcon } from "./icons";
 import type { CapacityView, NodeHeat } from "./capacityModel";
 import { CapacityChip, CapacityRing, IdleChip } from "./CapacityLayer";
 import { HA_LABEL } from "../stencils/netDevices";
+import { NodePlanning } from "../planning/lazy";
 
 const BROKERS: ReadonlySet<SimRole> = new Set(["topic", "queue", "stream"]);
 
@@ -83,7 +86,7 @@ export function NodeBadges({
         // Concurrency and units only show in the hover breakdown: resolve them for the hovered node alone.
         const props =
           hovered === n.id && (s.role === "processor" || s.role === "gateway")
-            ? resolveProps(s.role, n.data.label, ui.controller.effectiveProps(n.id), n.data.stencil)
+            ? resolveProps(s.role, n.data.label, ui.controller.effectiveProps(n.id), n.data.stencil, diagram.planning)
             : undefined;
         return (
           <NodeBadge
@@ -170,11 +173,41 @@ interface BadgeProps {
 
 const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency, units, groups, cap }: BadgeProps) {
   const domNode = useStore((store) => store.domNode);
+  const transform = useStore((store) => (hovered ? store.transform : null));
   const tooltipId = `live-node-detail-${encodeURIComponent(node.id)}`;
+  useLayoutEffect(() => {
+    if (!hovered || !domNode) return;
+    const tooltip = document.getElementById(tooltipId);
+    const card = domNode.querySelector<HTMLElement>(`[data-testid="node-${CSS.escape(node.id)}"]`);
+    if (!tooltip || !card) return;
+    const place = () => {
+      const pane = domNode.getBoundingClientRect(),
+        box = card.getBoundingClientRect();
+      const zoom = card.offsetWidth ? box.width / card.offsetWidth : 1;
+      const detailScale = tooltip.offsetWidth ? tooltip.getBoundingClientRect().width / tooltip.offsetWidth : zoom;
+      tooltip.style.maxWidth = `${Math.max(0, pane.width - 24) / detailScale}px`;
+      tooltip.classList.remove("is-compact");
+      if (tooltip.getBoundingClientRect().height > pane.height - 24) tooltip.classList.add("is-compact");
+      tooltip.style.left = "0px";
+      tooltip.style.bottom = "auto";
+      tooltip.style.top = "0px";
+      const detail = tooltip.getBoundingClientRect();
+      const top = hoverTop(pane, box, detail.height);
+      tooltip.style.top = `${(top - detail.top) / zoom}px`;
+      const left = Math.max(pane.left + 12, Math.min(detail.left, pane.right - 12 - detail.width));
+      tooltip.style.left = `${(left - detail.left) / zoom}px`;
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(tooltip);
+    observer.observe(domNode);
+    return () => observer.disconnect();
+  }, [hovered, domNode, node.id, tooltipId, transform, node.position.x, node.position.y]);
   useEffect(() => {
     if (!hovered || !domNode) return;
     const el = domNode.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(node.id)}"]`);
     if (!el) return;
+    el.dataset.testid = `node-live-focus-${node.id}`;
     const previous = el.getAttribute("aria-describedby");
     el.setAttribute("aria-describedby", [previous, tooltipId].filter(Boolean).join(" "));
     return () => {
@@ -197,6 +230,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
   const held = broker ? heldWords(s) : null;
   // A topic nobody reads says so with its count; the heat map's chip would only repeat it as a rate.
   const unread = !!held?.lead;
+  const explained = s.role === "processor" || unread;
   const style = {
     transform: `translate(${node.position.x}px, ${node.position.y}px)`,
     width: w,
@@ -287,22 +321,30 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
 
       {hovered && (
         <div id={tooltipId} className="lv-detail" role="tooltip" data-testid={`node-detail-${node.id}`}>
-          <Row label={doneLabel[s.role]} value={formatCount(s.processed)} />
-          <Row label="Throughput" value={formatRate(s.throughput)} />
-          {broker ? (
-            <Row label={held!.row} value={formatCount(s.backlog)} />
-          ) : (
-            s.backlog > 0 && <Row label="Waiting" value={formatCount(s.backlog)} />
+          <HoverExplanation id={node.id} />
+          <small className="lv-detail-more" data-testid="node-detail-more">
+            {t("planning.moreInProperties")}
+          </small>
+          {!explained && (
+            <>
+              <Row label={doneLabel[s.role]} value={formatCount(s.processed)} />
+              <Row label="Throughput" value={formatRate(s.throughput)} />
+              {broker ? (
+                <Row label={held!.row} value={formatCount(s.backlog)} />
+              ) : (
+                s.backlog > 0 && <Row label="Waiting" value={formatCount(s.backlog)} />
+              )}
+              {s.role === "processor" && <Row label="In flight" value={formatCount(s.inFlight)} />}
+              {s.role === "processor" && s.replicas !== undefined && (
+                <Row
+                  label="Replicas"
+                  value={s.idleReplicas ? `${s.activeReplicas} of ${s.replicas} working` : String(s.replicas)}
+                />
+              )}
+              {s.role === "processor" && <Row label="Parallel per replica" value={String(concurrency)} />}
+              {units && <Row label="Units" value={`${s.replicas ?? 1} · ${units}`} />}
+            </>
           )}
-          {s.role === "processor" && <Row label="In flight" value={formatCount(s.inFlight)} />}
-          {s.role === "processor" && s.replicas !== undefined && (
-            <Row
-              label="Replicas"
-              value={s.idleReplicas ? `${s.activeReplicas} of ${s.replicas} working` : String(s.replicas)}
-            />
-          )}
-          {s.role === "processor" && <Row label="Parallel per replica" value={String(concurrency)} />}
-          {units && <Row label="Units" value={`${s.replicas ?? 1} · ${units}`} />}
           {!!s.idleReplicas && (
             <p className="lv-detail-note" data-testid={`node-detail-idle-${node.id}`}>
               {s.idleReplicas} of {s.replicas} replicas are idle: a consumer group can&apos;t use more consumers than
@@ -325,7 +367,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
               {Object.entries(s.lag)
                 .sort((a, b) => b[1] - a[1])
                 .map(([g, v]) => (
-                  <div key={g} className="lv-lag-row">
+                  <div key={g} className="lv-lag-row" data-testid={`live-lag-${g}`}>
                     <span>{groups.get(g) ?? g}</span>
                     <i style={{ "--w": `${Math.min(100, (v / Math.max(1, s.backlog)) * 100)}%` } as CSSProperties} />
                     <b className="mono">{formatCount(v)}</b>
@@ -338,6 +380,11 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
     </div>
   );
 });
+
+function HoverExplanation({ id }: { id: string }) {
+  const ui = useLive();
+  return <NodePlanning diagram={ui.controller.currentDiagram} id={id} hover />;
+}
 
 function Row({ label, value, bad }: { label: string; value: string; bad?: boolean }) {
   return (

@@ -1,5 +1,5 @@
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
-import { propsProblem, SIM_LIMITS } from "../model/simProps";
+import { propsProblem, SIM_LIMITS, unsupportedPreset, invalidPlanningDelay } from "../model/simProps";
 
 // The simulation settings' bounds, for the editors that share this chunk (the inspector, the Inputs panel).
 export { SIM_LIMITS };
@@ -8,6 +8,7 @@ import type { DiagramAnnotation } from "../model/types";
 import { isDependency, isEdgeRelation, isRelationOrigin, sanitizeSettings } from "../model/relations";
 import { sanitizeChecks } from "../model/checks";
 import { idClaimer } from "../model/ids";
+import { t } from "../i18n/core";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -74,7 +75,7 @@ class FormatError extends Error {}
 /** Brings any supported raw object up to the current format, or throws with a helpful message. */
 export function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   let cur = raw;
-  for (let hops = 0; cur.format !== DIAGRAM_FORMAT; hops++) {
+  for (let hops = 0; cur.format !== DIAGRAM_FORMAT && cur.format !== "diagrams/v2"; hops++) {
     const step = typeof cur.format === "string" ? MIGRATIONS[cur.format] : undefined;
     if (!step || hops > 20) {
       const found = cur.format;
@@ -108,6 +109,16 @@ export function validateDiagram(data: unknown): NativeResult {
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
+  if (raw.format === "diagrams/v2" && (!isObj(raw.planning) || raw.planning.revision !== "p1"))
+    return {
+      ok: false,
+      error: t("planning.unsupportedRevision"),
+    };
+  if (raw.format === DIAGRAM_FORMAT && raw.planning !== undefined)
+    return {
+      ok: false,
+      error: t("planning.formatRequired"),
+    };
   if (!Array.isArray(raw.nodes)) return { ok: false, error: "The diagram needs both a nodes and an edges list." };
   const counts: [unknown, number, string][] = [
     [raw.nodes, LIMITS.maxNodes, "nodes"],
@@ -123,6 +134,23 @@ export function validateDiagram(data: unknown): NativeResult {
   if (Array.isArray(raw.simulations)) {
     const budget = simulationListBudget(raw.simulations);
     if (budget) return { ok: false, error: budget };
+    for (const sim of raw.simulations) {
+      if (!isObj(sim)) continue;
+      const props = isObj(sim.setup) && isObj(sim.setup.props) ? sim.setup.props : {};
+      for (const [id, value] of Object.entries(props))
+        if (unsupportedPreset(value)) return { ok: false, error: t("planning.unsupportedPreset", { id }) };
+      if (Array.isArray(sim.timeline))
+        for (const step of sim.timeline) {
+          const action = isObj(step) && isObj(step.action) ? step.action : undefined;
+          if (action?.do === "props" && unsupportedPreset(action.props))
+            return {
+              ok: false,
+              error: t("planning.unsupportedPreset", {
+                id: typeof action.node === "string" ? action.node : "(invalid node)",
+              }),
+            };
+        }
+    }
   }
   if (exceedsDepth(raw))
     return { ok: false, error: `It's nested too deeply to be a diagram (more than ${LIMITS.maxDepth} levels).` };
@@ -217,6 +245,11 @@ export function validateDiagram(data: unknown): NativeResult {
       delete out.group;
     }
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
+    if (unsupportedPreset(out.props))
+      return {
+        ok: false,
+        error: t("planning.unsupportedPreset", { id: n.id }),
+      };
     const problem = out.props === undefined ? undefined : propsProblem(out.props);
     if (problem) return { ok: false, error: `Node "${n.id}" has a simulation setting out of bounds: ${problem}.` };
     nodes.push(out);
@@ -288,6 +321,8 @@ export function validateDiagram(data: unknown): NativeResult {
     if (out.sourceSide !== undefined && !SIDES.has(out.sourceSide as string)) delete out.sourceSide;
     if (out.targetSide !== undefined && !SIDES.has(out.targetSide as string)) delete out.targetSide;
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
+    if (invalidPlanningDelay(out.props))
+      return { ok: false, error: t("planning.delayInvalid", { id: e.id, limit: SIM_LIMITS.timeMs }) };
     // A deny rule fails closed: anything that isn't true or false is read as deny, never as allow, and said.
     const deny = (out.props as Record<string, unknown> | undefined)?.deny;
     if (deny !== undefined && typeof deny !== "boolean") {
@@ -624,6 +659,7 @@ export const serializeNative = (d: DiagramFile) => JSON.stringify(d, null, 2) + 
 // ---------------------------------------------------------------- unknown-field preservation
 
 const KNOWN_TOP = new Set([
+  "planning",
   "format",
   "title",
   "description",

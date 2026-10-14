@@ -4,6 +4,10 @@ import { isDependency, relationOf } from "../model/relations";
 import { resolveRef } from "./refs";
 import { validated } from "./validation";
 import type { DescribeOptions } from "./index";
+import { resolveCapabilities } from "../planning/capabilities";
+import { explainNode } from "../planning/explanation";
+import { analyzeCapacity } from "../sim/capacity";
+import { compileTopology } from "../sim/topology";
 
 const quote = (s: string) => JSON.stringify(s);
 /** Data only: authored strings are JSON quoted so they cannot introduce output lines. */
@@ -26,6 +30,11 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const groups = d.groups?.filter((g) => !focus || focus.has(g.id) || nodes.some((n) => n.group === g.id)) ?? [];
   const notes = d.annotations?.filter((a) => !focus || focus.has(a.id)) ?? [];
   const sims = d.simulations?.filter((s) => !focus || s.traffic.some((t) => focus.has(t.node))) ?? [];
+  // One shared routing/analysis pass, bounded to modest graphs; describing a large graph stays cheap.
+  const topology = compileTopology(d);
+  const connections = resolveCapabilities(d, topology);
+  const analysis = d.nodes.length <= 200 && d.edges.length <= 500 ? analyzeCapacity(d) : undefined;
+  const resolved = (id: string) => (analysis ? explainNode(d, id, { analysis, topology, fixes: false }) : undefined);
   if (options.format === "json") {
     let remaining = limit;
     const take = <T>(items: T[]) => {
@@ -37,7 +46,12 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
       title: d.title,
       description: d.description,
       direction: d.direction ?? "LR",
-      nodes: take(nodes),
+      planning: d.planning,
+      nodes: take(nodes).map((n) => ({
+        ...n,
+        capabilities: connections[n.id] ?? [],
+        explanation: resolved(n.id),
+      })),
       edges: take(edges),
       groups: take(groups),
       annotations: take(notes),
@@ -50,9 +64,10 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   ];
   if (d.description) lines.push(`description: ${quote(d.description)}`);
   lines.push("nodes:");
-  for (const n of nodes)
+  const shownNodes = nodes.slice(0, Math.max(0, limit - lines.length - 1));
+  for (const n of shownNodes)
     lines.push(
-      `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""}`,
+      `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}`,
     );
   lines.push("connections:");
   for (const e of edges)
@@ -72,7 +87,8 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
     lines.push(
       `simulation ${quote(s.id)} ${quote(s.title)}: ${s.traffic.map((t) => `${JSON.stringify(t.shape)} from ${quote(t.node)}`).join("; ")}; timeline=${JSON.stringify(s.timeline ?? [])}; expectations=${JSON.stringify(s.expectations ?? [])}`,
     );
-  return lines.length > limit
-    ? [...lines.slice(0, limit - 1), `… ${lines.length - limit + 1} lines omitted`].join("\n")
+  const totalLines = lines.length + nodes.length - shownNodes.length;
+  return totalLines > limit
+    ? [...lines.slice(0, limit - 1), `… ${totalLines - limit + 1} lines omitted`].join("\n")
     : lines.join("\n");
 }

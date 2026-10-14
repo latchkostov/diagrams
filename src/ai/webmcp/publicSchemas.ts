@@ -5,6 +5,7 @@
 // Written by scripts/gen-schemas.mjs before every build; a unit test keeps the committed files current.
 
 import { catalog } from "../../stencils/catalog";
+import { diagramV2Schema } from "../../model/diagramSchema";
 import { STENCIL_ALIASES } from "../../lib/stencilSearch";
 import { diagramV1Schema, toolDescriptions, toolSchemas, opsSchema, toolAnnotations } from "../index";
 
@@ -66,6 +67,7 @@ export function publicSchemaFiles(): Record<string, string> {
   const json = (v: unknown) => JSON.stringify(v, null, 2) + "\n";
   return {
     "diagram.v1.json": json(diagramV1Schema),
+    "diagram.v2.json": json(diagramV2Schema),
     "ops.v1.json": json(opsDoc()),
     "stencils.json": json(stencilsDoc()),
   };

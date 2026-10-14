@@ -1,5 +1,12 @@
 # The diagrams/v1 file format
 
+Planning files additionally support `diagrams/v2` with `planning: { "revision": "p1" }` and
+<https://www.livediagrams.dev/schema/diagram.v2.json>. Legacy v1 retains legacy playback and omitted
+defaults. Never upgrade by merely changing the format marker: the app's explicit upgrade pins current
+effective values and previews compatibility. Presets store `preset` / `presetRevision`; unsupported
+revisions are refused. Physical `networkDelayMs`, store `connections` and `querySlots` are distinct
+metadata, not P1 execution controls.
+
 A diagram is one JSON file, `<name>.diagram.json`. This page covers what an agent needs. The full JSON Schemas
 are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file) and
 <https://www.livediagrams.dev/schema/stencils.json> (every stencil).
@@ -96,6 +103,10 @@ Every setting is optional, and live view works without any. Node `props`:
 
 <!-- BEGIN GENERATED node-props -->
 
+- `preset` ("processor-lesson" | "device-size"): immutable preset id: processor-lesson (assumption) or device-size (existing approximate size preset); resolved values are pinned alongside
+- `presetRevision` ("1"): pinned preset revision (1 for P1); unsupported revisions are refused
+- `connections` (integer 1..10000): store connection ceiling, distinct from active query slots; planning metadata, not enforced in P1
+- `querySlots` (integer 1..10000): measured concurrent active queries; planning metadata, stores remain parallel in P1 playback
 - `ratePerSec` (number 0..10000000): messages per second a source sends in free play (default 2)
 - `latencyMs` (number 0..600000): time to handle one message (processor 250, gateway 60, store 40 by default)
 - `concurrency` (number 0..10000): messages handled at once per replica (default 4)
@@ -122,9 +133,11 @@ Edge `props`:
 <!-- BEGIN GENERATED edge-props -->
 
 - `group` (string): consumer group, on an edge leaving a topic or stream: every group gets each message, edges in one group compete
+- `groupOrigin` ("inferred"): inferred: the default group follows the consumer node id when copied or reconnected; omit for authored group names
 - `share` (number 0..1): chance that this fan-out edge gets a copy
 - `dlq` (boolean): true marks a broker's dead-letter route (also inferred from a target labelled DLQ or dead-letter)
 - `travelMs` (number 0..600000): time a message spends on the edge (default 300 for a message, 200 for a request); animation only, never a limit
+- `networkDelayMs` (number 0..600000): physical one-way delay in ms (absent means unknown); metadata only in P1, never added to animation travelMs
 - `emits` (string): renames messages on this edge
 - `filter` (string[]): message types this edge accepts, e.g. ["Order*"] (a trailing * matches a prefix)
 - `deny` (boolean): true makes the edge a deny rule: messages routed here are blocked at its source (counted as blocked, never dropped)

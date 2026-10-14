@@ -352,9 +352,10 @@
 /* Hover breakdown */
 .lv-detail {
   position: absolute;
-  top: calc(100% + 34px);
+  bottom: calc(100% + 12px);
   left: 0;
   min-width: 210px;
+  width: 320px;
   padding: 9px 11px;
   display: grid;
   gap: 4px;
@@ -366,7 +367,7 @@
   font-size: 12px;
   line-height: 1.3;
   transform: scale(var(--inv, 1));
-  transform-origin: 0 0;
+  transform-origin: 0 100%;
   z-index: 3;
   animation: lv-note-in 0.15s ease-out;
 }
@@ -2441,4 +2442,21 @@ details[open] > summary .lv-disclosure-chevron {
   .lv-rec-count-n {
     animation: none;
   }
+}
+
+.lv-detail-more {
+  display: none;
+}
+.lv-detail.is-compact > :not(.planning-explanation):not(.lv-detail-more),
+.lv-detail.is-compact .planning-explanation > :not([data-testid="planning-arithmetic"]) {
+  display: none;
+}
+.lv-detail.is-compact .lv-detail-more {
+  display: block;
+}
+.lv-detail.is-compact [data-testid="planning-arithmetic"] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }

@@ -8,6 +8,14 @@ import type { NodeSimProps, EdgeSimProps } from "../sim/types";
  */
 export const SIM_LIMITS = { ratePerSec: 10_000_000, count: 10_000, timeMs: 600_000 } as const;
 
+/** Compatibility is shared by files and clipboard fragments, including saved patches. */
+export function unsupportedPreset(props: unknown): boolean {
+  if (!props || typeof props !== "object" || Array.isArray(props)) return false;
+  const p = props as Record<string, unknown>;
+  if (p.preset === undefined && p.presetRevision === undefined) return false;
+  return (p.preset !== "processor-lesson" && p.preset !== "device-size") || p.presetRevision !== "1";
+}
+
 const rate = { type: "number", minimum: 0, maximum: SIM_LIMITS.ratePerSec };
 const quantity = { type: "number", minimum: 0, maximum: SIM_LIMITS.count };
 const cardinality = { type: "integer", minimum: 1, maximum: SIM_LIMITS.count };
@@ -15,6 +23,10 @@ const time = { type: "number", minimum: 0, maximum: SIM_LIMITS.timeMs };
 const fraction = { type: "number", minimum: 0, maximum: 1 };
 // Field coverage is checked against the engine interfaces by TypeScript.
 const nodeProperties = {
+  preset: { type: "string", enum: ["processor-lesson", "device-size"] },
+  presetRevision: { type: "string", enum: ["1"] },
+  connections: cardinality,
+  querySlots: cardinality,
   ratePerSec: rate,
   latencyMs: time,
   concurrency: quantity,
@@ -36,9 +48,11 @@ const nodeProperties = {
 } satisfies Record<keyof NodeSimProps, JsonSchema>;
 const edgeProperties = {
   group: { type: "string" },
+  groupOrigin: { type: "string", enum: ["inferred"] },
   share: fraction,
   dlq: { type: "boolean" },
   travelMs: time,
+  networkDelayMs: time,
   emits: { type: "string" },
   filter: { type: "array", items: { type: "string" } },
   deny: { type: "boolean" },
@@ -53,6 +67,19 @@ export const edgeSimPropsSchema: JsonSchema = {
   additionalProperties: true,
   properties: edgeProperties,
 };
+
+/** P1 edge metadata uses the same bounds at both file and clipboard boundaries. */
+export function invalidPlanningDelay(props: unknown): boolean {
+  if (!props || typeof props !== "object" || Array.isArray(props)) return false;
+  const value = (props as Record<string, unknown>).networkDelayMs;
+  if (value === undefined) return false;
+  try {
+    checkJsonSchema(value, edgeProperties.networkDelayMs, "networkDelayMs");
+    return false;
+  } catch {
+    return true;
+  }
+}
 // Native files preserve engine settings such as zero concurrency. AI suggestions use positive
 // integer counts, retaining the existing input constraints without duplicating property definitions.
 const aiProperties = {

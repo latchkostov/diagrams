@@ -56,7 +56,7 @@ function today(now = /* @__PURE__ */ new Date()) {
 /** What the file carries: the diagram (with its title and chosen simulations), the used icons and the options. */
 function buildPayload(template, input) {
 	const d = input.diagram;
-	if (d?.format !== "diagrams/v1" || !Array.isArray(d.nodes) || !Array.isArray(d.edges)) throw new Error("That isn't a diagram (diagrams/v1 with nodes and edges).");
+	if (d?.format !== "diagrams/v1" && d?.format !== "diagrams/v2" || !Array.isArray(d.nodes) || !Array.isArray(d.edges)) throw new Error("That isn't a diagram (diagrams/v1 with nodes and edges).");
 	const keep = input.simulations ? new Set(input.simulations) : void 0;
 	const simulations = (input.diagram.simulations ?? []).filter((s) => !keep || keep.has(s.id));
 	const title = (input.title ?? input.diagram.title).trim() || input.diagram.title;

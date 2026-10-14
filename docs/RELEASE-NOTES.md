@@ -1,5 +1,55 @@
 # Release notes
 
+## Planning P1 CI fixes (2026-10-14)
+
+- Live stats cards open below nodes when there is room, flip above when needed, and keep covering
+  lower nodes, status rings and capacity badges in both themes.
+- Live callouts move clear of nodes as the canvas pans, zooms or resizes, so Properties and full
+  consumer-group details remain reachable in short viewports. When the full card cannot fit, a compact
+  row keeps its cause and action; the full reason stays available on hover and to screen readers.
+- Naming saves each key immediately while planning waits until naming ends. Diagrams beyond the
+  planning limit avoid copying the document for that readout; model previews read it only when opened.
+- The Lab's inspector-focus preset renders again and retains focus requests until the matching field mounts.
+
+## Planning P1 round 3 fixes (2026-10-14)
+
+- Large or dense diagrams get a bounded, explicit unavailable explanation instead of blocking selection;
+  moving nodes reuses the configured plan and sizing result. Current-run counters remain available when an explanation cannot be computed.
+- Explanations follow the engine's current settings after Inputs changes, timeline actions and seeking.
+  Upgrade and legacy export retain partial timeline edits, and sparse P1 paste preserves playback.
+- Paste rejects unsupported preset revisions and invalid planning settings. Copied inferred consumer groups
+  follow the new consumer IDs while authored names stay intact.
+- Screen readers receive the numerical explanation. Add a consumer keeps keyboard focus on the new Label;
+  open hover cards follow pan, zoom and resize. Full observed counters and group lag are available under
+  Live details in Properties, including when the hover is compact.
+
+## Planning P1 review fixes (2026-10-14)
+
+- Private diagrams keep their flag in legacy downloads, alongside native JSON and Interactive HTML.
+- Upgrade and legacy export preserve effective defaults, device sizes, saved setup and timeline behavior;
+  legacy loss reports include metadata in saved simulations.
+- Consumer defaults use stable node identities. Live counters reuse configured planning analysis, descriptions
+  avoid per-node sizing verification, and incoming-source explanations have bounded text.
+- Apply keeps current outages, keyboard focus survives disappearing actions, and tall hover cards fit short
+  viewports with full details in Properties. Whole-file paste accepts the new format; sizing uses base replica
+  counts consistently.
+
+## Planning P1 (2026-10-14)
+
+- The inspector and live hover card explain processor throughput, incoming traffic, arithmetic and
+  a chosen utilization target. Orders at 3 req/s demand and 1 req/s capacity distinguishes three
+  replicas at 100% from six at 50%, with one undoable planner fix.
+- Read-only Connections rows derive Consumes / Publishes / Calls from current flows. Two input
+  policies share one node pool; HTTP-only services have no consumer policies. Removing/reconnecting
+  an edge refreshes the readout. A broker without a reader explains its producers and offers Add a consumer.
+- Explicit family profiles and pinned lesson/device revisions share playback's resolver with analysis,
+  checks and explanations. Existing files retain legacy playback. Diagram properties offers an
+  undoable upgrade preview and legacy export with a loss report. Planning files use `diagrams/v2`;
+  unsupported revisions are refused instead of substituted.
+- Physical delay and store connections/query slots have distinct, bounded metadata contracts; their
+  execution models remain deferred. New `planning.*` strings use `t()`; the 37 non-English languages
+  currently fall back to English. No top-bar controls were added.
+
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
 ## AI language switching fixes (2026-10-14)

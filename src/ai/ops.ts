@@ -1,3 +1,4 @@
+import { connectionProps } from "../model/connectionDefaults";
 import { splitEdge } from "../model/edgeSplit";
 import type { DiagramFile, DiagramNode } from "../model/types";
 import { uniqueId, stencilIdBase } from "../editor/ids";
@@ -6,7 +7,7 @@ import { placeFree, overlaps } from "../canvas/placement";
 import { resolveRef, ReferenceError, RefIndex, type ElementKind } from "./refs";
 import { resolveKind } from "./stencils";
 import { reinferRelations, relationChangeText } from "../stencils/relations";
-import { inferKind } from "../stencils/edgeKind";
+import { connectionDefaults } from "../model/connectionDefaults";
 import { placeNew } from "./place";
 import { checkBudget, checkSchema, validated } from "./validation";
 import { edit_diagramSchema } from "./schemas";
@@ -136,7 +137,12 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             id,
             from,
             to,
-            kind: op.kind ?? (op.relation ? "async" : inferKind(stencil(from), stencil(to))),
+            ...connectionDefaults(
+              { id: from, stencil: stencil(from) },
+              { id: to, stencil: stencil(to) },
+              next.planning,
+              { kind: op.kind, relation: op.relation ?? "flow" },
+            ),
             ...(op.label !== undefined ? { label: op.label } : {}),
             ...(op.relation ? { relation: op.relation } : {}),
           });
@@ -177,7 +183,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
               throw new Error("Connection kind must be async or sync.");
             if (op.kind !== undefined) e.kind = op.kind as "async" | "sync";
             if (op.label !== undefined) e.label = op.label;
-            if (op.props) e.props = mergeProps(e.props, op.props);
+            if (op.props) e.props = mergeProps(e.props, connectionProps(e.props, op.props));
           } else if (g) {
             touched.add(g.id);
             if (op.kind !== undefined || op.in !== undefined || op.props || op.sublabel !== undefined)

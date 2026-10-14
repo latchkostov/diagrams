@@ -50,6 +50,13 @@ var SIM_LIMITS = {
 	count: 1e4,
 	timeMs: 6e5
 };
+/** Compatibility is shared by files and clipboard fragments, including saved patches. */
+function unsupportedPreset(props) {
+	if (!props || typeof props !== "object" || Array.isArray(props)) return false;
+	const p = props;
+	if (p.preset === void 0 && p.presetRevision === void 0) return false;
+	return p.preset !== "processor-lesson" && p.preset !== "device-size" || p.presetRevision !== "1";
+}
 var rate$1 = {
 	type: "number",
 	minimum: 0,
@@ -76,6 +83,16 @@ var fraction = {
 	maximum: 1
 };
 var nodeProperties = {
+	preset: {
+		type: "string",
+		enum: ["processor-lesson", "device-size"]
+	},
+	presetRevision: {
+		type: "string",
+		enum: ["1"]
+	},
+	connections: cardinality,
+	querySlots: cardinality,
 	ratePerSec: rate$1,
 	latencyMs: time$1,
 	concurrency: quantity,
@@ -125,9 +142,14 @@ var nodeProperties = {
 };
 var edgeProperties = {
 	group: { type: "string" },
+	groupOrigin: {
+		type: "string",
+		enum: ["inferred"]
+	},
 	share: fraction,
 	dlq: { type: "boolean" },
 	travelMs: time$1,
+	networkDelayMs: time$1,
 	emits: { type: "string" },
 	filter: {
 		type: "array",
@@ -140,6 +162,18 @@ var nodeSimPropsSchema = {
 	additionalProperties: true,
 	properties: nodeProperties
 };
+/** P1 edge metadata uses the same bounds at both file and clipboard boundaries. */
+function invalidPlanningDelay(props) {
+	if (!props || typeof props !== "object" || Array.isArray(props)) return false;
+	const value = props.networkDelayMs;
+	if (value === void 0) return false;
+	try {
+		checkJsonSchema(value, edgeProperties.networkDelayMs, "networkDelayMs");
+		return false;
+	} catch {
+		return true;
+	}
+}
 var aiProperties = {
 	...nodeProperties,
 	concurrency: cardinality,
@@ -406,6 +440,21 @@ function idClaimer(taken = /* @__PURE__ */ new Set(), avoid) {
 	};
 }
 //#endregion
+//#region src/i18n/core.ts
+/**
+* The runtime's state. One object, so ./load.ts (lazy) can switch the language without the entry carrying the
+* code that does: `l` the language, `c` its catalog (none for English), `f` what re-renders when they change, `a`
+* relative times.
+*/
+var state = {
+	l: "en",
+	f: /* @__PURE__ */ new Set()
+};
+function t(key, english, values) {
+	const m = typeof key == "object" ? state.c?.[key[0]] ?? key[0] : state.c?.[key] ?? english;
+	return typeof m == "function" ? m(values) : m;
+}
+//#endregion
 //#region src/interop/native.ts
 /**
 * Budgets for untrusted input (files, pastes, share links, Drive, storage). Generous for real
@@ -458,7 +507,7 @@ var FormatError = class extends Error {};
 /** Brings any supported raw object up to the current format, or throws with a helpful message. */
 function migrate(raw) {
 	let cur = raw;
-	for (let hops = 0; cur.format !== DIAGRAM_FORMAT; hops++) {
+	for (let hops = 0; cur.format !== "diagrams/v1" && cur.format !== "diagrams/v2"; hops++) {
 		const step = typeof cur.format === "string" ? MIGRATIONS[cur.format] : void 0;
 		if (!step || hops > 20) {
 			const found = cur.format;
@@ -499,6 +548,14 @@ function validateDiagram(data) {
 			error: err instanceof Error ? err.message : String(err)
 		};
 	}
+	if (raw.format === "diagrams/v2" && (!isObj$1(raw.planning) || raw.planning.revision !== "p1")) return {
+		ok: false,
+		error: t`Unsupported planning revision. Reload Live Diagrams to open this file; its playback has not been changed.`
+	};
+	if (raw.format === "diagrams/v1" && raw.planning !== void 0) return {
+		ok: false,
+		error: t`Planning documents require diagrams/v2. Remove planning to retain legacy playback, or export with a current reader.`
+	};
 	if (!Array.isArray(raw.nodes)) return {
 		ok: false,
 		error: "The diagram needs both a nodes and an edges list."
@@ -540,6 +597,21 @@ function validateDiagram(data) {
 			ok: false,
 			error: budget
 		};
+		for (const sim of raw.simulations) {
+			if (!isObj$1(sim)) continue;
+			const props = isObj$1(sim.setup) && isObj$1(sim.setup.props) ? sim.setup.props : {};
+			for (const [id, value] of Object.entries(props)) if (unsupportedPreset(value)) return {
+				ok: false,
+				error: t(673, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id })
+			};
+			if (Array.isArray(sim.timeline)) for (const step of sim.timeline) {
+				const action = isObj$1(step) && isObj$1(step.action) ? step.action : void 0;
+				if (action?.do === "props" && unsupportedPreset(action.props)) return {
+					ok: false,
+					error: t(673, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: typeof action.node === "string" ? action.node : "(invalid node)" })
+				};
+			}
+		}
 	}
 	if (exceedsDepth(raw)) return {
 		ok: false,
@@ -629,6 +701,10 @@ function validateDiagram(data) {
 			delete out.group;
 		}
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
+		if (unsupportedPreset(out.props)) return {
+			ok: false,
+			error: t(673, (v) => "Node “" + v.id + "” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.", { id: n.id })
+		};
 		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
 		if (problem) return {
 			ok: false,
@@ -702,6 +778,13 @@ function validateDiagram(data) {
 		if (out.sourceSide !== void 0 && !SIDES.has(out.sourceSide)) delete out.sourceSide;
 		if (out.targetSide !== void 0 && !SIDES.has(out.targetSide)) delete out.targetSide;
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
+		if (invalidPlanningDelay(out.props)) return {
+			ok: false,
+			error: t(618, (v) => "Connection “" + v.id + "” needs a finite nonnegative networkDelayMs up to " + v.limit.toLocaleString("en") + ".", {
+				id: e.id,
+				limit: SIM_LIMITS.timeMs
+			})
+		};
 		const deny = out.props?.deny;
 		if (deny !== void 0 && typeof deny !== "boolean") {
 			warnings.push(`Edge "${e.id}" had a deny rule that wasn't true or false (${String(JSON.stringify(deny)).slice(0, 40)}); it's read as deny, so what's routed there is blocked. Set it to false to allow.`);

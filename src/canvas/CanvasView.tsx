@@ -2434,6 +2434,8 @@ function CanvasInner({
         {!hideChrome && (
           <Inspector
             editor={editor}
+            revision={hostRevision}
+            readDiagram={() => fromFlow(meta, nodes, edges)}
             meta={meta}
             selectedNodes={selectedNodes}
             selectedGroups={selectedGroups}

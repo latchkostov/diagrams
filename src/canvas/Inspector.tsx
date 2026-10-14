@@ -12,7 +12,7 @@ import {
 import { getStencil } from "../stencils/registry";
 import { simRoleMeta } from "../lib/simRoles";
 import type { NodeSimProps } from "../sim/types";
-import type { Side, SimRole } from "../model/types";
+import type { DiagramFile, Side, SimRole } from "../model/types";
 import { Icon, type IconName } from "../components/Icon";
 import { StencilIcon } from "../components/StencilIcon";
 import { ContextMenu } from "../components/ContextMenu";
@@ -71,6 +71,7 @@ import { formatCount } from "../live/format";
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
 import { SIM_FIELDS_BY_ROLE, edgeSimFields, inertNodeProps } from "./simFieldRules";
 import { SIM_LIMITS } from "../interop/native";
+import { NodePlanning, PlanningUpgrade } from "../planning/lazy";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.
@@ -220,8 +221,12 @@ export interface InspectorProps {
    */
   connection?: { id: string; label: string };
   onNamed?: () => void;
-  /** The selection's architecture-check findings, shown above its fields (a single node or connection). */
+  /** The selection's architecture-check findings. Nodes show them after their configuration. */
   findings?: ReactNode;
+  /** Canvas revision, read by planning only outside a name edit. */
+  revision?: unknown;
+  /** Reads the canvas's current render, before React Flow's imperative store catches up. */
+  readDiagram?: () => DiagramFile;
   /** A text's edit is done (see DiagramUi.settleText): it moves clear if it grew over something. */
   onTextSettled?: (id: string, before: { x: number; y: number; width: number; height: number }) => void;
 }
@@ -339,7 +344,7 @@ export function Inspector(p: InspectorProps) {
       </div>
       {/* Where focus goes after a finding's fix when no other finding is left to take it. */}
       <div className="insp-body" ref={body} data-testid="inspector-body" data-check-fallback-scope>
-        {n === 1 && p.findings}
+        {n === 1 && !p.selectedNodes[0] && p.findings}
         {content}
       </div>
     </aside>
@@ -406,12 +411,33 @@ function useNameFields(
   return { keys, merge: () => ({ merge: tag.current }) };
 }
 
-function NodePanel({ node, editor, groups, connection, onNamed }: InspectorProps & { node: DiagramFlowNode }) {
+function NodePanel({
+  node,
+  editor,
+  groups,
+  connection,
+  onNamed,
+  findings,
+  revision,
+  counts,
+  readDiagram,
+}: InspectorProps & { node: DiagramFlowNode }) {
   const stencil = getStencil(node.data.stencil);
   const role = stencil.simRole;
   const props = node.data.props ?? {};
   // A new node keeps its creation step while these name fields are focused.
-  const naming = useNameFields(editor, "node", node.id, node.id, onNamed);
+  const [namingActive, setNamingActive] = useState(false);
+  const naming = useNameFields(editor, "node", node.id, node.id, () => {
+    setNamingActive(false);
+    onNamed?.();
+  });
+  const nameKeys = {
+    ...naming.keys,
+    onFocus: (e: FocusEvent<HTMLInputElement>) => {
+      setNamingActive(true);
+      naming.keys.onFocus(e);
+    },
+  };
   const merge = (f: string) => ({ merge: `inspector:node:${node.id}:${f}` });
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const simFields = SIM_FIELDS_BY_ROLE[role];
@@ -449,7 +475,7 @@ function NodePanel({ node, editor, groups, connection, onNamed }: InspectorProps
             className="insp-input"
             value={node.data.label}
             onChange={(e) => editor.updateNode(node.id, { label: e.target.value }, naming.merge())}
-            {...naming.keys}
+            {...nameKeys}
             name="label"
             data-testid="inspector-field-label"
           />
@@ -460,7 +486,7 @@ function NodePanel({ node, editor, groups, connection, onNamed }: InspectorProps
             value={node.data.sublabel ?? ""}
             placeholder={stencil.label}
             onChange={(e) => editor.updateNode(node.id, { sublabel: e.target.value }, naming.merge())}
-            {...naming.keys}
+            {...nameKeys}
             name="sublabel"
             data-testid="inspector-field-sublabel"
           />
@@ -472,7 +498,7 @@ function NodePanel({ node, editor, groups, connection, onNamed }: InspectorProps
               value={connection.label}
               placeholder="e.g. Reserve stock"
               onChange={(e) => editor.updateEdge(connection.id, { label: e.target.value || undefined }, naming.merge())}
-              {...naming.keys}
+              {...nameKeys}
               name="connection"
               data-testid="inspector-field-connection"
             />
@@ -496,6 +522,15 @@ function NodePanel({ node, editor, groups, connection, onNamed }: InspectorProps
         </Field>
         <CopyId id={node.id} />
       </Section>
+
+      <NodePlanning
+        id={node.id}
+        editor={editor}
+        revision={revision ?? node}
+        readDiagram={readDiagram}
+        paused={namingActive}
+        counts={counts}
+      />
 
       <Disclosure
         id="node-simulation"
@@ -551,6 +586,8 @@ function NodePanel({ node, editor, groups, connection, onNamed }: InspectorProps
           onSetMerged={(patch, key) => editor.setNodeProps(node.id, patch, merge(`prop:${key}`))}
         />
       </Disclosure>
+
+      {findings}
 
       {picker && (
         <ContextMenu
@@ -1561,6 +1598,7 @@ function BulkSwatches<T extends string>({
 function DiagramPanel({ editor, meta, counts }: InspectorProps) {
   return (
     <>
+      <PlanningUpgrade editor={editor} planning={meta.planning} />
       <Section>
         <Field label="Title">
           <input
@@ -1730,7 +1768,15 @@ function DeviceFields({
         <select
           className="insp-input"
           value={size}
-          onChange={(e) => set({ size: e.target.value, gbps: undefined, latencyMs: undefined })}
+          onChange={(e) => {
+            const size = sizeOf(spec, e.target.value);
+            const preset = presetOf(spec, size);
+            set(
+              props.preset === "device-size"
+                ? { size, gbps: preset.gbps, latencyMs: preset.latencyMs }
+                : { size, gbps: undefined, latencyMs: undefined },
+            );
+          }}
           name="size"
           data-testid="inspector-field-size"
         >

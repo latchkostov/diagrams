@@ -1,4 +1,4 @@
-import type { DiagramNode, SimRole } from "../model/types";
+import type { DiagramNode, SimRole, PlanningModel } from "../model/types";
 import { resolveProps } from "./defaults";
 import type { InjectOptions, SimEngine } from "./types";
 import { resolveScale } from "./units";
@@ -8,6 +8,7 @@ export function createRealCountInjector(
   engine: SimEngine,
   nodeById: (id: string) => DiagramNode | undefined,
   roleOf: (stencil: string) => SimRole,
+  planning: PlanningModel | undefined,
 ) {
   let credits = new Map<string, number>();
   return {
@@ -15,7 +16,9 @@ export function createRealCountInjector(
       const node = nodeById(nodeId);
       if (!node || !Number.isFinite(count) || count <= 0) return;
       const type =
-        options.type ?? resolveProps(roleOf(node.stencil), node.label, engine.effectiveProps(nodeId)).messageType;
+        options.type ??
+        resolveProps(roleOf(node.stencil), node.label, engine.effectiveProps(nodeId), node.stencil, planning)
+          .messageType;
       const key = JSON.stringify([nodeId, type]);
       const credit = (credits.get(key) ?? 0) + count / resolveScale(scale);
       const samples = Math.floor(credit + 1e-9);

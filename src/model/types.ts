@@ -36,10 +36,15 @@ export interface Stencil {
 }
 
 export const DIAGRAM_FORMAT = "diagrams/v1" as const;
+/** Immutable model revision. Absent means legacy playback, including omitted defaults. */
+export interface PlanningModel {
+  revision: "p1";
+}
 
 /** The saved / imported file format. Plain JSON. */
 export interface DiagramFile {
-  format: typeof DIAGRAM_FORMAT;
+  format: typeof DIAGRAM_FORMAT | "diagrams/v2";
+  planning?: PlanningModel;
   title: string;
   description?: string;
   /** Primary flow direction, used for auto-layout and handle placement. Default "LR". */

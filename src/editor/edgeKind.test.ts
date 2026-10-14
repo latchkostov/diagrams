@@ -35,8 +35,8 @@ const BASE: DiagramFile = {
   edges: [{ id: "old", from: "api", to: "db", kind: "async" }],
 };
 
-function setup() {
-  const flow = toFlow(BASE);
+function setup(diagram: DiagramFile = BASE) {
+  const flow = toFlow(diagram);
   let nodes: FlowNode[] = flow.nodes;
   let edges: DiagramFlowEdge[] = flow.edges;
   const queue: (() => void)[] = [];
@@ -130,4 +130,22 @@ describe("an agent's connect without a kind", () => {
       kind("api", "kv"),
     ]).toEqual(["sync", "async", "sync", "async", "async"]);
   });
+});
+
+it("planning draws and quick-adds independent groups even when consumer labels match", () => {
+  const d = structuredClone(BASE);
+  d.format = "diagrams/v2";
+  d.planning = { revision: "p1" };
+  d.nodes.find((n) => n.id === "db")!.stencil = "generic.service";
+  d.nodes.find((n) => n.id === "db")!.label = d.nodes.find((n) => n.id === "api")!.label;
+  const t = setup(d);
+  const first = t.api.connect("topic", "api");
+  t.commit();
+  const second = t.api.connect("topic", "db");
+  t.commit();
+  expect(t.edge(first)?.data?.props?.group).toBe("api");
+  expect(t.edge(second)?.data?.props?.group).toBe("db");
+  const made = t.api.createConnected({ from: "topic", stencil: "generic.service", toward: "down" });
+  t.commit();
+  expect(t.edge(made?.edge)?.data?.props?.group).toBe(made?.id);
 });

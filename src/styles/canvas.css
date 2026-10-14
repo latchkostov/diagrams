@@ -1617,6 +1617,29 @@
   border-bottom: 1px solid var(--line);
 }
 
+.planning-explanation {
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.planning-explanation small {
+  color: var(--text-3);
+}
+.planning-explanation p {
+  margin-block: 8px;
+}
+.planning-connection {
+  font-size: 12px;
+  line-height: 1.5;
+  padding-block: 8px;
+  border-block-start: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.planning-connection p {
+  color: var(--text-3);
+  margin-block: 4px;
+}
+
 .insp-section:last-child {
   border-bottom: 0;
 }

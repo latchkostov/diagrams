@@ -37,6 +37,11 @@ const METRICS = ["processed", "backlog", "inFlight", "failed", "deadLettered", "
 
 /** One line per simulation property. A new property fails generation until it's described here. */
 const NODE_PROP_NOTES: Record<string, string> = {
+  preset:
+    "immutable preset id: processor-lesson (assumption) or device-size (existing approximate size preset); resolved values are pinned alongside",
+  presetRevision: "pinned preset revision (1 for P1); unsupported revisions are refused",
+  connections: "store connection ceiling, distinct from active query slots; planning metadata, not enforced in P1",
+  querySlots: "measured concurrent active queries; planning metadata, stores remain parallel in P1 playback",
   ratePerSec: "messages per second a source sends in free play (default 2)",
   messageType: 'what a source sends, e.g. "OrderPlaced"',
   latencyMs: "time to handle one message (processor 250, gateway 60, store 40 by default)",
@@ -58,8 +63,12 @@ const NODE_PROP_NOTES: Record<string, string> = {
   healthChecks: "gateways: skip targets that are down (default true for ADCs, false otherwise)",
 };
 const EDGE_PROP_NOTES: Record<string, string> = {
+  networkDelayMs:
+    "physical one-way delay in ms (absent means unknown); metadata only in P1, never added to animation travelMs",
   group:
     "consumer group, on an edge leaving a topic or stream: every group gets each message, edges in one group compete",
+  groupOrigin:
+    "inferred: the default group follows the consumer node id when copied or reconnected; omit for authored group names",
   dlq: "true marks a broker's dead-letter route (also inferred from a target labelled DLQ or dead-letter)",
   filter: 'message types this edge accepts, e.g. ["Order*"] (a trailing * matches a prefix)',
   share: "chance that this fan-out edge gets a copy",

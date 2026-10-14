@@ -75,12 +75,12 @@ export function liveActions(host: LiveActionsHost): Action[] {
   const role = (id: string) => c.snapshot().nodes[id]?.role ?? "none";
   const props = (id: string) => {
     const node = c.currentDiagram.nodes.find((n) => n.id === id);
-    return resolveProps(role(id), node?.label ?? id, c.effectiveProps(id), node?.stencil);
+    return resolveProps(role(id), node?.label ?? id, c.effectiveProps(id), node?.stencil, c.currentDiagram.planning);
   };
   const baseProps = (id: string) => {
     const node = c.currentDiagram.nodes.find((n) => n.id === id);
     const raw = { ...node?.props, ...c.getState().simulation?.setup?.props?.[id] };
-    return resolveProps(role(id), node?.label ?? id, raw, node?.stencil);
+    return resolveProps(role(id), node?.label ?? id, raw, node?.stencil, c.currentDiagram.planning);
   };
   const baseLatency = (id: string) => baseProps(id).latencyMs || 250;
   const isNode = (id: string | undefined): id is string => !!id && !!c.snapshot().nodes[id];

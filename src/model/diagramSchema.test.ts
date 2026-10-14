@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";
-import { diagramV1Schema } from "./diagramSchema";
+import { diagramV1Schema, diagramV2Schema } from "./diagramSchema";
 import { EDGE_RELATIONS } from "./relations";
 import type {
   DiagramAnnotation,
@@ -27,8 +27,15 @@ function strict(schema: unknown): unknown {
 }
 
 const schema = strict(diagramV1Schema) as JsonSchema;
+const planningSchema = strict(diagramV2Schema) as JsonSchema;
 const defs = schema.$defs as Record<string, JsonSchema>;
-const check = (value: unknown, def?: string) => checkJsonSchema(value, def ? defs[def] : schema, def ?? "file", defs);
+const check = (value: unknown, def?: string) =>
+  checkJsonSchema(
+    value,
+    def ? defs[def] : (value as DiagramFile).format === "diagrams/v2" ? planningSchema : schema,
+    def ?? "file",
+    defs,
+  );
 
 const node: Required<DiagramNode> = {
   id: "api",
@@ -106,7 +113,8 @@ const simulation: Required<Simulation> = {
   expectations: [expectation],
 };
 const file: Required<DiagramFile> = {
-  format: "diagrams/v1",
+  format: "diagrams/v2",
+  planning: { revision: "p1" },
   title: "Everything",
   description: "Every field the format has.",
   direction: "TB",

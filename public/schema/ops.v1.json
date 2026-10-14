@@ -344,6 +344,29 @@
       "type": "object",
       "additionalProperties": true,
       "properties": {
+        "preset": {
+          "type": "string",
+          "enum": [
+            "processor-lesson",
+            "device-size"
+          ]
+        },
+        "presetRevision": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "connections": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "querySlots": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
         "ratePerSec": {
           "type": "number",
           "minimum": 0,
@@ -469,6 +492,16 @@
             "null"
           ]
         },
+        "groupOrigin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "inferred",
+            null
+          ]
+        },
         "share": {
           "type": [
             "number",
@@ -484,6 +517,14 @@
           ]
         },
         "travelMs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 600000
+        },
+        "networkDelayMs": {
           "type": [
             "number",
             "null"
@@ -521,6 +562,43 @@
             "boolean",
             "null"
           ]
+        },
+        "preset": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "processor-lesson",
+            "device-size",
+            null
+          ]
+        },
+        "presetRevision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "1",
+            null
+          ]
+        },
+        "connections": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "querySlots": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 10000
         },
         "ratePerSec": {
           "type": [
@@ -710,6 +788,29 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "processor-lesson",
+                  "device-size"
+                ]
+              },
+              "presetRevision": {
+                "type": "string",
+                "enum": [
+                  "1"
+                ]
+              },
+              "connections": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
@@ -835,6 +936,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -850,6 +961,14 @@
                 ]
               },
               "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "networkDelayMs": {
                 "type": [
                   "number",
                   "null"
@@ -887,6 +1006,43 @@
                   "boolean",
                   "null"
                 ]
+              },
+              "preset": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "processor-lesson",
+                  "device-size",
+                  null
+                ]
+              },
+              "presetRevision": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "1",
+                  null
+                ]
+              },
+              "connections": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
               },
               "ratePerSec": {
                 "type": [
@@ -1092,6 +1248,29 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "processor-lesson",
+                  "device-size"
+                ]
+              },
+              "presetRevision": {
+                "type": "string",
+                "enum": [
+                  "1"
+                ]
+              },
+              "connections": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
@@ -1217,6 +1396,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -1232,6 +1421,14 @@
                 ]
               },
               "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "networkDelayMs": {
                 "type": [
                   "number",
                   "null"
@@ -1269,6 +1466,43 @@
                   "boolean",
                   "null"
                 ]
+              },
+              "preset": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "processor-lesson",
+                  "device-size",
+                  null
+                ]
+              },
+              "presetRevision": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "1",
+                  null
+                ]
+              },
+              "connections": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
               },
               "ratePerSec": {
                 "type": [
@@ -1468,6 +1702,29 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "processor-lesson",
+                  "device-size"
+                ]
+              },
+              "presetRevision": {
+                "type": "string",
+                "enum": [
+                  "1"
+                ]
+              },
+              "connections": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
@@ -1593,6 +1850,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -1608,6 +1875,14 @@
                 ]
               },
               "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "networkDelayMs": {
                 "type": [
                   "number",
                   "null"
@@ -1645,6 +1920,43 @@
                   "boolean",
                   "null"
                 ]
+              },
+              "preset": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "processor-lesson",
+                  "device-size",
+                  null
+                ]
+              },
+              "presetRevision": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "1",
+                  null
+                ]
+              },
+              "connections": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
               },
               "ratePerSec": {
                 "type": [
@@ -2141,6 +2453,29 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "processor-lesson",
+                  "device-size"
+                ]
+              },
+              "presetRevision": {
+                "type": "string",
+                "enum": [
+                  "1"
+                ]
+              },
+              "connections": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
@@ -2266,6 +2601,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -2281,6 +2626,14 @@
                 ]
               },
               "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "networkDelayMs": {
                 "type": [
                   "number",
                   "null"
@@ -2318,6 +2671,43 @@
                   "boolean",
                   "null"
                 ]
+              },
+              "preset": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "processor-lesson",
+                  "device-size",
+                  null
+                ]
+              },
+              "presetRevision": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "1",
+                  null
+                ]
+              },
+              "connections": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
               },
               "ratePerSec": {
                 "type": [
@@ -2678,6 +3068,29 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "processor-lesson",
+                  "device-size"
+                ]
+              },
+              "presetRevision": {
+                "type": "string",
+                "enum": [
+                  "1"
+                ]
+              },
+              "connections": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
@@ -2803,6 +3216,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -2818,6 +3241,14 @@
                 ]
               },
               "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "networkDelayMs": {
                 "type": [
                   "number",
                   "null"
@@ -2855,6 +3286,43 @@
                   "boolean",
                   "null"
                 ]
+              },
+              "preset": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "processor-lesson",
+                  "device-size",
+                  null
+                ]
+              },
+              "presetRevision": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "1",
+                  null
+                ]
+              },
+              "connections": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
               },
               "ratePerSec": {
                 "type": [
@@ -3039,6 +3507,29 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "processor-lesson",
+                  "device-size"
+                ]
+              },
+              "presetRevision": {
+                "type": "string",
+                "enum": [
+                  "1"
+                ]
+              },
+              "connections": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
@@ -3164,6 +3655,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -3179,6 +3680,14 @@
                 ]
               },
               "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "networkDelayMs": {
                 "type": [
                   "number",
                   "null"
@@ -3216,6 +3725,43 @@
                   "boolean",
                   "null"
                 ]
+              },
+              "preset": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "processor-lesson",
+                  "device-size",
+                  null
+                ]
+              },
+              "presetRevision": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "1",
+                  null
+                ]
+              },
+              "connections": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
               },
               "ratePerSec": {
                 "type": [
@@ -3384,6 +3930,29 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "processor-lesson",
+                  "device-size"
+                ]
+              },
+              "presetRevision": {
+                "type": "string",
+                "enum": [
+                  "1"
+                ]
+              },
+              "connections": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
               "ratePerSec": {
                 "type": "number",
                 "minimum": 0,
@@ -3509,6 +4078,16 @@
                   "null"
                 ]
               },
+              "groupOrigin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "inferred",
+                  null
+                ]
+              },
               "share": {
                 "type": [
                   "number",
@@ -3524,6 +4103,14 @@
                 ]
               },
               "travelMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "networkDelayMs": {
                 "type": [
                   "number",
                   "null"
@@ -3561,6 +4148,43 @@
                   "boolean",
                   "null"
                 ]
+              },
+              "preset": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "processor-lesson",
+                  "device-size",
+                  null
+                ]
+              },
+              "presetRevision": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "1",
+                  null
+                ]
+              },
+              "connections": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "querySlots": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 10000
               },
               "ratePerSec": {
                 "type": [

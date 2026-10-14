@@ -132,7 +132,7 @@ export function createSimulationRun(
     .filter((node) => (opts.roleOf ?? stencilRole)(node.stencil) === "source")
     .map((node) => node.id);
   const engine = opts.engine ?? createEngine({ ...opts, seed });
-  const manual = createRealCountInjector(engine, (id) => inputs.get(id), opts.roleOf ?? stencilRole);
+  const manual = createRealCountInjector(engine, (id) => inputs.get(id), opts.roleOf ?? stencilRole, diagram.planning);
   const checkpoints = new WeakMap<SimulationRunCheckpoint, () => void>();
   let epoch = 0;
   const timeline = [...(simulation.timeline ?? [])].sort((a, b) => a.atMs - b.atMs);

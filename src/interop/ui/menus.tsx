@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatCombo } from "../../editor/shortcuts";
-import { formatAgo } from "../../i18n/format";
+import { formatAgo } from "../../i18n/relativeTime";
 import { LINK_OPEN, SHARE_LINKS } from "../../lib/deployment";
 import { newDiagramsPrivate } from "../../lib/privacyPrefs";
 import type { Binding, Interop } from "../useInterop";

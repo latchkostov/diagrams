@@ -3,6 +3,55 @@
 The live view animates messages flowing through any diagram, driven only by the diagram itself:
 each node's stencil `simRole`, edge direction and `kind`, plus optional `props`. API: `src/sim/types.ts`.
 
+## Planning revision p1
+
+`src/stencils/profiles.ts` explicitly maps every catalogue stencil to a behavioural family. Unknown
+ids retain legacy role behaviour. The common resolver (`src/sim/defaults.ts`) supplies playback,
+analysis, checks and explanations with the same settings, evidence and real units. P1 adds metadata
+and pinned versions; partition assignment, broker policies, serverless scaling, quotas and request/reply
+completion semantics retain their existing behaviour.
+
+Resolution is role defaults, opted-in family defaults, a pinned preset, node props, simulation setup,
+then live Inputs/tweaks. `processor-lesson` revision `1` keeps existing workload assumptions;
+`device-size` revision `1` uses existing approximate device presets. Behaviour-critical values are
+stored alongside the revision. Choosing a device size pins its throughput and service time together.
+Node `replicas × concurrency` is one shared pool across all inputs. Consumer `group` stays on the
+edge; omitted legacy groups still use the edge id.
+
+Files without `planning` keep the legacy resolver and omitted defaults. New diagrams use
+`diagrams/v2` with `planning: { revision: "p1" }`. **Opening a v1 file never upgrades it.** Diagram
+properties previews affected nodes and before/after capacity, then pins today's values in one undo
+step, preserving authored groups, relationships, overrides and saved simulations. Simulations inherit
+their document's revision. Unsupported model/preset revisions are refused, including setup/timeline
+presets. Older readers reject v2. Legacy export previews discarded model/preset/store-slot/delay
+metadata and keeps pinned numeric values, preserving P1 playback. Both native schemas and current
+agent/HTML readers support the appropriate formats.
+
+Connections rows derive Consumes / Publishes / Calls from compatible flows. Dependencies, deny rules
+and dead-letter routes grant no ordinary consumer capability. Two topics show separate policies and
+one pool; HTTP-only services have no consumer rows. Removing/reconnecting an edge updates the view.
+
+Contextual explanations use the analysis's per-connection **real** demand and playback's resolver.
+A 1-replica × 4-slot processor at 4 seconds handles ~1 req/s; at 3 req/s demand, three replicas reach
+100% utilization and six reach the chosen 50% target. The primary fix uses the existing sizing planner,
+including necessary partition/device changes, as one undo step. Other capacity surfaces retain their
+existing 55% sizing target. Configured estimates and current-run metrics are labelled separately;
+tagged real metrics are never multiplied by dot scale again. Down/paused processors report zero
+available capacity without replica sizing; nonconverging demand offers no sizing action. Slow motion
+disables mutation actions.
+
+The existing hover card and inspector provide these readouts and keyboard access. The banner remains
+run-level status, the callout owns urgent observed trouble and one action, and checks retain structural/
+configured findings with ignore/off. No second warning engine or top-bar control was added. No-reader
+shares `no-reader:<id>` and the existing Add a consumer action. `describe_diagram` exposes resolved
+capabilities and numerical explanation data for modest graphs.
+
+`travelMs` remains legacy transit/animation timing. `networkDelayMs` is physical one-way delay, unknown
+when absent: P1 stores it as bounded metadata, never adds it to animation time, and never reports
+animation as measured network latency. Store `connections` is a connection ceiling; `querySlots`
+is concurrent active queries. Both are distinct bounded metadata, currently unmodelled. Stores still
+accept parallel work; no ineffective new controls are shown.
+
 ## Model
 
 - A **message** has an id, a `type` (e.g. `OrderPlaced`), a colour, and an `attempts` count.

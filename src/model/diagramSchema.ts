@@ -58,7 +58,13 @@ function diagramSchema() {
     type: "object",
     required: ["format", "title", "nodes", "edges"],
     properties: {
-      format: { const: "diagrams/v1" },
+      format: { type: "string", enum: ["diagrams/v1", "diagrams/v2"] },
+      planning: {
+        type: "object",
+        required: ["revision"],
+        additionalProperties: false,
+        properties: { revision: { const: "p1" } },
+      },
       title: str(200),
       description: str(2000),
       direction: { type: "string", enum: ["LR", "TB"], default: "LR", description: "Main flow direction." },
@@ -387,4 +393,18 @@ function diagramSchema() {
   };
 }
 
-export const diagramV1Schema = diagramSchema();
+const readerSchema = diagramSchema();
+export const diagramV1Schema = {
+  ...readerSchema,
+  properties: {
+    ...Object.fromEntries(Object.entries(readerSchema.properties).filter(([key]) => key !== "planning")),
+    format: { const: "diagrams/v1" },
+  },
+};
+export const diagramV2Schema = {
+  ...readerSchema,
+  $id: `${SITE}/schema/diagram.v2.json`,
+  title: "Live Diagrams planning file (diagrams/v2)",
+  required: [...readerSchema.required, "planning"],
+  properties: { ...readerSchema.properties, format: { const: "diagrams/v2" } },
+};

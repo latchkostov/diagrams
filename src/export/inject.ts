@@ -134,7 +134,11 @@ export function today(now = new Date()): string {
 export function buildPayload(template: string, input: ExportInput): ExportPayload {
   // The whole diagrams/v1 contract is the caller's (the app validates first); this catches a plain mistake.
   const d: Partial<DiagramFile> | undefined = input.diagram;
-  if (d?.format !== "diagrams/v1" || !Array.isArray(d.nodes) || !Array.isArray(d.edges))
+  if (
+    (d?.format !== "diagrams/v1" && d?.format !== "diagrams/v2") ||
+    !Array.isArray(d.nodes) ||
+    !Array.isArray(d.edges)
+  )
     throw new Error("That isn't a diagram (diagrams/v1 with nodes and edges).");
   const keep = input.simulations ? new Set(input.simulations) : undefined;
   const simulations = (input.diagram.simulations ?? []).filter((s) => !keep || keep.has(s.id));

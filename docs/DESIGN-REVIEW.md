@@ -1,5 +1,33 @@
 # Design review
 
+## Planning P1 CI UX gate (2026-10-14)
+
+The designer-agent source review found no blocking issue: no new chrome, immediate name saves and
+preserved keyboard focus, with planning refreshed after Enter, Esc or blur. Planning reads the same
+canvas revision the inspector shows, so Apply does not retain a stale imperative-store snapshot.
+
+Live callouts move clear of node targets on pan, zoom and resize without moving the diagram. Existing
+actions and focus behavior stay intact. CI's taller text layout exposed a full card that could not fit:
+a compact cause/action row now uses a free strip, including diagonal placement. The full reason remains
+in accessible text and the hover title. Below-first hover placement preserves the stacking over rings
+and badges and still flips/clamps in short viewports; full details remain in Properties. The existing
+placement fallback cannot guarantee a free spot in a completely filled canvas.
+
+## Planning P1 round 3 UX gate (2026-10-14)
+
+The required designer-agent source review found that the work-limit message needed a recovery hint,
+interactive hover cards needed pointer-gap/wheel/keyboard handling, and direct focus in a test did not
+prove natural keyboard access. The unavailable message now suggests simplifying the diagram or its
+consumer groups. After browser testing, full metrics live in Properties behind a Live details disclosure;
+compact hover cards remain informational and do not intercept node clicks or canvas keys. F2 opens
+Properties, Enter expands details, and all 24 lag groups remain visible in the short-viewport regression.
+
+Add a consumer resolves the surviving Label after the selected panel mounts; Enter activation is covered.
+The hover's unlabelled planning wrapper exposes numerical descendants in the node's accessible description.
+Open cards follow pan/zoom and pane resizing. No global controls were added. The one primary action stays
+Apply/Add a consumer, connections remain read-only, and observed details are secondary and collapsed by default.
+Test screenshots are isolated report attachments; explicitly copy reviewed attachments to refresh documentation.
+
 ## Round 36: properties in live view (2026-10-14)
 
 A designer-agent source and interaction-test review checked naming, panel coordination, view-only gates and
@@ -23,6 +51,55 @@ Production-build regressions cover double-click on cards, boundary labels/outlin
 keyboard and contextual naming, panel coordination and draft retention. The live naming regressions fail with
 the fix reverted; removing draft retention also fails its regression. Review used source and browser-test
 evidence, without a separate screenshot walkthrough.
+
+## Planning P1 review follow-up (2026-10-14)
+
+The required designer-agent source review confirmed focus loss after Apply/Upgrade and hover clipping in short
+viewports. Apply now focuses its surviving explanation or the inspector Label when the whole explanation goes;
+Upgrade focuses the surviving preview button. Tall hover cards show compact arithmetic and direct people to
+Properties for full details. Placement measures both sides and bounds the final screen coordinates after scaling.
+No global controls were added. Existing Checks cards follow node configuration so arithmetic and its primary action
+remain ahead of structural findings and their ignore/off actions. Browser regressions cover keyboard focus and
+short-viewport bounds. Historical synthetic screenshots remain in the documentation; new captures are isolated report attachments.
+
+## Round 36: planning P1 (2026-10-14)
+
+Reviewed the synthetic P1 Lab fixtures in the production build: Orders, two topic policies sharing
+one pool, and a broker without a reader. Top-bar and floating controls are unchanged.
+
+- The original five processor controls stay under Simulation. The explanation has at most five main
+  readouts: arithmetic, contributors, growth, chosen target and current-run metrics. One primary action
+  applies the shared planner fix; keyboard Enter and one-step Undo are covered. The fix keeps the
+  selection/inspector open. Slow motion explains why its action is disabled.
+- Read-only Connections names each topic/group policy and one shared pool. HTTP-only inputs have no
+  consumer rows. Removal and keyboard reconnection refresh the list without persisting capabilities.
+- Hover and keyboard focus show the same explanation through the existing `aria-describedby` tooltip.
+  The first screenshot pass found an overly tall card; duplicate processor counters were consolidated,
+  and placement now chooses above/below and stays inside the horizontal viewport. Production coverage
+  checks bounds and focus. Current-run counters remain distinct from configured estimates.
+- The continuation's designer review confirmed the five readouts and keyboard access. Connection
+  separators and secondary ink now use the existing theme tokens; a deliberate token regression
+  fails production coverage. Inspector screenshots scroll to show the explanation and policy rows.
+- Upgrade stays behind a Diagram properties preview, naming nodes and unchanged capacity, explaining
+  v2 compatibility and Undo. Legacy export lists losses before download. No wizard or extra toolbar.
+- New prose uses `t()` and locale number/list formatting. All new `planning.*` keys currently fall back
+  to English in the 37 other languages. Lesson values remain assumptions; existing device figures are
+  approximate. Reserved physical-delay/store-slot contracts have no ineffective controls.
+
+Screenshots: [Orders inspector](screenshots/round36/orders-inspector.png),
+[connection policies](screenshots/round36/connections.png),
+[live hover](screenshots/round36/orders-hover.png),
+[upgrade preview](screenshots/round36/upgrade-preview.png).
+
+Rejected/deferred: permanent consumer stencils and per-input slot pools (capabilities are derived);
+new top-bar controls (existing context surfaces suffice); vendor quotas and new broker policies (P2/P3);
+request timeout/retry propagation (separate approval gate); hardware/vendor capacity claims from generic
+latency (workload assumptions remain explicit). Source review covered correctness, architecture,
+performance, tests, security, accessibility and types; deliberate regression removals and production
+browser coverage accompany the review.
+
+Follow-up: stress hover placement with tall content at narrow viewport sizes; P1's normal fixture
+is bounded by production coverage.
 
 ## File-dialog localization review (2026-10-14)
 
