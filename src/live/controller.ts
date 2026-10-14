@@ -216,7 +216,7 @@ export class LiveController {
       inputs: this.inputs,
       snapshot,
       run: this.runState,
-      tweaks: new Map(this.tweaks),
+      tweaks: this.tweaks,
       generation: this.generation,
       trace: this.readTrace(),
     };
@@ -699,6 +699,7 @@ export class LiveController {
   setNodeStatus(nodeId: string, status: NodeStatus): void {
     this.engine.setNodeStatus(nodeId, status);
     const t = this.tweaks.get(nodeId) ?? { props: {} };
+    this.tweaks = new Map(this.tweaks);
     this.tweaks.set(nodeId, { ...t, status });
     this.dirty = true;
     this.publish();
@@ -707,6 +708,7 @@ export class LiveController {
   setNodeProps(nodeId: string, patch: NodeSimProps): void {
     this.engine.setNodeProps(nodeId, patch);
     const t = this.tweaks.get(nodeId) ?? { props: {} };
+    this.tweaks = new Map(this.tweaks);
     this.tweaks.set(nodeId, { ...t, props: { ...t.props, ...patch } });
     this.dirty = true;
     this.publish();
@@ -714,6 +716,7 @@ export class LiveController {
 
   /** Forget a node's tweaks (after saving them to the diagram, for instance). */
   clearTweaks(nodeId: string): void {
+    this.tweaks = new Map(this.tweaks);
     this.tweaks.delete(nodeId);
     this.publish();
   }
@@ -824,7 +827,7 @@ export class LiveController {
     }
     this.applySpeed();
     this.engine.setTraffic(this.traffic);
-    this.tweaks.clear();
+    this.tweaks = new Map();
     this.injector = createRealCountInjector(
       this.engine,
       (id) => this.diagram.nodes.find((n) => n.id === id),

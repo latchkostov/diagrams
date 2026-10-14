@@ -34,7 +34,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const topology = compileTopology(d);
   const connections = resolveCapabilities(d, topology);
   const analysis = d.nodes.length <= 200 && d.edges.length <= 500 ? analyzeCapacity(d) : undefined;
-  const resolved = (id: string) => (analysis ? explainNode(d, id, { analysis, topology }) : undefined);
+  const resolved = (id: string) => (analysis ? explainNode(d, id, { analysis, topology, fixes: false }) : undefined);
   if (options.format === "json") {
     let remaining = limit;
     const take = <T>(items: T[]) => {
@@ -64,7 +64,8 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   ];
   if (d.description) lines.push(`description: ${quote(d.description)}`);
   lines.push("nodes:");
-  for (const n of nodes)
+  const shownNodes = nodes.slice(0, Math.max(0, limit - lines.length - 1));
+  for (const n of shownNodes)
     lines.push(
       `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}`,
     );
@@ -86,7 +87,8 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
     lines.push(
       `simulation ${quote(s.id)} ${quote(s.title)}: ${s.traffic.map((t) => `${JSON.stringify(t.shape)} from ${quote(t.node)}`).join("; ")}; timeline=${JSON.stringify(s.timeline ?? [])}; expectations=${JSON.stringify(s.expectations ?? [])}`,
     );
-  return lines.length > limit
-    ? [...lines.slice(0, limit - 1), `… ${lines.length - limit + 1} lines omitted`].join("\n")
+  const totalLines = lines.length + nodes.length - shownNodes.length;
+  return totalLines > limit
+    ? [...lines.slice(0, limit - 1), `… ${totalLines - limit + 1} lines omitted`].join("\n")
     : lines.join("\n");
 }

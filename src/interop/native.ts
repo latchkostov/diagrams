@@ -9,7 +9,7 @@ import { isDependency, isEdgeRelation, isRelationOrigin, sanitizeSettings } from
 import { sanitizeChecks } from "../model/checks";
 import { idClaimer } from "../model/ids";
 import { checkJsonSchema } from "../model/jsonSchema";
-import { t } from "../i18n";
+import { t } from "../i18n/core";
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -148,7 +148,12 @@ export function validateDiagram(data: unknown): NativeResult {
         for (const step of sim.timeline) {
           const action = isObj(step) && isObj(step.action) ? step.action : undefined;
           if (action?.do === "props" && unsupportedPreset(action.props))
-            return { ok: false, error: t("planning.unsupportedPreset", { id: String(action.node) }) };
+            return {
+              ok: false,
+              error: t("planning.unsupportedPreset", {
+                id: typeof action.node === "string" ? action.node : "(invalid node)",
+              }),
+            };
         }
     }
   }

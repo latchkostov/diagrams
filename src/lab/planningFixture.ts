@@ -1,7 +1,7 @@
 import type { DiagramFile } from "../model/types";
 
 /** P1's three deliberate lessons, shared by the Lab and production browser regressions. */
-export function planningFixture(kind: "orders" | "connections" | "no-reader" = "orders"): DiagramFile {
+export function planningFixture(kind: "orders" | "connections" | "no-reader" | "outage" = "orders"): DiagramFile {
   const d: DiagramFile = {
     format: "diagrams/v1",
     title: "Planning: shared capacity",
@@ -19,6 +19,27 @@ export function planningFixture(kind: "orders" | "connections" | "no-reader" = "
     edges: [{ id: "request", from: "checkout", to: "orders", kind: "sync", props: { travelMs: 0 } }],
   };
   if (kind === "orders") return d;
+  if (kind === "outage") {
+    d.nodes[0].props!.ratePerSec = 6;
+    d.nodes.push(
+      { id: "queue", stencil: "generic.queue", label: "Queue", x: 320, y: 140 },
+      { ...d.nodes[1], id: "other", label: "Other", y: 300 },
+    );
+    d.edges = [
+      { id: "in", from: "checkout", to: "queue" },
+      { id: "one", from: "queue", to: "orders" },
+      { id: "two", from: "queue", to: "other" },
+    ];
+    d.simulations = [
+      {
+        id: "outage",
+        title: "Outage",
+        traffic: [{ id: "t", node: "checkout", shape: { kind: "constant", ratePerSec: 6, durationMs: 60000 } }],
+        timeline: [{ atMs: 0, action: { do: "status", node: "other", status: "down" } }],
+      },
+    ];
+    return d;
+  }
   d.nodes.push({ id: "topic", stencil: "kafka.topic", label: "Order events", x: 320, y: 20 });
   d.edges = [{ id: "publish", from: "checkout", to: "topic", kind: "async", props: { travelMs: 0 } }];
   if (kind === "no-reader") {

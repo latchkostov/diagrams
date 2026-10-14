@@ -473,6 +473,7 @@ const en = {
   "htmlExport.withABanner": "with a banner",
   "htmlExport.light": "Light",
   "htmlExport.dark": "Dark",
+  "planning.labOutage": "Planning: consumer outage",
   "planning.labOrders": "Planning: Orders",
   "planning.labConnections": "Planning: shared connections",
   "planning.labNoReader": "Planning: no reader",
@@ -504,6 +505,9 @@ const en = {
   "planning.instant": "{name} has no finite processing limit in this model and receives {offered}.",
   "planning.contributor": "{name}: {rate}",
   "planning.via": "{name} through {via}: {rate}",
+  "planning.omittedContributors":
+    "{count, plural, one {# more source omitted.} other {# more sources omitted.}} Full connections remain in Properties.",
+  "planning.moreInProperties": "Full details in Properties.",
   "planning.incoming": "Traffic from {sources}",
   "planning.noTraffic": "No configured incoming traffic.",
   "planning.growth": "Waiting work grows by about {rate}.",

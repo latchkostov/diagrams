@@ -1,6 +1,5 @@
 # Design review
 
-<<<<<<< HEAD
 ## Round 36: properties in live view (2026-10-14)
 
 A designer-agent source and interaction-test review checked naming, panel coordination, view-only gates and
@@ -24,7 +23,17 @@ Production-build regressions cover double-click on cards, boundary labels/outlin
 keyboard and contextual naming, panel coordination and draft retention. The live naming regressions fail with
 the fix reverted; removing draft retention also fails its regression. Review used source and browser-test
 evidence, without a separate screenshot walkthrough.
-=======
+
+## Planning P1 review follow-up (2026-10-14)
+
+The required designer-agent source review confirmed focus loss after Apply/Upgrade and hover clipping in short
+viewports. Apply now focuses its surviving explanation or the inspector Label when the whole explanation goes;
+Upgrade focuses the surviving preview button. Tall hover cards show compact arithmetic and direct people to
+Properties for full details. Placement measures both sides and bounds the final screen coordinates after scaling.
+No global controls were added. Existing Checks cards follow node configuration so arithmetic and its primary action
+remain ahead of structural findings and their ignore/off actions. Browser regressions cover keyboard focus and
+short-viewport bounds; synthetic screenshots are refreshed by the planning suite.
+
 ## Round 36: planning P1 (2026-10-14)
 
 Reviewed the synthetic P1 Lab fixtures in the production build: Orders, two topic policies sharing
@@ -63,7 +72,6 @@ browser coverage accompany the review.
 
 Follow-up: stress hover placement with tall content at narrow viewport sizes; P1's normal fixture
 is bounded by production coverage.
->>>>>>> e9b4595 (Add shared planning profiles, connection capabilities and contextual throughput explanations)
 
 ## File-dialog localization review (2026-10-14)
 

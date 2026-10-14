@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { t, useLocale } from "../i18n";
 import { formatList, formatPercent } from "../i18n/format";
 import type { Explanation } from "./explanation";
@@ -16,6 +17,22 @@ export function ExplanationView({
   disabledReason?: string;
 }) {
   useLocale();
+  const heading = useRef<HTMLDivElement>(null);
+  const focusAfterApply = useRef(false);
+  useLayoutEffect(() => {
+    const field = heading.current
+      ?.closest("[data-check-fallback-scope]")
+      ?.querySelector<HTMLElement>('[data-testid="inspector-field-label"]');
+    return () => {
+      if (focusAfterApply.current) field?.focus();
+    };
+  }, []);
+  useLayoutEffect(() => {
+    if (focusAfterApply.current && !x.changes && !x.addConsumer) {
+      heading.current?.focus();
+      focusAfterApply.current = false;
+    }
+  }, [x.changes, x.addConsumer]);
   const rate = (n: number) => explanationRate(n, x.unit);
   const sources = formatList(
     x.contributors.map((c) =>
@@ -26,7 +43,7 @@ export function ExplanationView({
   );
   const sizing = x.targetReplicas
     ? t("planning.sizing", {
-        minimum: x.minimumReplicas ?? x.replicas,
+        minimum: x.minimumReplicas ?? x.baseReplicas,
         chosen: x.targetReplicas,
         target: formatPercent(x.target),
       })
@@ -34,6 +51,10 @@ export function ExplanationView({
   return (
     <div
       className="planning-explanation"
+      ref={heading}
+      tabIndex={-1}
+      role="region"
+      aria-label={t("planning.heading")}
       data-testid={`planning-explanation-${x.id}`}
       data-reason={x.reason}
       data-fix-id={x.fixId}
@@ -62,6 +83,9 @@ export function ExplanationView({
       <p data-testid="planning-contributors">
         {sources ? t("planning.incoming", { sources }) : t("planning.noTraffic")}
       </p>
+      {x.omittedContributors > 0 && (
+        <p data-testid="planning-omitted">{t("planning.omittedContributors", { count: x.omittedContributors })}</p>
+      )}
       {x.status === "up" && x.growth > 0 && x.reason !== "no-reader" && (
         <p data-testid="planning-growth">{t("planning.growth", { rate: rate(x.growth) })}</p>
       )}
@@ -91,7 +115,10 @@ export function ExplanationView({
           <button
             className="btn btn-primary"
             data-testid="planning-apply"
-            onClick={apply}
+            onClick={(event) => {
+              focusAfterApply.current = document.activeElement === event.currentTarget;
+              apply();
+            }}
             disabled={!!disabledReason}
             title={disabledReason}
           >

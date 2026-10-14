@@ -2443,3 +2443,20 @@ details[open] > summary .lv-disclosure-chevron {
     animation: none;
   }
 }
+
+.lv-detail-more {
+  display: none;
+}
+.lv-detail.is-compact > :not(.planning-explanation):not(.lv-detail-more),
+.lv-detail.is-compact .planning-explanation > :not([data-testid="planning-arithmetic"]) {
+  display: none;
+}
+.lv-detail.is-compact .lv-detail-more {
+  display: block;
+}
+.lv-detail.is-compact [data-testid="planning-arithmetic"] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}

@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { EditorApi } from "../editor/types";
 import { upgradePlanning, legacyExport } from "./migration";
 import { analyzeCapacity } from "../sim/capacity";
 import { planningSimulation } from "../sim/capacityPlanning";
 import { explanationSimulation } from "./explanation";
+import { withPrivacyField } from "../lib/diagramIO";
 import { downloadText } from "../interop/files";
 import { t, useLocale } from "../i18n";
 import { formatList, formatRate } from "../i18n/format";
 
 export function PlanningUpgrade({ editor }: { editor: EditorApi }) {
   useLocale();
+  const previewButton = useRef<HTMLButtonElement>(null);
   const [preview, setPreview] = useState(false);
   const d = editor.getDiagram();
   const next = preview && !d.planning ? upgradePlanning(d) : undefined;
@@ -24,6 +26,7 @@ export function PlanningUpgrade({ editor }: { editor: EditorApi }) {
       <button
         className="link-btn"
         data-testid="planning-preview"
+        ref={previewButton}
         onClick={() => setPreview(!preview)}
         aria-expanded={preview}
       >
@@ -49,6 +52,7 @@ export function PlanningUpgrade({ editor }: { editor: EditorApi }) {
             onClick={() => {
               editor.applyDiagram(upgradePlanning(editor.getDiagram()));
               setPreview(false);
+              previewButton.current?.focus();
             }}
           >
             {t("planning.upgrade")}
@@ -63,7 +67,11 @@ export function PlanningUpgrade({ editor }: { editor: EditorApi }) {
             data-testid="planning-legacy-download"
             onClick={() =>
               downloadText(
-                JSON.stringify(legacyExport(editor.getDiagram()).diagram, null, 2),
+                JSON.stringify(
+                  legacyExport(withPrivacyField(editor.getDiagram(), editor.isPrivate?.() ?? false)).diagram,
+                  null,
+                  2,
+                ),
                 "legacy.diagram.json",
                 "application/json",
               )

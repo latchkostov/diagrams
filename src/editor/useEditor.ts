@@ -30,8 +30,8 @@ import {
 import { foregroundLayerOrder } from "../model/layers";
 import { notify } from "../interop/ui/toast";
 import { isDependency, relationOf, RELATION_META, type DependencyRelation } from "../model/relations";
-import { inferRelation, reinferRelations, relationChangeText } from "../stencils/relations";
-import { inferKind } from "../stencils/edgeKind";
+import { reinferRelations, relationChangeText } from "../stencils/relations";
+import { connectionDefaults } from "../model/connectionDefaults";
 import {
   boundsOf,
   clearOffset,
@@ -459,26 +459,13 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     b: { id: string; stencil?: string },
     existing: readonly DiagramFlowEdge[],
   ): DiagramFlowEdge => {
-    const relation = inferRelation(a.stencil, b.stencil);
-    const kind = inferKind(a.stencil, b.stencil);
-    const role = a.stencil ? getStencil(a.stencil).simRole : undefined;
-    const target = rf.getNode(b.id);
-    const group =
-      deps().meta.planning && kind === "async" && (role === "topic" || role === "stream")
-        ? target && isDiagram(target)
-          ? target.data.label
-          : b.id
-        : undefined;
     return {
       // Its ends too: a node not yet in React Flow's store is in no other list.
       id: uniqueId("e", new Set([...takenIds(), a.id, b.id, ...existing.map((e) => e.id)])),
       source: a.id,
       target: b.id,
       type: "flow",
-      data:
-        relation === "flow"
-          ? { kind, ...(group ? { props: { group } } : {}) }
-          : { kind: "async", relation, relationOrigin: "inferred" },
+      data: connectionDefaults(a, b, deps().meta.planning),
     };
   };
   /**

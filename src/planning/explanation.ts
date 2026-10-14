@@ -3,6 +3,7 @@ import { analyzeCapacity, type CapacityAnalysis } from "../sim/capacity";
 import { planningSimulation, sourceTraffic, sizingFix, type SizingChange } from "../sim/capacityPlanning";
 import { compileTopology, brokerRole, type CompiledTopology } from "../sim/topology";
 import { stencilRole } from "../stencils/roles";
+import { resolveMultiplier } from "../sim/units";
 import type { RealNodeMetrics, NodeStatus } from "../sim/types";
 
 export const explanationSimulation = (d: DiagramFile): Simulation => ({
@@ -20,6 +21,8 @@ export interface Explanation {
   capacity: number;
   offered: number;
   replicas: number;
+  baseReplicas: number;
+  omittedContributors: number;
   activeReplicas: number;
   slots: number;
   seconds: number;
@@ -46,6 +49,8 @@ export function explainNode(
     analysis?: CapacityAnalysis;
     topology?: CompiledTopology;
     target?: number;
+    /** Descriptions need arithmetic, not graph-wide verification of an actionable fix. */
+    fixes?: boolean;
     observed?: RealNodeMetrics;
   } = {},
 ): Explanation | undefined {
@@ -55,38 +60,62 @@ export function explainNode(
   const node = d.nodes.find((n) => n.id === id);
   const n = analysis.nodes[id];
   if (!node || !n || (n.role !== "processor" && !brokerRole(n.role) && !n.device)) return undefined;
-  const incoming = topology.edges.filter((e) => e.to === id && !e.deny && !e.dlq);
-  const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
-  const contributors = incoming
-    .map((e) => {
-      const source = d.nodes.find((n) => n.id === e.from)!;
-      // Transparent routing hops identify who sends the traffic without claiming downstream request semantics.
-      const upstream =
-        stencilRole(source.stencil) === "gateway"
-          ? topology.edges.filter((i) => i.to === source.id && !i.deny && !i.dlq)
-          : [];
-      return {
-        edge: e.id,
-        node: source.id,
-        label: upstream.length ? upstream.map((i) => labels.get(i.from)!).join(", ") : source.label,
-        ...(upstream.length ? { via: source.label } : {}),
-        rate: analysis.connections[e.id] ?? 0,
-      };
-    })
-    .filter((c) => c.rate > 0);
+  const index = explanationIndex(d, topology);
+  const incoming = index.incoming.get(id) ?? [];
+  const peers = new Map<string, { edge: string; node: string; label: string; via?: string; rate: number }>();
+  let omittedContributors = 0,
+    textRemaining = MAX_CONTRIBUTOR_TEXT;
+  for (const e of incoming) {
+    const rate = analysis.connections[e.id] ?? 0;
+    if (rate <= 0) continue;
+    const existing = peers.get(e.from);
+    if (existing) {
+      existing.rate += rate;
+      continue;
+    }
+    const source = index.nodes.get(e.from)!;
+    peers.set(e.from, { edge: e.id, node: source.id, label: "", rate });
+  }
+  omittedContributors += Math.max(0, peers.size - MAX_CONTRIBUTORS);
+  const contributors = [...peers.values()].slice(0, MAX_CONTRIBUTORS).map((c) => {
+    const source = index.nodes.get(c.node)!;
+    const upstream = index.upstream.get(c.node);
+    const names = upstream?.labels ?? source.label;
+    omittedContributors += upstream?.omitted ?? 0;
+    const label = names.slice(0, Math.min(256, textRemaining));
+    textRemaining -= label.length;
+    const via = upstream ? source.label.slice(0, Math.min(64, textRemaining)) : undefined;
+    textRemaining -= via?.length ?? 0;
+    return { ...c, label, ...(via !== undefined ? { via } : {}) };
+  });
   const noReader = brokerRole(n.role) && !(topology.outgoing.get(id) ?? []).some((e) => !e.deny);
   if (brokerRole(n.role) && !noReader) return undefined;
   const target = options.target ?? 0.5;
   const changes =
-    !noReader && analysis.converged ? sizingFix(d, sim, [n], { target, idle: n.idleReplicas ? id : undefined }) : null;
-  const minimum =
-    !noReader && analysis.converged
-      ? sizingFix(d, sim, [n], { target: 1, idle: n.idleReplicas ? id : undefined })
+    !noReader && analysis.converged && options.fixes !== false
+      ? sizingFix(d, sim, [n], {
+          target,
+          idle: n.idleReplicas ? id : undefined,
+          status: Object.fromEntries(Object.entries(analysis.nodes).map(([id, n]) => [id, n.status])),
+        })
       : null;
   const props = analysis.resolved[id];
-  const count = (list: SizingChange[] | null) => list?.find((c) => c.nodeId === id && c.key === "replicas");
-  const min = count(minimum),
-    chosen = count(changes);
+  const baseNeeded = (target: number) =>
+    Math.max(
+      props.replicas,
+      Math.ceil(
+        Math.max(n.replicas, Math.ceil((n.activeReplicas * n.utilization) / target)) /
+          Math.max(resolveMultiplier(sim.multipliers?.capacity), 1e-9),
+      ),
+    );
+  const min = n.role === "processor" && Number.isFinite(n.utilization) && n.capacity ? baseNeeded(1) : undefined;
+  const chosen = changes?.find((c) => c.nodeId === id && c.key === "replicas");
+  const targetReplicas =
+    chosen?.key === "replicas"
+      ? chosen.to
+      : options.fixes === false && min !== undefined
+        ? baseNeeded(target)
+        : undefined;
   return {
     id,
     role: n.role,
@@ -97,6 +126,8 @@ export function explainNode(
     capacity: n.capacity,
     offered: n.offered,
     replicas: n.replicas,
+    baseReplicas: props.replicas,
+    omittedContributors,
     activeReplicas: n.activeReplicas,
     slots: props.concurrency,
     seconds: props.latencyMs / 1000,
@@ -104,8 +135,8 @@ export function explainNode(
     growth: Math.max(0, n.offered - n.capacity),
     contributors,
     target,
-    ...(min?.key === "replicas" ? { minimumReplicas: min.to } : {}),
-    ...(chosen?.key === "replicas" ? { targetReplicas: chosen.to } : {}),
+    ...(min !== undefined ? { minimumReplicas: min } : {}),
+    ...(targetReplicas !== undefined ? { targetReplicas } : {}),
     changes,
     ...(noReader ? { addConsumer: id, fixId: `no-reader:${id}` } : changes ? { fixId: `capacity:${id}` } : {}),
     converged: analysis.converged,
@@ -120,4 +151,40 @@ export function explainNode(
         }
       : {}),
   };
+}
+
+export const MAX_CONTRIBUTORS = 24;
+export const MAX_CONTRIBUTOR_TEXT = 2048;
+const indexes = new WeakMap<CompiledTopology, ReturnType<typeof buildExplanationIndex>>();
+function explanationIndex(d: DiagramFile, topology: CompiledTopology) {
+  let index = indexes.get(topology);
+  if (!index) {
+    index = buildExplanationIndex(d, topology);
+    indexes.set(topology, index);
+  }
+  return index;
+}
+function buildExplanationIndex(d: DiagramFile, topology: CompiledTopology) {
+  const nodes = new Map(d.nodes.map((n) => [n.id, n]));
+  const incoming = new Map<string, CompiledTopology["edges"]>();
+  for (const edge of topology.edges) {
+    if (edge.deny || edge.dlq) continue;
+    const list = incoming.get(edge.to) ?? [];
+    list.push(edge);
+    incoming.set(edge.to, list);
+  }
+  const upstream = new Map<string, { labels: string; omitted: number }>();
+  for (const [id, edges] of incoming) {
+    const node = nodes.get(id)!;
+    if (stencilRole(node.stencil) !== "gateway") continue;
+    const peers = [...new Set(edges.map((e) => e.from))];
+    upstream.set(id, {
+      labels: peers
+        .slice(0, 8)
+        .map((id) => nodes.get(id)!.label.slice(0, 24))
+        .join(", "),
+      omitted: Math.max(0, peers.length - 8),
+    });
+  }
+  return { nodes, incoming, upstream };
 }

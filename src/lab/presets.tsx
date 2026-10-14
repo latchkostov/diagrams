@@ -316,7 +316,7 @@ const diagramPresets: Preset[] = [
     description: "No nodes, no edges.",
     diagram: (): DiagramFile => ({ format: DIAGRAM_FORMAT, title: "Empty", nodes: [], edges: [] }),
   },
-  ...(["orders", "connections", "no-reader"] as const).map((kind): Preset => ({
+  ...(["orders", "connections", "no-reader", "outage"] as const).map((kind): Preset => ({
     kind: "diagram",
     id: `planning-${kind}`,
     get title() {
@@ -324,7 +324,9 @@ const diagramPresets: Preset[] = [
         ? t("planning.labOrders")
         : kind === "connections"
           ? t("planning.labConnections")
-          : t("planning.labNoReader");
+          : kind === "outage"
+            ? t("planning.labOutage")
+            : t("planning.labNoReader");
     },
     group: "Diagrams",
     diagram: () => planningFixture(kind),

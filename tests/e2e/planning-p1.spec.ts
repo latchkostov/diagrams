@@ -16,7 +16,7 @@ const SLUG = "kafka-order-pipeline";
 const KEY = STORAGE_KEYS.autosavePrefix + SLUG;
 const shots = "docs/screenshots/round36";
 
-async function seed(page: Page, kind: "orders" | "connections" | "no-reader" = "orders", live = false) {
+async function seed(page: Page, kind: "orders" | "connections" | "no-reader" | "outage" = "orders", live = false) {
   await page.addInitScript(
     ([key, value]) => {
       if (!sessionStorage.getItem("p1-seeded")) {
@@ -26,7 +26,8 @@ async function seed(page: Page, kind: "orders" | "connections" | "no-reader" = "
     },
     [KEY, JSON.stringify(planningFixture(kind))] as const,
   );
-  if (live) await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
+  if (live)
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1${kind === "outage" ? "&sim=outage&paused=1" : ""}`);
   else await gotoCanvas(page, SLUG);
   await waitForStableViewport(page);
 }
@@ -40,6 +41,13 @@ test("P1: Orders arithmetic and the 50% fix are keyboard accessible and undoable
   await expect(x.getByTestId("planning-growth")).toContainText("2 req/s");
   await expect(x.getByTestId("planning-target")).toContainText("3 replicas at 100%; 6 replicas at the 50% target");
   await expect(page.getByTestId("planning-connections")).not.toContainText("Retry:");
+  await expect(page.getByTestId("inspector-findings")).toBeVisible();
+  expect(
+    await x.evaluate((el) => {
+      const findings = document.querySelector('[data-testid="inspector-findings"]');
+      return !!findings && !!(el.compareDocumentPosition(findings) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }),
+  ).toBe(true);
   await page.keyboard.press("Shift+Digit1");
   await waitForStableViewport(page);
   await x.getByTestId("planning-apply").scrollIntoViewIfNeeded();
@@ -48,6 +56,7 @@ test("P1: Orders arithmetic and the 50% fix are keyboard accessible and undoable
   await x.getByTestId("planning-apply").focus();
   await page.keyboard.press("Enter");
   await expect(x.getByTestId("planning-arithmetic")).toContainText("6 replicas × 4 slots");
+  await expect(x).toBeFocused();
   await page.getByTestId("undo-button").click();
   await expect(x.getByTestId("planning-arithmetic")).toContainText("1 replica × 4 slots");
   expectNoErrors(consoleErrors);
@@ -170,7 +179,9 @@ test("P1: model upgrade previews unchanged capacity, is undoable and exposes a l
   await expect(page.getByTestId("planning-upgrade-preview")).toContainText("Orders: 1 msg/s → 1 msg/s");
   mkdirSync(shots, { recursive: true });
   await page.screenshot({ path: `${shots}/upgrade-preview.png` });
-  await page.getByTestId("planning-upgrade").click();
+  await page.getByTestId("planning-upgrade").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("planning-preview")).toBeFocused();
   await expect(page.getByTestId("planning-model")).toContainText("Planning revision p1");
   await page.getByTestId("planning-preview").click();
   await expect(page.getByTestId("planning-legacy-preview")).toContainText("planning.revision");
@@ -183,4 +194,30 @@ test("P1: model upgrade previews unchanged capacity, is undoable and exposes a l
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("planning-model")).toContainText("Legacy playback");
   expectNoErrors(consoleErrors);
+});
+
+test("P1: Apply keeps a saved timeline outage in its latest sizing analysis", async ({ page }) => {
+  await seed(page, "outage", true);
+  await page.getByTestId("node-orders").dblclick();
+  const x = page.getByTestId("inspector").getByTestId("planning-explanation-orders");
+  await expect(x.getByTestId("planning-target")).toContainText("12 replicas at the 50% target");
+  await pauseClock(page);
+  await x.getByTestId("planning-apply").click();
+  await expect(x.getByTestId("planning-arithmetic")).toContainText("12 replicas × 4 slots");
+  await expect(page.getByTestId("node-badge-other")).toHaveAttribute("data-status", "down");
+});
+
+test("P1: tall hover cards stay within a short viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 460 });
+  await seed(page, "orders", true);
+  await page.getByTestId("node-orders").hover();
+  const card = page.getByTestId("node-detail-orders");
+  await expect(card.getByTestId("planning-arithmetic")).toBeVisible();
+  await expect
+    .poll(async () => {
+      const bounds = await card.boundingBox(),
+        pane = await page.getByTestId("canvas-wrap").boundingBox();
+      return !!bounds && !!pane && bounds.y >= pane.y && bounds.y + bounds.height <= pane.y + pane.height;
+    })
+    .toBe(true);
 });

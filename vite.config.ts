@@ -161,7 +161,19 @@ export default defineConfig({
       // Every imported constant inlined where it's read (the default inlines only some reads): the self-hosting
       // switches (src/lib/deployment.ts) fold in every chunk, so the code they turn off drops out.
       optimization: { inlineConst: true },
-      output: { codeSplitting: { groups: [canvas.group] } },
+      output: {
+        codeSplitting: {
+          groups: [
+            canvas.group,
+            // The headless core stays separate in source, but shares the browser's existing runtime request.
+            {
+              name: "i18n",
+              test: /[/\\]src[/\\]i18n[/\\](?:core|index)\.ts$/,
+              includeDependenciesRecursively: false,
+            },
+          ],
+        },
+      },
     },
   },
   test: {

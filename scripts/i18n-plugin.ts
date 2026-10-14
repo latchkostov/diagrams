@@ -109,8 +109,8 @@ function reviewed(dir: string, codes: string[]): string[] {
 }
 
 /** The i18n API's module, as an import names it: src/i18n (or ./index, ./rich from inside src/i18n). */
-const API_MODULE = /(?:^|\/)i18n(?:\/(?:index|rich))?$/;
-const API_MODULE_INSIDE = /^\.\/(?:index|rich)$/;
+const API_MODULE = /(?:^|\/)i18n(?:\/(?:index|core|rich))?$/;
+const API_MODULE_INSIDE = /^\.\/(?:index|core|rich)$/;
 const API = new Set(["t", "msg", "tRich"]);
 
 interface Node {
@@ -226,7 +226,7 @@ export function rewriteCalls(
   onError: (message: string) => void,
   id = "",
 ): string | undefined {
-  if (!/i18n|\.\/(?:index|rich)/.test(code)) return undefined;
+  if (!/i18n|\.\/(?:index|core|rich)/.test(code)) return undefined;
   const inside = /[/\\]src[/\\]i18n[/\\]/.test(id);
   let ast: Node;
   try {

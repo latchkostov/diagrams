@@ -1,3 +1,6 @@
+import { planningFixture } from "../../src/lab/planningFixture";
+import { upgradePlanning } from "../../src/planning/migration";
+import { filePayload } from "./html-viewer";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia } from "./fixtures";
@@ -621,5 +624,62 @@ test("a private diagram gets no password link: the rows are off, and an open dia
   await expect(page.getByTestId("share-chooser")).toBeVisible();
   await expect(page.getByTestId("share-option-password")).toHaveCount(0);
   await other.close();
+  expectNoErrors(consoleErrors);
+});
+
+test("Private P1 diagrams keep privacy through native, legacy and Interactive HTML downloads", async ({
+  page,
+  consoleErrors,
+}, info) => {
+  await gotoCanvas(page, SLUG);
+  const d = upgradePlanning(planningFixture());
+  d.private = true;
+  await page.getByTestId("import-input").setInputFiles({
+    name: "planning.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(d)),
+  });
+  await expect(page.getByTestId("diagram-title")).toHaveText(d.title);
+  await expect(page.getByTestId("private-badge")).toBeVisible();
+  await page.keyboard.press("Control+k");
+  await page.keyboard.type("diagram properties");
+  await page.keyboard.press("Enter");
+  await page.getByTestId("planning-preview").click();
+  const [legacy] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("planning-legacy-download").click(),
+  ]);
+  const legacyFile = info.outputPath("private-legacy.diagram.json");
+  await legacy.saveAs(legacyFile);
+  expect(JSON.parse(readFileSync(legacyFile, "utf8"))).toMatchObject({ format: "diagrams/v1", private: true });
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  const [native] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-json").click()]);
+  const nativeFile = info.outputPath("private-p1.diagram.json");
+  await native.saveAs(nativeFile);
+  expect(JSON.parse(readFileSync(nativeFile, "utf8"))).toMatchObject({ format: "diagrams/v2", private: true });
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-html").click();
+  const [html] = await Promise.all([page.waitForEvent("download"), page.getByTestId("html-export-download").click()]);
+  const htmlFile = info.outputPath("private-p1.html");
+  await html.saveAs(htmlFile);
+  expect(filePayload(readFileSync(htmlFile, "utf8")).diagram.private).toBe(true);
+  for (const file of [nativeFile, legacyFile]) {
+    await page.getByTestId("import-input").setInputFiles(file);
+    await expect(page.getByTestId("toast").last()).toContainText("Imported");
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    const slug = await page.getByTestId("example-picker").inputValue();
+    expect((await entry(page, slug)).private).toBe(true);
+  }
+  // Interactive HTML is a viewer; re-import its embedded native payload through the supported JSON path.
+  await page.getByTestId("import-input").setInputFiles({
+    name: "private-html-payload.diagram.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(filePayload(readFileSync(htmlFile, "utf8")).diagram)),
+  });
+  await expect(page.getByTestId("toast").last()).toContainText("Imported");
+  await expect(page.getByTestId("private-badge")).toBeVisible();
+  expect((await entry(page, await page.getByTestId("example-picker").inputValue())).private).toBe(true);
   expectNoErrors(consoleErrors);
 });

@@ -109,10 +109,10 @@ describe("P1 planning contract", () => {
     );
     const spy = vi.spyOn(defaults, "resolveProps");
     const run = createSimulationRun(d, sim, { seed: 4 });
-    expect(analyzeCapacity(d, sim).resolved.orders).toEqual(expected);
     expect(
       spy.mock.results.some((r) => r.type === "return" && JSON.stringify(r.value) === JSON.stringify(expected)),
     ).toBe(true);
+    expect(analyzeCapacity(d, sim).resolved.orders).toEqual(expected);
     run.engine.setNodeProps("orders", { concurrency: 12 });
     expect(run.engine.effectiveProps("orders").concurrency).toBe(12);
     runChecks(d, { rules: ["capacity"] });

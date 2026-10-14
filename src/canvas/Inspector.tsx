@@ -221,7 +221,7 @@ export interface InspectorProps {
    */
   connection?: { id: string; label: string };
   onNamed?: () => void;
-  /** The selection's architecture-check findings, shown above its fields (a single node or connection). */
+  /** The selection's architecture-check findings. Nodes show them after their configuration. */
   findings?: ReactNode;
   /** A text's edit is done (see DiagramUi.settleText): it moves clear if it grew over something. */
   onTextSettled?: (id: string, before: { x: number; y: number; width: number; height: number }) => void;
@@ -340,7 +340,7 @@ export function Inspector(p: InspectorProps) {
       </div>
       {/* Where focus goes after a finding's fix when no other finding is left to take it. */}
       <div className="insp-body" ref={body} data-testid="inspector-body" data-check-fallback-scope>
-        {n === 1 && p.findings}
+        {n === 1 && !p.selectedNodes[0] && p.findings}
         {content}
       </div>
     </aside>
@@ -407,7 +407,14 @@ function useNameFields(
   return { keys, merge: () => ({ merge: tag.current }) };
 }
 
-function NodePanel({ node, editor, groups, connection, onNamed }: InspectorProps & { node: DiagramFlowNode }) {
+function NodePanel({
+  node,
+  editor,
+  groups,
+  connection,
+  onNamed,
+  findings,
+}: InspectorProps & { node: DiagramFlowNode }) {
   const stencil = getStencil(node.data.stencil);
   const role = stencil.simRole;
   const props = node.data.props ?? {};
@@ -554,6 +561,8 @@ function NodePanel({ node, editor, groups, connection, onNamed }: InspectorProps
           onSetMerged={(patch, key) => editor.setNodeProps(node.id, patch, merge(`prop:${key}`))}
         />
       </Disclosure>
+
+      {findings}
 
       {picker && (
         <ContextMenu

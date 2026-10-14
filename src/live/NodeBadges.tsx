@@ -1,3 +1,5 @@
+import { hoverTop } from "./hoverPlacement";
+import { t } from "../i18n";
 import { flowEdges } from "../model/relations";
 import { memo, useEffect, useLayoutEffect, useState, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
@@ -181,16 +183,16 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
       const pane = domNode.getBoundingClientRect(),
         box = card.getBoundingClientRect();
       const zoom = card.offsetWidth ? box.width / card.offsetWidth : 1;
+      tooltip.style.maxWidth = `${Math.max(0, pane.width - 24)}px`;
+      if (tooltip.getBoundingClientRect().height > pane.height - 24) tooltip.classList.add("is-compact");
       tooltip.style.left = "0px";
-      tooltip.style.top = "auto";
-      tooltip.style.bottom = "calc(100% + 12px)";
+      tooltip.style.bottom = "auto";
+      tooltip.style.top = "0px";
       const detail = tooltip.getBoundingClientRect();
-      if (detail.top < pane.top + 12) {
-        tooltip.style.bottom = "auto";
-        tooltip.style.top = "calc(100% + 34px)";
-      }
-      const right = tooltip.getBoundingClientRect().right;
-      if (right > pane.right - 12) tooltip.style.left = `${(pane.right - 12 - right) / zoom}px`;
+      const top = hoverTop(pane, box, detail.height);
+      tooltip.style.top = `${(top - detail.top) / zoom}px`;
+      const left = Math.max(pane.left + 12, Math.min(detail.left, pane.right - 12 - detail.width));
+      tooltip.style.left = `${(left - detail.left) / zoom}px`;
     };
     place();
     const observer = new ResizeObserver(place);
@@ -315,6 +317,9 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
       {hovered && (
         <div id={tooltipId} className="lv-detail" role="tooltip" data-testid={`node-detail-${node.id}`}>
           <HoverExplanation id={node.id} />
+          <small className="lv-detail-more" data-testid="node-detail-more">
+            {t("planning.moreInProperties")}
+          </small>
           {!explained && (
             <>
               <Row label={doneLabel[s.role]} value={formatCount(s.processed)} />

@@ -1,4 +1,4 @@
-import { useContext, useMemo, useSyncExternalStore } from "react";
+import { useContext, useSyncExternalStore } from "react";
 import type { EditorApi } from "../editor/types";
 import type { DiagramFile } from "../model/types";
 import type { LiveState } from "../live/controller";
@@ -7,8 +7,8 @@ import { addConsumer } from "../live/addConsumer";
 import { analyzeCapacity } from "../sim/capacity";
 import { planningSimulation } from "../sim/capacityPlanning";
 import { explainNode } from "./explanation";
+import { configuredPlanning } from "./cache";
 import { planningRun } from "./run";
-import { capabilities } from "./capabilities";
 import { ExplanationView } from "./ExplanationView";
 import { planningHost } from "./host";
 import { t, useLocale } from "../i18n";
@@ -39,26 +39,10 @@ export function NodePlanning({
     live?.controller.getState ?? noState,
   );
   const state = provided ?? subscribed;
-  const running = state?.running,
-    inputs = state?.inputs,
-    tweaks = state?.tweaks;
-  const sim = useMemo(
-    () => planningRun(d, inputs && tweaks ? { running: running ?? null, inputs, tweaks } : null),
-    [d, running, inputs, tweaks],
-  );
-  const statusKey = JSON.stringify(Object.entries(state?.snapshot.nodes ?? {}).map(([id, n]) => [id, n.status]));
-  const analysis = useMemo(
-    () =>
-      analyzeCapacity(d, planningSimulation(d, sim), {
-        status: Object.fromEntries(JSON.parse(statusKey) as [string, "up" | "paused" | "down"][]),
-      }),
-    [d, sim, statusKey],
-  );
-  const rows = useMemo(() => {
-    const node = d.nodes.find((n) => n.id === id);
-    return node ? capabilities(d, node, undefined, analysis.resolved[id]) : [];
-  }, [d, id, analysis]);
-  const explanation = useMemo(() => explainNode(d, id, { sim, analysis }), [d, id, sim, analysis]);
+  const configured = configuredPlanning(d, state);
+  const { analysis } = configured;
+  const rows = configured.rows(id);
+  const explanation = configured.explanation(id);
   const node = d.nodes.find((n) => n.id === id);
   if (!node) return null;
   const observed = state?.snapshot.nodes[id];
@@ -84,7 +68,11 @@ export function NodePlanning({
     }
     // Recompute from the latest graph; never apply stale cached counts. Changes share one undo step.
     const current = editor.getDiagram();
-    const fresh = explainNode(current, id, { sim: planningRun(current, state) });
+    const latest = live?.controller.getState() ?? state;
+    const sim = planningRun(current, latest);
+    const status = Object.fromEntries(Object.entries(latest?.snapshot.nodes ?? {}).map(([id, n]) => [id, n.status]));
+    const analysis = analyzeCapacity(current, planningSimulation(current, sim), { status });
+    const fresh = explainNode(current, id, { sim, analysis });
     if (!fresh?.changes) return;
     if (live?.applyCapacityFix) {
       live.applyCapacityFix({
@@ -94,8 +82,8 @@ export function NodePlanning({
       return;
     }
     const next = structuredClone(current);
-    if (state?.simulation) {
-      const saved = next.simulations?.find((s) => s.id === state.simulation!.id);
+    if (latest?.simulation) {
+      const saved = next.simulations?.find((s) => s.id === latest.simulation!.id);
       if (!saved) return;
       const props = (saved.setup ??= {}).props ?? {};
       for (const c of fresh.changes) props[c.nodeId] = { ...props[c.nodeId], [c.key]: c.to };

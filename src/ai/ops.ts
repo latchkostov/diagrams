@@ -6,7 +6,7 @@ import { placeFree, overlaps } from "../canvas/placement";
 import { resolveRef, ReferenceError, RefIndex, type ElementKind } from "./refs";
 import { resolveKind } from "./stencils";
 import { reinferRelations, relationChangeText } from "../stencils/relations";
-import { inferKind } from "../stencils/edgeKind";
+import { connectionDefaults } from "../model/connectionDefaults";
 import { placeNew } from "./place";
 import { checkBudget, checkSchema, validated } from "./validation";
 import { edit_diagramSchema } from "./schemas";
@@ -136,7 +136,12 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             id,
             from,
             to,
-            kind: op.kind ?? (op.relation ? "async" : inferKind(stencil(from), stencil(to))),
+            ...connectionDefaults(
+              { id: from, stencil: stencil(from) },
+              { id: to, stencil: stencil(to) },
+              next.planning,
+              { kind: op.kind, relation: op.relation ?? "flow" },
+            ),
             ...(op.label !== undefined ? { label: op.label } : {}),
             ...(op.relation ? { relation: op.relation } : {}),
           });

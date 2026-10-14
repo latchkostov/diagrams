@@ -70,7 +70,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object
 const isCoordinate = (v: unknown): v is number =>
   typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= LIMITS.maxCoordinate;
 
-/** Accepts a clipboard payload or a whole diagrams/v1 file (pasting a file merges it in). */
+/** Accepts a clipboard payload or a supported whole diagram file (pasting a file merges it in). */
 export function parsePayload(text: string): ClipboardPayload | null {
   if (text.length > LIMITS.maxTextChars) return null;
   let data: unknown;
@@ -79,7 +79,9 @@ export function parsePayload(text: string): ClipboardPayload | null {
   } catch {
     return null;
   }
-  if (!isObj(data) || (data.format !== CLIP_FORMAT && data.format !== DIAGRAM_FORMAT)) return null;
+  if (!isObj(data) || (data.format !== CLIP_FORMAT && data.format !== DIAGRAM_FORMAT && data.format !== "diagrams/v2"))
+    return null;
+  if (data.format === "diagrams/v2" && (!isObj(data.planning) || data.planning.revision !== "p1")) return null;
   if (!Array.isArray(data.nodes)) return null;
   if (exceedsDepth(data)) return null;
   for (const [list, max] of [

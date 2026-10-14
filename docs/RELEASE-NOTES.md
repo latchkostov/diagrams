@@ -1,5 +1,16 @@
 # Release notes
 
+## Planning P1 review fixes (2026-10-14)
+
+- Private diagrams keep their flag in legacy downloads, alongside native JSON and Interactive HTML.
+- Upgrade and legacy export preserve effective defaults, device sizes, saved setup and timeline behavior;
+  legacy loss reports include metadata in saved simulations.
+- Consumer defaults use stable node identities. Live counters reuse configured planning analysis, descriptions
+  avoid per-node sizing verification, and incoming-source explanations have bounded text.
+- Apply keeps current outages, keyboard focus survives disappearing actions, and tall hover cards fit short
+  viewports with full details in Properties. Whole-file paste accepts the new format; sizing uses base replica
+  counts consistently.
+
 ## Planning P1 (2026-10-14)
 
 - The inspector and live hover card explain processor throughput, incoming traffic, arithmetic and
