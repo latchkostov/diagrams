@@ -6,6 +6,7 @@ import { placeFree, overlaps } from "../canvas/placement";
 import { resolveRef, ReferenceError, RefIndex, type ElementKind } from "./refs";
 import { resolveKind } from "./stencils";
 import { reinferRelations, relationChangeText } from "../stencils/relations";
+import { inferKind } from "../stencils/edgeKind";
 import { placeNew } from "./place";
 import { checkBudget, checkSchema, validated } from "./validation";
 import { edit_diagramSchema } from "./schemas";
@@ -129,11 +130,13 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             )
               throw new Error("Connections must end on nodes or shapes.");
           const id = uniqueId("e", allIds());
+          // No kind: what drawing the connection would give (a Request into a database, a Message into a topic).
+          const stencil = (ref: string) => next.nodes.find((n) => n.id === ref)?.stencil;
           next.edges.push({
             id,
             from,
             to,
-            kind: op.kind ?? "async",
+            kind: op.kind ?? (op.relation ? "async" : inferKind(stencil(from), stencil(to))),
             ...(op.label !== undefined ? { label: op.label } : {}),
             ...(op.relation ? { relation: op.relation } : {}),
           });

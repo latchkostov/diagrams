@@ -86,6 +86,11 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
     Configuration turns Config, and what was inferred turns back into a flow when it stops being one. A toast says
     what changed ("2 connections are now Config: no messages flow over them") with **Undo**. A relationship someone
     chose (Relationship ▸, the inspector, **Make it a flow**) never changes by itself.
+  - A new flow into a database, a gateway, an outside or model API, or out of a client or a gateway, starts as a
+    **Request**; into or out of a queue, topic or stream it's a **Message**, as it is elsewhere
+    (`src/stencils/edgeKind.ts`; an agent's `connect` without a kind gets the same). The first time, a toast says
+    "Request: the caller waits for a reply" and offers **Make it a message**. A relationship inferred above wins (an
+    edge into Key Vault is a Secret, not a Request), and edges already in a file keep their kind.
   - **Settings** are the keys a config edge reads, a lock on the secret ones: "4 settings · 2 secret" on the
     canvas, the list on hover or focus. A config store's secret edge says "2 references".
   - **Dependencies** (Show ▸ Dependencies, View menu) shows or hides them all, one remembered setting.

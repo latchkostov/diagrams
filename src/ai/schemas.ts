@@ -176,8 +176,8 @@ export const edit_diagramSchema: JsonSchema = {
                 kind: {
                   type: "string",
                   enum: ["async", "sync"],
-                  default: "async",
-                  description: "async = messages/events; sync = request/response, writes to a database.",
+                  description:
+                    "async = messages/events; sync = request/response, writes to a database. Left out: sync into a database, gateway, outside or model API, or out of a client or gateway; async into or out of a queue, topic or stream, and otherwise.",
                 },
                 relation: {
                   type: "string",

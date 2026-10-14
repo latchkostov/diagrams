@@ -30,6 +30,7 @@ import { foregroundLayerOrder } from "../model/layers";
 import { notify } from "../interop/ui/toast";
 import { isDependency, relationOf, RELATION_META, type DependencyRelation } from "../model/relations";
 import { inferRelation, reinferRelations, relationChangeText } from "../stencils/relations";
+import { inferKind } from "../stencils/edgeKind";
 import {
   boundsOf,
   clearOffset,
@@ -92,6 +93,18 @@ const selectionKey = (sel: Partial<Selection>) =>
 
 /** Relationships already explained by a toast in this session (each one is taught once). */
 const explained = new Set<DependencyRelation>();
+
+/** Whether a new Request has been explained by a toast in this session (once). */
+let requestExplained = false;
+
+/** The first time a new flow starts as a Request: say what it means, with a way to make it a message. */
+function explainRequest(makeMessage: () => void): void {
+  if (requestExplained) return;
+  requestExplained = true;
+  notify("Request: the caller waits for a reply", {
+    action: { label: "Make it a message", run: makeMessage, testId: "toast-make-message" },
+  });
+}
 
 /** The first time a relationship is inferred: say what it means, with a way back to a flow. */
 function explainInference(relation: DependencyRelation, makeFlow: () => void): void {
@@ -434,8 +447,9 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
   };
   /**
    * A new edge from `a` to `b`, its relationship inferred from their stencils (an edge into Key Vault is a
-   * secret dependency, one from a deploy pipeline a deploy). The stencils are passed in, so a node not yet
-   * committed to React Flow's store infers the same as one that is.
+   * secret dependency, one from a deploy pipeline a deploy), and a flow's kind too (a Request into a database, a
+   * gateway or an outside API, or out of a client: src/stencils/edgeKind.ts). The stencils are passed in, so a
+   * node not yet committed to React Flow's store infers the same as one that is.
    */
   const newEdge = (
     a: { id: string; stencil?: string },
@@ -449,7 +463,10 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       source: a.id,
       target: b.id,
       type: "flow",
-      data: relation === "flow" ? { kind: "async" } : { kind: "async", relation, relationOrigin: "inferred" },
+      data:
+        relation === "flow"
+          ? { kind: inferKind(a.stencil, b.stencil) }
+          : { kind: "async", relation, relationOrigin: "inferred" },
     };
   };
   /**
@@ -496,6 +513,8 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       explainInference(relation as DependencyRelation, () =>
         api.updateEdge(edge.id, { relation: undefined }, { merge: `inference:flow:${edge.id}` }),
       );
+    else if (edge.data?.kind === "sync")
+      explainRequest(() => api.updateEdge(edge.id, { kind: "async" }, { merge: `inference:kind:${edge.id}` }));
   };
 
   const api: EditorApi = {
