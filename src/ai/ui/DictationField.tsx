@@ -1,8 +1,8 @@
 import { t, useLocale } from "../../i18n";
-import { legacyKeyHint } from "../../editor/keyHints";
+import { isolateKeys, legacyKeyHint } from "../../editor/keyHints";
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
 import { Icon } from "../../components/Icon";
-import { speechServiceNote, type Dictation } from "./useDictation";
+import { dictationMessage, speechServiceNote, type Dictation } from "./useDictation";
 
 // A request box with the dictation mic and everything dictation says: "Listening…", the words heard
 // so far, where the audio goes while the browser's speech service listens, and errors with how to fix them. One component, so every
@@ -82,7 +82,9 @@ export function DictationField({
             }}
             aria-pressed={listening}
             aria-label={verb}
-            title={[verb, micTitle, shortcut ? `(${legacyKeyHint("Mod+Shift+M")})` : ""].filter(Boolean).join(" ")}
+            title={[verb, micTitle, shortcut ? `(${isolateKeys(legacyKeyHint("Mod+Shift+M"))})` : ""]
+              .filter(Boolean)
+              .join(" ")}
             data-testid={testIds.mic}
             data-status={dictation.status}
           >
@@ -116,7 +118,7 @@ export function DictationField({
           role={dictation.message.tone === "error" ? "alert" : "status"}
           data-testid={testIds.message}
         >
-          {dictation.message.text}
+          {dictationMessage(dictation.message)}
         </p>
       )}
     </>

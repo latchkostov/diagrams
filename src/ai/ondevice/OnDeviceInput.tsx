@@ -8,7 +8,7 @@ import { speechServiceNote, useDictation } from "../ui/useDictation";
 import type { OnDeviceStatus } from "./pipeline";
 import type { ModelAvailability } from "./promptApi";
 import { primedSession } from "./session";
-import { useOnDeviceRequest } from "./useOnDeviceRequest";
+import { onDeviceErrorMessage, useOnDeviceRequest } from "./useOnDeviceRequest";
 
 // The AI panel's request box for Chrome's built-in model (lazy-loaded, only where the Prompt API is and
 // the person turned it on in Advanced). Enter sends; the model's ops land as one turn with Undo, like an
@@ -88,7 +88,7 @@ export default function OnDeviceInput({
       await primedSession((loaded) => setProgress(loaded));
       onAvailability("available");
     } catch (err) {
-      setError(t("ai.downloadFailed", { error: err instanceof Error ? err.message : "" }).trim());
+      setError({ reason: "download", detail: err instanceof Error ? err.message : "" });
     } finally {
       setProgress(null);
     }
@@ -218,7 +218,7 @@ export default function OnDeviceInput({
       )}
       {error && (
         <p className="ai-note is-error" role="alert" data-testid="ai-ondevice-error">
-          {error}
+          {onDeviceErrorMessage(error)}
         </p>
       )}
     </section>

@@ -2,6 +2,13 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## AI language switching fixes (2026-10-14)
+
+- Visible microphone and on-device model errors now update when the language changes, keeping the request drafts.
+- New conversation reverts keep their target as metadata, so their labels follow language changes after reload too.
+  Previously stored revert labels remain readable in their original language.
+- Complete AI shortcut combinations stay left to right inside Arabic and Hebrew sentences and tooltips on macOS.
+
 ## AI and keyboard labels in your language (2026-10-14)
 
 - The AI panel's dock, conversation, Advanced copy-and-paste flow, dictation notices and on-device model

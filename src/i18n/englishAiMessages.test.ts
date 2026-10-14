@@ -12,6 +12,7 @@ import { speechServiceNote } from "../ai/ui/useDictation";
 import { FAILED, CHANGED } from "../ai/ondevice/useOnDeviceRequest";
 import { TOOL_HELP } from "../ai/webmcp/toolList";
 import { readCatalog } from "../../scripts/i18n-plugin";
+import { failureText, type Failure } from "../ai/ui/failure";
 
 afterEach(() => {
   state.l = "en";
@@ -218,7 +219,7 @@ describe("AI extraction preserves the original English", () => {
         expect(formatCombo(combo, mac)).toBe(expected);
       }
     expect(legacyKeyHint("Mod+Enter")).toBe("Ctrl+Enter");
-    expect(aiPanelTitle()).toBe("AI panel (Ctrl+I)");
+    expect(aiPanelTitle()).toBe("AI panel (\u2066Ctrl+I\u2069)");
   });
   it("keeps the literal English modifier names in mouse gestures and the AI's Mac prose hints", () => {
     vi.stubGlobal("navigator", { platform: "MacIntel" });
@@ -231,6 +232,28 @@ describe("AI extraction preserves the original English", () => {
       "Shift / Ctrl / ⌘ + click",
     );
   });
+});
+
+it("UI failure reasons translate independently of agent-facing wording", async () => {
+  state.l = "de";
+  state.c = (await catalogs.de()).default as Catalog;
+  const failure: Failure = {
+    reason: "no-change",
+    error: { i: -1, error: "Agent explanation", hint: "Agent hint" },
+    reply: "[]",
+  };
+  const messages = readCatalog("de");
+  expect(failureText(failure)).toEqual({
+    message: messages["ai.theReplyDidnTChangeAnything"],
+    hint: messages["ai.checkTheRequestOrAskYourAI"],
+  });
+  expect(failure.error).toEqual({ i: -1, error: "Agent explanation", hint: "Agent hint" });
+  expect(
+    failureText({
+      error: { i: -1, error: "The reply didn't change anything.", hint: "Check the request, or ask your AI again." },
+      reply: "[]",
+    }),
+  ).toEqual({ message: "The reply didn't change anything.", hint: "Check the request, or ask your AI again." });
 });
 
 it("key and speech messages fall back synchronously while a catalog is absent, then follow its arrival", async () => {

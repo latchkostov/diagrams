@@ -4,22 +4,11 @@ import { Icon } from "../../components/Icon";
 import { StencilIcon } from "../../components/StencilIcon";
 import type { Stencil } from "../../model/types";
 import { getStencil } from "../../stencils/registry";
-import type { AiError, DiagramOp } from "../index";
 import { failedRef, type StencilChoice } from "./apply";
-import type { ParsedReply } from "./reply";
+import { failureText, type Failure } from "./failure";
+export type { Failure } from "./failure";
 
 // Pieces the AI panel's thread and its Advanced copy-and-paste flow share.
-
-export interface Failure {
-  error: AiError;
-  /** The reply that failed, as pasted (for the fix-up prompt). */
-  reply: string;
-  /** The ops that failed, when the reply had ops (a candidate click patches them). */
-  ops?: DiagramOp[];
-  layout?: Extract<ParsedReply, { kind: "ops" }>["layout"];
-  /** The reply was a simulation (the fix-up prompt asks for one again). */
-  simulation?: boolean;
-}
 
 /** A stencil icon on its light tile, as on the canvas (brand marks are dark ink). */
 export function Tile({ stencil, size }: { stencil: Stencil; size: number }) {
@@ -94,6 +83,7 @@ export function FailureBox({
 }) {
   useLocale();
   const { error } = failure;
+  const text = failureText(failure);
   const canPick = !!failure.ops && !!(error.ref ?? failedRef(error.error));
   const candidates = error.candidates?.slice(0, 8) ?? [];
   return (
@@ -105,9 +95,7 @@ export function FailureBox({
           {error.i >= 0 && failure.ops ? (
             <>{t("ai.operationIndex", { index: error.i + 1, count: failure.ops.length })} </>
           ) : null}
-          <span data-testid="ai-error-message">
-            {error.error === "The reply didn't change anything." ? t("ai.theReplyDidnTChangeAnything") : error.error}
-          </span>
+          <span data-testid="ai-error-message">{text.message}</span>
         </span>
       </p>
       {candidates.length > 0 && (
@@ -146,11 +134,7 @@ export function FailureBox({
           </ul>
         </div>
       )}
-      {error.hint && !canPick && (
-        <p className="ai-failure-hint">
-          {error.hint === "Check the request, or ask your AI again." ? t("ai.checkTheRequestOrAskYourAI") : error.hint}
-        </p>
-      )}
+      {text.hint && !canPick && <p className="ai-failure-hint">{text.hint}</p>}
       <div className="ai-copy-row">
         <button className="btn btn-primary" onClick={onCopyFix} disabled={fixOff} data-testid="ai-copy-fix">
           <Icon name={copied ? "check" : "copy"} size={14} />

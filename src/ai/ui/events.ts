@@ -3,12 +3,13 @@ import { t } from "../../i18n";
 // it: it's lazy-loaded by AiMount. Keep this file tiny: it's in the main bundle.
 
 import { formatCombo } from "../../editor/shortcuts";
+import { isolateKeys } from "../../editor/keyHints";
 
 export const OPEN_AI_PANEL = "diagrams:open-ai";
 
 /** Shows the AI panel and focuses it, everywhere a diagram is open (AiMount handles it). */
 export const AI_PANEL_COMBO = "Mod+I";
-export const aiPanelTitle = () => t("ai.panelKeys", { keys: formatCombo(AI_PANEL_COMBO) });
+export const aiPanelTitle = () => t("ai.panelKeys", { keys: isolateKeys(formatCombo(AI_PANEL_COMBO)) });
 
 export interface OpenAiPanel {
   /** Open the panel's Advanced copy-and-paste flow, ready to describe (Build with AI). */

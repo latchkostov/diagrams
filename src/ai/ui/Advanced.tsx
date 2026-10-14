@@ -1,5 +1,5 @@
 import { t, useLocale } from "../../i18n";
-import { legacyKeyHint } from "../../editor/keyHints";
+import { isolateKeys, legacyKeyHint } from "../../editor/keyHints";
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Icon } from "../../components/Icon";
 import type { EditorApi } from "../../editor/types";
@@ -182,6 +182,7 @@ export function Advanced({
     }
     if (!plan.hasChanges) {
       setFailure({
+        reason: "no-change",
         error: { i: -1, error: "The reply didn't change anything.", hint: "Check the request, or ask your AI again." },
         reply: pastedReply,
       });
@@ -363,7 +364,7 @@ export function Advanced({
                     ? replyStatus
                     : hasReply
                       ? ""
-                      : t("ai.applyKeys", { keys: legacyKeyHint("Mod+Enter") })}
+                      : t("ai.applyKeys", { keys: isolateKeys(legacyKeyHint("Mod+Enter")) })}
                 </span>
                 <button
                   className={`btn${hasReply && !failure ? " btn-primary" : ""}`}

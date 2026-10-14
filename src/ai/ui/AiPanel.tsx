@@ -1,5 +1,5 @@
 import { t, msg, useLocale } from "../../i18n";
-import { legacyKeyHint } from "../../editor/keyHints";
+import { isolateKeys, legacyKeyHint } from "../../editor/keyHints";
 import {
   lazy,
   Suspense,
@@ -235,10 +235,11 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     }
     const after = ed.getDiagram();
     const diff = diffDiagrams(before, after);
-    const label = turnTitle(turn);
+    const label = turn.revertLabel ?? (turn.request || turn.reply || turn.summary || "");
     addTurn({
       kind: "revert",
-      request: t("ai.reverted", { label: label.length > 60 ? `${label.slice(0, 60)}…` : label }),
+      request: "",
+      revertLabel: label.length > 60 ? `${label.slice(0, 60)}…` : label,
       summary: summarize(diff),
       changed: diff.changed,
       after,
@@ -315,7 +316,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
           className="icon-btn icon-btn-quiet"
           onClick={collapseDock}
           aria-label={t("ai.hideTheAIPanel")}
-          title={t("ai.hideKeys", { keys: legacyKeyHint("Mod+I") })}
+          title={t("ai.hideKeys", { keys: isolateKeys(legacyKeyHint("Mod+I")) })}
           data-testid="ai-collapse"
         >
           <Icon name="chevron-right" size={14} />
@@ -451,6 +452,8 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
 
 /** A turn's name in words: the agent's note or the request, else what changed. */
 function turnTitle(turn: ThreadTurn): string {
+  if (turn.kind === "revert" && turn.revertLabel !== undefined)
+    return t("ai.reverted", { label: turn.revertLabel || t("ai.thisChange") });
   return turn.request || turn.reply || turn.summary || t("ai.thisChange");
 }
 
@@ -555,7 +558,14 @@ function TurnItem({
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) unmark();
       }}
     >
-      {turn.request && <p className={`ai-turn-request${turn.kind === "revert" ? " is-system" : ""}`}>{turn.request}</p>}
+      {(turn.request || turn.kind === "revert") && (
+        <p
+          className={`ai-turn-request${turn.kind === "revert" ? " is-system" : ""}`}
+          data-testid={`ai-turn-${n}-request`}
+        >
+          {turn.kind === "revert" ? turnTitle(turn) : turn.request}
+        </p>
+      )}
       <div className="ai-turn-card">
         {onDevice && (
           <p className="ai-turn-who" data-testid={`ai-turn-${n}-who`}>

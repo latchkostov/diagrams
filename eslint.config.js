@@ -17,6 +17,7 @@ const TRANSLATED = [
   "src/ai/ui/AiPanel.tsx",
   "src/ai/ui/AiMount.tsx",
   "src/ai/ui/parts.tsx",
+  "src/ai/ui/failure.ts",
   "src/ai/ui/HowTo.tsx",
   "src/ai/ui/DictationField.tsx",
   "src/ai/ui/events.ts",

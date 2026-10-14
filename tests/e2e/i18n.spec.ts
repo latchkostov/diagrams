@@ -49,6 +49,15 @@ for (const code of ["de", "fi", "ar", "en-XA"]) {
     };
 
     test("AI chrome, dictation, tool help, thread and Advanced wrap", async ({ page, consoleErrors }, testInfo) => {
+      // Tool help is static and can appear before the bridge chunk. Release the chunk only on the first
+      // registration read, so an immediate assertion deterministically observes the still-empty host.
+      let releaseBridge = () => {};
+      const heldBridge = new Promise<void>((resolve) => (releaseBridge = resolve));
+      await page.exposeFunction("releaseBridge", releaseBridge);
+      await page.route(/\/WebMcpBridge[^/]*\.(?:js|tsx)(?:\?|$)/, async (route) => {
+        await heldBridge;
+        await route.continue();
+      });
       await installFakeLanguageModel(page, {
         replies: [modelReply("Added a worker", [{ op: "add", kind: "service", label: "i18n-worker" }])],
       });
@@ -60,7 +69,15 @@ for (const code of ["de", "fi", "ar", "en-XA"]) {
       await expect(page.getByTestId("ai-ondevice-send")).toHaveText(words("ai.send"));
       await page.getByTestId("ai-tools-toggle").click();
       await expect(page.getByTestId("ai-tool-describe_diagram")).toContainText(words("ai.tool.describeDiagram"));
-      expect(await toolNames(page)).toContain("edit_diagram");
+      await page.evaluate(() => {
+        const w = window as unknown as { __mcp: { names(): string[] }; releaseBridge(): Promise<void> };
+        const names = w.__mcp.names;
+        w.__mcp.names = () => {
+          void w.releaseBridge();
+          return names();
+        };
+      });
+      await expect.poll(() => toolNames(page)).toContain("edit_diagram");
       await expectNothingCut(page.getByTestId("ai-panel"), `${code}: AI help`, ["ai-resize"]);
       const read = await callTool(page, "describe_diagram");
       expect(read.isError).toBe(false);
@@ -91,26 +108,33 @@ for (const code of ["de", "fi", "ar", "en-XA"]) {
       expectNoErrors(consoleErrors);
     });
 
-    test("the whole shortcuts sheet fits, with native key names", async ({ page, consoleErrors }, testInfo) => {
-      await gotoCanvas(page, SLUG);
-      await page.getByTestId("canvas-wrap").focus();
-      await page.keyboard.press("?");
-      const sheet = page.getByTestId("shortcuts-dialog");
-      await expect(sheet).toContainText(words("shortcuts.live.toggle"));
-      await expect(sheet).toContainText(words("keys.shift"));
-      await expect(sheet).toContainText(words("keys.space"));
-      if (code === "de") await expect(sheet).toContainText("Strg+Umschalt+Z");
-      await expectNothingCut(sheet, `${code}: shortcuts`);
-      const box = await sheet.boundingBox();
-      if (!box) throw new Error("The shortcuts sheet has no box");
-      expect(box.x).toBeGreaterThanOrEqual(0);
-      expect(box.y + box.height).toBeLessThanOrEqual(800);
-      await page.screenshot({ path: testInfo.outputPath("shortcuts.png") });
-      await page.getByTestId("shortcuts-live").scrollIntoViewIfNeeded();
-      await expectNothingCut(sheet, `${code}: Live shortcuts`);
-      await page.screenshot({ path: testInfo.outputPath("shortcuts-live.png") });
-      expectNoErrors(consoleErrors);
-    });
+    for (const platform of ["Win32", "MacIntel"]) {
+      test(`the whole shortcuts sheet fits, with native key names on ${platform}`, async ({
+        page,
+        consoleErrors,
+      }, testInfo) => {
+        await page.addInitScript((p) => Object.defineProperty(navigator, "platform", { get: () => p }), platform);
+        await gotoCanvas(page, SLUG);
+        await page.getByTestId("canvas-wrap").focus();
+        await page.keyboard.press("?");
+        const sheet = page.getByTestId("shortcuts-dialog");
+        await expect(sheet).toContainText(words("shortcuts.live.toggle"));
+        const mac = await page.evaluate(() => /Mac|iPod|iPhone|iPad/.test(navigator.platform));
+        await expect(sheet).toContainText(mac ? "⇧" : words("keys.shift"));
+        await expect(sheet).toContainText(words("keys.space"));
+        if (code === "de") await expect(sheet).toContainText(mac ? "⌘⇧Z" : "Strg+Umschalt+Z");
+        await expectNothingCut(sheet, `${code}: shortcuts`);
+        const box = await sheet.boundingBox();
+        if (!box) throw new Error("The shortcuts sheet has no box");
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.y + box.height).toBeLessThanOrEqual(800);
+        await page.screenshot({ path: testInfo.outputPath("shortcuts.png") });
+        await page.getByTestId("shortcuts-live").scrollIntoViewIfNeeded();
+        await expectNothingCut(sheet, `${code}: Live shortcuts`);
+        await page.screenshot({ path: testInfo.outputPath("shortcuts-live.png") });
+        expectNoErrors(consoleErrors);
+      });
+    }
   });
 }
 
@@ -175,8 +199,102 @@ test("switching language updates the mounted AI UI without resetting dictation o
   expect((await speechState(page)).starts).toBe(1);
   await page.getByTestId("ai-collapse").click();
   await expect(page.getByTestId("ai-rail-open")).toHaveAttribute("aria-label", de["ai.aIPanel"]);
-  await expect(page.getByTestId("ai-rail-open")).toHaveAttribute("title", /Strg\+I/);
+  const mac = await page.evaluate(() => /Mac|iPod|iPhone|iPad/.test(navigator.platform));
+  await expect(page.getByTestId("ai-rail-open")).toHaveAttribute("title", mac ? /⌘I/ : /Strg\+I/);
 });
+
+test("switching language retranslates existing AI errors and preserves both drafts", async ({ page }) => {
+  await installFakeSpeech(page, { deny: true });
+  const bad = modelReply("", [{ op: "connect", from: "Nowhere", to: "Inventory service" }]);
+  await installFakeLanguageModel(page, { replies: [bad, bad] });
+  await gotoCanvas(page, SLUG);
+  await openAdvanced(page);
+  await page.getByTestId("ai-request").fill("Keep the Advanced draft");
+  await page.getByTestId("ai-reply").fill(
+    JSON.stringify({
+      ops: [{ op: "set_meta", title: await page.getByTestId("diagram-title").innerText() }],
+      layout: "none",
+    }),
+  );
+  await page.getByTestId("ai-apply").click();
+  await expect(page.getByTestId("ai-error-message")).toHaveText(en["ai.theReplyDidnTChangeAnything"]);
+  await page.getByTestId("ai-mic").click();
+  await expect(page.getByTestId("ai-dictation-message")).toHaveText(en["ai.theMicrophoneIsBlockedAllowItFrom"]);
+  await page.getByTestId("ai-ondevice-input").fill("Connect nowhere to inventory");
+  await page.getByTestId("ai-ondevice-send").click();
+  await expect(page.getByTestId("ai-ondevice-error")).toHaveText(en["ai.couldnTApplyThatTryRephrasing"]);
+  await openLanguage(page);
+  await page.getByTestId("language-option-de").click();
+  await expect(page.getByTestId("language-option-de")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("language-done").click();
+  await expect.soft(page.getByTestId("ai-dictation-message")).toHaveText(de["ai.theMicrophoneIsBlockedAllowItFrom"]);
+  await expect.soft(page.getByTestId("ai-ondevice-error")).toHaveText(de["ai.couldnTApplyThatTryRephrasing"]);
+  await expect(page.getByTestId("ai-error-message")).toHaveText(de["ai.theReplyDidnTChangeAnything"]);
+  await expect(page.getByTestId("ai-request")).toHaveValue("Keep the Advanced draft");
+  await expect(page.getByTestId("ai-ondevice-input")).toHaveValue("Connect nowhere to inventory");
+});
+
+test("revert labels follow language switches and reloads without translating the original request", async ({
+  page,
+}) => {
+  await gotoCanvas(page, SLUG);
+  await openLanguage(page);
+  await page.getByTestId("language-option-de").click();
+  await expect(page.getByTestId("language-option-de")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("language-done").click();
+  await openAdvanced(page);
+  for (const [n, label] of ["First worker", "Second worker"].entries()) {
+    await page.getByTestId("ai-request").fill(label);
+    await page.getByTestId("ai-reply").fill(JSON.stringify([{ op: "add_node", kind: "service", label }]));
+    await page.getByTestId("ai-apply").click();
+    await expect(page.getByTestId(`ai-turn-${n}`)).toBeVisible();
+  }
+  await page.getByTestId("ai-turn-0-revert").click();
+  await expect(page.getByTestId("ai-turn-2-request")).toHaveText(de["ai.reverted"].replace("{label}", "First worker"));
+  await openLanguage(page);
+  await page.getByTestId("language-option-en").click();
+  await expect(page.getByTestId("language-option-en")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("language-done").click();
+  await expect(page.getByTestId("ai-turn-2-request")).toHaveText("Reverted to “First worker”");
+  await expect(page.getByTestId("ai-turn-0-request")).toHaveText("First worker");
+  await page.reload();
+  await expect(page.getByTestId("ai-panel")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("ai-turn-2-request")).toHaveText("Reverted to “First worker”");
+  await page.getByTestId("ai-turn-1-revert").click();
+  await page.getByTestId("ai-turn-2-revert").click();
+  await expect(page.getByTestId("ai-turn-4-request")).toHaveText("Reverted to “First worker”");
+});
+
+for (const platform of ["Win32", "MacIntel"]) {
+  test(`native key labels on ${platform}`, async ({ page }) => {
+    await page.addInitScript((p) => Object.defineProperty(navigator, "platform", { get: () => p }), platform);
+    await remember(page, "de");
+    await gotoCanvas(page, SLUG);
+    await openAdvanced(page);
+    await expect(page.getByTestId("ai-collapse")).toHaveAttribute("title", platform === "MacIntel" ? /⌘I/ : /Strg\+I/);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("?");
+    await expect(page.getByTestId("shortcuts-dialog")).toContainText(
+      platform === "MacIntel" ? "⌘⇧Z" : "Strg+Umschalt+Z",
+    );
+    await expect(page.getByTestId("shortcuts-dialog")).toContainText(platform === "MacIntel" ? "⇧" : de["keys.shift"]);
+  });
+}
+
+for (const code of ["ar", "he"]) {
+  test(`Mac AI combinations are isolated inside ${code} sentences and tooltips`, async ({ page }) => {
+    await page.addInitScript(() => Object.defineProperty(navigator, "platform", { get: () => "MacIntel" }));
+    await remember(page, code);
+    await installFakeSpeech(page);
+    await gotoCanvas(page, SLUG);
+    await openAdvanced(page);
+    await expect(page.getByTestId("ai-reply-status")).toContainText("\u2066⌘Enter\u2069");
+    await expect(page.getByTestId("ai-collapse")).toHaveAttribute("title", /\u2066⌘I\u2069/);
+    await expect(page.getByTestId("ai-mic")).toHaveAttribute("title", /\u2066⌘⇧M\u2069/);
+    await page.getByTestId("ai-collapse").click();
+    await expect(page.getByTestId("ai-rail-open")).toHaveAttribute("title", /\u2066⌘I\u2069/);
+  });
+}
 
 test("Arabic dock resize keys move its canvas-facing edge in the physical direction", async ({ page }) => {
   await remember(page, "ar");

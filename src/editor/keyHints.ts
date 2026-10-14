@@ -5,3 +5,6 @@ import { formatCombo, isMac } from "./shortcuts";
 export function legacyKeyHint(combo: string): string {
   return getLocale() === "en" ? combo.replace("Mod", isMac() ? "⌘" : "Ctrl") : formatCombo(combo);
 }
+
+/** Keep a whole key combination left to right inside a sentence or native tooltip. */
+export const isolateKeys = (keys: string): string => `\u2066${keys}\u2069`;
