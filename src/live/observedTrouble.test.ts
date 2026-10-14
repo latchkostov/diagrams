@@ -88,7 +88,7 @@ describe("trouble seen in playback", () => {
     expect(troubles.find((t) => t.kind === "dropping")).toMatchObject({
       node: "q",
       action: { kind: "add-dlq", node: "q" },
-      detail: "They ran out of deliveries and it has no dead-letter queue to keep them.",
+      detail: "They ran out of deliveries, and no dead-letter queue keeps them.",
     });
     expect(troubles[0].headline).toMatch(/^orders is losing messages: \d+ dropped$/);
   });

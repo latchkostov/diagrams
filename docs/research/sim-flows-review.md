@@ -7,6 +7,33 @@ public GCP example. Numbers were cross-checked headless with `createEngine`, `an
 and `runChecks`, seed 1, run for 20 to 60 simulated seconds. Every finding below was reproduced unless it's
 marked **unverified**.
 
+## Built (2026-10-13, branch `feat/sim-truth-batch1`)
+
+Items 1–6 of the top 10 are built; the rest are open. What was built, in short (`docs/SIMULATION.md` has the
+semantics, `docs/DESIGN-REVIEW.md` round 32 the UX gate):
+
+1. **Built (F-1).** Default `travelMs` 300 / 200. A delivery takes its consumer's slot on arrival; the broker keeps
+   just enough on the way to keep the slots busy, plus one, and a topic group never works past its partitions
+   (deliveries beyond that are staged at the consumer). Broker-fed consumers drain at the analysed capacity (seeded
+   ratios 0.95–1.0); the GCP example's Pub/Sub topic no longer builds lag at 13%, with no hand-tuning. As a side
+   effect a topic → queue hop no longer caps at 3 in flight (F-3's symptom, not its per-broker semantics). The live
+   callout reports a lag that keeps rising.
+2. **Built (F-6).** A down consumer fed only by brokers: "Messages wait in orders until it's back (49 so far)", badge
+   "Down · 2/s waiting in orders"; the `capacity` check words a node saved down as down.
+3. **Built (F-19).** New edges into stores, sinks, gateways and model APIs, and out of clients and gateways, start as
+   Requests; Messages into and out of brokers. Relationship inference wins. Agents' `connect` without a `kind` gets
+   the same default.
+4. **Built (F-28, F-23, F-12's field).** Gateway Concurrency and sink Latency are hidden; Consumer group shows only
+   out of a topic or stream, Dead-letter path only out of a broker. A value already set gets a muted note with Remove.
+   (Partitions and Max deliveries on non-Kafka brokers wait for item 7 and 9.)
+5. **Built (F-5, F-32).** The callout comes on its own for a node down (Revive), messages lost (Add dead-letter queue
+   or Show events) and a lag that keeps rising (Inputs…, or Add a consumer), once per cause per run, dismissible,
+   never presenting, recording or embedded.
+6. **Built (F-29, F-22).** Rates up to 10,000,000 msg/s in the file format, the inspector and the Inputs panel;
+   counts 10,000 and times 600,000 ms with the inspector clamping and saying so; a refused file names the field and
+   the limit. The chatbot prompt, the on-device examples and the eval teach the dead-letter route off the broker
+   (`{"dlq": true}`), and a test plays the prompt's example and expects nothing dropped.
+
 ## Summary
 
 The owner's two surprises came from the same kind of gap: the simulation has one generic rule, and a real

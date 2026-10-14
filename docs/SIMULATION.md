@@ -6,14 +6,25 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
 ## Model
 
 - A **message** has an id, a `type` (e.g. `OrderPlaced`), a colour, and an `attempts` count.
-- Messages travel along edges as **particles** (`progress` 0→1 over the edge's `travelMs` / speed).
+- Messages travel along edges as **particles** (`progress` 0→1 over the edge's `travelMs` / speed). An edge
+  without `travelMs` takes **300 ms** for a message and **200 ms** for a request (`DEFAULT_TRAVEL_MS` in
+  `src/sim/topology.ts`; it was 900 / 450 before 2026-10, when every public example set 200–300 by hand).
 - The engine is **pull-based at brokers**: a topic/queue/stream only hands a message to a consumer
-  edge when the consumer has spare capacity (`inFlight + incoming + pending < activeReplicas × concurrency`, status `up`).
-  This is what makes lag/backlog visibly build when a consumer is slow, paused or down.
-- Capacity is reserved while a delivery is travelling (like a consumer prefetch), so throughput per
-  processor is about `activeReplicas × concurrency × 1000 ÷ (travelMs + latencyMs)` msgs/s at
-  scale 1 (plus fixed-tick rounding). Travel time is a visual reservation, not a modeled network
-  bandwidth limit. Analytic capacity excludes this reservation overhead.
+  edge when the consumer can take it (status `up`), so lag/backlog visibly builds when a consumer is slow,
+  paused or down.
+- **A delivery takes its consumer's slot when it arrives, not when it leaves the broker.** Travel is pipelined:
+  the broker keeps at most `units + ⌈units × travelMs ÷ latencyMs⌉ + 1` deliveries outstanding (travelling,
+  waiting at the consumer, or in work) against `units` slots, enough to keep every slot busy plus a prefetch of
+  one. For a processor `units` is `activeReplicas × concurrency` ÷ scale (a sampled dot costs `scale`
+  messages of service budget), so at a sampling scale the backlog stays at the broker. A target with no service
+  time (a broker, a sink, a 0 ms service) is never the limit, so a topic → queue hop builds no lag. A broker-fed
+  consumer therefore drains at `activeReplicas × concurrency × 1000 ÷ latencyMs`, what capacity analysis, the heat
+  map and the `capacity` check report (seeded ratios in `src/sim/drain.test.ts`: 0.95–1.0 with jitter, the tick's
+  rounding included, exactly 1.0 without). Travel time is animation, never a throughput limit.
+- **A topic group never works on more than its partitions allow**, even at a consumer with free slots from other
+  inputs (a push input, another group): a delivery arriving while its group's `allocation × concurrency` slots at
+  that node are taken is **staged** there and joins the node's queue as one frees. Staged deliveries count in the
+  node's backlog, travel in checkpoints and are found by the tracer.
 - A processor with no outgoing edges is a terminal consumer (counts `processed`).
 - Everything else is **push**: when a node finishes a message it sends it on immediately.
 - Fixed internal step (e.g. 10 ms) and a seeded PRNG ⇒ identical runs for identical inputs.
@@ -38,6 +49,12 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
 - `sync` edges are request/response: the message travels to the target, and when the target is a
   terminal (`store` / `sink`) or finishes processing, a `reply` particle travels back. The caller
   does not wait for the reply (keep it simple) — the reply is visual.
+- **A new edge's kind** comes from the stencils at its ends (`inferKind`, `src/stencils/edgeKind.ts`): `sync` into
+  a store, a sink (an outside API, email, a partner), a gateway or a model API (OpenAI, Claude, an LLM, an ML model),
+  or out of a client (`client.*`, a webhook) or a gateway; `async` into or out of a queue, topic, stream or Kafka
+  Cluster, which wins, and otherwise. Drawing, quick-add, Alt+arrow and the live view's "Traffic into X" use it; an
+  inferred dependency (Key Vault, App Configuration…) wins over it. An agent's `connect` without a `kind` gets the
+  same default (`async` with a `relation`). Files keep the kinds they have: an edge without `kind` is still `async`.
 
 ## Dependencies
 
@@ -119,7 +136,10 @@ reaches it (`park` in the trace) and its frame says so (`noConsumer: true`). Wha
   attempt goes straight to the DLQ path without another backoff. Checkpoints include retry state.
   This also applies when a consumer goes down while a reserved delivery is still travelling:
   arrival failures retain the work and reservation, allowing recovery or exhaustion to release it.
-- A message pushed to a `down` node (not from a broker) is `dropped`.
+- A message pushed to a `down` node (not from a broker) is `dropped`. A consumer fed only by brokers loses nothing
+  while it's down: the brokers stop delivering to it and keep its messages, so the callout and its badge say they
+  **wait** ("Messages wait in orders until it's back", "Down · 2/s waiting in orders"); "fail" is for nodes requests
+  are pushed to. The `capacity` check calls a node saved down **down**, not one that can't keep up.
 - `paused` nodes accept and hold messages (backlog grows) but don't process or pull.
 
 ## Traffic & injection
@@ -325,6 +345,37 @@ compounds or overwrites them. Zero traffic stops new input; zero capacity still 
 Invalid multipliers are ignored. `run.state()` exposes current scale/multipliers. Direct engine users
 can call `setScale` and `setCapacityMultiplier`; direct injection still takes sampled counts.
 
+## What playback shows going wrong
+
+The plan (below) can't see everything: a node down, messages lost, a backlog that keeps growing.
+`TroubleWatcher` (`src/live/observedTrouble.ts`) reads the run's real-unit snapshot about once a simulated second
+and keeps 10 s of samples; a jump in time (a seek, a restart, a stalled tab) starts them again. Worst first:
+
+- **down**: a node (not a source or decorative) whose status is down. Revive. Behind brokers it says where its
+  messages wait and how many so far, in the capacity callout's words.
+- **dropping**: a node whose `dropped` grew over the window. A broker with no dead-letter route offers **Add
+  dead-letter queue** (the same queue as the `dead-letter` check's fix, `deadLetterFor`); otherwise **Show events**.
+- **lag**: a broker whose largest group lag rose over the window by more than `max(10, 3 × scale, 20% of where it
+was)`, and is still rising (the middle and latest samples). It names the group's consumers ("Billing doesn't keep
+  up with it") with **Inputs…**; a queue nobody reads offers **Add a consumer**. Dead-letter queues are left out:
+  they keep what they get on purpose.
+
+The live view shows the worst one in the callout **on its own**, while editing in live view (never presenting,
+recording, embedded or in the Lab), each cause once per run (a run is the engine's generation and simulation),
+until it's dismissed or over. With the heat map on, it leads the capacity callout, unless that already says the same
+with its own action (over capacity, nobody reads it). Over the 16 public examples it reports nothing in free play
+but the IoT hub (which the plan calls over capacity too), and in saved stories only what they're about (an outage, a
+throttle, a rebuild).
+
+## Bounds
+
+`SIM_LIMITS` (`src/model/simProps.ts`) is the file format's bound on every simulation setting, and every editor uses
+it: rates up to **10,000,000 msg/s** (node `ratePerSec` and traffic profiles; live view samples them, so they cost
+nothing to play), counts (replicas, partitions, concurrency, max deliveries) up to 10,000, times up to 600,000 ms. The
+inspector clamps to them and says so under the field; the Inputs panel takes the same rates. A file past one is refused
+with the field and the limit ("ratePerSec 20,000,000 is over the 10,000,000 limit"). The document's traffic budget
+(200,000) counts what plays: scripted messages × the Traffic multiplier ÷ the simulation's saved `scale`.
+
 ## Capacity analysis without playback
 
 `analyzeCapacity(diagram, simulation?)` in `src/sim/capacity.ts` returns `nodes` keyed by id,
@@ -351,7 +402,7 @@ Traffic and capacity multipliers apply; scale does not change the analytic answe
   edges; normal terminal arrivals stop and store arrivals follow async change feeds. Intended downstream
   demand is not clipped at an upstream bottleneck.
 - This is nominal peak planning. Summed profile peaks can overestimate nonoverlapping traffic. It excludes
-  timeline chaos/injections, retry/failure cost, network travel reservations, jitter and broker storage/IO
+  timeline chaos/injections, retry/failure cost, jitter and broker storage/IO
   costs. Brokers accepting into another broker can buffer without a modeled ingest limit.
 - Feedback demand iterates to a fixed point with 256 iterations and a 10¹² msgs/s per-type cap. Amplifying
   or unbounded cycles return `converged: false`; their numbers are capped estimates. Show that warning.

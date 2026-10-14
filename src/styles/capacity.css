@@ -212,11 +212,16 @@
   }
 }
 
-/* Narrow canvases: drop below the title card and the Live toggle. */
+/*
+ * Narrow canvases: below the Live toggle, centred in the room right of the title card (at most 380 px wide, 16 px in):
+ * a callout that comes on its own never covers the diagram's name.
+ */
 @media (max-width: 1280px) {
   .cap-callout.is-floating {
     top: 60px;
-    max-width: calc(100% - 32px);
+    left: calc(50% + 198px);
+    min-width: 0;
+    max-width: calc(100% - 444px);
   }
 }
 

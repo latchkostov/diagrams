@@ -861,21 +861,25 @@ export function LiveSession({
     [controller, editor, flash],
   );
 
+  /** A node added one gap downstream may land past the view's edge: bring it in, clear of an open panel (as addEntry). */
+  const revealAdded = useCallback(() => {
+    window.setTimeout(() => {
+      const padding = capacityOpen
+        ? { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const }
+        : undefined;
+      void fitView({ ...FULL_FIT, ...(padding ? { padding } : {}), duration: motionMs(FULL_FIT.duration ?? 0) });
+    }, 260);
+  }, [capacityOpen, fitView]);
+
   /** "Nobody reads X" › Add a consumer: a service reading it, one undoable edit (the run restarts with it). */
   const addReader = useCallback(
     (brokerId: string) => {
       if (slowRef.current?.session.active || !editor) return;
       if (!addConsumer(editor, brokerId)) return;
       sayConsumerAdded(editor, brokerId);
-      // It lands one gap downstream, maybe past the view's edge: bring it in, clear of an open panel (as addEntry).
-      window.setTimeout(() => {
-        const padding = capacityOpen
-          ? { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const }
-          : undefined;
-        void fitView({ ...FULL_FIT, ...(padding ? { padding } : {}), duration: motionMs(FULL_FIT.duration ?? 0) });
-      }, 260);
+      revealAdded();
     },
-    [editor, capacityOpen, fitView],
+    [editor, revealAdded],
   );
 
   // ---------------------------------------------------------------- what playback shows going wrong
@@ -920,12 +924,14 @@ export function LiveSession({
       if (action.kind === "revive") controller.setNodeStatus(action.node, "up");
       else if (action.kind === "add-consumer") addReader(action.node);
       else if (action.kind === "add-dlq") {
-        if (editor && addDeadLetterQueue(editor, action.node))
+        if (editor && addDeadLetterQueue(editor, action.node)) {
           flash("Added a dead-letter queue: messages that run out of deliveries go there (undo with Ctrl+Z).");
+          revealAdded();
+        }
       } else if (action.kind === "events") showEvents(action.node);
       else openCapacity();
     },
-    [controller, addReader, editor, flash, showEvents, openCapacity],
+    [controller, addReader, editor, flash, showEvents, openCapacity, revealAdded],
   );
   // Editing the diagram (a consumer, a dead-letter queue) needs the editor; reviving and reading don't.
   const troubleActionHere = (t: Trouble) =>

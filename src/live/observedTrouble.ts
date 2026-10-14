@@ -144,7 +144,7 @@ function troubles(frame: WatchedFrame, d: DiagramFile, samples: readonly Sample[
         node: id,
         headline: `${name(id)} is losing messages: ${formatCount(n.dropped)} dropped`,
         detail: broker
-          ? "They ran out of deliveries and it has no dead-letter queue to keep them."
+          ? "They ran out of deliveries, and no dead-letter queue keeps them."
           : "Messages that fail here are dropped: nothing retries them.",
         action:
           broker && !compiled.edges.some((e) => e.from === id && e.dlq)
