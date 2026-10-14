@@ -225,6 +225,25 @@
   }
 }
 
+/* Too little room beside the title card (a narrow canvas, side panels open): below it, the canvas's full width. */
+.cap-callout.is-floating[data-below] {
+  top: var(--callout-top, 60px);
+  left: 16px;
+  right: 16px;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  transform: none;
+  animation-name: cap-in-below;
+}
+
+@keyframes cap-in-below {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
 .cap-callout-dot {
   flex: none;
   align-self: flex-start;

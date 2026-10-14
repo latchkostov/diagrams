@@ -385,9 +385,9 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
   const compiled = compileTopology(d);
   const routes = compiled.outgoing;
   const nodes: Record<string, NodeHeat> = {};
-  /** The brokers feeding a node, when every flow into it comes from one (dead-letter routes aside). */
+  /** The brokers feeding a node, when every flow into it comes from one (dead-letter routes and deny rules aside). */
   const fedByBrokers = (id: string): string[] | undefined => {
-    const from = compiled.edges.filter((e) => e.to === id && !e.dlq).map((e) => byId.get(e.from));
+    const from = compiled.edges.filter((e) => e.to === id && !e.dlq && !e.deny).map((e) => byId.get(e.from));
     if (!from.length || from.some((n) => !n || !BROKERS.has(roleOf(n)))) return undefined;
     return [...new Set(from.map((n) => n!.label || n!.id))];
   };

@@ -66,7 +66,7 @@ export const capacity: CheckRule = {
     if (status === "down" || status === "paused") {
       const brokers = ctx
         .incoming(top.id)
-        .filter((e) => !e.dlq)
+        .filter((e) => !e.dlq && !e.deny)
         .map((e) => e.from);
       const waits = brokers.length > 0 && brokers.every((id) => isBroker(ctx, id));
       const where = [...new Set(brokers.map((id) => ctx.name(id)))].join(" and ");

@@ -37,7 +37,8 @@ import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "./layout";
 import { CapacityPanel } from "./CapacityPanel";
 import { BottleneckCallout, CapacityLayer, TroubleCallout } from "./CapacityLayer";
 import { addConsumer, addDeadLetterQueue } from "./addConsumer";
-import { TroubleWatcher, pickTrouble, type Trouble, type TroubleAction } from "./observedTrouble";
+import type { Trouble, TroubleAction } from "./observedTrouble";
+import { useObservedTrouble } from "./useObservedTrouble";
 import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
 import { useLiveSessionHost } from "../palette/host";
 import {
@@ -884,40 +885,8 @@ export function LiveSession({
 
   // ---------------------------------------------------------------- what playback shows going wrong
 
-  // About once a simulated second, read the run for trouble the plan can't see (a node down, messages lost, a lag
-  // that keeps rising): the callout says so on its own, each cause once per run, until dismissed or over.
-  const [watcher] = useState(() => new TroubleWatcher());
-  const troubleMemory = useRef({
-    run: "",
-    shown: new Set<string>(),
-    ended: new Set<string>(),
-    dismissed: new Set<string>(),
-  });
-  const [troubles, setTroubles] = useState<Trouble[]>([]);
-  const [trouble, setTrouble] = useState<Trouble | undefined>();
-  useEffect(() => {
-    let tick = -1;
-    const look = () => {
-      const st = controller.getState();
-      const run = `${st.generation}:${st.simulation?.id ?? ""}`;
-      const second = Math.floor(st.snapshot.time / 1000);
-      if (run === troubleMemory.current.run && second === tick) return;
-      tick = second;
-      if (run !== troubleMemory.current.run) {
-        troubleMemory.current = { run, shown: new Set(), ended: new Set(), dismissed: new Set() };
-        watcher.reset();
-      }
-      const now = watcher.observe(st.snapshot, controller.currentDiagram);
-      setTroubles(now);
-      setTrouble(pickTrouble(now, troubleMemory.current));
-    };
-    return controller.subscribe(look);
-  }, [controller, watcher]);
-  const dismissTrouble = useCallback(() => {
-    if (!trouble) return;
-    troubleMemory.current.dismissed.add(trouble.key);
-    setTrouble(pickTrouble(troubles, troubleMemory.current));
-  }, [trouble, troubles]);
+  // The run's trouble the plan can't see (a node down, messages lost, a lag that keeps rising), for the callout.
+  const { trouble, dismiss: dismissTrouble } = useObservedTrouble(controller);
   const runTroubleAction = useCallback(
     (action: TroubleAction) => {
       if (slowRef.current?.session.active) return;
@@ -1240,12 +1209,17 @@ export function LiveSession({
           </div>
         )}
         {trouble &&
+        // Only while editing in live view: never presenting, recording, embedded or in the Lab, heat map or not.
+        !!editor &&
+        !presenting &&
+        !capturing &&
         !capacityOpen &&
         // With the heat map on, a callout is already there: trouble leads it, unless the plan already says the
-        // same thing with its own action (over capacity, nobody reads it). Off, it comes on its own while editing.
-        (showCapacity && capacity
-          ? trouble.kind !== "lag" || (capacity.tone !== "over" && capacity.tone !== "hot" && !capacity.addConsumer)
-          : !!editor && !presenting && !capturing) ? (
+        // same thing with its own action (over capacity, nobody reads it).
+        (!showCapacity ||
+          !capacity ||
+          trouble.kind !== "lag" ||
+          (capacity.tone !== "over" && capacity.tone !== "hot" && !capacity.addConsumer)) ? (
           <TroubleCallout
             trouble={trouble}
             floating

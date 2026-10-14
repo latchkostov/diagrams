@@ -1,13 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactFlowInstance } from "@xyflow/react";
 import { toFlow } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
-import { notify } from "../interop/ui/toast";
-import { createEditor, type EditorDeps } from "./useEditor";
+import type { EditorDeps } from "./useEditor";
 import type { DiagramFile } from "../model/types";
 import { applyOps } from "../ai/ops";
 
 vi.mock("../interop/ui/toast", () => ({ notify: vi.fn() }));
+
+// The Request toast shows once a session (module state): a fresh editor module per test, so no test depends on
+// another having run first.
+let createEditor: typeof import("./useEditor").createEditor;
+let notify: typeof import("../interop/ui/toast").notify;
+beforeEach(async () => {
+  vi.resetModules();
+  ({ createEditor } = await import("./useEditor"));
+  ({ notify } = await import("../interop/ui/toast"));
+});
 
 // New edges start as Requests where a reply is expected (into a database, a gateway, an outside or model API;
 // out of a client or a gateway), Messages into and out of brokers. Relationship inference still wins, and files
@@ -57,7 +66,6 @@ function setup() {
 describe("a new edge's kind", () => {
   it("a database quick-added after a service is connected by a Request; the first time, a toast says so", () => {
     const t = setup();
-    vi.mocked(notify).mockClear();
     const made = t.api.createConnected({ from: "api", stencil: "mysql", toward: "down" });
     t.commit();
     expect(t.edge(made?.edge)?.data).toMatchObject({ kind: "sync" });

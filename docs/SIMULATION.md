@@ -16,15 +16,21 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
   the broker keeps at most `units + ⌈units × travelMs ÷ latencyMs⌉ + 1` deliveries outstanding (travelling,
   waiting at the consumer, or in work) against `units` slots, enough to keep every slot busy plus a prefetch of
   one. For a processor `units` is `activeReplicas × concurrency` ÷ scale (a sampled dot costs `scale`
-  messages of service budget), so at a sampling scale the backlog stays at the broker. A target with no service
-  time (a broker, a sink, a 0 ms service) is never the limit, so a topic → queue hop builds no lag. A broker-fed
+  messages of service budget), so at a sampling scale the backlog stays at the broker. A non-processor target with
+  no service time (a broker, a sink) is never the limit, so a topic → queue hop builds no lag; a 0 ms processor is
+  paced as one tick (10 ms), so a burst can't pull a whole backlog onto the edge. A broker-fed
   consumer therefore drains at `activeReplicas × concurrency × 1000 ÷ latencyMs`, what capacity analysis, the heat
   map and the `capacity` check report (seeded ratios in `src/sim/drain.test.ts`: 0.95–1.0 with jitter, the tick's
   rounding included, exactly 1.0 without). Travel time is animation, never a throughput limit.
 - **A topic group never works on more than its partitions allow**, even at a consumer with free slots from other
   inputs (a push input, another group): a delivery arriving while its group's `allocation × concurrency` slots at
-  that node are taken is **staged** there and joins the node's queue as one frees. Staged deliveries count in the
-  node's backlog, travel in checkpoints and are found by the tracer.
+  that node are taken is **staged** there, in a queue per group and consumer, and the next one joins the node's queue
+  each time a group slot frees (or the group gets more): nothing rescans the backlog per tick. Staged deliveries
+  count in the node's backlog, travel in checkpoints and are found by the tracer. A deny rule in a group (a firewall
+  route, `deny`) takes no slot and stages nothing: its target isn't a consumer.
+- **An in-place retry keeps a slot only if it has one**, or one is free (the node's and its group's): deliveries
+  prefetched to a consumer that goes down fail on arrival, one per free slot retries in place, and the rest go back to
+  the broker, so a revived consumer never works past its concurrency or partitions.
 - A processor with no outgoing edges is a terminal consumer (counts `processed`).
 - Everything else is **push**: when a node finishes a message it sends it on immediately.
 - Fixed internal step (e.g. 10 ms) and a seeded PRNG ⇒ identical runs for identical inputs.
@@ -348,8 +354,10 @@ can call `setScale` and `setCapacityMultiplier`; direct injection still takes sa
 ## What playback shows going wrong
 
 The plan (below) can't see everything: a node down, messages lost, a backlog that keeps growing.
-`TroubleWatcher` (`src/live/observedTrouble.ts`) reads the run's real-unit snapshot about once a simulated second
-and keeps 10 s of samples; a jump in time (a seek, a restart, a stalled tab) starts them again. Worst first:
+`TroubleWatcher` (`src/live/observedTrouble.ts`) reads the run's real-unit snapshot on every publication (`useObservedTrouble`), so a status change shows at once,
+paused or not; trends are sampled about once a simulated second, 10 s kept, and a jump in time (a seek, a restart,
+a stalled tab) starts them again. The topology it needs (routes into each node, dead-letter targets as playback
+classifies them, deny rules left out) is indexed once per diagram. Worst first:
 
 - **down**: a node (not a source or decorative) whose status is down. Revive. Behind brokers it says where its
   messages wait and how many so far, in the capacity callout's words.

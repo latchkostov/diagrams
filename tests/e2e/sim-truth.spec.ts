@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLive, expectNoErrors, pageLoadTimeout, waitForStableViewport } from "./fixtures";
-import { STORAGE_KEYS } from "./fixtures";
+import { STORAGE_KEYS, gotoLab } from "./fixtures";
 
 // The simulation tells the truth (docs/research/sim-flows-review.md, items 1–6): a consumer behind a broker drains
 // at its reported capacity, new edges into a database are Requests, fields that can't change the run are hidden,
@@ -203,4 +203,97 @@ test.describe("the simulation tells the truth", () => {
       page.getByTestId("toast").filter({ hasText: "ratePerSec 20,000,000 is over the 10,000,000 limit" }),
     ).toBeVisible();
   });
+});
+
+test.describe("the trouble callout stays out of views nobody edits, heat map or not", () => {
+  const OUTAGE = `./?view=canvas&example=${SLUG}&live=1&sim=payments-outage&paused=1`;
+
+  test("editing shows it with the heat map on; presenting shows only the plan's callout", async ({ page }) => {
+    await gotoLive(page, OUTAGE);
+    await page.keyboard.press("c");
+    await page.getByTestId("live-marker-2").click();
+    await expect(page.getByTestId("trouble-callout")).toHaveAttribute("data-kind", "down");
+    // The cause is announced once, without the counts that change every second.
+    await expect(page.getByTestId("trouble-announce")).toHaveText("Payments service is down");
+    await expect(page.getByTestId("trouble-announce")).toHaveAttribute("role", "status");
+    await expect(page.getByTestId("trouble-callout")).not.toHaveAttribute("role", "status");
+    await page.getByTestId("present-toggle").click();
+    await expect(page.getByTestId("present-exit")).toBeVisible();
+    await expect(page.getByTestId("bottleneck-headline")).toHaveText("Payments service is down");
+    await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
+  });
+
+  test("an embed with the heat map on never shows it", async ({ page }) => {
+    await page.goto(`./?embed=1&example=${SLUG}&live=1&sim=payments-outage&paused=1`);
+    await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
+    await page.keyboard.press("c");
+    await page.getByTestId("live-marker-2").click();
+    await expect(page.getByTestId("bottleneck-headline")).toHaveText("Payments service is down");
+    await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
+  });
+
+  test("the Lab's live stage with a down node never shows it", async ({ page }) => {
+    await gotoLab(page, "live-badge-states");
+    await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
+    await page.keyboard.press("c");
+    await expect(page.getByTestId("bottleneck-callout")).toBeVisible();
+    await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
+  });
+
+  test("paused, Revive in the callout clears it at once; Dismiss returns focus to the canvas", async ({ page }) => {
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&speed=4`);
+    await expect(async () => {
+      await page.getByTestId("node-payments").click({ button: "right" });
+      await page.getByTestId("context-menu-item-sim.kill").click({ timeout: 1000 });
+    }).toPass({ timeout: 10_000 });
+    await expect(page.getByTestId("trouble-callout")).toBeVisible();
+    await page.getByTestId("live-play").click();
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+    // Paused: time stands still, and the callout still follows the status.
+    await page.getByTestId("trouble-action").click();
+    await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "up");
+    await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
+    // Killed again while paused: a new run of the same cause isn't shown twice, so restart the run first.
+    await page.getByTestId("live-restart").click();
+    await expect(async () => {
+      await page.getByTestId("node-payments").click({ button: "right" });
+      await page.getByTestId("context-menu-item-sim.kill").click({ timeout: 1000 });
+    }).toPass({ timeout: 10_000 });
+    await expect(page.getByTestId("trouble-callout")).toBeVisible();
+    await page.getByTestId("trouble-dismiss").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+  });
+});
+
+test("on a narrow canvas (1024, AI panel open) the callout keeps its words and buttons in view", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&speed=4`);
+  await page.getByTestId("ai-rail-open").click();
+  await expect(page.getByTestId("ai-panel")).toBeVisible();
+  await expect(async () => {
+    await page.getByTestId("node-payments").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.kill").click({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
+  const callout = page.getByTestId("trouble-callout");
+  await expect(callout).toBeVisible();
+  // Too little room beside the title card: it sits below it, the canvas's width.
+  await expect(callout).toHaveAttribute("data-below", "");
+  const box = async (id: string) => {
+    const b = await page.getByTestId(id).boundingBox();
+    if (!b) throw new Error(`Expected ${id} on screen`);
+    return b;
+  };
+  const wrap = await box("canvas-wrap");
+  const headline = await box("trouble-headline");
+  for (const id of ["trouble-action", "trouble-dismiss"]) {
+    const b = await box(id);
+    expect(b.x).toBeGreaterThanOrEqual(wrap.x);
+    expect(b.x + b.width).toBeLessThanOrEqual(wrap.x + wrap.width);
+    // Never over the words.
+    expect(b.x >= headline.x + headline.width || b.y >= headline.y + headline.height).toBe(true);
+  }
+  const card = await box("diagram-card");
+  expect((await box("trouble-callout")).y).toBeGreaterThanOrEqual(card.y + card.height);
 });

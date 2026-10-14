@@ -4,6 +4,7 @@ import gcp from "../examples/gcp-streaming-analytics.json";
 import { analyzeCapacity } from "./capacity";
 import { createEngine } from "./engine";
 import { DEFAULT_TRAVEL_MS } from "./topology";
+import { GROWTH_FACTOR } from "../test/complexity";
 
 // A consumer behind a broker drains at the rate capacity analysis reports: its slots are taken when a delivery
 // arrives, not while it travels (docs/research/sim-flows-review.md, F-1). Seeded runs, compared as ratios and
@@ -139,4 +140,101 @@ describe("broker-fed consumers drain at their reported capacity", () => {
     const lag = engine.frame().nodes["pubsub-topic"].lag;
     expect(Math.max(...Object.values(lag))).toBeLessThanOrEqual(5);
   });
+});
+
+describe("staged deliveries cost nothing while they wait", () => {
+  /** Engines with `n` deliveries staged at a consumer whose group has one slot: a burst prefetched at concurrency
+   *  1,000 (10 ms each, 300 ms away), then concurrency cut to 1 before it arrives. */
+  function staged(n: number) {
+    const engine = createEngine({ seed: 1, maxParticles: 0 });
+    engine.load({
+      format: "diagrams/v1",
+      title: "Staged",
+      nodes: [
+        node("broker", "kafka.topic", { partitions: 1 }),
+        node("billing", "service.dotnet", { concurrency: 1000, latencyMs: 10, jitter: 0 }),
+      ],
+      edges: [edge("broker", "billing", { travelMs: 300 })],
+    });
+    engine.inject("broker", n);
+    engine.step(10);
+    engine.setNodeProps("billing", { concurrency: 1 });
+    engine.step(400);
+    return engine;
+  }
+
+  it("the backlog really is staged, and drains one slot at a time", () => {
+    const engine = staged(2_000);
+    expect(engine.frame().nodes.billing.backlog).toBeGreaterThan(1_900);
+    const before = engine.frame().nodes.billing.processed;
+    engine.step(1_000);
+    // One slot, 10 ms each: about 100 in a second, never the whole backlog at once.
+    expect(engine.frame().nodes.billing.processed - before).toBeLessThanOrEqual(101);
+  });
+
+  it("a tick's work doesn't grow with the staged backlog", () => {
+    // Fresh engines per measurement (stepping changes them); the fastest of several, both sizes interleaved.
+    const time = (n: number) => {
+      const engine = staged(n);
+      const start = performance.now();
+      engine.step(500);
+      return performance.now() - start;
+    };
+    let small = Infinity,
+      large = Infinity;
+    for (let i = 0; i < 5; i++) {
+      small = Math.min(small, time(GROWTH_FACTOR * 250));
+      large = Math.min(large, time(GROWTH_FACTOR * 2_000));
+    }
+    // A rescan of the backlog each tick grows with it (about 8× here); admitting only as slots free doesn't.
+    expect(large / small).toBeLessThan(3);
+  });
+});
+
+it("a 0 ms consumer is paced as one tick: a burst never pulls the whole backlog onto the edge", () => {
+  const engine = createEngine({ seed: 1, maxParticles: 0 });
+  engine.load({
+    format: "diagrams/v1",
+    title: "Zero",
+    nodes: [
+      node("broker", "kafka.topic", { partitions: 1 }),
+      node("billing", "service.dotnet", { concurrency: 1, latencyMs: 0 }),
+    ],
+    edges: [edge("broker", "billing", { travelMs: 300 })],
+  });
+  engine.inject("broker", 100_000);
+  engine.step(10);
+  // 1 slot + ceil(1 × 300 / 10) on the way + 1.
+  expect(engine.snapshot().edges["broker-billing"].active).toBe(32);
+});
+
+it("a deny rule in a topic's group takes no slot and stages nothing: the allowed consumer still drains at capacity", () => {
+  const d: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Deny",
+    nodes: [
+      node("checkout", "client.browser", { ratePerSec: 40 }),
+      node("broker", "kafka.topic", { partitions: 1 }),
+      node("billing", "service.dotnet"),
+      node("audit", "service.go"),
+    ],
+    edges: [
+      edge("checkout", "broker"),
+      { ...edge("broker", "billing", { group: "g" }) },
+      { ...edge("broker", "audit", { group: "g", deny: true }) },
+    ],
+  };
+  const engine = createEngine({ seed: 1 });
+  engine.load(d);
+  engine.setTraffic(true);
+  for (let t = 0; t < 10_000; t += 100) engine.step(100);
+  const start = engine.frame().nodes.billing.processed;
+  for (let t = 0; t < 30_000; t += 100) engine.step(100);
+  const nodes = engine.snapshot().nodes;
+  // The denied target never receives, holds or stages anything.
+  expect(nodes.audit).toMatchObject({ processed: 0, inFlight: 0, backlog: 0 });
+  expect(nodes.broker.blocked).toBeGreaterThan(0);
+  // Half the round robin is blocked at once; the rest drains at billing's 16/s, or all of it if that's less.
+  const rate = (nodes.billing.processed - start) / 30;
+  expect(rate / analyzeCapacity(d).nodes.billing.capacity).toBeGreaterThan(0.95);
 });

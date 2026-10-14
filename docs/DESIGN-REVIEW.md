@@ -43,6 +43,10 @@ diagrams drawn for it (no private diagrams). Screenshots are in `docs/screenshot
   of the title card, under the Live toggle.
 - **Add dead-letter queue landed off screen** at 1024: it now refits the view as Add a consumer does.
 - **The "losing messages" line wrapped to three lines** at 1024; shortened.
+- **From the code review:** with a side panel open the canvas left the callout 116 px beside the title card, its
+  words under its buttons; both floating callouts now drop below the card at the canvas's width when the room
+  beside it is short. A screen reader hears the cause once ("Payments service is down"), not every changing count.
+  Dismissing with the keyboard returns focus to the canvas. Revive while paused clears the callout at once.
 
 ### Bigger ones, listed for the owner (not built)
 

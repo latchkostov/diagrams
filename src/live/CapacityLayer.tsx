@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useRef, type CSSProperties } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { useNodes, useStore } from "@xyflow/react";
 import type { FlowNode } from "../canvas/types";
 import type { CapacityFix, CapacityView, NodeHeat } from "./capacityModel";
@@ -134,6 +134,7 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabl
   const reader = view.addConsumer && onAddConsumer ? view.addConsumer : undefined;
   const fix = reader ? null : view.fix;
   const callout = useRef<HTMLDivElement>(null);
+  const placement = useFloatingPlacement(callout, !!floating);
   const applied = useRef(false);
   // The action's button goes once it's done (the fix applied, the consumer added): keep focus on the callout.
   useLayoutEffect(() => {
@@ -147,6 +148,8 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabl
       ref={callout}
       tabIndex={-1}
       className={`cap-callout is-${view.tone}${floating ? " is-floating" : ""}`}
+      style={placement.style}
+      data-below={placement.below ? "" : undefined}
       data-testid="bottleneck-callout"
       data-tone={view.tone}
       data-node={view.top?.id ?? ""}
@@ -230,16 +233,37 @@ interface TroubleProps {
  */
 export function TroubleCallout({ trouble, onAction, onDismiss, floating, disabledHint }: TroubleProps) {
   const action = TROUBLE_ACTIONS[trouble.action.kind];
+  const box = useRef<HTMLDivElement>(null);
+  const placement = useFloatingPlacement(box, !!floating);
+  // Focus inside the callout when it goes (dismissed, revived, the trouble over) returns to the canvas, never <body>.
+  const focused = useRef(false);
+  useEffect(() => {
+    const wrap = box.current?.closest<HTMLElement>(".canvas-wrap");
+    return () => {
+      if (focused.current && (document.activeElement === document.body || !document.activeElement))
+        wrap?.focus({ preventScroll: true });
+    };
+  }, []);
   return (
     <div
+      ref={box}
       className={`cap-callout is-over${floating ? " is-floating" : ""}`}
+      style={placement.style}
       data-testid="trouble-callout"
       data-kind={trouble.kind}
       data-node={trouble.node}
+      data-below={placement.below ? "" : undefined}
       data-canvas-overlay={floating ? "" : undefined}
       data-editor-overlay
-      role="status"
+      onFocus={() => (focused.current = true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) focused.current = false;
+      }}
     >
+      {/* The cause, once: the headline's counts change every second and would be read out each time. */}
+      <span className="sr-only" role="status" data-testid="trouble-announce">
+        {trouble.announce}
+      </span>
       <span className="cap-callout-dot" aria-hidden />
       <div className="cap-callout-text">
         <strong data-testid="trouble-headline">{trouble.headline}</strong>
@@ -268,4 +292,39 @@ export function TroubleCallout({ trouble, onAction, onDismiss, floating, disable
       </button>
     </div>
   );
+}
+
+/** Room a floating callout needs beside the title card for its words and buttons. */
+const CALLOUT_MIN = 420;
+
+/**
+ * Where a floating callout sits: top centre (CSS), or, when the canvas leaves too little room right of the diagram's
+ * title card (narrow screens, side panels open), below the card at the canvas's full width, so its words and buttons
+ * never squeeze or clip. Follows the canvas and the card as they resize.
+ */
+function useFloatingPlacement(box: RefObject<HTMLElement | null>, floating: boolean) {
+  const [place, setPlace] = useState<{ below: boolean; top: number }>({ below: false, top: 0 });
+  useLayoutEffect(() => {
+    const el = box.current;
+    const parent = el?.offsetParent;
+    if (!floating || !el || !(parent instanceof HTMLElement)) return;
+    const card = el.closest(".canvas-wrap")?.querySelector<HTMLElement>(".diagram-card");
+    const measure = () => {
+      const p = parent.getBoundingClientRect();
+      const c = card && !card.hidden ? card.getBoundingClientRect() : null;
+      const room = c ? p.right - 16 - (c.right + 16) : p.width - 32;
+      const below = !!c && room < CALLOUT_MIN;
+      const top = c ? Math.round(c.bottom - p.top + 8) : 0;
+      setPlace((old) => (old.below === below && old.top === top ? old : { below, top }));
+    };
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(parent);
+    if (card) watch.observe(card);
+    return () => watch.disconnect();
+  }, [box, floating]);
+  return {
+    below: place.below,
+    style: place.below ? ({ "--callout-top": `${place.top}px` } as CSSProperties) : undefined,
+  };
 }

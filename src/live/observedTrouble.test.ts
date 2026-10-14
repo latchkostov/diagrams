@@ -3,6 +3,7 @@ import type { DiagramFile } from "../model/types";
 import { createEngine } from "../sim/engine";
 import { realSnapshot } from "../sim/units";
 import { TroubleWatcher, pickTrouble, type Trouble } from "./observedTrouble";
+import { GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
 
 // What playback shows going wrong, read from seeded runs: rising lag, lost messages, a node that's down.
 
@@ -118,6 +119,7 @@ describe("which trouble the callout shows", () => {
     kind: "lag",
     node: key,
     headline: key,
+    announce: key,
     detail: "",
     action: { kind: "inputs" },
   });
@@ -131,4 +133,84 @@ describe("which trouble the callout shows", () => {
     expect(pickTrouble([t("a")], memory)).toBeUndefined();
     expect(pickTrouble([t("a"), t("b")], memory)).toBeUndefined();
   });
+});
+
+describe("status and classification", () => {
+  const frame = (time: number, worker: "up" | "down", lag = 0) => ({
+    time,
+    nodes: {
+      q: { status: "up" as const, lag: { queue: lag }, dropped: 0 },
+      worker: { status: worker, lag: {}, dropped: 0 },
+    },
+  });
+
+  it("a node killed or revived while time stands still shows at once", () => {
+    const d = diagram(2);
+    const watcher = new TroubleWatcher();
+    expect(watcher.observe(frame(5_000, "up"), d)).toEqual([]);
+    expect(watcher.observe(frame(5_000, "down"), d).map((t) => t.key)).toEqual(["down:worker"]);
+    expect(watcher.observe(frame(5_000, "up"), d)).toEqual([]);
+  });
+
+  it("a queue whose route is marked not dead-letter (dlq: false) still reports rising lag, whatever its name", () => {
+    const d = diagram(2);
+    d.nodes.push({ id: "parked", stencil: "aws.sqs", label: "No DLQ", x: 0, y: 0 });
+    d.nodes.push({ id: "reader", stencil: "service.go", label: "Reader", x: 0, y: 0 });
+    d.edges.push({ id: "p", from: "q", to: "parked", kind: "async", props: { dlq: false } });
+    d.edges.push({ id: "r", from: "parked", to: "reader", kind: "async" });
+    const watcher = new TroubleWatcher();
+    let seen: Trouble[] = [];
+    for (let t = 0, lag = 0; t <= 12_000; t += 1_000, lag += 40)
+      seen = watcher.observe(
+        {
+          time: t,
+          nodes: {
+            ...frame(t, "up").nodes,
+            parked: { status: "up", lag: { r: lag }, dropped: 0 },
+            reader: { status: "up", lag: {}, dropped: 0 },
+          },
+        },
+        d,
+      );
+    expect(seen.map((x) => x.key)).toContain("lag:parked");
+  });
+
+  it("an observation is linear in the diagram, however many brokers have no dead-letter route", () => {
+    const build = (n: number) => {
+      const d: DiagramFile = { format: "diagrams/v1", title: "Many", nodes: [], edges: [] };
+      const nodes: Record<string, { status: "up"; lag: Record<string, number>; dropped: number }> = {};
+      for (let i = 0; i < n; i++) {
+        d.nodes.push({ id: `q${i}`, stencil: "aws.sqs", label: `q${i}`, x: 0, y: 0 });
+        d.nodes.push({ id: `w${i}`, stencil: "service.go", label: `w${i}`, x: 0, y: 0 });
+        d.edges.push({ id: `e${i}`, from: `q${i}`, to: `w${i}`, kind: "async" });
+        nodes[`q${i}`] = { status: "up", lag: { queue: 0 }, dropped: 0 };
+        nodes[`w${i}`] = { status: "up", lag: {}, dropped: 0 };
+      }
+      const watcher = new TroubleWatcher();
+      let time = 0;
+      // Past the window, so every broker is examined; a new sample each call.
+      for (; time <= 12_000; time += 1_000) watcher.observe({ time, nodes }, d);
+      return () => watcher.observe({ time: (time += 1_000), nodes }, d);
+    };
+    expect(growth(build(300), build(300 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+  });
+});
+
+it("a down consumer behind a queue waits there, whatever a firewall's deny rule toward it says", () => {
+  const d = diagram(2);
+  d.nodes.push({ id: "fw", stencil: "generic.firewall", label: "Edge firewall", x: 0, y: 0 });
+  d.edges.push({ id: "denied", from: "fw", to: "worker", kind: "sync", props: { deny: true } });
+  const watcher = new TroubleWatcher();
+  const [down] = watcher.observe(
+    {
+      time: 1_000,
+      nodes: {
+        q: { status: "up", lag: { queue: 7 }, dropped: 0 },
+        worker: { status: "down", lag: {}, dropped: 0 },
+        fw: { status: "up", lag: {}, dropped: 0 },
+      },
+    },
+    d,
+  );
+  expect(down.detail).toBe("Messages wait in orders until it's back (7 so far).");
 });

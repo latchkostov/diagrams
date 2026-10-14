@@ -52,6 +52,8 @@ interface Group {
   activeByNode: Record<string, number>;
   /** Deliveries that arrived and hold one of the group's slots at each consumer (waiting or in work). */
   heldByNode: Record<string, number>;
+  /** Per consumer: deliveries that arrived while all of the group's slots there were held, in arrival order. */
+  staged: Record<string, Deque<Work>>;
   members: string[];
   limit: number;
 }
@@ -70,6 +72,8 @@ interface Work {
   injected?: boolean;
   /** Holds one of its delivery group's slots at the node (see admit). */
   held?: boolean;
+  /** In the node's working set: it has one of the node's slots (an in-place retry keeps it). */
+  slotted?: boolean;
 }
 interface Node {
   id: string;
@@ -85,8 +89,8 @@ interface Node {
   dlq?: Edge;
   groups: Group[];
   pending: Deque<Work>;
-  /** Deliveries that arrived while their group's slots here were all taken: they start as one frees. */
-  staged: Work[];
+  /** How many deliveries are staged here (in their groups' `staged` queues), for the backlog. */
+  staged: number;
   working: Work[];
   incoming: number;
   cursor: number;
@@ -190,10 +194,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             node: trip.kind === "reply" || trip.kind === "retry" ? trip.edge.to.id : trip.edge.from.id,
           };
       for (const node of nodes.values()) {
-        const work =
-          node.working.find((w) => test(w.message)) ??
-          node.pending.find((w) => test(w.message)) ??
-          node.staged.find((w) => test(w.message));
+        let work = node.working.find((w) => test(w.message)) ?? node.pending.find((w) => test(w.message));
+        if (!work && node.staged)
+          for (const group of groupsByConsumer.get(node.id) ?? []) {
+            work = group.staged[node.id]?.find((w) => test(w.message));
+            if (work) break;
+          }
         if (work) return { message: work.message, node: node.id };
         for (const group of node.groups) {
           const queued = group.pending.find(test);
@@ -361,11 +367,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
    */
   function outstanding(units: number, target: Node, travelMs: number): number {
     if (!(units > 0)) return 0;
-    if (!(target.props.latencyMs > 0) || units === Infinity) return Infinity;
+    const processor = target.role === "processor";
+    if (units === Infinity || (!processor && !(target.props.latencyMs > 0))) return Infinity;
     // A sampled dot costs `scale` messages of a processor's service budget (see tick): it works on units ÷ scale dots
     // at a time, so only that many (and what's on the way to them) are held for it. The rest is lag at the broker.
-    const busy = target.role === "processor" ? units / scale : units;
-    return Math.ceil(busy) + Math.ceil((busy * Math.max(STEP, travelMs)) / target.props.latencyMs) + 1;
+    // A 0 ms service is paced as one tick, so a burst can't pull a whole backlog onto the edge at once.
+    const busy = processor ? units / scale : units;
+    const service = processor ? Math.max(STEP, target.props.latencyMs) : target.props.latencyMs;
+    return Math.ceil(busy) + Math.ceil((busy * Math.max(STEP, travelMs)) / service) + 1;
   }
 
   function refreshGroupLimit(group: Group): void {
@@ -404,6 +413,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       refreshGroupLimit(group);
       for (const id of group.members) targets.add(id);
     }
+    // More slots for a group: what's staged at its consumers starts now.
+    for (const group of affected) drainStaged(group);
     for (const id of targets) {
       const node = nodes.get(id)!;
       const assigned = compiled.restricted.has(id)
@@ -442,7 +453,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (Math.max(1, Math.round(node.props.replicas * next)) !== node.replicas) changed.add(node.id);
     }
     if (changed.size) assignReplicas(changed);
-    for (const group of limits) refreshGroupLimit(group);
+    for (const group of limits) {
+      refreshGroupLimit(group);
+      drainStaged(group);
+    }
     // A unit of an active-standby pair failed: its own unit count went down (a capacity multiplier never changes
     // it), at least one is left, and the run is under way (a unit missing at time zero is the starting state).
     for (const [node, before] of units)
@@ -496,31 +510,56 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
    */
   function admit(node: Node, work: Work): void {
     const group = work.delivery?.group;
-    if (group && !work.held) {
-      const held = group.heldByNode[node.id] ?? 0;
-      // Never stage behind nothing: a live reassignment can leave a group no slots here while deliveries travel.
-      if (held > 0 && held >= groupUnits(group, node)) {
-        node.staged.push(work);
-        return;
-      }
-      group.heldByNode[node.id] = held + 1;
-      work.held = true;
+    if (group && !work.held && !hold(group, node, work)) {
+      (group.staged[node.id] ??= new Deque()).push(work);
+      node.staged++;
+      return;
     }
     node.pending.push(work);
   }
 
-  /** The work leaves the node (done, or failed back to its broker): its group slot is free again. */
+  /**
+   * Takes one of the group's slots at `node` for `work` if one is free. Never stages behind nothing: a live
+   * reassignment can leave a group no slots at a node while deliveries are on their way to it.
+   */
+  function hold(group: Group, node: Node, work: Work): boolean {
+    const held = group.heldByNode[node.id] ?? 0;
+    if (held > 0 && held >= groupUnits(group, node)) return false;
+    group.heldByNode[node.id] = held + 1;
+    work.held = true;
+    return true;
+  }
+
+  /** The work leaves the node (done, or failed back to its broker): its group slot goes to the next staged one. */
   function release(work: Work): void {
     if (!work.held) return;
     work.held = false;
-    work.delivery!.group.heldByNode[work.delivery!.edge.to.id]--;
+    const { group, edge } = work.delivery!;
+    group.heldByNode[edge.to.id]--;
+    unstage(group, edge.to);
   }
 
-  /** Staged deliveries whose group has a free slot again join the node's queue, in arrival order. */
-  function unstage(node: Node): void {
-    const waiting = node.staged;
-    node.staged = [];
-    for (const work of waiting) admit(node, work);
+  /** Staged deliveries of `group` at `node` join its queue, in arrival order, while the group has slots there. */
+  function unstage(group: Group, node: Node): void {
+    const waiting = group.staged[node.id];
+    while (waiting?.length && hold(group, node, waiting.peek()!)) {
+      node.staged--;
+      node.pending.push(waiting.shift()!);
+    }
+  }
+
+  function drainStaged(group: Group): void {
+    for (const id of group.members) unstage(group, nodes.get(id)!);
+  }
+
+  /**
+   * Whether a failed delivery can retry in place: it already has one of the node's slots, or one is free now (its
+   * group's too). Prefetched deliveries arriving at a down consumer can't all keep one: the rest go back to the broker.
+   */
+  function canRetain(node: Node, work: Work): boolean {
+    if (work.slotted) return true;
+    if (node.working.length >= slots(node)) return false;
+    return !work.delivery || !!work.held || hold(work.delivery.group, node, work);
   }
 
   function reply(work: Work): void {
@@ -587,7 +626,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       log("retry", work.delivery.broker, work.message, `attempt ${work.message.attempts}`);
       if (work.message.family.trace && work.message.attempts < work.delivery.broker.props.maxDeliveryCount)
         step(work.message, "retry", work.delivery.broker.id, { attempt: work.message.attempts });
-      if (node.props.retry === "inplace" && work.message.attempts < work.delivery.broker.props.maxDeliveryCount) {
+      if (
+        node.props.retry === "inplace" &&
+        work.message.attempts < work.delivery.broker.props.maxDeliveryCount &&
+        canRetain(node, work)
+      ) {
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.retained = true;
       } else {
@@ -643,13 +686,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function arrive(node: Node, work: Work): void {
     if (node.status === "down") {
       finish(node, work);
+      // An in-place retry took a free slot (canRetain); the others went back to the broker.
       if (work.retained) {
-        // An in-place retry keeps its slot, whatever else holds the group's.
-        if (work.delivery) {
-          work.delivery.group.heldByNode[node.id] = (work.delivery.group.heldByNode[node.id] ?? 0) + 1;
-          work.held = true;
-        }
         node.working.push(work);
+        work.slotted = true;
       }
       return;
     }
@@ -711,7 +751,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             (edge.deny ||
               (free &&
                 target.status === "up" &&
-                target.working.length + target.incoming + target.pending.length + target.staged.length <
+                target.working.length + target.incoming + target.pending.length + target.staged <
                   outstanding(slots(target), target, edge.travelMs) &&
                 (node.role === "queue" ||
                   (group.activeByNode[target.id] ?? 0) <
@@ -810,10 +850,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             work.retained = false;
             finish(node, work);
             if (work.retained) node.working[keep++] = work;
+            else work.slotted = false;
           } else node.working[keep++] = work;
         }
         node.working.length = keep;
-        if (node.staged.length) unstage(node);
         while (node.pending.length && (node.status === "down" || node.working.length < slots(node))) {
           // Brokers without consumers retain their messages until a new diagram is loaded.
           if (isBroker(node) && !node.groups.length) break;
@@ -827,9 +867,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           const work = node.pending.shift()!;
           if (node.status === "down" || work.remaining <= 0 || isBroker(node) || node.role === "source") {
             finish(node, work);
-            if (work.retained) node.working.push(work);
+            if (work.retained) {
+              node.working.push(work);
+              work.slotted = true;
+            }
           } else {
             node.working.push(work);
+            work.slotted = true;
             if (work.message.family.trace) step(work.message, "start", node.id);
           }
         }
@@ -859,7 +903,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     lineage.reset();
     for (const node of nodes.values()) {
       node.pending.clear();
-      node.staged = [];
+      node.staged = 0;
       node.working.length = 0;
       node.incoming = 0;
       node.cursor = 0;
@@ -879,6 +923,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         group.cursor = 0;
         group.activeByNode = Object.create(null);
         group.heldByNode = Object.create(null);
+        group.staged = Object.create(null);
       }
     }
     for (const edge of edges) {
@@ -934,7 +979,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         nodes.clear();
         for (const [id, node] of copy.nodes) {
           Object.setPrototypeOf(node.pending, Deque.prototype);
-          for (const group of node.groups) Object.setPrototypeOf(group.pending, Deque.prototype);
+          for (const group of node.groups) {
+            Object.setPrototypeOf(group.pending, Deque.prototype);
+            for (const queue of Object.values(group.staged)) Object.setPrototypeOf(queue, Deque.prototype);
+          }
           nodes.set(id, node);
         }
         indexGroups();
@@ -976,7 +1024,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (!node) return undefined;
       if (metric.field === "inFlight") return node.working.length;
       if (metric.field === "backlog") {
-        let backlog = node.pending.length + node.staged.length;
+        let backlog = node.pending.length + node.staged;
         for (const group of node.groups) backlog = Math.max(backlog, group.pending.length);
         return backlog;
       }
@@ -1014,7 +1062,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           outgoing: [],
           groups: [],
           pending: new Deque(),
-          staged: [],
+          staged: 0,
           working: [],
           incoming: 0,
           cursor: 0,
@@ -1055,6 +1103,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           allocations: new Map(),
           activeByNode: Object.create(null),
           heldByNode: Object.create(null),
+          staged: Object.create(null),
         }));
       }
       indexGroups();
@@ -1087,7 +1136,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const nodeStates: Record<string, NodeSimState> = Object.create(null);
       for (const node of nodes.values()) {
         const lag: Record<string, number> = Object.create(null);
-        let backlog = node.pending.length + node.staged.length;
+        let backlog = node.pending.length + node.staged;
         for (const group of node.groups) {
           lag[group.name] = group.pending.length;
           backlog = Math.max(backlog, group.pending.length);
