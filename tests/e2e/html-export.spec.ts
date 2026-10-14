@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Download, FrameLocator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, publicExamples } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, publicExamples, waitForHtmlTemplate } from "./fixtures";
 import { expectPlaying, filePayloadText, hostPage, KAFKA, watchedPage } from "./html-viewer";
 import { deflateRaw, textToBytes } from "../../src/interop/codec";
 import { encryptBytes } from "../../src/interop/passwordCrypto";
@@ -16,14 +16,17 @@ const BANNER = "Confidential: internal use only";
 const ANYONE = "Anyone who has this file can open it.";
 
 async function openHtmlExport(page: Page) {
+  const template = waitForHtmlTemplate(page);
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-more-formats").click();
   await expect(page.getByTestId("file-more-formats-menu")).toBeVisible();
   await page.getByTestId("export-html").click();
   await expect(page.getByTestId("html-export-dialog")).toBeVisible();
+  await template;
 }
 
 async function download(page: Page): Promise<{ download: Download; path: string; html: string }> {
+  await waitForHtmlTemplate(page);
   const [file] = await Promise.all([page.waitForEvent("download"), page.getByTestId("html-export-download").click()]);
   const path = test.info().outputPath(file.suggestedFilename());
   await file.saveAs(path);
@@ -382,6 +385,7 @@ test.describe("Interactive HTML with a password", () => {
     await openHtmlExport(page);
     await requirePassword(page, PASSWORD);
     // Enter in the field downloads.
+    await waitForHtmlTemplate(page);
     const [file] = await Promise.all([
       page.waitForEvent("download"),
       page.getByTestId("html-export-password-input").press("Enter"),

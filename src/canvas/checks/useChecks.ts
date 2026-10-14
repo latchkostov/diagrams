@@ -199,6 +199,11 @@ export function useChecks(opts: {
   useEffect(() => runs.setRead(opts.read));
   useEffect(() => sims.setRead(opts.read));
   useEffect(() => sims.setContent(content), [content, sims]);
+  // Closing the card stops a run. Own this in the canvas, rather than the card's mount cleanup:
+  // development StrictMode replays that cleanup when a command opens the card and starts a run together.
+  useEffect(() => {
+    if (!cardOpen) sims.stop();
+  }, [cardOpen, sims]);
   // Leaving editing (live view, presenting) or the canvas stops a run of the simulations. While editing, Ctrl+K and
   // the canvas right-click can run them too.
   useEffect(() => {

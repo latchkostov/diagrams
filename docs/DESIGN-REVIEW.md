@@ -1,5 +1,21 @@
 # Design review
 
+## Round 34: nightly reliability #90 (2026-10-14)
+
+Designer-agent source review against `docs/UX-PRINCIPLES.md`: canvas, inspector, Checks, top bar, Share,
+Interactive HTML and the related privacy tests. No UX blockers and no added controls, copy or settings.
+
+- **Nothing moves under a drag.** A deferred inspector update checks whether another gesture has begun;
+  the inspector waits for that gesture's pointer-up.
+- **Commands do what they say.** Opening the lazy Checks card in development no longer stops a simulation
+  started from Ctrl+K or the canvas right-click. Closing the card and leaving editing still stop it.
+- **Sharing remains deliberate.** The safest choices come first, public choices stay folded, and each
+  option states its audience. Splitting the longer tests preserves both cross-tab embed outcomes and
+  the Import report's remembered privacy offer.
+
+Rejected extra controls or explanatory text: the existing interactions already express the intended behavior.
+This review was source-only; runtime layout, focus and drag behavior are checked separately by E2E tests.
+
 ## Round 32 follow-up: second review fixes (2026-10-14)
 
 The designer-agent source review found two remaining gaps: edge inert-property removal needed a surviving field as

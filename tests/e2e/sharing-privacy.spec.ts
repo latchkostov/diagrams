@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { BrowserContext, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia, waitForHtmlTemplate } from "./fixtures";
 import { filePayload } from "./html-viewer";
 
 // Sharing, export, embed and privacy, reviewed together (docs/DESIGN-REVIEW.md, rounds 21 and 27): every way out says
@@ -178,6 +178,9 @@ test("a link dialog closed because the diagram turned private meanwhile offers I
   await page.goto(`./?view=canvas&example=${SLUG}&storage=test`);
   await expect(page.getByTestId("canvas-view")).toBeVisible();
   const slug = await importDiagram(page, "Refused plan");
+  const other = await context.newPage();
+  // Load the second canvas while this tab opens its link dialog, rather than serialising two lazy loads.
+  const otherReady = other.goto(`./?view=canvas&example=${slug}&storage=test`);
   await page.evaluate(() => navigator.clipboard.writeText("before"));
   const downloads: string[] = [];
   page.on("download", (d) => downloads.push(d.suggestedFilename()));
@@ -186,8 +189,7 @@ test("a link dialog closed because the diagram turned private meanwhile offers I
   await holdCompression(page);
   await shareVia(page, "link");
   await expect.poll(() => heldCompressions(page)).toBeGreaterThan(0);
-  const other = await context.newPage();
-  await other.goto(`./?view=canvas&example=${slug}&storage=test`);
+  await otherReady;
   await expect(other.getByTestId("diagram-title")).toHaveText("Refused plan");
   await makePrivate(other);
   await other.close();
@@ -199,11 +201,13 @@ test("a link dialog closed because the diagram turned private meanwhile offers I
   await expect(page.getByTestId("toast").filter({ hasText: PRIVATE_SHARE })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
   await expect(page.getByTestId("toast-private-export")).toHaveText("Interactive HTML…");
+  const template = waitForHtmlTemplate(page);
   await page.getByTestId("toast-private-export").click();
   await expect(page.getByTestId("html-export-dialog")).toBeVisible();
   await expect(page.getByTestId("html-export-title")).toHaveCount(0); // Options stay closed.
   expect(downloads).toEqual([]);
 
+  await template;
   const [file] = await Promise.all([page.waitForEvent("download"), page.getByTestId("html-export-download").click()]);
   expect(file.suggestedFilename()).toBe("Refused plan.html");
   const path = test.info().outputPath(file.suggestedFilename());

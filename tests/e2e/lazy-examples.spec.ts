@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, publicExamples, E2E_TARGET } from "./fixtures";
+import { test, expect, expectNoErrors, publicExamples, E2E_TARGET, gotoLive, pageLoadTimeout } from "./fixtures";
 
 const kafka = publicExamples.find((e) => e.slug === "kafka-order-pipeline");
 const other = publicExamples.find((e) => e.slug === "rag-assistant");
@@ -237,7 +237,7 @@ const pendingOther = { view: "canvas", example: other.slug };
 
 /** Opens the live link, then picks `other` while its download is held. */
 async function startPendingSwitch(page: Page, { fail = false } = {}) {
-  await page.goto(liveLink);
+  await gotoLive(page, liveLink);
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
   await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
   const pending = await gate(page, exampleChunk(other.slug), { fail });
@@ -265,6 +265,7 @@ test("switching back before a pending example loads keeps the live link", async 
 
   // The link reopens what was on screen.
   await page.reload();
+  await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(simPicker).toHaveValue("black-friday");
   await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
   await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
@@ -321,6 +322,7 @@ test("a pending example that loads applies its own URL state", async ({ page, co
   expect(query(page)).toEqual(pendingOther);
   // Going back reopens the previous diagram with the live link its history entry kept.
   await page.goBack();
+  await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
   await expect.poll(() => query(page)).toEqual(onKafka("black-friday"));
   expectNoErrors(consoleErrors);

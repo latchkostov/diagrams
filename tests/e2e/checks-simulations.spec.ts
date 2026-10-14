@@ -242,6 +242,29 @@ test("Run simulations from Ctrl+K and the canvas right-click: opens the card and
   expectNoErrors(consoleErrors);
 });
 
+for (const via of ["Ctrl+K", "canvas right-click"] as const) {
+  test(
+    `Run simulations survives the Checks card's StrictMode mount from ${via}`,
+    { tag: "@dev" },
+    async ({ page, consoleErrors }) => {
+      await gotoCanvas(page, "aks-app-config-key-vault");
+      await importDiagram(page, inPlace());
+      // The card has never mounted. A command starts the run before StrictMode replays its first effects.
+      await expect(card(page)).toHaveCount(0);
+      if (via === "Ctrl+K") {
+        await palette(page, "Run simulations");
+        await page.getByTestId(RUN_COMMAND).click();
+      } else {
+        await canvasMenu(page);
+        await page.getByTestId(RUN_ITEM).click();
+      }
+      await expect(status(page)).toHaveText("Played 1 simulation · counts on 1 finding");
+      expect(await runStats(page)).toEqual({ started: 1, finished: 1, stopped: 0 });
+      expectNoErrors(consoleErrors);
+    },
+  );
+}
+
 test("no saved simulations, no Run simulations; and none in live view", async ({ page }) => {
   await gotoCanvas(page, "aks-app-config-key-vault");
   await importDiagram(page, {

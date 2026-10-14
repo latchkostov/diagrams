@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, STORAGE_KEYS, waitForStableBox } from "./fixtures";
+import { expect, STORAGE_KEYS, waitForStableBox, pageLoadTimeout } from "./fixtures";
 
 // Shared by the ai-*.spec.ts files: fakes for browser APIs Playwright's Chromium doesn't have
 // (WebMCP's document.modelContext, the Web Speech API), installed with page.addInitScript.
@@ -41,6 +41,10 @@ export async function openAiPanel(page: Page) {
 
 /** Opens the AI panel and its Advanced copy-and-paste flow (closed by default, remembered). */
 export async function openAdvanced(page: Page) {
+  // A remembered open dock restores its lazy panel after the canvas. Until then there is no rail to click.
+  await expect(page.getByTestId("ai-panel").or(page.getByTestId("ai-rail-open"))).toBeVisible({
+    timeout: pageLoadTimeout(),
+  });
   if (!(await page.getByTestId("ai-panel").isVisible())) await openAiPanel(page);
   if (!(await page.getByTestId("ai-request").isVisible())) await page.getByTestId("ai-advanced-toggle").click();
   await expect(page.getByTestId("ai-request")).toBeVisible();

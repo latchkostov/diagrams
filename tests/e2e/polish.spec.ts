@@ -1,5 +1,13 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, viewportTransform, waitForStableViewport, gotoLive } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  viewportTransform,
+  waitForStableViewport,
+  gotoLive,
+  pageLoadTimeout,
+} from "./fixtures";
 
 // Polish and reliability: the selection stays in view when the inspector opens, the live bar
 // names the simulation being edited, edge labels sit under particles while live, viewport
@@ -104,6 +112,7 @@ test.describe("polish", () => {
     // Editing: labels stay on top (a hovered, truncated label reads in full).
     expect((await z()).labels).toBe("1001");
     await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
     await expect(page.getByTestId("live-canvas")).toBeAttached();
     // Live, in one stacking context: particles, then label pills (readable on busy edges), then the
     // overlay (dimmed dots behind a pill, the traced message), then the metric badges.

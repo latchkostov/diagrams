@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, gotoGallery, expectNoErrors, pageLoadTimeout } from "./fixtures";
 import { MOD, SLUG, openAdvanced } from "./ai-helpers";
 
 // The privacy audit's fixes (docs/PRIVACY-AUDIT.md): what a private diagram must never leave behind in the address
@@ -326,21 +326,25 @@ test.describe("this browser's storage", () => {
       addEventListener("storage", (e) => e.key === "diagrams.generation" && e.stopImmediatePropagation());
       (window as { BroadcastChannel?: unknown }).BroadcastChannel = undefined;
     });
-    await gotoCanvas(late, SLUG);
-    await gotoCanvas(page, SLUG);
+    // This tab only changes a global setting; the gallery exercises the same storage guard without
+    // loading a second canvas before and after the wipe.
+    await Promise.all([gotoGallery(late), gotoCanvas(page, SLUG)]);
     await openClearDevice(page);
-    await Promise.all([page.waitForEvent("load"), page.getByTestId("clear-device-confirm").click()]);
-    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await Promise.all([
+      page.waitForEvent("domcontentloaded", { timeout: pageLoadTimeout() }),
+      page.getByTestId("clear-device-confirm").click(),
+    ]);
+    await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
     // New work, after the wipe.
     const fresh = await importDiagram(page, work());
     const entry = `diagrams.library-entry.v1:${fresh}`;
     expect(await page.evaluate((k) => localStorage.getItem(k), entry)).not.toBeNull();
 
     // The late tab changes a setting (a write): it writes nothing, and starts over.
-    const reloads = late.waitForEvent("load");
+    const reloads = late.waitForEvent("domcontentloaded", { timeout: pageLoadTimeout() });
     await late.getByTestId("theme-toggle").click();
     await reloads;
-    await expect(late.getByTestId("canvas-view")).toBeVisible();
+    await expect(late.getByTestId("gallery-view")).toBeVisible({ timeout: pageLoadTimeout() });
     expect(await page.evaluate((k) => localStorage.getItem(k), entry)).not.toBeNull();
     await expect(page.getByTestId("diagram-title")).toHaveText("Quillfeather payroll");
     await late.close();
