@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { DiagramAnnotation } from "../model/types";
 import { ActionRegistry, builtinSections, type ActionContext, type MenuNode } from "./actions";
 import type { EditorApi } from "./types";
 
@@ -56,7 +57,7 @@ describe("action registry", () => {
     expect(live("node")).not.toContain("node.rename");
     expect(live("edge")).not.toContain("edge.edit-label");
     expect(live("group")).not.toContain("group.rename");
-    expect(live("annotation")).not.toContain("annotation.edit-text");
+    expect(live("annotation")).not.toContain("annotation.edit");
     expect(live("node")).not.toContain("item.duplicate");
     expect(live("node")).not.toContain("item.delete");
     expect(live("edge")).toEqual(expect.arrayContaining(["node.properties"]));
@@ -66,6 +67,22 @@ describe("action registry", () => {
     // diagram's file "private": true. The editor has no export of its own that could skip it.
     expect(live("canvas")).not.toContain("canvas.export");
     expect(live("canvas")).not.toContain("canvas.add-node");
+  });
+
+  it("annotation editing is available only in edit mode", async () => {
+    const { builtinActions } = await import("./builtinActions");
+    const r = new ActionRegistry(builtinSections);
+    r.register(builtinActions());
+    const context: ActionContext = {
+      ...ctx("annotation"),
+      nodeId: "note",
+      editor: {
+        getAnnotation: (id): DiagramAnnotation | undefined =>
+          id === "note" ? { id, kind: "note", text: "Reminder", x: 0, y: 0, width: 240, height: 110 } : undefined,
+      } as EditorApi,
+    };
+    expect(ids(r.build({ ...context, mode: "edit" }))).toContain("annotation.edit");
+    expect(ids(r.build({ ...context, mode: "live" }))).not.toContain("annotation.edit");
   });
 
   it("palette-only actions stay out of context menus but reach the command palette", async () => {

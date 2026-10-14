@@ -12,6 +12,13 @@ Changes to habits people already have. The app has no "what's new" panel, so the
   including Ctrl+K and agents' `find_stencils`.
 - This adds discovery only: simulation roles stay as before; no vendor quotas, rate-limit defaults or endpoint editor.
 
+## Naming follow-ups (2026-10-14)
+
+- Typing a boundary name keeps distant connections' routes cached. Connections near its growing or shrinking
+  label still update immediately.
+- Backspace straight after a quick-add pick keeps the name empty when the inspector opens, ready for typing.
+- Regression coverage now checks that clicking away or folding the inspector finishes a rename as its own undo step.
+
 ## Renaming in the inspector; selected text you can see (2026-10)
 
 From the owner's reports (docs/DESIGN-REVIEW.md, round 34). Habit changes:

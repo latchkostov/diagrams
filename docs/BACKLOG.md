@@ -2,15 +2,6 @@
 
 Review findings and ideas not yet scheduled. Remove items when they land.
 
-## Inspector naming (review 2026-10-14)
-
-- **P2: boundary names invalidate distant routes while typing.** Changing a boundary label changes its header
-  obstacle; `Router.route` clears the entire A* cache even when the boundary rectangle stays put. The review's
-  work-count reproduction recomputed all 135 edges of a 150-node diagram for each character. Keep immediate name
-  updates, but invalidate only corridors affected by the old/new header rectangles. Add an operation-count
-  regression for distant cached routes and geometry tests for paths near shrinking/growing headers. Deferred from
-  text selection because selective routing invalidation needs that separate geometry validation.
-
 ## On-device model
 
 - Run the on-device evals (`?view=lab&preset=ondevice-evals` on `pnpm dev`, see `docs/research/on-device-model.md`) in a

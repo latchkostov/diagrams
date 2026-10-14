@@ -758,7 +758,7 @@ function CanvasInner({
         t.kind === "node" ? { nodeIds: [t.id] } : t.kind === "edge" ? { edgeIds: [t.id] } : { groupIds: [t.id] },
       );
       setNaming(t.kind === "node" && t.edge ? { node: t.id, edge: t.edge } : null);
-      const typed = t.kind === "node" && !!t.text;
+      const typed = t.kind === "node" && t.text !== undefined;
       if (typed) editor.updateNode(t.id, { label: t.text }, { merge: editor.creating(t.id) });
       openInspector(t.kind === "node" && t.field === "sublabel" ? "sublabel" : "label", typed ? "end" : undefined);
     },

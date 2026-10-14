@@ -6,7 +6,7 @@ import { nudgeRoutes } from "./nudge";
 import { pointAlong, roundedPath } from "./path";
 import { slotOffset, spreadPorts } from "./ports";
 import { intersects, segmentHitsRect, simplify, type Point, type Rect } from "./rect";
-import { Router, routeDiagram, type RouteInput } from "./router";
+import { Router, groupHeaderRect, routeDiagram, type RouteInput } from "./router";
 import { routeOrthogonal } from "./orthogonal";
 
 // The router's A* searches, counted (the real search runs).
@@ -405,6 +405,74 @@ describe("Router", () => {
     router.route(input(40));
     expect(router.lastRouted).toBeLessThanOrEqual(2);
     expect(router.lastRouted).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renaming a boundary searches only nearby routes, including growing and shrinking headers", () => {
+    const rect = card(270, -30, 500, 250);
+    const base: RouteInput = {
+      nodes: [
+        { id: "a", rect: card(310, -200) },
+        { id: "b", rect: card(310, 200) },
+        ...Array.from({ length: 150 }, (_, i) => ({
+          id: `far${i}`,
+          rect: card(3000 + (i % 10) * 400, 2000 + Math.floor(i / 10) * 200),
+        })),
+      ],
+      edges: [
+        { id: "near", source: "a", target: "b" },
+        ...Array.from({ length: 135 }, (_, i) => {
+          const from = Math.floor(i / 9) * 10 + (i % 9);
+          return { id: `distant${i}`, source: `far${from}`, target: `far${from + 1}` };
+        }),
+      ],
+    };
+    const router = new Router();
+    const named = (label: string): RouteInput => ({
+      ...base,
+      groups: [{ id: "g", rect, header: groupHeaderRect(rect, label) }],
+    });
+    const first = router.route(named("Core"));
+    expect(router.lastRouted).toBe(136);
+    const searches = vi.mocked(routeOrthogonal);
+    // One search per keystroke, independent of the 135 unrelated connections. Geometry agrees with
+    // a cold router and stays clear of the header as it grows and shrinks (Undo/backspace).
+    for (const name of ["Core p", "Core platform", "Core", "C", ""]) {
+      searches.mockClear();
+      const input = named(name);
+      const routes = router.route(input);
+      expect(searches).toHaveBeenCalledTimes(1);
+      expect(router.lastRouted).toBe(1);
+      expect(routes.get("distant0")).toBe(first.get("distant0"));
+      const near = routes.get("near")!;
+      if (name === "Core platform") expect(near.path).not.toBe(first.get("near")!.path);
+      if (name === "Core") expect(near.path).toBe(first.get("near")!.path);
+      expect(near).toEqual(routeDiagram(input).get("near"));
+      expect(near.ok).toBe(true);
+      const header = input.groups![0].header;
+      expect(near.points.slice(1).some((p, i) => segmentHitsRect(near.points[i], p, header))).toBe(false);
+    }
+    router.route(named(""));
+    expect(router.lastRouted).toBe(0);
+  });
+
+  it("invalidates old and new boundary geometry when boundaries move, resize, appear or disappear", () => {
+    const router = new Router();
+    const base = input();
+    const group = (rect: Rect) => ({ id: "g", rect, header: groupHeaderRect(rect, "Core") });
+    router.route(base);
+    for (const groups of [
+      [group(card(260, -30, 80, 220))],
+      [group(card(260, -30, 160, 220))],
+      [group(card(1500, -30, 160, 220))],
+      [],
+      [group(card(260, -30, 80, 220))],
+      [],
+    ]) {
+      const changed = { ...base, groups };
+      const routes = router.route(changed);
+      expect(router.lastRouted).toBeLessThanOrEqual(2);
+      expect(routes).toEqual(routeDiagram(changed));
+    }
   });
 
   it("gives reverse twins their own lanes", () => {

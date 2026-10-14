@@ -38,6 +38,25 @@ Screenshots: [rail at 1024](screenshots/round35/clients-1024.png),
 [external vendors](screenshots/round35/gallery-vendors-1280.png),
 [Iterable in the gallery](screenshots/round35/gallery-iterable-1280.png).
 
+## Round 34 follow-up: naming review fixes (2026-10-14)
+
+A designer agent reviewed the fixes against `docs/UX-PRINCIPLES.md`: canvas naming, inspector completion and undo,
+annotations versus Live, quick-add, route geometry and view-only guards. Source, regression tests and the existing
+round 34 public screenshots in both themes were reviewed; no fresh interactive walkthrough was performed by the
+designer. Production browser tests provide the runtime verification. No blocking UX findings or new chrome.
+
+- Boundary names still update immediately, with route searches limited to corridors affected by changed geometry.
+  Operation counts guard distant cached routes; geometry tests check that a growing header diverts a nearby path
+  and shrinking it restores the path, agreeing with a fresh router.
+- Clicking away finishes a rename as one undo step. Removing a focused field closes naming too; a connected node's
+  creation step ends when the inspector folds, keeping a later rename separate. Regression tests independently
+  disable blur and removal cleanup and fail for each path.
+- A name explicitly cleared before the inspector opens stays empty, with the caret at its end.
+- The action test now asserts `annotation.edit`, present in editing and absent in Live, with a valid annotation.
+- All six review findings were valid; three report the same routing defect. Removed the deferred backlog entry.
+  Rejected delaying names until completion: immediate saving is the established behavior. Additional completion
+  buttons, selection controls and routing settings would add unnecessary chrome.
+
 ## Round 34: renaming in the inspector, and selected text you can see (2026-10-13)
 
 The owner's report: "If I add a boundary and want to rename it, I can't double or triple click with the mouse like I
@@ -90,8 +109,8 @@ verify the interaction and the highlight's computed colours and painted pixels.
 - The seven-angle code review found focus requests replaying after presentation and StrictMode cleanup closing
   naming too soon. Both have regression tests that fail without their fixes. Focus consumption now lives on the
   canvas; cleanup closes naming only when its field is removed. Ctrl+K also reselects an already-focused name.
-- P2 routing follow-up: typing a boundary name invalidates distant routes. Recorded in `docs/BACKLOG.md`;
-  selective obstacle invalidation needs its own geometry tests, beyond this editing change.
+- P2 routing follow-up resolved on 2026-10-14: boundary names now invalidate only affected route corridors, with
+  operation-count and geometry regressions (follow-up above).
 - Rejected keeping live renaming, floating node/boundary/edge editors and an extra selection control: they conflict
   with the owner's decisions or add chrome without helping. No global control was added.
 

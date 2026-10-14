@@ -299,6 +299,76 @@ test.describe("renaming in the inspector", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("an explicitly cleared type-ahead name stays empty when its field opens", async ({ page }) => {
+    const r = must(await page.getByTestId("canvas-wrap").boundingBox(), "the canvas");
+    await page.mouse.dblclick(r.x + 120, r.y + r.height - 120);
+    await page.getByTestId("quick-add-search").fill("redis cache");
+    await page.clock.install();
+    await pauseClock(page);
+    // Hold the frame that measures the new card: Backspace arrives in the type-ahead buffer,
+    // before the inspector can focus its field. It explicitly replaces the selected default name.
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Backspace");
+    const label = page.getByTestId("inspector-field-label");
+    await expect(label).not.toBeFocused();
+    await page.clock.runFor(1000);
+    await expect(label).toBeFocused();
+    await expect(label).toHaveValue("");
+    expect(await label.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd])).toEqual([0, 0]);
+    await page.keyboard.type("Session store");
+    await expect(label).toHaveValue("Session store");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press(`${MOD}+z`);
+    await expect(page.getByTestId(/^node-/).filter({ hasText: "Session store" })).toHaveCount(0);
+  });
+
+  test("click-away separates successive renames", async ({ page }) => {
+    await page.getByTestId("node-c").dblclick();
+    const label = page.getByTestId("inspector-field-label");
+    await expect(label).toBeFocused();
+    await page.keyboard.type("First name");
+    // Focus a non-name field without editing it: no intervening document edit splits the undo step.
+    await page.getByTestId("inspector-field-stencil").focus();
+    await expect(label).not.toBeFocused();
+    // Let blur's frame finish, using frames rather than a real-time delay.
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+    await page.getByTestId("node-c").dblclick();
+    await expect(label).toBeFocused();
+    await expect.poll(() => selected(label)).toBe("First name");
+    await page.keyboard.type("Second name");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press(`${MOD}+z`);
+    await expect(label).toHaveValue("First name");
+    await page.keyboard.press(`${MOD}+z`);
+    await expect(label).toHaveValue("Worker");
+  });
+
+  test("folding during naming closes its creation transaction", async ({ page }) => {
+    await page.getByTestId("node-c").click();
+    await page.keyboard.press("Alt+ArrowRight");
+    await page.getByTestId("quick-add-search").fill("redis cache");
+    await page.keyboard.press("Enter");
+    const label = page.getByTestId("inspector-field-label");
+    await expect(label).toBeFocused();
+    await expect(page.getByTestId("inspector-field-connection")).toBeVisible();
+    await page.keyboard.type("First name");
+    // Activate the fold without moving focus to its button: isolate removal of the focused field,
+    // rather than letting the button's pointer-focus blur close the transaction first.
+    await page.getByTestId("inspector-toggle").evaluate((el: HTMLButtonElement) => el.click());
+    await expect(label).toHaveCount(0);
+    await page.getByTestId("inspector-toggle").click();
+    await expect(label).toBeVisible();
+    await expect(page.getByTestId("inspector-field-connection")).toHaveCount(0);
+    await label.focus();
+    await label.fill("Second name");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press(`${MOD}+z`);
+    await expect(label).toHaveValue("First name");
+    await page.keyboard.press(`${MOD}+z`);
+    await expect(page.getByTestId(/^node-/).filter({ hasText: "First name" })).toHaveCount(0);
+    await expect(page.getByTestId(/^node-/).filter({ hasText: "Redis Cache" })).toHaveCount(0);
+  });
+
   test("slow naming is one undo step; completing a rename separates the next one", async ({ page }) => {
     await page.getByTestId("node-c").dblclick();
     const label = page.getByTestId("inspector-field-label");
