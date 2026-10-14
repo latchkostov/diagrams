@@ -58,8 +58,8 @@ const KIND_ORDER: Record<TroubleKind, number> = { down: 0, dropping: 1, lag: 2 }
 
 /**
  * Samples snapshots about once a simulated second and reports the trouble they show, worst first: down, then
- * losing messages, then lag that rose over the last 10 s (and is still rising). Time going backwards (a restart,
- * a seek) starts the history again.
+ * losing messages, then lag that rose over the last 10 s (and is still rising). A jump (a restart, a seek)
+ * starts the history again.
  */
 export class TroubleWatcher {
   private samples: Sample[] = [];
@@ -70,8 +70,10 @@ export class TroubleWatcher {
 
   observe(frame: WatchedFrame, diagram: DiagramFile): Trouble[] {
     const last = this.samples.at(-1);
-    if (last && frame.time < last.time) this.samples = [];
-    if (!last || frame.time < last.time || frame.time - last.time >= SAMPLE_MS) {
+    // A jump (a seek, a restart, a stalled tab) isn't a trend: start the history again.
+    const jumped = !!last && (frame.time < last.time || frame.time - last.time > 3 * SAMPLE_MS);
+    if (jumped) this.samples = [];
+    if (!last || jumped || frame.time - last.time >= SAMPLE_MS) {
       const lag = new Map<string, number>(),
         dropped = new Map<string, number>();
       for (const [id, n] of Object.entries(frame.nodes)) {
@@ -100,6 +102,7 @@ function troubles(frame: WatchedFrame, d: DiagramFile, samples: readonly Sample[
   const out: Trouble[] = [];
   const oldest = samples[0];
   const middle = samples[Math.floor(samples.length / 2)];
+  const previous = samples.at(-2);
   const spanned = oldest && frame.time - oldest.time >= WINDOW_MS - SAMPLE_MS;
   // Lag must rise by more than noise: a few dots at this scale, and a fifth of what was there.
   const threshold = (before: number) => Math.max(10, 3 * (frame.scale ?? 1), 0.2 * before);
@@ -155,7 +158,7 @@ function troubles(frame: WatchedFrame, d: DiagramFile, samples: readonly Sample[
     const now = maxLag(n),
       before = oldest.lag.get(id) ?? 0,
       mid = middle.lag.get(id) ?? 0;
-    if (now - before < threshold(before) || mid < before || now < mid) continue;
+    if (now - before < threshold(before) || mid < before || now < mid || now < (previous?.lag.get(id) ?? 0)) continue;
     if (n.noConsumer) {
       out.push({
         key: `lag:${id}`,

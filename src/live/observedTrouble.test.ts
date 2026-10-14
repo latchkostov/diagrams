@@ -94,6 +94,24 @@ describe("trouble seen in playback", () => {
   });
 });
 
+describe("a jump isn't a trend", () => {
+  it("seeking forward over a backlog that's now draining reports nothing", () => {
+    const d = diagram(2);
+    const frame = (time: number, lag: number) => ({
+      time,
+      nodes: {
+        q: { status: "up" as const, lag: { queue: lag }, dropped: 0 },
+        worker: { status: "up" as const, lag: {}, dropped: 0 },
+      },
+    });
+    const watcher = new TroubleWatcher();
+    expect(watcher.observe(frame(4_000, 0), d)).toEqual([]);
+    // The seek lands on a big backlog, which then drains.
+    for (let t = 12_000, lag = 500; t <= 30_000; t += 500, lag -= 10)
+      expect(watcher.observe(frame(t, lag), d), `at ${t}`).toEqual([]);
+  });
+});
+
 describe("which trouble the callout shows", () => {
   const t = (key: string): Trouble => ({
     key,
