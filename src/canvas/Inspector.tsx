@@ -60,6 +60,7 @@ import {
 } from "../stencils/netDevices";
 import { formatCount } from "../live/format";
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
+import { SIM_FIELDS_BY_ROLE, edgeSimFields, inertNodeProps } from "./simFieldRules";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.
@@ -165,19 +166,6 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     placeholder: "unchanged, or In → Out, * → Other",
     hint: "Message type sent downstream. One name renames everything; `OrderPlaced → PaymentRequested, * → Other` maps by incoming type (* = fallback).",
   },
-};
-
-/** Which simulation tunables apply to each role. */
-const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
-  source: ["ratePerSec", "messageType"],
-  processor: ["replicas", "latencyMs", "concurrency", "failureRate", "emits"],
-  gateway: ["latencyMs", "concurrency"],
-  store: ["latencyMs"],
-  sink: ["latencyMs"],
-  topic: ["partitions", "maxDeliveryCount"],
-  stream: ["partitions", "maxDeliveryCount"],
-  queue: ["maxDeliveryCount"],
-  none: [],
 };
 
 const SIM_KEYS = new Set<string>(Object.keys(SIM_FIELDS));
@@ -396,9 +384,21 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
               onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
             />
           ))
+        ) : role === "sink" ? (
+          <p className="insp-note" data-testid="inspector-sink-note">
+            Messages end here as they arrive: nothing here changes the run.
+          </p>
         ) : (
           <p className="insp-note">This stencil is decorative and doesn't take part in the simulation.</p>
         )}
+        {inertNodeProps(role, props).map(({ key, why }) => (
+          <InertNote
+            key={key}
+            name={key}
+            text={`${SIM_FIELDS[key]?.label ?? key} ${formatInert(props[key], SIM_FIELDS[key]?.unit)} is kept in the file, but ${why}, so it doesn't change the run.`}
+            onRemove={() => editor.setNodeProps(node.id, { [key]: undefined })}
+          />
+        ))}
       </Disclosure>
 
       <Disclosure id="node-properties" title="Custom properties" count={customCount(props, hidden)}>
@@ -439,6 +439,12 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
   const choice = choiceOf(data);
   // A connection leaving a firewall is one of its rules: allow (the default) or deny.
   const rule = flow && isFirewallStencil(editor.getNode(edge.source)?.stencil);
+  // Consumer groups exist only on edges out of a topic or stream; a dead-letter route only out of a broker.
+  const sourceStencil = editor.getNode(edge.source)?.stencil;
+  const sourceRole = sourceStencil ? getStencil(sourceStencil).simRole : undefined;
+  const fields = edgeSimFields(sourceRole);
+  const grouped = flow && fields.group;
+  const deadLetters = flow && fields.dlq;
   return (
     <>
       <Section>
@@ -515,32 +521,50 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
             />
           </Field>
         )}
-        {flow && !rule && (
-          <>
-            <Field label="Consumer group" hint="Edges from a topic sharing a group compete for messages">
-              <input
-                className="insp-input mono"
-                value={typeof props.group === "string" ? props.group : ""}
-                placeholder={edge.id}
-                onChange={(e) => editor.setEdgeProps(edge.id, { group: e.target.value || undefined }, merge("group"))}
-                name="consumer-group"
-                data-testid="inspector-field-group"
-              />
-            </Field>
-            <label className="insp-check">
-              <input
-                type="checkbox"
-                checked={props.dlq === true}
-                onChange={(e) => editor.setEdgeProps(edge.id, { dlq: e.target.checked || undefined })}
-                name="dlq"
-                data-testid="inspector-field-dlq"
-              />
-              <span>
-                Dead-letter path
-                <small>Failed messages from the source broker go here</small>
-              </span>
-            </label>
-          </>
+        {grouped && (
+          <Field label="Consumer group" hint="Edges from a topic sharing a group compete for messages">
+            <input
+              className="insp-input mono"
+              value={typeof props.group === "string" ? props.group : ""}
+              placeholder={edge.id}
+              onChange={(e) => editor.setEdgeProps(edge.id, { group: e.target.value || undefined }, merge("group"))}
+              name="consumer-group"
+              data-testid="inspector-field-group"
+            />
+          </Field>
+        )}
+        {flow && !grouped && typeof props.group === "string" && (
+          <InertNote
+            name="group"
+            text={`Consumer group “${props.group}” is kept in the file, but only edges out of a topic or stream have groups, so it doesn't change the run.`}
+            onRemove={() => editor.setEdgeProps(edge.id, { group: undefined })}
+          />
+        )}
+        {deadLetters && (
+          <label className="insp-check">
+            <input
+              type="checkbox"
+              checked={props.dlq === true}
+              onChange={(e) => editor.setEdgeProps(edge.id, { dlq: e.target.checked || undefined })}
+              name="dlq"
+              data-testid="inspector-field-dlq"
+            />
+            <span>
+              Dead-letter path
+              <small>Failed messages from the source broker go here</small>
+            </span>
+          </label>
+        )}
+        {flow && !deadLetters && props.dlq === true && (
+          <InertNote
+            name="dlq"
+            text={
+              sourceRole === "processor"
+                ? "Dead-letter path is on, but only a broker's dead-letter route catches failed messages: this edge carries nothing in Live."
+                : "Dead-letter path is on, but only a broker's dead-letter route catches failed messages, so it doesn't change the run."
+            }
+            onRemove={() => editor.setEdgeProps(edge.id, { dlq: undefined })}
+          />
         )}
         {!flow && (
           <p className="insp-note" data-testid="inspector-relation-note">
@@ -637,6 +661,24 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
       </Disclosure>
     </>
   );
+}
+
+/** A value kept in the file that can't change the run where it is: said in a muted line, with a way to remove it. */
+function InertNote({ name, text, onRemove }: { name: string; text: string; onRemove: () => void }) {
+  return (
+    <p className="insp-note insp-inert" data-testid={`inspector-inert-${name}`}>
+      {text}{" "}
+      <button type="button" className="insp-link" onClick={onRemove} data-testid={`inspector-inert-${name}-remove`}>
+        Remove
+      </button>
+    </p>
+  );
+}
+
+/** "8", "500 ms", or the JSON of anything else. */
+function formatInert(value: unknown, unit?: string): string {
+  const text = typeof value === "number" || typeof value === "string" ? String(value) : JSON.stringify(value);
+  return unit && typeof value === "number" ? `${text} ${unit}` : text;
 }
 
 /** Flow edges into a typed stencil (Key Vault, an IdP...): offer the dependency they look like. */
