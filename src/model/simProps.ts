@@ -19,6 +19,12 @@ const nodeProperties = {
   partitions: quantity,
   messageType: { type: "string" },
   emits: { anyOf: [{ type: "string" }, { type: "object", additionalProperties: { type: "string" } }] },
+  size: { type: "string", enum: ["branch", "campus", "datacentre"] },
+  gbps: { type: "number", minimum: 0, maximum: 1_000_000 },
+  messageKB: { type: "number", minimum: 0.01, maximum: 1_000_000 },
+  ha: { type: "string", enum: ["standalone", "active-standby", "active-active"] },
+  failoverMs: time,
+  healthChecks: { type: "boolean" },
 } satisfies Record<keyof NodeSimProps, JsonSchema>;
 const edgeProperties = {
   group: { type: "string" },
@@ -27,6 +33,7 @@ const edgeProperties = {
   travelMs: time,
   emits: { type: "string" },
   filter: { type: "array", items: { type: "string" } },
+  deny: { type: "boolean" },
 } satisfies Record<keyof EdgeSimProps, JsonSchema>;
 export const nodeSimPropsSchema: JsonSchema = {
   type: "object",

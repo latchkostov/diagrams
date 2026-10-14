@@ -1,0 +1,165 @@
+import { describe, expect, it } from "vitest";
+import { applyOps } from "../ai";
+import { validateDiagram } from "../interop/native";
+import { checkJsonSchema } from "../model/jsonSchema";
+import { edgeSimPropsSchema, propsProblem, simPropsPatchSchema } from "../model/simProps";
+import type { DiagramEdge, DiagramFile, DiagramNode } from "../model/types";
+import { collectEvidence } from "./evidence";
+import { runChecks } from "./run";
+
+// Checks on network devices (docs/research/network-infrastructure.md, "Checks"): a device is a box you run, so the
+// single-point check offers an HA pair; can't-keep-up reads its datasheet ceiling and offers a bigger size; and a
+// firewall's deny rule blocks on purpose, so no check (Run simulations included) calls it lost.
+
+let x = 0;
+const node = (id: string, stencil: string, props?: Record<string, unknown>): DiagramNode => ({
+  id,
+  stencil,
+  label: id,
+  x: (x += 300),
+  y: 0,
+  ...(props ? { props } : {}),
+});
+const req = (from: string, to: string, props?: Record<string, unknown>): DiagramEdge => ({
+  id: `${from}-${to}`,
+  from,
+  to,
+  kind: "sync",
+  ...(props ? { props } : {}),
+});
+const diagram = (nodes: DiagramNode[], edges: DiagramEdge[]): DiagramFile => ({
+  format: "diagrams/v1",
+  title: "Network",
+  nodes,
+  edges,
+});
+const ids = (d: DiagramFile) => runChecks(d).findings.map((f) => `${f.severity} ${f.id}`);
+
+/** Users through a firewall to a service and its database. */
+const path = (fw: Record<string, unknown> | undefined, rate = 20) =>
+  diagram(
+    [
+      node("users", "client.user", { ratePerSec: rate }),
+      node("fw", "paloalto.ngfw", fw),
+      node("api", "generic.service", { replicas: 2, concurrency: 1000, latencyMs: 1 }),
+      node("db", "postgres"),
+    ],
+    [req("users", "fw"), req("fw", "api"), req("api", "db")],
+  );
+
+describe("single-point on a network device", () => {
+  it("stays quiet when the diagram says nothing about its units", () => {
+    expect(ids(path(undefined))).toEqual([]);
+  });
+
+  it("suggests an HA pair for a device the diagram says is standalone", () => {
+    for (const props of [{ ha: "standalone" }, { replicas: 1 }]) {
+      const d = path(props);
+      const finding = runChecks(d).findings.find((f) => f.rule === "single-point")!;
+      expect(finding.severity).toBe("suggestion");
+      expect(finding.message).toContain("It's a single unit");
+      expect(finding.fix).toEqual({
+        label: "Make it an HA pair",
+        ops: [{ op: "update", target: "fw", props: { ha: "active-standby", replicas: 2 } }],
+      });
+      const fixed = applyOps(d, finding.fix!.ops!);
+      expect(fixed.errors).toEqual([]);
+      expect(ids(fixed.diagram)).not.toContain("suggestion single-point:fw");
+    }
+  });
+
+  it("is quiet for a pair or a cluster", () => {
+    expect(ids(path({ ha: "active-standby" }))).toEqual([]);
+    expect(ids(path({ ha: "active-active", replicas: 3 }))).toEqual([]);
+  });
+});
+
+describe("can't keep up, on a network device", () => {
+  // A branch PA-440 (1.2 Gbps: about 2,300 messages/s of 64 kB) sent 5,000/s.
+  const busy = () => path({ size: "branch" }, 5000);
+
+  it("warns at its datasheet ceiling, and offers the size that carries it", () => {
+    const d = busy();
+    const findings = runChecks(d).findings;
+    const capacity = findings.find((f) => f.rule === "capacity")!;
+    expect(capacity.severity).toBe("warning");
+    expect(capacity.target).toBe("fw");
+    expect(capacity.fix?.label).toBe("Use the campus size (PA-3440)");
+    // Busy and the only way through: the single-point check says so too, as a warning.
+    expect(findings.find((f) => f.rule === "single-point")?.severity).toBe("warning");
+    const fixed = applyOps(d, capacity.fix!.ops!);
+    expect(fixed.errors).toEqual([]);
+    expect(fixed.diagram.nodes.find((n) => n.id === "fw")?.props).toEqual({ size: "campus" });
+    expect(runChecks(fixed.diagram).findings.map((f) => f.rule)).not.toContain("capacity");
+  });
+
+  it("offers no fix when no bigger size would do", () => {
+    const d = path({ size: "datacentre" }, 1_000_000);
+    const capacity = runChecks(d).findings.find((f) => f.rule === "capacity")!;
+    expect(capacity.target).toBe("fw");
+    expect(capacity.fix).toBeUndefined();
+  });
+});
+
+describe("a firewall's deny rule", () => {
+  const denied = (): DiagramFile => ({
+    ...diagram(
+      [
+        node("branch", "client.team", { ratePerSec: 10, messageType: "Admin" }),
+        node("fw", "fortinet.fortigate", { ha: "active-standby" }),
+        node("payments", "generic.service"),
+      ],
+      [req("branch", "fw"), req("fw", "payments", { deny: true })],
+    ),
+    simulations: [
+      {
+        id: "blocked",
+        title: "The branch is blocked",
+        seed: 1,
+        traffic: [{ id: "t", node: "branch", shape: { kind: "constant", ratePerSec: 10, durationMs: 3000 } }],
+      },
+    ],
+  });
+
+  it("raises nothing, and Run simulations counts no loss", () => {
+    const d = denied();
+    expect(ids(d)).toEqual([]);
+    const evidence = collectEvidence(d);
+    expect(evidence.losses).toEqual([]);
+    expect(evidence.dropped).toEqual([]);
+  });
+
+  it("is valid in the file, the agents' ops and their schemas", () => {
+    const d = denied();
+    expect(validateDiagram(d).ok).toBe(true);
+    expect(() => checkJsonSchema({ deny: true }, edgeSimPropsSchema)).not.toThrow();
+    expect(() => checkJsonSchema({ deny: "yes" }, edgeSimPropsSchema)).toThrow();
+    const allowed = applyOps(d, [{ op: "update", target: "fw-payments", props: { deny: null } }]);
+    expect(allowed.errors).toEqual([]);
+    expect(allowed.diagram.edges[1].props?.deny).toBeUndefined();
+  });
+});
+
+describe("device settings in the file format", () => {
+  it("accepts a device's settings, and rejects malformed ones", () => {
+    expect(
+      propsProblem({
+        size: "branch",
+        gbps: 1.2,
+        messageKB: 64,
+        ha: "active-standby",
+        failoverMs: 3000,
+        healthChecks: true,
+      }),
+    ).toBe(false);
+    for (const bad of [{ size: "huge" }, { ha: "pair" }, { gbps: -1 }, { messageKB: 0 }, { healthChecks: "on" }])
+      expect(propsProblem(bad), JSON.stringify(bad)).toBe(true);
+  });
+
+  it("lets agents set and clear them", () => {
+    expect(() =>
+      checkJsonSchema({ size: "datacentre", gbps: null, ha: "active-active" }, simPropsPatchSchema),
+    ).not.toThrow();
+    expect(() => checkJsonSchema({ size: "rack" }, simPropsPatchSchema)).toThrow();
+  });
+});

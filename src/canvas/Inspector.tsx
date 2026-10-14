@@ -41,6 +41,23 @@ import {
 } from "../model/relations";
 import { RELATION_CHOICES, applyChoice, choiceOf, relationIcon } from "../editor/relationActions";
 import { inferRelation } from "../stencils/relations";
+import {
+  DEFAULT_FAILOVER_MS,
+  DEFAULT_MESSAGE_KB,
+  presetOf,
+  sizeOf,
+  sizesOf,
+  HA_LABEL,
+  SIZE_LABEL,
+  deviceSpec,
+  isDeviceHa,
+  isFirewallStencil,
+  messagesPerSec,
+  type DeviceHa,
+  type DeviceSize,
+  type DeviceSpec,
+} from "../stencils/netDevices";
+import { formatCount } from "../live/format";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.
@@ -161,8 +178,9 @@ const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
   none: [],
 };
 
-const SIM_KEYS = new Set<string>(Object.keys(SIM_FIELDS));
-const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share", "settings"]);
+const DEVICE_KEYS = ["size", "gbps", "messageKB", "ha", "failoverMs", "healthChecks", "replicas", "latencyMs"];
+const SIM_KEYS = new Set<string>([...Object.keys(SIM_FIELDS), ...DEVICE_KEYS]);
+const EDGE_KEYS = new Set(["group", "dlq", "travelMs", "filter", "emits", "share", "settings", "deny"]);
 const SIDES: Side[] = ["top", "right", "bottom", "left"];
 
 export interface InspectorProps {
@@ -276,6 +294,7 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
   const merge = (f: string) => ({ merge: `inspector:node:${node.id}:${f}` });
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const simFields = SIM_FIELDS_BY_ROLE[role];
+  const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
 
   return (
     <>
@@ -353,7 +372,13 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
           </span>
         }
       >
-        {simFields.length ? (
+        {device ? (
+          <DeviceFields
+            spec={device}
+            props={props}
+            set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
+          />
+        ) : simFields.length ? (
           simFields.map((k) => (
             <SimInput
               key={k}
@@ -404,6 +429,8 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
   const flow = relation === "flow";
   const fanOut = flow && isFanOut(editor, edge.source, data.kind);
   const choice = choiceOf(data);
+  // A connection leaving a firewall is one of its rules: allow (the default) or deny.
+  const rule = flow && isFirewallStencil(editor.getNode(edge.source)?.stencil);
   return (
     <>
       <Section>
@@ -462,7 +489,24 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
           </span>
         </Field>
         <RelationHint edge={edge} editor={editor} />
-        {flow && (
+        {rule && (
+          <Field
+            label="Firewall rule"
+            hint="Deny blocks what the firewall would send here. Blocked messages are on purpose: they never count as lost"
+            group
+          >
+            <Segmented
+              value={props.deny === true ? "deny" : "allow"}
+              options={[
+                { value: "allow", label: "Allow", hint: "Traffic passes" },
+                { value: "deny", label: "Deny", hint: "Traffic is blocked at the firewall" },
+              ]}
+              onChange={(v) => editor.setEdgeProps(edge.id, { deny: v === "deny" || undefined })}
+              testId="inspector-field-rule"
+            />
+          </Field>
+        )}
+        {flow && !rule && (
           <>
             <Field label="Consumer group" hint="Edges from a topic sharing a group compete for messages">
               <input
@@ -1441,6 +1485,172 @@ function Disclosure({
     </section>
   );
 }
+
+/**
+ * A network device's simulation settings: a size preset (its datasheet's throughput and latency), the throughput
+ * itself, high availability, and for ADCs health checks. Picking a size clears the throughput and latency typed
+ * over the old one, so the new preset shows through.
+ */
+function DeviceFields({
+  spec,
+  props,
+  set,
+}: {
+  spec: DeviceSpec;
+  props: Record<string, unknown>;
+  set: (patch: Record<string, unknown>, mergeKey?: string) => void;
+}) {
+  const size: DeviceSize = sizeOf(spec, props.size);
+  const preset = presetOf(spec, size);
+  const ha: DeviceHa = isDeviceHa(props.ha) ? props.ha : "standalone";
+  const num = (key: string, fallback: number) => {
+    const v = props[key];
+    return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+  };
+  const gbps = num("gbps", preset.gbps);
+  const kb = num("messageKB", DEFAULT_MESSAGE_KB);
+  return (
+    <>
+      <Field label="Size" hint="Each size's numbers come from a model's datasheet: approximate, and yours to change">
+        <select
+          className="insp-input"
+          value={size}
+          onChange={(e) => set({ size: e.target.value, gbps: undefined, latencyMs: undefined })}
+          name="size"
+          data-testid="inspector-field-size"
+        >
+          {sizesOf(spec).map((s) => (
+            <option key={s} value={s}>
+              {SIZE_LABEL[s]}: {presetOf(spec, s).model}, {formatGbps(presetOf(spec, s).gbps)}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <SimInput
+        name="gbps"
+        field={{
+          label: "Throughput",
+          unit: "Gbps",
+          kind: "number",
+          min: 0,
+          step: 0.5,
+          placeholder: String(preset.gbps),
+          hint: `Per unit, with its usual inspection on. Default: the ${preset.model} datasheet figure`,
+        }}
+        value={props.gbps}
+        onChange={(v) => set({ gbps: v }, "gbps")}
+      />
+      <p className="insp-note" data-testid="inspector-device-rate">
+        About {formatCount(messagesPerSec(gbps, kb))} messages/s per unit at {kb} kB each. From the {preset.model}{" "}
+        datasheet: approximate.
+      </p>
+      <Field label="High availability">
+        <select
+          className="insp-input"
+          value={ha}
+          onChange={(e) => {
+            const next = e.target.value as DeviceHa;
+            set(
+              next === "standalone"
+                ? { ha: undefined, replicas: undefined, failoverMs: undefined }
+                : { ha: next, replicas: Math.max(2, num("replicas", 2)) },
+            );
+          }}
+          name="ha"
+          data-testid="inspector-field-ha"
+        >
+          {(Object.keys(HA_LABEL) as DeviceHa[]).map((h) => (
+            <option key={h} value={h}>
+              {HA_LABEL[h]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {ha !== "standalone" && (
+        <SimInput
+          name="replicas"
+          field={{
+            label: "Units",
+            kind: "number",
+            min: 1,
+            step: 1,
+            placeholder: "2",
+            hint:
+              ha === "active-standby"
+                ? "Boxes in the pair: one carries traffic, the other takes over when it fails"
+                : "Boxes sharing the traffic: their throughput adds up",
+          }}
+          value={props.replicas}
+          onChange={(v) => set({ replicas: v }, "replicas")}
+        />
+      )}
+      <SimInput
+        name="latencyMs"
+        field={{
+          label: "Latency",
+          unit: "ms",
+          kind: "number",
+          min: 0,
+          step: 0.05,
+          placeholder: String(preset.latencyMs),
+          hint: "Time through the device, per message",
+        }}
+        value={props.latencyMs}
+        onChange={(v) => set({ latencyMs: v }, "latencyMs")}
+      />
+      {spec.kind === "adc" && (
+        <label className="insp-check">
+          <input
+            type="checkbox"
+            checked={props.healthChecks !== false}
+            onChange={(e) => set({ healthChecks: e.target.checked ? undefined : false })}
+            name="healthChecks"
+            data-testid="inspector-field-healthChecks"
+          />
+          <span>
+            Health checks
+            <small>Targets that are down get no traffic</small>
+          </span>
+        </label>
+      )}
+      <div className="insp-row2">
+        <SimInput
+          name="messageKB"
+          field={{
+            label: "Message size",
+            unit: "kB",
+            kind: "number",
+            min: 0.01,
+            step: 1,
+            placeholder: String(DEFAULT_MESSAGE_KB),
+            hint: "The average message the throughput is converted with (1 kB = 1,000 bytes)",
+          }}
+          value={props.messageKB}
+          onChange={(v) => set({ messageKB: v }, "messageKB")}
+        />
+        {ha === "active-standby" && (
+          <SimInput
+            name="failoverMs"
+            field={{
+              label: "Failover",
+              unit: "ms",
+              kind: "number",
+              min: 0,
+              step: 100,
+              placeholder: String(DEFAULT_FAILOVER_MS),
+              hint: "How long traffic waits when the active unit fails and the standby takes over",
+            }}
+            value={props.failoverMs}
+            onChange={(v) => set({ failoverMs: v }, "failoverMs")}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+const formatGbps = (gbps: number) =>
+  gbps >= 1000 ? `${Math.round(gbps / 100) / 10} Tbps` : gbps >= 1 ? `${gbps} Gbps` : `${Math.round(gbps * 1000)} Mbps`;
 
 function Section({ title, aside, children }: { title?: string; aside?: ReactNode; children: ReactNode }) {
   return (

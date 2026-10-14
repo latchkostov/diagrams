@@ -361,7 +361,17 @@ function repairRelation(e: Record<string, unknown>, warnings: string[]): void {
 const OPS = new Set(["<", "<=", "==", ">=", ">"]);
 const WHEN = new Set(["always", "eventually", "end", "at"]);
 const STATUS = new Set(["up", "paused", "down"]);
-const METRICS = new Set(["processed", "backlog", "inFlight", "failed", "deadLettered", "dropped", "throughput", "lag"]);
+const METRICS = new Set([
+  "processed",
+  "backlog",
+  "inFlight",
+  "failed",
+  "deadLettered",
+  "dropped",
+  "blocked",
+  "throughput",
+  "lag",
+]);
 const optString = (v: unknown) => v === undefined || typeof v === "string";
 const nonnegative = (v: unknown, max = Number.MAX_SAFE_INTEGER): v is number => isNum(v) && v >= 0 && v <= max;
 const time = (v: unknown) => nonnegative(v, LIMITS.maxSimulationMs);

@@ -55,6 +55,7 @@ const FIELDS: { value: MetricField; label: string }[] = [
   { value: "failed", label: "failed" },
   { value: "deadLettered", label: "dead-lettered" },
   { value: "dropped", label: "dropped" },
+  { value: "blocked", label: "blocked" },
   { value: "throughput", label: "throughput" },
 ];
 const OPS: Expectation["op"][] = ["==", ">=", ">", "<=", "<"];

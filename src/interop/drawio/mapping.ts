@@ -319,6 +319,21 @@ export function stencilFromStyle(style: Record<string, string>): StyleMatch | un
     if (hit) return { stencil: hit, specific: true };
     if (/database|sql/.test(name)) return { stencil: "azure.sql", specific: true };
   }
+  // draw.io's Cisco libraries (mxgraph.cisco.*, and cisco19's prIcon): network devices, as the generic kind. The
+  // label may still name a vendor (inferStencil), so these aren't specific.
+  if (shape.startsWith("mxgraph.cisco")) {
+    const name = `${shape} ${prIcon}`;
+    const hit = /firewall|[._]asa|pix/.test(name)
+      ? "generic.ngfw"
+      : /load_balancer|content_switch|\bace\b|\bcss\b/.test(name)
+        ? "generic.adc"
+        : /router/.test(name)
+          ? "generic.router"
+          : /switch/.test(name)
+            ? "generic.switch"
+            : undefined;
+    if (hit) return { stencil: hit, specific: false };
+  }
   for (const [re, id] of GENERIC_SHAPES) if (re.test(shape)) return { stencil: id, specific: false };
   return undefined;
 }

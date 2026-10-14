@@ -12,6 +12,7 @@ const KIND_LABEL: Record<string, string> = {
   retry: "↺",
   deadletter: "DLQ",
   drop: "drop",
+  block: "deny",
   status: "●",
 };
 

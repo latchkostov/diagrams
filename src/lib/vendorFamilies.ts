@@ -5,7 +5,7 @@ import type { Stencil } from "../model/types";
  * chip per vendor. Every catalog vendor maps to exactly one family (a unit test keeps it honest);
  * a vendor added later without a mapping lands in "other", which only shows when it has stencils.
  */
-export type FamilyId = "azure" | "aws" | "gcp" | "streaming" | "oss" | "saas" | "generic" | "other";
+export type FamilyId = "azure" | "aws" | "gcp" | "streaming" | "oss" | "saas" | "network" | "generic" | "other";
 
 export interface Family {
   id: FamilyId;
@@ -41,6 +41,13 @@ export const FAMILIES: readonly Family[] = [
     short: "SaaS",
     hue: "#E5484D",
     hint: "Hosted platforms: data, observability, identity, payments, messaging and AI APIs",
+  },
+  {
+    id: "network",
+    label: "Network vendors",
+    short: "Network",
+    hue: "#0E7490",
+    hint: "Routers, switches, firewalls and load balancers: Cisco, Juniper, Palo Alto, Fortinet, F5 and more",
   },
   {
     id: "generic",
@@ -123,6 +130,15 @@ const VENDOR_FAMILY: Record<string, FamilyId> = {
   "dbt Labs": "oss",
   Airbyte: "oss",
   Tableau: "saas",
+  Cisco: "network",
+  Juniper: "network",
+  Arista: "network",
+  "HPE Aruba": "network",
+  "Palo Alto Networks": "network",
+  Fortinet: "network",
+  "Check Point": "network",
+  F5: "network",
+  NetScaler: "network",
   Generic: "generic",
   Client: "generic",
 };

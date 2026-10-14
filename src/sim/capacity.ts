@@ -1,6 +1,7 @@
 import type { DiagramFile, DiagramNode, SimRole, Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { resolveProps, type ResolvedProps } from "./defaults";
+import { activeUnits } from "../stencils/netDevices";
 import { peakRate } from "./scale";
 import {
   acceptsType,
@@ -24,6 +25,8 @@ export interface NodeCapacity {
   replicas: number;
   activeReplicas: number;
   idleReplicas: number;
+  /** A network device: its throughput ceiling sets the capacity (a gateway's otherwise isn't modeled). */
+  device?: boolean;
 }
 export interface CapacityAnalysis {
   nodes: Record<string, NodeCapacity>;
@@ -42,6 +45,8 @@ interface Entry {
   replicas: number;
   active: number;
   up: boolean;
+  /** Down (not just paused): a gateway's health checks route around it. */
+  down: boolean;
 }
 interface ConsumerGroup {
   broker: Entry;
@@ -57,6 +62,9 @@ const serviceRate = (entry: Entry, replicas = entry.active): number => {
     const slots = replicas * entry.props.concurrency;
     return !slots ? 0 : entry.props.latencyMs ? (slots * 1000) / entry.props.latencyMs : Infinity;
   }
+  // A network device's ceiling: per unit, times the units carrying traffic (one in an active-standby pair).
+  const device = entry.role === "gateway" ? entry.props.device : undefined;
+  if (device) return device.perUnit * activeUnits(device.ha, replicas);
   if (entry.role === "gateway" || entry.role === "store")
     return entry.props.latencyMs ? 1000 / entry.props.latencyMs : Infinity;
   return Infinity;
@@ -154,7 +162,7 @@ export function analyzeCapacity(
   for (const input of diagram.nodes) {
     const role = stencilRole(input.stencil);
     const raw = { ...input.props, ...simulation?.setup?.props?.[input.id] };
-    const props = resolveProps(role, input.label, raw);
+    const props = resolveProps(role, input.label, raw, input.stencil);
     const replicas = Math.max(1, Math.round(props.replicas * capacityMultiplier));
     const status = options.status?.[input.id] ?? simulation?.setup?.status?.[input.id] ?? raw.status;
     entries.set(input.id, {
@@ -164,6 +172,7 @@ export function analyzeCapacity(
       replicas,
       active: replicas,
       up: status !== "down" && status !== "paused",
+      down: status === "down",
     });
   }
   const compiled = compileTopology(diagram);
@@ -254,15 +263,14 @@ export function analyzeCapacity(
         );
       }
     } else if (entry.role === "gateway") {
-      split(
-        next,
-        routes,
-        type,
-        rate,
-        routes.map(() => 1),
-      );
+      // Equal shares; health checks leave out targets that are down while another is up. A deny rule's share is
+      // blocked at this node and goes no further.
+      const healthy = entry.props.healthChecks ? routes.filter((edge) => !entries.get(edge.to)!.down) : routes;
+      const pool = healthy.length ? healthy : routes;
+      for (const edge of pool) if (!edge.deny) add(next, edge.to, emittedType(edge.emits, type), rate / pool.length);
     } else {
       for (const edge of routes) {
+        if (edge.deny) continue;
         if (!injected && (entry.role === "sink" || (entry.role === "store" && edge.sync))) continue;
         const share =
           typeof edge.share === "number" && Number.isFinite(edge.share) ? Math.max(0, Math.min(1, edge.share)) : 1;
@@ -325,6 +333,7 @@ export function analyzeCapacity(
       replicas: entry.replicas,
       activeReplicas: entry.active,
       idleReplicas: entry.replicas - entry.active,
+      ...(entry.role === "gateway" && entry.props.device ? { device: true } : {}),
     };
   }
   // Prefer the service over its broker when their limits tie; it is the actionable diagnosis.
@@ -359,7 +368,9 @@ export function analyzeCapacity(
     else if (bottleneck.role === "processor") {
       const desired = Math.max(bottleneck.replicas + 1, Math.ceil(bottleneck.replicas * bottleneck.utilization));
       suggestion = `${bottleneck.label}: raise replicas from ${bottleneck.replicas} to ${desired}.`;
-    } else suggestion = `${bottleneck.label}: reduce latency or increase downstream consumer capacity.`;
+    } else if (entries.get(bottleneck.id)?.props.device)
+      suggestion = `${bottleneck.label}: pick a bigger size, or add units to an active-active cluster.`;
+    else suggestion = `${bottleneck.label}: reduce latency or increase downstream consumer capacity.`;
   }
   if (!converged) suggestion += " Cycle demand did not converge; inspect feedback routes.";
   const offeredTypes: Record<string, string[]> = Object.create(null);

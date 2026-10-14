@@ -11,7 +11,7 @@ const BY_THEME: Record<string, string[]> = {
   data: ["event-driven-data-platform", "nightly-batch-elt", "gcp-streaming-analytics", "rag-assistant"],
   cloud: ["aws-serverless-orders", "aws-fanout", "aks-app-config-key-vault"],
   integration: ["webhook-ingestion", "notification-fanout", "azure-service-bus-integration"],
-  reliability: ["outbox-saga-checkout", "multi-region-active-active"],
+  reliability: ["outbox-saga-checkout", "multi-region-active-active", "branch-to-datacentre"],
 };
 const THEMES = Object.keys(BY_THEME);
 

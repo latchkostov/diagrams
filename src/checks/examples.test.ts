@@ -9,7 +9,7 @@ import { withEvidence } from "./evidenceMerge";
 
 const RULE_BY_ID = new Map(ALL_RULES.map((r) => [r.id, r]));
 
-// The regression snapshot over the 16 public examples (top level only; never ./private). Each finding here
+// The regression snapshot over the 17 public examples (top level only; never ./private). Each finding here
 // was judged in docs/research/architecture-checks.md ("Batch 1: precision gate", "Batch 3: precision gate",
 // "Batch 4: precision gate"); a change to this list is a change to those tables. The batch 3 rules (sync-chain,
 // shared-database, entry-gateway, single-point) raise nothing on them, by the gate's tightening; of batch 4's,
@@ -24,6 +24,7 @@ const EXPECTED: Record<string, string[]> = {
   "aks-app-config-key-vault": [],
   "aws-fanout": ["suggestion dead-letter:archive-q", "suggestion dead-letter:receipt-q", "suggestion no-reader:dlq"],
   "aws-serverless-orders": [],
+  "branch-to-datacentre": [],
   "azure-service-bus-integration": [
     "warning dead-letter:posting-sub",
     "suggestion dead-letter:approval-sub",
@@ -49,7 +50,7 @@ const EXPECTED: Record<string, string[]> = {
 };
 
 describe("checks on the public examples", () => {
-  it("covers exactly the 16 public examples", () => {
+  it("covers exactly the 17 public examples", () => {
     expect(Object.keys(bySlug).sort()).toEqual(Object.keys(EXPECTED).sort());
   });
 

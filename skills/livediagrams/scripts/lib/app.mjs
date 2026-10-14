@@ -78,7 +78,35 @@ var nodeProperties = {
 	emits: { anyOf: [{ type: "string" }, {
 		type: "object",
 		additionalProperties: { type: "string" }
-	}] }
+	}] },
+	size: {
+		type: "string",
+		enum: [
+			"branch",
+			"campus",
+			"datacentre"
+		]
+	},
+	gbps: {
+		type: "number",
+		minimum: 0,
+		maximum: 1e6
+	},
+	messageKB: {
+		type: "number",
+		minimum: .01,
+		maximum: 1e6
+	},
+	ha: {
+		type: "string",
+		enum: [
+			"standalone",
+			"active-standby",
+			"active-active"
+		]
+	},
+	failoverMs: time$1,
+	healthChecks: { type: "boolean" }
 };
 var edgeProperties = {
 	group: { type: "string" },
@@ -89,7 +117,8 @@ var edgeProperties = {
 	filter: {
 		type: "array",
 		items: { type: "string" }
-	}
+	},
+	deny: { type: "boolean" }
 };
 var nodeSimPropsSchema = {
 	type: "object",
@@ -746,6 +775,7 @@ var METRICS = /* @__PURE__ */ new Set([
 	"failed",
 	"deadLettered",
 	"dropped",
+	"blocked",
 	"throughput",
 	"lag"
 ]);

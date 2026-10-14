@@ -57,6 +57,9 @@ function journeyStatus(
 ): { key: "flight" | "done" | "dlq" | "dropped" | "kept"; label: string; title?: string } {
   if (j.deadLettered) return { key: "dlq", label: "Dead-lettered" };
   if (!j.done) return { key: "flight", label: "In flight" };
+  // A deny rule's block is on purpose: every copy that ended did so at a rule.
+  const ends = j.rows.filter((r) => r.kind === "drop");
+  if (j.dropped && ends.every((r) => r.reason?.startsWith("blocked"))) return { key: "dropped", label: "Blocked" };
   if (j.dropped) return { key: "dropped", label: "Dropped" };
   const at = j.kept.length ? diagram.nodes.find((n) => n.id === j.kept[0]) : undefined;
   if (at) {
@@ -401,7 +404,7 @@ function Hop({
       break;
     case "drop":
       main = name(row.node);
-      sub = `dropped: ${row.reason ?? "lost"}`;
+      sub = row.reason?.startsWith("blocked") ? row.reason : `dropped: ${row.reason ?? "lost"}`;
       break;
     default: {
       main = name(row.node);

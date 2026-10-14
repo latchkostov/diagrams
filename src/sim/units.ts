@@ -24,6 +24,7 @@ export function realNodeMetrics(node: NodeSimState, scale = 1): RealNodeMetrics 
     failed: real(node.failed),
     deadLettered: real(node.deadLettered),
     dropped: real(node.dropped),
+    ...(node.blocked === undefined ? {} : { blocked: real(node.blocked) }),
     throughput: real(node.throughput),
     lag: Object.fromEntries(Object.entries(node.lag).map(([id, n]) => [id, real(n)])),
   };

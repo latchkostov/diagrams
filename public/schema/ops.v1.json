@@ -412,6 +412,40 @@
               }
             }
           ]
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "branch",
+            "campus",
+            "datacentre"
+          ]
+        },
+        "gbps": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "messageKB": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1000000
+        },
+        "ha": {
+          "type": "string",
+          "enum": [
+            "standalone",
+            "active-standby",
+            "active-active"
+          ]
+        },
+        "failoverMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600000
+        },
+        "healthChecks": {
+          "type": "boolean"
         }
       }
     },
@@ -482,6 +516,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "deny": {
+          "type": [
+            "boolean",
+            "null"
+          ]
         },
         "ratePerSec": {
           "type": [
@@ -569,6 +609,60 @@
         "messageType": {
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "size": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "branch",
+            "campus",
+            "datacentre",
+            null
+          ]
+        },
+        "gbps": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "messageKB": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0.01,
+          "maximum": 1000000
+        },
+        "ha": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "standalone",
+            "active-standby",
+            "active-active",
+            null
+          ]
+        },
+        "failoverMs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 600000
+        },
+        "healthChecks": {
+          "type": [
+            "boolean",
             "null"
           ]
         }
@@ -684,6 +778,40 @@
                     }
                   }
                 ]
+              },
+              "size": {
+                "type": "string",
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre"
+                ]
+              },
+              "gbps": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": "number",
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": "string",
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active"
+                ]
+              },
+              "failoverMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": "boolean"
               }
             }
           },
@@ -754,6 +882,12 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "deny": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "ratePerSec": {
                 "type": [
@@ -841,6 +975,60 @@
               "messageType": {
                 "type": [
                   "string",
+                  "null"
+                ]
+              },
+              "size": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre",
+                  null
+                ]
+              },
+              "gbps": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active",
+                  null
+                ]
+              },
+              "failoverMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": [
+                  "boolean",
                   "null"
                 ]
               }
@@ -972,6 +1160,40 @@
                     }
                   }
                 ]
+              },
+              "size": {
+                "type": "string",
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre"
+                ]
+              },
+              "gbps": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": "number",
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": "string",
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active"
+                ]
+              },
+              "failoverMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": "boolean"
               }
             }
           },
@@ -1042,6 +1264,12 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "deny": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "ratePerSec": {
                 "type": [
@@ -1131,6 +1359,60 @@
                   "string",
                   "null"
                 ]
+              },
+              "size": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre",
+                  null
+                ]
+              },
+              "gbps": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active",
+                  null
+                ]
+              },
+              "failoverMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               }
             }
           }
@@ -1162,6 +1444,7 @@
               "compute",
               "data",
               "network",
+              "onprem",
               "observability",
               "security",
               "clients",
@@ -1253,6 +1536,40 @@
                     }
                   }
                 ]
+              },
+              "size": {
+                "type": "string",
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre"
+                ]
+              },
+              "gbps": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": "number",
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": "string",
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active"
+                ]
+              },
+              "failoverMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": "boolean"
               }
             }
           },
@@ -1323,6 +1640,12 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "deny": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "ratePerSec": {
                 "type": [
@@ -1410,6 +1733,60 @@
               "messageType": {
                 "type": [
                   "string",
+                  "null"
+                ]
+              },
+              "size": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre",
+                  null
+                ]
+              },
+              "gbps": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active",
+                  null
+                ]
+              },
+              "failoverMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": [
+                  "boolean",
                   "null"
                 ]
               }
@@ -1833,6 +2210,40 @@
                     }
                   }
                 ]
+              },
+              "size": {
+                "type": "string",
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre"
+                ]
+              },
+              "gbps": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": "number",
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": "string",
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active"
+                ]
+              },
+              "failoverMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": "boolean"
               }
             }
           },
@@ -1903,6 +2314,12 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "deny": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "ratePerSec": {
                 "type": [
@@ -1990,6 +2407,60 @@
               "messageType": {
                 "type": [
                   "string",
+                  "null"
+                ]
+              },
+              "size": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre",
+                  null
+                ]
+              },
+              "gbps": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active",
+                  null
+                ]
+              },
+              "failoverMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": [
+                  "boolean",
                   "null"
                 ]
               }
@@ -2166,6 +2637,7 @@
                     "failed",
                     "deadLettered",
                     "dropped",
+                    "blocked",
                     "throughput",
                     "lag",
                     "inSystem"
@@ -2275,6 +2747,40 @@
                     }
                   }
                 ]
+              },
+              "size": {
+                "type": "string",
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre"
+                ]
+              },
+              "gbps": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": "number",
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": "string",
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active"
+                ]
+              },
+              "failoverMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": "boolean"
               }
             }
           },
@@ -2345,6 +2851,12 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "deny": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "ratePerSec": {
                 "type": [
@@ -2432,6 +2944,60 @@
               "messageType": {
                 "type": [
                   "string",
+                  "null"
+                ]
+              },
+              "size": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre",
+                  null
+                ]
+              },
+              "gbps": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active",
+                  null
+                ]
+              },
+              "failoverMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": [
+                  "boolean",
                   "null"
                 ]
               }
@@ -2542,6 +3108,40 @@
                     }
                   }
                 ]
+              },
+              "size": {
+                "type": "string",
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre"
+                ]
+              },
+              "gbps": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": "number",
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": "string",
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active"
+                ]
+              },
+              "failoverMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": "boolean"
               }
             }
           },
@@ -2612,6 +3212,12 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "deny": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "ratePerSec": {
                 "type": [
@@ -2699,6 +3305,60 @@
               "messageType": {
                 "type": [
                   "string",
+                  "null"
+                ]
+              },
+              "size": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre",
+                  null
+                ]
+              },
+              "gbps": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active",
+                  null
+                ]
+              },
+              "failoverMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": [
+                  "boolean",
                   "null"
                 ]
               }
@@ -2793,6 +3453,40 @@
                     }
                   }
                 ]
+              },
+              "size": {
+                "type": "string",
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre"
+                ]
+              },
+              "gbps": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": "number",
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": "string",
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active"
+                ]
+              },
+              "failoverMs": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": "boolean"
               }
             }
           },
@@ -2863,6 +3557,12 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "deny": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "ratePerSec": {
                 "type": [
@@ -2950,6 +3650,60 @@
               "messageType": {
                 "type": [
                   "string",
+                  "null"
+                ]
+              },
+              "size": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "branch",
+                  "campus",
+                  "datacentre",
+                  null
+                ]
+              },
+              "gbps": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "messageKB": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0.01,
+                "maximum": 1000000
+              },
+              "ha": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "standalone",
+                  "active-standby",
+                  "active-active",
+                  null
+                ]
+              },
+              "failoverMs": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "healthChecks": {
+                "type": [
+                  "boolean",
                   "null"
                 ]
               }

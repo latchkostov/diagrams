@@ -1,0 +1,502 @@
+{
+  "format": "diagrams/v1",
+  "title": "Branch office to data centre",
+  "description": "A branch and internet customers reach a data centre through edge routers, an active-standby firewall pair, a spine and leaf fabric and a load balancer pair. The firewall's rules allow web traffic and deny the branch any path to the payments zone.",
+  "direction": "TB",
+  "groups": [
+    {
+      "id": "branch",
+      "label": "Branch office",
+      "tone": "onprem",
+      "x": 960,
+      "y": 0,
+      "width": 340,
+      "height": 312
+    },
+    {
+      "id": "dc",
+      "label": "Data centre",
+      "tone": "onprem",
+      "x": 340,
+      "y": 320,
+      "width": 1020,
+      "height": 1112
+    }
+  ],
+  "nodes": [
+    {
+      "id": "customers",
+      "stencil": "client.user",
+      "label": "Customers",
+      "sublabel": "internet",
+      "x": 560,
+      "y": 40,
+      "props": {
+        "ratePerSec": 400,
+        "messageType": "Checkout"
+      }
+    },
+    {
+      "id": "staff",
+      "stencil": "client.team",
+      "label": "Branch staff",
+      "sublabel": "120 desks",
+      "x": 1000,
+      "y": 40,
+      "group": "branch",
+      "props": {
+        "ratePerSec": 40,
+        "messageType": "BackOffice"
+      }
+    },
+    {
+      "id": "branch-router",
+      "stencil": "cisco.isr",
+      "label": "Branch router",
+      "sublabel": "Catalyst 8200 · SD-WAN",
+      "x": 1000,
+      "y": 200,
+      "group": "branch",
+      "props": {
+        "size": "branch"
+      }
+    },
+    {
+      "id": "edge-router",
+      "stencil": "juniper.mx",
+      "label": "Edge routers",
+      "sublabel": "2 × MX204 · BGP",
+      "x": 560,
+      "y": 360,
+      "group": "dc",
+      "props": {
+        "ha": "active-active",
+        "replicas": 2
+      }
+    },
+    {
+      "id": "firewall",
+      "stencil": "paloalto.ngfw",
+      "label": "Firewall pair",
+      "sublabel": "PA-3440 · active-standby",
+      "x": 560,
+      "y": 520,
+      "group": "dc",
+      "props": {
+        "ha": "active-standby",
+        "replicas": 2
+      }
+    },
+    {
+      "id": "spine-1",
+      "stencil": "arista.switch",
+      "label": "Spine 1",
+      "sublabel": "Arista 7050SX3",
+      "x": 380,
+      "y": 680,
+      "group": "dc"
+    },
+    {
+      "id": "spine-2",
+      "stencil": "arista.switch",
+      "label": "Spine 2",
+      "sublabel": "Arista 7050SX3",
+      "x": 740,
+      "y": 680,
+      "group": "dc"
+    },
+    {
+      "id": "leaf",
+      "stencil": "cisco.nexus",
+      "label": "Services leaf",
+      "sublabel": "Nexus 93180YC · vPC pair",
+      "x": 560,
+      "y": 840,
+      "group": "dc",
+      "props": {
+        "size": "campus",
+        "ha": "active-active",
+        "replicas": 2
+      }
+    },
+    {
+      "id": "adc",
+      "stencil": "f5.bigip",
+      "label": "Load balancer",
+      "sublabel": "BIG-IP pair · VIP shop",
+      "x": 560,
+      "y": 1000,
+      "group": "dc",
+      "props": {
+        "size": "campus",
+        "ha": "active-standby",
+        "replicas": 2
+      }
+    },
+    {
+      "id": "web-1",
+      "stencil": "service.java",
+      "label": "Storefront 1",
+      "sublabel": "web pool",
+      "x": 380,
+      "y": 1160,
+      "group": "dc",
+      "props": {
+        "latencyMs": 30,
+        "concurrency": 16,
+        "replicas": 2
+      }
+    },
+    {
+      "id": "web-2",
+      "stencil": "service.java",
+      "label": "Storefront 2",
+      "sublabel": "web pool",
+      "x": 740,
+      "y": 1160,
+      "group": "dc",
+      "props": {
+        "latencyMs": 30,
+        "concurrency": 16,
+        "replicas": 2
+      }
+    },
+    {
+      "id": "orders-db",
+      "stencil": "postgres",
+      "label": "Orders DB",
+      "sublabel": "primary",
+      "x": 380,
+      "y": 1320,
+      "group": "dc",
+      "props": {
+        "latencyMs": 5
+      }
+    },
+    {
+      "id": "payments",
+      "stencil": "service.dotnet",
+      "label": "Payments API",
+      "sublabel": "PCI zone",
+      "x": 1060,
+      "y": 1160,
+      "group": "dc",
+      "props": {
+        "latencyMs": 40,
+        "concurrency": 16,
+        "replicas": 2
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "customers-edge",
+      "from": "customers",
+      "to": "edge-router",
+      "label": "HTTPS",
+      "kind": "sync"
+    },
+    {
+      "id": "staff-branch",
+      "from": "staff",
+      "to": "branch-router",
+      "label": "Back office",
+      "kind": "sync"
+    },
+    {
+      "id": "branch-edge",
+      "from": "branch-router",
+      "to": "edge-router",
+      "label": "SD-WAN tunnel",
+      "kind": "sync",
+      "props": {
+        "travelMs": 700
+      }
+    },
+    {
+      "id": "edge-firewall",
+      "from": "edge-router",
+      "to": "firewall",
+      "kind": "sync"
+    },
+    {
+      "id": "firewall-spine-1",
+      "from": "firewall",
+      "to": "spine-1",
+      "label": "Allow: web",
+      "kind": "sync",
+      "props": {
+        "filter": ["Checkout", "BackOffice"]
+      }
+    },
+    {
+      "id": "firewall-spine-2",
+      "from": "firewall",
+      "to": "spine-2",
+      "kind": "sync",
+      "props": {
+        "filter": ["Checkout", "BackOffice"]
+      }
+    },
+    {
+      "id": "firewall-payments",
+      "from": "firewall",
+      "to": "payments",
+      "label": "Deny: branch → payments",
+      "kind": "sync",
+      "props": {
+        "filter": ["PaymentAdmin"],
+        "deny": true
+      },
+      "sourceSide": "right",
+      "targetSide": "top"
+    },
+    {
+      "id": "spine-1-leaf",
+      "from": "spine-1",
+      "to": "leaf",
+      "kind": "sync"
+    },
+    {
+      "id": "spine-2-leaf",
+      "from": "spine-2",
+      "to": "leaf",
+      "kind": "sync"
+    },
+    {
+      "id": "leaf-adc",
+      "from": "leaf",
+      "to": "adc",
+      "kind": "sync"
+    },
+    {
+      "id": "adc-web-1",
+      "from": "adc",
+      "to": "web-1",
+      "kind": "sync"
+    },
+    {
+      "id": "adc-web-2",
+      "from": "adc",
+      "to": "web-2",
+      "kind": "sync"
+    },
+    {
+      "id": "web-1-db",
+      "from": "web-1",
+      "to": "orders-db",
+      "kind": "sync"
+    },
+    {
+      "id": "web-2-db",
+      "from": "web-2",
+      "to": "orders-db",
+      "kind": "sync"
+    },
+    {
+      "id": "web-1-payments",
+      "from": "web-1",
+      "to": "payments",
+      "label": "Charge",
+      "kind": "sync",
+      "props": {
+        "filter": ["Checkout"]
+      }
+    },
+    {
+      "id": "web-2-payments",
+      "from": "web-2",
+      "to": "payments",
+      "kind": "sync",
+      "props": {
+        "filter": ["Checkout"]
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "firewall-failover",
+      "title": "One firewall fails over",
+      "description": "The active firewall dies mid-traffic. The standby takes over in a few seconds: requests wait at the pair, none are lost.",
+      "seed": 3,
+      "traffic": [
+        {
+          "id": "shop",
+          "node": "customers",
+          "messageType": "Checkout",
+          "label": "Checkouts: 400/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 400,
+            "durationMs": 12000
+          }
+        },
+        {
+          "id": "office",
+          "node": "staff",
+          "messageType": "BackOffice",
+          "label": "Back office: 40/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 40,
+            "durationMs": 12000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "Customers come in over the internet and the branch over SD-WAN. Both pass the firewall pair: one unit carries the traffic, the other stands by.",
+            "focus": ["firewall"]
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "props",
+            "node": "firewall",
+            "props": {
+              "replicas": 1
+            }
+          }
+        },
+        {
+          "atMs": 4000,
+          "action": {
+            "do": "note",
+            "text": "The active firewall fails. For a few seconds, while the standby notices and takes over its sessions, requests wait at the pair.",
+            "focus": ["firewall"],
+            "pause": true
+          }
+        },
+        {
+          "atMs": 7500,
+          "action": {
+            "do": "note",
+            "text": "The standby carries everything now, at the same throughput: nothing was dropped. Until the failed unit is back, though, the pair has no spare.",
+            "focus": ["firewall", "adc"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "waits",
+          "label": "Requests wait while it fails over",
+          "metric": {
+            "node": "firewall",
+            "field": "backlog"
+          },
+          "op": ">",
+          "value": 50,
+          "when": "eventually"
+        },
+        {
+          "id": "no-drops",
+          "label": "The firewall never drops a request",
+          "metric": {
+            "node": "firewall",
+            "field": "dropped"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    },
+    {
+      "id": "payments-denied",
+      "title": "The firewall blocks the branch from payments",
+      "description": "Someone at the branch tries Payments' admin API. The firewall's deny rule stops every request: blocked on purpose, not lost.",
+      "seed": 5,
+      "traffic": [
+        {
+          "id": "shop",
+          "node": "customers",
+          "messageType": "Checkout",
+          "label": "Checkouts: 400/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 400,
+            "durationMs": 10000
+          }
+        },
+        {
+          "id": "office",
+          "node": "staff",
+          "messageType": "BackOffice",
+          "label": "Back office: 40/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 40,
+            "durationMs": 10000
+          }
+        },
+        {
+          "id": "admin",
+          "node": "staff",
+          "messageType": "PaymentAdmin",
+          "label": "Payment admin attempts: 20/s",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 20,
+            "durationMs": 6000,
+            "fromMs": 2000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 0,
+          "action": {
+            "do": "note",
+            "text": "The branch reaches the shop's back office through the firewall. Its rules allow web traffic, and deny the branch any path to Payments, which sits in the PCI zone.",
+            "focus": ["firewall", "payments"]
+          }
+        },
+        {
+          "atMs": 2000,
+          "action": {
+            "do": "note",
+            "text": "Someone at the branch starts calling Payments' admin API.",
+            "focus": ["staff", "branch-router"]
+          }
+        },
+        {
+          "atMs": 5000,
+          "action": {
+            "do": "note",
+            "text": "Every one of those requests stops at the firewall: the deny rule blocks it. Blocked isn't lost; it's the rule working.",
+            "focus": ["firewall", "payments"],
+            "pause": true
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "blocked",
+          "label": "The firewall blocks the admin requests",
+          "metric": {
+            "node": "firewall",
+            "field": "blocked"
+          },
+          "op": ">=",
+          "value": 100,
+          "when": "end"
+        },
+        {
+          "id": "no-drops",
+          "label": "Nothing is dropped at the firewall",
+          "metric": {
+            "node": "firewall",
+            "field": "dropped"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        }
+      ]
+    }
+  ]
+}

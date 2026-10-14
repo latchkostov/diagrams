@@ -511,6 +511,21 @@
   stroke-dasharray: 5 5;
 }
 
+/* A firewall rule that denies: a muted red line and a "no entry" glyph near its source. */
+.fe.is-deny {
+  --fe-stroke: color-mix(in oklab, var(--status-down) 70%, var(--edge));
+}
+.fe-deny circle {
+  fill: var(--surface);
+  stroke: var(--status-down);
+  stroke-width: 1.75;
+}
+.fe-deny path {
+  stroke: var(--status-down);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+}
+
 .fe-halo {
   fill: none;
   stroke: transparent;

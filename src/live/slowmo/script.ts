@@ -676,7 +676,10 @@ export function buildScript(input: ScriptInput): SlowScript {
       case "drop": {
         flushCollapse(tr);
         atNode(tr, "drop", PACING.drop, r, r, {
-          caption: `Dropped · ${s.reason ?? "lost"}`,
+          // A deny rule's block is on purpose: it says so, rather than "Dropped".
+          caption: s.reason?.startsWith("blocked")
+            ? `Blocked · ${s.reason.slice("blocked ".length)}`
+            : `Dropped · ${s.reason ?? "lost"}`,
           tone: "danger",
           rowKey: rowOf.get(i),
         });

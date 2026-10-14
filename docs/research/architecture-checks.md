@@ -1044,6 +1044,26 @@ The owner reviewed batches 4 and 5. Four decisions, applied in one change (UX re
    batch 3 gate, 3 of the 4 such hits were diagrams leaving the gateway out on purpose. **Owner's call (2026-10-13):
    keep it quiet; precision over recall.**
 
+## Network devices (2026-10-13)
+
+On-prem routers, switches, firewalls and ADCs (`docs/research/network-infrastructure.md`) meet four rules:
+
+- **single-point**: devices count as self-hosted gateways (their replicas are units). A device fires when the diagram
+  says it's one unit (`ha: "standalone"` or `replicas: 1`) or when it's 80% busy, and its fix is **Make it an HA pair**
+  (`ha: "active-standby"`, `replicas: 2`). A pair or a cluster never fires.
+- **capacity**: a device's capacity is its datasheet ceiling. Over 100% at the diagram's own rates, the fix is the
+  smallest bigger size that lands it under 55%, or none when no size would.
+- **dropped (Run simulations)** and **dead-letter**: a deny rule's work is `blocked`, never `dropped`, so neither ever
+  calls it a loss.
+- **sync-chain**: counts requests between services only, so network hops never deepen a chain.
+
+**Precision gate.** The new public example, Branch office to data centre, raises nothing, and Run simulations counts no
+loss in either of its simulations (`src/checks/examples.test.ts`, now 17 examples). In the data centre every device on
+the only path is a pair or a cluster. The branch router is one box on the branch's only path, but the diagram doesn't
+say how many units it has and it's 2% busy, so single-point stays quiet: batch 3's gate made an unset count no
+evidence. That's a judgment call a branch often makes on purpose (one router and an LTE backup). The one deny rule
+blocks on purpose. Rule-level cases are in `src/checks/netDevices.test.ts`.
+
 ## Explicitly not doing
 
 - **Style and completeness lint** (missing descriptions, unlabelled edges, orphan nodes, naming conventions).

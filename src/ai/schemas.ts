@@ -95,7 +95,7 @@ export const find_stencilsSchema: JsonSchema = {
       },
       category: {
         type: "string",
-        enum: ["messaging", "compute", "data", "network", "observability", "security", "clients", "generic"],
+        enum: ["messaging", "compute", "data", "network", "onprem", "observability", "security", "clients", "generic"],
       },
       limit: {
         type: "integer",
@@ -519,6 +519,7 @@ export const set_simulationSchema: JsonSchema = {
                 "failed",
                 "deadLettered",
                 "dropped",
+                "blocked",
                 "throughput",
                 "lag",
                 "inSystem",

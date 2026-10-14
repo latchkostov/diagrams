@@ -2,6 +2,40 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## On-prem network devices (2026-10)
+
+Routers, switches, firewalls and load balancers you'd have in your own racks (docs/DESIGN-REVIEW.md, round 31).
+
+New:
+
+- **An On-prem network section** in the stencils, with a **Network vendors** family filter. There are 19 stencils:
+  - a generic Router, Switch, Firewall (NGFW) and ADC;
+  - Cisco ISR, Catalyst, Nexus and Secure Firewall; Juniper MX, EX, QFX and SRX; Arista; HPE Aruba CX;
+  - Palo Alto NGFW, FortiGate, Check Point Quantum, F5 BIG-IP and NetScaler.
+- **Search finds model numbers and jargon.** "3825" or "ISR" finds the Cisco router; "BIG-IP", "NGFW", "spine" and
+  "leaf" work too. They're drawn as device glyphs, with the vendor as the stencil's name and colour.
+- **Sizes.** A device's Simulation settings start with **Size** (branch, campus or data centre). Each size's throughput
+  and latency come from a named model's datasheet, for example "Campus: PA-3440, 20 Gbps". A note says what that is in
+  messages per second at the **Message size** (64 kB unless you change it). Every number is approximate and yours to
+  change.
+- **High availability.** A device can be an **active-standby pair** (one unit carries traffic; when it fails, the
+  standby takes over in a few seconds and nothing is lost) or an **active-active cluster** (the units' throughput adds
+  up). In live view, a pair's Behaviour menu has **Fail the active unit**.
+- **Firewall rules.** A connection leaving a firewall is a rule: **Allow** or **Deny**, in its inspector. A denied one
+  shows a "no entry" glyph. In live view what it stops shows as **blocked** on the firewall, never as failed, dropped
+  or lost.
+- **Load balancers health-check their targets.** An ADC (F5, NetScaler, the generic one) sends nothing to a target
+  that's down while another is up.
+- **Capacity sees the devices.** Show capacity and the Inputs & capacity panel colour a device against its throughput
+  ("1% · 440/s of 39k/s"). Check diagram's "can't keep up" offers the next size up, and "every request goes through
+  one" offers **Make it an HA pair**.
+- **A new example**, Branch office to data centre, with two simulations: one firewall fails over, and the firewall
+  blocks the branch from payments.
+- **draw.io imports** read the Cisco library's routers, switches, firewalls and load balancers.
+
+Nothing changes for diagrams you already have: existing gateways (nginx, HAProxy, Load Balancer, Firewall / WAF) behave
+as before.
+
 ## Live explains itself (2026-10)
 
 From the owner's own diagram (docs/DESIGN-REVIEW.md, round 30). Habit changes:

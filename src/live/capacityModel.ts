@@ -363,7 +363,8 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
   const routes = compileTopology(d).outgoing;
   const nodes: Record<string, NodeHeat> = {};
   for (const [id, n] of Object.entries(analysis.nodes)) {
-    const modeled = isModeled(n.role);
+    // A network device is a gateway with a real ceiling (its datasheet's throughput).
+    const modeled = isModeled(n.role) || !!n.device;
     const st = byId.has(id) ? nodeStatus(byId.get(id)!, sim, status) : undefined;
     // A broker with no route out: nothing consumes it (dead-letter routes don't read it either).
     const noReader = BROKERS.has(n.role) && !routes.get(id)?.length;

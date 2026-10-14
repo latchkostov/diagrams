@@ -60,6 +60,8 @@ export interface CompiledEdge {
   share?: number;
   filter?: string[];
   emits?: string;
+  /** A deny rule: what's routed here is blocked at the source node. */
+  deny: boolean;
   groupName: string;
 }
 export interface CompiledGroup {
@@ -111,6 +113,7 @@ export function compileTopology(diagram: DiagramFile, roleOf = stencilRole): Com
         ? input.props.filter.filter((value): value is string => typeof value === "string")
         : undefined,
       emits: typeof input.props?.emits === "string" ? input.props.emits : undefined,
+      deny: input.props?.deny === true,
       groupName: from === "queue" ? "queue" : typeof input.props?.group === "string" ? input.props.group : input.id,
     };
     edges.push(edge);

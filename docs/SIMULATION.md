@@ -156,6 +156,47 @@ reaches it (`park` in the trace) and its frame says so (`noConsumer: true`). Wha
   broker type before routing again, even when a delivery edge renamed it. A rejected DLQ route drops
   the exhausted message instead of delivering it.
 
+## Network devices
+
+Routers, switches, firewalls and ADCs (`src/stencils/netDevices.ts`; research and sources in
+`docs/research/network-infrastructure.md`) are gateways with three additions. Every other gateway behaves as above.
+
+- **Throughput ceiling.** A device's stencil has size presets (`size`: `branch`, `campus`, `datacentre`; families made
+  for data centres have no branch). Each gives a datasheet throughput per unit in Gbps and a latency, and `gbps` and
+  `latencyMs` override them.
+  - **The ceiling** is `gbps × 10⁹ ÷ 8 ÷ (messageKB × 1,000)` real messages/s per unit (`messageKB` defaults to 64:
+    1 Gbps is 1,953 messages/s), times the units carrying traffic.
+  - **In playback** a device admits at most its ceiling, as a token bucket in sampled dots (`ceiling × step ÷ scale`
+    per tick), and the rest waits in its backlog. Nothing is dropped for being over the ceiling.
+  - **In analysis** (`analyzeCapacity`) a device's capacity is the same ceiling, flagged `device: true`, so live view's
+    heat map colours it. Other gateways stay unmodeled.
+  - **Explicit throughput:** any gateway with an explicit `gbps` gets a ceiling too.
+- **Units and high availability.** `replicas` are units, and `ha` says how they work:
+  - `standalone` (default): one box.
+  - `active-standby`: one unit carries traffic whatever the count. Choosing it starts at two units.
+  - `active-active`: units add up.
+  - **Failover:** when a props change leaves an active-standby pair (still up) with fewer units, it fails over. It holds
+    its traffic for `failoverMs` (default 3,000), logs a `status` event ("failing over to the standby (1 of 2 units
+    left)") and reports `failingOver: true` in its node state; then it drains. Nothing is dropped.
+  - **Clusters:** an active-active cluster losing a unit has no hold, only less capacity.
+  - **Not a failover:** the capacity multiplier changing units never triggers one, and a pair that's down drops what's
+    sent to it, like any node.
+- **Health checks.** With `healthChecks` (default on for ADC stencils, off for every other gateway), a gateway leaves
+  targets whose status is `down` out of its round-robin while any other target is up, in playback and in analysis.
+
+### Deny rules
+
+An edge's `deny: true` is a deny rule. A message the source node routes onto it (a gateway's round-robin pick among
+accepting edges, a fan-out copy, a store's change feed) is **blocked** at the source:
+
+- **How it counts:** the node's `blocked` counter (in node state when above zero, and as an expectation metric), a
+  `block` event, and a trace step `drop` with reason "blocked by a deny rule".
+- **What it never counts as:** `dropped` or `failed`, so live view shows it as its own neutral badge (never the red
+  count or a failure flash), and Run simulations never reports it as a loss.
+- **Capacity analysis** sends no demand down a denied edge.
+- **Filters make it a rulebase line:** "Deny: branch → payments" with `filter: ["PaymentAdmin"]` blocks only that
+  type.
+
 ## Saved simulation runner
 
 `createSimulationRun` in `src/sim/simulation.ts` loads the diagram with the saved seed (default 1),
@@ -273,7 +314,8 @@ Traffic and capacity multipliers apply; scale does not change the analytic answe
   zero concurrency or a paused/down node has zero capacity. Positive demand / zero capacity is Infinity;
   zero demand / zero capacity is zero.
 - Gateway/store capacity is 1000 / latencyMs as a single-lane planning estimate. The playback engine
-  accepts parallel work at these roles, so this estimate is advisory rather than a throttle in playback.
+  accepts parallel work at these roles, so this estimate is advisory rather than a throttle in playback. A network
+  device's capacity is its throughput ceiling instead, which playback enforces (see "Network devices").
 - A queue's capacity is the sum of ready consumer capacities. Topics/streams use the slowest required
   consumer group, with replicas capped by that group's partitions; filtered groups normalize their
   capacity by the accepted fraction of incoming traffic. A broker with no consumers has zero capacity.

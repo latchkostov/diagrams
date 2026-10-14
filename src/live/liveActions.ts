@@ -75,13 +75,14 @@ export function liveActions(host: LiveActionsHost): Action[] {
   const role = (id: string) => c.snapshot().nodes[id]?.role ?? "none";
   const props = (id: string) => {
     const node = c.currentDiagram.nodes.find((n) => n.id === id);
-    return resolveProps(role(id), node?.label ?? id, c.effectiveProps(id));
+    return resolveProps(role(id), node?.label ?? id, c.effectiveProps(id), node?.stencil);
   };
-  const baseLatency = (id: string) => {
+  const baseProps = (id: string) => {
     const node = c.currentDiagram.nodes.find((n) => n.id === id);
     const raw = { ...node?.props, ...c.getState().simulation?.setup?.props?.[id] };
-    return resolveProps(role(id), node?.label ?? id, raw).latencyMs || 250;
+    return resolveProps(role(id), node?.label ?? id, raw, node?.stencil);
   };
+  const baseLatency = (id: string) => baseProps(id).latencyMs || 250;
   const isNode = (id: string | undefined): id is string => !!id && !!c.snapshot().nodes[id];
 
   const actions: Action[] = [
@@ -188,6 +189,25 @@ export function liveActions(host: LiveActionsHost): Action[] {
               run: () => c.setNodeProps(id, { failureRate: f }),
             })),
           });
+        }
+        // A network device's pair or cluster: lose a unit (an active-standby pair fails over), or get them back.
+        const device = p.device;
+        if (device && device.ha !== "standalone" && status(id) === "up") {
+          const base = baseProps(id).replicas;
+          if (p.replicas > 1)
+            rows.push({
+              type: "item",
+              id: "sim.fail-unit",
+              label: device.ha === "active-standby" ? "Fail the active unit" : "Fail one unit",
+              run: () => c.setNodeProps(id, { replicas: p.replicas - 1 }),
+            });
+          if (p.replicas < base)
+            rows.push({
+              type: "item",
+              id: "sim.restore-units",
+              label: `Bring back every unit (${base})`,
+              run: () => c.setNodeProps(id, { replicas: base }),
+            });
         }
         if (r === "processor" || r === "gateway" || r === "store") {
           const base = baseLatency(id);
