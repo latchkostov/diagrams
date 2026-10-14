@@ -39,6 +39,11 @@ export function LiveDetails({ metrics: s, diagram: d }: { metrics: RealNodeMetri
           blocked: formatNumber(s.blocked ?? 0),
         })}
       </p>
+      {s.rejected !== undefined && (
+        <p data-testid="planning-live-rejected">
+          {t("admission.rejected")} · {formatNumber(s.rejected)}
+        </p>
+      )}
       {Object.entries(s.lag).map(([group, lag]) => (
         <p key={group} data-testid={`planning-live-lag-${group}`}>
           {broker?.partitioned === false

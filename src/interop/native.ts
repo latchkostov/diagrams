@@ -9,6 +9,20 @@ import { isDependency, isEdgeRelation, isRelationOrigin, sanitizeSettings } from
 import { sanitizeChecks } from "../model/checks";
 import { idClaimer } from "../model/ids";
 import { t } from "../i18n/core";
+import { checkJsonSchema } from "../model/jsonSchema";
+import { apiSchema, endpointsSchema, planningSchema } from "../model/admissionSchema";
+
+/** Free-form editor properties use the same bounded admission contract as imported files.
+ * Keep this in the already-preloaded validator, so Live adds no startup request. */
+export function validAdmissionData(api: unknown, endpoints: unknown): boolean {
+  try {
+    if (api !== undefined) checkJsonSchema(api, apiSchema);
+    if (endpoints !== undefined) checkJsonSchema(endpoints, endpointsSchema);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // The native format (diagrams/v1): versioned validation with friendly messages, a migration hook
 // for future formats, and preservation of fields this version doesn't know about (a newer app, or
@@ -111,7 +125,8 @@ export function validateDiagram(data: unknown): NativeResult {
   }
   if (
     raw.format === "diagrams/v2" &&
-    (!isObj(raw.planning) || (raw.planning.revision !== "p1" && raw.planning.revision !== "p2"))
+    (!isObj(raw.planning) ||
+      (raw.planning.revision !== "p1" && raw.planning.revision !== "p2" && raw.planning.revision !== "p3"))
   )
     return {
       ok: false,
@@ -122,6 +137,18 @@ export function validateDiagram(data: unknown): NativeResult {
       ok: false,
       error: t("planning.formatRequired"),
     };
+  if (raw.planning !== undefined) {
+    try {
+      checkJsonSchema(raw.planning, planningSchema);
+      for (const field of ["sharedQuotas", "sharedAllocations"]) {
+        const values = (raw.planning as Record<string, unknown>)[field];
+        if (Array.isArray(values) && new Set(values.map((v: { id: string }) => v.id)).size !== values.length)
+          return { ok: false, error: t("admission.unknown") };
+      }
+    } catch {
+      return { ok: false, error: t("admission.unknown") };
+    }
+  }
   if (!Array.isArray(raw.nodes)) return { ok: false, error: "The diagram needs both a nodes and an edges list." };
   const counts: [unknown, number, string][] = [
     [raw.nodes, LIMITS.maxNodes, "nodes"],
@@ -426,6 +453,7 @@ const METRICS = new Set([
   "deadLettered",
   "dropped",
   "blocked",
+  "rejected",
   "throughput",
   "lag",
 ]);

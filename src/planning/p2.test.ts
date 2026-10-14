@@ -382,7 +382,7 @@ describe("P2 broker assignment", () => {
       expect(nextEngine.snapshot().nodes.worker).toMatchObject({ activeReplicas: 8, inFlight: 32 });
       expect(parseNative(serializeNative(upgraded))).toMatchObject({
         ok: true,
-        diagram: { planning: { revision: "p2" } },
+        diagram: { planning: { revision: "p3" } },
       });
       expect(legacyExport(upgraded).losses).toContain("planning.revision");
       expect(analyzeCapacity(legacyExport(upgraded).diagram).nodes.worker.activeReplicas).toBe(3);

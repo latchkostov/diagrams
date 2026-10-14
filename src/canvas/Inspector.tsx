@@ -72,6 +72,8 @@ import {
 } from "../stencils/netDevices";
 import { formatCount } from "../live/format";
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
+import { managedKind } from "../model/admissionPresets";
+import { AdmissionFields } from "../planning/lazy";
 import { nodeSimFields, edgeSimFields, inertNodeProps } from "./simFieldRules";
 import { SIM_LIMITS } from "../interop/native";
 import { t, useLocale } from "../i18n";
@@ -451,6 +453,7 @@ function NodePanel({
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const broker = brokerSpec(node.data.stencil, role, meta.planning);
   const simFields = nodeSimFields(role, node.data.stencil, meta.planning);
+  const managed = meta.planning?.revision === "p3" && !!managedKind(node.data.stencil);
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
   // What Custom properties leaves out: only the settings a control here shows.
   const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
@@ -560,7 +563,13 @@ function NodePanel({
             {assignmentLabel(broker)} · {t("broker.fanout")}
           </p>
         )}
-        {device ? (
+        {managed ? (
+          <AdmissionFields
+            stencil={node.data.stencil}
+            props={props}
+            set={(patch) => editor.setNodeProps(node.id, patch)}
+          />
+        ) : device ? (
           <DeviceFields
             spec={device}
             props={props}
@@ -577,7 +586,10 @@ function NodePanel({
                       ...SIM_FIELDS[k]!,
                       label: assignmentLabel(broker),
                       hint: t("broker.assignmentHint"),
-                      note: meta.planning?.revision === "p2" ? undefined : SIM_FIELDS[k]!.note,
+                      note:
+                        meta.planning?.revision === "p2" || meta.planning?.revision === "p3"
+                          ? undefined
+                          : SIM_FIELDS[k]!.note,
                     }
                   : k === "replicas"
                     ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
@@ -598,7 +610,7 @@ function NodePanel({
         ) : (
           <p className="insp-note">This stencil is decorative and doesn't take part in the simulation.</p>
         )}
-        {inertNodeProps(role, props).map(({ key, why }) => (
+        {(managed ? [] : inertNodeProps(role, props)).map(({ key, why }) => (
           <InertNote
             key={key}
             name={key}

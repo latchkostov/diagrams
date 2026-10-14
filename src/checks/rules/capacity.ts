@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { englishAssignmentLabel } from "../../model/brokers";
 import { resolveNodeProps } from "../../sim/defaults";
 import type { DiagramOp } from "../../ai";
@@ -31,7 +32,7 @@ function scaleFix(ctx: CheckContext, n: NodeCapacity): CheckFix | undefined {
   const brokerChanges: NonNullable<CheckFix["brokerChanges"]> = [];
   const words = changes.map((c) => {
     const spec =
-      c.key === "partitions" && ctx.diagram.planning?.revision === "p2"
+      c.key === "partitions" && (ctx.diagram.planning?.revision === "p2" || ctx.diagram.planning?.revision === "p3")
         ? resolveNodeProps(ctx.diagram, ctx.nodes.get(c.nodeId)!).broker
         : undefined;
     if (spec) {
@@ -59,7 +60,7 @@ export const capacity: CheckRule = {
         (n) =>
           n.offered > 0 &&
           n.utilization >= 1 &&
-          (n.role === "processor" || !!n.device || (isBroker(ctx, n.id) && ctx.routes(n.id).length > 0)),
+          (n.role === "processor" || !!n.device || !!n.managed || (isBroker(ctx, n.id) && ctx.routes(n.id).length > 0)),
       )
       .sort(
         (a, b) =>
@@ -126,7 +127,7 @@ export const capacity: CheckRule = {
         target: top.id,
         elements: [top.id],
         title: `${name} can't keep up`,
-        message: `At ${rates}, ${load}: its backlog only grows.${idle}${analysis.converged ? "" : " A feedback loop didn't settle, so these are estimates."}`,
+        message: `At ${rates}, ${load}: ${top.managed ? t("admission.rejectEstimate", { rate: formatRate(Math.max(0, top.offered - top.capacity)) }) : "its backlog only grows."}${idle}${analysis.converged ? "" : " A feedback loop didn't settle, so these are estimates."}`,
         rationale:
           "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers.",
         ...(brokerAssignment ? { brokerAssignment } : {}),

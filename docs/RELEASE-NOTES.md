@@ -35,6 +35,17 @@
   draw.io and the offline agent checker share the same lossless colour contract.
 - Thanks to **Heiner Morales** for the custom colours, palette picker and background tint design in
   [PR #102](https://github.com/latchkostov/diagrams/pull/102).
+## Planning P3: managed compute and external limits (2026-10-14)
+
+- Functions and external/model APIs process duration and errors and refuse calls that exceed
+  concurrency, rate or token/cost budgets. Live shows Rejected separately from failures and losses.
+- Versioned Lambda, Stripe and API Gateway presets cite scoped vendor quotas. Visual nodes share
+  account budgets; declared endpoint budgets apply alongside global budgets. Unknown limits stay unknown.
+- The inspector offers a preset and at most four main controls, with account scope and scaling details
+  under Advanced. Local rate edits preserve the account cap. Automatic function scaling is explicitly
+  a simplification; caller deadlines, retries and failure cascades remain deferred.
+- New diagrams use p3; earlier models keep their playback until an undoable upgrade. The new controls
+  are translated in all 37 additional languages, and offline agent exports use the same admission model.
 
 ## Planning P2 review fixes (2026-10-14)
 

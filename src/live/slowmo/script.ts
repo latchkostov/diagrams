@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // Slow motion: one message's recorded journey, retold as a paced script of "beats" (a hop, a pause
 // at a node, a split, a write...). Pure: no DOM, no clocks. The live view records the journey first
 // (look-ahead on a checkpoint, see session.ts), builds the script once, then asks `frameAt(script, t)`
@@ -686,10 +687,11 @@ export function buildScript(input: ScriptInput): SlowScript {
         tr.ended = true;
         break;
       }
+      case "reject":
       case "block": {
         flushCollapse(tr);
         atNode(tr, "block", PACING.drop, r, r, {
-          caption: "Blocked by a deny rule",
+          caption: s.kind === "reject" ? t("admission.rejected") : "Blocked by a deny rule",
           tone: "plain",
           rowKey: rowOf.get(i),
         });
@@ -734,6 +736,7 @@ export function buildScript(input: ScriptInput): SlowScript {
   const deadLettered = steps.some((s) => s.kind === "deadletter");
   const dropped = steps.some((s) => s.kind === "drop");
   const blocked = steps.some((s) => s.kind === "block");
+  const rejected = steps.some((s) => s.kind === "reject");
   const keptAt = steps.find((s) => s.kind === "park" && s.node && roleOf(s.node) !== "queue")?.node;
   const facts = [
     formatDuration(realTotal),
@@ -754,13 +757,15 @@ export function buildScript(input: ScriptInput): SlowScript {
     summary = [
       deadLettered
         ? "Dead-lettered"
-        : dropped
-          ? "Dropped"
-          : blocked
-            ? "Blocked by a deny rule"
-            : keptAt
-              ? `Kept in ${name(keptAt)}, unread`
-              : "Done",
+        : rejected
+          ? t("admission.rejected")
+          : dropped
+            ? "Dropped"
+            : blocked
+              ? "Blocked by a deny rule"
+              : keptAt
+                ? `Kept in ${name(keptAt)}, unread`
+                : "Done",
       ...facts,
     ].join(" · ");
   const lastNode =
@@ -781,7 +786,7 @@ export function buildScript(input: ScriptInput): SlowScript {
         ? deadLettered || dropped
           ? "danger"
           : "warn"
-        : blocked
+        : blocked || rejected
           ? "plain"
           : "done",
   });

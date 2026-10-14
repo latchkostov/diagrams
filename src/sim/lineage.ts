@@ -137,12 +137,14 @@ export function createLineage(host: LineageHost): Lineage {
     let retries = 0,
       deadLetteredAt: number | undefined,
       dropped = false,
-      blocked = false;
+      blocked = false,
+      rejected = false;
     for (const step of trace.steps) {
       if (step.kind === "retry") retries++;
       else if (step.kind === "deadletter") deadLetteredAt = step.t;
       else if (step.kind === "drop") dropped = true;
       else if (step.kind === "block") blocked = true;
+      else if (step.kind === "reject") rejected = true;
     }
     const { rootId, type, origin, startedAt, endedAt, done, partial } = trace;
     const deadLettered = deadLetteredAt !== undefined;
@@ -159,6 +161,7 @@ export function createLineage(host: LineageHost): Lineage {
       ...(deadLettered ? { deadLetteredAt } : {}),
       dropped,
       blocked,
+      ...(rejected ? { rejected: true } : {}),
     };
   }
 

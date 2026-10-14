@@ -15,6 +15,7 @@ function materialized(d: DiagramFile, node: DiagramFile["nodes"][number], props:
           key !== "device" &&
           key !== "profile" &&
           key !== "broker" &&
+          key !== "admission" &&
           v !== undefined &&
           (typeof v !== "number" || Number.isFinite(v)),
       ),
@@ -76,10 +77,10 @@ function normalizePersistence(d: DiagramFile): DiagramFile {
 
 /** Explicit opt-in preserves effective values in free play and every saved simulation context. */
 export function upgradePlanning(d: DiagramFile): DiagramFile {
-  if (d.planning?.revision === "p2") return structuredClone(d);
+  if (d.planning?.revision === "p3") return structuredClone(d);
   const next = normalizePersistence(d);
   next.format = "diagrams/v2";
-  next.planning = { revision: "p2" };
+  next.planning = { ...d.planning, revision: "p3" };
   for (const node of next.nodes) {
     const family = profileOf(node.stencil)?.family;
     if (family && FAMILIES[family]?.roles.includes("processor"))
@@ -98,7 +99,16 @@ export function legacyExport(d: DiagramFile): { diagram: DiagramFile; losses: st
   delete diagram.planning;
   diagram.format = "diagrams/v1";
   const strip = (props: Record<string, unknown> | undefined, path: string) => {
-    for (const key of ["preset", "presetRevision", "connections", "querySlots"])
+    for (const key of [
+      "preset",
+      "presetRevision",
+      "connections",
+      "querySlots",
+      "api",
+      "endpoints",
+      "scaling",
+      "maxConcurrency",
+    ])
       if (props && key in props) {
         losses.push(`${path}.${key}`);
         Reflect.deleteProperty(props, key);
@@ -110,10 +120,16 @@ export function legacyExport(d: DiagramFile): { diagram: DiagramFile; losses: st
     for (const [i, step] of (sim.timeline ?? []).entries())
       if (step.action.do === "props") strip(step.action.props, `${sim.id}.timeline.${i}.props`);
   }
-  for (const edge of diagram.edges)
+  for (const edge of diagram.edges) {
+    for (const key of ["endpointId", "caller"])
+      if (edge.props && key in edge.props) {
+        losses.push(`${edge.id}.props.${key}`);
+        Reflect.deleteProperty(edge.props, key);
+      }
     if (edge.props && "networkDelayMs" in edge.props) {
       losses.push(`${edge.id}.props.networkDelayMs`);
       delete edge.props.networkDelayMs;
     }
+  }
   return { diagram, losses };
 }

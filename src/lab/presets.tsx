@@ -1,5 +1,6 @@
 import { ColourPickerLab } from "./ColourPickerLab";
 import { customColoursFixture } from "./customColoursFixture";
+import { planningP3Fixture } from "./planningP3Fixture";
 import { planningP2Fixture } from "./planningP2Fixture";
 import { OnDeviceEvalsLab } from "./OnDeviceEvalsLab";
 import { relationshipFixture } from "./relationshipFixture";
@@ -933,6 +934,26 @@ const tracePresets: Preset[] = [
 ];
 
 export const presets: readonly Preset[] = [
+  {
+    kind: "render",
+    id: "planning-p3",
+    title: "Managed admission",
+    group: "Playground",
+    description: "Account budgets, concurrent calls and unknown evidence.",
+    controls: [
+      {
+        type: "select",
+        key: "api",
+        label: "API",
+        default: "generic.external-api",
+        options: ["stripe", "generic.external-api", "aws.lambda", "openai", "paypal", "iterable"].map((value) => ({
+          value,
+          label: value,
+        })),
+      },
+    ],
+    render: (v) => <LiveLabStage key={String(v.api)} diagram={planningP3Fixture(String(v.api))} />,
+  },
   {
     kind: "render",
     id: "planning-p2",

@@ -15,8 +15,10 @@ import {
 import type { NodeStatus } from "./types";
 import { resolveMultiplier } from "./units";
 import { iterationBound } from "./iterationBound";
+import { admissionCapacities } from "./admissionPlanning";
 
 export interface NodeCapacity {
+  managed?: boolean;
   status?: Exclude<NodeStatus, "up">;
   id: string;
   label: string;
@@ -65,6 +67,17 @@ type Rates = Map<string, Map<string, number>>;
 const RATE_CAP = 1e12;
 const serviceRate = (entry: Entry, replicas = entry.active): number => {
   if (!entry.up) return 0;
+  if (entry.props.admission) {
+    const slots = Math.min(
+      entry.props.admission.slots ?? Infinity,
+      entry.props.admission.api.maxInFlight ?? Infinity,
+      entry.props.admission.fixedSlotsPerReplica === undefined
+        ? Infinity
+        : replicas * entry.props.admission.fixedSlotsPerReplica,
+    );
+    const time = entry.props.admission.api.latencyMs ?? entry.props.latencyMs;
+    return slots === 0 ? 0 : time ? (slots * 1000) / time : Infinity;
+  }
   if (entry.role === "processor") {
     const slots = replicas * entry.props.concurrency;
     return !slots ? 0 : entry.props.latencyMs ? (slots * 1000) / entry.props.latencyMs : Infinity;
@@ -209,7 +222,10 @@ export function analyzeCapacity(
             assigned,
             id,
             count,
-            broker.props.broker?.partitioned && diagram.planning?.revision === "p2" ? broker.props.broker : undefined,
+            broker.props.broker?.partitioned &&
+              (diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3")
+              ? broker.props.broker
+              : undefined,
           );
         }
         return { broker, edges: group.edges, allocations };
@@ -370,7 +386,30 @@ export function analyzeCapacity(
       idleReplicas: entry.replicas - entry.active,
       ...(assigned.get(id)?.spec ? { assignment: assigned.get(id)!.spec } : {}),
       ...(entry.role === "gateway" && entry.props.device ? { device: true } : {}),
+      ...(entry.props.admission ? { managed: true } : {}),
     };
+  }
+  const managed = [...entries].flatMap(([id, entry]) =>
+    entry.props.admission
+      ? [
+          {
+            id,
+            policy: entry.props.admission,
+            offered: nodes[id].offered,
+            latencyMs: entry.props.latencyMs,
+            endpoints: [
+              ...compiled.edges
+                .filter((e) => e.to === id && !e.deny && !e.dlq)
+                .map((e) => ({ id: e.endpointId, rate: connections[e.id] ?? 0 })),
+              { rate: total(external.get(id)) },
+            ],
+          },
+        ]
+      : [],
+  );
+  for (const [id, capacity] of admissionCapacities(managed, diagram.planning)) {
+    nodes[id].capacity = Math.min(nodes[id].capacity, capacity);
+    nodes[id].utilization = ratio(nodes[id].offered, nodes[id].capacity);
   }
   // Prefer the service over its broker when their limits tie; it is the actionable diagnosis.
   const ranked = Object.values(nodes)
@@ -397,12 +436,13 @@ export function analyzeCapacity(
       const broker = constraint.broker;
       const desired = [...constraint.allocations.keys()].reduce((sum, id) => sum + entries.get(id)!.replicas, 0);
       suggestion =
-        diagram.planning?.revision === "p2"
+        diagram.planning?.revision === "p2" || diagram.planning?.revision === "p3"
           ? `${broker.input.sublabel ?? broker.input.label}: ${englishAssignmentLabel(broker.props.broker)} → ${desired}`
           : `${bottleneck.label}: ${bottleneck.idleReplicas} of ${bottleneck.replicas} replicas idle - add partitions to ${broker.input.sublabel ?? broker.input.label} (${broker.props.partitions} -> ${desired})`;
     }
   } else if (bottleneck && bottleneck.utilization >= 1) {
-    if (!Number.isFinite(bottleneck.utilization))
+    if (bottleneck.managed) suggestion = `${bottleneck.label}: Increase allocation or Reduce calls.`;
+    else if (!Number.isFinite(bottleneck.utilization))
       suggestion = `${bottleneck.label}: resume the node or add a ready consumer.`;
     else if (bottleneck.role === "processor") {
       const desired = Math.max(bottleneck.replicas + 1, Math.ceil(bottleneck.replicas * bottleneck.utilization));

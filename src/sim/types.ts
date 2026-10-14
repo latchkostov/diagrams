@@ -57,6 +57,9 @@ export interface NodeSimState {
   outageDropped?: number;
   /** Messages a deny rule on one of this node's outgoing connections stopped. On purpose: not a loss. */
   blocked?: number;
+  /** Admission refusals (including throttling), separate from processing failures and losses. */
+  rejected?: number;
+  rejectionReasons?: Record<string, number>;
   /** An active-standby pair is failing over to its standby unit: traffic waits until it's done. */
   failingOver?: boolean;
   /** Smoothed throughput in messages / second (processed). */
@@ -76,7 +79,7 @@ export interface EdgeSimState {
 }
 
 export type SimEventKind =
-  "inject" | "deliver" | "process" | "fail" | "retry" | "deadletter" | "drop" | "block" | "status";
+  "inject" | "deliver" | "process" | "fail" | "retry" | "deadletter" | "drop" | "block" | "reject" | "status";
 
 export interface SimEvent {
   /** Simulation time in ms. */
@@ -124,6 +127,10 @@ export interface SimSnapshot {
 
 /** Per-node tunables. Read from DiagramNode.props on load; can be changed live via setNodeProps. */
 export interface NodeSimProps {
+  api?: import("../model/admission").ApiBehaviour;
+  endpoints?: import("../model/admission").ApiEndpoint[];
+  scaling?: "fixed" | "auto";
+  maxConcurrency?: number;
   /** Immutable lesson/device preset and its revision; behaviour-critical values are pinned alongside. */
   preset?: string;
   presetRevision?: string;
@@ -176,6 +183,8 @@ export interface NodeSimProps {
 
 /** Per-edge tunables from DiagramEdge.props. */
 export interface EdgeSimProps {
+  endpointId?: string;
+  caller?: { deadlineMs?: number; retry?: import("../model/admission").RetryPolicy; poolConnections?: number };
   /** Log consumer group, pub/sub subscription or exchange binding name. Each name receives a copy; readers sharing a name compete. Queues always compete; DLQ routes never subscribe. Default = edge id. */
   group?: string;
   /** Inferred groups follow the consumer id when a connection is copied or reconnected. */
@@ -221,6 +230,7 @@ export type TraceStepKind =
   | "deadletter" // broker `node` gave up after `attempt` deliveries and sent it to its DLQ edge
   | "drop" // lost at `node` (down, no route); `reason` says why
   | "block" // stopped at `node` by a deny rule on its way out: on purpose, never a loss
+  | "reject" // refused admission: no processing attempt, retry or caller cascade
   | "park" // kept at `node`: a broker with no consumers (a dead-letter queue)
   | "end"; // consumed at `node` (a sink, a store, a final worker)
 
@@ -279,6 +289,7 @@ export interface TraceSummary {
   dropped: boolean;
   /** A deny rule stopped it (or a copy): on purpose, not a loss. */
   blocked: boolean;
+  rejected?: boolean;
 }
 
 /** What the tracer is waiting for: the next message at a node (or anywhere), or the next dead letter. */

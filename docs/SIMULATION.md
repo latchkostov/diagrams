@@ -3,9 +3,82 @@
 The live view animates messages flowing through any diagram, driven only by the diagram itself:
 each node's stencil `simRole`, edge direction and `kind`, plus optional `props`. API: `src/sim/types.ts`.
 
+## Planning revision p3: managed admission
+
+New diagrams use `diagrams/v2` with `planning: { revision: "p3" }`. Legacy, p1 and p2
+files retain their previous resolver and playback until an explicit, undoable upgrade. Upgrades
+materialize existing values; choosing a vendor preset is a separate, undoable action. Unknown
+vendor budgets remain unknown, including PayPal and Iterable. No numeric model-API default is
+invented: enter the org/project/model/tier contract and per-request token or cost sizes.
+
+Serverless, external APIs, model APIs and API gateways now spend duration, can fail, and check
+admission before work starts. `api.quotas` contains bounded token buckets with an explicit unit,
+amount, window and optional burst. Requests, tokens, input/output tokens, cost points and bytes
+remain distinct. A sample consumes `scale` real requests and its represented token/cost amount.
+Every applicable node, account and endpoint bucket is checked before any is charged. Shared
+buckets are charged once per attempt, even if referenced at both scopes. Shared definitions must
+agree; conflicting definitions refuse all affected callers before the first account token is spent.
+Refill uses the fixed-step simulation clock, never wall time, and checkpoints restore bucket credit
+and concurrency reservations. Live edits retain spent credit instead of granting a fresh burst.
+
+`api.maxInFlight` caps simultaneous calls. `api.sharedConcurrency` names an account allocation;
+`planning.sharedAllocations` is authoritative, otherwise an agreed implicit definition supplies
+its cap. Preset account concurrency is independent of a node's smaller local concurrent-call limit.
+`planning.sharedQuotas` defines shared token buckets; node/endpoint references include matching
+unit, amount, window and burst. Labels identify local scopes, never credentials. Duplicating a
+visual Stripe API or Lambda function does not duplicate the default account/Region allocation.
+
+An optional Request `endpointId` targets an endpoint's opaque id. Endpoint duration/errors inherit
+from the node when omitted. Endpoint budgets add to global budgets; a dangling endpoint refuses
+admission instead of silently falling back. Stripe presets supply the cited default endpoint rate
+for declared endpoints when no endpoint quota was authored. Without endpoints, the diagram models
+global standard API traffic only. Endpoint authoring UI and OpenAPI import remain P6/P7 work.
+
+Serverless `maxConcurrency` is an allocation of concurrent executions, not incoming RPS. Fixed
+mode uses fixed slots within that allocation; automatic mode can use the allocation on demand.
+**Automatic mode explicitly assumes instant scaling**: cold starts, scale-up ramps, execution
+timeouts and trigger-specific retries are excluded. Fixed fleets retain P2's partition assignment;
+SNS subscription workers use the full fleet. Capacity multipliers do not multiply vendor budgets.
+
+Published preset revision `2026-10-14`:
+
+| Preset                     | Scoped budget                                                                          | Evidence                                                                                                                      |
+| -------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Lambda account/Region      | 1,000 simultaneous executions shared by functions                                      | [AWS concurrency](https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html); newer accounts can have lower quotas |
+| Stripe live account        | 100 requests/s global; 50 simultaneous calls; declared endpoints 25 requests/s         | [Stripe limits](https://docs.stripe.com/rate-limits); account/endpoint exceptions apply                                       |
+| Stripe sandbox account     | 25 requests/s global; declared endpoints 25 requests/s; concurrent-call budget unknown | [Stripe limits](https://docs.stripe.com/rate-limits)                                                                          |
+| API Gateway account/Region | 10,000 requests/s, bucket capacity 5,000 requests                                      | [AWS quotas](https://docs.aws.amazon.com/apigateway/latest/developerguide/limits.html); excluded Regions have lower quotas    |
+| Measured workload          | No vendor quota supplied                                                               | Duration/error inputs are editable assumptions                                                                                |
+
+Mean durations (250 ms for external/function examples; 60 ms for the gateway) and unspecified
+vendor burst behaviour are assumptions, not vendor latency measurements or SLA guarantees.
+Stripe's modelled bucket capacity defaults to one second of its rate; AWS Gateway's documented
+burst is explicit. Model APIs' RPM/TPM values stay account/model-specific and unknown until entered.
+
+Sampling is discrete: for a simultaneous burst the admitted count differs by **less than one dot**
+(`scale` real requests) at each independent binding budget. Repeated refill/arrival intervals can
+accumulate rounding error; the clock also quantizes admission to 10 ms. Use scale 1 for exact small
+quota/concurrency boundaries. A cap smaller than one represented dot cannot admit that dot.
+The regression compares 200 real calls against a 103-request bucket: scale 1 admits 103, scale 10
+admits 100. Never interpret the sampled concurrency cap as instant scaling or a measured p95.
+
+Live counts **rejected** separately from failed attempts, dropped messages, dead letters and denied
+firewall traffic. Refused admission never enters processing or a service backlog; visual replies
+finish the attempt without propagating a caller failure. External processing errors count as failed
+operations rather than also inventing dropped traffic. Broker delivery retries retain the existing
+consumer policy; admission refusal does not invent a vendor's trigger retry. Caller `deadlineMs`,
+retry policy and pool contracts are validated and preserved but **not executed**. Caller waits,
+deadlines, retries and failure cascades remain item 10.
+
+Planning combines the offered workload across shared and endpoint constraints as a steady-state
+common workload multiplier. It reports the binding rate/concurrency/token/cost budget and potential
+refusals, not growing SaaS backlog. Suggestions say **Increase allocation** or **Reduce calls**;
+there is no replica fix for managed APIs. Unknown limits are labelled unknown rather than unlimited.
+Burst timing, cold starts, caller waits and retries are excluded from this estimate.
+
 ## Planning revision p2: logs and named routes
 
-New diagrams use `diagrams/v2` with `planning: { revision: "p2" }`. Existing v1 and p1 files keep
+The p2 model uses `diagrams/v2` with `planning: { revision: "p2" }`. Existing v1 and p1 files keep
 exactly their previous broker allocation until the person previews and applies an explicit upgrade.
 The upgrade pins effective defaults and preserves groups, overrides and saved simulations; it can
 change broker capacity, which the preview lists. Undo restores the previous document/model. Legacy
@@ -667,3 +740,5 @@ once a second, one doubling or halving per step with ±25% hysteresis (a new spe
 the ideal k). The traced family, retries and dead letters are always drawn. At 1× and above nothing
 changes; the per-edge density thinning stays as the fallback. It's a drawing limit only: counters,
 badges, scale, capacity and recordings never see it.
+
+P3 admission also accepts measured rates below one request per second: the local bucket can accumulate one request of credit. Live quota edits refill existing credit on simulation time before applying the new cap, without granting a fresh burst. Malformed admission data refuses requests instead of corrupting the simulation clock.

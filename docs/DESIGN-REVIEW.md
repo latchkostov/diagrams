@@ -3921,3 +3921,33 @@ Ctrl+K, the stencil rail, gallery and editing feedback. No controls were added. 
 identities, focus and undo paths remain intact; localized labels, wrapping and RTL navigation agree.
 The slim i18n entry keeps the typed API in its React-free core, and connection creation retains P1's defaults.
 This was a source review, not a whole-app browser or screenshot audit; production e2e results are reported separately.
+
+## Round 38 — Planning P3: managed admission (2026-10-14)
+
+Designer-agent review covered the P3 source and five production screenshots, followed by the
+engineer's screenshot verification at 1280 × 800. The preset is followed by at most four main
+controls. Scope/scaling details use Advanced, and no global chrome or ineffective caller retry/
+deadline button was added. Unknown limits are visible in the controls and explanation. Rejected
+traffic has its own neutral badge, separate from red failures/losses and firewall blocks.
+
+Accepted fixes: label the rate as local, show the inherited account rate separately, and leave the
+local input empty until configured. A zero local rate is rejected without removing an existing
+budget. Format preset numbers/units for the selected language; remove duplicate account scope
+hints. Automatic Lambda no longer claims its old replica/slot pool; it reports the allocation.
+A short Auto selector keeps the instant-scaling assumption in a wrapped explanation. Translated rejection labels
+fit the event column; temporarily restoring its fixed width makes the German regression fail.
+
+| Production screenshot                                        | Review                                                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| [Stripe](research/planning-p3/p3-stripe.png)                 | Preset, four controls and account evidence; local overrides preserve the account cap. |
+| [Live rejections](research/planning-p3/p3-live.png)          | Rejected counts stay separate; caller failures remain zero.                           |
+| [Unknown PayPal limits](research/planning-p3/p3-unknown.png) | No numeric or unlimited promise. Iterable shares this unknown-limit path.             |
+| [Arabic](research/planning-p3/p3-ar.png)                     | Controls mirror; diagram direction stays intact; no horizontal overflow.              |
+| [Pseudo-locale](research/planning-p3/p3-en-XA.png)           | Expanded labels wrap within the inspector.                                            |
+
+This was a scoped source/screenshot review, not a new screen-reader or whole-app manual walkthrough.
+The requested production E2E suites cover the surrounding editing, Live, capacity, Checks, network,
+planning and language workflows. Existing P1 prose still falls back to English; P3 copy is translated
+in all 37 catalogs. Rejected or deferred: SaaS replicas (wrong planning lever), guessed vendor/model
+rates (unsupported evidence), endpoint authoring/OpenAPI (P6/P7), and caller waits/deadlines/retries/
+cascades (item 10, outside this approval).

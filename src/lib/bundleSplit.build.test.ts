@@ -66,7 +66,6 @@ const STARTUP_CHUNKS = [
   "react",
   "react-dom",
   "registry",
-  "relations",
   "size",
   "storage",
   "toast",

@@ -38,6 +38,14 @@ const METRICS = ["processed", "backlog", "inFlight", "failed", "deadLettered", "
 
 /** One line per simulation property. A new property fails generation until it's described here. */
 const NODE_PROP_NOTES: Record<string, string> = {
+  api: "P3 admission: typed token buckets, concurrent calls, scoped account sharing, duration/errors and per-request token/cost sizes. Unknown budgets stay unknown. Every applicable bucket is charged atomically in real units.",
+  endpoints:
+    "P3 admission enforcement for optional endpoint records (id, method, path, behaviour). Endpoint budgets add to node/account budgets; authoring UI is deferred to P6.",
+  scaling:
+    "serverless fixed slots or auto within maxConcurrency; auto explicitly assumes instant scaling and excludes cold starts",
+  maxConcurrency:
+    "serverless allocated concurrent work, independent from source RPS; account allocation remains an additional cap",
+
   preset:
     "immutable preset id: processor-lesson (assumption) or device-size (existing approximate size preset); resolved values are pinned alongside",
   presetRevision: "pinned preset revision (1 for P1); unsupported revisions are refused",
@@ -68,6 +76,10 @@ const NODE_PROP_NOTES: Record<string, string> = {
   healthChecks: "gateways: skip targets that are down (default true for ADCs, false otherwise)",
 };
 const EDGE_PROP_NOTES: Record<string, string> = {
+  endpointId: "Request target endpoint id inside the target API node; dangling references reject rather than fall back",
+  caller:
+    "reserved deadlineMs, retry policy and poolConnections contract; no caller waits, retries, deadlines or cascades execute in P3",
+
   networkDelayMs:
     "physical one-way delay in ms (absent means unknown); metadata only in P1, never added to animation travelMs",
   group:
