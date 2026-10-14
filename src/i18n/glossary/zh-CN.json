@@ -117,7 +117,22 @@
         "menu.topEdges",
         "menu.bottomEdges",
         "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
-        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe",
+        "stencil.vercelDescription",
+        "stencil.netlifyDescription",
+        "stencil.cloudflareWorkersDescription",
+        "stencil.subtitleEdgeFunction",
+        "stencil.supabaseDescription",
+        "stencil.azureFrontDoorDescription",
+        "stencil.cloudflareDescription",
+        "stencil.envoyDescription",
+        "stencil.genericCdnDescription",
+        "stencil.subtitleEdge",
+        "stencil.genericRouterDescription",
+        "stencil.ciscoIsrDescription",
+        "stencil.subtitleEdgeRouter",
+        "stencil.juniperMxDescription",
+        "stencil.clientIotDescription"
       ],
       "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (边缘), not a connection."
     },
@@ -190,6 +205,9 @@
       "use": "绑定",
       "match": ["绑定"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "防火墙"
     }
   },
   "keys": {

@@ -119,7 +119,22 @@
         "menu.topEdges",
         "menu.bottomEdges",
         "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
-        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe",
+        "stencil.vercelDescription",
+        "stencil.netlifyDescription",
+        "stencil.cloudflareWorkersDescription",
+        "stencil.subtitleEdgeFunction",
+        "stencil.supabaseDescription",
+        "stencil.azureFrontDoorDescription",
+        "stencil.cloudflareDescription",
+        "stencil.envoyDescription",
+        "stencil.genericCdnDescription",
+        "stencil.subtitleEdge",
+        "stencil.genericRouterDescription",
+        "stencil.ciscoIsrDescription",
+        "stencil.subtitleEdgeRouter",
+        "stencil.juniperMxDescription",
+        "stencil.clientIotDescription"
       ],
       "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (kenar)."
     },
@@ -191,6 +206,10 @@
       "use": "Bağlama",
       "match": ["Bağlamalar", "Bağlama"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "güvenlik duvarı",
+      "match": ["güvenlik duvar"]
     }
   },
   "keys": {

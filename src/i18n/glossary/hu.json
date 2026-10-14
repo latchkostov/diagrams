@@ -121,7 +121,22 @@
         "menu.topEdges",
         "menu.bottomEdges",
         "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
-        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe",
+        "stencil.vercelDescription",
+        "stencil.netlifyDescription",
+        "stencil.cloudflareWorkersDescription",
+        "stencil.subtitleEdgeFunction",
+        "stencil.supabaseDescription",
+        "stencil.azureFrontDoorDescription",
+        "stencil.cloudflareDescription",
+        "stencil.envoyDescription",
+        "stencil.genericCdnDescription",
+        "stencil.subtitleEdge",
+        "stencil.genericRouterDescription",
+        "stencil.ciscoIsrDescription",
+        "stencil.subtitleEdgeRouter",
+        "stencil.juniperMxDescription",
+        "stencil.clientIotDescription"
       ],
       "note": "Visio's word for a connector. Not kapcsolat (kept for Relationship). A boundary's edge is its széle."
     },
@@ -195,6 +210,10 @@
       "use": "Kötés",
       "match": ["Kötések", "Kötés"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "tűzfal",
+      "match": ["A tűzfal"]
     }
   },
   "keys": {

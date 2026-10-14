@@ -1,5 +1,24 @@
 # Release notes
 
+## Stencil catalog review fixes (2026-10-14)
+
+- Stencil details show the actual saved default under **New nodes say**, while catalog previews retain
+  translated subtitles. Add and New diagram therefore produce the text promised by the details.
+- Firewall names use network-security vocabulary in French and 13 other affected locales; all 37
+  language glossaries now guard names, subtitles and descriptions. Related descriptions use the same
+  terminology, including repaired French and Croatian SRX descriptions.
+- English and translated discovery share scoring and stable ranking. Exhaustive pseudo-locale checks
+  guard display lookups, and browser checks catch vertical clipping and caption overlaps in previews.
+
+## Stencil catalog localization (2026-10-14)
+
+- Generic stencil names, subtitles, descriptions and vendor labels now follow the selected language
+  throughout the library, gallery, previews, stencil picker and inspector. Product names retain their spelling.
+- Stencil discovery matches translated text as well as English names and aliases. Changing language
+  refreshes mounted results and menus while preserving the query and the diagram's own labels.
+- Catalog display messages stay lazy. Stored defaults, diagram files, agent search results and schemas
+  retain their English contracts; stencil behavior and simulation profiles are unchanged.
+
 ## Custom colours and canvas tint (2026-10-14)
 
 - Annotations now support custom hex colours and a full palette, including transparency. A diagram's

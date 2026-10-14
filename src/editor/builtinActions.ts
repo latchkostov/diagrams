@@ -1,3 +1,4 @@
+import { stencilLabel, vendorLabel } from "../i18n/stencils";
 import { t } from "../i18n";
 import { categoryLabel, toneLabel, kindLabel, shapeLabel, colorLabel } from "../i18n/chrome";
 export { fileActions } from "../interop/fileActions";
@@ -56,15 +57,21 @@ export function stencilMenu(
   return cats.map((c) => ({
     type: "item" as const,
     id: `${idPrefix}:cat:${c}`,
-    label: categoryLabel[c],
+    get label() {
+      return categoryLabel[c];
+    },
     children: stencils
       .filter((s) => s.category === c)
       .map((s) => ({
         type: "item" as const,
         id: `${idPrefix}:${s.id}`,
-        label: s.label,
+        get label() {
+          return stencilLabel(s);
+        },
         stencil: s.id,
-        hint: s.vendor,
+        get hint() {
+          return vendorLabel(s.vendor);
+        },
         keywords: `${s.vendor} ${s.id} ${s.category}`,
         ...pick(s),
       })),
@@ -99,9 +106,13 @@ export function quickAddMenu(pick: (s: Stencil) => void, recent: readonly string
     ...recents.map((s): MenuItem => ({
       type: "item",
       id: `quick-add:recent:${s.id}`,
-      label: s.label,
+      get label() {
+        return stencilLabel(s);
+      },
       stencil: s.id,
-      hint: s.vendor,
+      get hint() {
+        return vendorLabel(s.vendor);
+      },
       keywords: `${s.vendor} ${s.id} ${s.category}`,
       run: () => pick(s),
     })),

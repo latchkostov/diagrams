@@ -1,4 +1,6 @@
 import { memo, type CSSProperties } from "react";
+import { useLocale } from "../../i18n";
+import { stencilLabel } from "../../i18n/stencils";
 import { Handle, useStore, type NodeProps, type ReactFlowState } from "@xyflow/react";
 import { FALLBACK_STENCIL, getStencil } from "../../stencils/registry";
 import { getNodeVariant } from "../../harness/nodeVariants";
@@ -45,6 +47,7 @@ function DiagramNodeImpl({
   positionAbsoluteX,
   positionAbsoluteY,
 }: NodeProps<DiagramFlowNode>) {
+  useLocale();
   const { nodeVariant } = useSettings();
   const { rename, grow } = useDiagram();
   const single = useStore(selected && grow ? (s: ReactFlowState) => soleSelectedNode(s) === id : never);
@@ -63,7 +66,14 @@ function DiagramNodeImpl({
       }}
       style={{ "--accent": stencil.accent } as CSSProperties}
     >
-      <Component stencil={stencil} label={data.label} sublabel={data.sublabel} selected={selected} unknown={unknown} />
+      <Component
+        stencil={stencil}
+        stencilName={stencilLabel(stencil)}
+        label={data.label}
+        sublabel={data.sublabel}
+        selected={selected}
+        unknown={unknown}
+      />
       {SIDES.map((side) => (
         <Handle
           key={side}

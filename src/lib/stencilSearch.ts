@@ -1,7 +1,6 @@
 import type { Stencil } from "../model/types";
-import { getLocale } from "../i18n/core";
-import { categoryLabel as localizedCategory, familyLabel } from "../i18n/chrome";
-import { galleryRoleMeta } from "../i18n/galleryRoles";
+import { rankMatches, scoreToken, scoreTokens, searchWords, tokenize, type SearchText } from "./stencilSearchCore";
+export { tokenize } from "./stencilSearchCore";
 import { categoryLabel } from "./categories";
 import { simRoleMeta } from "./simRoles";
 import { familyOf, getFamily } from "./vendorFamilies";
@@ -327,26 +326,11 @@ export const STENCIL_ALIASES: Record<string, readonly string[]> = {
   "netscaler.adc": ["netscaler", "citrix", "citrix adc", "mpx", "sdx", "vpx", "load balancer", "adc", "gslb"],
 };
 
-interface Indexed {
-  stencil: Stencil;
-  label: string;
-  labelWords: string[];
-  /** Lower-cased words from every searchable field. */
-  words: string[];
-  /** Everything joined, for substring matches. */
-  hay: string;
-  aliases: string[];
-}
+type Indexed = SearchText;
 
-let index = new WeakMap<Stencil, Indexed>();
-let indexLocale: string | undefined;
+const index = new WeakMap<Stencil, Indexed>();
 
 function indexed(s: Stencil): Indexed {
-  const locale = getLocale();
-  if (indexLocale !== locale) {
-    index = new WeakMap();
-    indexLocale = locale;
-  }
   let hit = index.get(s);
   if (hit) return hit;
   const aliases = (STENCIL_ALIASES[s.id] ?? []).map((a) => a.toLowerCase());
@@ -359,19 +343,16 @@ function indexed(s: Stencil): Indexed {
     // Ordinary traffic sources are clients; the renamed category must not make a browser an external API.
     s.category === "clients" && s.simRole === "source" ? "Clients" : (categoryLabel[s.category] ?? s.category),
     getFamily(familyOf(s)).label,
-    galleryRoleMeta[s.simRole].label,
-    s.category === "clients" && s.simRole === "source" ? "" : localizedCategory[s.category],
-    familyLabel[familyOf(s)],
     s.defaultSublabel ?? "",
     ...aliases,
   ].map((f) => f.toLowerCase());
   const hay = fields.join(" ");
   const label = s.label.toLowerCase();
   hit = {
-    stencil: s,
+    id: s.id,
     label,
-    labelWords: label.split(/[^\p{L}\p{N}#+]+/u).filter(Boolean),
-    words: hay.split(/[^\p{L}\p{N}#+]+/u).filter(Boolean),
+    labelWords: searchWords(label),
+    words: searchWords(hay),
     hay,
     aliases,
   };
@@ -379,34 +360,9 @@ function indexed(s: Stencil): Indexed {
   return hit;
 }
 
-export function tokenize(q: string): string[] {
-  return q.toLowerCase().trim().split(/\s+/).filter(Boolean);
-}
-
-/** Score one token against a stencil; 0 = no match. Short tokens ("sb", "pg") must start a word. */
-function scoreToken(ix: Indexed, t: string): number {
-  if (ix.label === t || ix.stencil.id === t) return 100;
-  if (ix.labelWords.includes(t)) return 85;
-  if (ix.aliases.includes(t)) return 80;
-  if (ix.label.startsWith(t)) return 70;
-  if (ix.words.includes(t)) return 60;
-  if (ix.words.some((w) => w.startsWith(t))) return 40;
-  if (t.length >= 3 && ix.hay.includes(t)) return 20;
-  return 0;
-}
-
 /** 0 when the stencil doesn't match the query; higher is a better match. An empty query matches everything (score 1). */
 export function scoreStencil(s: Stencil, q: string): number {
-  const tokens = tokenize(q);
-  if (!tokens.length) return 1;
-  const ix = indexed(s);
-  let total = 0;
-  for (const t of tokens) {
-    const sc = scoreToken(ix, t);
-    if (!sc) return 0;
-    total += sc;
-  }
-  return total;
+  return scoreTokens(tokenize(q), (token) => scoreToken(indexed(s), token));
 }
 
 export function matchesStencil(s: Stencil, q: string): boolean {
@@ -415,9 +371,5 @@ export function matchesStencil(s: Stencil, q: string): boolean {
 
 /** Matching stencils, best first (ties keep catalog order). */
 export function searchStencils(list: readonly Stencil[], q: string): Stencil[] {
-  return list
-    .map((s, i) => ({ s, i, score: scoreStencil(s, q) }))
-    .filter((r) => r.score > 0)
-    .sort((a, b) => b.score - a.score || a.i - b.i)
-    .map((r) => r.s);
+  return rankMatches(list, (s) => scoreStencil(s, q));
 }

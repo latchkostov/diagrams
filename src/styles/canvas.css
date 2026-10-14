@@ -978,8 +978,8 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  height: 34px;
-  padding: 0 6px;
+  min-height: 34px;
+  padding: 4px 6px;
   border: 0;
   border-radius: 7px;
   background: transparent;
@@ -1020,9 +1020,7 @@
 .palette-name {
   flex: 1;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 /* Hint that a click adds it, without competing with the label. */
@@ -1763,12 +1761,13 @@ select.insp-input {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 44px;
-  padding: 0 10px 0 8px;
+  min-height: 44px;
+  padding-block: 6px;
+  padding-inline: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: var(--surface-2);
-  text-align: left;
+  text-align: start;
   color: var(--text-3);
 }
 
@@ -1779,6 +1778,7 @@ select.insp-input {
 .insp-stencil-name {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
   display: flex;
   flex-direction: column;
   color: var(--text);
@@ -2084,10 +2084,12 @@ select.insp-input {
 }
 
 .insp-stencil.insp-stencil-compact {
-  height: 30px;
+  min-height: 30px;
+  height: auto;
   min-width: 0;
   gap: 8px;
-  padding: 0 8px 0 3px;
+  padding-block: 3px;
+  padding-inline: 3px 8px;
   border-radius: 7px;
 }
 
@@ -2099,9 +2101,7 @@ select.insp-input {
 
 .insp-stencil-compact .insp-stencil-name {
   display: block;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   font-size: 12.5px;
 }
 

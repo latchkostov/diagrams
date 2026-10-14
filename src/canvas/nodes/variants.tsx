@@ -5,6 +5,8 @@ import { StencilIcon } from "../../components/StencilIcon";
 /** Props shared by every node renderer variant (see src/harness/nodeVariants.tsx). */
 export interface NodeBodyProps {
   stencil: Stencil;
+  /** Localized display metadata, supplied by the lazy UI. Never a stored node label. */
+  stencilName?: string;
   label: string;
   sublabel?: string;
   selected?: boolean;
@@ -28,7 +30,11 @@ export function CardNode(p: NodeBodyProps) {
       </div>
       <div className="nb-text">
         <div className="nb-label">{p.label}</div>
-        {p.sublabel ? <div className="nb-sub">{p.sublabel}</div> : <div className="nb-kind">{p.stencil.label}</div>}
+        {p.sublabel ? (
+          <div className="nb-sub">{p.sublabel}</div>
+        ) : (
+          <div className="nb-kind">{p.stencilName ?? p.stencil.label}</div>
+        )}
       </div>
     </div>
   );
@@ -51,7 +57,7 @@ export function IconOnlyNode(p: NodeBodyProps) {
       <div className="nb-tile">
         <StencilIcon stencil={p.stencil} size={34} />
       </div>
-      <div className="nb-caption">
+      <div className="nb-caption" data-testid="node-caption">
         <div className="nb-label">{p.label}</div>
         {p.sublabel && <div className="nb-sub">{p.sublabel}</div>}
       </div>

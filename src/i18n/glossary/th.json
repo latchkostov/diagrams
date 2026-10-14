@@ -131,7 +131,22 @@
         "menu.topEdges",
         "menu.bottomEdges",
         "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
-        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe",
+        "stencil.vercelDescription",
+        "stencil.netlifyDescription",
+        "stencil.cloudflareWorkersDescription",
+        "stencil.subtitleEdgeFunction",
+        "stencil.supabaseDescription",
+        "stencil.azureFrontDoorDescription",
+        "stencil.cloudflareDescription",
+        "stencil.envoyDescription",
+        "stencil.genericCdnDescription",
+        "stencil.subtitleEdge",
+        "stencil.genericRouterDescription",
+        "stencil.ciscoIsrDescription",
+        "stencil.subtitleEdgeRouter",
+        "stencil.juniperMxDescription",
+        "stencil.clientIotDescription"
       ],
       "note": "The line between two nodes. In shortcuts.mouse.boundary 'edge' is the boundary's rim (ขอบ)."
     },
@@ -209,6 +224,10 @@
       "use": "การผูก",
       "match": ["การผูก"],
       "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "firewall": {
+      "use": "ไฟร์วอลล์",
+      "avoid": ["โปรแกรมไฟฟ้า", "รั้วไฟ", "ผนังไฟ", "รูเตอร์ไฟฟาย"]
     }
   },
   "keys": {

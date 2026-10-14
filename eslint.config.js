@@ -12,6 +12,9 @@ import local from "./eslint-rules/no-literal-ui-text.js";
  */
 const TRANSLATED = [
   "src/components/ColorPickerModal.tsx",
+  "src/i18n/stencils.ts",
+  "src/lib/stencilDisplaySearch.ts",
+  "src/canvas/NodeTooltip.tsx",
   "src/i18n/galleryRoles.ts",
   "src/gallery/stencilInfo.ts",
   "src/editor/actions.ts",

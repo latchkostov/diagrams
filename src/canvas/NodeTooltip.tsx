@@ -1,3 +1,5 @@
+import { stencilLabel, stencilDescription } from "../i18n/stencils";
+import { useLocale } from "../i18n";
 import { getStencil } from "../stencils/registry";
 import { NODE_TIP_ID } from "./useNodeTooltip";
 
@@ -12,6 +14,7 @@ export interface NodeTip {
 }
 
 export function NodeTooltip({ tip }: { tip: NodeTip }) {
+  useLocale();
   const stencil = getStencil(tip.stencil);
   const above = tip.rect.top > 120;
   const style = {
@@ -28,8 +31,8 @@ export function NodeTooltip({ tip }: { tip: NodeTip }) {
     >
       <strong>{tip.label}</strong>
       {tip.sublabel && <span className="node-tip-sub mono">{tip.sublabel}</span>}
-      <span className="node-tip-kind">{stencil.label}</span>
-      {stencil.description && <span className="node-tip-desc">{stencil.description}</span>}
+      <span className="node-tip-kind">{stencilLabel(stencil)}</span>
+      {stencil.description && <span className="node-tip-desc">{stencilDescription(stencil)}</span>}
     </div>
   );
 }

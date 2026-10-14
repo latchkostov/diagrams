@@ -7,7 +7,8 @@ import { Glyph } from "./glyphs";
 import { toast } from "./toast";
 import { paletteHost } from "../../palette/host";
 import { getStencil, stencils } from "../../stencils/registry";
-import { searchStencils } from "../../lib/stencilSearch";
+import { searchStencils } from "../../lib/stencilDisplaySearch";
+import { stencilLabel } from "../../i18n/stencils";
 import { DIAGRAMS_CHANGED } from "../../lib/diagramIO";
 import { newDiagramsPrivate, useNewDiagramsPrivate } from "../../lib/privacyPrefs";
 import { safeStorage } from "../../lib/storage";
@@ -485,7 +486,7 @@ function GuessRow({
       key={testId}
       className="ix-report-chip"
       // The visible name first, then which node it changes: two rows may show the same stencil.
-      aria-label={tr("importReport.stencilFor", { stencil: getStencil(id).label, name: guess.label })}
+      aria-label={tr("importReport.stencilFor", { stencil: stencilLabel(getStencil(id)), name: guess.label })}
       onClick={() => {
         onSwap(guess.nodeId, id);
         setSearching(false);
@@ -495,7 +496,7 @@ function GuessRow({
       }}
       data-testid={testId}
     >
-      {getStencil(id).label}
+      {stencilLabel(getStencil(id))}
     </button>
   );
   return (
@@ -503,7 +504,7 @@ function GuessRow({
       <span className="ix-report-what">
         {name(guess.nodeId, guess.label, `import-report-guess-name-${index}`)}
         <span className="ix-report-stencil" data-testid={`import-report-guess-stencil-${index}`}>
-          {getStencil(current).label}
+          {stencilLabel(getStencil(current))}
         </span>
         {guess.evidence && <span className="ix-report-muted ix-report-evidence">{guess.evidence}</span>}
       </span>

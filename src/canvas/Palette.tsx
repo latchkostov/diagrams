@@ -1,3 +1,4 @@
+import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "../i18n/stencils";
 import { tRich } from "../i18n/rich";
 import { formatNumber } from "../i18n/number";
 import { categoryLabel, shapeLabel, familyLabel } from "../i18n/chrome";
@@ -21,7 +22,7 @@ import type { AnnotationKind, AnnotationShape, Stencil, StencilCategory } from "
 import { StencilIcon } from "../components/StencilIcon";
 import { CATEGORY_ORDER, clientSections } from "../lib/categories";
 import { familyCounts, familyOf, getFamily, isFamilyId, type FamilyId } from "../lib/vendorFamilies";
-import { searchStencils } from "../lib/stencilSearch";
+import { searchStencils } from "../lib/stencilDisplaySearch";
 import { pushRecentStencil, useRecentStencils } from "../lib/recentStencils";
 import { rememberCanvas, STENCIL_DND_MIME, takePendingStencils } from "../lib/canvasBridge";
 import { Icon, type IconName } from "../components/Icon";
@@ -538,7 +539,12 @@ function useDragPreview(nodeVariant: NodeVariantId) {
         aria-hidden
         data-testid="stencil-drag-preview"
       >
-        <Component stencil={stencil} label={stencil.label} sublabel={stencil.defaultSublabel} />
+        <Component
+          stencil={stencil}
+          stencilName={stencilLabel(stencil)}
+          label={stencilLabel(stencil)}
+          sublabel={stencilSubtitle(stencil)}
+        />
       </div>
     ) : null;
   return { start, stop, node };
@@ -550,14 +556,14 @@ function PaletteItem(p: ItemProps) {
     <button
       className="palette-item"
       {...dragHandlers(p)}
-      title={`${s.label} (${s.vendor})\n${s.description}`}
+      title={`${stencilLabel(s)} (${vendorLabel(s.vendor)})\n${stencilDescription(s)}`}
       data-testid={`palette-item-${s.id}`}
       style={{ "--accent": s.accent } as CSSProperties}
     >
       <span className="palette-tile">
         <StencilIcon stencil={s} size={20} />
       </span>
-      <span className="palette-name">{s.label}</span>
+      <span className="palette-name">{stencilLabel(s)}</span>
       <span className="palette-add" aria-hidden>
         <Icon name="plus" size={12} />
       </span>
@@ -571,8 +577,8 @@ function RecentTile(p: ItemProps) {
     <button
       className="palette-recent-item"
       {...dragHandlers(p)}
-      title={`${s.label} (${s.vendor})`}
-      aria-label={t("chrome.addValue", { name: s.label })}
+      title={`${stencilLabel(s)} (${vendorLabel(s.vendor)})`}
+      aria-label={t("chrome.addValue", { name: stencilLabel(s) })}
       data-testid={`palette-recent-item-${s.id}`}
       style={{ "--accent": s.accent } as CSSProperties}
     >

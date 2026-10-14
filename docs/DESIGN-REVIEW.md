@@ -1,5 +1,27 @@
 # Design review
 
+## Round 40: stencil catalog review fixes (2026-10-14)
+
+The required designer-agent source and production screenshot review found no remaining actionable UX
+issue in this follow-up. The factual **New nodes say** row now matches both creation paths; descriptive
+previews remain translated. No controls or navigation/focus behavior changed. Shared discovery keeps
+English aliases, per-token mixed-language matching and stable catalog-order ties.
+
+The vocabulary review caught additional physical-barrier/firefighting terms in nearby descriptions,
+plus unrelated French/Croatian SRX copy; these were repaired along with the generic device names.
+Glossaries guard all firewall messages while accepting valid network synonyms and inflections. This
+was a terminology review, not a fluent-person certification of every translated sentence.
+
+The production en-XA screenshot at 1280×800 shows the public identity-provider tile and all three
+drawer variants with readable labels and clear caption spacing. Automated geometry checks cover four
+expanded names across all variants and deliberately detect vertical clipping and own-figcaption
+overlap. Existing geometry passed, so no layout changes were added. The factual default row is below
+the screenshot’s fold and is covered by source review and the Add/New browser regression. This was a
+scoped follow-up, not a whole-app visual or screen-reader audit.
+
+All five P2 findings were accepted. Their dispositions and deliberate regression evidence are recorded
+in [Stencil catalog review fixes](research/stencil-catalog-review-fixes.md).
+
 ## Round 39: custom colours (2026-10-14)
 
 The required designer-agent source review approved the contributor's compact inspector presets and

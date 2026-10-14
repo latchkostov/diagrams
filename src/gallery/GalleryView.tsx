@@ -1,3 +1,4 @@
+import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "../i18n/stencils";
 import { tRich } from "../i18n/rich";
 import { formatNumber } from "../i18n/number";
 
@@ -28,7 +29,7 @@ import {
   vendorsByFamily,
   type FamilyId,
 } from "../lib/vendorFamilies";
-import { searchStencils } from "../lib/stencilSearch";
+import { searchStencils } from "../lib/stencilDisplaySearch";
 import { addToCurrentDiagram, nodeJson, openNewDiagramWith, STENCIL_DND_MIME } from "../lib/canvasBridge";
 import type { MenuNode } from "../editor/actions";
 import { ContextMenu } from "../components/ContextMenu";
@@ -219,7 +220,7 @@ export function GalleryView() {
     setMenu({
       x,
       y,
-      label: t("chrome.valueMenu", { name: s.label }),
+      label: t("chrome.valueMenu", { name: stencilLabel(s) }),
       testId: "tile-menu",
       items: [
         {
@@ -332,7 +333,7 @@ export function GalleryView() {
         children: g.vendors.map((v) => ({
           type: "item" as const,
           id: `vendor:${slugify(v.vendor)}`,
-          label: v.vendor,
+          label: vendorLabel(v.vendor),
           hint: formatNumber(v.count, { useGrouping: false }),
           checked: vendor === v.vendor,
           run: () => {
@@ -370,7 +371,7 @@ export function GalleryView() {
     setFamily("all");
   };
 
-  const scope = vendor ?? (family === "all" ? null : familyLabel[family]);
+  const scope = vendor ? vendorLabel(vendor) : family === "all" ? null : familyLabel[family];
 
   return (
     <div
@@ -501,10 +502,10 @@ export function GalleryView() {
               {vendor ? (
                 <span className="token" data-testid="vendor-filter">
                   <i style={{ background: getFamily(familyOfVendor(vendor)).hue }} />
-                  {vendor}
+                  {vendorLabel(vendor)}
                   <button
                     onClick={() => pickFamily("all")}
-                    aria-label={t("chrome.removeValueFilter", { vendor })}
+                    aria-label={t("chrome.removeValueFilter", { vendor: vendorLabel(vendor) })}
                     data-testid="vendor-filter-clear"
                   >
                     <Icon name="close" size={11} />
@@ -710,7 +711,7 @@ const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: Til
       className={`tile${open ? " is-open" : ""}`}
       role="button"
       tabIndex={0}
-      aria-label={t("chrome.valueValueOpenDetails", { name: s.label, vendor: s.vendor })}
+      aria-label={t("chrome.valueValueOpenDetails", { name: stencilLabel(s), vendor: vendorLabel(s.vendor) })}
       aria-haspopup="dialog"
       draggable
       data-testid={`stencil-tile-${s.id}`}
@@ -741,7 +742,7 @@ const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: Til
       onDragEnd={() => onDragState(false)}
     >
       <div className={`tile-stage stage-${nodeVariant}`} data-testid={`tile-stage-${s.id}`}>
-        <Component stencil={s} label={s.label} sublabel={s.defaultSublabel} />
+        <Component stencil={s} stencilName={stencilLabel(s)} label={stencilLabel(s)} sublabel={stencilSubtitle(s)} />
         {!hasIcon && (
           <span
             className="tile-missing"
@@ -767,16 +768,16 @@ const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: Til
       </div>
       <div className="tile-body">
         <div className="tile-row">
-          <h3>{s.label}</h3>
+          <h3>{stencilLabel(s)}</h3>
           <span className="role" style={{ "--role": role.hue } as CSSProperties} title={role.hint}>
             {role.label}
           </span>
         </div>
         <div className="tile-vendor">
           <i className="tile-swatch" title={t("chrome.accentValue", { colour: s.accent.toLowerCase() })} />
-          {s.vendor}
+          {vendorLabel(s.vendor)}
         </div>
-        <p className="tile-desc">{s.description}</p>
+        <p className="tile-desc">{stencilDescription(s)}</p>
         <div className="tile-foot">
           <span
             className="tile-id"
