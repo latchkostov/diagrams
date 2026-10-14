@@ -263,6 +263,39 @@ describe("validate.mjs", () => {
     expect(r.out).toMatch(/^VALID .*: 3 nodes, 2 edges, 1 boundary/);
   });
 
+  it.each(["#abc", "#abcd", "#fff0", "#abcdef", "#abcdef00", "#11223344", "white", "blue"])(
+    "accepts canvas and annotation colours without repairs or unknown-field warnings: %s",
+    (color) => {
+      const r = run(
+        "validate.mjs",
+        write({
+          ...base,
+          color,
+          annotations: [{ id: "note", kind: "note", text: "Note", x: 0, y: 400, width: 240, height: 160, color }],
+        }),
+      );
+      expect(r.code, r.out + r.err).toBe(0);
+      expect(r.out).not.toMatch(/warning:/);
+    },
+  );
+
+  it.each(["#12345", "rgb(1,2,3)", { toString: null }])(
+    "rejects invalid canvas and annotation colours: %j",
+    (color) => {
+      const r = run(
+        "validate.mjs",
+        write({
+          ...base,
+          color,
+          annotations: [{ id: "note", kind: "note", text: "Note", x: 0, y: 400, width: 240, height: 160, color }],
+        }),
+      );
+      expect(r.code, r.err).toBe(1);
+      expect(r.out).toMatch(/"color" must be a palette colour or a hex colour/);
+      expect(r.out).toMatch(/annotations\[0\] "note": "color"/);
+    },
+  );
+
   it.each(broken)("rejects %s with a useful message", (_name, breakIt, message) => {
     const r = run("validate.mjs", write(breakIt(structuredClone(base) as Fixture) as object));
     expect(r.code).toBe(1);
@@ -676,6 +709,20 @@ describe("export-html.mjs", () => {
 
   const kafka = path.join(root, "src", "examples", "kafka-order-pipeline.json");
   const out = (...parts: string[]) => path.join(tmp, "html", ...parts);
+
+  it.each(["#fff0", "#11223344"])("exports custom colours and their alpha without loss: %s", (color) => {
+    const diagram = {
+      ...read(kafka),
+      color,
+      annotations: [{ id: "custom-note", kind: "note", text: "Note", x: 0, y: 1000, width: 240, height: 160, color }],
+    };
+    const target = out(`custom-${color.slice(1)}.html`);
+    const result = run("export-html.mjs", write(diagram), "--out", target);
+    expect(result.code, result.err).toBe(0);
+    const html = readFileSync(target, "utf8");
+    const exported = JSON.parse(/<script type="application\/json" id="diagram">([\s\S]*?)<\/script>/.exec(html)![1]);
+    expect(exported.diagram).toEqual(diagram);
+  });
 
   it("makes the file src/export/inject.ts makes from the committed viewer, for every option", () => {
     // inject.mjs (byte-identical to a fresh build of inject.ts, above) behaves as inject.ts does.

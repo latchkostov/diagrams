@@ -1,5 +1,26 @@
 # Design review
 
+## Round 39: custom colours (2026-10-14)
+
+The required designer-agent source review approved the contributor's compact inspector presets and
+anchored quick/pastel/spectrum picker: customisation is one step away and adds no top-bar controls.
+The grid and quiet canvas tint stay as designed. One reset action replaces duplicate reset controls;
+short viewports can scroll the picker. Active swatches and invalid hex fields expose their state to
+assistive technology, and new picker labels use the locale catalog.
+
+Dismissal leaves untouched colours unchanged, transparency survives editing, and picker edits reuse
+one undo tag. Shared dialog interactions contain and restore focus and suppress the browser context
+menu. Custom annotations use theme foreground ink against their quiet tinted fills, rather than
+blending arbitrary colours into the text. Scoped production browser verification covers dismissal,
+keyboard focus, extreme caption contrast and background tint in light/dark presentation, HTML and embeds.
+The final designer-agent screenshot review approved the light-theme public fixture at 1440×900;
+dark, RTL and short-viewport checks are automated. A cosmetic suggestion to stack the bulk-swatch
+label was deferred to preserve the compact contributor layout. This was not a whole-app screen-reader
+audit or a redesign of the palette.
+
+All 19 review findings were accepted; overlapping reports share fixes. Their dispositions and deliberate
+regression evidence are recorded in [Custom colour review fixes](research/custom-colours-review-fixes.md).
+
 ## Round 38: Planning P2 follow-up fixes (2026-10-14)
 
 The required designer-agent review found no blocker in the scoped source changes and production Chromium

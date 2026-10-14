@@ -18,6 +18,50 @@ async function importFirst(xml: string) {
   return drawioPageToDiagram(doc.pages[0]);
 }
 
+describe("draw.io colour contract", () => {
+  it("never writes invalid colours into draw.io metadata or styles", () => {
+    const input: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Colours",
+      color: "red;fillColor=blue",
+      nodes: [],
+      edges: [],
+      annotations: [{ id: "note", kind: "note", text: "Note", x: 0, y: 0, width: 240, height: 160, color: "#12345" }],
+    };
+    const xml = diagramToDrawio(input);
+    expect(xml).not.toContain("dg_color=");
+    expect(xml).not.toContain("#12345");
+    expect(xml).not.toContain("red;fillColor=blue");
+  });
+  it.each(["#abc", "#abcd", "#fff0", "#abcdef", "#abcdef00", "#11223344", "white", "blue"])(
+    "round-trips canvas and annotation colours losslessly: %s",
+    async (color) => {
+      const input: DiagramFile = {
+        format: "diagrams/v1",
+        title: "Colours",
+        color,
+        nodes: [],
+        edges: [],
+        annotations: [{ id: "note", kind: "note", text: "Note", x: 0, y: 0, width: 240, height: 160, color }],
+      };
+      const { diagram } = await importFirst(diagramToDrawio(input));
+      expect(diagram.color).toBe(color);
+      expect(diagram.annotations?.[0].color).toBe(color);
+    },
+  );
+
+  it.each(["red;fillColor=blue", "#12345", "rgb(1,2,3)", "__proto__"])(
+    "drops invalid dg_color at both diagram and annotation level: %s",
+    async (color) => {
+      const { diagram } = await importFirst(
+        `<mxGraphModel><root><object id="0" dg_color="${color}"><mxCell/></object><mxCell id="1" parent="0"/><object id="a" dg_annotation="note" dg_color="${color}"><mxCell vertex="1" parent="1"><mxGeometry x="0" y="0" width="240" height="160" as="geometry"/></mxCell></object></root></mxGraphModel>`,
+      );
+      expect(diagram.color).toBeUndefined();
+      expect(diagram.annotations?.[0].color).toBeUndefined();
+    },
+  );
+});
+
 describe("draw.io import: uncompressed fixture", () => {
   it("maps shapes, containers, edges and labels", async () => {
     const { diagram, warnings } = await importFirst(azureOrders);

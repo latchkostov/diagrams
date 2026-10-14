@@ -113,6 +113,9 @@ export const toneLabel: Record<GroupTone, string> = {
   },
 };
 export const colorLabel: Record<AnnotationColor, string> = {
+  get white() {
+    return t("chrome.white");
+  },
   get neutral() {
     return t("chrome.grey");
   },

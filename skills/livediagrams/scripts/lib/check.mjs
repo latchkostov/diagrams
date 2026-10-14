@@ -3,7 +3,7 @@
 // the app's own validator (./app.mjs, bundled by `pnpm schemas`): a diagram that passes here opens in the
 // app exactly as written, with nothing dropped or repaired.
 import { readFileSync } from "node:fs";
-import { annotationGeometryError, LIMITS as L, simulationProblem, validateDiagram } from "./app.mjs";
+import { annotationGeometryError, isColorValue, LIMITS as L, simulationProblem, validateDiagram } from "./app.mjs";
 
 /** Stencil ids, enums and property schemas, generated from the app (`pnpm schemas`). */
 export const spec = JSON.parse(readFileSync(new URL("./spec.json", import.meta.url), "utf8"));
@@ -16,6 +16,7 @@ const KNOWN_TOP = [
   "planning",
   "title",
   "description",
+  "color",
   "direction",
   "groups",
   "nodes",
@@ -250,6 +251,8 @@ export function checkDiagram(d) {
   // The app keeps a diagram private unless "private" is plainly false; an agent writes true or leaves it out.
   if (d.private !== undefined && d.private !== true)
     errors.push('"private" must be true (a Private diagram), or leave it out.');
+  if (d.color !== undefined && !isColorValue(d.color))
+    errors.push('"color" must be a palette colour or a hex colour (#RGB, #RGBA, #RRGGBB or #RRGGBBAA).');
   for (const key of Object.keys(d))
     if (!KNOWN_TOP.includes(key)) warnings.push(`Unknown top-level field ${q(key)}: the app keeps it but ignores it.`);
   if (!Array.isArray(d.nodes)) errors.push('"nodes" must be a list.');
@@ -357,11 +360,12 @@ export function checkDiagram(d) {
     if (a.shape !== undefined && a.kind !== "shape") errors.push(`${where}: only a "shape" annotation takes "shape".`);
     for (const [key, values] of [
       ["shape", E.annotationShape],
-      ["color", E.annotationColor],
       ["textSize", E.textSize],
     ])
       if (a[key] !== undefined && !values.includes(a[key]))
         errors.push(`${where}: "${key}" must be one of ${list(values)}.`);
+    if (a.color !== undefined && !isColorValue(a.color))
+      errors.push(`${where}: "color" must be a palette colour or a hex colour (#RGB, #RGBA, #RRGGBB or #RRGGBBAA).`);
   });
 
   // Edges

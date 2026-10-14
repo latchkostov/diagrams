@@ -8,11 +8,30 @@
   position: relative;
   flex: 1;
   min-width: 0;
+  background: var(--bg);
   /* The app's accent, kept where a node's stencil colour replaces --accent (the "+" on a node). */
   --ui-accent: var(--accent);
   --ui-accent-ink: var(--accent-ink);
   /* Inline editors never read smaller than their CSS size: below 100% zoom they scale up by 1/zoom. */
   --edit-scale: max(1, calc(1 / var(--rf-zoom, 1)));
+}
+
+.canvas-wrap.has-diagram-color {
+  background: color-mix(in oklab, var(--diagram-color) 6%, var(--bg));
+}
+
+[data-theme="dark"] .canvas-wrap.has-diagram-color {
+  background: color-mix(in oklab, var(--diagram-color) 8%, var(--bg));
+}
+
+.canvas-wrap.has-diagram-color .react-flow {
+  --xy-background-color: color-mix(in oklab, var(--diagram-color) 6%, var(--bg));
+  background: color-mix(in oklab, var(--diagram-color) 6%, var(--bg));
+}
+
+[data-theme="dark"] .canvas-wrap.has-diagram-color .react-flow {
+  --xy-background-color: color-mix(in oklab, var(--diagram-color) 8%, var(--bg));
+  background: color-mix(in oklab, var(--diagram-color) 8%, var(--bg));
 }
 
 /* Smart guides (D6): one layer over the flow, drawn only while a drag runs. */
@@ -1968,12 +1987,53 @@ select.insp-input {
   border-radius: 8px;
   border: 1px solid color-mix(in oklab, var(--tone) 45%, transparent);
   background: color-mix(in oklab, var(--tone) 18%, var(--surface));
+  cursor: pointer;
+  transition:
+    transform 80ms,
+    box-shadow 80ms;
+}
+
+.insp-tone:hover {
+  transform: scale(1.18);
+  z-index: 2;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.25);
 }
 
 .insp-tone.is-on {
   box-shadow:
     0 0 0 2px var(--surface),
     0 0 0 3.5px var(--tone);
+}
+
+.insp-tone.is-on:hover {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--tone),
+    0 2px 4px rgb(0 0 0 / 0.25);
+}
+
+/* White swatch needs a defined grey border and dark selection ring against light surface */
+.insp-tone[data-color="white"] {
+  background: #ffffff;
+  border: 1px solid var(--line-strong);
+}
+
+[data-theme="dark"] .insp-tone[data-color="white"] {
+  background: #f8fafc;
+  border-color: rgb(255 255 255 / 0.22);
+}
+
+.insp-tone[data-color="white"].is-on {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--text-2);
+}
+
+.insp-tone[data-color="white"].is-on:hover {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--text-2),
+    0 2px 4px rgb(0 0 0 / 0.25);
 }
 
 .insp-actions {
@@ -2751,7 +2811,8 @@ select.insp-input {
   font-weight: 520;
 }
 
-.ann-text[data-color="neutral"] .ann-content {
+.ann-text[data-color="neutral"] .ann-content,
+.ann-text[data-color="white"] .ann-content {
   color: var(--text);
 }
 
@@ -2972,7 +3033,8 @@ select.insp-input {
   color: var(--ann-ink);
 }
 
-.ann-text[data-color="neutral"] .ann-editor {
+.ann-text[data-color="neutral"] .ann-editor,
+.ann-text[data-color="white"] .ann-editor {
   color: var(--text);
 }
 
@@ -3465,4 +3527,12 @@ select.insp-input {
 }
 .palette-results-head {
   flex-wrap: wrap;
+}
+
+/* Custom tints span the full spectrum. Theme ink stays readable on the quiet fills above,
+   including transparent colours; the chosen hue still belongs to paper and outlines. */
+.ann[data-color="custom"] .ann-content,
+.ann[data-color="custom"] .ann-zone-label,
+.ann[data-color="custom"] .ann-editor {
+  color: var(--text);
 }

@@ -1,5 +1,16 @@
 # Release notes
 
+## Custom colours and canvas tint (2026-10-14)
+
+- Annotations now support custom hex colours and a full palette, including transparency. A diagram's
+  background tint follows light/dark themes, presentation, embeds and Interactive HTML exports.
+- Inspecting and dismissing a picker leaves untouched colours and Undo history unchanged. Keyboard
+  focus stays in the picker and returns to its opener; each colour edit is one Undo step.
+- Custom annotation ink stays readable. Hex paste accepts `#`, reset restores defaults, and native files,
+  draw.io and the offline agent checker share the same lossless colour contract.
+- Thanks to **Heiner Morales** for the custom colours, palette picker and background tint design in
+  [PR #102](https://github.com/latchkostov/diagrams/pull/102).
+
 ## Planning P2 review fixes (2026-10-14)
 
 - Unread subscription checks keep deterministic English findings for workers and agents; the Checks

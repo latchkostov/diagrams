@@ -20,6 +20,19 @@ const payload = (extra: object = {}) =>
   });
 
 describe("parsePayload", () => {
+  it("loads diagrams containing invalid colour objects without throwing", () => {
+    const result = parsePayload(payload({ diagram: { ...diagram, color: { toString: null } } }));
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.diagram.color).toBeUndefined();
+  });
+
+  it.each(["#fff0", "#abcd", "#11223344", "#abcdef00"])(
+    "keeps canvas colour alpha in exported payloads: %s",
+    (color) => {
+      const result = parsePayload(payload({ diagram: { ...diagram, color } }));
+      expect(result.ok && result.diagram.color).toBe(color);
+    },
+  );
   it("reads a payload the export wrote", () => {
     const p = parsePayload(payload());
     expect(p.ok && p.diagram.title).toBe("Orders");

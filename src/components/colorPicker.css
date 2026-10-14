@@ -1,0 +1,289 @@
+/* Color picker layer & popover */
+.color-picker-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+.color-picker-popover {
+  position: fixed;
+  pointer-events: auto;
+  width: min(254px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow-2);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-ui);
+  animation: color-picker-in 120ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes color-picker-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.color-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 2px;
+}
+
+.color-picker-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.color-picker-close {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.color-picker-close:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+/* Hex input row */
+.color-picker-hex-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-picker-preview {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--line-strong);
+  flex-shrink: 0;
+}
+
+.color-picker-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  transition:
+    border-color 100ms,
+    box-shadow 100ms;
+}
+
+.color-picker-input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.color-picker-input-wrap.is-invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
+}
+
+.color-picker-hash {
+  color: var(--text-3);
+  margin-inline-end: 2px;
+  user-select: none;
+}
+
+.color-picker-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-transform: uppercase;
+  padding: 0;
+}
+
+.color-picker-reset-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+/* Grids & Swatches */
+.color-picker-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.color-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+}
+
+.color-picker-grid-stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.color-picker-grid-row {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+}
+
+.color-picker-swatch {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 18px;
+  padding: 0;
+  border-radius: 3px;
+  border: 1px solid rgb(0 0 0 / 0.14);
+  cursor: pointer;
+  transition:
+    transform 80ms,
+    box-shadow 80ms;
+  position: relative;
+}
+
+[data-theme="dark"] .color-picker-swatch {
+  border-color: rgb(255 255 255 / 0.16);
+}
+
+.color-picker-swatch:hover {
+  transform: scale(1.18);
+  z-index: 2;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.25);
+}
+
+.color-picker-swatch.is-active {
+  box-shadow:
+    0 0 0 1.5px var(--surface),
+    0 0 0 3px var(--accent);
+  z-index: 1;
+}
+
+.color-picker-clear-swatch {
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+}
+.color-picker-clear-swatch:hover {
+  color: var(--danger);
+}
+
+.color-picker-spectrum-wrap {
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+/* Inspector custom color button */
+.insp-tone-custom {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 40px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition:
+    border-color 100ms,
+    background-color 100ms,
+    transform 80ms,
+    box-shadow 80ms;
+  flex-shrink: 0;
+}
+
+.insp-tone-custom:hover {
+  background: var(--hover);
+  color: var(--text);
+  border-color: var(--text-3);
+  transform: scale(1.08);
+  z-index: 2;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.15);
+}
+
+.insp-tone-custom.is-on {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--accent);
+  border-color: var(--accent);
+}
+
+.insp-tone-custom.is-on:hover {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--accent),
+    0 2px 4px rgb(0 0 0 / 0.15);
+}
+
+.insp-tone-custom-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgb(0 0 0 / 0.15);
+  flex-shrink: 0;
+}
+
+.insp-tone-custom-rainbow {
+  background: conic-gradient(
+    from 90deg,
+    #ef4444,
+    #f97316,
+    #eab308,
+    #22c55e,
+    #06b6d4,
+    #3b82f6,
+    #8b5cf6,
+    #ec4899,
+    #ef4444
+  );
+}
+
+.insp-tones-compact .insp-tone-custom {
+  height: 24px;
+  width: 36px;
+  padding: 0 3px;
+  border-radius: 7px;
+}
+
+.insp-tones-compact .insp-tone-custom-swatch {
+  width: 12px;
+  height: 12px;
+}

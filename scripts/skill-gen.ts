@@ -203,7 +203,7 @@ function regions(): Record<string, string> {
     enums: [
       `- Boundary \`tone\`: ${code(e.tone)}`,
       `- Edge \`kind\`: ${code(e.edgeKind)}; \`relation\`: ${code(e.relation)}; \`sourceSide\` / \`targetSide\`: ${code(e.side)}`,
-      `- Annotation \`kind\`: ${code(e.annotationKind)}; \`shape\`: ${code(e.annotationShape)}; \`color\`: ${code(e.annotationColor)}; \`textSize\`: ${code(e.textSize)}`,
+      `- Annotation \`kind\`: ${code(e.annotationKind)}; \`shape\`: ${code(e.annotationShape)}; \`color\`: ${code(e.annotationColor)} or hex (\`#RGB\`, \`#RGBA\`, \`#RRGGBB\`, \`#RRGGBBAA\`; alpha is preserved); \`textSize\`: ${code(e.textSize)}`,
       `- Limits: ${LIMITS.maxNodes.toLocaleString("en-US")} nodes, ${LIMITS.maxEdges.toLocaleString("en-US")} edges, coordinates within ±${LIMITS.maxCoordinate.toLocaleString("en-US")}`,
     ].join("\n"),
     "node-props": propList(nodeSimPropsSchema, NODE_PROP_NOTES, "node").join("\n"),

@@ -33,7 +33,7 @@ export type AnnotationNodeData = {
   kind: AnnotationKind;
   text: string;
   shape?: AnnotationShape;
-  color?: AnnotationColor;
+  color?: AnnotationColor | string;
   textSize?: AnnotationTextSize;
 };
 

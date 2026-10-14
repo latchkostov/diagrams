@@ -2,7 +2,15 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Download, FrameLocator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, publicExamples, waitForHtmlTemplate } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  publicExamples,
+  STORAGE_KEYS,
+  waitForHtmlTemplate,
+} from "./fixtures";
 import { expectPlaying, filePayloadText, hostPage, KAFKA, watchedPage } from "./html-viewer";
 import { deflateRaw, textToBytes } from "../../src/interop/codec";
 import { encryptBytes } from "../../src/interop/passwordCrypto";
@@ -35,6 +43,89 @@ async function download(page: Page): Promise<{ download: Download; path: string;
 }
 
 test.describe("Interactive HTML export", () => {
+  for (const theme of ["light", "dark"] as const) {
+    test(`custom background tint survives presentation and offline HTML export in ${theme}`, async ({
+      page,
+      context,
+      consoleErrors,
+    }) => {
+      const color = "#FF000080";
+      await page.addInitScript(([key, theme]) => localStorage.setItem(key, JSON.stringify({ theme })), [
+        STORAGE_KEYS.settings,
+        theme,
+      ] as const);
+      await gotoCanvas(page, KAFKA);
+      await page.getByTestId("import-input").setInputFiles({
+        name: "tinted-fields.diagram.json",
+        mimeType: "application/json",
+        buffer: Buffer.from(JSON.stringify({ ...textFieldsFixture, color })),
+      });
+      await expect(page.getByTestId("diagram-title")).toHaveText("Fields");
+      const background = await page.getByTestId("canvas-wrap").evaluate((el) => getComputedStyle(el).backgroundColor);
+      await page.getByTestId("present-toggle").click();
+      await expect(page.getByTestId("present-exit")).toBeVisible();
+      await expect(page.getByTestId("canvas-wrap")).toHaveCSS("background-color", background);
+      await page.getByTestId("present-exit").click();
+      await openHtmlExport(page);
+      await page.getByTestId("html-export-options-toggle").click();
+      await page.getByTestId(`html-export-theme-${theme}`).click();
+      const { path } = await download(page);
+      const viewer = await watchedPage(context);
+      await viewer.page.goto(pathToFileURL(path).href);
+      await expect(viewer.page.getByTestId("html-viewer")).toHaveAttribute("data-theme-choice", theme);
+      await expect(viewer.page.getByTestId("annotation-n1")).toBeVisible();
+      const canvas = viewer.page.getByTestId("canvas-wrap");
+      const colors = await canvas.evaluate((el) => {
+        const reference = document.createElement("div");
+        reference.style.backgroundColor = "var(--bg)";
+        el.append(reference);
+        const plain = getComputedStyle(reference).backgroundColor;
+        reference.remove();
+        const painted = getComputedStyle(el);
+        return { plain, background: painted.backgroundColor, tint: painted.getPropertyValue("--diagram-color").trim() };
+      });
+      expect(colors.tint).toBe(color);
+      expect(colors.background).not.toBe(colors.plain);
+      await expect(viewer.page.getByTestId("rf__wrapper")).toHaveCSS("background-color", colors.background);
+      await viewer.page.getByTestId("annotation-n1").dblclick();
+      await expect(viewer.page.getByTestId("annotation-editor")).toHaveCount(0);
+      expect(await viewer.page.evaluate(() => window.__violations ?? [])).toEqual([]);
+      expect(viewer.errors).toEqual([]);
+      await viewer.page.close();
+      expectNoErrors(consoleErrors);
+    });
+  }
+
+  test("the offline HTML viewer ignores invalid colour objects without failing to load", async ({ page, context }) => {
+    await gotoCanvas(page, KAFKA);
+    await page.getByTestId("import-input").setInputFiles({
+      name: "fields.diagram.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(textFieldsFixture)),
+    });
+    await expect(page.getByTestId("diagram-title")).toHaveText("Fields");
+    await openHtmlExport(page);
+    const { html } = await download(page);
+    const original = filePayloadText(html);
+    const payload = JSON.parse(original) as { diagram: Record<string, unknown> };
+    payload.diagram.color = { toString: null };
+    const path = test.info().outputPath("invalid-colour.html");
+    writeFileSync(
+      path,
+      html.replace(original, () => JSON.stringify(payload)),
+    );
+    const viewer = await watchedPage(context);
+    await viewer.page.goto(pathToFileURL(path).href);
+    await expect(viewer.page.getByTestId("html-viewer")).toBeVisible();
+    await expect(viewer.page.getByTestId("annotation-n1")).toBeVisible();
+    expect(
+      await viewer.page.getByTestId("canvas-wrap").evaluate((el) => el.style.getPropertyValue("--diagram-color")),
+    ).toBe("");
+    expect(await viewer.page.evaluate(() => window.__violations ?? [])).toEqual([]);
+    expect(viewer.errors).toEqual([]);
+    await viewer.page.close();
+  });
+
   test("the read-only viewer opens no editor for nodes, boundaries, connections or notes", async ({
     page,
     context,

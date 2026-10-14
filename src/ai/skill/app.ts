@@ -4,7 +4,7 @@
 // link), its simulation and annotation checks, and the layout.
 
 export { validateDiagram, simulationProblem, LIMITS } from "../../interop/native";
-export { annotationGeometryError } from "../../model/annotations";
+export { annotationGeometryError, isColorValue } from "../../model/annotations";
 export { layoutDiagram } from "./layout";
 // The Interactive HTML viewer's own check of its payload (export-html.mjs refuses a file the viewer wouldn't show).
 export { parsePayload, PAYLOAD_LIMITS } from "../../export/viewer/payload";

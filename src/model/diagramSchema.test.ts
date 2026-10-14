@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";
 import { diagramV1Schema, diagramV2Schema } from "./diagramSchema";
 import { EDGE_RELATIONS } from "./relations";
+import { isColorValue } from "./annotations";
 import type {
   DiagramAnnotation,
   DiagramEdge,
@@ -117,6 +118,7 @@ const file: Required<DiagramFile> = {
   planning: { revision: "p1" },
   title: "Everything",
   description: "Every field the format has.",
+  color: "#3B82F6",
   direction: "TB",
   groups: [group],
   nodes: [node, { id: "config", stencil: "azure.app-config", label: "Config", x: 400, y: 80 }],
@@ -129,6 +131,25 @@ const file: Required<DiagramFile> = {
 };
 
 describe("diagram.v1 schema", () => {
+  it.each(["#abc", "#abcd", "#fff0", "#abcdef", "#abcdef00", "#11223344", "white", "blue"])(
+    "accepts the model colour contract in both schemas and annotation colours: %s",
+    (color) => {
+      expect(isColorValue(color)).toBe(true);
+      expect(() => check({ ...annotation, color }, "Annotation")).not.toThrow();
+      expect(() => check({ ...file, color })).not.toThrow();
+      expect(() => check({ format: "diagrams/v1", title: "Colour", nodes: [], edges: [], color })).not.toThrow();
+    },
+  );
+
+  it.each(["#12345", "rgb(1,2,3)", "#ggg", { toString: null }, null, 42])(
+    "rejects invalid model colours in both schemas: %j",
+    (color) => {
+      expect(isColorValue(color)).toBe(false);
+      expect(() => check({ ...annotation, color }, "Annotation")).toThrow();
+      expect(() => check({ ...file, color })).toThrow();
+      expect(() => check({ format: "diagrams/v1", title: "Colour", nodes: [], edges: [], color })).toThrow();
+    },
+  );
   it("covers every field of an edge, including relation and props.settings", () => {
     expect(() => check(edge, "Edge")).not.toThrow();
     expect((defs.Edge.properties as Record<string, JsonSchema>).relation.enum).toEqual(EDGE_RELATIONS);
@@ -138,6 +159,19 @@ describe("diagram.v1 schema", () => {
 
   it("covers every field of the file, its nodes, boundaries, notes and simulations", () => {
     expect(() => check(file)).not.toThrow();
+  });
+
+  it("validates annotation colors (predefined including white, and custom hex)", () => {
+    expect(() => check({ ...annotation, color: "white" }, "Annotation")).not.toThrow();
+    expect(() => check({ ...annotation, color: "#3B82F6" }, "Annotation")).not.toThrow();
+    expect(() => check({ ...annotation, color: "#fff" }, "Annotation")).not.toThrow();
+    expect(() => check({ ...annotation, color: "invalid-color" }, "Annotation")).toThrow(/match/);
+  });
+
+  it("validates diagram color (predefined including white, and custom hex)", () => {
+    expect(() => check({ ...file, color: "blue" })).not.toThrow();
+    expect(() => check({ ...file, color: "#10b981" })).not.toThrow();
+    expect(() => check({ ...file, color: "invalid-color" })).toThrow(/match/);
   });
 
   it("describes checks: rules turned off and findings ignored, bounded", () => {

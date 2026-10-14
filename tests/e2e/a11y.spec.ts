@@ -28,6 +28,15 @@ async function expectNoViolations(page: Page, scope?: string) {
 /** Each view or overlay: how to reach it, and the test id to scan (the whole page when omitted). */
 const states: { name: string; open: (page: Page) => Promise<void>; scope?: string }[] = [
   {
+    name: "colour picker",
+    scope: "color-picker-modal",
+    open: async (page) => {
+      await gotoLab(page, "colour-picker");
+      await page.getByTestId("colour-lab-open").click();
+      await expect(page.getByTestId("color-picker-hex-input")).toBeFocused();
+    },
+  },
+  {
     name: "stencils",
     open: async (page) => {
       await gotoGallery(page);

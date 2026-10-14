@@ -1,11 +1,12 @@
 import { t } from "../../i18n";
 import type { DiagramAnnotation, DiagramFile, DiagramNode, Side } from "../../model/types";
-import { ANNOTATION_COLORS, annotationColor, textSizePx } from "../../canvas/annotations";
+import { resolveAnnotationColor, textSizePx } from "../../canvas/annotations";
 import { foregroundLayerOrder } from "../../model/layers";
 import { catalog } from "../../stencils/catalog";
 import { escapeXml } from "../xml";
 import { boxShape, groupStyle, imageShape, nativeShape, type DrawioShape } from "./mapping";
 import { isDependency, relationOf, type DependencyRelation } from "../../model/relations";
+import { isColorValue } from "../../model/annotations";
 
 /**
  * Dependency tints for draw.io (its canvas is light): the light-theme --rel-* tokens. With the dotted
@@ -44,11 +45,12 @@ export const cellId = (kind: "n" | "e" | "g" | "a", id: string) => `dg-${kind}-$
  * ellipse / rhombus / cylinder3. Colours come from the curated palette, so they look the same there.
  */
 export function annotationStyle(a: DiagramAnnotation): string {
-  const c = ANNOTATION_COLORS[annotationColor(a)];
+  const color = isColorValue(a.color) ? a.color : undefined;
+  const c = resolveAnnotationColor(color, a.kind);
   const font = `fontSize=${textSizePx[a.textSize ?? "m"]};`;
   switch (a.kind) {
     case "text":
-      return `text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=top;${font}fontColor=${a.color && a.color !== "neutral" ? c.hex : "#1F2937"};${a.textSize === "xl" || a.textSize === "l" ? "fontStyle=1;" : ""}`;
+      return `text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=top;${font}fontColor=${color && color !== "neutral" && color !== "white" ? c.hex : "#1F2937"};${a.textSize === "xl" || a.textSize === "l" ? "fontStyle=1;" : ""}`;
     case "note":
       return `shape=note;html=1;whiteSpace=wrap;backgroundOutline=1;size=14;align=left;verticalAlign=top;spacing=10;${font}fillColor=${c.fill};strokeColor=${c.hex};fontColor=#1F2937;`;
     case "zone":
@@ -102,9 +104,9 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
   const lines: string[] = [];
   const groups = new Map((d.groups ?? []).map((g) => [g.id, g]));
 
-  // Root cell carries diagram-level fields (description, direction, simulations, checks).
+  // Root cell carries diagram-level fields (description, direction, simulations, checks, color).
   lines.push(
-    `        <object id="0"${attr("dg_format", d.format)}${attr("dg_description", d.description)}${attr("dg_direction", d.direction)}${attr("dg_simulations", json(d.simulations))}${attr("dg_layer_order", json(d.layerOrder))}${attr("dg_private", d.private ? "true" : undefined)}${attr("dg_checks", json(d.checks))}>`,
+    `        <object id="0"${attr("dg_format", d.format)}${attr("dg_description", d.description)}${attr("dg_color", isColorValue(d.color) ? d.color : undefined)}${attr("dg_direction", d.direction)}${attr("dg_simulations", json(d.simulations))}${attr("dg_layer_order", json(d.layerOrder))}${attr("dg_private", d.private ? "true" : undefined)}${attr("dg_checks", json(d.checks))}>`,
     `          <mxCell />`,
     `        </object>`,
     `        <mxCell id="1" parent="0" />`,
@@ -112,7 +114,7 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
 
   const annotations = d.annotations ?? [];
   const annotationCell = (a: DiagramAnnotation) => [
-    `        <object id="${escapeXml(cellId("a", a.id))}" label="${escapeXml(textHtml(a.text))}" dg_id="${escapeXml(a.id)}" dg_annotation="${a.kind}"${attr("dg_shape", a.kind === "shape" ? (a.shape ?? "rect") : undefined)}${attr("dg_color", a.color)}${attr("dg_text_size", a.textSize)}${attr("dg_text", a.text)}>`,
+    `        <object id="${escapeXml(cellId("a", a.id))}" label="${escapeXml(textHtml(a.text))}" dg_id="${escapeXml(a.id)}" dg_annotation="${a.kind}"${attr("dg_shape", a.kind === "shape" ? (a.shape ?? "rect") : undefined)}${attr("dg_color", isColorValue(a.color) ? a.color : undefined)}${attr("dg_text_size", a.textSize)}${attr("dg_text", a.text)}>`,
     `          <mxCell style="${escapeXml(annotationStyle(a))}" vertex="1" parent="1">`,
     `            <mxGeometry x="${r(a.x)}" y="${r(a.y)}" width="${r(a.width)}" height="${r(a.height)}" as="geometry" />`,
     `          </mxCell>`,

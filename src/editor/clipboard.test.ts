@@ -21,6 +21,16 @@ const diagram: DiagramFile = {
 };
 
 describe("clipboard", () => {
+  it.each(["#fff0", "#abcd", "#11223344", "#abcdef00", "white"])(
+    "preserves custom annotation colours through clipboard and whole-file paste: %s",
+    (color) => {
+      const annotation = { id: "note", kind: "note", text: "Note", x: 0, y: 400, width: 240, height: 160, color };
+      for (const format of [CLIP_FORMAT, diagram.format]) {
+        const result = parsePayload(JSON.stringify({ ...diagram, format, annotations: [annotation] }));
+        expect(result?.annotations?.[0].color).toBe(color);
+      }
+    },
+  );
   it("repairs malformed clipboard annotations and drops their attached edges safely", () => {
     const shape = { id: "shape", kind: "shape", text: 42, x: 0, y: 0, width: 100, height: 90 };
     const raw = {

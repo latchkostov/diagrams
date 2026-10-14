@@ -28,7 +28,7 @@ import {
  */
 export type DiagramMeta = Pick<
   DiagramFile,
-  "title" | "description" | "direction" | "simulations" | "checks" | "planning"
+  "title" | "description" | "color" | "direction" | "simulations" | "checks" | "planning"
 >;
 
 // ---------------------------------------------------------------- accessible names
@@ -234,6 +234,7 @@ export function toFlow(d: DiagramFile): { meta: DiagramMeta; nodes: FlowNode[]; 
     meta: {
       title: d.title,
       description: d.description,
+      color: d.color,
       direction: d.direction,
       simulations: d.simulations,
       ...(d.planning ? { planning: d.planning } : {}),
@@ -302,6 +303,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
     ...(meta.planning ? { planning: meta.planning } : {}),
     title: meta.title,
     description: meta.description,
+    color: meta.color,
     direction: meta.direction,
     ...(groups.length ? { groups } : {}),
     nodes: out,

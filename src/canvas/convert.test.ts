@@ -41,6 +41,20 @@ describe("convert", () => {
     const f = toFlow({ format: "diagrams/v1", title: "t", nodes: [], edges: [] });
     expect("simulations" in fromFlow(f.meta, f.nodes, f.edges)).toBe(false);
   });
+
+  it("round-trips diagram color via toFlow and fromFlow", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Tinted Canvas",
+      color: "#3B82F6",
+      nodes: [],
+      edges: [],
+    };
+    const f = toFlow(d);
+    expect(f.meta.color).toBe("#3B82F6");
+    const out = fromFlow(f.meta, f.nodes, f.edges);
+    expect(out.color).toBe("#3B82F6");
+  });
 });
 
 describe("accessible names", () => {

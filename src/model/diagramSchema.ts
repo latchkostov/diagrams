@@ -1,6 +1,8 @@
 import { nodeSimPropsSchema, edgeSimPropsSchema } from "./simProps";
 import { EDGE_RELATIONS, MAX_SETTINGS, MAX_SETTING_KEY } from "./relations";
 import { CHECK_LIMITS, CHECK_RULE_ID } from "./checks";
+import { ANNOTATION_COLOR_IDS } from "./annotations";
+import { HEX_COLOR_REGEX } from "./colors";
 import type { JsonSchema } from "./jsonSchema";
 import type {
   CheckIgnore,
@@ -33,6 +35,7 @@ const METRICS = [
   "lag",
 ];
 const OPS = ["<", "<=", "==", ">=", ">"];
+const COLOR_PATTERN = `^(?:${ANNOTATION_COLOR_IDS.join("|")}|${HEX_COLOR_REGEX.source.slice(1, -1)})$`;
 
 const num = { type: "number" };
 const ID = {
@@ -67,6 +70,11 @@ function diagramSchema() {
       },
       title: str(200),
       description: str(2000),
+      color: {
+        type: "string",
+        pattern: COLOR_PATTERN,
+        description: "Background canvas tint colour (hex or predefined annotation color id).",
+      },
       direction: { type: "string", enum: ["LR", "TB"], default: "LR", description: "Main flow direction." },
       nodes: { type: "array", items: { $ref: "#/$defs/Node" } },
       edges: { type: "array", items: { $ref: "#/$defs/Edge" } },
@@ -215,7 +223,10 @@ function diagramSchema() {
           width: { type: "number", minimum: 0 },
           height: { type: "number", minimum: 0 },
           shape: { type: "string", enum: ["rect", "rounded", "ellipse", "diamond", "cylinder"] },
-          color: { type: "string", enum: ["neutral", "yellow", "green", "blue", "purple", "red"] },
+          color: {
+            type: "string",
+            pattern: COLOR_PATTERN,
+          },
           textSize: { type: "string", enum: ["s", "m", "l", "xl"] },
         } satisfies Fields<DiagramAnnotation>,
       },

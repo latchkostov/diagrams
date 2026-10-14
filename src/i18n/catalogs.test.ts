@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import en from "./en";
 import { argsOf, parse } from "./icu";
-import { validateLocale, type LocaleGlossary, type LocaleMeta, type TermGlossary } from "./validate";
+import { sourceHash, validateLocale, type LocaleGlossary, type LocaleMeta, type TermGlossary } from "./validate";
 import { catalogLocales, compileCatalog, numberedKeys, readCatalog, rewriteCalls } from "../../scripts/i18n-plugin";
 
 // Every committed catalog, as CI sees it (`pnpm i18n check` prints the same report): no errors in any language,
@@ -100,6 +100,22 @@ describe("the catalogs", () => {
     const { errors, undecided } = check(code);
     expect(errors).toEqual([]);
     expect(undecided, `${code}: glossary terms without a rendering`).toEqual([]);
+  });
+
+  it.each(codes)("%s translates the custom colour controls without an English fallback", (code) => {
+    const messages = read<Record<string, string>>(`locales/${code}.json`);
+    const meta = read<LocaleMeta>(`locales/${code}.meta.json`);
+    const keys = [
+      "chrome.white",
+      "chrome.customColour",
+      "chrome.hexColour",
+      "chrome.resetColour",
+      "chrome.canvasBackgroundTint",
+    ] as const;
+    for (const key of keys) {
+      expect(messages[key], `${code}: ${key}`).toBeTruthy();
+      expect(meta.sources?.[key], `${code}: ${key} matches the current English`).toBe(sourceHash(en[key]));
+    }
   });
 
   it("a newly discovered language is validated in full: a renamed plural argument fails", () => {
