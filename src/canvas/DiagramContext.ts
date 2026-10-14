@@ -25,7 +25,7 @@ export interface DiagramUi {
   direction: "LR" | "TB";
   editing: InlineEdit | null;
   setEditing: (target: InlineEdit | null) => void;
-  /** Editing only (not presenting or embedded): a double-click names a node, connection or boundary in the inspector. */
+  /** Edit or live (not presenting or read-only): a double-click names a node, connection or boundary in the inspector. */
   rename?: (target: RenameTarget) => void;
   /** Opens the edge context menu (edge labels live outside the edge's SVG group). */
   openEdgeMenu: (e: MouseEvent | ReactMouseEvent, edgeId: string) => void;

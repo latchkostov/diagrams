@@ -166,6 +166,7 @@ describe("host embed: the live driver", () => {
     } as unknown as LiveController;
     const session: LiveSessionHandle = {
       controller,
+      closePanel: vi.fn(),
       selectSimulation: vi.fn((id: string | null) => {
         st = { ...st, playing: true, simulation: id ? ({ id } as LiveState["simulation"]) : null };
         listeners.forEach((l) => l());

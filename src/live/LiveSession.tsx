@@ -191,6 +191,11 @@ export function LiveSession({
     sim: null,
   }));
   const capacityOpen = panel.open && panel.kind === "capacity";
+  const panelDraft = useRef<Simulation | null>(null);
+  const suspendedPanel = useRef<{ sim: Simulation | null } | null>(null);
+  const takePanelDraft = useCallback((sim: Simulation | null) => {
+    panelDraft.current = sim;
+  }, []);
   useEffect(() => () => controller.dispose(), [controller]);
   const [events, setEvents] = useState<{ open: boolean; nodeId: string | null }>({ open: false, nodeId: null });
   const [trace, setTrace] = useState<string | null>(null);
@@ -748,11 +753,16 @@ export function LiveSession({
   // While slow motion plays, the card is its event list: the replayed journey, the hop being told.
   const slowState = slow.state;
   // A page driving live view from outside (the host-supplied embed) gets the controller and the bar's switch.
+  const closePanel = useCallback(() => {
+    if (!panel.open) return;
+    if (panel.kind === "sims") suspendedPanel.current = { sim: panelDraft.current };
+    setPanel({ ...panel, open: false });
+  }, [panel]);
   useEffect(() => {
     if (!onSession) return;
-    onSession({ controller, selectSimulation });
+    onSession({ controller, selectSimulation, closePanel });
     return () => onSession(null);
-  }, [onSession, controller, selectSimulation]);
+  }, [onSession, controller, selectSimulation, closePanel]);
   // Simulation switching uses the same availability as the registry's engine-changing actions.
   useLiveSessionHost(
     selectSimulation,
@@ -1169,7 +1179,13 @@ export function LiveSession({
       simulations,
       draft,
       selectSimulation,
-      openPanel: (sim) => setPanel({ open: true, kind: "sims", sim: sim ?? null }),
+      openPanel: (sim) => {
+        // The live bar passes the active run; restore its working copy unless another run was chosen.
+        const kept = suspendedPanel.current;
+        const restore = kept && (!sim || kept.sim?.id === sim.id);
+        suspendedPanel.current = null;
+        setPanel({ open: true, kind: "sims", sim: restore ? kept.sim : (sim ?? null) });
+      },
       panelOpen: panel.open,
       capacityOpen,
       openCapacity,
@@ -1335,6 +1351,7 @@ export function LiveSession({
         <SimPanel
           key={panel.sim?.id ?? "picker"}
           initial={panel.sim}
+          onDraftChange={takePanelDraft}
           state={state}
           onClose={() => setPanel({ open: false, kind: "sims", sim: null })}
           onRun={runDraft}

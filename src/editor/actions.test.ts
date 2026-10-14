@@ -54,9 +54,9 @@ describe("action registry", () => {
         .build({ ...ctx(target), nodeId: "n", edgeId: "e", groupId: "g", mode: "live" })
         .flatMap((i) => (i.type === "item" ? [i.id] : []));
     expect(live("node")).toEqual(expect.arrayContaining(["node.properties"]));
-    expect(live("node")).not.toContain("node.rename");
-    expect(live("edge")).not.toContain("edge.edit-label");
-    expect(live("group")).not.toContain("group.rename");
+    expect(live("node")).toContain("node.rename");
+    expect(live("edge")).toContain("edge.edit-label");
+    expect(live("group")).toContain("group.rename");
     expect(live("annotation")).not.toContain("annotation.edit");
     expect(live("node")).not.toContain("item.duplicate");
     expect(live("node")).not.toContain("item.delete");

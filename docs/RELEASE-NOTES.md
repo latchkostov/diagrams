@@ -2,6 +2,16 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Properties in live view (2026-10-14)
+
+- Double-click a node, boundary or connection in Live to open its property sheet, even when collapsed, with the
+  whole Label selected. F2, Enter, Rename and Ctrl+K do the same. Presentation and read-only viewers stay inert.
+  Enter still continues a waiting narration; F2 can open properties while it waits.
+- Names use the inspector's existing simulation behavior: node names and subtitles restart the run; boundary
+  and connection labels do not. Live's other gestures are unchanged.
+- Opening properties makes room beside the canvas by closing Inputs or Simulations. An unsaved simulation
+  draft comes back when Simulations reopens.
+
 ## External discovery (2026-10-14)
 
 - **Clients & external** brings External API, Webhook, Email, SMS, Mobile Push, Marketing Automation and LLM API

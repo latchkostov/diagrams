@@ -25,6 +25,8 @@ export interface LiveSessionHandle {
   controller: LiveController;
   /** The live bar's own simulation switch: a saved simulation's id, or null for free play. It plays. */
   selectSimulation(id: string | null): void;
+  /** Make room for the canvas inspector without changing playback. */
+  closePanel(): void;
 }
 
 /** Live view, driven from outside: how to go live, and the running session (null until it's up). */
