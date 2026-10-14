@@ -1,5 +1,5 @@
 import { formatImportMessage } from "./importMessages";
-import { formatNumber, formatRate, formatDuration } from "../../i18n/format";
+import { formatNumber, formatImportTraffic } from "../../i18n/format";
 import { t as tr, useLocale } from "../../i18n";
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Dialog } from "./Dialog";
@@ -260,10 +260,7 @@ export function ImportReportDialog({
                   {t.messageType && <span className="ix-report-muted">{t.messageType}</span>}
                 </span>
                 <span className="ix-report-why">
-                  {tr("importReport.trafficDuration", {
-                    rate: formatRate(t.ratePerSec),
-                    duration: formatDuration(t.seconds * 1000),
-                  })}
+                  {tr("importReport.trafficDuration", formatImportTraffic(t.ratePerSec, t.seconds))}
                 </span>
               </li>
             ))}

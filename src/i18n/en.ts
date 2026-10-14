@@ -10,6 +10,15 @@
 // stays.
 
 const en = {
+  "format.byteSize": "{size} {unit}",
+  "format.importList": "{before} and {last}",
+  "cloud.dropboxFileMissing": "That Dropbox file no longer exists, or it was moved out of the Diagrams folder.",
+  "fileToast.providerSaveFailed": "Couldn't save to {provider}. {error}",
+  "fileToast.providerOpenFailed": "Couldn't open from {provider}. {error}",
+  "fileToast.imageFailed": "Couldn't export the {format}. {error}",
+  "fileType.terraformPlan": "Terraform plan",
+  "format.importSeconds": "{duration} s",
+  "format.importMinutes": "{duration} min",
   "importReport.namedCount": "{name} ×{count, number}",
   "importReport.aclWide":
     "{action, select, both {read and write} read {read} other {write}} {scope, select, all {every topic} other {topics starting “{name}”}}",
@@ -38,9 +47,8 @@ const en = {
   "importReason.partOfAPIGateway": "part of API Gateway",
   "importReason.partOfALoadBalancer": "part of a load balancer",
   "fileToast.privateLink": "Private diagrams can't be shared as links. Export Interactive HTML instead.",
-  "fileToast.linksOff":
-    "Share links are off in this copy of Live Diagrams. Export Interactive HTML or the diagram file instead.",
-  "fileToast.linkOpenOff": "Opening share links is off in this copy of Live Diagrams. Open a diagram file instead.",
+  "fileToast.linksOff": "Share links are turned off here. Export Interactive HTML instead.",
+  "fileToast.linkOpenOff": "Opening shared links is turned off here. Ask for the diagram file instead.",
   "passwordLink.tooLong": "This share link is too long to open.",
   "passwordLink.newer":
     "This link was made by a newer version of Live Diagrams. Reload the page to update, then open the link again.",
@@ -115,7 +123,7 @@ const en = {
   "importDetail.notAKubernetesResourceNoKind": "not a Kubernetes resource (no kind or apiVersion)",
   "importDetail.aValue0WithNoName": "a {value0} with no name",
   "importDetail.theseFilesHoldMoreThanValue0More":
-    "These files hold more than {value0, plural, one {# resource} other {# resources}}; one import reads at most that many.",
+    "These files hold more than {value0, plural, one {# resources} other {# resources}}; one import reads at most that many.",
   "importDetail.theresNothingToDrawNoKubernetes": "There's nothing to draw: no Kubernetes resources were found.",
   "importDetail.foldedIntoItsOwner": "folded into its owner",
   "importDetail.shownThroughItsTopics": "shown through its topics",
@@ -123,12 +131,12 @@ const en = {
     "{value0}: a Service with {reason, select, definition {no definition} other {no workload}} in these files",
   "importDetail.scalesAWorkloadThatIsntIn": "scales a workload that isn't in these files",
   "importDetail.value0RunsUpToValue1Jobs":
-    "{value0} runs up to {value1, plural, one {# job} other {# jobs}} at once (KEDA)",
+    "{value0} runs up to {value1, plural, one {# jobs} other {# jobs}} at once (KEDA)",
   "importDetail.value0ScalesFromValue1ToValue2":
-    "{value0} scales from {value1, number} to {value2, plural, one {# replica} other {# replicas}} (KEDA)",
+    "{value0} scales from {value1, number} to {value2, plural, one {# replicas} other {# replicas}} (KEDA)",
   "importDetail.value0TriggerScalingOnly": "{value0} trigger: scaling only",
   "importDetail.value0ScalesFromValue1ToValue2More":
-    "{value0} scales from {value1, number} to {value2, plural, one {# replica} other {# replicas}} (HorizontalPodAutoscaler)",
+    "{value0} scales from {value1, number} to {value2, plural, one {# replicas} other {# replicas}} (HorizontalPodAutoscaler)",
   "importDetail.settingsPastTheFirstValue0Number":
     "Settings past the first {value0, number} weren't read for connections (ConfigMaps shared by many workloads count each time)",
   "importDetail.itsACLsArentDrawnNoWorkload": "its ACLs aren't drawn: no workload in these files uses its Secret",
@@ -158,14 +166,14 @@ const en = {
   "importDetail.someReferencesWerentFollowedThePlan":
     "Some references weren't followed: the plan holds too many to read them all",
   "importDetail.noBoundaryInItFitsIn":
-    "No boundary in it fits in {value0, plural, one {# node} other {# nodes}}, the most an import draws.",
+    "No boundary in it fits in {value0, plural, one {# nodes} other {# nodes}}, the most an import draws.",
   "importDetail.aHelmTemplateImportHelmTemplate": "a Helm template: import “helm template” output instead",
   "importDetail.terraformSourceImportTerraformShowJson":
     "Terraform source: import “terraform show -json” output instead",
   "importDetail.notReadADifferentKindOf": "not read: a different kind of file",
   "importDetail.notListed": "not listed",
   "importDetail.itWouldDrawValue0NumberValue1":
-    "{value1, select, nodes {It would draw {value0, plural, one {# node} other {# nodes}}} connections {It would draw {value0, plural, one {# connection} other {# connections}}} boundaries {It would draw {value0, plural, one {# boundary} other {# boundaries}}} other {It would draw {value0, number} items}}; the most an import draws is {value2, number}.",
+    "{value1, select, nodes {It would draw {value0, plural, one {# nodes} other {# nodes}}} connections {It would draw {value0, plural, one {# connections} other {# connections}}} boundaries {It would draw {value0, plural, one {# boundaries} other {# boundaries}}} other {It would draw {value0, number} items}}; the most an import draws is {value2, number}.",
   "importDetail.terraformTypeNotDrawn": "Terraform type not drawn",
   "importDetail.developerTool": "developer tool",
   "importDetail.emulatesAWSItsServicesArentKnown": "emulates AWS; its services aren't known from the image",
@@ -178,7 +186,7 @@ const en = {
   "importReport.summary":
     "Imported “{title}” from {format}: {total, select, all {{nodes, plural, one {# node} other {# nodes}}} other {{drawn, number} of {nodes, plural, one {# node} other {# nodes}}}}, {connections, plural, one {# connection} other {# connections}}.{guesses, plural, =0 {} one { # guess.} other { # guesses.}}",
   "importReport.unlisted":
-    "{count, plural, one {# more connection like these isn't listed} other {# more connections like these aren't listed}}",
+    "{count, plural, one {# more connections like these aren't listed} other {# more connections like these aren't listed}}",
   "importReport.watchTraffic": "Go live and pick “{title}” to watch messages flow",
   "importReport.more": "{count, plural, one {# more} other {# more}}",
   "embedDialog.webComponent": "Web component",
@@ -186,8 +194,7 @@ const en = {
     "Storage almost full ({percent}). Delete or export diagrams you don't need.",
   "library.usedOfAboutBudgetUsed": "{used} of about {budget} used",
   "library.openNow": "Open now ·",
-  "library.firstlastOfCountPluralOneDiagramOther":
-    "{first}–{last} of {count, plural, one {# diagram} other {# diagrams}}",
+  "library.firstlastOfCountPluralOneDiagramOther": "{first}–{last} of {count, plural, one {#} other {#}}",
   "library.renameTitle": "Rename {title}",
   "library.duplicateTitle": "Duplicate {title}",
   "library.deleteTitle": "Delete {title}",
@@ -287,7 +294,7 @@ const en = {
   "cloud.couldntReachLabelToActionCheckYour":
     "{action, select, read_the_file_details {Couldn't reach {label} to read the file details. Check your connection.} download_the_file {Couldn't reach {label} to download the file. Check your connection.} save_the_file {Couldn't reach {label} to save the file. Check your connection.} update_the_file {Couldn't reach {label} to update the file. Check your connection.} list_your_diagrams {Couldn't reach {label} to list your diagrams. Check your connection.} read_the_file {Couldn't reach {label} to read the file. Check your connection.} other {Couldn't reach {label} to complete the file operation. Check your connection.}}",
   "cloud.oneDriveRefusedToActionLiveDiagramsCan":
-    "{action, select, read_the_file_details {OneDrive refused to read the file details. Live Diagrams can only use files in its own folder.{value1}} download_the_file {OneDrive refused to download the file. Live Diagrams can only use files in its own folder.{value1}} save_the_file {OneDrive refused to save the file. Live Diagrams can only use files in its own folder.{value1}} update_the_file {OneDrive refused to update the file. Live Diagrams can only use files in its own folder.{value1}} list_your_diagrams {OneDrive refused to list your diagrams. Live Diagrams can only use files in its own folder.{value1}} read_the_file {OneDrive refused to read the file. Live Diagrams can only use files in its own folder.{value1}} other {OneDrive refused to complete the file operation. Live Diagrams can only use files in its own folder.{value1}}}",
+    "{action, select, read_the_file_details {OneDrive refused to read the file details. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} download_the_file {OneDrive refused to download the file. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} save_the_file {OneDrive refused to save the file. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} update_the_file {OneDrive refused to update the file. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} list_your_diagrams {OneDrive refused to list your diagrams. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} read_the_file {OneDrive refused to read the file. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}} other {OneDrive refused to complete the file operation. Live Diagrams can only use files in its own folder (Apps › Diagrams).{value1}}}",
   "cloud.oneDriveIsntConfiguredForThisSite": "OneDrive isn't configured for this site.",
   "cloud.dropboxRefusedToActionTheAppIsnt":
     "{action, select, read_the_file_details {Dropbox refused to read the file details: the app isn't set up with the permissions Live Diagrams needs.} download_the_file {Dropbox refused to download the file: the app isn't set up with the permissions Live Diagrams needs.} save_the_file {Dropbox refused to save the file: the app isn't set up with the permissions Live Diagrams needs.} update_the_file {Dropbox refused to update the file: the app isn't set up with the permissions Live Diagrams needs.} list_your_diagrams {Dropbox refused to list your diagrams: the app isn't set up with the permissions Live Diagrams needs.} read_the_file {Dropbox refused to read the file: the app isn't set up with the permissions Live Diagrams needs.} other {Dropbox refused to complete the file operation: the app isn't set up with the permissions Live Diagrams needs.}}",
@@ -312,7 +319,7 @@ const en = {
   "cloud.googleSigninIsntAvailableRightNow": "Google sign-in isn't available right now.",
   "cloud.supersededByANewerSigninRequest": "Superseded by a newer sign-in request.",
   "fileToast.exportedNodesPluralOneNodeOtherNodes":
-    "Exported {nodes, plural, one {# node} other {# nodes}} and {edges, plural, one {# edge} other {# edges}}. Anyone who has this file can open it.",
+    "Exported {nodes, plural, one {# nodes} other {# nodes}} and {edges, plural, one {# edges} other {# edges}}. Anyone who has this file can open it.",
   "fileDialog.characters": "{count, plural, one {# character} other {# characters}}",
   "fileDialog.longLink":
     "This link is long ({length}). Some chat apps and email clients cut long links off. For big diagrams, share the <b>.diagram.json</b> file instead (or save it to Google Drive and share that).",
@@ -321,12 +328,12 @@ const en = {
   "embedDialog.hostNote":
     "<b>The diagram never leaves your app. Live Diagrams only provides the viewer.</b> Serve the diagram file from your app, behind its own sign-in; your page fetches it and hands it to the viewer. It's never in a URL and never sent to livediagrams.dev.",
   "fileDialog.diagramCounts":
-    "{nodes, plural, one {# node} other {# nodes}}, {edges, plural, one {# edge} other {# edges}}{simulations, plural, =0 {} one {, # simulation} other {, # simulations}}",
+    "{nodes, plural, one {# nodes} other {# nodes}}, {edges, plural, one {# edges} other {# edges}}{simulations, plural, =0 {} one {, # simulation} other {, # simulations}}",
   "embedDialog.exampleByName": "Example by name",
   "embedDialog.inTheLink": "In the link",
   "fileDialog.play": "Play “{title}”",
   "fileDialog.detected": "Detected: {format}",
-  "fileDialog.pagesSubtitle": "“{name}” has {count, plural, one {# page} other {# pages}}. Which one should open?",
+  "fileDialog.pagesSubtitle": "“{name}” has {count, plural, one {# pages} other {# pages}}. Which one should open?",
   "fileDialog.options": "Options",
   "imageDialog.summary":
     "{kind, select, svg {SVG, scalable} other {PNG, {scale}× resolution{transparent, select, yes {, transparent background} other {}}}}{withTitle, select, yes {} other {, without the title}}",
@@ -347,19 +354,19 @@ const en = {
   "storageDialog.signOut": "Sign out of {provider}",
   "storageDialog.empty": "No diagrams here yet. Save one with File → Save to ▸ {provider}.",
   "importReport.drew":
-    "Drew {nodes, plural, one {# node} other {# nodes}}, {connections, plural, one {# connection} other {# connections}}{boundaries, plural, =0 {} one { and # boundary} other { and # boundaries}}.",
+    "Drew {nodes, plural, one {# node} other {# nodes}}{boundaries, plural, =0 { and } other {, }}{connections, plural, one {# connection} other {# connections}}{boundaries, plural, =0 {} one { and # boundary} other { and # boundaries}}.",
   "importReport.trafficDuration": "{rate} for {duration}",
   "importReport.aGuess": ", a guess",
   "importReport.boundariesDrawn": "Boundaries ({drawn, number} of {total, plural, one {# drawn} other {# drawn}})",
   "importReport.pickLede":
-    "It has {count, plural, one {# node} other {# nodes}}, more than a diagram reads well, so only some boundaries are drawn. The ones with the most flows come first; tick others to draw them as a new diagram.",
+    "It has {count, plural, one {# nodes} other {# nodes}}, more than a diagram reads well, so only some boundaries are drawn. The ones with the most flows come first; tick others to draw them as a new diagram.",
   "importReport.groupCounts":
     "{nodes, plural, one {# node} other {# nodes}} · {flows, plural, one {# flow} other {# flows}}",
   "importReport.drawThese": "Draw these ({count, plural, one {# node} other {# nodes}})",
   "importReport.overLimit":
-    "{count, plural, one {# node ticked} other {# nodes ticked}}, over the {limit} an import draws: untick some.",
-  "importReport.alreadyDrawn": "{count, plural, one {# node ticked} other {# nodes ticked}}: these are drawn.",
-  "importReport.ticked": "{count, plural, one {# node ticked} other {# nodes ticked}}.",
+    "{count, plural, one {# nodes ticked} other {# nodes ticked}}, over the {limit} an import draws: untick some.",
+  "importReport.alreadyDrawn": "{count, plural, one {# nodes ticked} other {# nodes ticked}}: these are drawn.",
+  "importReport.ticked": "{count, plural, one {# nodes ticked} other {# nodes ticked}}.",
   "importReport.stencilFor": "{stencil} for {name}",
   "importReport.anotherStencil": "Another stencil for {name}",
   "importReport.otherStencil": "Other stencil for {name}",
@@ -453,7 +460,7 @@ const en = {
   "htmlExport.downloadHTML": "Download HTML",
   "htmlExport.requireAPassword": "Require a password",
   "htmlExport.encryptsTheWholeDiagramTitleIncludedOnly":
-    "Encrypts the whole diagram, title included; only the file's size shows. The password is never stored or sent and can’t be recovered: if it’s lost, export again.",
+    "Encrypts the whole diagram, title included; only the file’s size shows. The password is never stored or sent and can’t be recovered: if it’s lost, export again.",
   "htmlExport.banner": "Banner",
   "htmlExport.egConfidentialInternalUseOnly": "e.g. Confidential: internal use only",
   "htmlExport.theme": "Theme",

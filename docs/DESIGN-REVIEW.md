@@ -3649,3 +3649,12 @@ diagnostics follow language changes while diagram content stays as written. Shar
 provider-specific permission guidance and recovery steps. No controls, layout changes or focus targets
 were added, so the existing chrome budget and primary actions remain intact. Browser regression coverage
 checks these flows; this source review did not inspect layout or contrast.
+
+## File extraction English compatibility — 2026-10-14
+
+The designer's source review passed: errors again identify their provider or image format and keep the
+folder guidance that helps find files. Pagination, library detail spacing, report conjunctions, lists,
+count words and number presentation match the previous English. No controls, focus targets or chrome
+were added. Historical singular wording stays for compatibility; a grammar change belongs in a deliberate
+copy update. The precision-helper suggestion was applied: English traffic values retain their original
+string interpolation, including small rates and fractional minutes. This review did not inspect the browser.

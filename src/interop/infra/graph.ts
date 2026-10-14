@@ -6,6 +6,8 @@ import type { ArgList } from "../../i18n";
 type DiagnosticCode = keyof typeof import("../ui/importMessages").messages;
 export interface ImportList {
   list: readonly ImportText[];
+  /** Keep the reader's English separators; other languages use Intl's conjunction. */
+  english?: "and" | "comma";
 }
 type Deferred<T> = T extends string
   ? ImportText | ImportList

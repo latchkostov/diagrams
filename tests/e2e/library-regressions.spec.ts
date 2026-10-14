@@ -72,6 +72,9 @@ test("rename restores focus on Enter and Escape, while pointer blur preserves it
   await gotoCanvas(page, publicExamples[0].slug);
   const [a, b] = await seed(page);
   await openLibrary(page);
+  await page.getByTestId(`library-open-${a}`).click();
+  await openLibrary(page);
+  await expect(page.getByTestId(`library-item-${a}`)).toContainText("Open now · 0 nodes · edited");
   const rename = page.getByTestId(`library-rename-${a}`);
   for (const key of ["Enter", "Escape"]) {
     await rename.click();

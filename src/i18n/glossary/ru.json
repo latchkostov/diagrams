@@ -52,7 +52,12 @@
       "match": ["повтор"],
       "note": "Button: Повторить. Redo is Вернуть, so the two never collide."
     },
-    "diagram": { "use": "схема", "match": ["схем"], "note": "Feminine. Not диаграмма (a chart in Russian UIs)." },
+    "diagram": {
+      "use": "схема",
+      "match": ["схем"],
+      "note": "Feminine. Not диаграмма (a chart in Russian UIs).; Diagrams in these cloud errors is the existing folder name.",
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"]
+    },
     "node": { "use": "узел", "match": ["узел", "узл"], "note": "узла, узлы, узлов." },
     "edge": {
       "use": "связь",

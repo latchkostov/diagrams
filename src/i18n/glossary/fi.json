@@ -100,7 +100,8 @@
     "diagram": {
       "use": "kaavio",
       "match": ["kaavio"],
-      "note": "Microsoft's (Visio's) Finnish word."
+      "note": "Microsoft's (Visio's) Finnish word.; Diagrams in these cloud errors is the existing folder name.",
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"]
     },
     "node": {
       "use": "solmu",

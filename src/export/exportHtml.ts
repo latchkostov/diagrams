@@ -88,7 +88,13 @@ export async function exportInteractiveHtml(diagram: DiagramFile, options: HtmlE
   try {
     const { name, bytes } = await downloadInteractiveHtml(diagram, options);
     toast.dismiss(busy);
-    toast.success(t("htmlExport.exported", { name, size: formatBytes(bytes), locked: locked ? "yes" : "no" }));
+    toast.success(
+      t("htmlExport.exported", {
+        name,
+        size: formatBytes(bytes, { unit: "kilobyte" }),
+        locked: locked ? "yes" : "no",
+      }),
+    );
   } catch (err) {
     toast.dismiss(busy);
     toast.error(

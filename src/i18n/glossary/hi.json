@@ -53,7 +53,8 @@
       "use": "डायग्राम",
       "keepEnglish": true,
       "match": ["डायग्राम"],
-      "note": "Developers say डायग्राम; Microsoft's आरेख is too formal for this UI."
+      "note": "Developers say डायग्राम; Microsoft's आरेख is too formal for this UI.; Diagrams in these cloud errors is the existing folder name.",
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"]
     },
     "node": { "use": "नोड", "keepEnglish": true, "match": ["नोड"] },
     "edge": {

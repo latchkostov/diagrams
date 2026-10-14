@@ -43,7 +43,12 @@
     "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
     "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
     "retry": { "use": "thử lại", "match": ["thử lại"] },
-    "diagram": { "use": "sơ đồ", "match": ["sơ đồ"] },
+    "diagram": {
+      "use": "sơ đồ",
+      "match": ["sơ đồ"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
+    },
     "node": { "use": "nút", "match": ["nút", "node"], "note": "Microsoft's word for a graph node." },
     "edge": {
       "use": "kết nối",

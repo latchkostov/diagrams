@@ -3,7 +3,19 @@ import { LIMITS } from "../native";
 import { t } from "../../i18n";
 
 /** Failure text loads only after an operation fails; pickers still open directly from the gesture. */
-export const fileFailure = (action: string, error: string) => t("fileToast.failed", { action, error });
+export type FileFailureAction = string | { action: "saveProvider" | "openProvider" | "image"; name: string };
+export function fileFailure(action: FileFailureAction, error: string): string {
+  if (typeof action === "string") return t("fileToast.failed", { action, error });
+  const { name } = action;
+  switch (action.action) {
+    case "saveProvider":
+      return t("fileToast.providerSaveFailed", { provider: name, error });
+    case "openProvider":
+      return t("fileToast.providerOpenFailed", { provider: name, error });
+    case "image":
+      return t("fileToast.imageFailed", { format: name, error });
+  }
+}
 
 export const nativeExported = (nodes: number, edges: number) =>
   t("fileToast.exportedNodesPluralOneNodeOtherNodes", { nodes, edges });
@@ -28,6 +40,10 @@ export const libraryStorageFull = () => t("library.storageFull");
 export const libraryRestoreFull = () => t("library.restoreFull");
 
 export const importTooLarge = (name: string, bytes: number) =>
-  t("fileToast.tooLarge", { name, size: formatBytes(bytes), limit: formatBytes(LIMITS.maxTextChars) });
+  t("fileToast.tooLarge", {
+    name,
+    size: formatBytes(bytes, { unit: "megabyte", minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+    limit: formatBytes(LIMITS.maxTextChars, { unit: "megabyte", minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+  });
 
 export { formatImportMessage } from "./importMessages";

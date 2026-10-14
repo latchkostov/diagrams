@@ -35,7 +35,12 @@
     "offset": { "use": "오프셋", "match": ["오프셋"] },
     "backlog": { "use": "백로그", "match": ["백로그"] },
     "retry": { "use": "다시 시도", "match": ["다시 시도", "재시도"] },
-    "diagram": { "use": "다이어그램", "match": ["다이어그램"] },
+    "diagram": {
+      "use": "다이어그램",
+      "match": ["다이어그램"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
+    },
     "node": { "use": "노드", "match": ["노드"] },
     "edge": {
       "use": "연결",

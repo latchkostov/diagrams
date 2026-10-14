@@ -43,14 +43,47 @@ export const formatDate = (
 export const formatAgo = (at: number, now = Date.now()): string => (state.a ?? formatAgoEnglish)(at, now);
 
 /** Decimal byte units for exported files and browser storage. */
-export function formatBytes(bytes: number): string {
-  const mb = bytes >= 100_000;
+export function formatBytes(bytes: number, options: Intl.NumberFormatOptions & { storage?: boolean } = {}): string {
+  const { storage, ...numberOptions } = options;
+  const mb = options.unit ? options.unit === "megabyte" : bytes >= 100_000;
   const value = mb ? bytes / 1_000_000 : Math.max(1, Math.round(bytes / 1000));
-  return formatNumber(value, {
+  if (getLocale() === "en") {
+    const digits = numberOptions.maximumFractionDigits ?? (mb ? 1 : 0);
+    const size = mb ? value.toFixed(digits) : String(value);
+    return t("format.byteSize", { size, unit: mb ? "MB" : storage ? "KB" : "kB" });
+  }
+  const formatted = formatNumber(value, {
     style: "unit",
     unit: mb ? "megabyte" : "kilobyte",
     unitDisplay: "short",
     minimumFractionDigits: mb ? 1 : 0,
     maximumFractionDigits: mb ? 1 : 0,
+    useGrouping: getLocale() !== "en",
+    ...numberOptions,
   });
+  return formatted;
+}
+
+/** The import readers used different English list separators before localization. */
+export function formatImportList(items: string[], english?: "and" | "comma"): string {
+  if (getLocale() !== "en") return formatList(items);
+  if (english === "comma" || items.length < 2) return items.join(", ");
+  if (english === "and")
+    return items.slice(1).reduce((before, last) => t("format.importList", { before, last }), items[0]);
+  return t("format.importList", { before: items.slice(0, -1).join(", "), last: items.at(-1)! });
+}
+
+/** Import evidence keeps its original precision and seconds/minutes in English. */
+export function formatImportTraffic(rate: number, seconds: number): { rate: string; duration: string } {
+  const number = (value: number) =>
+    getLocale() === "en" ? String(value) : formatNumber(value, { maximumFractionDigits: 20 });
+  return {
+    rate: t("format.rate", { rate: number(rate) }),
+    duration:
+      getLocale() === "en"
+        ? seconds >= 60
+          ? t("format.importMinutes", { duration: number(seconds / 60) })
+          : t("format.importSeconds", { duration: number(seconds) })
+        : formatDuration(seconds * 1000),
+  };
 }

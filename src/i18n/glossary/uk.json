@@ -39,7 +39,12 @@
     "offset": { "use": "зміщення", "match": ["зміщен", "offset"] },
     "backlog": { "use": "необроблені повідомлення", "match": ["необроблен", "backlog"] },
     "retry": { "use": "повтор", "match": ["повтор"], "note": "Button: Повторити. Redo is Повернути." },
-    "diagram": { "use": "діаграма", "match": ["діаграм"] },
+    "diagram": {
+      "use": "діаграма",
+      "match": ["діаграм"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
+    },
     "node": { "use": "вузол", "match": ["вузол", "вузл"], "note": "вузла, вузли, вузлів." },
     "edge": {
       "use": "зв’язок",

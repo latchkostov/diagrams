@@ -100,7 +100,9 @@
     },
     "diagram": {
       "use": "diagram",
-      "match": ["diagram"]
+      "match": ["diagram"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
     },
     "node": {
       "use": "csomópont",

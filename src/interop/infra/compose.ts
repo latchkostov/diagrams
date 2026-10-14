@@ -424,7 +424,11 @@ export function readCompose(files: readonly SourceFile[], others: readonly Sourc
           }).length;
         net = nets.reduce((best, n) => (score(n) > score(best) ? n : best), nets[0]);
         g.notes.push(
-          diagnostic("importDetail.value0IsOnValue1ShownIn", { value0: info.key, value1: { list: nets }, value2: net }),
+          diagnostic("importDetail.value0IsOnValue1ShownIn", {
+            value0: info.key,
+            value1: { list: nets, english: "and" },
+            value2: net,
+          }),
         );
       }
       byKey.get(info.key)!.group = net;

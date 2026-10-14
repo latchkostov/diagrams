@@ -37,7 +37,12 @@
     "offset": { "use": "offset", "keepEnglish": true, "note": "l’offset (m.)" },
     "backlog": { "use": "messages en attente", "match": ["en attente", "backlog"] },
     "retry": { "use": "réessayer", "match": ["réessa", "nouvelle tentative", "nouvelles tentatives"] },
-    "diagram": { "use": "diagramme", "match": ["diagramm"] },
+    "diagram": {
+      "use": "diagramme",
+      "match": ["diagramm"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
+    },
     "node": { "use": "nœud", "match": ["nœud", "noeud"] },
     "edge": {
       "use": "connexion",

@@ -83,7 +83,7 @@ export function DropOverlay({ onFiles }: { onFiles: (files: File[]) => void }) {
             <Glyph name="file" size={14} /> {"AsyncAPI"}
           </span>
           <span>
-            <Glyph name="file" size={14} /> {t("fileType.terraformPlanOrState")}
+            <Glyph name="file" size={14} /> {t("fileType.terraformPlan")}
           </span>
         </span>
         <span className="ix-drop-hint">{t("fileDialog.dropHint")}</span>

@@ -1102,7 +1102,7 @@ export function readKubernetes(files: readonly SourceFile[]): ImportGraph {
       note(
         diagnostic("importDetail.value0KafkaUserMayValue1value2NotDrawn", {
           value0: label(u.name),
-          value1: { list: wide.slice(0, 3) },
+          value1: { list: wide.slice(0, 3), english: "comma" },
           value2: wide.length > 3 ? "…" : "",
         }),
       );

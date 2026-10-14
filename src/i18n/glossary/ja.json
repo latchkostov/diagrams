@@ -44,7 +44,12 @@
     "offset": { "use": "オフセット", "match": ["オフセット"] },
     "backlog": { "use": "バックログ", "match": ["バックログ"] },
     "retry": { "use": "再試行", "match": ["再試行"] },
-    "diagram": { "use": "ダイアグラム", "match": ["ダイアグラム"] },
+    "diagram": {
+      "use": "ダイアグラム",
+      "match": ["ダイアグラム"],
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
+      "note": "Diagrams in these cloud errors is the existing folder name."
+    },
     "node": { "use": "ノード", "match": ["ノード"] },
     "edge": {
       "use": "接続",

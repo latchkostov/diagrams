@@ -30,7 +30,12 @@
     "offset": { "use": "offset", "keepEnglish": true },
     "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog", "הודעות ממתינות"] },
     "retry": { "use": "ניסיון חוזר", "match": ["ניסיון חוזר", "לנסות שוב", "נסו שוב"] },
-    "diagram": { "use": "דיאגרמה", "match": ["דיאגרמ"], "note": "feminine." },
+    "diagram": {
+      "use": "דיאגרמה",
+      "match": ["דיאגרמ"],
+      "note": "feminine.; Diagrams in these cloud errors is the existing folder name.",
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"]
+    },
     "node": { "use": "צומת", "match": ["צומת", "צמת"], "note": "plural צמתים." },
     "edge": {
       "use": "חיבור",

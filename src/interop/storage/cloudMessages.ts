@@ -8,7 +8,8 @@ export const cloudMessages = {
   changed: (provider: string, action: CloudOperation) => t("cloud.fileChanged", { provider, action }),
   busy: (provider: string, status: number) => t("cloud.busy", { provider, status }),
   full: (provider: string) => t("cloud.storageFull", { provider }),
-  missing: (provider: string) => t("cloud.fileMissing", { provider }),
+  missing: (provider: string) =>
+    provider === "Dropbox" ? t("cloud.dropboxFileMissing") : t("cloud.fileMissing", { provider }),
   failed: (provider: string, action: CloudOperation, status: number, detail: string) =>
     t("cloud.operationFailed", { provider, value0: action, value1: status, value2: detail }),
 };

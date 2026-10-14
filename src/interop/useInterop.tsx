@@ -318,7 +318,7 @@ export function useInterop({
 
   /** Runs an action, turning any failure into a friendly toast. Called from handlers, never during render. */
   const attempt = async (
-    what: string,
+    what: import("./ui/fileMessages").FileFailureAction,
     fn: (notify: (show: (words: typeof import("./ui/fileMessages")) => void) => void) => Promise<void> | void,
   ) => {
     // Start the message download beside the operation, without awaiting before a system picker opens.
@@ -347,7 +347,7 @@ export function useInterop({
     });
 
   const exportImage = (kind: "png" | "svg", opts: ImageExportOptions = {}) =>
-    attempt("image", async () => {
+    attempt({ action: "image", name: kind.toUpperCase() }, async () => {
       const d = current();
       const busy = toast.busy(t("fileToast.renderingValue0", { value0: kind.toUpperCase() }));
       const { renderDiagramImage } = await import("./image");
@@ -494,7 +494,7 @@ export function useInterop({
 
   /** Save to a cloud provider: over the file this diagram is bound to there, or (`asNew`) a new file. */
   const saveToCloud = (info: ProviderInfo, asNew = false) =>
-    attempt("save", async () => {
+    attempt({ action: "saveProvider", name: info.label }, async () => {
       const source = slug;
       if (!canSaveToCloud(privacyState(source))) {
         toast.error(t("fileToast.privateDiagramsArentSavedToValue0Save", { value0: info.label }), {
@@ -690,7 +690,7 @@ export function useInterop({
     if (id === DEVICE_PROVIDER) return openFile();
     const info = providerInfo(id);
     if (!info) return Promise.resolve();
-    return attempt("open", async () => openFromProvider(info, await info.load()));
+    return attempt({ action: "openProvider", name: info.label }, async () => openFromProvider(info, await info.load()));
   };
 
   const importPasted = useCallback(

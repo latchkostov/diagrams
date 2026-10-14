@@ -12,7 +12,7 @@ import { t, useLocale } from "../i18n";
 const SHOW_USAGE_FROM = 0.5;
 
 /** Storage in bytes (UTF-16: two per character), as KB below a tenth of a megabyte. */
-const size = (chars: number) => formatBytes(chars * 2);
+const size = (chars: number) => formatBytes(chars * 2, { storage: true });
 const PAGE_SIZE = 20;
 
 export interface LibraryActions {
@@ -176,7 +176,7 @@ export function LibraryDialog({
                           <Icon name="lock" size={11} /> {t("library.private")}{" "}
                         </span>
                       )}
-                      {e.slug === current ? t("library.openNow") : ""}
+                      {e.slug === current ? <>{t("library.openNow")} </> : ""}
                       {t("start.recentDetail", { count: e.nodes, ago: formatAgo(e.updatedAt) })}
                     </span>
                   </span>

@@ -22,6 +22,9 @@ Changes to habits people already have. The app has no "what's new" panel, so the
   download fails. Native Open and Save retain the browser gesture that allows their pickers to open.
 - Cancelling Paste also cancels an import waiting for its messages. Import reports follow language changes when
   reopened, including reasons, notes and reports drawn again from retained import data.
+- English keeps its previous wording and formatting after extraction: storage failures name their provider,
+  image failures name their format, and locked copies retain the warning when someone sends a link. Library
+  pagination, detail spacing, import counts and lists, file sizes and traffic units keep their original output.
 
 ## External discovery (2026-10-14)
 

@@ -1,6 +1,6 @@
 import { msg } from "../../i18n";
-import { formatList } from "../../i18n/format";
-import type { ImportText, ReportLine } from "../infra/graph";
+import { formatImportList } from "../../i18n/format";
+import type { ImportList, ImportText, ReportLine } from "../infra/graph";
 
 // Literal keys let the build inline English without carrying the catalog or ICU parser.
 export const messages = {
@@ -99,7 +99,10 @@ export function formatImportMessage(text: ImportText): string {
   const resolve = (value: unknown): unknown => {
     if (!value || typeof value !== "object") return value;
     if ("code" in value) return formatImportMessage(value as ImportText);
-    if ("list" in value) return formatList((value as { list: ImportText[] }).list.map(formatImportMessage));
+    if ("list" in value) {
+      const { list, english } = value as ImportList;
+      return formatImportList(list.map(formatImportMessage), english);
+    }
     return Object.fromEntries(Object.entries(value).map(([key, arg]) => [key, resolve(arg)]));
   };
   const format = messages[text.code] as (...args: unknown[]) => string;
