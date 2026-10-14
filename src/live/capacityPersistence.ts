@@ -26,7 +26,7 @@ export function capacitySaveCandidate(diagram: DiagramFile, base: Simulation | n
 }
 
 export function capacitySaveError(diagram: DiagramFile): string | null {
-  const guidance = ` Reduce the inputs: entry rates must be at most ${LIMITS.maxRatePerSec.toLocaleString("en-US")} msg/s, and total scripted traffic at most ${LIMITS.maxTrafficVolume.toLocaleString("en-US")} messages (including the Traffic multiplier).`;
+  const guidance = ` Reduce the inputs: entry rates must be at most ${LIMITS.maxRatePerSec.toLocaleString("en-US")} msg/s, and total scripted traffic at most ${LIMITS.maxTrafficVolume.toLocaleString("en-US")} dots (messages × the Traffic multiplier ÷ messages per dot).`;
   // Native loading can gently discard invalid simulations; saving must treat that as a failure.
   for (const sim of diagram.simulations ?? []) {
     const problem = simulationProblem(sim);

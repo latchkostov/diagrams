@@ -61,6 +61,7 @@ import {
 import { formatCount } from "../live/format";
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
 import { SIM_FIELDS_BY_ROLE, edgeSimFields, inertNodeProps } from "./simFieldRules";
+import { SIM_LIMITS } from "../interop/native";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.
@@ -81,13 +82,15 @@ interface SimField {
   note?: string;
 }
 
-// Partial on purpose: engine knobs without a designed field yet stay editable under "Custom properties".
+// Partial on purpose: engine knobs without a designed field yet stay editable under "Custom properties". Bounds are
+// the file format's (SIM_LIMITS): a value the inspector takes always saves and opens again.
 const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
   ratePerSec: {
     label: "Rate",
     unit: "msg/s",
     kind: "number",
     min: 0,
+    max: SIM_LIMITS.ratePerSec,
     step: 0.5,
     placeholder: "2",
     hint: "Messages per second while traffic is on",
@@ -103,6 +106,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     unit: "ms",
     kind: "number",
     min: 0,
+    max: SIM_LIMITS.timeMs,
     step: 10,
     placeholder: "default",
     hint: "Processing time per message",
@@ -111,6 +115,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     label: "Concurrency",
     kind: "number",
     min: 1,
+    max: SIM_LIMITS.count,
     step: 1,
     placeholder: "4",
     hint: "Messages processed in parallel per replica",
@@ -119,6 +124,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     label: "Replicas",
     kind: "number",
     min: 1,
+    max: SIM_LIMITS.count,
     step: 1,
     placeholder: "1",
     hint: "Instances (pods); behind a topic, only as many as there are partitions do work",
@@ -147,6 +153,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     label: "Max deliveries",
     kind: "number",
     min: 1,
+    max: SIM_LIMITS.count,
     step: 1,
     placeholder: "3",
     hint: "Attempts before dead-lettering",
@@ -155,6 +162,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     label: "Partitions",
     kind: "number",
     min: 1,
+    max: SIM_LIMITS.count,
     step: 1,
     placeholder: "3",
     hint: "Max in-flight deliveries per consumer group",
@@ -620,6 +628,7 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
                 unit: "ms",
                 kind: "number",
                 min: 0,
+                max: SIM_LIMITS.timeMs,
                 step: 50,
                 placeholder: String(DEFAULT_TRAVEL_MS[data.kind === "sync" ? "sync" : "async"]),
                 hint: "Time a message spends on this edge at 1x",
@@ -1863,6 +1872,8 @@ function SimInput({
 }) {
   const external = showSim(field.kind, value);
   const [draft, setDraft] = useState(external);
+  // A number past the field's bound is saved at the bound, and says so while it's typed.
+  const [over, setOver] = useState(false);
   const focused = useRef(false);
   useEffect(() => {
     if (!focused.current) setDraft(external);
@@ -1884,10 +1895,12 @@ function SimInput({
             onBlur={() => {
               focused.current = false;
               setDraft(external);
+              setOver(false);
             }}
             onChange={(e) => {
               const raw = e.target.value;
               setDraft(raw);
+              setOver(field.kind === "number" && field.max !== undefined && Number(raw) > field.max);
               if (field.kind === "text") return onChange(raw || undefined);
               if (field.kind === "list") {
                 const items = raw
@@ -1911,6 +1924,12 @@ function SimInput({
           />
           {field.unit && <span className="insp-unit">{field.unit}</span>}
         </span>
+        {over && field.max !== undefined && (
+          <small className="insp-note" role="status" data-testid={`inspector-limit-${name}`}>
+            Up to {field.max.toLocaleString("en-US")}
+            {field.unit && field.unit !== "0–1" ? ` ${field.unit}` : ""}: saved as {field.max.toLocaleString("en-US")}.
+          </small>
+        )}
       </Field>
       {field.note && (
         <p className="insp-note insp-field-note" data-testid={`inspector-note-${name}`}>

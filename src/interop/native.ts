@@ -1,5 +1,8 @@
 import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/types";
-import { propsProblem } from "../model/simProps";
+import { propsProblem, SIM_LIMITS } from "../model/simProps";
+
+// The simulation settings' bounds, for the editors that share this chunk (the inspector, the Inputs panel).
+export { SIM_LIMITS };
 import { ANNOTATION_LIMITS, normalizeAnnotation } from "../model/annotations";
 import type { DiagramAnnotation } from "../model/types";
 import { isDependency, isEdgeRelation, isRelationOrigin, sanitizeSettings } from "../model/relations";
@@ -33,7 +36,8 @@ export const LIMITS = {
   maxRampStages: 10_000,
   maxExpectations: 10_000,
   maxMessageCount: 100_000,
-  maxRatePerSec: 10_000,
+  maxRatePerSec: SIM_LIMITS.ratePerSec,
+  /** Scripted messages across all simulations, as played: real messages × Traffic multiplier ÷ the saved scale. */
   maxTrafficVolume: 200_000,
   maxSimulationMs: 600_000,
   maxPages: 100,
@@ -213,8 +217,8 @@ export function validateDiagram(data: unknown): NativeResult {
       delete out.group;
     }
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
-    if (out.props !== undefined && propsProblem(out.props))
-      return { ok: false, error: `Node "${n.id}" has invalid or excessive simulation properties.` };
+    const problem = out.props === undefined ? undefined : propsProblem(out.props);
+    if (problem) return { ok: false, error: `Node "${n.id}" has a simulation setting out of bounds: ${problem}.` };
     nodes.push(out);
   }
   d.nodes = nodes;
@@ -459,7 +463,10 @@ export function simulationProblem(sim: unknown): string | undefined {
           if (!STATUS.has(a.status as string)) return "a status action needs up, paused or down";
           break;
         case "props":
-          if (propsProblem(a.props)) return "a props action needs valid engine properties";
+          {
+            const problem = propsProblem(a.props);
+            if (problem) return `a props action needs valid engine properties (${problem})`;
+          }
           break;
         case "inject":
           if (!count(a.count) || !optString(a.messageType) || !optTime(a.spreadMs))
@@ -506,8 +513,13 @@ export function simulationProblem(sim: unknown): string | undefined {
       (!isObj(sim.setup.status) || !Object.values(sim.setup.status).every((v) => STATUS.has(v as string)))
     )
       return "setup status must map node ids to up, paused or down";
-    if (sim.setup.props !== undefined && (!isObj(sim.setup.props) || Object.values(sim.setup.props).some(propsProblem)))
-      return "setup props must map node ids to valid engine properties";
+    if (sim.setup.props !== undefined) {
+      if (!isObj(sim.setup.props)) return "setup props must map node ids to valid engine properties";
+      for (const [id, props] of Object.entries(sim.setup.props)) {
+        const problem = propsProblem(props);
+        if (problem) return `setup props for ${JSON.stringify(id)} must be valid engine properties (${problem})`;
+      }
+    }
   }
   return undefined;
 }
@@ -578,7 +590,9 @@ function simulationBudgetProblem(raw: Record<string, unknown>[]): string | undef
       }
     }
     for (const { action } of sim.timeline ?? []) if (action.do === "inject") messages += action.count;
-    volume += messages * Math.max(1, sim.multipliers?.traffic ?? 1);
+    // What playback draws: a saved scale samples real messages into dots, so a big rate costs no more to play.
+    const scale = isNum(sim.scale) && sim.scale >= 1 ? sim.scale : 1;
+    volume += (messages * Math.max(1, sim.multipliers?.traffic ?? 1)) / scale;
   }
   if (
     profiles > LIMITS.maxTrafficProfiles ||

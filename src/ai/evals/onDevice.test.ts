@@ -14,7 +14,7 @@ const reply = (ops: object[]) => JSON.stringify({ summary: "done", ops });
 const perfectEdits: Record<string, object[]> = {
   "edit-dlq": [
     { op: "add", kind: "dead-letter queue", label: "inventory-dlq" },
-    { op: "connect", from: "Inventory service", to: "inventory-dlq", flow: "message" },
+    { op: "connect", from: "orders.created.v1", to: "inventory-dlq", flow: "message" },
   ],
   "edit-rename": [{ op: "rename", target: "Payments service", label: "Billing service" }],
   "edit-remove": [{ op: "remove", target: "Notification dedupe" }],

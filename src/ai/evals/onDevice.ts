@@ -61,7 +61,10 @@ const editCases: OnDeviceCase[] = [
     id: "edit-dlq",
     request: "Add a dead-letter queue after Inventory service",
     start: KAFKA,
-    check: (b, a) => addedNear(b, a, messaging, { from: "inventory" }),
+    // Off the topic Inventory service reads: an edge out of the service would copy every message it handles.
+    check: (b, a) =>
+      addedNear(b, a, messaging, { from: "order-events" }) ??
+      (added(b, a).some((n) => hasEdge(a, "inventory", n.id)) ? "the dead-letter queue hangs off the service" : null),
   },
   {
     id: "edit-rename",

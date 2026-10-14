@@ -96,7 +96,7 @@ Every setting is optional, and live view works without any. Node `props`:
 
 <!-- BEGIN GENERATED node-props -->
 
-- `ratePerSec` (number 0..10000): messages per second a source sends in free play (default 2)
+- `ratePerSec` (number 0..10000000): messages per second a source sends in free play (default 2)
 - `latencyMs` (number 0..600000): time to handle one message (processor 250, gateway 60, store 40 by default)
 - `concurrency` (number 0..10000): messages handled at once per replica (default 4)
 - `replicas` (number 0..10000): instances (default 1)
@@ -124,7 +124,7 @@ Edge `props`:
 - `group` (string): consumer group, on an edge leaving a topic or stream: every group gets each message, edges in one group compete
 - `share` (number 0..1): chance that this fan-out edge gets a copy
 - `dlq` (boolean): true marks a broker's dead-letter route (also inferred from a target labelled DLQ or dead-letter)
-- `travelMs` (number 0..600000): time a message spends on the edge
+- `travelMs` (number 0..600000): time a message spends on the edge (default 300 for a message, 200 for a request); animation only, never a limit
 - `emits` (string): renames messages on this edge
 - `filter` (string[]): message types this edge accepts, e.g. ["Order*"] (a trailing * matches a prefix)
 - `deny` (boolean): true makes the edge a deny rule: messages routed here are blocked at its source (counted as blocked, never dropped)

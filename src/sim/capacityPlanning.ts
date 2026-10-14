@@ -15,6 +15,7 @@ import { activeUnits, deviceSpec, messagesPerSec, presetOf, sizesOf, type Device
 export const FIX_ABOVE = 0.9;
 export const FIX_TARGET = 0.55;
 /** The largest replica or partition count a fix may set: the node props schema's bound (src/model/simProps.ts). */
+/** The most replicas or partitions a fix proposes: the file format's count bound (SIM_LIMITS.count in model/simProps.ts). */
 export const MAX_COUNT = 10_000;
 
 const PARTITIONED: ReadonlySet<SimRole> = new Set(["topic", "stream"]);

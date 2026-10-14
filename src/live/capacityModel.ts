@@ -5,7 +5,7 @@
 
 import { flowEdges } from "../model/relations";
 import type { DiagramFile, DiagramNode, SimRole, Simulation, TrafficShape } from "../model/types";
-import { LIMITS } from "../interop/native";
+import { SIM_LIMITS } from "../interop/native";
 import { stencilRole } from "../stencils/roles";
 import { analyzeCapacity, type NodeCapacity } from "../sim/capacity";
 import { compileTopology } from "../sim/topology";
@@ -324,7 +324,7 @@ export function computeFix(
   const sized = sizingFix(d, sim, rankedNodes(d, nodes), {
     idle: busy && top.idleReplicas > 0 ? top.id : undefined,
     status,
-    maxCount: LIMITS.maxRatePerSec,
+    maxCount: SIM_LIMITS.count,
   });
   if (!sized) return null;
   const byId = new Map(d.nodes.map((n) => [n.id, n]));

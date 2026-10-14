@@ -391,6 +391,24 @@ describe("simulation boundary regressions", () => {
       expect(validateDiagram({ ...base, simulations: [{ ...simulation, ...patch }] }).ok).toBe(false);
   });
 
+  it("opens 50,000 msg/s, and a refused setting names its field and limit", () => {
+    const props = (p: Record<string, unknown>) => validateDiagram({ ...base, nodes: [{ ...base.nodes[0], props: p }] });
+    expect(props({ ratePerSec: 50_000 }).ok).toBe(true);
+    expect(props({ ratePerSec: LIMITS.maxRatePerSec }).ok).toBe(true);
+    const cases: [Record<string, unknown>, string][] = [
+      [{ ratePerSec: 20_000_000 }, "ratePerSec 20,000,000 is over the 10,000,000 limit"],
+      [{ replicas: 20_000 }, "replicas 20,000 is over the 10,000 limit"],
+      [{ latencyMs: -5 }, "latencyMs -5 is under the minimum of 0"],
+      [{ failureRate: "often" }, "failureRate must be a number"],
+      [{ retry: "sometimes" }, "retry must be one of requeue, inplace"],
+    ];
+    for (const [p, message] of cases) {
+      const result = props(p);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toBe(`Node "a" has a simulation setting out of bounds: ${message}.`);
+    }
+  });
+
   it("rejects coordinates and node emission rates unsafe for synchronous consumers", () => {
     expect(validateDiagram({ ...base, nodes: [{ ...base.nodes[0], x: 1e20 }] }).ok).toBe(false);
     expect(validateDiagram({ ...base, nodes: [{ ...base.nodes[0], props: { ratePerSec: 1e20 } }] }).ok).toBe(false);

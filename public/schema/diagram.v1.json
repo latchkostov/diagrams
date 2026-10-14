@@ -171,7 +171,7 @@
         "ratePerSec": {
           "type": "number",
           "minimum": 0,
-          "maximum": 10000
+          "maximum": 10000000
         },
         "latencyMs": {
           "type": "number",
