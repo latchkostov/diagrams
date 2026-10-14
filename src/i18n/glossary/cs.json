@@ -5,8 +5,8 @@
   "notes": [
     "Buttons and menu commands use the infinitive, as Windows, macOS and Google do in Czech (Uložit, Exportovat jako, Zavřít, Zrušit); instructions to the person use the vy imperative (Přetáhněte, Otevřete).",
     "Address the person as vy, lowercase; avoid gendered past-tense forms where a neutral wording exists.",
-    "Quotes „…“; a space before % (100 %); key names stay in English.",
-    "AI stays AI; canvas is plátno; theme (light/dark) is motiv, so téma for topic doesn't clash."
+    "AI stays AI; canvas is plátno; theme (light/dark) is motiv, so téma for topic doesn't clash.",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -14,63 +14,177 @@
       "match": ["tém", "topic"],
       "note": "Microsoft's Czech word (the research table); the colour theme is motiv in Czech UIs, so there is no clash. topic also accepted."
     },
-    "queue": { "use": "fronta", "match": ["front"] },
-    "consumer": { "use": "konzument", "match": ["konzument"] },
+    "queue": {
+      "use": "fronta",
+      "match": ["front"]
+    },
+    "consumer": {
+      "use": "konzument",
+      "match": ["konzument"]
+    },
     "consumer group": {
       "use": "skupina konzumentů",
       "match": ["konzument"],
       "note": "Microsoft's settled Czech word."
     },
-    "producer": { "use": "producent", "match": ["producent"] },
-    "partition": { "use": "oddíl", "match": ["oddíl", "partici"] },
-    "broker": { "use": "broker", "keepEnglish": true, "match": ["broker"] },
+    "producer": {
+      "use": "producent",
+      "match": ["producent"]
+    },
+    "partition": {
+      "use": "oddíl",
+      "match": ["oddíl", "partici"]
+    },
+    "broker": {
+      "use": "broker",
+      "keepEnglish": true,
+      "match": ["broker"]
+    },
     "dead-letter queue": {
       "use": "fronta nedoručených zpráv (DLQ)",
       "match": ["nedoručen", "dlq"],
       "note": "DLQ alone as the short label."
     },
-    "throughput": { "use": "propustnost", "match": ["propustnost"] },
-    "latency": { "use": "latence", "match": ["latenc"] },
-    "replica": { "use": "replika", "match": ["replik"] },
-    "load balancer": { "use": "nástroj pro vyrovnávání zatížení", "match": ["vyrovnáv", "load balancer"] },
-    "gateway": { "use": "brána", "match": ["brán", "bran"], "note": "brána API." },
-    "cache": { "use": "mezipaměť", "match": ["mezipam", "cache"] },
-    "message": { "use": "zpráva", "match": ["zpráv"] },
-    "event": { "use": "událost", "match": ["událost"] },
-    "subscription": { "use": "odběr", "match": ["odběr"] },
-    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
-    "backlog": { "use": "nevyřízené zprávy", "match": ["nevyřízen", "backlog"] },
-    "retry": { "use": "opakovat", "match": ["opak", "znovu"], "note": "Button: Opakovat (Windows)." },
+    "throughput": {
+      "use": "propustnost",
+      "match": ["propustnost"]
+    },
+    "latency": {
+      "use": "latence",
+      "match": ["latenc"]
+    },
+    "replica": {
+      "use": "replika",
+      "match": ["replik"]
+    },
+    "load balancer": {
+      "use": "nástroj pro vyrovnávání zatížení",
+      "match": ["vyrovnáv", "load balancer"]
+    },
+    "gateway": {
+      "use": "brána",
+      "match": ["brán", "bran"],
+      "note": "brána API."
+    },
+    "cache": {
+      "use": "mezipaměť",
+      "match": ["mezipam", "cache"]
+    },
+    "message": {
+      "use": "zpráva",
+      "match": ["zpráv"]
+    },
+    "event": {
+      "use": "událost",
+      "match": ["událost"]
+    },
+    "subscription": {
+      "use": "odběr",
+      "match": ["odběr"]
+    },
+    "offset": {
+      "use": "offset",
+      "keepEnglish": true,
+      "match": ["offset"]
+    },
+    "backlog": {
+      "use": "nevyřízené zprávy",
+      "match": ["nevyřízen", "backlog"]
+    },
+    "retry": {
+      "use": "opakovat",
+      "match": ["opak", "znovu"],
+      "note": "Button: Opakovat (Windows)."
+    },
     "diagram": {
       "use": "diagram",
       "match": ["diagram"],
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "uzel", "match": ["uzel", "uzl"], "note": "uzlu, uzly, uzlů." },
+    "node": {
+      "use": "uzel",
+      "match": ["uzel", "uzl"],
+      "note": "uzlu, uzly, uzlů."
+    },
     "edge": {
       "use": "spojení",
       "match": ["spoj"],
       "except": ["shortcuts.mouse.boundary"],
       "note": "In shortcuts.mouse.boundary 'edge' is the border of a boundary (okraj), not a connection."
     },
-    "stencil": { "use": "vzorník", "match": ["vzorník"], "note": "Visio's Czech word; the rail is «Vzorníky»." },
-    "boundary": { "use": "hranice", "match": ["hranic"] },
-    "simulation": { "use": "simulace", "match": ["simulac"] },
-    "live": { "use": "živý režim", "match": ["živ", "live"] },
-    "present": { "use": "prezentovat", "match": ["prezent"], "note": "Button: Prezentovat; noun: prezentace." },
-    "embed": { "use": "vložit", "match": ["vlož", "vklád"], "note": "Microsoft's Czech: vložit, vložení, vložený." },
-    "share link": { "use": "odkaz pro sdílení", "match": ["odkaz"] },
-    "export": { "use": "exportovat", "match": ["export"] },
-    "import": { "use": "importovat", "match": ["import"] },
+    "stencil": {
+      "use": "vzorník",
+      "match": ["vzorník"],
+      "note": "Visio's Czech word; the rail is «Vzorníky»."
+    },
+    "boundary": {
+      "use": "hranice",
+      "match": ["hranic"]
+    },
+    "simulation": {
+      "use": "simulace",
+      "match": ["simulac"]
+    },
+    "live": {
+      "use": "živý režim",
+      "match": ["živ", "live"]
+    },
+    "present": {
+      "use": "prezentovat",
+      "match": ["prezent"],
+      "note": "Button: Prezentovat; noun: prezentace."
+    },
+    "embed": {
+      "use": "vložit",
+      "match": ["vlož", "vklád"],
+      "note": "Microsoft's Czech: vložit, vložení, vložený."
+    },
+    "share link": {
+      "use": "odkaz pro sdílení",
+      "match": ["odkaz"]
+    },
+    "export": {
+      "use": "exportovat",
+      "match": ["export"]
+    },
+    "import": {
+      "use": "importovat",
+      "match": ["import"]
+    },
     "private": {
       "use": "soukromý",
       "match": ["soukrom"],
       "note": "Agrees with diagram (masculine): «Soukromý diagram». Never tajný or důvěrný; the Privacy menu is «Soukromí»."
     },
-    "this device": { "use": "toto zařízení", "match": ["zařízení"], "note": "v tomto zařízení, z tohoto zařízení." },
-    "capacity": { "use": "kapacita", "match": ["kapacit"] },
-    "checks": { "use": "kontroly", "match": ["kontrol"] },
-    "annotation": { "use": "anotace", "match": ["anotac"] }
+    "this device": {
+      "use": "toto zařízení",
+      "match": ["zařízení"],
+      "note": "v tomto zařízení, z tohoto zařízení."
+    },
+    "capacity": {
+      "use": "kapacita",
+      "match": ["kapacit"]
+    },
+    "checks": {
+      "use": "kontroly",
+      "match": ["kontrol"]
+    },
+    "annotation": {
+      "use": "anotace",
+      "match": ["anotac"]
+    }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Mezerník",
+    "drag": "Tažení"
   }
 }

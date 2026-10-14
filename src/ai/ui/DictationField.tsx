@@ -1,12 +1,12 @@
+import { t, useLocale } from "../../i18n";
+import { isolateKeys, legacyKeyHint } from "../../editor/keyHints";
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
 import { Icon } from "../../components/Icon";
-import { speechServiceNote, type Dictation } from "./useDictation";
+import { dictationMessage, speechServiceNote, type Dictation } from "./useDictation";
 
 // A request box with the dictation mic and everything dictation says: "Listening…", the words heard
 // so far, where the audio goes while the browser's speech service listens, and errors with how to fix them. One component, so every
 // box that takes speech gives the same feedback (Advanced's describe box, the on-device model's box).
-
-const MOD = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
 
 export interface DictationFieldTestIds {
   input: string;
@@ -49,9 +49,10 @@ export function DictationField({
   shortcut?: boolean;
   testIds: DictationFieldTestIds;
 }) {
+  useLocale();
   const listening = dictation.status !== "idle";
   const showMic = dictation.supported && !disabled;
-  const verb = listening ? "Stop dictating" : "Dictate";
+  const verb = listening ? t("ai.stopDictating") : t("ai.dictate");
   return (
     <>
       <div className={`ai-request${listening ? " is-listening" : ""}`}>
@@ -81,7 +82,9 @@ export function DictationField({
             }}
             aria-pressed={listening}
             aria-label={verb}
-            title={[verb, micTitle, shortcut ? `(${MOD}+Shift+M)` : ""].filter(Boolean).join(" ")}
+            title={[verb, micTitle, shortcut ? `(${isolateKeys(legacyKeyHint("Mod+Shift+M"))})` : ""]
+              .filter(Boolean)
+              .join(" ")}
             data-testid={testIds.mic}
             data-status={dictation.status}
           >
@@ -92,11 +95,13 @@ export function DictationField({
       {(listening || dictation.interim) && (
         <p className="ai-interim" aria-live="polite" data-testid={testIds.interim}>
           {dictation.status === "starting" ? (
-            <span className="ai-listening">Allow the microphone if your browser asks…</span>
+            <span className="ai-listening">{t("ai.allowTheMicrophoneIfYourBrowserAsks")}</span>
           ) : dictation.interim ? (
             dictation.interim
           ) : (
-            <span className="ai-listening">Listening{dictation.onDevice ? " on this device" : ""}…</span>
+            <span className="ai-listening">
+              {dictation.onDevice ? t("ai.listeningLocal") : t("ai.listeningService")}
+            </span>
           )}
         </p>
       )}
@@ -113,7 +118,7 @@ export function DictationField({
           role={dictation.message.tone === "error" ? "alert" : "status"}
           data-testid={testIds.message}
         >
-          {dictation.message.text}
+          {dictationMessage(dictation.message)}
         </p>
       )}
     </>

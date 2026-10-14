@@ -42,6 +42,6 @@ describe("the tool list the AI panel shows", () => {
     expect([...EDIT_TOOLS].sort()).toEqual(Object.keys(toolSchemas).sort());
     expect(Object.keys(TOOL_HELP).sort()).toEqual([...EDIT_TOOLS].sort());
     expect(LIVE_TOOLS.every((t) => EDIT_TOOLS.includes(t))).toBe(true);
-    for (const line of Object.values(TOOL_HELP)) expect(line).toMatch(/^[A-Z].{10,80}\.$/);
+    for (const line of Object.values(TOOL_HELP)) expect(line()).toMatch(/^[A-Z].{10,80}\.$/);
   });
 });

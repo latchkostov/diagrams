@@ -2166,11 +2166,15 @@ select.insp-input {
   padding: 3px 6px;
   color: var(--text-2);
   white-space: nowrap;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .sc-keys kbd[data-gesture] {
   white-space: normal;
   text-align: end;
+  direction: inherit;
+  unicode-bidi: plaintext;
 }
 
 .palette-foot kbd {

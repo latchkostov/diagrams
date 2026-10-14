@@ -4,9 +4,9 @@
   "quotes": "„…“",
   "notes": [
     "Menu commands and buttons use the singular imperative, as Microsoft's Bulgarian UIs do (Запиши, Отвори, Затвори, Отказ); sentences address the person formally (Пуснете, отворете, Вашите).",
-    "Quotes „…“; key names stay in English.",
     "Keep topic, consumer, consumer group, producer and offset in Latin script: тема is the app's colour theme and потребител means user.",
-    "AI is ИИ; diagram is диаграма (feminine): „Частна диаграма“."
+    "AI is ИИ; diagram is диаграма (feminine): „Частна диаграма“.",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -16,7 +16,10 @@
       "avoid": [" тема", " теми"],
       "note": "Bulgarian developers write the English word (dev.bg: Topic-а). Never тема: the app's colour theme. Avoid forms have a leading space so that „система“ doesn't trip them."
     },
-    "queue": { "use": "опашка", "match": ["опашк"] },
+    "queue": {
+      "use": "опашка",
+      "match": ["опашк"]
+    },
     "consumer": {
       "use": "consumer",
       "keepEnglish": true,
@@ -30,60 +33,163 @@
       "match": ["consumer group"],
       "avoid": ["потребител"]
     },
-    "producer": { "use": "producer", "keepEnglish": true, "match": ["producer"] },
+    "producer": {
+      "use": "producer",
+      "keepEnglish": true,
+      "match": ["producer"]
+    },
     "partition": {
       "use": "партиция",
       "match": ["партици", "дял"],
       "note": "Developers' word; Microsoft's дял also accepted."
     },
-    "broker": { "use": "брокер", "match": ["брокер"] },
+    "broker": {
+      "use": "брокер",
+      "match": ["брокер"]
+    },
     "dead-letter queue": {
       "use": "опашка за недоставени съобщения (DLQ)",
       "match": ["недоставен", "dlq"],
       "note": "DLQ alone as the short label."
     },
-    "throughput": { "use": "пропускателна способност", "match": ["пропускател"] },
-    "latency": { "use": "закъснение", "match": ["закъснени"] },
-    "replica": { "use": "реплика", "match": ["реплик"] },
-    "load balancer": { "use": "балансьор на натоварването", "match": ["балансьор"] },
-    "gateway": { "use": "шлюз", "match": ["шлюз"], "note": "API шлюз." },
-    "cache": { "use": "кеш", "match": ["кеш"] },
-    "message": { "use": "съобщение", "match": ["съобщени"] },
-    "event": { "use": "събитие", "match": ["събити"] },
-    "subscription": { "use": "абонамент", "match": ["абонамент"] },
-    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
-    "backlog": { "use": "натрупани съобщения", "match": ["натрупан", "backlog"] },
-    "retry": { "use": "повторен опит", "match": ["опит", "повтор"], "note": "Button: Опитай отново." },
+    "throughput": {
+      "use": "пропускателна способност",
+      "match": ["пропускател"]
+    },
+    "latency": {
+      "use": "закъснение",
+      "match": ["закъснени"]
+    },
+    "replica": {
+      "use": "реплика",
+      "match": ["реплик"]
+    },
+    "load balancer": {
+      "use": "балансьор на натоварването",
+      "match": ["балансьор"]
+    },
+    "gateway": {
+      "use": "шлюз",
+      "match": ["шлюз"],
+      "note": "API шлюз."
+    },
+    "cache": {
+      "use": "кеш",
+      "match": ["кеш"]
+    },
+    "message": {
+      "use": "съобщение",
+      "match": ["съобщени"]
+    },
+    "event": {
+      "use": "събитие",
+      "match": ["събити"]
+    },
+    "subscription": {
+      "use": "абонамент",
+      "match": ["абонамент"]
+    },
+    "offset": {
+      "use": "offset",
+      "keepEnglish": true,
+      "match": ["offset"]
+    },
+    "backlog": {
+      "use": "натрупани съобщения",
+      "match": ["натрупан", "backlog"]
+    },
+    "retry": {
+      "use": "повторен опит",
+      "match": ["опит", "повтор"],
+      "note": "Button: Опитай отново."
+    },
     "diagram": {
       "use": "диаграма",
       "match": ["диаграм"],
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "възел", "match": ["възел", "възл"], "note": "възли, възлите, възела." },
+    "node": {
+      "use": "възел",
+      "match": ["възел", "възл"],
+      "note": "възли, възлите, възела."
+    },
     "edge": {
       "use": "връзка",
       "match": ["връзк"],
       "except": ["shortcuts.mouse.boundary"],
       "note": "In shortcuts.mouse.boundary 'edge' is the border of a boundary (ръб), not a connection."
     },
-    "stencil": { "use": "фигура", "match": ["фигур"], "note": "The rail is „Фигури“." },
-    "boundary": { "use": "рамка", "match": ["рамк"] },
-    "simulation": { "use": "симулация", "match": ["симулаци"] },
-    "live": { "use": "на живо", "match": ["на живо", "live"] },
-    "present": { "use": "представяне", "match": ["представ"] },
-    "embed": { "use": "вграждане", "match": ["вгра"], "note": "Вгради (button), вграждане, вграден." },
-    "share link": { "use": "връзка за споделяне", "match": ["връзк"] },
-    "export": { "use": "експортиране", "match": ["експорт"] },
-    "import": { "use": "импортиране", "match": ["импорт"] },
+    "stencil": {
+      "use": "фигура",
+      "match": ["фигур"],
+      "note": "The rail is „Фигури“."
+    },
+    "boundary": {
+      "use": "рамка",
+      "match": ["рамк"]
+    },
+    "simulation": {
+      "use": "симулация",
+      "match": ["симулаци"]
+    },
+    "live": {
+      "use": "на живо",
+      "match": ["на живо", "live"]
+    },
+    "present": {
+      "use": "представяне",
+      "match": ["представ"]
+    },
+    "embed": {
+      "use": "вграждане",
+      "match": ["вгра"],
+      "note": "Вгради (button), вграждане, вграден."
+    },
+    "share link": {
+      "use": "връзка за споделяне",
+      "match": ["връзк"]
+    },
+    "export": {
+      "use": "експортиране",
+      "match": ["експорт"]
+    },
+    "import": {
+      "use": "импортиране",
+      "match": ["импорт"]
+    },
     "private": {
       "use": "частна",
       "match": ["частн"],
       "note": "Agrees with диаграма. Never секретна or поверителна; the Privacy menu is „Поверителност“."
     },
-    "this device": { "use": "това устройство", "match": ["устройств"] },
-    "capacity": { "use": "капацитет", "match": ["капацитет"] },
-    "checks": { "use": "проверки", "match": ["проверк"] },
-    "annotation": { "use": "анотация", "match": ["анотаци"] }
+    "this device": {
+      "use": "това устройство",
+      "match": ["устройств"]
+    },
+    "capacity": {
+      "use": "капацитет",
+      "match": ["капацитет"]
+    },
+    "checks": {
+      "use": "проверки",
+      "match": ["проверк"]
+    },
+    "annotation": {
+      "use": "анотация",
+      "match": ["анотаци"]
+    }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Интервал",
+    "drag": "Плъзгане"
   }
 }

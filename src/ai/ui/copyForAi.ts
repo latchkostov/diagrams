@@ -1,6 +1,7 @@
+import { t } from "../../i18n";
 import { copyText } from "../../interop/ui/copyText";
 import { notify } from "../../interop/ui/toast";
-import { isLocalOnly, privacyOf, PRIVATE_AI_OFF } from "../../lib/localOnly";
+import { isLocalOnly, privacyOf } from "../../lib/localOnly";
 import { paletteHost } from "../../palette/host";
 import { referenceText, resolveScope } from "./context";
 
@@ -12,20 +13,19 @@ export async function copyForAi(ids: string[]): Promise<void> {
   const canvas = paletteHost.get().canvas;
   if (!canvas) return;
   if (isLocalOnly(canvas))
-    return void notify(
-      privacyOf(canvas) === "private" ? `${PRIVATE_AI_OFF}.` : "AI is off for this local-only diagram.",
-      {
-        kind: "error",
-      },
-    );
+    return void notify(privacyOf(canvas) === "private" ? t("ai.privateOffPeriod") : t("ai.aIIsOffForThisLocalOnly2"), {
+      kind: "error",
+    });
   const diagram = canvas.editor.getDiagram();
   const scope = resolveScope(diagram, ids);
   if (!scope.length) return;
   const ok = await copyText(referenceText(diagram.title, scope));
   notify(
     ok
-      ? `Copied ${scope.length === 1 ? `“${scope[0].label}”` : `${scope.length} elements`} for your AI. Paste it into your request.`
-      : "The browser didn't allow copying. Try again.",
+      ? scope.length === 1
+        ? t("ai.copiedElement", { label: scope[0].label })
+        : t("ai.copiedElements", { count: scope.length })
+      : t("ai.theBrowserDidnTAllowCopyingTry"),
     { kind: ok ? "success" : "error" },
   );
 }

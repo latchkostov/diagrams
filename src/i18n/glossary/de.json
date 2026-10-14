@@ -7,7 +7,7 @@
     "Quotation marks „…“; app names of sections in running text go in „…“ when German grammar would otherwise inflect them (in „Ihre Diagramme“).",
     "English messaging terms developers keep are written as nouns with German gender: das Topic, die Queue, der Consumer, der Producer, die Consumer Group, der Broker, der Load Balancer, der Offset, das Backlog.",
     "English compounds are hyphenated (Dead-Letter-Queue, Live-Ansicht, Mermaid-Datei); German compounds are closed (Diagrammdatei, Freigabelink).",
-    "Key names stay in English (Ctrl, Shift, Esc, Space) in this batch; numbers and units: a space before % (100 %)."
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -17,7 +17,12 @@
       "avoid": ["Thema", "Themen"],
       "note": "das Topic, die Topics; Thema is the app's colour theme (Design) and a subject"
     },
-    "queue": { "use": "Queue", "keepEnglish": true, "match": ["queue"], "note": "die Queue, die Queues" },
+    "queue": {
+      "use": "Queue",
+      "keepEnglish": true,
+      "match": ["queue"],
+      "note": "die Queue, die Queues"
+    },
     "consumer": {
       "use": "Consumer",
       "keepEnglish": true,
@@ -38,76 +43,180 @@
       "avoid": ["Produzent"],
       "note": "der Producer, die Producer"
     },
-    "partition": { "use": "Partition", "match": ["partition"], "note": "die Partition, die Partitionen" },
-    "broker": { "use": "Broker", "keepEnglish": true, "match": ["broker"], "note": "der Broker" },
+    "partition": {
+      "use": "Partition",
+      "match": ["partition"],
+      "note": "die Partition, die Partitionen"
+    },
+    "broker": {
+      "use": "Broker",
+      "keepEnglish": true,
+      "match": ["broker"],
+      "note": "der Broker"
+    },
     "dead-letter queue": {
       "use": "Dead-Letter-Queue",
       "keepEnglish": true,
       "match": ["dead-letter", "dlq"],
       "note": "die Dead-Letter-Queue (DLQ)"
     },
-    "throughput": { "use": "Durchsatz", "match": ["durchsatz"] },
-    "latency": { "use": "Latenz", "match": ["latenz"] },
-    "replica": { "use": "Replikat", "match": ["replik"] },
+    "throughput": {
+      "use": "Durchsatz",
+      "match": ["durchsatz"]
+    },
+    "latency": {
+      "use": "Latenz",
+      "match": ["latenz"]
+    },
+    "replica": {
+      "use": "Replikat",
+      "match": ["replik"]
+    },
     "load balancer": {
       "use": "Load Balancer",
       "keepEnglish": true,
       "match": ["load balancer", "load-balancer"],
       "note": "der Load Balancer"
     },
-    "gateway": { "use": "Gateway", "keepEnglish": true, "match": ["gateway"], "note": "das Gateway (API-Gateway)" },
-    "cache": { "use": "Cache", "keepEnglish": true, "match": ["cache"], "note": "der Cache" },
+    "gateway": {
+      "use": "Gateway",
+      "keepEnglish": true,
+      "match": ["gateway"],
+      "note": "das Gateway (API-Gateway)"
+    },
+    "cache": {
+      "use": "Cache",
+      "keepEnglish": true,
+      "match": ["cache"],
+      "note": "der Cache"
+    },
     "message": {
       "use": "Nachricht",
       "match": ["nachricht"],
       "except": ["language.subtitle"],
       "note": "A message in Live; UI messages in language.subtitle are Meldungen"
     },
-    "event": { "use": "Event", "keepEnglish": true, "match": ["event", "ereignis"], "note": "das Event" },
-    "subscription": { "use": "Abonnement", "match": ["abonnement"] },
-    "offset": { "use": "Offset", "keepEnglish": true, "match": ["offset"], "note": "der Offset" },
-    "backlog": { "use": "Backlog", "keepEnglish": true, "match": ["backlog"], "note": "das Backlog" },
-    "retry": { "use": "Wiederholung", "match": ["wiederhol", "erneut"], "note": "The Retry button: Erneut versuchen" },
+    "event": {
+      "use": "Event",
+      "keepEnglish": true,
+      "match": ["event", "ereignis"],
+      "note": "das Event"
+    },
+    "subscription": {
+      "use": "Abonnement",
+      "match": ["abonnement"]
+    },
+    "offset": {
+      "use": "Offset",
+      "keepEnglish": true,
+      "match": ["offset"],
+      "note": "der Offset"
+    },
+    "backlog": {
+      "use": "Backlog",
+      "keepEnglish": true,
+      "match": ["backlog"],
+      "note": "das Backlog"
+    },
+    "retry": {
+      "use": "Wiederholung",
+      "match": ["wiederhol", "erneut"],
+      "note": "The Retry button: Erneut versuchen"
+    },
     "diagram": {
       "use": "Diagramm",
       "match": ["diagramm"],
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "Knoten", "match": ["knoten"] },
+    "node": {
+      "use": "Knoten",
+      "match": ["knoten"]
+    },
     "edge": {
       "use": "Verbindung",
       "match": ["verbindung"],
       "except": ["shortcuts.mouse.boundary"],
       "note": "In shortcuts.mouse.boundary 'edge' is the boundary's Rand, not a connection"
     },
-    "stencil": { "use": "Schablone", "match": ["schablone"], "note": "die Schablone, die Schablonen (Visio's word)" },
+    "stencil": {
+      "use": "Schablone",
+      "match": ["schablone"],
+      "note": "die Schablone, die Schablonen (Visio's word)"
+    },
     "boundary": {
       "use": "Begrenzung",
       "match": ["begrenzung"],
       "avoid": ["Gruppe"],
       "note": "die Begrenzung; never Gruppe"
     },
-    "simulation": { "use": "Simulation", "match": ["simulation"] },
-    "live": { "use": "Live", "keepEnglish": true, "match": ["live"], "note": "Live-Ansicht" },
+    "simulation": {
+      "use": "Simulation",
+      "match": ["simulation"]
+    },
+    "live": {
+      "use": "Live",
+      "keepEnglish": true,
+      "match": ["live"],
+      "note": "Live-Ansicht"
+    },
     "present": {
       "use": "Präsentieren",
       "match": ["präsent"],
       "note": "Präsentieren (button), Präsentation (the mode)"
     },
-    "embed": { "use": "einbetten", "match": ["einbett", "eingebett"], "note": "die Einbettung" },
-    "share link": { "use": "Freigabelink", "match": ["freigabelink"] },
-    "export": { "use": "Exportieren", "match": ["export"] },
-    "import": { "use": "Importieren", "match": ["import"] },
-    "private": { "use": "privat", "match": ["privat"], "avoid": ["vertraulich", "geheim"] },
+    "embed": {
+      "use": "einbetten",
+      "match": ["einbett", "eingebett"],
+      "note": "die Einbettung"
+    },
+    "share link": {
+      "use": "Freigabelink",
+      "match": ["freigabelink"]
+    },
+    "export": {
+      "use": "Exportieren",
+      "match": ["export"]
+    },
+    "import": {
+      "use": "Importieren",
+      "match": ["import"]
+    },
+    "private": {
+      "use": "privat",
+      "match": ["privat"],
+      "avoid": ["vertraulich", "geheim"]
+    },
     "this device": {
       "use": "dieses Gerät",
       "match": ["dieses gerät", "diesem gerät", "dieses geräts"],
       "avoid": ["lokal", "Computer", "Festplatte"],
       "note": "In sentences mostly dative: auf diesem Gerät"
     },
-    "capacity": { "use": "Kapazität", "match": ["kapazität"] },
-    "checks": { "use": "Prüfungen", "match": ["prüfung"], "avoid": ["Fehler", "Probleme"] },
-    "annotation": { "use": "Anmerkung", "match": ["anmerkung"] }
+    "capacity": {
+      "use": "Kapazität",
+      "match": ["kapazität"]
+    },
+    "checks": {
+      "use": "Prüfungen",
+      "match": ["prüfung"],
+      "avoid": ["Fehler", "Probleme"]
+    },
+    "annotation": {
+      "use": "Anmerkung",
+      "match": ["anmerkung"]
+    }
+  },
+  "keys": {
+    "ctrl": "Strg",
+    "shift": "Umschalt",
+    "alt": "Alt",
+    "delete": "Entf",
+    "backspace": "Rücktaste",
+    "escape": "Esc",
+    "enter": "Eingabe",
+    "tab": "Tab",
+    "space": "Leertaste",
+    "drag": "Ziehen"
   }
 }

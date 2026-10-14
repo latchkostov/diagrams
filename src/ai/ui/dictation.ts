@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 // Transcript merging for dictation, kept pure so it's unit-tested without a browser.
 //
 // The Web Speech API (continuous + interimResults) reports, per session, a growing list of results:
@@ -88,19 +89,19 @@ export function speechErrorKind(code: string): SpeechErrorKind {
 export function speechErrorMessage(kind: SpeechErrorKind): string | null {
   switch (kind) {
     case "denied":
-      return "The microphone is blocked. Allow it from the icon in the address bar, then try again.";
+      return t("ai.theMicrophoneIsBlockedAllowItFrom");
     case "no-mic":
-      return "No microphone was found. Plug one in, or type instead.";
+      return t("ai.noMicrophoneWasFoundPlugOneIn");
     case "no-speech":
-      return "Didn't catch that. Still listening…";
+      return t("ai.didnTCatchThatStillListening");
     case "network":
-      return "The speech service couldn't be reached. Check your connection, or type instead.";
+      return t("ai.theSpeechServiceCouldnTBeReached");
     case "language":
-      return "Dictation doesn't support your browser's language yet. Type instead.";
+      return t("ai.dictationDoesnTSupportYourBrowserS");
     case "aborted":
       return null;
     default:
-      return "Dictation stopped unexpectedly. Try again.";
+      return t("ai.dictationStoppedUnexpectedlyTryAgain");
   }
 }
 

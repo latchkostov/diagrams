@@ -2,6 +2,24 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## AI language switching fixes (2026-10-14)
+
+- Visible microphone and on-device model errors now update when the language changes, keeping the request drafts.
+- New conversation reverts keep their target as metadata, so their labels follow language changes after reload too.
+  Previously stored revert labels remain readable in their original language.
+- Complete AI shortcut combinations stay left to right inside Arabic and Hebrew sentences and tooltips on macOS.
+
+## AI and keyboard labels in your language (2026-10-14)
+
+- The AI panel's dock, conversation, Advanced copy-and-paste flow, dictation notices and on-device model
+  controls now use the chosen language, with translations in all 37 locales. Agent prompts, WebMCP tool
+  contracts and results, and diagram content keep their original text.
+- Keyboard labels follow the language and OS across the shortcuts sheet, menus, tooltips and palette:
+  German Strg and Umschalt, French Maj, and macOS modifier symbols. The sheet's Live and presenting rows
+  are translated too. Long labels wrap, and Arabic mirrors the panel while keeping key combinations readable.
+- Sending, dictation, inference and pasted replies work with English fallback while a language downloads
+  or fails to download. English wording, punctuation and number presentation retain their previous output.
+
 ## Properties in live view (2026-10-14)
 
 - Double-click a node, boundary or connection in Live to open its property sheet, even when collapsed, with the

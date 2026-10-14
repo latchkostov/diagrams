@@ -303,7 +303,7 @@ export function PaletteDialog({
             spellCheck={false}
             data-testid="command-input"
           />
-          <kbd className="cmdk-esc">Esc</kbd>
+          <kbd className="cmdk-esc">{formatCombo("Esc")}</kbd>
         </div>
         <div id={`${id}-list`} className="cmdk-list" role="listbox" aria-label="Commands" data-testid="command-list">
           {ranked.map((g) => (
@@ -340,7 +340,7 @@ export function PaletteDialog({
         <footer className="cmdk-foot">
           <span className="cmdk-keys" aria-hidden>
             <kbd>↑</kbd>
-            <kbd>↓</kbd> move <kbd>↵</kbd> run <kbd>Esc</kbd> close
+            <kbd>↓</kbd> move <kbd>↵</kbd> run <kbd>{formatCombo("Esc")}</kbd> close
           </span>
           {view === "canvas" && (
             <span className="cmdk-prefixes">

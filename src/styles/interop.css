@@ -137,9 +137,7 @@
   font-size: 13px;
   font-weight: 580;
   letter-spacing: -0.005em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 /* Wraps rather than cuts: a description in German or Finnish runs about 40% longer than in English. */
@@ -161,6 +159,8 @@
   background: none;
   font-size: 11px;
   color: var(--text-3);
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .ix-menu-chips {

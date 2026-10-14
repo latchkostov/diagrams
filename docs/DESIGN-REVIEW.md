@@ -3658,3 +3658,33 @@ count words and number presentation match the previous English. No controls, foc
 were added. Historical singular wording stays for compatibility; a grammar change belongs in a deliberate
 copy update. The precision-helper suggestion was applied: English traffic values retain their original
 string interpolation, including small rates and fractional minutes. This review did not inspect the browser.
+
+## AI and keyboard localization — 2026-10-14
+
+Source review and production-browser checks cover the dock, idle help, tool-help disclosure, Advanced,
+dictation notices, on-device controls and conversation actions. No controls or focus targets were added;
+Advanced and the existing scrollable conversation keep their places. German, Finnish, Arabic and the
+pseudo-locale fit at 1280 × 800. The panel subtitle and menu titles wrap when labels grow. Arabic mirrors
+the dock, microphone and disclosure arrows while keyboard combinations stay left to right.
+
+The English audit retains original punctuation, list separators, ungrouped counts and historical Mac
+prose hints. Shortcut matching, agent prompts, schemas and tool results are unchanged. Requests,
+dictation and pasted replies work during a pending or failed catalog request, and switching language
+keeps a dictation session and its draft. Translation catalogs remain marked as machine-translated.
+
+## AI localization review fixes — 2026-10-14
+
+The designer's source and production screenshot review (German, Finnish, Arabic and pseudo-locale at 1280 × 800)
+found no blocking issues in the changed AI surfaces. Language changes preserve drafts and original requests while
+updating app-generated copy. No controls, layout changes or focus targets were added; the existing chrome budget
+and recovery actions remain. Help text and actions wrap within the dock; long help content still scrolls vertically.
+Arabic mirrors the dock and chrome without mirroring the diagram. Automated assertions cover retained errors,
+reverts and native-tooltip isolates; screenshots do not show those states. This was not a whole-app walkthrough,
+screen-reader audit or narrow/dark layout review. The existing RTL JSON textarea direction is a separate follow-up.
+
+All seven P2 findings in the review were accepted; the two stored-model-error findings describe the same defect.
+Failures now use typed reasons independent of the agent-facing English, and new reverts persist neutral labels.
+Regression checks temporarily restored the faulty behavior: metadata validation, failure wording, retained
+microphone/model errors, revert language switching, Arabic/Hebrew isolation, Windows-only assertions on a Mac
+and premature WebMCP checks all failed as expected. The WebMCP test holds the bridge chunk until the host is read,
+so static tool help cannot conceal missing registration. Native-key checks run with explicit Windows/Mac platforms.

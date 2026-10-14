@@ -7,7 +7,8 @@
     "Export is Vie and import is Tuo, Microsoft's Finnish words.",
     "Keep labels short: prefer a short compound or a colon over a long inflected phrase.",
     "AI is tekoäly; a colour theme is teema, a topic aihe.",
-    "Your diagrams is the library name Omat kaaviot, inflected in sentences (Omiin kaavioihin)."
+    "Your diagrams is the library name Omat kaaviot, inflected in sentences (Omiin kaavioihin).",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -176,5 +177,17 @@
       "use": "merkintä",
       "match": ["merkin", "merkint"]
     }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Vaihto",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Askelpalautin",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Sarkain",
+    "space": "Välilyönti",
+    "drag": "Vedä"
   }
 }

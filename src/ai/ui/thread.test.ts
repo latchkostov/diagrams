@@ -102,4 +102,15 @@ describe("thread", () => {
     saveThread("doc-a", []);
     expect(localStorage.length).toBe(0);
   });
+
+  it("validates and persists neutral revert metadata while retaining legacy requests", () => {
+    const revert = turn(1, undefined, { kind: "revert", request: "", revertLabel: "My original request" });
+    saveThread("revert", [revert]);
+    expect(loadThread("revert")[0]).toEqual(revert);
+    expect(validTurn({ ...revert, revertLabel: 42 })?.revertLabel).toBeUndefined();
+    expect(validTurn({ ...revert, kind: "change" })?.revertLabel).toBeUndefined();
+    const legacy = turn(2, undefined, { kind: "revert", request: "Reverted to an older change" });
+    expect(validTurn(legacy)?.request).toBe(legacy.request);
+    expect(validTurn({ ...revert, revertLabel: "" })?.revertLabel).toBe("");
+  });
 });

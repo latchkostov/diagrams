@@ -6,7 +6,8 @@
     "Full-width punctuation ，。：；（）“”; a half-width space between Chinese and Latin words, numbers and placeholders (导出 PNG, API 网关).",
     "Buttons and menu items are short verb or noun phrases as in Windows/macOS zh-CN (保存, 另存为…, 导出为); keep the ellipsis ….",
     "The colour theme is 浅色模式/深色模式, so that 主题 only ever means a Kafka topic.",
-    "\"Your diagrams\" (the library) is 我的图表 everywhere; \"Share\" is 分享, matching 分享链接."
+    "\"Your diagrams\" (the library) is 我的图表 everywhere; \"Share\" is 分享, matching 分享链接.",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -14,11 +15,27 @@
       "match": ["主题", "topic"],
       "note": "Kafka 主题. Chinese Kafka docs also write Topic; both accepted. The app's colour theme is written 浅色/深色模式 to avoid the clash."
     },
-    "queue": { "use": "队列", "match": ["队列"] },
-    "consumer": { "use": "消费者", "match": ["消费者"], "avoid": ["用户"] },
-    "consumer group": { "use": "消费者组", "match": ["消费者组"] },
-    "producer": { "use": "生产者", "match": ["生产者"] },
-    "partition": { "use": "分区", "match": ["分区"] },
+    "queue": {
+      "use": "队列",
+      "match": ["队列"]
+    },
+    "consumer": {
+      "use": "消费者",
+      "match": ["消费者"],
+      "avoid": ["用户"]
+    },
+    "consumer group": {
+      "use": "消费者组",
+      "match": ["消费者组"]
+    },
+    "producer": {
+      "use": "生产者",
+      "match": ["生产者"]
+    },
+    "partition": {
+      "use": "分区",
+      "match": ["分区"]
+    },
     "broker": {
       "use": "Broker",
       "keepEnglish": true,
@@ -26,45 +43,145 @@
       "avoid": ["代理"],
       "note": "Kept in English as Chinese Kafka developers write it; 代理 means proxy."
     },
-    "dead-letter queue": { "use": "死信队列", "match": ["死信队列", "dlq"] },
-    "throughput": { "use": "吞吐量", "match": ["吞吐"] },
-    "latency": { "use": "延迟", "match": ["延迟"] },
-    "replica": { "use": "副本", "match": ["副本"] },
-    "load balancer": { "use": "负载均衡器", "match": ["负载均衡"] },
-    "gateway": { "use": "网关", "match": ["网关"] },
-    "cache": { "use": "缓存", "match": ["缓存"] },
-    "message": { "use": "消息", "match": ["消息"] },
-    "event": { "use": "事件", "match": ["事件"] },
-    "subscription": { "use": "订阅", "match": ["订阅"] },
-    "offset": { "use": "偏移量", "match": ["偏移"] },
-    "backlog": { "use": "积压", "match": ["积压"] },
-    "retry": { "use": "重试", "match": ["重试"] },
+    "dead-letter queue": {
+      "use": "死信队列",
+      "match": ["死信队列", "dlq"]
+    },
+    "throughput": {
+      "use": "吞吐量",
+      "match": ["吞吐"]
+    },
+    "latency": {
+      "use": "延迟",
+      "match": ["延迟"]
+    },
+    "replica": {
+      "use": "副本",
+      "match": ["副本"]
+    },
+    "load balancer": {
+      "use": "负载均衡器",
+      "match": ["负载均衡"]
+    },
+    "gateway": {
+      "use": "网关",
+      "match": ["网关"]
+    },
+    "cache": {
+      "use": "缓存",
+      "match": ["缓存"]
+    },
+    "message": {
+      "use": "消息",
+      "match": ["消息"]
+    },
+    "event": {
+      "use": "事件",
+      "match": ["事件"]
+    },
+    "subscription": {
+      "use": "订阅",
+      "match": ["订阅"]
+    },
+    "offset": {
+      "use": "偏移量",
+      "match": ["偏移"]
+    },
+    "backlog": {
+      "use": "积压",
+      "match": ["积压"]
+    },
+    "retry": {
+      "use": "重试",
+      "match": ["重试"]
+    },
     "diagram": {
       "use": "图表",
       "match": ["图表"],
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "节点", "match": ["节点"] },
+    "node": {
+      "use": "节点",
+      "match": ["节点"]
+    },
     "edge": {
       "use": "连线",
       "match": ["连线"],
       "except": ["shortcuts.mouse.boundary"],
       "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (边缘), not a connection."
     },
-    "stencil": { "use": "模具", "match": ["模具"], "note": "Visio's zh-CN word." },
-    "boundary": { "use": "边界", "match": ["边界"], "avoid": ["分组"] },
-    "simulation": { "use": "模拟", "match": ["模拟"] },
-    "live": { "use": "实时", "match": ["实时"] },
-    "present": { "use": "演示", "match": ["演示"] },
-    "embed": { "use": "嵌入", "match": ["嵌入"] },
-    "share link": { "use": "分享链接", "match": ["分享链接"] },
-    "export": { "use": "导出", "match": ["导出"] },
-    "import": { "use": "导入", "match": ["导入"] },
-    "private": { "use": "私有", "match": ["私有"], "avoid": ["机密"] },
-    "this device": { "use": "此设备", "match": ["此设备"], "avoid": ["本地", "电脑"] },
-    "capacity": { "use": "容量", "match": ["容量"] },
-    "checks": { "use": "检查", "match": ["检查"] },
-    "annotation": { "use": "注释", "match": ["注释"] }
+    "stencil": {
+      "use": "模具",
+      "match": ["模具"],
+      "note": "Visio's zh-CN word."
+    },
+    "boundary": {
+      "use": "边界",
+      "match": ["边界"],
+      "avoid": ["分组"]
+    },
+    "simulation": {
+      "use": "模拟",
+      "match": ["模拟"]
+    },
+    "live": {
+      "use": "实时",
+      "match": ["实时"]
+    },
+    "present": {
+      "use": "演示",
+      "match": ["演示"]
+    },
+    "embed": {
+      "use": "嵌入",
+      "match": ["嵌入"]
+    },
+    "share link": {
+      "use": "分享链接",
+      "match": ["分享链接"]
+    },
+    "export": {
+      "use": "导出",
+      "match": ["导出"]
+    },
+    "import": {
+      "use": "导入",
+      "match": ["导入"]
+    },
+    "private": {
+      "use": "私有",
+      "match": ["私有"],
+      "avoid": ["机密"]
+    },
+    "this device": {
+      "use": "此设备",
+      "match": ["此设备"],
+      "avoid": ["本地", "电脑"]
+    },
+    "capacity": {
+      "use": "容量",
+      "match": ["容量"]
+    },
+    "checks": {
+      "use": "检查",
+      "match": ["检查"]
+    },
+    "annotation": {
+      "use": "注释",
+      "match": ["注释"]
+    }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "空格",
+    "drag": "拖动"
   }
 }

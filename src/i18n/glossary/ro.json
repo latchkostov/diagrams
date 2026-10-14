@@ -6,7 +6,8 @@
     "ș and ț with comma below (U+0219, U+021B), never the cedilla ş ţ.",
     "Buttons and commands in the formal imperative (Salvați, Exportați, Anulați); gesture names as nouns (Glisare, Dublu clic).",
     "Keep „topic“ (topic-uri) and „live“ as Romanian developers do; the colour theme is „temă“.",
-    "Plural „other“ (20 and up) takes „de“: 20 de noduri."
+    "Plural „other“ (20 and up) takes „de“: 20 de noduri.",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -15,55 +16,177 @@
       "match": ["topic"],
       "note": "topicul, topic-uri; „temă“ is the colour theme"
     },
-    "queue": { "use": "coadă", "match": ["coad", "cozi"] },
-    "consumer": { "use": "consumator", "match": ["consumat"] },
-    "consumer group": { "use": "consumer group", "keepEnglish": true, "match": ["consumer group"] },
-    "producer": { "use": "producător", "match": ["producăt"] },
-    "partition": { "use": "partiție", "match": ["partiți"] },
-    "broker": { "use": "broker", "match": ["broker"] },
-    "dead-letter queue": { "use": "coadă de mesaje nelivrate", "match": ["nelivrat", "dlq"] },
-    "throughput": { "use": "debit", "match": ["debit"] },
-    "latency": { "use": "latență", "match": ["latenț"] },
-    "replica": { "use": "replică", "match": ["replic"] },
-    "load balancer": { "use": "echilibrator de încărcare", "match": ["echilibrator"] },
-    "gateway": { "use": "gateway", "keepEnglish": true, "match": ["gateway"] },
-    "cache": { "use": "cache", "keepEnglish": true, "match": ["cache"] },
-    "message": { "use": "mesaj", "match": ["mesaj"] },
-    "event": { "use": "eveniment", "match": ["eveniment"] },
-    "subscription": { "use": "abonament", "match": ["abonament"] },
-    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
-    "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
-    "retry": { "use": "reîncercați", "match": ["reîncerc"] },
+    "queue": {
+      "use": "coadă",
+      "match": ["coad", "cozi"]
+    },
+    "consumer": {
+      "use": "consumator",
+      "match": ["consumat"]
+    },
+    "consumer group": {
+      "use": "consumer group",
+      "keepEnglish": true,
+      "match": ["consumer group"]
+    },
+    "producer": {
+      "use": "producător",
+      "match": ["producăt"]
+    },
+    "partition": {
+      "use": "partiție",
+      "match": ["partiți"]
+    },
+    "broker": {
+      "use": "broker",
+      "match": ["broker"]
+    },
+    "dead-letter queue": {
+      "use": "coadă de mesaje nelivrate",
+      "match": ["nelivrat", "dlq"]
+    },
+    "throughput": {
+      "use": "debit",
+      "match": ["debit"]
+    },
+    "latency": {
+      "use": "latență",
+      "match": ["latenț"]
+    },
+    "replica": {
+      "use": "replică",
+      "match": ["replic"]
+    },
+    "load balancer": {
+      "use": "echilibrator de încărcare",
+      "match": ["echilibrator"]
+    },
+    "gateway": {
+      "use": "gateway",
+      "keepEnglish": true,
+      "match": ["gateway"]
+    },
+    "cache": {
+      "use": "cache",
+      "keepEnglish": true,
+      "match": ["cache"]
+    },
+    "message": {
+      "use": "mesaj",
+      "match": ["mesaj"]
+    },
+    "event": {
+      "use": "eveniment",
+      "match": ["eveniment"]
+    },
+    "subscription": {
+      "use": "abonament",
+      "match": ["abonament"]
+    },
+    "offset": {
+      "use": "offset",
+      "keepEnglish": true,
+      "match": ["offset"]
+    },
+    "backlog": {
+      "use": "backlog",
+      "keepEnglish": true,
+      "match": ["backlog"]
+    },
+    "retry": {
+      "use": "reîncercați",
+      "match": ["reîncerc"]
+    },
     "diagram": {
       "use": "diagramă",
       "match": ["diagram"],
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "nod", "match": ["nod"], "note": "nod, noduri, 20 de noduri" },
+    "node": {
+      "use": "nod",
+      "match": ["nod"],
+      "note": "nod, noduri, 20 de noduri"
+    },
     "edge": {
       "use": "conexiune",
       "match": ["conexiun"],
       "except": ["shortcuts.mouse.boundary"],
       "note": "In shortcuts.mouse.boundary 'edge' is the boundary's border (margine)."
     },
-    "stencil": { "use": "șablon", "match": ["șablo"], "note": "Visio's Romanian word; plural șabloane" },
-    "boundary": { "use": "limită", "match": ["limit"] },
-    "simulation": { "use": "simulare", "match": ["simulăr", "simular"] },
-    "live": { "use": "live", "keepEnglish": true, "match": ["live"] },
-    "present": { "use": "prezentați", "match": ["prezent"], "note": "Prezentați, prezentare" },
-    "embed": { "use": "încorporați", "match": ["încorpor"], "note": "încorporare (noun)" },
-    "share link": { "use": "link de partajare", "match": ["link"] },
-    "export": { "use": "exportați", "match": ["export"] },
-    "import": { "use": "importați", "match": ["import"] },
+    "stencil": {
+      "use": "șablon",
+      "match": ["șablo"],
+      "note": "Visio's Romanian word; plural șabloane"
+    },
+    "boundary": {
+      "use": "limită",
+      "match": ["limit"]
+    },
+    "simulation": {
+      "use": "simulare",
+      "match": ["simulăr", "simular"]
+    },
+    "live": {
+      "use": "live",
+      "keepEnglish": true,
+      "match": ["live"]
+    },
+    "present": {
+      "use": "prezentați",
+      "match": ["prezent"],
+      "note": "Prezentați, prezentare"
+    },
+    "embed": {
+      "use": "încorporați",
+      "match": ["încorpor"],
+      "note": "încorporare (noun)"
+    },
+    "share link": {
+      "use": "link de partajare",
+      "match": ["link"]
+    },
+    "export": {
+      "use": "exportați",
+      "match": ["export"]
+    },
+    "import": {
+      "use": "importați",
+      "match": ["import"]
+    },
     "private": {
       "use": "privat",
       "match": ["privat"],
       "note": "diagramă privată; „Confidențialitate“ is only the Privacy menu, as in Microsoft and Google"
     },
-    "this device": { "use": "acest dispozitiv", "match": ["dispozitiv"], "avoid": ["calculator"] },
-    "capacity": { "use": "capacitate", "match": ["capacit"] },
-    "checks": { "use": "verificări", "match": ["verific"] },
-    "annotation": { "use": "adnotare", "match": ["adnot"] }
+    "this device": {
+      "use": "acest dispozitiv",
+      "match": ["dispozitiv"],
+      "avoid": ["calculator"]
+    },
+    "capacity": {
+      "use": "capacitate",
+      "match": ["capacit"]
+    },
+    "checks": {
+      "use": "verificări",
+      "match": ["verific"]
+    },
+    "annotation": {
+      "use": "adnotare",
+      "match": ["adnot"]
+    }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Spațiu",
+    "drag": "Tragere"
   }
 }

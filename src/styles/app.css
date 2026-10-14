@@ -201,7 +201,7 @@ kbd {
   position: relative;
   z-index: 6;
   min-height: 0;
-  border-left: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
   background: var(--surface);
 }
 
@@ -261,7 +261,7 @@ kbd {
 .ai-rail-badge {
   position: absolute;
   top: -6px;
-  right: -6px;
+  inset-inline-end: -6px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;

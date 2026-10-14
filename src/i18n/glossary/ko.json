@@ -7,7 +7,8 @@
     "Descriptions that state what happens end in 합니다/됩니다; instructions end in 하세요.",
     "Developers' loanwords for messaging (토픽, 컨슈머, 프로듀서, 브로커), never 주제 or 소비자.",
     "Particles attach directly to Latin names and placeholders (Google Drive에, {name}에 저장).",
-    "\"Your diagrams\" (the library) is 내 다이어그램 everywhere."
+    "\"Your diagrams\" (the library) is 내 다이어그램 everywhere.",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -16,51 +17,172 @@
       "avoid": ["주제", "테마"],
       "note": "Confluent and Korean developers write 토픽; 주제/테마 clash with the colour theme."
     },
-    "queue": { "use": "큐", "match": ["큐"], "note": "Microsoft writes 큐 for Service Bus queues." },
-    "consumer": { "use": "컨슈머", "match": ["컨슈머"], "avoid": ["소비자"] },
-    "consumer group": { "use": "컨슈머 그룹", "match": ["컨슈머 그룹"] },
-    "producer": { "use": "프로듀서", "match": ["프로듀서"], "avoid": ["생산자"] },
-    "partition": { "use": "파티션", "match": ["파티션"] },
-    "broker": { "use": "브로커", "match": ["브로커"] },
-    "dead-letter queue": { "use": "데드 레터 큐", "match": ["데드 레터 큐", "dlq"], "avoid": ["배달 못한 편지"] },
-    "throughput": { "use": "처리량", "match": ["처리량"] },
-    "latency": { "use": "지연 시간", "match": ["지연"] },
-    "replica": { "use": "복제본", "match": ["복제본", "레플리카"] },
-    "load balancer": { "use": "로드 밸런서", "match": ["로드 밸런서"] },
-    "gateway": { "use": "게이트웨이", "match": ["게이트웨이"] },
-    "cache": { "use": "캐시", "match": ["캐시"] },
-    "message": { "use": "메시지", "match": ["메시지"] },
-    "event": { "use": "이벤트", "match": ["이벤트"] },
-    "subscription": { "use": "구독", "match": ["구독"] },
-    "offset": { "use": "오프셋", "match": ["오프셋"] },
-    "backlog": { "use": "백로그", "match": ["백로그"] },
-    "retry": { "use": "다시 시도", "match": ["다시 시도", "재시도"] },
+    "queue": {
+      "use": "큐",
+      "match": ["큐"],
+      "note": "Microsoft writes 큐 for Service Bus queues."
+    },
+    "consumer": {
+      "use": "컨슈머",
+      "match": ["컨슈머"],
+      "avoid": ["소비자"]
+    },
+    "consumer group": {
+      "use": "컨슈머 그룹",
+      "match": ["컨슈머 그룹"]
+    },
+    "producer": {
+      "use": "프로듀서",
+      "match": ["프로듀서"],
+      "avoid": ["생산자"]
+    },
+    "partition": {
+      "use": "파티션",
+      "match": ["파티션"]
+    },
+    "broker": {
+      "use": "브로커",
+      "match": ["브로커"]
+    },
+    "dead-letter queue": {
+      "use": "데드 레터 큐",
+      "match": ["데드 레터 큐", "dlq"],
+      "avoid": ["배달 못한 편지"]
+    },
+    "throughput": {
+      "use": "처리량",
+      "match": ["처리량"]
+    },
+    "latency": {
+      "use": "지연 시간",
+      "match": ["지연"]
+    },
+    "replica": {
+      "use": "복제본",
+      "match": ["복제본", "레플리카"]
+    },
+    "load balancer": {
+      "use": "로드 밸런서",
+      "match": ["로드 밸런서"]
+    },
+    "gateway": {
+      "use": "게이트웨이",
+      "match": ["게이트웨이"]
+    },
+    "cache": {
+      "use": "캐시",
+      "match": ["캐시"]
+    },
+    "message": {
+      "use": "메시지",
+      "match": ["메시지"]
+    },
+    "event": {
+      "use": "이벤트",
+      "match": ["이벤트"]
+    },
+    "subscription": {
+      "use": "구독",
+      "match": ["구독"]
+    },
+    "offset": {
+      "use": "오프셋",
+      "match": ["오프셋"]
+    },
+    "backlog": {
+      "use": "백로그",
+      "match": ["백로그"]
+    },
+    "retry": {
+      "use": "다시 시도",
+      "match": ["다시 시도", "재시도"]
+    },
     "diagram": {
       "use": "다이어그램",
       "match": ["다이어그램"],
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "노드", "match": ["노드"] },
+    "node": {
+      "use": "노드",
+      "match": ["노드"]
+    },
     "edge": {
       "use": "연결",
       "match": ["연결"],
       "except": ["shortcuts.mouse.boundary"],
       "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (가장자리), not a connection."
     },
-    "stencil": { "use": "스텐실", "match": ["스텐실"] },
-    "boundary": { "use": "경계", "match": ["경계"], "avoid": ["그룹"] },
-    "simulation": { "use": "시뮬레이션", "match": ["시뮬레이션"] },
-    "live": { "use": "라이브", "match": ["라이브"] },
-    "present": { "use": "프레젠테이션", "match": ["프레젠테이션"] },
-    "embed": { "use": "임베드", "match": ["임베드"] },
-    "share link": { "use": "공유 링크", "match": ["공유 링크"] },
-    "export": { "use": "내보내기", "match": ["내보내", "내보낸", "내보낼"] },
-    "import": { "use": "가져오기", "match": ["가져오", "가져온", "가져올"] },
-    "private": { "use": "비공개", "match": ["비공개"], "avoid": ["기밀"] },
-    "this device": { "use": "이 기기", "match": ["이 기기"], "avoid": ["로컬", "컴퓨터"] },
-    "capacity": { "use": "용량", "match": ["용량"] },
-    "checks": { "use": "검사", "match": ["검사"] },
-    "annotation": { "use": "주석", "match": ["주석"] }
+    "stencil": {
+      "use": "스텐실",
+      "match": ["스텐실"]
+    },
+    "boundary": {
+      "use": "경계",
+      "match": ["경계"],
+      "avoid": ["그룹"]
+    },
+    "simulation": {
+      "use": "시뮬레이션",
+      "match": ["시뮬레이션"]
+    },
+    "live": {
+      "use": "라이브",
+      "match": ["라이브"]
+    },
+    "present": {
+      "use": "프레젠테이션",
+      "match": ["프레젠테이션"]
+    },
+    "embed": {
+      "use": "임베드",
+      "match": ["임베드"]
+    },
+    "share link": {
+      "use": "공유 링크",
+      "match": ["공유 링크"]
+    },
+    "export": {
+      "use": "내보내기",
+      "match": ["내보내", "내보낸", "내보낼"]
+    },
+    "import": {
+      "use": "가져오기",
+      "match": ["가져오", "가져온", "가져올"]
+    },
+    "private": {
+      "use": "비공개",
+      "match": ["비공개"],
+      "avoid": ["기밀"]
+    },
+    "this device": {
+      "use": "이 기기",
+      "match": ["이 기기"],
+      "avoid": ["로컬", "컴퓨터"]
+    },
+    "capacity": {
+      "use": "용량",
+      "match": ["용량"]
+    },
+    "checks": {
+      "use": "검사",
+      "match": ["검사"]
+    },
+    "annotation": {
+      "use": "주석",
+      "match": ["주석"]
+    }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "스페이스",
+    "drag": "드래그"
   }
 }

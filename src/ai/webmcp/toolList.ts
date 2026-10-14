@@ -1,3 +1,4 @@
+import { msg } from "../../i18n";
 // The WebMCP tool names and their one-line descriptions for people (the AI panel's "What agents can do
 // here"). Kept apart from tools.ts so the panel can list them without loading the tools' code.
 
@@ -30,12 +31,12 @@ export const LIVE_TOOLS: readonly PublishedTool[] = published(["describe_diagram
 export const publishedTools = (live: boolean): readonly PublishedTool[] => (live ? LIVE_TOOLS : EDIT_TOOLS);
 
 /** What each tool lets an agent do, in a line, for the person. */
-export const TOOL_HELP: Record<PublishedTool, string> = {
-  describe_diagram: "Reads the diagram: its nodes, connections, boundaries and simulations.",
-  check_diagram: "Finds likely design problems, like lost messages or overload, and their fixes.",
-  find_stencils: "Searches the stencils for the right icon.",
-  edit_diagram: "Adds, connects, changes or removes things, as one undo step.",
-  set_simulation: "Adds or replaces a simulation: traffic, failures and expectations.",
-  new_diagram: "Starts a new diagram; this one stays in Your diagrams.",
-  get_share_link: "Makes a link that opens this diagram.",
+export const TOOL_HELP: Record<PublishedTool, () => string> = {
+  describe_diagram: msg("ai.tool.describeDiagram"),
+  check_diagram: msg("ai.tool.checkDiagram"),
+  find_stencils: msg("ai.tool.findStencils"),
+  edit_diagram: msg("ai.tool.editDiagram"),
+  set_simulation: msg("ai.tool.setSimulation"),
+  new_diagram: msg("ai.tool.newDiagram"),
+  get_share_link: msg("ai.tool.getShareLink"),
 };

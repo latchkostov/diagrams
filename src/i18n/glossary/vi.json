@@ -6,7 +6,8 @@
     "Buttons and menu items are short verb phrases as in Microsoft and Google Vietnamese UIs (Lưu, Mở, Đóng, Hủy); sentence case.",
     "Developers keep topic, consumer, producer, consumer group, broker, offset and backlog in English.",
     "Avoid “chủ đề” for topic: it is the colour theme's word; the theme is “giao diện sáng/tối”.",
-    "Sentences end with a full stop; keep the ellipsis … and the · separator."
+    "Sentences end with a full stop; keep the ellipsis … and the · separator.",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -16,59 +17,185 @@
       "avoid": ["chủ đề"],
       "note": "chủ đề is the theme / a subject."
     },
-    "queue": { "use": "hàng đợi", "match": ["hàng đợi", "queue"] },
-    "consumer": { "use": "consumer", "keepEnglish": true, "match": ["consumer"], "avoid": ["người tiêu dùng"] },
-    "consumer group": { "use": "consumer group", "keepEnglish": true, "match": ["consumer group"] },
-    "producer": { "use": "producer", "keepEnglish": true, "match": ["producer"], "avoid": ["nhà sản xuất"] },
-    "partition": { "use": "phân vùng", "match": ["phân vùng", "partition"] },
-    "broker": { "use": "broker", "keepEnglish": true, "match": ["broker"] },
+    "queue": {
+      "use": "hàng đợi",
+      "match": ["hàng đợi", "queue"]
+    },
+    "consumer": {
+      "use": "consumer",
+      "keepEnglish": true,
+      "match": ["consumer"],
+      "avoid": ["người tiêu dùng"]
+    },
+    "consumer group": {
+      "use": "consumer group",
+      "keepEnglish": true,
+      "match": ["consumer group"]
+    },
+    "producer": {
+      "use": "producer",
+      "keepEnglish": true,
+      "match": ["producer"],
+      "avoid": ["nhà sản xuất"]
+    },
+    "partition": {
+      "use": "phân vùng",
+      "match": ["phân vùng", "partition"]
+    },
+    "broker": {
+      "use": "broker",
+      "keepEnglish": true,
+      "match": ["broker"]
+    },
     "dead-letter queue": {
       "use": "hàng đợi thư lỗi",
       "match": ["hàng đợi thư lỗi", "dlq", "dead-letter"],
       "note": "Short label: DLQ."
     },
-    "throughput": { "use": "thông lượng", "match": ["thông lượng", "throughput"] },
-    "latency": { "use": "độ trễ", "match": ["độ trễ", "latency"] },
-    "replica": { "use": "bản sao", "match": ["bản sao", "replica"] },
-    "load balancer": { "use": "bộ cân bằng tải", "match": ["bộ cân bằng tải", "load balancer"] },
-    "gateway": { "use": "gateway", "keepEnglish": true, "match": ["gateway", "cổng"] },
-    "cache": { "use": "bộ nhớ đệm", "match": ["bộ nhớ đệm", "cache"] },
+    "throughput": {
+      "use": "thông lượng",
+      "match": ["thông lượng", "throughput"]
+    },
+    "latency": {
+      "use": "độ trễ",
+      "match": ["độ trễ", "latency"]
+    },
+    "replica": {
+      "use": "bản sao",
+      "match": ["bản sao", "replica"]
+    },
+    "load balancer": {
+      "use": "bộ cân bằng tải",
+      "match": ["bộ cân bằng tải", "load balancer"]
+    },
+    "gateway": {
+      "use": "gateway",
+      "keepEnglish": true,
+      "match": ["gateway", "cổng"]
+    },
+    "cache": {
+      "use": "bộ nhớ đệm",
+      "match": ["bộ nhớ đệm", "cache"]
+    },
     "message": {
       "use": "thông điệp",
       "match": ["thông điệp", "thông báo", "tin nhắn"],
       "note": "thông điệp for messages in a system; thông báo for UI messages (language.subtitle)."
     },
-    "event": { "use": "sự kiện", "match": ["sự kiện", "event"] },
-    "subscription": { "use": "subscription", "keepEnglish": true, "match": ["subscription", "đăng ký"] },
-    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
-    "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
-    "retry": { "use": "thử lại", "match": ["thử lại"] },
+    "event": {
+      "use": "sự kiện",
+      "match": ["sự kiện", "event"]
+    },
+    "subscription": {
+      "use": "subscription",
+      "keepEnglish": true,
+      "match": ["subscription", "đăng ký"]
+    },
+    "offset": {
+      "use": "offset",
+      "keepEnglish": true,
+      "match": ["offset"]
+    },
+    "backlog": {
+      "use": "backlog",
+      "keepEnglish": true,
+      "match": ["backlog"]
+    },
+    "retry": {
+      "use": "thử lại",
+      "match": ["thử lại"]
+    },
     "diagram": {
       "use": "sơ đồ",
       "match": ["sơ đồ"],
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "nút", "match": ["nút", "node"], "note": "Microsoft's word for a graph node." },
+    "node": {
+      "use": "nút",
+      "match": ["nút", "node"],
+      "note": "Microsoft's word for a graph node."
+    },
     "edge": {
       "use": "kết nối",
       "match": ["kết nối"],
       "except": ["shortcuts.mouse.boundary"],
       "note": "The line between two nodes. In shortcuts.mouse.boundary 'edge' is the boundary's rim (cạnh)."
     },
-    "stencil": { "use": "mẫu hình", "match": ["mẫu hình"] },
-    "boundary": { "use": "ranh giới", "match": ["ranh giới"], "avoid": ["nhóm"], "note": "Never 'group' (nhóm)." },
-    "simulation": { "use": "mô phỏng", "match": ["mô phỏng"] },
-    "live": { "use": "trực tiếp", "match": ["trực tiếp", "live"] },
-    "present": { "use": "trình chiếu", "match": ["trình chiếu"], "note": "As PowerPoint's Vietnamese UI." },
-    "embed": { "use": "nhúng", "match": ["nhúng"], "note": "bản nhúng for the noun." },
-    "share link": { "use": "liên kết chia sẻ", "match": ["liên kết chia sẻ"] },
-    "export": { "use": "xuất", "match": ["xuất"] },
-    "import": { "use": "nhập", "match": ["nhập"] },
-    "private": { "use": "riêng tư", "match": ["riêng tư"], "avoid": ["bí mật"] },
-    "this device": { "use": "thiết bị này", "match": ["thiết bị này"], "avoid": ["máy tính", "cục bộ"] },
-    "capacity": { "use": "công suất", "match": ["công suất"] },
-    "checks": { "use": "kiểm tra", "match": ["kiểm tra"], "note": "Never lỗi (errors)." },
-    "annotation": { "use": "chú thích", "match": ["chú thích"] }
+    "stencil": {
+      "use": "mẫu hình",
+      "match": ["mẫu hình"]
+    },
+    "boundary": {
+      "use": "ranh giới",
+      "match": ["ranh giới"],
+      "avoid": ["nhóm"],
+      "note": "Never 'group' (nhóm)."
+    },
+    "simulation": {
+      "use": "mô phỏng",
+      "match": ["mô phỏng"]
+    },
+    "live": {
+      "use": "trực tiếp",
+      "match": ["trực tiếp", "live"]
+    },
+    "present": {
+      "use": "trình chiếu",
+      "match": ["trình chiếu"],
+      "note": "As PowerPoint's Vietnamese UI."
+    },
+    "embed": {
+      "use": "nhúng",
+      "match": ["nhúng"],
+      "note": "bản nhúng for the noun."
+    },
+    "share link": {
+      "use": "liên kết chia sẻ",
+      "match": ["liên kết chia sẻ"]
+    },
+    "export": {
+      "use": "xuất",
+      "match": ["xuất"]
+    },
+    "import": {
+      "use": "nhập",
+      "match": ["nhập"]
+    },
+    "private": {
+      "use": "riêng tư",
+      "match": ["riêng tư"],
+      "avoid": ["bí mật"]
+    },
+    "this device": {
+      "use": "thiết bị này",
+      "match": ["thiết bị này"],
+      "avoid": ["máy tính", "cục bộ"]
+    },
+    "capacity": {
+      "use": "công suất",
+      "match": ["công suất"]
+    },
+    "checks": {
+      "use": "kiểm tra",
+      "match": ["kiểm tra"],
+      "note": "Never lỗi (errors)."
+    },
+    "annotation": {
+      "use": "chú thích",
+      "match": ["chú thích"]
+    }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Dấu cách",
+    "drag": "Kéo"
   }
 }

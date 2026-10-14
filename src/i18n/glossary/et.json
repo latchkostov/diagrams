@@ -6,7 +6,8 @@
     "Commands are singular imperatives (Salvesta, Ava, Ekspordi); sentences address the person as teie (lohistage, eksportige).",
     "Topic is teema, so the colour theme is kujundus (Hele kujundus, Tume kujundus), never teema.",
     "AI stays AI (AI-paneel, AI-d), as Estonian tech UIs write it.",
-    "Your diagrams is the library name Teie diagrammid everywhere."
+    "Your diagrams is the library name Teie diagrammid everywhere.",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -175,5 +176,17 @@
       "use": "annotatsioon",
       "match": ["annotatsioon"]
     }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Tühik",
+    "drag": "Lohistamine"
   }
 }

@@ -4,6 +4,7 @@ import { formatCombo, SHORTCUTS, type Shortcut, type ShortcutId } from "../edito
 import { Icon } from "./Icon";
 import { AI_PANEL, AI_TOOLS } from "../lib/deployment";
 import { msg, t, useLocale } from "../i18n";
+import { legacyKeyHint } from "../editor/keyHints";
 
 const GROUPS: Shortcut["group"][] = ["Edit", "Clipboard", "Selection", "View", "Help"];
 
@@ -51,19 +52,22 @@ const MOUSE: [gesture: () => string, does: () => string][] = [
   [msg("shortcuts.mouse.doubleCanvas"), msg("shortcuts.mouse.doubleCanvas.does")],
   [msg("shortcuts.mouse.doubleRename"), msg("shortcuts.mouse.doubleRename.does")],
   [msg("shortcuts.mouse.doubleText"), msg("shortcuts.mouse.doubleText.does")],
-  [msg("shortcuts.mouse.drag"), msg("shortcuts.mouse.drag.does")],
-  [msg("shortcuts.mouse.modDrag"), msg("shortcuts.mouse.modDrag.does")],
-  [msg("shortcuts.mouse.modClick"), msg("shortcuts.mouse.modClick.does")],
-  [msg("shortcuts.mouse.scroll"), msg("shortcuts.mouse.scroll.does")],
-  [msg("shortcuts.mouse.zoom"), msg("shortcuts.mouse.zoom.does")],
-  [msg("shortcuts.mouse.pan"), msg("shortcuts.mouse.pan.does")],
+  [msg("shortcuts.mouse.drag"), () => t("shortcuts.mouse.drag.does", { shift: legacyKeyHint("Shift") })],
+  [() => t("shortcuts.mouse.modDrag", { ctrl: legacyKeyHint("Ctrl") }), msg("shortcuts.mouse.modDrag.does")],
+  [
+    () => t("shortcuts.mouse.modClick", { shift: legacyKeyHint("Shift"), ctrl: legacyKeyHint("Ctrl") }),
+    msg("shortcuts.mouse.modClick.does"),
+  ],
+  [msg("shortcuts.mouse.scroll"), () => t("shortcuts.mouse.scroll.does", { shift: legacyKeyHint("Shift") })],
+  [() => t("shortcuts.mouse.zoom", { ctrl: legacyKeyHint("Ctrl") }), msg("shortcuts.mouse.zoom.does")],
+  [() => t("shortcuts.mouse.pan", { space: legacyKeyHint("Space") }), msg("shortcuts.mouse.pan.does")],
   [msg("shortcuts.mouse.handle"), msg("shortcuts.mouse.handle.does")],
   [msg("shortcuts.mouse.plus"), msg("shortcuts.mouse.plus.does")],
   [msg("shortcuts.mouse.edgeEnd"), msg("shortcuts.mouse.edgeEnd.does")],
   [msg("shortcuts.mouse.insert"), msg("shortcuts.mouse.insert.does")],
   [msg("shortcuts.mouse.dragNode"), msg("shortcuts.mouse.dragNode.does")],
-  [msg("shortcuts.mouse.free"), msg("shortcuts.mouse.free.does")],
-  [msg("shortcuts.mouse.altDrag"), msg("shortcuts.mouse.altDrag.does")],
+  [() => t("shortcuts.mouse.free", { ctrl: legacyKeyHint("Ctrl") }), msg("shortcuts.mouse.free.does")],
+  [() => t("shortcuts.mouse.altDrag", { alt: legacyKeyHint("Alt") }), msg("shortcuts.mouse.altDrag.does")],
   [msg("shortcuts.mouse.boundary"), msg("shortcuts.mouse.boundary.does")],
   [msg("shortcuts.mouse.resize"), msg("shortcuts.mouse.resize.does")],
 ];
@@ -83,18 +87,15 @@ const FILE: Row[] = [
   ["Mod+Shift+S", msg("shortcuts.file.saveAs")],
 ];
 
-/**
- * Live view and presenting keys (handled by the live view and the app, not the editor). Their words wait for the
- * live view's batch (docs/I18N.md): its wording is changing.
- */
-const LIVE: [string, string][] = [
-  ["L", "Go live / back to editing"],
-  ["Drag", "Pan the canvas"],
-  ["C", "Show capacity: colour services by how busy they are"],
-  ["Space", "Play or pause; continue after a note"],
-  ["← →", "Slow motion: step back or on, hop by hop"],
-  ["F", "Presenting: full screen, or back"],
-  ["Esc", "Leave full screen, slow motion, presentation, then live view"],
+/** Live view and presenting keys. Only the sheet's labels are localized here. */
+const LIVE: Row[] = [
+  ["L", msg("shortcuts.live.toggle")],
+  ["Drag", msg("shortcuts.live.pan")],
+  ["C", msg("shortcuts.live.capacity")],
+  ["Space", msg("shortcuts.live.play")],
+  ["← →", msg("shortcuts.live.step")],
+  ["F", msg("shortcuts.live.present")],
+  ["Esc", msg("shortcuts.live.leave")],
 ];
 
 /** The AI panel (AiMount opens it; Advanced handles the rest). Advanced only with AI tools (src/lib/deployment.ts). */
@@ -239,13 +240,13 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
               </div>
             ))}
           </section>
-          <section>
+          <section data-testid="shortcuts-live">
             <h3>{t("shortcuts.group.live")}</h3>
             {LIVE.map(([k, v]) => (
               <div key={k} className="sc-row">
-                <span>{v}</span>
+                <span>{v()}</span>
                 <span className="sc-keys">
-                  <kbd>{k}</kbd>
+                  <kbd>{formatCombo(k)}</kbd>
                 </span>
               </div>
             ))}
@@ -263,7 +264,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
               ))}
             </section>
           )}
-          <section>
+          <section data-testid="shortcuts-mouse">
             <h3>{t("shortcuts.group.mouse")}</h3>
             {MOUSE.map(([gesture, does], i) => (
               <div key={i} className="sc-row">

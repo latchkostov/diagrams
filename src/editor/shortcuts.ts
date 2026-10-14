@@ -1,3 +1,4 @@
+import { msg } from "../i18n";
 // Keyboard shortcut table + matching. Combos are written "Mod+Shift+Z": Mod = Cmd on macOS,
 // Ctrl elsewhere. The table drives both the key handler and the cheat-sheet dialog.
 
@@ -40,6 +41,7 @@ export interface Shortcut {
   group: "Edit" | "Clipboard" | "Selection" | "View" | "Help";
 }
 
+/* eslint-disable local/no-literal-ui-text -- Internal diagnostic labels. The sheet renders its translated LABELS table. */
 export const SHORTCUTS: readonly Shortcut[] = [
   { id: "undo", keys: ["Mod+Z"], label: "Undo", group: "Edit" },
   { id: "redo", keys: ["Mod+Shift+Z", "Mod+Y"], label: "Redo", group: "Edit" },
@@ -103,6 +105,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   },
   { id: "shortcuts", keys: ["?"], label: "Show keyboard shortcuts", group: "Help" },
 ];
+/* eslint-enable local/no-literal-ui-text */
 
 export const shortcutKeys = (id: ShortcutId): string => SHORTCUTS.find((s) => s.id === id)?.keys[0] ?? "";
 
@@ -164,14 +167,18 @@ export function shortcutFor(e: KeyLike): ShortcutId | null {
 export const isMac = () =>
   typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
-const KEY_NAMES: Record<string, [mac: string, other: string]> = {
-  Mod: ["⌘", "Ctrl"],
-  Ctrl: ["⌃", "Ctrl"],
-  Shift: ["⇧", "Shift"],
-  Alt: ["⌥", "Alt"],
-  Delete: ["⌦", "Del"],
-  Backspace: ["⌫", "Backspace"],
-  Escape: ["Esc", "Esc"],
+const KEY_NAMES: Record<string, [mac: string | (() => string), other: string | (() => string)]> = {
+  Mod: ["⌘", msg("keys.ctrl")],
+  Ctrl: ["⌃", msg("keys.ctrl")],
+  Shift: ["⇧", msg("keys.shift")],
+  Alt: ["⌥", msg("keys.alt")],
+  Delete: ["⌦", msg("keys.delete")],
+  Backspace: ["⌫", msg("keys.backspace")],
+  Escape: [msg("keys.escape"), msg("keys.escape")],
+  Enter: [msg("keys.enter"), msg("keys.enter")],
+  Tab: [msg("keys.tab"), msg("keys.tab")],
+  Space: [msg("keys.space"), msg("keys.space")],
+  Drag: [msg("keys.drag"), msg("keys.drag")],
   ArrowUp: ["↑", "↑"],
   ArrowDown: ["↓", "↓"],
   ArrowLeft: ["←", "←"],
@@ -180,7 +187,10 @@ const KEY_NAMES: Record<string, [mac: string, other: string]> = {
 
 /** "Mod+Shift+Z" → "⌘⇧Z" on macOS, "Ctrl+Shift+Z" elsewhere. */
 export function formatCombo(combo: string, mac = isMac()): string {
-  const parts = combo.split("+").map((p) => KEY_NAMES[p]?.[mac ? 0 : 1] ?? (p.length === 1 ? p.toUpperCase() : p));
+  const parts = combo.split("+").map((p) => {
+    const name = KEY_NAMES[p === "Esc" ? "Escape" : p]?.[mac ? 0 : 1];
+    return typeof name === "function" ? name() : (name ?? (p.length === 1 ? p.toUpperCase() : p));
+  });
   return parts.join(mac ? "" : "+");
 }
 

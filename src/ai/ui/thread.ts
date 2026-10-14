@@ -17,6 +17,8 @@ export interface ThreadTurn {
   request: string;
   /** "change" edits the diagram; "explain" only answers; "revert" restored an earlier turn. */
   kind: "change" | "explain" | "revert";
+  /** A revert's original target label, without app-generated or translated words; empty means "this change". */
+  revertLabel?: string;
   /** The ids the request was scoped to (Change with AI… on a selection), with their labels then. */
   scope?: { id: string; label: string }[];
   /** The AI's words, shown as plain text (never HTML). */
@@ -123,6 +125,7 @@ export function validTurn(raw: unknown): ThreadTurn | null {
     changed: isStringArray(t.changed) ? t.changed : [],
   };
   if (typeof t.reply === "string") turn.reply = t.reply;
+  if (turn.kind === "revert" && typeof t.revertLabel === "string") turn.revertLabel = t.revertLabel;
   if (typeof t.summary === "string") turn.summary = t.summary;
   if (typeof t.engine === "string") turn.engine = t.engine;
   if (typeof t.tool === "string") turn.tool = t.tool;

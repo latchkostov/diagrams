@@ -1,3 +1,4 @@
+import { t, msg } from "../../i18n";
 import { useEffect, useRef, useState } from "react";
 import {
   isFatalSpeechError,
@@ -6,6 +7,7 @@ import {
   speechErrorMessage,
   type SpeechText,
   type SpokenResult,
+  type SpeechErrorKind,
 } from "./dictation";
 
 // Dictation through the browser's Web Speech API. On-device recognition is used when the browser has
@@ -59,13 +61,34 @@ export function speechServiceOwner(ua: string = globalThis.navigator?.userAgent 
 }
 
 /** Shown by the mic every time the browser's speech service (not the device) is listening. */
-export const speechServiceNote = (ua?: string): string =>
-  `What you say may be sent to ${speechServiceOwner(ua)} speech service.`;
+export function speechServiceNote(ua?: string): string {
+  switch (speechServiceOwner(ua)) {
+    case "Google's":
+      return t("ai.speechGoogle");
+    case "Microsoft's":
+      return t("ai.speechMicrosoft");
+    case "Apple's":
+      return t("ai.speechApple");
+    default:
+      return t("ai.speechBrowser");
+  }
+}
 /** A private diagram's dictation never goes to the browser's speech service. */
-export const PRIVATE_SPEECH_NOTE =
-  "Dictation is off here: this browser would send your voice to its speech service, and this diagram is private.";
+export const PRIVATE_SPEECH_NOTE = msg("ai.dictationIsOffHereThisBrowserWould");
 
-type Message = { tone: "info" | "error"; text: string } | null;
+type Message = { tone: "info" | "error"; reason: SpeechErrorKind | "private" | "stopping" } | null;
+
+/** Resolve retained feedback in the language used by the field now. */
+export function dictationMessage(message: NonNullable<Message>): string | null {
+  switch (message.reason) {
+    case "private":
+      return PRIVATE_SPEECH_NOTE();
+    case "stopping":
+      return t("ai.dictationKeepsStoppingTryAgainInA");
+    default:
+      return speechErrorMessage(message.reason);
+  }
+}
 
 interface Ui {
   status(s: DictationStatus): void;
@@ -133,7 +156,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui, onDeviceOnly: () => boolea
       // An on-device pack can go missing: fall back to the browser's service (restarts on end).
       if (kind === "language" && local && onDeviceOnly()) {
         wanted = false;
-        ui.message({ tone: "info", text: PRIVATE_SPEECH_NOTE });
+        ui.message({ tone: "info", reason: "private" });
         return;
       }
       if (kind === "language" && local) {
@@ -141,8 +164,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui, onDeviceOnly: () => boolea
         ui.onDevice(false);
         return;
       }
-      const text = speechErrorMessage(kind);
-      if (text) ui.message({ tone: kind === "no-speech" ? "info" : "error", text });
+      if (kind !== "aborted") ui.message({ tone: kind === "no-speech" ? "info" : "error", reason: kind });
       if (isFatalSpeechError(kind)) wanted = false;
     };
     r.onend = () => {
@@ -155,7 +177,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui, onDeviceOnly: () => boolea
       restarts = [...restarts.filter((t) => now - t < 4000), now];
       if (restarts.length > 4) {
         idle();
-        ui.message({ tone: "error", text: "Dictation keeps stopping. Try again in a moment." });
+        ui.message({ tone: "error", reason: "stopping" });
         return;
       }
       open();
@@ -196,7 +218,7 @@ function createSession(Ctor: RecognitionCtor, ui: Ui, onDeviceOnly: () => boolea
         if (!wanted || token !== generation) return;
         if (!isLocal && onDeviceOnly()) {
           idle();
-          ui.message({ tone: "info", text: PRIVATE_SPEECH_NOTE });
+          ui.message({ tone: "info", reason: "private" });
           return;
         }
         local = isLocal;

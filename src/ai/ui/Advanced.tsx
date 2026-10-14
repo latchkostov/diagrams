@@ -1,3 +1,5 @@
+import { t, useLocale } from "../../i18n";
+import { isolateKeys, legacyKeyHint } from "../../editor/keyHints";
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Icon } from "../../components/Icon";
 import type { EditorApi } from "../../editor/types";
@@ -22,7 +24,6 @@ import { DictationField } from "./DictationField";
 // any chatbot, paste its reply, apply it as one undo step (or, for Explain, only copy). Closed by
 // default; open or closed is remembered.
 
-const MOD = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
 const editorNow = (): EditorApi | null => paletteHost.get().canvas?.editor ?? null;
 
 export function Advanced({
@@ -47,6 +48,7 @@ export function Advanced({
   /** A Private diagram: no prompt is copied and no reply applied (the boxes stay, off, saying why). */
   privateDiagram?: boolean;
 }) {
+  useLocale();
   const id = useId();
   const [request, setRequest] = useState("");
   const [reply, setReply] = useState("");
@@ -134,7 +136,7 @@ export function Advanced({
         ? buildSimulationPrompt(input)
         : buildPrompt(input);
     const ok = await copyText(prompt);
-    if (!ok) return notify("The browser didn't allow copying. Try again.", { kind: "error" });
+    if (!ok) return notify(t("ai.theBrowserDidnTAllowCopyingTry"), { kind: "error" });
     flashCopied("prompt");
     if (!explaining) replyRef.current?.focus();
   };
@@ -158,7 +160,7 @@ export function Advanced({
         simulation: failure.simulation,
       }),
     );
-    if (!ok) return notify("The browser didn't allow copying. Try again.", { kind: "error" });
+    if (!ok) return notify(t("ai.theBrowserDidnTAllowCopyingTry"), { kind: "error" });
     flashCopied("fix");
     replyRef.current?.select();
   };
@@ -180,6 +182,7 @@ export function Advanced({
     }
     if (!plan.hasChanges) {
       setFailure({
+        reason: "no-change",
         error: { i: -1, error: "The reply didn't change anything.", hint: "Check the request, or ask your AI again." },
         reply: pastedReply,
       });
@@ -232,21 +235,21 @@ export function Advanced({
 
   const hasReply = !!reply.trim();
   const placeholder = explaining
-    ? "e.g. Where could this fail under load?"
+    ? t("ai.eGWhereCouldThisFailUnder")
     : place === "create"
-      ? "e.g. A Kafka topic orders.created consumed by a .NET service billing-worker that writes to Postgres"
+      ? t("ai.eGAKafkaTopicOrdersCreated")
       : place === "live"
-        ? "e.g. A storm of 100 new members at 9am, then the payment API fails"
-        : `e.g. Add a dead-letter queue after ${current?.nodes.find((n) => n.label)?.label ?? "the first service"}`;
+        ? t("ai.eGAStormOf100New")
+        : t("ai.exampleChange", { name: current?.nodes.find((n) => n.label)?.label ?? t("ai.firstService") });
   const replyStatus = pending
-    ? "Checking reply…"
+    ? t("ai.checkingReply")
     : parsed
       ? parsed.ok
         ? parsed.kind === "ops"
-          ? `${parsed.ops.length} ${parsed.ops.length === 1 ? "op" : "ops"} ready`
+          ? t("ai.opsReady", { count: parsed.ops.length })
           : parsed.kind === "simulation"
-            ? `Simulation “${parsed.spec.title}” ready`
-            : "A whole diagram: it replaces this one"
+            ? t("ai.simulationReady", { title: parsed.spec.title })
+            : t("ai.aWholeDiagramItReplacesThisOne")
         : parsed.error
       : null;
 
@@ -260,8 +263,8 @@ export function Advanced({
         data-testid="ai-advanced-toggle"
       >
         <Icon name={open ? "chevron-down" : "chevron-right"} size={13} />
-        <span>Advanced</span>
-        <span className="ai-advanced-hint">Copy and paste with any chatbot</span>
+        <span>{t("ai.advanced")}</span>
+        <span className="ai-advanced-hint">{t("ai.copyAndPasteWithAnyChatbot")}</span>
       </button>
       {open && (
         <div id={`${id}-body`} className="ai-composer" data-testid="ai-composer" onKeyDownCapture={onKeyDownCapture}>
@@ -276,14 +279,14 @@ export function Advanced({
             />
           )}
           {place !== "create" && (
-            <div className="ai-intent" role="group" aria-label="What to do">
+            <div className="ai-intent" role="group" aria-label={t("ai.whatToDo")}>
               <button
                 className={intent === "change" ? "is-on" : ""}
                 aria-pressed={intent === "change"}
                 onClick={() => setIntent("change")}
                 data-testid="ai-intent-change"
               >
-                {place === "live" ? "Simulate" : "Change"}
+                {place === "live" ? t("ai.simulate") : t("ai.change")}
               </button>
               <button
                 className={intent === "explain" ? "is-on" : ""}
@@ -291,13 +294,13 @@ export function Advanced({
                 onClick={() => setIntent("explain")}
                 data-testid="ai-intent-explain"
               >
-                Explain
+                {t("ai.explain")}
               </button>
             </div>
           )}
           <DictationField
             id={`${id}-request`}
-            label={place === "create" ? "Describe the diagram" : "Describe what you want"}
+            label={place === "create" ? t("ai.describeTheDiagram") : t("ai.describeWhatYouWant")}
             inputRef={requestRef}
             value={request}
             onChange={setRequest}
@@ -310,6 +313,7 @@ export function Advanced({
               input: "ai-request",
               mic: "ai-mic",
               interim: "ai-interim",
+              // eslint-disable-next-line local/no-literal-ui-text -- a test id, not display text
               message: "ai-dictation-message",
               service: "ai-speech-service",
             }}
@@ -322,24 +326,22 @@ export function Advanced({
               data-testid="ai-copy-prompt"
             >
               <Icon name={copied === "prompt" ? "check" : "copy"} size={14} />
-              {copied === "prompt" ? "Copied" : "Copy prompt"}
+              {copied === "prompt" ? t("ai.copied") : t("ai.copyPrompt")}
             </button>
             {privateDiagram ? (
               <span className="ai-hint" data-testid="ai-private-hint">
-                Off for this private diagram.
+                {t("ai.offForThisPrivateDiagram")}
               </span>
             ) : (
               <span className="ai-hint" data-testid={explaining ? "ai-explain-note" : undefined}>
-                {explaining
-                  ? "Your AI answers in its own chat; nothing to paste back."
-                  : "Paste it into any chatbot, then its reply below."}
+                {explaining ? t("ai.yourAIAnswersInItsOwnChat") : t("ai.pasteItIntoAnyChatbotThenIts")}
               </span>
             )}
           </div>
           {!explaining && (
             <>
               <label className="sr-only" htmlFor={`${id}-reply`}>
-                Paste the reply
+                {t("ai.pasteTheReply")}
               </label>
               <textarea
                 id={`${id}-reply`}
@@ -350,7 +352,7 @@ export function Advanced({
                   setReply(e.target.value);
                   setFailure(null);
                 }}
-                placeholder="Paste the reply"
+                placeholder={t("ai.pasteTheReply")}
                 rows={3}
                 disabled={privateDiagram}
                 spellCheck={false}
@@ -358,7 +360,11 @@ export function Advanced({
               />
               <div className="ai-composer-row">
                 <span className={`ai-reply-status${parsed?.ok ? " is-ok" : ""}`} data-testid="ai-reply-status">
-                  {!failure && replyStatus ? replyStatus : hasReply ? "" : `${MOD}+Enter applies · one undo step`}
+                  {!failure && replyStatus
+                    ? replyStatus
+                    : hasReply
+                      ? ""
+                      : t("ai.applyKeys", { keys: isolateKeys(legacyKeyHint("Mod+Enter")) })}
                 </span>
                 <button
                   className={`btn${hasReply && !failure ? " btn-primary" : ""}`}
@@ -366,7 +372,8 @@ export function Advanced({
                   onClick={apply}
                   data-testid="ai-apply"
                 >
-                  <Icon name="ai" size={14} /> Apply
+                  <Icon name="ai" size={14} />
+                  {t("ai.apply")}
                 </button>
               </div>
             </>

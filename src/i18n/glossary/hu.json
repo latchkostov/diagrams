@@ -7,7 +7,8 @@
     "Placeholders are introduced with a colon (Mentve ide: {where}) so no case ending has to attach to them.",
     "A colour theme is téma; a Kafka topic is témakör, so the two never meet.",
     "AI is MI (mesterséges intelligencia), as Microsoft's Hungarian UI writes it.",
-    "Your diagrams is the library name Saját diagramok everywhere."
+    "Your diagrams is the library name Saját diagramok everywhere.",
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -175,5 +176,17 @@
       "use": "annotáció",
       "match": ["annotáci"]
     }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Shift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Szóköz",
+    "drag": "Húzás"
   }
 }

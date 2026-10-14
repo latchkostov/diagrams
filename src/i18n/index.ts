@@ -104,7 +104,9 @@ type Value<K, Rich> = K extends "number"
       : string | number;
 type Values<S extends string, Rich = false> = {
   [P in Args<S> as P extends [infer N extends string, string] ? N : never]: Value<
-    P extends [string, infer K] ? K : never,
+    // A plural argument may also appear as plain {count} to keep English's ungrouped numbers.
+    // The numeric use still requires a number; the plain use must not widen it to string | number.
+    P extends [infer N, infer K] ? ([N, "number"] extends Args<S> ? "number" : K) : never,
     Rich
   >;
 } & (Rich extends true ? { [T in Tags<S>]: (chunks: ReactNode) => ReactNode } : unknown);

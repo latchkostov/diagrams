@@ -7,7 +7,7 @@
     "Quotation marks »…«; no quotes around Dine diagrammer: the capital D marks it as the library's name.",
     "Developers keep topic, live, broker, offset, backlog, consumer group and load balancer in English; node/noder for nodes as Danish developers write it.",
     "English–Danish compounds take a hyphen (Mermaid-fil, AI-panel, draw.io-XML); a space before % (100 %).",
-    "Key names stay in English (Ctrl, Shift, Esc, Space) in this batch."
+    "Keyboard labels follow docs/research/keyboard-key-names.md; macOS modifier keys use ⌘⌃⌥⇧. Tokens used to match key events remain English."
   ],
   "terms": {
     "topic": {
@@ -17,55 +17,186 @@
       "avoid": ["emne", "tema"],
       "note": "et topic, topics; tema is the colour theme"
     },
-    "queue": { "use": "kø", "match": ["kø"] },
-    "consumer": { "use": "forbruger", "match": ["forbruger", "consumer"] },
-    "consumer group": { "use": "consumer group", "keepEnglish": true, "match": ["consumer group", "forbrugergruppe"] },
-    "producer": { "use": "producent", "match": ["producent", "producer"] },
-    "partition": { "use": "partition", "match": ["partition"] },
-    "broker": { "use": "broker", "keepEnglish": true, "match": ["broker"] },
+    "queue": {
+      "use": "kø",
+      "match": ["kø"]
+    },
+    "consumer": {
+      "use": "forbruger",
+      "match": ["forbruger", "consumer"]
+    },
+    "consumer group": {
+      "use": "consumer group",
+      "keepEnglish": true,
+      "match": ["consumer group", "forbrugergruppe"]
+    },
+    "producer": {
+      "use": "producent",
+      "match": ["producent", "producer"]
+    },
+    "partition": {
+      "use": "partition",
+      "match": ["partition"]
+    },
+    "broker": {
+      "use": "broker",
+      "keepEnglish": true,
+      "match": ["broker"]
+    },
     "dead-letter queue": {
       "use": "kø for døde meddelelser",
       "match": ["døde meddelelser", "dead-letter", "dlq"],
       "note": "short label: DLQ"
     },
-    "throughput": { "use": "gennemløb", "match": ["gennemløb"] },
-    "latency": { "use": "latenstid", "match": ["latens"] },
-    "replica": { "use": "replika", "match": ["replika"] },
-    "load balancer": { "use": "load balancer", "keepEnglish": true, "match": ["load balancer", "loadbalancer"] },
-    "gateway": { "use": "gateway", "keepEnglish": true, "match": ["gateway"] },
-    "cache": { "use": "cache", "match": ["cache"] },
-    "message": { "use": "besked", "match": ["besked", "meddelelse"], "note": "besked, beskeder" },
-    "event": { "use": "hændelse", "match": ["hændelse", "event"] },
-    "subscription": { "use": "abonnement", "match": ["abonnement"] },
-    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
-    "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
-    "retry": { "use": "nyt forsøg", "match": ["prøv igen", "forsøg"], "note": "The Retry button: Prøv igen" },
+    "throughput": {
+      "use": "gennemløb",
+      "match": ["gennemløb"]
+    },
+    "latency": {
+      "use": "latenstid",
+      "match": ["latens"]
+    },
+    "replica": {
+      "use": "replika",
+      "match": ["replika"]
+    },
+    "load balancer": {
+      "use": "load balancer",
+      "keepEnglish": true,
+      "match": ["load balancer", "loadbalancer"]
+    },
+    "gateway": {
+      "use": "gateway",
+      "keepEnglish": true,
+      "match": ["gateway"]
+    },
+    "cache": {
+      "use": "cache",
+      "match": ["cache"]
+    },
+    "message": {
+      "use": "besked",
+      "match": ["besked", "meddelelse"],
+      "note": "besked, beskeder"
+    },
+    "event": {
+      "use": "hændelse",
+      "match": ["hændelse", "event"]
+    },
+    "subscription": {
+      "use": "abonnement",
+      "match": ["abonnement"]
+    },
+    "offset": {
+      "use": "offset",
+      "keepEnglish": true,
+      "match": ["offset"]
+    },
+    "backlog": {
+      "use": "backlog",
+      "keepEnglish": true,
+      "match": ["backlog"]
+    },
+    "retry": {
+      "use": "nyt forsøg",
+      "match": ["prøv igen", "forsøg"],
+      "note": "The Retry button: Prøv igen"
+    },
     "diagram": {
       "use": "diagram",
       "match": ["diagram"],
       "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"],
       "note": "Diagrams in these cloud errors is the existing folder name."
     },
-    "node": { "use": "node", "match": ["node"], "note": "en node, noder, nodens" },
+    "node": {
+      "use": "node",
+      "match": ["node"],
+      "note": "en node, noder, nodens"
+    },
     "edge": {
       "use": "forbindelse",
       "match": ["forbindelse"],
       "except": ["shortcuts.mouse.boundary"],
       "note": "In shortcuts.mouse.boundary 'edge' is the boundary's kant"
     },
-    "stencil": { "use": "stencil", "keepEnglish": true, "match": ["stencil"], "note": "en stencil, stencils (Visio)" },
-    "boundary": { "use": "afgrænsning", "match": ["afgrænsning"], "avoid": ["gruppe"], "note": "never gruppe" },
-    "simulation": { "use": "simulering", "match": ["simuler"] },
-    "live": { "use": "live", "keepEnglish": true, "match": ["live"], "note": "livevisning" },
-    "present": { "use": "præsentere", "match": ["præsent"], "note": "Præsenter (button), præsentation (the mode)" },
-    "embed": { "use": "indlejre", "match": ["indlejr"], "note": "en indlejring" },
-    "share link": { "use": "delingslink", "match": ["delingslink"] },
-    "export": { "use": "eksportere", "match": ["eksport"] },
-    "import": { "use": "importere", "match": ["import"] },
-    "private": { "use": "privat", "match": ["privat"], "avoid": ["fortrolig", "hemmelig"] },
-    "this device": { "use": "denne enhed", "match": ["denne enhed"], "avoid": ["lokal", "computer", "disk"] },
-    "capacity": { "use": "kapacitet", "match": ["kapacitet"] },
-    "checks": { "use": "kontroller", "match": ["kontrol"], "avoid": ["fejl", "problemer"] },
-    "annotation": { "use": "annotering", "match": ["annoter"] }
+    "stencil": {
+      "use": "stencil",
+      "keepEnglish": true,
+      "match": ["stencil"],
+      "note": "en stencil, stencils (Visio)"
+    },
+    "boundary": {
+      "use": "afgrænsning",
+      "match": ["afgrænsning"],
+      "avoid": ["gruppe"],
+      "note": "never gruppe"
+    },
+    "simulation": {
+      "use": "simulering",
+      "match": ["simuler"]
+    },
+    "live": {
+      "use": "live",
+      "keepEnglish": true,
+      "match": ["live"],
+      "note": "livevisning"
+    },
+    "present": {
+      "use": "præsentere",
+      "match": ["præsent"],
+      "note": "Præsenter (button), præsentation (the mode)"
+    },
+    "embed": {
+      "use": "indlejre",
+      "match": ["indlejr"],
+      "note": "en indlejring"
+    },
+    "share link": {
+      "use": "delingslink",
+      "match": ["delingslink"]
+    },
+    "export": {
+      "use": "eksportere",
+      "match": ["eksport"]
+    },
+    "import": {
+      "use": "importere",
+      "match": ["import"]
+    },
+    "private": {
+      "use": "privat",
+      "match": ["privat"],
+      "avoid": ["fortrolig", "hemmelig"]
+    },
+    "this device": {
+      "use": "denne enhed",
+      "match": ["denne enhed"],
+      "avoid": ["lokal", "computer", "disk"]
+    },
+    "capacity": {
+      "use": "kapacitet",
+      "match": ["kapacitet"]
+    },
+    "checks": {
+      "use": "kontroller",
+      "match": ["kontrol"],
+      "avoid": ["fejl", "problemer"]
+    },
+    "annotation": {
+      "use": "annotering",
+      "match": ["annoter"]
+    }
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "shift": "Skift",
+    "alt": "Alt",
+    "delete": "Del",
+    "backspace": "Backspace",
+    "escape": "Esc",
+    "enter": "Enter",
+    "tab": "Tab",
+    "space": "Mellemrum",
+    "drag": "Træk"
   }
 }
