@@ -37,8 +37,10 @@ export class Decorator {
       hist.push(n.backlog);
       if (hist.length > RISE_WINDOW) hist.shift();
       this.history.set(id, hist);
-      const rising = n.backlog > 0 && hist.length > 1 && n.backlog > hist[0];
-      const heat = n.backlog > 0 ? Math.max(1, Math.ceil(heatOf(n.backlog) * 3)) : 0;
+      // A topic nobody reads keeps what's published: a faint tint, never the rising glow of a consumer falling behind.
+      const kept = !!n.noConsumer && n.role !== "queue";
+      const rising = !kept && n.backlog > 0 && hist.length > 1 && n.backlog > hist[0];
+      const heat = n.backlog > 0 ? (kept ? 1 : Math.max(1, Math.ceil(heatOf(n.backlog) * 3))) : 0;
       const dim = spotlight ? !spotlight.nodes.has(id) : false;
       const key = `${n.status}|${heat}|${rising}|${dim}`;
       seen.add(el);

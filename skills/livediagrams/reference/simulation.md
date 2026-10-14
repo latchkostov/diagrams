@@ -22,6 +22,11 @@ The stencil's role (shown in [stencils.md](stencils.md)) decides how a node beha
 
 Dependency edges (with a `relation`) never carry traffic.
 
+A topic or stream with no consumer keeps what's published: it isn't overloaded, and it has no lag (lag is per
+consumer group). Live view says "Nobody reads Kafka Topic" and offers to add a consumer. More partitions don't help:
+they cap how many consumers in one group work at once, and don't speed up publishing. A queue with no consumer
+holds its messages until one takes them.
+
 ## Retries and dead letters
 
 When a processor fails a message it got from a topic, queue or stream, the message goes back to that broker

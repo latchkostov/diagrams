@@ -50,3 +50,14 @@ export function heatOf(backlog: number, full = 60): number {
   if (!(backlog > 0)) return 0;
   return Math.min(1, Math.log1p(backlog) / Math.log1p(full));
 }
+
+/**
+ * What a broker's waiting count is called, on its badge and in its hover card. A queue's messages are queued; a
+ * topic or stream with consumers has lag (per consumer group, the largest shown); one with no consumer has no lag
+ * at all, it keeps what's published: "Nobody reads this yet · 297 kept".
+ */
+export function heldWords(s: { role: string; noConsumer?: boolean }): { lead?: string; unit: string; row: string } {
+  if (s.role === "queue") return { unit: "queued", row: "Queued" };
+  if (s.noConsumer) return { lead: "Nobody reads this yet", unit: "kept", row: "Kept" };
+  return { unit: "lag", row: "Lag (max group)" };
+}

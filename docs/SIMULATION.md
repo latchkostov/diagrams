@@ -51,9 +51,53 @@ each node's stencil `simRole`, edge direction and `kind`, plus optional `props`.
 - Flow-only fields on a dependency (`kind`, `props.group`, `dlq`, `filter`, `share`, `emits`) stay in the
   file untouched, so switching it back to a flow restores its behaviour.
 - The live view dims dependencies to about 35% (full strength on hover); the decorator never marks them
-  active.
+  active. Config and Secret say why in their tooltip and the edge inspector: "Read at startup and refreshed, not on
+  every request, so no messages flow over it." (`RELATION_META[...].why`, `src/model/relations.ts`).
+- **A stencil change re-infers its edges** (`reinferRelations`, `src/stencils/relations.ts`), in the same undo step,
+  with a toast that says what changed and offers Undo ("2 connections are now Config: no messages flow over them").
+  `edge.relationOrigin` says who set the relationship:
+  - `inferred` (from the stencils: an edge drawn into a typed stencil, or a stencil change): it follows its ends.
+    A node that stops being a config store, a secret store, an identity, a telemetry backend, a deployer or a
+    depends-on stencil turns its inferred dependencies back into flows (or into what its new stencil implies).
+  - `explicit` (someone chose it: Relationship ▸, the inspector, Ctrl+K, Make it a flow, the inspector's Apply): it
+    never changes by itself. A connection made a flow with Make it a flow stays a flow.
+  - Absent (older files, imports, files written by hand): a flow becomes the dependency its ends now imply; a
+    dependency stays as it is, since nothing says it was inferred.
+
+  The same holds for every way a stencil changes: the inspector (one node or a bulk edit), the node's right-click and
+  Ctrl+K (Change stencil), and the agents' `edit_diagram` `update` with `kind`, whose result lists the re-inferred
+  connections (`relations`) and says so in a sentence (`note`). Pasting and importing change no stencil, so they keep
+  their edges as they are.
+
 - Not yet (phase 3 of `docs/research/diagram-semantics.md`): dependency outages. A `when` of `startup`,
   `cached`, `request` or `never` is accepted on a dependency and kept, but the engine doesn't read it.
+
+## A topic or queue nobody reads
+
+A broker with no ordinary route out (a dead-letter route doesn't count) has no consumer. The engine keeps what
+reaches it (`park` in the trace) and its frame says so (`noConsumer: true`). What that's called depends on the broker:
+
+- **A topic or stream** keeps what's published, read or not, as Kafka, Event Hubs and Kinesis do. It isn't overloaded,
+  and it has no lag: lag is per consumer group, and it has none. Live says **Nobody reads this yet · 297 kept** on its
+  badge, **Kept** in its hover card with one line on why there's no lag, and the heat map paints it amber (a warning,
+  not the pulsing red of an overload), with **Nobody reads this yet · 2/s kept**. Its backlog glow stays faint.
+- **A queue** (Service Bus, SQS, RabbitMQ) holds messages that wait for a consumer: **297 queued**, and **No consumer
+  · 2/s waiting** on the heat map, in red.
+- **The banner** (Show capacity's callout) leads with it: **Nobody reads Kafka Topic**, "It keeps what's published, but
+  nothing consumes it. Partitions can't change that: add a consumer." (a queue: "Messages wait in it until a consumer
+  takes them."), and one action, **Add a consumer**: a service one gap downstream, reading it (the stencil of a
+  service that publishes to it, else a generic service), named "Kafka Topic consumer", one undoable step, in live
+  view or editing. The diagram changed, so the run restarts with the consumer reading the topic (the kept messages
+  aren't carried over).
+- **Paused and down** keep their own words ("Kafka Topic is paused"), separate from nobody reading it. "Can't keep up
+  at all" is left for a broker whose consumers can't take any of its messages.
+- **Partitions** only cap how many consumers in one group work at once: they don't speed up publishing, and with no
+  consumer they change nothing. The inspector says so under Partitions, and the Inputs panel, once partitions are
+  raised past the saved value on a topic nobody reads or with fewer consumer replicas than partitions, says why that
+  can't help (`partitionsNote`, `src/live/capacityModel.ts`).
+- **Slow motion** says "kept in Kafka Topic: nobody reads it" (a queue: "parked in …"), and ends on "Kept in Kafka
+  Topic, unread". The trace card's status is **Kept** (a queue: **Waiting**).
+- **Checks** agree: `no-reader` says a topic "keeps every message, unread", a queue's messages "pile up".
 
 ## Failure, retry, dead-letter
 
@@ -253,7 +297,8 @@ of the simulation with current live multipliers for an up-to-date panel; the ana
 ## Snapshot
 
 `snapshot()` returns particles, per-node state (`backlog`, `lag` per group, `inFlight`, `processed`,
-`failed`, `deadLettered`, `dropped`, `throughput`), per-edge counters, recent events, and `inSystem`.
+`failed`, `deadLettered`, `dropped`, `throughput`, and `noConsumer` on a broker nobody reads), per-edge counters,
+recent events, and `inSystem`.
 
 `frame()` returns detached particles and per-node metrics plus `time`, `inSystem` and `scale`,
 without edge counters or event-log copies. Use it for animation; call `snapshot()` for detailed inspection.

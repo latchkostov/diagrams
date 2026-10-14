@@ -941,6 +941,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           replicas: node.replicas,
           activeReplicas: node.activeReplicas,
           idleReplicas: node.replicas - node.activeReplicas,
+          ...(isBroker(node) && !node.groups.length ? { noConsumer: true as const } : {}),
         };
       }
       return { time, particles, nodes: nodeStates, inSystem, scale };

@@ -542,8 +542,11 @@ export function buildScript(input: ScriptInput): SlowScript {
         } else {
           const parked = steps.some((x, j) => j > i && x.id === s.id && x.kind === "park" && x.node === s.node);
           atNode(tr, "append", PACING.append, r, r, {
+            // A topic or stream nobody reads keeps it (lag is per consumer group, and it has none); a queue holds it.
             caption: parked
-              ? `parked in ${name(tr.node)}`
+              ? role === "queue"
+                ? `parked in ${name(tr.node)}`
+                : `kept in ${name(tr.node)}: nobody reads it`
               : role === "queue"
                 ? `queued in ${name(tr.node)}`
                 : `appended to ${name(tr.node)}`,
@@ -717,6 +720,7 @@ export function buildScript(input: ScriptInput): SlowScript {
   const writes = steps.filter((s) => s.kind === "arrive" && s.node && roleOf(s.node) === "store").length;
   const deadLettered = steps.some((s) => s.kind === "deadletter");
   const dropped = steps.some((s) => s.kind === "drop");
+  const keptAt = steps.find((s) => s.kind === "park" && s.node && roleOf(s.node) !== "queue")?.node;
   const facts = [
     formatDuration(realTotal),
     copies > 0 ? `${copies} ${copies === 1 ? "copy" : "copies"}` : "",
@@ -727,8 +731,13 @@ export function buildScript(input: ScriptInput): SlowScript {
   if (unfinished) {
     const where = waitingAt?.node ?? steps.at(-1)?.node ?? trace.origin;
     const lag = input.waiting?.lag(where);
-    summary = `Still waiting at ${name(where)}${lag !== undefined && lag > 0 ? ` · lag ${lag.toLocaleString("en-US")}` : ""}`;
-  } else summary = [deadLettered ? "Dead-lettered" : dropped ? "Dropped" : "Done", ...facts].join(" · ");
+    const held = roleOf(where) === "queue" ? "queued" : "lag";
+    summary = `Still waiting at ${name(where)}${lag !== undefined && lag > 0 ? ` · ${held === "lag" ? `lag ${lag.toLocaleString("en-US")}` : `${lag.toLocaleString("en-US")} queued`}` : ""}`;
+  } else
+    summary = [
+      deadLettered ? "Dead-lettered" : dropped ? "Dropped" : keptAt ? `Kept in ${name(keptAt)}, unread` : "Done",
+      ...facts,
+    ].join(" · ");
   const lastNode =
     [...beats].reverse().find((b) => b.kind !== "reply" && b.start + b.duration >= lastEnd - 1 && b.node)?.node ??
     trace.origin;

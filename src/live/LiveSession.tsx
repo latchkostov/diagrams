@@ -36,6 +36,7 @@ import { LiveIcon } from "./icons";
 import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "./layout";
 import { CapacityPanel } from "./CapacityPanel";
 import { BottleneckCallout, CapacityLayer } from "./CapacityLayer";
+import { addConsumer } from "./addConsumer";
 import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
 import { useLiveSessionHost } from "../palette/host";
 import {
@@ -859,6 +860,15 @@ export function LiveSession({
     [controller, editor, flash],
   );
 
+  /** "Nobody reads X" › Add a consumer: a service reading it, one undoable edit (the run restarts with it). */
+  const addReader = useCallback(
+    (brokerId: string) => {
+      if (slowRef.current?.session.active || !editor) return;
+      if (addConsumer(editor, brokerId)) sayConsumerAdded(editor, brokerId);
+    },
+    [editor],
+  );
+
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
   const saveInputs = useCallback(() => {
     if (slowRef.current?.session.active) return;
@@ -1168,6 +1178,7 @@ export function LiveSession({
             onApply={applyFix}
             disabledHint={liveMutationGuard(() => slow.session.active).hint()}
             onOpenPanel={presenting ? undefined : () => openCapacity()}
+            onAddConsumer={editor && !presenting ? addReader : undefined}
           />
         )}
         {slowCard && !capturing ? (
@@ -1225,6 +1236,7 @@ export function LiveSession({
           view={capacity}
           onClose={closeCapacity}
           onApplyFix={applyFix}
+          onAddConsumer={editor && !presenting ? addReader : undefined}
           onSave={editor ? saveInputs : undefined}
           onAddEntry={editor && !presenting ? addEntry : undefined}
         />
@@ -1281,6 +1293,14 @@ function useReducedMotion(): boolean {
   return reduced;
 }
 
+/** The toast after Add a consumer, with Undo. */
+function sayConsumerAdded(editor: EditorApi, brokerId: string): void {
+  const name = editor.getNode(brokerId)?.label || brokerId;
+  notify(`Added a consumer of ${name}.`, {
+    action: { label: "Undo", run: () => editor.undo(), testId: "add-consumer-undo", undoes: true },
+  });
+}
+
 /** Edit mode's capacity heat map: the diagram's own rates and sizes, with the bottleneck callout. */
 export function EditCapacity({ editor, presenting }: { editor: EditorApi; presenting: boolean }) {
   const nodes = useStore((st) => st.nodes);
@@ -1316,7 +1336,12 @@ export function EditCapacity({ editor, presenting }: { editor: EditorApi; presen
         <CapacityLayer view={view} presenting={presenting} />
       </ViewportPortal>
       <div className={"cap-hud" + (presenting ? " is-presenting" : "")}>
-        <BottleneckCallout view={view} floating onApply={presenting ? undefined : apply} />
+        <BottleneckCallout
+          view={view}
+          floating
+          onApply={presenting ? undefined : apply}
+          onAddConsumer={presenting ? undefined : (id) => addConsumer(editor, id) && sayConsumerAdded(editor, id)}
+        />
       </div>
     </>
   );

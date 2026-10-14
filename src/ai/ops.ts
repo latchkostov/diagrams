@@ -5,12 +5,31 @@ import { estimateCardSize } from "../canvas/nodes/size";
 import { placeFree, overlaps } from "../canvas/placement";
 import { resolveRef, ReferenceError, RefIndex, type ElementKind } from "./refs";
 import { resolveKind } from "./stencils";
+import { reinferRelations, relationChangeText } from "../stencils/relations";
 import { placeNew } from "./place";
 import { checkBudget, checkSchema, validated } from "./validation";
 import { edit_diagramSchema } from "./schemas";
 import { diagramDiff } from "../model/diagramDiff";
 import { simulationReferenceWarnings } from "../interop/native";
 import type { ApplyOpsOptions, ApplyOpsResult, DiagramOp, OpResult } from "./index";
+
+/** A node's stencil changed: its edges' relationships follow, and the op's result says which and what to. */
+function reinferEdges(next: DiagramFile, nodeId: string, result: OpResult): void {
+  const stencils = new Map(next.nodes.map((n) => [n.id, n.stencil]));
+  const changes = reinferRelations(next.edges, (id) => stencils.get(id), new Set([nodeId]));
+  if (!changes.length) return;
+  const to = new Map(changes.map((c) => [c.id, c.to]));
+  for (const e of next.edges) {
+    const relation = to.get(e.id);
+    if (relation === undefined) continue;
+    if (relation === "flow") {
+      delete e.relation;
+      delete e.relationOrigin;
+    } else Object.assign(e, { relation, relationOrigin: "inferred" });
+  }
+  result.relations = [...(result.relations ?? []), ...changes];
+  result.note = relationChangeText(result.relations);
+}
 
 const mergeProps = (old: Record<string, unknown> | undefined, patch: Record<string, unknown>) =>
   Object.fromEntries(Object.entries({ ...old, ...patch }).filter(([, v]) => v !== null));
@@ -126,7 +145,10 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             else if (op.sublabel !== undefined) n.sublabel = op.sublabel;
             if (op.kind !== undefined) {
               result.stencil = resolveKind(op.kind, n.label);
+              const before = n.stencil;
               n.stencil = result.stencil.id;
+              // As on the canvas: the node's connections follow its new stencil (src/stencils/relations.ts).
+              if (n.stencil !== before) reinferEdges(next, n.id, result);
             }
             if (op.props) n.props = mergeProps(n.props, op.props);
             if (op.in === null) {

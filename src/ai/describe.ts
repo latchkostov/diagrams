@@ -1,5 +1,6 @@
 import type { DiagramFile } from "../model/types";
 import { catalog } from "../stencils/catalog";
+import { isDependency, relationOf } from "../model/relations";
 import { resolveRef } from "./refs";
 import { validated } from "./validation";
 import type { DescribeOptions } from "./index";
@@ -56,7 +57,8 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   lines.push("connections:");
   for (const e of edges)
     lines.push(
-      `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${e.kind ?? "async"}${e.label !== undefined ? ` ${quote(e.label)}` : ""}`,
+      // A dependency says so: it carries no messages, whatever its kind.
+      `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}`,
     );
   for (const g of groups)
     lines.push(

@@ -1816,6 +1816,13 @@ select.insp-input {
   color: var(--text-3);
 }
 
+/* A field's own note (Partitions: what it does and doesn't do), tucked under it. */
+.insp-field-note {
+  margin-top: -4px;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
 .insp-seg {
   display: flex;
 }

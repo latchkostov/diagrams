@@ -204,6 +204,7 @@ function dependencyTip(relation: DependencyRelation, dep: EdgeRelationInfo | und
   // "Depends on" says its verb already ("Depends on · depends on" read twice).
   const same = meta.label.toLowerCase() === meta.implicit.toLowerCase();
   const parts = [same ? meta.label : `${meta.label} · ${meta.implicit}`];
+  if (meta.why) parts.push(meta.why);
   const n = dep?.settings.length ?? 0;
   if (relation === "config" && n && !dep?.derived) {
     const secret = dep!.settings.filter((s) => s.secret).length;

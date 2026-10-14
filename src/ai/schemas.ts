@@ -250,7 +250,8 @@ export const edit_diagramSchema: JsonSchema = {
                 kind: {
                   type: "string",
                   maxLength: 100,
-                  description: "Nodes: change the stencil. Connections: 'async' or 'sync'.",
+                  description:
+                    "Nodes: change the stencil; its connections' relationships follow, as on the canvas (a flow into what becomes a config store turns config; an inferred dependency into what stops being one turns back into a flow), listed in the result's relations. Connections: 'async' or 'sync'.",
                 },
                 in: {
                   type: ["string", "null"],

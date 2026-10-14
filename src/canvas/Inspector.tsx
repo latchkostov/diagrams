@@ -33,6 +33,7 @@ import {
   parseSettings,
   parseSettingsEditor,
   MAX_SETTINGS_TEXT,
+  relationNote,
   relationOf,
   settingsSummary,
   settingsText,
@@ -56,6 +57,8 @@ interface SimField {
   step?: number;
   placeholder: string;
   hint: string;
+  /** A line shown under the field, for what people get wrong about it. */
+  note?: string;
 }
 
 // Partial on purpose: engine knobs without a designed field yet stay editable under "Custom properties".
@@ -135,6 +138,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     step: 1,
     placeholder: "3",
     hint: "Max in-flight deliveries per consumer group",
+    note: "How many consumers in one group can work in parallel. It doesn't speed up publishing.",
   },
   emits: {
     label: "Emits",
@@ -487,7 +491,7 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
         )}
         {!flow && (
           <p className="insp-note" data-testid="inspector-relation-note">
-            {RELATION_META[relation].hint}. No messages flow here in Live.
+            {relationNote(relation)}
           </p>
         )}
       </Section>
@@ -1562,49 +1566,56 @@ function SimInput({
     if (!focused.current) setDraft(external);
   }, [external]);
   return (
-    <Field label={field.label} hint={field.hint}>
-      <span className="insp-unit-wrap">
-        <input
-          className={`insp-input${field.kind === "number" ? " mono" : ""}`}
-          type={field.kind === "number" ? "number" : "text"}
-          inputMode={field.kind === "number" ? "decimal" : undefined}
-          min={field.min}
-          max={field.max}
-          step={field.step}
-          value={draft}
-          placeholder={field.placeholder}
-          onFocus={() => (focused.current = true)}
-          onBlur={() => {
-            focused.current = false;
-            setDraft(external);
-          }}
-          onChange={(e) => {
-            const raw = e.target.value;
-            setDraft(raw);
-            if (field.kind === "text") return onChange(raw || undefined);
-            if (field.kind === "list") {
-              const items = raw
-                .split(",")
-                .map((x) => x.trim())
-                .filter(Boolean);
-              return onChange(items.length ? items : undefined);
-            }
-            if (field.kind === "map") {
-              const parsed = parseEmits(raw);
-              if (parsed !== null) onChange(parsed);
-              return;
-            }
-            if (raw.trim() === "") return onChange(undefined);
-            const v = Number(raw);
-            if (Number.isFinite(v))
-              onChange(field.max !== undefined ? Math.min(field.max, Math.max(field.min ?? -Infinity, v)) : v);
-          }}
-          name={name}
-          data-testid={`inspector-field-${name}`}
-        />
-        {field.unit && <span className="insp-unit">{field.unit}</span>}
-      </span>
-    </Field>
+    <>
+      <Field label={field.label} hint={field.hint}>
+        <span className="insp-unit-wrap">
+          <input
+            className={`insp-input${field.kind === "number" ? " mono" : ""}`}
+            type={field.kind === "number" ? "number" : "text"}
+            inputMode={field.kind === "number" ? "decimal" : undefined}
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            value={draft}
+            placeholder={field.placeholder}
+            onFocus={() => (focused.current = true)}
+            onBlur={() => {
+              focused.current = false;
+              setDraft(external);
+            }}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setDraft(raw);
+              if (field.kind === "text") return onChange(raw || undefined);
+              if (field.kind === "list") {
+                const items = raw
+                  .split(",")
+                  .map((x) => x.trim())
+                  .filter(Boolean);
+                return onChange(items.length ? items : undefined);
+              }
+              if (field.kind === "map") {
+                const parsed = parseEmits(raw);
+                if (parsed !== null) onChange(parsed);
+                return;
+              }
+              if (raw.trim() === "") return onChange(undefined);
+              const v = Number(raw);
+              if (Number.isFinite(v))
+                onChange(field.max !== undefined ? Math.min(field.max, Math.max(field.min ?? -Infinity, v)) : v);
+            }}
+            name={name}
+            data-testid={`inspector-field-${name}`}
+          />
+          {field.unit && <span className="insp-unit">{field.unit}</span>}
+        </span>
+      </Field>
+      {field.note && (
+        <p className="insp-note insp-field-note" data-testid={`inspector-note-${name}`}>
+          {field.note}
+        </p>
+      )}
+    </>
   );
 }
 

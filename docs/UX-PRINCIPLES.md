@@ -82,6 +82,10 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
     secrets") are for the tooltip, screen readers and exports.
   - Drawing an edge into a typed stencil (Key Vault, App Configuration, an identity, an observability
     backend) picks the dependency; the first time, a toast offers **Make it a flow**.
+  - **Changing a node's stencil** does the same for its edges, in the change's undo step: a flow into what becomes App
+    Configuration turns Config, and what was inferred turns back into a flow when it stops being one. A toast says
+    what changed ("2 connections are now Config: no messages flow over them") with **Undo**. A relationship someone
+    chose (Relationship ▸, the inspector, **Make it a flow**) never changes by itself.
   - **Settings** are the keys a config edge reads, a lock on the secret ones: "4 settings · 2 secret" on the
     canvas, the list on hover or focus. A config store's secret edge says "2 references".
   - **Dependencies** (Show ▸ Dependencies, View menu) shows or hides them all, one remembered setting.
@@ -192,6 +196,9 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   (**entry points**, in msg/s) and how big things are (replicas, partitions). **Show capacity** (C,
   View menu, Show ▸ Capacity) is the heat map over the diagram, one remembered setting; the panel
   shows it while open without changing that setting. The callout's verb is **Apply fix**.
+- A topic or stream with no consumer **keeps** what's published: "Nobody reads this yet · 297 kept", never "lag"
+  (lag is per consumer group) or "No capacity". A queue's messages are **queued** and **waiting**. The callout says
+  **Nobody reads Kafka Topic**, and its one action is **Add a consumer**.
 - The Live toggle's words are **Go live** and **Back to editing**, in the palette too.
 - **Record video…** (live ⋯ menu and the live right-click, same icon in both): **Start recording**, a
   3-2-1 countdown, a pill with the time and **Stop** (or Esc), then **Your recording** with **Download**

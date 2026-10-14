@@ -1,6 +1,7 @@
 // Pure TypeScript contract shared by the editor, tool adapters and Node consumers.
 import type { DiagramFile, DiagramGroup, MetricField } from "../model/types";
 import type { DependencyRelation } from "../model/relations";
+import type { RelationChange } from "../stencils/relations";
 
 export type Ref = string;
 export type LayoutMode = "auto" | "full" | "none";
@@ -64,6 +65,10 @@ export interface OpResult {
   from?: string;
   to?: string;
   stencil?: StencilResolution;
+  /** A node's new stencil re-inferred these connections' relationships (an `update` with `kind`). */
+  relations?: RelationChange[];
+  /** What changed besides the op itself, in a sentence ("1 connection is now Config: no messages flow over it"). */
+  note?: string;
 }
 export interface ApplyOpsResult {
   ok: boolean;

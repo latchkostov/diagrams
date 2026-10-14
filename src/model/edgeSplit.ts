@@ -15,6 +15,7 @@ export function splitEdge(
   const carried = {
     ...(old.kind ? { kind: old.kind } : {}),
     ...(old.relation ? { relation: old.relation } : {}),
+    ...(old.relationOrigin ? { relationOrigin: old.relationOrigin } : {}),
   };
   const props = () => (old.props ? { props: structuredClone(old.props) } : {});
   return [

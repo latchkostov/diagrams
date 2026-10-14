@@ -47,6 +47,7 @@ const edge: Required<DiagramEdge> = {
   label: "reads",
   kind: "sync",
   relation: "config",
+  relationOrigin: "inferred",
   sourceSide: "right",
   targetSide: "left",
   props: { settings: [{ key: "Orders:Timeout" }, { key: "Db:Password", secret: true }], travelMs: 5 },

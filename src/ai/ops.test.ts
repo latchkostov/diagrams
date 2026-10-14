@@ -91,6 +91,31 @@ describe("applyOps", () => {
         .nodes[0],
     ).not.toHaveProperty("sublabel");
   });
+  it("a node's new stencil re-infers its connections, as on the canvas, and the result says so", () => {
+    // The owner's diagram: a .NET service's plain flow into a generic node that becomes App Configuration.
+    const d = run(empty(), [
+      { op: "add_node", kind: "generic.service", label: "Settings", key: "cfg" },
+      { op: "add_node", kind: "service.dotnet", label: "API", key: "api" },
+      { op: "connect", from: "api", to: "cfg", kind: "sync" },
+    ]).diagram;
+    const made = run(d, [{ op: "update", target: "Settings", kind: "azure.app-config" }]);
+    expect(made.diagram.edges[0]).toMatchObject({ relation: "config", relationOrigin: "inferred", kind: "sync" });
+    expect(made.results[0]).toMatchObject({
+      relations: [{ id: d.edges[0].id, from: "flow", to: "config" }],
+      note: "1 connection is now Config: no messages flow over it",
+    });
+    // Back to a service: the inferred Config is a flow again.
+    const back = run(made.diagram, [{ op: "update", target: "Settings", kind: "service.java" }]);
+    expect(back.diagram.edges[0].relation).toBeUndefined();
+    expect(back.diagram.edges[0].relationOrigin).toBeUndefined();
+    expect(back.results[0].note).toBe("1 connection is a flow again: messages flow over it in Live");
+    // A connection chosen on purpose never follows.
+    const pinned = structuredClone(d);
+    pinned.edges[0].relationOrigin = "explicit";
+    const kept = run(pinned, [{ op: "update", target: "Settings", kind: "azure.app-config" }]);
+    expect(kept.diagram.edges[0].relation).toBeUndefined();
+    expect(kept.results[0].relations).toBeUndefined();
+  });
   it("changes an edge's kind, label and props by endpoint reference", () => {
     const changed = run(graph(), [
       { op: "update", target: "API -> DB", kind: "async", label: "write", props: { custom: 1 } },
