@@ -1,5 +1,81 @@
 # Design review
 
+## Round 33: languages, batch 1 (2026-10-13)
+
+The owner's request: "Switch your language from English to whatever else, and for everything in the app to reflect
+that." Research and plan: `docs/research/i18n.md`; how to work with it: `docs/I18N.md`. This batch is the foundation
+and the first areas: the start card, the top bar, the File, View and presenting controls, Share…, the shortcuts sheet,
+the Private diagram and Clear everything dialogs, and the new Language dialog, in English and 37 machine-translated
+languages. Self-review against `docs/UX-PRINCIPLES.md` on the e2e build (`vite preview`) at 1280 × 800 light and
+1440 × 900 dark, in German, French, Japanese, Polish, Traditional Chinese, Bulgarian (as the browser's language),
+Arabic and Hebrew (right to left), and the pseudo-locale. Screenshots are in `docs/screenshots/round33/`.
+
+- **No new chrome in the top bar.** The language lives where the look does: View ▸ **Language…**, after a separator,
+  last (`view-menu-language-1280-light`). The View menu has 10 rows of its 12. Ctrl+K finds **Language…** too.
+- **One primary action.** The dialog lists every language by its own name, with its name in the current language
+  beside it, **Browser default** first ("Now English"), and a search field. A pick applies at once, the dialog
+  included (`language-dialog-en-1280-light`, `language-dialog-de-1280-light`); **Done** closes it. English shows no
+  notice; every other language says it's machine-translated and links to **Suggest a better translation** on GitHub.
+- **The way back is never in a language you can't read.** In any language but English the View row also says
+  "Language" in English (`view-menu-he-rtl-1280-light`), and Ctrl+K always matches "language". Clear everything forgets
+  the choice, and its list says so ("Your settings, the language included").
+- **Words people use, not literal ones.** German keeps Topic and Consumer, Japanese writes コンシューマー, Bulgarian keeps
+  "topic" (тема is the app's colour theme), and every language's glossary is enforced on each message
+  (`start-de-1280-light`, `start-ja-1280-light`, `start-bg-browser-1280-light`, `file-menu-privacy-fr-1280-light`,
+  `share-de-1280-light`, `shortcuts-pl-1440-dark`, `start-zh-TW-1440-dark`).
+- **Right to left mirrors the chrome, never the diagram.** In Arabic and Hebrew the top bar, menus (they open from
+  the button's other edge, submenus to the left), dialogs and the start card mirror; the diagram reads exactly as in
+  English, upstream on the left (`canvas-ar-rtl-1280-light` against `canvas-en-1280-light`, `file-menu-ar-rtl-1280-light`,
+  `start-ar-rtl-1280-light`).
+- **Nothing cut off at English + 40%.** In the pseudo-locale every converted surface shows its brackets whole at
+  1280 × 800 (`start-pseudo-1280-light`, `file-menu-pseudo-1280-light`, `share-pseudo-1280-light`,
+  `shortcuts-pseudo-1280-light`, `clear-pseudo-1280-light`); `tests/e2e/i18n.spec.ts` checks it.
+- **The diagram is never translated:** labels, notes, titles, product names and files stay as written.
+
+### What was off (fixed in this round)
+
+- **Menu descriptions were cut with an ellipsis** once a language ran longer than English: "Fichiers, intégrations et
+  liens, les plus sûrs d'abord" lost its end. A description now wraps under its title. In English this shows View ▸
+  Show dependencies' description whole, on two lines; it was cut at 240 px before.
+- **Long gestures in the shortcuts sheet pushed past the dialog's edge** (German "Knoten über den Rand einer
+  Begrenzung ziehen"). The gesture now wraps; a key combination never does ("Alt ← ↑ → ↓" stays one badge).
+- **File names read backwards in Arabic and Hebrew**: ".diagram.json" showed as "diagram.json." The menus' and Share…'s
+  file hints are isolated left to right, and the two catalogs mark the Open row's file name.
+- **The diagram's own English title read wrong in Arabic** (its full stop on the left): the title and description
+  on the canvas now take their direction from their own words (`dir="auto"`).
+- **Japanese headings broke inside a phrase** ("メッセージ / が"). Japanese now breaks between phrases where the browser
+  can (`word-break: auto-phrase`).
+
+### Still open (owner's call)
+
+- **The rest of the app is English inside a translated UI** until its batch: the live view, Inputs & capacity, the
+  inspector, the checks, the stencils and catalog (all being changed by other work right now), the canvas's hint bar,
+  context menus and toasts, the examples' titles and "Untitled diagram". The View menu's Show capacity and Checks rows
+  wait for those batches. Order and sizes: `docs/research/i18n.md` § 9.
+- **Key names are English everywhere** (Ctrl, Shift): German keyboards say Strg and Umschalt, French Maj. One batch
+  should change `formatCombo` and the shortcut texts together.
+- **A first visit in another language waits for two small downloads** (the loader, then the catalog: about 5 kB)
+  before the app appears; the start-up page shows meanwhile. Preloading the catalog would need its file name in the
+  entry.
+- **Czech buttons use the infinitive** (Uložit, Zavřít), as Windows and macOS do; the brief said imperative.
+- **Size.** The entry grew 0.6 kB and a 0.26 kB startup chunk was added (the runtime, shared with the lazy dialogs),
+  over the 0.3 kB asked for: starting in a language, the Language row, right-to-left menus and about 90 converted
+  strings. No library came close (Lingui, the smallest, is about 3.2 kB). `docs/I18N.md` § Size.
+
+![The Language dialog in German](screenshots/round33/language-dialog-de-1280-light.png)
+![The start card in Japanese](screenshots/round33/start-ja-1280-light.png)
+![Arabic: the File menu mirrors, the diagram doesn't](screenshots/round33/file-menu-ar-rtl-1280-light.png)
+![Hebrew: the View menu, with Language in English too](screenshots/round33/view-menu-he-rtl-1280-light.png)
+![The pseudo-locale: the shortcuts sheet, nothing cut off](screenshots/round33/shortcuts-pseudo-1280-light.png)
+![The pseudo-locale: Share…](screenshots/round33/share-pseudo-1280-light.png)
+![Polish, dark](screenshots/round33/shortcuts-pl-1440-dark.png)
+
+Also: `screenshots/round33/view-menu-language-1280-light.png`, `language-dialog-en-1280-light.png`,
+`start-de-1280-light.png`, `start-bg-browser-1280-light.png`, `start-ar-rtl-1280-light.png`,
+`start-zh-TW-1440-dark.png`, `canvas-en-1280-light.png`, `canvas-ar-rtl-1280-light.png`,
+`file-menu-privacy-fr-1280-light.png`, `share-de-1280-light.png`, `start-pseudo-1280-light.png`,
+`file-menu-pseudo-1280-light.png` and `clear-pseudo-1280-light.png`.
+
 ## Round 31: on-prem network devices (2026-10-13)
 
 The gate for network infrastructure, batch 1 (`docs/research/network-infrastructure.md`): 19 router, switch, firewall
