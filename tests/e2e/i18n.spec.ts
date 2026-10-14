@@ -44,6 +44,157 @@ const catalog = (code: string) =>
 const de = catalog("de");
 const SLUG = "kafka-order-pipeline";
 
+test("a pending catalog locale refresh keeps search and stored node names", async ({ page }) => {
+  await gotoCanvas(page, SLUG);
+  if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
+    await page.getByTestId("palette-toggle").click();
+  await page.getByTestId("palette-search").fill("generic.database");
+  await page.getByTestId("palette-item-generic.database").click();
+  await expect(page.getByTestId("inspector-field-stencil")).toContainText("Database");
+  let release = () => {};
+  let asked = false;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(catalogRequest("de"), async (route) => {
+    asked = true;
+    await held;
+    await route.continue();
+  });
+  try {
+    await openLanguage(page);
+    await page.getByTestId("language-option-de").click();
+    await expect.poll(() => asked).toBe(true);
+    await page.keyboard.press("Escape");
+    await page.getByTestId("palette-search").fill(de["stencil.genericDatabaseName"]);
+    await expect(page.getByTestId("palette-item-generic.database")).toHaveCount(0);
+    release();
+    await expect(page.getByTestId("palette-item-generic.database")).toContainText(de["stencil.genericDatabaseName"]);
+    await expect(page.getByTestId("palette-search")).toHaveValue(de["stencil.genericDatabaseName"]);
+    await expect(page.getByTestId("inspector-field-stencil")).toContainText(de["stencil.genericDatabaseName"]);
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("Database");
+    await expect(page.getByTestId("inspector-field-sublabel")).toHaveValue("database");
+  } finally {
+    release();
+  }
+});
+
+test("an open quick-add row refreshes after its catalog language arrives", async ({ page }) => {
+  await gotoCanvas(page, SLUG);
+  let release = () => {};
+  let asked = false;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(catalogRequest("de"), async (route) => {
+    asked = true;
+    await held;
+    await route.continue();
+  });
+  try {
+    await openLanguage(page);
+    await page.getByTestId("language-option-de").click();
+    await expect.poll(() => asked).toBe(true);
+    await page.keyboard.press("Escape");
+    await page.getByTestId("node-payments").click();
+    await page.keyboard.press("Alt+ArrowRight");
+    await page.getByTestId("quick-add-search").fill("generic.database");
+    const row = page.getByTestId("context-menu-item-quick-add:generic.database");
+    await expect(row).toContainText("Database");
+    await expect(row).toHaveAttribute("data-active", "true");
+    release();
+    await expect(row).toContainText(de["stencil.genericDatabaseName"]);
+    await expect(row).toHaveAttribute("data-active", "true");
+    await expect(page.getByTestId("quick-add-search")).toHaveValue("generic.database");
+  } finally {
+    release();
+  }
+});
+
+test("expanded catalog names wrap in the library, inspector and gallery previews", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await remember(page, "en-XA");
+  await gotoCanvas(page, SLUG);
+  if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
+    await page.getByTestId("palette-toggle").click();
+  for (const id of ["generic.identity-provider", "generic.secret-store", "generic.vector-db"]) {
+    await page.getByTestId("palette-search").fill(id);
+    const item = page.getByTestId(`palette-item-${id}`);
+    await expect(item).toContainText("[");
+    await expectNothingCut(item, `expanded library name: ${id}`);
+  }
+  await page.getByTestId("palette-search").fill("generic.identity-provider");
+  await page.getByTestId("palette-item-generic.identity-provider").click();
+  await expectNothingCut(page.getByTestId("inspector-field-stencil"), "expanded inspector name");
+  await page.goto("./?view=gallery");
+  await page.getByTestId("gallery-search").fill("generic.identity-provider");
+  const tile = page.getByTestId("stencil-tile-generic.identity-provider");
+  await expect(page.getByTestId("tile-stage-generic.identity-provider")).toContainText("[");
+  await expectNothingCut(page.getByTestId("tile-stage-generic.identity-provider"), "expanded gallery preview");
+  await tile.click();
+  await expectNothingCut(page.getByTestId("stencil-drawer"), "expanded stencil details");
+  await expectSeparatePreviews(page);
+});
+
+for (const code of ["de", "ja", "ar"] as const) {
+  test(`stencil catalog in ${code}: translated discovery, previews and picker; brands and diagram text stay`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    const text = catalog(code);
+    const database = text["stencil.genericDatabaseName"];
+    const external = text["stencil.genericExternalApiName"];
+    await remember(page, code);
+    await gotoCanvas(page, SLUG);
+    if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
+      await page.getByTestId("palette-toggle").click();
+    const search = page.getByTestId("palette-search");
+    await search.fill(database);
+    const item = page.getByTestId("palette-item-generic.database");
+    await expect(item).toContainText(database);
+    await expect(item).toHaveAttribute(
+      "title",
+      `${database} (${text["stencil.vendorGeneric"]})\n${text["stencil.genericDatabaseDescription"]}`,
+    );
+    await search.fill(external);
+    await expect(page.getByTestId("palette-item-generic.external-api")).toContainText(external);
+    await search.fill("external api");
+    await expect(page.getByTestId("palette-item-generic.external-api")).toBeVisible();
+    await search.fill("pg");
+    await expect(page.getByTestId("palette-item-postgres")).toContainText("PostgreSQL");
+    await search.fill("Stripe");
+    await expect(page.getByTestId("palette-item-stripe")).toContainText("Stripe");
+
+    await search.fill(database);
+    await page.getByTestId("palette-item-generic.database").click();
+    // A translated preview never becomes the person's diagram content.
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("Database");
+    await expect(page.getByTestId("inspector-field-sublabel")).toHaveValue("database");
+
+    await page.getByTestId("node-payments").click();
+    const label = await page.getByTestId("inspector-field-label").inputValue();
+    await page.getByTestId("inspector-field-stencil").click();
+    await page.getByTestId("stencil-picker-search").fill(database);
+    await expect(page.getByTestId("context-menu-item-pick-stencil:generic.database")).toContainText(database);
+    await page.getByTestId("context-menu-item-pick-stencil:generic.database").click();
+    await expect(page.getByTestId("inspector-field-stencil")).toContainText(database);
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue(label);
+
+    await page.goto("./?view=gallery");
+    await page.getByTestId("gallery-search").fill(database);
+    const tile = page.getByTestId("stencil-tile-generic.database");
+    await expect(tile).toContainText(database);
+    await expect(tile).toContainText(text["stencil.genericDatabaseDescription"]);
+    await expect(page.getByTestId("tile-stage-generic.database")).toContainText(text["stencil.subtitleDatabase"]);
+    await tile.click();
+    const drawer = page.getByTestId("stencil-drawer");
+    await expect(drawer).toContainText(text["stencil.genericDatabaseDescription"]);
+    await expect(drawer).toContainText(text["stencil.subtitleDatabase"]);
+    await expectNothingCut(drawer, `${code}: stencil details`);
+    await expectSeparatePreviews(page);
+    await page.keyboard.press("Escape");
+    await page.getByTestId("gallery-search").fill("Stripe");
+    await expect(page.getByTestId("stencil-tile-stripe")).toContainText("Stripe");
+    expectNoErrors(consoleErrors);
+  });
+}
+
 for (const code of ["de", "ar", "en-XA"]) {
   test.describe(`canvas chrome in ${code}`, () => {
     test.use({ viewport: { width: 1280, height: 800 } });
@@ -1058,6 +1209,19 @@ test.describe("right to left", () => {
     expectNoErrors(consoleErrors);
   });
 });
+
+async function expectSeparatePreviews(page: Page) {
+  const compact = await page.getByTestId("drawer-preview-compact").boundingBox();
+  const caption = await page.getByTestId("drawer-preview-iconOnly").getByTestId("node-caption").boundingBox();
+  if (!compact || !caption) throw new Error("Missing stencil preview geometry");
+  expect(
+    compact.x + compact.width <= caption.x ||
+      caption.x + caption.width <= compact.x ||
+      compact.y + compact.height <= caption.y ||
+      caption.y + caption.height <= compact.y,
+    "the icon caption has its own space, including when the preview row wraps",
+  ).toBe(true);
+}
 
 /**
  * Nothing in `root` is cut off: no box whose text is wider than it with its overflow hidden, and nothing reaching

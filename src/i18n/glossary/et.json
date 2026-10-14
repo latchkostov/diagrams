@@ -22,7 +22,12 @@
     "consumer": {
       "use": "tarbija",
       "match": ["tarbija"],
-      "except": ["menu.setConsumerGroup", "broker.group"],
+      "except": [
+        "menu.setConsumerGroup",
+        "broker.group",
+        "stencil.kafkaTopicDescription",
+        "stencil.redisStreamDescription"
+      ],
       "note": " The canonical consumer-group label is kept in English."
     },
     "consumer group": {
@@ -119,7 +124,22 @@
         "menu.topEdges",
         "menu.bottomEdges",
         "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
-        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe",
+        "stencil.vercelDescription",
+        "stencil.netlifyDescription",
+        "stencil.cloudflareWorkersDescription",
+        "stencil.subtitleEdgeFunction",
+        "stencil.supabaseDescription",
+        "stencil.azureFrontDoorDescription",
+        "stencil.cloudflareDescription",
+        "stencil.envoyDescription",
+        "stencil.genericCdnDescription",
+        "stencil.subtitleEdge",
+        "stencil.genericRouterDescription",
+        "stencil.ciscoIsrDescription",
+        "stencil.subtitleEdgeRouter",
+        "stencil.juniperMxDescription",
+        "stencil.clientIotDescription"
       ],
       "note": "A boundary's edge is its serv."
     },

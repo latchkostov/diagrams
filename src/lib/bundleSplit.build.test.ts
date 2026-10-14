@@ -8,6 +8,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["stencil display messages", /[/\\]src[/\\]i18n[/\\]stencils\.ts$/],
   ["File operation messages", /[/\\]src[/\\]interop[/\\]ui[/\\]fileMessages\.ts$/],
   ["canvas File actions", /[/\\]src[/\\]interop[/\\]fileActions\.ts$/],
   ["numeric planning formatters", /[/\\]src[/\\]i18n[/\\]format\.ts$/],
@@ -36,7 +37,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["the architecture checks", /[/\\]src[/\\]checks[/\\]/],
   ["the AI panel", /[/\\]src[/\\]ai[/\\]ui[/\\]AiPanel\.tsx$/],
   ["the command palette's search", /[/\\]src[/\\]palette[/\\]PaletteDialog\.tsx$/],
-  ["the stencil search index", /[/\\]src[/\\]lib[/\\]stencilSearch\.ts$/],
+  ["the stencil search index", /[/\\]src[/\\]lib[/\\]stencil(?:Display)?Search\.ts$/],
   ["the canvas", /[/\\]src[/\\]canvas[/\\]CanvasView\.tsx$/],
   ["React Flow", /[/\\]@xyflow[/\\]/],
 ];
@@ -73,7 +74,14 @@ const STARTUP_CHUNKS = [
 
 /** Not in the canvas's first view either: they load when used, or once the canvas is idle. */
 const NOT_WITH_CANVAS = NOT_AT_STARTUP.filter(
-  ([what]) => !["the canvas", "React Flow", "the stencil search index", "canvas File actions"].includes(what),
+  ([what]) =>
+    ![
+      "the canvas",
+      "React Flow",
+      "the stencil search index",
+      "canvas File actions",
+      "stencil display messages",
+    ].includes(what),
 );
 
 let chunks: Rollup.OutputChunk[];

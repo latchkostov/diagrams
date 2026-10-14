@@ -1,5 +1,14 @@
 # Release notes
 
+## Stencil catalog localization (2026-10-14)
+
+- Generic stencil names, subtitles, descriptions and vendor labels now follow the selected language
+  throughout the library, gallery, previews, stencil picker and inspector. Product names retain their spelling.
+- Stencil discovery matches translated text as well as English names and aliases. Changing language
+  refreshes mounted results and menus while preserving the query and the diagram's own labels.
+- Catalog display messages stay lazy. Stored defaults, diagram files, agent search results and schemas
+  retain their English contracts; stencil behavior and simulation profiles are unchanged.
+
 ## Custom colours and canvas tint (2026-10-14)
 
 - Annotations now support custom hex colours and a full palette, including transparency. A diagram's

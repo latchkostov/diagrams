@@ -1,4 +1,5 @@
 import { t, msg, useLocale } from "../../i18n";
+import { stencilLabel } from "../../i18n/stencils";
 import { isolateKeys, legacyKeyHint } from "../../editor/keyHints";
 import {
   lazy,
@@ -174,7 +175,7 @@ export default function AiPanel({ request: opened }: { request: PanelRequest | n
     const s = getStencil(stencilId);
     const label = ed.getNode(choice.nodeId)?.label || choice.nodeId;
     // The swap is its own undo step, which no turn offers: the toast keeps its Undo.
-    showApplied(t("ai.stencilChanged", { label, stencil: s.label }), [choice.nodeId], ed, {
+    showApplied(t("ai.stencilChanged", { label, stencil: stencilLabel(s) }), [choice.nodeId], ed, {
       turnUndo: false,
       reveal: true,
     });

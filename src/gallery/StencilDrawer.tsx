@@ -1,3 +1,4 @@
+import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "../i18n/stencils";
 import { categoryLabel, familyLabel } from "../i18n/chrome";
 import { t, useLocale } from "../i18n";
 import { useEffect, useRef, type CSSProperties } from "react";
@@ -83,8 +84,8 @@ export function StencilDrawer({
           <StencilIcon stencil={s} size={26} />
         </span>
         <div className="drawer-heading">
-          <h2 id="drawer-title">{s.label}</h2>
-          <span>{s.vendor}</span>
+          <h2 id="drawer-title">{stencilLabel(s)}</h2>
+          <span>{vendorLabel(s.vendor)}</span>
         </div>
         <div className="drawer-nav">
           <button
@@ -125,16 +126,21 @@ export function StencilDrawer({
       <div className="drawer-body">
         <div className="drawer-stage" data-testid="drawer-preview">
           {Object.entries(nodeVariants).map(([id, v]) => (
-            <figure key={id} className={`drawer-variant variant-${id}`}>
+            <figure key={id} className={`drawer-variant variant-${id}`} data-testid={`drawer-preview-${id}`}>
               <div className="drawer-variant-node">
-                <v.Component stencil={s} label={s.label} sublabel={s.defaultSublabel} />
+                <v.Component
+                  stencil={s}
+                  stencilName={stencilLabel(s)}
+                  label={stencilLabel(s)}
+                  sublabel={stencilSubtitle(s)}
+                />
               </div>
               <figcaption data-testid={`drawer-variant-${id}`}>{variantLabel[id as NodeVariantId]()}</figcaption>
             </figure>
           ))}
         </div>
 
-        <p className="drawer-desc">{s.description}</p>
+        <p className="drawer-desc">{stencilDescription(s)}</p>
 
         <section className="drawer-section">
           <h3>{t("gallery.inASimulation")}</h3>
@@ -183,7 +189,7 @@ export function StencilDrawer({
             {s.defaultSublabel && (
               <>
                 <dt>{t("gallery.newNodesSay")}</dt>
-                <dd className="mono">{s.defaultSublabel}</dd>
+                <dd className="mono">{stencilSubtitle(s)}</dd>
               </>
             )}
             <dt>{t("view.node.iconOnly")}</dt>

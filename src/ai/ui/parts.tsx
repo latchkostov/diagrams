@@ -1,4 +1,5 @@
 import { t, useLocale } from "../../i18n";
+import { stencilLabel, vendorLabel } from "../../i18n/stencils";
 import type { CSSProperties } from "react";
 import { Icon } from "../../components/Icon";
 import { StencilIcon } from "../../components/StencilIcon";
@@ -29,7 +30,7 @@ export function ChoiceRow({ choice, onSwap }: { choice: StencilChoice; onSwap: (
       <span className="ai-choice-pick">
         <Tile stencil={s} size={16} />
         <span>
-          <strong>{s.label}</strong>
+          <strong>{stencilLabel(s)}</strong>
           {!sure && (
             <>
               {" "}
@@ -50,14 +51,14 @@ export function ChoiceRow({ choice, onSwap }: { choice: StencilChoice; onSwap: (
                 key={id}
                 className="ai-alt"
                 onClick={() => onSwap(id)}
-                title={t("ai.useStencilVendor", { label: alt.label, vendor: alt.vendor })}
-                aria-label={t("ai.useStencil", { label: alt.label })}
+                title={t("ai.useStencilVendor", { label: stencilLabel(alt), vendor: vendorLabel(alt.vendor) })}
+                aria-label={t("ai.useStencil", { label: stencilLabel(alt) })}
                 data-testid={`ai-swap-${choice.nodeId}-${id}`}
                 data-node={choice.nodeId}
                 data-stencil={id}
               >
                 <Tile stencil={alt} size={13} />
-                {alt.label}
+                {stencilLabel(alt)}
               </button>
             );
           })}

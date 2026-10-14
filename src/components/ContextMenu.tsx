@@ -15,7 +15,7 @@ import { createPortal } from "react-dom";
 import type { MenuItem, MenuNode } from "../editor/actions";
 import { formatCombo } from "../editor/shortcuts";
 import { getStencil } from "../stencils/registry";
-import { scoreStencil } from "../lib/stencilSearch";
+import { scoreStencil } from "../lib/stencilDisplaySearch";
 import { Icon } from "./Icon";
 import { StencilIcon } from "./StencilIcon";
 import { captureTypeAhead, type TypeAhead } from "../canvas/typeAhead";

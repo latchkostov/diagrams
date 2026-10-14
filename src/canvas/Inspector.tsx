@@ -1,3 +1,4 @@
+import { stencilLabel, vendorLabel } from "../i18n/stencils";
 import { ANNOTATION_LIMITS } from "../model/annotations";
 import {
   useEffect,
@@ -73,7 +74,7 @@ import { formatCount } from "../live/format";
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
 import { nodeSimFields, edgeSimFields, inertNodeProps } from "./simFieldRules";
 import { SIM_LIMITS } from "../interop/native";
-import { t } from "../i18n";
+import { t, useLocale } from "../i18n";
 import { colorLabel } from "../i18n/chrome";
 import { brokerSpec, isClusterWrapper } from "../model/brokers";
 import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
@@ -238,6 +239,7 @@ export interface InspectorProps {
 }
 
 export function Inspector(p: InspectorProps) {
+  useLocale();
   const body = useRef<HTMLDivElement>(null);
 
   // At once, so the next key typed reaches the field (F2 then a name; a double-click then a name), and again a
@@ -460,7 +462,7 @@ function NodePanel({
           <button
             className="insp-stencil"
             data-testid="inspector-field-stencil"
-            aria-label={`Stencil: ${stencil.label} (${stencil.vendor}). Change stencil`}
+            aria-label={`Stencil: ${stencilLabel(stencil)} (${vendorLabel(stencil.vendor)}). Change stencil`}
             aria-haspopup="menu"
             style={{ "--accent": stencil.accent } as CSSProperties}
             onClick={(e) => {
@@ -472,8 +474,8 @@ function NodePanel({
               <StencilIcon stencil={stencil} size={18} />
             </span>
             <span className="insp-stencil-name">
-              {stencil.label}
-              <small>{stencil.vendor}</small>
+              {stencilLabel(stencil)}
+              <small>{vendorLabel(stencil.vendor)}</small>
             </span>
             <Icon name="chevron-down" size={14} />
           </button>
@@ -492,7 +494,7 @@ function NodePanel({
           <input
             className="insp-input mono"
             value={node.data.sublabel ?? ""}
-            placeholder={stencil.label}
+            placeholder={stencilLabel(stencil)}
             onChange={(e) => editor.updateNode(node.id, { sublabel: e.target.value }, naming.merge())}
             {...nameKeys}
             name="sublabel"
@@ -1461,7 +1463,7 @@ function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProps) {
             className="insp-stencil insp-stencil-compact"
             data-testid="inspector-field-stencil"
             data-mixed={stencil ? undefined : "true"}
-            aria-label={`Stencil: ${stencil ? stencil.label : "Mixed"}. Change the stencil of ${ids.length} nodes`}
+            aria-label={`Stencil: ${stencil ? stencilLabel(stencil) : "Mixed"}. Change the stencil of ${ids.length} nodes`}
             aria-haspopup="menu"
             style={stencil ? ({ "--accent": stencil.accent } as CSSProperties) : undefined}
             onClick={(e) => {
@@ -1472,7 +1474,9 @@ function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProps) {
             <span className="palette-tile">
               {stencil ? <StencilIcon stencil={stencil} size={16} /> : <Icon name="shapes" size={14} />}
             </span>
-            <span className="insp-stencil-name">{stencil ? stencil.label : <em className="insp-mixed">Mixed</em>}</span>
+            <span className="insp-stencil-name">
+              {stencil ? stencilLabel(stencil) : <em className="insp-mixed">Mixed</em>}
+            </span>
             <Icon name="chevron-down" size={14} />
           </button>
         </BulkRow>

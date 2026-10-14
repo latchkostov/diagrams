@@ -1,7 +1,8 @@
+import { stencilLabel, vendorLabel } from "../i18n/stencils";
 import type { ActionContext, ActionRegistry, EditorMode, MenuItem, MenuNode } from "../editor/actions";
 import type { EditorApi, Selection } from "../editor/types";
 import type { Stencil } from "../model/types";
-import { scoreStencil } from "../lib/stencilSearch";
+import { scoreStencil } from "../lib/stencilDisplaySearch";
 import { tokens } from "./fuzzy";
 import type { CanvasHost, LiveHost, SessionHost } from "./host";
 import type { Command } from "./rank";
@@ -277,8 +278,8 @@ export function collectCommands(input: SourceInput): Command[] {
       out.push({
         id: `stencil:${s.id}`,
         group: "stencils",
-        label: t("chrome.addValue", { name: s.label }),
-        hint: from ? t("chrome.afterValue", { name: from.label || from.id }) : s.vendor,
+        label: t("chrome.addValue", { name: stencilLabel(s) }),
+        hint: from ? t("chrome.afterValue", { name: from.label || from.id }) : vendorLabel(s.vendor),
         stencil: s.id,
         idle: recent.has(s.id),
         score: (q) => stencilScore(s, q),

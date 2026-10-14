@@ -1,4 +1,4 @@
-import { searchStencils } from "../lib/stencilSearch";
+import { searchStencils } from "../lib/stencilDisplaySearch";
 import { galleryRoleMeta } from "./galleryRoles";
 import { stencils } from "../stencils/registry";
 import { afterEach, describe, expect, it, vi } from "vitest";

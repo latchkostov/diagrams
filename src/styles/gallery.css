@@ -420,8 +420,34 @@
   pointer-events: none;
 }
 
+/* Catalog previews show complete localized metadata; saved canvas nodes retain their geometry. */
+:is(.tile-stage, .drawer-stage) :is(.nb-label, .nb-sub, .nb-kind) {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+:is(.tile-stage, .drawer-stage) .nb-card .nb-sub {
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+:is(.tile-stage, .drawer-stage) .nb-card {
+  height: auto;
+  min-height: 72px;
+  padding-block: 10px;
+}
+
+:is(.tile-stage, .drawer-stage) .nb-compact {
+  height: auto;
+  min-height: 40px;
+  padding-block: 6px;
+}
+
 .tile-stage.stage-iconOnly {
-  padding-bottom: 34px;
+  height: 150px;
+  padding-bottom: 56px;
 }
 
 /* a thin accent stripe, the stencil's colour at a glance */
@@ -512,9 +538,7 @@
   font-size: 14px;
   font-weight: 620;
   letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .role {
@@ -754,9 +778,7 @@
   font-stretch: 106%;
   letter-spacing: -0.015em;
   line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .drawer-heading span {
@@ -838,12 +860,16 @@
   flex-basis: 100%;
 }
 
+.drawer-variant.variant-iconOnly {
+  min-width: 180px;
+}
+
 .drawer-variant-node {
   position: relative;
 }
 
 .drawer-variant.variant-iconOnly .drawer-variant-node {
-  padding-bottom: 40px;
+  padding-bottom: 56px;
 }
 
 .drawer-variant figcaption {
