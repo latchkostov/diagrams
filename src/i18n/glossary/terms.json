@@ -34,34 +34,91 @@
       "en": ["topics?"],
       "note": "A Kafka or Service Bus topic: a named stream messages are published to. Never the word for a subject or a colour theme (the app has a light and dark theme)."
     },
-    "queue": { "en": ["queues?"], "note": "A message queue (Service Bus, SQS, RabbitMQ)." },
+    "queue": {
+      "en": ["queues?"],
+      "note": "A message queue (Service Bus, SQS, RabbitMQ)."
+    },
     "consumer": {
       "en": ["consumers?"],
       "note": "Reads messages from a topic or queue. Not the word for a user (Bulgarian потребител, Croatian korisnik mean user)."
     },
-    "consumer group": { "en": ["consumer groups?"], "note": "Kafka consumer group." },
-    "producer": { "en": ["producers?"], "note": "Writes messages to a topic. Not a film producer." },
-    "partition": { "en": ["partitions?"], "note": "A Kafka topic partition." },
-    "broker": { "en": ["brokers?"], "note": "A message broker (Kafka broker). Not a proxy." },
+    "consumer group": {
+      "en": ["consumer groups?"],
+      "note": "Kafka consumer group."
+    },
+    "producer": {
+      "en": ["producers?"],
+      "note": "Writes messages to a topic. Not a film producer."
+    },
+    "partition": {
+      "en": ["partitions?"],
+      "note": "A Kafka topic partition."
+    },
+    "broker": {
+      "en": ["brokers?"],
+      "note": "A message broker (Kafka broker). Not a proxy."
+    },
     "dead-letter queue": {
       "en": ["dead-letter queues?", "dead letter queues?", "DLQs?"],
       "note": "Where messages that can't be delivered go. Never a literal 'dead letter' or 'invalid letter of the alphabet'."
     },
-    "throughput": { "en": ["throughput"], "note": "Messages handled per second." },
-    "latency": { "en": ["latency", "latencies"], "note": "Delay per message or request." },
-    "replica": { "en": ["replicas?"], "note": "A copy of a service or partition." },
-    "load balancer": { "en": ["load balancers?"] },
-    "gateway": { "en": ["gateways?"], "note": "An API gateway." },
-    "cache": { "en": ["caches?"] },
-    "message": { "en": ["messages?"], "note": "One message flowing through the diagram in Live." },
-    "event": { "en": ["events?"] },
-    "subscription": { "en": ["subscriptions?"] },
-    "offset": { "en": ["offsets?"], "note": "Kafka consumer offset." },
-    "backlog": { "en": ["backlogs?"], "note": "Messages waiting to be processed." },
-    "retry": { "en": ["retry", "retries"], "note": "Trying a failed message again." },
-    "diagram": { "en": ["diagrams?"], "note": "The document the person draws." },
-    "node": { "en": ["nodes?"], "note": "A box in the diagram (a service, a topic, a database)." },
-    "edge": { "en": ["edges?"], "note": "A connection between two nodes." },
+    "throughput": {
+      "en": ["throughput"],
+      "note": "Messages handled per second."
+    },
+    "latency": {
+      "en": ["latency", "latencies"],
+      "note": "Delay per message or request."
+    },
+    "replica": {
+      "en": ["replicas?"],
+      "note": "A copy of a service or partition."
+    },
+    "load balancer": {
+      "en": ["load balancers?"]
+    },
+    "gateway": {
+      "en": ["gateways?"],
+      "note": "An API gateway."
+    },
+    "cache": {
+      "en": ["caches?"]
+    },
+    "message": {
+      "en": ["messages?"],
+      "note": "One message flowing through the diagram in Live."
+    },
+    "event": {
+      "en": ["events?"]
+    },
+    "subscription": {
+      "en": ["subscriptions?"],
+      "note": "P2 broker allocation and routing vocabulary."
+    },
+    "offset": {
+      "en": ["offsets?"],
+      "note": "Kafka consumer offset."
+    },
+    "backlog": {
+      "en": ["backlogs?"],
+      "note": "Messages waiting to be processed."
+    },
+    "retry": {
+      "en": ["retry", "retries"],
+      "note": "Trying a failed message again."
+    },
+    "diagram": {
+      "en": ["diagrams?"],
+      "note": "The document the person draws."
+    },
+    "node": {
+      "en": ["nodes?"],
+      "note": "A box in the diagram (a service, a topic, a database)."
+    },
+    "edge": {
+      "en": ["edges?"],
+      "note": "A connection between two nodes."
+    },
     "stencil": {
       "en": ["stencils?"],
       "note": "An item of the shape library (Visio's word): Kafka topic, PostgreSQL, API gateway."
@@ -70,7 +127,10 @@
       "en": ["boundary", "boundaries"],
       "note": "The box around nodes that belong together (a cluster, a VPC). Never 'group'."
     },
-    "simulation": { "en": ["simulations?"], "note": "A saved, scripted run replayed in Live." },
+    "simulation": {
+      "en": ["simulations?"],
+      "note": "A saved, scripted run replayed in Live."
+    },
     "live": {
       "en": ["live view", "go live"],
       "note": "The mode where messages flow. Many languages keep 'Live'."
@@ -79,20 +139,47 @@
       "en": ["present", "presentation", "presenting"],
       "note": "Presentation mode: the diagram alone, for meetings."
     },
-    "embed": { "en": ["embeds?", "embedded"], "note": "A diagram shown inside another page or app." },
-    "share link": { "en": ["share links?"], "note": "A link that opens the diagram (public)." },
-    "export": { "en": ["exports?", "exported", "exporting"] },
-    "import": { "en": ["imports?", "imported", "importing"] },
+    "embed": {
+      "en": ["embeds?", "embedded"],
+      "note": "A diagram shown inside another page or app."
+    },
+    "share link": {
+      "en": ["share links?"],
+      "note": "A link that opens the diagram (public)."
+    },
+    "export": {
+      "en": ["exports?", "exported", "exporting"]
+    },
+    "import": {
+      "en": ["imports?", "imported", "importing"]
+    },
     "private": {
       "en": ["private"],
       "note": "A diagram that stays on this device: no links, cloud saves or AI. Never 'secret' or 'confidential'."
     },
-    "this device": { "en": ["this device"], "note": "Where files live locally. Never 'local', 'computer' or 'disk'." },
-    "capacity": { "en": ["capacity"], "note": "How busy services are (the heat map)." },
+    "this device": {
+      "en": ["this device"],
+      "note": "Where files live locally. Never 'local', 'computer' or 'disk'."
+    },
+    "capacity": {
+      "en": ["capacity"],
+      "note": "How busy services are (the heat map)."
+    },
     "checks": {
       "en": ["checks"],
       "note": "Design checks that find likely problems. Never 'lint', 'issues' or 'errors'."
     },
-    "annotation": { "en": ["annotations?"], "note": "Text, notes, zones and shapes that document a diagram." }
+    "annotation": {
+      "en": ["annotations?"],
+      "note": "Text, notes, zones and shapes that document a diagram."
+    },
+    "shard": {
+      "en": ["shards?"],
+      "note": "P2 broker allocation and routing vocabulary."
+    },
+    "binding": {
+      "en": ["bindings?"],
+      "note": "P2 broker allocation and routing vocabulary."
+    }
   }
 }

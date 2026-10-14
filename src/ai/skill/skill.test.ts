@@ -1,3 +1,4 @@
+import { planningP2Fixture } from "../../lab/planningP2Fixture";
 // The agent skill (skills/livediagrams/): its generated files are current, its scripts agree with the app
 // (layout, share-link encoding, what the app will open, the HTML export's injection), its released viewer is
 // self-consistent, and validate.mjs explains what's wrong.
@@ -64,7 +65,7 @@ function docExamples(): { name: string; diagram: Record<string, unknown> }[] {
   return ["SKILL.md", "reference/format.md"].flatMap((doc) =>
     [...readFileSync(path.join(skill, doc), "utf8").matchAll(/```json\n([\s\S]*?)```/g)]
       .map((m) => m[1])
-      .filter((text) => text.includes('"format": "diagrams/v1"'))
+      .filter((text) => /"format": "diagrams\/v[12]"/.test(text))
       .map((text) => ({ name: doc, diagram: JSON.parse(text) })),
   );
 }
@@ -649,6 +650,30 @@ describe("the committed viewer", () => {
 });
 
 describe("export-html.mjs", () => {
+  it("validates and exports p2 revision, vocabulary and producer metadata without loss", () => {
+    const diagram = planningP2Fixture();
+    diagram.nodes[1].props = { messageKB: 128, ingestUnits: 2 };
+    const file = write(diagram);
+    const valid = run("validate.mjs", file);
+    expect(valid.code, valid.out).toBe(0);
+    const target = path.join(tmp, "html", "p2.html");
+    const result = run("export-html.mjs", file, "--out", target);
+    expect(result.code, result.err).toBe(0);
+    const html = readFileSync(target, "utf8");
+    expect(
+      JSON.parse(/<script type="application\/json" id="diagram">([\s\S]*?)<\/script>/.exec(html)![1]).diagram,
+    ).toEqual(diagram);
+    const spec = read(path.join(skill, "scripts/lib/spec.json"));
+    expect(spec.stencils.find((s: { id: string }) => s.id === "aws.sns").broker).toMatchObject({
+      partitioned: false,
+      assignment: "subscriptions",
+    });
+    expect(spec.stencils.find((s: { id: string }) => s.id === "aws.kinesis").broker).toMatchObject({
+      partitioned: true,
+      assignment: "shards",
+    });
+  });
+
   const kafka = path.join(root, "src", "examples", "kafka-order-pipeline.json");
   const out = (...parts: string[]) => path.join(tmp, "html", ...parts);
 

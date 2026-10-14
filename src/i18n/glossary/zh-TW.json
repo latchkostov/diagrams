@@ -85,7 +85,8 @@
     },
     "subscription": {
       "use": "訂閱",
-      "match": ["訂閱"]
+      "match": ["訂閱"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "偏移量",
@@ -183,6 +184,16 @@
     "annotation": {
       "use": "註解",
       "match": ["註解"]
+    },
+    "shard": {
+      "use": "碎片",
+      "match": ["碎片"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "繫結",
+      "match": ["繫結"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

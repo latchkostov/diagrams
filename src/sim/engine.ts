@@ -400,7 +400,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function refreshGroupLimit(group: Group): void {
-    if (group.edges[0].from.role === "queue") {
+    if (!group.edges[0].from.props.broker?.partitioned) {
       group.limit = Infinity;
       return;
     }
@@ -429,6 +429,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           const node = nodes.get(id)!;
           return { id, role: node.role, replicas: node.replicas };
         }),
+        broker.props.broker?.partitioned ?? false,
       );
       refreshGroupLimit(group);
       for (const id of group.members) targets.add(id);
@@ -521,9 +522,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     release(work);
   }
 
-  /** The slots a topic or stream group may fill at `node` at once: its partition assignment. A queue: no limit. */
+  /** Slots a partitioned group may fill at `node`: its assignment. Queues and subscription fan-out use the node pool. */
   function groupUnits(group: Group, node: Node): number {
-    if (group.edges[0].from.role === "queue") return Infinity;
+    if (!group.edges[0].from.props.broker?.partitioned) return Infinity;
     return (group.allocations.get(node.id) ?? 0) * (node.role === "processor" ? node.props.concurrency : 1);
   }
 
@@ -779,7 +780,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
                 target.status === "up" &&
                 target.working.length + target.incoming + target.pending.length + target.staged <
                   outstanding(slots(target), target, edge.travelMs) &&
-                (node.role === "queue" ||
+                (!node.props.broker?.partitioned ||
                   (group.activeByNode[target.id] ?? 0) <
                     outstanding(
                       (group.allocations.get(target.id) ?? 0) *

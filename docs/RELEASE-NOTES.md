@@ -1,5 +1,18 @@
 # Release notes
 
+## Planning P2: logs and subscriptions (2026-10-14)
+
+- Kafka and Event Hubs assign reader instances by partitions; Kinesis uses shards. SNS, EventBridge,
+  Service Bus Topic, Pub/Sub and RabbitMQ exchange fan-out can use every configured worker slot.
+- Inspector and capacity readouts use each broker's vocabulary. Subscription brokers have no partition
+  controls, partition preset or partition fixes, and dead-letter routes never count as subscribers.
+- New diagrams use planning p2. Older diagrams retain their playback until an explicit upgrade, with
+  before/after capacity and Undo. Kafka Cluster remains infrastructure, separate from a topic.
+- Producer message size and ingest units are validated metadata without vendor hard ingest limits.
+  The broker UI is translated in all 37 additional languages; offline agent exports use the same model.
+- P1 legacy downloads remain available before upgrading. Upgrades and Undo refresh an open capacity heat map
+  and live run; subscription or queue consumers retain finite network-device throughput estimates.
+
 ## Canvas localization review fixes (2026-10-14)
 
 - Stencil search finds translated roles, categories and families, while keeping English aliases.

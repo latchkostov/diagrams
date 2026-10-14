@@ -63,7 +63,7 @@ function diagramSchema() {
         type: "object",
         required: ["revision"],
         additionalProperties: false,
-        properties: { revision: { const: "p1" } },
+        properties: { revision: { enum: ["p1", "p2"] } },
       },
       title: str(200),
       description: str(2000),

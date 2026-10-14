@@ -23,7 +23,10 @@
       "additionalProperties": false,
       "properties": {
         "revision": {
-          "const": "p1"
+          "enum": [
+            "p1",
+            "p2"
+          ]
         }
       }
     },
@@ -200,6 +203,11 @@
           "maximum": 10000
         },
         "querySlots": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "ingestUnits": {
           "type": "integer",
           "minimum": 1,
           "maximum": 10000

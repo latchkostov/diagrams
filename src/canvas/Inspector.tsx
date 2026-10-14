@@ -69,8 +69,11 @@ import {
 } from "../stencils/netDevices";
 import { formatCount } from "../live/format";
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
-import { SIM_FIELDS_BY_ROLE, edgeSimFields, inertNodeProps } from "./simFieldRules";
+import { nodeSimFields, edgeSimFields, inertNodeProps } from "./simFieldRules";
 import { SIM_LIMITS } from "../interop/native";
+import { t } from "../i18n";
+import { brokerSpec, isClusterWrapper } from "../model/brokers";
+import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
 import { NodePlanning, PlanningUpgrade } from "../planning/lazy";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
@@ -137,7 +140,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     max: SIM_LIMITS.count,
     step: 1,
     placeholder: "1",
-    hint: "Instances (pods); behind a topic, only as many as there are partitions do work",
+    hint: "",
   },
   jitter: {
     label: "Latency jitter",
@@ -421,6 +424,7 @@ function NodePanel({
   revision,
   counts,
   readDiagram,
+  meta,
 }: InspectorProps & { node: DiagramFlowNode }) {
   const stencil = getStencil(node.data.stencil);
   const role = stencil.simRole;
@@ -440,7 +444,8 @@ function NodePanel({
   };
   const merge = (f: string) => ({ merge: `inspector:node:${node.id}:${f}` });
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
-  const simFields = SIM_FIELDS_BY_ROLE[role];
+  const broker = brokerSpec(node.data.stencil, role, meta.planning);
+  const simFields = nodeSimFields(role, node.data.stencil, meta.planning);
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
   // What Custom properties leaves out: only the settings a control here shows.
   const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
@@ -545,6 +550,11 @@ function NodePanel({
           </span>
         }
       >
+        {broker?.partitioned === false && (
+          <p className="insp-note" data-testid="broker-fanout">
+            {assignmentLabel(broker)} · {t("broker.fanout")}
+          </p>
+        )}
         {device ? (
           <DeviceFields
             spec={device}
@@ -556,11 +566,26 @@ function NodePanel({
             <SimInput
               key={k}
               name={k}
-              field={SIM_FIELDS[k]!}
+              field={
+                k === "partitions"
+                  ? {
+                      ...SIM_FIELDS[k]!,
+                      label: assignmentLabel(broker),
+                      hint: t("broker.assignmentHint"),
+                      note: meta.planning?.revision === "p2" ? undefined : SIM_FIELDS[k]!.note,
+                    }
+                  : k === "replicas"
+                    ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
+                    : SIM_FIELDS[k]!
+              }
               value={props[k]}
               onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
             />
           ))
+        ) : isClusterWrapper(node.data.stencil) ? (
+          <p className="insp-note" data-testid="broker-wrapper">
+            {t("broker.wrapper")}
+          </p>
         ) : role === "sink" ? (
           <p className="insp-note" data-testid="inspector-sink-note">
             Messages end here as they arrive: nothing here changes the run.
@@ -608,7 +633,7 @@ function NodePanel({
   );
 }
 
-function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: DiagramFlowEdge }) {
+function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: DiagramFlowEdge }) {
   const naming = useNameFields(editor, "edge", edge.id, edge.id);
   const data = edge.data ?? { kind: "async" as const };
   const props = data.props ?? {};
@@ -623,7 +648,7 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
   const sourceStencil = editor.getNode(edge.source)?.stencil;
   const sourceRole = sourceStencil ? getStencil(sourceStencil).simRole : undefined;
   const fields = edgeSimFields(sourceRole);
-  const grouped = flow && fields.group;
+  const grouped = flow && fields.group && props.dlq !== true;
   const deadLetters = flow && fields.dlq;
   return (
     <>
@@ -703,7 +728,10 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
           </Field>
         )}
         {grouped && (
-          <Field label="Consumer group" hint="Edges from a topic sharing a group compete for messages">
+          <Field
+            label={groupLabel(brokerSpec(sourceStencil, sourceRole ?? "none", meta.planning))}
+            hint={t("broker.groupHint")}
+          >
             <input
               className="insp-input mono"
               value={typeof props.group === "string" ? props.group : ""}
@@ -714,7 +742,7 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
             />
           </Field>
         )}
-        {flow && !grouped && typeof props.group === "string" && (
+        {flow && !fields.group && typeof props.group === "string" && (
           <InertNote
             name="group"
             text={`Consumer group “${props.group}” is kept in the file, but only edges out of a topic or stream have groups, so it doesn't change the run.`}
@@ -1386,14 +1414,23 @@ function MultiPanel(p: InspectorProps) {
 }
 
 /** The fields several nodes share (D11): Stencil, Boundary, and the simulation settings their roles have in common. */
-function BulkNodes({ editor, selectedNodes, groups }: InspectorProps) {
+function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProps) {
   const ids = selectedNodes.map((n) => n.id);
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const stencilId = shared(selectedNodes, (n) => n.data.stencil);
   const stencil = typeof stencilId === "string" ? getStencil(stencilId) : null;
   const group = shared(selectedNodes, (n) => n.data.group ?? "");
-  const roles = [...new Set(selectedNodes.map((n) => getStencil(n.data.stencil).simRole))];
-  const simKeys = SIM_FIELDS_BY_ROLE[roles[0]].filter((k) => roles.every((r) => SIM_FIELDS_BY_ROLE[r].includes(k)));
+  const fields = selectedNodes.map((n) =>
+    nodeSimFields(getStencil(n.data.stencil).simRole, n.data.stencil, meta.planning),
+  );
+  const simKeys = fields[0].filter((k) => fields.every((keys) => keys.includes(k)));
+  const assignmentLabels = [
+    ...new Set(
+      selectedNodes.map((n) =>
+        assignmentLabel(brokerSpec(n.data.stencil, getStencil(n.data.stencil).simRole, meta.planning)),
+      ),
+    ),
+  ].join(" / ");
   const mergeKey = ids.join(",");
   return (
     <>
@@ -1453,7 +1490,13 @@ function BulkNodes({ editor, selectedNodes, groups }: InspectorProps) {
               <SimInput
                 key={k}
                 name={k}
-                field={value === MIXED ? { ...SIM_FIELDS[k]!, placeholder: "Mixed" } : SIM_FIELDS[k]!}
+                field={{
+                  ...SIM_FIELDS[k]!,
+                  ...(k === "partitions"
+                    ? { label: assignmentLabels, hint: t("broker.assignmentHint"), note: undefined }
+                    : {}),
+                  ...(value === MIXED ? { placeholder: "Mixed" } : {}),
+                }}
                 value={value === MIXED ? undefined : first}
                 onChange={(v) => editor.setNodesProps(ids, { [k]: v }, { merge: `bulk:${mergeKey}:${k}` })}
               />

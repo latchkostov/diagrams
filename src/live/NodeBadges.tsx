@@ -1,7 +1,11 @@
-import { t } from "../i18n";
+import { compileTopology } from "../sim/topology";
+import { brokerAssignments } from "../sim/brokerAssignments";
+import { resolveMultiplier } from "../sim/units";
+import type { BrokerSpec } from "../model/brokers";
+import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
+import { t, useLocale } from "../i18n";
 import { hoverTop } from "./hoverPlacement";
-import { flowEdges } from "../model/relations";
-import { memo, useEffect, useLayoutEffect, useState, type CSSProperties } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useState, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
 import type { DiagramFile, SimRole } from "../model/types";
 import type { NodeSimState } from "../sim/types";
@@ -50,6 +54,12 @@ export function NodeBadges({
   const ui = useLive();
   const nodes = useNodes<FlowNode>();
   const diagram = ui.controller.currentDiagram;
+  const topology = useMemo(() => compileTopology(diagram), [diagram]);
+  const assignmentMultiplier = resolveMultiplier(state.running?.multipliers?.capacity);
+  const assignments = useMemo(
+    () => brokerAssignments(diagram, state.configuration, assignmentMultiplier),
+    [diagram, state.configuration, assignmentMultiplier],
+  );
   // No breakdown while a card is edited inline: the editor hangs where the breakdown would show, and
   // focus in the editor would otherwise count as hovering its node.
   const { editing } = useDiagram();
@@ -96,10 +106,15 @@ export function NodeBadges({
             peak={peak}
             hovered={hovered === n.id}
             cap={capacity?.nodes[n.id]}
+            assignment={assignments.consumers.get(n.id)?.spec}
+            brokerSpec={assignments.brokers.get(n.id)}
+            currentModel={diagram.planning?.revision === "p2"}
             concurrency={props?.concurrency ?? 0}
             units={props?.device && props.device.ha !== "standalone" ? HA_LABEL[props.device.ha] : undefined}
             groups={
-              hovered === n.id && (s.role === "topic" || s.role === "stream") ? groupNames(diagram, n.id) : undefined
+              hovered === n.id && (s.role === "topic" || s.role === "stream")
+                ? groupNames(diagram, n.id, topology)
+                : undefined
             }
           />
         );
@@ -147,12 +162,12 @@ function useHoveredNode(): string | null {
 }
 
 /** Consumer-group name → who consumes it, for the lag breakdown. */
-function groupNames(d: DiagramFile, nodeId: string): Map<string, string> {
+function groupNames(d: DiagramFile, nodeId: string, topology: ReturnType<typeof compileTopology>): Map<string, string> {
   const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
   const out = new Map<string, string>();
-  for (const e of flowEdges(d.edges)) {
-    if (e.from !== nodeId) continue;
-    const group = typeof e.props?.group === "string" ? e.props.group : e.id;
+  for (const e of topology.edges) {
+    if (e.from !== nodeId || e.dlq || e.deny) continue;
+    const group = e.groupName;
     const who = labels.get(e.to) ?? e.to;
     out.set(group, out.has(group) ? `${out.get(group)}, ${who}` : who);
   }
@@ -169,9 +184,25 @@ interface BadgeProps {
   units?: string;
   groups?: Map<string, string>;
   cap?: NodeHeat;
+  assignment?: BrokerSpec;
+  brokerSpec?: BrokerSpec;
+  currentModel: boolean;
 }
 
-const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency, units, groups, cap }: BadgeProps) {
+const NodeBadge = memo(function NodeBadge({
+  node,
+  s,
+  peak,
+  hovered,
+  concurrency,
+  units,
+  groups,
+  cap,
+  assignment,
+  brokerSpec,
+  currentModel,
+}: BadgeProps) {
+  useLocale();
   const domNode = useStore((store) => store.domNode);
   const transform = useStore((store) => (hovered ? store.transform : null));
   const tooltipId = `live-node-detail-${encodeURIComponent(node.id)}`;
@@ -315,7 +346,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
               failing over
             </span>
           )}
-          <IdleChip id={node.id} idle={s.idleReplicas ?? 0} replicas={s.replicas ?? 0} />
+          <IdleChip id={node.id} idle={s.idleReplicas ?? 0} replicas={s.replicas ?? 0} assignment={assignment} />
         </div>
       )}
 
@@ -347,8 +378,8 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
           )}
           {!!s.idleReplicas && (
             <p className="lv-detail-note" data-testid={`node-detail-idle-${node.id}`}>
-              {s.idleReplicas} of {s.replicas} replicas are idle: a consumer group can&apos;t use more consumers than
-              partitions.
+              {t("broker.assigned", { active: s.activeReplicas ?? 0, configured: s.replicas ?? 0 })} ·{" "}
+              {assignmentLabel(assignment)}
             </p>
           )}
           {unread && (
@@ -363,7 +394,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
           {blocked > 0 && <Row label="Blocked by a deny rule" value={formatCount(blocked)} />}
           {groups && Object.keys(s.lag).length > 1 && (
             <div className="lv-lag-list">
-              <div className="lv-lag-title">Lag by consumer group</div>
+              <div className="lv-lag-title">{currentModel ? groupLabel(brokerSpec) : "Lag by consumer group"}</div>
               {Object.entries(s.lag)
                 .sort((a, b) => b[1] - a[1])
                 .map(([g, v]) => (

@@ -1,5 +1,55 @@
 # Design review
 
+## Round 37: Planning P2 — logs and subscriptions (2026-10-14)
+
+The required designer-agent review inspected source and production Chromium screenshots of the existing inspector
+and live Inputs panel. Scoped pass: no remaining blocker. English was inspected at 1440 × 900; Arabic and the
+pseudo-locale at 1280 × 800. This was not a whole-app screen-reader, dark-theme or narrow-screen audit.
+
+| Surface                   | Screenshot                                                        | Review                                                                             |
+| ------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| SNS readers               | [SNS inspector](research/planning-p2/sns-inspector.png)           | All 8 replicas × 4 slots; Subscription billing; no Partitions or partition fix.    |
+| Kafka readers             | [Kafka inspector](research/planning-p2/kafka-inspector.png)       | Assigned instances 3 / 8; Partitions vocabulary and partition-aware sizing.        |
+| Kinesis readers           | [Kinesis inspector](research/planning-p2/kinesis-inspector.png)   | Shards throughout assignment and sizing; the pool remains shared.                  |
+| RabbitMQ exchange readers | [Exchange inspector](research/planning-p2/exchange-inspector.png) | Binding billing; no Kafka assignment cap.                                          |
+| SNS live Inputs           | [SNS live](research/planning-p2/sns-live.png)                     | All configured slots can work; no partition control, preset or add-partitions fix. |
+| Arabic                    | [Arabic subscription](research/planning-p2/sns-ar.png)            | Label fits; chrome mirrors while the diagram stays left to right.                  |
+| Pseudo-locale             | [Expanded subscription](research/planning-p2/sns-pseudo.png)      | Expanded label fits without inspector overflow.                                    |
+
+Accepted findings: remove the inert group editor from explicit DLQ routes; remove the partition preset from
+subscription-only diagrams; use full translated assigned-instance labels; correct shard wording in fixes,
+notes and tooltips; preserve both nouns in mixed Kafka/Kinesis bulk edits; and refresh translated cached notes
+and capacity copy on a paused language switch. Observed group details now name subscriptions/bindings and exclude
+a DLQ even when it shares a subscription name. SNS's broker inspector teaches named-route fan-out in place.
+Legacy help remains intact, while the current-model surfaces use the new vocabulary.
+
+No top-bar or floating-bar controls were added. Existing disclosures and context surfaces carry configuration;
+advanced work stays collapsed. Apply capacity fix remains the inspector's primary action, uses the shared planner,
+and stays undoable. A Kafka cluster is explicitly infrastructure, not a second topic or a place to add partitions.
+
+The seven-angle code review's 14 findings were accepted (several described the same device-allocation defect).
+Uncapped reservations now retain finite physical device units, including legacy queues. Mixed log labels follow
+the allocation supplying the reported count; a broker's own lag vocabulary stays separate. Checks carry neutral
+broker descriptors with deterministic English worker/agent output and translate only at presentation. Edge typing
+uses existing metadata, and preset classification avoids whole-node property resolution. P1 retains its secondary
+legacy download while offering the upgrade. Revision-only upgrades and Undo refresh an open heat map and live run.
+The designer's follow-up source review found no blocker in these changes.
+
+Rejected/deferred: per-subscription replica pools would invent capacity beyond the one node pool; automatic model
+upgrades would change saved playback; vendor hard ingest limits require later admission logic. Kafka keys,
+ordering, share-group delivery and retry-policy changes remain outside P2. No new always-visible control was needed.
+
+Verification includes all 17 public examples (the original 16 plus the network example); the explicit-upgrade
+capacity/single-point table is in [architecture-checks.md](research/architecture-checks.md). Partition-distinction
+removal made nine regression tests fail. Temporarily removing locale invalidation and DLQ readout exclusion made
+their two browser regressions fail; restoring both passed. Final production E2E covers live, capacity, checks,
+sim-truth, sim-clarity, planning-p1, network-devices, inspector and planning-p2, including the released offline viewer.
+The final run passed 5,777 unit tests (four existing skips) and all 109 requested production Chromium tests.
+Eight additional deliberate regressions failed their behavioral assertions for device units, allocation/lag nouns,
+check locale, property-resolution work, shared-subscription delivery and legacy playback. Restoring the P1 export
+and revision-overlay defects also failed their two production browser tests. All fixes were restored and verified.
+The i18n check reports zero errors and stale keys; the pre-existing P1 fallback entries remain documented in I18N.md.
+
 ## Canvas localization review fixes (2026-10-14)
 
 The designer-agent gate approved the fixes after identifying and correcting stale submenu anchors

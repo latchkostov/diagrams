@@ -1,4 +1,5 @@
-import type { SimRole } from "../model/types";
+import type { SimRole, PlanningModel } from "../model/types";
+import { brokerSpec } from "../model/brokers";
 import type { NodeSimProps } from "../sim/types";
 
 // Which simulation fields the inspector shows: only the ones that can change the run where they are
@@ -43,4 +44,11 @@ export function inertNodeProps(role: SimRole, props: Record<string, unknown>): {
 export function edgeSimFields(sourceRole: SimRole | undefined): { group: boolean; dlq: boolean } {
   const grouped = sourceRole === "topic" || sourceRole === "stream";
   return { group: grouped, dlq: grouped || sourceRole === "queue" };
+}
+
+/** Profile-aware fields; legacy files retain their old controls and semantics. */
+export function nodeSimFields(role: SimRole, stencil: string, planning?: PlanningModel): SimKey[] {
+  return SIM_FIELDS_BY_ROLE[role].filter(
+    (key) => key !== "partitions" || brokerSpec(stencil, role, planning)?.partitioned,
+  );
 }

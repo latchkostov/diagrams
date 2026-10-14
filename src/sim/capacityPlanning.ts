@@ -18,7 +18,6 @@ export const FIX_TARGET = 0.55;
 /** The most replicas or partitions a fix proposes: the file format's count bound (SIM_LIMITS.count in model/simProps.ts). */
 export const MAX_COUNT = 10_000;
 
-const PARTITIONED: ReadonlySet<SimRole> = new Set(["topic", "stream"]);
 const roleOf = (n: DiagramNode): SimRole => stencilRole(n.stencil);
 
 /** Node props as a simulation sees them: the diagram's, then the saved setup's. */
@@ -122,7 +121,7 @@ export function sizingFix(
   const needsPartitions = (id: string) => effective.has(id) || opts.idle === id;
   for (const [brokerId, groups] of compileTopology(d).groups) {
     const broker = byId.get(brokerId)!;
-    if (!PARTITIONED.has(roleOf(broker))) continue;
+    if (!planProps(broker, sim, d).broker?.partitioned) continue;
     const from = planProps(broker, sim, d).partitions;
     let to = from;
     for (const group of groups) {

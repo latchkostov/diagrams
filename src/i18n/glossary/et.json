@@ -22,7 +22,8 @@
     "consumer": {
       "use": "tarbija",
       "match": ["tarbija"],
-      "except": ["menu.setConsumerGroup"]
+      "except": ["menu.setConsumerGroup", "broker.group"],
+      "note": " The canonical consumer-group label is kept in English."
     },
     "consumer group": {
       "use": "consumer group",
@@ -81,7 +82,8 @@
     },
     "subscription": {
       "use": "tellimus",
-      "match": ["tellimus"]
+      "match": ["tellimus", "Tellimus", "Tellimused"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -184,6 +186,16 @@
     "annotation": {
       "use": "annotatsioon",
       "match": ["annotatsioon"]
+    },
+    "shard": {
+      "use": "Shardid",
+      "match": ["Shardid"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Seos",
+      "match": ["Seosed", "Seos"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

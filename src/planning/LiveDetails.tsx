@@ -1,3 +1,6 @@
+import { resolveNodeProps } from "../sim/defaults";
+import { groupLabel } from "../stencils/brokerVocabulary";
+import { compileTopology } from "../sim/topology";
 import { useMemo } from "react";
 import type { RealNodeMetrics } from "../sim/types";
 import type { DiagramFile } from "../model/types";
@@ -10,15 +13,17 @@ export function LiveDetails({ metrics: s, diagram: d }: { metrics: RealNodeMetri
   const groups = useMemo(() => {
     const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
     const groups = new Map<string, string[]>();
-    for (const edge of d.edges) {
-      if (edge.from !== s.id) continue;
-      const group = typeof edge.props?.group === "string" ? edge.props.group : edge.id;
+    for (const edge of compileTopology(d).edges) {
+      if (edge.from !== s.id || edge.dlq || edge.deny) continue;
+      const group = edge.groupName;
       const members = groups.get(group) ?? [];
       members.push(labels.get(edge.to) ?? edge.to);
       groups.set(group, members);
     }
     return groups;
   }, [d, s.id]);
+  const node = d.nodes.find((n) => n.id === s.id);
+  const broker = node ? resolveNodeProps(d, node).broker : undefined;
   return (
     <details className="insp-section" data-testid="planning-live-details">
       <summary data-testid="planning-live-details-toggle">{t("planning.liveDetails")}</summary>
@@ -36,7 +41,14 @@ export function LiveDetails({ metrics: s, diagram: d }: { metrics: RealNodeMetri
       </p>
       {Object.entries(s.lag).map(([group, lag]) => (
         <p key={group} data-testid={`planning-live-lag-${group}`}>
-          {t("planning.liveLag", { group, consumers: formatList(groups.get(group) ?? []), lag: formatNumber(lag) })}
+          {broker?.partitioned === false
+            ? t("broker.waiting", {
+                kind: groupLabel(broker),
+                name: group,
+                readers: formatList(groups.get(group) ?? []),
+                count: lag,
+              })
+            : t("planning.liveLag", { group, consumers: formatList(groups.get(group) ?? []), lag: formatNumber(lag) })}
         </p>
       ))}
     </details>

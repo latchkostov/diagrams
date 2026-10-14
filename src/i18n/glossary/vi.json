@@ -90,7 +90,8 @@
     "subscription": {
       "use": "subscription",
       "keepEnglish": true,
-      "match": ["subscription", "đăng ký"]
+      "match": ["subscription", "đăng ký", "Đăng ký"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -193,6 +194,16 @@
     "annotation": {
       "use": "chú thích",
       "match": ["chú thích"]
+    },
+    "shard": {
+      "use": "Shard",
+      "match": ["Shard"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Liên kết",
+      "match": ["Liên kết"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

@@ -1,4 +1,5 @@
 import type { DiagramFile, DiagramNode } from "../model/types";
+import type { BrokerSpec } from "../model/brokers";
 import { profileOf } from "../stencils/profiles";
 import { stencilRole } from "../stencils/roles";
 import { compileTopology, brokerRole, type CompiledTopology } from "../sim/topology";
@@ -9,6 +10,7 @@ export interface Capability {
   edge: string;
   peer: string;
   group?: string;
+  broker?: BrokerSpec;
   filter?: string[];
   emits?: string;
   share?: number;
@@ -53,7 +55,7 @@ export function resolveCapabilities(
         kind: "consumes",
         edge: e.id,
         peer: e.from,
-        ...(stencilRole(source.stencil) !== "queue" ? { group: e.groupName } : {}),
+        ...(stencilRole(source.stencil) !== "queue" ? { group: e.groupName, broker: propsOf(source).broker } : {}),
         ...(e.filter ? { filter: e.filter } : {}),
         retry: props.retry,
         retryBackoffMs: props.retryBackoffMs,

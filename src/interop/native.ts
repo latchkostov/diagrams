@@ -109,7 +109,10 @@ export function validateDiagram(data: unknown): NativeResult {
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
-  if (raw.format === "diagrams/v2" && (!isObj(raw.planning) || raw.planning.revision !== "p1"))
+  if (
+    raw.format === "diagrams/v2" &&
+    (!isObj(raw.planning) || (raw.planning.revision !== "p1" && raw.planning.revision !== "p2"))
+  )
     return {
       ok: false,
       error: t("planning.unsupportedRevision"),

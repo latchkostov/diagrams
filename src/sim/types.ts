@@ -131,14 +131,16 @@ export interface NodeSimProps {
   connections?: number;
   /** Measured active-query slots. Reserved contract; stores remain parallel in P1 playback. */
   querySlots?: number;
+  /** Broker provisioning metadata, in its profile's ingest unit; no hard ingest ceiling in P2. */
+  ingestUnits?: number;
   /** Sources: real messages / second when traffic is on. Default 2. */
   ratePerSec?: number;
   /** Processors / gateways / stores: per-message processing time in ms, never scaled. Defaults by role. */
   latencyMs?: number;
   /** Processors: parallel messages per replica. Default 4. */
   concurrency?: number;
-  /** Processors: instances (pods). Effective parallelism = replicas × concurrency. Behind a topic or
-   *  stream, at most `partitions` replicas per consumer group do work; the rest are idle. Default 1. */
+  /** Processors: instances (pods). Effective parallelism = replicas × concurrency. Behind a partitioned log,
+   *  at most `partitions` instances per group work; P2 subscriptions/bindings use the full fleet. Default 1. */
   replicas?: number;
   /** 0..1 random spread applied to latencyMs (0.3 ⇒ ±30%). Default 0.2. */
   jitter?: number;
@@ -149,7 +151,7 @@ export interface NodeSimProps {
   retryBackoffMs?: number;
   /** Brokers (topic/queue/stream): deliveries before dead-lettering. Default 3. */
   maxDeliveryCount?: number;
-  /** Topics / streams: available replica assignments per consumer group. Default 3. */
+  /** Partitioned logs: available instance assignments per group (Kinesis shards). Default 3. P2 subscription/binding fan-out ignores it; legacy/p1 retain role-based limits. */
   partitions?: number;
   /** Message type emitted by sources / injection. Default derived from node label. */
   messageType?: string;
@@ -162,7 +164,7 @@ export interface NodeSimProps {
   size?: "branch" | "campus" | "datacentre";
   /** Network devices: throughput per unit in Gbps (the datasheet figure). Default: the size preset's. */
   gbps?: number;
-  /** Network devices: the average message in kB (1,000 bytes) the throughput is converted with. Default 64. */
+  /** Average payload in kB (1,000 bytes). Devices convert throughput with it (default 64); brokers retain it as producer metadata only, with no default or ingest enforcement. */
   messageKB?: number;
   /** Network devices: standalone (default), an active-standby pair or an active-active cluster of `replicas` units. */
   ha?: "standalone" | "active-standby" | "active-active";
@@ -174,7 +176,7 @@ export interface NodeSimProps {
 
 /** Per-edge tunables from DiagramEdge.props. */
 export interface EdgeSimProps {
-  /** Consumer group for edges leaving a topic/stream. Edges sharing a group compete; default = edge id. */
+  /** Log consumer group, pub/sub subscription or exchange binding name. Each name receives a copy; readers sharing a name compete. Queues always compete; DLQ routes never subscribe. Default = edge id. */
   group?: string;
   /** Inferred groups follow the consumer id when a connection is copied or reconnected. */
   groupOrigin?: "inferred";

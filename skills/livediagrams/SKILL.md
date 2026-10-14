@@ -37,11 +37,13 @@ Paths below are relative to this skill's folder. Run the scripts with `node`.
    `azure.service-bus.queue`, `aws.sqs`, `postgres`, `service.dotnet`, `client.browser`. If nothing fits, use a
    `generic.*` stencil.
 4. **Write `<name>.diagram.json`.** The format is in [reference/format.md](reference/format.md). Leave out
-   x and y:
+   x and y. New diagrams use planning p2: logs assign instances by partitions or shards; subscription/binding
+   fan-out uses all configured instances. Preserve an existing diagram's model; never silently upgrade it:
 
    ```json
    {
-     "format": "diagrams/v1",
+     "format": "diagrams/v2",
+     "planning": { "revision": "p2" },
      "title": "Order events",
      "nodes": [
        { "id": "api", "stencil": "service.node", "label": "Orders API" },

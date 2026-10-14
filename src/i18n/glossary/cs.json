@@ -81,7 +81,8 @@
     },
     "subscription": {
       "use": "odběr",
-      "match": ["odběr"]
+      "match": ["odběr", "Odběr", "Odběry"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -182,6 +183,16 @@
     "annotation": {
       "use": "anotace",
       "match": ["anotac"]
+    },
+    "shard": {
+      "use": "Shardy",
+      "match": ["Shardy"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Vazba",
+      "match": ["Vazba", "Vazby"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

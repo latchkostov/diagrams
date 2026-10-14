@@ -22,7 +22,8 @@
     "consumer": {
       "use": "konzument",
       "match": ["konzument"],
-      "except": ["menu.setConsumerGroup"]
+      "except": ["menu.setConsumerGroup", "broker.group"],
+      "note": " The canonical consumer-group label is kept in English."
     },
     "consumer group": {
       "use": "consumer group",
@@ -81,7 +82,8 @@
     },
     "subscription": {
       "use": "predplatné",
-      "match": ["predplatn"]
+      "match": ["predplatn", "Odber", "Odbery"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -184,6 +186,16 @@
     "annotation": {
       "use": "anotácia",
       "match": ["anotáci"]
+    },
+    "shard": {
+      "use": "Shardy",
+      "match": ["Shardy"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Väzba",
+      "match": ["Väzba", "Väzby"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

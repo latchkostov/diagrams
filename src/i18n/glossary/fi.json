@@ -23,7 +23,8 @@
     "consumer": {
       "use": "kuluttaja",
       "match": ["kuluttaj"],
-      "except": ["menu.setConsumerGroup"]
+      "except": ["menu.setConsumerGroup", "broker.group"],
+      "note": " The canonical consumer-group label is kept in English."
     },
     "consumer group": {
       "use": "consumer group",
@@ -83,7 +84,8 @@
     },
     "subscription": {
       "use": "tilaus",
-      "match": ["tilau", "tilaukse"]
+      "match": ["tilau", "tilaukse", "Tilaus", "Tilaukset"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -185,6 +187,16 @@
     "annotation": {
       "use": "merkintä",
       "match": ["merkin", "merkint"]
+    },
+    "shard": {
+      "use": "Shardit",
+      "match": ["Shardit"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Sidonta",
+      "match": ["Sidonta", "Sidonnat"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

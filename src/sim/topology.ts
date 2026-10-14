@@ -170,7 +170,9 @@ export function allocateGroupReplicas(
   role: SimRole,
   partitions: number,
   members: { id: string; role: SimRole; replicas: number }[],
+  partitioned = true,
 ): Map<string, number> {
+  if (!partitioned) return new Map(members.map((member) => [member.id, member.replicas]));
   const budgets = members.map((member) => ({
     id: member.id,
     replicas: member.role === "processor" ? member.replicas : partitions,

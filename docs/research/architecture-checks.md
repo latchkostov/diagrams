@@ -1174,3 +1174,35 @@ blocks on purpose. Rule-level cases are in `src/checks/netDevices.test.ts`.
 [aws-sec02]: https://docs.aws.amazon.com/wellarchitected/latest/framework/sec_identities_unique.html "AWS SEC02-BP02"
 [cf-avro]: https://docs.confluent.io/platform/current/schema-registry/fundamentals/serdes-develop/serdes-avro.html "Confluent Avro serializer wire format"
 [cf-sr]: https://docs.confluent.io/platform/current/schema-registry/index.html "Confluent Schema Registry"
+
+## Planning P2: precision gate (2026-10-14)
+
+The checkout has the original 16 public examples plus Branch office to data centre (17 total).
+The top-level public fixtures were checked as saved and after explicit upgrade; no example was rewritten.
+`src/planning/p2.test.ts` pins every `capacity`/`single-point` delta and verifies that upgraded p1 and p2
+have the same findings on these fixtures. `src/checks/examples.test.ts` still pins their complete original
+finding lists. Opening any existing example therefore changes no finding. P2 alone changes no finding
+relative to the corresponding pinned p1 document.
+
+| Public example                | Saved capacity / single-point | After explicit p2 upgrade                            | Assessment                                                                                        |
+| ----------------------------- | ----------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| aks-app-config-key-vault      | none                          | unchanged                                            | No new sizing or single-point claim.                                                              |
+| aws-fanout                    | none                          | unchanged                                            | Full subscription fan-out; no partition fix.                                                      |
+| aws-serverless-orders         | none                          | unchanged                                            | Queue readers still compete.                                                                      |
+| azure-service-bus-integration | none                          | unchanged                                            | Named subscriptions stay independent.                                                             |
+| branch-to-datacentre          | none                          | single-point:branch-router                           | Pinning the existing one-unit default makes its unbuffered entry explicit; same after p1 pinning. |
+| cdc-analytics                 | none                          | unchanged                                            | Log assignment unchanged.                                                                         |
+| cqrs-event-sourcing           | none                          | single-point:gateway                                 | Pinned one-replica gateway; same after p1 pinning.                                                |
+| event-driven-data-platform    | none                          | single-point:webhook-receiver; single-point:checkout | Pinned one-replica entry paths; same after p1 pinning.                                            |
+| gcp-streaming-analytics       | none                          | unchanged                                            | No artificial Pub/Sub reader cap.                                                                 |
+| iot-telemetry                 | capacity:hot                  | unchanged                                            | The deliberately undersized hot path remains the bottleneck.                                      |
+| kafka-order-pipeline          | none                          | single-point:gateway; single-point:orders            | Pinned one-replica unbuffered entry path; same after p1 pinning.                                  |
+| multi-region-active-active    | none                          | unchanged                                            | Redundant paths remain redundant.                                                                 |
+| nightly-batch-elt             | none                          | unchanged                                            | Scheduling model unchanged.                                                                       |
+| notification-fanout           | none                          | unchanged                                            | Exchange/queue topology retains fan-out then competition.                                         |
+| outbox-saga-checkout          | none                          | single-point:order-api                               | Pinned one-replica entry API; same after p1 pinning.                                              |
+| rag-assistant                 | none                          | single-point:rag-api                                 | Pinned one-replica entry API; same after p1 pinning.                                              |
+| webhook-ingestion             | none                          | unchanged                                            | Existing reader sizing remains sufficient.                                                        |
+
+No new rule, severity, vendor limit or single-point heuristic was added. The six upgrade differences
+come from the existing migration materialising implicit counts, not a new P2 redundancy assumption.

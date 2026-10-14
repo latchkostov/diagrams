@@ -1,3 +1,4 @@
+import { planningP2Fixture } from "./planningP2Fixture";
 import { OnDeviceEvalsLab } from "./OnDeviceEvalsLab";
 import { relationshipFixture } from "./relationshipFixture";
 import { planningFixture } from "./planningFixture";
@@ -916,6 +917,31 @@ const tracePresets: Preset[] = [
 ];
 
 export const presets: readonly Preset[] = [
+  {
+    kind: "render",
+    id: "planning-p2",
+    title: "Logs and subscriptions",
+    group: "Playground",
+    description: "Compare partition or shard assignment with subscription and binding fan-out.",
+    controls: [
+      {
+        type: "select",
+        key: "broker",
+        label: "Broker",
+        default: "aws.sns",
+        options: [
+          "aws.sns",
+          "kafka.topic",
+          "aws.kinesis",
+          "azure.event-hubs",
+          "rabbitmq.exchange",
+          "gcp.pubsub",
+          "azure.service-bus.topic",
+        ].map((value) => ({ value, label: value })),
+      },
+    ],
+    render: (v) => <LiveLabStage key={String(v.broker)} diagram={planningP2Fixture(String(v.broker))} />,
+  },
   {
     kind: "render",
     id: "file-prompts",

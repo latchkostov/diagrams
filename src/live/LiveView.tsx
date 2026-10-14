@@ -45,6 +45,8 @@ export interface LiveViewProps {
   simulations?: Simulation[];
   /** Lab: the diagram to simulate when there's no editor. */
   diagram?: DiagramFile;
+  /** Revisions can change without changing the graph's nodes or edges. */
+  planning?: DiagramFile["planning"];
   /** Start options. Default: read from the URL (`live`, `sim`, `speed`, `paused`, `traffic`). */
   initial?: Partial<LiveParams> & {
     traffic?: boolean;
@@ -182,7 +184,7 @@ export function LiveView(props: LiveViewProps) {
         </button>
       )}
       {!live && ready && overlayOn && props.editor && (
-        <EditCapacity editor={props.editor} presenting={props.presenting} />
+        <EditCapacity editor={props.editor} presenting={props.presenting} planning={props.planning} />
       )}
       {live && ready && (
         <LiveSession

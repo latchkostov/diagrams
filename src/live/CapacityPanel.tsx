@@ -9,6 +9,9 @@ import {
   type ReactNode,
 } from "react";
 import type { DiagramFile, DiagramNode, Simulation } from "../model/types";
+import { t, useLocale } from "../i18n";
+import { brokerSpec, type BrokerSpec } from "../model/brokers";
+import { assignmentLabel } from "../stencils/brokerVocabulary";
 import { stencilRole } from "../stencils/roles";
 import { autoScale } from "../sim/scale";
 import { LIMITS, SIM_LIMITS } from "../interop/native";
@@ -93,6 +96,7 @@ export const CapacityPanel = memo(function CapacityPanel({
   onAddConsumer,
   disabledHint,
 }: Props) {
+  const locale = useLocale();
   const [showAll, setShowAll] = useState(false);
   const [heldRows, setHeldRows] = useState<ReturnType<typeof selectRows> | null>(null);
   const [resetVersion, setResetVersion] = useState(0);
@@ -134,7 +138,19 @@ export const CapacityPanel = memo(function CapacityPanel({
     };
   }, [editing, heldRows, byId, selectedRows]);
   const props = (n: DiagramNode) => baseProps(diagram, n, base, inputs.props[n.id]);
-  const notes = useMemo(() => partitionsNotes(diagram, base, inputs), [diagram, base, inputs]);
+  // t() reads the language store; retain the language with the cached translated snapshot.
+  const { value: notes } = useMemo(
+    () => ({ locale, value: partitionsNotes(diagram, base, inputs) }),
+    [diagram, base, inputs, locale],
+  );
+  const partitioned = useMemo(
+    () =>
+      diagram.nodes
+        .map((n) => brokerSpec(n.stencil, stencilRole(n.stencil), diagram.planning))
+        .filter((spec) => spec?.partitioned),
+    [diagram.nodes, diagram.planning],
+  );
+  const assignmentLabels = [...new Set(partitioned.map(assignmentLabel))].join(" / ");
   const traffic = inputs.traffic ?? base?.multipliers?.traffic ?? 1;
   const capacity = inputs.capacity ?? base?.multipliers?.capacity ?? 1;
   const dirty = hasInputs(inputs) || invalidFields.size > 0;
@@ -216,18 +232,28 @@ export const CapacityPanel = memo(function CapacityPanel({
                 onChange={(v) => set({ ...inputs, capacity: v })}
               />
               <div className="cap-presets" role="group" aria-label="Presets">
-                {PRESETS.map((p) => {
+                {PRESETS.filter((p) => p.id !== "double-partitions" || partitioned.length > 0).map((p) => {
                   const on = isPresetActive(p.id, inputs, diagram, base);
                   return (
                     <button
                       key={p.id}
                       className={`cap-preset${on ? " is-on" : ""}`}
                       aria-pressed={on}
-                      title={p.hint}
+                      title={
+                        diagram.planning?.revision === "p2"
+                          ? p.id === "double-partitions"
+                            ? `2 × ${assignmentLabels}`
+                            : p.id === "normal"
+                              ? undefined
+                              : p.hint
+                          : p.hint
+                      }
                       onClick={() => set(applyPreset(p.id, inputs, diagram, base))}
                       data-testid={`capacity-preset-${p.id}`}
                     >
-                      {p.label}
+                      {p.id === "double-partitions" && diagram.planning?.revision === "p2"
+                        ? `2 × ${assignmentLabels}`
+                        : p.label}
                       {p.id === "black-friday" && <small>5×</small>}
                     </button>
                   );
@@ -266,13 +292,14 @@ export const CapacityPanel = memo(function CapacityPanel({
             )}
 
             {rows.brokers.length > 0 && (
-              <Group title="Topics & queues" hint="Partitions cap how many consumers in a group work at once">
+              <Group title="Topics & queues" hint={t("broker.groupHint")}>
                 {rows.brokers.map((id) => (
                   <BrokerRow
                     key={`${id}:${resetVersion}`}
                     node={byId.get(id)!}
                     heat={view.nodes[id]}
                     partitions={props(byId.get(id)!).partitions}
+                    broker={props(byId.get(id)!).broker}
                     note={notes.get(id)}
                     onPartitions={(n) => setProp(id, "partitions", n)}
                   />
@@ -797,7 +824,8 @@ function ServiceRow({
           {capacity !== 1 && `${effective} replicas with Capacity × ${formatMultiplier(capacity).slice(0, -1)}. `}
           {heat && heat.idleReplicas > 0 && (
             <span className="cap-warn-text">
-              {heat.idleReplicas} of {heat.replicas} idle: not enough partitions.
+              {t("broker.assigned", { active: heat.activeReplicas, configured: heat.replicas })} ·{" "}
+              {assignmentLabel(heat.assignment)}
             </span>
           )}
         </p>
@@ -851,12 +879,14 @@ function BrokerRow({
   node,
   heat,
   partitions,
+  broker,
   note,
   onPartitions,
 }: {
   node: DiagramNode;
   heat?: NodeHeat;
   partitions: number;
+  broker?: BrokerSpec;
   /** Why more partitions change nothing here (partitionsNotes), once they're raised. */
   note?: string;
   onPartitions: (n: number) => void;
@@ -879,15 +909,19 @@ function BrokerRow({
       </div>
       {role === "queue" ? (
         <p className="cap-row-foot">Competing consumers: every replica can work.</p>
+      ) : !broker?.partitioned ? (
+        <p className="cap-row-foot" data-testid={`capacity-fanout-${node.id}`}>
+          {assignmentLabel(broker)} · {t("broker.fanout")}
+        </p>
       ) : (
         <div className="cap-fields">
           <div className="cap-field">
-            <span>Partitions</span>
+            <span>{assignmentLabel(broker)}</span>
             <Stepper
               value={partitions}
               onChange={onPartitions}
               testId={`capacity-partitions-${node.id}`}
-              label={`${node.label || node.id} Partitions`}
+              label={`${node.label || node.id} ${assignmentLabel(broker)}`}
             />
           </div>
         </div>

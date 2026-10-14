@@ -1,3 +1,5 @@
+import { resolveNodeProps } from "../../sim/defaults";
+import { t } from "../../i18n/core";
 import { isBroker, listNames } from "../context";
 import type { CheckRule, Finding } from "../types";
 import { isDeadLetterQueue } from "./deadLetter";
@@ -57,9 +59,12 @@ export const noReader: CheckRule = {
             : keeps
               ? `${send} to ${name}, but nothing consumes it: it keeps every message, unread.`
               : `${send} to ${name}, but nothing consumes it: messages pile up.`,
-          rationale: keeps
-            ? "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that."
-            : "A queue with producers and no consumers only grows. Every queue should have a consumer that takes its messages.",
+          rationale:
+            resolveNodeProps(ctx.diagram, node).broker?.partitioned === false
+              ? t("broker.noReader")
+              : keeps
+                ? "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that."
+                : "A queue with producers and no consumers only grows. Every queue should have a consumer that takes its messages.",
           fix: { label: "Add a consumer…", choice },
         });
       }

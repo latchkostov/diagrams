@@ -80,7 +80,8 @@
     },
     "subscription": {
       "use": "sottoscrizione",
-      "match": ["sottoscrizion", "abbonament"]
+      "match": ["sottoscrizion", "abbonament", "Sottoscrizione", "Sottoscrizioni"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -173,6 +174,16 @@
     "annotation": {
       "use": "annotazione",
       "match": ["annotazion"]
+    },
+    "shard": {
+      "use": "Shard",
+      "match": ["Shard"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Binding",
+      "match": ["Binding"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {

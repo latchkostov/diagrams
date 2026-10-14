@@ -24,6 +24,7 @@ export interface Explanation {
   baseReplicas: number;
   omittedContributors: number;
   activeReplicas: number;
+  assignments: { broker: string; spec: import("../model/brokers").BrokerSpec; count: number }[];
   slots: number;
   seconds: number;
   utilization: number;
@@ -129,6 +130,10 @@ export function explainNode(
     baseReplicas: props.replicas,
     omittedContributors,
     activeReplicas: n.activeReplicas,
+    assignments: [...new Set(incoming.map((e) => e.from))].flatMap((broker) => {
+      const spec = analysis.resolved[broker].broker;
+      return spec?.partitioned ? [{ broker, spec, count: analysis.resolved[broker].partitions }] : [];
+    }),
     slots: props.concurrency,
     seconds: props.latencyMs / 1000,
     utilization: n.utilization,

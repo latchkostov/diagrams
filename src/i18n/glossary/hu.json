@@ -83,7 +83,8 @@
     },
     "subscription": {
       "use": "előfizetés",
-      "match": ["előfizet"]
+      "match": ["előfizet", "Előfizetés", "Előfizetések"],
+      "note": " Messaging subscription forms coexist with cloud-account subscription terminology."
     },
     "offset": {
       "use": "offset",
@@ -184,6 +185,16 @@
     "annotation": {
       "use": "annotáció",
       "match": ["annotáci"]
+    },
+    "shard": {
+      "use": "Shardok",
+      "match": ["Shardok"],
+      "note": "P2 broker vocabulary; singular and plural forms."
+    },
+    "binding": {
+      "use": "Kötés",
+      "match": ["Kötések", "Kötés"],
+      "note": "P2 broker vocabulary; singular and plural forms."
     }
   },
   "keys": {
