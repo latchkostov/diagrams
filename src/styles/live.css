@@ -136,6 +136,13 @@
   font-family: var(--font-ui);
 }
 
+/* Each badge is its own stacking context (its transform), painted in diagram order: the one whose breakdown or
+   tip is showing comes first, so a later node's ring, pill or chip never shows through the card. */
+.lv-node.is-hovered,
+.lv-node:hover {
+  z-index: 1;
+}
+
 .lv-ring {
   position: absolute;
   inset: -6px;

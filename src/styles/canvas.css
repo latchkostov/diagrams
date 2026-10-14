@@ -3141,6 +3141,17 @@ select.insp-input {
   flex: 1;
 }
 
+/* A hover card inside the viewport shows above everything else there: React Flow paints nodes in order, each its
+   own stacking context, so a node with its dependency list open comes above the others and the edge labels (below
+   a card being edited, EDITING_Z); live, an edge's settings card comes above the metric badges. */
+.react-flow__node:has(.dn-pip-card) {
+  z-index: 1500 !important;
+}
+
+.react-flow[data-live] .react-flow__edgelabel-renderer:has(.fe-card) {
+  z-index: 4;
+}
+
 /* Under the pips, clear of the node's own title, scaled from that corner (DependencyPips.tsx). */
 .dn-pip-card {
   top: calc(100% + 14px);

@@ -198,7 +198,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
 
   return (
     <div
-      className={`lv-node is-${s.status}`}
+      className={`lv-node is-${s.status}${hovered ? " is-hovered" : ""}`}
       style={style}
       data-testid={`node-badge-${node.id}`}
       data-status={s.status}
