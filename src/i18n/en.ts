@@ -1169,6 +1169,7 @@ const en = {
   "chrome.kubernetes": "Kubernetes",
   "chrome.onPremises": "On-premises",
   "chrome.neutral": "Neutral",
+  "chrome.white": "White",
   "chrome.grey": "Grey",
   "chrome.yellow": "Yellow",
   "chrome.green": "Green",
