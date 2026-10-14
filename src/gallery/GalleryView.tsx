@@ -99,7 +99,8 @@ export function GalleryView() {
   const families = useMemo(() => familyCounts(stencils), []);
 
   // Search narrows first, so the family counts say how many hits each family holds.
-  const searched = useMemo(() => searchStencils(stencils, q), [q]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- shared search metadata resolves the current locale
+  const searched = useMemo(() => searchStencils(stencils, q), [q, locale]);
   const searchedFamilies = useMemo(() => {
     const m = new Map<FamilyId, number>();
     for (const s of searched) m.set(familyOf(s), (m.get(familyOf(s)) ?? 0) + 1);

@@ -1,8 +1,7 @@
 import { connectionProps, connectionDefaults } from "../model/connectionDefaults";
-import { formatNumber } from "../i18n/number";
 import { t } from "../i18n";
 import { kindLabel, relationNoun } from "../i18n/chrome";
-import { relationChangeMessage } from "./editMessages";
+import { annotationGeometryMessage, relationChangeMessage } from "./editMessages";
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { newPlanningProps } from "../model/planning";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
@@ -27,7 +26,7 @@ import {
 } from "../canvas/annotations";
 import {
   ANNOTATION_LIMITS,
-  annotationGeometryError,
+  annotationGeometryReason,
   annotationSize,
   annotationCoordinate,
   annotationText,
@@ -658,19 +657,12 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
         const x = kind === "text" && pointed ? c.x - 8 : c.x - size.width / 2;
         at = { x: snap10(x), y: snap10(c.y - size.height / 2), ...size };
       }
-      const geometryError = annotationGeometryError(at);
+      const geometryError = annotationGeometryReason(at);
       if (geometryError) {
         notify(
           t("chrome.couldnTAddValueValue", {
             kind: kindLabel[kind].toLowerCase(),
-            error:
-              geometryError === "its geometry must be finite."
-                ? t("edit.finiteGeometry")
-                : geometryError.startsWith("it's outside")
-                  ? t("edit.coordinateBudget")
-                  : t("edit.annotationSize", {
-                      limit: formatNumber(ANNOTATION_LIMITS.maxAnnotationSize, { useGrouping: false }),
-                    }),
+            error: annotationGeometryMessage(geometryError),
           }),
           {
             kind: "error",

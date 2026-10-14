@@ -329,6 +329,7 @@ export function builtinActions(): Action[] {
     },
     {
       id: "canvas.paste",
+      paletteLabel: () => t("shortcuts.paste"),
       section: "clipboard",
       targets: ["canvas"],
       get label() {
@@ -553,6 +554,7 @@ export function builtinActions(): Action[] {
     // ---------------- node ----------------
     {
       id: "node.rename",
+      paletteLabel: () => t("chrome.renameNode"),
       modes: ["edit", "live"],
       section: "edit",
       targets: ["node"],
@@ -625,6 +627,14 @@ export function builtinActions(): Action[] {
     },
     {
       id: "node.properties",
+      paletteLabel: (ctx) =>
+        ctx.target === "edge"
+          ? t("chrome.edgeProperties")
+          : ctx.target === "annotation"
+            ? t("chrome.annotationProperties")
+            : ctx.target === "group"
+              ? t("chrome.boundaryProperties")
+              : t("chrome.nodeProperties"),
       modes: ["edit", "live"],
       section: "edit",
       targets: ["node", "edge", "group", "annotation"],
@@ -650,6 +660,14 @@ export function builtinActions(): Action[] {
     },
     {
       id: "item.duplicate",
+      paletteLabel: (ctx) =>
+        ctx.target === "node"
+          ? t("chrome.duplicateNode")
+          : ctx.target === "group"
+            ? t("chrome.duplicateBoundary")
+            : ctx.target === "annotation"
+              ? t("chrome.duplicateAnnotation")
+              : t("shortcuts.duplicate"),
       section: "clipboard",
       targets: ["node", "selection", "group", "annotation"],
       get label() {
@@ -662,6 +680,14 @@ export function builtinActions(): Action[] {
     },
     {
       id: "item.copy",
+      paletteLabel: (ctx) =>
+        ctx.target === "node"
+          ? t("chrome.copyNode")
+          : ctx.target === "group"
+            ? t("chrome.copyBoundary")
+            : ctx.target === "annotation"
+              ? t("chrome.copyAnnotation")
+              : t("chrome.copySelection"),
       section: "clipboard",
       targets: ["node", "selection", "group", "annotation"],
       get label() {
@@ -674,6 +700,12 @@ export function builtinActions(): Action[] {
     },
     {
       id: "item.cut",
+      paletteLabel: (ctx) =>
+        ctx.target === "node"
+          ? t("chrome.cutNode")
+          : ctx.target === "annotation"
+            ? t("chrome.cutAnnotation")
+            : t("chrome.cutSelection"),
       section: "clipboard",
       targets: ["node", "selection", "annotation"],
       get label() {
@@ -709,6 +741,16 @@ export function builtinActions(): Action[] {
     },
     {
       id: "item.delete",
+      paletteLabel: (ctx) =>
+        ctx.target === "group"
+          ? t("command.deleteBoundary")
+          : ctx.target === "node"
+            ? t("chrome.deleteNode")
+            : ctx.target === "edge"
+              ? t("chrome.deleteEdge")
+              : ctx.target === "annotation"
+                ? t("chrome.deleteAnnotation")
+                : t("chrome.deleteValueItemsOtherValueItems", { count: total(ctx) }),
       section: "danger",
       targets: ["node", "edge", "selection", "annotation"],
       label: (ctx) =>
@@ -738,6 +780,7 @@ export function builtinActions(): Action[] {
       // Rewire one end from the keyboard (dragging a selected edge's end is the pointer's way): From ▸ and To ▸,
       // each a searchable list of the nodes that end could move to. Keeps the label, relationship and settings.
       id: "edge.reconnect",
+      paletteLabel: () => t("chrome.reconnectEdge"),
       section: "edge",
       targets: ["edge"],
       get label() {
@@ -952,6 +995,8 @@ export function builtinActions(): Action[] {
     // ---------------- annotation ----------------
     {
       id: "annotation.edit",
+      paletteLabel: (ctx) =>
+        ctx.editor.getAnnotation(ctx.nodeId!)?.kind === "zone" ? t("chrome.renameAnnotation") : t("chrome.editText"),
       section: "edit",
       targets: ["annotation"],
       label: (ctx) =>
@@ -1028,6 +1073,7 @@ export function builtinActions(): Action[] {
     // ---------------- group ----------------
     {
       id: "group.rename",
+      paletteLabel: () => t("chrome.renameBoundary"),
       modes: ["edit", "live"],
       section: "edit",
       targets: ["group"],

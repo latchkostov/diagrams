@@ -1,3 +1,6 @@
+import { searchStencils } from "../lib/stencilSearch";
+import { galleryRoleMeta } from "./galleryRoles";
+import { stencils } from "../stencils/registry";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
@@ -46,15 +49,14 @@ it.each(Object.keys(catalogs))("%s: a stencil's complete Add command remains sea
 });
 
 describe("original English canvas chrome", () => {
-  it("preserves the zone's palette noun using annotation metadata", () => {
-    const item: MenuItem = { type: "item", id: "annotation.edit", label: "Rename" };
-    const registry = { build: () => [item] };
+  it("preserves the zone's palette noun using action-owned annotation metadata", () => {
+    const registry = new ActionRegistry(builtinSections);
+    registry.register(builtinActions());
     const editor = { getAnnotation: () => ({ kind: "zone" }) } as unknown as EditorApi;
     const [command] = actionCommands(registry, [
       { target: "annotation", nodeId: "zone", selection: { nodeIds: ["zone"], edgeIds: [], groupIds: [] }, editor },
     ]);
     expect(command.label).toBe("Rename annotation");
-    expect(paletteLabel({ ...item, label: "Edit text" }, "annotation", "note")).toBe("Edit text");
   });
 
   it("preserves the footer's complete English sentence and keyboard markup", () => {
@@ -79,10 +81,9 @@ describe("original English canvas chrome", () => {
     ]);
     expect(Object.values(shapeLabel)).toEqual(["Rectangle", "Rounded rectangle", "Ellipse", "Diamond", "Cylinder"]);
     const item: MenuItem = { type: "item", id: "item.delete", label: "Delete" };
-    expect(paletteLabel(item, "group")).toBe("Delete boundary");
-    expect(paletteLabel({ ...item, id: "node.properties" }, "edge")).toBe("Edge properties");
-    expect(paletteLabel({ ...item, id: "sim.kill", label: "Kill" }, "node")).toBe("Kill node");
-    expect(paletteLabel({ ...item, id: "sim.kill", label: "Revive" }, "node")).toBe("Revive node");
+    expect(paletteLabel(item)).toBe("Delete");
+    expect(paletteLabel({ ...item, id: "sim.kill", label: "Kill", paletteLabel: "Kill node" })).toBe("Kill node");
+    expect(paletteLabel({ ...item, id: "sim.kill", label: "Revive", paletteLabel: "Revive node" })).toBe("Revive node");
   });
 
   it("retains every singular, plural and mixed stencil-change toast", () => {
@@ -146,6 +147,7 @@ it.each(["de", "ar", "en-XA"])("%s: cached actions and metadata resolve at displ
   registry.register(builtinActions());
   const editor = {
     getDiagram: () => ({ nodes: [], edges: [] }),
+    getNode: () => undefined,
     getSelection: () => ({ nodeIds: [], edgeIds: [], groupIds: [] }),
   } as unknown as EditorApi;
   const context = {
@@ -160,7 +162,7 @@ it.each(["de", "ar", "en-XA"])("%s: cached actions and metadata resolve at displ
   state.c = (await catalogs[code]()).default as Catalog;
   const translated = registry.build(context).find((n) => n.type === "item" && n.id === "node.rename") as MenuItem;
   expect(translated.label).not.toBe("Rename");
-  expect(paletteLabel(translated, "node")).not.toBe("Rename node");
+  expect(paletteLabel(translated)).not.toBe("Rename node");
   expect(categoryLabel.messaging).not.toBe("Messaging");
   expect(quickAddMenu(() => {})[0]).toMatchObject({ label: categoryLabel.messaging });
   // The SSR-based palette tests use this hook too; no component-specific locale mock is needed.
@@ -170,3 +172,33 @@ it.each(["de", "ar", "en-XA"])("%s: cached actions and metadata resolve at displ
       stencilScore(getStencil("postgres"), "add PostgreSQL"),
     );
 });
+
+it.each(["de", "ja"])("%s: translated bare action labels never acquire English nouns", async (code) => {
+  state.l = code;
+  state.c = (await catalogs[code]()).default as Catalog;
+  const actions = builtinActions();
+  const editor = { getDiagram: () => ({ nodes: [{ id: "a" }, { id: "b" }, { id: "c" }] }) } as unknown as EditorApi;
+  for (const [id, target] of [
+    ["selection.tidy", "selection"],
+    ["node.edit-sublabel", "node"],
+    ["group.fit", "group"],
+  ] as const) {
+    const registry = new ActionRegistry();
+    registry.register(actions.filter((a) => a.id === id));
+    const context = { target, editor, selection: { nodeIds: ["a", "b", "c"], edgeIds: [], groupIds: [] } };
+    const item = registry.build(context)[0] as MenuItem;
+    expect(actionCommands(registry, [context])[0].label).toBe(item.label);
+  }
+});
+
+it.each(["de", "ar", "ru"])(
+  "%s: shared localized metadata is searchable after an English index was used",
+  async (code) => {
+    searchStencils(stencils, "store");
+    state.l = code;
+    state.c = (await catalogs[code]()).default as Catalog;
+    expect(searchStencils(stencils, galleryRoleMeta.store.label).map((s) => s.id)).toContain("postgres");
+    expect(searchStencils(stencils, categoryLabel.data).map((s) => s.id)).toContain("postgres");
+    expect(searchStencils(stencils, "store").map((s) => s.id)).toContain("postgres");
+  },
+);

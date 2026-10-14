@@ -98,6 +98,8 @@ export interface Action {
   /** Modes the action is offered in. Default ["edit"]. */
   modes?: readonly EditorMode[];
   label: string | ((ctx: ActionContext) => string);
+  /** Complete command name, owned by the action rather than inferred from its menu label. */
+  paletteLabel?: string | ((ctx: ActionContext) => string);
   icon?: IconName;
   shortcut?: string;
   danger?: boolean;
@@ -228,6 +230,7 @@ function toItem(a: Action, ctx: ActionContext): MenuItem | null {
     type: "item",
     id: a.id,
     label: typeof a.label === "function" ? a.label(ctx) : a.label,
+    paletteLabel: typeof a.paletteLabel === "function" ? a.paletteLabel(ctx) : a.paletteLabel,
     icon: a.icon,
     shortcut: a.shortcut,
     danger: a.danger,

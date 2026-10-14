@@ -263,7 +263,8 @@ type MenuState = {
   x: number;
   y: number;
   flipX?: number;
-  items: MenuNode[];
+  items: () => MenuNode[];
+  alignment?: "physical-left";
   label: string;
   searchable?: string;
   testId?: string;
@@ -285,6 +286,7 @@ function CanvasInner({
   onTitleChange,
   viewer,
 }: Props) {
+  const locale = useLocale();
   const { theme, nodeVariant, edgeStyle } = useSettings();
   const { screenToFlowPosition, fitView, getNode, getNodes, getNodesBounds, getViewport, setCenter, setViewport } =
     useReactFlow<FlowNode, DiagramFlowEdge>();
@@ -349,6 +351,8 @@ function CanvasInner({
   }, []);
   const [editing, setEditing] = useState<InlineEdit | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- factories resolve translated metadata from the locale store
+  const menuItems = useMemo(() => menu?.items() ?? [], [menu, locale]);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [inspectorFocus, setInspectorFocus] = useState<
     { name: string; seq: number; caret?: "end"; target?: string } | undefined
@@ -866,6 +870,7 @@ function CanvasInner({
       const right = sx + spot.width * k + 8;
       landing.set(spot);
       setMenu({
+        alignment: "physical-left",
         x: menuLeft ? sx - 8 - QUICK_ADD_W : right,
         flipX: sx - 8,
         y: sy,
@@ -876,10 +881,11 @@ function CanvasInner({
         get searchable() {
           return tr("canvas.addANode");
         },
-        items: quickAddMenu((s) => {
-          pickNamed(() => editor.createConnected({ from: fromId, stencil: s.id, toward: dir }), s.label);
-          pushRecentStencil(s.id);
-        }, getRecentStencils()),
+        items: () =>
+          quickAddMenu((s) => {
+            pickNamed(() => editor.createConnected({ from: fromId, stencil: s.id, toward: dir }), s.label);
+            pushRecentStencil(s.id);
+          }, getRecentStencils()),
       });
     },
     [readOnly, live, presenting, meta.direction, editor, getNode, hideTip, store, setViewport, pickNamed],
@@ -1024,6 +1030,7 @@ function CanvasInner({
       // Empty canvas: quick-add there; the pick lands on the drop point, connected, ready to name.
       const point = screenToFlowPosition({ x: pt.clientX, y: pt.clientY });
       setMenu({
+        alignment: "physical-left",
         x: pt.clientX,
         y: pt.clientY,
         get label() {
@@ -1033,10 +1040,11 @@ function CanvasInner({
         get searchable() {
           return tr("canvas.addANode");
         },
-        items: quickAddMenu((s) => {
-          pickNamed(() => editor.createConnected({ from, stencil: s.id, at: point }), s.label);
-          pushRecentStencil(s.id);
-        }, getRecentStencils()),
+        items: () =>
+          quickAddMenu((s) => {
+            pickNamed(() => editor.createConnected({ from, stencil: s.id, at: point }), s.label);
+            pushRecentStencil(s.id);
+          }, getRecentStencils()),
       });
     },
     [endConnecting, readOnly, annotationKindOf, editor, live, screenToFlowPosition, pickNamed],
@@ -1461,8 +1469,10 @@ function CanvasInner({
           ? {
               x: e.clientX,
               y: e.clientY,
-              items,
-              label: tr("menu.valueNodeValueEdgeValueGroupValueSelectionValueAnnotation", { target: ctx.target }),
+              items: () => actionRegistry.build(full),
+              get label() {
+                return tr("menu.valueNodeValueEdgeValueGroupValueSelectionValueAnnotation", { target: ctx.target });
+              },
             }
           : null,
       );
@@ -1518,6 +1528,7 @@ function CanvasInner({
     if (!(e.target instanceof Element) || !e.target.classList.contains("react-flow__pane")) return;
     const point = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     setMenu({
+      alignment: "physical-left",
       x: e.clientX,
       y: e.clientY,
       get label() {
@@ -1529,10 +1540,11 @@ function CanvasInner({
       },
       // Quick-add opens the new node's name (decision 3), so what's typed next names it instead of reaching the
       // canvas's one-key shortcuts (T, L, C).
-      items: quickAddMenu((s) => {
-        pickNamed(() => editor.addNamed(s.id, point), s.label);
-        pushRecentStencil(s.id);
-      }, getRecentStencils()),
+      items: () =>
+        quickAddMenu((s) => {
+          pickNamed(() => editor.addNamed(s.id, point), s.label);
+          pushRecentStencil(s.id);
+        }, getRecentStencils()),
     });
   };
 
@@ -2529,7 +2541,8 @@ function CanvasInner({
           x={menu.x}
           y={menu.y}
           flipX={menu.flipX}
-          items={menu.items}
+          alignment={menu.alignment}
+          items={menuItems}
           label={menu.label}
           searchable={menu.searchable}
           testId={menu.testId}

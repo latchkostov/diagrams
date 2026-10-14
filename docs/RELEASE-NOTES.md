@@ -1,5 +1,14 @@
 # Release notes
 
+## Canvas localization review fixes (2026-10-14)
+
+- Stencil search finds translated roles, categories and families, while keeping English aliases.
+  Open search panels and menus refresh when a language finishes loading, preserving queries and navigation.
+- RTL quick-add stays beside its prospective node in physical canvas coordinates; expanded library
+  categories keep their downward chevrons. The diagram retains its direction.
+- Command names come from their actions, avoiding mixed-language nouns. Annotation recovery guidance
+  follows typed validation reasons, and chrome counts reuse number formatters.
+
 ## Planning P1 CI fixes (2026-10-14)
 
 - Live stats cards open below nodes when there is room, flip above when needed, and keep covering

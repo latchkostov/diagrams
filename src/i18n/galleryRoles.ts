@@ -1,4 +1,5 @@
 import { t } from "./index";
+import { simRoleMeta } from "../lib/simRoles";
 import type { SimRole } from "../model/types";
 
 /** Display metadata for simulation roles. The hue is reused later for the live-view legend. */
@@ -7,7 +8,7 @@ export const galleryRoleMeta: Record<SimRole, { label: string; hue: string; hint
     get label() {
       return t("gallery.source");
     },
-    hue: "#22a06b",
+    hue: simRoleMeta.source.hue,
     get hint() {
       return t("gallery.emitsMessages");
     },
@@ -16,7 +17,7 @@ export const galleryRoleMeta: Record<SimRole, { label: string; hue: string; hint
     get label() {
       return t("gallery.topic");
     },
-    hue: "#8b5cf6",
+    hue: simRoleMeta.topic.hue,
     get hint() {
       return t("gallery.pubSubEverySubscriberGetsACopy");
     },
@@ -25,7 +26,7 @@ export const galleryRoleMeta: Record<SimRole, { label: string; hue: string; hint
     get label() {
       return t("gallery.queue");
     },
-    hue: "#e5a00d",
+    hue: simRoleMeta.queue.hue,
     get hint() {
       return t("gallery.pointToPointOneConsumerPerMessage");
     },
@@ -34,7 +35,7 @@ export const galleryRoleMeta: Record<SimRole, { label: string; hue: string; hint
     get label() {
       return t("gallery.stream");
     },
-    hue: "#0ea5b7",
+    hue: simRoleMeta.stream.hue,
     get hint() {
       return t("gallery.orderedPartitionedLog");
     },
@@ -43,7 +44,7 @@ export const galleryRoleMeta: Record<SimRole, { label: string; hue: string; hint
     get label() {
       return t("gallery.processor");
     },
-    hue: "#3b82f6",
+    hue: simRoleMeta.processor.hue,
     get hint() {
       return t("gallery.receivesTransformsForwards");
     },
@@ -52,7 +53,7 @@ export const galleryRoleMeta: Record<SimRole, { label: string; hue: string; hint
     get label() {
       return t("gallery.gateway");
     },
-    hue: "#14b8a6",
+    hue: simRoleMeta.gateway.hue,
     get hint() {
       return t("gallery.routesOrPassesRequestsThrough");
     },
@@ -61,7 +62,7 @@ export const galleryRoleMeta: Record<SimRole, { label: string; hue: string; hint
     get label() {
       return t("gallery.store");
     },
-    hue: "#a1785c",
+    hue: simRoleMeta.store.hue,
     get hint() {
       return t("gallery.persistsData");
     },
@@ -70,7 +71,7 @@ export const galleryRoleMeta: Record<SimRole, { label: string; hue: string; hint
     get label() {
       return t("gallery.sink");
     },
-    hue: "#e5484d",
+    hue: simRoleMeta.sink.hue,
     get hint() {
       return t("gallery.terminalConsumer");
     },
@@ -79,7 +80,7 @@ export const galleryRoleMeta: Record<SimRole, { label: string; hue: string; hint
     get label() {
       return t("gallery.decorative");
     },
-    hue: "#8a94a6",
+    hue: simRoleMeta.none.hue,
     get hint() {
       return t("gallery.notPartOfTheFlow");
     },

@@ -1,6 +1,6 @@
-import type { ActionContext, ActionRegistry, EditorMode, MenuItem, MenuNode, MenuTarget } from "../editor/actions";
+import type { ActionContext, ActionRegistry, EditorMode, MenuItem, MenuNode } from "../editor/actions";
 import type { EditorApi, Selection } from "../editor/types";
-import type { AnnotationKind, Stencil } from "../model/types";
+import type { Stencil } from "../model/types";
 import { scoreStencil } from "../lib/stencilSearch";
 import { tokens } from "./fuzzy";
 import type { CanvasHost, LiveHost, SessionHost } from "./host";
@@ -81,79 +81,9 @@ export function contextsFor(editor: EditorApi, mode: EditorMode): ActionContext[
 
 /** Covered by the "Add stencil" source, which also connects to the selection. */
 const SKIP = new Set(["canvas.add-node"]);
-/** Complete command messages, selected by stable ids. A language can order verb and noun. */
-export function paletteLabel(item: MenuItem, target: MenuTarget, annotationKind?: AnnotationKind): string {
-  if (item.paletteLabel) return item.paletteLabel;
-  if (item.id === "canvas.paste") return t("shortcuts.paste");
-  if (item.children) return item.label;
-  switch (item.id) {
-    case "annotation.edit":
-      return annotationKind === "zone" ? t("chrome.renameAnnotation") : item.label;
-    case "node.rename":
-      return t("chrome.renameNode");
-    case "group.rename":
-      return t("chrome.renameBoundary");
-    case "node.properties":
-      return target === "edge"
-        ? t("chrome.edgeProperties")
-        : target === "annotation"
-          ? t("chrome.annotationProperties")
-          : target === "group"
-            ? t("chrome.boundaryProperties")
-            : t("chrome.nodeProperties");
-    case "item.copy":
-      if (target === "canvas") return t("shortcuts.copy");
-      return target === "node"
-        ? t("chrome.copyNode")
-        : target === "group"
-          ? t("chrome.copyBoundary")
-          : target === "annotation"
-            ? t("chrome.copyAnnotation")
-            : t("chrome.copySelection");
-    case "item.cut":
-      if (target === "canvas") return t("shortcuts.cut");
-      return target === "node"
-        ? t("chrome.cutNode")
-        : target === "annotation"
-          ? t("chrome.cutAnnotation")
-          : t("chrome.cutSelection");
-    case "item.duplicate":
-      if (target === "canvas") return t("shortcuts.mouse.altDrag.does");
-      return target === "node"
-        ? t("chrome.duplicateNode")
-        : target === "group"
-          ? t("chrome.duplicateBoundary")
-          : target === "annotation"
-            ? t("chrome.duplicateAnnotation")
-            : t("shortcuts.duplicate");
-    case "item.delete":
-      if (target === "group") return t("command.deleteBoundary");
-      return target === "node"
-        ? t("chrome.deleteNode")
-        : target === "edge"
-          ? t("chrome.deleteEdge")
-          : target === "annotation"
-            ? t("chrome.deleteAnnotation")
-            : item.label;
-    case "edge.reconnect":
-      return t("chrome.reconnectEdge");
-    default: {
-      // Live actions and extensions outside this batch still supply English metadata. Preserve their
-      // original out-of-context names; converted actions above use complete messages and stable ids.
-      const noun = {
-        canvas: "",
-        node: "node",
-        edge: "edge",
-        group: "boundary",
-        selection: "selection",
-        annotation: "annotation",
-      }[target];
-      if (!noun || /\s/.test(item.label)) return item.label;
-      return item.label === "Properties"
-        ? `${noun[0].toUpperCase()}${noun.slice(1)} properties`
-        : `${item.label} ${noun}`;
-    }
-  }
+/** Action definitions supply complete command names; generic flattening never infers English nouns. */
+export function paletteLabel(item: MenuItem): string {
+  return item.paletteLabel ?? item.label;
 }
 
 function leafLabel(parent: string, leaf: string): string {
@@ -183,11 +113,7 @@ export function actionCommands(registry: Pick<ActionRegistry, "build">, contexts
   for (const ctx of contexts) {
     for (const node of registry.build(ctx)) {
       if (node.type !== "item" || (node.disabled && !node.hint) || SKIP.has(node.id)) continue;
-      const label = paletteLabel(
-        node,
-        ctx.target,
-        ctx.target === "annotation" ? ctx.editor.getAnnotation(ctx.nodeId!)?.kind : undefined,
-      );
+      const label = paletteLabel(node);
       if (!node.children) {
         add({
           id: `action:${node.id}`,

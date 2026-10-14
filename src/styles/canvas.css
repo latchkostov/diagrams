@@ -3452,7 +3452,7 @@ select.insp-input {
 
 /* Translated chrome wraps; diagram geometry always remains left to right. */
 [dir="rtl"] .cm-chevron,
-[dir="rtl"] .palette-sec-head svg {
+[dir="rtl"] .palette-sec.is-closed .palette-sec-head svg {
   transform: scaleX(-1);
 }
 .palette-sec-head {

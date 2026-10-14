@@ -116,7 +116,8 @@ export const Palette = memo(function Palette({
     () => (family === "all" ? stencils : stencils.filter((s) => familyOf(s) === family)),
     [family],
   );
-  const results = useMemo(() => (q.trim() ? searchStencils(inFamily, q) : null), [inFamily, q]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- shared search metadata resolves the current locale
+  const results = useMemo(() => (q.trim() ? searchStencils(inFamily, q) : null), [inFamily, q, locale]);
   const annotateHits = useMemo(() => (q.trim() ? matchAnnotate(q, locale) : []), [q, locale]);
   const groups = useMemo(() => {
     const map = new Map<StencilCategory, Stencil[]>();
@@ -423,7 +424,9 @@ const ANNOTATE_SEARCH: readonly AnnotateItem[] = [
     get hint() {
       return t("chrome.valueAPlainShapeForWhenNoStencilFits", { shape: shapeLabel[shape] });
     },
-    keywords: `shape outline ${shapeLabel[shape]}${shape === "rect" ? " box" : ""}`,
+    get keywords() {
+      return `shape outline ${shapeLabel[shape]}${shape === "rect" ? " box" : ""}`;
+    },
   })),
 ];
 

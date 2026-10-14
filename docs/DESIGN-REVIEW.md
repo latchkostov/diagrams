@@ -1,5 +1,14 @@
 # Design review
 
+## Canvas localization review fixes (2026-10-14)
+
+The designer-agent gate approved the fixes after identifying and correcting stale submenu anchors
+when the page changes direction. Search shares the visible metadata; action definitions own complete
+command names. Pending language loads refresh existing panels without losing search text, active rows
+or open submenus. Canvas anchors remain physical, and only collapsed category chevrons mirror.
+No controls or menu rows were added. Production browser regressions cover these transitions, explicit
+RTL drawer advancement, and placement beside the prospective node.
+
 ## Canvas-menu localization review (2026-10-14)
 
 The designer-agent gate and seven review angles covered canvas menus, editing feedback, Ctrl+K, the stencil rail

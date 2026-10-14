@@ -295,16 +295,25 @@ function normalizeAnnotation(value, usedIds = /* @__PURE__ */ new Set(), warn = 
 	if (member(ANNOTATION_TEXT_SIZES, a.textSize)) out.textSize = a.textSize;
 	return out;
 }
+var geometryDiagnostics = {
+	finite: "its geometry must be finite.",
+	"coordinate-budget": "it's outside the coordinate budget. Move the selection closer to the origin.",
+	size: `its size must be between 1 and ${ANNOTATION_LIMITS.maxAnnotationSize} pixels. Choose a smaller selection.`
+};
+function annotationGeometryError(at) {
+	const reason = annotationGeometryReason(at);
+	return reason ? geometryDiagnostics[reason] : null;
+}
 /** Shared creation/persistence gate. Reject rather than shrink a zone away from its selection. */
-function annotationGeometryError({ x, y, width, height }) {
+function annotationGeometryReason({ x, y, width, height }) {
 	if (![
 		x,
 		y,
 		width,
 		height
-	].every(Number.isFinite)) return "its geometry must be finite.";
-	if (Math.abs(x) > ANNOTATION_LIMITS.maxCoordinate || Math.abs(y) > ANNOTATION_LIMITS.maxCoordinate) return "it's outside the coordinate budget. Move the selection closer to the origin.";
-	if (width < 1 || height < 1 || width > ANNOTATION_LIMITS.maxAnnotationSize || height > ANNOTATION_LIMITS.maxAnnotationSize) return `its size must be between 1 and ${ANNOTATION_LIMITS.maxAnnotationSize} pixels. Choose a smaller selection.`;
+	].every(Number.isFinite)) return "finite";
+	if (Math.abs(x) > ANNOTATION_LIMITS.maxCoordinate || Math.abs(y) > ANNOTATION_LIMITS.maxCoordinate) return "coordinate-budget";
+	if (width < 1 || height < 1 || width > ANNOTATION_LIMITS.maxAnnotationSize || height > ANNOTATION_LIMITS.maxAnnotationSize) return "size";
 	return null;
 }
 //#endregion

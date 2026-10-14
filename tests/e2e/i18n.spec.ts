@@ -216,10 +216,11 @@ for (const code of ["de", "ar", "en-XA"]) {
         expect(previousIcon.rotate).toBe("none");
         expect(previousIcon.transform).toBe("none");
         expect((await iconStyle("drawer-next")).transform).toBe("matrix(-1, 0, 0, 1, 0, 0)");
-        const before = await page.getByTestId("stencil-drawer").getAttribute("data-stencil");
+        const before = "kafka.topic";
+        const next = "kafka.cluster";
+        await expect(page.getByTestId("stencil-drawer")).toHaveAttribute("data-stencil", before);
         await page.getByTestId("drawer-next").click();
-        const next = await page.getByTestId("stencil-drawer").getAttribute("data-stencil");
-        if (!before || !next) throw new Error("Expected the drawer's stencil ids");
+        await expect(page.getByTestId("stencil-drawer")).toHaveAttribute("data-stencil", next);
         await page.getByTestId("drawer-prev").click();
         await expect(page.getByTestId("stencil-drawer")).toHaveAttribute("data-stencil", before);
         await page.getByTestId("stencil-drawer").press("ArrowLeft");
@@ -1214,4 +1215,133 @@ test("Clear everything forgets the language: the app comes back in the browser's
   await expect(page.getByTestId("start-blank")).toHaveText("Start blank", { timeout: pageLoadTimeout() });
   expect(await page.evaluate(() => localStorage.getItem("diagrams.locale"))).toBeNull();
   expectNoErrors(consoleErrors);
+});
+
+for (const surface of ["command", "context", "rail", "rail-role", "gallery"] as const) {
+  test(`successful pending locale load refreshes mounted ${surface} search and labels`, async ({ page }) => {
+    await gotoCanvas(page, SLUG);
+    if (surface === "gallery") await page.goto("./?view=gallery");
+    let release = () => {};
+    let asked = false;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(catalogRequest("de"), async (route) => {
+      asked = true;
+      await held;
+      await route.continue();
+    });
+    try {
+      await openLanguage(page);
+      await page.getByTestId("language-option-de").click();
+      await expect.poll(() => asked).toBe(true);
+      await page.keyboard.press("Escape");
+      if (surface === "command") {
+        await page.getByTestId("canvas-wrap").focus();
+        await page.keyboard.press("Control+k");
+        await page.getByTestId("command-input").fill(">");
+        await expect(page.getByTestId("command-item-action:canvas.fit")).toContainText("Fit view");
+      } else if (surface === "context") {
+        await page.getByTestId("node-payments").click({ button: "right" });
+        await page.getByTestId("context-menu").press("ArrowDown");
+        await expect(page.getByTestId("context-menu-item-node.rename")).toHaveAttribute("data-active", "true");
+      } else if (surface === "rail" || surface === "rail-role") {
+        if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
+          await page.getByTestId("palette-toggle").click();
+        await page
+          .getByTestId("palette-search")
+          .fill(surface === "rail" ? de["chrome.roundedRectangle"] : de["gallery.store"]);
+        await expect(
+          page.getByTestId(surface === "rail" ? "palette-annotate-shape-rounded" : "palette-item-postgres"),
+        ).toHaveCount(0);
+      } else {
+        await page.getByTestId("gallery-search").fill(de["gallery.store"]);
+        await expect(page.getByTestId("stencil-tile-postgres")).toHaveCount(0);
+      }
+      release();
+      if (surface === "command") {
+        await expect(page.getByTestId("command-item-action:canvas.fit")).toContainText(de["menu.fitView"]);
+        await expect(page.getByTestId("command-input")).toHaveValue(">");
+      } else if (surface === "context") {
+        await expect(page.getByTestId("context-menu-item-node.rename")).toContainText(de["library.rename"]);
+        await expect(page.getByTestId("context-menu-item-node.rename")).toHaveAttribute("data-active", "true");
+      } else if (surface === "rail" || surface === "rail-role") {
+        await expect(
+          page.getByTestId(surface === "rail" ? "palette-annotate-shape-rounded" : "palette-item-postgres"),
+        ).toBeVisible();
+        await expect(page.getByTestId("palette-search")).toHaveValue(
+          surface === "rail" ? de["chrome.roundedRectangle"] : de["gallery.store"],
+        );
+        await page.getByTestId("palette-search").fill(de["gallery.store"]);
+        await expect(page.getByTestId("palette-item-postgres")).toBeVisible();
+      } else {
+        await expect(page.getByTestId("stencil-tile-postgres")).toBeVisible();
+        await expect(page.getByTestId("gallery-search")).toHaveValue(de["gallery.store"]);
+      }
+    } finally {
+      release();
+    }
+  });
+}
+
+test("RTL quick-add preserves physical placement and expanded chevrons point down", async ({ page }) => {
+  await remember(page, "ar");
+  await gotoCanvas(page, SLUG);
+  await fitDiagram(page);
+  await page.getByTestId("node-payments").click();
+  await page.keyboard.press("Alt+ArrowRight");
+  await expect(page.getByTestId("landing-outline")).toBeVisible();
+  await waitForStableViewport(page);
+  const outline = await page.getByTestId("landing-outline").boundingBox();
+  const menu = await page.getByTestId("quick-add").boundingBox();
+  if (!outline || !menu) throw new Error("Missing quick-add geometry");
+  expect(menu.x).toBeGreaterThanOrEqual(outline.x + outline.width);
+  await page.keyboard.press("Escape");
+  if ((await page.getByTestId("palette").getAttribute("class"))?.includes("is-collapsed"))
+    await page.getByTestId("palette-toggle").click();
+  const head = page.getByTestId("palette-section-messaging");
+  if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+  const style = () =>
+    head.evaluate((el) => {
+      const icon = el.firstElementChild;
+      if (!icon) throw new Error("Missing chevron");
+      const css = getComputedStyle(icon);
+      return { rotate: css.rotate, transform: css.transform };
+    });
+  await expect.poll(style).toEqual({ rotate: "90deg", transform: "none" });
+  await head.click();
+  await expect.poll(style).toEqual({ rotate: "0deg", transform: "matrix(-1, 0, 0, 1, 0, 0)" });
+});
+
+test("pending RTL locale refresh retains an open submenu beside its parent", async ({ page }) => {
+  await gotoCanvas(page, SLUG);
+  let release = () => {};
+  let asked = false;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(catalogRequest("ar"), async (route) => {
+    asked = true;
+    await held;
+    await route.continue();
+  });
+  try {
+    await openLanguage(page);
+    await page.getByTestId("language-option-ar").click();
+    await expect.poll(() => asked).toBe(true);
+    await page.keyboard.press("Escape");
+    const canvas = page.getByTestId("canvas-wrap");
+    await canvas.click({ button: "right", position: { x: 650, y: 90 } });
+    await page.getByTestId("context-menu-item-canvas.annotate").click();
+    const sub = page.getByTestId("context-menu-sub");
+    await expect(sub).toBeVisible();
+    release();
+    await expect(page.getByTestId("context-menu-item-canvas.annotate")).toContainText(catalog("ar")["menu.annotate"]);
+    await expect(sub).toBeVisible();
+    await expect
+      .poll(async () => {
+        const parent = await page.getByTestId("context-menu").boundingBox();
+        const child = await sub.boundingBox();
+        return parent && child ? Math.abs(child.x + child.width - parent.x) : Infinity;
+      })
+      .toBeLessThan(16);
+  } finally {
+    release();
+  }
 });
