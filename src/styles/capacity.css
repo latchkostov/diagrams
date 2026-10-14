@@ -813,3 +813,10 @@
   grid-row: 1;
   grid-column: 3;
 }
+
+/* The trouble callout's dismiss: quiet, top right, after its one action. */
+.cap-callout-close {
+  flex: none;
+  align-self: flex-start;
+  color: var(--text-3);
+}

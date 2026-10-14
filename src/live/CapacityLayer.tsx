@@ -3,6 +3,7 @@ import { useNodes, useStore } from "@xyflow/react";
 import type { FlowNode } from "../canvas/types";
 import type { CapacityFix, CapacityView, NodeHeat } from "./capacityModel";
 import { LiveIcon } from "./icons";
+import type { Trouble, TroubleAction } from "./observedTrouble";
 
 // The capacity heat map: a coloured ring around each node, a compact label in the badge slot under
 // it ("82% · 4.1k/s of 5k/s"), "3/6 idle" for consumers starved of partitions, and the bottleneck
@@ -200,6 +201,71 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabl
           </button>
         )
       )}
+    </div>
+  );
+}
+
+/** The callout's one action for what playback shows, by kind: what to press, and its test id. */
+const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: string; icon?: "plus" | "play" }> = {
+  revive: { label: "Revive", icon: "play" },
+  "add-consumer": { label: "Add a consumer", icon: "plus" },
+  "add-dlq": { label: "Add dead-letter queue", icon: "plus" },
+  events: { label: "Show events" },
+  inputs: { label: "Inputs…" },
+};
+
+interface TroubleProps {
+  trouble: Trouble;
+  /** Runs the trouble's action; omitted (no button) where it can't run here. */
+  onAction?: (action: TroubleAction) => void;
+  onDismiss: () => void;
+  /** Floating over the canvas (top centre). */
+  floating?: boolean;
+  disabledHint?: string;
+}
+
+/**
+ * What playback shows going wrong (src/live/observedTrouble.ts): a node down, messages lost, a lag that keeps
+ * rising. It comes on its own, with one action, and goes when dismissed or when the trouble ends.
+ */
+export function TroubleCallout({ trouble, onAction, onDismiss, floating, disabledHint }: TroubleProps) {
+  const action = TROUBLE_ACTIONS[trouble.action.kind];
+  return (
+    <div
+      className={`cap-callout is-over${floating ? " is-floating" : ""}`}
+      data-testid="trouble-callout"
+      data-kind={trouble.kind}
+      data-node={trouble.node}
+      data-canvas-overlay={floating ? "" : undefined}
+      data-editor-overlay
+      role="status"
+    >
+      <span className="cap-callout-dot" aria-hidden />
+      <div className="cap-callout-text">
+        <strong data-testid="trouble-headline">{trouble.headline}</strong>
+        {trouble.detail && <span data-testid="trouble-detail">{trouble.detail}</span>}
+      </div>
+      {onAction && (
+        <button
+          className="btn cap-callout-apply is-fix"
+          onClick={() => onAction(trouble.action)}
+          data-testid="trouble-action"
+          data-action={trouble.action.kind}
+          disabled={!!disabledHint}
+          title={disabledHint}
+        >
+          {action.icon && <LiveIcon name={action.icon} size={13} />} {action.label}
+        </button>
+      )}
+      <button
+        className="icon-btn cap-callout-close"
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        title="Dismiss"
+        data-testid="trouble-dismiss"
+      >
+        <LiveIcon name="close" size={12} />
+      </button>
     </div>
   );
 }

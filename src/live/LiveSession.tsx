@@ -35,8 +35,9 @@ import { SimPanel } from "./SimPanel";
 import { LiveIcon } from "./icons";
 import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "./layout";
 import { CapacityPanel } from "./CapacityPanel";
-import { BottleneckCallout, CapacityLayer } from "./CapacityLayer";
-import { addConsumer } from "./addConsumer";
+import { BottleneckCallout, CapacityLayer, TroubleCallout } from "./CapacityLayer";
+import { addConsumer, addDeadLetterQueue } from "./addConsumer";
+import { TroubleWatcher, pickTrouble, type Trouble, type TroubleAction } from "./observedTrouble";
 import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
 import { useLiveSessionHost } from "../palette/host";
 import {
@@ -877,6 +878,59 @@ export function LiveSession({
     [editor, capacityOpen, fitView],
   );
 
+  // ---------------------------------------------------------------- what playback shows going wrong
+
+  // About once a simulated second, read the run for trouble the plan can't see (a node down, messages lost, a lag
+  // that keeps rising): the callout says so on its own, each cause once per run, until dismissed or over.
+  const [watcher] = useState(() => new TroubleWatcher());
+  const troubleMemory = useRef({
+    run: "",
+    shown: new Set<string>(),
+    ended: new Set<string>(),
+    dismissed: new Set<string>(),
+  });
+  const [troubles, setTroubles] = useState<Trouble[]>([]);
+  const [trouble, setTrouble] = useState<Trouble | undefined>();
+  useEffect(() => {
+    let tick = -1;
+    const look = () => {
+      const st = controller.getState();
+      const run = `${st.generation}:${st.simulation?.id ?? ""}`;
+      const second = Math.floor(st.snapshot.time / 1000);
+      if (run === troubleMemory.current.run && second === tick) return;
+      tick = second;
+      if (run !== troubleMemory.current.run) {
+        troubleMemory.current = { run, shown: new Set(), ended: new Set(), dismissed: new Set() };
+        watcher.reset();
+      }
+      const now = watcher.observe(st.snapshot, controller.currentDiagram);
+      setTroubles(now);
+      setTrouble(pickTrouble(now, troubleMemory.current));
+    };
+    return controller.subscribe(look);
+  }, [controller, watcher]);
+  const dismissTrouble = useCallback(() => {
+    if (!trouble) return;
+    troubleMemory.current.dismissed.add(trouble.key);
+    setTrouble(pickTrouble(troubles, troubleMemory.current));
+  }, [trouble, troubles]);
+  const runTroubleAction = useCallback(
+    (action: TroubleAction) => {
+      if (slowRef.current?.session.active) return;
+      if (action.kind === "revive") controller.setNodeStatus(action.node, "up");
+      else if (action.kind === "add-consumer") addReader(action.node);
+      else if (action.kind === "add-dlq") {
+        if (editor && addDeadLetterQueue(editor, action.node))
+          flash("Added a dead-letter queue: messages that run out of deliveries go there (undo with Ctrl+Z).");
+      } else if (action.kind === "events") showEvents(action.node);
+      else openCapacity();
+    },
+    [controller, addReader, editor, flash, showEvents, openCapacity],
+  );
+  // Editing the diagram (a consumer, a dead-letter queue) needs the editor; reviving and reading don't.
+  const troubleActionHere = (t: Trouble) =>
+    !presenting && (editor || (t.action.kind !== "add-consumer" && t.action.kind !== "add-dlq"));
+
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
   const saveInputs = useCallback(() => {
     if (slowRef.current?.session.active) return;
@@ -1179,15 +1233,33 @@ export function LiveSession({
             </button>
           </div>
         )}
-        {showCapacity && capacity && !capacityOpen && (
-          <BottleneckCallout
-            view={capacity}
+        {trouble &&
+        !capacityOpen &&
+        // With the heat map on, a callout is already there: trouble leads it, unless the plan already says the
+        // same thing with its own action (over capacity, nobody reads it). Off, it comes on its own while editing.
+        (showCapacity && capacity
+          ? trouble.kind !== "lag" || (capacity.tone !== "over" && capacity.tone !== "hot" && !capacity.addConsumer)
+          : !!editor && !presenting && !capturing) ? (
+          <TroubleCallout
+            trouble={trouble}
             floating
-            onApply={applyFix}
+            onAction={troubleActionHere(trouble) ? runTroubleAction : undefined}
+            onDismiss={dismissTrouble}
             disabledHint={liveMutationGuard(() => slow.session.active).hint()}
-            onOpenPanel={presenting ? undefined : () => openCapacity()}
-            onAddConsumer={editor && !presenting ? addReader : undefined}
           />
+        ) : (
+          showCapacity &&
+          capacity &&
+          !capacityOpen && (
+            <BottleneckCallout
+              view={capacity}
+              floating
+              onApply={applyFix}
+              disabledHint={liveMutationGuard(() => slow.session.active).hint()}
+              onOpenPanel={presenting ? undefined : () => openCapacity()}
+              onAddConsumer={editor && !presenting ? addReader : undefined}
+            />
+          )
         )}
         {slowCard && !capturing ? (
           <TraceCard
