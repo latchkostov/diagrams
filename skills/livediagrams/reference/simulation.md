@@ -95,8 +95,8 @@ Times are milliseconds from the start, and rates and counts are real messages.
 
 <!-- BEGIN GENERATED sim-limits -->
 
-- Rates up to 10,000/s, bursts and injections up to 100,000 messages, times up to 600,000 ms.
-- All traffic in the file together: at most 200,000 messages (rate × duration, summed).
+- Rates up to 10,000,000/s, bursts and injections up to 100,000 messages, times up to 600,000 ms.
+- All traffic in the file together: at most 200,000 messages as played (rate × duration, summed, ÷ each simulation's `scale`, the real messages per dot).
 - Expectation metrics: `processed`, `backlog`, `inFlight`, `failed`, `deadLettered`, `dropped`, `throughput`, `lag`, or `{ "system": "inSystem" }`; `op`: `<`, `<=`, `==`, `>=`, `>`; `when`: `always`, `eventually`, `end`, `at`.
 
 <!-- END GENERATED sim-limits -->

@@ -50,16 +50,54 @@ describe("review regressions", () => {
         [edge("b", "p", { travelMs: 100 })],
       ),
     );
-    e.inject("b", 2);
+    // 1 slot + ceil(1 × 100 / 100) on the way + 1: three deliveries leave, the fourth waits in the topic.
+    e.inject("b", 4);
     e.step(10);
     e.setNodeStatus("p", "down");
     e.step(100);
-    expect(e.frame().nodes.p).toMatchObject({ failed: 1, inFlight: 1 });
-    expect(e.frame().nodes.b.backlog).toBe(1);
+    // All three fail on arrival; one keeps the consumer's only slot to retry in place, the others go back.
+    expect(e.frame().nodes.p).toMatchObject({ failed: 3, inFlight: 1 });
     e.setNodeStatus("p", "up");
-    e.step(1000);
-    expect(e.frame().nodes.p.processed).toBe(2);
+    // Revived, it never works on more than its one slot (one partition, concurrency 1), one at a time.
+    const done: number[] = [];
+    for (let t = 0; t < 4_000; t += 10) {
+      e.step(10);
+      expect(e.frame().nodes.p.inFlight).toBeLessThanOrEqual(1);
+      const processed = e.frame().nodes.p.processed;
+      if (processed > done.length) {
+        expect(processed - done.length).toBe(1);
+        done.push(e.metrics().time);
+      }
+    }
+    expect(done).toHaveLength(4);
+    // Sequential: at least one latency (100 ms) apart.
+    for (let i = 1; i < done.length; i++) expect(done[i] - done[i - 1]).toBeGreaterThanOrEqual(100);
     expect(e.metrics().inSystem).toBe(0);
+  });
+
+  it("deliveries prefetched to a consumer that goes down keep its concurrency and partitions after revival", () => {
+    // The review's case: one partition, concurrency 1, 1,000 ms travel and latency, retrying in place.
+    const e = engine(
+      diagram(
+        [
+          node("b", "topic", { partitions: 1 }),
+          node("p", "processor", { replicas: 3, concurrency: 1, retry: "inplace", latencyMs: 1000, jitter: 0 }),
+        ],
+        [edge("b", "p", { travelMs: 1000 })],
+      ),
+    );
+    e.inject("b", 3);
+    e.step(10);
+    e.setNodeStatus("p", "down");
+    e.step(1500);
+    e.setNodeStatus("p", "up");
+    let most = 0;
+    for (let t = 0; t < 8_000; t += 10) {
+      e.step(10);
+      most = Math.max(most, e.frame().nodes.p.inFlight);
+    }
+    expect(most).toBe(1);
+    expect(e.frame().nodes.p.processed).toBe(3);
   });
 
   it("skips assignments for nonallocation patches and unchanged effective replica counts", () => {
@@ -484,7 +522,9 @@ describe("engine gaps and rendering accessor", () => {
     );
     e.inject("b", 20, { type: "Order" });
     e.step(100);
-    expect(e.frame().nodes.b.backlog).toBe(19);
+    // One works (and retries in place); two more wait at the consumer, prefetched behind it.
+    expect(e.frame().nodes.b.backlog).toBe(17);
+    expect(e.frame().nodes.p).toMatchObject({ inFlight: 1, backlog: 2 });
     const checkpoint = e.checkpoint();
     e.step(250);
     const result = e.snapshot();
@@ -713,13 +753,15 @@ describe("phase 4 boundary regressions", () => {
     const failures = e.snapshot().events.filter((event) => event.kind === "fail");
     expect(failures.slice(0, 2).map((event) => event.messageId)).toEqual(retry === "inplace" ? [1, 1] : [1, 2]);
   });
-  it("broker targets reserve partitions without reporting negative idle replica counts", () => {
+  it("broker targets take a topic's deliveries without a partition cap or negative idle replica counts", () => {
     const e = engine(
       diagram([node("t", "topic", { partitions: 8 }), node("q", "queue")], [edge("t", "q", { travelMs: 100 })]),
     );
     e.inject("t", 30);
     e.step(10);
-    expect(e.frame().particles).toHaveLength(8);
+    // A broker takes a message the moment it arrives: nothing to reserve, so the hop never builds lag.
+    expect(e.frame().particles).toHaveLength(30);
+    expect(e.frame().nodes.t.lag).toEqual({ "t-q": 0 });
     expect(e.frame().nodes.q).toMatchObject({ replicas: 1, activeReplicas: 1, idleReplicas: 0 });
   });
   it("real-unit helpers scale lag, edge activity and all counters independently of raw state", () => {

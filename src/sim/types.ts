@@ -53,6 +53,8 @@ export interface NodeSimState {
   deadLettered: number;
   /** Messages dropped because they had nowhere to go (node down, no DLQ, etc.). */
   dropped: number;
+  /** Arrival losses while down, separately from exhausted broker deliveries. */
+  outageDropped?: number;
   /** Messages a deny rule on one of this node's outgoing connections stopped. On purpose: not a loss. */
   blocked?: number;
   /** An active-standby pair is failing over to its standby unit: traffic waits until it's done. */
@@ -172,7 +174,7 @@ export interface EdgeSimProps {
   /** Marks this edge as the dead-letter path of its source broker. Also inferred when the target
    *  node's label/sublabel matches /dlq|dead.?letter/i on broker-to-broker/store edges. False opts out. */
   dlq?: boolean;
-  /** Travel time in ms at 1x speed. Default 900 (async) / 450 (sync). */
+  /** Travel time in ms at 1x speed. Default 300 (async) / 200 (sync), `DEFAULT_TRAVEL_MS` in topology.ts. */
   travelMs?: number;
   /** Only these message types travel this edge (subscription filter). Supports a trailing "*" wildcard,
    *  e.g. ["Order*"]. Messages matching no outgoing edge of a broker group are simply not delivered to it. */
@@ -326,7 +328,9 @@ export interface SimEngine {
   setNodeProps(nodeId: string, patch: NodeSimProps): void;
   /** Apply patches and an optional capacity multiplier with one incremental allocation pass. */
   setNodePropsBatch(patches: Record<string, NodeSimProps>, capacityMultiplier?: number): void;
-  /** Continuous traffic from every source node at its ratePerSec. */
+  /** Continuous sources are disabled when their sampled rate or per-run volume exceeds the safety budget. */
+  trafficLimit(): "rate" | "volume" | undefined;
+  /** Continuous traffic from every source node at its ratePerSec, subject to trafficLimit(). */
   setTraffic(on: boolean): void;
   /** Time multiplier (0.25 – 8). Default 1. */
   setSpeed(speed: number): void;

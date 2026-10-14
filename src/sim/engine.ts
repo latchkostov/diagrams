@@ -1,8 +1,9 @@
 import type { DiagramFile, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { messageColor } from "./colors";
-import { resolveProps, type ResolvedProps } from "./defaults";
+import { hasServiceTime, resolveProps, type ResolvedProps } from "./defaults";
 import { activeUnits } from "../stencils/netDevices";
+import { pushDue, popDue } from "./dueHeap";
 import { Deque } from "./deque";
 import { createLineage, type Family } from "./lineage";
 import { mulberry32 } from "./rng";
@@ -33,6 +34,8 @@ import type {
 const STEP = 10;
 const EWMA_ALPHA = 1 - Math.exp(-STEP / 1000);
 const EVENT_CAP = 200;
+export const SOURCE_RATE_CAP = 10_000;
+export const SOURCE_VOLUME_CAP = 200_000;
 
 interface Message {
   id: number;
@@ -50,6 +53,12 @@ interface Group {
   cursor: number;
   allocations: Map<string, number>;
   activeByNode: Record<string, number>;
+  /** Deliveries that arrived and hold one of the group's slots at each consumer (waiting or in work). */
+  heldByNode: Map<string, number>;
+  /** Per consumer: deliveries that arrived while all of the group's slots there were held, in arrival order. */
+  staged: Map<string, Deque<Work>>;
+  /** Per consumer: the longest travel time of the group's routes to it (deny rules aside), for its pipeline. */
+  travelTo: Map<string, number>;
   members: string[];
   limit: number;
 }
@@ -66,6 +75,10 @@ interface Work {
   remaining: number;
   retained?: boolean;
   injected?: boolean;
+  /** Holds one of its delivery group's slots at the node (see admit). */
+  held?: boolean;
+  /** In the node's working set: it has one of the node's slots (an in-place retry keeps it). */
+  slotted?: boolean;
 }
 interface Node {
   id: string;
@@ -81,6 +94,8 @@ interface Node {
   dlq?: Edge;
   groups: Group[];
   pending: Deque<Work>;
+  /** How many deliveries are staged here (in their groups' `staged` queues), for the backlog. */
+  staged: number;
   working: Work[];
   incoming: number;
   cursor: number;
@@ -88,6 +103,7 @@ interface Node {
   failed: number;
   deadLettered: number;
   dropped: number;
+  outageDropped: number;
   /** Stopped by a deny rule on an outgoing connection (on purpose, so never `dropped`). */
   blocked: number;
   throughput: number;
@@ -158,6 +174,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   const edges: Edge[] = [];
   let trips: Trip[] = [];
   let drawn = 0;
+  let drawnTrips = new Map<number, Trip>();
+  let sourceRate = 0;
+  let sourceEmitted = 0;
   let time = 0;
   let accumulator = 0;
   let speed = 1;
@@ -184,7 +203,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             node: trip.kind === "reply" || trip.kind === "retry" ? trip.edge.to.id : trip.edge.from.id,
           };
       for (const node of nodes.values()) {
-        const work = node.working.find((w) => test(w.message)) ?? node.pending.find((w) => test(w.message));
+        let work = node.working.find((w) => test(w.message)) ?? node.pending.find((w) => test(w.message));
+        if (!work && node.staged)
+          for (const group of groupsByConsumer.get(node.id) ?? []) {
+            work = group.staged.get(node.id)?.find((w) => test(w.message));
+            if (work) break;
+          }
         if (work) return { message: work.message, node: node.id };
         for (const group of node.groups) {
           const queued = group.pending.find(test);
@@ -282,6 +306,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function drop(node: Node, message: Message, reason: string): void {
     node.dropped++;
+    if (reason === "node down") node.outageDropped++;
     log("drop", node, message, reason);
     gone(node, message, "drop", reason);
   }
@@ -342,16 +367,46 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
   }
 
+  /**
+   * How many deliveries may be outstanding (travelling, waiting or in work) against `units` slots of `target`, over
+   * an edge that takes `travelMs`. A delivery takes its slot when it arrives, not when it leaves the broker: the
+   * slots themselves, plus enough on the way to keep them busy (units × travel ÷ service time, rounded up), plus a
+   * prefetch of one so jitter doesn't leave a slot idle. So travel time animates but never limits throughput, and a
+   * consumer drains at the rate capacity analysis reports. A target that finishes on arrival (a broker, a sink) or a
+   * 0 ms store or gateway is never the limit.
+   */
+  function outstanding(units: number, target: Node, travelMs: number): number {
+    if (!(units > 0)) return 0;
+    const processor = target.role === "processor";
+    // Only processors, stores and gateways work on what arrives; the rest (sinks, brokers, decorative nodes) finish
+    // on arrival whatever latency they have saved, so they never limit a delivery.
+    const works = hasServiceTime(target.role);
+    if (units === Infinity || !works || (!processor && !(target.props.latencyMs > 0))) return Infinity;
+    // A sampled dot costs `scale` messages of a processor's service budget (see tick): it works on units ÷ scale dots
+    // at a time, so only that many (and what's on the way to them) are held for it. The rest is lag at the broker.
+    // A 0 ms service is paced as one tick, so a burst can't pull a whole backlog onto the edge at once.
+    const busy = processor ? units / scale : units;
+    const service = processor ? Math.max(STEP, target.props.latencyMs) : target.props.latencyMs;
+    return Math.ceil(busy) + Math.ceil((busy * Math.max(STEP, travelMs)) / service) + 1;
+  }
+
+  /** The longest travel time to each consumer over a group's routes, deny rules aside: indexed once per load. */
+  function travelByConsumer(routes: readonly { to: string; deny: boolean; travelMs: number }[]): Map<string, number> {
+    const travel = new Map<string, number>();
+    for (const edge of routes) if (!edge.deny) travel.set(edge.to, Math.max(travel.get(edge.to) ?? 0, edge.travelMs));
+    return travel;
+  }
+
   function refreshGroupLimit(group: Group): void {
-    group.limit =
-      group.edges[0].from.role === "queue"
-        ? Infinity
-        : group.members.reduce((sum, id) => {
-            const target = nodes.get(id)!;
-            return (
-              sum + (group.allocations.get(id) ?? 0) * (target.role === "processor" ? target.props.concurrency : 1)
-            );
-          }, 0);
+    if (group.edges[0].from.role === "queue") {
+      group.limit = Infinity;
+      return;
+    }
+    group.limit = group.members.reduce((sum, id) => {
+      const target = nodes.get(id)!;
+      const units = (group.allocations.get(id) ?? 0) * (target.role === "processor" ? target.props.concurrency : 1);
+      return sum + outstanding(units, target, group.travelTo.get(id) ?? 0);
+    }, 0);
   }
 
   function assignReplicas(changed: Set<string>): void {
@@ -376,6 +431,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       refreshGroupLimit(group);
       for (const id of group.members) targets.add(id);
     }
+    // More slots for a group: what's staged at its consumers starts now.
+    for (const group of affected) drainStaged(group);
     for (const id of targets) {
       const node = nodes.get(id)!;
       const assigned = compiled.restricted.has(id)
@@ -399,12 +456,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         else node.rawProps[key] = structuredClone(value);
       }
       node.props = resolveProps(node.role, node.label, node.rawProps, node.stencil);
+      if (node.role === "source") sourceRate += node.props.ratePerSec - previous.ratePerSec;
       if (
         Math.max(1, Math.round(node.props.replicas * capacityMultiplier)) !== node.replicas ||
         (isBroker(node) && node.props.partitions !== previous.partitions)
       )
         changed.add(id);
-      if (node.props.concurrency !== previous.concurrency)
+      if (node.props.concurrency !== previous.concurrency || node.props.latencyMs !== previous.latencyMs)
         for (const group of groupsByConsumer.get(id) ?? []) limits.add(group);
     }
     const next = resolveMultiplier(multiplier, capacityMultiplier);
@@ -414,7 +472,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (Math.max(1, Math.round(node.props.replicas * next)) !== node.replicas) changed.add(node.id);
     }
     if (changed.size) assignReplicas(changed);
-    for (const group of limits) refreshGroupLimit(group);
+    for (const group of limits) {
+      refreshGroupLimit(group);
+      drainStaged(group);
+    }
     // A unit of an active-standby pair failed: its own unit count went down (a capacity multiplier never changes
     // it), at least one is left, and the run is under way (a unit missing at time zero is the starting state).
     for (const [node, before] of units)
@@ -440,7 +501,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     edge.active++;
     if (kind === "message" || kind === "dlq") edge.to.incoming++;
     const end = time + Math.max(STEP, edge.travelMs) + delay;
-    trips.push({ id: nextParticle++, edge, message, kind, delivery, start: time, end, drawn: visible });
+    const trip = { id: nextParticle++, edge, message, kind, delivery, start: time, end, drawn: visible };
+    pushDue(trips, trip);
+    if (visible) drawnTrips.set(trip.id, trip);
     if (message.family.trace) {
       const back = kind === "reply" || kind === "retry";
       step(message, "send", back ? edge.to.id : edge.from.id, { edge: edge.id, via: kind, until: end });
@@ -452,6 +515,74 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.delivery.group.active--;
       work.delivery.group.activeByNode[work.delivery.edge.to.id]--;
     }
+    release(work);
+  }
+
+  /** The slots a topic or stream group may fill at `node` at once: its partition assignment. A queue: no limit. */
+  function groupUnits(group: Group, node: Node): number {
+    if (group.edges[0].from.role === "queue") return Infinity;
+    return (group.allocations.get(node.id) ?? 0) * (node.role === "processor" ? node.props.concurrency : 1);
+  }
+
+  /**
+   * A delivery that arrives takes one of its group's slots at the node and waits its turn there, or, with every one
+   * of them taken, is staged until one frees. Deliveries travel ahead of time (see outstanding), but a group never
+   * works on more than its partitions allow, even on a consumer with free slots from other inputs.
+   */
+  function admit(node: Node, work: Work): void {
+    const group = work.delivery?.group;
+    if (group && !work.held && !hold(group, node, work)) {
+      let queue = group.staged.get(node.id);
+      if (!queue) group.staged.set(node.id, (queue = new Deque()));
+      queue.push(work);
+      node.staged++;
+      return;
+    }
+    node.pending.push(work);
+  }
+
+  /**
+   * Takes one of the group's slots at `node` for `work` if one is free. Never stages behind nothing: a live
+   * reassignment can leave a group no slots at a node while deliveries are on their way to it.
+   */
+  function hold(group: Group, node: Node, work: Work): boolean {
+    const held = group.heldByNode.get(node.id) ?? 0;
+    if (held > 0 && held >= groupUnits(group, node)) return false;
+    group.heldByNode.set(node.id, held + 1);
+    work.held = true;
+    return true;
+  }
+
+  /** The work leaves the node (done, or failed back to its broker): its group slot goes to the next staged one. */
+  function release(work: Work): void {
+    if (!work.held) return;
+    work.held = false;
+    const { group, edge } = work.delivery!;
+    group.heldByNode.set(edge.to.id, (group.heldByNode.get(edge.to.id) ?? 1) - 1);
+    unstage(group, edge.to);
+  }
+
+  /** Staged deliveries of `group` at `node` join its queue, in arrival order, while the group has slots there. */
+  function unstage(group: Group, node: Node): void {
+    const waiting = group.staged.get(node.id);
+    while (waiting?.length && hold(group, node, waiting.peek()!)) {
+      node.staged--;
+      node.pending.push(waiting.shift()!);
+    }
+  }
+
+  function drainStaged(group: Group): void {
+    for (const id of group.members) unstage(group, nodes.get(id)!);
+  }
+
+  /**
+   * Whether a failed delivery can retry in place: it already has one of the node's slots, or one is free now (its
+   * group's too). Prefetched deliveries arriving at a down consumer can't all keep one: the rest go back to the broker.
+   */
+  function canRetain(node: Node, work: Work): boolean {
+    if (work.slotted) return true;
+    if (node.working.length >= slots(node)) return false;
+    return !work.delivery || !!work.held || hold(work.delivery.group, node, work);
   }
 
   function reply(work: Work): void {
@@ -518,10 +649,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       log("retry", work.delivery.broker, work.message, `attempt ${work.message.attempts}`);
       if (work.message.family.trace && work.message.attempts < work.delivery.broker.props.maxDeliveryCount)
         step(work.message, "retry", work.delivery.broker.id, { attempt: work.message.attempts });
-      if (node.props.retry === "inplace" && work.message.attempts < work.delivery.broker.props.maxDeliveryCount) {
+      if (
+        node.props.retry === "inplace" &&
+        work.message.attempts < work.delivery.broker.props.maxDeliveryCount &&
+        canRetain(node, work)
+      ) {
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.retained = true;
-      } else
+      } else {
+        release(work);
         travel(
           work.delivery.edge,
           work.message,
@@ -529,6 +665,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           work.delivery,
           work.message.attempts < work.delivery.broker.props.maxDeliveryCount ? node.props.retryBackoffMs : 0,
         );
+      }
     } else {
       reply(work);
       drop(node, work.message, node.status === "down" ? "node down" : "processing failed");
@@ -572,7 +709,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function arrive(node: Node, work: Work): void {
     if (node.status === "down") {
       finish(node, work);
-      if (work.retained) node.working.push(work);
+      // An in-place retry took a free slot (canRetain); the others went back to the broker.
+      if (work.retained) {
+        node.working.push(work);
+        work.slotted = true;
+      }
       return;
     }
     // Pausing a broker stops consumers pulling, not publishers appending to its log.
@@ -581,12 +722,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     if (node.status === "paused") {
-      node.pending.push(work);
+      admit(node, work);
       return;
     }
     if (node.role === "source" || node.role === "sink" || node.role === "none") {
       finish(node, work);
-    } else node.pending.push(work);
+    } else admit(node, work);
   }
 
   function emit(node: Node, type: string, injected: boolean): void {
@@ -633,11 +774,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             (edge.deny ||
               (free &&
                 target.status === "up" &&
-                target.working.length + target.incoming + target.pending.length < slots(target) &&
+                target.working.length + target.incoming + target.pending.length + target.staged <
+                  outstanding(slots(target), target, edge.travelMs) &&
                 (node.role === "queue" ||
                   (group.activeByNode[target.id] ?? 0) <
-                    (group.allocations.get(target.id) ?? 0) *
-                      (target.role === "processor" ? target.props.concurrency : 1))))
+                    outstanding(
+                      (group.allocations.get(target.id) ?? 0) *
+                        (target.role === "processor" ? target.props.concurrency : 1),
+                      target,
+                      edge.travelMs,
+                    ))))
           ) {
             ready = edge;
             group.cursor = (index + 1) % group.edges.length;
@@ -668,23 +814,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         schedule(batch);
       }
     }
-    if (traffic)
+    if (traffic && !engine.trafficLimit())
       for (const node of nodes.values()) {
         if (node.role !== "source" || node.status !== "up") continue;
         node.trafficCredit += (node.props.ratePerSec * STEP) / (1000 * scale);
-        const count = Math.floor(node.trafficCredit + 1e-10);
+        const count = Math.min(SOURCE_VOLUME_CAP - sourceEmitted, Math.floor(node.trafficCredit + 1e-10));
         node.trafficCredit -= count;
+        sourceEmitted += count;
+        if (sourceEmitted === SOURCE_VOLUME_CAP && count)
+          log("status", node, undefined, "continuous traffic budget reached; restart to continue");
         for (let i = 0; i < count; i++) emit(node, node.props.messageType, false);
       }
-    // Partition the array in place. Trips created by arrival callbacks are kept for later ticks.
-    const tripCount = trips.length;
-    let write = 0;
-    for (let i = 0; i < tripCount; i++) {
-      const trip = trips[i];
-      if (trip.end > time) {
-        trips[write++] = trip;
-        continue;
-      }
+    while (trips.length && trips[0].end <= time) {
+      const trip = popDue(trips);
+      drawnTrips.delete(trip.id);
       trip.edge.active--;
       if (trip.drawn) drawn--;
       if (trip.kind === "retry") returned(trip);
@@ -701,8 +844,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         });
       }
     }
-    for (let i = tripCount; i < trips.length; i++) trips[write++] = trips[i];
-    trips.length = write;
 
     for (const node of nodes.values()) {
       // A sampled dot consumes scale messages of service budget, while keeping per-message latency.
@@ -727,6 +868,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             work.retained = false;
             finish(node, work);
             if (work.retained) node.working[keep++] = work;
+            else work.slotted = false;
           } else node.working[keep++] = work;
         }
         node.working.length = keep;
@@ -743,9 +885,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           const work = node.pending.shift()!;
           if (node.status === "down" || work.remaining <= 0 || isBroker(node) || node.role === "source") {
             finish(node, work);
-            if (work.retained) node.working.push(work);
+            if (work.retained) {
+              node.working.push(work);
+              work.slotted = true;
+            }
           } else {
             node.working.push(work);
+            work.slotted = true;
             if (work.message.family.trace) step(work.message, "start", node.id);
           }
         }
@@ -758,7 +904,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
+  function refreshSourceRate(): void {
+    sourceRate = 0;
+    for (const node of nodes.values()) if (node.role === "source") sourceRate += node.props.ratePerSec;
+  }
+
   function reset(): void {
+    refreshSourceRate();
     time = 0;
     accumulator = 0;
     inSystem = 0;
@@ -767,6 +919,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     nextParticle = 1;
     nextInjection = 1;
     trips = [];
+    drawnTrips.clear();
+    sourceEmitted = 0;
     injections.length = 0;
     events.length = 0;
     eventHead = 0;
@@ -775,6 +929,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     lineage.reset();
     for (const node of nodes.values()) {
       node.pending.clear();
+      node.staged = 0;
       node.working.length = 0;
       node.incoming = 0;
       node.cursor = 0;
@@ -782,6 +937,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.failed = 0;
       node.deadLettered = 0;
       node.dropped = 0;
+      node.outageDropped = 0;
       node.blocked = 0;
       node.holdUntil = 0;
       node.throughput = 0;
@@ -793,6 +949,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         group.active = 0;
         group.cursor = 0;
         group.activeByNode = Object.create(null);
+        group.heldByNode = new Map();
+        group.staged = new Map();
       }
     }
     for (const edge of edges) {
@@ -823,12 +981,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         for (const [id, family] of copy.lineage.store) family.trace = records.get(id);
         return copy;
       };
-      const graph = cloneGraph({ nodes, edges, trips, injections, events, lineage: lineage.state });
+      const graph = cloneGraph({ nodes, edges, trips, drawnTrips, injections, events, lineage: lineage.state });
       const clock = {
         time,
         accumulator,
         speed,
         traffic,
+        sourceRate,
+        sourceEmitted,
         drawn,
         nextMessage,
         nextParticle,
@@ -848,12 +1008,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         nodes.clear();
         for (const [id, node] of copy.nodes) {
           Object.setPrototypeOf(node.pending, Deque.prototype);
-          for (const group of node.groups) Object.setPrototypeOf(group.pending, Deque.prototype);
+          for (const group of node.groups) {
+            Object.setPrototypeOf(group.pending, Deque.prototype);
+            for (const queue of group.staged.values()) Object.setPrototypeOf(queue, Deque.prototype);
+            // structuredClone gives dictionaries Object.prototype back: a consumer called "constructor" must stay a key.
+            Object.setPrototypeOf(group.activeByNode, null);
+          }
           nodes.set(id, node);
         }
         indexGroups();
         edges.splice(0, edges.length, ...copy.edges);
         trips = copy.trips;
+        drawnTrips = copy.drawnTrips;
         injections.splice(0, injections.length, ...copy.injections);
         events.splice(0, events.length, ...copy.events);
         lineage.state = copy.lineage;
@@ -862,6 +1028,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           accumulator,
           speed,
           traffic,
+          sourceRate,
+          sourceEmitted,
           drawn,
           nextMessage,
           nextParticle,
@@ -890,7 +1058,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (!node) return undefined;
       if (metric.field === "inFlight") return node.working.length;
       if (metric.field === "backlog") {
-        let backlog = node.pending.length;
+        let backlog = node.pending.length + node.staged;
         for (const group of node.groups) backlog = Math.max(backlog, group.pending.length);
         return backlog;
       }
@@ -928,6 +1096,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           outgoing: [],
           groups: [],
           pending: new Deque(),
+          staged: 0,
           working: [],
           incoming: 0,
           cursor: 0,
@@ -935,6 +1104,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           failed: 0,
           deadLettered: 0,
           dropped: 0,
+          outageDropped: 0,
           blocked: 0,
           throughput: 0,
           completedThisStep: 0,
@@ -967,6 +1137,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           cursor: 0,
           allocations: new Map(),
           activeByNode: Object.create(null),
+          heldByNode: new Map(),
+          staged: new Map(),
+          travelTo: travelByConsumer(group.edges),
         }));
       }
       indexGroups();
@@ -984,22 +1157,21 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     },
     frame() {
       const particles: Particle[] = [];
-      for (const trip of trips)
-        if (trip.drawn)
-          particles.push({
-            id: trip.id,
-            edgeId: trip.edge.id,
-            messageId: trip.message.id,
-            rootId: trip.message.family.root,
-            kind: trip.kind,
-            progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
-            type: trip.message.type,
-            color: trip.message.color,
-          });
+      for (const trip of drawnTrips.values())
+        particles.push({
+          id: trip.id,
+          edgeId: trip.edge.id,
+          messageId: trip.message.id,
+          rootId: trip.message.family.root,
+          kind: trip.kind,
+          progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
+          type: trip.message.type,
+          color: trip.message.color,
+        });
       const nodeStates: Record<string, NodeSimState> = Object.create(null);
       for (const node of nodes.values()) {
         const lag: Record<string, number> = Object.create(null);
-        let backlog = node.pending.length;
+        let backlog = node.pending.length + node.staged;
         for (const group of node.groups) {
           lag[group.name] = group.pending.length;
           backlog = Math.max(backlog, group.pending.length);
@@ -1016,6 +1188,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           failed: node.failed,
           deadLettered: node.deadLettered,
           dropped: node.dropped,
+          ...(node.outageDropped ? { outageDropped: node.outageDropped } : {}),
           ...(node.blocked ? { blocked: node.blocked } : {}),
           ...(held(node) ? { failingOver: true } : {}),
           throughput: node.throughput,
@@ -1058,14 +1231,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       setNodePropsBatch({ [nodeId]: patch });
     },
     setNodePropsBatch,
+    trafficLimit: () =>
+      sourceRate / scale > SOURCE_RATE_CAP ? "rate" : sourceEmitted >= SOURCE_VOLUME_CAP ? "volume" : undefined,
     setScale(value): void {
-      scale = resolveScale(value);
+      const next = resolveScale(value);
+      if (next === scale) return;
+      scale = next;
+      // A processor's time per sampled dot follows the scale, and so does what may be on the way to it.
+      for (const node of nodes.values()) for (const group of node.groups) refreshGroupLimit(group);
     },
     setCapacityMultiplier(value): void {
       setNodePropsBatch({}, value);
     },
     setTraffic(on: boolean): void {
-      traffic = on;
+      traffic = on && !engine.trafficLimit();
     },
     setSpeed(value: number): void {
       if (Number.isFinite(value)) speed = Math.max(0.25, Math.min(8, value));

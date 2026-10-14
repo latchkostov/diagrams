@@ -101,9 +101,8 @@ describe("buildSimulation", () => {
     { traffic: [{ from: "API", pattern: "constant" }] },
     { traffic: [{ from: "zzz", pattern: "burst", count: 1 }] },
     { durationSec: 3600 },
-    { traffic: [{ from: "API", pattern: "constant", ratePerSec: 10001 }] },
+    { traffic: [{ from: "API", pattern: "constant", ratePerSec: 10_000_001 }] },
     { traffic: [{ from: "API", pattern: "burst", count: 100001 }] },
-    { traffic: [{ from: "API", pattern: "constant", ratePerSec: 10000, durationSec: 60 }] },
     { events: [{ atSec: 1, node: "DB", do: "slow" }] },
     { events: [{ atSec: 1, node: "DB", do: "set" }] },
     { expectations: [{ label: "Broken", metric: "backlog", op: "==", value: 0 }] },
@@ -114,7 +113,15 @@ describe("buildSimulation", () => {
     const d = diagram();
     d.simulations = [
       buildSimulation(d, { ...spec(), traffic: [{ from: "API", pattern: "burst", count: 100000 }] }),
-      { id: "second", title: "Second", traffic: [{ id: "t", node: "a", shape: { kind: "burst", count: 100000 } }] },
+      // Saved without a scale, it plays every message: 200,000 dots.
+      {
+        id: "second",
+        title: "Second",
+        traffic: [
+          { id: "t", node: "a", shape: { kind: "burst", count: 100000 } },
+          { id: "u", node: "a", shape: { kind: "burst", count: 100000 } },
+        ],
+      },
     ];
     expect(() => buildSimulation(d, spec())).toThrow("volume budget");
   });

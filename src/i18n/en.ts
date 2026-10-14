@@ -10,6 +10,9 @@
 // stays.
 
 const en = {
+  "live.sourceRateLimit":
+    "Continuous traffic needs a higher sampling scale for these source rates. Open Inputs and increase Messages per dot, or lower the source rates.",
+  "live.sourceVolumeLimit": "Continuous traffic reached its 200,000 sampled-message budget. Restart to continue.",
   // ------------------------------------------------------------------------------------------------ common
   "common.close": "Close",
   "common.cancel": "Cancel",

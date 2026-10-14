@@ -11,7 +11,7 @@ import {
 import type { DiagramFile, DiagramNode, Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { autoScale } from "../sim/scale";
-import { LIMITS } from "../interop/native";
+import { LIMITS, SIM_LIMITS } from "../interop/native";
 import type { LiveController } from "./controller";
 import {
   applyPreset,
@@ -493,7 +493,7 @@ function RateInput({
       />
       {invalid && (
         <span id={`${testId}-error`} className="cap-error" role="alert" data-testid={`${testId}-error`}>
-          Use 0–10,000 msg/s.
+          Use 0–{LIMITS.maxRatePerSec.toLocaleString("en-US")} msg/s.
         </span>
       )}
     </span>
@@ -673,7 +673,7 @@ function Stepper({
       <NumericInput
         value={value}
         min={min}
-        max={LIMITS.maxRatePerSec}
+        max={SIM_LIMITS.count}
         step={1}
         integer
         onChange={onChange}
@@ -683,7 +683,7 @@ function Stepper({
       <button
         type="button"
         onClick={() => onChange(value + 1)}
-        disabled={value >= LIMITS.maxRatePerSec}
+        disabled={value >= SIM_LIMITS.count}
         aria-label={`More ${label.toLowerCase()}`}
         data-testid={`${testId}-inc`}
       >
@@ -813,7 +813,7 @@ function ServiceRow({
             name={node.label || node.id}
             unit="each"
             min={1}
-            max={LIMITS.maxRatePerSec}
+            max={SIM_LIMITS.count}
             value={props.concurrency}
             onChange={(v) => onProp("concurrency", Math.floor(v))}
             testId={`capacity-concurrency-${node.id}`}

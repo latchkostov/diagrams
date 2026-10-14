@@ -5,10 +5,10 @@
 
 import { flowEdges } from "../model/relations";
 import type { DiagramFile, DiagramNode, SimRole, Simulation, TrafficShape } from "../model/types";
-import { LIMITS } from "../interop/native";
+import { SIM_LIMITS } from "../interop/native";
 import { stencilRole } from "../stencils/roles";
 import { analyzeCapacity, type NodeCapacity } from "../sim/capacity";
-import { compileTopology } from "../sim/topology";
+import { brokerFeeds, compileTopology } from "../sim/topology";
 import type { NodeStatus } from "../sim/types";
 import { resolveProps } from "../sim/defaults";
 import { autoScale, peakRate } from "../sim/scale";
@@ -246,6 +246,11 @@ export interface NodeHeat extends NodeCapacity {
   noReader?: boolean;
   /** Down or paused (in the run, the simulation's setup or the diagram); undefined when up. */
   status?: Exclude<NodeStatus, "up">;
+  /**
+   * Down or paused, and fed only by topics, streams or queues: their names. Its messages wait there for it (that's
+   * what a broker is for); they fail only when they're pushed to it.
+   */
+  waitsIn?: string[];
   level: HeatLevel;
   /** Compact label for the badge slot, e.g. "82% · 4.1k/s of 5k/s". */
   text: string;
@@ -278,9 +283,27 @@ export type RunStatus = Readonly<Record<string, NodeStatus | undefined>>;
 /** A topic or stream keeps what's published, read or not; a queue's messages wait for a consumer. */
 const keeps = (role: SimRole) => PARTITIONED.has(role);
 
-function nodeText(n: NodeCapacity, status?: NodeHeat["status"], noReader = false): string {
+/** "orders", "orders and payments", "orders and 2 more". */
+export function brokerList(names: readonly string[]): string {
+  if (names.length <= 2) return names.join(" and ");
+  return `${names[0]} and ${names.length - 1} more`;
+}
+
+/**
+ * Where a down consumer's messages are: "Messages wait in orders until it's back (49 so far)". The live callout and
+ * the capacity callout say the same, the live one with the count it sees.
+ */
+export function waitDetail(brokers: readonly string[], count?: number): string {
+  const sofar = count !== undefined && count > 0 ? ` (${formatCount(count)} so far)` : "";
+  return `Messages wait in ${brokerList(brokers)} until it's back${sofar}.`;
+}
+
+function nodeText(n: NodeCapacity, status?: NodeHeat["status"], noReader = false, waitsIn?: string[]): string {
   if (!(n.offered > 0)) return "";
-  if (status === "down") return `Down · ${formatRate(n.offered)} failing`;
+  if (status === "down")
+    return waitsIn
+      ? `Down · ${formatRate(n.offered)} waiting in ${brokerList(waitsIn)}`
+      : `Down · ${formatRate(n.offered)} failing`;
   if (status === "paused") return `Paused · ${formatRate(n.offered)} waiting`;
   if (noReader)
     return keeps(n.role)
@@ -324,7 +347,7 @@ export function computeFix(
   const sized = sizingFix(d, sim, rankedNodes(d, nodes), {
     idle: busy && top.idleReplicas > 0 ? top.id : undefined,
     status,
-    maxCount: LIMITS.maxRatePerSec,
+    maxCount: SIM_LIMITS.count,
   });
   if (!sized) return null;
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
@@ -359,8 +382,14 @@ function outageHeadline(out: NodeHeat[]): string {
 export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus): CapacityView {
   const analysis = analyzeCapacity(d, planningSimulation(d, sim), { status });
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
-  const routes = compileTopology(d).outgoing;
+  const compiled = compileTopology(d);
+  const routes = compiled.outgoing;
   const nodes: Record<string, NodeHeat> = {};
+  /** The brokers feeding a node, when every flow into it comes from one (dead-letter routes and deny rules aside). */
+  // Where a down node's messages are, as playback delivers them (brokerFeeds, shared with the live callout).
+  const feeds = brokerFeeds(compiled, (id) => (byId.has(id) ? roleOf(byId.get(id)!) : undefined));
+  const fedByBrokers = (id: string): string[] | undefined =>
+    feeds.get(id)?.map((b) => byId.get(b)?.label || b) ?? undefined;
   for (const [id, n] of Object.entries(analysis.nodes)) {
     // A network device is a gateway with a real ceiling (its datasheet's throughput).
     const modeled = isModeled(n.role) || !!n.device;
@@ -371,14 +400,16 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
     // down or paused is out of capacity whatever its role.
     const limited = (modeled && n.capacity !== Infinity) || (!!st && n.role !== "none");
     const level = limited ? heatLevel(n.utilization, n.offered) : "idle";
+    const waitsIn = st ? fedByBrokers(id) : undefined;
     nodes[id] = {
       ...n,
       modeled,
       ...(st ? { status: st } : {}),
+      ...(waitsIn ? { waitsIn } : {}),
       ...(noReader ? { noReader } : {}),
       // A topic nobody reads isn't overloaded: it keeps what's published. Amber, never pulsing red.
       level: noReader && !st && keeps(n.role) && level === "over" ? "warn" : level,
-      text: nodeText(n, st, noReader),
+      text: nodeText(n, st, noReader, waitsIn),
     };
   }
   const ranked = rankedNodes(d, nodes);
@@ -394,11 +425,17 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
   if (out.length) {
     headline = outageHeadline(out);
     const first = out[0];
+    // A consumer behind a broker doesn't lose its messages while it's down: they wait in the broker.
+    const waiting = out.every((n) => n.waitsIn);
     detail =
       first.status === "down"
-        ? `Messages sent to ${out.length > 1 ? "them" : "it"} fail until ${out.length > 1 ? "they're" : "it's"} back.`
+        ? waiting
+          ? out.length > 1
+            ? `Messages wait in ${brokerList([...new Set(out.flatMap((n) => n.waitsIn!))])} until they're back.`
+            : waitDetail(first.waitsIn!)
+          : `Messages sent to ${out.length > 1 ? "them" : "it"} fail until ${out.length > 1 ? "they're" : "it's"} back.`
         : `Messages wait in ${out.length > 1 ? "their queues" : "its queue"} until ${out.length > 1 ? "they resume" : "it resumes"}.`;
-    if (states(out).size > 1) detail = "Messages to them fail or wait until they're back.";
+    if (states(out).size > 1) detail = `Messages to them ${waiting ? "wait" : "fail or wait"} until they're back.`;
     const busiest = ranked.find((n) => !n.status && Number.isFinite(n.utilization));
     if (busiest && (busiest.level === "over" || busiest.level === "hot"))
       detail += ` ${busiest.label} is ${busiest.level === "over" ? "over" : "near"} capacity too: ${busiest.text}.`;

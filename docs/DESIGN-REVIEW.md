@@ -1,5 +1,88 @@
 # Design review
 
+## Round 32 follow-up: second review fixes (2026-10-14)
+
+The designer-agent source review found two remaining gaps: edge inert-property removal needed a surviving field as
+its focus fallback, and a saved-down node on first live mount still needed an empty announcement region before its
+text changed. Both were fixed, with production Chromium regressions for node and edge removal, and a DOM mutation
+check for the initial announcement. That check fails if the region starts populated.
+
+The callout adds no controls: one action and the quiet dismiss stay. Trouble hidden by Inputs keeps its first useful
+turn, unrelated overloads cannot hide observed lag, and flat backlog stops being called rising. The 1024 px fallback
+and 1440 px canvas with the AI panel open are checked against the title card's actual bounds; both trouble and
+capacity callouts use the measured space beside it. Warnings, the heat map and checks share incoming-delivery
+semantics, so a down broker fed by another broker correctly says its messages wait upstream.
+
+Review triage and regression details: [second review fixes](research/sim-truth-review-round2.md).
+
+## Round 32: the simulation tells the truth (2026-10-13)
+
+The gate for items 1–6 of the simulation flows review (`docs/research/sim-flows-review.md`): consumers that drain at
+their reported capacity, the down-consumer wording, Request edges by default, hidden inert fields, the callout coming on
+its own, and limits that match the file format. Self-review against `docs/UX-PRINCIPLES.md` on the production build
+(`vite preview`) at 1024 × 768 and 1280 × 800 light and 1440 × 900 dark, on the public Kafka and GCP examples and small
+diagrams drawn for it (no private diagrams). Screenshots are in `docs/screenshots/round32/`.
+
+- **The banner and the animation agree.** The GCP example's Pub/Sub topic said "13% · 50/s of 400/s" under "Healthy"
+  while its lag climbed; it now holds no lag, and nothing was tuned by hand (`gcp-healthy-1280-light`). A default
+  consumer behind a broker drains at the 16/s the heat map says.
+- **No dead ends: trouble says so on its own, with one action each.** A node down: "Payments service is down", "Messages
+  wait in orders.created.v1 until it's back (31 so far)", **Revive** (`trouble-down-1280-light`). Lost messages:
+  "orders is losing messages: 1 dropped", "They ran out of deliveries, and no dead-letter queue keeps them.", **Add
+  dead-letter queue**, which adds the same queue the `dead-letter` check's fix adds, one undo step, and brings it into
+  view (`trouble-dropping-1024-light`, `trouble-dropping-fixed-1024-light`). A rising lag: "orders is falling behind:
+  lag 74 and rising", "Billing doesn't keep up with it.", **Inputs…** (`trouble-lag-1280-light`). The callout is
+  the existing one (same place, same colour as an overload), plus a quiet **×**.
+- **Don't nag.** Each cause once per run; dismissed, it doesn't come back in that run; over (revived, drained), it
+  goes. Never while presenting, recording, in an embed or the Lab, where nobody can act on it. With the heat map on it
+  leads the capacity callout only when the plan says something else; where the plan already says the same with its
+  own action (over capacity, nobody reads it), the plan's callout stays.
+- **One word per idea, everywhere.** The trouble callout and the capacity callout say the same sentence for a down
+  consumer ("Messages wait in … until it's back"), from one function; the badge says "Down · 50/s waiting in
+  orders.created.v1" (`capacity-down-waits-1440-dark`). "Fail" stays for nodes requests are pushed to.
+- **Beautiful (and right) by default.** A database quick-added after a service arrives as a **Request**, solid, and
+  the first time a toast says "Request: the caller waits for a reply" with **Make it a message**, like the dependency
+  toasts' Make it a flow (`request-toast-1280-light`). It shows once a session.
+- **Simple by default: a field shows only where it changes the run.** A gateway has Latency, not Concurrency; a sink has
+  no fields and says why ("Messages end here as they arrive"); Consumer group and Dead-letter path show only on edges
+  out of a broker. A value already in the file is said in a muted line, "Concurrency 8 is kept in the file, but a
+  gateway takes any number of messages at once in the simulation, so it doesn't change the run.", with **Remove**
+  (`inspector-inert-gateway-1280-light`, `inspector-inert-edge-1280-light`).
+- **Errors say how to fix them.** Past the file's limit the field says "Up to 10,000,000 msg/s: saved as
+  10,000,000." (`inspector-limit-1280-light`), and a refused file names the field and the limit.
+
+### Also fixed (found here)
+
+- **The floating callout covered the diagram's name** on narrower canvases (both the capacity callout and the new
+  one): centred on the canvas, it sat over the title card's first words. Below 1280 px it now centres in the room right
+  of the title card, under the Live toggle.
+- **Add dead-letter queue landed off screen** at 1024: it now refits the view as Add a consumer does.
+- **The "losing messages" line wrapped to three lines** at 1024; shortened.
+- **From the code review:** with a side panel open the canvas left the callout 116 px beside the title card, its
+  words under its buttons; both floating callouts now drop below the card at the canvas's width when the room
+  beside it is short. A screen reader hears the cause once ("Payments service is down"), not every changing count.
+  Dismissing with the keyboard returns focus to the canvas. Revive while paused clears the callout at once.
+
+### Bigger ones, listed for the owner (not built)
+
+- **Partitions and Max deliveries on brokers that have neither** (SNS, Service Bus topics, Pub/Sub…; Kafka's max
+  deliveries) are still shown: they're item 7 and 9 of the review (per-broker semantics), not a field rule.
+- **The trouble callout has no history**: dismissed or over, a cause is gone for the run. A small "1 earlier" chip
+  that reopens it would help long demos; not added, to keep the chrome budget.
+- **Requests still don't wait** (review item 10): a Request edge is solid and replies, but a slow database doesn't
+  back its caller up yet.
+
+![The callout on its own: a consumer is down, its messages wait in the topic](screenshots/round32/trouble-down-1280-light.png)
+![A lag that keeps rising, naming who can't keep up](screenshots/round32/trouble-lag-1280-light.png)
+![Losing messages, with Add dead-letter queue](screenshots/round32/trouble-dropping-1024-light.png)
+![After Add dead-letter queue](screenshots/round32/trouble-dropping-fixed-1024-light.png)
+![GCP at 13%: healthy, and no lag](screenshots/round32/gcp-healthy-1280-light.png)
+![A database quick-added: a Request](screenshots/round32/request-toast-1280-light.png)
+![A gateway's saved Concurrency, kept and explained](screenshots/round32/inspector-inert-gateway-1280-light.png)
+
+Also: `screenshots/round32/capacity-down-waits-1440-dark.png`, `inspector-inert-edge-1280-light.png` and
+`inspector-limit-1280-light.png`.
+
 ## Round 33: languages, batch 1 (2026-10-13)
 
 The owner's request: "Switch your language from English to whatever else, and for everything in the app to reflect

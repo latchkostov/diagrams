@@ -14,7 +14,7 @@ const reply = (ops: object[]) => JSON.stringify({ summary: "done", ops });
 const perfectEdits: Record<string, object[]> = {
   "edit-dlq": [
     { op: "add", kind: "dead-letter queue", label: "inventory-dlq" },
-    { op: "connect", from: "Inventory service", to: "inventory-dlq", flow: "message" },
+    { op: "connect", from: "orders.created.v1", to: "inventory-dlq", flow: "message" },
   ],
   "edit-rename": [{ op: "rename", target: "Payments service", label: "Billing service" }],
   "edit-remove": [{ op: "remove", target: "Notification dedupe" }],
@@ -60,6 +60,21 @@ const answering = (answer: (prompt: string) => string) => async () => {
 };
 
 describe("on-device evals", () => {
+  it("DLQ eval rejects an ordinary broker route, including an explicit dlq:false", () => {
+    const c = onDeviceCases.find((c) => c.id === "edit-dlq")!;
+    const after = (label: string, dlq?: boolean): DiagramFile => ({
+      ...c.start,
+      nodes: [...c.start.nodes, { id: "new-queue", stencil: "generic.queue", label, x: 0, y: 0 }],
+      edges: [
+        ...c.start.edges,
+        { id: "new-route", from: "order-events", to: "new-queue", kind: "async", props: { dlq } },
+      ],
+    });
+    expect(c.check(c.start, after("inventory-dlq", false))).toBe("the new queue isn't a dead-letter route");
+    expect(c.check(c.start, after("inventory"))).toBe("the new queue isn't a dead-letter route");
+    expect(c.check(c.start, after("inventory", true))).toBeNull();
+    expect(c.check(c.start, after("inventory-dlq"))).toBeNull();
+  });
   it("the cases name real stencils and nodes", () => {
     expect(onDeviceCases.length).toBeGreaterThanOrEqual(30);
     for (const id of ["mongodb", "generic.email", "redis.cache", "generic.queue"]) expect(getStencil(id).id).toBe(id);

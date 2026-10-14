@@ -3,6 +3,9 @@ import type { DiagramNode } from "../../model/types";
 import { acceptsType, type CompiledEdge } from "../../sim/topology";
 import { isBroker, listNames, type CheckContext } from "../context";
 import type { CheckFix, CheckRule, Finding } from "../types";
+import { deadLetterFor } from "../../stencils/deadLetter";
+
+export { deadLetterFor };
 
 // 1. dead-letter: a broker whose consumers' failed messages are dropped, because it has no effective
 // dead-letter route: playback sends a message that runs out of deliveries down the broker's own first
@@ -12,8 +15,6 @@ import type { CheckFix, CheckRule, Finding } from "../types";
 // Suggestion for a queue without that evidence; nothing for a topic or stream without it (projections and
 // connectors replay from the log, so a missing DLT is often deliberate).
 
-/** edit_diagram's add_node label limit. */
-const MAX_LABEL = 200;
 const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 const positive = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0;
 
@@ -33,24 +34,6 @@ export function failureEvidence(ctx: CheckContext, id: string): string | undefin
     if (fails) return `fails messages in “${sim.title}”`;
   }
   return undefined;
-}
-
-/** The dead-letter queue for a broker of this family, named the way that family names them. */
-export function deadLetterFor(broker: DiagramNode): { kind: string; label: string; sublabel?: string } {
-  const name = broker.label.trim() || broker.id;
-  // The name, shortened so name and suffix fit an edit op's label (200 characters).
-  const named = (suffix: string) => `${name.slice(0, MAX_LABEL - suffix.length).trimEnd()}${suffix}`;
-  const s = broker.stencil;
-  if (s.startsWith("azure.service-bus."))
-    return { kind: "azure.service-bus.queue", label: named(" DLQ"), sublabel: "$DeadLetterQueue" };
-  if (s === "aws.sqs" || s === "aws.sns" || s === "aws.eventbridge") return { kind: "aws.sqs", label: named("-dlq") };
-  if (s === "kafka.topic" || s === "confluent.cloud" || s === "aws.msk")
-    return { kind: "kafka.topic", label: named(".dlq") };
-  if (s.startsWith("rabbitmq."))
-    return { kind: "rabbitmq.queue", label: named(".dlq"), sublabel: "dead-letter exchange" };
-  if (s === "gcp.pubsub") return { kind: "gcp.pubsub", label: named("-dlq") };
-  if (s === "pulsar.topic") return { kind: "pulsar.topic", label: named("-DLQ") };
-  return { kind: "generic.queue", label: named(" DLQ") };
 }
 
 /** Add a broker of the same family, connected by a dead-letter route: one batch, one undo step. */

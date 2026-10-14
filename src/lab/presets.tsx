@@ -3,6 +3,7 @@ import { relationshipFixture } from "./relationshipFixture";
 import { safeStorage } from "../lib/storage";
 import { ON_DEVICE } from "../lib/deployment";
 import { layersFixture, headerOverflowFixture } from "./layersFixture";
+import { simReviewFixture, simReviewTrafficFixture } from "./simReviewFixture";
 import { exportFixture } from "./exportFixture";
 // The Lab's preset registry. Every entry renders the *current* components with fixed data, so
 // opening ?view=lab&preset=<id> is a quick visual check of whatever you're working on.
@@ -377,6 +378,31 @@ const playgroundPresets: Preset[] = [
     title: "Complete export contract",
     group: "Playground",
     diagram: () => exportFixture,
+  },
+  {
+    kind: "diagram",
+    id: "sim-review-losses",
+    title: "Simulation review: delivery losses",
+    group: "Diagrams",
+    description: "A failing consumer exhausts deliveries; the live callout adds a dead-letter queue.",
+    diagram: () => simReviewFixture(),
+  },
+  {
+    kind: "diagram",
+    id: "sim-review-diagnostics",
+    title: "Simulation review: loss diagnostics",
+    group: "Diagrams",
+    description: "An incompatible dead-letter filter loses deliveries; Show events remains available in slow motion.",
+    diagram: () => simReviewFixture(true),
+  },
+  {
+    kind: "diagram",
+    id: "sim-review-traffic-budget",
+    title: "Simulation review: continuous source budget",
+    group: "Diagrams",
+    description:
+      "The file accepts ten million messages per second; its explicit one-message-per-dot scale cannot enable continuous traffic.",
+    diagram: () => simReviewTrafficFixture(),
   },
 
   {

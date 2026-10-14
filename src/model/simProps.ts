@@ -1,13 +1,21 @@
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";
 import type { NodeSimProps, EdgeSimProps } from "../sim/types";
 
-const quantity = { type: "number", minimum: 0, maximum: 10_000 };
-const cardinality = { type: "integer", minimum: 1, maximum: 10_000 };
-const time = { type: "number", minimum: 0, maximum: 600_000 };
+/**
+ * The file format's bounds on simulation settings, which every place that edits them uses too (the inspector, the
+ * Inputs panel, fixes): a rate up to 10 million messages a second (the live view samples big rates, so they cost
+ * nothing to play), counts (replicas, partitions, concurrency, deliveries) up to 10,000, times up to 10 minutes.
+ */
+export const SIM_LIMITS = { ratePerSec: 10_000_000, count: 10_000, timeMs: 600_000 } as const;
+
+const rate = { type: "number", minimum: 0, maximum: SIM_LIMITS.ratePerSec };
+const quantity = { type: "number", minimum: 0, maximum: SIM_LIMITS.count };
+const cardinality = { type: "integer", minimum: 1, maximum: SIM_LIMITS.count };
+const time = { type: "number", minimum: 0, maximum: SIM_LIMITS.timeMs };
 const fraction = { type: "number", minimum: 0, maximum: 1 };
 // Field coverage is checked against the engine interfaces by TypeScript.
 const nodeProperties = {
-  ratePerSec: quantity,
+  ratePerSec: rate,
   latencyMs: time,
   concurrency: quantity,
   replicas: quantity,
@@ -72,11 +80,28 @@ export const simPropsPatchSchema: JsonSchema = {
     ]),
   ),
 };
-export function propsProblem(value: unknown): boolean {
-  try {
-    checkJsonSchema(value, nodeSimPropsSchema);
-    return false;
-  } catch {
-    return true;
+const number = (n: number) => n.toLocaleString("en-US");
+
+/**
+ * What's wrong with a node's simulation settings, naming the field and the limit ("ratePerSec 20,000,000 is over
+ * the 10,000,000 limit"), or undefined when they're fine.
+ */
+export function propsProblem(value: unknown): string | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return "props must be an object";
+  for (const [key, field] of Object.entries(value)) {
+    if (field === undefined || !Object.hasOwn(nodeProperties, key)) continue;
+    const schema: JsonSchema = nodeProperties[key as keyof typeof nodeProperties];
+    try {
+      checkJsonSchema(field, schema, key);
+    } catch {
+      if (typeof field === "number" && typeof schema.maximum === "number" && field > schema.maximum)
+        return `${key} ${number(field)} is over the ${number(schema.maximum)} limit`;
+      if (typeof field === "number" && typeof schema.minimum === "number" && field < schema.minimum)
+        return `${key} ${number(field)} is under the minimum of ${number(schema.minimum)}`;
+      if (typeof field === "number" && !Number.isFinite(field)) return `${key} must be a finite number`;
+      if (Array.isArray(schema.enum)) return `${key} must be one of ${schema.enum.join(", ")}`;
+      return `${key} must be ${schema.type === "number" ? "a number" : schema.type === "string" ? "text" : "a valid value"}`;
+    }
   }
+  return undefined;
 }

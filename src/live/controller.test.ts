@@ -548,3 +548,25 @@ describe("bounded replay and checkpoint scrubbing", () => {
     expect(c.snapshot()).toEqual(uninterrupted);
   });
 });
+
+it("a saved scale override cannot enable unsafe continuous sources; automatic sampling accepts the same file rate", () => {
+  const d = diagram();
+  d.nodes[0].props = { ratePerSec: 10_000_000 };
+  d.edges = [d.edges[0]];
+  d.nodes[0].stencil = "client.browser";
+  d.nodes[1].stencil = "aws.sqs";
+  const c = new LiveController(d);
+  const sim: Simulation = { id: "empty", title: "Empty", scale: 1, durationMs: 1_000, traffic: [] };
+  c.selectSimulation(sim);
+  c.setTraffic(true);
+  c.step(10);
+  expect(c.getState().traffic).toBe(false);
+  expect(c.snapshot().nodes.api.processed).toBe(0);
+  expect(c.trafficHint()).toContain("higher sampling scale");
+  c.selectSimulation({ ...sim, scale: undefined });
+  c.setTraffic(true);
+  c.step(1_000);
+  expect(c.getState().traffic).toBe(true);
+  expect(c.getState().snapshot.nodes.api.processed).toBeGreaterThan(1_000_000);
+  expect(c.snapshot().nodes.api.processed).toBeLessThanOrEqual(60);
+});

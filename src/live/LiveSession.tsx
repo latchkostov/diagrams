@@ -35,8 +35,10 @@ import { SimPanel } from "./SimPanel";
 import { LiveIcon } from "./icons";
 import { LIVE_BAR_SPACE, LIVE_BAR_VAR } from "./layout";
 import { CapacityPanel } from "./CapacityPanel";
-import { BottleneckCallout, CapacityLayer } from "./CapacityLayer";
-import { addConsumer } from "./addConsumer";
+import { BottleneckCallout, CapacityLayer, TroubleCallout } from "./CapacityLayer";
+import { addConsumer, addDeadLetterQueue } from "./addConsumer";
+import { troubleLeads, type Trouble, type TroubleAction } from "./observedTrouble";
+import { useObservedTrouble } from "./useObservedTrouble";
 import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
 import { useLiveSessionHost } from "../palette/host";
 import {
@@ -205,6 +207,17 @@ export function LiveSession({
     noticeTimer.current = window.setTimeout(() => setNotice(null), 3200);
   }, []);
   useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
+  const previousTraffic = useRef(state.traffic);
+  useEffect(() => {
+    const stopped = previousTraffic.current && !state.traffic;
+    previousTraffic.current = state.traffic;
+    if (!stopped) return;
+    const hint = controller.trafficHint();
+    if (!hint) return;
+    // Shown on the next task, not during this commit: a notice needs no synchronous re-render.
+    const id = window.setTimeout(() => flash(hint), 0);
+    return () => window.clearTimeout(id);
+  }, [state.traffic, controller, flash]);
 
   // ---------------------------------------------------------------- diagram edits while live
 
@@ -860,22 +873,66 @@ export function LiveSession({
     [controller, editor, flash],
   );
 
+  /** A node added one gap downstream may land past the view's edge: bring it in, clear of an open panel (as addEntry). */
+  const revealAdded = useCallback(() => {
+    window.setTimeout(() => {
+      const padding = capacityOpen
+        ? { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const }
+        : undefined;
+      void fitView({ ...FULL_FIT, ...(padding ? { padding } : {}), duration: motionMs(FULL_FIT.duration ?? 0) });
+    }, 260);
+  }, [capacityOpen, fitView]);
+
   /** "Nobody reads X" › Add a consumer: a service reading it, one undoable edit (the run restarts with it). */
   const addReader = useCallback(
     (brokerId: string) => {
       if (slowRef.current?.session.active || !editor) return;
       if (!addConsumer(editor, brokerId)) return;
       sayConsumerAdded(editor, brokerId);
-      // It lands one gap downstream, maybe past the view's edge: bring it in, clear of an open panel (as addEntry).
-      window.setTimeout(() => {
-        const padding = capacityOpen
-          ? { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const }
-          : undefined;
-        void fitView({ ...FULL_FIT, ...(padding ? { padding } : {}), duration: motionMs(FULL_FIT.duration ?? 0) });
-      }, 260);
+      revealAdded();
     },
-    [editor, capacityOpen, fitView],
+    [editor, revealAdded],
   );
+
+  // ---------------------------------------------------------------- what playback shows going wrong
+
+  // The run's trouble the plan can't see (a node down, messages lost, a lag that keeps rising), for the callout.
+  const { trouble, dismiss: dismissTrouble, shown: troubleShown } = useObservedTrouble(controller);
+  const runTroubleAction = useCallback(
+    (action: TroubleAction) => {
+      if (slowRef.current?.session.active && action.kind !== "events" && action.kind !== "inputs") return;
+      if (action.kind === "revive") controller.setNodeStatus(action.node, "up");
+      else if (action.kind === "add-consumer") addReader(action.node);
+      else if (action.kind === "add-dlq") {
+        if (editor && addDeadLetterQueue(editor, action.node)) {
+          flash("Added a dead-letter queue: messages that run out of deliveries go there (undo with Ctrl+Z).");
+          revealAdded();
+        }
+      } else if (action.kind === "events") showEvents(action.node);
+      else openCapacity();
+    },
+    [controller, addReader, editor, flash, showEvents, openCapacity, revealAdded],
+  );
+  // Only while editing in live view (never presenting, recording, embedded or in the Lab, heat map or not). With the
+  // heat map on, a callout is already there: trouble leads it, unless the plan diagnoses the same lag (troubleLeads).
+  const troubleOnScreen =
+    trouble &&
+    editor &&
+    !presenting &&
+    !capturing &&
+    !capacityOpen &&
+    (!showCapacity || troubleLeads(trouble, capacity))
+      ? trouble
+      : undefined;
+  const troubleAnnouncement = useRef<HTMLSpanElement>(null);
+  const announcement = troubleOnScreen?.announce ?? "";
+  useEffect(() => {
+    // Even a run that starts with trouble mounts an empty region before its announcement changes.
+    if (troubleAnnouncement.current) troubleAnnouncement.current.textContent = announcement;
+  }, [announcement]);
+  // Editing the diagram (a consumer, a dead-letter queue) needs the editor; reviving and reading don't.
+  const troubleActionHere = (t: Trouble) =>
+    !presenting && (editor || (t.action.kind !== "add-consumer" && t.action.kind !== "add-dlq"));
 
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */
   const saveInputs = useCallback(() => {
@@ -1179,15 +1236,34 @@ export function LiveSession({
             </button>
           </div>
         )}
-        {showCapacity && capacity && !capacityOpen && (
-          <BottleneckCallout
-            view={capacity}
+        {/* Mounted empty first, so the cause is heard when it's written; it changes only with the cause. */}
+        <span ref={troubleAnnouncement} className="sr-only" role="status" data-testid="trouble-announce" />
+        {troubleOnScreen ? (
+          <TroubleCallout
+            trouble={troubleOnScreen}
+            onShown={troubleShown}
             floating
-            onApply={applyFix}
-            disabledHint={liveMutationGuard(() => slow.session.active).hint()}
-            onOpenPanel={presenting ? undefined : () => openCapacity()}
-            onAddConsumer={editor && !presenting ? addReader : undefined}
+            onAction={troubleActionHere(troubleOnScreen) ? runTroubleAction : undefined}
+            onDismiss={dismissTrouble}
+            disabledHint={
+              troubleOnScreen.action.kind === "events" || troubleOnScreen.action.kind === "inputs"
+                ? undefined
+                : liveMutationGuard(() => slow.session.active).hint()
+            }
           />
+        ) : (
+          showCapacity &&
+          capacity &&
+          !capacityOpen && (
+            <BottleneckCallout
+              view={capacity}
+              floating
+              onApply={applyFix}
+              disabledHint={liveMutationGuard(() => slow.session.active).hint()}
+              onOpenPanel={presenting ? undefined : () => openCapacity()}
+              onAddConsumer={editor && !presenting ? addReader : undefined}
+            />
+          )
         )}
         {slowCard && !capturing ? (
           <TraceCard

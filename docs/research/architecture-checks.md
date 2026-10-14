@@ -994,6 +994,33 @@ reviewer meets in real diagrams (`src/checks/evidence.test.ts` covers each shape
 | multi-region-active-active, us-east-1's API failing 2% of writes      | `dropped:api-us`: 4 in “Region outage and failover”, 30 in “Both regions take writes”                            | Would look | Nothing in the design retries a failed checkout. Real clients often do; as a Suggestion it asks the question, and Ignore here answers it.                                                        |
 | aws-fanout with a simulation where the archive Lambda rejects 1 in 10 | `dead-letter:archive-q` becomes a Warning (static); no count                                                     | Right      | None of 300 orders failed three deliveries in a row: no loss to count, and the Warning stands on its failure rate.                                                                               |
 
+## Simulation truths: precision gate (2026-10-13)
+
+Items 1–6 of `docs/research/sim-flows-review.md` changed playback, not the analysis: a broker-fed consumer now takes
+its slot when a delivery arrives (so travel time no longer caps it), and the default travel time is 300 / 200 ms. The
+`capacity` check reads the analysis, so its findings could only move where playback and the plan had disagreed. I ran
+`runChecks` on the 16 public examples (top level only) on `origin/master` and on this branch, and played each one's
+free play for 60 s (seed 1, the live view's automatic scale) to see whether a backlog really only grows.
+
+| Example                    | `capacity` finding, before → after           | Playback, before                                     | Playback, after           | Verdict                                                                                                                      |
+| -------------------------- | -------------------------------------------- | ---------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| iot-telemetry              | Warning: Device state projector, 234% (same) | hub lag 28k → 62k in 30 s                            | hub lag 34k → 69k in 30 s | **Would fix**, as before: the backlog only grows, as the finding says. Precise.                                              |
+| gcp-streaming-analytics    | none (same)                                  | Pub/Sub lag 108 → 219 in 30 s under "Healthy" at 13% | lag 0                     | **Now agrees.** Before, the check (and the banner) were right about capacity and playback was wrong; the engine was the bug. |
+| event-driven-data-platform | none (same)                                  | segments topic lag 9 → 4 (jitter, draining)          | lag 0                     | No finding either way; the noise is gone.                                                                                    |
+| the other 13               | none (same)                                  | no lag                                               | no lag                    | No finding, nothing to find.                                                                                                 |
+
+**Numbers.** One `capacity` finding before and after (iot-telemetry), would-fix 1 of 1: precision stays 100%, and the
+findings are byte-for-byte the same (`src/checks/examples.test.ts` pins them). What changed is recall against
+playback: the one example where the animation contradicted a clean check (GCP) now agrees with it. The wording change
+for a node saved down ("Fulfilment worker is down", no replica fix) fires on none of the examples (none is saved down);
+`src/checks/capacityDown.test.ts` covers it.
+
+**The live twin.** The callout's new "falling behind" signal (`src/live/observedTrouble.ts`) was checked the same way,
+over free play and both saved simulations of each example: in free play it fires only on iot-telemetry's hub (true,
+and the plan says over capacity too); in saved stories only where the lag is the story (aws-fanout "throttle",
+cqrs-event-sourcing "rebuild", kafka-order-pipeline "payments-outage", with Payments down). Dead-letter queues filling
+during an outage fired at first (three stories); they're left out now, since keeping what they get is their job.
+
 ## Owner's decisions (2026-10-13)
 
 The owner reviewed batches 4 and 5. Four decisions, applied in one change (UX review: `docs/DESIGN-REVIEW.md`, round

@@ -2,6 +2,11 @@ import { isDenyRule } from "../stencils/netDevices";
 import type { DiagramEdge, DiagramFile, DiagramNode, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { flowEdges } from "../model/relations";
+/**
+ * An edge's travel time at 1x when it doesn't set `travelMs`: a request 200 ms, a message 300 ms (what the public
+ * examples set by hand). Travel is animation, never a throughput limit: see the engine's pipeline allowance.
+ */
+export const DEFAULT_TRAVEL_MS = { async: 300, sync: 200 } as const;
 export const brokerRole = (role: SimRole) => role === "queue" || role === "topic" || role === "stream";
 /** Explicit false wins; infer labels only on broker-to-broker/store paths. */
 export function isDlqEdge(edge: DiagramEdge, fromRole: SimRole, target: DiagramNode, toRole: SimRole): boolean {
@@ -105,7 +110,9 @@ export function compileTopology(diagram: DiagramFile, roleOf = stencilRole): Com
       sync: input.kind === "sync",
       dlq: (brokerRole(from) || from === "processor") && isDlqEdge(input, from, target, to),
       travelMs:
-        typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : input.kind === "sync" ? 450 : 900,
+        typeof value === "number" && Number.isFinite(value)
+          ? Math.max(0, value)
+          : DEFAULT_TRAVEL_MS[input.kind === "sync" ? "sync" : "async"],
       share:
         typeof input.props?.share === "number" && Number.isFinite(input.props.share)
           ? Math.max(0, Math.min(1, input.props.share))
@@ -172,4 +179,24 @@ export function allocateGroupReplicas(
     budgets,
     role === "queue" ? budgets.reduce((sum, member) => sum + member.replicas, 0) : partitions,
   );
+}
+
+/**
+ * How messages reach each node, as playback delivers them: for a node every flow route into which comes from a
+ * queue, topic or stream (dead-letter routes and deny rules aside), the brokers that keep its messages while it's
+ * down (they stop delivering to it); `null` for a node something pushes to (a down node fails or drops what's pushed).
+ * Nodes no flow reaches aren't listed. The live callout, the capacity callout and the `capacity` check share it.
+ */
+export function brokerFeeds(compiled: CompiledTopology, roleOf: (id: string) => SimRole | undefined) {
+  const indexed = new Map<string, Set<string> | null>();
+  for (const edge of compiled.edges) {
+    if (edge.dlq || edge.deny) continue;
+    const role = roleOf(edge.from);
+    const known = indexed.get(edge.to);
+    if (known === null) continue;
+    if (role === undefined || !brokerRole(role)) indexed.set(edge.to, null);
+    else if (!known) indexed.set(edge.to, new Set([edge.from]));
+    else known.add(edge.from);
+  }
+  return new Map([...indexed].map(([id, brokers]) => [id, brokers ? [...brokers] : null]));
 }

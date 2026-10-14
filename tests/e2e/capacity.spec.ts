@@ -375,12 +375,18 @@ test.describe("outages in the run (UX gate 3)", () => {
     await expect(headline).toHaveText("Healthy: every service has headroom");
     // Jump to the outage (the note stacked on the status change at 4.0s).
     await page.getByTestId("live-marker-2").click();
-    await expect(headline).toHaveText("Payments service is down");
-    await expect(page.getByTestId("bottleneck-callout")).toHaveAttribute("data-tone", "over");
-    await expect(page.getByTestId("bottleneck-callout")).toHaveAttribute("data-node", "payments");
-    await expect(page.getByTestId("capacity-label-payments")).toContainText("Down ·");
+    // What the run shows leads the plan's callout: Payments is down, its orders waiting in the topic, with Revive.
+    await expect(page.getByTestId("trouble-headline")).toHaveText("Payments service is down");
+    await expect(page.getByTestId("trouble-callout")).toHaveAttribute("data-node", "payments");
+    await expect(page.getByTestId("trouble-detail")).toContainText(
+      "Messages wait in orders.created.v1 until it's back",
+    );
+    await expect(page.getByTestId("trouble-action")).toHaveText(/Revive/);
+    await expect(page.getByTestId("capacity-label-payments")).toContainText("Down · ");
+    await expect(page.getByTestId("capacity-label-payments")).toContainText("waiting in orders.created.v1");
     // Payments comes back at 12.0s.
     await page.getByTestId("live-marker-4").click();
+    await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
     await expect(headline).toHaveText("Healthy: every service has headroom");
   });
 });
@@ -389,11 +395,12 @@ test.describe("fourth review capacity regressions", () => {
   test("unsupported rate drafts show inline errors and never save", async ({ page }) => {
     await openBlackFridayInputs(page);
     await page.getByTestId("capacity-capacity-mult").fill("9");
-    for (const rate of ["12k", "20k"]) {
+    // The file format takes up to 10 million msg/s.
+    for (const rate of ["12M", "20M"]) {
       await page.getByTestId("capacity-rate-shopper").fill(rate);
       await page.getByTestId("capacity-rate-shopper").press("Enter");
       await expect(page.getByTestId("capacity-rate-shopper")).toHaveAttribute("aria-invalid", "true");
-      await expect(page.getByTestId("capacity-rate-shopper-error")).toContainText("10,000");
+      await expect(page.getByTestId("capacity-rate-shopper-error")).toContainText("10,000,000");
       await expect(page.getByTestId("capacity-save")).toBeDisabled();
       await page.getByTestId("capacity-context").click();
       await expect(page.getByTestId("capacity-rate-shopper")).toHaveValue(rate);
@@ -427,6 +434,10 @@ test.describe("fourth review capacity regressions", () => {
 
   test("Save rejects the document traffic budget and keeps unsaved inputs", async ({ page }) => {
     await openBlackFridayInputs(page);
+    // The budget counts what plays: at one message per dot, 3k/s × 10 for 10 s is 300,000 dots.
+    await page.getByTestId("scale-override").selectOption("1");
+    await page.getByTestId("capacity-rate-shopper").fill("3k");
+    await page.getByTestId("capacity-rate-shopper").press("Enter");
     await page.getByTestId("capacity-traffic-mult").fill("19");
     await page.getByTestId("capacity-save").click();
     await expect(page.getByTestId("capacity-save-error")).toContainText("traffic volume budget");
@@ -441,11 +452,11 @@ test.describe("fourth review capacity regressions", () => {
   test("free-play Save rejects folded rates over the native limit", async ({ page }) => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&paused=1`);
     await page.getByTestId("live-capacity").click();
-    await page.getByTestId("capacity-rate-shopper").fill("2k");
+    await page.getByTestId("capacity-rate-shopper").fill("2M");
     await page.getByTestId("capacity-rate-shopper").press("Enter");
     await page.getByTestId("capacity-traffic-mult").fill("19");
     await page.getByTestId("capacity-save").click();
-    await expect(page.getByTestId("capacity-save-error")).toContainText("10,000");
+    await expect(page.getByTestId("capacity-save-error")).toContainText("10,000,000");
     await expect(page.getByTestId("capacity-dirty")).toBeVisible();
     await page.reload();
     await page.getByTestId("live-capacity").click();

@@ -59,6 +59,9 @@ import {
   type DeviceSpec,
 } from "../stencils/netDevices";
 import { formatCount } from "../live/format";
+import { DEFAULT_TRAVEL_MS } from "../sim/topology";
+import { SIM_FIELDS_BY_ROLE, edgeSimFields, inertNodeProps } from "./simFieldRules";
+import { SIM_LIMITS } from "../interop/native";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.
@@ -79,13 +82,15 @@ interface SimField {
   note?: string;
 }
 
-// Partial on purpose: engine knobs without a designed field yet stay editable under "Custom properties".
+// Partial on purpose: engine knobs without a designed field yet stay editable under "Custom properties". Bounds are
+// the file format's (SIM_LIMITS): a value the inspector takes always saves and opens again.
 const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
   ratePerSec: {
     label: "Rate",
     unit: "msg/s",
     kind: "number",
     min: 0,
+    max: SIM_LIMITS.ratePerSec,
     step: 0.5,
     placeholder: "2",
     hint: "Messages per second while traffic is on",
@@ -101,6 +106,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     unit: "ms",
     kind: "number",
     min: 0,
+    max: SIM_LIMITS.timeMs,
     step: 10,
     placeholder: "default",
     hint: "Processing time per message",
@@ -109,6 +115,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     label: "Concurrency",
     kind: "number",
     min: 1,
+    max: SIM_LIMITS.count,
     step: 1,
     placeholder: "4",
     hint: "Messages processed in parallel per replica",
@@ -117,6 +124,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     label: "Replicas",
     kind: "number",
     min: 1,
+    max: SIM_LIMITS.count,
     step: 1,
     placeholder: "1",
     hint: "Instances (pods); behind a topic, only as many as there are partitions do work",
@@ -145,6 +153,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     label: "Max deliveries",
     kind: "number",
     min: 1,
+    max: SIM_LIMITS.count,
     step: 1,
     placeholder: "3",
     hint: "Attempts before dead-lettering",
@@ -153,6 +162,7 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     label: "Partitions",
     kind: "number",
     min: 1,
+    max: SIM_LIMITS.count,
     step: 1,
     placeholder: "3",
     hint: "Max in-flight deliveries per consumer group",
@@ -164,19 +174,6 @@ const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
     placeholder: "unchanged, or In → Out, * → Other",
     hint: "Message type sent downstream. One name renames everything; `OrderPlaced → PaymentRequested, * → Other` maps by incoming type (* = fallback).",
   },
-};
-
-/** Which simulation tunables apply to each role. */
-const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
-  source: ["ratePerSec", "messageType"],
-  processor: ["replicas", "latencyMs", "concurrency", "failureRate", "emits"],
-  gateway: ["latencyMs", "concurrency"],
-  store: ["latencyMs"],
-  sink: ["latencyMs"],
-  topic: ["partitions", "maxDeliveryCount"],
-  stream: ["partitions", "maxDeliveryCount"],
-  queue: ["maxDeliveryCount"],
-  none: [],
 };
 
 const SIM_KEYS = new Set<string>(Object.keys(SIM_FIELDS));
@@ -395,9 +392,21 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
               onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
             />
           ))
+        ) : role === "sink" ? (
+          <p className="insp-note" data-testid="inspector-sink-note">
+            Messages end here as they arrive: nothing here changes the run.
+          </p>
         ) : (
           <p className="insp-note">This stencil is decorative and doesn't take part in the simulation.</p>
         )}
+        {inertNodeProps(role, props).map(({ key, why }) => (
+          <InertNote
+            key={key}
+            name={key}
+            text={`${SIM_FIELDS[key]?.label ?? key} ${formatInert(props[key], SIM_FIELDS[key]?.unit)} is kept in the file, but ${why}, so it doesn't change the run.`}
+            onRemove={() => editor.setNodeProps(node.id, { [key]: undefined })}
+          />
+        ))}
       </Disclosure>
 
       <Disclosure id="node-properties" title="Custom properties" count={customCount(props, hidden)}>
@@ -438,6 +447,12 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
   const choice = choiceOf(data);
   // A connection leaving a firewall is one of its rules: allow (the default) or deny.
   const rule = flow && isFirewallStencil(editor.getNode(edge.source)?.stencil);
+  // Consumer groups exist only on edges out of a topic or stream; a dead-letter route only out of a broker.
+  const sourceStencil = editor.getNode(edge.source)?.stencil;
+  const sourceRole = sourceStencil ? getStencil(sourceStencil).simRole : undefined;
+  const fields = edgeSimFields(sourceRole);
+  const grouped = flow && fields.group;
+  const deadLetters = flow && fields.dlq;
   return (
     <>
       <Section>
@@ -514,32 +529,50 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
             />
           </Field>
         )}
-        {flow && !rule && (
-          <>
-            <Field label="Consumer group" hint="Edges from a topic sharing a group compete for messages">
-              <input
-                className="insp-input mono"
-                value={typeof props.group === "string" ? props.group : ""}
-                placeholder={edge.id}
-                onChange={(e) => editor.setEdgeProps(edge.id, { group: e.target.value || undefined }, merge("group"))}
-                name="consumer-group"
-                data-testid="inspector-field-group"
-              />
-            </Field>
-            <label className="insp-check">
-              <input
-                type="checkbox"
-                checked={props.dlq === true}
-                onChange={(e) => editor.setEdgeProps(edge.id, { dlq: e.target.checked || undefined })}
-                name="dlq"
-                data-testid="inspector-field-dlq"
-              />
-              <span>
-                Dead-letter path
-                <small>Failed messages from the source broker go here</small>
-              </span>
-            </label>
-          </>
+        {grouped && (
+          <Field label="Consumer group" hint="Edges from a topic sharing a group compete for messages">
+            <input
+              className="insp-input mono"
+              value={typeof props.group === "string" ? props.group : ""}
+              placeholder={edge.id}
+              onChange={(e) => editor.setEdgeProps(edge.id, { group: e.target.value || undefined }, merge("group"))}
+              name="consumer-group"
+              data-testid="inspector-field-group"
+            />
+          </Field>
+        )}
+        {flow && !grouped && typeof props.group === "string" && (
+          <InertNote
+            name="group"
+            text={`Consumer group “${props.group}” is kept in the file, but only edges out of a topic or stream have groups, so it doesn't change the run.`}
+            onRemove={() => editor.setEdgeProps(edge.id, { group: undefined })}
+          />
+        )}
+        {deadLetters && (
+          <label className="insp-check">
+            <input
+              type="checkbox"
+              checked={props.dlq === true}
+              onChange={(e) => editor.setEdgeProps(edge.id, { dlq: e.target.checked || undefined })}
+              name="dlq"
+              data-testid="inspector-field-dlq"
+            />
+            <span>
+              Dead-letter path
+              <small>Failed messages from the source broker go here</small>
+            </span>
+          </label>
+        )}
+        {flow && !deadLetters && props.dlq === true && (
+          <InertNote
+            name="dlq"
+            text={
+              sourceRole === "processor"
+                ? "Dead-letter path is on, but only a broker's dead-letter route catches failed messages: this edge carries nothing in Live."
+                : "Dead-letter path is on, but only a broker's dead-letter route catches failed messages, so it doesn't change the run."
+            }
+            onRemove={() => editor.setEdgeProps(edge.id, { dlq: undefined })}
+          />
         )}
         {!flow && (
           <p className="insp-note" data-testid="inspector-relation-note">
@@ -595,8 +628,9 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
                 unit: "ms",
                 kind: "number",
                 min: 0,
+                max: SIM_LIMITS.timeMs,
                 step: 50,
-                placeholder: data.kind === "sync" ? "450" : "900",
+                placeholder: String(DEFAULT_TRAVEL_MS[data.kind === "sync" ? "sync" : "async"]),
                 hint: "Time a message spends on this edge at 1x",
               }}
               value={props.travelMs}
@@ -636,6 +670,39 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
       </Disclosure>
     </>
   );
+}
+
+/** A value kept in the file that can't change the run where it is: said in a muted line, with a way to remove it. */
+function InertNote({ name, text, onRemove }: { name: string; text: string; onRemove: () => void }) {
+  return (
+    <p className="insp-note insp-inert" data-testid={`inspector-inert-${name}`}>
+      {text}{" "}
+      <button
+        type="button"
+        className="insp-link"
+        onClick={(event) => {
+          // Removing the note removes this button too. Keep keyboard focus in its surviving section.
+          if (document.activeElement === event.currentTarget) {
+            const section = event.currentTarget.closest("section");
+            const target =
+              section?.querySelector<HTMLElement>("button[aria-expanded]") ??
+              section?.querySelector<HTMLElement>("input:not(:disabled), select:not(:disabled)");
+            target?.focus();
+          }
+          onRemove();
+        }}
+        data-testid={`inspector-inert-${name}-remove`}
+      >
+        Remove
+      </button>
+    </p>
+  );
+}
+
+/** "8", "500 ms", or the JSON of anything else. */
+function formatInert(value: unknown, unit?: string): string {
+  const text = typeof value === "number" || typeof value === "string" ? String(value) : JSON.stringify(value);
+  return unit && typeof value === "number" ? `${text} ${unit}` : text;
 }
 
 /** Flow edges into a typed stencil (Key Vault, an IdP...): offer the dependency they look like. */
@@ -1820,6 +1887,8 @@ function SimInput({
 }) {
   const external = showSim(field.kind, value);
   const [draft, setDraft] = useState(external);
+  // A number past the field's bound is saved at the bound, and says so while it's typed.
+  const [over, setOver] = useState(false);
   const focused = useRef(false);
   useEffect(() => {
     if (!focused.current) setDraft(external);
@@ -1841,10 +1910,12 @@ function SimInput({
             onBlur={() => {
               focused.current = false;
               setDraft(external);
+              setOver(false);
             }}
             onChange={(e) => {
               const raw = e.target.value;
               setDraft(raw);
+              setOver(field.kind === "number" && field.max !== undefined && Number(raw) > field.max);
               if (field.kind === "text") return onChange(raw || undefined);
               if (field.kind === "list") {
                 const items = raw
@@ -1868,6 +1939,12 @@ function SimInput({
           />
           {field.unit && <span className="insp-unit">{field.unit}</span>}
         </span>
+        {over && field.max !== undefined && (
+          <small className="insp-note" role="status" data-testid={`inspector-limit-${name}`}>
+            Up to {field.max.toLocaleString("en-US")}
+            {field.unit && field.unit !== "0–1" ? ` ${field.unit}` : ""}: saved as {field.max.toLocaleString("en-US")}.
+          </small>
+        )}
       </Field>
       {field.note && (
         <p className="insp-note insp-field-note" data-testid={`inspector-note-${name}`}>

@@ -40,20 +40,35 @@ function checkJsonSchema(value, schema, path = "input", definitions = {}) {
 }
 //#endregion
 //#region src/model/simProps.ts
+/**
+* The file format's bounds on simulation settings, which every place that edits them uses too (the inspector, the
+* Inputs panel, fixes): a rate up to 10 million messages a second (the live view samples big rates, so they cost
+* nothing to play), counts (replicas, partitions, concurrency, deliveries) up to 10,000, times up to 10 minutes.
+*/
+var SIM_LIMITS = {
+	ratePerSec: 1e7,
+	count: 1e4,
+	timeMs: 6e5
+};
+var rate$1 = {
+	type: "number",
+	minimum: 0,
+	maximum: SIM_LIMITS.ratePerSec
+};
 var quantity = {
 	type: "number",
 	minimum: 0,
-	maximum: 1e4
+	maximum: SIM_LIMITS.count
 };
 var cardinality = {
 	type: "integer",
 	minimum: 1,
-	maximum: 1e4
+	maximum: SIM_LIMITS.count
 };
 var time$1 = {
 	type: "number",
 	minimum: 0,
-	maximum: 6e5
+	maximum: SIM_LIMITS.timeMs
 };
 var fraction = {
 	type: "number",
@@ -61,7 +76,7 @@ var fraction = {
 	maximum: 1
 };
 var nodeProperties = {
-	ratePerSec: quantity,
+	ratePerSec: rate$1,
 	latencyMs: time$1,
 	concurrency: quantity,
 	replicas: quantity,
@@ -141,12 +156,25 @@ Object.fromEntries(Object.entries({
 	type: [schema.type, "null"],
 	..."enum" in schema ? { enum: [...schema.enum, null] } : {}
 }]));
+var number = (n) => n.toLocaleString("en-US");
+/**
+* What's wrong with a node's simulation settings, naming the field and the limit ("ratePerSec 20,000,000 is over
+* the 10,000,000 limit"), or undefined when they're fine.
+*/
 function propsProblem(value) {
-	try {
-		checkJsonSchema(value, nodeSimPropsSchema);
-		return false;
-	} catch {
-		return true;
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return "props must be an object";
+	for (const [key, field] of Object.entries(value)) {
+		if (field === void 0 || !Object.hasOwn(nodeProperties, key)) continue;
+		const schema = nodeProperties[key];
+		try {
+			checkJsonSchema(field, schema, key);
+		} catch {
+			if (typeof field === "number" && typeof schema.maximum === "number" && field > schema.maximum) return `${key} ${number(field)} is over the ${number(schema.maximum)} limit`;
+			if (typeof field === "number" && typeof schema.minimum === "number" && field < schema.minimum) return `${key} ${number(field)} is under the minimum of ${number(schema.minimum)}`;
+			if (typeof field === "number" && !Number.isFinite(field)) return `${key} must be a finite number`;
+			if (Array.isArray(schema.enum)) return `${key} must be one of ${schema.enum.join(", ")}`;
+			return `${key} must be ${schema.type === "number" ? "a number" : schema.type === "string" ? "text" : "a valid value"}`;
+		}
 	}
 }
 //#endregion
@@ -400,7 +428,8 @@ var LIMITS = {
 	maxRampStages: 1e4,
 	maxExpectations: 1e4,
 	maxMessageCount: 1e5,
-	maxRatePerSec: 1e4,
+	maxRatePerSec: SIM_LIMITS.ratePerSec,
+	/** Scripted messages across all simulations, as played: real messages × Traffic multiplier ÷ the saved scale. */
 	maxTrafficVolume: 2e5,
 	maxSimulationMs: 6e5,
 	maxPages: 100
@@ -600,9 +629,10 @@ function validateDiagram(data) {
 			delete out.group;
 		}
 		if (out.props !== void 0 && !isObj$1(out.props)) delete out.props;
-		if (out.props !== void 0 && propsProblem(out.props)) return {
+		const problem = out.props === void 0 ? void 0 : propsProblem(out.props);
+		if (problem) return {
 			ok: false,
-			error: `Node "${n.id}" has invalid or excessive simulation properties.`
+			error: `Node "${n.id}" has a simulation setting out of bounds: ${problem}.`
 		};
 		nodes.push(out);
 	}
@@ -836,7 +866,10 @@ function simulationProblem(sim) {
 					if (!STATUS.has(a.status)) return "a status action needs up, paused or down";
 					break;
 				case "props":
-					if (propsProblem(a.props)) return "a props action needs valid engine properties";
+					{
+						const problem = propsProblem(a.props);
+						if (problem) return `a props action needs valid engine properties (${problem})`;
+					}
 					break;
 				case "inject":
 					if (!count(a.count) || !optString(a.messageType) || !optTime(a.spreadMs)) return "an inject action needs a bounded count, messageType and spreadMs";
@@ -858,7 +891,13 @@ function simulationProblem(sim) {
 	if (sim.setup !== void 0) {
 		if (!isObj$1(sim.setup)) return "setup must be an object";
 		if (sim.setup.status !== void 0 && (!isObj$1(sim.setup.status) || !Object.values(sim.setup.status).every((v) => STATUS.has(v)))) return "setup status must map node ids to up, paused or down";
-		if (sim.setup.props !== void 0 && (!isObj$1(sim.setup.props) || Object.values(sim.setup.props).some(propsProblem))) return "setup props must map node ids to valid engine properties";
+		if (sim.setup.props !== void 0) {
+			if (!isObj$1(sim.setup.props)) return "setup props must map node ids to valid engine properties";
+			for (const [id, props] of Object.entries(sim.setup.props)) {
+				const problem = propsProblem(props);
+				if (problem) return `setup props for ${JSON.stringify(id)} must be valid engine properties (${problem})`;
+			}
+		}
 	}
 }
 function simulationReferenceWarnings(sim, nodeIds) {
@@ -904,7 +943,8 @@ function simulationBudgetProblem(raw) {
 			}
 		}
 		for (const { action } of sim.timeline ?? []) if (action.do === "inject") messages += action.count;
-		volume += messages * Math.max(1, sim.multipliers?.traffic ?? 1);
+		const scale = isNum$1(sim.scale) && sim.scale >= 1 ? sim.scale : 1;
+		volume += messages * Math.max(1, sim.multipliers?.traffic ?? 1) / scale;
 	}
 	if (profiles > LIMITS.maxTrafficProfiles || steps > LIMITS.maxTimelineSteps || stages > LIMITS.maxRampStages || expectations > LIMITS.maxExpectations) return "The simulations exceed the document's traffic, timeline, ramp-stage or expectation budget.";
 	if (!Number.isFinite(volume) || volume > LIMITS.maxTrafficVolume) return "The simulations exceed the document's total traffic volume budget.";

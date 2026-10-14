@@ -19,6 +19,7 @@ Rules:
 - Name existing nodes by their exact label from the diagram. "this" is the selected node.
 - Direction follows the data. "A calls / uses / writes to / sends to / publishes to / routes to / invokes / feeds B" goes from A to B. "A consumes / reads from / subscribes to / is fed by / is triggered by B" goes from B to A.
 - flow is "message" for events and queues, "request" for HTTP, gRPC, SQL and cache calls.
+- A dead-letter queue connects from the topic or queue the service reads, not from the service.
 - Use the names from the request, never the sample names from the examples.
 - Keep it short: only the ops the request needs, labels of a few words, a one-line summary.`;
 
@@ -58,9 +59,9 @@ export const INITIAL_PROMPTS: InitialPrompt[] = [
   },
   {
     role: "assistant",
-    content: answer("Added a dead-letter queue after sample-worker and renamed sample-store", [
+    content: answer("Added a dead-letter queue for sample.jobs and renamed sample-store", [
       { op: "add", key: "dlq", kind: "dead-letter queue", label: "dead-letter queue" },
-      { op: "connect", from: "sample-worker", to: "dlq", flow: "message" },
+      { op: "connect", from: "sample.jobs", to: "dlq", flow: "message" },
       { op: "rename", target: "sample-store", label: "sample-ledger" },
     ]),
   },

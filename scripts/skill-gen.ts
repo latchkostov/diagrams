@@ -64,7 +64,8 @@ const EDGE_PROP_NOTES: Record<string, string> = {
   filter: 'message types this edge accepts, e.g. ["Order*"] (a trailing * matches a prefix)',
   share: "chance that this fan-out edge gets a copy",
   emits: "renames messages on this edge",
-  travelMs: "time a message spends on the edge",
+  travelMs:
+    "time a message spends on the edge (default 300 for a message, 200 for a request); animation only, never a limit",
   deny: "true makes the edge a deny rule: messages routed here are blocked at its source (counted as blocked, never dropped)",
 };
 
@@ -194,7 +195,7 @@ function regions(): Record<string, string> {
     "edge-props": propList(edgeSimPropsSchema, EDGE_PROP_NOTES, "edge").join("\n"),
     "sim-limits": [
       `- Rates up to ${LIMITS.maxRatePerSec.toLocaleString("en-US")}/s, bursts and injections up to ${LIMITS.maxMessageCount.toLocaleString("en-US")} messages, times up to ${LIMITS.maxSimulationMs.toLocaleString("en-US")} ms.`,
-      `- All traffic in the file together: at most ${LIMITS.maxTrafficVolume.toLocaleString("en-US")} messages (rate × duration, summed).`,
+      `- All traffic in the file together: at most ${LIMITS.maxTrafficVolume.toLocaleString("en-US")} messages as played (rate × duration, summed, ÷ each simulation's \`scale\`, the real messages per dot).`,
       `- Expectation metrics: ${code(e.metric)}, or \`{ "system": "inSystem" }\`; \`op\`: ${code(e.op)}; \`when\`: ${code(e.when)}.`,
     ].join("\n"),
   };

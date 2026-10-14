@@ -212,11 +212,35 @@
   }
 }
 
-/* Narrow canvases: drop below the title card and the Live toggle. */
+/*
+ * Narrow canvases: below the Live toggle, centred in the room right of the title card (at most 380 px wide, 16 px in):
+ * a callout that comes on its own never covers the diagram's name.
+ */
 @media (max-width: 1280px) {
   .cap-callout.is-floating {
     top: 60px;
-    max-width: calc(100% - 32px);
+    left: calc(50% + 198px);
+    min-width: 0;
+    max-width: calc(100% - 444px);
+  }
+}
+
+/* Too little room beside the title card (a narrow canvas, side panels open): below it, the canvas's full width. */
+.cap-callout.is-floating[data-below] {
+  top: var(--callout-top, 60px);
+  left: 16px;
+  right: 16px;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  transform: none;
+  animation-name: cap-in-below;
+}
+
+@keyframes cap-in-below {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
   }
 }
 
@@ -812,4 +836,11 @@
 .cap-rate .cap-unit {
   grid-row: 1;
   grid-column: 3;
+}
+
+/* The trouble callout's dismiss: quiet, top right, after its one action. */
+.cap-callout-close {
+  flex: none;
+  align-self: flex-start;
+  color: var(--text-3);
 }

@@ -2,6 +2,57 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Simulation review, round 3 (2026-10)
+
+- Live reports losses between trend samples, including the last partial second of a finished run. Broker outages
+  say messages were dropped on arrival; delivery-limit losses offer a dead-letter queue. Only playback's selected
+  dead-letter route exempts its target from lag warnings.
+- Large bursts no longer cost a full travel-array scan every tick or frame. Broker throughput stays unlimited;
+  paused sinks ignore saved latency when revived, matching the inspector.
+- Continuous traffic keeps the 10,000,000 msg/s input limit, with a sampled rate and per-run source budget. Unsafe
+  scale combinations explain how to change Inputs; reaching the volume budget shows a notice and requires Restart.
+- Callouts reserve room for Back to editing, and Show events remains usable during slow motion. Adding a dead-letter
+  queue is covered through delivery and one-step Undo; staged-backlog tests now require progress and full draining.
+
+## Simulation review follow-up (2026-10)
+
+- A saved sink latency really does nothing: topic delivery stays immediate. Large consumer groups refresh their
+  delivery limits without rescanning all routes, and outage details use indexed memberships.
+- Live reports losses in short runs, keeps an ongoing lag warning after seeking, and stops calling a flat backlog
+  rising. A warning hidden behind Inputs keeps its turn; an unrelated capacity diagnosis no longer hides it.
+- A down broker fed by another broker says its messages wait there, matching playback and the heat map.
+- Trouble announcements update an already mounted live region, callouts stay clear of the title with the AI panel
+  open, and removing a saved inert setting keeps keyboard focus in the inspector.
+- Checkpoint restoration preserves consumer IDs such as `constructor`; the on-device DLQ eval requires a route
+  playback actually classifies as dead-letter.
+
+## The simulation tells the truth (2026-10)
+
+From the simulation flows review (docs/research/sim-flows-review.md, items 1–6; docs/DESIGN-REVIEW.md, round 32).
+Habit changes:
+
+- **Consumers behind a topic or queue keep up at the rate the heat map says.** A default consumer drained about
+  3.5 msg/s behind a broker while every number said 16, so "Healthy" sat over a lag that only grew (the GCP example
+  did it at "13%"). A delivery now takes its consumer's slot when it arrives. Runs of diagrams with brokers look
+  calmer: lag builds only where a consumer really can't keep up.
+- **Messages move faster by default**: an edge without its own travel time takes 300 ms (a request 200 ms); it was
+  900 / 450. Edges that set one keep it.
+- **Live tells you what's going wrong without being asked**: a node that's down (**Revive**), messages being lost
+  (**Add dead-letter queue**), a lag that keeps rising (**Inputs…**). Each comes once per run, and **×** dismisses it.
+  Nothing appears while presenting, recording or in an embed.
+- **A down consumer behind a queue says its messages wait**, "Messages wait in orders until it's back (49 so far)", not
+  that they fail.
+- **A new connection into a database, gateway or outside API, or out of a browser or app, is a Request** (solid);
+  into or out of a topic or queue it's a Message, as before. The first time, a toast offers **Make it a message**.
+  Agents' `connect` without a `kind` does the same. Existing diagrams are unchanged.
+- **The inspector hides fields that do nothing**: a gateway's Concurrency, a sink's Latency, and Consumer group and
+  Dead-letter path on connections that don't leave a broker. A value already saved stays, with a note and **Remove**.
+- **Rates go up to 10 million msg/s** everywhere (they stopped at 10,000 in files and the Inputs panel, but not in the
+  inspector, so a saved 50,000 wouldn't open again). Fields stop at the file's limits and say so, and a refused file
+  names the field: "ratePerSec 20,000,000 is over the 10,000,000 limit".
+- **The callout sits clear of the diagram's name** on narrower screens (it covered the title card's first words).
+- The chatbot prompt's dead-letter example hangs the queue off the topic (it copied every message from the consumer).
+
 ## Languages (2026-10)
 
 - **Live Diagrams opens in your browser's language**, in 37 languages beside English: Arabic, Bulgarian, Chinese

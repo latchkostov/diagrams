@@ -169,9 +169,9 @@ describe("device settings in the file format", () => {
         failoverMs: 3000,
         healthChecks: true,
       }),
-    ).toBe(false);
+    ).toBeUndefined();
     for (const bad of [{ size: "huge" }, { ha: "pair" }, { gbps: -1 }, { messageKB: 0 }, { healthChecks: "on" }])
-      expect(propsProblem(bad), JSON.stringify(bad)).toBe(true);
+      expect(propsProblem(bad), JSON.stringify(bad)).toMatch(new RegExp(`^${Object.keys(bad)[0]} `));
   });
 
   it("lets agents set and clear them", () => {

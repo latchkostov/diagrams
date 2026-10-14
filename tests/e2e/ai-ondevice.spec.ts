@@ -22,6 +22,12 @@ const DLQ = modelReply("Added a dead-letter queue after Inventory service", [
   { op: "connect", from: "Inventory service", to: "inventory-dlq", flow: "message" },
 ]);
 
+/** The dead-letter queue as the eval scores it: off the topic Inventory service reads, not off the service. */
+const DLQ_ON_TOPIC = modelReply("Added a dead-letter queue for orders.created.v1", [
+  { op: "add", kind: "dead-letter queue", label: "inventory-dlq" },
+  { op: "connect", from: "orders.created.v1", to: "inventory-dlq", flow: "message" },
+]);
+
 /** Opens the panel and turns the on-device model on in Advanced. */
 async function turnOn(page: Page) {
   await openAdvanced(page);
@@ -211,7 +217,7 @@ test("in live view the box is off until back to editing", async ({ page }) => {
 
 test("the Lab's eval runner scores the cases through the model and copies a table", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await installFakeLanguageModel(page, { replies: Array.from({ length: 80 }, () => DLQ) });
+  await installFakeLanguageModel(page, { replies: Array.from({ length: 80 }, () => DLQ_ON_TOPIC) });
   await page.goto("./?view=lab&preset=ondevice-evals");
   await expect(page.getByTestId("ondevice-evals-availability")).toHaveText("available");
   await page.getByTestId("ondevice-evals-run").click();
