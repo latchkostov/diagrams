@@ -49,6 +49,7 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
     viewCenter: () => ({ x: 1110, y: 1000 }),
     edgeMarks: () => marks,
     setEditing: vi.fn(),
+    rename: vi.fn(),
     reveal,
     setNodes: (u: Parameters<EditorDeps["setNodes"]>[0]) =>
       void queue.push(() => (nodes = typeof u === "function" ? u(nodes) : u)),

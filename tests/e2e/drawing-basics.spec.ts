@@ -319,7 +319,7 @@ test.describe("drawing basics", () => {
     await expect(quickAdd).toHaveCount(0);
     await expect(page.getByTestId(NODES)).toHaveCount(before + 1);
     // Its label editor is open with the stencil's name selected: typing names it.
-    const label = page.getByTestId("node-editor-label");
+    const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeFocused();
     await expect(label).toHaveValue("Kafka Topic");
     expect(await label.evaluate((el: HTMLInputElement) => (el.selectionEnd ?? 0) - (el.selectionStart ?? 0))).toBe(11);
@@ -355,7 +355,7 @@ test.describe("drawing basics", () => {
     // Enter, then type at once: "t" is the Add text shortcut, and must not add one.
     await page.keyboard.press("Enter");
     await page.keyboard.type("tx.audit", { delay: 5 });
-    await expect(page.getByTestId("node-editor-label")).toHaveValue("tx.audit");
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("tx.audit");
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("node-topic-1")).toContainText("tx.audit");
     await expect(page.getByTestId(/^annotation-/)).toHaveCount(0);

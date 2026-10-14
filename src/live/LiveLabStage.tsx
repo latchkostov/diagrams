@@ -14,8 +14,8 @@ import {
 } from "@xyflow/react";
 import type { DiagramFile } from "../model/types";
 import { useSettings } from "../harness/settings";
-import { toFlow, withEditingOnTop } from "../canvas/convert";
-import { DiagramContext, type EditTarget } from "../canvas/DiagramContext";
+import { toFlow } from "../canvas/convert";
+import { DiagramContext, type InlineEdit } from "../canvas/DiagramContext";
 import { DiagramNode } from "../canvas/nodes/DiagramNode";
 import { GroupNode } from "../canvas/nodes/GroupNode";
 import { EdgeMarkers, FlowEdge } from "../canvas/edges/FlowEdge";
@@ -52,19 +52,18 @@ function Stage({ diagram, initial, presenting = false }: LiveLabStageProps) {
   const showDependencies = useShowDependencies();
   const visibleEdges = useMemo(() => projectDependencies(edges, showDependencies), [edges, showDependencies]);
   const base = useContext(DiagramContext);
-  const [editing, setEditing] = useState<EditTarget | null>(null);
+  const [editing, setEditing] = useState<InlineEdit | null>(null);
   const ui = useMemo(
     () => ({ ...base, direction: flow.meta.direction ?? "LR", editing, setEditing }) as Ui,
     [base, flow.meta.direction, editing],
   );
-  const raised = useMemo(() => withEditingOnTop(nodes, editing), [nodes, editing]);
 
   return (
     <DiagramContext.Provider value={ui}>
       <div className={`lab-canvas${presenting ? " is-presenting" : ""}`}>
         <EdgeMarkers />
         <ReactFlow<FlowNode, DiagramFlowEdge>
-          nodes={raised}
+          nodes={nodes}
           edges={visibleEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}

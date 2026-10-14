@@ -17,8 +17,8 @@ import {
 import type { DiagramFile } from "../model/types";
 import { useSettings } from "../harness/settings";
 import { getStencil } from "../stencils/registry";
-import { toFlow, withEditingOnTop } from "../canvas/convert";
-import { DiagramContext, type EditTarget } from "../canvas/DiagramContext";
+import { toFlow } from "../canvas/convert";
+import { DiagramContext, type InlineEdit } from "../canvas/DiagramContext";
 import { canvasNodeTypes } from "../canvas/nodes/nodeTypes";
 import { EdgeMarkers, FlowEdge } from "../canvas/edges/FlowEdge";
 import type { DiagramFlowEdge, DiagramFlowNode, FlowNode } from "../canvas/types";
@@ -67,19 +67,19 @@ function Stage({ diagram, minimap = true, onRendered }: Props) {
     requestAnimationFrame(() => onRendered?.(Math.round(performance.now() - start)));
   }, [initialized, onRendered, start, flow.nodes.length]);
 
-  // Inline editing (F2 / double-click) works like on the canvas; edits stay local to the Lab.
+  // An annotation's text edits in place, as on the canvas (no inspector here, so nothing else renames); edits
+  // stay local to the Lab.
   const base = useContext(DiagramContext);
-  const [editing, setEditing] = useState<EditTarget | null>(null);
+  const [editing, setEditing] = useState<InlineEdit | null>(null);
   const direction = flow.meta.direction ?? "LR";
   const ui = useMemo(() => ({ ...base, direction, editing, setEditing }) as Ui, [base, direction, editing]);
-  const raised = useMemo(() => withEditingOnTop(nodes, editing), [nodes, editing]);
 
   return (
     <DiagramContext.Provider value={ui}>
       <div className="lab-canvas" data-testid="lab-canvas">
         <EdgeMarkers />
         <ReactFlow<FlowNode, DiagramFlowEdge>
-          nodes={raised}
+          nodes={nodes}
           edges={visibleEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}

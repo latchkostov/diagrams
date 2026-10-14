@@ -52,10 +52,14 @@ describe("action registry", () => {
       r
         .build({ ...ctx(target), nodeId: "n", edgeId: "e", groupId: "g", mode: "live" })
         .flatMap((i) => (i.type === "item" ? [i.id] : []));
-    expect(live("node")).toEqual(expect.arrayContaining(["node.rename", "node.properties"]));
+    expect(live("node")).toEqual(expect.arrayContaining(["node.properties"]));
+    expect(live("node")).not.toContain("node.rename");
+    expect(live("edge")).not.toContain("edge.edit-label");
+    expect(live("group")).not.toContain("group.rename");
+    expect(live("annotation")).not.toContain("annotation.edit-text");
     expect(live("node")).not.toContain("item.duplicate");
     expect(live("node")).not.toContain("item.delete");
-    expect(live("edge")).toEqual(expect.arrayContaining(["edge.edit-label", "node.properties"]));
+    expect(live("edge")).toEqual(expect.arrayContaining(["node.properties"]));
     expect(live("edge")).not.toContain("edge.reverse");
     expect(live("canvas")).toEqual(expect.arrayContaining(["canvas.properties"]));
     // Exporting is the File menu's and the app's own Export ▸ (src/interop/useInterop.tsx), which marks a private

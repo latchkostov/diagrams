@@ -195,7 +195,7 @@ test.describe("undo and the selection", () => {
     await expect(page.getByTestId("quick-add")).toBeVisible();
     await page.keyboard.type("postgres");
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
     await page.keyboard.type("Audit");
     await page.keyboard.press("Enter");
     const added = await savedWhen(page, (s) => s.nodes.some((n) => n.label === "Audit"));
@@ -236,7 +236,7 @@ test.describe("undo and the selection", () => {
     await page.keyboard.press("Alt+ArrowRight");
     await page.keyboard.type("postgres", { delay: 0 });
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
     await page.keyboard.press("Enter");
     await savedWhen(page, (s) => s.nodes.length === SEED.nodes.length + 1);
     await settleStep(page);
@@ -277,7 +277,7 @@ test.describe("undo and the selection", () => {
     await expect.poll(() => row("gcp.cloud-sql").evaluate((el) => el.matches(":hover"))).toBe(true);
     await expect(row("mysql")).toHaveAttribute("data-active", "true");
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
     await page.keyboard.press("Enter");
     const d = await savedWhen(page, (s) => s.nodes.length === SEED.nodes.length + 1);
     expect(d.nodes.filter((n) => !SEED.nodes.some((s) => s.id === n.id)).map((n) => n.stencil)).toEqual(["mysql"]);
@@ -321,7 +321,7 @@ test.describe("undo and the selection", () => {
     await page.mouse.move(wrap.x + 24, wrap.y + wrap.height / 2);
     await expect(top).toHaveAttribute("data-active", "true");
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   });
 
   test("undo from the keyboard moves focus to what it selected; from the toolbar, focus stays", async ({
@@ -350,7 +350,7 @@ test.describe("undo and the selection", () => {
     expect(await tabStops(page)).toEqual(["api"]);
     // Enter edits Orders API, not Payment worker.
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor-label")).toHaveValue("Orders API");
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("Orders API");
     await page.keyboard.press("Escape");
 
     // Undo from the toolbar: the selection follows, focus stays on the button.

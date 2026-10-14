@@ -5,6 +5,7 @@ import { ON_DEVICE } from "../lib/deployment";
 import { layersFixture, headerOverflowFixture } from "./layersFixture";
 import { simReviewFixture, simReviewTrafficFixture } from "./simReviewFixture";
 import { exportFixture } from "./exportFixture";
+import { textFieldsFixture } from "./textFieldsFixture";
 // The Lab's preset registry. Every entry renders the *current* components with fixed data, so
 // opening ?view=lab&preset=<id> is a quick visual check of whatever you're working on.
 //
@@ -371,6 +372,13 @@ const playgroundPresets: Preset[] = [
     title: "Relationship regressions",
     group: "Playground",
     diagram: () => relationshipFixture,
+  },
+  {
+    kind: "diagram",
+    id: "text-fields",
+    title: "Text selection and naming",
+    group: "Playground",
+    diagram: () => textFieldsFixture,
   },
   {
     kind: "diagram",

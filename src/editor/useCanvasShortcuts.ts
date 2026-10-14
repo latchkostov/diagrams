@@ -173,6 +173,7 @@ export function useCanvasShortcuts(
           editor.addAnnotation("text", { atPointer: true });
           break;
         case "rename": {
+          if (optsRef.current.live) return;
           const total = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length;
           if (total !== 1) return;
           if (e.key === "Enter") {

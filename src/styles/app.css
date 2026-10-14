@@ -39,6 +39,15 @@ textarea,
   -webkit-user-select: text;
 }
 
+/*
+ * One visible highlight for selected text, in every field and both themes. Highlights inherit from the parent's
+ * (CSS highlight inheritance), so a transparent one on an ancestor would otherwise reach the fields inside it.
+ */
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-text);
+}
+
 input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
 textarea,
 [contenteditable="true"] {

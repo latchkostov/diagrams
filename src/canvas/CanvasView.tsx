@@ -71,14 +71,13 @@ import {
   nodeAriaLabel,
   toFlow,
   withEdgeAria,
-  withEditingOnTop,
   withNodeAria,
   withRovingFocus,
   type DiagramMeta,
 } from "./convert";
 import { previewMembership, type GroupRect, type MemberBox } from "./membership";
 import { nearestInDirection, readingOrder, stepInOrder, tabOrder, type NavBox } from "./keyboardNav";
-import { DiagramContext, type DiagramUi, type EditTarget } from "./DiagramContext";
+import { DiagramContext, type DiagramUi, type InlineEdit, type RenameTarget } from "./DiagramContext";
 import { revealPan, useCovered, useKeepSelectionInView, useOverlayFit, useOverlayTestIds } from "./useOverlayFit";
 import { panIntoView, type Viewport } from "./geometry/fit";
 import { union } from "./geometry/rect";
@@ -337,10 +336,28 @@ function CanvasInner({
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-  const [editing, setEditing] = useState<EditTarget | null>(null);
+  const [editing, setEditing] = useState<InlineEdit | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [inspectorFocus, setInspectorFocus] = useState<{ name: string; seq: number } | undefined>();
+  const [inspectorFocus, setInspectorFocus] = useState<{ name: string; seq: number; caret?: "end" } | undefined>();
+  const inspectorFocusDone = useRef(0);
+  const takeInspectorFocus = useCallback((seq: number) => {
+    if (inspectorFocusDone.current === seq) return false;
+    inspectorFocusDone.current = seq;
+    return true;
+  }, []);
+  const openInspector = useCallback(
+    (field?: string, caret?: "end") => {
+      setPref("inspector", true);
+      setOpenedByHand((o) => ({ ...o, inspector: true }));
+      if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1, caret }));
+    },
+    [setPref],
+  );
+  /** A node just made connected, while it's being named: the inspector names its connection too. */
+  const [naming, setNaming] = useState<{ node: string; edge: string } | null>(null);
+  /** Names a node, connection or boundary in the inspector (set below, once the editor exists). */
+  const rename = useRef<(t: RenameTarget) => void>(() => {});
   const [startDismissed, setStartDismissed] = useState(false);
   const [hintSeen, setHintSeen] = useState(() => readOnly || safeStorage.getItem(HINT_KEY) === "1");
   const dismissHint = useCallback(() => {
@@ -351,7 +368,10 @@ function CanvasInner({
   const onLiveChange = useCallback(
     (on: boolean) => {
       setLive(on);
-      if (on) dismissHint();
+      if (on) {
+        setEditing(null);
+        dismissHint();
+      }
     },
     [dismissHint],
   );
@@ -434,12 +454,11 @@ function CanvasInner({
     },
     prefs,
     setPref,
-    setEditing,
-    openInspector: (field) => {
-      setPref("inspector", true);
-      setOpenedByHand((o) => ({ ...o, inspector: true }));
-      if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1 }));
+    setEditing: (target) => {
+      if (!readOnly && !live && !presenting) setEditing(target);
     },
+    rename: (t) => rename.current(t),
+    openInspector,
     showShortcuts: () => setShortcutsOpen(true),
     viewCenter: () => {
       const r = wrapper.current?.getBoundingClientRect();
@@ -727,10 +746,32 @@ function CanvasInner({
   );
 
   /**
-   * A node made connected by quick-add (a dropped connection, Alt+arrow, the "+") or Alt+Shift+arrow: in view,
-   * then its label editor with the name selected (decision 3), whose last field names the connection. Keys
-   * typed meanwhile are kept for it (React Flow measures the card before showing it, and a hidden field can't
-   * take focus).
+   * Names a node, connection or boundary in the inspector (the owner's decision, 2026-10-13: no renaming in
+   * place): it's selected alone, the inspector opens, and its Label takes focus with all of it selected, so
+   * typing replaces it. A name typed before the field could take it is written and the caret goes after it.
+   */
+  const renameIn = useCallback(
+    (t: RenameTarget) => {
+      if (readOnly || live || presenting) return;
+      setEditing(null);
+      editor.select(
+        t.kind === "node" ? { nodeIds: [t.id] } : t.kind === "edge" ? { edgeIds: [t.id] } : { groupIds: [t.id] },
+      );
+      setNaming(t.kind === "node" && t.edge ? { node: t.id, edge: t.edge } : null);
+      const typed = t.kind === "node" && !!t.text;
+      if (typed) editor.updateNode(t.id, { label: t.text }, { merge: editor.creating(t.id) });
+      openInspector(t.kind === "node" && t.field === "sublabel" ? "sublabel" : "label", typed ? "end" : undefined);
+    },
+    [readOnly, live, presenting, editor, openInspector],
+  );
+  useLayoutEffect(() => {
+    rename.current = renameIn;
+  });
+
+  /**
+   * A node made by quick-add (a dropped connection, Alt+arrow, the "+", a double-click on the canvas) or
+   * Alt+Shift+arrow: in view, then its name in the inspector, selected (decision 3), so typing names it. Keys
+   * typed meanwhile are kept for it (React Flow measures the card before showing it).
    */
   const endCreation = history.end;
   const pickNamed = useCallback(
@@ -747,15 +788,13 @@ function CanvasInner({
             editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
           return endCreation(made.merge);
         }
-        // In this same task: a key arriving before the editor had mounted would reach the canvas instead.
+        // In this same task: a key arriving before the field has focus would reach the canvas instead.
         flushSync(() =>
           editor.startEditing({
             kind: "node",
             id: made.id,
-            field: "label",
             text: typed.text ?? undefined,
             edge: made.edge ?? undefined,
-            merge: made.merge,
           }),
         );
       }, 90);
@@ -1095,7 +1134,7 @@ function CanvasInner({
   );
 
   const onEdgeDoubleClick: EdgeMouseHandler<DiagramFlowEdge> = useCallback(
-    (_e, edge) => setEditing({ kind: "edge", id: edge.id }),
+    (_e, edge) => rename.current({ kind: "edge", id: edge.id }),
     [],
   );
 
@@ -1549,28 +1588,15 @@ function CanvasInner({
     () => ({
       direction,
       editing,
-      setEditing: readOnly ? () => {} : setEditing,
+      setEditing: editGestures ? setEditing : () => {},
+      rename: editGestures ? renameIn : undefined,
       openEdgeMenu,
-      settleText: readOnly ? undefined : settleText,
+      settleText: editGestures ? settleText : undefined,
       grow: editGestures ? growFromChip : undefined,
-      hint: history.hint,
-      endCreation: history.end,
       reconnect: editGestures ? editor.reconnectEdge : undefined,
       boundaryResized: editGestures ? boundaryResized : undefined,
     }),
-    [
-      direction,
-      editing,
-      openEdgeMenu,
-      readOnly,
-      settleText,
-      editGestures,
-      growFromChip,
-      editor,
-      history.hint,
-      history.end,
-      boundaryResized,
-    ],
+    [direction, editing, openEdgeMenu, settleText, editGestures, growFromChip, editor, renameIn, boundaryResized],
   );
   // Read-only (embed) hides the same chrome as presenting, without the presentation sizing.
   const hideChrome = presenting || readOnly;
@@ -1830,15 +1856,11 @@ function CanvasInner({
     // The first thing Tab would meet, a boundary included: a diagram of boundaries only is still reachable.
     return navOrder(nodes.filter((n) => !n.hidden))[0];
   }, [readOnly, focusId, nodes, navOrder]);
-  // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel), and a
-  // card being edited inline draws above everything else (its editor hangs below the card).
+  // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel).
   // Only one node is in the page's Tab order (see above).
   const ariaNodes = useMemo(
-    () =>
-      readOnly
-        ? withEditingOnTop(withNodeAria(nodes), editing)
-        : withRovingFocus(withEditingOnTop(withNodeAria(nodes), editing), rovingId),
-    [nodes, editing, readOnly, rovingId],
+    () => (readOnly ? withNodeAria(nodes) : withRovingFocus(withNodeAria(nodes), rovingId)),
+    [nodes, readOnly, rovingId],
   );
   /** What the live region says (seq: the same words again are read again). */
   const [announcement, setAnnouncement] = useState({ text: "", seq: 0 });
@@ -2396,6 +2418,13 @@ function CanvasInner({
               setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));
             }}
             focus={inspectorFocus}
+            takeFocus={takeInspectorFocus}
+            connection={
+              naming && selectedNodes[0]?.id === naming.node
+                ? { id: naming.edge, label: edges.find((e) => e.id === naming.edge)?.data?.label ?? "" }
+                : undefined
+            }
+            onNamed={() => setNaming((current) => (current?.node === selectedNodes[0]?.id ? null : current))}
             findings={inspectorFindings}
           />
         )}

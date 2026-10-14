@@ -140,7 +140,7 @@ test.describe("command palette", () => {
     await expect(page.getByTestId("node-inventory")).toBeInViewport();
     expect(await page.getByTestId("node-inventory").evaluate((el) => document.activeElement?.contains(el))).toBe(true);
     await page.keyboard.press("F2");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
     await page.keyboard.press("Escape");
 
     // With a node selected, its actions are offered with their noun.

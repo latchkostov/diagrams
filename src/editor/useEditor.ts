@@ -48,7 +48,7 @@ import {
   type Box as PlaceBox,
 } from "../canvas/placement";
 import { reconnectEdge, splitFlowEdge } from "./edgeEdits";
-import type { EditTarget } from "../canvas/DiagramContext";
+import type { InlineEdit, RenameTarget } from "../canvas/DiagramContext";
 import {
   GROUP_PREFIX,
   type AnnotationFlowNode,
@@ -124,7 +124,9 @@ export interface EditorDeps {
   history: HistoryApi;
   prefs: EditorPrefs;
   setPref: <K extends keyof EditorPrefs>(key: K, value: EditorPrefs[K]) => void;
-  setEditing: (t: EditTarget | null) => void;
+  setEditing: (t: InlineEdit | null) => void;
+  /** Names a node, connection or boundary in the inspector: selects it, opens the inspector, selects its Label. */
+  rename: (t: RenameTarget) => void;
   openInspector: (focusField?: string) => void;
   showShortcuts: () => void;
   /** Centre of the visible canvas, in flow coordinates. */
@@ -517,6 +519,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       explainRequest(() => api.updateEdge(edge.id, { kind: "async" }, { merge: `inference:kind:${edge.id}` }));
   };
 
+  let namingSequence = 0;
   const api: EditorApi = {
     getDiagram: diagram,
     undoTarget: () => deps().history.top(),
@@ -1095,7 +1098,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           return next.selected ? { ...next, selected: false } : next;
         }),
       ]);
-      deps().setEditing({ kind: "group", id });
+      deps().rename({ kind: "group", id });
       return id;
     },
     ungroup: (groupId) => {
@@ -1241,13 +1244,22 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       return deps().prefs;
     },
     setPref: (key, value) => deps().setPref(key, value),
-    // An editor opened on a node still in its creation transaction (a rail or Ctrl+K "Add", then Enter) names it
-    // inside that step.
-    startEditing: (target) => {
+    // An annotation's text is edited in place; anything else is named in the inspector.
+    startEditing: (target) => (target.kind === "annotation" ? deps().setEditing(target) : deps().rename(target)),
+    // A name typed for a node still in its creation transaction (quick-add, or a rail or Ctrl+K "Add" then Enter)
+    // joins that step.
+    creating: (id) => {
       const open = deps().history.open?.();
-      const joins = target.kind === "node" && !target.merge && open === `new:${target.id}`;
-      deps().setEditing(joins ? { ...target, merge: open } : target);
+      return open === `new:${id}` ? open : undefined;
     },
+    beginNaming: (kind, id) => {
+      const creation = kind === "node" ? api.creating(id) : undefined;
+      if (creation) return creation;
+      const tag = `rename:${kind}:${id}:${++namingSequence}`;
+      deps().history.begin(tag);
+      return tag;
+    },
+    doneNaming: (tag) => deps().history.end(tag),
     openInspector: (field) => deps().openInspector(field),
     showShortcuts: () => deps().showShortcuts(),
     autoLayout: () => {

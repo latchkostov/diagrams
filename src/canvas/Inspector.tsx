@@ -1,5 +1,14 @@
 import { ANNOTATION_LIMITS } from "../model/annotations";
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type FocusEvent,
+  type ReactNode,
+} from "react";
 import { getStencil } from "../stencils/registry";
 import { simRoleMeta } from "../lib/simRoles";
 import type { NodeSimProps } from "../sim/types";
@@ -198,8 +207,19 @@ export interface InspectorProps {
   counts: { nodes: number; edges: number; groups: number };
   collapsed: boolean;
   onToggle: () => void;
-  /** Focus request: `inspector-field-<name>`; `seq` re-triggers for the same name. */
-  focus?: { name: string; seq: number };
+  /**
+   * Focus request: `inspector-field-<name>`, its text all selected (`caret: "end"`: the caret after it, for a name
+   * typed before the field could take it); `seq` re-triggers for the same name.
+   */
+  focus?: { name: string; seq: number; caret?: "end" };
+  /** Request consumption survives inspector unmounts (presentation). */
+  takeFocus?: (seq: number) => boolean;
+  /**
+   * A node just made connected, while it's being named: its connection's label, one Tab after the Subtitle
+   * (`onNamed`: the naming is done, so the field goes).
+   */
+  connection?: { id: string; label: string };
+  onNamed?: () => void;
   /** The selection's architecture-check findings, shown above its fields (a single node or connection). */
   findings?: ReactNode;
   /** A text's edit is done (see DiagramUi.settleText): it moves clear if it grew over something. */
@@ -209,15 +229,44 @@ export interface InspectorProps {
 export function Inspector(p: InspectorProps) {
   const body = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!p.focus || p.collapsed) return;
+  // At once, so the next key typed reaches the field (F2 then a name; a double-click then a name), and again a
+  // frame later only if something took focus back meanwhile (the menu that asked for it, closing). Not when the
+  // person moved it (Enter straight after, a third click): a key or a press in between leaves focus where it went.
+  // Each request once: one made while folded waits for the inspector to open, and folding and opening again later
+  // (a selection changing under it) never repeats it.
+  const done = useRef(0);
+  const takeFocus = p.takeFocus;
+  useLayoutEffect(() => {
+    if (!p.focus || p.collapsed || done.current === p.focus.seq) return;
+    if (takeFocus && !takeFocus(p.focus.seq)) return;
+    done.current = p.focus.seq;
+    const { name, caret } = p.focus;
+    const place = (retry = false) => {
+      const el = body.current?.querySelector<HTMLElement>(`[data-testid="inspector-field-${name}"]`);
+      if (!el || (retry && document.activeElement === el)) return;
+      el.focus();
+      if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+      if (caret === "end") el.setSelectionRange(el.value.length, el.value.length);
+      else el.select();
+    };
+    place();
+    let moved = false;
+    const onInput = () => (moved = true);
+    const stop = () => {
+      window.removeEventListener("keydown", onInput, true);
+      window.removeEventListener("pointerdown", onInput, true);
+    };
+    window.addEventListener("keydown", onInput, true);
+    window.addEventListener("pointerdown", onInput, true);
     const id = requestAnimationFrame(() => {
-      const el = body.current?.querySelector<HTMLElement>(`[data-testid="inspector-field-${p.focus!.name}"]`);
-      el?.focus();
-      if (el instanceof HTMLInputElement) el.select();
+      stop();
+      if (!moved) place(true);
     });
-    return () => cancelAnimationFrame(id);
-  }, [p.focus, p.collapsed]);
+    return () => {
+      cancelAnimationFrame(id);
+      stop();
+    };
+  }, [p.focus, p.collapsed, takeFocus]);
 
   if (p.collapsed) {
     return (
@@ -289,10 +338,70 @@ export function Inspector(p: InspectorProps) {
 
 // ---------------------------------------------------------------- panels
 
-function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlowNode }) {
+/**
+ * A name field's keys (a node's Label, Subtitle and new Connection, a connection's or a boundary's Label): what's
+ * typed is saved as it's typed, so Enter and Esc are both done. They hand focus back to the thing on the canvas
+ * (`flowId`), so the next key acts on it, as after a rename anywhere else. A node's naming (`nodeId`) is done then,
+ * or when focus leaves its name fields: a creation step still open on it closes, and `onDone` runs.
+ */
+function useNameFields(
+  editor: EditorApi,
+  kind: "node" | "edge" | "group",
+  id: string,
+  flowId: string,
+  onDone?: () => void,
+) {
+  const tag = useRef<string | undefined>(undefined);
+  const field = useRef<HTMLInputElement | null>(null);
+  useLayoutEffect(
+    () => () => {
+      const input = field.current;
+      const ending = tag.current;
+      // StrictMode replays effects while the field stays mounted. Close only after a real removal.
+      queueMicrotask(() => {
+        if (ending && !input?.isConnected) {
+          editor.doneNaming(ending);
+          onDone?.();
+        }
+      });
+    },
+    [editor, onDone],
+  );
+  const done = () => {
+    if (tag.current) editor.doneNaming(tag.current);
+    tag.current = undefined;
+    onDone?.();
+  };
+  const keys = {
+    "data-name-field": flowId,
+    onFocus: (e: FocusEvent<HTMLInputElement>) => {
+      field.current = e.currentTarget;
+      tag.current ??= editor.beginNaming(kind, id);
+    },
+    onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
+      if ((e.key !== "Enter" && e.key !== "Escape") || e.nativeEvent.isComposing) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const field = e.currentTarget;
+      field.setSelectionRange(field.value.length, field.value.length);
+      const sel = `.react-flow__node[data-id="${CSS.escape(flowId)}"], .react-flow__edge[data-id="${CSS.escape(flowId)}"]`;
+      document.querySelector<HTMLElement | SVGElement>(sel)?.focus({ preventScroll: true });
+      done();
+    },
+    onBlur: () =>
+      requestAnimationFrame(() => {
+        if (document.activeElement?.getAttribute("data-name-field") !== flowId) done();
+      }),
+  };
+  return { keys, merge: () => ({ merge: tag.current }) };
+}
+
+function NodePanel({ node, editor, groups, connection, onNamed }: InspectorProps & { node: DiagramFlowNode }) {
   const stencil = getStencil(node.data.stencil);
   const role = stencil.simRole;
   const props = node.data.props ?? {};
+  // A new node keeps its creation step while these name fields are focused.
+  const naming = useNameFields(editor, "node", node.id, node.id, onNamed);
   const merge = (f: string) => ({ merge: `inspector:node:${node.id}:${f}` });
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const simFields = SIM_FIELDS_BY_ROLE[role];
@@ -329,7 +438,8 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
           <input
             className="insp-input"
             value={node.data.label}
-            onChange={(e) => editor.updateNode(node.id, { label: e.target.value }, merge("label"))}
+            onChange={(e) => editor.updateNode(node.id, { label: e.target.value }, naming.merge())}
+            {...naming.keys}
             name="label"
             data-testid="inspector-field-label"
           />
@@ -339,11 +449,25 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
             className="insp-input mono"
             value={node.data.sublabel ?? ""}
             placeholder={stencil.label}
-            onChange={(e) => editor.updateNode(node.id, { sublabel: e.target.value }, merge("sublabel"))}
+            onChange={(e) => editor.updateNode(node.id, { sublabel: e.target.value }, naming.merge())}
+            {...naming.keys}
             name="sublabel"
             data-testid="inspector-field-sublabel"
           />
         </Field>
+        {connection && (
+          <Field label="Connection">
+            <input
+              className="insp-input"
+              value={connection.label}
+              placeholder="e.g. Reserve stock"
+              onChange={(e) => editor.updateEdge(connection.id, { label: e.target.value || undefined }, naming.merge())}
+              {...naming.keys}
+              name="connection"
+              data-testid="inspector-field-connection"
+            />
+          </Field>
+        )}
         <Field label="Boundary">
           <select
             className="insp-input"
@@ -438,6 +562,7 @@ function NodePanel({ node, editor, groups }: InspectorProps & { node: DiagramFlo
 }
 
 function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: DiagramFlowEdge }) {
+  const naming = useNameFields(editor, "edge", edge.id, edge.id);
   const data = edge.data ?? { kind: "async" as const };
   const props = data.props ?? {};
   const merge = (f: string) => ({ merge: `inspector:edge:${edge.id}:${f}` });
@@ -475,7 +600,8 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
             className="insp-input"
             value={data.label ?? ""}
             placeholder={flow ? "e.g. OrderPlaced" : "Optional, e.g. Key Vault Secrets User"}
-            onChange={(e) => editor.updateEdge(edge.id, { label: e.target.value }, merge("label"))}
+            onChange={(e) => editor.updateEdge(edge.id, { label: e.target.value }, naming.merge())}
+            {...naming.keys}
             name="edge-label"
             data-testid="inspector-field-label"
           />
@@ -852,6 +978,7 @@ function isFanOut(editor: EditorApi, sourceId: string, kind: string | undefined)
 }
 
 function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }) {
+  const naming = useNameFields(editor, "group", group.data.groupId, group.id);
   const id = group.data.groupId;
   return (
     <Section>
@@ -859,7 +986,8 @@ function GroupPanel({ group, editor }: InspectorProps & { group: GroupFlowNode }
         <input
           className="insp-input"
           value={group.data.label}
-          onChange={(e) => editor.updateGroup(id, { label: e.target.value }, { merge: `inspector:group:${id}:label` })}
+          onChange={(e) => editor.updateGroup(id, { label: e.target.value }, naming.merge())}
+          {...naming.keys}
           name="group-label"
           data-testid="inspector-field-label"
         />

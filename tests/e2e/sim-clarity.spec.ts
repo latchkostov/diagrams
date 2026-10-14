@@ -73,7 +73,7 @@ async function quickAdd(page: Page, from: string, key: "ArrowRight" | "ArrowDown
   await page.keyboard.type(query);
   await expect(page.getByTestId(`context-menu-item-quick-add:${stencil}`)).toHaveAttribute("data-active", "true");
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("node-editor-label")).toBeFocused();
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   await page.keyboard.press("Escape");
   const d = await savedWhen(page, (s) => s.nodes.length === before + 1);
   const made = d.nodes.find((n) => n.stencil === stencil && !n.id.startsWith("in"));

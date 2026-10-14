@@ -50,6 +50,9 @@
   /* Interaction overlays for rows, menu items and quiet buttons. */
   --hover: rgb(16 24 40 / 0.045);
   --press: rgb(16 24 40 / 0.08);
+  /* Selected text in fields and selectable text: opaque, so it reads the same over any field (tokens.test.ts). */
+  --selection-bg: #b4bdf7;
+  --selection-text: #131926;
 
   /* Elevation: 1 = resting cards, 2 = popovers and menus, 3 = drawers and dialogs. */
   --surface-raised: #ffffff;
@@ -140,6 +143,8 @@
 
   --hover: rgb(255 255 255 / 0.045);
   --press: rgb(255 255 255 / 0.08);
+  --selection-bg: #3a4699;
+  --selection-text: #f4f6fb;
 
   /* Dark depth comes from lighter surfaces as things rise, not just darker shadows. */
   --surface-raised: #1b2232;

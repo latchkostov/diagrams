@@ -38,6 +38,63 @@ Screenshots: [rail at 1024](screenshots/round35/clients-1024.png),
 [external vendors](screenshots/round35/gallery-vendors-1280.png),
 [Iterable in the gallery](screenshots/round35/gallery-iterable-1280.png).
 
+## Round 34: renaming in the inspector, and selected text you can see (2026-10-13)
+
+The owner's report: "If I add a boundary and want to rename it, I can't double or triple click with the mouse like I
+typically do to highlight everything... I think this applies to anything: any place I can type text." Then: "I can
+triple-click and then delete it. It just doesn't show that it's highlighted." And a decision: "Double-clicking a
+service should open up the property sheet... I don't think we should be doing these in-line rename functionalities.
+The name change should be part of the properties sheet." Decision dated 2026-10-13; completed review on 2026-10-14
+against `docs/UX-PRINCIPLES.md`. A designer agent reviewed the implementation and the interrupted work's production
+screenshots at 1280 × 800 in light and dark, on the Kafka example (`docs/screenshots/round34/`). Production e2e tests
+verify the interaction and the highlight's computed colours and painted pixels.
+
+- **The selection was there, just not painted.** The fix for connecting nodes (#36) made selections on the drawing
+  transparent with `.react-flow__renderer :not(input, textarea, …)::selection`. Chrome now applies CSS highlight
+  inheritance: a field's `::selection` inherits its parent's, so every editor on the canvas (a boundary's name, a
+  node's, an edge's, a note) inherited the transparent one. Double- and triple-click did select (typing replaced the
+  words), which is why it read as "placeholder text" (`before-boundary-triple-click-light`,
+  `before-text-triple-click-dark`). Now one `::selection` everywhere, from two tokens (`--selection-bg`,
+  `--selection-text`), and the canvas sets it again on its fields; the drawing itself still never shows a selection
+  (`after-text-triple-click-light`, `after-text-triple-click-dark`). The selected words are AAA on the highlight, and
+  the highlight is at least 1.5:1 from every surface a field sits on, in both themes (`tokens.test.ts`); a browser's
+  default is about 1.45:1 on white.
+- **Every other field already selected natively**: the inspector, dialogs, Ctrl+K, quick-add's and the rail's
+  searches, the AI panel's request. None cancels `selectstart`, calls `preventDefault` on a press or reselects on a
+  click. They now share the same highlight, so a dark-theme selection reads as clearly as a light one.
+- **Renaming is in the inspector** (`after-boundary-double-click-light`, `-dark`). A double-click on a node, a boundary
+  or a connection, F2, Enter, and the menus' Rename and Edit label select it, open the inspector (even hidden by hand)
+  and focus its Label, all selected, as Figma's, Finder's and Explorer's rename do. Enter or Esc is done and gives
+  focus back to the thing on the canvas, so the next key acts on it; the field's selection is let go then, so Ctrl+C
+  copies the nodes, not the old name. The canvas's three inline editors are gone, with their CSS and the z-index
+  raise they needed.
+- **Quick-add keeps its one step** (`after-quick-add-name-light`, `after-quick-add-connection-light`): the pick's name
+  is selected in the inspector, keys typed before it can take them still name it, and a node made connected shows a
+  **Connection** field one Tab after the Subtitle while it's being named (the editor's third field, round 13). The node,
+  its connection and their names are still one undo step, and the gate (the Kafka example's right half by keyboard)
+  takes the same 58 keys as before.
+- **Texts, notes and zones keep editing in place**: their words are the thing, and the inspector would only repeat
+  them. A zone remains an annotation and follows its existing text editing behavior.
+- **View-only modes open nothing.** Presenting used to open the inline rename on a double-click; it no longer does.
+  Live, read-only views, embeds and the HTML viewer also open no editor.
+- Fixed on the way: the inspector replayed its last focus request whenever it folded and opened again (a selection
+  changing under it), taking focus back from the canvas and selecting the old name; and its retry a frame after
+  focusing no longer overrides a key or a click made in that frame.
+- Conventions recorded in `docs/UX-PRINCIPLES.md` (Renaming happens in the inspector; Selecting text with the mouse),
+  and in the shortcuts sheet's Mouse rows. Tests: `tests/e2e/text-fields.spec.ts` (word, line, typing over it; the
+  highlight's colours and its paint, both themes; rename by double-click, F2, Enter and quick-add; a note in place;
+  live, presenting and read-only embeds), HTML-export/skill viewer tests, and the inline-editor specs moved to the inspector.
+- Naming uses an explicit history transaction: slow typing remains one undo step, and completing a name separates
+  the next rename even when it starts immediately. Tests deliberately remove the highlight, transaction, Live
+  guard and inspector routing and fail for each regression.
+- The seven-angle code review found focus requests replaying after presentation and StrictMode cleanup closing
+  naming too soon. Both have regression tests that fail without their fixes. Focus consumption now lives on the
+  canvas; cleanup closes naming only when its field is removed. Ctrl+K also reselects an already-focused name.
+- P2 routing follow-up: typing a boundary name invalidates distant routes. Recorded in `docs/BACKLOG.md`;
+  selective obstacle invalidation needs its own geometry tests, beyond this editing change.
+- Rejected keeping live renaming, floating node/boundary/edge editors and an extra selection control: they conflict
+  with the owner's decisions or add chrome without helping. No global control was added.
+
 ## Round 34: nightly reliability #90 (2026-10-14)
 
 Designer-agent source review against `docs/UX-PRINCIPLES.md`: canvas, inspector, Checks, top bar, Share,

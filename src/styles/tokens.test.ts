@@ -68,3 +68,21 @@ it("keeps small warning words (the trace card's Kept and Waiting) at AA on the w
     }
   }
 });
+
+it("keeps selected text readable and its highlight visible over every field, in both themes", () => {
+  for (const block of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]]) {
+    const tokens = Object.fromEntries(
+      [...block.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map((match) => [match[1], match[2]]),
+    );
+    const ratio = (x: string, y: string) => {
+      const a = luminance(tokens[x]),
+        b = luminance(tokens[y]);
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    };
+    // AAA for the selected words; the highlight itself clearly apart from what it's painted on (a browser's
+    // default is about 1.45:1 on white).
+    expect(ratio("selection-text", "selection-bg")).toBeGreaterThanOrEqual(7);
+    for (const surface of ["bg", "surface", "surface-2", "surface-3", "surface-raised", "node-bg", "edge-label-bg"])
+      expect(ratio("selection-bg", surface), `selection-bg on ${surface}`).toBeGreaterThanOrEqual(1.5);
+  }
+});
