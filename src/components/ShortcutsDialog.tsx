@@ -49,7 +49,8 @@ const LABELS: Record<ShortcutId, () => string> = {
 const MOUSE: [gesture: () => string, does: () => string][] = [
   [msg("shortcuts.mouse.rightClick"), msg("shortcuts.mouse.rightClick.does")],
   [msg("shortcuts.mouse.doubleCanvas"), msg("shortcuts.mouse.doubleCanvas.does")],
-  [msg("shortcuts.mouse.doubleNode"), msg("shortcuts.mouse.doubleNode.does")],
+  [msg("shortcuts.mouse.doubleRename"), msg("shortcuts.mouse.doubleRename.does")],
+  [msg("shortcuts.mouse.doubleText"), msg("shortcuts.mouse.doubleText.does")],
   [msg("shortcuts.mouse.drag"), msg("shortcuts.mouse.drag.does")],
   [msg("shortcuts.mouse.modDrag"), msg("shortcuts.mouse.modDrag.does")],
   [msg("shortcuts.mouse.modClick"), msg("shortcuts.mouse.modClick.does")],
@@ -67,12 +68,12 @@ const MOUSE: [gesture: () => string, does: () => string][] = [
   [msg("shortcuts.mouse.resize"), msg("shortcuts.mouse.resize.does")],
 ];
 
-/** Inline editors: every text box on the canvas follows the same keys (src/components/editKeys.ts). */
+/** Inspector names and inline annotation text share completion keys (src/components/editKeys.ts). */
 const TEXT: Row[] = [
-  ["Enter", msg("shortcuts.text.enter")],
+  ["Enter", msg("shortcuts.text.doneEnter")],
   ["Mod+Enter", msg("shortcuts.text.modEnter")],
-  ["Tab", msg("shortcuts.text.tab")],
-  ["Esc", () => t("shortcuts.text.esc", { undo: formatCombo("Mod+Z") })],
+  ["Tab", msg("shortcuts.text.nextField")],
+  ["Esc", () => t("shortcuts.text.doneEsc", { undo: formatCombo("Mod+Z") })],
 ];
 
 /** The File menu's keys (src/interop/ui/menus.tsx), shown there beside Open…, Save and Save to ▸ This device…. */

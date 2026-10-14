@@ -1,8 +1,7 @@
 import { isDenyRule } from "../../stencils/netDevices";
 import { useKeyboardFocusOn, useTooltip } from "../../components/useTooltip";
 import { memo, useCallback, type CSSProperties, type MouseEvent, type ReactNode } from "react";
-import { EdgeLabelRenderer, useReactFlow, useStore, type EdgeProps, type ReactFlowState } from "@xyflow/react";
-import { InlineInput } from "../../components/InlineInput";
+import { EdgeLabelRenderer, useStore, type EdgeProps, type ReactFlowState } from "@xyflow/react";
 import { Icon } from "../../components/Icon";
 import { useDiagram } from "../DiagramContext";
 import type { DiagramFlowEdge, DiagramNodeData } from "../types";
@@ -27,8 +26,7 @@ import { EdgeEnds } from "./EdgeEnds";
  */
 function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const { id, data, selected, source, target } = props;
-  const { editing, setEditing, openEdgeMenu, reconnect } = useDiagram();
-  const { updateEdgeData } = useReactFlow();
+  const { rename, openEdgeMenu, reconnect } = useDiagram();
   const route = useEdgeRoute(id, useRoutingOptions());
   const dep = useStore(useCallback((s: ReactFlowState) => relationInfo(s.edges as DiagramFlowEdge[]).get(id), [id]));
   const sourceStencil = useStore(
@@ -45,7 +43,6 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const card = tooltip.open;
   const kind = data?.kind ?? "async";
   const relation = isDependency(data) ? (relationOf(data) as DependencyRelation) : null;
-  const isEditing = editing?.kind === "edge" && editing.id === id;
   if (!route) return null;
   const { path, label } = route;
   const mid = label ?? pointAlong(route.points, 0.5).point;
@@ -65,7 +62,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const labelEvents = {
     onDoubleClick: (e: MouseEvent) => {
       e.stopPropagation();
-      setEditing({ kind: "edge", id });
+      rename?.({ kind: "edge", id });
     },
     onContextMenu: (e: MouseEvent) => openEdgeMenu(e, id),
     ...(settings.length
@@ -82,60 +79,48 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
     ) : null;
 
   let body: ReactNode = null;
-  if (isEditing || (label && label.mode !== "glyph")) {
+  if (label && label.mode !== "glyph") {
     body = (
       <div
-        className={`fe-label fe-label-${relation ? `dep fe-rel-${relation}` : kind} is-${isEditing ? "editing" : label!.mode}${selected ? " is-selected" : ""}${relation && !isEditing ? " has-glyph" : ""} nodrag nopan`}
-        style={isEditing ? editingStyle(mid.x, mid.y) : labelStyle(mid.x, mid.y, label)}
+        className={`fe-label fe-label-${relation ? `dep fe-rel-${relation}` : kind} is-${label.mode}${selected ? " is-selected" : ""}${relation ? " has-glyph" : ""} nodrag nopan`}
+        style={labelStyle(mid.x, mid.y, label)}
         data-testid={`edge-label-${id}`}
         data-dependency={relation ? "true" : undefined}
         title={
-          isEditing || settings.length
+          settings.length
             ? undefined
-            : [label && label.mode !== "full" && label.mode !== "wrap" ? label.text : undefined, tip]
+            : [label.mode !== "full" && label.mode !== "wrap" ? label.text : undefined, tip]
                 .filter(Boolean)
                 .join("\n") || undefined
         }
-        {...(settings.length && !isEditing
+        {...(settings.length
           ? {
               tabIndex: -1,
               role: "button",
               "aria-describedby": card ? `edge-settings-${id}` : undefined,
-              "aria-label": `${label?.text ?? ""}: show settings`,
+              "aria-label": `${label.text}: show settings`,
             }
           : {})}
         {...labelEvents}
       >
-        {isEditing ? (
-          <InlineInput
-            value={data?.label ?? ""}
-            placeholder="Edge label"
-            testId="edge-label-input"
-            returnFocus={() => document.querySelector(`.react-flow__edge[data-id="${CSS.escape(id)}"]`)}
-            onDone={(next) => {
-              setEditing(null);
-              const text = next?.trim() || undefined;
-              if (text !== (data?.label || undefined)) updateEdgeData(id, { label: text });
-            }}
-          />
-        ) : label!.mode === "dot" ? (
+        {label.mode === "dot" ? (
           <>
             {relation ? (
               glyph(11)
             ) : (
               <span className="fe-dot-num" aria-hidden>
-                {label!.dot}
+                {label.dot}
               </span>
             )}
-            <span className="fe-dot-tip">{label!.text}</span>
+            <span className="fe-dot-tip">{label.text}</span>
           </>
         ) : relation ? (
           <>
             {glyph(12)}
-            <span className="fe-label-text">{label!.lines.join("\n")}</span>
+            <span className="fe-label-text">{label.lines.join("\n")}</span>
           </>
         ) : (
-          label!.lines.join("\n")
+          label.lines.join("\n")
         )}
       </div>
     );
@@ -176,7 +161,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
           <path d="M-4.2 4.2 4.2-4.2" />
         </g>
       )}
-      {selected && reconnect && !isEditing && route.points.length > 1 && (
+      {selected && reconnect && route.points.length > 1 && (
         <EdgeEnds
           id={id}
           source={source}
@@ -304,17 +289,6 @@ function SettingsCard({
 }
 
 /** Placement is computed in flow px with the pill's exact metrics, so the box is set explicitly. */
-/**
- * The label's editor never reads smaller than its CSS size: below 100% zoom it scales up by 1/zoom
- * (`--edit-scale`, set in CSS from the canvas's zoom), centred on the label's spot.
- */
-function editingStyle(x: number, y: number): CSSProperties {
-  return {
-    transform: `translate(${x}px, ${y}px) scale(var(--edit-scale, 1)) translate(-50%, -50%)`,
-    transformOrigin: "0 0",
-  };
-}
-
 function labelStyle(x: number, y: number, label: LabelPlacement | null): CSSProperties {
   const base: CSSProperties = { transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` };
   if (!label) return base;

@@ -20,22 +20,14 @@ export function clampShift(lo: number, hi: number, min: number, max: number): nu
 
 /**
  * Moves an open editor (`el`, already scaled) inside the canvas pane with the `translate` property, which
- * applies outside the element's own transform and scale, in flow px. `above` opens it above `el`'s parent
- * instead when it would run past the bottom and there's room above (the node editor hangs below its card).
- * Returns the undo, for an element that stays after editing (an edge's or a boundary's label).
+ * applies outside the element's own transform and scale, in flow px. Returns the undo, for an element that stays
+ * after editing (a zone's name chip).
  */
-export function keepInPane(el: HTMLElement | null, opts: { above?: () => void } = {}): () => void {
+export function keepInPane(el: HTMLElement | null): () => void {
   const pane = el?.closest(".react-flow")?.getBoundingClientRect();
   if (!el || !pane) return () => {};
   const before = el.style.translate;
-  let r = el.getBoundingClientRect();
-  if (opts.above && r.bottom > pane.bottom - MARGIN) {
-    const parent = el.parentElement?.getBoundingClientRect();
-    if (parent && parent.top - r.height - MARGIN > pane.top + MARGIN) {
-      opts.above();
-      r = el.getBoundingClientRect();
-    }
-  }
+  const r = el.getBoundingClientRect();
   const dx = clampShift(r.left, r.right, pane.left + MARGIN, pane.right - MARGIN);
   const dy = clampShift(r.top, r.bottom, pane.top + MARGIN, pane.bottom - MARGIN);
   if (dx || dy) {

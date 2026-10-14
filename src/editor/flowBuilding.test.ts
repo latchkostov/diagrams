@@ -49,6 +49,7 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
     viewCenter: () => ({ x: 1110, y: 1000 }),
     edgeMarks: () => marks,
     setEditing: vi.fn(),
+    rename: vi.fn(),
     reveal,
     setNodes: (u: Parameters<EditorDeps["setNodes"]>[0]) =>
       void queue.push(() => (nodes = typeof u === "function" ? u(nodes) : u)),
@@ -68,6 +69,16 @@ function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE) {
 }
 
 describe("the next node (Alt+arrow, the +)", () => {
+  it("editing a name keeps the position identity; a real move updates it", () => {
+    const t = setup();
+    const before = t.nodes().find((n) => n.id === "a")!.position;
+    t.api.updateNode("a", { label: "Orders API" });
+    t.commit();
+    expect(t.nodes().find((n) => n.id === "a")!.position).toBe(before);
+    t.api.updateNode("a", { x: before.x + 10 });
+    t.commit();
+    expect(t.nodes().find((n) => n.id === "a")!.position).toEqual({ x: before.x + 10, y: before.y });
+  });
   it("lands one gap that way, connected from the node for → and ↓, into it for ← and ↑", () => {
     const hub = { x: 1000, y: 400, width: 220, height: 72 };
     const cases = [

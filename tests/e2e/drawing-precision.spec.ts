@@ -285,12 +285,13 @@ test.describe("no guides outside editing", () => {
 test.describe("one set of text-editing rules (D7)", () => {
   test.beforeEach(async ({ page }) => seed(page));
 
-  test("Esc saves a node's label, and Ctrl+Z takes it back", async ({ page, consoleErrors }) => {
+  test("Esc is done with a node's name, and Ctrl+Z takes it back", async ({ page, consoleErrors }) => {
     await page.getByTestId("node-c").dblclick();
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    const label = page.getByTestId("inspector-field-label");
+    await expect(label).toBeFocused();
     await page.keyboard.type("Renamed");
     await page.keyboard.press("Escape");
-    await expect(page.getByTestId("node-editor")).toHaveCount(0);
+    await expect(label).not.toBeFocused();
     await expect(page.getByTestId("node-c")).toContainText("Renamed");
     await page.keyboard.press(`${MOD}+z`);
     await expect(page.getByTestId("node-c")).toContainText("Worker");
@@ -298,13 +299,14 @@ test.describe("one set of text-editing rules (D7)", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("Esc saves an edge label, a boundary name and an annotation's text; Ctrl+Z takes each back", async ({
+  test("Esc is done with an edge label, a boundary name and an annotation's text; Ctrl+Z takes each back", async ({
     page,
     consoleErrors,
   }) => {
+    // An edge and a boundary are named in the inspector; an annotation's text is edited in place.
     const cases: { open: string; field: string; shown: string; was: string }[] = [
-      { open: "edge-label-ab", field: "edge-label-input", shown: "edge-label-ab", was: "writes" },
-      { open: "group-label-core", field: "group-label-input", shown: "group-label-core", was: "Core" },
+      { open: "edge-label-ab", field: "inspector-field-label", shown: "edge-label-ab", was: "writes" },
+      { open: "group-label-core", field: "inspector-field-label", shown: "group-label-core", was: "Core" },
       { open: "annotation-n1", field: "annotation-editor", shown: "annotation-text-n1", was: "A note" },
       { open: "annotation-label-z1", field: "annotation-editor", shown: "annotation-label-z1", was: "Zone" },
       { open: "annotation-t1", field: "annotation-editor", shown: "annotation-text-t1", was: "Caption" },
@@ -315,7 +317,8 @@ test.describe("one set of text-editing rules (D7)", () => {
       await page.keyboard.press(`${MOD}+a`);
       await page.keyboard.type(`New ${c.was}`);
       await page.keyboard.press("Escape");
-      await expect(page.getByTestId(c.field)).toHaveCount(0);
+      if (c.field === "annotation-editor") await expect(page.getByTestId(c.field)).toHaveCount(0);
+      else await expect(page.getByTestId(c.field)).not.toBeFocused();
       await expect(page.getByTestId(c.shown)).toContainText(`New ${c.was}`);
       await page.keyboard.press(`${MOD}+z`);
       await expect(page.getByTestId(c.shown)).toHaveText(c.was);
@@ -323,41 +326,37 @@ test.describe("one set of text-editing rules (D7)", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("Enter edits the selection; Tab goes from label to subtitle and saves there", async ({
+  test("Enter names the selection in the inspector; Tab goes from Label to Subtitle; Enter is done", async ({
     page,
     consoleErrors,
   }) => {
+    const label = page.getByTestId("inspector-field-label");
     await page.getByTestId("node-c").click();
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
-    await expect(page.getByTestId("node-editor-hint")).toHaveText("Enter saves · Tab: subtitle");
+    await expect(label).toBeFocused();
     await page.keyboard.type("Queue worker");
     await page.keyboard.press("Tab");
-    await expect(page.getByTestId("node-editor-sublabel")).toBeFocused();
-    await expect(page.getByTestId("node-editor-hint")).toHaveText("Enter saves");
+    await expect(page.getByTestId("inspector-field-sublabel")).toBeFocused();
     await page.keyboard.type("jobs.v1");
-    // Shift+Tab goes back, Tab forward again, Tab past the last field saves.
     await page.keyboard.press("Shift+Tab");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
-    await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
-    await expect(page.getByTestId("node-editor")).toHaveCount(0);
+    await expect(label).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(label).not.toBeFocused();
     await expect(page.getByTestId("node-c")).toContainText("Queue worker");
     await expect(page.getByTestId("node-c")).toContainText("jobs.v1");
-    // Focus is back on the node: Enter edits it again, and Enter saves.
+    // Focus is back on the node: Enter names it again, and Enter is done.
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(label).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor")).toHaveCount(0);
+    await expect(label).not.toBeFocused();
 
-    // An edge: Enter edits its label; Tab saves.
+    // An edge: Enter names it too.
     await page.getByTestId("edge-label-ab").click();
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("edge-label-input")).toBeFocused();
-    await page.keyboard.press(`${MOD}+a`);
+    await expect(label).toBeFocused();
     await page.keyboard.type("stores");
-    await page.keyboard.press("Tab");
-    await expect(page.getByTestId("edge-label-input")).toHaveCount(0);
+    await page.keyboard.press("Enter");
+    await expect(label).not.toBeFocused();
     await expect(page.getByTestId("edge-label-ab")).toHaveText("stores");
 
     // A text holds several lines: Enter adds one, Ctrl/Cmd+Enter saves; Tab saves too.
@@ -411,17 +410,8 @@ test.describe("type-ahead and readable editors (D7)", () => {
     await expect(page.getByTestId("annotation-editor")).toBeFocused();
     await page.keyboard.type("Edge case");
     await page.keyboard.press("Escape");
-    const edgeLabel =
-      (await page
-        .getByTestId(/^edge-label-/)
-        .first()
-        .getAttribute("data-testid")) ?? "";
-    const cases: { target: string; field: string }[] = [
-      { target: "annotation-note-1", field: "annotation-editor" },
-      { target: edgeLabel, field: "edge-label-input" },
-      { target: "group-label-aks", field: "group-label-input" },
-      { target: "node-shopper", field: "node-editor" },
-    ];
+    // Only an annotation's text is edited on the canvas (a node, an edge and a boundary are named in the inspector).
+    const cases: { target: string; field: string }[] = [{ target: "annotation-note-1", field: "annotation-editor" }];
     for (const c of cases) {
       // Select it first: the inspector opens (and the canvas narrows) before the view moves.
       await page.getByTestId(c.target).click();
@@ -445,7 +435,7 @@ test.describe("type-ahead and readable editors (D7)", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("inline editors read at 12 px or more on screen at the fitted zoom", async ({ page, consoleErrors }) => {
+  test("a note's editor reads at 12 px or more on screen at the fitted zoom", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
     await waitForStableViewport(page);
     expect((await view(page)).zoom).toBeLessThan(0.75);
@@ -454,20 +444,6 @@ test.describe("type-ahead and readable editors (D7)", () => {
         const scale = el.getBoundingClientRect().width / el.offsetWidth;
         return parseFloat(getComputedStyle(el).fontSize) * scale;
       });
-    const editors: [string, string][] = [
-      ["node-orders", "node-editor-label"],
-      ["group-label-aks", "group-label-input"],
-    ];
-    const edgeLabel = page.getByTestId(/^edge-label-/).first();
-    const edgeId = (await edgeLabel.getAttribute("data-testid")) ?? "";
-    editors.push([edgeId, "edge-label-input"]);
-    for (const [open, field] of editors) {
-      await page.getByTestId(open).dblclick();
-      await expect(page.getByTestId(field)).toBeFocused();
-      expect(await screenFont(page.getByTestId(field)), field).toBeGreaterThanOrEqual(12);
-      await page.keyboard.press("Escape");
-      await expect(page.getByTestId(field)).toHaveCount(0);
-    }
     // A new note opens its editor at once.
     await page.getByTestId("palette-annotate-note").click();
     await expect(page.getByTestId("annotation-editor")).toBeFocused();

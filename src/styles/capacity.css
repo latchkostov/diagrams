@@ -269,6 +269,8 @@
   display: grid;
   gap: 2px;
   min-width: 0;
+  /* A live count must not move the action beside it on every tick. */
+  font-variant-numeric: tabular-nums;
 }
 
 .cap-callout-text strong {

@@ -445,7 +445,7 @@ export function builtinActions(): Action[] {
     // ---------------- node ----------------
     {
       id: "node.rename",
-      modes: ["edit", "live"],
+      modes: ["edit"],
       section: "edit",
       targets: ["node"],
       label: "Rename",
@@ -587,7 +587,7 @@ export function builtinActions(): Action[] {
     // ---------------- edge ----------------
     {
       id: "edge.edit-label",
-      modes: ["edit", "live"],
+      modes: ["edit"],
       section: "edit",
       targets: ["edge"],
       label: "Edit label",
@@ -842,7 +842,7 @@ export function builtinActions(): Action[] {
     // ---------------- group ----------------
     {
       id: "group.rename",
-      modes: ["edit", "live"],
+      modes: ["edit"],
       section: "edit",
       targets: ["group"],
       label: "Rename",

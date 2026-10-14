@@ -4,7 +4,7 @@ import { test, expect, gotoCanvas, expectNoErrors, waitForStableBox } from "./fi
 // "App, not page": drawing on the canvas never selects text or icons in the nodes (the user's report:
 // connecting nodes highlighted labels and icons across the diagram). React Flow marks every node and edge
 // `selectable`, which once matched the app's own opt-in class and made the whole drawing selectable.
-// Text fields (inline editors, the inspector) stay selectable. Selectors are data-testid only.
+// Text fields (the inspector, a note's editor) stay selectable. Selectors are data-testid only.
 // Ids from src/examples/kafka-order-pipeline.json.
 
 const KAFKA = "kafka-order-pipeline";
@@ -103,27 +103,28 @@ test.describe("no text selection on the canvas", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("connecting right after an inline rename selects nothing", async ({ page, consoleErrors }) => {
-    // F2 rename, then connect.
+  test("connecting right after a rename selects nothing", async ({ page, consoleErrors }) => {
+    // Nodes are renamed in the inspector. F2 rename, then connect.
+    const label = page.getByTestId("inspector-field-label");
     await page.getByTestId("node-orders").click();
     await page.keyboard.press("F2");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(label).toBeFocused();
     await page.keyboard.type("Orders API");
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor")).toHaveCount(0);
+    await expect(label).not.toBeFocused();
     await connect(page, "handle-orders-right", "handle-payments-left");
     await expectNoSelection(page);
     // Double-click rename, then connect.
     await page.getByTestId("node-payments").dblclick();
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(label).toBeFocused();
     await page.keyboard.press("Enter");
     await connect(page, "handle-payments-right", "handle-inventory-left");
     await expectNoSelection(page);
-    // Connecting while the editor is still open commits it and selects nothing.
+    // Connecting while the name is still focused takes focus from it and selects nothing.
     await page.getByTestId("node-inventory").dblclick();
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(label).toBeFocused();
     await connect(page, "handle-inventory-bottom", "handle-orders-top");
-    await expect(page.getByTestId("node-editor")).toHaveCount(0);
+    await expect(label).not.toBeFocused();
     await expectNoSelection(page);
     expectNoErrors(consoleErrors);
   });
@@ -139,16 +140,19 @@ test.describe("no text selection on the canvas", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("double-clicking a label opens the editor; clicks never select the label", async ({ page, consoleErrors }) => {
+  test("double-clicking a node opens its name in the inspector; clicks never select the node's text", async ({
+    page,
+    consoleErrors,
+  }) => {
     const node = page.getByTestId("node-orders");
+    const label = page.getByTestId("inspector-field-label");
     await node.click({ clickCount: 3 });
+    // The third click lands on the node, not in the field: nothing is selected, the card's text least of all.
+    await expect(label).not.toBeFocused();
     await expectNoSelection(page);
-    await page.keyboard.press("Escape");
-    await expect(page.getByTestId("node-editor")).toHaveCount(0);
     await node.dblclick();
-    const label = page.getByTestId("node-editor-label");
     await expect(label).toBeFocused();
-    // The editor's own field holds the selection (its whole text), not the canvas.
+    // The inspector's field holds the selection (its whole text), not the canvas.
     await expect
       .poll(() => label.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd, el.value.length]))
       .toEqual([0, 13, 13]);
@@ -156,22 +160,16 @@ test.describe("no text selection on the canvas", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("text in the inline editor is still selectable with the mouse", async ({ page, consoleErrors }) => {
-    // At 100%, as people edit (Chrome's drag-select in a heavily scaled-down field is unreliable).
-    const node = page.getByTestId("node-orders");
-    await node.click();
-    await page.keyboard.press("Shift+0");
-    await waitForStableBox(node);
-    await node.dblclick();
-    const label = page.getByTestId("node-editor-label");
+  test("a renamed node's fields are still selectable with the mouse", async ({ page, consoleErrors }) => {
+    await page.getByTestId("node-orders").dblclick();
+    const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeFocused();
     await page.keyboard.press("End");
     expect(await dragSelect(page, label)).toBeGreaterThan(0);
     await expect(label).toBeFocused();
-    const sub = page.getByTestId("node-editor-sublabel");
+    const sub = page.getByTestId("inspector-field-sublabel");
     expect(await dragSelect(page, sub)).toBeGreaterThan(0);
     await expect(sub).toBeFocused();
-    await expect(page.getByTestId("node-editor")).toBeVisible();
     expectNoErrors(consoleErrors);
   });
 

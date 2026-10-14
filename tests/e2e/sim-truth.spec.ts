@@ -20,6 +20,22 @@ import { STORAGE_KEYS, gotoLab } from "./fixtures";
 const SLUG = "kafka-order-pipeline";
 const KEY = STORAGE_KEYS.autosavePrefix + SLUG;
 
+test("changing live count digits keeps the callout's action in place", async ({ page, consoleErrors }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await gotoLab(page, "trouble-callout-counts");
+  const action = page.getByTestId("trouble-action");
+  await expect(action).toBeVisible();
+  await page.evaluate(() => document.fonts.ready.then(() => {}));
+  const before = await action.boundingBox();
+  expect(before).not.toBeNull();
+  for (const count of ["888", "123", "999"]) {
+    await page.getByTestId("lab-control-count").fill(count);
+    await expect(page.getByTestId("trouble-detail")).toContainText(`(${count} so far)`);
+    await expect.poll(() => action.boundingBox()).toEqual(before);
+  }
+  expectNoErrors(consoleErrors);
+});
+
 type Saved = {
   nodes: { id: string; stencil: string; label: string; props?: Record<string, unknown> }[];
   edges: { id: string; from: string; to: string; kind?: string; relation?: string; props?: Record<string, unknown> }[];
@@ -90,10 +106,11 @@ test.describe("the simulation tells the truth", () => {
     await expect(page.getByTestId("quick-add")).toBeVisible();
     await page.keyboard.type("postgres");
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("toast").filter({ hasText: "Request: the caller waits for a reply" })).toBeVisible();
     const d = await savedWhen(page, (s) => s.edges.length === 1);
+    expect(d.nodes).toHaveLength(2);
     expect(d.edges[0]).toMatchObject({ from: "api", kind: "sync" });
     // The toast's way back: Make it a message.
     await page.getByTestId("toast-make-message").click();

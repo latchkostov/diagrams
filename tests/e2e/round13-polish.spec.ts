@@ -79,14 +79,16 @@ test("double-click quick-add opens the new node's name: typing names it, never r
   await page.keyboard.type("postgres");
   await page.keyboard.press("Enter");
   // The name is selected, ready to type over. "Ledger" has an L (Go live) and a T would add text: neither fires.
-  await expect(page.getByTestId("node-editor-label")).toBeFocused();
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   // Take a while: the node's step has long been recorded, and naming still joins it (a creation transaction).
-  await page.waitForTimeout(NAMING_PAUSE);
+  await page.clock.install();
+  await pauseClock(page);
+  await page.clock.runFor(NAMING_PAUSE);
   await page.keyboard.type("Ledger tables");
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("node-postgres-1")).toContainText("Ledger tables");
   await expect(page.getByTestId("live-controls")).toHaveCount(0);
-  await expect(page.getByTestId("node-editor")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-field-label")).not.toBeFocused();
   // The node and its name are one undo step.
   await page.keyboard.press(`${MOD}+z`);
   await expect(page.getByTestId("node-postgres-1")).toHaveCount(0);
@@ -107,13 +109,15 @@ test("Alt+arrow: the node, its connection and both names are one undo step, howe
   await expect(page.getByTestId("quick-add-search")).toBeFocused();
   await page.keyboard.type("redis cache");
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("node-editor-label")).toBeFocused();
-  await page.waitForTimeout(NAMING_PAUSE);
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  await page.clock.install();
+  await pauseClock(page);
+  await page.clock.runFor(NAMING_PAUSE);
   await page.keyboard.type("Ops cache");
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
-  await expect(page.getByTestId("node-editor-connection")).toBeFocused();
-  await page.waitForTimeout(NAMING_PAUSE);
+  await expect(page.getByTestId("inspector-field-connection")).toBeFocused();
+  await page.clock.runFor(NAMING_PAUSE);
   await page.keyboard.type("Cache panels");
   await page.keyboard.press("Enter");
   const made = page.getByTestId(/^node-cache-\d+$/);
@@ -140,9 +144,11 @@ test("Ctrl+K Add, then Enter: naming the new node later still joins the step tha
   const made = page.getByTestId(/^node-cache-\d+$/);
   await expect(made).toBeVisible();
   // The new node has focus: Enter opens its name, after a while.
-  await page.waitForTimeout(NAMING_PAUSE);
+  await page.clock.install();
+  await pauseClock(page);
+  await page.clock.runFor(NAMING_PAUSE);
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("node-editor-label")).toBeFocused();
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   await page.keyboard.type("Ops cache");
   await page.keyboard.press("Enter");
   await expect(made).toContainText("Ops cache");

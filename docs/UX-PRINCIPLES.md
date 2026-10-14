@@ -100,12 +100,14 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   there, press **Alt+arrow** or click the **"+"** on a selected node. Recently used stencils come first, and
   the search ranks as the stencil rail's does ("pg" finds PostgreSQL). From a double-click the pick lands on
   the spot, unconnected; from a dropped connection on the drop point; from Alt+arrow or the "+", one gap beside
-  the node, under the faint outline shown while quick-add is open. Every pick arrives with its label editor open
-  (the name selected, so typing replaces it, never reaching the canvas's one-key shortcuts). Menu and rail clicks
-  don't open the name. A **new node is one undo step** with its connection and the names typed in its editor
-  (node, subtitle, connection), however long the naming takes: a creation transaction opens when the node is made
-  and closes when its editor saves. The same holds for a node added from the rail or Ctrl+K and named with Enter
-  straight after. An edit in between (a nudge, another node) closes it, and the name is then a step of its own.
+  the node, under the faint outline shown while quick-add is open. Every pick arrives selected, with its **Label**
+  focused in the inspector (the name selected, so typing replaces it, never reaching the canvas's one-key
+  shortcuts); one made connected also shows a **Connection** field, one Tab after the Subtitle, while it's being
+  named. Menu and rail clicks don't open the name. A **new node is one undo step** with its connection and the names
+  typed for it (label, subtitle, connection), however long the naming takes: a creation transaction opens when the
+  node is made and closes with Enter or Esc, or when focus leaves its name fields. The same holds for a node added
+  from the rail or Ctrl+K and named with Enter straight after. An edit in between (a nudge, another node) closes it,
+  and the name is then a step of its own.
 - **The next node**: a single selected node shows one **"+"** on its downstream side (right, or below in a
   top-to-bottom diagram; another side when a neighbour or a label is there). Never a "+" on every node, never
   on hover. **Alt+→ / Alt+↓** add downstream (the new node is fed by the selected one), **Alt+← / Alt+↑**
@@ -179,12 +181,27 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   Ctrl/⌘ to drag freely. Guides show only during a drag: never in presentation, live view, exports or
   recordings. The arrow keys nudge onto the grid: to the next 10 px line, Shift 50 px (Snapping off: 1 px and
   10 px). The dots are every 10 px from 100% zoom and every 20 px below.
-- **Editing text** follows one set of keys in every inline editor (a node's label and subtitle, an edge's
-  label, a boundary's name, an annotation's text). A node just made connected (quick-add after a dropped
-  connection, Alt+arrow, the "+") has a third field, its **connection's label**, one Tab after the subtitle. **Enter** on a single selected thing edits it (F2 too).
-  In the editor, Enter saves (a text or note adds a line; Ctrl/⌘+Enter saves), Tab goes to the next field
-  (label, then subtitle) and saves after the last, and **Esc saves** too, as a click away does: Ctrl/⌘+Z right
-  after takes the edit back. Nothing cancels. An editor never reads smaller than its own size, at any zoom.
+- **Renaming happens in the inspector** (the owner's decision, 2026-10-13: "Double-clicking a service should open up
+  the property sheet... The name change should be part of the properties sheet."). A **double-click** on a node, a
+  boundary or a connection, **F2**, **Enter** on a single selected one, and its menu's **Rename** or **Edit label**
+  select it, open the inspector (even when it was hidden) and focus its **Label** with all of it selected, so typing
+  replaces it. The Subtitle is the next field (Tab). Nothing opens on the canvas for them. An annotation is the
+  exception: a text's, a note's or a zone's words _are_ the thing, so a double-click (or F2, Enter, Edit text) edits
+  them in place, all selected. Live, presenting, read-only views, embeds and the HTML viewer open no editor at all.
+- **Editing text** follows one set of keys in the inspector's name fields and an annotation's editor. Names are
+  saved as they're typed, so **Enter** and **Esc** are both "done": focus goes back to the thing on the canvas, so
+  the next key acts on it (an annotation: Enter adds a line, Ctrl/⌘+Enter or Esc saves; Tab saves too). A click
+  away is done as well. Ctrl/⌘+Z right after takes the edit back; a rename, however many keys, is one undo step.
+  Nothing cancels. An annotation's editor never reads smaller than its own size, at any zoom.
+- **Selecting text with the mouse** works as it does in every text field, on macOS and Windows, in Chrome, Firefox
+  and Safari: in an input, a textarea and contenteditable alike, a **double-click selects a word** and a
+  **triple-click the line** (all of a one-line field; a textarea's paragraph). Windows takes the space after a word
+  with it. A click places the caret, Shift+click and a drag extend the selection. Starting a rename **selects all of
+  the name** (the extension-less name in Finder and Explorer), as Figma, Miro, Lucidchart, draw.io, Excalidraw, the
+  macOS Finder and Windows Explorer do, so typing replaces it. Once in the field, double- and triple-click are the
+  platform's own; nothing reopens or reselects it. The selection is always visible: `--selection-bg` and
+  `--selection-text` (`tokens.css`) in every field, in both themes, the text at AAA on the highlight and the
+  highlight clearly apart from the field. Nothing on the drawing itself is selectable (App, not page).
   Keys typed before Ctrl+K's search or a new node's name can take them are kept for it ("Ctrl+K kafka").
   The shortcuts sheet (`?`) lists every key here, the File menu's (Ctrl+O, Ctrl+S, Ctrl+Shift+S) and slow motion's
   (← →) included.
@@ -410,7 +427,8 @@ in step:
 | ------------------------------------ | ------------------------------------------------------------------------------- |
 | Right-click                          | Context menu for the canvas, a node, an edge or a boundary                      |
 | Double-click canvas                  | Quick-add a stencil at the cursor, its name open to type                        |
-| Double-click node / edge             | Rename / edit label                                                             |
+| Double-click node / edge / boundary  | Rename it in the inspector: its Label focused, all selected                     |
+| Double-click text / note / zone      | Edit its text in place, all selected                                            |
 | Drag on the canvas                   | Selection box (Ctrl/⌘: only inside; Shift: adds). Live, presenting, embeds: pan |
 | Shift / Ctrl / ⌘ + click             | Add to or take out of the selection                                             |
 | Scroll, two-finger swipe             | Pan (Shift + scroll: sideways). In an embed the wheel scrolls the page          |

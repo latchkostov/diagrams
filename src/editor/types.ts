@@ -230,7 +230,14 @@ export interface EditorApi {
   zoomToSelection(): boolean;
   prefs: EditorPrefs;
   setPref<K extends keyof EditorPrefs>(key: K, value: EditorPrefs[K]): void;
+  /** F2, Enter, "Rename": an annotation's text in place; a node, connection or boundary in the inspector's Label. */
   startEditing(target: EditTarget): void;
+  /** The creation transaction of node `id`, if it was just made and not yet named: its name joins that step. */
+  creating(id: string): string | undefined;
+  /** Opens one undo step for the name fields; a new node keeps its creation step. */
+  beginNaming(kind: "node" | "edge" | "group", id: string): string;
+  /** Enter, Esc or focus away completes that naming step. */
+  doneNaming(tag: string): void;
   /** Opens the inspector, optionally focusing `inspector-field-<focusField>`. */
   openInspector(focusField?: string): void;
   showShortcuts(): void;

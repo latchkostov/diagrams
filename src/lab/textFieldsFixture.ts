@@ -1,0 +1,18 @@
+import type { DiagramFile } from "../model/types";
+
+/** Native selection and inspector naming, shared by the Lab and interaction tests. */
+export const textFieldsFixture: DiagramFile = {
+  format: "diagrams/v1",
+  title: "Fields",
+  description: "Platform overview\nOwned by the core team",
+  nodes: [
+    { id: "a", stencil: "client.browser", label: "Order service", x: 0, y: 0, group: "core" },
+    { id: "b", stencil: "client.browser", label: "Payments gateway", x: 400, y: 0, group: "core" },
+    { id: "c", stencil: "client.browser", label: "Worker", x: 0, y: 300 },
+  ],
+  groups: [{ id: "core", label: "Core platform", tone: "neutral", x: -40, y: -60, width: 740, height: 180 }],
+  edges: [{ id: "ab", from: "a", to: "b", kind: "async", label: "writes" }],
+  annotations: [
+    { id: "n1", kind: "note", text: "Sticky reminder\nSecond line here", x: 400, y: 300, width: 240, height: 110 },
+  ],
+};

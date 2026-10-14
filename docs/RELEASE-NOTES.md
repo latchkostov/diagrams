@@ -12,6 +12,38 @@ Changes to habits people already have. The app has no "what's new" panel, so the
   including Ctrl+K and agents' `find_stencils`.
 - This adds discovery only: simulation roles stay as before; no vendor quotas, rate-limit defaults or endpoint editor.
 
+## Inspector naming reliability (2026-10-14)
+
+- Quick-add and Rename keep their focus request until the selected node's Label is ready, including when the
+  inspector is opening after a pointer gesture. A previous node's name never takes the request.
+- Typing names keeps node positions and connection routes stable until the measured bounds change, avoiding
+  repeated routing work on large diagrams. Growing cards and connection labels still update their routes.
+- Live callout counts use equal-width digits, so changing digits no longer nudges the adjacent Revive button.
+
+## Naming follow-ups (2026-10-14)
+
+- Typing a boundary name keeps distant connections' routes cached. Connections near its growing or shrinking
+  label still update immediately.
+- Backspace straight after a quick-add pick keeps the name empty when the inspector opens, ready for typing.
+- Regression coverage now checks that clicking away or folding the inspector finishes a rename as its own undo step.
+
+## Renaming in the inspector; selected text you can see (2026-10)
+
+From the owner's reports (docs/DESIGN-REVIEW.md, round 34). Habit changes:
+
+- **Double-click a node, a boundary or a connection to open it in the inspector**, its **Label** focused with all of
+  it selected: type the new name, then **Enter** (or **Esc**) to go back to the canvas. Nothing opens on the canvas
+  for them any more. **F2**, **Enter** on a selected one and the menus' **Rename** and **Edit label** do the same, and
+  open the inspector if it was hidden. **Tab** goes to the Subtitle.
+- **Quick-add names the new node in the inspector** (a double-click on the canvas, a dropped connection, Alt+arrow,
+  the "+"): type its name straight away, as before. A node made connected shows a **Connection** field one Tab after
+  the Subtitle while it's being named. The node, its connection and their names are still one undo step.
+- **Texts, notes and zones are still edited in place**: their words are the thing.
+- **Selected text shows**, in every field, in both themes. Every editor on the canvas (a boundary's or a node's name,
+  a note) painted its selection transparent, so a double- or triple-click selected the words without showing it
+  (typing still replaced them). Double-click selects a word and triple-click the line, as everywhere else.
+- Live, presentation, read-only views, embeds and the HTML viewer open no editor on a double-click or F2.
+
 ## Editing reliability (2026-10-14)
 
 - The inspector stays folded during a drag even when another drop's deferred update is still waiting.

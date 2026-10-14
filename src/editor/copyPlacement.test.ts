@@ -50,6 +50,7 @@ function setup(o: Setup = {}) {
     pointer: () => o.pointer,
     edgeMarks: () => marks,
     setEditing: vi.fn(),
+    rename: vi.fn(),
     setNodes: (u: Parameters<EditorDeps["setNodes"]>[0]) => void (nodes = typeof u === "function" ? u(nodes) : u),
     setEdges: (u: Parameters<EditorDeps["setEdges"]>[0]) => void (edges = typeof u === "function" ? u(edges) : u),
   } as unknown as EditorDeps;

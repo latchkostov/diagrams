@@ -1,31 +1,20 @@
-import { useLayoutEffect, useRef, useState } from "react";
-import { keepInPane } from "../canvas/keepInPane";
+import { useRef, useState } from "react";
 import { useSelectOnMount } from "./useSelectOnMount";
-import { editKeyAction, refocusAfterEdit } from "./editKeys";
 
 /**
- * Single-line inline editor for edge and boundary labels (node cards have their own two-field editor), and
- * for renaming in a dialog. On the canvas the keys are every editor's (`editKeys.ts`): Enter, Tab, Esc and a
- * click away all save. In a dialog (`dialog`) Esc cancels, as dialogs do, and Tab moves on as usual.
+ * Single-line rename field in a dialog (Your diagrams). It opens with all of its text selected, so typing
+ * replaces it. Enter saves, Esc cancels, as dialogs do, and a click away saves.
  */
 export function InlineInput({
   value,
   onDone,
   placeholder,
-  className,
   testId,
-  returnFocus,
-  dialog = false,
 }: {
   value: string;
-  /** Receives the new text (null: cancelled, in a dialog only). */
+  /** Receives the new text (null: cancelled). */
   onDone: (next: string | null) => void;
-  /** A dialog's field rather than the canvas's: Esc cancels. */
-  dialog?: boolean;
-  /** What gets focus back after a save from the keyboard (the edge or node edited). */
-  returnFocus?: () => Element | null;
   placeholder?: string;
-  className?: string;
   testId?: string;
 }) {
   const [v, setV] = useState(value);
@@ -37,30 +26,18 @@ export function InlineInput({
     onDone(next);
   };
   useSelectOnMount(ref);
-  // On the canvas its label (an edge's pill, a boundary's chip) is magnified when zoomed out: it stays inside
-  // the canvas while edited, and goes back to its place after.
-  useLayoutEffect(() => (dialog ? undefined : keepInPane(ref.current?.parentElement ?? null)), [dialog]);
   return (
     <input
       ref={ref}
-      className={`inline-input nodrag nopan nowheel ${className ?? ""}`}
+      className="inline-input"
       value={v}
       onChange={(e) => setV(e.target.value)}
       onKeyDown={(e) => {
         e.stopPropagation();
-        if (dialog) {
-          if (e.key === "Enter") finish(v);
-          if (e.key === "Escape") finish(null);
-          return;
-        }
-        if (editKeyAction(e.nativeEvent) !== "save") return;
-        e.preventDefault();
-        const back = returnFocus?.();
-        finish(v);
-        refocusAfterEdit(back);
+        if (e.key === "Enter") finish(v);
+        if (e.key === "Escape") finish(null);
       }}
       onBlur={() => finish(v)}
-      onDoubleClick={(e) => e.stopPropagation()}
       placeholder={placeholder}
       aria-label={placeholder ?? "Label"}
       name="inline-label"

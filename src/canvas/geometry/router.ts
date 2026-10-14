@@ -1,7 +1,7 @@
 // Routes every edge of a diagram in one pass: pick sides, spread ports, find obstacle-avoiding
 // orthogonal routes (or bezier / straight curves), nudge shared tracks apart, then place labels.
 // The Router instance caches per-edge routes and only re-runs A* for edges whose ends changed or
-// whose search area a moved node touched; the global passes (ports, nudging, labels) are cheap.
+// whose search area changed node or boundary geometry touched; the global passes (ports, nudging, labels) are cheap.
 
 import type { Side } from "../../model/types";
 import { pickSides } from "../edges/routing";
@@ -108,10 +108,12 @@ interface RawEntry {
   region: Rect;
 }
 
+const sameRect = (a: Rect, b: Rect) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+
 export class Router {
   private raw = new Map<string, RawEntry>();
   private prevRects = new Map<string, Rect>();
-  private prevGroupsKey = "";
+  private prevGroups = new Map<string, RouteGroup>();
   private prev = new Map<string, EdgeRoute>();
   /** How many edges ran A* in the last call (for tests and the Lab's readout). */
   lastRouted = 0;
@@ -126,15 +128,28 @@ export class Router {
     const dirty: Rect[] = [];
     for (const [id, r] of rects) {
       const p = this.prevRects.get(id);
-      if (!p || p.x !== r.x || p.y !== r.y || p.width !== r.width || p.height !== r.height) {
+      if (!p || !sameRect(p, r)) {
         dirty.push(inflate(r, ROUTE_PAD));
         if (p) dirty.push(inflate(p, ROUTE_PAD));
       }
     }
     for (const [id, p] of this.prevRects) if (!rects.has(id)) dirty.push(inflate(p, ROUTE_PAD));
-    const groupsKey = JSON.stringify(groups);
-    if (groupsKey !== this.prevGroupsKey) this.raw.clear();
-    this.prevGroupsKey = groupsKey;
+    // A name changes only its header obstacle; the boundary's soft borders stay put. Invalidate the
+    // old and new areas independently, so growing/shrinking a chip leaves distant routes cached.
+    const groupMap = new Map(groups.map((g) => [g.id, g]));
+    for (const [id, g] of groupMap) {
+      const previous = this.prevGroups.get(id);
+      for (const part of ["rect", "header"] as const) {
+        if (!previous || !sameRect(previous[part], g[part])) {
+          dirty.push(inflate(g[part], ROUTE_PAD));
+          if (previous) dirty.push(inflate(previous[part], ROUTE_PAD));
+        }
+      }
+    }
+    for (const [id, g] of this.prevGroups) {
+      if (!groupMap.has(id)) dirty.push(inflate(g.rect, ROUTE_PAD), inflate(g.header, ROUTE_PAD));
+    }
+    this.prevGroups = groupMap;
     this.prevRects = rects;
 
     // ---- sides

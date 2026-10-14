@@ -1,5 +1,14 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, fitDiagram, waitForStableViewport, STORAGE_KEYS } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  fitDiagram,
+  waitForStableViewport,
+  pauseClock,
+  STORAGE_KEYS,
+} from "./fixtures";
 
 // Flow building (docs/research/drawing-ux.md, batch 3): the "+" on a selected node and Alt+arrow quick-add
 // with Alt+Shift+arrow clone-and-connect (D3), reconnecting an edge's end and inserting a node by dropping
@@ -202,7 +211,7 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("quick-add")).toHaveCount(0);
     await expect(page.getByTestId("landing-outline")).toHaveCount(0);
-    const label = page.getByTestId("node-editor-label");
+    const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeFocused();
     await expect(label).toHaveValue("Redis Cache");
     await page.keyboard.press("Escape");
@@ -245,7 +254,7 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
       expect(await flowPos(page, "node-hub")).toEqual(before);
       await page.keyboard.type("redis cache");
       await page.keyboard.press("Enter");
-      await expect(page.getByTestId("node-editor-label")).toBeFocused();
+      await expect(page.getByTestId("inspector-field-label")).toBeFocused();
       await page.keyboard.press("Escape");
       const d = await savedWhen(page, (s) => s.nodes.length === 6);
       const made = must(
@@ -278,7 +287,7 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
     await page.keyboard.press("Alt+Shift+ArrowDown");
     // No menu: the copy is there, its name selected for typing.
     await expect(page.getByTestId("quick-add")).toHaveCount(0);
-    const label = page.getByTestId("node-editor-label");
+    const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeFocused();
     await expect(label).toHaveValue("Hub");
     await page.keyboard.type("Spoke");
@@ -307,12 +316,11 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
     await expect(page.getByTestId("context-menu-item-quick-add:redis.cache")).toHaveAttribute("data-active", "true");
     await page.keyboard.press("Enter");
     await page.keyboard.type("dedupe table", { delay: 5 });
-    await expect(page.getByTestId("node-editor-label")).toHaveValue("dedupe table");
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("dedupe table");
     await page.keyboard.press("Tab");
-    await expect(page.getByTestId("node-editor-sublabel")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-sublabel")).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(page.getByTestId("node-editor-connection")).toBeFocused();
-    await expect(page.getByTestId("node-editor-hint")).toContainText("connection");
+    await expect(page.getByTestId("inspector-field-connection")).toBeFocused();
     await page.keyboard.type("SET NX");
     await page.keyboard.press("Enter");
     const d = await savedWhen(page, (s) => s.nodes.some((n) => n.label === "dedupe table"));
@@ -330,9 +338,12 @@ test.describe("the + chip and Alt+arrow (D3)", () => {
     await page.keyboard.press("Alt+ArrowRight");
     await page.keyboard.type("redis cache");
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("node-editor-label")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
     // Longer than the history's 350 ms settle: the add is its own entry by now.
-    await page.waitForTimeout(800);
+    await page.clock.install();
+    await pauseClock(page);
+    await page.clock.runFor(800);
+    await page.clock.resume();
     await page.keyboard.type("Dedupe");
     await page.keyboard.press("Enter");
     await savedWhen(page, (s) => s.nodes.some((n) => n.label === "Dedupe"));
@@ -449,11 +460,14 @@ test.describe("edges: reconnect and insert (D8)", () => {
     await page.keyboard.type("insert node redis cache");
     await expect(page.getByTestId("command-item-action:insert-node:redis.cache")).toBeVisible();
     await page.keyboard.press("Enter");
-    const label = page.getByTestId("node-editor-label");
+    const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeFocused();
     await expect(label).toHaveValue("Redis Cache");
     // Named after the add has been recorded: still one step with it.
-    await page.waitForTimeout(700);
+    await page.clock.install();
+    await pauseClock(page);
+    await page.clock.runFor(700);
+    await page.clock.resume();
     await page.keyboard.type("Read cache");
     await page.keyboard.press("Enter");
     const d = await savedWhen(page, (s) => s.edges.length === 2 && s.nodes.some((n) => n.label === "Read cache"));
@@ -677,8 +691,8 @@ test.describe("the stencil rail (D13)", () => {
       "it",
     );
     expect(d.edges.find((e) => e.to === after.id)?.from).toBe("hub");
-    // A rail click doesn't open the name editor (decision 3).
-    await expect(page.getByTestId("node-editor")).toHaveCount(0);
+    // A rail click doesn't open the name (decision 3).
+    await expect(page.getByTestId("inspector-field-label")).not.toBeFocused();
     await expectNoNodeOverlaps(page);
     // Undo takes both.
     await undoUntil(page, (s) => s.nodes.length === 5 && s.edges.length === 1, 1);
@@ -730,7 +744,7 @@ test("gate: the right half of the Kafka example, keyboard only, in under 60 keys
     log.push(`“${text}”`);
     await page.keyboard.type(text);
   };
-  const editor = page.getByTestId("node-editor-label");
+  const editor = page.getByTestId("inspector-field-label");
   /** Names a node just made connected, then its connection (Tab, Tab), and saves. */
   const names = async (node: string, edge: string) => {
     await expect(editor).toBeFocused();
@@ -739,7 +753,7 @@ test("gate: the right half of the Kafka example, keyboard only, in under 60 keys
     await key("Tab");
     await name(edge);
     await key("Enter");
-    await expect(editor).toHaveCount(0);
+    await expect(editor).not.toBeFocused();
   };
 
   // Inventory database first, then upstream to the topic, so the topic ends selected for the fan-out.

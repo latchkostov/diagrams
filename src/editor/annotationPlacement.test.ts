@@ -42,6 +42,7 @@ function setup(selected: string[], opts: { marks?: Rect[]; textHeight?: number }
     viewCenter: () => ({ x: 2000, y: 2000 }),
     edgeMarks,
     setEditing: vi.fn(),
+    rename: vi.fn(),
     setNodes: (update: Parameters<EditorDeps["setNodes"]>[0]) => {
       nodes = typeof update === "function" ? update(nodes) : update;
     },

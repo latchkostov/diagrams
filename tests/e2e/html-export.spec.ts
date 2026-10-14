@@ -6,6 +6,7 @@ import { test, expect, gotoCanvas, expectNoErrors, publicExamples, waitForHtmlTe
 import { expectPlaying, filePayloadText, hostPage, KAFKA, watchedPage } from "./html-viewer";
 import { deflateRaw, textToBytes } from "../../src/interop/codec";
 import { encryptBytes } from "../../src/interop/passwordCrypto";
+import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
 
 // Interactive HTML export (src/export, docs/INTEROP.md): File ▸ Export as ▸ Interactive HTML… downloads one
 // self-contained file. Opened from file:// (and inside an <iframe>, sandboxed or not), it shows the diagram,
@@ -34,6 +35,38 @@ async function download(page: Page): Promise<{ download: Download; path: string;
 }
 
 test.describe("Interactive HTML export", () => {
+  test("the read-only viewer opens no editor for nodes, boundaries, connections or notes", async ({
+    page,
+    context,
+  }) => {
+    await gotoCanvas(page, KAFKA);
+    await page.getByTestId("import-input").setInputFiles({
+      name: "fields.diagram.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(textFieldsFixture)),
+    });
+    await expect(page.getByTestId("diagram-title")).toHaveText("Fields");
+    await openHtmlExport(page);
+    const { path } = await download(page);
+    const viewer = await watchedPage(context);
+    await viewer.page.goto(pathToFileURL(path).href);
+    await expect(viewer.page.getByTestId("html-viewer")).toBeVisible();
+    for (const id of ["node-a", "group-label-core", "edge-label-ab", "annotation-n1"]) {
+      await viewer.page.getByTestId(id).dblclick();
+      await viewer.page.keyboard.press("F2");
+      for (const editor of [
+        "inspector-field-label",
+        "node-editor",
+        "group-label-input",
+        "edge-label-input",
+        "annotation-editor",
+      ])
+        await expect(viewer.page.getByTestId(editor)).toHaveCount(0);
+    }
+    expect(viewer.errors).toEqual([]);
+    await viewer.page.close();
+  });
+
   test("exports the Kafka example as one file that plays offline, with zero requests", async ({
     page,
     context,

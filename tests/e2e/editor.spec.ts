@@ -174,7 +174,7 @@ test.describe("editor", () => {
   test("rename a node from its context menu", async ({ page }) => {
     await page.getByTestId("node-payments").click({ button: "right" });
     await menuItem(page, "node.rename").click();
-    const input = page.getByTestId("node-editor-label");
+    const input = page.getByTestId("inspector-field-label");
     await expect(input).toBeFocused();
     await input.fill("Payments API");
     await input.press("Enter");
@@ -293,7 +293,7 @@ test.describe("editor", () => {
     await page.getByTestId("node-shopper").click();
     await page.getByTestId("node-gateway").click({ modifiers: [MOD] });
     await page.keyboard.press(`${MOD}+g`);
-    const input = page.getByTestId("group-label-input");
+    const input = page.getByTestId("inspector-field-label");
     await expect(input).toBeFocused();
     await input.fill("Edge zone");
     await input.press("Enter");
@@ -349,7 +349,7 @@ test.describe("editor", () => {
     await page.getByTestId("node-shopper").click();
     await page.getByTestId("node-gateway").click({ modifiers: [MOD] });
     await page.keyboard.press(`${MOD}+g`);
-    await page.getByTestId("group-label-input").press("Enter");
+    await page.getByTestId("inspector-field-label").press("Enter");
     const group = page.getByTestId("group-boundary-1");
     const groupBefore = await requiredBox(group);
     const tone = page.getByTestId("inspector-tone-neutral");
