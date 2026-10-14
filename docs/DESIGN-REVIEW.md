@@ -3793,3 +3793,11 @@ Regression checks temporarily restored the faulty behavior: metadata validation,
 microphone/model errors, revert language switching, Arabic/Hebrew isolation, Windows-only assertions on a Mac
 and premature WebMCP checks all failed as expected. The WebMCP test holds the bridge chunk until the host is read,
 so static tool help cannot conceal missing registration. Native-key checks run with explicit Windows/Mac platforms.
+
+## Canvas localization after Planning P1 rebase — 2026-10-14
+
+The designer's scoped source review against Planning P1 found no blockers in canvas menus, quick-add,
+Ctrl+K, the stencil rail, gallery and editing feedback. No controls were added. Stable menu and command
+identities, focus and undo paths remain intact; localized labels, wrapping and RTL navigation agree.
+The slim i18n entry keeps the typed API in its React-free core, and connection creation retains P1's defaults.
+This was a source review, not a whole-app browser or screenshot audit; production e2e results are reported separately.

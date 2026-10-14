@@ -1,5 +1,5 @@
 import { tRich } from "../i18n/rich";
-import { formatNumber } from "../i18n/format";
+import { formatNumber } from "../i18n/number";
 
 import { categoryLabel, categoryBlurb, familyLabel, familyHint } from "../i18n/chrome";
 import { t, useLocale } from "../i18n";

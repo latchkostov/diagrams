@@ -54,6 +54,7 @@ Changes to habits people already have. The app has no "what's new" panel, so the
 
 ## Canvas menus and stencil chrome in your language (2026-10-14)
 
+- Canvas number formatting stays lightweight alongside Planning P1; the agent skill viewer is refreshed in plugin 1.1.14.
 - Right-click menus and their submenus, quick-add, edit feedback and Ctrl+K commands now use the chosen language,
   with translations in all 37 locales. Commands keep their stable identities when a language downloads or changes.
 - Stencil categories, families, filters, gallery details, empty states and buttons are translated. Stencil catalog

@@ -1,5 +1,5 @@
 import { connectionProps, connectionDefaults } from "../model/connectionDefaults";
-import { formatNumber } from "../i18n/format";
+import { formatNumber } from "../i18n/number";
 import { t } from "../i18n";
 import { kindLabel, relationNoun } from "../i18n/chrome";
 import { relationChangeMessage } from "./editMessages";
