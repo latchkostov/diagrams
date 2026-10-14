@@ -6,6 +6,7 @@ import {
   toggleFullscreen,
   useFullscreen,
 } from "../lib/fullscreen";
+import { t } from "../i18n";
 
 // The usual full-screen glyphs, on the 16 px grid of src/components/Icon.tsx: corners out, and corners in.
 const ENTER = "M2.5 5.5v-3h3M10.5 2.5h3v3M13.5 10.5v3h-3M5.5 13.5h-3v-3";
@@ -38,14 +39,14 @@ export function PresentFullscreen() {
   }, [toggle]);
 
   if (!available) return null;
-  const label = on ? "Exit full screen" : "Full screen";
+  const label = on ? t("present.exitFullScreen") : t("present.fullScreen");
   return (
     <button
       className="present-fs"
       onClick={toggle}
       aria-label={label}
       aria-keyshortcuts="F"
-      title={`${label} (F)`}
+      title={on ? t("present.exitFullScreenKey", { key: "F" }) : t("present.fullScreenKey", { key: "F" })}
       data-state={on ? "on" : "off"}
       data-canvas-overlay
       data-testid="present-fullscreen"

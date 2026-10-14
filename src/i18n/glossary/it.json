@@ -1,0 +1,62 @@
+{
+  "language": "it",
+  "register": "tu",
+  "quotes": "« … »",
+  "notes": [
+    "Buttons and menu items in the imperative, as Microsoft and Apple's Italian: Salva, Apri, Esporta PNG, Annulla.",
+    "Typographic apostrophe ’ everywhere, never '.",
+    "The library name is quoted where a preposition would contract it: in «I tuoi diagrammi».",
+    "Kept in English as Italian developers say them: topic, consumer, producer, broker, offset, backlog, throughput, load balancer, live, stencil."
+  ],
+  "terms": {
+    "topic": { "use": "topic", "keepEnglish": true, "avoid": ["argomento"], "note": "il topic, i topic" },
+    "queue": { "use": "coda", "match": ["coda", "code"] },
+    "consumer": { "use": "consumer", "keepEnglish": true, "note": "il consumer, i consumer" },
+    "consumer group": {
+      "use": "gruppo di consumer",
+      "match": ["gruppo di consumer", "gruppi di consumer", "consumer group"]
+    },
+    "producer": { "use": "producer", "keepEnglish": true },
+    "partition": { "use": "partizione", "match": ["partizion"] },
+    "broker": { "use": "broker", "keepEnglish": true },
+    "dead-letter queue": {
+      "use": "coda di messaggi non recapitabili",
+      "match": ["non recapitabil", "dlq"],
+      "avoid": ["lettere non scritte"]
+    },
+    "throughput": { "use": "throughput", "keepEnglish": true },
+    "latency": { "use": "latenza", "match": ["latenz"] },
+    "replica": { "use": "replica", "match": ["replic"] },
+    "load balancer": { "use": "load balancer", "keepEnglish": true },
+    "gateway": { "use": "gateway", "keepEnglish": true },
+    "cache": { "use": "cache" },
+    "message": { "use": "messaggio", "match": ["messagg"] },
+    "event": { "use": "evento", "match": ["event"] },
+    "subscription": { "use": "sottoscrizione", "match": ["sottoscrizion", "abbonament"] },
+    "offset": { "use": "offset", "keepEnglish": true },
+    "backlog": { "use": "backlog", "keepEnglish": true },
+    "retry": { "use": "riprova", "match": ["riprov", "nuovo tentativo", "nuovi tentativi"] },
+    "diagram": { "use": "diagramma", "match": ["diagramm"] },
+    "node": { "use": "nodo", "match": ["nodo", "nodi"] },
+    "edge": {
+      "use": "collegamento",
+      "match": ["collegament"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "The boundary's 'edge' in shortcuts.mouse.boundary is its border (bordo)."
+    },
+    "stencil": { "use": "stencil", "keepEnglish": true, "note": "lo stencil, gli stencil" },
+    "boundary": { "use": "confine", "match": ["confin"] },
+    "simulation": { "use": "simulazione", "match": ["simulazion"] },
+    "live": { "use": "live", "keepEnglish": true, "note": "la vista live" },
+    "present": { "use": "Presenta", "match": ["present"] },
+    "embed": { "use": "incorporare", "match": ["incorpor"], "note": "noun: un incorporamento" },
+    "share link": { "use": "link di condivisione" },
+    "export": { "use": "Esporta", "match": ["esport"] },
+    "import": { "use": "Importa", "match": ["import"] },
+    "private": { "use": "privato", "match": ["privat"] },
+    "this device": { "use": "questo dispositivo" },
+    "capacity": { "use": "capacità" },
+    "checks": { "use": "controlli", "match": ["controll"] },
+    "annotation": { "use": "annotazione", "match": ["annotazion"] }
+  }
+}

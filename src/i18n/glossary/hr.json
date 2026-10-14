@@ -1,0 +1,65 @@
+{
+  "language": "hr",
+  "register": "vi (formal, lowercase) in sentences; buttons and commands in the 2nd person singular imperative, as Microsoft Croatian does (Spremi, Zatvori)",
+  "quotes": "„…”",
+  "notes": [
+    "Buttons and menu commands in the imperative (Spremi, Izvezi, Odustani); sentences address the person with vi.",
+    "Croatian vocabulary, not Serbian: sustav, preglednik, izbornik, datoteka, zaslon, tijekom, točkaste.",
+    "Light/dark theme is „svijetli/tamni način“, so „tema“ stays free for the Kafka topic.",
+    "Consumer is „potrošač“, never „korisnik“ (that is user).",
+    "The {where} placeholder follows a colon (Spremljeno: ovaj uređaj), since its case would differ per preposition."
+  ],
+  "terms": {
+    "topic": {
+      "use": "tema",
+      "match": ["tem"],
+      "note": "As the research table; the colour theme is written „način“ to avoid the clash."
+    },
+    "queue": { "use": "red", "match": ["red"], "note": "red čekanja; red, reda, redovi" },
+    "consumer": { "use": "potrošač", "match": ["potrošač"], "avoid": ["korisnik"], "note": "korisnik means user" },
+    "consumer group": { "use": "consumer group", "keepEnglish": true, "match": ["consumer group"] },
+    "producer": { "use": "proizvođač", "match": ["proizvođač"] },
+    "partition": { "use": "particija", "match": ["particij"] },
+    "broker": { "use": "broker", "match": ["broker"] },
+    "dead-letter queue": { "use": "red neisporučivih poruka", "match": ["neisporuč", "dlq"] },
+    "throughput": { "use": "propusnost", "match": ["propusn"] },
+    "latency": { "use": "latencija", "match": ["latencij"] },
+    "replica": { "use": "replika", "match": ["replik"] },
+    "load balancer": { "use": "ujednačivač opterećenja", "match": ["ujednačivač"] },
+    "gateway": { "use": "pristupnik", "match": ["pristupnik"], "note": "Microsoft Croatian" },
+    "cache": { "use": "predmemorija", "match": ["predmemorij"] },
+    "message": { "use": "poruka", "match": ["poruk"] },
+    "event": { "use": "događaj", "match": ["događaj"] },
+    "subscription": { "use": "pretplata", "match": ["pretplat"] },
+    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
+    "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
+    "retry": { "use": "pokušaj ponovno", "match": ["ponov", "pokušaj"] },
+    "diagram": { "use": "dijagram", "match": ["dijagram"] },
+    "node": { "use": "čvor", "match": ["čvor"] },
+    "edge": {
+      "use": "veza",
+      "match": ["vez"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary 'edge' is the boundary's border (rub)."
+    },
+    "stencil": { "use": "šablona", "match": ["šablon"] },
+    "boundary": { "use": "granica", "match": ["granic"] },
+    "simulation": { "use": "simulacija", "match": ["simulacij"] },
+    "live": { "use": "uživo", "match": ["uživo"] },
+    "present": { "use": "prezentiraj", "match": ["prezent"], "note": "Prezentiraj, prezentacija" },
+    "embed": { "use": "ugradi", "match": ["ugrad"], "note": "ugradnja (noun), ugraditi (verb)" },
+    "share link": { "use": "poveznica za dijeljenje", "match": ["za dijeljenje"] },
+    "export": { "use": "izvezi", "match": ["izvoz", "izvez"] },
+    "import": { "use": "uvezi", "match": ["uvoz", "uvez"] },
+    "private": {
+      "use": "privatan",
+      "match": ["privat"],
+      "avoid": ["povjerljiv"],
+      "note": "privatni dijagram; privatnost (privacy)"
+    },
+    "this device": { "use": "ovaj uređaj", "match": ["uređaj"], "avoid": ["računal"] },
+    "capacity": { "use": "kapacitet", "match": ["kapacitet"] },
+    "checks": { "use": "provjere", "match": ["provjer"] },
+    "annotation": { "use": "anotacija", "match": ["anotacij"] }
+  }
+}

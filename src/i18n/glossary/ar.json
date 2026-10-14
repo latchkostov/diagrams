@@ -1,0 +1,66 @@
+{
+  "language": "ar",
+  "register": "generic masculine singular imperative (افتح، ارسم)",
+  "quotes": "«…»",
+  "notes": [
+    "Buttons and menu items use the verbal noun, as Microsoft's Arabic UI does (حفظ، فتح…، إغلاق); instructions use the masculine singular imperative.",
+    "Western digits; Arabic punctuation: the comma ، the semicolon ؛ and the question mark ؟.",
+    "Latin names (Live Diagrams, Google Drive, HTML) stay inline in Latin script; no bidi control characters.",
+    "\"Your diagrams\" is «مخططاتك» everywhere; the canvas is لوحة الرسم, the AI panel لوحة الذكاء الاصطناعي.",
+    "Plurals give all six forms (zero, one, two, few, many, other)."
+  ],
+  "terms": {
+    "topic": { "use": "موضوع", "match": ["موضوع", "مواضيع", "topic"] },
+    "queue": { "use": "قائمة انتظار", "match": ["قائمة انتظار", "قوائم انتظار", "قائمة الانتظار", "قوائم الانتظار"] },
+    "consumer": { "use": "مستهلك", "match": ["مستهلك"] },
+    "consumer group": {
+      "use": "مجموعة المستهلكين",
+      "match": ["مجموعة المستهلكين", "مجموعات المستهلكين", "consumer group"]
+    },
+    "producer": { "use": "منتِج", "match": ["منتج", "منتِج"], "note": "The one who writes messages (not a product)." },
+    "partition": { "use": "قسم", "match": ["قسم", "أقسام", "partition"] },
+    "broker": { "use": "وسيط", "match": ["وسيط", "وسطاء", "broker"] },
+    "dead-letter queue": {
+      "use": "قائمة انتظار الرسائل غير المسلَّمة",
+      "match": ["غير المسلَّمة", "غير المسلمة", "dlq"]
+    },
+    "throughput": { "use": "معدل النقل", "match": ["معدل النقل"] },
+    "latency": { "use": "زمن الانتقال", "match": ["زمن الانتقال"] },
+    "replica": { "use": "نسخة متماثلة", "match": ["متماثل"] },
+    "load balancer": { "use": "موازن التحميل", "match": ["موازن التحميل", "موازنات التحميل"] },
+    "gateway": { "use": "بوابة", "match": ["بوابة", "بوابات"] },
+    "cache": { "use": "ذاكرة التخزين المؤقت", "match": ["التخزين المؤقت"] },
+    "message": { "use": "رسالة", "match": ["رسال", "رسائل"] },
+    "event": { "use": "حدث", "match": ["حدث", "أحداث"] },
+    "subscription": { "use": "اشتراك", "match": ["اشتراك"] },
+    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset", "إزاحة"] },
+    "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog", "متراكم"] },
+    "retry": { "use": "إعادة المحاولة", "match": ["إعادة المحاولة", "أعد المحاولة"] },
+    "diagram": {
+      "use": "مخطط",
+      "match": ["مخطط"],
+      "note": "Short and common (مخطط، مخططات، مخططاتك); Visio's رسم تخطيطي is too long for the UI."
+    },
+    "node": { "use": "عقدة", "match": ["عقد", "عُقد"] },
+    "edge": {
+      "use": "وصلة",
+      "match": ["وصلة", "وصلات"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "Not رابط (a link). In shortcuts.mouse.boundary \"edge\" is a boundary's border (طرف)."
+    },
+    "stencil": { "use": "استنسل", "match": ["استنسل"], "note": "Visio's Arabic word; plural استنسلات." },
+    "boundary": { "use": "حدود", "match": ["حدود"], "note": "Never مجموعة (group)." },
+    "simulation": { "use": "محاكاة", "match": ["محاكاة"] },
+    "live": { "use": "مباشر", "match": ["مباشر"], "note": "live view: العرض المباشر." },
+    "present": { "use": "تقديم", "match": ["تقديم"], "note": "presentation: العرض التقديمي." },
+    "embed": { "use": "تضمين", "match": ["تضمين"] },
+    "share link": { "use": "رابط مشاركة", "match": ["رابط مشاركة", "روابط مشاركة", "رابط المشاركة", "روابط المشاركة"] },
+    "export": { "use": "تصدير", "match": ["تصدير", "صدّر", "صدر"] },
+    "import": { "use": "استيراد", "match": ["استيراد", "استورد"] },
+    "private": { "use": "خاص", "match": ["خاص"], "avoid": ["سري"] },
+    "this device": { "use": "هذا الجهاز", "match": ["هذا الجهاز"], "avoid": ["القرص المحلي", "الكمبيوتر"] },
+    "capacity": { "use": "السعة", "match": ["سعة"] },
+    "checks": { "use": "عمليات التحقق", "match": ["تحقق"] },
+    "annotation": { "use": "تعليق توضيحي", "match": ["توضيحي"] }
+  }
+}

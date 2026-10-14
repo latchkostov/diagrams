@@ -99,3 +99,25 @@ test.describe("self-hosted build with link opening off", () => {
     expectNoErrors(consoleErrors);
   });
 });
+
+test.describe("self-hosted build with one language (VITE_LOCALES=en)", () => {
+  test.use({ locale: "de-DE" });
+
+  test("English for everyone, whatever the browser asks for, and no Language choice", async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoCanvas(page, SLUG);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.getByTestId("view-canvas")).toHaveText("Diagram");
+    await page.getByTestId("view-button").click();
+    await expect(page.getByTestId("view-menu")).toBeVisible();
+    await expect(page.getByTestId("view-language")).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await page.keyboard.press(`${MOD}+k`);
+    await expect(page.getByTestId("command-palette")).toBeVisible();
+    await page.keyboard.type("language");
+    await expect(page.getByTestId("command-item-view:language")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+});

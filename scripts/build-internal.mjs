@@ -29,7 +29,7 @@ console.log(
   [
     `build:internal: "${d.brandName}"`,
     `  share links ${on(d.shareLinks)}, opening links ${on(d.linkOpen)}, AI tools ${on(d.aiTools)},`,
-    `  on-device model ${on(d.onDevice)}, new diagrams private ${on(d.privateByDefault)}`,
+    `  on-device model ${on(d.onDevice)}, new diagrams private ${on(d.privateByDefault)}, languages ${d.locales || "all"}`,
     `  (${Object.entries(resolved)
       .map(([k, v]) => `${k}=${v}`)
       .join(" ")})`,

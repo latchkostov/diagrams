@@ -1,0 +1,70 @@
+{
+  "language": "ja",
+  "register": "です/ます (statements); buttons and menu items as plain nouns or dictionary-form verbs (保存, 閉じる)",
+  "quotes": "「…」",
+  "notes": [
+    "Full-width punctuation 。、「」（）：; a half-width space beside Latin words, numbers and placeholders (API ゲートウェイ, PNG をエクスポート).",
+    "Katakana long vowels per Microsoft: ー after -er/-or/-ar (コンシューマー, ブローカー, ブラウザー, フォルダー), none on longer other endings (レイテンシ, メモリ).",
+    "Katakana compounds are written joined (コンシューマーグループ, ダイアグラムファイル, キーボードショートカット).",
+    "Menu items and buttons: short nouns or verb stems (エクスポート, 名前を付けて保存…, 閉じる); keep the ellipsis …",
+    "\"Your diagrams\" (the library) is マイダイアグラム everywhere."
+  ],
+  "terms": {
+    "topic": {
+      "use": "トピック",
+      "match": ["トピック"],
+      "avoid": ["テーマ"],
+      "note": "Never テーマ: the app has a colour theme."
+    },
+    "queue": { "use": "キュー", "match": ["キュー"] },
+    "consumer": { "use": "コンシューマー", "match": ["コンシューマー"], "avoid": ["消費者"] },
+    "consumer group": { "use": "コンシューマーグループ", "match": ["コンシューマーグループ"] },
+    "producer": { "use": "プロデューサー", "match": ["プロデューサー"] },
+    "partition": { "use": "パーティション", "match": ["パーティション"] },
+    "broker": { "use": "ブローカー", "match": ["ブローカー"] },
+    "dead-letter queue": { "use": "デッドレターキュー", "match": ["デッドレターキュー", "dlq"] },
+    "throughput": { "use": "スループット", "match": ["スループット"] },
+    "latency": {
+      "use": "レイテンシ",
+      "match": ["レイテンシ"],
+      "avoid": ["レイテンシー"],
+      "note": "No ー: Microsoft's rule for longer words."
+    },
+    "replica": { "use": "レプリカ", "match": ["レプリカ"] },
+    "load balancer": { "use": "ロードバランサー", "match": ["ロードバランサー"] },
+    "gateway": {
+      "use": "ゲートウェイ",
+      "match": ["ゲートウェイ"],
+      "note": "API ゲートウェイ, with a half-width space."
+    },
+    "cache": { "use": "キャッシュ", "match": ["キャッシュ"] },
+    "message": { "use": "メッセージ", "match": ["メッセージ"] },
+    "event": { "use": "イベント", "match": ["イベント"] },
+    "subscription": { "use": "サブスクリプション", "match": ["サブスクリプション"] },
+    "offset": { "use": "オフセット", "match": ["オフセット"] },
+    "backlog": { "use": "バックログ", "match": ["バックログ"] },
+    "retry": { "use": "再試行", "match": ["再試行"] },
+    "diagram": { "use": "ダイアグラム", "match": ["ダイアグラム"] },
+    "node": { "use": "ノード", "match": ["ノード"] },
+    "edge": {
+      "use": "接続",
+      "match": ["接続"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (縁), not a connection."
+    },
+    "stencil": { "use": "ステンシル", "match": ["ステンシル"] },
+    "boundary": { "use": "境界", "match": ["境界"], "avoid": ["グループ"], "note": "Never グループ." },
+    "simulation": { "use": "シミュレーション", "match": ["シミュレーション"] },
+    "live": { "use": "ライブ", "match": ["ライブ"] },
+    "present": { "use": "プレゼンテーション", "match": ["プレゼン"] },
+    "embed": { "use": "埋め込み", "match": ["埋め込"] },
+    "share link": { "use": "共有リンク", "match": ["共有リンク"] },
+    "export": { "use": "エクスポート", "match": ["エクスポート"] },
+    "import": { "use": "インポート", "match": ["インポート"] },
+    "private": { "use": "非公開", "match": ["非公開"], "avoid": ["機密", "秘密"] },
+    "this device": { "use": "このデバイス", "match": ["このデバイス"], "avoid": ["ローカル", "コンピューター"] },
+    "capacity": { "use": "容量", "match": ["容量"] },
+    "checks": { "use": "チェック", "match": ["チェック"], "avoid": ["エラー"] },
+    "annotation": { "use": "注釈", "match": ["注釈"] }
+  }
+}

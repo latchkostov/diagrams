@@ -1,0 +1,177 @@
+{
+  "language": "et",
+  "register": "teie (formal plural) in sentences; buttons and menu commands in the imperative (Salvesta, Ava), as Microsoft's Estonian UI",
+  "quotes": "„…“",
+  "notes": [
+    "Commands are singular imperatives (Salvesta, Ava, Ekspordi); sentences address the person as teie (lohistage, eksportige).",
+    "Topic is teema, so the colour theme is kujundus (Hele kujundus, Tume kujundus), never teema.",
+    "AI stays AI (AI-paneel, AI-d), as Estonian tech UIs write it.",
+    "Your diagrams is the library name Teie diagrammid everywhere."
+  ],
+  "terms": {
+    "topic": {
+      "use": "teema",
+      "match": ["teema"],
+      "note": "The research's rendering. The colour theme is kujundus to keep teema for topics."
+    },
+    "queue": {
+      "use": "järjekord",
+      "match": ["järjekor"]
+    },
+    "consumer": {
+      "use": "tarbija",
+      "match": ["tarbija"]
+    },
+    "consumer group": {
+      "use": "consumer group",
+      "match": ["consumer group", "tarbijarühm"],
+      "keepEnglish": true
+    },
+    "producer": {
+      "use": "tootja",
+      "match": ["tootja"]
+    },
+    "partition": {
+      "use": "partitsioon",
+      "match": ["partitsioon"]
+    },
+    "broker": {
+      "use": "broker",
+      "match": ["broker"],
+      "keepEnglish": true
+    },
+    "dead-letter queue": {
+      "use": "nurjunud sõnumite järjekord",
+      "match": ["nurjunud", "dlq"]
+    },
+    "throughput": {
+      "use": "läbilaskevõime",
+      "match": ["läbilaske"]
+    },
+    "latency": {
+      "use": "latentsus",
+      "match": ["latents", "viivitus"]
+    },
+    "replica": {
+      "use": "replika",
+      "match": ["replik"]
+    },
+    "load balancer": {
+      "use": "koormusjaotur",
+      "match": ["koormusjaotur"]
+    },
+    "gateway": {
+      "use": "lüüs",
+      "match": ["lüüs", "lüüsi"],
+      "note": "Microsoft's Estonian word (API-lüüs)."
+    },
+    "cache": {
+      "use": "vahemälu",
+      "match": ["vahemälu"]
+    },
+    "message": {
+      "use": "sõnum",
+      "match": ["sõnum"]
+    },
+    "event": {
+      "use": "sündmus",
+      "match": ["sündmus"]
+    },
+    "subscription": {
+      "use": "tellimus",
+      "match": ["tellimus"]
+    },
+    "offset": {
+      "use": "offset",
+      "match": ["offset"],
+      "keepEnglish": true
+    },
+    "backlog": {
+      "use": "backlog",
+      "match": ["backlog"],
+      "keepEnglish": true
+    },
+    "retry": {
+      "use": "proovi uuesti",
+      "match": ["uuesti"]
+    },
+    "diagram": {
+      "use": "diagramm",
+      "match": ["diagramm"]
+    },
+    "node": {
+      "use": "sõlm",
+      "match": ["sõlm"]
+    },
+    "edge": {
+      "use": "ühendus",
+      "match": ["ühendu"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "A boundary's edge is its serv."
+    },
+    "stencil": {
+      "use": "trafarett",
+      "match": ["trafaret"],
+      "note": "Visio's Estonian word."
+    },
+    "boundary": {
+      "use": "piir",
+      "match": ["piir"]
+    },
+    "simulation": {
+      "use": "simulatsioon",
+      "match": ["simulatsioon"]
+    },
+    "live": {
+      "use": "Live",
+      "match": ["live"],
+      "keepEnglish": true,
+      "note": "live-vaade."
+    },
+    "present": {
+      "use": "esitlus",
+      "match": ["esitl"],
+      "note": "Command Esitle."
+    },
+    "embed": {
+      "use": "manustus",
+      "match": ["manust"],
+      "note": "Command Manusta, as Microsoft."
+    },
+    "share link": {
+      "use": "jagamislink",
+      "match": ["jagamislin"],
+      "note": "jagamislingi, jagamislinke."
+    },
+    "export": {
+      "use": "eksport",
+      "match": ["ekspor"],
+      "note": "Ekspordi, eksportige, eksporditud."
+    },
+    "import": {
+      "use": "import",
+      "match": ["impor"]
+    },
+    "private": {
+      "use": "privaatne",
+      "match": ["privaat"]
+    },
+    "this device": {
+      "use": "see seade",
+      "match": ["seade", "seadme"],
+      "note": "selles seadmes, sellest seadmest, sellesse seadmesse."
+    },
+    "capacity": {
+      "use": "mahutavus",
+      "match": ["mahutavus"]
+    },
+    "checks": {
+      "use": "kontrollid",
+      "match": ["kontroll"]
+    },
+    "annotation": {
+      "use": "annotatsioon",
+      "match": ["annotatsioon"]
+    }
+  }
+}

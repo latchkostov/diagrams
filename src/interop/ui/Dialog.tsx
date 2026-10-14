@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Glyph } from "./glyphs";
+import { t } from "../../i18n";
 
 /** Modal shell shared by the share / embed / paste / page-picker dialogs. */
 export function Dialog({
@@ -109,7 +110,7 @@ export function Dialog({
           <button
             className="icon-btn ix-dialog-close"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.close")}
             data-testid={`${testId}-close`}
           >
             <Glyph name="close" size={14} />

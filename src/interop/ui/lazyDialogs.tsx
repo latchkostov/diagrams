@@ -1,6 +1,7 @@
 import { lazyComponent, LOAD_FAILED, type Placeholder } from "../../lib/lazyLoad";
 import { Dialog } from "./Dialog";
 import { LINKS_OFF_MESSAGE } from "../../lib/deployment";
+import { t } from "../../i18n";
 
 // The import / export dialogs load the first time one opens, or earlier: when the File menu opens, or once
 // the app is idle (preloadDialogs). None of them is part of the first view.
@@ -10,20 +11,20 @@ import { LINKS_OFF_MESSAGE } from "../../lib/deployment";
  * or Close cancel it (the dialog then never appears), saying it's loading; or, if the download failed,
  * saying so with Retry.
  */
-export function loadingDialog<P extends { onClose: () => void }>(title: string): Placeholder<P> {
+export function loadingDialog<P extends { onClose: () => void }>(title: string | (() => string)): Placeholder<P> {
   return ({ onClose }, { failed, retry }) => (
     <Dialog
-      title={title}
+      title={typeof title == "string" ? title : title()}
       testId="lazy-dialog"
       onClose={onClose}
       footer={
         failed && (
           <>
             <button className="btn" onClick={onClose} data-testid="lazy-dialog-cancel">
-              Close
+              {t("common.close")}
             </button>
             <button className="btn btn-primary" onClick={retry} data-testid="lazy-dialog-retry">
-              Retry
+              {t("common.retry")}
             </button>
           </>
         )
@@ -35,7 +36,7 @@ export function loadingDialog<P extends { onClose: () => void }>(title: string):
         </p>
       ) : (
         <p role="status" className="ix-lazy-status" data-testid="lazy-dialog-loading">
-          Loading…
+          {t("common.loading")}
         </p>
       )}
     </Dialog>
@@ -64,7 +65,7 @@ export const EmbedDialog = lazyComponent(
 /** File ▸ Share…: every way out, safest first; each of its rows opens one of the dialogs here, or saves the file. */
 export const ShareChooserDialog = lazyComponent(
   () => import("./ShareChooser").then((m) => m.ShareChooser),
-  loadingDialog("Share"),
+  loadingDialog(() => t("share.title")),
 );
 export const ImageDialog = lazyComponent(
   () => import("./dialogs").then((m) => m.ImageDialog),
@@ -84,11 +85,11 @@ export const PagesDialog = lazyComponent(
 );
 export const PrivacyDialog = lazyComponent(
   () => import("./dialogs").then((m) => m.PrivacyDialog),
-  loadingDialog("Private diagram"),
+  loadingDialog(() => t("privateDialog.title")),
 );
 export const ClearDeviceDialog = lazyComponent(
   () => import("./dialogs").then((m) => m.ClearDeviceDialog),
-  loadingDialog("Clear everything"),
+  loadingDialog(() => t("clear.loadingTitle")),
 );
 /** File ▸ Export as ▸ Interactive HTML… (src/export): the template itself downloads only when it opens. */
 export const HtmlExportDialog = lazyComponent(

@@ -57,6 +57,8 @@ interface Props {
 
 const MARGIN = 8;
 const HOVER_DELAY = 120;
+/** A right-to-left language (src/i18n): menus open from the trigger's other edge, submenus to the left. */
+const rtl = () => document.documentElement.dir === "rtl";
 
 export function Menu({ label, trigger, entries, testId, onOpen, width = 300 }: Props) {
   const [open, setOpen] = useState(false);
@@ -79,9 +81,9 @@ export function Menu({ label, trigger, entries, testId, onOpen, width = 300 }: P
     if (open) return close();
     if (!triggerEl) return;
     onOpen?.();
-    // Right-aligned under the trigger, kept on screen.
+    // Aligned with the trigger's end edge (its right; its left in a right-to-left language), kept on screen.
     const r = triggerEl.getBoundingClientRect();
-    const left = Math.min(Math.max(MARGIN, r.right - width), window.innerWidth - width - MARGIN);
+    const left = Math.min(Math.max(MARGIN, rtl() ? r.left : r.right - width), window.innerWidth - width - MARGIN);
     setPos({ top: r.bottom + 6, left });
     setViaKeyboard(e.detail === 0);
     setOpen(true);
@@ -166,6 +168,7 @@ function MenuPanel({
     const h = el.offsetHeight;
     let l = left;
     if (parentLeft !== undefined && l + width > window.innerWidth - MARGIN) l = parentLeft - width + 4;
+    if (parentLeft !== undefined && l < MARGIN) l = parentLeft + width - 4;
     setPlace({ top: Math.max(MARGIN, Math.min(top, window.innerHeight - h - MARGIN)), left: Math.max(MARGIN, l) });
   }, [top, left, width, parentLeft]);
 
@@ -196,10 +199,13 @@ function MenuPanel({
     if (e.key === "Escape") {
       e.preventDefault();
       onBack();
-    } else if (e.key === "ArrowLeft" && parentLeft !== undefined) {
+    } else if (e.key === (rtl() ? "ArrowRight" : "ArrowLeft") && parentLeft !== undefined) {
       e.preventDefault();
       onBack();
-    } else if ((e.key === "ArrowRight" || e.key === "Enter" || e.key === " ") && subIndex !== undefined) {
+    } else if (
+      (e.key === (rtl() ? "ArrowLeft" : "ArrowRight") || e.key === "Enter" || e.key === " ") &&
+      subIndex !== undefined
+    ) {
       e.preventDefault();
       openSub(Number(subIndex));
     } else if (e.key === "ArrowDown") go(i + 1);
@@ -300,7 +306,7 @@ function MenuPanel({
           label={subEntry.title}
           entries={subEntry.submenu()}
           top={sub.top}
-          left={place.left + width - 4}
+          left={rtl() ? place.left - width + 4 : place.left + width - 4}
           parentLeft={place.left}
           width={width}
           testId={subEntry.submenuTestId ?? `${subEntry.testId}-menu`}

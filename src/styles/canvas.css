@@ -1329,7 +1329,7 @@
 .present-bar {
   position: absolute;
   top: 24px;
-  right: 24px;
+  inset-inline-end: 24px;
   z-index: 6;
   display: flex;
   gap: 8px;
@@ -1359,7 +1359,8 @@
   align-items: center;
   gap: 8px;
   height: 34px;
-  padding: 0 8px 0 12px;
+  padding-block: 0;
+  padding-inline: 12px 8px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--surface);
@@ -2152,7 +2153,8 @@ select.insp-input {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 12px 12px 18px;
+  padding-block: 12px;
+  padding-inline: 18px 12px;
   border-bottom: 1px solid var(--line);
   color: var(--text-2);
 }
@@ -2206,16 +2208,25 @@ select.insp-input {
   border-bottom: 1px dashed var(--line);
 }
 
+/* A key combination never wraps; a long gesture ("Drag a node across a boundary's edge", longer still in German) does. */
 .sc-keys {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 4px;
-  flex: none;
+  flex: 0 1 auto;
 }
 
 .sc-keys kbd {
   font-size: 11px;
   padding: 3px 6px;
   color: var(--text-2);
+  white-space: nowrap;
+}
+
+.sc-keys kbd[data-gesture] {
+  white-space: normal;
+  text-align: end;
 }
 
 .palette-foot kbd {
@@ -2345,7 +2356,7 @@ select.insp-input {
   background: transparent;
   color: inherit;
   font: inherit;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -3457,4 +3468,18 @@ select.insp-input {
 .check-marker.is-hot svg,
 .check-marker.is-hot::before {
   scale: 1.35;
+}
+
+/*
+ * A right-to-left language (src/i18n): the chrome mirrors, the diagram doesn't. The flow keeps its own direction
+ * (its coordinates, arrows and handles are the diagram's, not the page's), and the start card's chevrons point the
+ * way they lead.
+ */
+[dir="rtl"] .react-flow {
+  direction: ltr;
+}
+
+[dir="rtl"] .start-example > svg:last-child,
+[dir="rtl"] .start-all svg {
+  transform: scaleX(-1);
 }

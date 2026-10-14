@@ -30,6 +30,7 @@ import { copyText } from "./copyText";
 import { Glyph } from "./glyphs";
 import { clearDevice } from "../../lib/clearDevice";
 import { toast } from "./toast";
+import { t, useLocale } from "../../i18n";
 
 const kb = (n: number) => (n < 1024 ? `${n} characters` : `${(n / 1024).toFixed(1)}k characters`);
 
@@ -726,10 +727,11 @@ export function OpenLinkDialog({ onOpen, onClose }: { onOpen: (input: string) =>
  * File ▸ Privacy ▸ Private diagram open it). Keeping it private is the default button.
  */
 export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; onClose: () => void }) {
+  useLocale();
   return (
     <Dialog
-      title="Private diagram"
-      subtitle="It stays on this device. To share it, export Interactive HTML or the diagram file."
+      title={t("privateDialog.title")}
+      subtitle={t("privateDialog.subtitle")}
       icon={<Glyph name="lock" />}
       onClose={onClose}
       testId="privacy-dialog"
@@ -737,24 +739,24 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
       footer={
         <>
           <a className="link-btn" href="privacy.html" target="_blank" rel="noopener" data-testid="privacy-dialog-more">
-            How privacy works
+            {t("privateDialog.more")}
           </a>
           <span className="ix-grow" />
           <button className="btn" onClick={onTurnOff} data-testid="privacy-turn-off">
-            Make not private
+            {t("privateDialog.turnOff")}
           </button>
           <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="privacy-keep">
-            Keep private
+            {t("privateDialog.keep")}
           </button>
         </>
       }
     >
       <ul className="ix-privacy-list" data-testid="privacy-dialog-list">
-        <li>No share links; embeds only where your own app supplies it</li>
-        <li>No saves to cloud storage</li>
-        <li>No AI: agents, Copy for AI and copied prompts can&apos;t read it</li>
+        <li>{t("privateDialog.noLinks")}</li>
+        <li>{t("privateDialog.noCloud")}</li>
+        <li>{t("privateDialog.noAi")}</li>
       </ul>
-      <p className="ix-muted">Made not private, it can be shared, saved to the cloud and read by AI again.</p>
+      <p className="ix-muted">{t("privateDialog.after")}</p>
     </Dialog>
   );
 }
@@ -764,12 +766,13 @@ export function PrivacyDialog({ onTurnOff, onClose }: { onTurnOff: () => void; o
  * Cancel is the default button.
  */
 export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
+  useLocale();
   // The wipe's code comes with this dialog: confirming clears at once, with nothing left to download (so nothing to
   // cancel, or to fail, after the click).
   return (
     <Dialog
-      title="Clear everything on this device?"
-      subtitle="Live Diagrams forgets everything it keeps in this browser, then starts over."
+      title={t("clear.title")}
+      subtitle={t("clear.subtitle")}
       icon={<Glyph name="alert" />}
       onClose={onClose}
       testId="clear-device-dialog"
@@ -778,23 +781,20 @@ export function ClearDeviceDialog({ onClose }: { onClose: () => void }) {
         <>
           <span className="ix-grow" />
           <button className="btn btn-danger" onClick={clearDevice} data-testid="clear-device-confirm">
-            Clear everything
+            {t("clear.confirm")}
           </button>
           <button className="btn btn-primary" onClick={onClose} data-autofocus data-testid="clear-device-cancel">
-            Cancel
+            {t("common.cancel")}
           </button>
         </>
       }
     >
       <ul className="ix-privacy-list" data-testid="clear-device-list">
-        <li>Every diagram in Your diagrams, private ones included, and your edits to examples</li>
-        <li>A diagram opened from a link, AI conversations, and where files were saved</li>
-        <li>Your settings</li>
+        <li>{t("clear.diagrams")}</li>
+        <li>{t("clear.links")}</li>
+        <li>{t("clear.settings")}</li>
       </ul>
-      <p className="ix-muted">
-        Files you saved or exported, and copies in Google Drive, OneDrive or Dropbox, stay where they are. This
-        can&apos;t be undone. Other tabs of Live Diagrams start over too.
-      </p>
+      <p className="ix-muted">{t("clear.stays")}</p>
     </Dialog>
   );
 }

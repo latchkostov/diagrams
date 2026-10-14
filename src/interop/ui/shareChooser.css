@@ -22,7 +22,7 @@
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--text);
-  text-align: left;
+  text-align: start;
 }
 
 .ix-share-option:hover,
@@ -115,13 +115,13 @@
   gap: 6px;
   align-self: flex-start;
   padding: 4px 6px;
-  margin-left: -6px;
+  margin-inline-start: -6px;
   border: 0;
   border-radius: 6px;
   background: none;
   color: var(--text-2);
   font-size: 12.5px;
-  text-align: left;
+  text-align: start;
 }
 
 .ix-share-public-toggle strong {
@@ -157,4 +157,9 @@
   .ix-share-hint {
     display: none;
   }
+}
+
+/* A right-to-left language: the folded chevron points the way the row reads. */
+[dir="rtl"] .ix-share-public-toggle:not([aria-expanded="true"]) svg {
+  transform: scaleX(-1);
 }

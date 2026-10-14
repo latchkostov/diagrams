@@ -1,0 +1,179 @@
+{
+  "language": "fi",
+  "register": "No pronoun: the imperative for commands and instructions (Tallenna, Avaa), passive or impersonal forms in descriptions",
+  "quotes": "”…”",
+  "notes": [
+    "Commands are imperatives (Tallenna, Vie, Tuo), as Microsoft's Finnish UI; no sinä/te.",
+    "Export is Vie and import is Tuo, Microsoft's Finnish words.",
+    "Keep labels short: prefer a short compound or a colon over a long inflected phrase.",
+    "AI is tekoäly; a colour theme is teema, a topic aihe.",
+    "Your diagrams is the library name Omat kaaviot, inflected in sentences (Omiin kaavioihin)."
+  ],
+  "terms": {
+    "topic": {
+      "use": "aihe",
+      "match": ["aihe", "aihee", "topic"],
+      "note": "Microsoft's Finnish Service Bus word; developers also write topic. No clash: the colour theme is teema."
+    },
+    "queue": {
+      "use": "jono",
+      "match": ["jono"]
+    },
+    "consumer": {
+      "use": "kuluttaja",
+      "match": ["kuluttaj"]
+    },
+    "consumer group": {
+      "use": "consumer group",
+      "match": ["consumer group", "kuluttajaryhm"],
+      "keepEnglish": true,
+      "note": "Kept in English, as the research recommends; kuluttajaryhmä accepted."
+    },
+    "producer": {
+      "use": "tuottaja",
+      "match": ["tuottaj"]
+    },
+    "partition": {
+      "use": "osio",
+      "match": ["osio"]
+    },
+    "broker": {
+      "use": "broker",
+      "match": ["broker"],
+      "keepEnglish": true,
+      "note": "brokeri in running text."
+    },
+    "dead-letter queue": {
+      "use": "toimittamattomien viestien jono",
+      "match": ["toimittamattom", "dlq"]
+    },
+    "throughput": {
+      "use": "läpäisykyky",
+      "match": ["läpäisy"]
+    },
+    "latency": {
+      "use": "viive",
+      "match": ["viive", "viivee"]
+    },
+    "replica": {
+      "use": "replika",
+      "match": ["replik"]
+    },
+    "load balancer": {
+      "use": "kuormituksentasain",
+      "match": ["kuormituksentasa"]
+    },
+    "gateway": {
+      "use": "yhdyskäytävä",
+      "match": ["yhdyskäytäv"]
+    },
+    "cache": {
+      "use": "välimuisti",
+      "match": ["välimuist"]
+    },
+    "message": {
+      "use": "viesti",
+      "match": ["viest"]
+    },
+    "event": {
+      "use": "tapahtuma",
+      "match": ["tapahtum"]
+    },
+    "subscription": {
+      "use": "tilaus",
+      "match": ["tilau", "tilaukse"]
+    },
+    "offset": {
+      "use": "offset",
+      "match": ["offset"],
+      "keepEnglish": true
+    },
+    "backlog": {
+      "use": "backlog",
+      "match": ["backlog"],
+      "keepEnglish": true
+    },
+    "retry": {
+      "use": "yritä uudelleen",
+      "match": ["uudelleen"]
+    },
+    "diagram": {
+      "use": "kaavio",
+      "match": ["kaavio"],
+      "note": "Microsoft's (Visio's) Finnish word."
+    },
+    "node": {
+      "use": "solmu",
+      "match": ["solmu"]
+    },
+    "edge": {
+      "use": "yhteys",
+      "match": ["yhtey"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "yhteys, yhteyden, yhteydet, yhteyttä. A boundary's edge is its reuna."
+    },
+    "stencil": {
+      "use": "kaavain",
+      "match": ["kaavai"],
+      "note": "Visio's Finnish word (kaavain, kaavaimet)."
+    },
+    "boundary": {
+      "use": "raja",
+      "match": ["raja"]
+    },
+    "simulation": {
+      "use": "simulaatio",
+      "match": ["simulaati"]
+    },
+    "live": {
+      "use": "Live",
+      "match": ["live"],
+      "keepEnglish": true,
+      "note": "live-näkymä."
+    },
+    "present": {
+      "use": "esitys",
+      "match": ["esit"],
+      "note": "Command Esitä; the mode esitys."
+    },
+    "embed": {
+      "use": "upotus",
+      "match": ["upot"]
+    },
+    "share link": {
+      "use": "jakolinkki",
+      "match": ["jakolink"]
+    },
+    "export": {
+      "use": "vie",
+      "match": ["vie", "vienti"],
+      "note": "Microsoft's Finnish command for export."
+    },
+    "import": {
+      "use": "tuo",
+      "match": ["tuo"],
+      "note": "Microsoft's Finnish command for import."
+    },
+    "private": {
+      "use": "yksityinen",
+      "match": ["yksityi"]
+    },
+    "this device": {
+      "use": "tämä laite",
+      "match": ["laite", "laitte"],
+      "note": "tällä laitteella, tältä laitteelta, tähän laitteeseen."
+    },
+    "capacity": {
+      "use": "kapasiteetti",
+      "match": ["kapasitee"]
+    },
+    "checks": {
+      "use": "tarkistukset",
+      "match": ["tarkist"]
+    },
+    "annotation": {
+      "use": "merkintä",
+      "match": ["merkin", "merkint"]
+    }
+  }
+}

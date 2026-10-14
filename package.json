@@ -9,6 +9,7 @@
     "schemas": "node scripts/gen-schemas.mjs",
     "skill:release": "node scripts/skill-release.mjs",
     "skill:check": "node scripts/skill-release.mjs --check",
+    "i18n": "node scripts/i18n.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

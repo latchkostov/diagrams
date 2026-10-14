@@ -1,0 +1,66 @@
+{
+  "language": "sv",
+  "register": "du",
+  "quotes": "”…”",
+  "notes": [
+    "Buttons and menu items use the imperative (Spara, Stäng, Exportera PNG, Avsluta presentationen); sentences address the person with du.",
+    "Quotation marks ”…” (both closing-style); no quotes around Dina diagram: the capital D marks it as the library's name.",
+    "Developers keep topic, live, broker, offset and backlog in English; consumer group follows Microsoft's settled konsumentgrupp.",
+    "English–Swedish compounds take a hyphen (Mermaid-fil, AI-panel, draw.io-XML); a space before % (100 %).",
+    "Key names stay in English (Ctrl, Shift, Esc, Space) in this batch."
+  ],
+  "terms": {
+    "topic": {
+      "use": "topic",
+      "keepEnglish": true,
+      "match": ["topic"],
+      "avoid": ["ämne", "tema"],
+      "note": "ett topic, topics; tema is the colour theme"
+    },
+    "queue": { "use": "kö", "match": ["kö"] },
+    "consumer": { "use": "konsument", "match": ["konsument"] },
+    "consumer group": { "use": "konsumentgrupp", "match": ["konsumentgrupp"] },
+    "producer": { "use": "producent", "match": ["producent"] },
+    "partition": { "use": "partition", "match": ["partition"] },
+    "broker": { "use": "broker", "keepEnglish": true, "match": ["broker"] },
+    "dead-letter queue": {
+      "use": "kö för obeställbara meddelanden",
+      "match": ["obeställbara", "dead-letter", "dlq"],
+      "note": "short label: DLQ"
+    },
+    "throughput": { "use": "dataflöde", "match": ["dataflöde", "genomströmning"] },
+    "latency": { "use": "latens", "match": ["latens"] },
+    "replica": { "use": "replik", "match": ["replik"] },
+    "load balancer": { "use": "lastbalanserare", "match": ["lastbalanser"] },
+    "gateway": { "use": "gateway", "keepEnglish": true, "match": ["gateway"] },
+    "cache": { "use": "cache", "match": ["cache"] },
+    "message": { "use": "meddelande", "match": ["meddelande"] },
+    "event": { "use": "händelse", "match": ["händelse", "event"] },
+    "subscription": { "use": "prenumeration", "match": ["prenumeration"] },
+    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
+    "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
+    "retry": { "use": "nytt försök", "match": ["försök"], "note": "The Retry button: Försök igen" },
+    "diagram": { "use": "diagram", "match": ["diagram"] },
+    "node": { "use": "nod", "match": ["nod"], "note": "en nod, noder, noden" },
+    "edge": {
+      "use": "koppling",
+      "match": ["koppling"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary 'edge' is the boundary's kant"
+    },
+    "stencil": { "use": "stencil", "keepEnglish": true, "match": ["stencil"], "note": "en stencil, stenciler (Visio)" },
+    "boundary": { "use": "avgränsning", "match": ["avgränsning"], "avoid": ["grupp"], "note": "never grupp" },
+    "simulation": { "use": "simulering", "match": ["simuler"] },
+    "live": { "use": "live", "keepEnglish": true, "match": ["live"], "note": "livevyn" },
+    "present": { "use": "presentera", "match": ["present"], "note": "Presentera (button), presentation (the mode)" },
+    "embed": { "use": "bädda in", "match": ["bädda in", "inbädd"], "note": "en inbäddning" },
+    "share link": { "use": "delningslänk", "match": ["delningslänk"] },
+    "export": { "use": "exportera", "match": ["export"] },
+    "import": { "use": "importera", "match": ["import"] },
+    "private": { "use": "privat", "match": ["privat"], "avoid": ["konfidentiell", "hemlig"] },
+    "this device": { "use": "den här enheten", "match": ["den här enheten"], "avoid": ["lokal", "dator", "disk"] },
+    "capacity": { "use": "kapacitet", "match": ["kapacitet"] },
+    "checks": { "use": "kontroller", "match": ["kontroll"], "avoid": ["fel", "problem"] },
+    "annotation": { "use": "anteckning", "match": ["anteckning"] }
+  }
+}

@@ -43,7 +43,9 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
  * password token module (src/interop/encryptedToken.ts) became a second static importer of native and codec, the
  * bundler no longer folds them into the entry. The privacy gates (src/lib/localOnly.ts) were a preloaded chunk of
  * their own until the File menu stopped importing them (Share… replaced its link rows): the bundler folds them into
- * the entry now, one request fewer at startup for the same code.
+ * the entry now, one request fewer at startup for the same code. The i18n runtime (src/i18n/index.ts: the message
+ * lookup and the language store, about 0.3 kB) is a chunk of its own for the same reason as storage and toast: the
+ * entry and the lazy dialogs both import it.
  */
 const STARTUP_CHUNKS = [
   "annotations",
@@ -51,6 +53,7 @@ const STARTUP_CHUNKS = [
   "checks",
   "codec",
   "examples",
+  "i18n",
   "index",
   "jsx-runtime",
   "native",

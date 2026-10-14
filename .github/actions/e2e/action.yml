@@ -78,13 +78,13 @@ runs:
         locked=""
         case ",$self_host," in *,internal,*)
           VITE_E2E='' VITE_DISABLE_SHARE_LINKS=1 VITE_DISABLE_AI_TOOLS=1 VITE_PRIVATE_BY_DEFAULT=1 \
-            VITE_BRAND_NAME='Acme Diagrams (internal)' \
+            VITE_BRAND_NAME='Acme Diagrams (internal)' VITE_LOCALES=en,de \
             pnpm exec vite build --outDir tests/.output/internal-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/internal-build.log" 2>&1 &
           internal=$! ;;
         esac
         case ",$self_host," in *,locked,*)
           VITE_E2E='' VITE_DISABLE_SHARE_LINKS=1 VITE_DISABLE_LINK_OPEN=1 VITE_DISABLE_AI_TOOLS=1 VITE_DISABLE_ONDEVICE=1 \
-            VITE_PRIVATE_BY_DEFAULT=1 \
+            VITE_PRIVATE_BY_DEFAULT=1 VITE_LOCALES=en \
             pnpm exec vite build --outDir tests/.output/locked-dist --emptyOutDir --logLevel error > "$RUNNER_TEMP/locked-build.log" 2>&1 &
           locked=$! ;;
         esac

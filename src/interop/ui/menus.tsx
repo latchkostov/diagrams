@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { formatCombo } from "../../editor/shortcuts";
-import { formatAgo } from "../../lib/time";
+import { formatAgo } from "../../i18n/format";
 import { LINK_OPEN, SHARE_LINKS } from "../../lib/deployment";
 import { newDiagramsPrivate } from "../../lib/privacyPrefs";
 import type { Binding, Interop } from "../useInterop";
 import { Menu, type MenuEntry } from "./Menu";
 import { Glyph } from "./glyphs";
+import { t } from "../../i18n";
 
 type Api = Omit<Interop, "layer">;
 
@@ -38,7 +39,7 @@ export function FileMenu({
         type: "item",
         testId: "file-new",
         icon: <Glyph name="file" />,
-        title: "New diagram",
+        title: t("file.new"),
         onSelect: onNewDiagram,
       },
       ...(onLibrary
@@ -47,8 +48,8 @@ export function FileMenu({
               type: "item" as const,
               testId: "file-library",
               icon: <Glyph name="stack" />,
-              title: "Your diagrams…",
-              desc: libraryCount ? `${libraryCount} kept in this browser` : "Rename, duplicate or delete your diagrams",
+              title: t("file.library"),
+              desc: libraryCount ? t("file.libraryCount", { count: libraryCount }) : t("file.libraryEmpty"),
               onSelect: onLibrary,
             },
           ]
@@ -57,8 +58,8 @@ export function FileMenu({
         type: "item",
         testId: "file-open",
         icon: <Glyph name="folder" />,
-        title: "Open…",
-        desc: ".diagram.json, draw.io or Mermaid",
+        title: t("file.open"),
+        desc: t("file.openDesc"),
         shortcut: "Mod+O",
         onSelect: () => void api.openFile(),
       },
@@ -69,13 +70,13 @@ export function FileMenu({
         testId: "file-open-from",
         submenuTestId: "file-open-from-menu",
         icon: <Glyph name="cloud" />,
-        title: "Open from",
+        title: t("file.openFrom"),
         submenu: () => [
           {
             type: "item",
             testId: "open-from-device",
             icon: <Glyph name="device" />,
-            title: "This device…",
+            title: t("storage.thisDeviceMore"),
             shortcut: "Mod+O",
             onSelect: () => void api.openFrom("device"),
           },
@@ -94,14 +95,14 @@ export function FileMenu({
       testId: "file-import-from",
       submenuTestId: "file-import-menu",
       icon: <Glyph name="upload" />,
-      title: "Import from",
+      title: t("file.importFrom"),
       submenu: () => [
         {
           type: "item",
           testId: "import-paste",
           icon: <Glyph name="clipboard" />,
-          title: "Paste text…",
-          desc: "JSON, draw.io XML or Mermaid",
+          title: t("file.pasteText"),
+          desc: t("file.pasteTextDesc"),
           onSelect: api.openPaste,
         },
         // A copy deployed without opening links (src/lib/deployment.ts) has no row for it.
@@ -111,12 +112,12 @@ export function FileMenu({
                 type: "item" as const,
                 testId: "import-share-link",
                 icon: <Glyph name="link" />,
-                title: "Share link…",
+                title: t("file.shareLink"),
                 onSelect: api.openShareLink,
               },
             ]
           : []),
-        { type: "note", text: "Or drop a file anywhere on the page." },
+        { type: "note", text: t("file.dropNote") },
       ],
     });
     if (!canvas) return out;
@@ -127,11 +128,13 @@ export function FileMenu({
         type: "item",
         testId: "file-save",
         icon: <Glyph name="save" />,
-        title: b ? "Save" : api.fsSupported ? "Save to this device…" : "Download file",
+        title: b ? t("file.save") : api.fsSupported ? t("file.saveToDevice") : t("file.download"),
         desc: b
-          ? `To ${b.providerId === "device" ? "" : `${b.label}: `}${b.name}`
+          ? b.providerId === "device"
+            ? t("file.saveDestination", { name: b.name })
+            : t("file.saveDestinationIn", { provider: b.label, name: b.name })
           : api.fsSupported
-            ? "Works in synced cloud folders"
+            ? t("file.saveDescSynced")
             : undefined,
         shortcut: "Mod+S",
         onSelect: () => void api.save(),
@@ -144,14 +147,14 @@ export function FileMenu({
         testId: "file-save-to",
         submenuTestId: "file-save-to-menu",
         icon: <Glyph name="save" />,
-        title: "Save to",
+        title: t("file.saveTo"),
         submenu: () => [
           {
             type: "item",
             testId: "save-to-device",
             icon: <Glyph name="device" />,
-            title: api.fsSupported ? "This device…" : "This device",
-            desc: api.fsSupported ? undefined : "Downloads the file",
+            title: api.fsSupported ? t("storage.thisDeviceMore") : t("storage.thisDevice"),
+            desc: api.fsSupported ? undefined : t("file.downloadsFile"),
             shortcut: api.fsSupported ? "Mod+Shift+S" : undefined,
             onSelect: () => void api.saveTo("device"),
           },
@@ -160,7 +163,7 @@ export function FileMenu({
             testId: `save-to-${p.id}`,
             icon: <Glyph name={p.icon} />,
             title: p.label,
-            desc: api.privacy() ? "Off for private diagrams" : b?.providerId === p.id ? "Saves a new copy" : undefined,
+            desc: api.privacy() ? t("file.offForPrivate") : b?.providerId === p.id ? t("file.savesNewCopy") : undefined,
             disabled: !!api.privacy(),
             onSelect: () => void api.saveTo(p.id),
           })),
@@ -172,7 +175,7 @@ export function FileMenu({
         type: "item",
         testId: "export-save-as",
         icon: <Glyph name="save" />,
-        title: "Save as…",
+        title: t("file.saveAs"),
         shortcut: "Mod+Shift+S",
         onSelect: () => void api.saveAs(),
       });
@@ -186,9 +189,8 @@ export function FileMenu({
         type: "item",
         testId: "file-share",
         icon: <Glyph name="share" />,
-        title: "Share…",
-        desc:
-          privacy || !SHARE_LINKS ? "Files, or an embed your app supplies" : "Files, embeds and links, safest first",
+        title: t("file.share"),
+        desc: privacy || !SHARE_LINKS ? t("file.shareDescLimited") : t("file.shareDesc"),
         onSelect: api.openShareChooser,
       },
       {
@@ -196,8 +198,8 @@ export function FileMenu({
         testId: "file-privacy",
         submenuTestId: "file-privacy-menu",
         icon: <Glyph name="lock" />,
-        title: "Privacy",
-        desc: privacy ? "This diagram is private" : undefined,
+        title: t("file.privacy"),
+        desc: privacy ? t("file.privacyDesc") : undefined,
         submenu: () => privacyMenu(api),
       },
       { type: "separator" },
@@ -205,7 +207,7 @@ export function FileMenu({
         type: "item",
         testId: "export-png",
         icon: <Glyph name="image" />,
-        title: "Export PNG",
+        title: t("file.exportPng"),
         hint: "2×",
         onSelect: () => void api.exportPng({ scale: 2 }),
       },
@@ -214,7 +216,7 @@ export function FileMenu({
         testId: "file-more-formats",
         submenuTestId: "file-more-formats-menu",
         icon: <Glyph name="download" />,
-        title: "Export as",
+        title: t("file.exportAs"),
         submenu: () => exportFormats(api),
       },
     );
@@ -223,7 +225,7 @@ export function FileMenu({
 
   return (
     <Menu
-      label="File"
+      label={t("file.menu")}
       testId="file-menu"
       onOpen={api.preload}
       entries={entries}
@@ -232,11 +234,11 @@ export function FileMenu({
         <button
           className="btn"
           {...props}
-          aria-label="File"
+          aria-label={t("file.menu")}
           data-testid="file-button"
-          title="Save, open, export and share"
+          title={t("file.buttonTitle")}
         >
-          <Glyph name="file" size={14} /> <span className="label-optional">File</span>
+          <Glyph name="file" size={14} /> <span className="label-optional">{t("file.menu")}</span>
           <span className="ix-caret">
             <Glyph name="chevron-down" size={12} />
           </span>
@@ -261,11 +263,12 @@ export function SaveStatus({ binding }: { binding?: Binding }) {
     return () => window.clearInterval(t);
   }, [savedAt]);
   if (!binding) return null;
-  const text = savedAt ? `Saved to ${binding.inSentence} · ${formatAgo(savedAt)}` : `Opened from ${binding.inSentence}`;
+  const where = binding.providerId === "device" ? t("storage.thisDeviceInSentence") : binding.inSentence;
+  const text = savedAt ? t("status.savedTo", { where, ago: formatAgo(savedAt) }) : t("status.openedFrom", { where });
   return (
     <span
       className="ix-save-status"
-      title={`${binding.name}. ${formatCombo("Mod+S")} saves here again.`}
+      title={t("status.title", { name: binding.name, keys: formatCombo("Mod+S") })}
       data-testid="save-status"
       data-provider={binding.providerId}
     >
@@ -277,21 +280,11 @@ export function SaveStatus({ binding }: { binding?: Binding }) {
 /** Top-bar chip while a shared diagram is open: it's kept apart from the user's own until saved. */
 export function SharedChip({ onKeep }: { onKeep: () => void }) {
   return (
-    <div
-      className="ix-shared"
-      role="status"
-      data-testid="shared-banner"
-      title="Opened from a share link. Your edits stay in this browser."
-    >
+    <div className="ix-shared" role="status" data-testid="shared-banner" title={t("shared.title")}>
       <Glyph name="link" size={13} />
-      <span>Shared</span>
-      <button
-        className="ix-shared-keep"
-        onClick={onKeep}
-        title="Keep a copy in Your diagrams"
-        data-testid="shared-keep"
-      >
-        Save a copy
+      <span>{t("shared.chip")}</span>
+      <button className="ix-shared-keep" onClick={onKeep} title={t("shared.keepTitle")} data-testid="shared-keep">
+        {t("shared.keep")}
       </button>
     </div>
   );
@@ -304,11 +297,8 @@ function privacyMenu(api: Api): MenuEntry[] {
     {
       type: "item",
       testId: "privacy-diagram",
-      title: "Private diagram",
-      desc:
-        privacy === "local-only"
-          ? "Always private: it comes from a local-only example"
-          : "No share links, cloud saves or AI",
+      title: t("privacy.diagram"),
+      desc: privacy === "local-only" ? t("privacy.diagramAlways") : t("privacy.diagramDesc"),
       checked: !!privacy,
       checkbox: true,
       disabled: privacy === "local-only",
@@ -317,18 +307,18 @@ function privacyMenu(api: Api): MenuEntry[] {
     {
       type: "item",
       testId: "privacy-new-diagrams",
-      title: "New diagrams are private",
-      desc: "Diagrams you start or bring in from this device",
+      title: t("privacy.newDiagrams"),
+      desc: t("privacy.newDiagramsDesc"),
       checked: newDiagramsPrivate.get(),
       checkbox: true,
       onSelect: () => api.setNewDiagramsPrivate(!newDiagramsPrivate.get()),
     },
-    { type: "note", text: "To share a private diagram, export Interactive HTML." },
+    { type: "note", text: t("privacy.note") },
     { type: "separator" },
     {
       type: "item",
       testId: "privacy-clear-device",
-      title: "Clear everything on this device…",
+      title: t("privacy.clear"),
       onSelect: () => api.openClearDevice(),
     },
   ];
@@ -341,7 +331,7 @@ function exportFormats(api: Api): MenuEntry[] {
       type: "item",
       testId: "export-json",
       icon: <Glyph name="json" />,
-      title: "Diagram file",
+      title: t("export.file"),
       hint: ".diagram.json",
       onSelect: () => void api.exportNative(),
     },
@@ -349,15 +339,15 @@ function exportFormats(api: Api): MenuEntry[] {
       type: "item",
       testId: "export-image",
       icon: <Glyph name="image" />,
-      title: "Image…",
-      desc: "PNG or SVG, size and background",
+      title: t("export.image"),
+      desc: t("export.imageDesc"),
       onSelect: api.openImageOptions,
     },
     {
       type: "item",
       testId: "export-html",
       icon: <Glyph name="play" />,
-      title: "Interactive HTML…",
+      title: t("export.html"),
       hint: ".html",
       onSelect: api.openHtmlExport,
     },
@@ -365,6 +355,7 @@ function exportFormats(api: Api): MenuEntry[] {
       type: "item",
       testId: "export-drawio",
       icon: <Glyph name="drawio" />,
+      // eslint-disable-next-line local/no-literal-ui-text -- a product name
       title: "draw.io",
       hint: ".drawio",
       onSelect: () => void api.exportDrawio(),
@@ -373,7 +364,7 @@ function exportFormats(api: Api): MenuEntry[] {
       type: "item",
       testId: "export-mermaid-download",
       icon: <Glyph name="mermaid" />,
-      title: "Mermaid file",
+      title: t("export.mermaidFile"),
       hint: ".mmd",
       onSelect: () => void api.downloadMermaid(),
     },
@@ -381,7 +372,7 @@ function exportFormats(api: Api): MenuEntry[] {
       type: "item",
       testId: "export-mermaid",
       icon: <Glyph name="mermaid" />,
-      title: "Copy as Mermaid",
+      title: t("export.copyMermaid"),
       onSelect: () => void api.copyMermaid(),
     },
   ];

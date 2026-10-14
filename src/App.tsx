@@ -41,7 +41,7 @@ import {
 import { useLibrary } from "./lib/useLibrary";
 import { newDiagramsPrivate } from "./lib/privacyPrefs";
 import { Icon } from "./components/Icon";
-import { formatAgo } from "./lib/time";
+import { formatAgo } from "./i18n/format";
 import { stopStorageWrites } from "./lib/storage";
 import { lastCanvas, rememberCanvas } from "./lib/canvasBridge";
 import type { StartOptions } from "./canvas/StartCard";
@@ -54,6 +54,7 @@ import { paletteHost } from "./palette/host";
 import { lazyComponent, whenIdle } from "./lib/lazyLoad";
 import { AiMount } from "./ai/ui/AiMount";
 import { AI_PANEL } from "./lib/deployment";
+import { t, useLocale } from "./i18n";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -96,6 +97,8 @@ export function App() {
 }
 
 function MainApp() {
+  // A new language re-renders the app (the start card's lines, the picker's groups).
+  useLocale();
   const [url, setUrl] = useUrlState();
   const canvasRef = useRef<CanvasHandle>(null);
   // Your diagrams and the shared slot, re-read when they change (here or in another tab).
@@ -400,7 +403,7 @@ function MainApp() {
       .map((e) => ({
         slug: e.slug,
         title: e.title,
-        detail: `${e.nodes} ${e.nodes === 1 ? "node" : "nodes"} · edited ${formatAgo(e.updatedAt)}`,
+        detail: t("start.recentDetail", { count: e.nodes, ago: formatAgo(e.updatedAt) }),
         thumb: e.thumb,
       })),
     examples: exampleSections,

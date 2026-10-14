@@ -1,0 +1,74 @@
+{
+  "language": "pl",
+  "register": "ty (informal second person)",
+  "quotes": "„…”",
+  "notes": [
+    "Buttons and menu commands use the imperative, as Windows and macOS do in Polish (Zapisz, Eksportuj jako, Zamknij, Anuluj).",
+    "Informal second person; twoje/twój lowercase; avoid gendered past-tense forms (skończyłeś) by rephrasing.",
+    "Quotes „…”; key names stay in English.",
+    "Retry is «Ponów próbę», Redo is «Ponów», as in Windows.",
+    "AI stays AI; canvas is płótno."
+  ],
+  "terms": {
+    "topic": {
+      "use": "topic",
+      "keepEnglish": true,
+      "match": ["topic"],
+      "avoid": ["temat"],
+      "note": "Polish Kafka developers write topic (ten topic, topiki); temat is Microsoft's machine-like rendering."
+    },
+    "queue": { "use": "kolejka", "match": ["kolej"] },
+    "consumer": { "use": "konsument", "match": ["konsument"] },
+    "consumer group": { "use": "grupa konsumentów", "match": ["konsument", "consumer group"] },
+    "producer": { "use": "producent", "match": ["producent"] },
+    "partition": { "use": "partycja", "match": ["partycj"] },
+    "broker": { "use": "broker", "keepEnglish": true, "match": ["broker"] },
+    "dead-letter queue": {
+      "use": "kolejka wiadomości niedostarczonych (DLQ)",
+      "match": ["niedostarczon", "dlq"],
+      "note": "DLQ alone as the short label."
+    },
+    "throughput": { "use": "przepustowość", "match": ["przepustowoś"] },
+    "latency": { "use": "opóźnienie", "match": ["opóźnie"] },
+    "replica": { "use": "replika", "match": ["replik"] },
+    "load balancer": { "use": "load balancer", "keepEnglish": true, "match": ["load balancer"] },
+    "gateway": { "use": "brama", "match": ["bram", "gateway"], "note": "brama API." },
+    "cache": { "use": "pamięć podręczna", "match": ["podręczn", "cache"] },
+    "message": {
+      "use": "wiadomość",
+      "match": ["wiadomoś", "komunikat"],
+      "note": "A message in Live is wiadomość; the UI's own messages (language.subtitle) are komunikaty."
+    },
+    "event": { "use": "zdarzenie", "match": ["zdarze"] },
+    "subscription": { "use": "subskrypcja", "match": ["subskrypcj"] },
+    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
+    "backlog": { "use": "zaległe wiadomości", "match": ["zaległ", "backlog"] },
+    "retry": { "use": "ponów", "match": ["ponów", "ponow"], "note": "Button: Ponów próbę." },
+    "diagram": { "use": "diagram", "match": ["diagram"] },
+    "node": { "use": "węzeł", "match": ["węzeł", "węzł", "węź"], "note": "węzła, węzły, węzłów, na węźle." },
+    "edge": {
+      "use": "połączenie",
+      "match": ["połącz"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary 'edge' is the border of a boundary (krawędź), not a connection."
+    },
+    "stencil": { "use": "wzornik", "match": ["wzornik"], "note": "Visio's Polish word; the rail is «Wzorniki»." },
+    "boundary": { "use": "granica", "match": ["granic"] },
+    "simulation": { "use": "symulacja", "match": ["symulacj"] },
+    "live": { "use": "na żywo", "match": ["na żywo", "live"] },
+    "present": { "use": "prezentuj", "match": ["prezent"], "note": "Button: Prezentuj; noun: prezentacja." },
+    "embed": { "use": "osadź", "match": ["osad"], "note": "Osadź (button), osadzenie, osadzony." },
+    "share link": { "use": "link do udostępniania", "match": ["link"] },
+    "export": { "use": "eksportuj", "match": ["eksport"] },
+    "import": { "use": "importuj", "match": ["import"] },
+    "private": {
+      "use": "prywatny",
+      "match": ["prywat"],
+      "note": "Agrees with diagram (masculine): «Prywatny diagram». Never tajny or poufny."
+    },
+    "this device": { "use": "to urządzenie", "match": ["urządzen"], "note": "na tym urządzeniu, z tego urządzenia." },
+    "capacity": { "use": "pojemność", "match": ["pojemnoś"] },
+    "checks": { "use": "kontrole", "match": ["kontrol"] },
+    "annotation": { "use": "adnotacja", "match": ["adnotacj"] }
+  }
+}

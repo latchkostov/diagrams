@@ -1,0 +1,62 @@
+{
+  "language": "nb",
+  "register": "du",
+  "quotes": "«…»",
+  "notes": [
+    "Buttons and menu items use the imperative (Lagre, Lukk, Eksporter PNG, Avslutt presentasjonen); sentences address the person with du.",
+    "Quotation marks «…»; no quotes around Dine diagrammer: the capital D marks it as the library's name.",
+    "Developers keep topic, live, broker, offset, backlog and consumer group in English; KI (kunstig intelligens) for AI, as Norwegian UIs and press write it.",
+    "lenke for a link, kobling for an edge, so the two never clash; English–Norwegian compounds take a hyphen (Mermaid-fil, KI-panel, draw.io-XML).",
+    "Key names stay in English (Ctrl, Shift, Esc, Space) in this batch; a space before % (100 %)."
+  ],
+  "terms": {
+    "topic": {
+      "use": "topic",
+      "keepEnglish": true,
+      "match": ["topic"],
+      "avoid": ["emne", "tema"],
+      "note": "et topic, topics; tema is the colour theme"
+    },
+    "queue": { "use": "kø", "match": ["kø"] },
+    "consumer": { "use": "forbruker", "match": ["forbruker", "consumer"] },
+    "consumer group": { "use": "consumer group", "keepEnglish": true, "match": ["consumer group", "forbrukergruppe"] },
+    "producer": { "use": "produsent", "match": ["produsent", "producer"] },
+    "partition": { "use": "partisjon", "match": ["partisjon"] },
+    "broker": { "use": "broker", "keepEnglish": true, "match": ["broker"] },
+    "dead-letter queue": { "use": "blindkø", "match": ["blindkø", "dead-letter", "dlq"], "note": "short label: DLQ" },
+    "throughput": { "use": "gjennomstrømning", "match": ["gjennomstrømning"] },
+    "latency": { "use": "latens", "match": ["latens", "ventetid"] },
+    "replica": { "use": "replika", "match": ["replika"] },
+    "load balancer": { "use": "lastfordeler", "match": ["lastfordel", "load balancer"] },
+    "gateway": { "use": "gateway", "keepEnglish": true, "match": ["gateway"] },
+    "cache": { "use": "hurtigbuffer", "match": ["hurtigbuffer", "cache"] },
+    "message": { "use": "melding", "match": ["melding"] },
+    "event": { "use": "hendelse", "match": ["hendelse", "event"] },
+    "subscription": { "use": "abonnement", "match": ["abonnement"] },
+    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
+    "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
+    "retry": { "use": "nytt forsøk", "match": ["prøv igjen", "forsøk"], "note": "The Retry button: Prøv igjen" },
+    "diagram": { "use": "diagram", "match": ["diagram"] },
+    "node": { "use": "node", "match": ["node"], "note": "en node, noder, nodens" },
+    "edge": {
+      "use": "kobling",
+      "match": ["kobling"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary 'edge' is the boundary's kant"
+    },
+    "stencil": { "use": "sjablong", "match": ["sjablong"], "note": "en sjablong, sjablonger (Visio)" },
+    "boundary": { "use": "avgrensning", "match": ["avgrensning"], "avoid": ["gruppe"], "note": "never gruppe" },
+    "simulation": { "use": "simulering", "match": ["simuler"] },
+    "live": { "use": "live", "keepEnglish": true, "match": ["live"], "note": "livevisning" },
+    "present": { "use": "presentere", "match": ["present"], "note": "Presenter (button), presentasjon (the mode)" },
+    "embed": { "use": "bygge inn", "match": ["bygg inn", "bygge inn", "innebygg"], "note": "en innebygging" },
+    "share link": { "use": "delingslenke", "match": ["delingslenke"] },
+    "export": { "use": "eksportere", "match": ["eksport"] },
+    "import": { "use": "importere", "match": ["import"] },
+    "private": { "use": "privat", "match": ["privat"], "avoid": ["konfidensiell", "hemmelig"] },
+    "this device": { "use": "denne enheten", "match": ["denne enheten"], "avoid": ["lokal", "datamaskin", "disk"] },
+    "capacity": { "use": "kapasitet", "match": ["kapasitet"] },
+    "checks": { "use": "kontroller", "match": ["kontroll"], "avoid": ["feil", "problemer"] },
+    "annotation": { "use": "merknad", "match": ["merknad"] }
+  }
+}

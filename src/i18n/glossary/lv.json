@@ -1,0 +1,175 @@
+{
+  "language": "lv",
+  "register": "jūs (formal plural, lowercase) in sentences; buttons and menu commands in the infinitive (Saglabāt, Atvērt), as Microsoft's Latvian UI",
+  "quotes": "„…”",
+  "notes": [
+    "Commands are infinitives (Saglabāt, Atvērt, Eksportēt); sentences address the person as jūs (nometiet, eksportējiet).",
+    "Topic is tēma, so the colour theme is motīvs (Gaišais motīvs), never tēma.",
+    "AI is MI (mākslīgais intelekts).",
+    "Plurals: zero (0, 10-20…), one (1, 21…), other.",
+    "Your diagrams is the library name Jūsu diagrammas everywhere."
+  ],
+  "terms": {
+    "topic": {
+      "use": "tēma",
+      "match": ["tēm"],
+      "note": "The research's rendering. The colour theme is motīvs to keep tēma for topics."
+    },
+    "queue": {
+      "use": "rinda",
+      "match": ["rind"]
+    },
+    "consumer": {
+      "use": "patērētājs",
+      "match": ["patērētāj"]
+    },
+    "consumer group": {
+      "use": "consumer group",
+      "match": ["consumer group", "patērētāju grup"],
+      "keepEnglish": true
+    },
+    "producer": {
+      "use": "ražotājs",
+      "match": ["ražotāj"]
+    },
+    "partition": {
+      "use": "nodalījums",
+      "match": ["nodalījum"]
+    },
+    "broker": {
+      "use": "brokeris",
+      "match": ["broker"]
+    },
+    "dead-letter queue": {
+      "use": "nenosūtāmo ziņojumu rinda",
+      "match": ["nenosūtām", "dlq"]
+    },
+    "throughput": {
+      "use": "caurlaidspēja",
+      "match": ["caurlaid"]
+    },
+    "latency": {
+      "use": "latentums",
+      "match": ["latent", "aizkav"]
+    },
+    "replica": {
+      "use": "replika",
+      "match": ["replik"]
+    },
+    "load balancer": {
+      "use": "slodzes līdzsvarotājs",
+      "match": ["slodzes līdzsvarot"]
+    },
+    "gateway": {
+      "use": "vārteja",
+      "match": ["vārtej"]
+    },
+    "cache": {
+      "use": "kešatmiņa",
+      "match": ["kešatmiņ"]
+    },
+    "message": {
+      "use": "ziņojums",
+      "match": ["ziņojum"]
+    },
+    "event": {
+      "use": "notikums",
+      "match": ["notikum"]
+    },
+    "subscription": {
+      "use": "abonements",
+      "match": ["abonement"]
+    },
+    "offset": {
+      "use": "offset",
+      "match": ["offset", "nobīd"],
+      "keepEnglish": true
+    },
+    "backlog": {
+      "use": "backlog",
+      "match": ["backlog"],
+      "keepEnglish": true
+    },
+    "retry": {
+      "use": "mēģināt vēlreiz",
+      "match": ["vēlreiz", "atkārto"]
+    },
+    "diagram": {
+      "use": "diagramma",
+      "match": ["diagramm"]
+    },
+    "node": {
+      "use": "mezgls",
+      "match": ["mezgl"]
+    },
+    "edge": {
+      "use": "savienojums",
+      "match": ["savienojum"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "A boundary's edge is its mala."
+    },
+    "stencil": {
+      "use": "trafarets",
+      "match": ["trafaret"],
+      "note": "Visio's Latvian word."
+    },
+    "boundary": {
+      "use": "robeža",
+      "match": ["robež"]
+    },
+    "simulation": {
+      "use": "simulācija",
+      "match": ["simulācij"]
+    },
+    "live": {
+      "use": "Live",
+      "match": ["live"],
+      "keepEnglish": true,
+      "note": "Live skats."
+    },
+    "present": {
+      "use": "prezentācija",
+      "match": ["prezent"],
+      "note": "Command Prezentēt."
+    },
+    "embed": {
+      "use": "iegulšana",
+      "match": ["iegul"],
+      "note": "Command Iegult, as Microsoft."
+    },
+    "share link": {
+      "use": "koplietošanas saite",
+      "match": ["koplietošanas sai"],
+      "note": "Genitive plural saišu."
+    },
+    "export": {
+      "use": "eksportēt",
+      "match": ["eksport"]
+    },
+    "import": {
+      "use": "importēt",
+      "match": ["import"]
+    },
+    "private": {
+      "use": "privāts",
+      "match": ["privāt"]
+    },
+    "this device": {
+      "use": "šī ierīce",
+      "match": ["ierīc"],
+      "note": "šajā ierīcē, no šīs ierīces."
+    },
+    "capacity": {
+      "use": "kapacitāte",
+      "match": ["kapacitāt"]
+    },
+    "checks": {
+      "use": "pārbaudes",
+      "match": ["pārbaud"]
+    },
+    "annotation": {
+      "use": "anotācija",
+      "match": ["anotācij"]
+    }
+  }
+}

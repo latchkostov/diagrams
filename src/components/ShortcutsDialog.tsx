@@ -1,48 +1,91 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { formatCombo, SHORTCUTS, type Shortcut } from "../editor/shortcuts";
+import { formatCombo, SHORTCUTS, type Shortcut, type ShortcutId } from "../editor/shortcuts";
 import { Icon } from "./Icon";
 import { AI_PANEL, AI_TOOLS } from "../lib/deployment";
+import { msg, t, useLocale } from "../i18n";
 
 const GROUPS: Shortcut["group"][] = ["Edit", "Clipboard", "Selection", "View", "Help"];
 
-const MOUSE: [string, string][] = [
-  ["Right-click", "Context menu for the canvas, a node, an edge or a boundary"],
-  ["Double-click canvas", "Quick-add a stencil at the cursor"],
-  ["Double-click node / edge", "Rename / edit label"],
-  ["Drag on the canvas", "Select what the box touches; Shift adds"],
-  ["Ctrl / ⌘ + drag on the canvas", "Select only what's inside"],
-  ["Shift / Ctrl / ⌘ + click", "Add to or take from the selection"],
-  ["Scroll, two-finger swipe", "Pan (Shift + scroll: sideways)"],
-  ["Ctrl / ⌘ + scroll, pinch", "Zoom"],
-  ["Space + drag, middle-drag", "Pan from anywhere"],
-  ["Drag from a handle", "Connect; on empty canvas, add a node"],
-  ["Click a selected node's +", "Add the next node, connected"],
-  ["Drag a selected edge's end", "Move that end to another node"],
-  ["Hold a node or stencil on an edge", "Drop to insert it there"],
-  ["Drag a node", "Lines up with others and equal gaps"],
-  ["Ctrl / ⌘ while dragging", "Move freely, no snapping"],
-  ["Alt + drag", "Duplicate"],
-  ["Drag a node across a boundary's edge", "Join it (lit) or leave it (dashed)"],
-  ["Drag a boundary's corner", "Resize; takes in what's now inside"],
+type Row = [keys: string, does: () => string];
+
+/** The sheet's words for each group and shortcut (the table's own labels are for code, not people). */
+const GROUP_NAMES: Record<Shortcut["group"], () => string> = {
+  Edit: msg("shortcuts.group.edit"),
+  Clipboard: msg("shortcuts.group.clipboard"),
+  Selection: msg("shortcuts.group.selection"),
+  View: msg("shortcuts.group.view"),
+  Help: msg("shortcuts.group.help"),
+};
+const LABELS: Record<ShortcutId, () => string> = {
+  undo: msg("shortcuts.undo"),
+  redo: msg("shortcuts.redo"),
+  rename: msg("shortcuts.rename"),
+  delete: msg("shortcuts.delete"),
+  duplicate: msg("shortcuts.duplicate"),
+  group: msg("shortcuts.group"),
+  "add-text": msg("shortcuts.addText"),
+  "add-next": msg("shortcuts.addNext"),
+  "clone-next": msg("shortcuts.cloneNext"),
+  copy: msg("shortcuts.copy"),
+  cut: msg("shortcuts.cut"),
+  paste: msg("shortcuts.paste"),
+  "select-all": msg("shortcuts.selectAll"),
+  nudge: msg("shortcuts.nudge"),
+  "nudge-far": msg("shortcuts.nudgeFar"),
+  "select-next": msg("shortcuts.selectNext"),
+  "select-prev": msg("shortcuts.selectPrev"),
+  "select-toward": msg("shortcuts.selectToward"),
+  "select-edge-out": msg("shortcuts.selectEdgeOut"),
+  "select-edge-in": msg("shortcuts.selectEdgeIn"),
+  escape: msg("shortcuts.escape"),
+  "fit-view": msg("shortcuts.fitView"),
+  "zoom-selection": msg("shortcuts.zoomSelection"),
+  "zoom-100": msg("shortcuts.zoom100"),
+  "command-palette": msg("shortcuts.commandPalette"),
+  shortcuts: msg("shortcuts.shortcuts"),
+};
+
+const MOUSE: [gesture: () => string, does: () => string][] = [
+  [msg("shortcuts.mouse.rightClick"), msg("shortcuts.mouse.rightClick.does")],
+  [msg("shortcuts.mouse.doubleCanvas"), msg("shortcuts.mouse.doubleCanvas.does")],
+  [msg("shortcuts.mouse.doubleNode"), msg("shortcuts.mouse.doubleNode.does")],
+  [msg("shortcuts.mouse.drag"), msg("shortcuts.mouse.drag.does")],
+  [msg("shortcuts.mouse.modDrag"), msg("shortcuts.mouse.modDrag.does")],
+  [msg("shortcuts.mouse.modClick"), msg("shortcuts.mouse.modClick.does")],
+  [msg("shortcuts.mouse.scroll"), msg("shortcuts.mouse.scroll.does")],
+  [msg("shortcuts.mouse.zoom"), msg("shortcuts.mouse.zoom.does")],
+  [msg("shortcuts.mouse.pan"), msg("shortcuts.mouse.pan.does")],
+  [msg("shortcuts.mouse.handle"), msg("shortcuts.mouse.handle.does")],
+  [msg("shortcuts.mouse.plus"), msg("shortcuts.mouse.plus.does")],
+  [msg("shortcuts.mouse.edgeEnd"), msg("shortcuts.mouse.edgeEnd.does")],
+  [msg("shortcuts.mouse.insert"), msg("shortcuts.mouse.insert.does")],
+  [msg("shortcuts.mouse.dragNode"), msg("shortcuts.mouse.dragNode.does")],
+  [msg("shortcuts.mouse.free"), msg("shortcuts.mouse.free.does")],
+  [msg("shortcuts.mouse.altDrag"), msg("shortcuts.mouse.altDrag.does")],
+  [msg("shortcuts.mouse.boundary"), msg("shortcuts.mouse.boundary.does")],
+  [msg("shortcuts.mouse.resize"), msg("shortcuts.mouse.resize.does")],
 ];
 
 /** Inline editors: every text box on the canvas follows the same keys (src/components/editKeys.ts). */
-const TEXT: [string, string][] = [
-  ["Enter", "Save (a text or note: new line)"],
-  ["Mod+Enter", "Save a text or note"],
-  ["Tab", "Next field (label, subtitle), then save"],
-  ["Esc", "Save and close; Ctrl+Z takes it back"],
+const TEXT: Row[] = [
+  ["Enter", msg("shortcuts.text.enter")],
+  ["Mod+Enter", msg("shortcuts.text.modEnter")],
+  ["Tab", msg("shortcuts.text.tab")],
+  ["Esc", () => t("shortcuts.text.esc", { undo: formatCombo("Mod+Z") })],
 ];
 
 /** The File menu's keys (src/interop/ui/menus.tsx), shown there beside Open…, Save and Save to ▸ This device…. */
-const FILE: [string, string][] = [
-  ["Mod+O", "Open a file from this device"],
-  ["Mod+S", "Save (back to where the diagram came from)"],
-  ["Mod+Shift+S", "Save to this device as a new file"],
+const FILE: Row[] = [
+  ["Mod+O", msg("shortcuts.file.open")],
+  ["Mod+S", msg("shortcuts.file.save")],
+  ["Mod+Shift+S", msg("shortcuts.file.saveAs")],
 ];
 
-/** Live view and presenting keys (handled by the live view and the app, not the editor). */
+/**
+ * Live view and presenting keys (handled by the live view and the app, not the editor). Their words wait for the
+ * live view's batch (docs/I18N.md): its wording is changing.
+ */
 const LIVE: [string, string][] = [
   ["L", "Go live / back to editing"],
   ["Drag", "Pan the canvas"],
@@ -54,15 +97,15 @@ const LIVE: [string, string][] = [
 ];
 
 /** The AI panel (AiMount opens it; Advanced handles the rest). Advanced only with AI tools (src/lib/deployment.ts). */
-const AI: [string, string][] = [
-  ["Mod+I", "Show the AI panel and focus it; from inside it, hide it"],
+const AI: Row[] = [
+  ["Mod+I", msg("shortcuts.ai.panel")],
   ...(AI_TOOLS
     ? ([
-        ["Mod+Shift+M", "Dictate in Advanced, or stop dictating"],
-        ["Mod+Enter", "Apply the reply pasted in Advanced"],
-      ] as [string, string][])
+        ["Mod+Shift+M", msg("shortcuts.ai.dictate")],
+        ["Mod+Enter", msg("shortcuts.ai.apply")],
+      ] as Row[])
     : []),
-  ["Esc", "Stop dictating, then back to the canvas"],
+  ["Esc", msg("shortcuts.ai.esc")],
 ];
 
 function displayKeys(s: Shortcut): string[] {
@@ -76,6 +119,7 @@ function displayKeys(s: Shortcut): string[] {
 
 /** Keyboard cheat sheet, opened with `?`. */
 export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
+  useLocale();
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
@@ -146,18 +190,23 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
       >
         <header className="dlg-head">
           <Icon name="keyboard" />
-          <h2 id="shortcuts-title">Keyboard shortcuts</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="Close" data-testid="shortcuts-dialog-close">
+          <h2 id="shortcuts-title">{t("shortcuts.title")}</h2>
+          <button
+            className="icon-btn"
+            onClick={onClose}
+            aria-label={t("common.close")}
+            data-testid="shortcuts-dialog-close"
+          >
             <Icon name="close" size={14} />
           </button>
         </header>
         <div className="dlg-body sc-grid">
           {GROUPS.map((g) => (
             <section key={g}>
-              <h3>{g}</h3>
+              <h3>{GROUP_NAMES[g]()}</h3>
               {SHORTCUTS.filter((s) => s.group === g).map((s) => (
                 <div key={s.id} className="sc-row">
-                  <span>{s.label}</span>
+                  <span>{LABELS[s.id]()}</span>
                   <span className="sc-keys">
                     {displayKeys(s).map((k) => (
                       <kbd key={k}>{k}</kbd>
@@ -168,10 +217,10 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             </section>
           ))}
           <section>
-            <h3>Editing text</h3>
+            <h3>{t("shortcuts.group.text")}</h3>
             {TEXT.map(([k, v]) => (
               <div key={k} className="sc-row">
-                <span>{v.replace("Ctrl+Z", formatCombo("Mod+Z"))}</span>
+                <span>{v()}</span>
                 <span className="sc-keys">
                   <kbd>{formatCombo(k)}</kbd>
                 </span>
@@ -179,10 +228,10 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             ))}
           </section>
           <section>
-            <h3>File</h3>
+            <h3>{t("shortcuts.group.file")}</h3>
             {FILE.map(([k, v]) => (
               <div key={k} className="sc-row">
-                <span>{v}</span>
+                <span>{v()}</span>
                 <span className="sc-keys">
                   <kbd>{formatCombo(k)}</kbd>
                 </span>
@@ -190,7 +239,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             ))}
           </section>
           <section>
-            <h3>Live and presenting</h3>
+            <h3>{t("shortcuts.group.live")}</h3>
             {LIVE.map(([k, v]) => (
               <div key={k} className="sc-row">
                 <span>{v}</span>
@@ -202,10 +251,10 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           </section>
           {AI_PANEL && (
             <section>
-              <h3>AI panel</h3>
+              <h3>{t("shortcuts.group.ai")}</h3>
               {AI.map(([k, v]) => (
                 <div key={k} className="sc-row">
-                  <span>{v}</span>
+                  <span>{v()}</span>
                   <span className="sc-keys">
                     <kbd>{formatCombo(k)}</kbd>
                   </span>
@@ -214,21 +263,21 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
             </section>
           )}
           <section>
-            <h3>Mouse</h3>
-            {MOUSE.map(([k, v]) => (
-              <div key={k} className="sc-row">
-                <span>{v}</span>
+            <h3>{t("shortcuts.group.mouse")}</h3>
+            {MOUSE.map(([gesture, does], i) => (
+              <div key={i} className="sc-row">
+                <span>{does()}</span>
                 <span className="sc-keys">
-                  <kbd>{k}</kbd>
+                  <kbd data-gesture>{gesture()}</kbd>
                 </span>
               </div>
             ))}
           </section>
         </div>
         <footer className="dlg-foot">
-          Live Diagrams is free and open source, and your diagrams stay in your browser.{" "}
+          {t("shortcuts.footer")}{" "}
           <a href="privacy.html" target="_blank" rel="noopener" data-testid="privacy-link">
-            Privacy
+            {t("shortcuts.privacy")}
           </a>
         </footer>
       </div>

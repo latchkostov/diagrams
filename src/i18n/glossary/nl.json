@@ -1,0 +1,78 @@
+{
+  "language": "nl",
+  "register": "je",
+  "quotes": "“…”",
+  "notes": [
+    "Buttons and menu items use the infinitive at the end (Opslaan, PNG exporteren, Presentatie beëindigen); sentences address the person with je.",
+    "Quotation marks “…”; no quotes around Je diagrammen: the capital J marks it as the library's name.",
+    "Developers keep topic, consumer, producer, consumer group, broker, load balancer, offset and live in English; common nouns get Dutch compounds (diagrambestand, deellink, privédiagram).",
+    "English–Dutch compounds take a hyphen (Mermaid-bestand, AI-paneel, draw.io-XML).",
+    "Key names stay in English (Ctrl, Shift, Esc, Space) in this batch."
+  ],
+  "terms": {
+    "topic": {
+      "use": "topic",
+      "keepEnglish": true,
+      "match": ["topic"],
+      "avoid": ["onderwerp", "thema"],
+      "note": "het topic, de topics; onderwerp (Microsoft) reads as a subject, thema is the colour theme"
+    },
+    "queue": { "use": "wachtrij", "match": ["wachtrij"] },
+    "consumer": { "use": "consumer", "keepEnglish": true, "match": ["consumer"], "avoid": ["consument"] },
+    "consumer group": { "use": "consumer group", "keepEnglish": true, "match": ["consumer group", "consumergroup"] },
+    "producer": { "use": "producer", "keepEnglish": true, "match": ["producer"], "avoid": ["producent"] },
+    "partition": { "use": "partitie", "match": ["partitie"] },
+    "broker": { "use": "broker", "keepEnglish": true, "match": ["broker"] },
+    "dead-letter queue": { "use": "dead-letter-wachtrij", "match": ["dead-letter", "dlq"] },
+    "throughput": { "use": "doorvoer", "match": ["doorvoer"] },
+    "latency": { "use": "latentie", "match": ["latentie"] },
+    "replica": { "use": "replica", "match": ["replica"] },
+    "load balancer": { "use": "load balancer", "keepEnglish": true, "match": ["load balancer", "loadbalancer"] },
+    "gateway": { "use": "gateway", "keepEnglish": true, "match": ["gateway"] },
+    "cache": { "use": "cache", "match": ["cache"] },
+    "message": { "use": "bericht", "match": ["bericht"] },
+    "event": { "use": "event", "keepEnglish": true, "match": ["event", "gebeurtenis"] },
+    "subscription": { "use": "abonnement", "match": ["abonnement"] },
+    "offset": {
+      "use": "offset",
+      "keepEnglish": true,
+      "match": ["offset"],
+      "avoid": ["afstand"],
+      "note": "Microsoft's Afstand (distance) is wrong"
+    },
+    "backlog": { "use": "achterstand", "match": ["achterstand", "backlog"] },
+    "retry": { "use": "nieuwe poging", "match": ["opnieuw", "poging"], "note": "The Retry button: Opnieuw proberen" },
+    "diagram": { "use": "diagram", "match": ["diagram"] },
+    "node": { "use": "knooppunt", "match": ["knooppunt"] },
+    "edge": {
+      "use": "verbinding",
+      "match": ["verbinding"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary 'edge' is the boundary's rand"
+    },
+    "stencil": {
+      "use": "stencil",
+      "keepEnglish": true,
+      "match": ["stencil"],
+      "note": "het stencil, de stencils (Visio)"
+    },
+    "boundary": {
+      "use": "grens",
+      "match": ["grens", "grenz"],
+      "avoid": ["groep"],
+      "note": "de grens, de grenzen; never groep"
+    },
+    "simulation": { "use": "simulatie", "match": ["simulatie"] },
+    "live": { "use": "live", "keepEnglish": true, "match": ["live"], "note": "liveweergave" },
+    "present": { "use": "presenteren", "match": ["present"], "note": "Presenteren (button), presentatie (the mode)" },
+    "embed": { "use": "insluiten", "match": ["insluit", "ingesloten"], "note": "de insluiting" },
+    "share link": { "use": "deellink", "match": ["deellink"] },
+    "export": { "use": "exporteren", "match": ["export", "geëxport"] },
+    "import": { "use": "importeren", "match": ["import"] },
+    "private": { "use": "privé", "match": ["privé"], "avoid": ["geheim", "vertrouwelijk"] },
+    "this device": { "use": "dit apparaat", "match": ["dit apparaat"], "avoid": ["lokaal", "computer", "schijf"] },
+    "capacity": { "use": "capaciteit", "match": ["capaciteit"] },
+    "checks": { "use": "controles", "match": ["controle"], "avoid": ["fouten", "problemen"] },
+    "annotation": { "use": "aantekening", "match": ["aantekening"] }
+  }
+}

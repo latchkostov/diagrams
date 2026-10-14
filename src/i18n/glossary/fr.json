@@ -1,0 +1,62 @@
+{
+  "language": "fr",
+  "register": "vous",
+  "quotes": "« … » (U+202F inside)",
+  "notes": [
+    "Buttons and menu items in the infinitive: Enregistrer, Ouvrir, Exporter en PNG.",
+    "Narrow non-breaking space (U+202F) before ; : ? ! and inside « »; non-breaking space between a number and its unit (50 px, 100 %, msg/s).",
+    "Typographic apostrophe ’ everywhere, never '.",
+    "Kept in English as French developers say them: le topic, le broker, l’offset; « Live » becomes « en direct »."
+  ],
+  "terms": {
+    "topic": {
+      "use": "topic",
+      "keepEnglish": true,
+      "avoid": ["rubrique", "sujet"],
+      "note": "le topic, les topics (Confluent)"
+    },
+    "queue": { "use": "file d’attente", "match": ["file d’attente", "files d’attente", "file d'attente"] },
+    "consumer": { "use": "consommateur", "match": ["consommat"] },
+    "consumer group": {
+      "use": "groupe de consommateurs",
+      "match": ["groupe de consommateurs", "groupes de consommateurs"]
+    },
+    "producer": { "use": "producteur", "match": ["product"] },
+    "partition": { "use": "partition" },
+    "broker": { "use": "broker", "keepEnglish": true, "note": "le broker" },
+    "dead-letter queue": { "use": "file de lettres mortes", "match": ["lettres mortes", "dlq"] },
+    "throughput": { "use": "débit" },
+    "latency": { "use": "latence" },
+    "replica": { "use": "réplica" },
+    "load balancer": { "use": "équilibreur de charge", "match": ["équilibreur"] },
+    "gateway": { "use": "passerelle" },
+    "cache": { "use": "cache" },
+    "message": { "use": "message" },
+    "event": { "use": "événement", "match": ["événement", "évènement"] },
+    "subscription": { "use": "abonnement" },
+    "offset": { "use": "offset", "keepEnglish": true, "note": "l’offset (m.)" },
+    "backlog": { "use": "messages en attente", "match": ["en attente", "backlog"] },
+    "retry": { "use": "réessayer", "match": ["réessa", "nouvelle tentative", "nouvelles tentatives"] },
+    "diagram": { "use": "diagramme", "match": ["diagramm"] },
+    "node": { "use": "nœud", "match": ["nœud", "noeud"] },
+    "edge": {
+      "use": "connexion",
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "The boundary's 'edge' in shortcuts.mouse.boundary is its border (bord), not a connection."
+    },
+    "stencil": { "use": "gabarit", "note": "le gabarit, as Visio's French says" },
+    "boundary": { "use": "périmètre" },
+    "simulation": { "use": "simulation" },
+    "live": { "use": "en direct", "match": ["direct"], "note": "« la vue en direct »" },
+    "present": { "use": "Présenter", "match": ["présent"] },
+    "embed": { "use": "intégrer", "match": ["intégr"], "note": "noun: une intégration" },
+    "share link": { "use": "lien de partage", "match": ["lien de partage", "liens de partage"] },
+    "export": { "use": "Exporter", "match": ["export"] },
+    "import": { "use": "Importer", "match": ["import"] },
+    "private": { "use": "privé", "match": ["privé"] },
+    "this device": { "use": "cet appareil" },
+    "capacity": { "use": "capacité" },
+    "checks": { "use": "vérifications", "match": ["vérification"] },
+    "annotation": { "use": "annotation" }
+  }
+}

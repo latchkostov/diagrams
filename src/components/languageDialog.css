@@ -1,0 +1,71 @@
+/* View ▸ Language… (LanguageDialog.tsx). Logical properties throughout: it mirrors in a right-to-left language. */
+
+.lang-search {
+  margin-block-end: 10px;
+}
+
+.lang-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-block-size: min(52vh, 420px);
+  overflow-y: auto;
+  margin-inline: -4px;
+  padding: 2px 4px;
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  inline-size: 100%;
+  padding-block: 7px;
+  padding-inline: 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text);
+  text-align: start;
+}
+
+.lang-option:hover,
+.lang-option:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.lang-option.is-on {
+  border-color: var(--line);
+  background: var(--surface-3);
+}
+
+.lang-text {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 8px;
+}
+
+.lang-own {
+  font-weight: 560;
+}
+
+.lang-here {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.lang-machine {
+  margin: 0;
+  max-inline-size: 300px;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.lang-machine a {
+  color: var(--accent);
+}

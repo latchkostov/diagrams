@@ -1,0 +1,69 @@
+{
+  "language": "sl",
+  "register": "vi (vikanje) in sentences; buttons and commands in the 2nd person singular imperative, as Microsoft Slovenian does (Shrani, Zapri)",
+  "quotes": "»…«",
+  "notes": [
+    "Buttons and menu commands in the imperative (Shrani, Izvozi, Prekliči); sentences address the person with vi.",
+    "Light/dark theme is „svetli/temni način“ (as Windows says), so „tema“ stays free for the Kafka topic.",
+    "Plural has four forms (one, two, few, other): 1 vozlišče, 2 vozlišči, 3 vozlišča, 5 vozlišč.",
+    "AI is „UI“ (umetna inteligenca), as Slovenian UIs write it; a space before % (100 %).",
+    "The {where} placeholder follows a colon (Shranjeno: ta naprava), since its case would differ per preposition."
+  ],
+  "terms": {
+    "topic": {
+      "use": "tema",
+      "match": ["tem"],
+      "note": "As the research table; the colour theme is written „način“ to avoid the clash."
+    },
+    "queue": { "use": "čakalna vrsta", "match": ["čakaln"] },
+    "consumer": { "use": "potrošnik", "match": ["potrošnik", "consumer"] },
+    "consumer group": { "use": "consumer group", "keepEnglish": true, "match": ["consumer group"] },
+    "producer": { "use": "proizvajalec", "match": ["proizvajal"] },
+    "partition": { "use": "particija", "match": ["particij"] },
+    "broker": {
+      "use": "posrednik",
+      "match": ["posrednik", "broker"],
+      "note": "broker is also accepted, as developers write it"
+    },
+    "dead-letter queue": { "use": "čakalna vrsta neuspelih sporočil", "match": ["neuspel", "dlq"] },
+    "throughput": { "use": "prepustnost", "match": ["prepustn"] },
+    "latency": { "use": "zakasnitev", "match": ["zakasnit"] },
+    "replica": { "use": "replika", "match": ["replik"] },
+    "load balancer": { "use": "izravnalnik obremenitve", "match": ["izravnalnik"] },
+    "gateway": { "use": "prehod", "match": ["prehod"] },
+    "cache": { "use": "predpomnilnik", "match": ["predpomnil"] },
+    "message": { "use": "sporočilo", "match": ["sporočil"] },
+    "event": { "use": "dogodek", "match": ["dogod"] },
+    "subscription": { "use": "naročnina", "match": ["naročnin"] },
+    "offset": { "use": "offset", "keepEnglish": true, "match": ["offset"] },
+    "backlog": { "use": "backlog", "keepEnglish": true, "match": ["backlog"] },
+    "retry": { "use": "poskusi znova", "match": ["znova", "ponov"] },
+    "diagram": { "use": "diagram", "match": ["diagram"] },
+    "node": { "use": "vozlišče", "match": ["vozlišč"] },
+    "edge": {
+      "use": "povezava",
+      "match": ["povezav"],
+      "except": ["shortcuts.mouse.boundary"],
+      "note": "In shortcuts.mouse.boundary 'edge' is the boundary's border (rob)."
+    },
+    "stencil": { "use": "šablona", "match": ["šablon"], "note": "Visio's Slovenian word" },
+    "boundary": { "use": "meja", "match": ["mej"] },
+    "simulation": { "use": "simulacija", "match": ["simulacij"] },
+    "live": { "use": "v živo", "match": ["v živo"] },
+    "present": { "use": "predstavi", "match": ["predstav"], "note": "Predstavi, predstavitev" },
+    "embed": { "use": "vdelaj", "match": ["vdel"], "note": "vdelava (noun), vdelati (verb), as Microsoft Slovenian" },
+    "share link": { "use": "povezava za skupno rabo", "match": ["za skupno rabo"] },
+    "export": { "use": "izvozi", "match": ["izvoz", "izvož"] },
+    "import": { "use": "uvozi", "match": ["uvoz", "uvož"] },
+    "private": {
+      "use": "zaseben",
+      "match": ["zaseb"],
+      "avoid": ["zaupn"],
+      "note": "zaseben diagram; zasebnost (privacy)"
+    },
+    "this device": { "use": "ta naprava", "match": ["naprav"], "avoid": ["računalnik"] },
+    "capacity": { "use": "zmogljivost", "match": ["zmogljivost"] },
+    "checks": { "use": "preverjanja", "match": ["preverjan"] },
+    "annotation": { "use": "anotacija", "match": ["anotacij"] }
+  }
+}

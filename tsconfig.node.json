@@ -4,6 +4,6 @@
     "types": ["vite/client", "node"],
     "noEmit": true
   },
-  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "vite.config.ts", "playwright.config.ts"],
+  "include": ["src/**/*.d.ts", "src/**/*.test.ts", "src/**/*.test.tsx", "vite.config.ts", "playwright.config.ts"],
   "exclude": []
 }

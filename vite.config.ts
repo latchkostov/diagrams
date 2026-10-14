@@ -7,6 +7,7 @@ import { securityHeaders } from "./scripts/security-headers";
 import { interactiveViewer } from "./scripts/interactive-viewer";
 import { deploymentSwitches } from "./scripts/deployment-env";
 import { selfHostPreviewHeaders } from "./scripts/self-host-headers";
+import { i18n } from "./scripts/i18n-plugin";
 
 /**
  * `VITE_E2E=1` builds the app for the e2e suite: a production build that keeps the dev-only test hooks
@@ -130,6 +131,8 @@ export default defineConfig({
   // Relative base so the build can be served from any sub-path (e.g. latchkostov.com/tools/diagrams/).
   base: "./",
   plugins: [
+    // Messages inlined where they're used, each language a lazy catalog (src/i18n, docs/I18N.md).
+    i18n(),
     exampleMetadataPlugin(),
     react(),
     noPrivateExamples(),
