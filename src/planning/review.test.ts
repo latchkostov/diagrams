@@ -312,6 +312,8 @@ describe("planning review regressions", () => {
     expect(hoverTop({ top: 0, bottom: 460 }, { top: 240, bottom: 312 }, 300)).toBe(12);
     expect(hoverTop({ top: 0, bottom: 800 }, { top: 100, bottom: 172 }, 300)).toBe(206);
     expect(hoverTop({ top: 0, bottom: 800 }, { top: 600, bottom: 672 }, 300)).toBe(288);
+    // Both sides fit: preserve the below-node card and its stacking over lower nodes.
+    expect(hoverTop({ top: 0, bottom: 900 }, { top: 300, bottom: 372 }, 150)).toBe(406);
   });
 
   it("standalone native validation bundles no React runtime", async () => {

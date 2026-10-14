@@ -1,5 +1,18 @@
 # Design review
 
+## Planning P1 CI UX gate (2026-10-14)
+
+The designer-agent source review found no blocking issue: no new chrome, immediate name saves and
+preserved keyboard focus, with planning refreshed after Enter, Esc or blur. Planning reads the same
+canvas revision the inspector shows, so Apply does not retain a stale imperative-store snapshot.
+
+Live callouts move clear of node targets on pan, zoom and resize without moving the diagram. Existing
+actions and focus behavior stay intact. CI's taller text layout exposed a full card that could not fit:
+a compact cause/action row now uses a free strip, including diagonal placement. The full reason remains
+in accessible text and the hover title. Below-first hover placement preserves the stacking over rings
+and badges and still flips/clamps in short viewports; full details remain in Properties. The existing
+placement fallback cannot guarantee a free spot in a completely filled canvas.
+
 ## Planning P1 round 3 UX gate (2026-10-14)
 
 The required designer-agent source review found that the work-limit message needed a recovery hint,

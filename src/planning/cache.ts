@@ -9,8 +9,12 @@ import { planningRun } from "./run";
 import { planningSignature } from "./budget";
 
 const entries = new Map<string, ReturnType<typeof compute>>();
+export const planningRunStats = { reads: 0, analyses: 0, explanations: 0 };
+if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && typeof window !== "undefined")
+  (window as unknown as { __planning: typeof planningRunStats }).__planning = planningRunStats;
 
 function compute(d: DiagramFile, state?: LiveState | null) {
+  planningRunStats.analyses++;
   const sim = planningRun(d, state);
   const status = Object.fromEntries(Object.entries(state?.snapshot.nodes ?? {}).map(([id, n]) => [id, n.status]));
   const analysis = analyzeCapacity(d, planningSimulation(d, sim), { status });
@@ -34,7 +38,10 @@ function compute(d: DiagramFile, state?: LiveState | null) {
       return rows.get(id)!;
     },
     explanation(id: string) {
-      if (!explanations.has(id)) explanations.set(id, explainNode(d, id, { sim, analysis, topology }));
+      if (!explanations.has(id)) {
+        planningRunStats.explanations++;
+        explanations.set(id, explainNode(d, id, { sim, analysis, topology }));
+      }
       return explanations.get(id);
     },
   };

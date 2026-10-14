@@ -8,21 +8,22 @@ import { withPrivacyField } from "../lib/diagramIO";
 import { downloadText } from "../interop/files";
 import { t, useLocale } from "../i18n";
 import { formatList, formatRate } from "../i18n/format";
+import type { DiagramFile } from "../model/types";
 
-export function PlanningUpgrade({ editor }: { editor: EditorApi }) {
+export function PlanningUpgrade({ editor, planning }: { editor: EditorApi; planning?: DiagramFile["planning"] }) {
   useLocale();
   const previewButton = useRef<HTMLButtonElement>(null);
   const [preview, setPreview] = useState(false);
-  const d = editor.getDiagram();
-  const next = preview && !d.planning ? upgradePlanning(d) : undefined;
-  const before = next ? analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))) : undefined;
+  const d = preview ? editor.getDiagram() : undefined;
+  const next = d && !d.planning ? upgradePlanning(d) : undefined;
+  const before = d && next ? analyzeCapacity(d, planningSimulation(d, explanationSimulation(d))) : undefined;
   const after = next ? analyzeCapacity(next, planningSimulation(next, explanationSimulation(next))) : undefined;
-  const legacy = preview && d.planning ? legacyExport(d) : undefined;
+  const legacy = d?.planning ? legacyExport(d) : undefined;
   const capacity = (value: number) => (Number.isFinite(value) ? formatRate(value) : t("planning.unlimited"));
   return (
     <section className="insp-section" data-testid="planning-model">
       <h3 className="insp-section-title">{t("planning.model")}</h3>
-      <p className="insp-note">{d.planning ? t("planning.current") : t("planning.legacy")}</p>
+      <p className="insp-note">{planning ? t("planning.current") : t("planning.legacy")}</p>
       <button
         className="link-btn"
         data-testid="planning-preview"
@@ -30,9 +31,9 @@ export function PlanningUpgrade({ editor }: { editor: EditorApi }) {
         onClick={() => setPreview(!preview)}
         aria-expanded={preview}
       >
-        {d.planning ? t("planning.legacyPreview") : t("planning.preview")}
+        {planning ? t("planning.legacyPreview") : t("planning.preview")}
       </button>
-      {next && before && after && (
+      {d && next && before && after && (
         <div data-testid="planning-upgrade-preview">
           <p>{t("planning.upgradePreview", { count: d.nodes.length })}</p>
           <ul>

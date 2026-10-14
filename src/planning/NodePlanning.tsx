@@ -1,10 +1,10 @@
-import { useContext, useSyncExternalStore } from "react";
+import { useContext, useState, useSyncExternalStore } from "react";
 import type { EditorApi } from "../editor/types";
 import type { DiagramFile } from "../model/types";
 import type { LiveState } from "../live/controller";
 import { LiveContext } from "../live/context";
 import { addConsumer } from "../live/addConsumer";
-import { configuredPlanning } from "./cache";
+import { configuredPlanning, planningRunStats } from "./cache";
 import { ExplanationView } from "./ExplanationView";
 import { planningHost } from "./host";
 import { t, useLocale } from "../i18n";
@@ -16,19 +16,42 @@ const noSubscribe = () => () => {};
 const noState = () => null;
 let fixSequence = 0;
 export function NodePlanning({
-  diagram: d,
+  diagram,
   id,
   editor,
   state: provided,
   hover = false,
+  revision,
+  paused = false,
+  counts,
+  readDiagram,
 }: {
-  diagram: DiagramFile;
+  diagram?: DiagramFile;
   id: string;
   editor?: EditorApi;
   state?: LiveState;
   hover?: boolean;
+  revision?: unknown;
+  paused?: boolean;
+  counts?: { nodes: number; edges: number };
+  readDiagram?: () => DiagramFile;
 }) {
   useLocale();
+  // Name fields save every key, but planning reads once after naming ends. Check the cheap
+  // graph-size ceiling before asking the editor to copy the whole document.
+  const read = () => {
+    if (diagram) return diagram;
+    if (!editor || (counts && (counts.nodes > 256 || counts.edges > 512))) return undefined;
+    planningRunStats.reads++;
+    return readDiagram ? readDiagram() : editor.getDiagram();
+  };
+  const key = diagram ?? revision;
+  const [snapshot, setSnapshot] = useState(() => ({ key, diagram: read() }));
+  let current = snapshot;
+  if (!paused && snapshot.key !== key) {
+    current = { key, diagram: read() };
+    setSnapshot(current);
+  }
   const context = useContext(LiveContext);
   const activeSession = useSyncExternalStore(planningHost.subscribe, planningHost.get);
   const live = context ?? activeSession;
@@ -37,8 +60,9 @@ export function NodePlanning({
     live?.controller.getState ?? noState,
   );
   const state = provided ?? subscribed;
+  const d = current.diagram ?? live?.controller.currentDiagram;
   const observed = state?.snapshot.nodes[id];
-  const configured = configuredPlanning(d, state);
+  const configured = d ? configuredPlanning(d, state) : undefined;
   if (!configured && hover)
     return (
       <div className="planning-explanation">
@@ -65,7 +89,7 @@ export function NodePlanning({
         <p className="insp-note" data-testid="planning-unavailable">
           {t("planning.analysisLimit")}
         </p>
-        {!hover && observed && <LiveDetails metrics={observed} diagram={d} />}
+        {!hover && observed && d && <LiveDetails metrics={observed} diagram={d} />}
       </>
     );
   const explanation = configured.explanation(id);
@@ -132,7 +156,7 @@ export function NodePlanning({
         </section>
       )}
       <PlanningConnections configured={configured} id={id} />
-      {observed && <LiveDetails metrics={observed} diagram={d} />}
+      {observed && d && <LiveDetails metrics={observed} diagram={d} />}
     </>
   );
 }

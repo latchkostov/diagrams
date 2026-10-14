@@ -263,6 +263,80 @@ test("P1: tall hover cards stay within a short viewport", async ({ page }) => {
     .toBe(true);
 });
 
+test("P1: naming saves each key without reading or recomputing planning", async ({ page, consoleErrors }) => {
+  await seed(page);
+  await page.getByTestId("node-orders").click();
+  await expect(page.getByTestId("planning-arithmetic")).toBeVisible();
+  await waitForStableViewport(page);
+  await page.keyboard.press("F2");
+  const label = page.getByTestId("inspector-field-label");
+  await expect(label).toBeFocused();
+  await expect(page.getByTestId("planning-arithmetic")).toBeVisible();
+  const stats = () =>
+    page.evaluate(() => ({
+      ...(window as unknown as { __planning: { reads: number; analyses: number; explanations: number } }).__planning,
+    }));
+  const before = await stats();
+  for (const ch of "Updated worker") {
+    await page.keyboard.type(ch);
+    await expect(page.getByTestId("node-orders")).toContainText(await label.inputValue());
+    expect(await stats()).toEqual(before);
+  }
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("planning-arithmetic")).toContainText("Updated worker");
+  expect((await stats()).reads).toBeGreaterThan(before.reads);
+  // Source labels also supply the default message type. Their semantic change is picked up
+  // once naming ends, and connected explanations must then use the new name.
+  await page.keyboard.press("Shift+1");
+  await waitForStableViewport(page);
+  await page.getByTestId("node-checkout").click();
+  await expect(page.getByTestId("planning-connections")).toBeVisible();
+  await waitForStableViewport(page);
+  await page.keyboard.press("F2");
+  await expect(label).toBeFocused();
+  await expect(page.getByTestId("planning-connections")).toBeVisible();
+  const sourceBefore = await stats();
+  await page.keyboard.type("New checkout");
+  expect(await stats()).toEqual(sourceBefore);
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Shift+1");
+  await waitForStableViewport(page);
+  await page.getByTestId("node-orders").click();
+  await expect(page.getByTestId("planning-contributors")).toContainText("New checkout");
+  expectNoErrors(consoleErrors);
+});
+
+test("P1: a live callout moves clear of a node panned into its footprint", async ({ page, consoleErrors }) => {
+  await page.setViewportSize({ width: 1000, height: 460 });
+  await seed(page, "many-groups", true);
+  const callout = page.getByTestId("trouble-callout");
+  await expect(callout).toBeVisible();
+  await waitForStableViewport(page);
+  const box = await callout.boundingBox(),
+    topic = await page.getByTestId("node-topic").boundingBox(),
+    pane = await page.getByTestId("canvas-wrap").boundingBox();
+  if (!box || !topic || !pane) throw new Error("Missing callout, topic or canvas");
+  await page.mouse.move(pane.x + pane.width / 2, pane.y + pane.height - 100);
+  await page.mouse.wheel(
+    topic.x + topic.width / 2 - (box.x + box.width / 2),
+    topic.y + topic.height / 2 - (box.y + box.height / 2),
+  );
+  await waitForStableViewport(page);
+  await expect
+    .poll(async () => {
+      const c = await callout.boundingBox(),
+        n = await page.getByTestId("node-topic").boundingBox();
+      return (
+        !!c && !!n && (c.x + c.width <= n.x || n.x + n.width <= c.x || c.y + c.height <= n.y || n.y + n.height <= c.y)
+      );
+    })
+    .toBe(true);
+  await page.getByTestId("node-topic").click();
+  await page.keyboard.press("F2");
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
+
 test("P1: live group details stay reachable in a short viewport", async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 460 });
   await seed(page, "many-groups", true);

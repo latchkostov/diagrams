@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Inspector } from "../canvas/Inspector";
-import { nodeToFlow } from "../canvas/convert";
+import { fromFlow, nodeToFlow } from "../canvas/convert";
 import type { DiagramFlowNode } from "../canvas/types";
 import type { EditorApi } from "../editor/types";
 
@@ -9,10 +9,11 @@ export function InspectorFocusLab() {
   const [node, setNode] = useState<DiagramFlowNode>();
   const [focus, setFocus] = useState<{ name: string; seq: number; target: string }>();
   const consumed = useRef(0);
-  const editor: Pick<EditorApi, "beginNaming" | "doneNaming" | "updateNode"> = {
+  const editor: Pick<EditorApi, "beginNaming" | "doneNaming" | "updateNode" | "getDiagram"> = {
     beginNaming: () => "lab-name",
     doneNaming: () => {},
     updateNode: (_id, patch) => setNode((n) => (n ? { ...n, data: { ...n.data, ...patch } } : n)),
+    getDiagram: () => fromFlow({ title: "Fields" }, node ? [node] : [], []),
   };
   return (
     <div>

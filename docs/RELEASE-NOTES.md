@@ -1,5 +1,16 @@
 # Release notes
 
+## Planning P1 CI fixes (2026-10-14)
+
+- Live stats cards open below nodes when there is room, flip above when needed, and keep covering
+  lower nodes, status rings and capacity badges in both themes.
+- Live callouts move clear of nodes as the canvas pans, zooms or resizes, so Properties and full
+  consumer-group details remain reachable in short viewports. When the full card cannot fit, a compact
+  row keeps its cause and action; the full reason stays available on hover and to screen readers.
+- Naming saves each key immediately while planning waits until naming ends. Diagrams beyond the
+  planning limit avoid copying the document for that readout; model previews read it only when opened.
+- The Lab's inspector-focus preset renders again and retains focus requests until the matching field mounts.
+
 ## Planning P1 round 3 fixes (2026-10-14)
 
 - Large or dense diagrams get a bounded, explicit unavailable explanation instead of blocking selection;

@@ -337,6 +337,11 @@ test("typing a label is as responsive while checks run as with them held", async
   // cost of its own (several times a keystroke's) that would land in whichever phase crosses the width.
   await label.fill(LONG);
   await label.press("End");
+  await expect(page.getByTestId("planning-unavailable")).toBeVisible();
+  const planningBefore = await page.evaluate(() => ({
+    ...(window as unknown as { __planning: { reads: number; analyses: number; explanations: number } }).__planning,
+  }));
+  expect(planningBefore.reads, "oversize planning never copies the editor document").toBe(0);
   // Opt-in, to see CI's slower machines here: CHECKS_CPU=4 slows this page's CPU fourfold.
   if (process.env.CHECKS_CPU) {
     const cdp = await page.context().newCDPSession(page);
@@ -430,6 +435,11 @@ test("typing a label is as responsive while checks run as with them held", async
   }
   await holdChecks(page, false);
   await expect(label).toHaveValue(`${LONG} h0xyz r1xyz h2xyz r3xyz`);
+  expect(
+    await page.evaluate(() => ({
+      ...(window as unknown as { __planning: { reads: number; analyses: number; explanations: number } }).__planning,
+    })),
+  ).toEqual(planningBefore);
   info.annotations.push({ type: "event-timing", description: JSON.stringify({ held, running, runs }) });
   // Checks ran while the second set was typed: one after every key.
   expect(runs).toBeGreaterThanOrEqual(12);

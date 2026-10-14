@@ -283,6 +283,28 @@
   color: var(--text-2);
 }
 
+/* A crowded pane keeps the cause and its action. The full reason remains available to
+   screen readers and on hover, without reserving the full card's height or width. */
+.cap-callout.is-compact {
+  padding-block: 4px;
+  gap: 8px;
+}
+
+.cap-callout.is-floating.is-compact[data-below] {
+  right: auto;
+  width: max-content;
+  max-width: calc(100% - 32px);
+}
+
+.cap-callout.is-compact .cap-callout-text > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .cap-callout-fix {
   color: var(--text);
   font-weight: 550;
