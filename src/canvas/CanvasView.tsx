@@ -1613,7 +1613,12 @@ function CanvasInner({
       const up = () => {
         pointerHeld.current = false;
         // After the drop has painted: the inspector opening is its own frame, not the pointer-up's.
-        requestAnimationFrame(() => setTimeout(() => setSettledEmpty(latestEmpty.current), 0));
+        requestAnimationFrame(() =>
+          setTimeout(() => {
+            // A new drag may have begun before the previous drop's frame gets to run.
+            if (!pointerHeld.current) setSettledEmpty(latestEmpty.current);
+          }, 0),
+        );
         window.removeEventListener("pointerup", up, true);
         window.removeEventListener("pointercancel", up, true);
       };

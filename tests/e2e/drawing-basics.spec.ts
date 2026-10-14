@@ -1,5 +1,13 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport, viewportTransform } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  waitForStableViewport,
+  viewportTransform,
+  pauseClock,
+} from "./fixtures";
 
 // Drawing basics (docs/research/drawing-ux.md, batch 1): navigation (D4), selection gestures (D5),
 // drop to create (D1), hittable handles and connect feedback (D2), copies that never overlap (D9) and
@@ -248,7 +256,7 @@ test.describe("drawing basics", () => {
     await page.mouse.down();
     await page.mouse.move(inv.x + inv.width / 2, inv.y + inv.height / 2, { steps: 8 });
     // Mid-drag: the node is picked, the inspector still folded.
-    await page.waitForTimeout(200);
+    await expect.poll(() => selectedIds(page)).toContain("node-inventory");
     await expect(inspector).toHaveAttribute("data-collapsed", "1");
     await page.mouse.up();
     await expect(inspector).not.toHaveAttribute("data-collapsed", "1");
@@ -256,13 +264,38 @@ test.describe("drawing basics", () => {
     // Pressing on another node and dragging it: still folded until the drop.
     await page.getByTestId("canvas-wrap").press("Escape");
     await expect(inspector).toHaveAttribute("data-collapsed", "1");
+    // Opening and folding the inspector pans the selection into view. Measure only after that pan lands.
+    await waitForStableViewport(page);
     const pay = centre(await box(page.getByTestId("node-payments")));
     await page.mouse.move(pay.x, pay.y);
     await page.mouse.down();
     await page.mouse.move(pay.x + 10, pay.y + 40, { steps: 5 });
-    await page.waitForTimeout(200);
+    await expect.poll(() => selectedIds(page)).toContain("node-payments");
     await expect(inspector).toHaveAttribute("data-collapsed", "1");
     await page.mouse.up();
+    await expect(inspector).not.toHaveAttribute("data-collapsed", "1");
+  });
+
+  test("a previous drop cannot open the inspector during the next drag", async ({ page }) => {
+    await page.clock.install();
+    await pauseClock(page);
+    const inspector = page.getByTestId("inspector");
+    const pay = centre(await box(page.getByTestId("node-payments")));
+    await page.mouse.move(pay.x, pay.y);
+    await page.mouse.down();
+    await page.mouse.move(pay.x + 10, pay.y + 40, { steps: 5 });
+    await page.clock.runFor(100);
+    await expect.poll(() => selectedIds(page)).toContain("node-payments");
+    await page.mouse.up();
+    // The drop's deferred frame has not run. Begin another gesture before allowing it to paint.
+    const dropped = centre(await box(page.getByTestId("node-payments")));
+    await page.mouse.move(dropped.x, dropped.y);
+    await page.mouse.down();
+    await page.mouse.move(dropped.x + 10, dropped.y + 40, { steps: 5 });
+    await page.clock.runFor(100);
+    await expect(inspector).toHaveAttribute("data-collapsed", "1");
+    await page.mouse.up();
+    await page.clock.runFor(100);
     await expect(inspector).not.toHaveAttribute("data-collapsed", "1");
   });
 

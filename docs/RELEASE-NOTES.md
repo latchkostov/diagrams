@@ -2,6 +2,11 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Editing reliability (2026-10-14)
+
+- The inspector stays folded during a drag even when another drop's deferred update is still waiting.
+- Run simulations from Ctrl+K or the canvas right-click keeps playing when the Checks card opens in development.
+
 ## Simulation review, round 3 (2026-10)
 
 - Live reports losses between trend samples, including the last partial second of a finished run. Broker outages

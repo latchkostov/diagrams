@@ -199,6 +199,29 @@ export function expectNoErrors(errors: string[]) {
  */
 export const pageLoadTimeout = () => base.info().project.use.navigationTimeout ?? 20_000;
 
+const htmlTemplates = new WeakMap<Page, Promise<void>>();
+
+/**
+ * Call before opening the first export dialog on this page, then await before downloading. Its viewer is
+ * built on demand in dev. Subsequent dialogs reuse the app's cached template (there is no second request).
+ */
+export function waitForHtmlTemplate(page: Page): Promise<void> {
+  let ready = htmlTemplates.get(page);
+  if (!ready) {
+    ready = page
+      .waitForResponse(
+        (response) => /\/export\/interactive-viewer(?:-[a-f0-9]+)?\.html$/.test(new URL(response.url()).pathname),
+        { timeout: pageLoadTimeout() },
+      )
+      .then(async (response) => {
+        expect(response.ok()).toBe(true);
+        expect(await response.finished()).toBeNull();
+      });
+    htmlTemplates.set(page, ready);
+  }
+  return ready;
+}
+
 export async function gotoGallery(page: Page) {
   await page.goto("./?view=gallery");
   await expect(page.getByTestId("gallery-view")).toBeVisible({ timeout: pageLoadTimeout() });
@@ -213,7 +236,7 @@ export async function gotoCanvas(page: Page, slug: string) {
 export async function openShareChooser(page: Page) {
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-share").click();
-  await expect(page.getByTestId("share-chooser")).toBeVisible();
+  await expect(page.getByTestId("share-chooser")).toBeVisible({ timeout: pageLoadTimeout() });
 }
 
 /** Share…'s rows: the private and controlled ones, then the public ones (behind their own step). */

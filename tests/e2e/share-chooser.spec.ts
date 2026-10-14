@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, openShareChooser } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, pageLoadTimeout } from "./fixtures";
 
 // File ▸ Share… (docs/DESIGN-REVIEW.md, round 27): one row in the File menu opens every way out, each saying who can
 // open what it makes. The private and controlled ones come first and take the keyboard; the public ones sit last,
@@ -50,19 +50,12 @@ async function makePrivate(page: Page) {
   await page.keyboard.press("Escape");
 }
 
-/** The Private diagram dialog's Make not private, from the badge. */
-async function makePrivateOff(page: Page) {
-  await page.getByTestId("private-badge").click();
-  await page.getByTestId("privacy-turn-off").click();
-  await expect(page.getByTestId("private-badge")).toHaveCount(0);
-}
-
 /** A docker-compose import: an infrastructure file, so it has an Import report (the toast's Details). */
 async function importCompose(page: Page) {
   await page
     .getByTestId("import-input")
     .setInputFiles({ name: "docker-compose.yml", mimeType: "application/yaml", buffer: COMPOSE });
-  await expect(page.getByTestId("diagram-title")).toHaveText("shop");
+  await expect(page.getByTestId("diagram-title")).toHaveText("shop", { timeout: pageLoadTimeout() });
   await page.getByTestId("toast-import-details").click();
   await expect(page.getByTestId("import-report")).toBeVisible();
 }
@@ -294,7 +287,7 @@ test("the right-click's Export ▸ Share… and Ctrl+K open the same chooser", a
   expectNoErrors(consoleErrors);
 });
 
-test("the first Import report offers New diagrams are private, once; Clear everything asks again", async ({
+test("the first Import report offers New diagrams are private, once, including after a reload", async ({
   page,
   consoleErrors,
 }) => {
@@ -316,10 +309,18 @@ test("the first Import report offers New diagrams are private, once; Clear every
 
   // Asked once: the next import's report (after a reload too) doesn't ask again.
   await page.reload();
-  await expect(page.getByTestId("canvas-view")).toBeVisible();
+  await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
   await importCompose(page);
   await expect(page.getByTestId("import-report-make-private")).toBeVisible();
   await expect(page.getByTestId("import-report-offer")).toHaveCount(0);
+  await page.getByTestId("import-report-done").click();
+  expectNoErrors(consoleErrors);
+});
+
+test("Clear everything forgets the Import report's privacy offer", async ({ page, consoleErrors }) => {
+  await gotoCanvas(page, SLUG);
+  await importCompose(page);
+  await expect(page.getByTestId("import-report-offer")).toBeVisible();
   await page.getByTestId("import-report-done").click();
 
   // Clear everything on this device forgets that it asked.
@@ -331,6 +332,12 @@ test("the first Import report offers New diagrams are private, once; Clear every
   await gotoCanvas(page, SLUG);
   await importCompose(page);
   await expect(page.getByTestId("import-report-offer")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+test("the Import report's New diagrams are private is the File menu setting", async ({ page, consoleErrors }) => {
+  await gotoCanvas(page, SLUG);
+  await importCompose(page);
 
   // Ticked, it's the File ▸ Privacy setting: the next import starts Private.
   await page.getByTestId("import-report-new-private").check();
@@ -467,10 +474,18 @@ test("a public embed closes when the diagram turns private in another tab: it ne
   // Closed, saying why, with the safe way out: no host-supplied embed in its place.
   await expect(page.getByTestId("embed-dialog")).toHaveCount(0);
   await expect(page.getByTestId("toast-private-export")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+test("an embed supplied by your app stays open when another tab makes the diagram private", async ({
+  page,
+  context,
+  consoleErrors,
+}) => {
+  await gotoCanvas(page, SLUG);
+  const slug = await importOwn(page, "Host-supplied embed plan");
 
   // Embed in your app, open when it turns private, stays as it is: the private kind, saying so.
-  await page.getByTestId("toast-dismiss").first().click();
-  await makePrivateOff(page);
   await openShareChooser(page);
   await page.getByTestId("share-option-embed").click();
   await expect(page.getByTestId("embed-host-note")).toBeVisible();

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Icon } from "../../components/Icon";
 import { lazyComponent } from "../../lib/lazyLoad";
 import type { RowHost } from "../../checks/ui/FindingRow";
@@ -46,8 +46,6 @@ export function DiagramCardMeta({ store, reset, open }: { store: ChecksStore; re
 
 export function ChecksCardView({ store, host, top }: { store: ChecksStore; host: ChecksHost; top: number }) {
   const state = useChecksState(store);
-  // Closing the card stops simulations playing (the counts of a finished run stay for when it opens again).
-  useEffect(() => () => void store.stopSimulations(), [store]);
   return (
     <ChecksCard
       {...host}
