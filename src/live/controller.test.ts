@@ -193,6 +193,42 @@ describe("LiveController", () => {
     expect(c.snapshot().inSystem).toBe(3);
   });
 
+  it("keeps the existing inspector naming semantics during a running simulation", () => {
+    const d = diagram();
+    const group = { id: "core", label: "Core", x: 0, y: 0, width: 400, height: 200 };
+    d.groups = [group];
+    const c = new LiveController(d, { roleOf });
+    const simulation = { ...storm, setup: { props: { worker: { latencyMs: 500 } } } };
+    c.selectSimulation(simulation);
+    c.setPlaying(true);
+    c.inject("api", 5);
+    play(c, 500);
+    const before = c.getState();
+    const time = c.snapshot().time;
+    const renamed = {
+      ...d,
+      groups: [{ ...group, label: "Platform" }],
+      edges: d.edges.map((e) => ({ ...e, label: "Delivery" })),
+    };
+    expect(c.updateDiagram(renamed)).toBe("none");
+    expect(c.getState().generation).toBe(before.generation);
+    expect(c.snapshot().time).toBe(time);
+    expect(c.getState().playing).toBe(true);
+    expect(c.getState().simulation).toBe(simulation);
+    expect(c.effectiveProps("worker").latencyMs).toBe(500);
+    for (const field of ["label", "sublabel"] as const) {
+      const generation = c.getState().generation;
+      renamed.nodes = renamed.nodes.map((n) => (n.id === "api" ? { ...n, [field]: "New name" } : n));
+      expect(c.updateDiagram(renamed)).toBe("reloaded");
+      expect(c.getState().generation).toBe(generation + 1);
+      expect(c.snapshot().time).toBe(0);
+      expect(c.getState().playing).toBe(true);
+      expect(c.getState().simulation).toBe(simulation);
+      expect(c.effectiveProps("worker").latencyMs).toBe(500);
+      expect(c.getState().run?.expectations).toHaveLength(1);
+    }
+  });
+
   it("plays a finished run again from the start", () => {
     const c = new LiveController(diagram(), { roleOf });
     c.selectSimulation({ ...storm, timeline: [] });

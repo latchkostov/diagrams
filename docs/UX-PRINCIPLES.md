@@ -187,7 +187,9 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   select it, open the inspector (even when it was hidden) and focus its **Label** with all of it selected, so typing
   replaces it. The Subtitle is the next field (Tab). Nothing opens on the canvas for them. An annotation is the
   exception: a text's, a note's or a zone's words _are_ the thing, so a double-click (or F2, Enter, Edit text) edits
-  them in place, all selected. Live, presenting, read-only views, embeds and the HTML viewer open no editor at all.
+  them in place, all selected. Live opens the same inspector for nodes, boundaries and connections; annotations
+  stay inert there. Enter first continues a waiting narration; F2 still opens the name while it waits.
+  Presenting, read-only views, embeds and the HTML viewer open no editor at all.
 - **Editing text** follows one set of keys in the inspector's name fields and an annotation's editor. Names are
   saved as they're typed, so **Enter** and **Esc** are both "done": focus goes back to the thing on the canvas, so
   the next key acts on it (an annotation: Enter adds a line, Ctrl/⌘+Enter or Esc saves; Tab saves too). A click

@@ -30,6 +30,8 @@ interface Props {
   onDelete: (id: string) => void;
   /** A simulation from the list was opened for editing (the live bar then shows it, not free play). */
   onOpen?: (sim: Simulation) => void;
+  /** Retain the working copy when the inspector temporarily takes this panel's place. */
+  onDraftChange?: (sim: Simulation | null) => void;
 }
 
 type Picker = { label: string; apply: (nodeId: string) => void } | null;
@@ -75,10 +77,11 @@ const num = (v: string) => (v.trim() === "" ? 0 : Number(v));
  * Right-side drawer to create and edit the diagram's saved simulations. Edits a working copy;
  * Save writes it through the editor (one undo step) and Run plays it immediately, saved or not.
  */
-export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onOpen }: Props) {
+export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onOpen, onDraftChange }: Props) {
   const ui = useLive();
   const diagram = ui.diagram();
   const [sim, setSim] = useState<Simulation | null>(() => (initial ? structuredClone(initial) : null));
+  useLayoutEffect(() => onDraftChange?.(sim), [sim, onDraftChange]);
   const [picker, setPicker] = useState<Picker>(null);
   const saved = sim ? ui.simulations.find((s) => s.id === sim.id) : undefined;
   const dirty = !!sim && (!saved || JSON.stringify(saved) !== JSON.stringify(sim));

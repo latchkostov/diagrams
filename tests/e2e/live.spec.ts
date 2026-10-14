@@ -1,11 +1,55 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLab, expectNoErrors, pageLoadTimeout, gotoLive } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLab,
+  expectNoErrors,
+  pageLoadTimeout,
+  gotoLive,
+  pauseClock,
+  waitForStableViewport,
+} from "./fixtures";
 
 // Live view: the toggle, injection from the context menu, saved simulations, narration, the storm
 // flow, presentation mode and the Lab presets. Selectors are data-testid only. Runs are seeded, and
 // the URL's `speed` param plays them faster.
 
 const KAFKA = "kafka-order-pipeline";
+
+for (const presenting of [false, true]) {
+  test(`Enter continues a waiting narration with a selected node (${presenting ? "presenting" : "live"})`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=payments-outage&speed=8`);
+    const play = page.getByTestId("live-play");
+    await expect(play).toHaveAttribute("data-state", "waiting");
+    if (presenting) {
+      await page.getByTestId("present-toggle").click();
+      await expect(page.getByTestId("present-exit")).toBeVisible();
+    }
+    await waitForStableViewport(page);
+    await page.clock.install();
+    await pauseClock(page);
+    const node = page.getByTestId("node-payments");
+    await node.click();
+    await expect.poll(() => node.evaluate((el) => !!document.activeElement?.contains(el))).toBe(true);
+    await page.keyboard.press("F2");
+    const label = page.getByTestId("inspector-field-label");
+    if (!presenting) {
+      await expect(label).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect.poll(() => node.evaluate((el) => !!document.activeElement?.contains(el))).toBe(true);
+    } else await expect(label).toHaveCount(0);
+    await expect(play).toHaveAttribute("data-state", "waiting");
+    await page.keyboard.press("Enter");
+    await expect(play).toHaveAttribute("data-state", "playing");
+    if (presenting) await expect(label).toHaveCount(0);
+    else await expect(label).not.toBeFocused();
+    expectNoErrors(consoleErrors);
+  });
+}
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
 
 /**

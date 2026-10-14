@@ -1,6 +1,15 @@
 import type { Locator, Page } from "@playwright/test";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
-import { test, expect, gotoCanvas, expectNoErrors, waitForStableViewport, pauseClock, STORAGE_KEYS } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  expectNoErrors,
+  waitForStableViewport,
+  pauseClock,
+  STORAGE_KEYS,
+} from "./fixtures";
 import { must, openAdvanced } from "./ai-helpers";
 
 // Text fields behave as text fields do everywhere (docs/UX-PRINCIPLES.md, Editing text): a double-click selects a
@@ -139,7 +148,10 @@ async function changedShare(page: Page, a: Buffer, b: Buffer): Promise<number> {
 }
 
 const canvasFocused = (page: Page) =>
-  page.evaluate(() => !!document.activeElement?.closest(".react-flow__node, .react-flow__edge"));
+  page.getByTestId("canvas-wrap").evaluate((wrap) => {
+    const focus = document.activeElement;
+    return !!focus && wrap.contains(focus) && focus.getAttribute("role") === "group";
+  });
 
 test("an inspector focus request waits for its selected node's field", async ({ page, consoleErrors }) => {
   await page.goto("/?view=lab&preset=inspector-focus");
@@ -455,19 +467,143 @@ test.describe("renaming in the inspector", () => {
     expectNoErrors(consoleErrors);
   });
 
-  test("Live opens no editor for nodes, boundaries, connections or notes", async ({ page }) => {
-    await page.getByTestId("live-toggle").click();
-    await expect(page.getByTestId("live-controls")).toBeVisible();
-    await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
-    for (const id of ["node-a", "group-label-core", "edge-label-ab", "annotation-n1"]) {
-      await page.getByTestId(id).dblclick();
-      await page.keyboard.press("F2");
-      await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
-      await expect(page.getByTestId("inspector-field-label")).toHaveCount(0);
-    }
+  for (const c of [
+    { id: "node-a", name: "Order service", action: "node.rename" },
+    { id: "group-label-core", name: "Core platform", action: "group.rename" },
+    { id: "edge-label-ab", name: "writes", action: "edge.edit-label" },
+    { id: "group-outline-core", name: "Core platform", action: "group.rename", position: { x: 3, y: 40 } },
+  ]) {
+    test(`live double-click opens and renames ${c.id} from a collapsed inspector`, async ({ page, consoleErrors }) => {
+      await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
+      await waitForStableViewport(page);
+      await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+      await page.getByTestId(c.id).dblclick({ position: c.position });
+      const label = page.getByTestId("inspector-field-label");
+      await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+      await expect(label).toBeFocused();
+      await expect.poll(() => selected(label)).toBe(c.name);
+      await page.keyboard.type("Live name");
+      await expect(label).toHaveValue("Live name");
+      const shown = c.id === "group-outline-core" ? "group-label-core" : c.id;
+      await expect(page.getByTestId(shown)).toContainText("Live name");
+      await page.keyboard.press("Enter");
+      await expect.poll(() => canvasFocused(page)).toBe(true);
+      await expect(page.getByTestId("live-controls")).toBeVisible();
+      await expect(page.getByTestId("smart-guides")).toHaveCount(0);
+      await expect(page.getByTestId("quick-add")).toHaveCount(0);
+      expectNoErrors(consoleErrors);
+    });
+
+    if (c.position) continue;
+    test(`live keyboard and menu naming select all of ${c.id}`, async ({ page, consoleErrors }) => {
+      await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
+      await waitForStableViewport(page);
+      const label = page.getByTestId("inspector-field-label");
+      // A single click on a live connection can trace a passing message. Establish the selection
+      // through its property sheet, then finish naming before testing the canvas shortcuts.
+      await page.getByTestId(c.id).dblclick();
+      await expect(label).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect.poll(() => canvasFocused(page)).toBe(true);
+      for (const key of ["F2", "Enter"]) {
+        await page.keyboard.press(key);
+        await expect(label).toBeFocused();
+        await expect.poll(() => selected(label)).toBe(c.name);
+        await page.keyboard.press("Escape");
+        await expect.poll(() => canvasFocused(page)).toBe(true);
+      }
+      await waitForStableViewport(page);
+      await page.getByTestId(c.id).click({ button: "right" });
+      await page.getByTestId(`context-menu-item-${c.action}`).click();
+      await expect(label).toBeFocused();
+      await expect.poll(() => selected(label)).toBe(c.name);
+      await page.keyboard.press("Escape");
+      await page.keyboard.press(`${MOD}+k`);
+      await page.getByTestId("command-input").fill(c.action === "edge.edit-label" ? "edit label" : "rename");
+      await page.getByTestId(`command-item-action:${c.action}`).click();
+      await expect(label).toBeFocused();
+      await expect.poll(() => selected(label)).toBe(c.name);
+      expectNoErrors(consoleErrors);
+    });
+  }
+
+  test("Live keeps annotation editing inert and its existing canvas quick-add", async ({ page }) => {
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
+    await waitForStableViewport(page);
+    await page.getByTestId("annotation-n1").dblclick();
+    await page.keyboard.press("F2");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+    await expect(page.getByTestId("inspector-field-label")).toHaveCount(0);
+    const r = must(await page.getByTestId("canvas-wrap").boundingBox(), "the canvas");
+    await page.mouse.dblclick(r.x + 120, r.y + r.height - 120);
+    await expect(page.getByTestId("quick-add")).toBeVisible();
+    await expect(page.getByTestId("smart-guides")).toHaveCount(0);
   });
 
-  test("presenting and embeds open no editor on a double-click", async ({ page }) => {
+  for (const panel of ["capacity", "sims"] as const) {
+    test(`live naming makes room for the inspector when ${panel} is open`, async ({ page, consoleErrors }) => {
+      await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
+      if (panel === "capacity") await page.getByTestId("live-capacity").click();
+      else {
+        await page.getByTestId("live-more").click();
+        await page.getByTestId("live-edit-sims").click();
+      }
+      const sidePanel = page.getByTestId(panel === "capacity" ? "capacity-panel" : "sim-panel");
+      await expect(sidePanel).toBeVisible();
+      await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+      await waitForStableViewport(page);
+      await page.getByTestId("node-a").dblclick();
+      const label = page.getByTestId("inspector-field-label");
+      await expect(sidePanel).toHaveCount(0);
+      await expect(label).toBeFocused();
+      await expect.poll(() => selected(label)).toBe("Order service");
+      await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+      expectNoErrors(consoleErrors);
+    });
+  }
+
+  test("live inspector naming preserves an unsaved simulation draft", async ({ page, consoleErrors }) => {
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await page.getByTestId("sim-panel-new").click();
+    await page.getByTestId("sim-panel-title").fill("Unsaved run");
+    await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+    await waitForStableViewport(page);
+    await page.getByTestId("node-a").dblclick();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+    await expect(page.getByTestId("sim-panel")).toHaveCount(0);
+    await page.keyboard.press("Enter");
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await expect(page.getByTestId("sim-panel-title")).toHaveValue("Unsaved run");
+    await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+    expectNoErrors(consoleErrors);
+  });
+
+  test("live inspector naming preserves edits to the active saved simulation", async ({ page, consoleErrors }) => {
+    // Use the public example's saved run rather than this suite's text-field fixture.
+    await page.evaluate((key) => localStorage.removeItem(key), STORAGE_KEYS.autosavePrefix + SLUG);
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&sim=black-friday&paused=1`);
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await page.getByTestId("sim-panel-title").fill("Unsaved saved-run edit");
+    await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+    await waitForStableViewport(page);
+    await page.getByTestId("node-shopper").dblclick();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await expect(page.getByTestId("sim-panel-title")).toHaveValue("Unsaved saved-run edit");
+    await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("black-friday");
+    expectNoErrors(consoleErrors);
+  });
+
+  test("presenting live and read-only embeds open no editor on a double-click", async ({ page }) => {
+    await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1`);
     await page.getByTestId("present-toggle").click();
     await expect(page.getByTestId("present-exit")).toBeVisible();
     await page.getByTestId("node-a").dblclick();
@@ -484,14 +620,21 @@ test.describe("renaming in the inspector", () => {
       ),
     ).toBe(false);
 
-    await page.goto(`./?embed=1&example=${SLUG}`);
-    const node = page.getByTestId("node-payments");
-    await expect(node).toBeVisible();
-    await node.dblclick();
-    await page.keyboard.press("F2");
+    await gotoLive(page, `./?embed=1&example=${SLUG}&live=1`);
+    await waitForStableViewport(page);
+    for (const id of ["node-payments", "group-label-aks"]) {
+      await page.getByTestId(id).dblclick();
+      await page.keyboard.press("F2");
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("inspector-field-label")).toHaveCount(0);
+      await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+      await expect(page.getByTestId("node-editor")).toHaveCount(0);
+    }
+    await page
+      .getByTestId(/^edge-label-/)
+      .first()
+      .dblclick();
     await expect(page.getByTestId("inspector-field-label")).toHaveCount(0);
-    await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
-    await expect(page.getByTestId("node-editor")).toHaveCount(0);
   });
 });
 

@@ -1,5 +1,29 @@
 # Design review
 
+## Round 36: properties in live view (2026-10-14)
+
+A designer-agent source and interaction-test review checked naming, panel coordination, view-only gates and
+the chrome budget. Live now uses the existing property sheet for nodes, boundaries and connections: double-click,
+F2, Enter, Rename / Edit label and Ctrl+K select the Label and expand the inspector. No controls are added.
+
+- **Findings resolved:** the UX policy now distinguishes Live's property sheet from inert annotation text.
+  Inputs and Simulations make room for the inspector; a simulation's unsaved working copy survives the switch.
+  The seven-angle code review caught reopening an active saved run bypassing that retained copy, and Enter
+  consuming a waiting narration's Continue action. Both are fixed with regressions, including presentation.
+  The controller regression now runs a saved simulation with setup, traffic, timeline and expectations.
+- **Gestures:** guides, box selection and quick-add retain their existing live gates. Empty-canvas double-click
+  already opened quick-add in Live and keeps doing so. Annotation text stays inert.
+- **View-only:** presenting, read-only embeds and the HTML viewer never open an editor.
+- **Simulation:** use the existing inspector update path. Node labels and subtitles already rebuild the engine;
+  boundary and connection names leave playback and counters alone. This fix does not change those semantics.
+- **Rejected:** widening `editGestures` would enable unrelated gestures; another Properties button duplicates
+  existing chrome; changing restart semantics would expand this access fix into simulation behavior.
+
+Production-build regressions cover double-click on cards, boundary labels/outlines and connection labels,
+keyboard and contextual naming, panel coordination and draft retention. The live naming regressions fail with
+the fix reverted; removing draft retention also fails its regression. Review used source and browser-test
+evidence, without a separate screenshot walkthrough.
+
 ## Round 35: external discovery (2026-10-14)
 
 P5a follows planning-model §4.1: the existing category becomes **Clients & external**, with quiet

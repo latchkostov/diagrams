@@ -54,6 +54,10 @@ export function useCanvasShortcuts(
     onEscape: () => void;
     /** Live view: no new annotations mid-run. */
     live?: boolean;
+    /** Use the canvas's inspector capability before consuming a naming shortcut. */
+    canRename?: boolean;
+    /** A waiting live narration owns Enter before inspector naming. */
+    canRenameEnter?: () => boolean;
     /** Alt+arrow from `from`: quick-add the next node that way; with Shift, a connected copy (D3). */
     onGrow?: (from: string, toward: Toward, clone: boolean) => void;
     /**
@@ -173,12 +177,13 @@ export function useCanvasShortcuts(
           editor.addAnnotation("text", { atPointer: true });
           break;
         case "rename": {
-          if (optsRef.current.live) return;
+          if (optsRef.current.canRename === false) return;
+          if (optsRef.current.live && sel.nodeIds[0] && editor.getAnnotation(sel.nodeIds[0])) return;
           const total = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length;
           if (total !== 1) return;
           if (e.key === "Enter") {
-            // Live view's Enter continues after a note; a key held down doesn't reopen the editor.
-            if (optsRef.current.live || e.repeat) return;
+            // A key held down doesn't reopen the inspector.
+            if (e.repeat || optsRef.current.canRenameEnter?.() === false) return;
             // A focused node or edge that isn't selected: Enter selects it (React Flow's keyboard rule).
             const item = e.target instanceof Element ? e.target.closest(".react-flow__node, .react-flow__edge") : null;
             if (item && !item.classList.contains("selected")) return;

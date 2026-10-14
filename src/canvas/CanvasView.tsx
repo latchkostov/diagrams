@@ -321,6 +321,16 @@ function CanvasInner({
   // Live mode and narrow windows fold the side panels away by default; opening one by hand wins.
   const [live, setLive] = useState(false);
   const [livePanelOpen, setLivePanelOpen] = useState(false);
+  const canOpenInspector = !readOnly && !presenting && !viewer;
+  const liveHandle = useRef<LiveHandle | null>(null);
+  const onViewerLive = viewer?.onLive;
+  const receiveLiveHandle = useCallback(
+    (handle: LiveHandle) => {
+      liveHandle.current = handle;
+      onViewerLive?.(handle);
+    },
+    [onViewerLive],
+  );
   const [openedByHand, setOpenedByHand] = useState({ live, palette: false, inspector: false });
   if (openedByHand.live !== live) setOpenedByHand({ live, palette: false, inspector: false });
   const [narrow, setNarrow] = useState(() => window.innerWidth < ROOMY);
@@ -350,6 +360,7 @@ function CanvasInner({
   }, []);
   const openInspector = useCallback(
     (field?: string, caret?: "end", target?: string) => {
+      liveHandle.current?.session?.closePanel();
       setPref("inspector", true);
       setOpenedByHand((o) => ({ ...o, inspector: true }));
       if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1, caret, target }));
@@ -490,6 +501,8 @@ function CanvasInner({
   const stopSimulations = useRef<() => boolean>(() => false);
   useCanvasShortcuts(editor, {
     enabled: !shortcutsOpen && !readOnly,
+    canRename: canOpenInspector,
+    canRenameEnter: () => !liveHandle.current?.session?.controller.getState().run?.waiting,
     onEscape: () => {
       // Esc backs out one level: a menu, the selection, then simulations playing, then the Checks card.
       const sel = editor.getSelection();
@@ -688,6 +701,7 @@ function CanvasInner({
   // Editing gestures (D4, D5): a drag on empty canvas draws the selection box, the wheel pans, and
   // Space+drag or the middle button pan. Live view, presentation and embeds keep drag-to-pan.
   const editGestures = !readOnly && !live && !presenting;
+  // Live's property sheet remains editable; its other gesture gates stay separate.
 
   // New edges float (sides picked from geometry); pin a side from the menu or inspector.
   const onConnect = useCallback((c: Connection) => void editor.connect(c.source, c.target), [editor]);
@@ -754,7 +768,7 @@ function CanvasInner({
    */
   const renameIn = useCallback(
     (t: RenameTarget) => {
-      if (readOnly || live || presenting) return;
+      if (!canOpenInspector) return;
       setEditing(null);
       editor.select(
         t.kind === "node" ? { nodeIds: [t.id] } : t.kind === "edge" ? { edgeIds: [t.id] } : { groupIds: [t.id] },
@@ -768,7 +782,7 @@ function CanvasInner({
         t.kind === "group" ? GROUP_PREFIX + t.id : t.id,
       );
     },
-    [readOnly, live, presenting, editor, openInspector],
+    [canOpenInspector, editor, openInspector],
   );
   useLayoutEffect(() => {
     rename.current = renameIn;
@@ -1595,14 +1609,25 @@ function CanvasInner({
       direction,
       editing,
       setEditing: editGestures ? setEditing : () => {},
-      rename: editGestures ? renameIn : undefined,
+      rename: canOpenInspector ? renameIn : undefined,
       openEdgeMenu,
       settleText: editGestures ? settleText : undefined,
       grow: editGestures ? growFromChip : undefined,
       reconnect: editGestures ? editor.reconnectEdge : undefined,
       boundaryResized: editGestures ? boundaryResized : undefined,
     }),
-    [direction, editing, openEdgeMenu, settleText, editGestures, growFromChip, editor, renameIn, boundaryResized],
+    [
+      direction,
+      editing,
+      openEdgeMenu,
+      settleText,
+      editGestures,
+      canOpenInspector,
+      growFromChip,
+      editor,
+      renameIn,
+      boundaryResized,
+    ],
   );
   // Read-only (embed) hides the same chrome as presenting, without the presentation sizing.
   const hideChrome = presenting || readOnly;
@@ -2295,7 +2320,7 @@ function CanvasInner({
               <LiveView
                 readOnly={readOnly}
                 initial={viewer?.live}
-                onHandle={viewer?.onLive}
+                onHandle={receiveLiveHandle}
                 editor={readOnly ? undefined : editor}
                 diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
                 presenting={presenting}
