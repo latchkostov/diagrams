@@ -169,7 +169,7 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabl
       {reader ? (
         <button
           className="btn cap-callout-apply is-fix"
-          onClick={() => onAddConsumer!(reader)}
+          onClick={() => onAddConsumer?.(reader)}
           data-testid="bottleneck-add-consumer"
           disabled={!!disabledHint}
           title={disabledHint ?? "Add a service that reads it (undo with Ctrl+Z)"}

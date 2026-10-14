@@ -375,7 +375,7 @@ frozen. Code: `src/live/slowmo/` (pure: `script.ts`, `session.ts`, `sampler.ts`,
 - **Nothing can arrive** (free play with no traffic and an empty system, a finished run): the session
   is _armed_. The live trace waits (the card offers **Send one now**) and slow motion starts once the
   message is on its way. A journey still under way at the cap plays what was recorded and ends on
-  "Still waiting at Payments service · lag 1,240".
+  "Still waiting at Payments service · 1,240 waiting" (a topic: "· lag 1,240", a queue: "· 1,240 queued").
 - **Live is frozen**, not just dimmed: the controller is held (`LiveController.hold`) from the look-ahead
   until slow motion ends, so play, step, continue and seek do nothing whichever control asks (live's own
   are disabled while it records ahead). The engine is paused, background dots are drawn at 12% with no

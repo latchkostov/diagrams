@@ -231,7 +231,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
       )}
 
       {broker && (s.backlog > 0 || s.processed > 0) && (
-        <div className="lv-depth" aria-hidden>
+        <div className={`lv-depth${unread ? " is-kept" : ""}`} aria-hidden>
           <i style={{ "--d": `${Math.min(100, (s.backlog / peak) * 100).toFixed(1)}%` } as CSSProperties} />
         </div>
       )}
@@ -241,7 +241,8 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
           {!showMetric ? null : broker ? (
             <span
               className={`lv-metric is-backlog${s.backlog > 0 ? " is-hot" : ""}`}
-              style={{ "--heat": heat.toFixed(3) } as CSSProperties}
+              // Kept, not falling behind: the backlog's amber, never heating towards red.
+              style={{ "--heat": unread ? "0" : heat.toFixed(3) } as CSSProperties}
               data-testid={`node-metric-${node.id}`}
             >
               {held!.lead && `${held!.lead} · `}

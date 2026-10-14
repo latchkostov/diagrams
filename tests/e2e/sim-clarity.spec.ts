@@ -54,7 +54,13 @@ async function savedWhen(page: Page, check: (d: Saved) => boolean): Promise<Save
       return !!last && check(last);
     })
     .toBe(true);
-  return last!;
+  return must(last, "the autosave");
+}
+
+/** A value the test needs: fails clearly when it's missing. */
+function must<T>(v: T | null | undefined, what: string): T {
+  if (v === null || v === undefined) throw new Error(`Expected ${what}`);
+  return v;
 }
 
 /** Quick-add from a node (Alt+arrow), pick the first match for `query`, keep its name: returns the new node. */
@@ -113,7 +119,10 @@ test("the owner's diagram: config carries nothing, and a topic nobody reads says
   const cfg = await quickAdd(page, api, "ArrowDown", "generic service", "generic.service");
   await quickAdd(page, cfg, "ArrowRight", "key vault", "azure.key-vault");
   let d = await savedWhen(page, (s) => s.edges.length === 4);
-  const toCfg = d.edges.find((e) => e.from === api && e.to === cfg)!;
+  const toCfg = must(
+    d.edges.find((e) => e.from === api && e.to === cfg),
+    "the edge into the generic node",
+  );
   // Drawn while the node was generic: a plain flow.
   expect(toCfg.relation).toBeUndefined();
 
@@ -177,7 +186,10 @@ test("the owner's diagram: config carries nothing, and a topic nobody reads says
     "Added a consumer of Kafka Topic.",
   );
   d = await savedWhen(page, (s) => s.nodes.some((n) => n.label === "Kafka Topic consumer"));
-  const consumer = d.nodes.find((n) => n.label === "Kafka Topic consumer")!;
+  const consumer = must(
+    d.nodes.find((n) => n.label === "Kafka Topic consumer"),
+    "the consumer",
+  );
   expect(consumer.stencil).toBe("service.dotnet");
   expect(d.edges.some((e) => e.from === topic && e.to === consumer.id && !e.relation)).toBe(true);
   await expect(page.getByTestId("bottleneck-headline")).not.toHaveText("Nobody reads Kafka Topic");

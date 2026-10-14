@@ -864,9 +864,17 @@ export function LiveSession({
   const addReader = useCallback(
     (brokerId: string) => {
       if (slowRef.current?.session.active || !editor) return;
-      if (addConsumer(editor, brokerId)) sayConsumerAdded(editor, brokerId);
+      if (!addConsumer(editor, brokerId)) return;
+      sayConsumerAdded(editor, brokerId);
+      // It lands one gap downstream, maybe past the view's edge: bring it in, clear of an open panel (as addEntry).
+      window.setTimeout(() => {
+        const padding = capacityOpen
+          ? { ...(FULL_FIT.padding as typeof NOTE_PADDING), right: "440px" as const }
+          : undefined;
+        void fitView({ ...FULL_FIT, ...(padding ? { padding } : {}), duration: motionMs(FULL_FIT.duration ?? 0) });
+      }, 260);
     },
-    [editor],
+    [editor, capacityOpen, fitView],
   );
 
   /** "Save to simulation" (or "Save to diagram" in free play): one undoable edit, then the inputs reset. */

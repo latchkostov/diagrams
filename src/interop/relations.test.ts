@@ -51,6 +51,20 @@ describe("native format: relation", () => {
     expect(r.ok && r.warnings.join(" ")).toMatch(/unknown relationship "ownership"/);
   });
 
+  it("keeps who set a relationship (relationOrigin) through the file and the canvas; drops anything else", () => {
+    const r = validateDiagram(
+      base([
+        { id: "c", from: "api", to: "cfg", relation: "config", relationOrigin: "inferred" },
+        { id: "f", from: "api", to: "kv", relationOrigin: "explicit" },
+        { id: "x", from: "cfg", to: "kv", relation: "secret", relationOrigin: "guessed" },
+      ]),
+    );
+    if (!r.ok) throw new Error(r.error);
+    expect(r.diagram.edges.map((e) => e.relationOrigin)).toEqual(["inferred", "explicit", undefined]);
+    const back = fromFlow({ title: "Rel" }, toFlow(r.diagram).nodes, toFlow(r.diagram).edges);
+    expect(back.edges.map((e) => e.relationOrigin)).toEqual(["inferred", "explicit", undefined]);
+  });
+
   it("repairs malformed settings and drops `when` on flows", () => {
     const r = validateDiagram(
       base([

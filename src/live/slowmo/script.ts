@@ -731,8 +731,11 @@ export function buildScript(input: ScriptInput): SlowScript {
   if (unfinished) {
     const where = waitingAt?.node ?? steps.at(-1)?.node ?? trace.origin;
     const lag = input.waiting?.lag(where);
-    const held = roleOf(where) === "queue" ? "queued" : "lag";
-    summary = `Still waiting at ${name(where)}${lag !== undefined && lag > 0 ? ` · ${held === "lag" ? `lag ${lag.toLocaleString("en-US")}` : `${lag.toLocaleString("en-US")} queued`}` : ""}`;
+    // Lag belongs to a topic's consumer groups; a queue's messages are queued, a service's are waiting.
+    const role = roleOf(where);
+    const n = lag?.toLocaleString("en-US");
+    const held = role === "topic" || role === "stream" ? `lag ${n}` : `${n} ${role === "queue" ? "queued" : "waiting"}`;
+    summary = `Still waiting at ${name(where)}${lag !== undefined && lag > 0 ? ` · ${held}` : ""}`;
   } else
     summary = [
       deadLettered ? "Dead-lettered" : dropped ? "Dropped" : keptAt ? `Kept in ${name(keptAt)}, unread` : "Done",
