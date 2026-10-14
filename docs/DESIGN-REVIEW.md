@@ -1,5 +1,35 @@
 # Design review
 
+## Round 35: external discovery (2026-10-14)
+
+P5a follows planning-model §4.1: the existing category becomes **Clients & external**, with quiet
+**Clients & webhooks** and **External systems** headings. Generic integrations and six named vendors share the
+same library, gallery and Ctrl+K search. A designer-agent screenshot/source review found no blocking clutter or
+consistency issues; it flagged ordinary clients matching “external”, which is fixed and regression-tested.
+
+- **Chrome:** no new top-bar controls, category folds or vendor families. New vendors join SaaS; generic fallbacks
+  stay in the Generic family. The existing category fold and Vendor overflow remain the way to browse.
+- **Responsive:** at 1024 and 1280 the category opens, folds and remembers the fold. Gallery families fit at
+  1024, 1280 and 1600; folded families remain selectable and the selected family's chip returns.
+- **Discovery:** External API leads called systems; Iterable is the first new vendor. Searches for external,
+  Iterable and Stripe work in the rail, gallery, Ctrl+K and WebMCP. Ordinary traffic sources no longer dilute
+  external search; inbound Webhook remains discoverable.
+- **Rejected:** a separate External category/family would duplicate existing filters; new vendor marks lack a
+  verified redistribution grant. Reuse Lucide ISC cloud/megaphone glyphs. Quotas, numeric defaults and endpoints
+  belong to later batches and would imply behavior this discovery-only change does not implement.
+
+Production-build Chromium evidence: 62 tests passed (stencils, palette, command palette, gallery, round4-polish
+and CSP); 12 discovery tests passed again after refreshing screenshots. Unit regressions fail with the catalog
+and aliases temporarily reverted, and the source-client search regression fails when its fix is reverted.
+
+Screenshots: [rail at 1024](screenshots/round35/clients-1024.png),
+[rail at 1280](screenshots/round35/clients-1280.png), [Ctrl+K Iterable](screenshots/round35/palette-iterable.png),
+[gallery families at 1024](screenshots/round35/gallery-1024.png),
+[1280](screenshots/round35/gallery-1280.png), [1600](screenshots/round35/gallery-1600.png),
+[generic fallback](screenshots/round35/gallery-external-1024.png),
+[external vendors](screenshots/round35/gallery-vendors-1280.png),
+[Iterable in the gallery](screenshots/round35/gallery-iterable-1280.png).
+
 ## Round 34: nightly reliability #90 (2026-10-14)
 
 Designer-agent source review against `docs/UX-PRINCIPLES.md`: canvas, inspector, Checks, top bar, Share,

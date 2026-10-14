@@ -2002,6 +2002,16 @@
       "vendor": "Okta",
       "role": "none",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "sso",
         "oidc",
         "saml",
@@ -2016,6 +2026,16 @@
       "vendor": "Okta",
       "role": "none",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "oauth",
         "oidc",
         "login",
@@ -2194,18 +2214,6 @@
       ]
     },
     {
-      "id": "client.partner",
-      "label": "Partner System",
-      "vendor": "Client",
-      "role": "sink",
-      "aliases": [
-        "third party",
-        "3rd party",
-        "external",
-        "api"
-      ]
-    },
-    {
       "id": "client.iot",
       "label": "IoT Device",
       "vendor": "Client",
@@ -2232,11 +2240,180 @@
       ]
     },
     {
+      "id": "generic.external-api",
+      "label": "External API",
+      "vendor": "Generic",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "rest"
+      ]
+    },
+    {
+      "id": "iterable",
+      "label": "Iterable",
+      "vendor": "Iterable",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "engagement",
+        "campaigns"
+      ]
+    },
+    {
+      "id": "braze",
+      "label": "Braze",
+      "vendor": "Braze",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "engagement",
+        "campaigns"
+      ]
+    },
+    {
+      "id": "segment",
+      "label": "Segment",
+      "vendor": "Segment",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "customer data",
+        "tracking",
+        "analytics"
+      ]
+    },
+    {
+      "id": "shopify",
+      "label": "Shopify",
+      "vendor": "Shopify",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "commerce",
+        "store",
+        "orders"
+      ]
+    },
+    {
+      "id": "paypal",
+      "label": "PayPal",
+      "vendor": "PayPal",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "payments",
+        "checkout"
+      ]
+    },
+    {
+      "id": "adyen",
+      "label": "Adyen",
+      "vendor": "Adyen",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "payments",
+        "checkout"
+      ]
+    },
+    {
+      "id": "client.partner",
+      "label": "Partner System",
+      "vendor": "Client",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API"
+      ]
+    },
+    {
       "id": "stripe",
       "label": "Stripe",
       "vendor": "Stripe",
       "role": "sink",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "payments",
         "billing",
         "checkout",
@@ -2249,6 +2426,16 @@
       "vendor": "Twilio",
       "role": "sink",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "sms",
         "voice",
         "whatsapp",
@@ -2261,6 +2448,16 @@
       "vendor": "Twilio",
       "role": "sink",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "email",
         "mail",
         "smtp"
@@ -2272,6 +2469,16 @@
       "vendor": "Salesforce",
       "role": "sink",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "crm",
         "sfdc"
       ]
@@ -2282,6 +2489,16 @@
       "vendor": "HubSpot",
       "role": "sink",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "crm",
         "marketing"
       ]
@@ -2292,10 +2509,19 @@
       "vendor": "Slack",
       "role": "sink",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "chat",
         "notifications",
         "alerts",
-        "webhook",
         "chatops"
       ]
     },
@@ -2317,6 +2543,16 @@
       "vendor": "OpenAI",
       "role": "processor",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "llm",
         "gpt",
         "chatgpt",
@@ -2330,10 +2566,156 @@
       "vendor": "Anthropic",
       "role": "processor",
       "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
         "llm",
         "claude",
         "anthropic",
         "ai"
+      ]
+    },
+    {
+      "id": "generic.email",
+      "label": "Email",
+      "vendor": "Generic",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "mail",
+        "smtp",
+        "notification",
+        "sendgrid"
+      ]
+    },
+    {
+      "id": "generic.sms",
+      "label": "SMS",
+      "vendor": "Generic",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "text",
+        "message",
+        "otp",
+        "phone"
+      ]
+    },
+    {
+      "id": "generic.push",
+      "label": "Mobile Push",
+      "vendor": "Generic",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "push",
+        "notification",
+        "apns",
+        "fcm",
+        "mobile"
+      ]
+    },
+    {
+      "id": "generic.marketing",
+      "label": "Marketing Automation",
+      "vendor": "Generic",
+      "role": "sink",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "braze",
+        "customer.io",
+        "iterable",
+        "marketo",
+        "campaigns",
+        "crm"
+      ]
+    },
+    {
+      "id": "generic.webhook",
+      "label": "Webhook",
+      "vendor": "Generic",
+      "role": "source",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "callback",
+        "http",
+        "hook"
+      ]
+    },
+    {
+      "id": "generic.llm",
+      "label": "LLM API",
+      "vendor": "Generic",
+      "role": "processor",
+      "aliases": [
+        "external",
+        "third party",
+        "third-party API",
+        "3rd party",
+        "api",
+        "saas",
+        "webhook",
+        "vendor API",
+        "REST API",
+        "HTTP API",
+        "llm",
+        "ai",
+        "gpt",
+        "claude",
+        "model",
+        "genai"
       ]
     },
     {
@@ -2392,29 +2774,6 @@
       ]
     },
     {
-      "id": "generic.webhook",
-      "label": "Webhook",
-      "vendor": "Generic",
-      "role": "source",
-      "aliases": [
-        "callback",
-        "http",
-        "hook"
-      ]
-    },
-    {
-      "id": "generic.email",
-      "label": "Email",
-      "vendor": "Generic",
-      "role": "sink",
-      "aliases": [
-        "mail",
-        "smtp",
-        "notification",
-        "sendgrid"
-      ]
-    },
-    {
       "id": "github-actions",
       "label": "GitHub Actions",
       "vendor": "GitHub",
@@ -2440,31 +2799,6 @@
         "nightly",
         "cron job",
         "worker"
-      ]
-    },
-    {
-      "id": "generic.push",
-      "label": "Mobile Push",
-      "vendor": "Generic",
-      "role": "sink",
-      "aliases": [
-        "push",
-        "notification",
-        "apns",
-        "fcm",
-        "mobile"
-      ]
-    },
-    {
-      "id": "generic.sms",
-      "label": "SMS",
-      "vendor": "Generic",
-      "role": "sink",
-      "aliases": [
-        "text",
-        "message",
-        "otp",
-        "phone"
       ]
     },
     {
@@ -2544,34 +2878,6 @@
         "inference",
         "ai",
         "prediction"
-      ]
-    },
-    {
-      "id": "generic.llm",
-      "label": "LLM API",
-      "vendor": "Generic",
-      "role": "processor",
-      "aliases": [
-        "llm",
-        "ai",
-        "gpt",
-        "claude",
-        "model",
-        "genai"
-      ]
-    },
-    {
-      "id": "generic.external-api",
-      "label": "External API",
-      "vendor": "Generic",
-      "role": "sink",
-      "aliases": [
-        "third party",
-        "3rd party",
-        "external",
-        "api",
-        "rest",
-        "saas"
       ]
     },
     {
@@ -2824,20 +3130,6 @@
         "token bucket",
         "quota",
         "rate limit"
-      ]
-    },
-    {
-      "id": "generic.marketing",
-      "label": "Marketing Automation",
-      "vendor": "Generic",
-      "role": "sink",
-      "aliases": [
-        "braze",
-        "customer.io",
-        "iterable",
-        "marketo",
-        "campaigns",
-        "crm"
       ]
     }
   ]

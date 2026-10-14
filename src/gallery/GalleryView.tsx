@@ -13,7 +13,7 @@ import { iconUrl, stencils } from "../stencils/registry";
 import type { Stencil, StencilCategory } from "../model/types";
 import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
-import { CATEGORY_ORDER, categoryBlurb, categoryLabel } from "../lib/categories";
+import { CATEGORY_ORDER, categoryBlurb, categoryLabel, clientSections } from "../lib/categories";
 import { simRoleMeta } from "../lib/simRoles";
 import {
   familyCounts,
@@ -151,7 +151,12 @@ export function GalleryView() {
       map.get(s.category)!.push(s);
     }
     const cats = [...CATEGORY_ORDER, ...[...map.keys()].filter((c) => !CATEGORY_ORDER.includes(c))];
-    return cats.filter((c) => map.has(c)).map((c) => ({ category: c, items: map.get(c)! }));
+    return cats
+      .filter((c) => map.has(c))
+      .map((c) => ({
+        category: c,
+        items: c === "clients" ? clientSections(map.get(c)!).flatMap((s) => s.items) : map.get(c)!,
+      }));
   }, [filtered]);
 
   /** Results in display order, for the drawer's previous / next. */
@@ -475,11 +480,24 @@ export function GalleryView() {
               </h2>
               <p>{categoryBlurb[category]}</p>
             </div>
-            <div className="tile-grid">
-              {items.map((s) => (
-                <StencilTile key={s.id} stencil={s} open={detail === s.id} actions={tileActions} />
-              ))}
-            </div>
+            {category === "clients" ? (
+              clientSections(items).map((section) => (
+                <section key={section.id} className="gallery-subsection" data-testid={`gallery-clients-${section.id}`}>
+                  <h3>{section.label}</h3>
+                  <div className="tile-grid">
+                    {section.items.map((s) => (
+                      <StencilTile key={s.id} stencil={s} open={detail === s.id} actions={tileActions} />
+                    ))}
+                  </div>
+                </section>
+              ))
+            ) : (
+              <div className="tile-grid">
+                {items.map((s) => (
+                  <StencilTile key={s.id} stencil={s} open={detail === s.id} actions={tileActions} />
+                ))}
+              </div>
+            )}
           </section>
         ))}
 

@@ -23,6 +23,21 @@ icons never clash when inlined.
 
 ## Files
 
+### External discovery (P5a)
+
+Iterable, Braze, Segment, Shopify, PayPal and Adyen use existing generic glyphs with nominative vendor names,
+as recommended by `docs/research/planning-model.md` §4.1. No new vendor marks or downloaded artwork.
+
+| Stencils                        | Reused icon                | Source and license | Original asset |
+| ------------------------------- | -------------------------- | ------------------ | -------------- |
+| Iterable, Braze                 | `generic-marketing.svg`    | Lucide 1.55.0, ISC | `megaphone`    |
+| Segment, Shopify, PayPal, Adyen | `generic-external-api.svg` | Lucide 1.55.0, ISC | `cloud`        |
+
+These are functional glyphs, not vendor logos. Brand artwork without a verified redistribution grant remains
+excluded (including the previously rejected Braze mark). Trademarks belong to their owners.
+
+### Existing files
+
 | Icon file                   | Source                                  | Original asset                                                                                         |
 | --------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `azure-service-bus.svg`     | Azure V24                               | `integration/10836-icon-service-Azure-Service-Bus.svg`                                                 |

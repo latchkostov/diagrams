@@ -1,4 +1,4 @@
-import type { StencilCategory } from "../model/types";
+import type { Stencil, StencilCategory } from "../model/types";
 
 export const CATEGORY_ORDER: StencilCategory[] = [
   "messaging",
@@ -20,7 +20,7 @@ export const categoryLabel: Record<StencilCategory, string> = {
   onprem: "On-prem network",
   observability: "Observability",
   security: "Security & config",
-  clients: "Clients",
+  clients: "Clients & external",
   generic: "Generic",
 };
 
@@ -35,3 +35,11 @@ export const categoryBlurb: Record<StencilCategory, string> = {
   clients: "People, devices and external systems at the edge of the diagram.",
   generic: "Vendor-neutral shapes for anything else.",
 };
+
+/** Two quiet headings inside the existing category, rather than another filter or fold control. */
+export function clientSections(items: readonly Stencil[]) {
+  return [
+    { id: "sources", label: "Clients & webhooks", items: items.filter((s) => s.simRole === "source") },
+    { id: "external", label: "External systems", items: items.filter((s) => s.simRole !== "source") },
+  ].filter((section) => section.items.length);
+}
