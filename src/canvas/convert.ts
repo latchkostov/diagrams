@@ -7,7 +7,7 @@ import {
   type DiagramNode,
   type EdgeRelation,
 } from "../model/types";
-import { implicitLabel, isDependency, relationOf } from "../model/relations";
+import { implicitLabel, isDependency, isRelationOrigin, relationOf } from "../model/relations";
 import { foregroundLayerOrder } from "../model/layers";
 import { pruneChecks } from "../model/checks";
 import { getStencil } from "../stencils/registry";
@@ -194,6 +194,7 @@ export const edgeToFlow = (e: DiagramEdge): DiagramFlowEdge => ({
   data: {
     kind: e.kind ?? "async",
     ...(isDependency(e) ? { relation: relationOf(e) } : {}),
+    ...(isRelationOrigin(e.relationOrigin) ? { relationOrigin: e.relationOrigin } : {}),
     label: e.label,
     sourceSide: e.sourceSide,
     targetSide: e.targetSide,
@@ -209,6 +210,7 @@ export const edgeFromFlow = (e: DiagramFlowEdge): DiagramEdge => ({
   label: e.data?.label,
   kind: e.data?.kind ?? "async",
   relation: isDependency(e.data) ? relationOf(e.data) : undefined,
+  relationOrigin: isRelationOrigin(e.data?.relationOrigin) ? e.data.relationOrigin : undefined,
   sourceSide: e.data?.sourceSide,
   targetSide: e.data?.targetSide,
   props: e.data?.props,

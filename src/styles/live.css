@@ -136,6 +136,13 @@
   font-family: var(--font-ui);
 }
 
+/* Each badge is its own stacking context (its transform), painted in diagram order: the one whose breakdown or
+   tip is showing comes first, so a later node's ring, pill or chip never shows through the card. */
+.lv-node.is-hovered,
+.lv-node:hover {
+  z-index: 1;
+}
+
 .lv-ring {
   position: absolute;
   inset: -6px;
@@ -234,6 +241,11 @@
   border-radius: 2px;
   background: linear-gradient(90deg, var(--live-backlog), var(--status-down));
   transition: width 0.25s ease-out;
+}
+
+/* Kept by a topic nobody reads: how much it holds, in the backlog's amber, never heading for red. */
+.lv-depth.is-kept i {
+  background: var(--live-backlog);
 }
 
 /* The one primary metric, under the node. */

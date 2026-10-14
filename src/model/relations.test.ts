@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   derivedLabel,
+  relationNote,
+  RELATION_META,
   edgeSettings,
   edgeSettingsList,
   flowEdges,
@@ -212,5 +214,18 @@ describe("settings privacy and editor regressions", () => {
     const edge = { id: "e", from: "a", to: "b" };
     expect(edgeSemanticSignature(edge)).toEqual(edgeSemanticSignature({ ...edge, kind: "async", relation: "flow" }));
     expect(edgeSemanticSignature(edge)).not.toEqual(edgeSemanticSignature({ ...edge, relation: "secret" }));
+  });
+});
+
+describe("why a dependency carries nothing", () => {
+  it("config and secret say they're read at startup and refreshed, never per request", () => {
+    for (const r of ["config", "secret"] as const) {
+      expect(relationNote(r)).toBe("Read at startup and refreshed, not on every request, so no messages flow over it.");
+      // The menu's hint says the same thing in short.
+      expect(RELATION_META[r].hint).toMatch(/then refreshes$/);
+    }
+  });
+  it("the others keep their hint", () => {
+    expect(relationNote("telemetry")).toBe("Logs, metrics and traces. No messages flow here in Live.");
   });
 });

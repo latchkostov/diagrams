@@ -52,6 +52,10 @@ are published at <https://www.livediagrams.dev/schema/diagram.v1.json> (the file
 - `relation` (optional): leave it out for flows. A dependency is drawn dotted and never carries traffic:
   `config`, `secret`, `identity`, `telemetry`, `deploy` or `depends`. It points from the thing that needs it to
   the dependency, for example from a service to Key Vault. A `deploy` edge points from the pipeline to its target.
+  Config and secrets are read at startup and refreshed, not on every request: make a service's edge to App
+  Configuration or Key Vault a dependency, or every request flows through it in live view.
+- `relationOrigin` (optional, written by the app): `inferred` when the relation came from the stencils at its ends,
+  `explicit` when someone chose it. Changing a node's stencil re-infers its edges, except `explicit` ones.
 - `props` (optional): simulation settings (see below).
 
 ## Boundaries (`groups`)

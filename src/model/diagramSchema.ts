@@ -141,6 +141,12 @@ function diagramSchema() {
             description:
               "What the connection means. flow carries messages or requests; the others are dependencies (dotted, no traffic, ignored by the simulation) and point from the thing that needs it to the dependency: config, secret, identity (gets tokens from), telemetry (reports to), deploy (from the actor to its target), depends.",
           },
+          relationOrigin: {
+            type: "string",
+            enum: ["inferred", "explicit"],
+            description:
+              "Who set relation. inferred: from the stencils at its ends, so it follows them when a node's stencil changes. explicit: chosen on purpose, never changed by a stencil change. Omitted: a flow becomes the dependency its ends imply when a stencil changes; a dependency stays.",
+          },
           sourceSide: {
             type: "string",
             enum: SIDES,

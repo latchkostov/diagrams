@@ -2,7 +2,15 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import "../styles/trace.css";
 import type { DiagramFile } from "../model/types";
 import { messageColor } from "../sim/colors";
-import { buildJourney, formatDuration, formatOffset, type Journey, type JourneyRow } from "../trace/journey";
+import {
+  buildJourney,
+  formatDuration,
+  formatOffset,
+  type DiagramLike,
+  type Journey,
+  type JourneyRow,
+} from "../trace/journey";
+import { stencilRole } from "../stencils/roles";
 import type { LiveTrace } from "./controller";
 import { LiveIcon } from "./icons";
 import { TRACE_CARD_FOOTPRINT } from "./traceCardLayout";
@@ -42,11 +50,23 @@ export interface SlowCard {
   note?: string;
 }
 
-/** "Done", "In flight", "Dead-lettered", "Dropped". */
-function journeyStatus(j: Journey): { key: "flight" | "done" | "dlq" | "dropped"; label: string } {
+/** "Done", "In flight", "Dead-lettered", "Dropped", or "Kept" in a topic nobody reads ("Waiting" in a queue). */
+function journeyStatus(
+  j: Journey,
+  diagram: DiagramLike,
+): { key: "flight" | "done" | "dlq" | "dropped" | "kept"; label: string; title?: string } {
   if (j.deadLettered) return { key: "dlq", label: "Dead-lettered" };
   if (!j.done) return { key: "flight", label: "In flight" };
   if (j.dropped) return { key: "dropped", label: "Dropped" };
+  const at = j.kept.length ? diagram.nodes.find((n) => n.id === j.kept[0]) : undefined;
+  if (at) {
+    const queue = stencilRole(at.stencil) === "queue";
+    return {
+      key: "kept",
+      label: queue ? "Waiting" : "Kept",
+      title: `Nobody reads ${at.label || at.id}: ${queue ? "it waits there for a consumer" : "it keeps the message"}`,
+    };
+  }
   return { key: "done", label: "Done" };
 }
 
@@ -177,7 +197,7 @@ export function TraceCard({
     );
   }
 
-  const status = journeyStatus(journey);
+  const status = journeyStatus(journey, diagram);
   return (
     <section
       ref={card}
@@ -200,7 +220,12 @@ export function TraceCard({
           </strong>
           <span>from {name(journey.origin)}</span>
         </div>
-        <span className={`tr-status is-${status.key}`} data-testid="trace-status" data-status={status.key}>
+        <span
+          className={`tr-status is-${status.key}`}
+          data-testid="trace-status"
+          data-status={status.key}
+          title={status.title}
+        >
           {status.label}
         </span>
         <CloseButton key="close" onClose={slowmo?.onExit ?? onClose} slowmo={!!slowmo} />

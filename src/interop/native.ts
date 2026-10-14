@@ -2,7 +2,7 @@ import { DIAGRAM_FORMAT, type Simulation, type DiagramFile } from "../model/type
 import { propsProblem } from "../model/simProps";
 import { ANNOTATION_LIMITS, normalizeAnnotation } from "../model/annotations";
 import type { DiagramAnnotation } from "../model/types";
-import { isDependency, isEdgeRelation, sanitizeSettings } from "../model/relations";
+import { isDependency, isEdgeRelation, isRelationOrigin, sanitizeSettings } from "../model/relations";
 import { sanitizeChecks } from "../model/checks";
 import { idClaimer } from "../model/ids";
 
@@ -346,6 +346,7 @@ function repairRelation(e: Record<string, unknown>, warnings: string[]): void {
     delete e.relation;
   }
   if (e.when !== undefined && (!isDependency(e) || !DEPENDENCY_WHEN.has(e.when as string))) delete e.when;
+  if (e.relationOrigin !== undefined && !isRelationOrigin(e.relationOrigin)) delete e.relationOrigin;
   const props = e.props as Record<string, unknown> | undefined;
   if (props?.settings !== undefined) {
     const settings = sanitizeSettings(props.settings);
@@ -606,7 +607,18 @@ const KNOWN_TOP = new Set([
   "private",
 ]);
 const KNOWN_NODE = new Set(["id", "stencil", "label", "sublabel", "x", "y", "group", "props"]);
-const KNOWN_EDGE = new Set(["id", "from", "to", "label", "kind", "relation", "sourceSide", "targetSide", "props"]);
+const KNOWN_EDGE = new Set([
+  "id",
+  "from",
+  "to",
+  "label",
+  "kind",
+  "relation",
+  "relationOrigin",
+  "sourceSide",
+  "targetSide",
+  "props",
+]);
 const KNOWN_GROUP = new Set(["id", "label", "tone", "x", "y", "width", "height"]);
 const KNOWN_ANNOTATION = new Set(["id", "kind", "text", "x", "y", "width", "height", "shape", "color", "textSize"]);
 

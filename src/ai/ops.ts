@@ -5,12 +5,41 @@ import { estimateCardSize } from "../canvas/nodes/size";
 import { placeFree, overlaps } from "../canvas/placement";
 import { resolveRef, ReferenceError, RefIndex, type ElementKind } from "./refs";
 import { resolveKind } from "./stencils";
+import { reinferRelations, relationChangeText } from "../stencils/relations";
 import { placeNew } from "./place";
 import { checkBudget, checkSchema, validated } from "./validation";
 import { edit_diagramSchema } from "./schemas";
 import { diagramDiff } from "../model/diagramDiff";
 import { simulationReferenceWarnings } from "../interop/native";
 import type { ApplyOpsOptions, ApplyOpsResult, DiagramOp, OpResult } from "./index";
+
+/** Re-inferred connections listed in one op's result, and in a whole batch's: the rest are counted, not listed. */
+export const MAX_RELATIONS_PER_OP = 50;
+export const MAX_RELATIONS_PER_BATCH = 200;
+
+/**
+ * A node's stencil changed: its edges' relationships follow, and the op's result says which and what to. The list
+ * is bounded (`budget` is what the batch may still list); `note` and `relationsOmitted` still count every one.
+ */
+function reinferEdges(next: DiagramFile, nodeId: string, result: OpResult, budget: { left: number }): void {
+  const stencils = new Map(next.nodes.map((n) => [n.id, n.stencil]));
+  const changes = reinferRelations(next.edges, (id) => stencils.get(id), new Set([nodeId]));
+  if (!changes.length) return;
+  const to = new Map(changes.map((c) => [c.id, c.to]));
+  for (const e of next.edges) {
+    const relation = to.get(e.id);
+    if (relation === undefined) continue;
+    if (relation === "flow") {
+      delete e.relation;
+      delete e.relationOrigin;
+    } else Object.assign(e, { relation, relationOrigin: "inferred" });
+  }
+  const listed = changes.slice(0, Math.max(0, Math.min(MAX_RELATIONS_PER_OP, budget.left)));
+  budget.left -= listed.length;
+  result.relations = listed;
+  if (listed.length < changes.length) result.relationsOmitted = changes.length - listed.length;
+  result.note = relationChangeText(changes);
+}
 
 const mergeProps = (old: Record<string, unknown> | undefined, patch: Record<string, unknown>) =>
   Object.fromEntries(Object.entries({ ...old, ...patch }).filter(([, v]) => v !== null));
@@ -37,6 +66,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
     const keepOutside = new Set<string>();
     const newNotes: { id: string; near?: string }[] = [];
     const touched = new Set<string>();
+    const relationBudget = { left: MAX_RELATIONS_PER_BATCH };
     const allIds = () => new Set(index.elements.keys());
     // Kind-aware: each op resolves a name only to the kinds it acts on, and acts on the kind its target is.
     const ref = (r: string, kinds?: readonly ElementKind[]) => resolveRef(next, r, keys, index, kinds);
@@ -126,7 +156,10 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             else if (op.sublabel !== undefined) n.sublabel = op.sublabel;
             if (op.kind !== undefined) {
               result.stencil = resolveKind(op.kind, n.label);
+              const before = n.stencil;
               n.stencil = result.stencil.id;
+              // As on the canvas: the node's connections follow its new stencil (src/stencils/relations.ts).
+              if (n.stencil !== before) reinferEdges(next, n.id, result, relationBudget);
             }
             if (op.props) n.props = mergeProps(n.props, op.props);
             if (op.in === null) {

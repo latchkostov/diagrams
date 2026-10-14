@@ -25,7 +25,7 @@ Don't write coordinates. Send ops; the app resolves plain-word kinds to stencils
 
 - Ops: `add_node`, `connect`, `insert_between`, `update`, `remove`, `add_boundary`, `add_note`, `set_meta`. A batch applies all or nothing, as one undo step, in order. `insert_between` puts a new node on an existing connection (`from -> new -> to`), keeping its kind, relation, label, props and sides.
 - Refer to elements by id (preferred), by a `key` set earlier in the same batch, by exact label, by `"label (sublabel)"`, or a connection by `"From -> To"`. An ambiguous or unknown reference fails the batch with `candidates` and a `hint`.
-- Each added node reports the stencil chosen, with `confidence` and `alternatives`; change it with `{ "op": "update", "target": "<id>", "kind": "<stencil id>" }`.
+- Each added node reports the stencil chosen, with `confidence` and `alternatives`; change it with `{ "op": "update", "target": "<id>", "kind": "<stencil id>" }`. A new stencil re-infers the node's connections, as the canvas does: a flow into what becomes a config store turns `config`; the result lists them in `relations`, with a `note`.
 
 Each change an agent makes appears in the app's **AI panel** (docked beside every diagram; Ctrl+I) as a turn the person can undo or revert. Without a browser agent, the panel's **Advanced** section copies a prompt for any chatbot and applies the reply pasted back (ops, a whole diagram file, or a `set_simulation` input). The app never asks for or stores an API key.
 

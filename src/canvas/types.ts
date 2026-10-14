@@ -6,6 +6,7 @@ import type {
   AnnotationTextSize,
   DiagramGroup,
   EdgeRelation,
+  RelationOrigin,
   Side,
 } from "../model/types";
 
@@ -45,6 +46,7 @@ export type FlowEdgeData = {
   kind: "async" | "sync";
   /** Absent = a flow. Any other relationship is a dependency: dotted, glyph, no traffic. */
   relation?: EdgeRelation;
+  relationOrigin?: RelationOrigin;
   label?: string;
   /** Pinned attachment sides. Omitted = chosen from node positions on every render (floating). */
   sourceSide?: Side;

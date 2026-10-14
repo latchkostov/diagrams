@@ -28,6 +28,8 @@
   --success-soft: rgb(23 137 90 / 0.12);
   --warning: #b86e00;
   --warning-soft: rgb(229 160 13 / 0.16);
+  /* Small warning words on -soft (a status pill): 4.5:1 there, where --warning is about 3.5:1. */
+  --warning-ink: #8a5200;
   --danger-soft: rgb(209 57 63 / 0.11);
   --info: var(--accent);
   --info-soft: var(--accent-soft);
@@ -124,6 +126,7 @@
   --success-soft: rgb(74 210 149 / 0.14);
   --warning: #f5b84a;
   --warning-soft: rgb(245 184 74 / 0.15);
+  --warning-ink: #f5b84a;
   --danger-soft: rgb(255 107 111 / 0.14);
   --status-up: #3fcf8e;
   --status-paused: #f5b84a;

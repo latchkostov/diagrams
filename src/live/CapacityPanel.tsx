@@ -28,6 +28,7 @@ import {
   isPresetActive,
   nearestStop,
   parseRate,
+  partitionsNotes,
   PRESETS,
   RATE_STEPS,
   rateFromSlider,
@@ -64,6 +65,8 @@ interface Props {
   onSave?: () => void;
   /** Adds an upstream entry point in front of a node (one undoable edit); omitted where nothing can be edited. */
   onAddEntry?: (nodeId: string) => void;
+  /** "Nobody reads X" › Add a consumer. */
+  onAddConsumer?: (brokerId: string) => void;
   onChange?: () => void;
   disabledHint?: string;
 }
@@ -87,6 +90,7 @@ export const CapacityPanel = memo(function CapacityPanel({
   onSave,
   onChange,
   onAddEntry,
+  onAddConsumer,
   disabledHint,
 }: Props) {
   const [showAll, setShowAll] = useState(false);
@@ -130,6 +134,7 @@ export const CapacityPanel = memo(function CapacityPanel({
     };
   }, [editing, heldRows, byId, selectedRows]);
   const props = (n: DiagramNode) => baseProps(n, base, inputs.props[n.id]);
+  const notes = useMemo(() => partitionsNotes(diagram, base, inputs), [diagram, base, inputs]);
   const traffic = inputs.traffic ?? base?.multipliers?.traffic ?? 1;
   const capacity = inputs.capacity ?? base?.multipliers?.capacity ?? 1;
   const dirty = hasInputs(inputs) || invalidFields.size > 0;
@@ -183,7 +188,12 @@ export const CapacityPanel = memo(function CapacityPanel({
           {rates.size === 0 ? (
             <NoEntryPoints diagram={diagram} onAdd={onAddEntry} disabledHint={disabledHint} />
           ) : (
-            <BottleneckCallout view={view} onApply={onApplyFix} disabledHint={disabledHint} />
+            <BottleneckCallout
+              view={view}
+              onApply={onApplyFix}
+              disabledHint={disabledHint}
+              onAddConsumer={onAddConsumer}
+            />
           )}
 
           <fieldset className="cap-edit-fields" disabled={!!disabledHint} title={disabledHint}>
@@ -263,6 +273,7 @@ export const CapacityPanel = memo(function CapacityPanel({
                     node={byId.get(id)!}
                     heat={view.nodes[id]}
                     partitions={props(byId.get(id)!).partitions}
+                    note={notes.get(id)}
                     onPartitions={(n) => setProp(id, "partitions", n)}
                   />
                 ))}
@@ -557,6 +568,12 @@ function EntryRow({
 function Pill({ heat }: { heat?: NodeHeat }) {
   if (!heat || heat.level === "idle")
     return <span className="cap-pill is-idle">{heat?.offered ? "no limit" : "idle"}</span>;
+  if (heat.noReader && !heat.status)
+    return (
+      <span className={`cap-pill is-${heat.level}`} title={heat.text} data-testid={`capacity-pill-${heat.id}`}>
+        no reader
+      </span>
+    );
   return (
     <span className={`cap-pill is-${heat.level}`} title={heat.text} data-testid={`capacity-pill-${heat.id}`}>
       {formatUtilization(heat.utilization)}
@@ -834,11 +851,14 @@ function BrokerRow({
   node,
   heat,
   partitions,
+  note,
   onPartitions,
 }: {
   node: DiagramNode;
   heat?: NodeHeat;
   partitions: number;
+  /** Why more partitions change nothing here (partitionsNotes), once they're raised. */
+  note?: string;
   onPartitions: (n: number) => void;
 }) {
   const role = stencilRole(node.stencil);
@@ -871,6 +891,11 @@ function BrokerRow({
             />
           </div>
         </div>
+      )}
+      {note && (
+        <p className="cap-row-foot" data-testid={`capacity-partitions-note-${node.id}`}>
+          {note}
+        </p>
       )}
     </div>
   );

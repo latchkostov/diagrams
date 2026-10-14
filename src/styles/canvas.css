@@ -1816,6 +1816,13 @@ select.insp-input {
   color: var(--text-3);
 }
 
+/* A field's own note (Partitions: what it does and doesn't do), tucked under it. */
+.insp-field-note {
+  margin-top: -4px;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
 .insp-seg {
   display: flex;
 }
@@ -3139,6 +3146,17 @@ select.insp-input {
 .insp-size .insp-input {
   width: 0;
   flex: 1;
+}
+
+/* A hover card inside the viewport shows above everything else there: React Flow paints nodes in order, each its
+   own stacking context, so a node with its dependency list open comes above the others and the edge labels (below
+   a card being edited, EDITING_Z); live, an edge's settings card comes above the metric badges. */
+.react-flow__node:has(.dn-pip-card) {
+  z-index: 1500 !important;
+}
+
+.react-flow[data-live] .react-flow__edgelabel-renderer:has(.fe-card) {
+  z-index: 4;
 }
 
 /* Under the pips, clear of the node's own title, scaled from that corner (DependencyPips.tsx). */

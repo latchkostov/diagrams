@@ -228,6 +228,7 @@ var EDGE_RELATIONS = [
 	"depends"
 ];
 EDGE_RELATIONS.filter((r) => r !== "flow");
+var isRelationOrigin = (v) => v === "inferred" || v === "explicit";
 var isEdgeRelation = (v) => typeof v === "string" && EDGE_RELATIONS.includes(v);
 /** The edge's relationship; absent or unknown reads as a flow (the safe fallback). */
 var relationOf = (e) => e && isEdgeRelation(e.relation) ? e.relation : "flow";
@@ -709,6 +710,7 @@ function repairRelation(e, warnings) {
 		delete e.relation;
 	}
 	if (e.when !== void 0 && (!isDependency(e) || !DEPENDENCY_WHEN.has(e.when))) delete e.when;
+	if (e.relationOrigin !== void 0 && !isRelationOrigin(e.relationOrigin)) delete e.relationOrigin;
 	const props = e.props;
 	if (props?.settings !== void 0) {
 		const settings = sanitizeSettings(props.settings);

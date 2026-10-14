@@ -77,6 +77,8 @@ export interface Journey {
   failures: number;
   deadLettered: number;
   dropped: number;
+  /** Brokers with no consumer that kept a copy (a topic nobody reads, a dead-letter queue): its journey ends there. */
+  kept: string[];
   /** Nodes reached and edges travelled, in order of first use: the path so far. */
   nodes: string[];
   edges: string[];
@@ -111,6 +113,7 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
     failures = 0,
     deadLettered = 0,
     dropped = 0;
+  const kept: string[] = [];
 
   const reach = (node: string | undefined) => {
     if (node && !seenNode.has(node)) {
@@ -255,6 +258,8 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
         rows.push({ key, kind: "drop", t, id: step.id, type: step.type, node: step.node!, reason: step.reason, copy });
         break;
       case "park":
+        if (step.node && !kept.includes(step.node)) kept.push(step.node);
+        break;
       case "end":
         break;
     }
@@ -282,6 +287,7 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
     failures,
     deadLettered,
     dropped,
+    kept,
     nodes,
     edges: edgeList,
   };

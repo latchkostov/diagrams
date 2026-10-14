@@ -8,7 +8,7 @@ import type { DiagramFlowNode, FlowNode } from "../canvas/types";
 import type { LiveState } from "./controller";
 import { useLive } from "./context";
 import { useDiagram } from "../canvas/DiagramContext";
-import { formatCount, formatRate, heatOf } from "./format";
+import { formatCount, formatRate, heatOf, heldWords } from "./format";
 import { LiveIcon } from "./icons";
 import type { CapacityView, NodeHeat } from "./capacityModel";
 import { CapacityChip, CapacityRing, IdleChip } from "./CapacityLayer";
@@ -26,9 +26,6 @@ const doneLabel: Record<SimRole, string> = {
   sink: "Received",
   none: "Passed",
 };
-
-const backlogLabel = (role: SimRole) =>
-  role === "queue" ? "queued" : role === "topic" || role === "stream" ? "lag" : "waiting";
 
 /**
  * Per-node live readouts in React Flow's viewport (they pan and zoom with the diagram). Each node
@@ -190,6 +187,9 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
   // throughput readout; a broker keeps its lag only while something is waiting.
   const capShown = !!cap && cap.level !== "idle";
   const showMetric = active && !(capShown && (!broker || s.backlog === 0));
+  const held = broker ? heldWords(s) : null;
+  // A topic nobody reads says so with its count; the heat map's chip would only repeat it as a rate.
+  const unread = !!held?.lead;
   const style = {
     transform: `translate(${node.position.x}px, ${node.position.y}px)`,
     width: w,
@@ -198,7 +198,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
 
   return (
     <div
-      className={`lv-node is-${s.status}`}
+      className={`lv-node is-${s.status}${hovered ? " is-hovered" : ""}`}
       style={style}
       data-testid={`node-badge-${node.id}`}
       data-status={s.status}
@@ -231,7 +231,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
       )}
 
       {broker && (s.backlog > 0 || s.processed > 0) && (
-        <div className="lv-depth" aria-hidden>
+        <div className={`lv-depth${unread ? " is-kept" : ""}`} aria-hidden>
           <i style={{ "--d": `${Math.min(100, (s.backlog / peak) * 100).toFixed(1)}%` } as CSSProperties} />
         </div>
       )}
@@ -241,10 +241,12 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
           {!showMetric ? null : broker ? (
             <span
               className={`lv-metric is-backlog${s.backlog > 0 ? " is-hot" : ""}`}
-              style={{ "--heat": heat.toFixed(3) } as CSSProperties}
+              // Kept, not falling behind: the backlog's amber, never heating towards red.
+              style={{ "--heat": unread ? "0" : heat.toFixed(3) } as CSSProperties}
               data-testid={`node-metric-${node.id}`}
             >
-              <b className="mono">{formatCount(s.backlog)}</b> {backlogLabel(s.role)}
+              {held!.lead && `${held!.lead} · `}
+              <b className="mono">{formatCount(s.backlog)}</b> {held!.unit}
             </span>
           ) : (
             <span
@@ -255,7 +257,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
               <b className="mono">{formatRate(s.throughput)}</b>
             </span>
           )}
-          {cap && <CapacityChip heat={cap} />}
+          {cap && !(unread && showMetric) && <CapacityChip heat={cap} />}
           <IdleChip id={node.id} idle={s.idleReplicas ?? 0} replicas={s.replicas ?? 0} />
         </div>
       )}
@@ -265,7 +267,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
           <Row label={doneLabel[s.role]} value={formatCount(s.processed)} />
           <Row label="Throughput" value={formatRate(s.throughput)} />
           {broker ? (
-            <Row label={s.role === "queue" ? "Queued" : "Lag (max group)"} value={formatCount(s.backlog)} />
+            <Row label={held!.row} value={formatCount(s.backlog)} />
           ) : (
             s.backlog > 0 && <Row label="Waiting" value={formatCount(s.backlog)} />
           )}
@@ -283,7 +285,12 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
               partitions.
             </p>
           )}
-          {cap && cap.level !== "idle" && <Row label="Capacity" value={cap.text} />}
+          {unread && (
+            <p className="lv-detail-note" data-testid={`node-detail-unread-${node.id}`}>
+              Nobody reads this yet: it keeps every message. Lag is per consumer group, and it has none.
+            </p>
+          )}
+          {cap && cap.level !== "idle" && !unread && <Row label="Capacity" value={cap.text} />}
           {s.failed > 0 && <Row label="Failed attempts" value={formatCount(s.failed)} bad />}
           {s.deadLettered > 0 && <Row label="Dead-lettered" value={formatCount(s.deadLettered)} bad />}
           {s.dropped > 0 && <Row label="Dropped" value={formatCount(s.dropped)} bad />}

@@ -221,6 +221,14 @@ export interface DiagramNode {
  */
 export type EdgeRelation = "flow" | "config" | "secret" | "identity" | "telemetry" | "deploy" | "depends";
 
+/**
+ * Where an edge's relationship came from. "inferred": from the stencils at its ends (drawn into a Key Vault, or
+ * an end's stencil changed), so it follows them when they change again. "explicit": someone chose it (the
+ * Relationship menu, Make it a flow), so it never changes by itself. Absent: a flow follows its ends' stencils;
+ * a dependency stays as it is.
+ */
+export type RelationOrigin = "inferred" | "explicit";
+
 export interface DiagramEdge {
   id: string;
   /** Message / request flows from `from` to `to`. Either end may also be a shape annotation's id. */
@@ -233,6 +241,8 @@ export interface DiagramEdge {
   /** Absent = "flow". Dependencies point from the thing that needs it to the dependency (Deploy: from
    *  the actor to its target). Config edges may list what they read in `props.settings`. */
   relation?: EdgeRelation;
+  /** Who set `relation` (see RelationOrigin): decides whether a stencil change re-infers it. */
+  relationOrigin?: RelationOrigin;
   /** Which side of each node the edge attaches to. Omitted = chosen automatically from node positions. */
   sourceSide?: Side;
   targetSide?: Side;

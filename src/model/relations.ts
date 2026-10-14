@@ -1,4 +1,4 @@
-import type { DiagramEdge, EdgeRelation } from "./types";
+import type { DiagramEdge, EdgeRelation, RelationOrigin } from "./types";
 
 // Relationships: what an edge means (docs/research/diagram-semantics.md §2). A flow carries messages
 // or requests; the six dependencies (config, secret, identity, telemetry, deploy, depends) never carry
@@ -17,6 +17,8 @@ export const EDGE_RELATIONS: readonly EdgeRelation[] = [
 
 export type DependencyRelation = Exclude<EdgeRelation, "flow">;
 export const DEPENDENCY_RELATIONS = EDGE_RELATIONS.filter((r): r is DependencyRelation => r !== "flow");
+
+export const isRelationOrigin = (v: unknown): v is RelationOrigin => v === "inferred" || v === "explicit";
 
 export const isEdgeRelation = (v: unknown): v is EdgeRelation =>
   typeof v === "string" && (EDGE_RELATIONS as readonly string[]).includes(v);
@@ -40,7 +42,12 @@ export interface RelationMeta {
   hint: string;
   /** How a sentence names it ("Secret dependency"). */
   noun: string;
+  /** Why it carries nothing in Live, where that's not obvious (the tooltip and the inspector). */
+  why?: string;
 }
+
+/** Config and secrets are read at startup and refreshed: never per request, so the simulation sends nothing. */
+const READ_AT_STARTUP = "Read at startup and refreshed, not on every request, so no messages flow over it.";
 
 export const RELATION_META: Record<DependencyRelation, RelationMeta> = {
   config: {
@@ -48,12 +55,14 @@ export const RELATION_META: Record<DependencyRelation, RelationMeta> = {
     implicit: "reads config",
     hint: "Settings it loads, then refreshes",
     noun: "Config dependency",
+    why: READ_AT_STARTUP,
   },
   secret: {
     label: "Secret",
     implicit: "reads secrets",
-    hint: "Secrets it resolves, usually once",
+    hint: "Secrets it loads, then refreshes",
     noun: "Secret dependency",
+    why: READ_AT_STARTUP,
   },
   identity: {
     label: "Identity",
@@ -70,6 +79,10 @@ export const RELATION_META: Record<DependencyRelation, RelationMeta> = {
   deploy: { label: "Deploys", implicit: "deploys to", hint: "Changes it: CI/CD, IaC, GitOps", noun: "Deployment" },
   depends: { label: "Depends on", implicit: "depends on", hint: "Needed to start or connect", noun: "Dependency" },
 };
+
+/** The inspector's line on a dependency: why no messages flow over it. */
+export const relationNote = (relation: DependencyRelation): string =>
+  RELATION_META[relation].why ?? `${RELATION_META[relation].hint}. No messages flow here in Live.`;
 
 /** "Secret", or "Message" / "Request" for a flow. */
 export function relationLabel(relation: EdgeRelation, kind?: "async" | "sync"): string {

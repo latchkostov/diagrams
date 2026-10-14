@@ -274,6 +274,9 @@ describe("edge cases", () => {
     });
     expect(script.unfinished).toBe(true);
     expect(script.summary).toMatch(/^Still waiting at /);
+    // A service's backlog is waiting work, not lag (lag belongs to a topic's consumer groups).
+    const busy = buildScript({ trace: cut, diagram: kafka, roleOf: roles(kafka), waiting: { lag: () => 1240 } });
+    expect(busy.summary).toBe("Still waiting at Inventory service · 1,240 waiting");
     const lagged = buildScript({
       trace: { ...cut, steps: cut.steps.filter((s) => !(s.id !== 4 && s.t >= 1180)) },
       diagram: kafka,

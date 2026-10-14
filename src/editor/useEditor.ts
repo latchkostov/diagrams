@@ -29,7 +29,7 @@ import {
 import { foregroundLayerOrder } from "../model/layers";
 import { notify } from "../interop/ui/toast";
 import { isDependency, relationOf, RELATION_META, type DependencyRelation } from "../model/relations";
-import { inferRelation } from "../stencils/relations";
+import { inferRelation, reinferRelations, relationChangeText } from "../stencils/relations";
 import {
   boundsOf,
   clearOffset,
@@ -449,8 +449,45 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
       source: a.id,
       target: b.id,
       type: "flow",
-      data: relation === "flow" ? { kind: "async" } : { kind: "async", relation },
+      data: relation === "flow" ? { kind: "async" } : { kind: "async", relation, relationOrigin: "inferred" },
     };
+  };
+  /**
+   * Nodes whose stencil changed (id -> new stencil): their edges' relationships follow, in the same undo step
+   * (src/stencils/relations.ts, reinferRelations), and a toast says what changed, with Undo. A flow drawn into a
+   * generic node that then became App Configuration turns Config, so no requests go through it in Live.
+   */
+  const reinferEdges = (stencils: ReadonlyMap<string, string>) => {
+    if (!stencils.size) return;
+    const current = new Map(
+      rf
+        .getNodes()
+        .filter(isDiagram)
+        .map((n) => [n.id, n.data.stencil]),
+    );
+    const changed = new Set(
+      [...stencils].filter(([id, st]) => current.has(id) && current.get(id) !== st).map(([id]) => id),
+    );
+    if (!changed.size) return;
+    const edges = rf.getEdges().map((e) => ({ id: e.id, from: e.source, to: e.target, ...e.data }));
+    const changes = reinferRelations(edges, (id) => stencils.get(id) ?? current.get(id), changed);
+    if (!changes.length) return;
+    const to = new Map(changes.map((c) => [c.id, c.to]));
+    deps().setEdges((es) =>
+      es.map((e) => {
+        const relation = to.get(e.id);
+        if (relation === undefined) return e;
+        const data = { kind: "async" as const, ...e.data };
+        if (relation === "flow") {
+          delete data.relation;
+          delete data.relationOrigin;
+        } else Object.assign(data, { relation, relationOrigin: "inferred" });
+        return { ...e, data };
+      }),
+    );
+    notify(relationChangeText(changes), {
+      action: { label: "Undo", run: () => api.undo(), testId: "relation-reinfer-undo", undoes: true },
+    });
   };
   /** The first time a relationship is inferred, a toast says what it means (with a way back to a flow). */
   const explainEdge = (edge: DiagramFlowEdge) => {
@@ -614,6 +651,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     updateNodes: (ids, patch, opts) => {
       const set = new Set(ids);
       hint(opts?.merge);
+      if (patch.stencil) reinferEdges(new Map(ids.map((id) => [id, patch.stencil!])));
       deps().setNodes((ns) =>
         ns.map((n) => {
           if (!set.has(n.id) || !isDiagram(n)) return n;
@@ -648,6 +686,7 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
     },
     updateNode: (id, patch, opts) => {
       hint(opts?.merge);
+      if (patch.stencil) reinferEdges(new Map([[id, patch.stencil]]));
       deps().setNodes((ns) =>
         ns.map((n) => {
           if (n.id !== id || !isDiagram(n)) return n;
@@ -682,7 +721,12 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           const data = { kind: "async" as const, ...e.data };
           if ("label" in patch) data.label = patch.label || undefined;
           if ("kind" in patch) data.kind = patch.kind ?? "async";
-          if ("relation" in patch) data.relation = isDependency(patch) ? relationOf(patch) : undefined;
+          if ("relation" in patch) {
+            // A relationship someone picks (the menu, Make it a flow) is theirs, even when it's the one it already had
+            // (Request on a Message, Config on an inferred Config): a stencil change never re-infers it.
+            data.relation = isDependency(patch) ? relationOf(patch) : undefined;
+            data.relationOrigin = patch.relationOrigin ?? "explicit";
+          } else if ("relationOrigin" in patch) data.relationOrigin = patch.relationOrigin;
           if ("sourceSide" in patch) data.sourceSide = patch.sourceSide;
           if ("targetSide" in patch) data.targetSide = patch.targetSide;
           if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyOps } from "./ops";
+import { applyOps, MAX_RELATIONS_PER_BATCH, MAX_RELATIONS_PER_OP } from "./ops";
 import type { DiagramFile } from "../model/types";
 import type { DiagramOp } from "./index";
 import { LIMITS, validateDiagram } from "../interop/native";
@@ -90,6 +90,58 @@ describe("applyOps", () => {
       run({ ...d, nodes: [changed, d.nodes[1]] }, [{ op: "update", target: "Writer", sublabel: null }]).diagram
         .nodes[0],
     ).not.toHaveProperty("sublabel");
+  });
+  it("a node's new stencil re-infers its connections, as on the canvas, and the result says so", () => {
+    // The owner's diagram: a .NET service's plain flow into a generic node that becomes App Configuration.
+    const d = run(empty(), [
+      { op: "add_node", kind: "generic.service", label: "Settings", key: "cfg" },
+      { op: "add_node", kind: "service.dotnet", label: "API", key: "api" },
+      { op: "connect", from: "api", to: "cfg", kind: "sync" },
+    ]).diagram;
+    const made = run(d, [{ op: "update", target: "Settings", kind: "azure.app-config" }]);
+    expect(made.diagram.edges[0]).toMatchObject({ relation: "config", relationOrigin: "inferred", kind: "sync" });
+    expect(made.results[0]).toMatchObject({
+      relations: [{ id: d.edges[0].id, from: "flow", to: "config" }],
+      note: "1 connection is now Config: no messages flow over it",
+    });
+    // Back to a service: the inferred Config is a flow again.
+    const back = run(made.diagram, [{ op: "update", target: "Settings", kind: "service.java" }]);
+    expect(back.diagram.edges[0].relation).toBeUndefined();
+    expect(back.diagram.edges[0].relationOrigin).toBeUndefined();
+    expect(back.results[0].note).toBe("1 connection is a flow again: messages flow over it in Live");
+    // A connection chosen on purpose never follows.
+    const pinned = structuredClone(d);
+    pinned.edges[0].relationOrigin = "explicit";
+    const kept = run(pinned, [{ op: "update", target: "Settings", kind: "azure.app-config" }]);
+    expect(kept.diagram.edges[0].relation).toBeUndefined();
+    expect(kept.results[0].relations).toBeUndefined();
+  });
+  it("bounds the re-inferred connections it lists, per op and per batch, and still counts them all", () => {
+    // 12 config-store candidates, each fed by 60 services: every stencil change re-infers 60 connections.
+    const d: DiagramFile = { ...empty(), nodes: [], edges: [] };
+    for (let s = 0; s < 12; s++) {
+      d.nodes.push({ id: `store${s}`, stencil: "generic.service", label: `Store ${s}`, x: 0, y: s * 100 });
+      for (let i = 0; i < 60; i++) {
+        d.nodes.push({ id: `svc${s}-${i}`, stencil: "service.go", label: `Svc ${s}-${i}`, x: 400, y: 0 });
+        d.edges.push({ id: `e${s}-${i}`, from: `svc${s}-${i}`, to: `store${s}` });
+      }
+    }
+    const made = run(
+      d,
+      Array.from({ length: 12 }, (_, s): DiagramOp => ({
+        op: "update",
+        target: `store${s}`,
+        kind: "azure.app-config",
+      })),
+    );
+    expect(made.diagram.edges.every((e) => e.relation === "config")).toBe(true);
+    const listed = made.results.map((r) => r.relations?.length ?? 0);
+    expect(Math.max(...listed)).toBe(MAX_RELATIONS_PER_OP);
+    expect(listed.reduce((a, b) => a + b, 0)).toBe(MAX_RELATIONS_PER_BATCH);
+    for (const r of made.results) {
+      expect((r.relations?.length ?? 0) + (r.relationsOmitted ?? 0)).toBe(60);
+      expect(r.note).toBe("60 connections are now Config: no messages flow over them");
+    }
   });
   it("changes an edge's kind, label and props by endpoint reference", () => {
     const changed = run(graph(), [

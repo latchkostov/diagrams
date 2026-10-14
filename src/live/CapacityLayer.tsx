@@ -123,19 +123,24 @@ interface CalloutProps {
   floating?: boolean;
   onOpenPanel?: () => void;
   disabledHint?: string;
+  /** "Nobody reads X": adds a consumer of that broker (one undoable edit); omitted where nothing can be edited. */
+  onAddConsumer?: (brokerId: string) => void;
 }
 
 /** The top bottleneck in plain language, with a one-click fix when it maps to replicas or partitions. */
-export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabledHint }: CalloutProps) {
-  const fix = view.fix;
+export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabledHint, onAddConsumer }: CalloutProps) {
+  // Nobody reads the broker in the headline: a consumer is the one action, not resizing something else.
+  const reader = view.addConsumer && onAddConsumer ? view.addConsumer : undefined;
+  const fix = reader ? null : view.fix;
   const callout = useRef<HTMLDivElement>(null);
   const applied = useRef(false);
+  // The action's button goes once it's done (the fix applied, the consumer added): keep focus on the callout.
   useLayoutEffect(() => {
-    if (applied.current && !fix) {
+    if (applied.current && !fix && !reader) {
       callout.current?.focus();
       applied.current = false;
     }
-  }, [fix]);
+  }, [fix, reader]);
   return (
     <div
       ref={callout}
@@ -162,7 +167,20 @@ export function BottleneckCallout({ view, onApply, floating, onOpenPanel, disabl
           </span>
         )}
       </div>
-      {fix && onApply ? (
+      {reader ? (
+        <button
+          className="btn cap-callout-apply is-fix"
+          onClick={() => {
+            applied.current = true;
+            onAddConsumer?.(reader);
+          }}
+          data-testid="bottleneck-add-consumer"
+          disabled={!!disabledHint}
+          title={disabledHint ?? "Add a service that reads it (undo with Ctrl+Z)"}
+        >
+          <LiveIcon name="plus" size={13} /> Add a consumer
+        </button>
+      ) : fix && onApply ? (
         <button
           className="btn cap-callout-apply is-fix"
           onClick={() => {

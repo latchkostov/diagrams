@@ -8,6 +8,7 @@ import type { DiagramFile, DiagramNode, SimRole, Simulation, TrafficShape } from
 import { LIMITS } from "../interop/native";
 import { stencilRole } from "../stencils/roles";
 import { analyzeCapacity, type NodeCapacity } from "../sim/capacity";
+import { compileTopology } from "../sim/topology";
 import type { NodeStatus } from "../sim/types";
 import { resolveProps } from "../sim/defaults";
 import { autoScale, peakRate } from "../sim/scale";
@@ -233,6 +234,11 @@ export function formatUtilization(u: number): string {
 
 export interface NodeHeat extends NodeCapacity {
   modeled: boolean;
+  /**
+   * A topic, stream or queue with no consumer. Not an overload: a topic keeps what's published (its heat is a
+   * warning, not red), a queue's messages wait in it. Its capacity is zero either way.
+   */
+  noReader?: boolean;
   /** Down or paused (in the run, the simulation's setup or the diagram); undefined when up. */
   status?: Exclude<NodeStatus, "up">;
   level: HeatLevel;
@@ -262,16 +268,25 @@ export interface CapacityView {
   headline: string;
   detail: string;
   fix: CapacityFix | null;
+  /** The broker the headline says nobody reads: the callout offers Add a consumer instead of a fix. */
+  addConsumer?: string;
   converged: boolean;
 }
 
 /** A run's node statuses right now (only the ones that aren't up need to be listed). */
 export type RunStatus = Readonly<Record<string, NodeStatus | undefined>>;
 
-function nodeText(n: NodeCapacity, status?: NodeHeat["status"]): string {
+/** A topic or stream keeps what's published, read or not; a queue's messages wait for a consumer. */
+const keeps = (role: SimRole) => PARTITIONED.has(role);
+
+function nodeText(n: NodeCapacity, status?: NodeHeat["status"], noReader = false): string {
   if (!(n.offered > 0)) return "";
   if (status === "down") return `Down · ${formatRate(n.offered)} failing`;
   if (status === "paused") return `Paused · ${formatRate(n.offered)} waiting`;
+  if (noReader)
+    return keeps(n.role)
+      ? `Nobody reads this yet · ${formatRate(n.offered)} kept`
+      : `No consumer · ${formatRate(n.offered)} waiting`;
   if (n.capacity === Infinity) return `${formatRate(n.offered)} · no limit`;
   if (!Number.isFinite(n.utilization)) return `No capacity · ${formatRate(n.offered)} waiting`;
   return `${formatUtilization(n.utilization)} · ${formatRate(n.offered)} of ${formatRate(n.capacity)}`;
@@ -345,19 +360,25 @@ function outageHeadline(out: NodeHeat[]): string {
 export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus): CapacityView {
   const analysis = analyzeCapacity(d, planningSimulation(d, sim), { status });
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
+  const routes = compileTopology(d).outgoing;
   const nodes: Record<string, NodeHeat> = {};
   for (const [id, n] of Object.entries(analysis.nodes)) {
     const modeled = isModeled(n.role);
     const st = byId.has(id) ? nodeStatus(byId.get(id)!, sim, status) : undefined;
+    // A broker with no route out: nothing consumes it (dead-letter routes don't read it either).
+    const noReader = BROKERS.has(n.role) && !routes.get(id)?.length;
     // Unlimited brokers (only unthrottled consumers) never limit anything: no colour. A node that's
     // down or paused is out of capacity whatever its role.
     const limited = (modeled && n.capacity !== Infinity) || (!!st && n.role !== "none");
+    const level = limited ? heatLevel(n.utilization, n.offered) : "idle";
     nodes[id] = {
       ...n,
       modeled,
       ...(st ? { status: st } : {}),
-      level: limited ? heatLevel(n.utilization, n.offered) : "idle",
-      text: nodeText(n, st),
+      ...(noReader ? { noReader } : {}),
+      // A topic nobody reads isn't overloaded: it keeps what's published. Amber, never pulsing red.
+      level: noReader && !st && keeps(n.role) && level === "over" ? "warn" : level,
+      text: nodeText(n, st, noReader),
     };
   }
   const ranked = rankedNodes(d, nodes);
@@ -369,6 +390,7 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
     .map((n) => nodes[n.id])
     .filter((n): n is NodeHeat => !!n?.status && n.role !== "none" && n.role !== "source");
   let headline: string, detail: string;
+  let addConsumer: string | undefined;
   if (out.length) {
     headline = outageHeadline(out);
     const first = out[0];
@@ -383,9 +405,16 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
   } else if (!top) {
     headline = "No traffic to analyze";
     detail = "Set a rate on an entry point to see where it backs up.";
+  } else if (top.noReader) {
+    // Not "can't keep up": nothing reads it. Partitions only cap the consumers in a group, so they can't help.
+    headline = `Nobody reads ${top.label}`;
+    detail = keeps(top.role)
+      ? "It keeps what's published, but nothing consumes it. Partitions can't change that: add a consumer."
+      : "Messages wait in it until a consumer takes them.";
+    addConsumer = top.id;
   } else if (!Number.isFinite(top.utilization)) {
     headline = `${top.label} can't keep up at all`;
-    detail = "It's paused or down, or no consumer can take its messages.";
+    detail = "Its consumers can't take any of its messages.";
   } else if (top.idleReplicas > 0 && top.level !== "ok") {
     headline = `${top.label}: ${top.idleReplicas} of ${top.replicas} replicas idle`;
     detail = `A consumer group can't use more consumers than partitions. ${top.text}`;
@@ -403,7 +432,16 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
   if (!analysis.converged) detail += " A feedback loop didn't settle, so these are estimates.";
   const tone: HeatLevel = out.length ? "over" : (top?.level ?? "idle");
   const lead = out.length ? out[0] : top;
-  return { nodes, top: lead, tone, headline, detail, fix, converged: analysis.converged };
+  return {
+    nodes,
+    top: lead,
+    tone,
+    headline,
+    detail,
+    fix,
+    ...(addConsumer ? { addConsumer } : {}),
+    converged: analysis.converged,
+  };
 }
 
 /** Applies a fix to saved setup props (simulation) — returns a new simulation. */
@@ -428,6 +466,47 @@ function withoutProp(
   const own = Object.fromEntries(Object.entries(props[id]).filter(([k]) => k !== key));
   const rest = Object.fromEntries(Object.entries(props).filter(([k]) => k !== id));
   return Object.keys(own).length ? { ...rest, [id]: own } : rest;
+}
+
+// ---------------------------------------------------------------- partitions
+
+/**
+ * Why raising a topic's partitions changes nothing, by topic id, for the notes under Partitions in the Inputs panel:
+ * only topics raised past their saved value, and only where that can't help. Partitions cap how many consumers in
+ * one group work in parallel; they don't speed up publishing. One topology and one node index for every row (none
+ * at all while nothing is raised), so a panel of hundreds of topics stays linear.
+ */
+export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: LiveInputs): Map<string, string> {
+  const notes = new Map<string, string>();
+  const raised = d.nodes.filter(
+    (n) =>
+      PARTITIONED.has(roleOf(n)) && baseProps(n, sim, inputs.props[n.id]).partitions > baseProps(n, sim).partitions,
+  );
+  if (!raised.length) return notes;
+  const groupsOf = compileTopology(d).groups;
+  const byId = new Map(d.nodes.map((n) => [n.id, n]));
+  const capacity = inputs.capacity ?? resolveMultiplier(sim?.multipliers?.capacity);
+  const replicas = (id: string) => {
+    const member = byId.get(id)!;
+    if (roleOf(member) !== "processor") return Infinity;
+    return Math.max(1, Math.round(baseProps(member, sim, inputs.props[id]).replicas * capacity));
+  };
+  for (const node of raised) {
+    const groups = groupsOf.get(node.id) ?? [];
+    if (!groups.length) {
+      notes.set(node.id, "Nobody reads it yet, so more partitions change nothing.");
+      continue;
+    }
+    const now = baseProps(node, sim, inputs.props[node.id]).partitions;
+    const most = Math.max(...groups.map((g) => g.members.reduce((sum, id) => sum + replicas(id), 0)));
+    if (!(most < now)) continue;
+    const which = groups.length > 1 ? "Its largest consumer group has" : "Its consumer group has";
+    notes.set(
+      node.id,
+      `${which} ${most} ${most === 1 ? "replica" : "replicas"}: partitions past ${most} add no speed.`,
+    );
+  }
+  return notes;
 }
 
 // ---------------------------------------------------------------- rows

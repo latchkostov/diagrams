@@ -2,6 +2,27 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Live explains itself (2026-10)
+
+From the owner's own diagram (docs/DESIGN-REVIEW.md, round 30). Habit changes:
+
+- **A topic or stream nobody reads says so.** Live view no longer calls it "can't keep up at all", "No capacity · 2/s
+  waiting" or lag: the banner says **Nobody reads Kafka Topic** with one action, **Add a consumer**, the badge
+  **Nobody reads this yet · 297 kept**, and the heat map paints it amber, not red. A queue nobody reads still shows its
+  messages **queued** and **waiting**. Paused and down keep their own words.
+- **Changing a node's stencil changes its connections' relationships too**, in the same undo step: a flow into a node
+  that becomes App Configuration turns **Config** and stops carrying requests in Live; a toast says what changed, with
+  **Undo**. One you chose yourself (Relationship ▸, Make it a flow) never changes by itself. Agents' `update` with a new
+  `kind` does the same and lists the connections in its result.
+- **Partitions say what they do**, under the field: how many consumers in one group work in parallel; they don't speed
+  up publishing. Raised in the Inputs panel where they can't help, a line says why.
+- **Config and Secret connections say why nothing flows over them**: read at startup and refreshed, not on every
+  request. Secret's menu hint is "Secrets it loads, then refreshes" (it was "Secrets it resolves, usually once").
+- **A live hover card is never covered** by the node under it (its ring or capacity chip showed through).
+- Slow motion says "1,240 waiting" for a service's backlog (it said "lag"), and the trace card's status is **Kept** for a
+  message a topic nobody reads keeps.
+- Saved files may carry `relationOrigin` on an edge (`inferred` or `explicit`): older builds keep it and ignore it.
+
 ## Full screen while presenting (2026-10)
 
 - **Presenting has a full-screen button**, beside **Exit presentation** (the corners icon), and **F** does the same.

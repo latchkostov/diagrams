@@ -38,6 +38,11 @@ export interface NodeSimState {
   backlog: number;
   /** Per consumer group lag (topics / streams / queues). Key = group name. */
   lag: Record<string, number>;
+  /**
+   * A topic, stream or queue with no consumer: what it holds is kept, unread (a topic with no consumer group has
+   * no lag at all; lag is per group). Absent otherwise.
+   */
+  noConsumer?: true;
   /** Messages currently being processed, including blocked in-place retries. */
   inFlight: number;
   /** Total messages successfully handled / stored / emitted. */

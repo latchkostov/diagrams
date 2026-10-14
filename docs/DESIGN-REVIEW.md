@@ -1,5 +1,86 @@
 # Design review
 
+## Round 30: the live simulation explains itself (2026-10-13)
+
+The owner built a small diagram and went live: Incoming traffic (2/s) → .NET Service → Kafka Topic, and .NET Service →
+App Configuration → Key Vault. Live said "Kafka Topic can't keep up at all. It's paused or down, or no consumer can take
+its messages", the topic showed "No capacity · 2/s waiting" and a lag that kept climbing, raising partitions from 3 to
+9000 changed nothing and nothing said why, and every request went through App Configuration (the edge was drawn while
+the node was generic, and stayed a flow when it became App Configuration). Self-review against
+`docs/UX-PRINCIPLES.md` on the production build (`vite preview`) at 1024 × 768 and 1280 × 800 light and 1280 × 800 and
+1440 × 900 dark, on the owner's diagram rebuilt by hand and a queue and a stream variant of it (no private diagrams).
+Screenshots are in `docs/screenshots/round30/`.
+
+- **Say what it is, not what it isn't.** A topic nobody reads isn't overloaded: Kafka keeps what's published, and lag
+  is per consumer group, of which it has none. The banner now says **Nobody reads Kafka Topic**, "It keeps what's
+  published, but nothing consumes it. Partitions can't change that: add a consumer." The badge says **Nobody reads this
+  yet · 15 kept**, the hover card **Kept** with one line on why there's no lag, and the heat map paints it amber, a
+  warning, never the pulsing red of an overload; its backlog glow stays faint (`nobody-reads-1280-light`,
+  `nobody-reads-hover-1280-light`). An Event Hubs or Kinesis stream reads the same (`stream-nobody-reads-1280-dark`).
+- **A queue keeps its waiting words**, because its messages do pile up: **11 queued**, **No consumer · 2/s waiting**,
+  in red, with the same headline and action (`queue-nobody-reads-1024-light`).
+- **One primary action, named for the change.** The callout's one button is **Add a consumer**: a service one gap
+  downstream, reading the topic, named for it ("Kafka Topic consumer"), in the stencil of the service that publishes
+  to it, one undo step, with a toast and Undo. The view refits to show it, clear of the Inputs panel when that's open.
+  The run restarts with the consumer, and the topic's ring turns green (`add-consumer-1280-light`). It's offered
+  editing and live, never presenting or in the read-only viewer.
+- **Paused and down keep their own words** ("Kafka Topic is paused"), separate from nobody reading it. "Can't keep up
+  at all" is left for a broker whose consumers can't take any of its messages.
+- **Teach in place: partitions.** The inspector says under Partitions, in the app's voice: "How many consumers in one
+  group can work in parallel. It doesn't speed up publishing." (`partitions-note-1280-light`). The Inputs panel, once
+  partitions are raised past the saved value where they can't help, says why under the stepper: "Nobody reads it yet,
+  so more partitions change nothing." or "Its consumer group has 1 replica: partitions past 1 add no speed."
+  (`partitions-raised-panel-1440-dark`). It says nothing at the saved value, so the default 3 partitions with one
+  consumer replica isn't nagged about.
+- **No surprises: a stencil change re-infers its edges, with Undo.** Turning a generic node into App Configuration
+  turns the flow from the service into **Config**, in the same undo step as the stencil, and the toast says so: "1
+  connection is now Config: no messages flow over it", **Undo** (`reinfer-toast-1280-light`). A node that stops being
+  a config store turns what was inferred back into flows ("1 connection is a flow again: messages flow over it in
+  Live"). A relationship someone chose (the Relationship menu, the inspector, Make it a flow) never changes by itself:
+  edges remember who set it (`relationOrigin`). The same happens from the inspector (one node or a bulk edit), Change
+  stencil on the right-click and in Ctrl+K, and the agents' `update` op, whose result lists the connections.
+- **Why nothing flows over Config and Secret.** The edge's tooltip and inspector say "Read at startup and refreshed,
+  not on every request, so no messages flow over it." (`config-note-inspector-1280-light`). The Secret menu hint
+  matches: "Secrets it loads, then refreshes" (it said "usually once").
+- **Everywhere the state appears says the same.** Slow motion: "kept in Kafka Topic: nobody reads it", ending on "Kept
+  in Kafka Topic, unread"; the trace card's status **Kept** (a queue: **Waiting**); the Checks' `no-reader`: "it keeps
+  every message, unread" for a topic, "messages pile up" for a queue; `check_diagram` uses that rule, and
+  `describe_diagram` now names a dependency's relationship ("config dependency") instead of its unused kind.
+
+### Also fixed (found here)
+
+- **A live hover card was painted under the node below it**: each metric badge is its own stacking context, so a later
+  node's status or capacity ring showed through the card (the owner's report). The hovered badge comes first now; so
+  does a node with its dependency list open, and, live, the edge label layer while a config edge's settings card shows
+  (`hover-above-node-1440-dark`; `tests/e2e/hover-stacking.spec.ts`, both themes).
+- **Slow motion called a service's backlog "lag"** ("Still waiting at Payments service · lag 1,240"). It's "1,240
+  waiting" now; a queue's is "queued"; only a topic's or stream's is lag.
+
+### Bigger ones, listed for the owner (not built)
+
+- **Add a consumer restarts the run**, as every topology edit in live view does, so what the topic kept isn't read by
+  the new consumer: the count starts again from zero. Real Kafka would read it only with `auto.offset.reset=earliest`.
+  Carrying broker state across a topology change is engine work.
+- **A stencil change keeps the node's name**: a generic "Service" that becomes App Configuration is still called
+  "Service" (its subtitle shows the stencil). Renaming a node that still has its old stencil's default name would be
+  small, but it's a naming rule of its own.
+- **An agent's `connect` without `relation` makes a flow** even into Key Vault (documented: "Leave out for a flow"),
+  where drawing on the canvas infers the dependency. Changing that changes the op contract.
+- **Imports that infer dependencies** (Terraform, AsyncAPI, Kubernetes) don't mark them `inferred`, so a later stencil
+  change leaves them as they are (the safe direction).
+- **Dependencies never fail in the simulation**: a Key Vault or App Configuration outage changes nothing
+  (`docs/research/diagram-semantics.md`, phase 3).
+
+![Nobody reads Kafka Topic: amber, kept, Add a consumer](screenshots/round30/nobody-reads-1280-light.png)
+![The hover card: Kept, and why there's no lag](screenshots/round30/nobody-reads-hover-1280-light.png)
+![After Add a consumer](screenshots/round30/add-consumer-1280-light.png)
+![A queue nobody reads keeps its waiting words](screenshots/round30/queue-nobody-reads-1024-light.png)
+![A stencil change: 1 connection is now Config, with Undo](screenshots/round30/reinfer-toast-1280-light.png)
+![Partitions in the Inputs panel, raised where they can't help](screenshots/round30/partitions-raised-panel-1440-dark.png)
+
+Also: `screenshots/round30/stream-nobody-reads-1280-dark.png`, `partitions-note-1280-light.png`,
+`config-note-inspector-1280-light.png` and `hover-above-node-1440-dark.png`.
+
 ## Round 28: checks, the owner's decisions (2026-10-13)
 
 The gate for the owner's four decisions on the checks (`docs/research/architecture-checks.md`, "Owner's decisions
