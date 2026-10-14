@@ -19,6 +19,7 @@ icons never clash when inlined.
 | [theSVG](https://github.com/glincker/thesvg) via Iconify set `thesvg-color`                                                        | —          | MIT.                                                                                                                                                                                                                                                         |
 | [Simple Icons](https://simpleicons.org) via Iconify set `simple-icons`                                                             | 16.34.0    | CC0-1.0. Monochrome paths, filled with the brand hex published in Simple Icons data.                                                                                                                                                                         |
 | [Devicon](https://devicon.dev) via Iconify set `devicon`                                                                           | —          | MIT.                                                                                                                                                                                                                                                         |
+| Drawn for Live Diagrams (the `net-` device glyphs)                                                                                 | —          | MIT, as the repository. In Lucide's style.                                                                                                                                                                                                                   |
 
 ## Files
 
@@ -102,7 +103,8 @@ icons never clash when inlined.
 
 Product names, logos and icons are trademarks of their respective owners (Microsoft, Amazon,
 Google, The Apache Software Foundation, Broadcom/VMware (RabbitMQ), Redis Ltd., The Linux
-Foundation, HashiCorp, Splunk/Cisco, Confluent, Okta, Stripe, Twilio, Salesforce, HubSpot, Slack,
+Foundation, HashiCorp, Splunk/Cisco, Confluent, Okta, Stripe, Twilio, Salesforce, HubSpot, Slack, Juniper, Palo Alto
+Networks, Fortinet, F5, Arista, Check Point, HPE, Cloud Software Group (NetScaler),
 GitHub, OpenAI, Anthropic, etc.). They're used **nominatively**, only to show those
 products in architecture diagrams. This doesn't imply any affiliation with or endorsement by
 the trademark owners. Don't alter the logos beyond scaling, and don't use them as the app's own branding.
@@ -278,3 +280,31 @@ The Service Account stencil (GKE workload identity) uses Google Cloud's IAM icon
 No new stencil or icon. Every type on the Terraform table maps to a stencil already in the catalogue (AWS, Azure,
 Google Cloud and Confluent, plus CDN, Firewall / WAF, Scheduler and the generic stores), so nothing new needs
 attribution.
+
+### On-prem network devices (network infrastructure, batch 1)
+
+Routers, switches, firewalls and ADCs use **device glyphs, not vendor logos**: the vendor is the stencil's brand
+(its name, its accent colour and the node's subtitle). No new icon needs attribution. Three glyphs are drawn for this
+app on Lucide's 24 px grid, in its style (stroke `#475569`, width 1.75), and are MIT like the rest of the repository;
+the firewall is Lucide's.
+
+| Icon file          | Source                       | Original asset                                                                               |
+| ------------------ | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `net-router.svg`   | Drawn for Live Diagrams, MIT | The usual router symbol seen from above: a circle with two arrows in and two out             |
+| `net-switch.svg`   | Drawn for Live Diagrams, MIT | The usual switch symbol: a box with arrows both ways                                         |
+| `net-adc.svg`      | Drawn for Live Diagrams, MIT | A box fanning out to three targets (an application delivery controller or load balancer)     |
+| `net-firewall.svg` | Lucide (ISC)                 | `brick-wall-fire` (the existing Firewall / WAF keeps `brick-wall-shield`, so the two differ) |
+
+Not used, and why (docs/research/network-infrastructure.md, "Icons and trademarks"):
+
+- **Cisco's network topology icons**: Cisco says "you may use them freely, but you may not alter them", and its site
+  terms bar redistributing its materials without written consent. There's no licence to bundle them in an MIT app.
+- **Juniper's, Fortinet's and F5's icon libraries and Visio stencils**: no redistribution grant ("all rights
+  reserved", or use only to promote that vendor's products). Palo Alto Networks and Arista publish none.
+- **Simple Icons brand marks** (CC0 artwork) exist for Cisco, Juniper, Palo Alto Networks, Fortinet, F5 and Citrix,
+  but not for Check Point, Arista, HPE Aruba or NetScaler, and Simple Icons itself says its CC0 doesn't cover the
+  trademarks. Device glyphs say what a box does, the way network diagrams have always been drawn, and treat every
+  vendor alike.
+
+Cisco, Juniper, Palo Alto Networks, Fortinet, F5, BIG-IP, Arista, Check Point, HPE Aruba Networking and NetScaler are
+trademarks of their owners, named nominatively (see Trademarks above).

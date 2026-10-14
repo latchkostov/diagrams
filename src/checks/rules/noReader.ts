@@ -4,7 +4,9 @@ import { isDeadLetterQueue } from "./deadLetter";
 
 // 2. no-reader: a broker with incoming flows and no ordinary route out. Its backlog only grows (in live view
 // its capacity is zero). A Warning; a dead-letter queue nobody reads is a Suggestion ("Dead letters pile up"),
-// since someone should read or alert on it, but replay is often a manual runbook outside the diagram.
+// since someone should read or alert on it, but replay is often a manual runbook outside the diagram. A route out
+// that's a deny rule reads nothing (it blocks what's sent there), so a broker whose only routes are deny rules is
+// read by nobody too, and says why.
 
 export const noReader: CheckRule = {
   id: "no-reader",
@@ -16,7 +18,9 @@ export const noReader: CheckRule = {
     const out: Finding[] = [];
     for (const node of ctx.diagram.nodes) {
       const id = node.id;
-      if (!isBroker(ctx, id) || ctx.routes(id).length) continue;
+      const routes = ctx.routes(id);
+      if (!isBroker(ctx, id) || routes.some((e) => !e.deny)) continue;
+      const blocked = routes.length > 0;
       const incoming = ctx.incoming(id);
       if (!incoming.length) continue;
       const producers = [...new Set(incoming.map((e) => e.from))];
@@ -48,9 +52,11 @@ export const noReader: CheckRule = {
           target: id,
           elements: [id, ...producers],
           title: `Nobody reads ${name}`,
-          message: keeps
-            ? `${send} to ${name}, but nothing consumes it: it keeps every message, unread.`
-            : `${send} to ${name}, but nothing consumes it: messages pile up.`,
+          message: blocked
+            ? `${send} to ${name}, but its only ${routes.length === 1 ? "route out is a deny rule" : "routes out are deny rules"}: every message is blocked, and nothing reads it.`
+            : keeps
+              ? `${send} to ${name}, but nothing consumes it: it keeps every message, unread.`
+              : `${send} to ${name}, but nothing consumes it: messages pile up.`,
           rationale: keeps
             ? "A topic keeps what's published until its retention ends, whether anything reads it or not. With no consumer group, nothing acts on its messages, and more partitions don't change that."
             : "A queue with producers and no consumers only grows. Every queue should have a consumer that takes its messages.",

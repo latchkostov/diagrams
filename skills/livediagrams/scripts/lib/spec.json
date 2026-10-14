@@ -159,6 +159,40 @@
           }
         }
       ]
+    },
+    "size": {
+      "type": "string",
+      "enum": [
+        "branch",
+        "campus",
+        "datacentre"
+      ]
+    },
+    "gbps": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1000000
+    },
+    "messageKB": {
+      "type": "number",
+      "minimum": 0.01,
+      "maximum": 1000000
+    },
+    "ha": {
+      "type": "string",
+      "enum": [
+        "standalone",
+        "active-standby",
+        "active-active"
+      ]
+    },
+    "failoverMs": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 600000
+    },
+    "healthChecks": {
+      "type": "boolean"
     }
   },
   "edgeProps": {
@@ -186,6 +220,9 @@
       "items": {
         "type": "string"
       }
+    },
+    "deny": {
+      "type": "boolean"
     }
   },
   "stencils": [
@@ -1426,6 +1463,359 @@
         "security",
         "shield",
         "ddos"
+      ]
+    },
+    {
+      "id": "generic.router",
+      "label": "Router",
+      "vendor": "Generic",
+      "role": "gateway",
+      "aliases": [
+        "router",
+        "wan",
+        "edge",
+        "core",
+        "bgp",
+        "ospf",
+        "mpls",
+        "l3"
+      ]
+    },
+    {
+      "id": "cisco.isr",
+      "label": "Cisco ISR",
+      "vendor": "Cisco",
+      "role": "gateway",
+      "aliases": [
+        "isr",
+        "router",
+        "3825",
+        "3845",
+        "2800",
+        "2900",
+        "2911",
+        "3900",
+        "4000",
+        "4331",
+        "4451",
+        "c8200",
+        "c8300",
+        "c8500",
+        "catalyst 8000",
+        "asr",
+        "asr1000",
+        "ios",
+        "ios-xe",
+        "sd-wan",
+        "branch"
+      ]
+    },
+    {
+      "id": "juniper.mx",
+      "label": "Juniper MX",
+      "vendor": "Juniper",
+      "role": "gateway",
+      "aliases": [
+        "mx",
+        "mx204",
+        "mx304",
+        "mx480",
+        "mx960",
+        "mx10004",
+        "router",
+        "junos",
+        "pe",
+        "bgp",
+        "mpls"
+      ]
+    },
+    {
+      "id": "generic.switch",
+      "label": "Switch",
+      "vendor": "Generic",
+      "role": "gateway",
+      "aliases": [
+        "switch",
+        "l2",
+        "l3",
+        "access",
+        "core",
+        "leaf",
+        "spine",
+        "tor",
+        "top of rack",
+        "vlan",
+        "ethernet"
+      ]
+    },
+    {
+      "id": "cisco.catalyst",
+      "label": "Cisco Catalyst",
+      "vendor": "Cisco",
+      "role": "gateway",
+      "aliases": [
+        "catalyst",
+        "c9200",
+        "c9300",
+        "c9500",
+        "9300",
+        "2960",
+        "3850",
+        "switch",
+        "access",
+        "core",
+        "campus"
+      ]
+    },
+    {
+      "id": "cisco.nexus",
+      "label": "Cisco Nexus",
+      "vendor": "Cisco",
+      "role": "gateway",
+      "aliases": [
+        "nexus",
+        "n9k",
+        "9000",
+        "93180",
+        "9364",
+        "aci",
+        "nx-os",
+        "nxos",
+        "leaf",
+        "spine",
+        "switch",
+        "datacenter"
+      ]
+    },
+    {
+      "id": "arista.switch",
+      "label": "Arista Switch",
+      "vendor": "Arista",
+      "role": "gateway",
+      "aliases": [
+        "arista",
+        "eos",
+        "7050",
+        "7280",
+        "7800",
+        "7060",
+        "720xp",
+        "leaf",
+        "spine",
+        "switch",
+        "datacenter"
+      ]
+    },
+    {
+      "id": "juniper.ex",
+      "label": "Juniper EX",
+      "vendor": "Juniper",
+      "role": "gateway",
+      "aliases": [
+        "ex",
+        "ex2300",
+        "ex3400",
+        "ex4100",
+        "ex4400",
+        "ex4650",
+        "switch",
+        "junos",
+        "mist",
+        "campus",
+        "access"
+      ]
+    },
+    {
+      "id": "juniper.qfx",
+      "label": "Juniper QFX",
+      "vendor": "Juniper",
+      "role": "gateway",
+      "aliases": [
+        "qfx",
+        "qfx5120",
+        "qfx5130",
+        "qfx5220",
+        "qfx10000",
+        "leaf",
+        "spine",
+        "switch",
+        "junos",
+        "apstra"
+      ]
+    },
+    {
+      "id": "aruba.cx",
+      "label": "Aruba CX",
+      "vendor": "HPE Aruba",
+      "role": "gateway",
+      "aliases": [
+        "aruba",
+        "hpe",
+        "cx",
+        "6100",
+        "6300",
+        "8325",
+        "8360",
+        "procurve",
+        "aos-cx",
+        "switch",
+        "campus",
+        "access"
+      ]
+    },
+    {
+      "id": "generic.ngfw",
+      "label": "Firewall (NGFW)",
+      "vendor": "Generic",
+      "role": "gateway",
+      "aliases": [
+        "ngfw",
+        "firewall",
+        "utm",
+        "next generation firewall",
+        "stateful",
+        "acl",
+        "perimeter",
+        "dmz"
+      ]
+    },
+    {
+      "id": "paloalto.ngfw",
+      "label": "Palo Alto NGFW",
+      "vendor": "Palo Alto Networks",
+      "role": "gateway",
+      "aliases": [
+        "palo",
+        "alto",
+        "pan",
+        "pa-440",
+        "pa-3400",
+        "pa-5400",
+        "pa-7500",
+        "pan-os",
+        "panos",
+        "ngfw",
+        "firewall"
+      ]
+    },
+    {
+      "id": "fortinet.fortigate",
+      "label": "FortiGate",
+      "vendor": "Fortinet",
+      "role": "gateway",
+      "aliases": [
+        "fortinet",
+        "fortigate",
+        "fortios",
+        "fgt",
+        "ngfw",
+        "firewall",
+        "utm",
+        "sd-wan"
+      ]
+    },
+    {
+      "id": "cisco.secure-firewall",
+      "label": "Cisco Secure Firewall",
+      "vendor": "Cisco",
+      "role": "gateway",
+      "aliases": [
+        "asa",
+        "ftd",
+        "firepower",
+        "fmc",
+        "fpr",
+        "pix",
+        "5506",
+        "5525",
+        "ngfw",
+        "firewall"
+      ]
+    },
+    {
+      "id": "checkpoint.quantum",
+      "label": "Check Point Quantum",
+      "vendor": "Check Point",
+      "role": "gateway",
+      "aliases": [
+        "checkpoint",
+        "check point",
+        "quantum",
+        "gaia",
+        "ngfw",
+        "firewall",
+        "security gateway"
+      ]
+    },
+    {
+      "id": "juniper.srx",
+      "label": "Juniper SRX",
+      "vendor": "Juniper",
+      "role": "gateway",
+      "aliases": [
+        "srx",
+        "srx300",
+        "srx345",
+        "srx1500",
+        "srx4600",
+        "junos",
+        "ngfw",
+        "firewall",
+        "sd-wan"
+      ]
+    },
+    {
+      "id": "generic.adc",
+      "label": "ADC",
+      "vendor": "Generic",
+      "role": "gateway",
+      "aliases": [
+        "adc",
+        "load balancer",
+        "lb",
+        "hardware load balancer",
+        "l4",
+        "l7",
+        "vip",
+        "slb",
+        "gslb"
+      ]
+    },
+    {
+      "id": "f5.bigip",
+      "label": "F5 BIG-IP",
+      "vendor": "F5",
+      "role": "gateway",
+      "aliases": [
+        "f5",
+        "big-ip",
+        "bigip",
+        "ltm",
+        "gtm",
+        "asm",
+        "viprion",
+        "velos",
+        "rseries",
+        "irules",
+        "load balancer",
+        "adc"
+      ]
+    },
+    {
+      "id": "netscaler.adc",
+      "label": "NetScaler ADC",
+      "vendor": "NetScaler",
+      "role": "gateway",
+      "aliases": [
+        "netscaler",
+        "citrix",
+        "citrix adc",
+        "mpx",
+        "sdx",
+        "vpx",
+        "load balancer",
+        "adc",
+        "gslb"
       ]
     },
     {

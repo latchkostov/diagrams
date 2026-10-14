@@ -108,6 +108,12 @@ Every setting is optional, and live view works without any. Node `props`:
 - `partitions` (number 0..10000): on a topic or stream: the most consumers per group that can be active
 - `messageType` (string): what a source sends, e.g. "OrderPlaced"
 - `emits` (string or map): a processor renames what it sends: "PaymentCompleted", or a map {"OrderPlaced": "PaymentRequested", "*": "Audited"}
+- `size` ("branch" | "campus" | "datacentre"): network devices (routers, switches, firewalls, ADCs): "branch", "campus" or "datacentre", whose datasheet throughput and latency are the defaults
+- `gbps` (number 0..1000000): network devices: throughput per unit in Gbps (default: the size preset's); any gateway given gbps gets this ceiling
+- `messageKB` (number 0.01..1000000): network devices: the average message in kB the throughput is converted with (default 64)
+- `ha` ("standalone" | "active-standby" | "active-active"): network devices: "standalone" (default), "active-standby" (one unit carries traffic) or "active-active" (units add up); replicas = units
+- `failoverMs` (number 0..600000): network devices: how long an active-standby pair stalls when a unit fails (default 1000)
+- `healthChecks` (boolean): gateways: skip targets that are down (default true for ADCs, false otherwise)
 
 <!-- END GENERATED node-props -->
 
@@ -121,6 +127,7 @@ Edge `props`:
 - `travelMs` (number 0..600000): time a message spends on the edge
 - `emits` (string): renames messages on this edge
 - `filter` (string[]): message types this edge accepts, e.g. ["Order*"] (a trailing * matches a prefix)
+- `deny` (boolean): true makes the edge a deny rule: messages routed here are blocked at its source (counted as blocked, never dropped)
 
 <!-- END GENERATED edge-props -->
 

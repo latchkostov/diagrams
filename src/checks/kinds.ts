@@ -1,5 +1,6 @@
 import type { SimRole } from "../model/types";
 import { stencilRelation } from "../stencils/relations";
+import { isDevice } from "../stencils/netDevices";
 
 // What the rules need to know about stencils beyond their simulation role: which compute is self-hosted (you run
 // its replicas and its front door), which gateways are managed, which clients come from outside, and which stores
@@ -20,10 +21,14 @@ const SELF_HOSTED_COMPUTE: ReadonlySet<string> = new Set([
 export const isSelfHostedService = (stencil: string) =>
   stencil.startsWith("service.") || SELF_HOSTED_COMPUTE.has(stencil);
 
-/** Gateways you run yourself, with replicas of their own. Managed ones (Front Door, API Gateway, CDNs) aren't here. */
+/**
+ * Gateways you run yourself, with replicas of their own. Managed ones (Front Door, API Gateway, CDNs) aren't here.
+ * Network devices (routers, switches, firewalls, ADCs in your racks) are: their replicas are units.
+ */
 const SELF_HOSTED_GATEWAYS: ReadonlySet<string> = new Set(["nginx", "kong", "envoy", "traefik", "haproxy", "graphql"]);
 
-export const isSelfHostedGateway = (stencil: string) => SELF_HOSTED_GATEWAYS.has(stencil);
+export const isSelfHostedGateway = (stencil: string) => SELF_HOSTED_GATEWAYS.has(stencil) || isDevice(stencil);
+export { isDevice };
 
 /**
  * Gateways that aren't a way in for requests: DNS and traffic managers answer a lookup, a service mesh sits beside

@@ -2,6 +2,7 @@ import type { DiagramOp } from "../../ai";
 import type { NodeCapacity } from "../../sim/capacity";
 import { MAX_COUNT, sizingFix } from "../../sim/capacityPlanning";
 import { formatRate, isBroker, type CheckContext } from "../context";
+import { SIZE_LABEL } from "../../stencils/netDevices";
 import type { CheckFix, CheckRule } from "../types";
 
 // 7. capacity: the busiest processor or broker can't keep up at the diagram's own (free-play) rates: the
@@ -21,6 +22,9 @@ function scaleFix(ctx: CheckContext, n: NodeCapacity): CheckFix | undefined {
   });
   if (!changes) return undefined;
   const ops: DiagramOp[] = changes.map((c) => ({ op: "update", target: c.nodeId, props: { [c.key]: c.to } }));
+  // A device's next size (and the throughput typed over its old one) is one change: say it as the size.
+  const size = changes.find((c) => c.key === "size");
+  if (size) return { label: `Use the ${SIZE_LABEL[size.to].toLowerCase()} size (${size.model})`, ops };
   const words = changes.map((c) =>
     c.key === "replicas" ? `replicas to ${c.to}` : `${ctx.name(c.nodeId)} partitions to ${c.to}`,
   );
@@ -41,7 +45,7 @@ export const capacity: CheckRule = {
         (n) =>
           n.offered > 0 &&
           n.utilization >= 1 &&
-          (n.role === "processor" || (isBroker(ctx, n.id) && ctx.routes(n.id).length > 0)),
+          (n.role === "processor" || !!n.device || (isBroker(ctx, n.id) && ctx.routes(n.id).length > 0)),
       )
       .sort(
         (a, b) =>

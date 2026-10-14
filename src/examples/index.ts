@@ -128,6 +128,11 @@ const publicExamples: PublicExample[] = (
       theme: "reliability",
       summary: "Two live regions, failover, a global table",
     },
+    {
+      slug: "branch-to-datacentre",
+      theme: "reliability",
+      summary: "Routers, a firewall pair, spine and leaf, an ADC",
+    },
   ] as const
 ).map((example) => ({ ...example, ...exampleMetadata[example.slug] }));
 

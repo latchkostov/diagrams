@@ -1,7 +1,7 @@
 import { redundancyFix } from "../../sim/capacityPlanning";
 import { listNames, type CheckContext } from "../context";
 import { dominators } from "../graph";
-import { isSelfHostedGateway, isSelfHostedService } from "../kinds";
+import { isDevice, isSelfHostedGateway, isSelfHostedService } from "../kinds";
 import type { CheckRule, Finding } from "../types";
 
 // 8. single-point: a service or gateway you run with one replica that every request from an entry point goes
@@ -91,8 +91,12 @@ export const singlePoint: CheckRule = {
         (role === "processor" && isSelfHostedService(node.stencil)) ||
         (role === "gateway" && isSelfHostedGateway(node.stencil));
       const replicas = node.props?.replicas;
-      const said = typeof replicas === "number" && Number.isFinite(replicas);
-      if (!runs || (said && replicas > 1)) continue;
+      // A network device in an HA pair or cluster has two units unless it says otherwise.
+      const device = isDevice(node.stencil);
+      const ha = device && (node.props?.ha === "active-standby" || node.props?.ha === "active-active");
+      const said =
+        (typeof replicas === "number" && Number.isFinite(replicas)) || (device && node.props?.ha === "standalone");
+      if (!runs || (typeof replicas === "number" && replicas > 1) || (ha && replicas === undefined)) continue;
       // Only a settled analysis is evidence: a feedback loop's numbers are estimates (sync-cycle reports the loop).
       const analysis = ctx.capacity();
       const load = analysis.nodes[node.id];
@@ -101,7 +105,29 @@ export const singlePoint: CheckRule = {
       if (!said && !busy) continue;
       const name = ctx.name(node.id);
       const who = listNames(entries.map(ctx.name));
-      // Two replicas, or as many as capacity planning sizes it to when it's busy, within the op schema's bound.
+      if (device) {
+        // A box, not a replica: the fix is a second unit as an active-standby pair, which keeps its capacity.
+        findings.push({
+          id: `single-point:${node.id}`,
+          rule: "single-point",
+          severity: busy ? "warning" : "suggestion",
+          target: node.id,
+          elements: [node.id, ...entries],
+          title: `Every request goes through one ${name}`,
+          message: busy
+            ? `It's a single unit at ${Math.round(load.utilization * 100)}% of its throughput, and every request from ${who} goes through it: if it fails, ${who} get${entries.length === 1 ? "s" : ""} nothing. A standby unit keeps traffic flowing; more throughput needs a bigger size.`
+            : `It's a single unit, and every request from ${who} goes through it: if it fails, ${who} get${entries.length === 1 ? "s" : ""} nothing.`,
+          rationale:
+            "Network devices fail like any other box: a power supply, a crash, an upgrade. An active-standby pair keeps the path up while one unit is out.",
+          fix: {
+            label: "Make it an HA pair",
+            ops: [{ op: "update", target: node.id, props: { ha: "active-standby", replicas: 2 } }],
+          },
+        });
+        continue;
+      }
+      // Two replicas, or as many as capacity planning sizes it to when it's busy, within the op schema's bound. A
+      // device's fix is a pair whatever its load (above), so it never pays for this sizing.
       const { replicas: to, enough } = busy
         ? redundancyFix(ctx.diagram, ctx.planning(), load)
         : { replicas: 2, enough: true };

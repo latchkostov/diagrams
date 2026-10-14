@@ -235,6 +235,40 @@
               }
             }
           ]
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "branch",
+            "campus",
+            "datacentre"
+          ]
+        },
+        "gbps": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "messageKB": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1000000
+        },
+        "ha": {
+          "type": "string",
+          "enum": [
+            "standalone",
+            "active-standby",
+            "active-active"
+          ]
+        },
+        "failoverMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600000
+        },
+        "healthChecks": {
+          "type": "boolean"
         }
       }
     },
@@ -346,6 +380,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "deny": {
+          "type": "boolean"
         },
         "settings": {
           "type": "array",
@@ -900,6 +937,7 @@
                           "failed",
                           "deadLettered",
                           "dropped",
+                          "blocked",
                           "throughput",
                           "lag"
                         ]

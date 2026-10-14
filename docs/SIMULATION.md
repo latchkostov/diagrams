@@ -156,6 +156,70 @@ reaches it (`park` in the trace) and its frame says so (`noConsumer: true`). Wha
   broker type before routing again, even when a delivery edge renamed it. A rejected DLQ route drops
   the exhausted message instead of delivering it.
 
+## Network devices
+
+Routers, switches, firewalls and ADCs (`src/stencils/netDevices.ts`; research and sources in
+`docs/research/network-infrastructure.md`) are gateways with three additions. Every other gateway behaves as above.
+
+- **Throughput ceiling.** A device's stencil has size presets (`size`: `branch`, `campus`, `datacentre`; families made
+  for data centres have no branch). Each gives a datasheet throughput per unit in Gbps and a latency, and `gbps` and
+  `latencyMs` override them.
+  - **The ceiling** is `gbps × 10⁹ ÷ 8 ÷ (messageKB × 1,000)` real messages/s per unit (`messageKB` defaults to 64:
+    1 Gbps is 1,953 messages/s), times the units carrying traffic.
+  - **In playback** a device admits at most its ceiling, as a token bucket in sampled dots (`ceiling × step ÷ scale`
+    per tick, banking at most one message plus a tick's worth, so fractional rates keep their remainder), and the rest
+    waits in its backlog. Nothing is dropped for being over the ceiling.
+  - **In analysis** (`analyzeCapacity`) a device's capacity is the same ceiling, flagged `device: true`, so live view's
+    heat map colours it. Other gateways stay unmodeled.
+  - **Explicit throughput:** any gateway with an explicit `gbps` gets a ceiling too.
+  - **Sizing** is the shared planner's (`sizingFix`, src/sim/capacityPlanning.ts): a device at 90% or more moves to the
+    smallest bigger size that lands it under 55%, with a `gbps` typed over the old size moved to the new size's figure.
+    The capacity check turns it into edit ops, live view into overrides. Capacity × scales a device's units like a
+    service's replicas, and Save to diagram keeps them.
+- **Units and high availability.** `replicas` are units, and `ha` says how they work:
+  - `standalone` (default): one box.
+  - `active-standby`: one unit carries traffic whatever the count. Choosing it starts at two units.
+  - `active-active`: units add up.
+  - **Failover:** when a props change lowers an active-standby pair's own `replicas` during a run (the pair still up,
+    at least one unit left), it fails over. It holds its traffic for `failoverMs` (default 3,000), logs a `status`
+    event ("failing over to the standby (1 of 2 units left)") and reports `failingOver: true` in its node state; then
+    it drains. Nothing is dropped.
+  - **Clusters:** an active-active cluster losing a unit has no hold, only less capacity.
+  - **Not a failover:** the capacity multiplier changes effective units, never a pair's own count, so it never
+    triggers one, alone or in the same batch as other props. A unit missing at time zero (a simulation's setup) is
+    where the run starts. A pair that's down drops what's sent to it, like any node.
+- **Health checks.** With `healthChecks` (default on for ADC stencils, off for every other gateway), a gateway leaves
+  targets whose status is `down` out of its round-robin while any other target is up, in playback and in analysis.
+
+### Deny rules
+
+An edge's `deny: true` is a deny rule. Every downstream delivery goes through one place in the engine, which blocks a
+message routed onto a denied edge at the edge's source: a gateway's round-robin pick among accepting edges, a fan-out
+copy, a store's change feed, a broker's delivery (a denied route is always ready and reserves no consumer slot, so a
+retried message offered again is blocked too) and a dead letter (a denied dead-letter route blocks the message; it's
+neither dead-lettered nor dropped). Replies and retries travel back and aren't deliveries.
+
+- **How it counts:** the node's `blocked` counter (in node state when above zero, and as an expectation metric), a
+  `block` event, and a trace step of its own kind, `block`. The journey counts it in `blocked` (never `dropped`),
+  the sequence diagram shows a neutral "Blocked by a deny rule" note and "1 blocked by a deny rule" in its summary,
+  slow motion ends on "Blocked by a deny rule" with no failure flash, and the trace card's status reads Blocked.
+- **What it never counts as:** `dropped` or `failed`, so live view shows it as its own neutral badge (never the red
+  count or a failure flash), and Run simulations never reports it as a loss.
+- **A denied route out of a broker isn't a consumer.** Its target leaves the consumer group's members (it takes no
+  partition and isn't restricted by one) and the route bypasses the group's slot gate: it's always ready, even when the
+  consumers are full or there are none, so a topic whose only route is denied blocks everything it gets and holds
+  nothing. The no-reader check reads it as "Nobody reads", saying its only route out is a deny rule.
+- **Capacity analysis** treats a denied route as an unbounded exit, the way playback does. A type a denied route in a
+  group accepts never limits the broker (no false overload), each allowed route in that group takes its round-robin
+  share at most its own capacity, and the rest is blocked at the broker. A gateway's or service's denied edge gets no
+  demand. The capacity check, live view's heat map, its fix and the Inputs panel all read this one analysis.
+- **Malformed values fail closed.** `isDenyRule` (src/stencils/netDevices.ts) reads anything set that isn't `false`
+  as deny, everywhere a rule is read (playback, analysis, the canvas, the inspector, accessible names). Opening a file
+  with a `deny` that isn't true or false sets it to `true` and warns: "it's read as deny, so what's routed there is
+  blocked. Set it to false to allow."
+- **Filters make it a rulebase line:** "Deny: branch → payments" with `filter: ["PaymentAdmin"]` blocks only that
+  type.
+
 ## Saved simulation runner
 
 `createSimulationRun` in `src/sim/simulation.ts` loads the diagram with the saved seed (default 1),
@@ -273,7 +337,8 @@ Traffic and capacity multipliers apply; scale does not change the analytic answe
   zero concurrency or a paused/down node has zero capacity. Positive demand / zero capacity is Infinity;
   zero demand / zero capacity is zero.
 - Gateway/store capacity is 1000 / latencyMs as a single-lane planning estimate. The playback engine
-  accepts parallel work at these roles, so this estimate is advisory rather than a throttle in playback.
+  accepts parallel work at these roles, so this estimate is advisory rather than a throttle in playback. A network
+  device's capacity is its throughput ceiling instead, which playback enforces (see "Network devices").
 - A queue's capacity is the sum of ready consumer capacities. Topics/streams use the slowest required
   consumer group, with replicas capped by that group's partitions; filtered groups normalize their
   capacity by the accepted fraction of incoming traffic. A broker with no consumers has zero capacity.
@@ -336,7 +401,7 @@ traced and an untraced run are identical.
 
 `engine.tracer` (`MessageTracer`, `src/sim/lineage.ts`) records a family's steps: `emit`, `copy`,
 `send` (edge, particle kind, arrival time), `arrive`, `start` / `done` (processing), `fail`, `retry`,
-`deadletter`, `drop`, `park` (kept by a broker with no consumers, such as a DLQ) and `end`. A trace is
+`deadletter`, `drop`, `block` (a deny rule stopped it), `park` (kept by a broker with no consumers, such as a DLQ) and `end`. A trace is
 done when no copy is still travelling, queued or in process (parked copies count as finished).
 
 - **What's recorded.** The followed family, plus a bounded history of recent ones

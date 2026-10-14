@@ -1,3 +1,4 @@
+import { isDenyRule } from "../stencils/netDevices";
 import { edgeSettings, isDependency, RELATION_META, settingsSummary } from "../model/relations";
 import { pipsByNode } from "./nodes/dependencyRows";
 import { dependencyVisibility, projectDependencies, useShowDependencies } from "./dependencyVisibility";
@@ -1923,7 +1924,14 @@ function CanvasInner({
             ?.focus({ preventScroll: true }),
         );
         revealSelection();
-        const said = edgeAriaLabel(labelOf(e.source), labelOf(e.target), e.data?.kind, e.data?.label, e.data?.relation);
+        const said = edgeAriaLabel(
+          labelOf(e.source),
+          labelOf(e.target),
+          e.data?.kind,
+          e.data?.label,
+          e.data?.relation,
+          isDenyRule(e.data?.props),
+        );
         const settings = settingsSummary(edgeSettings(e.data));
         announce(
           `${said}.${settings ? ` ${settings}.` : ""} ${out ? "Outgoing" : "Incoming"} ${list.indexOf(e) + 1} of ${list.length}.`,

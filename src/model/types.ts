@@ -14,7 +14,7 @@ export type SimRole =
   | "none"; // decorative / not part of the flow
 
 export type StencilCategory =
-  "messaging" | "compute" | "data" | "network" | "observability" | "security" | "clients" | "generic";
+  "messaging" | "compute" | "data" | "network" | "onprem" | "observability" | "security" | "clients" | "generic";
 
 export interface Stencil {
   /** Stable id persisted in saved diagrams, e.g. "kafka.topic". Never rename once shipped. */
@@ -183,7 +183,7 @@ export type TimelineAction =
   | { do: "trace"; node: string };
 
 export type MetricField =
-  "processed" | "backlog" | "inFlight" | "failed" | "deadLettered" | "dropped" | "throughput" | "lag";
+  "processed" | "backlog" | "inFlight" | "failed" | "deadLettered" | "dropped" | "blocked" | "throughput" | "lag";
 
 export interface Expectation {
   id: string;

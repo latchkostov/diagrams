@@ -12,7 +12,17 @@ export const SITE = "https://www.livediagrams.dev";
 const SCHEMA = "https://json-schema.org/draft/2020-12/schema";
 
 const ROLES = ["source", "topic", "queue", "stream", "processor", "gateway", "store", "sink", "none"];
-const CATEGORIES = ["messaging", "compute", "data", "network", "observability", "security", "clients", "generic"];
+const CATEGORIES = [
+  "messaging",
+  "compute",
+  "data",
+  "network",
+  "onprem",
+  "observability",
+  "security",
+  "clients",
+  "generic",
+];
 function opsDoc() {
   return {
     $schema: SCHEMA,

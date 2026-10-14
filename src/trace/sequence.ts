@@ -36,7 +36,8 @@ export interface SequenceNote {
   t: number;
   over: string;
   text: string;
-  tone: "warn" | "danger";
+  /** neutral: on purpose (a deny rule's block), never a failure. */
+  tone: "warn" | "danger" | "neutral";
 }
 
 export interface SequenceGap {
@@ -132,6 +133,8 @@ export function buildSequence(trace: MessageTrace, diagram: DiagramLike, opts: S
       });
     } else if (step.kind === "drop") {
       items.push({ kind: "note", t, over: step.node!, text: `Dropped: ${step.reason ?? "lost"}`, tone: "danger" });
+    } else if (step.kind === "block") {
+      items.push({ kind: "note", t, over: step.node!, text: "Blocked by a deny rule", tone: "neutral" });
     }
   });
 
@@ -173,6 +176,7 @@ export function buildSequence(trace: MessageTrace, diagram: DiagramLike, opts: S
     journey.retries ? `${journey.retries} ${journey.retries === 1 ? "retry" : "retries"}` : "",
     journey.deadLettered ? "dead-lettered" : "",
     journey.dropped ? `${journey.dropped} dropped` : "",
+    journey.blocked ? `${journey.blocked} blocked by a deny rule` : "",
   ].filter(Boolean);
 
   return {

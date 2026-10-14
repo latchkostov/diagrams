@@ -12,6 +12,7 @@ import { formatCount, formatRate, heatOf, heldWords } from "./format";
 import { LiveIcon } from "./icons";
 import type { CapacityView, NodeHeat } from "./capacityModel";
 import { CapacityChip, CapacityRing, IdleChip } from "./CapacityLayer";
+import { HA_LABEL } from "../stencils/netDevices";
 
 const BROKERS: ReadonlySet<SimRole> = new Set(["topic", "queue", "stream"]);
 
@@ -79,6 +80,11 @@ export function NodeBadges({
         const s = state.snapshot.nodes[n.id];
         if (!s || s.role === "none") return null;
         const peak = Math.max(20, s.backlog, peaks.values.get(n.id) ?? 0);
+        // Concurrency and units only show in the hover breakdown: resolve them for the hovered node alone.
+        const props =
+          hovered === n.id && (s.role === "processor" || s.role === "gateway")
+            ? resolveProps(s.role, n.data.label, ui.controller.effectiveProps(n.id), n.data.stencil)
+            : undefined;
         return (
           <NodeBadge
             key={n.id}
@@ -87,11 +93,8 @@ export function NodeBadges({
             peak={peak}
             hovered={hovered === n.id}
             cap={capacity?.nodes[n.id]}
-            concurrency={
-              s.role === "processor"
-                ? resolveProps(s.role, n.data.label, ui.controller.effectiveProps(n.id)).concurrency
-                : 0
-            }
+            concurrency={props?.concurrency ?? 0}
+            units={props?.device && props.device.ha !== "standalone" ? HA_LABEL[props.device.ha] : undefined}
             groups={
               hovered === n.id && (s.role === "topic" || s.role === "stream") ? groupNames(diagram, n.id) : undefined
             }
@@ -159,11 +162,13 @@ interface BadgeProps {
   peak: number;
   hovered: boolean;
   concurrency: number;
+  /** A network device in a pair or cluster: how its units work ("Active-standby pair"). */
+  units?: string;
   groups?: Map<string, string>;
   cap?: NodeHeat;
 }
 
-const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency, groups, cap }: BadgeProps) {
+const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency, units, groups, cap }: BadgeProps) {
   const domNode = useStore((store) => store.domNode);
   const tooltipId = `live-node-detail-${encodeURIComponent(node.id)}`;
   useEffect(() => {
@@ -182,7 +187,9 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
   const broker = BROKERS.has(s.role);
   const heat = heatOf(s.backlog);
   const problems = s.failed + s.deadLettered + s.dropped;
-  const active = s.processed > 0 || s.inFlight > 0 || s.backlog > 0 || problems > 0;
+  // Blocked by a deny rule: on purpose, so never in the red count, and shown apart from it.
+  const blocked = s.blocked ?? 0;
+  const active = s.processed > 0 || s.inFlight > 0 || s.backlog > 0 || problems > 0 || blocked > 0;
   // One slot under the node: with the heat map on, its label (which carries the rate) replaces the
   // throughput readout; a broker keeps its lag only while something is waiting.
   const capShown = !!cap && cap.level !== "idle";
@@ -207,6 +214,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
       data-inflight={s.inFlight}
       data-failed={s.failed}
       data-dlq={s.deadLettered}
+      data-blocked={blocked}
     >
       {s.status !== "up" && <div className={`lv-ring is-${s.status}`} />}
       {cap && s.status === "up" && <CapacityRing heat={cap} />}
@@ -258,6 +266,21 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
             </span>
           )}
           {cap && !(unread && showMetric) && <CapacityChip heat={cap} />}
+          {blocked > 0 && (
+            <span
+              className="lv-metric is-blocked"
+              title="Blocked by a deny rule: on purpose, not lost"
+              data-testid={`node-blocked-${node.id}`}
+            >
+              <span className="lv-blocked-glyph" aria-hidden />
+              <b className="mono">{formatCount(blocked)}</b> blocked
+            </span>
+          )}
+          {s.failingOver && (
+            <span className="lv-metric is-failover" data-testid={`node-failover-${node.id}`}>
+              failing over
+            </span>
+          )}
           <IdleChip id={node.id} idle={s.idleReplicas ?? 0} replicas={s.replicas ?? 0} />
         </div>
       )}
@@ -279,6 +302,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
             />
           )}
           {s.role === "processor" && <Row label="Parallel per replica" value={String(concurrency)} />}
+          {units && <Row label="Units" value={`${s.replicas ?? 1} · ${units}`} />}
           {!!s.idleReplicas && (
             <p className="lv-detail-note" data-testid={`node-detail-idle-${node.id}`}>
               {s.idleReplicas} of {s.replicas} replicas are idle: a consumer group can&apos;t use more consumers than
@@ -294,6 +318,7 @@ const NodeBadge = memo(function NodeBadge({ node, s, peak, hovered, concurrency,
           {s.failed > 0 && <Row label="Failed attempts" value={formatCount(s.failed)} bad />}
           {s.deadLettered > 0 && <Row label="Dead-lettered" value={formatCount(s.deadLettered)} bad />}
           {s.dropped > 0 && <Row label="Dropped" value={formatCount(s.dropped)} bad />}
+          {blocked > 0 && <Row label="Blocked by a deny rule" value={formatCount(blocked)} />}
           {groups && Object.keys(s.lag).length > 1 && (
             <div className="lv-lag-list">
               <div className="lv-lag-title">Lag by consumer group</div>

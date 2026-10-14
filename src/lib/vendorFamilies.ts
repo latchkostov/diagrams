@@ -5,7 +5,7 @@ import type { Stencil } from "../model/types";
  * chip per vendor. Every catalog vendor maps to exactly one family (a unit test keeps it honest);
  * a vendor added later without a mapping lands in "other", which only shows when it has stencils.
  */
-export type FamilyId = "azure" | "aws" | "gcp" | "streaming" | "oss" | "saas" | "generic" | "other";
+export type FamilyId = "azure" | "aws" | "gcp" | "streaming" | "oss" | "saas" | "network" | "generic" | "other";
 
 export interface Family {
   id: FamilyId;
@@ -48,6 +48,15 @@ export const FAMILIES: readonly Family[] = [
     short: "Generic",
     hue: "#64748B",
     hint: "Vendor-neutral shapes, people, devices and partners",
+  },
+  // Last of the named families: a narrow window folds the last ones into the Vendor menu first, and Generic & clients
+  // (people, devices, plain shapes) is wanted in more diagrams than on-prem network gear.
+  {
+    id: "network",
+    label: "Network vendors",
+    short: "Network",
+    hue: "#0E7490",
+    hint: "Routers, switches, firewalls and load balancers: Cisco, Juniper, Palo Alto, Fortinet, F5 and more",
   },
   { id: "other", label: "Other", short: "Other", hue: "#8A94A6", hint: "Vendors without a family yet" },
 ];
@@ -123,6 +132,15 @@ const VENDOR_FAMILY: Record<string, FamilyId> = {
   "dbt Labs": "oss",
   Airbyte: "oss",
   Tableau: "saas",
+  Cisco: "network",
+  Juniper: "network",
+  Arista: "network",
+  "HPE Aruba": "network",
+  "Palo Alto Networks": "network",
+  Fortinet: "network",
+  "Check Point": "network",
+  F5: "network",
+  NetScaler: "network",
   Generic: "generic",
   Client: "generic",
 };

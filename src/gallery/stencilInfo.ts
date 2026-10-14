@@ -52,6 +52,9 @@ export function iconSource(icon: string): IconSource {
   if (SIMPLE_ICONS.has(icon))
     return { source: "Simple Icons", licence: "CC0 artwork; the logo is its owner's trademark" };
   if (DEVICON.has(icon)) return { source: "Devicon", licence: "MIT" };
-  if (icon.startsWith("client-") || icon.startsWith("generic-")) return { source: "Lucide", licence: "ISC" };
+  if (icon.startsWith("client-") || icon.startsWith("generic-") || icon === "net-firewall")
+    return { source: "Lucide", licence: "ISC" };
+  // Network device glyphs drawn for this app in Lucide's style (no vendor logos: docs/ICONS.md).
+  if (icon.startsWith("net-")) return { source: "Live Diagrams", licence: "MIT" };
   return { source: "gilbarbara/logos", licence: "CC0 artwork; the logo is its owner's trademark" };
 }

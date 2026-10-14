@@ -1,3 +1,4 @@
+import { isDenyRule } from "../../stencils/netDevices";
 import { useKeyboardFocusOn, useTooltip } from "../../components/useTooltip";
 import { memo, useCallback, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { EdgeLabelRenderer, useReactFlow, useStore, type EdgeProps, type ReactFlowState } from "@xyflow/react";
@@ -48,6 +49,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   if (!route) return null;
   const { path, label } = route;
   const mid = label ?? pointAlong(route.points, 0.5).point;
+  // A firewall rule that denies: a "no entry" glyph just after the source, so it's never colour alone.
+  const deny = !relation && isDenyRule(data?.props) ? denyPoint(route.points) : undefined;
   const settings = dep?.settings ?? [];
   const tip = relation ? dependencyTip(relation, dep, sourceStencil) : undefined;
   const marker = selected
@@ -157,15 +160,22 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       className={
         relation
           ? `fe fe-dep fe-rel-${relation}${selected ? " is-selected" : ""}`
-          : `fe fe-${kind}${selected ? " is-selected" : ""}`
+          : `fe fe-${kind}${selected ? " is-selected" : ""}${deny ? " is-deny" : ""}`
       }
       data-testid={`edge-${id}`}
       data-relation={relation ?? undefined}
+      data-deny={deny ? "true" : undefined}
     >
       <path d={path} className="fe-halo" />
       <path d={path} className="fe-path react-flow__edge-path" markerEnd={`url(#${marker})`} />
       <path d={path} className="react-flow__edge-interaction" fill="none" strokeOpacity={0} strokeWidth={22} />
-      {title(tip)}
+      {title(deny ? "Firewall rule: deny. What's routed here is blocked" : tip)}
+      {deny && (
+        <g className="fe-deny" transform={`translate(${deny.x} ${deny.y})`} data-testid={`edge-deny-${id}`}>
+          <circle r={7} />
+          <path d="M-4.2 4.2 4.2-4.2" />
+        </g>
+      )}
       {selected && reconnect && !isEditing && route.points.length > 1 && (
         <EdgeEnds
           id={id}
@@ -193,6 +203,17 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       )}
     </g>
   );
+}
+
+/**
+ * Where a deny rule's glyph sits: 34 px along the route from its source (clear of a selected edge's end handle), or
+ * a third of the way along a short one.
+ */
+function denyPoint(points: readonly { x: number; y: number }[]) {
+  let total = 0;
+  for (let i = 1; i < points.length; i++)
+    total += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  return total > 0 ? pointAlong(points, Math.min(34, total / 3) / total).point : undefined;
 }
 
 /** An SVG <title> gives the line itself the implicit label as its hover tooltip. */

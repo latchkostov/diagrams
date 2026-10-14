@@ -368,6 +368,12 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
     expectations count on) is one muted **On purpose:** line, never a finding. Counts never raise a warning, never go in
     the file, and hide the moment an edit a simulation would see is made (**The diagram changed since the simulations
     played.**); moving or selecting things doesn't count, and Undo brings them back.
+- **Network devices** (routers, switches, firewalls, ADCs) are drawn as device glyphs, the vendor being the stencil's
+  name and colour. A device's **Size** is a preset (branch, campus, data centre) named for the model it comes from,
+  its boxes are **Units**, and **High availability** says how they work (Standalone, Active-standby pair, Active-active
+  cluster). A connection leaving a firewall is a **Firewall rule**, **Allow** or **Deny**; what a deny rule stops is
+  **blocked**, never "dropped", "lost" or "failed", and it's shown apart from failures (a neutral badge with a "no
+  entry" glyph, never the red count).
 - Esc backs out one level: full screen (the browser takes that Esc itself), menu, the Embed dialog's preview (back to
   the dialog), dialog (a dialog opened from Share… replaces it, so Esc closes it, back to where Share… was opened),
   selection, simulations playing (Run simulations), the Checks card, slow motion, trace, highlighted path,

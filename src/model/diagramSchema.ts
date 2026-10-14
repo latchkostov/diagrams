@@ -21,7 +21,17 @@ const SITE = "https://www.livediagrams.dev";
 const SCHEMA = "https://json-schema.org/draft/2020-12/schema";
 const TONES = ["azure", "aws", "gcp", "k8s", "onprem", "neutral"];
 const SIDES = ["top", "right", "bottom", "left"];
-const METRICS = ["processed", "backlog", "inFlight", "failed", "deadLettered", "dropped", "throughput", "lag"];
+const METRICS = [
+  "processed",
+  "backlog",
+  "inFlight",
+  "failed",
+  "deadLettered",
+  "dropped",
+  "blocked",
+  "throughput",
+  "lag",
+];
 const OPS = ["<", "<=", "==", ">=", ">"];
 
 const num = { type: "number" };

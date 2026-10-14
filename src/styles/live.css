@@ -293,6 +293,39 @@
   color: var(--success);
 }
 
+/* Blocked by a deny rule: on purpose, so neutral (never the failure red), with a "no entry" glyph. */
+.lv-metric.is-blocked {
+  color: var(--text-2);
+  border-style: dashed;
+  border-color: color-mix(in oklab, var(--text-3) 55%, var(--line));
+}
+
+.lv-blocked-glyph {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.lv-blocked-glyph::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -1px;
+  bottom: -1px;
+  width: 1.5px;
+  margin-left: -0.75px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+.lv-metric.is-failover {
+  /* Small amber words on a near-white pill: --warning-ink keeps 4.5:1 (--status-paused is about 2.6:1). */
+  color: var(--warning-ink);
+  border-color: color-mix(in oklab, var(--status-paused) 45%, var(--line));
+}
+
 .lv-metric.is-backlog.is-hot {
   --hot-hue: color-mix(in oklab, var(--status-down) calc(var(--heat) * 100%), var(--live-backlog));
   --hot: color-mix(in srgb, var(--hot-hue) 60%, #000);
@@ -1450,7 +1483,8 @@
 
 .lv-events li {
   display: grid;
-  grid-template-columns: 44px 30px 1fr;
+  /* The kind column fits its longest word ("blocked") at 11px mono. */
+  grid-template-columns: 44px 50px 1fr;
   gap: 6px;
   padding: 2px 12px;
   color: var(--text-2);

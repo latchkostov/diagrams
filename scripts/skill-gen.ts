@@ -50,6 +50,12 @@ const NODE_PROP_NOTES: Record<string, string> = {
   partitions: "on a topic or stream: the most consumers per group that can be active",
   emits:
     'a processor renames what it sends: "PaymentCompleted", or a map {"OrderPlaced": "PaymentRequested", "*": "Audited"}',
+  size: 'network devices (routers, switches, firewalls, ADCs): "branch", "campus" or "datacentre", whose datasheet throughput and latency are the defaults',
+  gbps: "network devices: throughput per unit in Gbps (default: the size preset's); any gateway given gbps gets this ceiling",
+  messageKB: "network devices: the average message in kB the throughput is converted with (default 64)",
+  ha: 'network devices: "standalone" (default), "active-standby" (one unit carries traffic) or "active-active" (units add up); replicas = units',
+  failoverMs: "network devices: how long an active-standby pair stalls when a unit fails (default 1000)",
+  healthChecks: "gateways: skip targets that are down (default true for ADCs, false otherwise)",
 };
 const EDGE_PROP_NOTES: Record<string, string> = {
   group:
@@ -59,6 +65,7 @@ const EDGE_PROP_NOTES: Record<string, string> = {
   share: "chance that this fan-out edge gets a copy",
   emits: "renames messages on this edge",
   travelMs: "time a message spends on the edge",
+  deny: "true makes the edge a deny rule: messages routed here are blocked at its source (counted as blocked, never dropped)",
 };
 
 interface Example {

@@ -2,6 +2,7 @@ import type { DiagramFile, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { messageColor } from "./colors";
 import { resolveProps, type ResolvedProps } from "./defaults";
+import { activeUnits } from "../stencils/netDevices";
 import { Deque } from "./deque";
 import { createLineage, type Family } from "./lineage";
 import { mulberry32 } from "./rng";
@@ -69,6 +70,7 @@ interface Work {
 interface Node {
   id: string;
   label: string;
+  stencil: string;
   role: SimRole;
   status: NodeStatus;
   rawProps: Record<string, unknown>;
@@ -86,10 +88,14 @@ interface Node {
   failed: number;
   deadLettered: number;
   dropped: number;
+  /** Stopped by a deny rule on an outgoing connection (on purpose, so never `dropped`). */
+  blocked: number;
   throughput: number;
   completedThisStep: number;
   trafficCredit: number;
   serviceCredit: number;
+  /** An active-standby pair failing over holds its traffic until this time. */
+  holdUntil: number;
 }
 interface Edge {
   id: string;
@@ -101,6 +107,7 @@ interface Edge {
   share?: number;
   filter?: string[];
   emits?: string;
+  deny: boolean;
   groupName: string;
   delivered: number;
   active: number;
@@ -248,7 +255,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   /** A message's journey ends at `node`: consumed ("end") or lost ("drop"). */
-  function gone(node: Node, message: Message, kind: "end" | "drop", reason: string): void {
+  function gone(node: Node, message: Message, kind: "end" | "drop" | "block", reason: string): void {
     inSystem--;
     message.family.alive--;
     if (message.family.trace) {
@@ -279,6 +286,23 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     gone(node, message, "drop", reason);
   }
 
+  /** A deny rule on `edge` stops the message at its source: blocked on purpose, not lost. */
+  function block(message: Message, edge: Edge): void {
+    const node = edge.from;
+    node.blocked++;
+    log("block", node, message, `deny rule to ${edge.to.label}`);
+    gone(node, message, "block", "deny rule");
+  }
+
+  /**
+   * Every downstream delivery (a forward, a fan-out copy, a change feed, a broker's delivery, a dead letter) goes
+   * through here, so a deny rule holds on every path. Replies and retries travel back and aren't deliveries.
+   */
+  function deliver(edge: Edge, message: Message, kind: "message" | "dlq", delivery?: Delivery): void {
+    if (edge.deny) block(message, edge);
+    else travel(edge, message, kind, delivery);
+  }
+
   function accepts(edge: Edge, type: string): boolean {
     return acceptsType(edge.filter, type);
   }
@@ -294,6 +318,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function slots(node: Node): number {
     return node.role === "processor" ? node.activeReplicas * node.props.concurrency : node.props.concurrency;
+  }
+
+  /** A network device's throughput ceiling in real messages/s: per unit, times the units carrying traffic. */
+  function ceiling(node: Node): number {
+    const device = node.props.device;
+    return device ? device.perUnit * activeUnits(device.ha, node.replicas) : Infinity;
+  }
+
+  /** An active-standby pair whose active unit just failed: traffic waits for the standby to take over. */
+  function held(node: Node): boolean {
+    return node.status === "up" && time < node.holdUntil;
   }
 
   function indexGroups(): void {
@@ -353,15 +388,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function setNodePropsBatch(patches: Record<string, NodeSimProps>, multiplier?: number): void {
     const changed = new Set<string>(),
       limits = new Set<Group>();
+    const units = new Map<Node, number>();
     for (const [id, patch] of Object.entries(patches)) {
       const node = nodes.get(id);
       if (!node) continue;
+      if ("replicas" in patch) units.set(node, node.props.replicas);
       const previous = node.props;
       for (const [key, value] of Object.entries(patch)) {
         if (value === undefined) Reflect.deleteProperty(node.rawProps, key);
         else node.rawProps[key] = structuredClone(value);
       }
-      node.props = resolveProps(node.role, node.label, node.rawProps);
+      node.props = resolveProps(node.role, node.label, node.rawProps, node.stencil);
       if (
         Math.max(1, Math.round(node.props.replicas * capacityMultiplier)) !== node.replicas ||
         (isBroker(node) && node.props.partitions !== previous.partitions)
@@ -378,6 +415,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (changed.size) assignReplicas(changed);
     for (const group of limits) refreshGroupLimit(group);
+    // A unit of an active-standby pair failed: its own unit count went down (a capacity multiplier never changes
+    // it), at least one is left, and the run is under way (a unit missing at time zero is the starting state).
+    for (const [node, before] of units)
+      if (
+        node.props.device?.ha === "active-standby" &&
+        node.props.replicas < before &&
+        node.status === "up" &&
+        time > 0
+      ) {
+        node.holdUntil = time + node.props.device.failoverMs;
+        log("status", node, undefined, `failing over to the standby (${node.props.replicas} of ${before} units left)`);
+      }
   }
 
   function takesShare(edge: Edge): boolean {
@@ -429,10 +478,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     if (node.role === "gateway") {
-      travel(outgoing[node.cursor++ % outgoing.length], { ...message, attempts: 0 }, "message");
+      // Health checks: targets that are down get nothing while any other target is up.
+      const healthy = node.props.healthChecks ? outgoing.filter((edge) => edge.to.status !== "down") : outgoing;
+      const pool = healthy.length ? healthy : outgoing;
+      deliver(pool[node.cursor++ % pool.length], { ...message, attempts: 0 }, "message");
     } else {
       const copies = fanOut(node, message, outgoing.length);
-      outgoing.forEach((edge, i) => travel(edge, copies[i], "message"));
+      outgoing.forEach((edge, i) => deliver(edge, copies[i], "message"));
     }
   }
 
@@ -513,7 +565,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         return;
       }
       const copies = fanOut(node, work.message, feeds.length);
-      feeds.forEach((edge, i) => travel(edge, copies[i], "message"));
+      feeds.forEach((edge, i) => deliver(edge, copies[i], "message"));
     } else forward(node, work.message);
   }
 
@@ -552,11 +604,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     group.activeByNode[trip.edge.to.id]--;
     trip.message = { ...trip.delivery!.original, attempts: trip.message.attempts };
     if (trip.message.attempts >= broker.props.maxDeliveryCount) {
-      if (broker.dlq && accepts(broker.dlq, trip.message.type)) {
+      // A denied dead-letter route blocks the message at the broker: on purpose, so not dead-lettered either.
+      if (broker.dlq?.deny && accepts(broker.dlq, trip.message.type)) block(trip.message, broker.dlq);
+      else if (broker.dlq && accepts(broker.dlq, trip.message.type)) {
         broker.deadLettered++;
         log("deadletter", broker, trip.message, `${trip.message.attempts} deliveries`);
         lineage.deadLettered(trip.message, broker.id, trip.message.attempts);
-        travel(broker.dlq, trip.message, "dlq");
+        deliver(broker.dlq, trip.message, "dlq");
       } else drop(broker, trip.message, "delivery limit; no DLQ edge");
     } else group.pending.push(trip.message);
   }
@@ -565,7 +619,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (node.status !== "up") return;
     for (const group of node.groups) {
       if (!group.pending.length) continue;
-      while (group.pending.length && group.active < group.limit) {
+      // A deny rule delivers nothing and reserves no slot: it's ready even when the group's consumers are full.
+      while (group.pending.length) {
+        const free = group.active < group.limit;
         const message = group.pending.peek()!;
         let ready: Edge | undefined;
         for (let offset = 0; offset < group.edges.length; offset++) {
@@ -574,11 +630,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           const target = edge.to;
           if (
             accepts(edge, message.type) &&
-            target.status === "up" &&
-            target.working.length + target.incoming + target.pending.length < slots(target) &&
-            (node.role === "queue" ||
-              (group.activeByNode[target.id] ?? 0) <
-                (group.allocations.get(target.id) ?? 0) * (target.role === "processor" ? target.props.concurrency : 1))
+            (edge.deny ||
+              (free &&
+                target.status === "up" &&
+                target.working.length + target.incoming + target.pending.length < slots(target) &&
+                (node.role === "queue" ||
+                  (group.activeByNode[target.id] ?? 0) <
+                    (group.allocations.get(target.id) ?? 0) *
+                      (target.role === "processor" ? target.props.concurrency : 1))))
           ) {
             ready = edge;
             group.cursor = (index + 1) % group.edges.length;
@@ -586,6 +645,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           }
         }
         if (!ready) break;
+        if (ready.deny) {
+          group.pending.shift();
+          deliver(ready, message, "message");
+          continue;
+        }
         group.active++;
         group.activeByNode[ready.to.id] = (group.activeByNode[ready.to.id] ?? 0) + 1;
         group.pending.shift();
@@ -648,7 +712,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           node.serviceCredit + (slots(node) * STEP) / (node.props.latencyMs * scale),
         );
       }
-      if (node.status !== "paused") {
+      // A network device admits at most its ceiling: real messages/s, in sampled dots.
+      const limit = node.role === "gateway" ? ceiling(node) : Infinity;
+      if (limit < Infinity && node.status === "up" && !held(node)) {
+        const perTick = (limit * STEP) / (1000 * scale);
+        // Room for a whole message plus a tick's worth: fractions carry over, and idle time banks no burst.
+        node.serviceCredit = Math.min(1 + perTick, node.serviceCredit + perTick);
+      }
+      if (node.status !== "paused" && !held(node)) {
         let keep = 0;
         for (const work of node.working) {
           work.remaining -= STEP;
@@ -662,7 +733,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         while (node.pending.length && (node.status === "down" || node.working.length < slots(node))) {
           // Brokers without consumers retain their messages until a new diagram is loaded.
           if (isBroker(node) && !node.groups.length) break;
-          if (node.role === "processor" && scale > 1 && node.props.latencyMs > 0 && node.status === "up") {
+          if (
+            node.status === "up" &&
+            ((node.role === "processor" && scale > 1 && node.props.latencyMs > 0) || limit < Infinity)
+          ) {
             if (node.serviceCredit < 1 - 1e-9) break;
             node.serviceCredit -= 1;
           }
@@ -708,6 +782,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.failed = 0;
       node.deadLettered = 0;
       node.dropped = 0;
+      node.blocked = 0;
+      node.holdUntil = 0;
       node.throughput = 0;
       node.completedThisStep = 0;
       node.trafficCredit = 0;
@@ -842,10 +918,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         nodes.set(input.id, {
           id: input.id,
           label: input.label,
+          stencil: input.stencil,
           role,
           status,
           rawProps,
-          props: resolveProps(role, input.label, rawProps),
+          props: resolveProps(role, input.label, rawProps, input.stencil),
           replicas: 1,
           activeReplicas: 1,
           outgoing: [],
@@ -858,10 +935,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           failed: 0,
           deadLettered: 0,
           dropped: 0,
+          blocked: 0,
           throughput: 0,
           completedThisStep: 0,
           trafficCredit: 0,
           serviceCredit: 0,
+          holdUntil: 0,
         });
       }
       const edgeById = new Map<string, Edge>();
@@ -937,6 +1016,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           failed: node.failed,
           deadLettered: node.deadLettered,
           dropped: node.dropped,
+          ...(node.blocked ? { blocked: node.blocked } : {}),
+          ...(held(node) ? { failingOver: true } : {}),
           throughput: node.throughput,
           replicas: node.replicas,
           activeReplicas: node.activeReplicas,

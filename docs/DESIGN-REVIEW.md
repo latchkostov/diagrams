@@ -1,5 +1,102 @@
 # Design review
 
+## Round 31: on-prem network devices (2026-10-13)
+
+The gate for network infrastructure, batch 1 (`docs/research/network-infrastructure.md`): 19 router, switch, firewall
+and ADC stencils, size presets, HA, firewall deny rules, ADC health checks, and the Branch office to data centre
+example. Self-review against `docs/UX-PRINCIPLES.md` on the e2e production build (`vite preview`) at 1280 × 800 light
+and 1440 × 900 dark, public examples only. Screenshots are in `docs/screenshots/round31/`.
+
+- **Simple by default, and nothing new in the chrome.** No top-bar control, menu or panel was added:
+  - **Finding a device** is the rail's search and the gallery: "3825" finds Cisco ISR (`palette-3825-1280-light`).
+    The **On-prem network** category sits under Network (`gallery-1280-light`).
+  - **Settings** are a device's **Simulation** section, folded like every node's.
+  - **The firewall rule** sits in the connection's inspector, under Relationship.
+- **One primary action per surface.** The device section's lead is **Size**: a select that names its model and its
+  throughput ("Campus: PA-3440, 20 Gbps"). Under it, the throughput's placeholder is the preset's, and a note says what
+  that is in messages ("About 39k messages/s per unit at 64 kB each. From the PA-3440 datasheet: approximate.").
+  High availability, units, latency, message size and failover follow, each with a hint
+  (`inspector-firewall-1280-light`, `inspector-firewall-1440-dark`).
+- **Never colour alone.**
+  - **On the canvas,** a deny rule is a "no entry" glyph just after the firewall plus a muted red line
+    (`example-1280-light`, `edge-rule-1280-light`).
+  - **In live view,** blocked messages are a neutral, dashed chip with the same glyph, "⊘ 20 blocked". It's never the
+    red count, and the particles don't flash as they do for a failure (`live-blocked-1280-light`).
+  - **The hover breakdown** says "Blocked by a deny rule" and the units ("2 · Active-standby pair")
+    (`live-detail-1280-light`).
+  - **A failing-over pair** says **failing over** in amber beside its rate (`live-failover-1280-light`).
+- **Context over chrome.** Failing a unit is a row in the device's live **Behaviour ▸** menu ("Fail the active unit",
+  then "Bring back every unit (2)"), shown only for a pair or a cluster (`live-behaviour-1280-light`). The Behaviour
+  submenu has at most six rows.
+- **Capacity reads the datasheets.** Show capacity colours each device against its ceiling: "1% · 440/s of 39k/s" on
+  the firewall pair, "2% · 40/s of 2k/s" on the branch router (`live-capacity-1440-dark`). The heat map's words and
+  the panel are unchanged.
+- **Words.** Size, Units, High availability (Standalone, Active-standby pair, Active-active cluster), Firewall rule
+  (Allow, Deny) and blocked are added to the vocabulary in `docs/UX-PRINCIPLES.md`. "Dropped" and "lost" are never
+  used for a deny rule's work: the trace card's status reads **Blocked**, and slow motion's caption reads "Blocked ·
+  by a deny rule".
+
+### What was off (fixed in this round)
+
+- **Size was a three-way toggle at first, and "Data centre" wrapped to two lines** in the 280 px inspector. It's a
+  select now, which also has room for the model and its throughput, so the choice says what it means.
+- **The rate note read "2k/s".** It says "messages/s" now, and where the number comes from.
+- **The example was a nine-column line**, unreadable when fitted (about 35% zoom). It's drawn top to bottom, the way
+  network diagrams usually run (internet and branch at the top, servers at the bottom), and fits at about 60%. The
+  deny rule leaves the firewall's right side, so it doesn't cross the fabric.
+- **A selected deny connection's end handle covered the glyph.** The glyph now sits 34 px along the connection.
+- **A firewall's connection showed Consumer group and Dead-letter path,** which mean something only leaving a broker.
+  They step aside where the Firewall rule shows.
+- **Live counts of blocked messages were sampled dots** ("2 blocked" for 20). They're real messages now, like every
+  other count.
+
+### Code review (PR #86, first round)
+
+- **A deny rule leaked on two paths:** a broker's deliveries and dead letters went around it. Every downstream
+  delivery now goes through one place that blocks it, retries included, and capacity analysis blocks a broker's
+  denied share too.
+- **Blocked is its own outcome everywhere.** A trace step of its own kind, `block`, replaces "a drop with a special
+  reason". The journey counts it apart, the sequence diagram's note is neutral and its summary says "1 blocked by a deny
+  rule", slow motion ends on "Blocked by a deny rule" with no red flash, and the trace card says Blocked. A connection's
+  accessible name, and the Ctrl+Alt edge announcement, say "deny rule: blocked".
+- **A capacity multiplier no longer starts a failover.** Only a pair's own unit count going down during a run does.
+- **Fractional throughput keeps its remainder.** A 60/s ceiling plays at 60/s at every sampling scale, not 50.
+- **Custom properties hide a setting only where a control shows it.** An nginx with `gbps`, or a service's connection
+  with `deny`, keeps it there to see, change or remove.
+- **The "failing over" chip** uses `--warning-ink`: 4.5:1 or better in both themes (it was about 2.6:1 in light).
+
+### Code review (PR #86, second round)
+
+- **A denied route out of a broker isn't a consumer.** It took a partition and waited behind a full consumer group;
+  now it takes neither, and capacity analysis treats it as the unbounded exit it is in playback. A topic whose only
+  route is a deny rule reads "Nobody reads": its only route out is a deny rule, so every message is blocked.
+- **One planner sizes devices.** Live view's capacity fix and the check's both come from the shared planner, and
+  Save to diagram keeps a device's units under Capacity ×.
+- **The Firewall rule is a named radio group:** one Tab stop, the arrow keys, Home and End move the choice. So are Flow
+  direction and Text size, which use the same control.
+- **Numbers stay in range:** a negative throughput becomes 0, a zero message size the smallest allowed, before the
+  diagram sees them. Health checks stay in Custom properties on a device that isn't a load balancer.
+- **The event log's kind column fits "blocked".**
+- **A malformed `deny` in a file reads as deny,** with a warning: a firewall rule never quietly turns into Allow.
+
+### Still open (owner's call)
+
+- At 1280 the gallery's family chips fold **Network vendors** (and Generic & clients, as before) into Vendor ▾'s
+  "More families". That's the row's designed overflow, but the new family is one more chip there.
+- Devices use glyphs, not logos (`docs/ICONS.md`). If logos are wanted, a small vendor badge from Simple Icons could
+  sit on the glyph for the six brands it covers; four (Check Point, Arista, HPE Aruba, NetScaler) have none.
+
+![The example, top to bottom](screenshots/round31/example-1280-light.png)
+![Search: 3825 finds Cisco ISR](screenshots/round31/palette-3825-1280-light.png)
+![A firewall pair's simulation settings](screenshots/round31/inspector-firewall-1280-light.png)
+![A firewall rule: Allow or Deny](screenshots/round31/edge-rule-1280-light.png)
+![Live: blocked, apart from failures](screenshots/round31/live-blocked-1280-light.png)
+![Live: one firewall fails over](screenshots/round31/live-failover-1280-light.png)
+![Show capacity on the devices](screenshots/round31/live-capacity-1440-dark.png)
+
+Also: `screenshots/round31/inspector-firewall-1440-dark.png`, `live-detail-1280-light.png`,
+`live-behaviour-1280-light.png` and `gallery-1280-light.png`.
+
 ## Round 30: the live simulation explains itself (2026-10-13)
 
 The owner built a small diagram and went live: Incoming traffic (2/s) → .NET Service → Kafka Topic, and .NET Service →

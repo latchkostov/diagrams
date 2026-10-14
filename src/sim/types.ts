@@ -53,6 +53,10 @@ export interface NodeSimState {
   deadLettered: number;
   /** Messages dropped because they had nowhere to go (node down, no DLQ, etc.). */
   dropped: number;
+  /** Messages a deny rule on one of this node's outgoing connections stopped. On purpose: not a loss. */
+  blocked?: number;
+  /** An active-standby pair is failing over to its standby unit: traffic waits until it's done. */
+  failingOver?: boolean;
   /** Smoothed throughput in messages / second (processed). */
   throughput: number;
   /** Configured and partition-assigned instances (not current busy counts). */
@@ -69,7 +73,8 @@ export interface EdgeSimState {
   active: number;
 }
 
-export type SimEventKind = "inject" | "deliver" | "process" | "fail" | "retry" | "deadletter" | "drop" | "status";
+export type SimEventKind =
+  "inject" | "deliver" | "process" | "fail" | "retry" | "deadletter" | "drop" | "block" | "status";
 
 export interface SimEvent {
   /** Simulation time in ms. */
@@ -142,6 +147,20 @@ export interface NodeSimProps {
   /** Processors: the message type sent downstream. A string renames every message; a map renames by
    *  incoming type ("*" = fallback). Default: unchanged. E.g. { "MemberJoined": "WelcomeEmailRequested" }. */
   emits?: string | Record<string, string>;
+  // Network devices (src/stencils/netDevices.ts): gateways with a throughput ceiling. Their stencil's size preset
+  // supplies the defaults; any gateway with an explicit `gbps` gets the ceiling too.
+  /** Network devices: the size preset (branch, campus or data centre) the defaults come from. */
+  size?: "branch" | "campus" | "datacentre";
+  /** Network devices: throughput per unit in Gbps (the datasheet figure). Default: the size preset's. */
+  gbps?: number;
+  /** Network devices: the average message in kB (1,000 bytes) the throughput is converted with. Default 64. */
+  messageKB?: number;
+  /** Network devices: standalone (default), an active-standby pair or an active-active cluster of `replicas` units. */
+  ha?: "standalone" | "active-standby" | "active-active";
+  /** Network devices: how long an active-standby pair stalls when a unit fails, ms. Default 1000. */
+  failoverMs?: number;
+  /** Gateways: skip targets that are down (default on for ADCs, off elsewhere). */
+  healthChecks?: boolean;
 }
 
 /** Per-edge tunables from DiagramEdge.props. */
@@ -160,6 +179,8 @@ export interface EdgeSimProps {
   filter?: string[];
   /** Rename messages as they leave along this edge (overrides the source node's `emits`). */
   emits?: string;
+  /** A deny rule: messages routed here are blocked at the edge's source (counted as blocked, never dropped). */
+  deny?: boolean;
 }
 
 export interface InjectOptions {
@@ -184,6 +205,7 @@ export type TraceStepKind =
   | "retry" // broker `node` will redeliver it (delivery `attempt` failed)
   | "deadletter" // broker `node` gave up after `attempt` deliveries and sent it to its DLQ edge
   | "drop" // lost at `node` (down, no route); `reason` says why
+  | "block" // stopped at `node` by a deny rule on its way out: on purpose, never a loss
   | "park" // kept at `node`: a broker with no consumers (a dead-letter queue)
   | "end"; // consumed at `node` (a sink, a store, a final worker)
 
@@ -240,6 +262,8 @@ export interface TraceSummary {
   /** When it (or its latest copy to do so) was dead-lettered, simulation ms. Set when `deadLettered`. */
   deadLetteredAt?: number;
   dropped: boolean;
+  /** A deny rule stopped it (or a copy): on purpose, not a loss. */
+  blocked: boolean;
 }
 
 /** What the tracer is waiting for: the next message at a node (or anywhere), or the next dead letter. */

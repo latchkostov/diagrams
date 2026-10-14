@@ -13,7 +13,7 @@ import type { NodeStatus } from "../sim/types";
 import { resolveProps } from "../sim/defaults";
 import { autoScale, peakRate } from "../sim/scale";
 import { trafficWindow } from "../sim/simulation";
-import { planningSimulation, sizingFix, sourceTraffic, withSizing } from "../sim/capacityPlanning";
+import { planningSimulation, sizingFix, sourceTraffic, withSizing, type SizingChange } from "../sim/capacityPlanning";
 import { resolveMultiplier, resolveScale } from "../sim/units";
 import { formatCount, formatRate } from "./format";
 
@@ -60,7 +60,12 @@ export function baseProps(
   sim: Simulation | null | undefined,
   overrides?: Record<string, unknown>,
 ): ReturnType<typeof resolveProps> {
-  return resolveProps(roleOf(node), node.label, { ...node.props, ...sim?.setup?.props?.[node.id], ...overrides });
+  return resolveProps(
+    roleOf(node),
+    node.label,
+    { ...node.props, ...sim?.setup?.props?.[node.id], ...overrides },
+    node.stencil,
+  );
 }
 
 /** Multiplies every rate (or count) of a traffic shape. */
@@ -246,14 +251,8 @@ export interface NodeHeat extends NodeCapacity {
   text: string;
 }
 
-export interface FixChange {
-  nodeId: string;
-  label: string;
-  key: "replicas" | "partitions";
-  /** Base values, as saved (before Capacity ×). */
-  from: number;
-  to: number;
-}
+/** A planned change (src/sim/capacityPlanning.ts), with the node's label: replicas, partitions, or a device's size. */
+export type FixChange = SizingChange & { label: string };
 
 export interface CapacityFix {
   changes: FixChange[];
@@ -363,7 +362,8 @@ export function capacityView(d: DiagramFile, sim: Simulation, status?: RunStatus
   const routes = compileTopology(d).outgoing;
   const nodes: Record<string, NodeHeat> = {};
   for (const [id, n] of Object.entries(analysis.nodes)) {
-    const modeled = isModeled(n.role);
+    // A network device is a gateway with a real ceiling (its datasheet's throughput).
+    const modeled = isModeled(n.role) || !!n.device;
     const st = byId.has(id) ? nodeStatus(byId.get(id)!, sim, status) : undefined;
     // A broker with no route out: nothing consumes it (dead-letter routes don't read it either).
     const noReader = BROKERS.has(n.role) && !routes.get(id)?.length;
@@ -686,8 +686,10 @@ export function freePlaySaveProps(d: DiagramFile, inputs: LiveInputs): Record<st
   const capacity = inputs.capacity ?? 1;
   if (capacity !== 1)
     for (const n of d.nodes) {
-      if (roleOf(n) !== "processor") continue;
-      const replicas = Math.max(1, Math.round(baseProps(n, null, inputs.props[n.id]).replicas * capacity));
+      // Capacity × scales what has capacity in units: a service's replicas and a network device's units.
+      const props = baseProps(n, null, inputs.props[n.id]);
+      if (roleOf(n) !== "processor" && !props.device) continue;
+      const replicas = Math.max(1, Math.round(props.replicas * capacity));
       out[n.id] = { ...out[n.id], replicas };
     }
   return out;
