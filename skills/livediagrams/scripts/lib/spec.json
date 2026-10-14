@@ -2255,6 +2255,7 @@
         "vendor API",
         "REST API",
         "HTTP API",
+        "http",
         "rest"
       ]
     },

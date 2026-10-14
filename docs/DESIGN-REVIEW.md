@@ -18,9 +18,17 @@ consistency issues; it flagged ordinary clients matching “external”, which i
   verified redistribution grant. Reuse Lucide ISC cloud/megaphone glyphs. Quotas, numeric defaults and endpoints
   belong to later batches and would imply behavior this discovery-only change does not implement.
 
-Production-build Chromium evidence: 62 tests passed (stencils, palette, command palette, gallery, round4-polish
-and CSP); 12 discovery tests passed again after refreshing screenshots. Unit regressions fail with the catalog
-and aliases temporarily reverted, and the source-client search regression fails when its fix is reverted.
+Production-build Chromium evidence: 66 tests passed (stencils, palette, command palette, gallery, round4-polish
+and CSP); 5,190 unit tests passed, four skipped. Unit regressions fail with the catalog and aliases temporarily
+reverted; source-client and HTTP API ranking regressions also fail when their fixes are reverted. The drawer
+navigation browser regression fails without matching the subgroup display order.
+
+The seven-angle code review found one P1 (HTTP API ranked an inbound Webhook ahead of the called API) and two
+P2 coverage gaps (restoring the default closed fold and drawer navigation across subgroups). All are addressed:
+External API has an explicit HTTP alias, shared search and agent resolution agree on a terminal API, and browser
+tests restore an open fold and traverse Webhook → External API → Webhook. The follow-up architecture review found
+no issues; its test review prompted an explicit default-selection browser regression: HTTP API must be first in
+both the rail and Ctrl+K, and Enter must create External API. No new resolver or simulation semantics.
 
 Screenshots: [rail at 1024](screenshots/round35/clients-1024.png),
 [rail at 1280](screenshots/round35/clients-1280.png), [Ctrl+K Iterable](screenshots/round35/palette-iterable.png),

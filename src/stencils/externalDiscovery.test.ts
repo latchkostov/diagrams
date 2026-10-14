@@ -4,7 +4,7 @@ import { catalog } from "./catalog";
 import { categoryLabel, clientSections } from "../lib/categories";
 import { searchStencils } from "../lib/stencilSearch";
 import { familyOf } from "../lib/vendorFamilies";
-import { findStencils } from "../ai/stencils";
+import { findStencils, resolveKind } from "../ai/stencils";
 import { iconSource } from "../gallery/stencilInfo";
 
 const vendors = ["iterable", "braze", "segment", "shopify", "paypal", "adyen"];
@@ -49,6 +49,15 @@ describe("external discovery", () => {
       expect(hits).not.toContain(id);
     expect(searchStencils(catalog, "clients").map((s) => s.id)).toContain("client.browser");
   });
+
+  it.each(["HTTP API", "REST API", "vendor API", "third party API", "SaaS API"])(
+    "ranks the called API ahead of an inbound traffic source for %s",
+    (query) => {
+      expect(searchStencils(catalog, query)[0]).toMatchObject({ id: "generic.external-api", simRole: "sink" });
+      expect(resolveKind(query).id).toBe("generic.external-api");
+      expect(findStencils(query)[0]?.id).toBe("generic.external-api");
+    },
+  );
 
   it.each(vendors)("ships %s as metadata with an existing terminal role and licensed reusable artwork", (id) => {
     const stencil = catalog.find((s) => s.id === id);

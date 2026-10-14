@@ -6,6 +6,7 @@ const searches = [
   ["external", "generic.external-api"],
   ["Iterable", "iterable"],
   ["Stripe", "stripe"],
+  ["HTTP API", "generic.external-api"],
 ] as const;
 
 async function screenshot(page: import("@playwright/test").Page, name: string) {
@@ -15,6 +16,25 @@ async function screenshot(page: import("@playwright/test").Page, name: string) {
 }
 
 test.describe("external discovery", () => {
+  test("HTTP API selects External API by default in the rail and Ctrl+K", async ({ page }) => {
+    await gotoCanvas(page, "aws-fanout");
+    await page.getByTestId("palette-search").fill("HTTP API");
+    await expect(page.getByTestId(/^palette-item-/).first()).toHaveAttribute(
+      "data-testid",
+      "palette-item-generic.external-api",
+    );
+    await page.getByTestId("palette-search").press("Enter");
+    await expect(page.getByTestId("node-external-api-1")).toBeVisible();
+    await page.keyboard.press(`${MOD}+k`);
+    await page.getByTestId("command-input").fill("HTTP API");
+    await expect(page.getByTestId(/^command-item-/).first()).toHaveAttribute(
+      "data-testid",
+      "command-item-stencil:generic.external-api",
+    );
+    await page.getByTestId("command-input").press("Enter");
+    await expect(page.getByTestId("node-external-api-2")).toBeVisible();
+  });
+
   for (const [query, id] of searches) {
     test(`library and Ctrl+K find ${query}`, async ({ page, consoleErrors }) => {
       await gotoCanvas(page, "aws-fanout");
@@ -37,6 +57,17 @@ test.describe("external discovery", () => {
       await expect(page.getByTestId("gallery-clients-external").getByTestId(`stencil-tile-${id}`)).toBeVisible();
     });
   }
+
+  test("drawer navigation follows the clients and external subgroup display order", async ({ page }) => {
+    await gotoGallery(page);
+    await page.getByTestId("stencil-tile-generic.webhook").click();
+    const drawer = page.getByTestId("stencil-drawer");
+    await expect(drawer).toHaveAttribute("data-stencil", "generic.webhook");
+    await drawer.getByTestId("drawer-next").click();
+    await expect(drawer).toHaveAttribute("data-stencil", "generic.external-api");
+    await drawer.getByTestId("drawer-prev").click();
+    await expect(drawer).toHaveAttribute("data-stencil", "generic.webhook");
+  });
 
   for (const width of [1024, 1280]) {
     test(`Clients & external folds and reopens at ${width}`, async ({ page }) => {
@@ -63,6 +94,14 @@ test.describe("external discovery", () => {
       await expect(page.getByTestId("canvas-view")).toBeVisible();
       if (!(await page.getByTestId("palette-search").isVisible())) await page.getByTestId("palette-toggle").click();
       await expect(section).toHaveAttribute("aria-expanded", "false");
+      // Closed is the first-visit default; only restoring an open category proves persistence.
+      await section.click();
+      await expect(section).toHaveAttribute("aria-expanded", "true");
+      await page.reload();
+      await expect(page.getByTestId("canvas-view")).toBeVisible();
+      if (!(await page.getByTestId("palette-search").isVisible())) await page.getByTestId("palette-toggle").click();
+      await expect(section).toHaveAttribute("aria-expanded", "true");
+      await expect(page.getByTestId("palette-item-iterable")).toBeVisible();
     });
   }
 

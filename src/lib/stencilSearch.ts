@@ -185,7 +185,8 @@ export const STENCIL_ALIASES: Record<string, readonly string[]> = {
   "generic.vector-db": ["vector", "embeddings", "pgvector", "weaviate", "qdrant", "milvus", "rag"],
   "generic.ml-model": ["ml", "model", "inference", "ai", "prediction"],
   "generic.llm": [...EXTERNAL_API_ALIASES, "llm", "ai", "gpt", "claude", "model", "genai"],
-  "generic.external-api": [...EXTERNAL_API_ALIASES, "rest"],
+  // HTTP/REST identify the called API, so "HTTP API" beats Webhook's existing "http" callback alias.
+  "generic.external-api": [...EXTERNAL_API_ALIASES, "http", "rest"],
   terraform: ["iac", "infrastructure as code", "tf", "hcl", "opentofu"],
   argocd: ["argo", "gitops", "cd", "deploy", "kubernetes"],
   "azure.app-config": ["app config", "appconfig", "appcs", "configuration", "feature flags", "kv refs", "settings"],
