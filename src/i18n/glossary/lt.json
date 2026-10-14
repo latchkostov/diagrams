@@ -24,7 +24,8 @@
       "use": "gavėjas",
       "match": ["gavėj", "consumer"],
       "avoid": ["vartotoj"],
-      "note": "vartotojas means user."
+      "note": "vartotojas means user.",
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -112,7 +113,15 @@
     "edge": {
       "use": "jungtis",
       "match": ["jungt", "jungč"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "jungtis, jungtys, jungčių. A boundary's edge is its kraštas."
     },
     "stencil": {

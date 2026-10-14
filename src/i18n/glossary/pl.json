@@ -23,7 +23,8 @@
     },
     "consumer": {
       "use": "konsument",
-      "match": ["konsument"]
+      "match": ["konsument"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "grupa konsumentów",
@@ -114,7 +115,15 @@
     "edge": {
       "use": "połączenie",
       "match": ["połącz"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary 'edge' is the border of a boundary (krawędź), not a connection."
     },
     "stencil": {

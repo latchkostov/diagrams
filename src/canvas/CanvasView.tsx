@@ -140,7 +140,7 @@ import { ChecksCardView, ChecksMarkersView, DiagramCardMeta, SelectionFindings }
 import { useBelow } from "./checks/useBelow";
 import { PresentFullscreen } from "./PresentFullscreen";
 import { useFullscreen } from "../lib/fullscreen";
-import { t } from "../i18n";
+import { t as tr, useLocale } from "../i18n";
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
@@ -241,6 +241,7 @@ function annotationMinimapFill(n: AnnotationFlowNode): string {
 }
 
 export function CanvasView(props: Props) {
+  useLocale();
   return (
     <ReactFlowProvider>
       <CanvasInner {...props} />
@@ -439,12 +440,12 @@ function CanvasInner({
     isPrivate: () => privacyNow() !== null,
     makePrivate: () => {
       if (setDiagramPrivate(slug, true)) {
-        notify("Pasted from a private diagram, so this one is private now: no share links, cloud saves or AI.", {
+        notify(tr("chrome.pastedFromAPrivateDiagramSoThisOneIsPrivate"), {
           kind: "info",
         });
         return true;
       }
-      notify("That came from a private diagram. Paste it into one of your diagrams, not an example or a shared one.", {
+      notify(tr("chrome.thatCameFromAPrivateDiagramPasteItIntoOne"), {
         kind: "error",
       });
       return false;
@@ -868,9 +869,13 @@ function CanvasInner({
         x: menuLeft ? sx - 8 - QUICK_ADD_W : right,
         flipX: sx - 8,
         y: sy,
-        label: "Add a connected node",
+        get label() {
+          return tr("canvas.addAConnectedNode");
+        },
         testId: "quick-add",
-        searchable: "Add a node…",
+        get searchable() {
+          return tr("canvas.addANode");
+        },
         items: quickAddMenu((s) => {
           pickNamed(() => editor.createConnected({ from: fromId, stencil: s.id, toward: dir }), s.label);
           pushRecentStencil(s.id);
@@ -1021,9 +1026,13 @@ function CanvasInner({
       setMenu({
         x: pt.clientX,
         y: pt.clientY,
-        label: "Add a connected node",
+        get label() {
+          return tr("canvas.addAConnectedNode");
+        },
         testId: "quick-add",
-        searchable: "Add a node…",
+        get searchable() {
+          return tr("canvas.addANode");
+        },
         items: quickAddMenu((s) => {
           pickNamed(() => editor.createConnected({ from, stencil: s.id, at: point }), s.label);
           pushRecentStencil(s.id);
@@ -1305,12 +1314,24 @@ function CanvasInner({
       if (!first) return;
       const [groupId, ids] = first;
       const count = [...left.values()].reduce((n, l) => n + l.length, 0);
-      const group = editor.getGroup(groupId)?.label || "its boundary";
+      const group = editor.getGroup(groupId)?.label || tr("chrome.itsBoundary");
       const one = count === 1 ? editor.getNode(ids[0])?.label || ids[0] : null;
-      const where = left.size > 1 ? "their boundaries" : group;
-      notify(one ? `${one} left ${where}` : `${count} nodes left ${where}`, {
-        action: { label: "Undo", run: editor.undo, testId: "membership-undo", undoes: true },
-      });
+      const where = left.size > 1 ? tr("chrome.theirBoundaries") : group;
+      notify(
+        one
+          ? tr("chrome.valueLeftValue", { name: one, boundary: where })
+          : tr("chrome.valueNodesLeftValueOtherValueNodesLeftValue", { count, boundary: where }),
+        {
+          action: {
+            get label() {
+              return tr("ai.undo");
+            },
+            run: editor.undo,
+            testId: "membership-undo",
+            undoes: true,
+          },
+        },
+      );
     },
     [editor],
   );
@@ -1435,7 +1456,16 @@ function CanvasInner({
       setEditing(null);
       hideTip();
       if (!hintSeen) dismissHint();
-      setMenu(items.length ? { x: e.clientX, y: e.clientY, items, label: `${ctx.target} menu` } : null);
+      setMenu(
+        items.length
+          ? {
+              x: e.clientX,
+              y: e.clientY,
+              items,
+              label: tr("menu.valueNodeValueEdgeValueGroupValueSelectionValueAnnotation", { target: ctx.target }),
+            }
+          : null,
+      );
     },
     [editor, screenToFlowPosition, readOnly, live, hideTip, hintSeen, dismissHint],
   );
@@ -1490,9 +1520,13 @@ function CanvasInner({
     setMenu({
       x: e.clientX,
       y: e.clientY,
-      label: "Add a node",
+      get label() {
+        return tr("canvas.addANodeText");
+      },
       testId: "quick-add",
-      searchable: "Add a node…",
+      get searchable() {
+        return tr("canvas.addANode");
+      },
       // Quick-add opens the new node's name (decision 3), so what's typed next names it instead of reaching the
       // canvas's one-key shortcuts (T, L, C).
       items: quickAddMenu((s) => {
@@ -1579,8 +1613,15 @@ function CanvasInner({
       setTimeout(() => {
         const hit = editor.keepTextClear(id, before);
         if (hit)
-          notify(`Moved the text off ${hit === "node" ? "a node" : "an edge"}.`, {
-            action: { label: "Undo", run: editor.undo, testId: "text-moved-undo", undoes: true },
+          notify(hit === "node" ? tr("chrome.movedTheTextOffANode") : tr("chrome.movedTheTextOffAnEdge"), {
+            action: {
+              get label() {
+                return tr("ai.undo");
+              },
+              run: editor.undo,
+              testId: "text-moved-undo",
+              undoes: true,
+            },
           });
       }, 60);
     },
@@ -1593,14 +1634,26 @@ function CanvasInner({
       requestAnimationFrame(() => {
         const { adopted, released } = editor.adoptAfterResize(groupId);
         if (!adopted.length && !released.length) return;
-        const name = editor.getGroup(groupId)?.label || "the boundary";
-        const n = (k: number) => (k === 1 ? "1 node" : `${k} nodes`);
+        const name = editor.getGroup(groupId)?.label || tr("chrome.theBoundary");
         const text = !released.length
-          ? `Added ${n(adopted.length)} to ${name}`
+          ? tr("chrome.addedValueOtherValueNodesToValue", { count: adopted.length, name })
           : !adopted.length
-            ? `Took ${n(released.length)} out of ${name}`
-            : `Added ${n(adopted.length)} to ${name} and took ${released.length} out`;
-        notify(text, { action: { label: "Undo", run: editor.undo, testId: "membership-undo", undoes: true } });
+            ? tr("chrome.tookValueOtherValueNodesOutOfValue", { count: released.length, name })
+            : tr("chrome.addedValueOtherValueNodesToValueAndTookValue", {
+                count: adopted.length,
+                name,
+                released: released.length,
+              });
+        notify(text, {
+          action: {
+            get label() {
+              return tr("ai.undo");
+            },
+            run: editor.undo,
+            testId: "membership-undo",
+            undoes: true,
+          },
+        });
       }),
     [editor],
   );
@@ -1911,7 +1964,7 @@ function CanvasInner({
         if (!n) return id;
         if (isDiagramNode(n)) return n.data.label || n.id;
         if (isAnnotationNode(n)) return annotationTitle(n.data);
-        return (n as GroupFlowNode).data.label || "Untitled boundary";
+        return (n as GroupFlowNode).data.label || tr("chrome.untitledBoundary");
       };
       const order = navOrder(ns);
 
@@ -2073,9 +2126,17 @@ function CanvasInner({
               ? only.data.label || only.id
               : isAnnotationNode(only)
                 ? annotationTitle(only.data)
-                : (only as GroupFlowNode).data.label || "Untitled boundary";
-          const what = !count ? "Nothing selected" : name ? `${name} selected` : `${count} selected`;
-          announce(`${direction === "undo" ? "Undone" : "Redone"}. ${what}.`);
+                : (only as GroupFlowNode).data.label || tr("chrome.untitledBoundary");
+          const what = !count
+            ? tr("chrome.nothingSelected")
+            : name
+              ? tr("chrome.valueSelected", { name })
+              : tr("ai.selected", { count });
+          announce(
+            direction === "undo"
+              ? tr("chrome.undoneValue", { selection: what })
+              : tr("chrome.redoneValue", { selection: what }),
+          );
         });
       });
     };
@@ -2101,8 +2162,8 @@ function CanvasInner({
   const nodeCount = diagramNodes.length;
   /** Anything drawn: an annotations-only canvas isn't "empty", though there's nothing to simulate. */
   const contentCount = nodeCount + annotationNodes.length;
-  const undoTitle = `Undo (${formatCombo(shortcutKeys("undo"))})`;
-  const redoTitle = `Redo (${formatCombo(shortcutKeys("redo"))})`;
+  const undoTitle = tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) });
+  const redoTitle = tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) });
 
   return (
     <DiagramContext.Provider value={ui}>
@@ -2257,8 +2318,8 @@ function CanvasInner({
                 {/* Our fit keeps content clear of the title card, minimap and live bar. */}
                 <ControlButton
                   onClick={fit}
-                  title={`Fit view (${formatCombo(shortcutKeys("fit-view"))})`}
-                  aria-label="Fit view"
+                  title={tr("chrome.fitViewValue", { combo: formatCombo(shortcutKeys("fit-view")) })}
+                  aria-label={tr("menu.fitView")}
                   data-testid="fit-view-button"
                 >
                   <Icon name="fit" size={14} />
@@ -2267,7 +2328,7 @@ function CanvasInner({
                   onClick={editor.undo}
                   disabled={!history.canUndo}
                   title={undoTitle}
-                  aria-label="Undo"
+                  aria-label={tr("ai.undo")}
                   data-testid="undo-button"
                 >
                   <Icon name="undo" size={14} />
@@ -2276,15 +2337,15 @@ function CanvasInner({
                   onClick={editor.redo}
                   disabled={!history.canRedo}
                   title={redoTitle}
-                  aria-label="Redo"
+                  aria-label={tr("shortcuts.redo")}
                   data-testid="redo-button"
                 >
                   <Icon name="redo" size={14} />
                 </ControlButton>
                 <ControlButton
                   onClick={() => setShortcutsOpen(true)}
-                  title="Keyboard shortcuts (?)"
-                  aria-label="Keyboard shortcuts"
+                  title={tr("canvas.keyboardShortcuts")}
+                  aria-label={tr("shortcuts.title")}
                   data-testid="shortcuts-button"
                 >
                   <Icon name="keyboard" size={14} />
@@ -2377,9 +2438,10 @@ function CanvasInner({
                       className="link-btn"
                       onClick={reset}
                       data-testid="reset-diagram"
-                      title="Discard your edits to this diagram (undoable)"
+                      title={tr("canvas.discardYourEditsToThisDiagramUndoable")}
                     >
-                      <Icon name="reset" size={13} /> Edited, reset
+                      <Icon name="reset" size={13} />
+                      {tr("canvas.editedReset")}
                     </button>
                   )
                 }
@@ -2393,7 +2455,7 @@ function CanvasInner({
             <div className="present-bar">
               <PresentFullscreen />
               <button className="present-exit" onClick={onExitPresent} data-testid="present-exit">
-                <Icon name="close" size={14} /> {t("present.exit")} <kbd>Esc</kbd>
+                <Icon name="close" size={14} /> {tr("present.exit")} <kbd>{tr("keys.escape")}</kbd>
               </button>
             </div>
           )}
@@ -2417,11 +2479,11 @@ function CanvasInner({
             contentCount === 0 &&
             !hideChrome && (
               <div className="canvas-empty" data-testid="canvas-empty">
-                <strong>This diagram is empty</strong>
+                <strong>{tr("canvas.thisDiagramIsEmpty")}</strong>
                 <span>
                   {paletteHidden
-                    ? "Double-click the canvas to add a node, or open the stencil panel on the left."
-                    : "Drag a stencil from the left, or double-click the canvas to add one."}
+                    ? tr("chrome.doubleClickTheCanvasToAddANodeOrOpen")
+                    : tr("chrome.dragAStencilFromTheLeftOrDoubleClickThe")}
                 </span>
               </div>
             )
@@ -2503,16 +2565,18 @@ function PrivateBadge({ kind }: { kind: "local-only" | "private" }) {
       className="private-badge"
       data-testid="private-badge"
       data-kind={kind}
-      aria-label={always ? "Private: always, it comes from a local-only example" : "Private diagram: what this means"}
+      aria-label={
+        always ? tr("chrome.privateAlwaysItComesFromALocalOnlyExample") : tr("chrome.privateDiagramWhatThisMeans")
+      }
       title={
-        always ? "Always private: no share links, cloud saves or AI" : "Private: no share links, cloud saves or AI"
+        always ? tr("chrome.alwaysPrivateNoShareLinksCloudSavesOrAI") : tr("chrome.privateNoShareLinksCloudSavesOrAI")
       }
       aria-disabled={always || undefined}
       onClick={() => {
         if (!always) window.dispatchEvent(new Event(PRIVACY_REQUEST));
       }}
     >
-      <Icon name="lock" size={12} /> Private
+      <Icon name="lock" size={12} /> {tr("ai.private")}
     </button>
   );
 }

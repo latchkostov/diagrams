@@ -1,5 +1,33 @@
 # Design review
 
+## Canvas-menu localization review (2026-10-14)
+
+The designer-agent gate and seven review angles covered canvas menus, editing feedback, Ctrl+K, the stencil rail
+and gallery. The batch adds no controls or menu rows; actions keep their existing identities and availability.
+Your diagrams retains its previous File-batch conversion. Inspector, Live/capacity, planning, Checks and stencil
+catalog copy stay outside this batch.
+
+- Translated menu, command and annotation labels wrap instead of clipping. Native family selects shrink within
+  their rail; category headings and the drawer footer have room at 1280 × 800.
+- Arabic opens submenus leftward and mirrors their keyboard direction. Drawer Previous/Next glyphs, hints and
+  arrow keys agree; the canvas keeps its original geometry. RTL empty instructions identify the right-hand rail.
+- Complete rich messages let translators move keyboard badges and links. Membership feedback says nodes departed
+  a boundary, rather than confusing that verb with the direction Left. Glossary exceptions distinguish geometric
+  edges and compound consumer-group terminology from diagram connections and individual consumers.
+- Review caught fused machine-translation output, directional mistranslations, English fallback fragments and
+  a zone's missing palette noun. They were corrected; catalogs have a sentinel/completeness regression, and
+  localized Add-command search works with leading, trailing or attached verbs.
+
+Production Chromium checks cover canvas/node/edge/boundary menus and nested submenus, palette, editing toasts,
+stencil library, gallery/details and Your diagrams in German, Arabic and the pseudo-locale. The designer reviewed
+available screenshots and final source. Deliberately reverting extraction, rich messages, catalog integrity,
+localized search and layout fixes makes the corresponding regressions fail. English-output and the existing
+interaction regressions preserve the original wording and behavior.
+
+Rejected: new chrome, translating catalog descriptions or authored diagram content, and widening this batch into
+the excluded panels. These would change the intended scope or add unnecessary controls. The production entry
+grows by 30 B gzip against master; the new message data stays with its lazy UI.
+
 ## Planning P1 CI UX gate (2026-10-14)
 
 The designer-agent source review found no blocking issue: no new chrome, immediate name saves and

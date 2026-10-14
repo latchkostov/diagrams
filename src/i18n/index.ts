@@ -8,4 +8,4 @@ const subscribe = (f: () => void) => {
 };
 
 /** The current language, re-rendering the component when it changes. Call it in any component that shows text. */
-export const useLocale = (): string => useSyncExternalStore(subscribe, getLocale);
+export const useLocale = (): string => useSyncExternalStore(subscribe, getLocale, getLocale);

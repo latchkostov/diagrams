@@ -1,3 +1,8 @@
+import { tRich } from "../i18n/rich";
+import { formatNumber } from "../i18n/format";
+
+import { categoryLabel, categoryBlurb, familyLabel, familyHint } from "../i18n/chrome";
+import { t, useLocale } from "../i18n";
 import {
   memo,
   useCallback,
@@ -13,8 +18,8 @@ import { iconUrl, stencils } from "../stencils/registry";
 import type { Stencil, StencilCategory } from "../model/types";
 import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
-import { CATEGORY_ORDER, categoryBlurb, categoryLabel, clientSections } from "../lib/categories";
-import { simRoleMeta } from "../lib/simRoles";
+import { CATEGORY_ORDER, clientSections } from "../lib/categories";
+import { galleryRoleMeta as simRoleMeta } from "../i18n/galleryRoles";
 import {
   familyCounts,
   familyOf,
@@ -40,6 +45,7 @@ type Menu = { x: number; y: number; items: MenuNode[]; label: string; testId: st
 
 /** Every stencil, as metadata and as a real diagram node. Click for details, drag or right-click to use one. */
 export function GalleryView() {
+  const locale = useLocale();
   const [q, setQ] = useState("");
   const [family, setFamily] = useState<FamilyId | "all">("all");
   const [vendor, setVendor] = useState<string | null>(null);
@@ -135,7 +141,7 @@ export function GalleryView() {
     const ro = new ResizeObserver(fit);
     ro.observe(row);
     return () => ro.disconnect();
-  }, [families, family, vendor, searchedFamilies]);
+  }, [families, family, vendor, searchedFamilies, locale]);
 
   const filtered = useMemo(
     () => searched.filter((s) => (vendor ? s.vendor === vendor : family === "all" || familyOf(s) === family)),
@@ -182,12 +188,15 @@ export function GalleryView() {
   const missingIcons = useMemo(() => stencils.filter((s) => !iconUrl(s.icon)).length, []);
 
   const copy = useCallback((text: string, what: string) => {
-    const done = () => setNote(`Copied ${what}`);
+    const done = () => setNote(t("chrome.copiedValue", { what }));
     if (navigator.clipboard?.writeText)
-      navigator.clipboard.writeText(text).then(done, () => setNote("Couldn't reach the clipboard"));
-    else setNote("Couldn't reach the clipboard");
+      navigator.clipboard.writeText(text).then(done, () => setNote(t("chrome.couldnTReachTheClipboard")));
+    else setNote(t("chrome.couldnTReachTheClipboard"));
   }, []);
-  const copyJson = useCallback((s: Stencil) => copy(JSON.stringify(nodeJson(s), null, 2), "JSON node"), [copy]);
+  const copyJson = useCallback(
+    (s: Stencil) => copy(JSON.stringify(nodeJson(s), null, 2), t("chrome.jSONNode")),
+    [copy],
+  );
 
   const openDetail = (id: string) => {
     lastTile.current = id;
@@ -209,20 +218,47 @@ export function GalleryView() {
     setMenu({
       x,
       y,
-      label: `${s.label} menu`,
+      label: t("chrome.valueMenu", { name: s.label }),
       testId: "tile-menu",
       items: [
         {
           type: "item",
           id: "tile-add",
-          label: "Add to current diagram",
+          get label() {
+            return t("gallery.addToCurrentDiagram");
+          },
           icon: "plus",
           run: () => addToCurrentDiagram(s.id),
         },
-        { type: "item", id: "tile-details", label: "View details", icon: "info", run: () => openDetail(s.id) },
+        {
+          type: "item",
+          id: "tile-details",
+          get label() {
+            return t("gallery.viewDetails");
+          },
+          icon: "info",
+          run: () => openDetail(s.id),
+        },
         { type: "separator" },
-        { type: "item", id: "tile-copy-id", label: "Copy id", icon: "copy", hint: s.id, run: () => copy(s.id, "id") },
-        { type: "item", id: "tile-copy-json", label: "Copy as JSON node", icon: "copy", run: () => copyJson(s) },
+        {
+          type: "item",
+          id: "tile-copy-id",
+          get label() {
+            return t("gallery.copyId");
+          },
+          icon: "copy",
+          hint: s.id,
+          run: () => copy(s.id, t("chrome.id")),
+        },
+        {
+          type: "item",
+          id: "tile-copy-json",
+          get label() {
+            return t("gallery.copyAsJSONNode");
+          },
+          icon: "copy",
+          run: () => copyJson(s),
+        },
       ],
     });
 
@@ -237,7 +273,7 @@ export function GalleryView() {
       open: (s) => latest.current.openDetail(s.id),
       menu: (s, x, y) => latest.current.tileMenu(s, x, y),
       add: (s) => addToCurrentDiagram(s.id),
-      copyId: (s) => copy(s.id, "id"),
+      copyId: (s) => copy(s.id, t("chrome.id")),
       drag: (s, on) => setDragging(on ? s.id : null),
     }),
     [copy],
@@ -249,15 +285,24 @@ export function GalleryView() {
     // and the search box still finds any vendor directly.
     const items: MenuNode[] = [
       // Families that don't fit the track (a narrow window) are picked here instead.
-      ...(folded.length ? [{ type: "header", label: "More families" } as const] : []),
+      ...(folded.length
+        ? [
+            {
+              type: "header",
+              get label() {
+                return t("gallery.moreFamilies");
+              },
+            } as const,
+          ]
+        : []),
       ...folded.map((id): MenuNode => {
         const f = getFamily(id);
         return {
           type: "item",
           id: `family:${id}`,
-          label: f.label,
+          label: familyLabel[f.id],
           swatch: f.hue,
-          hint: String(searchedFamilies.get(id) ?? 0),
+          hint: formatNumber(searchedFamilies.get(id) ?? 0, { useGrouping: false }),
           checked: family === id && !vendor,
           run: () => pickFamily(id),
         };
@@ -266,9 +311,11 @@ export function GalleryView() {
       {
         type: "item",
         id: "vendor:all",
-        label: "All vendors",
+        get label() {
+          return t("gallery.allVendors");
+        },
         checked: vendor === null,
-        hint: String(stencils.length),
+        hint: formatNumber(stencils.length, { useGrouping: false }),
         run: () => pickFamily("all"),
       },
       { type: "separator" },
@@ -277,15 +324,15 @@ export function GalleryView() {
       items.push({
         type: "item",
         id: `vendor-family:${g.family.id}`,
-        label: g.family.label,
+        label: familyLabel[g.family.id],
         swatch: g.family.hue,
-        hint: `${g.vendors.length} ${g.vendors.length === 1 ? "vendor" : "vendors"}`,
+        hint: t("chrome.valueVendorOtherValueVendors", { count: g.vendors.length }),
         checked: !!vendor && familyOfVendor(vendor) === g.family.id,
         children: g.vendors.map((v) => ({
           type: "item" as const,
           id: `vendor:${slugify(v.vendor)}`,
           label: v.vendor,
-          hint: String(v.count),
+          hint: formatNumber(v.count, { useGrouping: false }),
           checked: vendor === v.vendor,
           run: () => {
             setVendor(v.vendor);
@@ -300,9 +347,13 @@ export function GalleryView() {
       x: Math.max(8, r.right - width),
       y: r.bottom + 6,
       items,
-      label: "Filter by vendor",
+      get label() {
+        return t("gallery.filterByVendor");
+      },
       testId: "vendor-menu",
-      searchable: "Find a vendor",
+      get searchable() {
+        return t("gallery.findAVendor");
+      },
     });
   };
 
@@ -318,7 +369,7 @@ export function GalleryView() {
     setFamily("all");
   };
 
-  const scope = vendor ?? (family === "all" ? null : getFamily(family).label);
+  const scope = vendor ?? (family === "all" ? null : familyLabel[family]);
 
   return (
     <div
@@ -329,8 +380,8 @@ export function GalleryView() {
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
       }}
     >
-      <nav className="gallery-rail" aria-label="Categories">
-        <div className="rail-title">Categories</div>
+      <nav data-testid="gallery-rail" className="gallery-rail" aria-label={t("gallery.categories")}>
+        <div className="rail-title">{t("gallery.categories")}</div>
         {CATEGORY_ORDER.map((c) => {
           const n = sections.find((s) => s.category === c)?.items.length ?? 0;
           return (
@@ -345,12 +396,12 @@ export function GalleryView() {
               data-testid={`rail-${c}`}
             >
               <span>{categoryLabel[c]}</span>
-              <span className="rail-count">{n}</span>
+              <span className="rail-count">{formatNumber(n, { useGrouping: false })}</span>
             </button>
           );
         })}
         <div className="rail-legend">
-          <div className="rail-title">Simulation roles</div>
+          <div className="rail-title">{t("gallery.simulationRoles")}</div>
           {Object.entries(simRoleMeta).map(([role, m]) => (
             <div key={role} className="legend-row" title={m.hint}>
               <i style={{ background: m.hue }} />
@@ -361,14 +412,20 @@ export function GalleryView() {
       </nav>
 
       <main className="gallery-main" id="gallery-main" ref={main}>
-        <header className="gallery-head">
+        <header className="gallery-head" data-testid="gallery-head">
           <div className="gallery-heading">
-            <h1>Stencils</h1>
+            <h1>{t("topbar.stencils")}</h1>
             <p data-testid="stencil-count" aria-live="polite">
               {filtered.length === stencils.length
-                ? `${stencils.length} stencils from ${vendorCount} vendors`
-                : `${filtered.length} of ${stencils.length} stencils`}
-              {missingIcons > 0 && <span className="warn"> {missingIcons} missing an icon</span>}
+                ? t("chrome.valueStencilsOtherValueStencilsFromValueVendorsOtherValue", {
+                    count: stencils.length,
+                    vendors: vendorCount,
+                  })
+                : t("chrome.valueOtherValueOfValueStencilsOtherValueStencils", {
+                    count: filtered.length,
+                    total: stencils.length,
+                  })}
+              {missingIcons > 0 && <span className="warn">{t("gallery.missingIcons", { count: missingIcons })}</span>}
             </p>
             <div className="gallery-search">
               <label className="field field-lg">
@@ -383,8 +440,8 @@ export function GalleryView() {
                       setQ("");
                     }
                   }}
-                  placeholder="Search names, vendors, roles, or try “sb”"
-                  aria-label="Search stencils"
+                  placeholder={t("gallery.searchNamesVendorsRolesOrTrySb")}
+                  aria-label={t("importReport.searchStencils")}
                   name="gallery-search"
                   autoComplete="off"
                   spellCheck={false}
@@ -395,7 +452,7 @@ export function GalleryView() {
                     type="button"
                     className="field-clear"
                     onClick={() => setQ("")}
-                    aria-label="Clear search"
+                    aria-label={t("library.clearSearch")}
                     data-testid="gallery-search-clear"
                   >
                     <Icon name="close" size={12} />
@@ -408,14 +465,15 @@ export function GalleryView() {
           </div>
 
           <div className="gallery-filters" ref={filters}>
-            <div className="families" role="group" aria-label="Filter by family">
+            <div className="families" role="group" aria-label={t("gallery.filterByFamily")}>
               <button
                 className={`family${family === "all" && !vendor ? " is-on" : ""}`}
                 aria-pressed={family === "all" && !vendor}
                 onClick={() => pickFamily("all")}
                 data-testid="family-chip-all"
               >
-                All <span className="family-count">{searched.length}</span>
+                {t("gallery.all")}
+                <span className="family-count">{formatNumber(searched.length, { useGrouping: false })}</span>
               </button>
               {families.map(({ family: f }) => {
                 const n = searchedFamilies.get(f.id) ?? 0;
@@ -427,13 +485,13 @@ export function GalleryView() {
                     className={`family${on ? " is-on" : ""}${n ? "" : " is-empty"}${isFolded ? " is-folded" : ""}`}
                     aria-pressed={on}
                     data-folded={isFolded ? "1" : undefined}
-                    title={f.hint}
+                    title={familyHint[f.id]}
                     onClick={() => pickFamily(on ? "all" : f.id)}
                     style={{ "--family": f.hue } as CSSProperties}
                     data-testid={`family-chip-${f.id}`}
                   >
                     <i aria-hidden />
-                    {f.label} <span className="family-count">{n}</span>
+                    {familyLabel[f.id]} <span className="family-count">{formatNumber(n, { useGrouping: false })}</span>
                   </button>
                 );
               })}
@@ -445,7 +503,7 @@ export function GalleryView() {
                   {vendor}
                   <button
                     onClick={() => pickFamily("all")}
-                    aria-label={`Remove ${vendor} filter`}
+                    aria-label={t("chrome.removeValueFilter", { vendor })}
                     data-testid="vendor-filter-clear"
                   >
                     <Icon name="close" size={11} />
@@ -459,7 +517,8 @@ export function GalleryView() {
                 onClick={(e) => openVendorMenu(e.currentTarget)}
                 data-testid="vendor-overflow"
               >
-                Vendor <Icon name="chevron-down" size={13} />
+                {t("gallery.vendor")}
+                <Icon name="chevron-down" size={13} />
               </button>
             </div>
           </div>
@@ -476,14 +535,14 @@ export function GalleryView() {
             <div className="section-head">
               <h2>
                 {categoryLabel[category] ?? category}
-                <span>{items.length}</span>
+                <span>{formatNumber(items.length, { useGrouping: false })}</span>
               </h2>
               <p>{categoryBlurb[category]}</p>
             </div>
             {category === "clients" ? (
               clientSections(items).map((section) => (
                 <section key={section.id} className="gallery-subsection" data-testid={`gallery-clients-${section.id}`}>
-                  <h3>{section.label}</h3>
+                  <h3>{section.id === "sources" ? t("chrome.clientsWebhooks") : t("chrome.externalSystems")}</h3>
                   <div className="tile-grid">
                     {section.items.map((s) => (
                       <StencilTile key={s.id} stencil={s} open={detail === s.id} actions={tileActions} />
@@ -507,38 +566,46 @@ export function GalleryView() {
               <Icon name="search" size={20} />
             </span>
             <strong>
-              {q ? `Nothing matches “${q.trim()}”` : "No stencils here yet"}
-              {scope ? ` in ${scope}` : ""}.
+              {q
+                ? scope
+                  ? t("chrome.nothingMatchesValueInValueText", { query: q.trim(), scope })
+                  : t("chrome.nothingMatchesValue", { query: q.trim() })
+                : scope
+                  ? t("chrome.noStencilsHereYetInValue", { scope })
+                  : t("chrome.noStencilsHereYet")}
             </strong>
-            <p>Search covers names, vendors, ids, roles and everyday shorthand like sb, pg, k8s or lambda.</p>
+            <p>{t("gallery.searchCoversNamesVendorsIdsRolesAndEverydayShorthandLike")}</p>
             <div className="gallery-empty-actions">
               {scope && q && (
                 <button className="btn" onClick={() => pickFamily("all")} data-testid="empty-all-families">
-                  Search all families
+                  {t("library.searchAllFamilies")}
                 </button>
               )}
               <button className="btn" onClick={clearAll} data-testid="empty-clear">
-                Clear filters
+                {t("gallery.clearFilters")}
               </button>
             </div>
           </div>
         )}
 
         <footer className="gallery-credits" data-testid="icon-credits">
-          Icon credits: product logos and service icons are trademarks of their owners and are shown to identify those
-          products. Microsoft Entra ID icon by{" "}
-          <a href="https://selfh.st/icons" target="_blank" rel="noreferrer">
-            selfh.st
-          </a>
-          ,{" "}
-          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
-            CC BY 4.0
-          </a>
-          . Generic glyphs from{" "}
-          <a href="https://lucide.dev" target="_blank" rel="noreferrer">
-            Lucide
-          </a>{" "}
-          (ISC). Full sources and licences are in docs/ICONS.md.
+          {tRich("gallery.iconCreditsProductLogosAndServiceIconsAreTrademarksOfText", {
+            source: (chunks) => (
+              <a href="https://selfh.st/icons" target="_blank" rel="noreferrer">
+                {chunks}
+              </a>
+            ),
+            licence: (chunks) => (
+              <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+                {chunks}
+              </a>
+            ),
+            glyphs: (chunks) => (
+              <a href="https://lucide.dev" target="_blank" rel="noreferrer">
+                {chunks}
+              </a>
+            ),
+          })}
         </footer>
       </main>
 
@@ -548,7 +615,7 @@ export function GalleryView() {
             type="button"
             className="drawer-scrim"
             onClick={closeDetail}
-            aria-label="Close stencil details"
+            aria-label={t("gallery.closeStencilDetails")}
             data-testid="drawer-scrim"
           />
           <StencilDrawer
@@ -586,7 +653,7 @@ export function GalleryView() {
           }}
         >
           <Icon name="plus" size={16} />
-          Drop to add it to your diagram
+          {t("gallery.dropToAddItToYourDiagram")}
         </div>
       )}
 
@@ -626,6 +693,7 @@ interface TileProps {
 }
 
 const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: TileProps) {
+  useLocale();
   const onOpen = () => actions.open(s);
   const onMenu = (x: number, y: number) => actions.menu(s, x, y);
   const onAdd = () => actions.add(s);
@@ -641,7 +709,7 @@ const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: Til
       className={`tile${open ? " is-open" : ""}`}
       role="button"
       tabIndex={0}
-      aria-label={`${s.label}, ${s.vendor}. Open details`}
+      aria-label={t("chrome.valueValueOpenDetails", { name: s.label, vendor: s.vendor })}
       aria-haspopup="dialog"
       draggable
       data-testid={`stencil-tile-${s.id}`}
@@ -674,8 +742,11 @@ const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: Til
       <div className={`tile-stage stage-${nodeVariant}`} data-testid={`tile-stage-${s.id}`}>
         <Component stencil={s} label={s.label} sublabel={s.defaultSublabel} />
         {!hasIcon && (
-          <span className="tile-missing" title={`No file at src/stencils/icons/${s.icon}.svg`}>
-            missing {s.icon}.svg
+          <span
+            className="tile-missing"
+            title={t("chrome.noFileAtValue", { path: `src/stencils/icons/${s.icon}.svg` })}
+          >
+            {t("chrome.missingValue", { file: `${s.icon}.svg` })}
           </span>
         )}
         {/* Pointer shortcuts only: the tile is a button, so it can't hold buttons. Keyboard and screen
@@ -687,7 +758,7 @@ const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: Til
             e.stopPropagation();
             onAdd();
           }}
-          title="Add to current diagram"
+          title={t("gallery.addToCurrentDiagram")}
           data-testid={`tile-add-${s.id}`}
         >
           <Icon name="plus" size={14} />
@@ -701,7 +772,7 @@ const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: Til
           </span>
         </div>
         <div className="tile-vendor">
-          <i className="tile-swatch" title={`Accent ${s.accent.toLowerCase()}`} />
+          <i className="tile-swatch" title={t("chrome.accentValue", { colour: s.accent.toLowerCase() })} />
           {s.vendor}
         </div>
         <p className="tile-desc">{s.description}</p>
@@ -709,7 +780,7 @@ const StencilTile = memo(function StencilTile({ stencil: s, open, actions }: Til
           <span
             className="tile-id"
             aria-hidden="true"
-            title="Copy stencil id"
+            title={t("gallery.copyStencilId")}
             onClick={(e) => {
               e.stopPropagation();
               onCopyId();

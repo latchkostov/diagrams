@@ -25,7 +25,8 @@
       "use": "consumer",
       "keepEnglish": true,
       "match": ["consumer"],
-      "avoid": ["người tiêu dùng"]
+      "avoid": ["người tiêu dùng"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -119,7 +120,15 @@
     "edge": {
       "use": "kết nối",
       "match": ["kết nối"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "The line between two nodes. In shortcuts.mouse.boundary 'edge' is the boundary's rim (cạnh)."
     },
     "stencil": {

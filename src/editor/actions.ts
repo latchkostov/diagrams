@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { IconName } from "../components/Icon";
 import type { EditorApi, Selection, XY } from "./types";
 
@@ -134,7 +135,13 @@ export const builtinSections: readonly MenuSection[] = [
   { id: "edge", order: 25 },
   { id: "clipboard", order: 30 },
   { id: "arrange", order: 40 },
-  { id: "simulation", order: 50, title: "Live" },
+  {
+    id: "simulation",
+    order: 50,
+    get title() {
+      return t("fileDialog.live");
+    },
+  },
   { id: "view", order: 60 },
   { id: "history", order: 70 },
   { id: "file", order: 80 },

@@ -22,7 +22,8 @@
     },
     "consumer": {
       "use": "потребитель",
-      "match": ["потребител"]
+      "match": ["потребител"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "группа потребителей",
@@ -112,7 +113,15 @@
     "edge": {
       "use": "связь",
       "match": ["связ"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "Feminine. In shortcuts.mouse.boundary 'edge' is the border of a boundary (край), not a connection."
     },
     "stencil": {

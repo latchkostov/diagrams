@@ -22,7 +22,8 @@
     },
     "consumer": {
       "use": "kuluttaja",
-      "match": ["kuluttaj"]
+      "match": ["kuluttaj"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -111,7 +112,15 @@
     "edge": {
       "use": "yhteys",
       "match": ["yhtey"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "yhteys, yhteyden, yhteydet, yhteyttä. A boundary's edge is its reuna."
     },
     "stencil": {

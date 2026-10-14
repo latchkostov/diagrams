@@ -25,7 +25,8 @@
     "consumer": {
       "use": "컨슈머",
       "match": ["컨슈머"],
-      "avoid": ["소비자"]
+      "avoid": ["소비자"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "컨슈머 그룹",
@@ -110,7 +111,15 @@
     "edge": {
       "use": "연결",
       "match": ["연결"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (가장자리), not a connection."
     },
     "stencil": {

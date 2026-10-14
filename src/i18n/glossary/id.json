@@ -24,7 +24,8 @@
     },
     "consumer": {
       "use": "konsumen",
-      "match": ["konsumen"]
+      "match": ["konsumen"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -118,7 +119,15 @@
     "edge": {
       "use": "koneksi",
       "match": ["koneksi"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "The line between two nodes. In shortcuts.mouse.boundary 'edge' is the boundary's rim (tepi)."
     },
     "stencil": {

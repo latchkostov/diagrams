@@ -22,7 +22,8 @@
     },
     "consumer": {
       "use": "potrošnik",
-      "match": ["potrošnik", "consumer"]
+      "match": ["potrošnik", "consumer"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -109,7 +110,15 @@
     "edge": {
       "use": "povezava",
       "match": ["povezav"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary 'edge' is the boundary's border (rob)."
     },
     "stencil": {

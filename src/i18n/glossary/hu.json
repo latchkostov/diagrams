@@ -22,7 +22,8 @@
     },
     "consumer": {
       "use": "fogyasztó",
-      "match": ["fogyasztó"]
+      "match": ["fogyasztó"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "fogyasztói csoport",
@@ -112,7 +113,15 @@
     "edge": {
       "use": "összekötő",
       "match": ["összekötő"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "Visio's word for a connector. Not kapcsolat (kept for Relationship). A boundary's edge is its széle."
     },
     "stencil": {

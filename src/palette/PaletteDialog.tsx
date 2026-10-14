@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import {
   memo,
   useCallback,
@@ -32,9 +33,24 @@ import type { TypeAhead } from "../canvas/typeAhead";
 
 const PAGE = 8;
 const PREFIX_HINTS: { prefix: keyof typeof PREFIXES; label: string }[] = [
-  { prefix: ">", label: "Actions" },
-  { prefix: "@", label: "Nodes" },
-  { prefix: "+", label: "Add stencil" },
+  {
+    prefix: ">",
+    get label() {
+      return t("command.actions");
+    },
+  },
+  {
+    prefix: "@",
+    get label() {
+      return t("view.nodes");
+    },
+  },
+  {
+    prefix: "+",
+    get label() {
+      return t("command.addStencil");
+    },
+  },
 ];
 
 export interface PaletteDialogProps extends CommandPaletteProps {
@@ -53,6 +69,7 @@ export function PaletteDialog({
   onClose,
   typeAhead,
 }: PaletteDialogProps) {
+  const locale = useLocale();
   const id = useId();
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
@@ -70,6 +87,7 @@ export function PaletteDialog({
   const commands = useMemo(
     () =>
       collectCommands({
+        locale,
         registry: actionRegistry,
         canvas: host.canvas,
         live: host.live,
@@ -86,11 +104,11 @@ export function PaletteDialog({
         onStencilUsed: pushRecentStencil,
         runSimulation: (simId) => {
           if (!paletteHost.runSimulation(simId))
-            notify("Live view isn't available for this diagram.", { kind: "error" });
+            notify(t("chrome.liveViewIsnTAvailableForThisDiagram"), { kind: "error" });
         },
       }),
     // The session registers the live actions, so its arrival refreshes the list too.
-    [host.canvas, host.live, host.session, opened],
+    [host.canvas, host.live, host.session, opened, locale],
   );
   const [recent] = useState(getRecentCommands);
   const [query, setQuery] = useState("");
@@ -152,7 +170,7 @@ export function PaletteDialog({
         c.run?.();
       } catch (err) {
         console.error("[palette]", err);
-        notify(`Couldn't run “${c.label}”.`, { kind: "error" });
+        notify(t("chrome.couldnTRunValue", { name: c.label }), { kind: "error" });
       }
     }, 0);
   };
@@ -269,7 +287,8 @@ export function PaletteDialog({
   }, []);
 
   // The > @ + prefixes are taught once, by the footer's clickable chips.
-  const placeholder = view === "canvas" ? "Search actions, nodes and stencils…" : "Search diagrams and stencils…";
+  const placeholder =
+    view === "canvas" ? t("chrome.searchActionsNodesAndStencils") : t("chrome.searchDiagramsAndStencils");
   const count = flat.length;
 
   return createPortal(
@@ -279,7 +298,7 @@ export function PaletteDialog({
         className="cmdk"
         role="dialog"
         aria-modal="true"
-        aria-label="Command palette"
+        aria-label={t("command.commandPalette")}
         data-testid="command-palette"
       >
         <div className="cmdk-search">
@@ -291,7 +310,7 @@ export function PaletteDialog({
             aria-controls={`${id}-list`}
             aria-activedescendant={activeItem ? optionId(activeItem) : undefined}
             aria-autocomplete="list"
-            aria-label="Search commands"
+            aria-label={t("command.searchCommands")}
             placeholder={placeholder}
             value={query}
             onChange={(e) => {
@@ -305,7 +324,13 @@ export function PaletteDialog({
           />
           <kbd className="cmdk-esc">{formatCombo("Esc")}</kbd>
         </div>
-        <div id={`${id}-list`} className="cmdk-list" role="listbox" aria-label="Commands" data-testid="command-list">
+        <div
+          id={`${id}-list`}
+          className="cmdk-list"
+          role="listbox"
+          aria-label={t("command.commands")}
+          data-testid="command-list"
+        >
           {ranked.map((g) => (
             <div
               key={g.group}
@@ -314,7 +339,7 @@ export function PaletteDialog({
               data-testid={`command-group-${g.group}`}
             >
               <div id={`${id}-grp-${g.group}`} className="cmdk-group" role="presentation">
-                {GROUP_LABEL[g.group]}
+                {GROUP_LABEL[g.group]()}
               </div>
               {g.items.map((c) => (
                 <Row
@@ -332,15 +357,20 @@ export function PaletteDialog({
           ))}
           {count === 0 && (
             <div className="cmdk-empty" data-testid="command-empty">
-              {query.trim() ? `No matches for “${query.trim()}”.` : "Nothing to show here."}
-              {view === "canvas" && <span> Try + to add a stencil or @ to find a node.</span>}
+              {query.trim() ? t("chrome.noMatchesForValue", { query: query.trim() }) : t("chrome.nothingToShowHere")}
+              {view === "canvas" && <span>{t("command.tryToAddAStencilOrToFindANode")}</span>}
             </div>
           )}
         </div>
         <footer className="cmdk-foot">
           <span className="cmdk-keys" aria-hidden>
             <kbd>↑</kbd>
-            <kbd>↓</kbd> move <kbd>↵</kbd> run <kbd>{formatCombo("Esc")}</kbd> close
+            <kbd>↓</kbd>
+            {t("command.move")}
+            <kbd>↵</kbd>
+            {t("command.run")}
+            <kbd>{formatCombo("Esc")}</kbd>
+            {t("command.close")}
           </span>
           {view === "canvas" && (
             <span className="cmdk-prefixes">
@@ -352,7 +382,13 @@ export function PaletteDialog({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => setPrefix(p.prefix)}
                   data-testid={`command-prefix-${PREFIXES[p.prefix]}`}
-                  title={`Type ${p.prefix} to search ${p.label.toLowerCase()} only`}
+                  title={
+                    p.prefix === ">"
+                      ? t("chrome.typeToSearchActionsOnly")
+                      : p.prefix === "@"
+                        ? t("chrome.typeToSearchNodesOnly")
+                        : t("chrome.typeToSearchAddStencilOnly")
+                  }
                 >
                   <kbd>{p.prefix}</kbd> {p.label}
                 </button>
@@ -361,7 +397,7 @@ export function PaletteDialog({
           )}
         </footer>
         <div className="sr-only" role="status" aria-live="polite">
-          {query.trim() ? `${count} ${count === 1 ? "result" : "results"}` : ""}
+          {query.trim() ? t("chrome.valueResultOtherValueResults", { count }) : ""}
         </div>
       </div>
     </div>,
@@ -380,6 +416,7 @@ interface RowProps {
 }
 
 const Row = memo(function Row({ command: c, id, active, group, setRef, onHover, onRun }: RowProps) {
+  useLocale();
   const stencil = c.stencil ? getStencil(c.stencil) : undefined;
   const ref = useCallback((el: HTMLDivElement | null) => setRef(c, el), [setRef, c]);
   return (
@@ -415,7 +452,7 @@ const Row = memo(function Row({ command: c, id, active, group, setRef, onHover, 
       {c.checked && (
         <span className="cmdk-check">
           <Icon name="check" size={14} />
-          <span className="sr-only">(on)</span>
+          <span className="sr-only">{t("command.on")}</span>
         </span>
       )}
       {c.shortcut && <kbd className="cmdk-kbd">{formatCombo(c.shortcut)}</kbd>}

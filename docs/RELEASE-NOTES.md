@@ -52,6 +52,16 @@
 
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
+## Canvas menus and stencil chrome in your language (2026-10-14)
+
+- Right-click menus and their submenus, quick-add, edit feedback and Ctrl+K commands now use the chosen language,
+  with translations in all 37 locales. Commands keep their stable identities when a language downloads or changes.
+- Stencil categories, families, filters, gallery details, empty states and buttons are translated. Stencil catalog
+  names/descriptions and authored diagram content keep their original text. Your diagrams retains its existing
+  File-batch translations.
+- Longer menu, palette and annotation labels wrap. Arabic mirrors the menus, opens submenus to the left and
+  reverses drawer navigation, while diagram geometry keeps its direction. English wording remains unchanged.
+
 ## AI language switching fixes (2026-10-14)
 
 - Visible microphone and on-device model errors now update when the language changes, keeping the request drafts.

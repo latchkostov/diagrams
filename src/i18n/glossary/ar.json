@@ -21,7 +21,8 @@
     },
     "consumer": {
       "use": "مستهلك",
-      "match": ["مستهلك"]
+      "match": ["مستهلك"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "مجموعة المستهلكين",
@@ -107,7 +108,15 @@
     "edge": {
       "use": "وصلة",
       "match": ["وصلة", "وصلات"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "Not رابط (a link). In shortcuts.mouse.boundary \"edge\" is a boundary's border (طرف)."
     },
     "stencil": {

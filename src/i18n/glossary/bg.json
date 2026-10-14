@@ -25,7 +25,8 @@
       "keepEnglish": true,
       "match": ["consumer", "консуматор"],
       "avoid": ["потребител"],
-      "note": "потребител means user. консуматор only where Cyrillic is needed in running text."
+      "note": "потребител means user. консуматор only where Cyrillic is needed in running text.",
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -117,7 +118,15 @@
     "edge": {
       "use": "връзка",
       "match": ["връзк"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary 'edge' is the border of a boundary (ръб), not a connection."
     },
     "stencil": {

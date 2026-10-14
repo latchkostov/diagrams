@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { safeStorage, safeSessionStorage } from "./storage";
 import { DIAGRAM_FORMAT, type DiagramFile, type DiagramNode, type Stencil } from "../model/types";
 import { createDiagram } from "./diagramIO";
@@ -84,6 +85,7 @@ export function nodeJson(s: Stencil, at = { x: 40, y: 40 }): DiagramNode {
 export function openNewDiagramWith(s: Stencil) {
   const d: DiagramFile = {
     format: DIAGRAM_FORMAT,
+    // eslint-disable-next-line local/no-literal-ui-text -- initial authored diagram title, preserved with its document
     title: `New ${s.label} diagram`,
     nodes: [nodeJson(s, { x: 40, y: 160 })],
     edges: [],
@@ -93,8 +95,10 @@ export function openNewDiagramWith(s: Stencil) {
   try {
     openCanvas(createDiagram(d));
   } catch (err) {
-    notify(`Couldn't start a new diagram. ${err instanceof Error ? err.message : String(err)}`, { kind: "error" });
+    notify(t("chrome.couldnTStartANewDiagramValue", { error: err instanceof Error ? err.message : String(err) }), {
+      kind: "error",
+    });
     return;
   }
-  notify(`Started “${d.title}” in Your diagrams.`, { kind: "success" });
+  notify(t("chrome.startedValueInYourDiagrams", { name: d.title }), { kind: "success" });
 }

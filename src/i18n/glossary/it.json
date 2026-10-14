@@ -23,7 +23,8 @@
     "consumer": {
       "use": "consumer",
       "keepEnglish": true,
-      "note": "il consumer, i consumer"
+      "note": "il consumer, i consumer",
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "gruppo di consumer",
@@ -106,7 +107,15 @@
     "edge": {
       "use": "collegamento",
       "match": ["collegament"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "The boundary's 'edge' in shortcuts.mouse.boundary is its border (bordo)."
     },
     "stencil": {

@@ -1,16 +1,17 @@
+import { msg } from "../i18n";
 import type { IconName } from "../components/Icon";
 import { scoreQuery } from "./fuzzy";
 
 /** Result groups, in their default order. */
 export type CommandGroup = "recent" | "actions" | "nodes" | "stencils" | "simulations" | "diagrams";
 
-export const GROUP_LABEL: Record<CommandGroup, string> = {
-  recent: "Recent",
-  actions: "Actions",
-  nodes: "Go to node",
-  stencils: "Add stencil",
-  simulations: "Simulations",
-  diagrams: "Diagrams",
+export const GROUP_LABEL: Record<CommandGroup, () => string> = {
+  recent: msg("command.recent"),
+  actions: msg("command.actions"),
+  nodes: msg("command.goToNode"),
+  stencils: msg("command.addStencil"),
+  simulations: msg("htmlExport.simulations"),
+  diagrams: msg("command.diagrams"),
 };
 
 const GROUP_ORDER: CommandGroup[] = ["recent", "actions", "nodes", "simulations", "stencils", "diagrams"];

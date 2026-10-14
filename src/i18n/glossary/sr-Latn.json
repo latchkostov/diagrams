@@ -25,7 +25,8 @@
       "use": "potrošač",
       "match": ["potrošač"],
       "avoid": ["korisnik"],
-      "note": "korisnik means user"
+      "note": "korisnik means user",
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "consumer group",
@@ -112,7 +113,15 @@
     "edge": {
       "use": "veza",
       "match": ["vez"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary 'edge' is the boundary's border (ivica)."
     },
     "stencil": {

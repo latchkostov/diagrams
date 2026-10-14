@@ -1,3 +1,7 @@
+import { tRich } from "../i18n/rich";
+import { formatNumber } from "../i18n/format";
+import { categoryLabel, shapeLabel, familyLabel } from "../i18n/chrome";
+import { t, useLocale } from "../i18n";
 import {
   memo,
   useEffect,
@@ -15,7 +19,7 @@ import { DEFAULT_NODE_VARIANT, getNodeVariant, type NodeVariantId } from "../har
 import { getStencil, stencils } from "../stencils/registry";
 import type { AnnotationKind, AnnotationShape, Stencil, StencilCategory } from "../model/types";
 import { StencilIcon } from "../components/StencilIcon";
-import { CATEGORY_ORDER, categoryLabel, clientSections } from "../lib/categories";
+import { CATEGORY_ORDER, clientSections } from "../lib/categories";
 import { familyCounts, familyOf, getFamily, isFamilyId, type FamilyId } from "../lib/vendorFamilies";
 import { searchStencils } from "../lib/stencilSearch";
 import { pushRecentStencil, useRecentStencils } from "../lib/recentStencils";
@@ -23,7 +27,7 @@ import { rememberCanvas, STENCIL_DND_MIME, takePendingStencils } from "../lib/ca
 import { Icon, type IconName } from "../components/Icon";
 import { safeStorage } from "../lib/storage";
 import { formatCombo, shortcutKeys } from "../editor/shortcuts";
-import { ANNOTATION_DND_MIME, annotationDragValue, shapeLabel } from "./annotations";
+import { ANNOTATION_DND_MIME, annotationDragValue } from "./annotations";
 
 export { STENCIL_DND_MIME };
 
@@ -71,6 +75,7 @@ export const Palette = memo(function Palette({
   /** The canvas's node look, for the card a drag shows. */
   nodeVariant?: NodeVariantId;
 }) {
+  const locale = useLocale();
   const [q, setQ] = useState("");
   const [family, setFamily] = useState<FamilyId | "all">(readFamily);
   const [closed, setClosed] = useState<StencilCategory[]>(readClosed);
@@ -112,7 +117,7 @@ export const Palette = memo(function Palette({
     [family],
   );
   const results = useMemo(() => (q.trim() ? searchStencils(inFamily, q) : null), [inFamily, q]);
-  const annotateHits = useMemo(() => (q.trim() ? matchAnnotate(q) : []), [q]);
+  const annotateHits = useMemo(() => (q.trim() ? matchAnnotate(q, locale) : []), [q, locale]);
   const groups = useMemo(() => {
     const map = new Map<StencilCategory, Stencil[]>();
     for (const s of inFamily) {
@@ -128,19 +133,19 @@ export const Palette = memo(function Palette({
 
   if (collapsed) {
     return (
-      <aside className="palette is-collapsed" aria-label="Stencils" data-testid="palette">
+      <aside className="palette is-collapsed" aria-label={t("topbar.stencils")} data-testid="palette">
         <button
           className="icon-btn"
           onClick={onToggle}
-          title="Show stencils"
-          aria-label="Show stencils"
+          title={t("library.showStencils")}
+          aria-label={t("library.showStencils")}
           data-testid="palette-toggle"
         >
           <Icon name="panel" />
         </button>
         {preview.node}
         {recent.length > 0 && (
-          <div className="palette-rail-recent" aria-label="Recently used stencils">
+          <div className="palette-rail-recent" aria-label={t("library.recentlyUsedStencils")}>
             {recent.map((s) => (
               <RecentTile key={s.id} stencil={s} {...item} />
             ))}
@@ -150,10 +155,10 @@ export const Palette = memo(function Palette({
     );
   }
 
-  const familyLabel = family === "all" ? null : getFamily(family).label;
+  const chosenFamily = family === "all" ? null : familyLabel[family];
 
   return (
-    <aside className="palette" aria-label="Stencils" data-testid="palette">
+    <aside className="palette" aria-label={t("topbar.stencils")} data-testid="palette">
       {preview.node}
       <div className="palette-head">
         <div className="palette-head-row">
@@ -172,8 +177,8 @@ export const Palette = memo(function Palette({
                   setQ("");
                 }
               }}
-              placeholder="Find a stencil"
-              aria-label="Find a stencil"
+              placeholder={t("library.findAStencil")}
+              aria-label={t("library.findAStencil")}
               name="palette-search"
               autoComplete="off"
               spellCheck={false}
@@ -184,7 +189,7 @@ export const Palette = memo(function Palette({
                 type="button"
                 className="field-clear"
                 onClick={() => setQ("")}
-                aria-label="Clear search"
+                aria-label={t("library.clearSearch")}
                 data-testid="palette-search-clear"
               >
                 <Icon name="close" size={12} />
@@ -194,28 +199,28 @@ export const Palette = memo(function Palette({
           <button
             className="icon-btn"
             onClick={onToggle}
-            title="Hide stencils"
-            aria-label="Hide stencils"
+            title={t("library.hideStencils")}
+            aria-label={t("library.hideStencils")}
             data-testid="palette-toggle"
           >
             <Icon name="panel" />
           </button>
         </div>
-        <label className="select select-quiet palette-family" title="Show stencils from one family">
+        <label className="select select-quiet palette-family" title={t("library.showStencilsFromOneFamily")}>
           {family !== "all" && (
             <i className="palette-family-dot" style={{ background: getFamily(family).hue }} aria-hidden />
           )}
           <select
             value={family}
             onChange={(e) => setFamily(e.target.value as FamilyId | "all")}
-            aria-label="Stencil family"
+            aria-label={t("library.stencilFamily")}
             name="palette-family"
             data-testid="palette-family"
           >
-            <option value="all">All families ({stencils.length})</option>
+            <option value="all">{t("chrome.allFamiliesValueOtherValue", { count: stencils.length })}</option>
             {families.map(({ family: f, count }) => (
               <option key={f.id} value={f.id}>
-                {f.label} ({count})
+                {t("chrome.valueValueOtherValue", { name: familyLabel[f.id], count })}
               </option>
             ))}
           </select>
@@ -226,8 +231,10 @@ export const Palette = memo(function Palette({
         {results ? (
           <section data-testid="palette-results">
             <h3 className="palette-results-head">
-              {results.length ? `${results.length} ${results.length === 1 ? "match" : "matches"}` : "No matches"}
-              {results.length > 0 && <span>Enter adds the first</span>}
+              {results.length
+                ? t("chrome.valueMatchOtherValueMatches", { count: results.length })
+                : t("menu.noMatches")}
+              {results.length > 0 && <span>{t("library.enterAddsTheFirst")}</span>}
             </h3>
             <div className="palette-grid">
               {results.map((s) => (
@@ -240,11 +247,13 @@ export const Palette = memo(function Palette({
             {results.length === 0 && annotateHits.length === 0 && (
               <div className="palette-empty" data-testid="palette-empty">
                 <p>
-                  Nothing matches “{q.trim()}”{familyLabel ? ` in ${familyLabel}` : ""}.
+                  {chosenFamily
+                    ? t("chrome.nothingMatchesValueInValue", { query: q.trim(), family: chosenFamily })
+                    : t("chrome.nothingMatchesValue", { query: q.trim() })}
                 </p>
-                {familyLabel && (
+                {chosenFamily && (
                   <button className="link-btn" onClick={() => setFamily("all")} data-testid="palette-all-families">
-                    Search all families
+                    {t("library.searchAllFamilies")}
                   </button>
                 )}
               </div>
@@ -254,7 +263,7 @@ export const Palette = memo(function Palette({
           <>
             {recent.length > 0 && (
               <section className="palette-recent" data-testid="palette-recent">
-                <h3 className="palette-sec-static">Recently used</h3>
+                <h3 className="palette-sec-static">{t("menu.recentlyUsed")}</h3>
                 <div className="palette-recent-grid">
                   {recent.map((s) => (
                     <RecentTile key={s.id} stencil={s} {...item} />
@@ -275,13 +284,15 @@ export const Palette = memo(function Palette({
                     >
                       <Icon name="chevron-right" size={12} />
                       <span>{categoryLabel[g.category]}</span>
-                      <span className="palette-sec-count">{g.items.length}</span>
+                      <span className="palette-sec-count">{formatNumber(g.items.length, { useGrouping: false })}</span>
                     </button>
                   </h3>
                   {open && g.category === "clients"
                     ? clientSections(g.items).map((section) => (
                         <section key={section.id} data-testid={`palette-clients-${section.id}`}>
-                          <h4 className="palette-sec-static">{section.label}</h4>
+                          <h4 className="palette-sec-static">
+                            {section.id === "sources" ? t("chrome.clientsWebhooks") : t("chrome.externalSystems")}
+                          </h4>
                           <div className="palette-grid">
                             {section.items.map((s) => (
                               <PaletteItem key={s.id} stencil={s} {...item} />
@@ -314,18 +325,23 @@ export const Palette = memo(function Palette({
  * It follows the selection by itself, so selecting never re-renders the rail.
  */
 function PaletteFoot() {
+  useLocale();
   const after = useSyncExternalStore(railAnchor.subscribe, railAnchor.get, railAnchor.get);
   return (
     <div className="palette-foot">
       {after ? (
         <span data-testid="palette-after">
-          A click adds after <strong>{after}</strong>, connected. Drag to place it anywhere.
+          {tRich("library.aClickAddsAfterBValueBConnectedDragTo", {
+            name: after,
+            b: (chunks) => <strong>{chunks}</strong>,
+          })}
         </span>
       ) : (
-        <>
-          Drag onto the canvas or click to add. <kbd>{formatCombo(shortcutKeys("command-palette"))}</kbd> finds
-          anything; <kbd>?</kbd> lists shortcuts.
-        </>
+        tRich("library.addingAndShortcuts", {
+          paletteCombo: formatCombo(shortcutKeys("command-palette")),
+          palette: (chunks) => <kbd>{chunks}</kbd>,
+          shortcuts: (chunks) => <kbd>{chunks}</kbd>,
+        })
       )}
     </div>
   );
@@ -345,17 +361,35 @@ interface AnnotateItem {
 const TEXT_NOTE_ZONE: readonly AnnotateItem[] = [
   {
     kind: "text",
-    label: "Text",
+    get label() {
+      return t("library.text");
+    },
     icon: "type",
-    hint: "Plain text: titles and captions (T)",
+    get hint() {
+      return t("library.plainTextTitlesAndCaptionsT");
+    },
     keywords: "title caption label words",
   },
-  { kind: "note", label: "Note", icon: "note", hint: "A sticky note", keywords: "sticky comment post-it" },
+  {
+    kind: "note",
+    get label() {
+      return t("library.note");
+    },
+    icon: "note",
+    get hint() {
+      return t("library.aStickyNote");
+    },
+    keywords: "sticky comment post-it",
+  },
   {
     kind: "zone",
-    label: "Zone",
+    get label() {
+      return t("library.zone");
+    },
     icon: "zone",
-    hint: "A labelled region behind nodes. Unlike a boundary, nodes don't move with it",
+    get hint() {
+      return t("library.aLabelledRegionBehindNodesUnlikeABoundaryNodesDon");
+    },
     keywords: "region area lane band highlight",
   },
 ];
@@ -365,9 +399,13 @@ const ANNOTATE: readonly AnnotateItem[] = [
   ...TEXT_NOTE_ZONE,
   {
     kind: "shape",
-    label: "Shape",
+    get label() {
+      return t("menu.shape");
+    },
     icon: "shape-rect",
-    hint: "A plain shape for when no stencil fits: rectangle, ellipse, diamond, cylinder",
+    get hint() {
+      return t("library.aPlainShapeForWhenNoStencilFitsRectangleEllipse");
+    },
     keywords: "shape outline rectangle box",
   },
 ];
@@ -378,14 +416,18 @@ const ANNOTATE_SEARCH: readonly AnnotateItem[] = [
   ...(["rect", "rounded", "ellipse", "diamond", "cylinder"] as const).map((shape) => ({
     kind: "shape" as const,
     shape,
-    label: shapeLabel[shape].replace(" rectangle", ""),
+    get label() {
+      return shape === "rounded" ? t("chrome.rounded") : shapeLabel[shape];
+    },
     icon: `shape-${shape}` as IconName,
-    hint: `${shapeLabel[shape]}: a plain shape for when no stencil fits`,
+    get hint() {
+      return t("chrome.valueAPlainShapeForWhenNoStencilFits", { shape: shapeLabel[shape] });
+    },
     keywords: `shape outline ${shapeLabel[shape]}${shape === "rect" ? " box" : ""}`,
   })),
 ];
 
-function matchAnnotate(q: string): AnnotateItem[] {
+function matchAnnotate(q: string, _locale: string): AnnotateItem[] {
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
   return ANNOTATE_SEARCH.filter((a) => {
     const hay = `${a.label} ${a.kind} ${a.keywords} annotate annotation`.toLowerCase();
@@ -403,10 +445,11 @@ function AnnotateGroup({
   onAdd: (kind: AnnotationKind, shape?: AnnotationShape) => void;
   className: string;
 }) {
+  useLocale();
   return (
     <section className={`palette-annotate ${className}`} data-testid="palette-annotate">
-      <h3 className="palette-sec-static" title="Text, notes, zones and shapes. They don't take part in the simulation">
-        Annotate
+      <h3 className="palette-sec-static" title={t("library.textNotesZonesAndShapesTheyDonTTakePart")}>
+        {t("menu.annotate")}
       </h3>
       <div className="palette-annotate-grid">
         {items.map((a) => {
@@ -422,7 +465,9 @@ function AnnotateGroup({
               }}
               onClick={() => onAdd(a.kind, a.shape)}
               title={a.hint}
-              aria-label={`Add ${a.shape ? shapeLabel[a.shape].toLowerCase() : a.label.toLowerCase()}`}
+              aria-label={t("chrome.addValue", {
+                name: a.shape ? shapeLabel[a.shape].toLowerCase() : a.label.toLowerCase(),
+              })}
               data-testid={`palette-annotate-${id}`}
             >
               <Icon name={a.icon} size={18} />
@@ -524,7 +569,7 @@ function RecentTile(p: ItemProps) {
       className="palette-recent-item"
       {...dragHandlers(p)}
       title={`${s.label} (${s.vendor})`}
-      aria-label={`Add ${s.label}`}
+      aria-label={t("chrome.addValue", { name: s.label })}
       data-testid={`palette-recent-item-${s.id}`}
       style={{ "--accent": s.accent } as CSSProperties}
     >

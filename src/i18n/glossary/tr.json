@@ -22,7 +22,8 @@
     },
     "consumer": {
       "use": "tüketici",
-      "match": ["tüketici"]
+      "match": ["tüketici"],
+      "except": ["menu.setConsumerGroup"]
     },
     "consumer group": {
       "use": "tüketici grubu",
@@ -110,7 +111,15 @@
     "edge": {
       "use": "bağlantı",
       "match": ["bağlantı"],
-      "except": ["shortcuts.mouse.boundary"],
+      "except": [
+        "shortcuts.mouse.boundary",
+        "menu.leftEdges",
+        "menu.rightEdges",
+        "menu.topEdges",
+        "menu.bottomEdges",
+        "chrome.gatewaysLoadBalancersAndEdgeNetworksInFrontOfServices",
+        "chrome.peopleDevicesAndExternalSystemsAtTheEdgeOfThe"
+      ],
       "note": "In shortcuts.mouse.boundary \"edge\" is a boundary's border (kenar)."
     },
     "stencil": {
