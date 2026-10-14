@@ -803,13 +803,16 @@ export function warnIfNearlyFull(): boolean {
  * navigation, e.g. `openCanvas(createDiagram(seed))` in canvasBridge.
  */
 export function createDiagram(seed: Partial<DiagramFile> = {}): string {
-  return createLibraryDiagram({ ...emptyDiagram(), ...seed, format: DIAGRAM_FORMAT }, undefined, undefined, {
+  const diagram = { ...emptyDiagram(), ...seed };
+  if (diagram.format === DIAGRAM_FORMAT) delete diagram.planning;
+  return createLibraryDiagram(diagram, undefined, undefined, {
     private: newDiagramsPrivate.get(),
   });
 }
 
 export const emptyDiagram = (): DiagramFile => ({
-  format: DIAGRAM_FORMAT,
+  format: "diagrams/v2",
+  planning: { revision: "p1" },
   title: UNTITLED,
   nodes: [],
   edges: [],

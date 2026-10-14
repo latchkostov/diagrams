@@ -26,7 +26,10 @@ import {
  * Everything in the file that isn't a node, edge or group, carried alongside the canvas state so
  * export / autosave / undo round-trip the whole file (saved simulations included, untouched).
  */
-export type DiagramMeta = Pick<DiagramFile, "title" | "description" | "direction" | "simulations" | "checks">;
+export type DiagramMeta = Pick<
+  DiagramFile,
+  "title" | "description" | "direction" | "simulations" | "checks" | "planning"
+>;
 
 // ---------------------------------------------------------------- accessible names
 // React Flow renders nodes and edges as focusable elements named by `ariaLabel`, so every one
@@ -233,6 +236,7 @@ export function toFlow(d: DiagramFile): { meta: DiagramMeta; nodes: FlowNode[]; 
       description: d.description,
       direction: d.direction,
       simulations: d.simulations,
+      ...(d.planning ? { planning: d.planning } : {}),
       ...(d.checks ? { checks: d.checks } : {}),
     },
     nodes,
@@ -294,7 +298,8 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
   const defaultOrder = [...out.map((n) => n.id), ...annotations.filter((a) => a.kind !== "zone").map((a) => a.id)];
   const reordered = layerOrder.some((id, i) => id !== defaultOrder[i]);
   return {
-    format: DIAGRAM_FORMAT,
+    format: meta.planning ? "diagrams/v2" : DIAGRAM_FORMAT,
+    ...(meta.planning ? { planning: meta.planning } : {}),
     title: meta.title,
     description: meta.description,
     direction: meta.direction,

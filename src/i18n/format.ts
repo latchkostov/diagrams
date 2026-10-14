@@ -1,5 +1,5 @@
-import { formatAgo as formatAgoEnglish } from "../lib/time";
-import { getLocale, state, t } from "./index";
+import { getLocale, t } from "./index";
+export { formatAgo } from "./relativeTime";
 
 // Numbers, units, rates, percentages, dates, relative times and lists in the current language, all through the
 // browser's Intl: no data to download, and each language's conventions (1 234,5 in French, 1.234,5 in German,
@@ -40,7 +40,6 @@ export const formatDate = (
  * it; in another language as the browser says it there ("vor 5 Min.", "il y a 3 h", "昨日"), from ./load.ts, which
  * comes with every other language (so the entry doesn't carry it).
  */
-export const formatAgo = (at: number, now = Date.now()): string => (state.a ?? formatAgoEnglish)(at, now);
 
 /** Decimal byte units for exported files and browser storage. */
 export function formatBytes(bytes: number, options: Intl.NumberFormatOptions & { storage?: boolean } = {}): string {

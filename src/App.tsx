@@ -41,7 +41,7 @@ import {
 import { useLibrary } from "./lib/useLibrary";
 import { newDiagramsPrivate } from "./lib/privacyPrefs";
 import { Icon } from "./components/Icon";
-import { formatAgo } from "./i18n/format";
+import { formatAgo } from "./i18n/relativeTime";
 import { stopStorageWrites } from "./lib/storage";
 import { lastCanvas, rememberCanvas } from "./lib/canvasBridge";
 import type { StartOptions } from "./canvas/StartCard";

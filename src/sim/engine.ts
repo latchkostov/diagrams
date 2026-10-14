@@ -171,6 +171,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     return randomState();
   };
   const nodes = new Map<string, Node>();
+  let planning: DiagramFile["planning"];
   const edges: Edge[] = [];
   let trips: Trip[] = [];
   let drawn = 0;
@@ -455,7 +456,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (value === undefined) Reflect.deleteProperty(node.rawProps, key);
         else node.rawProps[key] = structuredClone(value);
       }
-      node.props = resolveProps(node.role, node.label, node.rawProps, node.stencil);
+      node.props = resolveProps(node.role, node.label, node.rawProps, node.stencil, planning);
       if (node.role === "source") sourceRate += node.props.ratePerSec - previous.ratePerSec;
       if (
         Math.max(1, Math.round(node.props.replicas * capacityMultiplier)) !== node.replicas ||
@@ -1075,6 +1076,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return node[metric.field];
     },
     load(diagram: DiagramFile): void {
+      planning = diagram.planning;
       topology++;
       nodes.clear();
       edges.length = 0;
@@ -1090,7 +1092,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           role,
           status,
           rawProps,
-          props: resolveProps(role, input.label, rawProps, input.stencil),
+          props: resolveProps(role, input.label, rawProps, input.stencil, planning),
           replicas: 1,
           activeReplicas: 1,
           outgoing: [],

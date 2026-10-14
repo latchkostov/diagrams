@@ -21,6 +21,10 @@ describe("public/schema", () => {
     const diagram = JSON.parse(files["diagram.v1.json"]);
     expect(diagram.properties.format).toEqual({ const: "diagrams/v1" });
     expect(diagram.required).toEqual(["format", "title", "nodes", "edges"]);
+    const planning = JSON.parse(files["diagram.v2.json"]);
+    expect(planning.properties.format).toEqual({ const: "diagrams/v2" });
+    expect(planning.required).toContain("planning");
+    expect(planning.properties.planning.properties.revision).toEqual({ const: "p1" });
     const ops = JSON.parse(files["ops.v1.json"]);
     expect(ops.required).toEqual(["ops"]);
     expect(Object.keys(ops.$tools)).toEqual([

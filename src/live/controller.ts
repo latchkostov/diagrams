@@ -99,6 +99,7 @@ export type DiagramUpdate = "none" | "patched" | "reloaded";
 /** Changes to these restart the engine; anything else (positions, groups, titles) doesn't touch it. */
 export function structuralKey(d: DiagramFile): string {
   return JSON.stringify([
+    d.planning,
     d.nodes.map((n) => [n.id, n.stencil, n.label, n.sublabel ?? ""]),
     d.edges.map(edgeSemanticSignature),
   ]);

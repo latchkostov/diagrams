@@ -15,6 +15,10 @@ const time = { type: "number", minimum: 0, maximum: SIM_LIMITS.timeMs };
 const fraction = { type: "number", minimum: 0, maximum: 1 };
 // Field coverage is checked against the engine interfaces by TypeScript.
 const nodeProperties = {
+  preset: { type: "string", enum: ["processor-lesson", "device-size"] },
+  presetRevision: { type: "string", enum: ["1"] },
+  connections: cardinality,
+  querySlots: cardinality,
   ratePerSec: rate,
   latencyMs: time,
   concurrency: quantity,
@@ -39,6 +43,7 @@ const edgeProperties = {
   share: fraction,
   dlq: { type: "boolean" },
   travelMs: time,
+  networkDelayMs: time,
   emits: { type: "string" },
   filter: { type: "array", items: { type: "string" } },
   deny: { type: "boolean" },

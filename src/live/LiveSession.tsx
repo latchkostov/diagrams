@@ -1,4 +1,5 @@
 import { edgeSemanticSignature } from "../model/relations";
+import { planningHost } from "../planning/host";
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   ViewportPortal,
@@ -1172,6 +1173,8 @@ export function LiveSession({
 
   const ui = useMemo<LiveUi>(
     () => ({
+      applyCapacityFix: applyFix,
+      addReader,
       controller,
       presenting,
       canEdit: !!editor,
@@ -1205,6 +1208,8 @@ export function LiveSession({
       },
     }),
     [
+      applyFix,
+      addReader,
       slow.session,
       controller,
       presenting,
@@ -1225,6 +1230,8 @@ export function LiveSession({
       startTrace,
     ],
   );
+
+  useEffect(() => planningHost.publish(ui), [ui]);
 
   return (
     <LiveContext.Provider value={ui}>

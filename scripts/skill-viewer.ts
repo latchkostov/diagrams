@@ -16,6 +16,7 @@ import path from "node:path";
 import { build } from "vite";
 import { catalog } from "../src/stencils/catalog";
 import { FALLBACK_ICON } from "../src/export/inject";
+import { i18n } from "./i18n-plugin";
 
 /** The released files, by path under skills/livediagrams/. */
 export const RELEASED = {
@@ -31,6 +32,7 @@ export async function bundleModule(root: string, entry: string, header: string[]
     configFile: false,
     logLevel: "error",
     publicDir: false,
+    plugins: [i18n()],
     build: {
       write: false,
       minify: false,

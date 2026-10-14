@@ -1,5 +1,6 @@
 # Design review
 
+<<<<<<< HEAD
 ## Round 36: properties in live view (2026-10-14)
 
 A designer-agent source and interaction-test review checked naming, panel coordination, view-only gates and
@@ -23,6 +24,46 @@ Production-build regressions cover double-click on cards, boundary labels/outlin
 keyboard and contextual naming, panel coordination and draft retention. The live naming regressions fail with
 the fix reverted; removing draft retention also fails its regression. Review used source and browser-test
 evidence, without a separate screenshot walkthrough.
+=======
+## Round 36: planning P1 (2026-10-14)
+
+Reviewed the synthetic P1 Lab fixtures in the production build: Orders, two topic policies sharing
+one pool, and a broker without a reader. Top-bar and floating controls are unchanged.
+
+- The original five processor controls stay under Simulation. The explanation has at most five main
+  readouts: arithmetic, contributors, growth, chosen target and current-run metrics. One primary action
+  applies the shared planner fix; keyboard Enter and one-step Undo are covered. The fix keeps the
+  selection/inspector open. Slow motion explains why its action is disabled.
+- Read-only Connections names each topic/group policy and one shared pool. HTTP-only inputs have no
+  consumer rows. Removal and keyboard reconnection refresh the list without persisting capabilities.
+- Hover and keyboard focus show the same explanation through the existing `aria-describedby` tooltip.
+  The first screenshot pass found an overly tall card; duplicate processor counters were consolidated,
+  and placement now chooses above/below and stays inside the horizontal viewport. Production coverage
+  checks bounds and focus. Current-run counters remain distinct from configured estimates.
+- The continuation's designer review confirmed the five readouts and keyboard access. Connection
+  separators and secondary ink now use the existing theme tokens; a deliberate token regression
+  fails production coverage. Inspector screenshots scroll to show the explanation and policy rows.
+- Upgrade stays behind a Diagram properties preview, naming nodes and unchanged capacity, explaining
+  v2 compatibility and Undo. Legacy export lists losses before download. No wizard or extra toolbar.
+- New prose uses `t()` and locale number/list formatting. All new `planning.*` keys currently fall back
+  to English in the 37 other languages. Lesson values remain assumptions; existing device figures are
+  approximate. Reserved physical-delay/store-slot contracts have no ineffective controls.
+
+Screenshots: [Orders inspector](screenshots/round36/orders-inspector.png),
+[connection policies](screenshots/round36/connections.png),
+[live hover](screenshots/round36/orders-hover.png),
+[upgrade preview](screenshots/round36/upgrade-preview.png).
+
+Rejected/deferred: permanent consumer stencils and per-input slot pools (capabilities are derived);
+new top-bar controls (existing context surfaces suffice); vendor quotas and new broker policies (P2/P3);
+request timeout/retry propagation (separate approval gate); hardware/vendor capacity claims from generic
+latency (workload assumptions remain explicit). Source review covered correctness, architecture,
+performance, tests, security, accessibility and types; deliberate regression removals and production
+browser coverage accompany the review.
+
+Follow-up: stress hover placement with tall content at narrow viewport sizes; P1's normal fixture
+is bounded by production coverage.
+>>>>>>> e9b4595 (Add shared planning profiles, connection capabilities and contextual throughput explanations)
 
 ## File-dialog localization review (2026-10-14)
 

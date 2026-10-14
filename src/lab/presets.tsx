@@ -1,5 +1,7 @@
 import { OnDeviceEvalsLab } from "./OnDeviceEvalsLab";
 import { relationshipFixture } from "./relationshipFixture";
+import { planningFixture } from "./planningFixture";
+import { t } from "../i18n";
 import { safeStorage } from "../lib/storage";
 import { ON_DEVICE } from "../lib/deployment";
 import { layersFixture, headerOverflowFixture } from "./layersFixture";
@@ -314,6 +316,19 @@ const diagramPresets: Preset[] = [
     description: "No nodes, no edges.",
     diagram: (): DiagramFile => ({ format: DIAGRAM_FORMAT, title: "Empty", nodes: [], edges: [] }),
   },
+  ...(["orders", "connections", "no-reader"] as const).map((kind): Preset => ({
+    kind: "diagram",
+    id: `planning-${kind}`,
+    get title() {
+      return kind === "orders"
+        ? t("planning.labOrders")
+        : kind === "connections"
+          ? t("planning.labConnections")
+          : t("planning.labNoReader");
+    },
+    group: "Diagrams",
+    diagram: () => planningFixture(kind),
+  })),
 ];
 
 // ---------- simulation ----------

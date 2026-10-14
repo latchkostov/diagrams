@@ -57,7 +57,11 @@ export function diagramDiff(before: DiagramFile, after: DiagramFile): DiagramDif
     changes.count = changes.ids.length;
   }
   const metaChanged =
-    before.title !== after.title || before.description !== after.description || before.direction !== after.direction;
+    before.title !== after.title ||
+    before.description !== after.description ||
+    before.direction !== after.direction ||
+    before.format !== after.format ||
+    structuralText(before.planning) !== structuralText(after.planning);
   const names = {
     nodes: ["node", "nodes"],
     edges: ["connection", "connections"],

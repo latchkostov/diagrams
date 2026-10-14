@@ -71,6 +71,7 @@ import { formatCount } from "../live/format";
 import { DEFAULT_TRAVEL_MS } from "../sim/topology";
 import { SIM_FIELDS_BY_ROLE, edgeSimFields, inertNodeProps } from "./simFieldRules";
 import { SIM_LIMITS } from "../interop/native";
+import { NodePlanning, PlanningUpgrade } from "../planning/lazy";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.
@@ -496,6 +497,8 @@ function NodePanel({ node, editor, groups, connection, onNamed }: InspectorProps
         </Field>
         <CopyId id={node.id} />
       </Section>
+
+      <NodePlanning diagram={editor.getDiagram()} id={node.id} editor={editor} />
 
       <Disclosure
         id="node-simulation"
@@ -1561,6 +1564,7 @@ function BulkSwatches<T extends string>({
 function DiagramPanel({ editor, meta, counts }: InspectorProps) {
   return (
     <>
+      <PlanningUpgrade editor={editor} />
       <Section>
         <Field label="Title">
           <input
@@ -1730,7 +1734,15 @@ function DeviceFields({
         <select
           className="insp-input"
           value={size}
-          onChange={(e) => set({ size: e.target.value, gbps: undefined, latencyMs: undefined })}
+          onChange={(e) => {
+            const size = sizeOf(spec, e.target.value);
+            const preset = presetOf(spec, size);
+            set(
+              props.preset === "device-size"
+                ? { size, gbps: preset.gbps, latencyMs: preset.latencyMs }
+                : { size, gbps: undefined, latencyMs: undefined },
+            );
+          }}
           name="size"
           data-testid="inspector-field-size"
         >

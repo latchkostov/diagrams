@@ -22,13 +22,14 @@ const PARTITIONED: ReadonlySet<SimRole> = new Set(["topic", "stream"]);
 const roleOf = (n: DiagramNode): SimRole => stencilRole(n.stencil);
 
 /** Node props as a simulation sees them: the diagram's, then the saved setup's. */
-const planProps = (node: DiagramNode, sim: Simulation) =>
-  resolveProps(roleOf(node), node.label, { ...node.props, ...sim.setup?.props?.[node.id] }, node.stencil);
+const planProps = (node: DiagramNode, sim: Simulation, d: DiagramFile) =>
+  resolveProps(roleOf(node), node.label, { ...node.props, ...sim.setup?.props?.[node.id] }, node.stencil, d.planning);
 
 /** Every source sending steadily at `rate` (default: its own ratePerSec): free play as a simulation. */
 export function sourceTraffic(
   d: DiagramFile,
-  rate: (node: DiagramNode) => number = (n) => resolveProps("source", n.label, n.props ?? {}).ratePerSec,
+  rate: (node: DiagramNode) => number = (n) =>
+    resolveProps("source", n.label, n.props ?? {}, n.stencil, d.planning).ratePerSec,
 ): TrafficProfile[] {
   return d.nodes
     .filter((n) => roleOf(n) === "source")
@@ -71,6 +72,8 @@ export function withSizing(sim: Simulation, changes: readonly SizingChange[]): S
 }
 
 export interface SizingOptions {
+  /** Optional explicit utilization target; the existing planner still verifies every proposed change. */
+  target?: number;
   /** A node whose idle replicas need partitions, even under FIX_ABOVE (the busy top bottleneck). */
   idle?: string;
   /** The run's node statuses right now. */
@@ -92,6 +95,8 @@ export function sizingFix(
   opts: SizingOptions = {},
 ): SizingChange[] | null {
   const max = opts.maxCount ?? 10_000;
+  const target = opts.target ?? FIX_TARGET;
+  if (!(target > 0 && target <= 1)) return null;
   const m = resolveMultiplier(sim.multipliers?.capacity);
   const byId = new Map(d.nodes.map((n) => [n.id, n]));
   const effective = new Map<string, number>();
@@ -99,7 +104,7 @@ export function sizingFix(
   const devices = new Set<string>();
   for (const n of nodes) {
     if (n.device && Number.isFinite(n.utilization) && n.utilization >= FIX_ABOVE && n.capacity) {
-      const sized = deviceSizing(byId.get(n.id)!, sim, n);
+      const sized = deviceSizing(byId.get(n.id)!, sim, n, d, target);
       if (sized) {
         changes.push(...sized);
         devices.add(n.id);
@@ -108,9 +113,9 @@ export function sizingFix(
     }
     if (n.role !== "processor" || !Number.isFinite(n.utilization) || n.utilization < FIX_ABOVE || !n.capacity) continue;
     const active = Math.max(1, n.activeReplicas);
-    const wanted = Math.max(n.replicas, Math.ceil((active * n.utilization) / FIX_TARGET));
+    const wanted = Math.max(n.replicas, Math.ceil((active * n.utilization) / target));
     effective.set(n.id, wanted);
-    const from = planProps(byId.get(n.id)!, sim).replicas;
+    const from = planProps(byId.get(n.id)!, sim, d).replicas;
     const to = Math.min(max, Math.max(from, Math.ceil(wanted / Math.max(m, 1e-9))));
     if (to > from) changes.push({ nodeId: n.id, key: "replicas", from, to });
   }
@@ -118,14 +123,14 @@ export function sizingFix(
   for (const [brokerId, groups] of compileTopology(d).groups) {
     const broker = byId.get(brokerId)!;
     if (!PARTITIONED.has(roleOf(broker))) continue;
-    const from = planProps(broker, sim).partitions;
+    const from = planProps(broker, sim, d).partitions;
     let to = from;
     for (const group of groups) {
       if (!group.members.some(needsPartitions)) continue;
       const members = group.members.map((id) => ({
         id,
         role: roleOf(byId.get(id)!),
-        replicas: effective.get(id) ?? Math.max(1, Math.round(planProps(byId.get(id)!, sim).replicas * m)),
+        replicas: effective.get(id) ?? Math.max(1, Math.round(planProps(byId.get(id)!, sim, d).replicas * m)),
       }));
       const sufficient = (partitions: number) => {
         const allocated = allocateGroupReplicas(roleOf(broker), partitions, members);
@@ -150,7 +155,7 @@ export function sizingFix(
   }
   if (!changes.length) return null;
   const verified = analyzeCapacity(d, planningSimulation(d, withSizing(sim, changes)), { status: opts.status });
-  if ([...effective.keys(), ...devices].some((id) => verified.nodes[id].utilization > FIX_TARGET + 1e-9)) return null;
+  if ([...effective.keys(), ...devices].some((id) => verified.nodes[id].utilization > target + 1e-9)) return null;
   return changes;
 }
 
@@ -159,15 +164,21 @@ export function sizingFix(
  * carrying traffic. A throughput typed over the old size (in the diagram or the simulation's setup) would hide the
  * preset, so it moves to the new size's figure alongside. Null when no bigger size would do.
  */
-function deviceSizing(node: DiagramNode, sim: Simulation, n: NodeCapacity): SizingChange[] | null {
+function deviceSizing(
+  node: DiagramNode,
+  sim: Simulation,
+  n: NodeCapacity,
+  d: DiagramFile,
+  target: number,
+): SizingChange[] | null {
   const spec = deviceSpec(node.stencil);
-  const device = planProps(node, sim).device;
+  const device = planProps(node, sim, d).device;
   if (!spec || !device?.size) return null;
   const sizes = sizesOf(spec);
   const units = activeUnits(device.ha, Math.max(1, n.replicas));
   const to = sizes
     .slice(sizes.indexOf(device.size) + 1)
-    .find((s) => messagesPerSec(presetOf(spec, s).gbps, device.messageKB) * units * FIX_TARGET >= n.offered);
+    .find((s) => messagesPerSec(presetOf(spec, s).gbps, device.messageKB) * units * target >= n.offered);
   if (!to) return null;
   const preset = presetOf(spec, to);
   const typed = { ...node.props, ...sim.setup?.props?.[node.id] }.gbps;

@@ -13,6 +13,7 @@ const E = spec.enums;
 const KNOWN_TOP = [
   "$schema",
   "format",
+  "planning",
   "title",
   "description",
   "direction",
@@ -240,7 +241,7 @@ export function checkDiagram(d) {
   const errors = [];
   const warnings = [];
   if (!isObj(d)) return { errors: ["The file must hold one JSON object: the diagram."], warnings, summary: "" };
-  if (d.format !== spec.format)
+  if (d.format !== spec.format && d.format !== "diagrams/v2")
     errors.push(`"format" must be ${q(spec.format)}${d.format ? `, not ${q(d.format)}` : ""}.`);
   if (!isStr(d.title) || !d.title.trim()) errors.push('Add a "title" (a short string).');
   if (d.description !== undefined && !isStr(d.description)) errors.push('"description" must be a string.');

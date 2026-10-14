@@ -1,5 +1,4 @@
 import type { SimRole } from "../model/types";
-import { hasServiceTime } from "../sim/defaults";
 import type { NodeSimProps } from "../sim/types";
 
 // Which simulation fields the inspector shows: only the ones that can change the run where they are
@@ -16,7 +15,7 @@ export const SIM_FIELDS_BY_ROLE: Record<SimRole, SimKey[]> = {
   gateway: ["latencyMs"],
   store: ["latencyMs"],
   // A sink finishes each message as it arrives.
-  sink: hasServiceTime("sink") ? ["latencyMs"] : [],
+  sink: [],
   topic: ["partitions", "maxDeliveryCount"],
   stream: ["partitions", "maxDeliveryCount"],
   queue: ["maxDeliveryCount"],

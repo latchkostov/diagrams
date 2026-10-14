@@ -10,6 +10,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 const NOT_AT_STARTUP: [string, RegExp][] = [
   ["File operation messages", /[/\\]src[/\\]interop[/\\]ui[/\\]fileMessages\.ts$/],
   ["canvas File actions", /[/\\]src[/\\]interop[/\\]fileActions\.ts$/],
+  ["numeric planning formatters", /[/\\]src[/\\]i18n[/\\]format\.ts$/],
+  ["planning explanations and profiles", /[/\\]src[/\\](?:planning[/\\](?!lazy\.tsx)|stencils[/\\]profiles\.ts$)/],
   ["the draw.io converter", /[/\\]src[/\\]interop[/\\]drawio[/\\]/],
   ["the Mermaid converter", /[/\\]src[/\\]interop[/\\]mermaid[/\\]/],
   ["the infrastructure importers (compose reader)", /[/\\]src[/\\]interop[/\\]infra[/\\]/],

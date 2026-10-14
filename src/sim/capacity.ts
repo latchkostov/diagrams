@@ -15,6 +15,7 @@ import type { NodeStatus } from "./types";
 import { resolveMultiplier } from "./units";
 
 export interface NodeCapacity {
+  status?: Exclude<NodeStatus, "up">;
   id: string;
   label: string;
   role: SimRole;
@@ -29,6 +30,10 @@ export interface NodeCapacity {
   device?: boolean;
 }
 export interface CapacityAnalysis {
+  /** Per-connection configured demand in real msg/s, computed by the same routing pass. */
+  connections: Record<string, number>;
+  /** The very same resolver metadata playback uses. */
+  resolved: Record<string, ResolvedProps>;
   nodes: Record<string, NodeCapacity>;
   bottleneck?: NodeCapacity;
   /** The message types offered at each node (rate above zero). */
@@ -162,7 +167,7 @@ export function analyzeCapacity(
   for (const input of diagram.nodes) {
     const role = stencilRole(input.stencil);
     const raw = { ...input.props, ...simulation?.setup?.props?.[input.id] };
-    const props = resolveProps(role, input.label, raw, input.stencil);
+    const props = resolveProps(role, input.label, raw, input.stencil, diagram.planning);
     const replicas = Math.max(1, Math.round(props.replicas * capacityMultiplier));
     const status = options.status?.[input.id] ?? simulation?.setup?.status?.[input.id] ?? raw.status;
     entries.set(input.id, {
@@ -202,13 +207,15 @@ export function analyzeCapacity(
   }
   const external: Rates = new Map();
   let capped = false;
-  function add(rates: Rates, id: string, type: string, value: number): void {
+  let connections: Record<string, number> = Object.create(null);
+  function add(rates: Rates, id: string, type: string, value: number, edge?: CompiledEdge): void {
     if (!(value > 0)) return;
     const types = rates.get(id) ?? new Map<string, number>();
     const sum = (types.get(type) ?? 0) + value;
     if (sum > RATE_CAP) capped = true;
     types.set(type, Math.min(RATE_CAP, sum));
     rates.set(id, types);
+    if (edge) connections[edge.id] = (connections[edge.id] ?? 0) + value;
   }
   if (simulation) {
     for (const profile of simulation.traffic) {
@@ -242,7 +249,7 @@ export function analyzeCapacity(
           ? weights[index] / sum
           : 1 / candidates.length;
       // A deny rule's share is blocked at the broker and goes no further.
-      if (!edge.deny) add(next, edge.to, emittedType(edge.emits, type), rate * fraction);
+      if (!edge.deny) add(next, edge.to, emittedType(edge.emits, type), rate * fraction, edge);
     });
   }
   function propagate(next: Rates, entry: Entry, type: string, rate: number, injected: boolean): void {
@@ -262,7 +269,9 @@ export function analyzeCapacity(
           // A deny rule is an unbounded exit (playback: always ready, no slot): each allowed route takes its round-robin
           // share at most what it can handle, and the rest is blocked at the broker.
           const share = rate / accepting.length;
-          allowed.forEach((edge, i) => add(next, edge.to, emittedType(edge.emits, type), Math.min(share, weights[i])));
+          allowed.forEach((edge, i) =>
+            add(next, edge.to, emittedType(edge.emits, type), Math.min(share, weights[i]), edge),
+          );
         }
       }
     } else if (entry.role === "gateway") {
@@ -270,14 +279,15 @@ export function analyzeCapacity(
       // blocked at this node and goes no further.
       const healthy = entry.props.healthChecks ? routes.filter((edge) => !entries.get(edge.to)!.down) : routes;
       const pool = healthy.length ? healthy : routes;
-      for (const edge of pool) if (!edge.deny) add(next, edge.to, emittedType(edge.emits, type), rate / pool.length);
+      for (const edge of pool)
+        if (!edge.deny) add(next, edge.to, emittedType(edge.emits, type), rate / pool.length, edge);
     } else {
       for (const edge of routes) {
         if (edge.deny) continue;
         if (!injected && (entry.role === "sink" || (entry.role === "store" && edge.sync))) continue;
         const share =
           typeof edge.share === "number" && Number.isFinite(edge.share) ? Math.max(0, Math.min(1, edge.share)) : 1;
-        add(next, edge.to, emittedType(edge.emits, type), rate * share);
+        add(next, edge.to, emittedType(edge.emits, type), rate * share, edge);
       }
     }
   }
@@ -285,6 +295,7 @@ export function analyzeCapacity(
     converged = false,
     iterations = 0;
   for (; iterations < ITERATION_CAP; iterations++) {
+    connections = Object.create(null);
     const next: Rates = new Map([...external].map(([id, types]) => [id, new Map(types)]));
     for (const [id, types] of rates) {
       const entry = entries.get(id)!;
@@ -336,6 +347,7 @@ export function analyzeCapacity(
       id,
       label: entry.input.label,
       role: entry.role,
+      ...(!entry.up ? { status: entry.down ? ("down" as const) : ("paused" as const) } : {}),
       capacity,
       offered,
       utilization: ratio(offered, capacity),
@@ -384,5 +396,14 @@ export function analyzeCapacity(
   if (!converged) suggestion += " Cycle demand did not converge; inspect feedback routes.";
   const offeredTypes: Record<string, string[]> = Object.create(null);
   for (const [id, types] of rates) offeredTypes[id] = [...types].filter(([, rate]) => rate > 0).map(([type]) => type);
-  return { nodes, bottleneck, offeredTypes, suggestion, converged, iterations };
+  return {
+    nodes,
+    bottleneck,
+    offeredTypes,
+    suggestion,
+    converged,
+    iterations,
+    connections,
+    resolved: Object.fromEntries([...entries].map(([id, entry]) => [id, entry.props])),
+  };
 }

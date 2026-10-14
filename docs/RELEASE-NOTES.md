@@ -1,5 +1,21 @@
 # Release notes
 
+## Planning P1 (2026-10-14)
+
+- The inspector and live hover card explain processor throughput, incoming traffic, arithmetic and
+  a chosen utilization target. Orders at 3 req/s demand and 1 req/s capacity distinguishes three
+  replicas at 100% from six at 50%, with one undoable planner fix.
+- Read-only Connections rows derive Consumes / Publishes / Calls from current flows. Two input
+  policies share one node pool; HTTP-only services have no consumer policies. Removing/reconnecting
+  an edge refreshes the readout. A broker without a reader explains its producers and offers Add a consumer.
+- Explicit family profiles and pinned lesson/device revisions share playback's resolver with analysis,
+  checks and explanations. Existing files retain legacy playback. Diagram properties offers an
+  undoable upgrade preview and legacy export with a loss report. Planning files use `diagrams/v2`;
+  unsupported revisions are refused instead of substituted.
+- Physical delay and store connections/query slots have distinct, bounded metadata contracts; their
+  execution models remain deferred. New `planning.*` strings use `t()`; the 37 non-English languages
+  currently fall back to English. No top-bar controls were added.
+
 Changes to habits people already have. The app has no "what's new" panel, so they're noted here.
 
 ## AI language switching fixes (2026-10-14)

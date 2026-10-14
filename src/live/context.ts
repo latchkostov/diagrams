@@ -3,9 +3,12 @@ import type { DiagramFile, Simulation } from "../model/types";
 import type { LiveController, LiveState } from "./controller";
 import type { SlowMotion } from "./slowmo/session";
 import type { MenuItem } from "../editor/actions";
+import type { CapacityFix } from "./capacityModel";
 
 /** What the live view's components share: the controller plus the session's UI commands. */
 export interface LiveUi {
+  applyCapacityFix?(fix: CapacityFix): void;
+  addReader?(id: string): void;
   controller: LiveController;
   presenting: boolean;
   /** False in the Lab (no editor: no authoring, no saving). */

@@ -70,6 +70,7 @@ const TRANSLATED = [
   "src/interop/storage/cloudMessages.ts",
   "src/interop/gdrive/client.ts",
   "src/interop/gdrive/google.ts",
+  "src/planning/*.tsx",
   "src/canvas/StartCard.tsx",
   "src/canvas/PresentFullscreen.tsx",
   "src/components/TopBar.tsx",
