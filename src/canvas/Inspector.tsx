@@ -211,7 +211,7 @@ export interface InspectorProps {
    * Focus request: `inspector-field-<name>`, its text all selected (`caret: "end"`: the caret after it, for a name
    * typed before the field could take it); `seq` re-triggers for the same name.
    */
-  focus?: { name: string; seq: number; caret?: "end" };
+  focus?: { name: string; seq: number; caret?: "end"; target?: string };
   /** Request consumption survives inspector unmounts (presentation). */
   takeFocus?: (seq: number) => boolean;
   /**
@@ -236,11 +236,21 @@ export function Inspector(p: InspectorProps) {
   // (a selection changing under it) never repeats it.
   const done = useRef(0);
   const takeFocus = p.takeFocus;
+  const selectionKey = JSON.stringify([
+    p.selectedNodes.map((n) => n.id),
+    p.selectedGroups.map((n) => n.id),
+    p.selectedEdges.map((e) => e.id),
+    (p.selectedAnnotations ?? []).map((n) => n.id),
+  ]);
   useLayoutEffect(() => {
     if (!p.focus || p.collapsed || done.current === p.focus.seq) return;
+    const { name, caret, target } = p.focus;
+    const field = body.current?.querySelector<HTMLElement>(`[data-testid="inspector-field-${name}"]`);
+    // React Flow's selection can arrive after the panel opens. Keep the request pending until the
+    // requested field is mounted for that selection, rather than consuming it on the diagram/old panel.
+    if (!field || (target && field.getAttribute("data-name-field") !== target)) return;
     if (takeFocus && !takeFocus(p.focus.seq)) return;
     done.current = p.focus.seq;
-    const { name, caret } = p.focus;
     const place = (retry = false) => {
       const el = body.current?.querySelector<HTMLElement>(`[data-testid="inspector-field-${name}"]`);
       if (!el || (retry && document.activeElement === el)) return;
@@ -266,7 +276,7 @@ export function Inspector(p: InspectorProps) {
       cancelAnimationFrame(id);
       stop();
     };
-  }, [p.focus, p.collapsed, takeFocus]);
+  }, [p.focus, p.collapsed, takeFocus, selectionKey]);
 
   if (p.collapsed) {
     return (

@@ -339,7 +339,9 @@ function CanvasInner({
   const [editing, setEditing] = useState<InlineEdit | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [inspectorFocus, setInspectorFocus] = useState<{ name: string; seq: number; caret?: "end" } | undefined>();
+  const [inspectorFocus, setInspectorFocus] = useState<
+    { name: string; seq: number; caret?: "end"; target?: string } | undefined
+  >();
   const inspectorFocusDone = useRef(0);
   const takeInspectorFocus = useCallback((seq: number) => {
     if (inspectorFocusDone.current === seq) return false;
@@ -347,10 +349,10 @@ function CanvasInner({
     return true;
   }, []);
   const openInspector = useCallback(
-    (field?: string, caret?: "end") => {
+    (field?: string, caret?: "end", target?: string) => {
       setPref("inspector", true);
       setOpenedByHand((o) => ({ ...o, inspector: true }));
-      if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1, caret }));
+      if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1, caret, target }));
     },
     [setPref],
   );
@@ -760,7 +762,11 @@ function CanvasInner({
       setNaming(t.kind === "node" && t.edge ? { node: t.id, edge: t.edge } : null);
       const typed = t.kind === "node" && t.text !== undefined;
       if (typed) editor.updateNode(t.id, { label: t.text }, { merge: editor.creating(t.id) });
-      openInspector(t.kind === "node" && t.field === "sublabel" ? "sublabel" : "label", typed ? "end" : undefined);
+      openInspector(
+        t.kind === "node" && t.field === "sublabel" ? "sublabel" : "label",
+        typed ? "end" : undefined,
+        t.kind === "group" ? GROUP_PREFIX + t.id : t.id,
+      );
     },
     [readOnly, live, presenting, editor, openInspector],
   );

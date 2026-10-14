@@ -38,7 +38,7 @@ interface Entry {
   state?: unknown;
   optsKey?: string;
   nodes: InternalNode<FlowNode>[];
-  edges?: unknown;
+  edges?: readonly DiagramFlowEdge[];
   routes: Map<string, EdgeRoute>;
   /** Wall time of the last full routing pass (ms). */
   ms: number;
@@ -69,6 +69,39 @@ function rectOf(n: InternalNode<FlowNode>): Rect {
     width: n.measured?.width ?? n.width ?? est.width,
     height: n.measured?.height ?? n.height ?? est.height,
   };
+}
+
+/** Naming and accessible-name updates don't change routing until the measured bounds change. */
+function sameRoutingNode(a: InternalNode<FlowNode>, b: InternalNode<FlowNode>): boolean {
+  if (a === b) return true;
+  if (a.id !== b.id || a.type !== b.type) return false;
+  if (a.type === "boundary") {
+    const x = a.data as GroupNodeData;
+    const y = b.data as GroupNodeData;
+    if (x.groupId !== y.groupId || x.label !== y.label) return false;
+  }
+  const x = rectOf(a);
+  const y = rectOf(b);
+  return x.x === y.x && x.y === y.y && x.width === y.width && x.height === y.height;
+}
+
+function sameRoutingEdges(a: readonly DiagramFlowEdge[] | undefined, b: readonly DiagramFlowEdge[]): boolean {
+  return (
+    a === b ||
+    (!!a &&
+      a.length === b.length &&
+      a.every((e, i) => {
+        const next = b[i];
+        return (
+          e === next ||
+          (e.id === next.id &&
+            e.source === next.source &&
+            e.target === next.target &&
+            e.hidden === next.hidden &&
+            e.data === next.data)
+        );
+      }))
+  );
 }
 
 export function routeInputFromStore(
@@ -134,24 +167,25 @@ export function selectRoutes(s: ReactFlowState<FlowNode, DiagramFlowEdge>, opts:
     byOptions.set(optsKey, e);
   }
   if (e.state === s && e.optsKey === optsKey) return e.routes;
-  // Same nodes (by identity: React Flow replaces an internal node whenever it changes) and edges?
+  // React Flow replaces internal nodes for a name/selection change too. Only geometry affects routes;
+  // edge copies with refreshed aria labels still carry the same routing data.
   const relevantNodes = [...s.nodeLookup.values()].filter(
     (n) => !n.hidden && (n.type !== "annotation" || isObstacle((n.data as AnnotationNodeData).kind)),
   );
-  let same = e.optsKey === optsKey && e.edges === s.edges && e.nodes.length === relevantNodes.length;
+  let same = e.optsKey === optsKey && sameRoutingEdges(e.edges, s.edges) && e.nodes.length === relevantNodes.length;
   if (same) {
     let i = 0;
     for (const n of relevantNodes)
-      if (e.nodes[i++] !== n) {
+      if (!sameRoutingNode(e.nodes[i++], n)) {
         same = false;
         break;
       }
   }
   e.state = s;
-  if (same) return e.routes;
-  const t0 = performance.now();
   e.nodes = relevantNodes;
   e.edges = s.edges;
+  if (same) return e.routes;
+  const t0 = performance.now();
   e.optsKey = optsKey;
   e.routes = e.router.route(routeInputFromStore(e.nodes, s.edges, opts));
   e.ms = performance.now() - t0;

@@ -1,9 +1,50 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import type { InternalNode, ReactFlowState } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { selectRoutes } from "./useEdgeRoute";
 import { segmentHitsRect } from "../geometry/rect";
 import { annotationToFlow, nodeToFlow } from "../convert";
+import { Router } from "../geometry/router";
+
+it("naming a measured node and refreshing edge aria labels does no routing work until it grows", () => {
+  const internal = (id: string, x: number): InternalNode<FlowNode> => {
+    const n = nodeToFlow({ id, stencil: "service.go", label: id, x, y: 0 });
+    return {
+      ...n,
+      measured: { width: 220, height: 72 },
+      internals: { positionAbsolute: n.position, z: 0, userNode: n },
+    };
+  };
+  const lookup = new Map([
+    ["a", internal("a", 0)],
+    ["b", internal("b", 500)],
+  ]);
+  let edges: DiagramFlowEdge[] = [{ id: "e", source: "a", target: "b", data: { kind: "sync" } }];
+  const state = () => ({ nodeLookup: lookup, edges }) as ReactFlowState<FlowNode, DiagramFlowEdge>;
+  const opts = { style: "smoothstep", direction: "LR" } as const;
+  const first = selectRoutes(state(), opts);
+  const route = vi.spyOn(Router.prototype, "route");
+  try {
+    for (const label of ["Orders", "Orders API", "Orders API renamed"]) {
+      const n = lookup.get("a")!;
+      lookup.set("a", { ...n, data: { ...n.data, label } });
+      edges = edges.map((e) => ({ ...e, ariaLabel: `${label} to b, Request` }));
+      expect(selectRoutes(state(), opts)).toBe(first);
+    }
+    expect(route).not.toHaveBeenCalled();
+    const n = lookup.get("a")!;
+    lookup.set("a", { ...n, measured: { width: 300, height: 72 } });
+    const grown = selectRoutes(state(), opts);
+    expect(route).toHaveBeenCalledTimes(1);
+    expect(grown.get("e")!.points).not.toEqual(first.get("e")!.points);
+    // Changing the connection's label still changes its routing/label placement.
+    edges = edges.map((e) => ({ ...e, data: { kind: "sync", ...e.data, label: "writes" } }));
+    selectRoutes(state(), opts);
+    expect(route).toHaveBeenCalledTimes(2);
+  } finally {
+    route.mockRestore();
+  }
+});
 
 it("moving a note across an edge reroutes around its new bounds; zones and text reuse routes", () => {
   const internal = (n: FlowNode): InternalNode<FlowNode> => ({

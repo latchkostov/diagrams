@@ -6,6 +6,9 @@ import { layersFixture, headerOverflowFixture } from "./layersFixture";
 import { simReviewFixture, simReviewTrafficFixture } from "./simReviewFixture";
 import { exportFixture } from "./exportFixture";
 import { textFieldsFixture } from "./textFieldsFixture";
+import { InspectorFocusLab } from "./InspectorFocusLab";
+import { TroubleCallout } from "../live/CapacityLayer";
+import "../styles/capacity.css";
 // The Lab's preset registry. Every entry renders the *current* components with fixed data, so
 // opening ?view=lab&preset=<id> is a quick visual check of whatever you're working on.
 //
@@ -379,6 +382,36 @@ const playgroundPresets: Preset[] = [
     title: "Text selection and naming",
     group: "Playground",
     diagram: () => textFieldsFixture,
+  },
+  {
+    kind: "render",
+    id: "inspector-focus",
+    title: "Inspector focus before selection",
+    group: "Playground",
+    render: () => <InspectorFocusLab />,
+  },
+  {
+    kind: "render",
+    id: "trouble-callout-counts",
+    title: "Live callout changing counts",
+    group: "Playground",
+    controls: [{ key: "count", label: "Waiting messages", type: "text", default: "111" }],
+    render: (v) => (
+      <TroubleCallout
+        floating
+        trouble={{
+          key: "down:payments",
+          kind: "down",
+          node: "payments",
+          headline: "Payments service is down",
+          announce: "Payments service is down",
+          detail: `Messages wait in orders until it's back (${String(v.count)} so far).`,
+          action: { kind: "revive", node: "payments" },
+        }}
+        onAction={() => {}}
+        onDismiss={() => {}}
+      />
+    ),
   },
   {
     kind: "diagram",

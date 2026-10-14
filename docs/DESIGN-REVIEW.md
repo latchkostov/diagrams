@@ -38,6 +38,20 @@ Screenshots: [rail at 1024](screenshots/round35/clients-1024.png),
 [external vendors](screenshots/round35/gallery-vendors-1280.png),
 [Iterable in the gallery](screenshots/round35/gallery-iterable-1280.png).
 
+## Inspector naming reliability (2026-10-14)
+
+A designer agent's source and regression review found no blocking UX issues. Rename focus waits for the selected
+target's field, preserving the inspector's drag lifecycle and preventing focus on an old node's name. Naming keeps
+its existing Tab order, Enter/Esc return to the canvas and creation undo transaction. Name and accessible-name
+changes reuse routes until geometry changes; boundary headers and connection labels still update routing. No
+controls or chrome were added. Production browser tests verify the runtime behavior; a Lab fixture holds the
+selection frame to cover delayed field mounting. Reverting the focus and routing fixes makes their regressions fail.
+
+The follow-up designer review also found no blocking issues with tabular numerals in live callout counts. They
+keep the adjacent action steady as digits change within the same count length, matching existing Live and trace
+styling. Placement, wrapping and motion remain consistent. A Lab preview and bounding-box regression cover this
+typography fix for an additional unstable Revive button found during repeated production verification.
+
 ## Round 34 follow-up: naming review fixes (2026-10-14)
 
 A designer agent reviewed the fixes against `docs/UX-PRINCIPLES.md`: canvas naming, inspector completion and undo,

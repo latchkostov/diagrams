@@ -718,7 +718,9 @@ export function createEditor(rf: ReactFlowInstance<FlowNode, DiagramFlowEdge>, i
           if ("sublabel" in patch) data.sublabel = patch.sublabel || undefined;
           if ("group" in patch) data.group = patch.group || undefined;
           if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
-          const position = { x: patch.x ?? n.position.x, y: patch.y ?? n.position.y };
+          const x = patch.x ?? n.position.x;
+          const y = patch.y ?? n.position.y;
+          const position = x === n.position.x && y === n.position.y ? n.position : { x, y };
           return { ...n, data, position };
         }),
       );

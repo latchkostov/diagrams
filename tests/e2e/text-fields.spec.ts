@@ -11,6 +11,8 @@ import { must, openAdvanced } from "./ai-helpers";
 
 const SLUG = "kafka-order-pipeline";
 const MOD = process.platform === "darwin" ? "Meta" : "Control";
+// The keyboard tooltip also starts with node- and repeats the focused node's name.
+const nodes = (page: Page) => page.getByTestId(/^node-(?!tooltip$|editor-)/);
 
 const SEED = textFieldsFixture;
 
@@ -139,6 +141,26 @@ async function changedShare(page: Page, a: Buffer, b: Buffer): Promise<number> {
 const canvasFocused = (page: Page) =>
   page.evaluate(() => !!document.activeElement?.closest(".react-flow__node, .react-flow__edge"));
 
+test("an inspector focus request waits for its selected node's field", async ({ page, consoleErrors }) => {
+  await page.goto("/?view=lab&preset=inspector-focus");
+  await expect(page.getByTestId("inspector-focus-cache")).toBeVisible();
+  await page.clock.install();
+  await pauseClock(page);
+  const label = page.getByTestId("inspector-field-label");
+  for (const [id, name] of [
+    ["cache", "Session store"],
+    ["db", "Orders database"],
+  ]) {
+    await page.getByTestId(`inspector-focus-${id}`).click();
+    // The frame delivering the new selection is still held. Never focus a previous node's name.
+    await expect(page.getByTestId(`inspector-focus-${id}`)).toBeFocused();
+    await page.clock.runFor(100);
+    await expect(label).toBeFocused();
+    await expect.poll(() => selected(label)).toBe(name);
+  }
+  expectNoErrors(consoleErrors);
+});
+
 test.describe("renaming in the inspector", () => {
   test.beforeEach(async ({ page }) => seed(page));
 
@@ -221,8 +243,8 @@ test.describe("renaming in the inspector", () => {
     await page.keyboard.press("Enter");
     await page.clock.runFor(400);
     await page.keyboard.press(`${MOD}+z`);
-    await expect(page.getByTestId(/^node-/).filter({ hasText: "Session store" })).toHaveCount(0);
-    await expect(page.getByTestId(/^node-/).filter({ hasText: "Redis Cache" })).toHaveCount(0);
+    await expect(nodes(page).filter({ hasText: "Session store" })).toHaveCount(0);
+    await expect(nodes(page).filter({ hasText: "Redis Cache" })).toHaveCount(0);
   });
 
   test("double-clicking the boundary outline opens its name", async ({ page }) => {
@@ -276,10 +298,10 @@ test.describe("renaming in the inspector", () => {
     await page.keyboard.type("Session store");
     await page.keyboard.press("Enter");
     await expect.poll(() => canvasFocused(page)).toBe(true);
-    const made = page.getByTestId(/^node-/).filter({ hasText: "Session store" });
+    const made = nodes(page).filter({ hasText: "Session store" });
     await expect(made).toHaveCount(1);
     await page.keyboard.press(`${MOD}+z`);
-    await expect(page.getByTestId(/^node-/).filter({ hasText: "Redis Cache" })).toHaveCount(0);
+    await expect(nodes(page).filter({ hasText: "Redis Cache" })).toHaveCount(0);
     await expect(made).toHaveCount(0);
     expectNoErrors(consoleErrors);
   });
@@ -295,7 +317,7 @@ test.describe("renaming in the inspector", () => {
     await expect(label).toBeFocused();
     await expect(label).toHaveValue("Hot keys");
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId(/^node-/).filter({ hasText: "Hot keys" })).toHaveCount(1);
+    await expect(nodes(page).filter({ hasText: "Hot keys" })).toHaveCount(1);
     expectNoErrors(consoleErrors);
   });
 
@@ -319,7 +341,7 @@ test.describe("renaming in the inspector", () => {
     await expect(label).toHaveValue("Session store");
     await page.keyboard.press("Enter");
     await page.keyboard.press(`${MOD}+z`);
-    await expect(page.getByTestId(/^node-/).filter({ hasText: "Session store" })).toHaveCount(0);
+    await expect(nodes(page).filter({ hasText: "Session store" })).toHaveCount(0);
   });
 
   test("click-away separates successive renames", async ({ page }) => {
@@ -365,8 +387,8 @@ test.describe("renaming in the inspector", () => {
     await page.keyboard.press(`${MOD}+z`);
     await expect(label).toHaveValue("First name");
     await page.keyboard.press(`${MOD}+z`);
-    await expect(page.getByTestId(/^node-/).filter({ hasText: "First name" })).toHaveCount(0);
-    await expect(page.getByTestId(/^node-/).filter({ hasText: "Redis Cache" })).toHaveCount(0);
+    await expect(nodes(page).filter({ hasText: "First name" })).toHaveCount(0);
+    await expect(nodes(page).filter({ hasText: "Redis Cache" })).toHaveCount(0);
   });
 
   test("slow naming is one undo step; completing a rename separates the next one", async ({ page }) => {

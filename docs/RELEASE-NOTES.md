@@ -12,6 +12,14 @@ Changes to habits people already have. The app has no "what's new" panel, so the
   including Ctrl+K and agents' `find_stencils`.
 - This adds discovery only: simulation roles stay as before; no vendor quotas, rate-limit defaults or endpoint editor.
 
+## Inspector naming reliability (2026-10-14)
+
+- Quick-add and Rename keep their focus request until the selected node's Label is ready, including when the
+  inspector is opening after a pointer gesture. A previous node's name never takes the request.
+- Typing names keeps node positions and connection routes stable until the measured bounds change, avoiding
+  repeated routing work on large diagrams. Growing cards and connection labels still update their routes.
+- Live callout counts use equal-width digits, so changing digits no longer nudges the adjacent Revive button.
+
 ## Naming follow-ups (2026-10-14)
 
 - Typing a boundary name keeps distant connections' routes cached. Connections near its growing or shrinking
