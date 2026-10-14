@@ -303,7 +303,7 @@ describe("message routing", () => {
 });
 
 describe("pull capacity and status", () => {
-  it("partition caps apply independently per group until processing completes", () => {
+  it("partition caps limit each group's work; a small pipeline travels ahead and waits at the consumer", () => {
     const sim = engine(
       [
         node("b", "topic", { partitions: 2 }),
@@ -314,18 +314,20 @@ describe("pull capacity and status", () => {
     );
     sim.inject("b", 20);
     sim.step(10);
-    expect(sim.snapshot().particles).toHaveLength(4);
+    // Per group: 2 partition slots + ceil(2 × 100 / 500) on the way + a prefetch of 1.
+    expect(sim.snapshot().particles).toHaveLength(8);
     sim.step(200);
     const snap = sim.snapshot();
     expect(snap.nodes.a.inFlight).toBe(2);
     expect(snap.nodes.c.inFlight).toBe(2);
-    expect(snap.edges["b-a"].delivered).toBe(2);
-    expect(snap.nodes.b.lag).toEqual({ one: 18, two: 18 });
+    expect(snap.nodes.a.backlog).toBe(2);
+    expect(snap.edges["b-a"].delivered).toBe(4);
+    expect(snap.nodes.b.lag).toEqual({ one: 16, two: 16 });
     run(sim, 10000);
     expect(sim.snapshot().nodes.a.processed).toBe(20);
   });
 
-  it("reserves incoming capacity across different brokers", () => {
+  it("shares a consumer's pipeline across different brokers", () => {
     const sim = engine(
       [node("q", "queue"), node("r", "queue"), node("c", "processor", { concurrency: 2, latencyMs: 100 })],
       [edge("q", "c", { travelMs: 100 }), edge("r", "c", { travelMs: 100 })],
@@ -333,7 +335,9 @@ describe("pull capacity and status", () => {
     sim.inject("q", 8);
     sim.inject("r", 8);
     sim.step(10);
-    expect(sim.snapshot().particles).toHaveLength(2);
+    // 2 slots + ceil(2 × 100 / 100) on the way + 1, all taken by the first broker: the second sends none.
+    expect(sim.snapshot().particles).toHaveLength(5);
+    expect(sim.snapshot().edges["r-c"].active).toBe(0);
     sim.step(100);
     expect(sim.snapshot().nodes.c.inFlight).toBe(2);
     run(sim);
@@ -633,9 +637,9 @@ describe("API, clocks, and snapshots", () => {
       ],
     );
     sim.inject("s", 5);
-    sim.step(890);
+    sim.step(290);
     expect(sim.snapshot().nodes.p.inFlight).toBe(0);
-    expect(sim.snapshot().particles[0].progress).toBeCloseTo(890 / 900);
+    expect(sim.snapshot().particles[0].progress).toBeCloseTo(290 / 300);
     sim.step(10);
     expect(sim.snapshot().nodes.p.inFlight).toBe(4);
     expect(sim.snapshot().nodes.p.backlog).toBe(1);
@@ -643,7 +647,7 @@ describe("API, clocks, and snapshots", () => {
     expect(sim.snapshot().nodes.p.processed).toBe(0);
     sim.step(10);
     expect(sim.snapshot().nodes.p.processed).toBe(4);
-    sim.step(450);
+    sim.step(200);
     expect(sim.snapshot().nodes.store.processed).toBe(0);
     sim.step(40);
     expect(sim.snapshot().nodes.store.processed).toBe(4);

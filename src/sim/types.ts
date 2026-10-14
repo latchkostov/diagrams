@@ -172,7 +172,7 @@ export interface EdgeSimProps {
   /** Marks this edge as the dead-letter path of its source broker. Also inferred when the target
    *  node's label/sublabel matches /dlq|dead.?letter/i on broker-to-broker/store edges. False opts out. */
   dlq?: boolean;
-  /** Travel time in ms at 1x speed. Default 900 (async) / 450 (sync). */
+  /** Travel time in ms at 1x speed. Default 300 (async) / 200 (sync), `DEFAULT_TRAVEL_MS` in topology.ts. */
   travelMs?: number;
   /** Only these message types travel this edge (subscription filter). Supports a trailing "*" wildcard,
    *  e.g. ["Order*"]. Messages matching no outgoing edge of a broker group are simply not delivered to it. */

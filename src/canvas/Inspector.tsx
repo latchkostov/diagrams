@@ -59,6 +59,7 @@ import {
   type DeviceSpec,
 } from "../stencils/netDevices";
 import { formatCount } from "../live/format";
+import { DEFAULT_TRAVEL_MS } from "../sim/topology";
 
 // Right-hand properties panel. Every edit goes through EditorApi (so it is undoable); typing
 // is coalesced per field via the `merge` option.
@@ -596,7 +597,7 @@ function EdgePanel({ edge, editor, nodeLabel }: InspectorProps & { edge: Diagram
                 kind: "number",
                 min: 0,
                 step: 50,
-                placeholder: data.kind === "sync" ? "450" : "900",
+                placeholder: String(DEFAULT_TRAVEL_MS[data.kind === "sync" ? "sync" : "async"]),
                 hint: "Time a message spends on this edge at 1x",
               }}
               value={props.travelMs}

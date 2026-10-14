@@ -50,6 +50,8 @@ interface Group {
   cursor: number;
   allocations: Map<string, number>;
   activeByNode: Record<string, number>;
+  /** Deliveries that arrived and hold one of the group's slots at each consumer (waiting or in work). */
+  heldByNode: Record<string, number>;
   members: string[];
   limit: number;
 }
@@ -66,6 +68,8 @@ interface Work {
   remaining: number;
   retained?: boolean;
   injected?: boolean;
+  /** Holds one of its delivery group's slots at the node (see admit). */
+  held?: boolean;
 }
 interface Node {
   id: string;
@@ -81,6 +85,8 @@ interface Node {
   dlq?: Edge;
   groups: Group[];
   pending: Deque<Work>;
+  /** Deliveries that arrived while their group's slots here were all taken: they start as one frees. */
+  staged: Work[];
   working: Work[];
   incoming: number;
   cursor: number;
@@ -184,7 +190,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             node: trip.kind === "reply" || trip.kind === "retry" ? trip.edge.to.id : trip.edge.from.id,
           };
       for (const node of nodes.values()) {
-        const work = node.working.find((w) => test(w.message)) ?? node.pending.find((w) => test(w.message));
+        const work =
+          node.working.find((w) => test(w.message)) ??
+          node.pending.find((w) => test(w.message)) ??
+          node.staged.find((w) => test(w.message));
         if (work) return { message: work.message, node: node.id };
         for (const group of node.groups) {
           const queued = group.pending.find(test);
@@ -342,16 +351,35 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         }
   }
 
+  /**
+   * How many deliveries may be outstanding (travelling, waiting or in work) against `units` slots of `target`, over
+   * an edge that takes `travelMs`. A delivery takes its slot when it arrives, not when it leaves the broker: the
+   * slots themselves, plus enough on the way to keep them busy (units × travel ÷ service time, rounded up), plus a
+   * prefetch of one so jitter doesn't leave a slot idle. So travel time animates but never limits throughput, and a
+   * consumer drains at the rate capacity analysis reports. A target with no service time (a broker, a sink, a 0 ms
+   * service) is never the limit.
+   */
+  function outstanding(units: number, target: Node, travelMs: number): number {
+    if (!(units > 0)) return 0;
+    if (!(target.props.latencyMs > 0) || units === Infinity) return Infinity;
+    // A sampled dot costs `scale` messages of a processor's service budget (see tick): it works on units ÷ scale dots
+    // at a time, so only that many (and what's on the way to them) are held for it. The rest is lag at the broker.
+    const busy = target.role === "processor" ? units / scale : units;
+    return Math.ceil(busy) + Math.ceil((busy * Math.max(STEP, travelMs)) / target.props.latencyMs) + 1;
+  }
+
   function refreshGroupLimit(group: Group): void {
-    group.limit =
-      group.edges[0].from.role === "queue"
-        ? Infinity
-        : group.members.reduce((sum, id) => {
-            const target = nodes.get(id)!;
-            return (
-              sum + (group.allocations.get(id) ?? 0) * (target.role === "processor" ? target.props.concurrency : 1)
-            );
-          }, 0);
+    if (group.edges[0].from.role === "queue") {
+      group.limit = Infinity;
+      return;
+    }
+    group.limit = group.members.reduce((sum, id) => {
+      const target = nodes.get(id)!;
+      let travel = 0;
+      for (const edge of group.edges) if (edge.to === target && !edge.deny) travel = Math.max(travel, edge.travelMs);
+      const units = (group.allocations.get(id) ?? 0) * (target.role === "processor" ? target.props.concurrency : 1);
+      return sum + outstanding(units, target, travel);
+    }, 0);
   }
 
   function assignReplicas(changed: Set<string>): void {
@@ -404,7 +432,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         (isBroker(node) && node.props.partitions !== previous.partitions)
       )
         changed.add(id);
-      if (node.props.concurrency !== previous.concurrency)
+      if (node.props.concurrency !== previous.concurrency || node.props.latencyMs !== previous.latencyMs)
         for (const group of groupsByConsumer.get(id) ?? []) limits.add(group);
     }
     const next = resolveMultiplier(multiplier, capacityMultiplier);
@@ -452,6 +480,47 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.delivery.group.active--;
       work.delivery.group.activeByNode[work.delivery.edge.to.id]--;
     }
+    release(work);
+  }
+
+  /** The slots a topic or stream group may fill at `node` at once: its partition assignment. A queue: no limit. */
+  function groupUnits(group: Group, node: Node): number {
+    if (group.edges[0].from.role === "queue") return Infinity;
+    return (group.allocations.get(node.id) ?? 0) * (node.role === "processor" ? node.props.concurrency : 1);
+  }
+
+  /**
+   * A delivery that arrives takes one of its group's slots at the node and waits its turn there, or, with every one
+   * of them taken, is staged until one frees. Deliveries travel ahead of time (see outstanding), but a group never
+   * works on more than its partitions allow, even on a consumer with free slots from other inputs.
+   */
+  function admit(node: Node, work: Work): void {
+    const group = work.delivery?.group;
+    if (group && !work.held) {
+      const held = group.heldByNode[node.id] ?? 0;
+      // Never stage behind nothing: a live reassignment can leave a group no slots here while deliveries travel.
+      if (held > 0 && held >= groupUnits(group, node)) {
+        node.staged.push(work);
+        return;
+      }
+      group.heldByNode[node.id] = held + 1;
+      work.held = true;
+    }
+    node.pending.push(work);
+  }
+
+  /** The work leaves the node (done, or failed back to its broker): its group slot is free again. */
+  function release(work: Work): void {
+    if (!work.held) return;
+    work.held = false;
+    work.delivery!.group.heldByNode[work.delivery!.edge.to.id]--;
+  }
+
+  /** Staged deliveries whose group has a free slot again join the node's queue, in arrival order. */
+  function unstage(node: Node): void {
+    const waiting = node.staged;
+    node.staged = [];
+    for (const work of waiting) admit(node, work);
   }
 
   function reply(work: Work): void {
@@ -521,7 +590,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (node.props.retry === "inplace" && work.message.attempts < work.delivery.broker.props.maxDeliveryCount) {
         work.remaining = node.props.retryBackoffMs + latency(node);
         work.retained = true;
-      } else
+      } else {
+        release(work);
         travel(
           work.delivery.edge,
           work.message,
@@ -529,6 +599,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           work.delivery,
           work.message.attempts < work.delivery.broker.props.maxDeliveryCount ? node.props.retryBackoffMs : 0,
         );
+      }
     } else {
       reply(work);
       drop(node, work.message, node.status === "down" ? "node down" : "processing failed");
@@ -572,7 +643,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function arrive(node: Node, work: Work): void {
     if (node.status === "down") {
       finish(node, work);
-      if (work.retained) node.working.push(work);
+      if (work.retained) {
+        // An in-place retry keeps its slot, whatever else holds the group's.
+        if (work.delivery) {
+          work.delivery.group.heldByNode[node.id] = (work.delivery.group.heldByNode[node.id] ?? 0) + 1;
+          work.held = true;
+        }
+        node.working.push(work);
+      }
       return;
     }
     // Pausing a broker stops consumers pulling, not publishers appending to its log.
@@ -581,12 +659,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     if (node.status === "paused") {
-      node.pending.push(work);
+      admit(node, work);
       return;
     }
     if (node.role === "source" || node.role === "sink" || node.role === "none") {
       finish(node, work);
-    } else node.pending.push(work);
+    } else admit(node, work);
   }
 
   function emit(node: Node, type: string, injected: boolean): void {
@@ -633,11 +711,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             (edge.deny ||
               (free &&
                 target.status === "up" &&
-                target.working.length + target.incoming + target.pending.length < slots(target) &&
+                target.working.length + target.incoming + target.pending.length + target.staged.length <
+                  outstanding(slots(target), target, edge.travelMs) &&
                 (node.role === "queue" ||
                   (group.activeByNode[target.id] ?? 0) <
-                    (group.allocations.get(target.id) ?? 0) *
-                      (target.role === "processor" ? target.props.concurrency : 1))))
+                    outstanding(
+                      (group.allocations.get(target.id) ?? 0) *
+                        (target.role === "processor" ? target.props.concurrency : 1),
+                      target,
+                      edge.travelMs,
+                    ))))
           ) {
             ready = edge;
             group.cursor = (index + 1) % group.edges.length;
@@ -730,6 +813,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           } else node.working[keep++] = work;
         }
         node.working.length = keep;
+        if (node.staged.length) unstage(node);
         while (node.pending.length && (node.status === "down" || node.working.length < slots(node))) {
           // Brokers without consumers retain their messages until a new diagram is loaded.
           if (isBroker(node) && !node.groups.length) break;
@@ -775,6 +859,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     lineage.reset();
     for (const node of nodes.values()) {
       node.pending.clear();
+      node.staged = [];
       node.working.length = 0;
       node.incoming = 0;
       node.cursor = 0;
@@ -793,6 +878,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         group.active = 0;
         group.cursor = 0;
         group.activeByNode = Object.create(null);
+        group.heldByNode = Object.create(null);
       }
     }
     for (const edge of edges) {
@@ -890,7 +976,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (!node) return undefined;
       if (metric.field === "inFlight") return node.working.length;
       if (metric.field === "backlog") {
-        let backlog = node.pending.length;
+        let backlog = node.pending.length + node.staged.length;
         for (const group of node.groups) backlog = Math.max(backlog, group.pending.length);
         return backlog;
       }
@@ -928,6 +1014,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           outgoing: [],
           groups: [],
           pending: new Deque(),
+          staged: [],
           working: [],
           incoming: 0,
           cursor: 0,
@@ -967,6 +1054,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           cursor: 0,
           allocations: new Map(),
           activeByNode: Object.create(null),
+          heldByNode: Object.create(null),
         }));
       }
       indexGroups();
@@ -999,7 +1087,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const nodeStates: Record<string, NodeSimState> = Object.create(null);
       for (const node of nodes.values()) {
         const lag: Record<string, number> = Object.create(null);
-        let backlog = node.pending.length;
+        let backlog = node.pending.length + node.staged.length;
         for (const group of node.groups) {
           lag[group.name] = group.pending.length;
           backlog = Math.max(backlog, group.pending.length);
@@ -1059,7 +1147,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     },
     setNodePropsBatch,
     setScale(value): void {
-      scale = resolveScale(value);
+      const next = resolveScale(value);
+      if (next === scale) return;
+      scale = next;
+      // A processor's time per sampled dot follows the scale, and so does what may be on the way to it.
+      for (const node of nodes.values()) for (const group of node.groups) refreshGroupLimit(group);
     },
     setCapacityMultiplier(value): void {
       setNodePropsBatch({}, value);

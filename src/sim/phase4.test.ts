@@ -50,15 +50,16 @@ describe("review regressions", () => {
         [edge("b", "p", { travelMs: 100 })],
       ),
     );
-    e.inject("b", 2);
+    // 1 slot + ceil(1 × 100 / 100) on the way + 1: three deliveries leave, the fourth waits in the topic.
+    e.inject("b", 4);
     e.step(10);
     e.setNodeStatus("p", "down");
     e.step(100);
-    expect(e.frame().nodes.p).toMatchObject({ failed: 1, inFlight: 1 });
+    expect(e.frame().nodes.p).toMatchObject({ failed: 3, inFlight: 3 });
     expect(e.frame().nodes.b.backlog).toBe(1);
     e.setNodeStatus("p", "up");
-    e.step(1000);
-    expect(e.frame().nodes.p.processed).toBe(2);
+    e.step(2000);
+    expect(e.frame().nodes.p.processed).toBe(4);
     expect(e.metrics().inSystem).toBe(0);
   });
 
@@ -484,7 +485,9 @@ describe("engine gaps and rendering accessor", () => {
     );
     e.inject("b", 20, { type: "Order" });
     e.step(100);
-    expect(e.frame().nodes.b.backlog).toBe(19);
+    // One works (and retries in place); two more wait at the consumer, prefetched behind it.
+    expect(e.frame().nodes.b.backlog).toBe(17);
+    expect(e.frame().nodes.p).toMatchObject({ inFlight: 1, backlog: 2 });
     const checkpoint = e.checkpoint();
     e.step(250);
     const result = e.snapshot();
@@ -713,13 +716,15 @@ describe("phase 4 boundary regressions", () => {
     const failures = e.snapshot().events.filter((event) => event.kind === "fail");
     expect(failures.slice(0, 2).map((event) => event.messageId)).toEqual(retry === "inplace" ? [1, 1] : [1, 2]);
   });
-  it("broker targets reserve partitions without reporting negative idle replica counts", () => {
+  it("broker targets take a topic's deliveries without a partition cap or negative idle replica counts", () => {
     const e = engine(
       diagram([node("t", "topic", { partitions: 8 }), node("q", "queue")], [edge("t", "q", { travelMs: 100 })]),
     );
     e.inject("t", 30);
     e.step(10);
-    expect(e.frame().particles).toHaveLength(8);
+    // A broker takes a message the moment it arrives: nothing to reserve, so the hop never builds lag.
+    expect(e.frame().particles).toHaveLength(30);
+    expect(e.frame().nodes.t.lag).toEqual({ "t-q": 0 });
     expect(e.frame().nodes.q).toMatchObject({ replicas: 1, activeReplicas: 1, idleReplicas: 0 });
   });
   it("real-unit helpers scale lag, edge activity and all counters independently of raw state", () => {

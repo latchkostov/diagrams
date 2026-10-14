@@ -611,8 +611,10 @@ describe("denied broker routes aren't consumers", () => {
     run(sim, 200);
     const { nodes } = sim.snapshot();
     expect(nodes.topic.backlog).toBe(0);
-    expect(nodes.topic.blocked! + nodes.slow.inFlight).toBe(10);
-    expect(nodes.topic.blocked).toBeGreaterThanOrEqual(9);
+    // The allowed route takes what its consumer's slot and pipeline hold (1 + ⌈travel ÷ 5 s⌉ + 1 = 3, in work or
+    // waiting there); the deny rule blocks the rest at once, though the consumer is busy.
+    expect(nodes.topic.blocked! + nodes.slow.inFlight + nodes.slow.backlog).toBe(10);
+    expect(nodes.topic.blocked).toBeGreaterThanOrEqual(7);
   });
 
   it("takes no partition from an allowed consumer in the same group", () => {
