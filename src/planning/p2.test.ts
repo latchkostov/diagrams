@@ -36,6 +36,26 @@ afterEach(() => {
 });
 
 describe("P2 broker assignment", () => {
+  it.each(fanout)("%s unread subscription findings stay deterministic across locales", async (stencil) => {
+    const d = planningP2Fixture(stencil);
+    d.edges = d.edges.filter((edge) => edge.from !== "broker");
+    const before = runChecks(d);
+    const finding = before.findings.find((f) => f.id === "no-reader:broker")!;
+    expect(finding.rationale).toBe(en["broker.noReader"]);
+    expect(presentFinding(finding).rationale).toBe(finding.rationale);
+    state.l = "de";
+    state.c = (await catalogs.de()).default as Catalog;
+    expect(runChecks(d)).toEqual(before);
+    // A worker result crosses the structured-clone boundary before presentation.
+    const cached = structuredClone(before);
+    const shown = presentFinding(cached.findings.find((f) => f.id === "no-reader:broker")!);
+    expect(shown.rationale).toBe("Keine Leser. Einen Leser hinzufügen.");
+    expect(cached).toEqual(before);
+    state.l = "en";
+    state.c = undefined;
+    expect(presentFinding(finding).rationale).toBe(finding.rationale);
+  });
+
   it("check and agent analysis stay English while broker descriptors translate only in the UI", async () => {
     const d = planningP2Fixture("kafka.topic");
     const before = runChecks(d, { rules: ["capacity"] });
@@ -270,6 +290,13 @@ describe("P2 broker assignment", () => {
       const snapshot = e.snapshot();
       const sum = snapshot.nodes.worker.processed + snapshot.nodes.other.processed;
       expect(sum).toBe(stencil === "generic.queue" ? 17 : 34);
+      if (stencil === "generic.queue") {
+        expect(snapshot.nodes.worker.processed).toBeGreaterThan(0);
+        expect(snapshot.nodes.other.processed).toBeGreaterThan(0);
+      } else {
+        expect(snapshot.nodes.worker.processed).toBe(17);
+        expect(snapshot.nodes.other.processed).toBe(17);
+      }
       expect(snapshot.nodes.dead.processed).toBe(0);
       expect(
         compileTopology(d)
@@ -282,6 +309,34 @@ describe("P2 broker assignment", () => {
           d.nodes.find((n) => n.id === "dead")!,
         ),
       ).toEqual([]);
+    },
+  );
+
+  it.each([...fanout, "generic.queue"])(
+    "%s delivers the whole burst to each subscription; queues compete",
+    (stencil) => {
+      const d = planningP2Fixture(stencil);
+      d.nodes.push({ ...d.nodes[2], id: "other" });
+      d.edges.push({ ...d.edges[1], id: "other-read", to: "other", props: { group: "audit", travelMs: 0 } });
+      const e = run(d);
+      e.setTraffic(false);
+      const count = 37;
+      e.inject("source", count);
+      steps(e, 200);
+      const snapshot = e.snapshot();
+      const readers = [snapshot.nodes.worker.processed, snapshot.nodes.other.processed];
+      if (stencil === "generic.queue") {
+        expect(readers.reduce((a, b) => a + b, 0)).toBe(count);
+        for (const processed of readers) expect(processed).toBeGreaterThan(0);
+      } else {
+        expect(readers).toEqual([count, count]);
+      }
+      expect(snapshot.nodes.source.processed).toBe(count);
+      expect(snapshot.nodes.dead.processed).toBe(0);
+      expect(e.metrics()).toMatchObject({ inSystem: 0, pendingInjections: 0 });
+      for (const node of Object.values(snapshot.nodes)) {
+        expect(node).toMatchObject({ backlog: 0, inFlight: 0, failed: 0, dropped: 0, deadLettered: 0 });
+      }
     },
   );
 

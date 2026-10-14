@@ -38,6 +38,8 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  /** Neutral rationale descriptor; rationale stays English for workers and agents. */
+  brokerRationale?: "no-reader";
   brokerAssignment?: { text: string; spec: BrokerSpec; active: number; configured: number };
   /** `${rule}:${target}`: stable across renames and moves. */
   id: string;

@@ -55,7 +55,7 @@ export function NodeBadges({
   const nodes = useNodes<FlowNode>();
   const diagram = ui.controller.currentDiagram;
   const topology = useMemo(() => compileTopology(diagram), [diagram]);
-  const assignmentMultiplier = resolveMultiplier(state.running?.multipliers?.capacity);
+  const assignmentMultiplier = resolveMultiplier(state.inputs.capacity ?? state.running?.multipliers?.capacity);
   const assignments = useMemo(
     () => brokerAssignments(diagram, state.configuration, assignmentMultiplier),
     [diagram, state.configuration, assignmentMultiplier],

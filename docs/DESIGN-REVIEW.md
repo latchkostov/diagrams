@@ -1,5 +1,23 @@
 # Design review
 
+## Round 38: Planning P2 follow-up fixes (2026-10-14)
+
+The required designer-agent review found no blocker in the scoped source changes and production Chromium
+screenshots. No controls, focus targets or layout were added. The existing Why disclosure renders the
+subscription rationale in the current language; cached and worker findings stay English. Free play uses
+the effective Capacity multiplier for assignment vocabulary, matching the running count.
+
+The mixed Kafka/Kinesis capacity summary fits with **Assigned instances: 7 / 8 · Shards** at Capacity ×4.
+Arabic and pseudo-locale subscription labels still fit. Source review and automated assertions cover the
+badge and hover vocabulary and German-to-English rationale switch. Updated screenshots show the readable
+German rationale under Why and the matching Shards hover note. The open Inputs panel partly covers the
+wider hover explanation; its full layout was not certified. This was a scoped follow-up, not a whole-app
+walkthrough, screen-reader audit or dark/narrow layout review.
+
+All nine review findings were accepted; overlapping reports share fixes. Their individual dispositions,
+operation-count and deliberate regression evidence are recorded in
+[Planning P2 review fixes](research/planning-p2-review-fixes.md).
+
 ## Round 37: Planning P2 — logs and subscriptions (2026-10-14)
 
 The required designer-agent review inspected source and production Chromium screenshots of the existing inspector

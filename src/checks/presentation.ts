@@ -8,6 +8,7 @@ export function presentFinding(finding: Finding): Finding {
   const fix = finding.fix;
   return {
     ...finding,
+    rationale: finding.brokerRationale === "no-reader" ? t("broker.noReader") : finding.rationale,
     message: note
       ? finding.message.replace(
           note.text,

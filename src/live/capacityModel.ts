@@ -527,7 +527,7 @@ export function partitionsNotes(d: DiagramFile, sim: Simulation | null, inputs: 
   const notes = new Map<string, string>();
   const raised = d.nodes.filter(
     (n) =>
-      baseProps(d, n, sim).broker?.partitioned &&
+      brokerSpec(n.stencil, roleOf(n), d.planning)?.partitioned &&
       baseProps(d, n, sim, inputs.props[n.id]).partitions > baseProps(d, n, sim).partitions,
   );
   if (!raised.length) return notes;

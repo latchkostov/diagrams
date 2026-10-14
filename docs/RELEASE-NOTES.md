@@ -1,5 +1,13 @@
 # Release notes
 
+## Planning P2 review fixes (2026-10-14)
+
+- Unread subscription checks keep deterministic English findings for workers and agents; the Checks
+  card translates their rationale when rendered, including after a language switch.
+- Free play's Capacity multiplier now selects the matching partition or shard label for assigned
+  instances and idle badges in mixed-broker diagrams.
+- Editing Inputs avoids resolving service and subscription settings just to identify partitioned brokers.
+
 ## Planning P2: logs and subscriptions (2026-10-14)
 
 - Kafka and Event Hubs assign reader instances by partitions; Kinesis uses shards. SNS, EventBridge,
